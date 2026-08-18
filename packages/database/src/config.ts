@@ -9,6 +9,10 @@ const databaseConfigSchema = z.object({
   connectionTimeoutMillis: z.number().int().positive().default(5_000),
   idleTimeoutMillis: z.number().int().positive().default(30_000),
   max: z.number().int().positive().max(100).default(10),
+  ownerRole: z
+    .string()
+    .regex(/^[a-z_][a-z0-9_]*$/u)
+    .default('pertexo_owner'),
 });
 
 export type DatabaseConfig = Readonly<z.output<typeof databaseConfigSchema>>;
@@ -29,11 +33,21 @@ const migrationEnvironmentSchema = z.object({
     .string()
     .regex(/^[a-z_][a-z0-9_]*$/u)
     .default('pertexo_owner'),
+  POSTGRES_API_RUNTIME_USER: z
+    .string()
+    .regex(/^[a-z_][a-z0-9_]*$/u)
+    .default('pertexo_api'),
+  POSTGRES_WORKER_RUNTIME_USER: z
+    .string()
+    .regex(/^[a-z_][a-z0-9_]*$/u)
+    .default('pertexo_worker'),
 });
 
 export type MigrationConfig = Readonly<{
+  apiRuntimeRole: string;
   connectionString: string;
   ownerRole: string;
+  workerRuntimeRole: string;
 }>;
 
 export function parseMigrationConfig(
@@ -41,7 +55,9 @@ export function parseMigrationConfig(
 ): MigrationConfig {
   const parsed = migrationEnvironmentSchema.parse(environment);
   return Object.freeze({
+    apiRuntimeRole: parsed.POSTGRES_API_RUNTIME_USER,
     connectionString: parsed.DATABASE_MIGRATION_URL,
     ownerRole: parsed.POSTGRES_OWNER_USER,
+    workerRuntimeRole: parsed.POSTGRES_WORKER_RUNTIME_USER,
   });
 }

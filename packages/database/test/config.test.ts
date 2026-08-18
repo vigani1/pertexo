@@ -14,6 +14,7 @@ describe('database configuration', () => {
       connectionTimeoutMillis: 5_000,
       idleTimeoutMillis: 30_000,
       max: 10,
+      ownerRole: 'pertexo_owner',
     });
     expect(Object.isFrozen(config)).toBe(true);
   });
@@ -30,12 +31,16 @@ describe('database configuration', () => {
       parseMigrationConfig({
         DATABASE_MIGRATION_URL:
           'postgresql://pertexo_migration:secret@localhost:5432/pertexo',
+        POSTGRES_API_RUNTIME_USER: 'api_role',
         POSTGRES_OWNER_USER: 'pertexo_owner',
+        POSTGRES_WORKER_RUNTIME_USER: 'worker_role',
       }),
     ).toEqual({
+      apiRuntimeRole: 'api_role',
       connectionString:
         'postgresql://pertexo_migration:secret@localhost:5432/pertexo',
       ownerRole: 'pertexo_owner',
+      workerRuntimeRole: 'worker_role',
     });
   });
 });

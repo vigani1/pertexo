@@ -26,8 +26,19 @@ const recordA = randomUUID();
 const recordB = randomUUID();
 
 const database = createWorkspaceDatabase(
-  parseDatabaseConfig({ connectionString: apiUrl, max: 1 }),
+  parseDatabaseConfig({
+    connectionString: apiUrl,
+    max: 1,
+    ownerRole: 'pertexo_owner',
+  }),
 );
+
+const migrationConfig = {
+  apiRuntimeRole: 'pertexo_api',
+  connectionString: migrationUrl,
+  ownerRole: 'pertexo_owner',
+  workerRuntimeRole: 'pertexo_worker',
+} as const;
 
 function expectPgCode(code: string): (error: unknown) => boolean {
   return (error: unknown): boolean => {
@@ -42,11 +53,25 @@ function expectPgCode(code: string): (error: unknown) => boolean {
   };
 }
 
+async function executeAsOwner(statement: string): Promise<void> {
+  const pool = new Pool({ connectionString: migrationUrl, max: 1 });
+  const client = await pool.connect();
+  try {
+    await client.query('begin');
+    await client.query('set local role pertexo_owner');
+    await client.query(statement);
+    await client.query('commit');
+  } catch (error: unknown) {
+    await client.query('rollback').catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+    await pool.end();
+  }
+}
+
 beforeAll(async () => {
-  await migrateDatabase({
-    connectionString: migrationUrl,
-    ownerRole: 'pertexo_owner',
-  });
+  await migrateDatabase(migrationConfig);
   await database.withWorkspace(workspaceA, async ({ db, workspaceId }) => {
     await db.insert(rlsProbeRecords).values({
       id: recordA,
@@ -69,12 +94,7 @@ afterAll(async () => {
 
 describe('workspace transaction boundary', () => {
   it('keeps reviewed migrations idempotent after reaching head', async () => {
-    await expect(
-      migrateDatabase({
-        connectionString: migrationUrl,
-        ownerRole: 'pertexo_owner',
-      }),
-    ).resolves.toEqual([]);
+    await expect(migrateDatabase(migrationConfig)).resolves.toEqual([]);
   });
 
   it('returns only rows from the active workspace even for an unfiltered query', async () => {
@@ -154,6 +174,47 @@ describe('workspace transaction boundary', () => {
     expect(bRows.some((row) => row.id === recordA)).toBe(false);
   });
 
+  it('isolates concurrent workspace transactions sharing one pool', async () => {
+    const concurrentDatabase = createWorkspaceDatabase(
+      parseDatabaseConfig({
+        connectionString: apiUrl,
+        max: 2,
+        ownerRole: 'pertexo_owner',
+      }),
+    );
+    let arrivals = 0;
+    let releaseBarrier: (() => void) | undefined;
+    const barrier = new Promise<void>((resolve) => {
+      releaseBarrier = resolve;
+    });
+
+    const readWorkspace = async (
+      workspaceId: string,
+    ): Promise<readonly string[]> =>
+      concurrentDatabase.withWorkspace(workspaceId, async ({ db }) => {
+        arrivals += 1;
+        if (arrivals === 2) {
+          releaseBarrier?.();
+        }
+        await barrier;
+        const rows = await db.select().from(rlsProbeRecords);
+        return rows.map((row) => row.id);
+      });
+
+    try {
+      const [aIds, bIds] = await Promise.all([
+        readWorkspace(workspaceA),
+        readWorkspace(workspaceB),
+      ]);
+      expect(aIds).toContain(recordA);
+      expect(aIds).not.toContain(recordB);
+      expect(bIds).toContain(recordB);
+      expect(bIds).not.toContain(recordA);
+    } finally {
+      await concurrentDatabase.close();
+    }
+  });
+
   it('clears transaction-local context before the same client is reused', async () => {
     const pool = new Pool({ connectionString: apiUrl, max: 1 });
     const client = await pool.connect();
@@ -179,6 +240,23 @@ describe('workspace transaction boundary', () => {
 
       expect(context.rows[0]?.workspace_id ?? '').toBe('');
       expect(unscoped.rows).toEqual([]);
+
+      await client.query('begin');
+      await client.query("select set_config('app.workspace_id', $1, true)", [
+        workspaceA,
+      ]);
+      await client.query('rollback');
+      await client.query('begin');
+      const afterRollback = await client.query<{ workspace_id: string }>(
+        "select current_setting('app.workspace_id', true) as workspace_id",
+      );
+      const rollbackUnscoped = await client.query(
+        'select id from app.rls_probe_records',
+      );
+      await client.query('commit');
+
+      expect(afterRollback.rows[0]?.workspace_id ?? '').toBe('');
+      expect(rollbackUnscoped.rows).toEqual([]);
     } finally {
       client.release();
       await pool.end();
@@ -261,6 +339,8 @@ describe.each([
       '42501',
     ],
     ['set role pertexo_owner', '42501'],
+    ['set role pertexo_migration', '42501'],
+    ['set role pertexo_maintenance', '42501'],
   ])(
     'cannot execute privileged statement: %s',
     async (statement, expectedCode) => {
@@ -283,5 +363,76 @@ describe('database readiness', () => {
       postgresMajor: 18,
       role: 'pertexo_api',
     });
+  });
+
+  it('detects a missing workspace policy', async () => {
+    await executeAsOwner(
+      'drop policy rls_probe_records_workspace_scope on app.rls_probe_records',
+    );
+    try {
+      await expect(database.checkReadiness()).rejects.toThrow(
+        'Workspace row-level security policy is incompatible',
+      );
+    } finally {
+      await executeAsOwner(`
+        create policy rls_probe_records_workspace_scope
+          on app.rls_probe_records
+          for all
+          to pertexo_api, pertexo_worker
+          using (
+            workspace_id::text = nullif(current_setting('app.workspace_id', true), '')
+          )
+          with check (
+            workspace_id::text = nullif(current_setting('app.workspace_id', true), '')
+          )
+      `);
+    }
+  });
+
+  it('detects an incompatible runtime grant', async () => {
+    await executeAsOwner(
+      'revoke insert on app.rls_probe_records from pertexo_api',
+    );
+    try {
+      await expect(database.checkReadiness()).rejects.toThrow(
+        'Runtime database grants are incompatible',
+      );
+    } finally {
+      await executeAsOwner(
+        'grant insert on app.rls_probe_records to pertexo_api',
+      );
+    }
+  });
+
+  it('detects when forced row-level security is removed', async () => {
+    await executeAsOwner(
+      'alter table app.rls_probe_records no force row level security',
+    );
+    try {
+      await expect(database.checkReadiness()).rejects.toThrow(
+        'Protected table does not force row-level security',
+      );
+    } finally {
+      await executeAsOwner(
+        'alter table app.rls_probe_records force row level security',
+      );
+    }
+  });
+
+  it('detects an incompatible migration head', async () => {
+    await executeAsOwner(`
+      insert into pertexo_internal.schema_migrations (name, checksum)
+      values ('9999_incompatible.sql', 'test-only')
+    `);
+    try {
+      await expect(database.checkReadiness()).rejects.toThrow(
+        'Database migration head is incompatible',
+      );
+    } finally {
+      await executeAsOwner(`
+        delete from pertexo_internal.schema_migrations
+        where name = '9999_incompatible.sql'
+      `);
+    }
   });
 });

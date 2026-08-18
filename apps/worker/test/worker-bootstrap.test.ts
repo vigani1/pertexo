@@ -24,6 +24,7 @@ const workerConfig = {
     connectionTimeoutMillis: 5_000,
     idleTimeoutMillis: 30_000,
     max: 5,
+    ownerRole: 'pertexo_owner',
   },
   nodeEnv: 'test' as const,
   logLevel: 'debug' as const,

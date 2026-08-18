@@ -26,7 +26,7 @@ export function createWorkspaceDatabase(
       operation: (transaction: WorkspaceTransaction) => Promise<T>,
     ): Promise<T> => withWorkspaceTransaction(pool, workspaceId, operation),
     checkReadiness: async (): Promise<DatabaseReadiness> =>
-      checkDatabaseReadiness(pool),
+      checkDatabaseReadiness(pool, { ownerRole: config.ownerRole }),
     close: async (): Promise<void> => pool.end(),
   });
 }

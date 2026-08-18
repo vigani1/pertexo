@@ -27,6 +27,10 @@ const apiEnvironmentSchema = z.object({
   HOST: z.string().trim().min(1).default('0.0.0.0'),
   NODE_ENV: z.enum(API_NODE_ENVIRONMENTS).default('development'),
   PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
+  POSTGRES_OWNER_USER: z
+    .string()
+    .regex(/^[a-z_][a-z0-9_]*$/u)
+    .default('pertexo_owner'),
 });
 
 export type ApiNodeEnvironment = (typeof API_NODE_ENVIRONMENTS)[number];
@@ -37,6 +41,7 @@ export type ApiConfig = Readonly<{
     connectionTimeoutMillis: number;
     idleTimeoutMillis: number;
     max: number;
+    ownerRole: string;
   }>;
   host: string;
   nodeEnv: ApiNodeEnvironment;
@@ -54,6 +59,7 @@ export function parseApiConfig(
       connectionTimeoutMillis: parsed.DATABASE_CONNECTION_TIMEOUT_MILLIS,
       idleTimeoutMillis: parsed.DATABASE_IDLE_TIMEOUT_MILLIS,
       max: parsed.DATABASE_POOL_MAX,
+      ownerRole: parsed.POSTGRES_OWNER_USER,
     }),
     host: parsed.HOST,
     nodeEnv: parsed.NODE_ENV,

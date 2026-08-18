@@ -10,28 +10,83 @@ export type DatabaseReadiness = Readonly<{
 }>;
 
 interface ReadinessRow {
+  can_delete: boolean;
+  can_insert: boolean;
+  can_references: boolean;
+  can_select: boolean;
+  can_trigger: boolean;
+  can_truncate: boolean;
+  can_update: boolean;
   current_user: string;
   migration_head: string | null;
+  owner_member: boolean;
   owner: string;
+  policy_compatible: boolean;
   postgres_major: number;
   relforcerowsecurity: boolean;
   relrowsecurity: boolean;
   rolbypassrls: boolean;
   rolsuper: boolean;
+  schema_compatible: boolean;
 }
+
+type ReadinessOptions = Readonly<{
+  ownerRole: string;
+}>;
 
 export async function checkDatabaseReadiness(
   pool: Pool,
+  options: ReadinessOptions = { ownerRole: 'pertexo_owner' },
 ): Promise<DatabaseReadiness> {
-  const result = await pool.query<ReadinessRow>(`
+  const result = await pool.query<ReadinessRow>(
+    `
     select
       current_user,
       current_setting('server_version_num')::integer / 10000 as postgres_major,
       role.rolsuper,
       role.rolbypassrls,
+      pg_has_role(current_user, $1::name, 'MEMBER') as owner_member,
       pg_get_userbyid(table_class.relowner) as owner,
       table_class.relrowsecurity,
       table_class.relforcerowsecurity,
+      has_table_privilege(current_user, table_class.oid, 'SELECT') as can_select,
+      has_table_privilege(current_user, table_class.oid, 'INSERT') as can_insert,
+      has_table_privilege(current_user, table_class.oid, 'UPDATE') as can_update,
+      has_table_privilege(current_user, table_class.oid, 'DELETE') as can_delete,
+      has_table_privilege(current_user, table_class.oid, 'TRUNCATE') as can_truncate,
+      has_table_privilege(current_user, table_class.oid, 'REFERENCES') as can_references,
+      has_table_privilege(current_user, table_class.oid, 'TRIGGER') as can_trigger,
+      exists (
+        select 1
+        from pg_policy policy
+        where policy.polrelid = table_class.oid
+          and policy.polname = 'rls_probe_records_workspace_scope'
+          and policy.polcmd = '*'
+          and role.oid = any(policy.polroles)
+          and policy.polqual is not null
+          and policy.polwithcheck is not null
+          and pg_get_expr(policy.polqual, policy.polrelid) like '%workspace_id%'
+          and pg_get_expr(policy.polqual, policy.polrelid) like '%current_setting%'
+          and pg_get_expr(policy.polwithcheck, policy.polrelid) like '%workspace_id%'
+          and pg_get_expr(policy.polwithcheck, policy.polrelid) like '%current_setting%'
+      ) as policy_compatible,
+      (
+        select count(*) = 1
+        from pg_attribute attribute
+        where attribute.attrelid = table_class.oid
+          and attribute.attname = 'workspace_id'
+          and attribute.attnotnull
+          and attribute.atttypid = 'uuid'::regtype
+          and not attribute.attisdropped
+      ) and exists (
+        select 1
+        from pg_index table_index
+        join pg_attribute workspace_attribute
+          on workspace_attribute.attrelid = table_index.indrelid
+          and workspace_attribute.attname = 'workspace_id'
+        where table_index.indrelid = table_class.oid
+          and workspace_attribute.attnum = any(table_index.indkey)
+      ) as schema_compatible,
       (
         select name
         from pertexo_internal.schema_migrations
@@ -41,7 +96,9 @@ export async function checkDatabaseReadiness(
     from pg_roles role
     join pg_class table_class on table_class.oid = 'app.rls_probe_records'::regclass
     where role.rolname = current_user
-  `);
+  `,
+    [options.ownerRole],
+  );
   const row = result.rows[0];
 
   if (row === undefined) {
@@ -55,13 +112,30 @@ export async function checkDatabaseReadiness(
   if (row.migration_head !== EXPECTED_MIGRATION_HEAD) {
     throw new Error('Database migration head is incompatible');
   }
-  if (row.owner !== 'pertexo_owner') {
+  if (row.owner !== options.ownerRole) {
     throw new Error('Protected table has an unexpected owner');
+  }
+  if (!row.schema_compatible) {
+    throw new Error('Protected table schema is incompatible');
   }
   if (!row.relrowsecurity || !row.relforcerowsecurity) {
     throw new Error('Protected table does not force row-level security');
   }
-  if (row.rolsuper || row.rolbypassrls) {
+  if (!row.policy_compatible) {
+    throw new Error('Workspace row-level security policy is incompatible');
+  }
+  if (
+    !row.can_select ||
+    !row.can_insert ||
+    !row.can_update ||
+    !row.can_delete ||
+    row.can_truncate ||
+    row.can_references ||
+    row.can_trigger
+  ) {
+    throw new Error('Runtime database grants are incompatible');
+  }
+  if (row.rolsuper || row.rolbypassrls || row.owner_member) {
     throw new Error('Runtime database role is privileged');
   }
 

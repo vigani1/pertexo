@@ -19,8 +19,14 @@ export function parseWorkspaceId(value: string): WorkspaceId {
   return workspaceIdSchema.parse(value) as WorkspaceId;
 }
 
-async function clearWorkspaceContext(client: PoolClient): Promise<void> {
-  await client.query("select set_config('app.workspace_id', '', false)");
+async function assertNoWorkspaceContext(client: PoolClient): Promise<void> {
+  const result = await client.query<{ workspace_id: string | null }>(
+    "select current_setting('app.workspace_id', true) as workspace_id",
+  );
+  const value = result.rows[0]?.workspace_id;
+  if (value !== undefined && value !== null && value !== '') {
+    throw new Error('Pooled PostgreSQL client retained workspace context');
+  }
 }
 
 export async function withWorkspaceTransaction<T>(
@@ -33,7 +39,7 @@ export async function withWorkspaceTransaction<T>(
   let transactionOpen = false;
 
   try {
-    await clearWorkspaceContext(client);
+    await assertNoWorkspaceContext(client);
     await client.query('begin');
     transactionOpen = true;
     await client.query("select set_config('app.workspace_id', $1, true)", [
@@ -51,7 +57,7 @@ export async function withWorkspaceTransaction<T>(
     const result = await operation(Object.freeze({ db, workspaceId }));
     await client.query('commit');
     transactionOpen = false;
-    await clearWorkspaceContext(client);
+    await assertNoWorkspaceContext(client);
     client.release();
     return result;
   } catch (error: unknown) {
@@ -68,7 +74,7 @@ export async function withWorkspaceTransaction<T>(
     }
 
     try {
-      await clearWorkspaceContext(client);
+      await assertNoWorkspaceContext(client);
       client.release();
     } catch (cleanupError: unknown) {
       client.release(true);

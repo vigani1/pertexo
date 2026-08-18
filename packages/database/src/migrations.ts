@@ -7,6 +7,7 @@ import { Pool } from 'pg';
 
 import type { MigrationConfig } from './config.js';
 
+// Stable application namespace for serializing Pertexo schema migrations.
 const MIGRATION_LOCK_ID = 7_166_118_812;
 const migrationNamePattern = /^\d{4}_[a-z0-9_]+\.sql$/u;
 
@@ -16,6 +17,15 @@ export const MIGRATIONS_DIRECTORY = fileURLToPath(
 
 function quoteIdentifier(identifier: string): string {
   return `"${identifier.replaceAll('"', '""')}"`;
+}
+
+function renderMigration(sql: string, config: MigrationConfig): string {
+  return sql
+    .replaceAll('{{api_runtime_role}}', quoteIdentifier(config.apiRuntimeRole))
+    .replaceAll(
+      '{{worker_runtime_role}}',
+      quoteIdentifier(config.workerRuntimeRole),
+    );
 }
 
 export async function migrateDatabase(
@@ -66,7 +76,7 @@ export async function migrateDatabase(
         continue;
       }
 
-      await client.query(sql);
+      await client.query(renderMigration(sql, config));
       await client.query(
         'insert into pertexo_internal.schema_migrations (name, checksum) values ($1, $2)',
         [name, checksum],
@@ -75,10 +85,10 @@ export async function migrateDatabase(
     }
 
     await client.query(
-      'grant usage on schema pertexo_internal to pertexo_api, pertexo_worker',
+      `grant usage on schema pertexo_internal to ${quoteIdentifier(config.apiRuntimeRole)}, ${quoteIdentifier(config.workerRuntimeRole)}`,
     );
     await client.query(
-      'grant select on pertexo_internal.schema_migrations to pertexo_api, pertexo_worker',
+      `grant select on pertexo_internal.schema_migrations to ${quoteIdentifier(config.apiRuntimeRole)}, ${quoteIdentifier(config.workerRuntimeRole)}`,
     );
     await client.query('commit');
     return Object.freeze(applied);

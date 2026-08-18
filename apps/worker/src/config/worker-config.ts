@@ -36,6 +36,10 @@ export const workerConfigSchema = z
     DATABASE_POOL_MAX: z.coerce.number().int().positive().max(20).default(5),
     NODE_ENV: z.enum(workerEnvironments).default('development'),
     LOG_LEVEL: z.enum(workerLogLevels).default('info'),
+    POSTGRES_OWNER_USER: z
+      .string()
+      .regex(/^[a-z_][a-z0-9_]*$/u)
+      .default('pertexo_owner'),
   })
   .transform(
     ({
@@ -45,6 +49,7 @@ export const workerConfigSchema = z
       DATABASE_POOL_MAX,
       NODE_ENV,
       LOG_LEVEL,
+      POSTGRES_OWNER_USER,
     }) => ({
       nodeEnv: NODE_ENV,
       logLevel: LOG_LEVEL,
@@ -53,6 +58,7 @@ export const workerConfigSchema = z
         connectionTimeoutMillis: DATABASE_CONNECTION_TIMEOUT_MILLIS,
         idleTimeoutMillis: DATABASE_IDLE_TIMEOUT_MILLIS,
         max: DATABASE_POOL_MAX,
+        ownerRole: POSTGRES_OWNER_USER,
       },
     }),
   );
