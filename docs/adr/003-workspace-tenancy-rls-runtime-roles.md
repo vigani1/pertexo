@@ -204,6 +204,32 @@ revision, test result, and measured pool behavior. The Phase 0B checkpoint is
 not complete from a prose review alone; the measured result and any required
 follow-up ADR update must be recorded in the implementation progress tracker.
 
+### Phase 0B executable result
+
+Phase 0B passed on 2026-08-18 against PostgreSQL 18.6 using the `postgres:18`
+image, reviewed migration `0000_rls_probe.sql`, and distinct owner, migration,
+maintenance, API runtime, and worker runtime roles. The executable fixture is
+`app.rls_probe_records`; it contains a direct non-null UUID `workspace_id`, a
+workspace index, forced RLS, a transaction-context policy, and restricted
+runtime grants.
+
+`pnpm test:integration` ran 31 PostgreSQL assertions in 424 ms. A pool limited
+to one client retained no tenant value after either commit or rollback, and
+two overlapping transactions on a shared two-client pool observed only their
+own workspace. Both serving roles failed closed without context and could not
+disable RLS, alter policies, truncate the table, or assume the owner,
+migration, or maintenance roles. Readiness failure exercises covered a missing
+policy, removed forced RLS, an incompatible migration head, and an incompatible
+runtime grant.
+
+An independent review identified and removed session-level empty-value cleanup
+and hard-coded migration role names. The final helper only inspects for leaked
+session context and destroys a contaminated client; role identifiers are
+validated environment configuration rendered as quoted SQL identifiers. The
+schema-compatibility check also verifies the workspace column type/nullability,
+workspace indexing, policy expressions, grants, ownership, forced RLS, runtime
+attributes, PostgreSQL major version, and migration head.
+
 ## Consequences
 
 Positive consequences:

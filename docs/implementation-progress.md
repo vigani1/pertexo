@@ -13,7 +13,7 @@ not complete a phase.
 | Checkpoint | Status | Evidence |
 | --- | --- | --- |
 | Phase 0A — repository and process skeleton | Complete | ADR 001; commits `8d064cd`, `c80a70c`; `pnpm check`; compiled API and worker smoke checks |
-| Phase 0B — PostgreSQL tenancy and RLS proof | Not started | — |
+| Phase 0B — PostgreSQL tenancy and RLS proof | Complete | ADR 003; commits `bad4b9e`, `9b4f6a4`, `a3bec51`; PostgreSQL 18.6 clean migration; 31 RLS integration tests |
 | Phase 0C — HTTP and observability foundation | Not started | — |
 | Phase 0D — queue, outbox, and duplicate-delivery proof | Not started | — |
 | Phase 0E — execution durability proofs and engine gate | Not started | — |
@@ -54,19 +54,46 @@ Evidence:
 
 ## Phase 0B — PostgreSQL tenancy and RLS proof
 
-Status: **Not started**
+Status: **Complete**
 
-- [ ] Accept ADR 003 before the first tenant repository.
-- [ ] Add local PostgreSQL infrastructure and typed database configuration.
-- [ ] Create the database package and reviewed migration foundation.
-- [ ] Define migration, owner, and restricted runtime roles.
-- [ ] Implement transaction-scoped workspace context using `SET LOCAL`.
-- [ ] Prove cross-workspace reads and writes fail.
-- [ ] Prove pooled connections cannot leak workspace context.
-- [ ] Prove runtime roles cannot own or bypass protected tables and policies.
-- [ ] Add honest PostgreSQL readiness and migration compatibility checks.
-- [ ] Record the executable fixture, automated failure tests, measured result,
+- [x] Accept ADR 003 before the first tenant repository.
+- [x] Add local PostgreSQL infrastructure and typed database configuration.
+- [x] Create the database package and reviewed migration foundation.
+- [x] Define migration, owner, maintenance, API runtime, and worker runtime
+      roles.
+- [x] Implement transaction-scoped workspace context using transaction-local
+      `set_config` on one checked-out pool client.
+- [x] Prove cross-workspace reads and writes fail.
+- [x] Prove pooled connections cannot leak workspace context after commit,
+      rollback, sequential reuse, or concurrent transactions.
+- [x] Prove runtime roles cannot own or bypass protected tables and policies.
+- [x] Add honest PostgreSQL readiness and migration compatibility checks.
+- [x] Record the executable fixture, automated failure tests, measured result,
       and ADR update required by the Phase 0 spike.
+
+Evidence:
+
+- ADR: [ADR 003](./adr/003-workspace-tenancy-rls-runtime-roles.md)
+- Commits: `bad4b9e`, `9b4f6a4`, `a3bec51`
+- Fixture: `app.rls_probe_records`, migrated by reviewed revision
+  `0000_rls_probe.sql` (SHA-256
+  `a9e66a49374d9d36caa374d76cb8a8016ba31c36155755584511bbd1366d9ac8`)
+- Database: PostgreSQL 18.6 (`postgres:18`), `max_connections=100`, server
+  `row_security=on`, separate non-superuser/non-`BYPASSRLS` serving roles
+- Verification: `pnpm check`; `pnpm test:integration`; clean-volume
+  `docker compose up -d --wait postgres`; compiled API liveness/readiness and
+  compiled worker startup smoke checks
+- Tests: 3 database unit tests, 31 PostgreSQL integration tests, 7 API tests,
+  and 5 worker tests
+- Measured pool result: the 31-test PostgreSQL suite completed in 424 ms; a
+  single-client pool retained no tenant value after commit or rollback, and
+  two simultaneous scoped transactions on a two-client shared pool observed
+  only their own workspace rows
+- Drift exercises: readiness rejected a missing policy, removed forced RLS,
+  an incompatible migration head, and an incompatible runtime grant
+- Review: independent standards/spec review findings were resolved by removing
+  session-level context clearing, parameterizing role names, expanding schema
+  compatibility checks, and adding rollback/concurrency/role-assumption tests
 
 ## Phase 0C — HTTP and observability foundation
 
