@@ -13,10 +13,12 @@
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "dev:api": "pnpm --filter @pertexo/api dev",
     "dev:worker": "pnpm --filter @pertexo/worker dev",
+    "db:migrate": "pnpm --filter @pertexo/database db:migrate",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
     "test": "pnpm --recursive --if-present test",
+    "test:integration": "pnpm --recursive --if-present test:integration",
     "typecheck": "tsc --build --pretty false && pnpm --recursive --if-present typecheck"
   },
   "devDependencies": {

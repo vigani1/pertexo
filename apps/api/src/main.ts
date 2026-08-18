@@ -3,7 +3,7 @@ import { parseApiConfig } from './platform/config/api-config.js';
 
 async function bootstrap(): Promise<void> {
   const config = parseApiConfig();
-  const application = await createApiApplication();
+  const application = await createApiApplication(config);
 
   await application.listen({ host: config.host, port: config.port });
 }

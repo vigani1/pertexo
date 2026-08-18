@@ -34,3 +34,17 @@ jobs:
 
       - name: Run applicable Phase 0 quality gates
         run: pnpm check
+
+      - name: Start PostgreSQL integration dependency
+        run: docker compose up -d --wait postgres
+
+      - name: Prove database migrations and RLS boundaries
+        run: pnpm test:integration
+
+      - name: Capture PostgreSQL logs
+        if: failure()
+        run: docker compose logs --no-color postgres
+
+      - name: Stop integration dependencies
+        if: always()
+        run: docker compose down

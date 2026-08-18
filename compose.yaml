@@ -16,7 +16,7 @@ services:
       POSTGRES_WORKER_RUNTIME_USER: ${POSTGRES_WORKER_RUNTIME_USER:-pertexo_worker}
       POSTGRES_WORKER_RUNTIME_PASSWORD: ${POSTGRES_WORKER_RUNTIME_PASSWORD:-pertexo-local-worker}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - '${POSTGRES_PORT:-5432}:5432'
     volumes:
       - pertexo-postgres-data:/var/lib/postgresql
       - ./infrastructure/postgres/init:/docker-entrypoint-initdb.d:ro
