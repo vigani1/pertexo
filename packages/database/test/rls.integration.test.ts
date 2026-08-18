@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { eq } from 'drizzle-orm';
 import { Pool } from 'pg';
-import type { DatabaseError } from 'pg';
+import type { DatabaseError, PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '../src/config.js';
@@ -24,6 +24,13 @@ const workspaceA = randomUUID();
 const workspaceB = randomUUID();
 const recordA = randomUUID();
 const recordB = randomUUID();
+const readinessDriftLockId = 7_166_118_813;
+const integrationSuiteLockId = 7_166_118_814;
+const integrationSuiteLockPool = new Pool({
+  connectionString: migrationUrl,
+  max: 1,
+});
+let integrationSuiteLockClient: PoolClient | undefined;
 
 const database = createWorkspaceDatabase(
   parseDatabaseConfig({
@@ -70,7 +77,28 @@ async function executeAsOwner(statement: string): Promise<void> {
   }
 }
 
+async function withReadinessDriftLock(
+  operation: () => Promise<void>,
+): Promise<void> {
+  const pool = new Pool({ connectionString: migrationUrl, max: 1 });
+  const client = await pool.connect();
+  try {
+    await client.query('select pg_advisory_lock($1)', [readinessDriftLockId]);
+    await operation();
+  } finally {
+    await client
+      .query('select pg_advisory_unlock($1)', [readinessDriftLockId])
+      .catch(() => undefined);
+    client.release();
+    await pool.end();
+  }
+}
+
 beforeAll(async () => {
+  integrationSuiteLockClient = await integrationSuiteLockPool.connect();
+  await integrationSuiteLockClient.query('select pg_advisory_lock($1)', [
+    integrationSuiteLockId,
+  ]);
   await migrateDatabase(migrationConfig);
   await database.withWorkspace(workspaceA, async ({ db, workspaceId }) => {
     await db.insert(rlsProbeRecords).values({
@@ -90,6 +118,13 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await database.close();
+  if (integrationSuiteLockClient !== undefined) {
+    await integrationSuiteLockClient.query('select pg_advisory_unlock($1)', [
+      integrationSuiteLockId,
+    ]);
+    integrationSuiteLockClient.release();
+  }
+  await integrationSuiteLockPool.end();
 });
 
 describe('workspace transaction boundary', () => {
@@ -366,73 +401,81 @@ describe('database readiness', () => {
   });
 
   it('detects a missing workspace policy', async () => {
-    await executeAsOwner(
-      'drop policy rls_probe_records_workspace_scope on app.rls_probe_records',
-    );
-    try {
-      await expect(database.checkReadiness()).rejects.toThrow(
-        'Workspace row-level security policy is incompatible',
+    await withReadinessDriftLock(async () => {
+      await executeAsOwner(
+        'drop policy rls_probe_records_workspace_scope on app.rls_probe_records',
       );
-    } finally {
-      await executeAsOwner(`
-        create policy rls_probe_records_workspace_scope
-          on app.rls_probe_records
-          for all
-          to pertexo_api, pertexo_worker
-          using (
-            workspace_id::text = nullif(current_setting('app.workspace_id', true), '')
-          )
-          with check (
-            workspace_id::text = nullif(current_setting('app.workspace_id', true), '')
-          )
-      `);
-    }
+      try {
+        await expect(database.checkReadiness()).rejects.toThrow(
+          'Workspace row-level security policy is incompatible',
+        );
+      } finally {
+        await executeAsOwner(`
+          create policy rls_probe_records_workspace_scope
+            on app.rls_probe_records
+            for all
+            to pertexo_api, pertexo_worker
+            using (
+              workspace_id::text = nullif(current_setting('app.workspace_id', true), '')
+            )
+            with check (
+              workspace_id::text = nullif(current_setting('app.workspace_id', true), '')
+            )
+        `);
+      }
+    });
   });
 
   it('detects an incompatible runtime grant', async () => {
-    await executeAsOwner(
-      'revoke insert on app.rls_probe_records from pertexo_api',
-    );
-    try {
-      await expect(database.checkReadiness()).rejects.toThrow(
-        'Runtime database grants are incompatible',
-      );
-    } finally {
+    await withReadinessDriftLock(async () => {
       await executeAsOwner(
-        'grant insert on app.rls_probe_records to pertexo_api',
+        'revoke insert on app.rls_probe_records from pertexo_api',
       );
-    }
+      try {
+        await expect(database.checkReadiness()).rejects.toThrow(
+          'Runtime database grants are incompatible',
+        );
+      } finally {
+        await executeAsOwner(
+          'grant insert on app.rls_probe_records to pertexo_api',
+        );
+      }
+    });
   });
 
   it('detects when forced row-level security is removed', async () => {
-    await executeAsOwner(
-      'alter table app.rls_probe_records no force row level security',
-    );
-    try {
-      await expect(database.checkReadiness()).rejects.toThrow(
-        'Protected table does not force row-level security',
-      );
-    } finally {
+    await withReadinessDriftLock(async () => {
       await executeAsOwner(
-        'alter table app.rls_probe_records force row level security',
+        'alter table app.rls_probe_records no force row level security',
       );
-    }
+      try {
+        await expect(database.checkReadiness()).rejects.toThrow(
+          'Protected table does not force row-level security',
+        );
+      } finally {
+        await executeAsOwner(
+          'alter table app.rls_probe_records force row level security',
+        );
+      }
+    });
   });
 
   it('detects an incompatible migration head', async () => {
-    await executeAsOwner(`
-      insert into pertexo_internal.schema_migrations (name, checksum)
-      values ('9999_incompatible.sql', 'test-only')
-    `);
-    try {
-      await expect(database.checkReadiness()).rejects.toThrow(
-        'Database migration head is incompatible',
-      );
-    } finally {
+    await withReadinessDriftLock(async () => {
       await executeAsOwner(`
-        delete from pertexo_internal.schema_migrations
-        where name = '9999_incompatible.sql'
+        insert into pertexo_internal.schema_migrations (name, checksum)
+        values ('9999_incompatible.sql', 'test-only')
       `);
-    }
+      try {
+        await expect(database.checkReadiness()).rejects.toThrow(
+          'Database migration head is incompatible',
+        );
+      } finally {
+        await executeAsOwner(`
+          delete from pertexo_internal.schema_migrations
+          where name = '9999_incompatible.sql'
+        `);
+      }
+    });
   });
 });
