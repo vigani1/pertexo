@@ -2,6 +2,11 @@
 
 Last reviewed: 2026-08-18
 
+Decision status: supporting research. The later architecture audit in
+[workflow-platform-backend-plan.md](./workflow-platform-backend-plan.md) is
+authoritative where its decisions differ from the preliminary recommendations
+in this document.
+
 ## Purpose
 
 This document compares the publicly documented execution architecture of large
@@ -20,8 +25,10 @@ The products converge on the same high-level split:
    credentials, triggers, and execution history.
 2. A data plane accepts run requests through a durable queue and executes them
    on workers.
-3. The database is the durable source of truth. The queue transports work; it
-   is not the only record that a run exists.
+3. In the documented and open architectures most relevant to our design, a
+   durable store records the run independently of the queue. We adopt that
+   property for our backend; it is not a claim about undocumented vendor
+   internals.
 4. Workers scale independently from the web application.
 5. Published workflow versions are immutable or otherwise pinned to each run.
 6. Large outputs and binary files do not travel through the queue payload.
@@ -233,7 +240,8 @@ future engine choice, not a substitute for our backend.
 - Queue messages containing identifiers rather than complete graphs or secrets.
 - Queue-depth and schedule-to-start metrics for autoscaling.
 - Separate worker pools only for genuinely different resource or trust needs.
-- Checkpointed waits and approvals that release worker capacity.
+- Checkpointed waits, and future suspension mechanisms if promoted into scope,
+  that release worker capacity.
 - Bounded node input/output previews and object storage for files or large data.
 - Explicit concurrency, rate, ordering, retry, and idempotency policies.
 
@@ -248,21 +256,34 @@ future engine choice, not a substitute for our backend.
 - Per-node microservices before workload isolation proves they are necessary.
 - Re-validating an unchanged published graph in full before every run.
 
-## Recommended Execution Granularity
+## Execution Granularity Decision After Architecture Audit
 
-For our first owned backend, use a **checkpointed whole-run coordinator with
-capability jobs**, rather than either extreme:
+The initial platform comparison favored a **checkpointed whole-run coordinator
+with capability jobs**. That model would let one worker interpret a run and
+execute ordinary nodes locally while delegating only heavy or untrusted work.
+It remains a useful lower-complexity alternative and explains the n8n influence
+in this research.
 
-- An ordinary run is claimed by one workflow worker.
-- The worker interprets the immutable graph and executes ordinary integration
-  nodes with bounded concurrency.
-- Each completed node attempt and scheduler checkpoint is persisted.
-- Waits, approvals, and delayed retries suspend the run and release the worker.
-- Heavy or untrusted work is delegated to a capability queue and resumes the
-  coordinator when complete.
-- A worker crash resumes from the last committed checkpoint.
+The later architecture audit deliberately superseded that preliminary
+recommendation. The authoritative plan uses a coordinator that computes ready
+work plus a **separate job for every node attempt**. The coordinator never
+executes node implementations. This choice prioritizes:
 
-This preserves n8n's operational simplicity for common workflows, Windmill's
-ability to suspend and isolate special work, and Zapier's durable per-step
-visibility without forcing every lightweight node through a separate broker
-round trip.
+- crash and timeout isolation for each attempt;
+- durable ownership and deduplication of side-effecting work;
+- explicit retry and `outcome_unknown` transitions;
+- parallel branch execution across workers;
+- per-attempt cancellation, tracing, metrics, and operator visibility; and
+- future routing to capability-specific worker pools without changing the
+  scheduler interface.
+
+The tradeoff is additional queue traffic, persistence writes, coordination,
+and recovery logic. It is justified only if the Phase 0 crash, duplicate
+delivery, checkpoint, wait, cancellation, and branch/join spikes pass. If they
+do not, the custom engine reaches its documented no-go gate and must be
+evaluated against Temporal rather than silently falling back to timing-dependent
+whole-run execution.
+
+Accordingly, the research describes the alternatives and their evidence;
+[the backend plan](./workflow-platform-backend-plan.md) owns the implementation
+decision.
