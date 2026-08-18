@@ -13,8 +13,8 @@ not complete a phase.
 | Checkpoint | Status | Evidence |
 | --- | --- | --- |
 | Phase 0A — repository and process skeleton | Complete | ADR 001; commits `8d064cd`, `c80a70c`; `pnpm check`; compiled API and worker smoke checks |
-| Phase 0B — PostgreSQL tenancy and RLS proof | Complete | ADR 003; commits `bad4b9e`, `9b4f6a4`, `a3bec51`; PostgreSQL 18.6 clean migration; 31 RLS integration tests |
-| Phase 0C — HTTP and observability foundation | Not started | — |
+| Phase 0B — PostgreSQL tenancy and RLS proof | Complete | ADR 003; commits `bad4b9e`, `9b4f6a4`, `a3bec51`, `6458fd4`; PostgreSQL 18.6 clean migration; 31 RLS integration tests |
+| Phase 0C — HTTP and observability foundation | Complete | Commit `e8093d2`; 47 API/worker/observability tests; compiled role and OTLP trace/metric smoke checks |
 | Phase 0D — queue, outbox, and duplicate-delivery proof | Not started | — |
 | Phase 0E — execution durability proofs and engine gate | Not started | — |
 | Phase 1 — identity/workspace vertical slice | Not started | — |
@@ -97,15 +97,46 @@ Evidence:
 
 ## Phase 0C — HTTP and observability foundation
 
-Status: **Not started**
+Status: **Complete**
 
-- [ ] Add request IDs and explicit actor/workspace request context.
-- [ ] Add the global RFC 9457 problem-details mapping seam.
-- [ ] Add structured logging and redaction rules.
-- [ ] Add OpenTelemetry trace/metric bootstrap for API and worker roles.
-- [ ] Add dependency-aware readiness and graceful drain behavior.
-- [ ] Add package direction and server-only export enforcement as packages are
+- [x] Add request IDs and explicit actor/workspace request context.
+- [x] Add the global RFC 9457 problem-details mapping seam.
+- [x] Add structured logging and redaction rules.
+- [x] Add OpenTelemetry trace/metric bootstrap for API and worker roles.
+- [x] Add dependency-aware readiness and graceful drain behavior.
+- [x] Add package direction and server-only export enforcement as packages are
       introduced.
+
+Evidence:
+
+- Commit: `e8093d2`
+- Verification: `pnpm check`; `pnpm test:integration`;
+  `pnpm install --frozen-lockfile`; compiled API and worker startup plus
+  `SIGTERM` shutdown smoke checks
+- Tests: 17 observability tests, 22 API tests, and 8 worker tests; the existing
+  3 database unit tests and 31 PostgreSQL integration tests also remained green
+- HTTP boundary: validated/generated request IDs, immutable explicit
+  actor/workspace context, global `application/problem+json` responses with
+  stable `urn:pertexo:problem:*` types, bounded safe fields, and correlated
+  problem logs
+- Logging: fixed service/event fields, trace/span correlation, bounded recursive
+  field and `Error` cause/stack sanitization, secret-header/DSN redaction, and
+  unsafe event-name replacement
+- Telemetry: API and worker start OpenTelemetry before instrumented framework
+  imports; disabled mode creates no SDK; an enabled compiled API smoke exported
+  15,011 bytes to `/v1/traces` and 19,464 bytes to `/v1/metrics` through a local
+  OTLP/HTTP capture server
+- Readiness and drain: both roles reject incompatible database migrations at
+  startup; API readiness includes bounded PostgreSQL connectivity and drain
+  state; worker admission/readiness composes database and drain state; lifecycle
+  tests prove draining begins before resources close
+- Boundaries: ESLint enforces package/application direction, every
+  observability runtime entry has a Node guard and browser exclusion, and a
+  package-contract test covers all exported subpaths
+- Review: two independent Phase 0C reviews were run; findings for startup
+  compatibility, bootstrap cleanup, generic HTTP mapping, worker drain wiring,
+  server-only subpaths, and deep/free-text error redaction were resolved before
+  completion
 
 ## Phase 0D — Queue, outbox, and duplicate-delivery proof
 
