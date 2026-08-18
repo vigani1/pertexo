@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { parseObservabilityConfig } from '@pertexo/observability/config';
+import type { ObservabilityConfig } from '@pertexo/observability/config';
 
 const API_NODE_ENVIRONMENTS = [
   'development',
@@ -26,7 +28,12 @@ const apiEnvironmentSchema = z.object({
   DATABASE_POOL_MAX: z.coerce.number().int().positive().max(20).default(5),
   HOST: z.string().trim().min(1).default('0.0.0.0'),
   NODE_ENV: z.enum(API_NODE_ENVIRONMENTS).default('development'),
+  LOG_LEVEL: z
+    .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
+    .default('info'),
+  OTEL_EXPORTER_OTLP_ENDPOINT: z.url().optional(),
   PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
+  SERVICE_VERSION: z.string().trim().min(1).default('0.0.0-dev'),
   POSTGRES_OWNER_USER: z
     .string()
     .regex(/^[a-z_][a-z0-9_]*$/u)
@@ -45,6 +52,7 @@ export type ApiConfig = Readonly<{
   }>;
   host: string;
   nodeEnv: ApiNodeEnvironment;
+  observability: ObservabilityConfig;
   port: number;
 }>;
 
@@ -52,6 +60,15 @@ export function parseApiConfig(
   environment: Record<string, string | undefined> = process.env,
 ): ApiConfig {
   const parsed = apiEnvironmentSchema.parse(environment);
+  const observability = parseObservabilityConfig({
+    serviceName: 'pertexo-api',
+    serviceVersion: parsed.SERVICE_VERSION,
+    environment: parsed.NODE_ENV,
+    logLevel: parsed.LOG_LEVEL,
+    ...(parsed.OTEL_EXPORTER_OTLP_ENDPOINT === undefined
+      ? {}
+      : { otlpHttpEndpoint: parsed.OTEL_EXPORTER_OTLP_ENDPOINT }),
+  });
 
   return Object.freeze({
     database: Object.freeze({
@@ -63,6 +80,7 @@ export function parseApiConfig(
     }),
     host: parsed.HOST,
     nodeEnv: parsed.NODE_ENV,
+    observability,
     port: parsed.PORT,
   });
 }

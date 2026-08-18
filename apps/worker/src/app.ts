@@ -1,36 +1,35 @@
-import type { INestApplicationContext, LogLevel } from '@nestjs/common';
+import type { INestApplicationContext } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { WorkspaceDatabase } from '@pertexo/database';
+import type {
+  StructuredLogger,
+  TelemetryLifecycle,
+} from '@pertexo/observability';
 
 import type { WorkerConfig } from './config/worker-config.js';
-import { WORKSPACE_DATABASE } from './platform/database/database.module.js';
+import { NestLoggerAdapter } from './platform/observability/observability.module.js';
+import { WorkerReadiness } from './runtime/worker-readiness.js';
 import { WorkerModule } from './worker.module.js';
 
-const nestLogLevelsByWorkerLogLevel = {
-  fatal: ['fatal'],
-  error: ['fatal', 'error'],
-  warn: ['fatal', 'error', 'warn'],
-  info: ['fatal', 'error', 'warn', 'log'],
-  debug: ['fatal', 'error', 'warn', 'log', 'debug'],
-  trace: ['fatal', 'error', 'warn', 'log', 'debug', 'verbose'],
-} as const satisfies Record<WorkerConfig['logLevel'], readonly LogLevel[]>;
+export type WorkerApplicationDependencies = Readonly<{
+  database?: WorkspaceDatabase;
+  logger: StructuredLogger;
+  telemetry: TelemetryLifecycle;
+}>;
 
 export async function createWorkerApplication(
   config: WorkerConfig,
-  database?: WorkspaceDatabase,
+  dependencies: WorkerApplicationDependencies,
 ): Promise<INestApplicationContext> {
-  const logger = [...nestLogLevelsByWorkerLogLevel[config.logLevel]];
   const application = await NestFactory.createApplicationContext(
-    WorkerModule.register(config, database),
-    { abortOnError: true, logger },
+    WorkerModule.register(config, dependencies),
+    { abortOnError: false, logger: new NestLoggerAdapter(dependencies.logger) },
   );
 
   application.enableShutdownHooks();
 
   try {
-    await application
-      .get<WorkspaceDatabase>(WORKSPACE_DATABASE)
-      .checkReadiness();
+    await application.get(WorkerReadiness).checkReadiness();
   } catch (error: unknown) {
     await application.close();
     throw error;

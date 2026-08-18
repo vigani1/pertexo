@@ -20,6 +20,13 @@ describe('parseWorkerConfig', () => {
       },
       nodeEnv: 'development',
       logLevel: 'info',
+      observability: {
+        environment: 'development',
+        logLevel: 'info',
+        otlpHeaders: {},
+        serviceName: 'pertexo-worker',
+        serviceVersion: '0.0.0-dev',
+      },
     });
   });
 
@@ -42,6 +49,13 @@ describe('parseWorkerConfig', () => {
       },
       nodeEnv: 'test',
       logLevel: 'debug',
+      observability: {
+        environment: 'test',
+        logLevel: 'debug',
+        otlpHeaders: {},
+        serviceName: 'pertexo-worker',
+        serviceVersion: '0.0.0-dev',
+      },
     });
     expect(Object.isFrozen(config)).toBe(true);
     expect(Object.isFrozen(config.database)).toBe(true);

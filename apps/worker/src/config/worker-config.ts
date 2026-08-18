@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { parseObservabilityConfig } from '@pertexo/observability/config';
 
 const workerEnvironments = [
   'development',
@@ -36,6 +37,8 @@ export const workerConfigSchema = z
     DATABASE_POOL_MAX: z.coerce.number().int().positive().max(20).default(5),
     NODE_ENV: z.enum(workerEnvironments).default('development'),
     LOG_LEVEL: z.enum(workerLogLevels).default('info'),
+    OTEL_EXPORTER_OTLP_ENDPOINT: z.url().optional(),
+    SERVICE_VERSION: z.string().trim().min(1).default('0.0.0-dev'),
     POSTGRES_OWNER_USER: z
       .string()
       .regex(/^[a-z_][a-z0-9_]*$/u)
@@ -49,10 +52,21 @@ export const workerConfigSchema = z
       DATABASE_POOL_MAX,
       NODE_ENV,
       LOG_LEVEL,
+      OTEL_EXPORTER_OTLP_ENDPOINT,
+      SERVICE_VERSION,
       POSTGRES_OWNER_USER,
     }) => ({
       nodeEnv: NODE_ENV,
       logLevel: LOG_LEVEL,
+      observability: parseObservabilityConfig({
+        serviceName: 'pertexo-worker',
+        serviceVersion: SERVICE_VERSION,
+        environment: NODE_ENV,
+        logLevel: LOG_LEVEL,
+        ...(OTEL_EXPORTER_OTLP_ENDPOINT === undefined
+          ? {}
+          : { otlpHttpEndpoint: OTEL_EXPORTER_OTLP_ENDPOINT }),
+      }),
       database: {
         connectionString: DATABASE_WORKER_URL,
         connectionTimeoutMillis: DATABASE_CONNECTION_TIMEOUT_MILLIS,

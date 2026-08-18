@@ -7,6 +7,7 @@ import {
 import type { WorkspaceDatabase } from '@pertexo/database';
 
 import { WORKSPACE_DATABASE } from '../database/database.module.js';
+import { ApiDrainState } from './drain-state.js';
 
 type ReadyResponse = Readonly<{
   status: 'ready';
@@ -19,10 +20,15 @@ export class ReadyController {
   public constructor(
     @Inject(WORKSPACE_DATABASE)
     private readonly database: WorkspaceDatabase,
+    private readonly drainState: ApiDrainState,
   ) {}
 
   @Get('ready')
   public async ready(): Promise<ReadyResponse> {
+    if (this.drainState.isDraining()) {
+      throw new ServiceUnavailableException({ status: 'not_ready' });
+    }
+
     try {
       await this.database.checkReadiness();
       return READY_RESPONSE;

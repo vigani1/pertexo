@@ -20,6 +20,13 @@ describe('parseApiConfig', () => {
       },
       host: '0.0.0.0',
       nodeEnv: 'development',
+      observability: {
+        environment: 'development',
+        logLevel: 'info',
+        otlpHeaders: {},
+        serviceName: 'pertexo-api',
+        serviceVersion: '0.0.0-dev',
+      },
       port: 3000,
     });
     expect(Object.isFrozen(config)).toBe(true);
@@ -45,6 +52,13 @@ describe('parseApiConfig', () => {
       },
       host: '127.0.0.1',
       nodeEnv: 'test',
+      observability: {
+        environment: 'test',
+        logLevel: 'info',
+        otlpHeaders: {},
+        serviceName: 'pertexo-api',
+        serviceVersion: '0.0.0-dev',
+      },
       port: 4312,
     });
   });

@@ -4,6 +4,7 @@
   "references": [
     { "path": "./apps/api/tsconfig.json" },
     { "path": "./apps/worker/tsconfig.json" },
-    { "path": "./packages/database/tsconfig.json" }
+    { "path": "./packages/database/tsconfig.json" },
+    { "path": "./packages/observability/tsconfig.json" }
   ]
 }

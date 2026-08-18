@@ -1,0 +1,53 @@
+{
+  "name": "@pertexo/observability",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "node": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./config": {
+      "types": "./dist/config.d.ts",
+      "node": "./dist/config.js",
+      "default": "./dist/config.js"
+    },
+    "./logging": {
+      "types": "./dist/logger.d.ts",
+      "node": "./dist/logger.js",
+      "default": "./dist/logger.js"
+    },
+    "./telemetry": {
+      "types": "./dist/telemetry.d.ts",
+      "node": "./dist/telemetry.js",
+      "default": "./dist/telemetry.js"
+    }
+  },
+  "browser": {
+    "./dist/config.js": false,
+    "./dist/index.js": false,
+    "./dist/logger.js": false,
+    "./dist/telemetry.js": false
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.test.json --noEmit"
+  },
+  "dependencies": {
+    "@opentelemetry/api": "1.9.0",
+    "@opentelemetry/auto-instrumentations-node": "0.79.0",
+    "@opentelemetry/exporter-metrics-otlp-http": "0.221.0",
+    "@opentelemetry/exporter-trace-otlp-http": "0.221.0",
+    "@opentelemetry/resources": "2.10.0",
+    "@opentelemetry/sdk-metrics": "2.10.0",
+    "@opentelemetry/sdk-node": "0.221.0",
+    "pino": "10.3.1",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@opentelemetry/context-async-hooks": "2.10.0"
+  }
+}
