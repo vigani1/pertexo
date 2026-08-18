@@ -5,6 +5,9 @@
 - Follow `docs/workflow-platform-backend-plan.md` as the authoritative
   implementation blueprint.
 - Treat `docs/workflow-platform-backend-research.md` as supporting research.
+- Keep `docs/implementation-progress.md` current. Update its summary, checklist,
+  and concrete evidence whenever a checkpoint changes status; never mark a
+  phase complete while required plan criteria remain unfinished.
 - Create required ADRs before implementing decisions listed in the plan's ADR
   index.
 
