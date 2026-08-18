@@ -1,0 +1,34 @@
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:-postgres:18}
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-pertexo}
+      POSTGRES_USER: ${POSTGRES_SUPERUSER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:-pertexo-local-superuser}
+      POSTGRES_OWNER_USER: ${POSTGRES_OWNER_USER:-pertexo_owner}
+      POSTGRES_MIGRATION_USER: ${POSTGRES_MIGRATION_USER:-pertexo_migration}
+      POSTGRES_MIGRATION_PASSWORD: ${POSTGRES_MIGRATION_PASSWORD:-pertexo-local-migration}
+      POSTGRES_MAINTENANCE_USER: ${POSTGRES_MAINTENANCE_USER:-pertexo_maintenance}
+      POSTGRES_MAINTENANCE_PASSWORD: ${POSTGRES_MAINTENANCE_PASSWORD:-pertexo-local-maintenance}
+      POSTGRES_API_RUNTIME_USER: ${POSTGRES_API_RUNTIME_USER:-pertexo_api}
+      POSTGRES_API_RUNTIME_PASSWORD: ${POSTGRES_API_RUNTIME_PASSWORD:-pertexo-local-api}
+      POSTGRES_WORKER_RUNTIME_USER: ${POSTGRES_WORKER_RUNTIME_USER:-pertexo_worker}
+      POSTGRES_WORKER_RUNTIME_PASSWORD: ${POSTGRES_WORKER_RUNTIME_PASSWORD:-pertexo-local-worker}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pertexo-postgres-data:/var/lib/postgresql
+      - ./infrastructure/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$${POSTGRES_API_RUNTIME_USER}" -d "$${POSTGRES_DB}"
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+    stop_grace_period: 1m
+
+volumes:
+  pertexo-postgres-data:
