@@ -14,7 +14,9 @@ export type { DatabaseReadiness } from './readiness.js';
 export { createOutboxDispatcherDatabase } from './dispatcher.js';
 export type {
   ClaimOutboxBatchInput,
+  ClaimOutboxBatchResult,
   LeasedOutboxEvent,
+  OutboxBacklogSnapshot,
   OutboxDispatcherDatabase,
   ReleaseOutboxResult,
 } from './dispatcher.js';

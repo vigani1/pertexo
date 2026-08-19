@@ -99,6 +99,7 @@ import {
   unrecoverableQueueError,
 } from '../src/consumer.js';
 import type { QueueJobHandler } from '../src/consumer.js';
+import type { QueueConsumerObserver } from '../src/consumer.js';
 import { JOB_NAME, QUEUE_NAME } from '../src/names.js';
 
 const IDS = {
@@ -194,8 +195,93 @@ describe('BullMQ queue consumer', () => {
     expect(handler.mock.calls[0]?.[1].signal).toBeInstanceOf(AbortSignal);
   });
 
+  it('reports a paired bounded lifecycle without exposing delivery IDs', async () => {
+    const observer = {
+      handlerFinished: vi.fn(),
+      handlerStarted: vi.fn(),
+    } satisfies QueueConsumerObserver;
+    createQueueConsumer({
+      queueName: QUEUE_NAME.workflowCoordinator,
+      redisUrl: 'redis://localhost:6379/0',
+      handler: () => Promise.resolve(),
+      observer,
+    });
+
+    await mocks.workerInstances[0]?.processor(validJob);
+
+    expect(observer.handlerStarted).toHaveBeenCalledOnce();
+    expect(observer.handlerStarted).toHaveBeenCalledWith({
+      jobName: JOB_NAME.advanceWorkflowRun,
+      queueName: QUEUE_NAME.workflowCoordinator,
+    });
+    expect(observer.handlerFinished).toHaveBeenCalledOnce();
+    expect(observer.handlerFinished).toHaveBeenCalledWith(
+      expect.objectContaining({
+        jobName: JOB_NAME.advanceWorkflowRun,
+        outcome: 'completed',
+        queueName: QUEUE_NAME.workflowCoordinator,
+      }),
+    );
+    const serialized = JSON.stringify(observer.handlerFinished.mock.calls);
+    expect(serialized).not.toContain(IDS.workspaceId);
+    expect(serialized).not.toContain(IDS.runId);
+    expect(serialized).not.toContain(IDS.outboxEventId);
+  });
+
+  it('classifies handler failures for the bounded observer', async () => {
+    const handlerError = new Error('business handler failed');
+    const observer = {
+      handlerFinished: vi.fn(),
+      handlerStarted: vi.fn(),
+    } satisfies QueueConsumerObserver;
+    createQueueConsumer({
+      queueName: QUEUE_NAME.workflowCoordinator,
+      redisUrl: 'redis://localhost:6379/0',
+      handler: () => Promise.reject(handlerError),
+      observer,
+    });
+
+    await expect(mocks.workerInstances[0]?.processor(validJob)).rejects.toBe(
+      handlerError,
+    );
+    expect(observer.handlerFinished).toHaveBeenCalledWith(
+      expect.objectContaining({
+        failureClass: 'handler',
+        outcome: 'failed',
+      }),
+    );
+  });
+
+  it('isolates observer admission failures without an unpaired finish', async () => {
+    const handlerError = new Error('business handler failed');
+    const observer = {
+      handlerFinished: vi.fn(() => {
+        throw new Error('metrics unavailable');
+      }),
+      handlerStarted: vi.fn(() => {
+        throw new Error('metrics unavailable');
+      }),
+    } satisfies QueueConsumerObserver;
+    createQueueConsumer({
+      queueName: QUEUE_NAME.workflowCoordinator,
+      redisUrl: 'redis://localhost:6379/0',
+      handler: () => Promise.reject(handlerError),
+      observer,
+    });
+
+    await expect(mocks.workerInstances[0]?.processor(validJob)).rejects.toBe(
+      handlerError,
+    );
+    expect(observer.handlerStarted).toHaveBeenCalledOnce();
+    expect(observer.handlerFinished).not.toHaveBeenCalled();
+  });
+
   it('enforces the queue timeout and aborts the handler signal', async () => {
     let deliveredSignal: AbortSignal | undefined;
+    const observer = {
+      handlerFinished: vi.fn(),
+      handlerStarted: vi.fn(),
+    } satisfies QueueConsumerObserver;
     createQueueConsumer({
       queueName: QUEUE_NAME.workflowCoordinator,
       redisUrl: 'redis://localhost:6379/0',
@@ -203,6 +289,7 @@ describe('BullMQ queue consumer', () => {
         deliveredSignal = context.signal;
         return new Promise<void>(() => undefined);
       },
+      observer,
       timeoutMs: 2,
     });
 
@@ -210,6 +297,13 @@ describe('BullMQ queue consumer', () => {
       mocks.workerInstances[0]?.processor(validJob),
     ).rejects.toBeInstanceOf(QueueJobTimeoutError);
     expect(deliveredSignal?.aborted).toBe(true);
+    expect(observer.handlerStarted).toHaveBeenCalledOnce();
+    expect(observer.handlerFinished).toHaveBeenCalledWith(
+      expect.objectContaining({
+        failureClass: 'timeout',
+        outcome: 'failed',
+      }),
+    );
   });
 
   it('propagates BullMQ cancellation to the typed handler signal', async () => {
@@ -301,6 +395,10 @@ describe('BullMQ queue consumer', () => {
 
   it('bounds drain, aborts active handlers, and forces close', async () => {
     let deliveredSignal: AbortSignal | undefined;
+    const observer = {
+      handlerFinished: vi.fn(),
+      handlerStarted: vi.fn(),
+    } satisfies QueueConsumerObserver;
     const consumer = createQueueConsumer({
       queueName: QUEUE_NAME.workflowCoordinator,
       redisUrl: 'redis://localhost:6379/0',
@@ -321,6 +419,7 @@ describe('BullMQ queue consumer', () => {
           );
         });
       },
+      observer,
     });
     const processing = mocks.workerInstances[0]?.processor(validJob);
 
@@ -331,6 +430,12 @@ describe('BullMQ queue consumer', () => {
     expect(deliveredSignal?.aborted).toBe(true);
     expect(mocks.workerInstances[0]?.cancelAllJobs).toHaveBeenCalledTimes(1);
     expect(mocks.workerInstances[0]?.close).toHaveBeenCalledWith(true);
+    expect(observer.handlerFinished).toHaveBeenCalledWith(
+      expect.objectContaining({
+        failureClass: 'drain',
+        outcome: 'failed',
+      }),
+    );
   });
 
   it('does not admit a delivery after drain starts', async () => {

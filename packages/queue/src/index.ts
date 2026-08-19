@@ -42,6 +42,7 @@ export {
   type EnqueuedQueueJob,
   type QueueProducer,
   type QueueProducerOptions,
+  type QueueStateObservation,
 } from './producer.js';
 export {
   BullMqQueueConsumer,
@@ -59,6 +60,10 @@ export type {
   QueueConsumerOptions,
   QueueDelivery,
   QueueDeliveryTransport,
+  QueueConsumerObserver,
   QueueHandlerContext,
+  QueueHandlerFailureClass,
+  QueueHandlerFinishedObservation,
+  QueueHandlerObservation,
   QueueJobHandler,
 } from './consumer.js';

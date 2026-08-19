@@ -38,8 +38,16 @@ export type EnqueuedQueueJob = Readonly<{
   readonly queueName: QueueName;
 }>;
 
+export interface QueueStateObservation {
+  readonly depth: number;
+  /** Age of the oldest waiting or transport-delayed job, zero when empty. */
+  readonly oldestJobAgeSeconds: number;
+  readonly queueName: QueueName;
+}
+
 export interface QueueProducer {
   publish(job: QueueJob): Promise<EnqueuedQueueJob>;
+  observe(): Promise<readonly QueueStateObservation[]>;
   isReady(): boolean;
   waitUntilReady(timeoutMs?: number): Promise<void>;
   close(): Promise<void>;
@@ -255,6 +263,43 @@ export class BullMqQueueProducer implements QueueProducer {
       jobName: parsed.name,
       queueName,
     };
+  }
+
+  public async observe(): Promise<readonly QueueStateObservation[]> {
+    if (!this.isReady()) {
+      throw new QueueNotReadyError();
+    }
+
+    const observedAt = Date.now();
+    return this.withPublishTimeout(
+      Promise.all(
+        Object.entries(this.queues).map(async ([queueName, queue]) => {
+          const [depth, waiting, delayed] = await Promise.all([
+            queue.getJobCountByTypes('waiting', 'delayed'),
+            queue.getJobs('waiting', 0, 0, true),
+            queue.getJobs('delayed', 0, 0, true),
+          ]);
+          const oldestTimestamp = [...waiting, ...delayed].reduce<
+            number | undefined
+          >(
+            (oldest, job) =>
+              oldest === undefined || job.timestamp < oldest
+                ? job.timestamp
+                : oldest,
+            undefined,
+          );
+
+          return Object.freeze({
+            depth,
+            oldestJobAgeSeconds:
+              oldestTimestamp === undefined
+                ? 0
+                : Math.max(0, observedAt - oldestTimestamp) / 1_000,
+            queueName: queueName as QueueName,
+          });
+        }),
+      ).then((observations) => Object.freeze(observations)),
+    );
   }
 
   public async close(): Promise<void> {

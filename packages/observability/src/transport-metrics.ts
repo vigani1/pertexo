@@ -62,10 +62,13 @@ export type TransportHandlerMeasurement = TransportJob &
   );
 
 export interface OutboxClaimMeasurement {
-  /** Number of currently publishable, unclaimed outbox rows. */
-  readonly backlog: number;
   /** Number of rows acquired by this bounded claim operation. */
   readonly batchSize: number;
+}
+
+export interface OutboxObservation {
+  /** Number of currently publishable, unclaimed outbox rows. */
+  readonly backlog: number;
   /** Age of the oldest currently publishable row, or zero for an empty backlog. Omit when unknown. */
   readonly oldestAgeSeconds?: number;
 }
@@ -84,10 +87,11 @@ export type ActiveConcurrencyChange = TransportJob & {
 
 export interface TransportMetrics {
   addActiveConcurrency(change: ActiveConcurrencyChange): void;
+  observeOutbox(observation: OutboxObservation): void;
   observeQueue(observation: QueueObservation): void;
   recordHandlerFinished(measurement: TransportHandlerMeasurement): void;
   recordOutboxClaim(measurement: OutboxClaimMeasurement): void;
-  recordOutboxLeaseEvent(event: TransportLeaseEvent): void;
+  recordOutboxLeaseEvent(event: TransportLeaseEvent, count?: number): void;
   recordOutboxPublish(measurement: TransportPublishMeasurement): void;
 }
 
@@ -214,6 +218,19 @@ export function createTransportMetrics(
       }
       activeConcurrency.add(delta, transportAttributes(change));
     },
+    observeOutbox(observation: OutboxObservation): void {
+      requireNonNegativeInteger(observation.backlog, 'backlog');
+      if (observation.oldestAgeSeconds !== undefined) {
+        requireNonNegativeFinite(
+          observation.oldestAgeSeconds,
+          'oldestAgeSeconds',
+        );
+      }
+      outboxBacklog.record(observation.backlog);
+      if (observation.oldestAgeSeconds !== undefined) {
+        outboxOldestAge.record(observation.oldestAgeSeconds);
+      }
+    },
     observeQueue(observation: QueueObservation): void {
       requireNonNegativeInteger(observation.depth, 'depth');
       requireNonNegativeFinite(
@@ -231,23 +248,15 @@ export function createTransportMetrics(
       handlerDuration.record(measurement.durationSeconds, attributes);
     },
     recordOutboxClaim(measurement: OutboxClaimMeasurement): void {
-      requireNonNegativeInteger(measurement.backlog, 'backlog');
       requireNonNegativeInteger(measurement.batchSize, 'batchSize');
-      if (measurement.oldestAgeSeconds !== undefined) {
-        requireNonNegativeFinite(
-          measurement.oldestAgeSeconds,
-          'oldestAgeSeconds',
-        );
-      }
       outboxClaimed.add(measurement.batchSize);
       outboxClaimBatchSize.record(measurement.batchSize);
-      outboxBacklog.record(measurement.backlog);
-      if (measurement.oldestAgeSeconds !== undefined) {
-        outboxOldestAge.record(measurement.oldestAgeSeconds);
-      }
     },
-    recordOutboxLeaseEvent(event: TransportLeaseEvent): void {
-      outboxLeaseEvents.add(1, { event });
+    recordOutboxLeaseEvent(event: TransportLeaseEvent, count = 1): void {
+      if (!Number.isSafeInteger(count) || count <= 0) {
+        throw new RangeError('count must be a positive safe integer');
+      }
+      outboxLeaseEvents.add(count, { event });
     },
     recordOutboxPublish(measurement: TransportPublishMeasurement): void {
       outboxPublish.add(1, outcomeAttributes(measurement));

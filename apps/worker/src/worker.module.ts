@@ -2,22 +2,30 @@ import 'reflect-metadata';
 
 import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
-import type { WorkspaceDatabase } from '@pertexo/database';
+import type {
+  OutboxDispatcherDatabase,
+  WorkspaceDatabase,
+} from '@pertexo/database';
+import type { QueueProducer } from '@pertexo/queue';
 import type {
   StructuredLogger,
   TelemetryLifecycle,
 } from '@pertexo/observability';
+import type { TransportMetrics } from '@pertexo/observability/transport-metrics';
 
 import type { WorkerConfig } from './config/worker-config.js';
 import { DatabaseModule } from './platform/database/database.module.js';
 import { ObservabilityModule } from './platform/observability/observability.module.js';
-import { WorkerDrainState } from './runtime/worker-drain-state.js';
 import { WorkerReadiness } from './runtime/worker-readiness.js';
+import { TransportModule } from './transport/transport.module.js';
 
 export type WorkerModuleDependencies = Readonly<{
   database?: WorkspaceDatabase;
+  dispatcherDatabase?: OutboxDispatcherDatabase;
+  queueProducer?: QueueProducer;
   logger: StructuredLogger;
   telemetry: TelemetryLifecycle;
+  transportMetrics?: TransportMetrics;
 }>;
 
 @Module({})
@@ -37,12 +45,23 @@ export class WorkerModule {
       module: WorkerModule,
       imports: [
         DatabaseModule.register(config.database, databaseOptions),
+        TransportModule.register(config, {
+          ...(dependencies.dispatcherDatabase === undefined
+            ? {}
+            : { dispatcherDatabase: dependencies.dispatcherDatabase }),
+          ...(dependencies.queueProducer === undefined
+            ? {}
+            : { queueProducer: dependencies.queueProducer }),
+          ...(dependencies.transportMetrics === undefined
+            ? {}
+            : { transportMetrics: dependencies.transportMetrics }),
+        }),
         ObservabilityModule.register(
           dependencies.logger,
           dependencies.telemetry,
         ),
       ],
-      providers: [WorkerDrainState, WorkerReadiness],
+      providers: [WorkerReadiness],
     };
   }
 }

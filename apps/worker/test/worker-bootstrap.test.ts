@@ -1,4 +1,8 @@
-import type { WorkspaceDatabase } from '@pertexo/database';
+import type {
+  OutboxDispatcherDatabase,
+  WorkspaceDatabase,
+} from '@pertexo/database';
+import type { QueueProducer } from '@pertexo/queue';
 import type {
   StructuredLogger,
   TelemetryLifecycle,
@@ -32,6 +36,14 @@ const workerConfig = {
     max: 5,
     ownerRole: 'pertexo_owner',
   },
+  dispatcherDatabase: {
+    connectionString:
+      'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
+    connectionTimeoutMillis: 5_000,
+    idleTimeoutMillis: 30_000,
+    max: 2,
+    ownerRole: 'pertexo_owner',
+  },
   nodeEnv: 'test' as const,
   logLevel: 'debug' as const,
   observability: {
@@ -41,6 +53,16 @@ const workerConfig = {
     serviceName: 'pertexo-worker',
     serviceVersion: 'test',
   },
+  outboxDispatcher: {
+    batchSize: 10,
+    leaseDurationMillis: 30_000,
+    leaseOwner: 'outbox:test-worker',
+    maxAttempts: 3,
+    operationTimeoutMillis: 5_000,
+    pollIntervalMillis: 250,
+    retryDelayMillis: 1_000,
+  },
+  redisUrl: 'redis://localhost:6379/0',
 };
 
 const logger: StructuredLogger = {
@@ -61,7 +83,34 @@ function dependencies(
     shutdown: vi.fn().mockResolvedValue(undefined),
   },
 ) {
-  return { database: selectedDatabase, logger, telemetry };
+  const dispatcherReadiness = vi.fn().mockResolvedValue(undefined);
+  const dispatcherClose = vi.fn().mockResolvedValue(undefined);
+  const queueClose = vi.fn().mockResolvedValue(undefined);
+  const dispatcherDatabase: OutboxDispatcherDatabase = {
+    checkReadiness: dispatcherReadiness,
+    claimBatch: vi.fn().mockResolvedValue({ events: [], exhaustedCount: 0 }),
+    close: dispatcherClose,
+    markPublished: vi.fn().mockResolvedValue(true),
+    observeBacklog: vi.fn().mockResolvedValue({ backlog: 0 }),
+    releaseOrFail: vi.fn().mockResolvedValue('retry_scheduled'),
+  };
+  const queueProducer: QueueProducer = {
+    close: queueClose,
+    isReady: vi.fn().mockReturnValue(true),
+    observe: vi.fn().mockResolvedValue([]),
+    publish: vi.fn(),
+    waitUntilReady: vi.fn().mockResolvedValue(undefined),
+  };
+  return {
+    database: selectedDatabase,
+    dispatcherClose,
+    dispatcherDatabase,
+    dispatcherReadiness,
+    logger,
+    queueProducer,
+    queueClose,
+    telemetry,
+  };
 }
 
 describe('worker application bootstrap', () => {
@@ -89,6 +138,20 @@ describe('worker application bootstrap', () => {
       createWorkerApplication(workerConfig, dependencies(unavailableDatabase)),
     ).rejects.toThrow('migration mismatch');
     expect(close).toHaveBeenCalledOnce();
+  });
+
+  it('closes every constructed transport resource when dispatcher readiness fails', async () => {
+    const selected = dependencies();
+    selected.dispatcherReadiness.mockRejectedValue(
+      new Error('dispatcher policy mismatch'),
+    );
+
+    await expect(
+      createWorkerApplication(workerConfig, selected),
+    ).rejects.toThrow('dispatcher policy mismatch');
+
+    expect(selected.dispatcherClose).toHaveBeenCalledOnce();
+    expect(selected.queueClose).toHaveBeenCalledOnce();
   });
 
   it('connects drain state to readiness and admission', async () => {

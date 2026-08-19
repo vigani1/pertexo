@@ -1,5 +1,7 @@
 import './server-only.js';
 
+import { performance } from 'node:perf_hooks';
+
 import { UnrecoverableError, Worker } from 'bullmq';
 import type { Job as BullMqJob, Processor } from 'bullmq';
 import { Redis } from 'ioredis';
@@ -66,10 +68,41 @@ export type QueueJobHandler = (
   context: QueueHandlerContext,
 ) => Promise<void>;
 
+export type QueueHandlerFailureClass =
+  'drain' | 'handler' | 'timeout' | 'transport';
+
+export interface QueueHandlerObservation {
+  readonly jobName: QueueJob['name'];
+  readonly queueName: QueueName;
+}
+
+export type QueueHandlerFinishedObservation = QueueHandlerObservation &
+  (
+    | {
+        readonly durationSeconds: number;
+        readonly outcome: 'completed';
+      }
+    | {
+        readonly durationSeconds: number;
+        readonly failureClass: QueueHandlerFailureClass;
+        readonly outcome: 'failed';
+      }
+  );
+
+/**
+ * Dependency-free lifecycle seam for bounded operational instrumentation.
+ * It deliberately exposes no message, workspace, run, or transport IDs.
+ */
+export interface QueueConsumerObserver {
+  handlerFinished(observation: QueueHandlerFinishedObservation): void;
+  handlerStarted(observation: QueueHandlerObservation): void;
+}
+
 export type QueueConsumerOptions = Readonly<{
   readonly queueName: QueueName;
   readonly redisUrl: string;
   readonly handler: QueueJobHandler;
+  readonly observer?: QueueConsumerObserver;
   readonly readyTimeoutMs?: number;
   /** Test/deployment override; defaults to the selected queue class. */
   readonly timeoutMs?: number;
@@ -134,6 +167,7 @@ export function unrecoverableQueueError(message: string): UnrecoverableError {
 interface ParsedConsumerOptions {
   readonly drainTimeoutMs: number;
   readonly handler: QueueJobHandler;
+  readonly observer: QueueConsumerObserver | undefined;
   readonly queueName: QueueName;
   readonly readyTimeoutMs: number;
   readonly redisUrl: string;
@@ -141,6 +175,7 @@ interface ParsedConsumerOptions {
 }
 
 interface ActiveExecution {
+  abortFailureClass: QueueHandlerFailureClass | undefined;
   readonly controller: AbortController;
 }
 
@@ -176,7 +211,14 @@ function parseConsumerOptions(
   };
   const parsed = consumerOptionsSchema.safeParse(candidate);
 
-  if (!parsed.success || typeof options.handler !== 'function') {
+  if (
+    !parsed.success ||
+    typeof options.handler !== 'function' ||
+    (options.observer !== undefined &&
+      (typeof options.observer !== 'object' ||
+        typeof options.observer.handlerStarted !== 'function' ||
+        typeof options.observer.handlerFinished !== 'function'))
+  ) {
     throw new QueueConsumerConfigurationError(
       'Queue consumer configuration is invalid',
     );
@@ -187,6 +229,7 @@ function parseConsumerOptions(
     queueName: parsed.data.queueName,
     redisUrl: parseRedisUrl(parsed.data.redisUrl),
     handler: options.handler,
+    observer: options.observer,
     readyTimeoutMs: parsed.data.readyTimeoutMs ?? DEFAULT_READY_TIMEOUT_MS,
     timeoutMs: parsed.data.timeoutMs ?? defaults.timeoutMs,
     drainTimeoutMs: parsed.data.drainTimeoutMs ?? defaults.drainTimeoutMs,
@@ -230,6 +273,7 @@ export class BullMqQueueConsumer implements QueueConsumer {
   private readonly activeExecutions = new Set<ActiveExecution>();
   private readonly drainTimeoutMs: number;
   private readonly handler: QueueJobHandler;
+  private readonly observer: QueueConsumerObserver | undefined;
   private readonly readyTimeoutMs: number;
   private readonly redis: Redis;
   private readonly timeoutMs: number;
@@ -244,6 +288,7 @@ export class BullMqQueueConsumer implements QueueConsumer {
 
     this.drainTimeoutMs = parsed.drainTimeoutMs;
     this.handler = parsed.handler;
+    this.observer = parsed.observer;
     this.readyTimeoutMs = parsed.readyTimeoutMs;
     this.timeoutMs = parsed.timeoutMs;
     this.redis = new Redis(parsed.redisUrl, {
@@ -341,8 +386,12 @@ export class BullMqQueueConsumer implements QueueConsumer {
 
     const transportJobId = jobId(job);
 
-    const execution: ActiveExecution = { controller: new AbortController() };
+    const execution: ActiveExecution = {
+      abortFailureClass: undefined,
+      controller: new AbortController(),
+    };
     const propagateBullMqAbort = (): void => {
+      execution.abortFailureClass ??= 'transport';
       execution.controller.abort(
         bullMqSignal?.reason ?? new Error('BullMQ cancelled the queue job'),
       );
@@ -358,6 +407,7 @@ export class BullMqQueueConsumer implements QueueConsumer {
     this.activeExecutions.add(execution);
     const timeoutError = new QueueJobTimeoutError(this.timeoutMs);
     const timeout = setTimeout(() => {
+      execution.abortFailureClass ??= 'timeout';
       execution.controller.abort(timeoutError);
     }, this.timeoutMs);
 
@@ -385,8 +435,38 @@ export class BullMqQueueConsumer implements QueueConsumer {
           );
         });
 
+    const observation: QueueHandlerObservation = {
+      jobName: parsed.name,
+      queueName,
+    };
+    const startedAt = performance.now();
+    const observerStarted = this.notifyObserver(() => {
+      this.observer?.handlerStarted(observation);
+    });
+
     try {
       await Promise.race([handlerPromise, aborted]);
+      if (observerStarted) {
+        this.notifyObserver(() => {
+          this.observer?.handlerFinished({
+            ...observation,
+            durationSeconds: (performance.now() - startedAt) / 1_000,
+            outcome: 'completed',
+          });
+        });
+      }
+    } catch (error: unknown) {
+      if (observerStarted) {
+        this.notifyObserver(() => {
+          this.observer?.handlerFinished({
+            ...observation,
+            durationSeconds: (performance.now() - startedAt) / 1_000,
+            failureClass: execution.abortFailureClass ?? 'handler',
+            outcome: 'failed',
+          });
+        });
+      }
+      throw error;
     } finally {
       clearTimeout(timeout);
       bullMqSignal?.removeEventListener('abort', propagateBullMqAbort);
@@ -402,6 +482,16 @@ export class BullMqQueueConsumer implements QueueConsumer {
 
   private isOpen(): boolean {
     return this.lifecycle === 'open';
+  }
+
+  private notifyObserver(notify: () => void): boolean {
+    try {
+      notify();
+      return true;
+    } catch {
+      // Operational telemetry cannot change queue delivery semantics.
+      return false;
+    }
   }
 
   private async performClose(): Promise<QueueConsumerCloseResult> {
@@ -441,6 +531,7 @@ export class BullMqQueueConsumer implements QueueConsumer {
     if (forced) {
       const reason = new QueueConsumerDrainError();
       for (const execution of this.activeExecutions) {
+        execution.abortFailureClass ??= 'drain';
         execution.controller.abort(reason);
       }
       this.worker.cancelAllJobs(reason.message);

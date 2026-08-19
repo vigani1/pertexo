@@ -329,7 +329,7 @@ describe('transactional outbox persistence', () => {
         maxAttempts: 3,
       }),
     ]);
-    const claimed = [...first, ...second].filter((event) =>
+    const claimed = [...first.events, ...second.events].filter((event) =>
       ids.includes(event.id),
     );
     expect(new Set(claimed.map((event) => event.id)).size).toBe(4);
@@ -341,6 +341,33 @@ describe('transactional outbox persistence', () => {
     await expect(
       dispatcher.markPublished(event.id, event.leaseToken),
     ).resolves.toBe(true);
+  });
+
+  it('observes only due and currently claimable outbox backlog', async () => {
+    const dueId = randomUUID();
+    await apiDatabase.withWorkspace(workspaceA, async (transaction) => {
+      await insertOutboxEvent(transaction, {
+        ...outboxInput(dueId),
+        availableAt: new Date(Date.now() - 2_000),
+      });
+      await insertOutboxEvent(transaction, {
+        ...outboxInput(),
+        availableAt: new Date(Date.now() + 60_000),
+      });
+    });
+
+    const due = await dispatcher.observeBacklog();
+    expect(due.backlog).toBe(1);
+    expect(due.oldestAgeSeconds).toBeGreaterThanOrEqual(1);
+
+    await dispatcher.claimBatch({
+      leaseDurationMillis: 30_000,
+      leaseOwner: 'observer-proof',
+      leaseToken: randomUUID(),
+      limit: 1,
+      maxAttempts: 3,
+    });
+    await expect(dispatcher.observeBacklog()).resolves.toEqual({ backlog: 0 });
   });
 
   it('reclaims expired leases and reaches an explicit attempt failure threshold', async () => {
@@ -358,7 +385,7 @@ describe('transactional outbox persistence', () => {
       limit: 100,
       maxAttempts: 2,
     });
-    const leased = first.find((event) => event.id === id);
+    const leased = first.events.find((event) => event.id === id);
     expect(leased?.publishAttempts).toBe(1);
     await expireLease(id);
     const second = await dispatcher.claimBatch({
@@ -368,7 +395,7 @@ describe('transactional outbox persistence', () => {
       limit: 100,
       maxAttempts: 2,
     });
-    const reclaimed = second.find((event) => event.id === id);
+    const reclaimed = second.events.find((event) => event.id === id);
     expect(reclaimed?.publishAttempts).toBe(2);
     if (reclaimed === undefined)
       throw new Error('Expected expired lease reclaim');
@@ -403,9 +430,9 @@ describe('transactional outbox persistence', () => {
         limit: 100,
         maxAttempts: 2,
       });
-      expect(claimed.find((event) => event.id === id)?.publishAttempts).toBe(
-        expectedAttempt,
-      );
+      expect(
+        claimed.events.find((event) => event.id === id)?.publishAttempts,
+      ).toBe(expectedAttempt);
       await expireLease(id);
     }
 
@@ -416,7 +443,8 @@ describe('transactional outbox persistence', () => {
       limit: 100,
       maxAttempts: 2,
     });
-    expect(afterExhaustion.some((event) => event.id === id)).toBe(false);
+    expect(afterExhaustion.events.some((event) => event.id === id)).toBe(false);
+    expect(afterExhaustion.exhaustedCount).toBe(1);
 
     const row = await apiDatabase.withWorkspace(workspaceA, async ({ db }) =>
       db
@@ -453,7 +481,7 @@ describe('transactional outbox persistence', () => {
       limit: 100,
       maxAttempts: 3,
     });
-    const event = claimed.find(({ id }) => id === input.id);
+    const event = claimed.events.find(({ id }) => id === input.id);
     if (event === undefined) throw new Error('Expected a claimed outbox event');
 
     const dispatcherPool = new Pool({

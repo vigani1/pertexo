@@ -45,14 +45,25 @@ export type LeasedOutboxEvent = Readonly<{
 
 export type ReleaseOutboxResult = 'retry_scheduled' | 'failed' | 'not_leased';
 
+export type OutboxBacklogSnapshot = Readonly<{
+  backlog: number;
+  /** Age of the oldest due, claimable row. Omitted when the backlog is empty. */
+  oldestAgeSeconds?: number;
+}>;
+
+export type ClaimOutboxBatchResult = Readonly<{
+  events: readonly LeasedOutboxEvent[];
+  /** Rows atomically terminalized because their publish-attempt ceiling was reached. */
+  exhaustedCount: number;
+}>;
+
 export interface OutboxDispatcherDatabase {
-  claimBatch(
-    input: ClaimOutboxBatchInput,
-  ): Promise<readonly LeasedOutboxEvent[]>;
+  claimBatch(input: ClaimOutboxBatchInput): Promise<ClaimOutboxBatchResult>;
   markPublished(eventId: string, leaseToken: string): Promise<boolean>;
   releaseOrFail(
     input: z.input<typeof releaseInputSchema>,
   ): Promise<ReleaseOutboxResult>;
+  observeBacklog(): Promise<OutboxBacklogSnapshot>;
   checkReadiness(): Promise<void>;
   close(): Promise<void>;
 }
@@ -60,10 +71,10 @@ export interface OutboxDispatcherDatabase {
 interface ClaimedRow {
   aggregate_id: string;
   aggregate_type: string;
-  available_at: Date;
+  available_at: string;
   id: string;
   job_name: string;
-  lease_expires_at: Date;
+  lease_expires_at: string;
   lease_owner: string;
   lease_token: string;
   payload: unknown;
@@ -73,14 +84,19 @@ interface ClaimedRow {
   workspace_id: string;
 }
 
+interface ClaimQueryResult {
+  events: ClaimedRow[];
+  exhausted_count: number;
+}
+
 function toLeasedEvent(row: ClaimedRow): LeasedOutboxEvent {
   return Object.freeze({
     aggregateId: row.aggregate_id,
     aggregateType: row.aggregate_type,
-    availableAt: row.available_at,
+    availableAt: new Date(row.available_at),
     id: row.id,
     jobName: row.job_name,
-    leaseExpiresAt: row.lease_expires_at,
+    leaseExpiresAt: new Date(row.lease_expires_at),
     leaseOwner: row.lease_owner,
     leaseToken: row.lease_token,
     payload: row.payload,
@@ -199,12 +215,12 @@ export function createOutboxDispatcherDatabase(
   return Object.freeze({
     claimBatch: async (
       input: ClaimOutboxBatchInput,
-    ): Promise<readonly LeasedOutboxEvent[]> => {
+    ): Promise<ClaimOutboxBatchResult> => {
       const parsed = claimInputSchema.parse(input);
       const client = await pool.connect();
       try {
         await client.query('begin');
-        const result = await client.query<ClaimedRow>(
+        const result = await client.query<ClaimQueryResult>(
           `
             with candidates as materialized (
               select id, publish_attempts
@@ -230,17 +246,26 @@ export function createOutboxDispatcherDatabase(
                 and candidates.publish_attempts >= $5
               returning event.id
             )
-            update app.outbox_events event
-            set
-              lease_owner = $2,
-              lease_token = $3,
-              lease_expires_at = clock_timestamp() + ($4::integer * interval '1 millisecond'),
-              publish_attempts = event.publish_attempts + 1,
-              updated_at = clock_timestamp()
-            from candidates
-            where event.id = candidates.id
-              and candidates.publish_attempts < $5
-            returning event.*
+            , leased as (
+              update app.outbox_events event
+              set
+                lease_owner = $2,
+                lease_token = $3,
+                lease_expires_at = clock_timestamp() + ($4::integer * interval '1 millisecond'),
+                publish_attempts = event.publish_attempts + 1,
+                updated_at = clock_timestamp()
+              from candidates
+              where event.id = candidates.id
+                and candidates.publish_attempts < $5
+              returning event.*
+            )
+            select
+              coalesce(
+                jsonb_agg(to_jsonb(leased) order by leased.available_at, leased.id),
+                '[]'::jsonb
+              ) as events,
+              (select count(*)::integer from exhausted) as exhausted_count
+            from leased
           `,
           [
             parsed.limit,
@@ -251,7 +276,14 @@ export function createOutboxDispatcherDatabase(
           ],
         );
         await client.query('commit');
-        return Object.freeze(result.rows.map(toLeasedEvent));
+        const row = result.rows[0];
+        if (row === undefined) {
+          throw new Error('Outbox claim returned no summary row');
+        }
+        return Object.freeze({
+          events: Object.freeze(row.events.map(toLeasedEvent)),
+          exhaustedCount: row.exhausted_count,
+        });
       } catch (error: unknown) {
         await client.query('rollback').catch(() => undefined);
         throw error;
@@ -324,6 +356,36 @@ export function createOutboxDispatcherDatabase(
         : row.failed
           ? 'failed'
           : 'retry_scheduled';
+    },
+    observeBacklog: async (): Promise<OutboxBacklogSnapshot> => {
+      const result = await pool.query<{
+        backlog: number;
+        oldest_age_seconds: number | null;
+      }>(`
+        select
+          count(*)::integer as backlog,
+          extract(
+            epoch from (clock_timestamp() - min(available_at))
+          )::double precision as oldest_age_seconds
+        from app.outbox_events
+        where published_at is null
+          and failed_at is null
+          and available_at <= clock_timestamp()
+          and (
+            lease_expires_at is null
+            or lease_expires_at <= clock_timestamp()
+          )
+      `);
+      const row = result.rows[0];
+      if (row === undefined) {
+        throw new Error('Outbox backlog observation returned no row');
+      }
+      return Object.freeze({
+        backlog: row.backlog,
+        ...(row.oldest_age_seconds === null
+          ? {}
+          : { oldestAgeSeconds: Math.max(0, row.oldest_age_seconds) }),
+      });
     },
     checkReadiness: async (): Promise<void> =>
       checkDispatcherReadiness(pool, ownerRole),

@@ -24,6 +24,11 @@ export const workerConfigSchema = z
       .refine((value) => value.startsWith('postgresql://'), {
         message: 'DATABASE_WORKER_URL must be a postgresql:// URL',
       }),
+    DATABASE_DISPATCHER_URL: z
+      .url()
+      .refine((value) => value.startsWith('postgresql://'), {
+        message: 'DATABASE_DISPATCHER_URL must be a postgresql:// URL',
+      }),
     DATABASE_CONNECTION_TIMEOUT_MILLIS: z.coerce
       .number()
       .int()
@@ -35,6 +40,61 @@ export const workerConfigSchema = z
       .positive()
       .default(30_000),
     DATABASE_POOL_MAX: z.coerce.number().int().positive().max(20).default(5),
+    DATABASE_DISPATCHER_POOL_MAX: z.coerce
+      .number()
+      .int()
+      .positive()
+      .max(10)
+      .default(2),
+    REDIS_URL: z
+      .url()
+      .refine(
+        (value) =>
+          value.startsWith('redis://') || value.startsWith('rediss://'),
+        {
+          message: 'REDIS_URL must be a redis:// or rediss:// URL',
+        },
+      ),
+    OUTBOX_DISPATCH_BATCH_SIZE: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(100)
+      .default(25),
+    OUTBOX_DISPATCH_LEASE_MILLIS: z.coerce
+      .number()
+      .int()
+      .min(1_000)
+      .max(300_000)
+      .default(30_000),
+    OUTBOX_DISPATCH_MAX_ATTEMPTS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(1_000)
+      .default(10),
+    OUTBOX_DISPATCH_OPERATION_TIMEOUT_MILLIS: z.coerce
+      .number()
+      .int()
+      .min(100)
+      .max(120_000)
+      .default(5_000),
+    OUTBOX_DISPATCH_POLL_MILLIS: z.coerce
+      .number()
+      .int()
+      .min(10)
+      .max(60_000)
+      .default(250),
+    OUTBOX_DISPATCH_RETRY_MILLIS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(300_000)
+      .default(1_000),
+    WORKER_INSTANCE_ID: z
+      .string()
+      .regex(/^[A-Za-z0-9._:-]{1,96}$/u)
+      .default('worker-local'),
     NODE_ENV: z.enum(workerEnvironments).default('development'),
     LOG_LEVEL: z.enum(workerLogLevels).default('info'),
     OTEL_EXPORTER_OTLP_ENDPOINT: z.url().optional(),
@@ -47,9 +107,19 @@ export const workerConfigSchema = z
   .transform(
     ({
       DATABASE_WORKER_URL,
+      DATABASE_DISPATCHER_URL,
       DATABASE_CONNECTION_TIMEOUT_MILLIS,
       DATABASE_IDLE_TIMEOUT_MILLIS,
       DATABASE_POOL_MAX,
+      DATABASE_DISPATCHER_POOL_MAX,
+      REDIS_URL,
+      OUTBOX_DISPATCH_BATCH_SIZE,
+      OUTBOX_DISPATCH_LEASE_MILLIS,
+      OUTBOX_DISPATCH_MAX_ATTEMPTS,
+      OUTBOX_DISPATCH_OPERATION_TIMEOUT_MILLIS,
+      OUTBOX_DISPATCH_POLL_MILLIS,
+      OUTBOX_DISPATCH_RETRY_MILLIS,
+      WORKER_INSTANCE_ID,
       NODE_ENV,
       LOG_LEVEL,
       OTEL_EXPORTER_OTLP_ENDPOINT,
@@ -74,6 +144,23 @@ export const workerConfigSchema = z
         max: DATABASE_POOL_MAX,
         ownerRole: POSTGRES_OWNER_USER,
       },
+      dispatcherDatabase: {
+        connectionString: DATABASE_DISPATCHER_URL,
+        connectionTimeoutMillis: DATABASE_CONNECTION_TIMEOUT_MILLIS,
+        idleTimeoutMillis: DATABASE_IDLE_TIMEOUT_MILLIS,
+        max: DATABASE_DISPATCHER_POOL_MAX,
+        ownerRole: POSTGRES_OWNER_USER,
+      },
+      outboxDispatcher: {
+        batchSize: OUTBOX_DISPATCH_BATCH_SIZE,
+        leaseDurationMillis: OUTBOX_DISPATCH_LEASE_MILLIS,
+        leaseOwner: `outbox:${WORKER_INSTANCE_ID}`,
+        maxAttempts: OUTBOX_DISPATCH_MAX_ATTEMPTS,
+        operationTimeoutMillis: OUTBOX_DISPATCH_OPERATION_TIMEOUT_MILLIS,
+        pollIntervalMillis: OUTBOX_DISPATCH_POLL_MILLIS,
+        retryDelayMillis: OUTBOX_DISPATCH_RETRY_MILLIS,
+      },
+      redisUrl: REDIS_URL,
     }),
   );
 
@@ -91,5 +178,7 @@ export function parseWorkerConfig(
   return Object.freeze({
     ...result.data,
     database: Object.freeze(result.data.database),
+    dispatcherDatabase: Object.freeze(result.data.dispatcherDatabase),
+    outboxDispatcher: Object.freeze(result.data.outboxDispatcher),
   });
 }

@@ -69,14 +69,11 @@ describe('createTransportMetrics', () => {
     const harness = metricHarness();
     const metrics = createTransportMetrics({ meter: harness.meter });
 
-    metrics.recordOutboxClaim({
-      backlog: 23,
-      batchSize: 4,
-      oldestAgeSeconds: 7.5,
-    });
+    metrics.recordOutboxClaim({ batchSize: 4 });
+    metrics.observeOutbox({ backlog: 23, oldestAgeSeconds: 7.5 });
     metrics.recordOutboxLeaseEvent('expired');
     metrics.recordOutboxLeaseEvent('reclaimed');
-    metrics.recordOutboxLeaseEvent('attempt_exhausted');
+    metrics.recordOutboxLeaseEvent('attempt_exhausted', 2);
 
     expect(
       values(harness.counters, TRANSPORT_METRIC_NAME.outboxClaimed),
@@ -95,7 +92,7 @@ describe('createTransportMetrics', () => {
     ).toEqual([
       { attributes: { event: 'expired' }, value: 1 },
       { attributes: { event: 'reclaimed' }, value: 1 },
-      { attributes: { event: 'attempt_exhausted' }, value: 1 },
+      { attributes: { event: 'attempt_exhausted' }, value: 2 },
     ]);
   });
 
@@ -103,7 +100,7 @@ describe('createTransportMetrics', () => {
     const harness = metricHarness();
     const metrics = createTransportMetrics({ meter: harness.meter });
 
-    metrics.recordOutboxClaim({ backlog: 23, batchSize: 4 });
+    metrics.observeOutbox({ backlog: 23 });
 
     expect(
       values(harness.gauges, TRANSPORT_METRIC_NAME.outboxOldestAge),
@@ -236,7 +233,13 @@ describe('createTransportMetrics', () => {
 
   it.each([
     () => {
-      createTransportMetrics().recordOutboxClaim({ backlog: -1, batchSize: 0 });
+      createTransportMetrics().recordOutboxClaim({ batchSize: -1 });
+    },
+    () => {
+      createTransportMetrics().observeOutbox({ backlog: -1 });
+    },
+    () => {
+      createTransportMetrics().recordOutboxLeaseEvent('expired', 0);
     },
     () => {
       createTransportMetrics().recordHandlerFinished({

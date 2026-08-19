@@ -6,6 +6,8 @@ const mocks = vi.hoisted(() => {
     options: unknown;
     add: ReturnType<typeof vi.fn>;
     close: ReturnType<typeof vi.fn>;
+    getJobCountByTypes: ReturnType<typeof vi.fn>;
+    getJobs: ReturnType<typeof vi.fn>;
     waitUntilReady: ReturnType<typeof vi.fn>;
   }
 
@@ -43,6 +45,8 @@ const mocks = vi.hoisted(() => {
       options,
       add: vi.fn(() => Promise.resolve({ id: 'mock-job-id' })),
       close: vi.fn(() => Promise.resolve()),
+      getJobCountByTypes: vi.fn(() => Promise.resolve(0)),
+      getJobs: vi.fn(() => Promise.resolve([])),
       waitUntilReady: vi.fn(() => Promise.resolve()),
     };
     queueInstances.push(queue);
@@ -170,6 +174,48 @@ describe('BullMQ queue producer', () => {
     mocks.redisClient.status = 'ready';
     mocks.redisClient.emit('ready');
     expect(producer.isReady()).toBe(true);
+  });
+
+  it('observes bounded queue depth and oldest-job age without reading payloads', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-20T00:00:10.000Z'));
+    const producer = createQueueProducer({
+      redisUrl: 'redis://localhost:6379/0',
+    });
+    const coordinator = mocks.queueInstances.find(
+      (queue) => queue.name === QUEUE_NAME.workflowCoordinator,
+    );
+    coordinator?.getJobCountByTypes.mockResolvedValue(3);
+    coordinator?.getJobs
+      .mockResolvedValueOnce([{ timestamp: Date.now() - 2_000 }])
+      .mockResolvedValueOnce([{ timestamp: Date.now() - 7_500 }]);
+
+    const observations = await producer.observe();
+
+    expect(observations).toContainEqual({
+      depth: 3,
+      oldestJobAgeSeconds: 7.5,
+      queueName: QUEUE_NAME.workflowCoordinator,
+    });
+    expect(coordinator?.getJobCountByTypes).toHaveBeenCalledWith(
+      'waiting',
+      'delayed',
+    );
+    expect(coordinator?.getJobs).toHaveBeenNthCalledWith(
+      1,
+      'waiting',
+      0,
+      0,
+      true,
+    );
+    expect(coordinator?.getJobs).toHaveBeenNthCalledWith(
+      2,
+      'delayed',
+      0,
+      0,
+      true,
+    );
+    vi.useRealTimers();
   });
 
   it('bounds a Redis publish so the outbox lease can be released', async () => {
