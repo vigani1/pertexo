@@ -13,6 +13,38 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      POSTGRES_DB: pertexo
+      POSTGRES_PORT: '5432'
+      POSTGRES_SUPERUSER: postgres
+      POSTGRES_SUPERUSER_PASSWORD: pertexo-local-superuser
+      POSTGRES_OWNER_USER: pertexo_owner
+      POSTGRES_MIGRATION_USER: pertexo_migration
+      POSTGRES_MIGRATION_PASSWORD: pertexo-local-migration
+      POSTGRES_MAINTENANCE_USER: pertexo_maintenance
+      POSTGRES_MAINTENANCE_PASSWORD: pertexo-local-maintenance
+      POSTGRES_API_RUNTIME_USER: pertexo_api
+      POSTGRES_API_RUNTIME_PASSWORD: pertexo-local-api
+      POSTGRES_WORKER_RUNTIME_USER: pertexo_worker
+      POSTGRES_WORKER_RUNTIME_PASSWORD: pertexo-local-worker
+      POSTGRES_DISPATCHER_RUNTIME_USER: pertexo_dispatcher
+      POSTGRES_DISPATCHER_RUNTIME_PASSWORD: pertexo-local-dispatcher
+      DATABASE_MIGRATION_URL: postgresql://pertexo_migration:pertexo-local-migration@127.0.0.1:5432/pertexo
+      DATABASE_API_URL: postgresql://pertexo_api:pertexo-local-api@127.0.0.1:5432/pertexo
+      DATABASE_WORKER_URL: postgresql://pertexo_worker:pertexo-local-worker@127.0.0.1:5432/pertexo
+      DATABASE_DISPATCHER_URL: postgresql://pertexo_dispatcher:pertexo-local-dispatcher@127.0.0.1:5432/pertexo
+      REDIS_PASSWORD: pertexo-local-redis
+      REDIS_PORT: '6379'
+      REDIS_URL: redis://:pertexo-local-redis@127.0.0.1:6379/0
+      ARTIFACT_STORE_PORT: '9090'
+      ARTIFACT_STORE_ENDPOINT: http://127.0.0.1:9090
+      ARTIFACT_STORE_REGION: us-east-1
+      ARTIFACT_STORE_ACCESS_KEY_ID: pertexo-local-access-key
+      ARTIFACT_STORE_SECRET_ACCESS_KEY: pertexo-local-secret-key
+      ARTIFACT_STORE_BUCKET: pertexo-artifacts
+      ARTIFACT_STORE_FORCE_PATH_STYLE: 'true'
+      ARTIFACT_STORE_INTEGRATION: 'true'
+      WORKER_TRANSPORT_INTEGRATION: 'true'
 
     steps:
       - name: Check out repository
@@ -35,15 +67,42 @@ jobs:
       - name: Run applicable Phase 0 quality gates
         run: pnpm check
 
-      - name: Start PostgreSQL integration dependency
-        run: docker compose up -d --wait postgres
+      - name: Start integration dependencies
+        run: docker compose up -d --wait postgres redis artifact-store
 
-      - name: Prove database migrations and RLS boundaries
+      - name: Verify local service boundaries and Redis policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(docker compose port postgres 5432)" = "127.0.0.1:$POSTGRES_PORT"
+          test "$(docker compose port redis 6379)" = "127.0.0.1:$REDIS_PORT"
+          test "$(docker compose port artifact-store 9090)" = "127.0.0.1:$ARTIFACT_STORE_PORT"
+          unauthenticated_output="$(docker compose exec -T redis redis-cli --raw ping 2>&1 | tr -d '\r')"
+          case "$unauthenticated_output" in
+            NOAUTH*) ;;
+            *) echo "::error::Redis did not reject an unauthenticated command with NOAUTH"; exit 1 ;;
+          esac
+          test "$(docker compose exec -T redis redis-cli --raw --no-auth-warning -a "$REDIS_PASSWORD" ping)" = "PONG"
+          redis_config() {
+            docker compose exec -T redis redis-cli --raw --no-auth-warning -a "$REDIS_PASSWORD" CONFIG GET "$1" | tail -n 1 | tr -d '\r'
+          }
+          test "$(redis_config appendonly)" = "yes"
+          test "$(redis_config appendfsync)" = "everysec"
+          test "$(redis_config maxmemory-policy)" = "noeviction"
+
+      - name: Run real integration suites
         run: pnpm test:integration
 
-      - name: Capture PostgreSQL logs
+      - name: Run sequential service-loss resilience proof
+        env:
+          WORKER_TRANSPORT_RESILIENCE: 'true'
+        run: pnpm --filter @pertexo/worker test:resilience
+
+      - name: Capture integration service logs on failure
         if: failure()
-        run: docker compose logs --no-color postgres
+        run: |
+          docker compose ps --all
+          docker compose logs --no-color --timestamps postgres redis artifact-store
 
       - name: Stop integration dependencies
         if: always()
