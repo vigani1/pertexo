@@ -13,7 +13,6 @@ import {
 } from '@pertexo/observability/transport-metrics';
 import {
   JOB_NAME,
-  QUEUE_FOR_JOB,
   QueueNotReadyError,
   QueuePublishTimeoutError,
   parseQueueJob,
@@ -23,6 +22,7 @@ import {
 import { z } from 'zod';
 
 import type { WorkerDrainState } from '../runtime/worker-drain-state.js';
+import { transportJobForName } from './transport-job.js';
 
 const optionsSchema = z
   .object({
@@ -79,34 +79,15 @@ class TransportOperationTimeoutError extends Error {
   }
 }
 
-const transportJobByName = Object.freeze({
-  [JOB_NAME.advanceWorkflowRun]: {
-    jobName: JOB_NAME.advanceWorkflowRun,
-    queueName: QUEUE_FOR_JOB[JOB_NAME.advanceWorkflowRun],
-  },
-  [JOB_NAME.executeNodeAttempt]: {
-    jobName: JOB_NAME.executeNodeAttempt,
-    queueName: QUEUE_FOR_JOB[JOB_NAME.executeNodeAttempt],
-  },
-  [JOB_NAME.reconcileWorkflowTriggers]: {
-    jobName: JOB_NAME.reconcileWorkflowTriggers,
-    queueName: QUEUE_FOR_JOB[JOB_NAME.reconcileWorkflowTriggers],
-  },
-  [JOB_NAME.expireArtifacts]: {
-    jobName: JOB_NAME.expireArtifacts,
-    queueName: QUEUE_FOR_JOB[JOB_NAME.expireArtifacts],
-  },
-} as const satisfies Record<QueueJob['name'], TransportJob>);
-
 const transportJobNameSchema = z.enum(JOB_NAME);
 
 function transportJob(job: QueueJob): TransportJob {
-  return transportJobByName[job.name];
+  return transportJobForName(job.name);
 }
 
 function transportJobName(jobName: string): TransportJob | undefined {
   const parsed = transportJobNameSchema.safeParse(jobName);
-  return parsed.success ? transportJobByName[parsed.data] : undefined;
+  return parsed.success ? transportJobForName(parsed.data) : undefined;
 }
 
 function transportErrorClass(error: unknown): TransportErrorClass {

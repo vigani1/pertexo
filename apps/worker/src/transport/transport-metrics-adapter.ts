@@ -1,9 +1,7 @@
 import type {
   TransportErrorClass,
   TransportMetrics,
-  TransportJob,
 } from '@pertexo/observability/transport-metrics';
-import { JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
 import type {
   QueueConsumerObserver,
   QueueConsumerLifecycleObservation,
@@ -13,36 +11,7 @@ import type {
   QueueStallObservation,
 } from '@pertexo/queue';
 
-function transportJob(observation: QueueHandlerObservation): TransportJob {
-  switch (observation.jobName) {
-    case JOB_NAME.advanceWorkflowRun:
-      if (observation.queueName !== QUEUE_NAME.workflowCoordinator) break;
-      return {
-        jobName: JOB_NAME.advanceWorkflowRun,
-        queueName: QUEUE_NAME.workflowCoordinator,
-      };
-    case JOB_NAME.executeNodeAttempt:
-      if (observation.queueName !== QUEUE_NAME.nodeAttempts) break;
-      return {
-        jobName: JOB_NAME.executeNodeAttempt,
-        queueName: QUEUE_NAME.nodeAttempts,
-      };
-    case JOB_NAME.reconcileWorkflowTriggers:
-      if (observation.queueName !== QUEUE_NAME.triggerLifecycle) break;
-      return {
-        jobName: JOB_NAME.reconcileWorkflowTriggers,
-        queueName: QUEUE_NAME.triggerLifecycle,
-      };
-    case JOB_NAME.expireArtifacts:
-      if (observation.queueName !== QUEUE_NAME.maintenance) break;
-      return {
-        jobName: JOB_NAME.expireArtifacts,
-        queueName: QUEUE_NAME.maintenance,
-      };
-  }
-
-  throw new TypeError('Queue observation has an invalid queue/job pairing');
-}
+import { transportJobForObservation } from './transport-job.js';
 
 function transportErrorClass(
   failureClass: QueueHandlerFailureClass,
@@ -67,12 +36,12 @@ export function createQueueMetricsObserver(
     },
     handlerStarted(observation: QueueHandlerObservation): void {
       metrics.addActiveConcurrency({
-        ...transportJob(observation),
+        ...transportJobForObservation(observation),
         delta: 1,
       });
     },
     handlerFinished(observation: QueueHandlerFinishedObservation): void {
-      const job = transportJob(observation);
+      const job = transportJobForObservation(observation);
       try {
         if (observation.outcome === 'completed') {
           metrics.recordHandlerFinished({
