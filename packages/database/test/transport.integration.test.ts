@@ -18,7 +18,11 @@ import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
 } from '../src/outbox.js';
-import { inboxReceipts, outboxEvents } from '../src/schema.js';
+import {
+  inboxReceipts,
+  outboxEvents,
+  transportSecurityAuditFacts,
+} from '../src/schema.js';
 
 const migrationUrl =
   process.env.DATABASE_MIGRATION_URL ??
@@ -99,6 +103,7 @@ async function resetTransportFixture(): Promise<void> {
     await client.query('set local role pertexo_owner');
     await client.query(`
       truncate table
+        app.transport_security_audit_facts,
         app.inbox_receipts,
         app.outbox_events,
         app.queue_duplicate_probe_attempts,
@@ -668,6 +673,23 @@ describe('transactional inbox duplicate proof', () => {
         () => Promise.resolve(undefined),
       ),
     ).rejects.toBeInstanceOf(InboxChecksumMismatchError);
+    await workerDatabase.withWorkspace(workspaceA, async ({ db }) => {
+      const facts = await db
+        .select({
+          consumerName: transportSecurityAuditFacts.consumerName,
+          factType: transportSecurityAuditFacts.factType,
+          messageId: transportSecurityAuditFacts.messageId,
+        })
+        .from(transportSecurityAuditFacts)
+        .where(eq(transportSecurityAuditFacts.messageId, messageId));
+      expect(facts).toEqual([
+        {
+          consumerName: 'checksum-proof',
+          factType: 'inbox_checksum_mismatch',
+          messageId,
+        },
+      ]);
+    });
     await expect(
       consumeInboxMessage(
         workerDatabase,
