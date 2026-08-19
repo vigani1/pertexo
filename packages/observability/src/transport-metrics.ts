@@ -1,0 +1,256 @@
+import { metrics, type Attributes, type Meter } from '@opentelemetry/api';
+
+import './server-only.js';
+
+export const TRANSPORT_METRIC_NAME = Object.freeze({
+  activeConcurrency: 'pertexo.transport.handler.active',
+  handlerDuration: 'pertexo.transport.handler.duration',
+  handlerExecutions: 'pertexo.transport.handler.executions',
+  outboxBacklog: 'pertexo.transport.outbox.backlog',
+  outboxClaimBatchSize: 'pertexo.transport.outbox.claim.batch_size',
+  outboxClaimed: 'pertexo.transport.outbox.claimed',
+  outboxLeaseEvents: 'pertexo.transport.outbox.lease.events',
+  outboxOldestAge: 'pertexo.transport.outbox.oldest_age',
+  outboxPublish: 'pertexo.transport.outbox.publish',
+  queueDepth: 'pertexo.transport.queue.depth',
+  queueOldestJobAge: 'pertexo.transport.queue.oldest_job_age',
+} as const);
+
+export type TransportErrorClass =
+  'contract' | 'database' | 'redis' | 'timeout' | 'unavailable' | 'unknown';
+
+export type TransportLeaseEvent = 'attempt_exhausted' | 'expired' | 'reclaimed';
+
+export type TransportJob =
+  | {
+      readonly jobName: 'advance-workflow-run';
+      readonly queueName: 'workflow-coordinator';
+    }
+  | {
+      readonly jobName: 'execute-node-attempt';
+      readonly queueName: 'node-attempts';
+    }
+  | {
+      readonly jobName: 'expire-artifacts';
+      readonly queueName: 'maintenance';
+    }
+  | {
+      readonly jobName: 'reconcile-workflow-triggers';
+      readonly queueName: 'trigger-lifecycle';
+    };
+
+export type TransportPublishMeasurement = TransportJob &
+  (
+    | { readonly outcome: 'deduplicated' | 'published' }
+    | {
+        readonly errorClass: TransportErrorClass;
+        readonly outcome: 'failed';
+      }
+  );
+
+export type TransportHandlerMeasurement = TransportJob &
+  (
+    | {
+        readonly durationSeconds: number;
+        readonly outcome: 'completed';
+      }
+    | {
+        readonly durationSeconds: number;
+        readonly errorClass: TransportErrorClass;
+        readonly outcome: 'failed';
+      }
+  );
+
+export interface OutboxClaimMeasurement {
+  /** Number of currently publishable, unclaimed outbox rows. */
+  readonly backlog: number;
+  /** Number of rows acquired by this bounded claim operation. */
+  readonly batchSize: number;
+  /** Age of the oldest currently publishable row, or zero for an empty backlog. Omit when unknown. */
+  readonly oldestAgeSeconds?: number;
+}
+
+export interface QueueObservation {
+  readonly depth: number;
+  /** Age of the oldest waiting job, or zero for an empty queue. */
+  readonly oldestJobAgeSeconds: number;
+  readonly queueName: TransportJob['queueName'];
+}
+
+export type ActiveConcurrencyChange = TransportJob & {
+  /** Use 1 when a handler starts and -1 when it stops. */
+  readonly delta: -1 | 1;
+};
+
+export interface TransportMetrics {
+  addActiveConcurrency(change: ActiveConcurrencyChange): void;
+  observeQueue(observation: QueueObservation): void;
+  recordHandlerFinished(measurement: TransportHandlerMeasurement): void;
+  recordOutboxClaim(measurement: OutboxClaimMeasurement): void;
+  recordOutboxLeaseEvent(event: TransportLeaseEvent): void;
+  recordOutboxPublish(measurement: TransportPublishMeasurement): void;
+}
+
+export interface TransportMetricsOptions {
+  /** Injection seam for SDK-backed production meters and deterministic tests. */
+  readonly meter?: Meter;
+}
+
+function requireNonNegativeFinite(value: number, name: string): void {
+  if (!Number.isFinite(value) || value < 0) {
+    throw new RangeError(`${name} must be a non-negative finite number`);
+  }
+}
+
+function requireNonNegativeInteger(value: number, name: string): void {
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw new RangeError(`${name} must be a non-negative safe integer`);
+  }
+}
+
+function transportAttributes(job: TransportJob): Attributes {
+  return {
+    job_name: job.jobName,
+    queue_name: job.queueName,
+  };
+}
+
+function outcomeAttributes(
+  measurement: TransportHandlerMeasurement | TransportPublishMeasurement,
+): Attributes {
+  const attributes: Attributes = {
+    ...transportAttributes(measurement),
+    outcome: measurement.outcome,
+  };
+
+  return 'errorClass' in measurement
+    ? { ...attributes, error_class: measurement.errorClass }
+    : attributes;
+}
+
+export function createTransportMetrics(
+  options: TransportMetricsOptions = {},
+): TransportMetrics {
+  const meter =
+    options.meter ??
+    metrics.getMeter('@pertexo/observability.transport', '0.0.0');
+  const outboxClaimed = meter.createCounter(
+    TRANSPORT_METRIC_NAME.outboxClaimed,
+    {
+      description: 'Outbox rows acquired by bounded dispatcher claims',
+      unit: '{event}',
+    },
+  );
+  const outboxClaimBatchSize = meter.createHistogram(
+    TRANSPORT_METRIC_NAME.outboxClaimBatchSize,
+    {
+      description: 'Number of outbox rows acquired per claim operation',
+      unit: '{event}',
+    },
+  );
+  const outboxBacklog = meter.createGauge(TRANSPORT_METRIC_NAME.outboxBacklog, {
+    description: 'Publishable, unclaimed rows in the PostgreSQL outbox',
+    unit: '{event}',
+  });
+  const outboxOldestAge = meter.createGauge(
+    TRANSPORT_METRIC_NAME.outboxOldestAge,
+    {
+      description: 'Age of the oldest publishable PostgreSQL outbox row',
+      unit: 's',
+    },
+  );
+  const outboxPublish = meter.createCounter(
+    TRANSPORT_METRIC_NAME.outboxPublish,
+    {
+      description: 'Outbox publication attempts by bounded outcome class',
+      unit: '{event}',
+    },
+  );
+  const outboxLeaseEvents = meter.createCounter(
+    TRANSPORT_METRIC_NAME.outboxLeaseEvents,
+    {
+      description: 'Outbox lease expiry, reclaim, and exhaustion events',
+      unit: '{event}',
+    },
+  );
+  const handlerExecutions = meter.createCounter(
+    TRANSPORT_METRIC_NAME.handlerExecutions,
+    {
+      description: 'Completed transport handler executions by outcome',
+      unit: '{execution}',
+    },
+  );
+  const handlerDuration = meter.createHistogram(
+    TRANSPORT_METRIC_NAME.handlerDuration,
+    {
+      description: 'Transport handler execution duration by outcome',
+      unit: 's',
+    },
+  );
+  const activeConcurrency = meter.createUpDownCounter(
+    TRANSPORT_METRIC_NAME.activeConcurrency,
+    {
+      description: 'Currently active transport handlers',
+      unit: '{handler}',
+    },
+  );
+  const queueDepth = meter.createGauge(TRANSPORT_METRIC_NAME.queueDepth, {
+    description: 'Waiting and delayed jobs observed in a transport queue',
+    unit: '{job}',
+  });
+  const queueOldestJobAge = meter.createGauge(
+    TRANSPORT_METRIC_NAME.queueOldestJobAge,
+    {
+      description: 'Age of the oldest waiting job in a transport queue',
+      unit: 's',
+    },
+  );
+
+  return Object.freeze({
+    addActiveConcurrency(change: ActiveConcurrencyChange): void {
+      const delta: number = change.delta;
+      if (delta !== 1 && delta !== -1) {
+        throw new RangeError('delta must be exactly 1 or -1');
+      }
+      activeConcurrency.add(delta, transportAttributes(change));
+    },
+    observeQueue(observation: QueueObservation): void {
+      requireNonNegativeInteger(observation.depth, 'depth');
+      requireNonNegativeFinite(
+        observation.oldestJobAgeSeconds,
+        'oldestJobAgeSeconds',
+      );
+      const attributes = { queue_name: observation.queueName };
+      queueDepth.record(observation.depth, attributes);
+      queueOldestJobAge.record(observation.oldestJobAgeSeconds, attributes);
+    },
+    recordHandlerFinished(measurement: TransportHandlerMeasurement): void {
+      requireNonNegativeFinite(measurement.durationSeconds, 'durationSeconds');
+      const attributes = outcomeAttributes(measurement);
+      handlerExecutions.add(1, attributes);
+      handlerDuration.record(measurement.durationSeconds, attributes);
+    },
+    recordOutboxClaim(measurement: OutboxClaimMeasurement): void {
+      requireNonNegativeInteger(measurement.backlog, 'backlog');
+      requireNonNegativeInteger(measurement.batchSize, 'batchSize');
+      if (measurement.oldestAgeSeconds !== undefined) {
+        requireNonNegativeFinite(
+          measurement.oldestAgeSeconds,
+          'oldestAgeSeconds',
+        );
+      }
+      outboxClaimed.add(measurement.batchSize);
+      outboxClaimBatchSize.record(measurement.batchSize);
+      outboxBacklog.record(measurement.backlog);
+      if (measurement.oldestAgeSeconds !== undefined) {
+        outboxOldestAge.record(measurement.oldestAgeSeconds);
+      }
+    },
+    recordOutboxLeaseEvent(event: TransportLeaseEvent): void {
+      outboxLeaseEvents.add(1, { event });
+    },
+    recordOutboxPublish(measurement: TransportPublishMeasurement): void {
+      outboxPublish.add(1, outcomeAttributes(measurement));
+    },
+  });
+}

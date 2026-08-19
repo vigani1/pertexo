@@ -64,8 +64,12 @@ export default tseslint.config(
                 '@nestjs/*',
                 '@pertexo/api',
                 '@pertexo/api/*',
+                '@pertexo/artifact-store',
+                '@pertexo/artifact-store/*',
                 '@pertexo/observability',
                 '@pertexo/observability/*',
+                '@pertexo/queue',
+                '@pertexo/queue/*',
                 '@pertexo/worker',
                 '@pertexo/worker/*',
                 'bullmq',
@@ -92,8 +96,12 @@ export default tseslint.config(
                 '@nestjs/*',
                 '@pertexo/api',
                 '@pertexo/api/*',
+                '@pertexo/artifact-store',
+                '@pertexo/artifact-store/*',
                 '@pertexo/database',
                 '@pertexo/database/*',
+                '@pertexo/queue',
+                '@pertexo/queue/*',
                 '@pertexo/worker',
                 '@pertexo/worker/*',
                 'bullmq',
@@ -102,6 +110,66 @@ export default tseslint.config(
               ],
               message:
                 'The observability package cannot depend on application frameworks, persistence, queues, or deployable applications.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['packages/queue/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                '**/apps/**',
+                '@nestjs/*',
+                '@pertexo/api',
+                '@pertexo/api/*',
+                '@pertexo/artifact-store',
+                '@pertexo/artifact-store/*',
+                '@pertexo/database',
+                '@pertexo/database/*',
+                '@pertexo/worker',
+                '@pertexo/worker/*',
+                'drizzle-orm',
+              ],
+              message:
+                'The queue package owns transport contracts and adapters, not persistence, artifacts, frameworks, or applications.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['packages/artifact-store/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                '**/apps/**',
+                '@nestjs/*',
+                '@pertexo/api',
+                '@pertexo/api/*',
+                '@pertexo/database',
+                '@pertexo/database/*',
+                '@pertexo/queue',
+                '@pertexo/queue/*',
+                '@pertexo/worker',
+                '@pertexo/worker/*',
+                'bullmq',
+                'drizzle-orm',
+                'ioredis',
+              ],
+              message:
+                'The artifact-store package owns bounded object storage only, not persistence, queues, frameworks, or applications.',
             },
           ],
         },
@@ -156,6 +224,8 @@ export default tseslint.config(
             {
               group: [
                 '@pertexo/database',
+                '@pertexo/artifact-store',
+                '@pertexo/artifact-store/*',
                 '@pertexo/observability',
                 '@pertexo/observability/*',
                 '@pertexo/queue',

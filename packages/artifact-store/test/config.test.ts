@@ -1,0 +1,53 @@
+import { describe, expect, it } from 'vitest';
+
+import { parseArtifactStoreConfig } from '../src/config.js';
+
+const REQUIRED_ENVIRONMENT = {
+  ARTIFACT_STORE_ACCESS_KEY_ID: 'local-access',
+  ARTIFACT_STORE_BUCKET: 'pertexo-artifacts',
+  ARTIFACT_STORE_ENDPOINT: 'http://localhost:9090',
+  ARTIFACT_STORE_REGION: 'us-east-1',
+  ARTIFACT_STORE_SECRET_ACCESS_KEY: 'local-secret',
+} as const;
+
+describe('parseArtifactStoreConfig', () => {
+  it('returns immutable config with bounded defaults', () => {
+    const config = parseArtifactStoreConfig(REQUIRED_ENVIRONMENT);
+
+    expect(config).toEqual({
+      accessKeyId: 'local-access',
+      bucket: 'pertexo-artifacts',
+      endpoint: 'http://localhost:9090',
+      forcePathStyle: true,
+      maxObjectBytes: 10 * 1024 * 1024,
+      region: 'us-east-1',
+      requestTimeoutMs: 5_000,
+      secretAccessKey: 'local-secret',
+    });
+    expect(Object.isFrozen(config)).toBe(true);
+  });
+
+  it('parses explicit bounds and path style strictly', () => {
+    const config = parseArtifactStoreConfig({
+      ...REQUIRED_ENVIRONMENT,
+      ARTIFACT_MAX_BYTES: '4096',
+      ARTIFACT_STORE_FORCE_PATH_STYLE: 'false',
+      ARTIFACT_STORE_REQUEST_TIMEOUT_MS: '250',
+    });
+
+    expect(config.maxObjectBytes).toBe(4_096);
+    expect(config.forcePathStyle).toBe(false);
+    expect(config.requestTimeoutMs).toBe(250);
+  });
+
+  it.each([
+    {},
+    { ...REQUIRED_ENVIRONMENT, ARTIFACT_STORE_ENDPOINT: 'ftp://localhost' },
+    { ...REQUIRED_ENVIRONMENT, ARTIFACT_STORE_BUCKET: 'INVALID_BUCKET' },
+    { ...REQUIRED_ENVIRONMENT, ARTIFACT_MAX_BYTES: '0' },
+    { ...REQUIRED_ENVIRONMENT, ARTIFACT_STORE_FORCE_PATH_STYLE: 'yes' },
+    { ...REQUIRED_ENVIRONMENT, ARTIFACT_STORE_REQUEST_TIMEOUT_MS: '0' },
+  ])('rejects invalid environment %#', (environment) => {
+    expect(() => parseArtifactStoreConfig(environment)).toThrow();
+  });
+});
