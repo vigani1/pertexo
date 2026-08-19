@@ -76,6 +76,15 @@ export interface QueueHandlerObservation {
   readonly queueName: QueueName;
 }
 
+/** Activation seam implemented by the observability package with OpenTelemetry. */
+export interface QueueTraceRunner {
+  run<T>(
+    traceparent: string | undefined,
+    observation: QueueHandlerObservation,
+    operation: () => Promise<T>,
+  ): Promise<T>;
+}
+
 export type QueueHandlerFinishedObservation = QueueHandlerObservation &
   (
     | {
@@ -89,13 +98,24 @@ export type QueueHandlerFinishedObservation = QueueHandlerObservation &
       }
   );
 
+export interface QueueConsumerLifecycleObservation {
+  readonly event: 'drain_forced' | 'drain_graceful' | 'ready';
+  readonly queueName: QueueName;
+}
+
+export interface QueueStallObservation {
+  readonly queueName: QueueName;
+}
+
 /**
  * Dependency-free lifecycle seam for bounded operational instrumentation.
  * It deliberately exposes no message, workspace, run, or transport IDs.
  */
 export interface QueueConsumerObserver {
+  consumerLifecycle?(observation: QueueConsumerLifecycleObservation): void;
   handlerFinished(observation: QueueHandlerFinishedObservation): void;
   handlerStarted(observation: QueueHandlerObservation): void;
+  jobStalled?(observation: QueueStallObservation): void;
 }
 
 export type QueueConsumerOptions = Readonly<{
@@ -103,6 +123,7 @@ export type QueueConsumerOptions = Readonly<{
   readonly redisUrl: string;
   readonly handler: QueueJobHandler;
   readonly observer?: QueueConsumerObserver;
+  readonly traceRunner?: QueueTraceRunner;
   readonly readyTimeoutMs?: number;
   /** Test/deployment override; defaults to the selected queue class. */
   readonly timeoutMs?: number;
@@ -168,6 +189,7 @@ interface ParsedConsumerOptions {
   readonly drainTimeoutMs: number;
   readonly handler: QueueJobHandler;
   readonly observer: QueueConsumerObserver | undefined;
+  readonly traceRunner: QueueTraceRunner | undefined;
   readonly queueName: QueueName;
   readonly readyTimeoutMs: number;
   readonly redisUrl: string;
@@ -217,7 +239,10 @@ function parseConsumerOptions(
     (options.observer !== undefined &&
       (typeof options.observer !== 'object' ||
         typeof options.observer.handlerStarted !== 'function' ||
-        typeof options.observer.handlerFinished !== 'function'))
+        typeof options.observer.handlerFinished !== 'function')) ||
+    (options.traceRunner !== undefined &&
+      (typeof options.traceRunner !== 'object' ||
+        typeof options.traceRunner.run !== 'function'))
   ) {
     throw new QueueConsumerConfigurationError(
       'Queue consumer configuration is invalid',
@@ -230,6 +255,7 @@ function parseConsumerOptions(
     redisUrl: parseRedisUrl(parsed.data.redisUrl),
     handler: options.handler,
     observer: options.observer,
+    traceRunner: options.traceRunner,
     readyTimeoutMs: parsed.data.readyTimeoutMs ?? DEFAULT_READY_TIMEOUT_MS,
     timeoutMs: parsed.data.timeoutMs ?? defaults.timeoutMs,
     drainTimeoutMs: parsed.data.drainTimeoutMs ?? defaults.drainTimeoutMs,
@@ -274,9 +300,11 @@ export class BullMqQueueConsumer implements QueueConsumer {
   private readonly drainTimeoutMs: number;
   private readonly handler: QueueJobHandler;
   private readonly observer: QueueConsumerObserver | undefined;
+  private readonly queueName: QueueName;
   private readonly readyTimeoutMs: number;
   private readonly redis: Redis;
   private readonly timeoutMs: number;
+  private readonly traceRunner: QueueTraceRunner | undefined;
   private readonly worker: Worker<unknown, void>;
   private lifecycle: 'open' | 'draining' | 'closed' = 'open';
   private ready = false;
@@ -289,8 +317,10 @@ export class BullMqQueueConsumer implements QueueConsumer {
     this.drainTimeoutMs = parsed.drainTimeoutMs;
     this.handler = parsed.handler;
     this.observer = parsed.observer;
+    this.queueName = parsed.queueName;
     this.readyTimeoutMs = parsed.readyTimeoutMs;
     this.timeoutMs = parsed.timeoutMs;
+    this.traceRunner = parsed.traceRunner;
     this.redis = new Redis(parsed.redisUrl, {
       connectTimeout: parsed.readyTimeoutMs,
       // A worker must tolerate transient Redis outages. BullMQ also derives a
@@ -320,6 +350,12 @@ export class BullMqQueueConsumer implements QueueConsumer {
     this.worker.on('ready', () => {
       if (this.lifecycle === 'open') {
         this.ready = true;
+        this.notifyObserver(() => {
+          this.observer?.consumerLifecycle?.({
+            event: 'ready',
+            queueName: parsed.queueName,
+          });
+        });
       }
     });
     this.worker.on('error', () => {
@@ -327,6 +363,11 @@ export class BullMqQueueConsumer implements QueueConsumer {
     });
     this.worker.on('closed', () => {
       this.ready = false;
+    });
+    this.worker.on('stalled', () => {
+      this.notifyObserver(() => {
+        this.observer?.jobStalled?.({ queueName: parsed.queueName });
+      });
     });
   }
 
@@ -419,9 +460,15 @@ export class BullMqQueueConsumer implements QueueConsumer {
       if (execution.controller.signal.aborted) {
         throw this.abortReason(execution.controller.signal);
       }
-      return this.handler(delivery, {
-        signal: execution.controller.signal,
-      });
+      const operation = (): Promise<void> =>
+        this.handler(delivery, { signal: execution.controller.signal });
+      return (
+        this.traceRunner?.run(
+          parsed.data.traceparent,
+          { jobName: parsed.name, queueName },
+          operation,
+        ) ?? operation()
+      );
     });
     const aborted = execution.controller.signal.aborted
       ? Promise.reject(this.abortReason(execution.controller.signal))
@@ -574,6 +621,12 @@ export class BullMqQueueConsumer implements QueueConsumer {
     }
 
     this.lifecycle = 'closed';
+    this.notifyObserver(() => {
+      this.observer?.consumerLifecycle?.({
+        event: forced ? 'drain_forced' : 'drain_graceful',
+        queueName: this.queueName,
+      });
+    });
     return { abortedJobs, forced };
   }
 }

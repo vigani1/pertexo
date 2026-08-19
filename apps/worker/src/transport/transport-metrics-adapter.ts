@@ -6,9 +6,11 @@ import type {
 import { JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
 import type {
   QueueConsumerObserver,
+  QueueConsumerLifecycleObservation,
   QueueHandlerFailureClass,
   QueueHandlerFinishedObservation,
   QueueHandlerObservation,
+  QueueStallObservation,
 } from '@pertexo/queue';
 
 function transportJob(observation: QueueHandlerObservation): TransportJob {
@@ -60,6 +62,9 @@ export function createQueueMetricsObserver(
   metrics: TransportMetrics,
 ): QueueConsumerObserver {
   return Object.freeze({
+    consumerLifecycle(observation: QueueConsumerLifecycleObservation): void {
+      metrics.recordConsumerLifecycle(observation);
+    },
     handlerStarted(observation: QueueHandlerObservation): void {
       metrics.addActiveConcurrency({
         ...transportJob(observation),
@@ -86,6 +91,9 @@ export function createQueueMetricsObserver(
       } finally {
         metrics.addActiveConcurrency({ ...job, delta: -1 });
       }
+    },
+    jobStalled(observation: QueueStallObservation): void {
+      metrics.recordQueueStall(observation.queueName);
     },
   });
 }

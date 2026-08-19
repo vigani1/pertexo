@@ -3,17 +3,22 @@ import { metrics, type Attributes, type Meter } from '@opentelemetry/api';
 import './server-only.js';
 
 export const TRANSPORT_METRIC_NAME = Object.freeze({
+  artifactBytes: 'pertexo.transport.artifact.bytes',
+  artifactCount: 'pertexo.transport.artifact.count',
   activeConcurrency: 'pertexo.transport.handler.active',
+  consumerLifecycle: 'pertexo.transport.consumer.lifecycle',
   handlerDuration: 'pertexo.transport.handler.duration',
   handlerExecutions: 'pertexo.transport.handler.executions',
   outboxBacklog: 'pertexo.transport.outbox.backlog',
   outboxClaimBatchSize: 'pertexo.transport.outbox.claim.batch_size',
   outboxClaimed: 'pertexo.transport.outbox.claimed',
+  outboxDispatchLatency: 'pertexo.transport.outbox.dispatch_latency',
   outboxLeaseEvents: 'pertexo.transport.outbox.lease.events',
   outboxOldestAge: 'pertexo.transport.outbox.oldest_age',
   outboxPublish: 'pertexo.transport.outbox.publish',
   queueDepth: 'pertexo.transport.queue.depth',
   queueOldestJobAge: 'pertexo.transport.queue.oldest_job_age',
+  queueStalls: 'pertexo.transport.queue.stalls',
 } as const);
 
 export type TransportErrorClass =
@@ -80,6 +85,22 @@ export interface QueueObservation {
   readonly queueName: TransportJob['queueName'];
 }
 
+export interface ArtifactObservation {
+  readonly bytes: number;
+  readonly count: number;
+  readonly status: 'available' | 'deleted' | 'deleting' | 'pending';
+}
+
+export interface ConsumerLifecycleMeasurement {
+  readonly event: 'drain_forced' | 'drain_graceful' | 'ready';
+  readonly queueName: TransportJob['queueName'];
+}
+
+export type OutboxDispatchLatencyMeasurement = TransportJob & {
+  readonly durationSeconds: number;
+  readonly outcome: 'published' | 'stale';
+};
+
 export type ActiveConcurrencyChange = TransportJob & {
   /** Use 1 when a handler starts and -1 when it stops. */
   readonly delta: -1 | 1;
@@ -87,12 +108,18 @@ export type ActiveConcurrencyChange = TransportJob & {
 
 export interface TransportMetrics {
   addActiveConcurrency(change: ActiveConcurrencyChange): void;
+  observeArtifacts(observation: ArtifactObservation): void;
   observeOutbox(observation: OutboxObservation): void;
   observeQueue(observation: QueueObservation): void;
   recordHandlerFinished(measurement: TransportHandlerMeasurement): void;
+  recordConsumerLifecycle(measurement: ConsumerLifecycleMeasurement): void;
   recordOutboxClaim(measurement: OutboxClaimMeasurement): void;
   recordOutboxLeaseEvent(event: TransportLeaseEvent, count?: number): void;
   recordOutboxPublish(measurement: TransportPublishMeasurement): void;
+  recordOutboxDispatchLatency(
+    measurement: OutboxDispatchLatencyMeasurement,
+  ): void;
+  recordQueueStall(queueName: TransportJob['queueName']): void;
 }
 
 export interface TransportMetricsOptions {
@@ -170,6 +197,14 @@ export function createTransportMetrics(
       unit: '{event}',
     },
   );
+  const outboxDispatchLatency = meter.createHistogram(
+    TRANSPORT_METRIC_NAME.outboxDispatchLatency,
+    {
+      description:
+        'Seconds from outbox availability until durable publication acknowledgement',
+      unit: 's',
+    },
+  );
   const outboxLeaseEvents = meter.createCounter(
     TRANSPORT_METRIC_NAME.outboxLeaseEvents,
     {
@@ -209,6 +244,25 @@ export function createTransportMetrics(
       unit: 's',
     },
   );
+  const queueStalls = meter.createCounter(TRANSPORT_METRIC_NAME.queueStalls, {
+    description: 'BullMQ stalled deliveries by bounded queue name',
+    unit: '{event}',
+  });
+  const consumerLifecycle = meter.createCounter(
+    TRANSPORT_METRIC_NAME.consumerLifecycle,
+    {
+      description: 'Queue consumer readiness and bounded drain outcomes',
+      unit: '{event}',
+    },
+  );
+  const artifactCount = meter.createGauge(TRANSPORT_METRIC_NAME.artifactCount, {
+    description: 'Artifact metadata rows by lifecycle status',
+    unit: '{artifact}',
+  });
+  const artifactBytes = meter.createGauge(TRANSPORT_METRIC_NAME.artifactBytes, {
+    description: 'Artifact bytes by lifecycle status',
+    unit: 'By',
+  });
 
   return Object.freeze({
     addActiveConcurrency(change: ActiveConcurrencyChange): void {
@@ -217,6 +271,13 @@ export function createTransportMetrics(
         throw new RangeError('delta must be exactly 1 or -1');
       }
       activeConcurrency.add(delta, transportAttributes(change));
+    },
+    observeArtifacts(observation: ArtifactObservation): void {
+      requireNonNegativeInteger(observation.count, 'count');
+      requireNonNegativeInteger(observation.bytes, 'bytes');
+      const attributes = { status: observation.status };
+      artifactCount.record(observation.count, attributes);
+      artifactBytes.record(observation.bytes, attributes);
     },
     observeOutbox(observation: OutboxObservation): void {
       requireNonNegativeInteger(observation.backlog, 'backlog');
@@ -247,6 +308,12 @@ export function createTransportMetrics(
       handlerExecutions.add(1, attributes);
       handlerDuration.record(measurement.durationSeconds, attributes);
     },
+    recordConsumerLifecycle(measurement: ConsumerLifecycleMeasurement): void {
+      consumerLifecycle.add(1, {
+        event: measurement.event,
+        queue_name: measurement.queueName,
+      });
+    },
     recordOutboxClaim(measurement: OutboxClaimMeasurement): void {
       requireNonNegativeInteger(measurement.batchSize, 'batchSize');
       outboxClaimed.add(measurement.batchSize);
@@ -260,6 +327,18 @@ export function createTransportMetrics(
     },
     recordOutboxPublish(measurement: TransportPublishMeasurement): void {
       outboxPublish.add(1, outcomeAttributes(measurement));
+    },
+    recordOutboxDispatchLatency(
+      measurement: OutboxDispatchLatencyMeasurement,
+    ): void {
+      requireNonNegativeFinite(measurement.durationSeconds, 'durationSeconds');
+      outboxDispatchLatency.record(measurement.durationSeconds, {
+        ...transportAttributes(measurement),
+        outcome: measurement.outcome,
+      });
+    },
+    recordQueueStall(queueName: TransportJob['queueName']): void {
+      queueStalls.add(1, { queue_name: queueName });
     },
   });
 }

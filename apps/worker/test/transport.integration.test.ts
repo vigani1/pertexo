@@ -14,6 +14,7 @@ import {
   parseDatabaseConfig,
 } from '@pertexo/database';
 import type { TransportMetrics } from '@pertexo/observability/transport-metrics';
+import { createQueueTraceRunner } from '@pertexo/observability/queue-tracing';
 import {
   createQueueConsumer,
   createQueueProducer,
@@ -52,6 +53,7 @@ const redisUrl =
   process.env.REDIS_URL ?? 'redis://:pertexo-local-redis@localhost:6379/0';
 
 const workspaceId = randomUUID();
+const TRACEPARENT = `00-${'a'.repeat(32)}-${'b'.repeat(16)}-01`;
 const apiDatabase = createWorkspaceDatabase(
   parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
 );
@@ -63,12 +65,16 @@ const proofIds = new Set<string>();
 function capturingTransportMetrics(): TransportMetrics {
   return {
     addActiveConcurrency: vi.fn(),
+    observeArtifacts: vi.fn(),
     observeOutbox: vi.fn(),
     observeQueue: vi.fn(),
     recordHandlerFinished: vi.fn(),
+    recordConsumerLifecycle: vi.fn(),
     recordOutboxClaim: vi.fn(),
     recordOutboxLeaseEvent: vi.fn(),
     recordOutboxPublish: vi.fn(),
+    recordOutboxDispatchLatency: vi.fn(),
+    recordQueueStall: vi.fn(),
   };
 }
 
@@ -118,9 +124,15 @@ async function applyLedgerFixture(): Promise<void> {
   }
 }
 
-async function insertRunEvent(id = randomUUID()): Promise<string> {
+async function insertRunEvent(
+  id = randomUUID(),
+  traceparent?: string,
+): Promise<string> {
   proofIds.add(id);
-  const payload = { runId: randomUUID() };
+  const payload = {
+    runId: randomUUID(),
+    ...(traceparent ? { traceparent } : {}),
+  };
   await apiDatabase.withWorkspace(workspaceId, (transaction) =>
     insertOutboxEvent(transaction, {
       aggregateId: payload.runId,
@@ -174,6 +186,7 @@ async function consumeProof(
     nodeRunId: string;
     outboxEventId: string;
     runId: string;
+    traceparent?: string;
   }>,
 ) {
   return consumeInboxMessage(
@@ -206,6 +219,9 @@ async function consumeProof(
           attemptId: providerIntent.attemptId,
           nodeRunId: providerIntent.nodeRunId,
           runId: providerIntent.runId,
+          ...(providerIntent.traceparent
+            ? { traceparent: providerIntent.traceparent }
+            : {}),
         };
         await insertOutboxEvent(transaction, {
           aggregateId: providerIntent.attemptId,
@@ -364,7 +380,7 @@ describeIntegration(
     });
 
     it('reclaims enqueue-before-mark and Bull redelivery becomes an inbox no-op', async () => {
-      const id = await insertRunEvent();
+      const id = await insertRunEvent(randomUUID(), TRACEPARENT);
       const logicalAttemptId = randomUUID();
       const providerOutboxId = randomUUID();
       const providerAttemptId = randomUUID();
@@ -406,6 +422,22 @@ describeIntegration(
       let providerDeliveries = 0;
       const consumerMetrics = capturingTransportMetrics();
       const consumerObserver = createQueueMetricsObserver(consumerMetrics);
+      const otelTraceRunner = createQueueTraceRunner();
+      const activatedTraceparents: string[] = [];
+      const traceRunner = {
+        run: async <T>(
+          traceparent: string | undefined,
+          observation: {
+            readonly jobName: string;
+            readonly queueName: string;
+          },
+          operation: () => Promise<T>,
+        ): Promise<T> => {
+          if (traceparent !== undefined)
+            activatedTraceparents.push(traceparent);
+          return otelTraceRunner.run(traceparent, observation, operation);
+        },
+      };
       const coordinatorHandler: QueueJobHandler = async (delivery) => {
         if (delivery.transport.jobId !== `outbox-${id}`) return;
         coordinatorDeliveries += 1;
@@ -415,6 +447,7 @@ describeIntegration(
           nodeRunId: providerNodeRunId,
           outboxEventId: providerOutboxId,
           runId: providerRunId,
+          traceparent: TRACEPARENT,
         });
         receiptStatuses.push(result.status);
         if (result.status === 'processed') {
@@ -428,12 +461,14 @@ describeIntegration(
         observer: consumerObserver,
         queueName: QUEUE_NAME.workflowCoordinator,
         redisUrl,
+        traceRunner,
       });
       const secondCoordinator = createQueueConsumer({
         handler: coordinatorHandler,
         observer: consumerObserver,
         queueName: QUEUE_NAME.workflowCoordinator,
         redisUrl,
+        traceRunner,
       });
       const providerConsumer = createQueueConsumer({
         handler: async (delivery) => {
@@ -496,6 +531,7 @@ describeIntegration(
         observer: consumerObserver,
         queueName: QUEUE_NAME.nodeAttempts,
         redisUrl,
+        traceRunner,
       });
       try {
         await Promise.all([
@@ -539,6 +575,8 @@ describeIntegration(
         expect(providerDeliveries).toBe(2);
         expect(receiptStatuses).toEqual(['processed', 'duplicate']);
         expect(providerRequests).toBe(2);
+        expect(activatedTraceparents.length).toBeGreaterThanOrEqual(4);
+        expect(new Set(activatedTraceparents)).toEqual(new Set([TRACEPARENT]));
         expect(consumerMetrics.recordHandlerFinished).toHaveBeenCalledWith(
           expect.objectContaining({ outcome: 'completed' }),
         );

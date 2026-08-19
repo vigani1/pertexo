@@ -231,6 +231,65 @@ describe('createTransportMetrics', () => {
     ]);
   });
 
+  it('records stalls, dispatch latency, lifecycle, and artifact capacity with bounded labels', () => {
+    const harness = metricHarness();
+    const metrics = createTransportMetrics({ meter: harness.meter });
+
+    metrics.recordQueueStall('node-attempts');
+    metrics.recordConsumerLifecycle({
+      event: 'drain_graceful',
+      queueName: 'node-attempts',
+    });
+    metrics.recordOutboxDispatchLatency({
+      durationSeconds: 1.25,
+      jobName: 'execute-node-attempt',
+      outcome: 'published',
+      queueName: 'node-attempts',
+    });
+    metrics.observeArtifacts({ bytes: 4096, count: 3, status: 'available' });
+
+    expect(values(harness.counters, TRANSPORT_METRIC_NAME.queueStalls)).toEqual(
+      [{ attributes: { queue_name: 'node-attempts' }, value: 1 }],
+    );
+    expect(
+      values(harness.counters, TRANSPORT_METRIC_NAME.consumerLifecycle),
+    ).toEqual([
+      {
+        attributes: {
+          event: 'drain_graceful',
+          queue_name: 'node-attempts',
+        },
+        value: 1,
+      },
+    ]);
+    expect(
+      values(harness.histograms, TRANSPORT_METRIC_NAME.outboxDispatchLatency),
+    ).toEqual([
+      {
+        attributes: {
+          job_name: 'execute-node-attempt',
+          outcome: 'published',
+          queue_name: 'node-attempts',
+        },
+        value: 1.25,
+      },
+    ]);
+    expect(values(harness.gauges, TRANSPORT_METRIC_NAME.artifactCount)).toEqual(
+      [{ attributes: { status: 'available' }, value: 3 }],
+    );
+    expect(values(harness.gauges, TRANSPORT_METRIC_NAME.artifactBytes)).toEqual(
+      [{ attributes: { status: 'available' }, value: 4096 }],
+    );
+    const serialized = JSON.stringify([
+      ...harness.counters.values(),
+      ...harness.gauges.values(),
+      ...harness.histograms.values(),
+    ]);
+    expect(serialized).not.toContain('workspace_id');
+    expect(serialized).not.toContain('artifact_id');
+    expect(serialized).not.toContain('outbox_event_id');
+  });
+
   it.each([
     () => {
       createTransportMetrics().recordOutboxClaim({ batchSize: -1 });

@@ -316,6 +316,16 @@ export class OutboxDispatcher {
         this.database.markPublished(event.id, event.leaseToken),
         this.options.operationTimeoutMillis,
       );
+      this.observeMetrics(() => {
+        this.metrics.recordOutboxDispatchLatency({
+          ...currentJob,
+          durationSeconds: Math.max(
+            0,
+            (Date.now() - event.availableAt.getTime()) / 1_000,
+          ),
+          outcome: marked ? 'published' : 'stale',
+        });
+      });
       if (!marked) {
         this.observeMetrics(() => {
           this.metrics.recordOutboxLeaseEvent('expired');

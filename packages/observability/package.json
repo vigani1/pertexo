@@ -28,6 +28,11 @@
       "types": "./dist/transport-metrics.d.ts",
       "node": "./dist/transport-metrics.js",
       "default": "./dist/transport-metrics.js"
+    },
+    "./queue-tracing": {
+      "types": "./dist/queue-tracing.d.ts",
+      "node": "./dist/queue-tracing.js",
+      "default": "./dist/queue-tracing.js"
     }
   },
   "browser": {
@@ -35,7 +40,8 @@
     "./dist/index.js": false,
     "./dist/logger.js": false,
     "./dist/telemetry.js": false,
-    "./dist/transport-metrics.js": false
+    "./dist/transport-metrics.js": false,
+    "./dist/queue-tracing.js": false
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

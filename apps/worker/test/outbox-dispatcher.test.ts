@@ -90,12 +90,16 @@ function boundaries(events: readonly LeasedOutboxEvent[] = [event()]): {
 function transportMetrics(): TransportMetrics {
   return {
     addActiveConcurrency: vi.fn(),
+    observeArtifacts: vi.fn(),
     observeOutbox: vi.fn(),
     observeQueue: vi.fn(),
     recordHandlerFinished: vi.fn(),
+    recordConsumerLifecycle: vi.fn(),
     recordOutboxClaim: vi.fn(),
     recordOutboxLeaseEvent: vi.fn(),
     recordOutboxPublish: vi.fn(),
+    recordOutboxDispatchLatency: vi.fn(),
+    recordQueueStall: vi.fn(),
   };
 }
 
@@ -159,6 +163,14 @@ describe('outbox dispatcher', () => {
       outcome: 'published',
       queueName: 'workflow-coordinator',
     });
+    const latency = vi.mocked(metrics.recordOutboxDispatchLatency).mock
+      .calls[0]?.[0];
+    expect(latency).toMatchObject({
+      jobName: JOB_NAME.advanceWorkflowRun,
+      outcome: 'published',
+      queueName: 'workflow-coordinator',
+    });
+    expect(latency?.durationSeconds).toBeTypeOf('number');
     expect(metrics.observeQueue).toHaveBeenCalledWith({
       depth: 3,
       oldestJobAgeSeconds: 2,

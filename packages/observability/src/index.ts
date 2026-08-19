@@ -11,6 +11,12 @@ export {
   createOpenTelemetrySdk,
   createTelemetryLifecycle,
 } from './telemetry.js';
+export { createQueueTraceRunner } from './queue-tracing.js';
+export type {
+  QueueTraceObservation,
+  QueueTraceRunner,
+  QueueTraceRunnerOptions,
+} from './queue-tracing.js';
 export type {
   TelemetryLifecycle,
   TelemetrySdk,

@@ -51,6 +51,7 @@ export {
 export type {
   QueueConsumer,
   QueueConsumerCloseResult,
+  QueueConsumerLifecycleObservation,
   QueueConsumerOptions,
   QueueDelivery,
   QueueDeliveryTransport,
@@ -60,4 +61,6 @@ export type {
   QueueHandlerFinishedObservation,
   QueueHandlerObservation,
   QueueJobHandler,
+  QueueStallObservation,
+  QueueTraceRunner,
 } from './consumer.js';

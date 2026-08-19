@@ -9,12 +9,16 @@ import { createQueueMetricsObserver } from '../src/transport/transport-metrics-a
 function metrics(): TransportMetrics {
   return {
     addActiveConcurrency: vi.fn(),
+    observeArtifacts: vi.fn(),
     observeOutbox: vi.fn(),
     observeQueue: vi.fn(),
     recordHandlerFinished: vi.fn(),
+    recordConsumerLifecycle: vi.fn(),
     recordOutboxClaim: vi.fn(),
     recordOutboxLeaseEvent: vi.fn(),
     recordOutboxPublish: vi.fn(),
+    recordOutboxDispatchLatency: vi.fn(),
+    recordQueueStall: vi.fn(),
   };
 }
 
@@ -104,6 +108,25 @@ describe('queue transport metrics adapter', () => {
     expect(selected.addActiveConcurrency).toHaveBeenLastCalledWith({
       ...job,
       delta: -1,
+    });
+  });
+
+  it('maps consumer stalls and lifecycle without dynamic identifiers', () => {
+    const selected = metrics();
+    const observer = createQueueMetricsObserver(selected);
+
+    observer.jobStalled?.({ queueName: QUEUE_NAME.nodeAttempts });
+    observer.consumerLifecycle?.({
+      event: 'drain_graceful',
+      queueName: QUEUE_NAME.nodeAttempts,
+    });
+
+    expect(selected.recordQueueStall).toHaveBeenCalledWith(
+      QUEUE_NAME.nodeAttempts,
+    );
+    expect(selected.recordConsumerLifecycle).toHaveBeenCalledWith({
+      event: 'drain_graceful',
+      queueName: QUEUE_NAME.nodeAttempts,
     });
   });
 });
