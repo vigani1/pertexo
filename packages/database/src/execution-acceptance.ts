@@ -1,0 +1,226 @@
+import { randomUUID } from 'node:crypto';
+
+import { and, eq } from 'drizzle-orm';
+import { z } from 'zod';
+
+import { canonicalOutboxPayloadChecksum, insertOutboxEvent } from './outbox.js';
+import {
+  idempotencyRecords,
+  runCheckpoints,
+  runEvents,
+  workflowRuns,
+} from './schema.js';
+import type { WorkspaceTransaction } from './workspace.js';
+
+const sha256Schema = z.string().regex(/^[0-9a-f]{64}$/u);
+const traceparentSchema = z
+  .string()
+  .regex(/^00-[\da-f]{32}-[\da-f]{16}-[\da-f]{2}$/u)
+  .refine((value) => value.slice(3, 35) !== '0'.repeat(32))
+  .refine((value) => value.slice(36, 52) !== '0'.repeat(16))
+  .optional();
+
+const acceptWorkflowRunInputSchema = z
+  .object({
+    engineVersion: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/u),
+    keyHash: sha256Schema,
+    operation: z.literal('workflow.run.accept'),
+    requestHash: sha256Schema,
+    scope: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u),
+    traceparent: traceparentSchema,
+    triggerType: z.enum(['api', 'manual', 'replay', 'schedule', 'webhook']),
+    workflowId: z.uuid(),
+    workflowVersionId: z.uuid(),
+  })
+  .strict();
+
+const resultRefSchema = z.object({ outboxEventId: z.uuid() }).strict();
+const workflowRunStatusSchema = z.enum([
+  'cancelled',
+  'failed',
+  'queued',
+  'running',
+  'succeeded',
+  'waiting',
+]);
+
+export type AcceptWorkflowRunInput = Readonly<
+  z.input<typeof acceptWorkflowRunInputSchema>
+>;
+
+export type AcceptedWorkflowRun = Readonly<{
+  acceptedAt: Date;
+  duplicate: boolean;
+  outboxEventId: string;
+  runId: string;
+  status: z.output<typeof workflowRunStatusSchema>;
+}>;
+
+export class IdempotencyRequestConflictError extends Error {
+  public override readonly name = 'IdempotencyRequestConflictError';
+
+  public constructor() {
+    super('request.idempotency_conflict');
+  }
+}
+
+export class IdempotencyRecordCorruptError extends Error {
+  public override readonly name = 'IdempotencyRecordCorruptError';
+
+  public constructor() {
+    super('Persisted workflow run acceptance is incomplete or invalid');
+  }
+}
+
+async function readExistingAcceptance(
+  transaction: WorkspaceTransaction,
+  input: z.output<typeof acceptWorkflowRunInputSchema>,
+): Promise<AcceptedWorkflowRun> {
+  const rows = await transaction.db
+    .select({
+      requestHash: idempotencyRecords.requestHash,
+      resourceId: idempotencyRecords.resourceId,
+      resultRef: idempotencyRecords.resultRef,
+      idempotencyStatus: idempotencyRecords.status,
+      acceptedAt: workflowRuns.createdAt,
+      runStatus: workflowRuns.status,
+    })
+    .from(idempotencyRecords)
+    .leftJoin(
+      workflowRuns,
+      and(
+        eq(workflowRuns.workspaceId, idempotencyRecords.workspaceId),
+        eq(workflowRuns.id, idempotencyRecords.resourceId),
+      ),
+    )
+    .where(
+      and(
+        eq(idempotencyRecords.workspaceId, transaction.workspaceId),
+        eq(idempotencyRecords.operation, input.operation),
+        eq(idempotencyRecords.scope, input.scope),
+        eq(idempotencyRecords.keyHash, input.keyHash),
+      ),
+    )
+    .limit(1);
+  const row = rows[0];
+
+  if (row === undefined) {
+    throw new IdempotencyRecordCorruptError();
+  }
+  if (row.requestHash !== input.requestHash) {
+    throw new IdempotencyRequestConflictError();
+  }
+  const resultRef = resultRefSchema.safeParse(row.resultRef);
+  const runStatus = workflowRunStatusSchema.safeParse(row.runStatus);
+  if (
+    row.idempotencyStatus !== 'completed' ||
+    row.acceptedAt === null ||
+    !resultRef.success ||
+    !runStatus.success
+  ) {
+    throw new IdempotencyRecordCorruptError();
+  }
+
+  return Object.freeze({
+    acceptedAt: row.acceptedAt,
+    duplicate: true,
+    outboxEventId: resultRef.data.outboxEventId,
+    runId: row.resourceId,
+    status: runStatus.data,
+  });
+}
+
+export async function acceptWorkflowRun(
+  transaction: WorkspaceTransaction,
+  input: AcceptWorkflowRunInput,
+): Promise<AcceptedWorkflowRun> {
+  const parsed = acceptWorkflowRunInputSchema.parse(input);
+  const idempotencyRecordId = randomUUID();
+  const runId = randomUUID();
+  const outboxEventId = randomUUID();
+  const resultRef = { outboxEventId } as const;
+
+  const claimed = await transaction.db
+    .insert(idempotencyRecords)
+    .values({
+      id: idempotencyRecordId,
+      workspaceId: transaction.workspaceId,
+      operation: parsed.operation,
+      scope: parsed.scope,
+      keyHash: parsed.keyHash,
+      requestHash: parsed.requestHash,
+      status: 'completed',
+      resourceId: runId,
+      resultRef,
+    })
+    .onConflictDoNothing({
+      target: [
+        idempotencyRecords.workspaceId,
+        idempotencyRecords.operation,
+        idempotencyRecords.scope,
+        idempotencyRecords.keyHash,
+      ],
+    })
+    .returning({ id: idempotencyRecords.id });
+
+  if (claimed.length === 0) {
+    return readExistingAcceptance(transaction, parsed);
+  }
+
+  const insertedRuns = await transaction.db
+    .insert(workflowRuns)
+    .values({
+      id: runId,
+      workspaceId: transaction.workspaceId,
+      workflowId: parsed.workflowId,
+      workflowVersionId: parsed.workflowVersionId,
+      triggerType: parsed.triggerType,
+      status: 'queued',
+    })
+    .returning({ acceptedAt: workflowRuns.createdAt });
+  const insertedRun = insertedRuns[0];
+  if (insertedRun === undefined) {
+    throw new IdempotencyRecordCorruptError();
+  }
+  await transaction.db.insert(runEvents).values({
+    workspaceId: transaction.workspaceId,
+    workflowRunId: runId,
+    sequence: 1,
+    type: 'run.accepted',
+    payload: {},
+  });
+  await transaction.db.insert(runCheckpoints).values({
+    workflowRunId: runId,
+    workspaceId: transaction.workspaceId,
+    revision: 0,
+    engineVersion: parsed.engineVersion,
+    schedulerState: {},
+  });
+
+  const payload = {
+    schemaVersion: 1,
+    workspaceId: transaction.workspaceId,
+    outboxEventId,
+    runId,
+    ...(parsed.traceparent === undefined
+      ? {}
+      : { traceparent: parsed.traceparent }),
+  } as const;
+  await insertOutboxEvent(transaction, {
+    id: outboxEventId,
+    jobName: 'advance-workflow-run',
+    schemaVersion: 1,
+    aggregateType: 'workflow-run',
+    aggregateId: runId,
+    payload,
+    payloadChecksum: canonicalOutboxPayloadChecksum(payload),
+  });
+
+  return Object.freeze({
+    acceptedAt: insertedRun.acceptedAt,
+    duplicate: false,
+    outboxEventId,
+    runId,
+    status: 'queued',
+  });
+}
