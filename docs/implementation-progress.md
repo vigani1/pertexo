@@ -1,6 +1,6 @@
 # Backend Implementation Progress
 
-Last updated: 2026-08-18
+Last updated: 2026-08-20
 
 This file tracks delivery against
 [the authoritative backend plan](./workflow-platform-backend-plan.md). A phase
@@ -15,7 +15,7 @@ not complete a phase.
 | Phase 0A — repository and process skeleton | Complete | ADR 001; commits `8d064cd`, `c80a70c`; `pnpm check`; compiled API and worker smoke checks |
 | Phase 0B — PostgreSQL tenancy and RLS proof | Complete | ADR 003; commits `bad4b9e`, `9b4f6a4`, `a3bec51`, `6458fd4`; PostgreSQL 18.6 clean migration; 31 RLS integration tests |
 | Phase 0C — HTTP and observability foundation | Complete | Commit `e8093d2`; 47 API/worker/observability tests; compiled role and OTLP trace/metric smoke checks |
-| Phase 0D — queue, outbox, and duplicate-delivery proof | In progress | ADR 005 accepted (`ec8cba7`); Redis and S3-compatible local infrastructure verified |
+| Phase 0D — queue, outbox, and duplicate-delivery proof | Complete | ADRs 005–006; migration head `0006_execution_vocabulary.sql`; 158 unit, 76 real integration, and one destructive recovery assertion |
 | Phase 0E — execution durability proofs and engine gate | Not started | — |
 | Phase 1 — identity/workspace vertical slice | Not started | — |
 | Phase 2 — workflow authoring vertical slice | Not started | — |
@@ -140,25 +140,95 @@ Evidence:
 
 ## Phase 0D — Queue, outbox, and duplicate-delivery proof
 
-Status: **In progress**
+Status: **Complete**
 
 - [x] Accept ADR 005 before execution persistence.
-- [ ] Add local Redis and BullMQ infrastructure.
-- [ ] Add versioned identifier-only job contracts.
-- [ ] Implement transactional outbox claiming and publication.
-- [ ] Implement idempotent consumer/inbox behavior.
-- [ ] Prove duplicate delivery cannot duplicate logical attempts, events, usage,
+- [x] Add local Redis and BullMQ infrastructure.
+- [x] Add versioned identifier-only job contracts.
+- [x] Implement transactional outbox claiming and publication.
+- [x] Implement idempotent consumer/inbox behavior.
+- [x] Prove duplicate delivery cannot duplicate logical attempts, events, usage,
       or provider calls beyond documented retry semantics.
-- [ ] Add local S3-compatible storage and bounded artifact plumbing.
+- [x] Add local S3-compatible storage and bounded artifact plumbing, including
+      transactional finalize metadata and unfinalized-upload expiry.
+- [x] Align persisted execution statuses with the plan's normative vocabulary.
+- [x] Wire worker-start and artifact inventory metrics to production state.
 
-Interim evidence:
+Evidence:
+
+Completion review on 2026-08-20 kept this checkpoint open until real
+queued-run/event/outbox acceptance, transactional artifact availability/expiry,
+propagated queue trace context, checksum-mismatch audit facts, and the remaining
+required operational metrics were all backed by executable evidence. Those
+gaps are resolved below.
 
 - ADR: [ADR 005](./adr/005-postgresql-authority-bullmq-outbox-engine-gate.md)
-- Commit: `ec8cba7`
+- Commits: `ec8cba7`, `737017d`, `7d08961`, `d7febb4`, `b5e0382`,
+  `cd58c6b`, `cc75181`, `164bc01`, `a8b3ce7`, `693d6bc`, `c472347`,
+  `bd7f120`, `98a3e7a`, `68c8de4`, `b59b22d`, `4b9321a`, `c5b77be`,
+  `7657d00`, `b63a18c`, `0d034d0`, `a29164e`
 - Infrastructure: exact `redis:8.2.8-alpine` and `adobe/s3mock:5.1.0`
   images start healthy on loopback-only ports; Redis rejects unauthenticated
   access, reports AOF `everysec` plus `noeviction`, and retained a probe value
   across a container restart
+- Persistence: a zero-state migration applied `0000_rls_probe.sql` through
+  `0006_execution_vocabulary.sql`; forced-RLS outbox, inbox, artifact, audit,
+  workflow-run, event, checkpoint, and idempotency tables; a
+  non-superuser/non-`BYPASSRLS` dispatcher role with outbox `SELECT` and
+  lifecycle-column `UPDATE` only; artifact serving roles have lifecycle-column
+  `UPDATE` only and cannot rewrite identity/integrity metadata; 4 KiB
+  database-enforced queue payloads; canonical SHA-256 checksums; bounded
+  `SKIP LOCKED` claims; conditional lease-token publication; retry,
+  expiry/reclaim, and atomic claim-time/release-time exhaustion behavior
+- Contracts/runtime: four fixed queues and jobs with strict versioned Zod
+  identifier-only envelopes; package-owned producer/consumer defaults;
+  consumer timeouts, abort, bounded drain, and unrecoverable-error policy;
+  worker startup gates the database and Redis before starting claims and closes
+  all dependencies on bootstrap failure
+- Duplicate proof: real PostgreSQL, Redis, BullMQ workers, and a fake HTTP
+  provider prove inbox checksum conflicts, concurrent redelivery, rollback,
+  one logical attempt/event/usage/provider intent, same-key safe retry with two
+  HTTP requests but one accepted effect, and unsafe ambiguity with one request,
+  persisted `outcome_unknown`, and no automatic retry
+- Request acceptance: the production database use case atomically commits a
+  queued workflow run, sequence-1 acceptance event, revision-0 checkpoint, and
+  `advance-workflow-run` outbox row; rollback, exact retry, request-hash
+  conflict, concurrency, RLS, and privilege tests use real PostgreSQL
+- Artifacts: production metadata transitions pending uploads to available only
+  after exact S3 checksum/metadata/scope validation; database-clock expiry,
+  concurrent `SKIP LOCKED` discovery, crash-safe cleanup resumption, and durable
+  deletion are proven; BullMQ receives only workspace, artifact, outbox, and
+  schema identifiers, never bytes, graphs, secrets, checksums, media types, or
+  signed URLs
+- Tracing/metrics: validated W3C trace context is extracted and activated around
+  the real queue-handler race, including coordinator/provider redelivery;
+  fixed-cardinality OpenTelemetry instruments cover outbox backlog/age, claim
+  size, publication/error class, dispatch latency, lease events, queue
+  depth/age/stalls, consumer readiness/drain, active handlers, handler outcomes,
+  duration, and artifact count/bytes; metric failures cannot alter delivery
+- Runtime metrics: every successful worker composition records one unlabeled
+  process-start counter, so restarts are countable; artifact gauges aggregate
+  real tenant-scoped PostgreSQL rows for all lifecycle statuses through forced
+  RLS after successful `expire-artifacts` publication, with bounded
+  failure-isolated runtime wiring and Postgres/S3/Redis composition evidence
+- Audit: a duplicate inbox message with a different checksum never enters
+  business work, commits a separate tenant-scoped security fact, and then fails
+  closed; cross-workspace reads remain hidden by forced RLS
+- Verification: `pnpm check`; `pnpm install --frozen-lockfile`;
+  `pnpm test:integration`; `pnpm --filter @pertexo/worker test:resilience`;
+  158 unit assertions, 69 PostgreSQL integration assertions, two object-store
+  integration assertions, five worker composition assertions, and one
+  destructive service-loss proof
+- Failure injection: Redis DB 15 was erased after enqueue-before-mark and the
+  durable outbox recovered in 1,123.26 ms; Redis outage was detected in 511.70
+  ms and recovered in 5,714.29 ms with AOF retaining an existing job;
+  PostgreSQL outage was detected in 1.14 ms and recovered in 5,708.74 ms;
+  dispatcher drain closed in 0.89 ms, forced active-consumer drain in 55.32 ms,
+  and no new row was claimed after readiness fell
+- Cleanup/review: the resilience fixture restores PostgreSQL/Redis in `finally`,
+  leaves isolated Redis DB 15 empty, and re-verifies `PONG` plus `pg_isready`;
+  focused artifact, queue, metrics, database, runtime, and resilience reviews
+  resolved all blocker/high findings before completion
 
 ## Phase 0E — Execution durability proofs and engine gate
 

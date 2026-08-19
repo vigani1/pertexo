@@ -178,6 +178,34 @@ duplicate unsafe effects, and the supported expression/JSONata subset stays
 bounded and deterministic. Event/SSE replay and observability context must
 remain explainable after recovery.
 
+### Phase 0D implementation evidence
+
+Phase 0D passed on 2026-08-20 against PostgreSQL 18.6, Redis 8.2.8,
+BullMQ 6.1.2, and migration head `0006_execution_vocabulary.sql`. The executable
+fixtures cover atomic acceptance/outbox rollback and commit, bounded concurrent
+claims, enqueue-before-mark recovery, lease ownership and exhaustion, inbox
+checksum and request-hash conflicts, safe provider retry with a stable key,
+unsafe `outcome_unknown`, durable artifact finalize/expiry, trace propagation,
+tenant-scoped checksum audit facts, and reference-only jobs.
+
+The destructive fixture erased isolated Redis DB 15 after enqueue-before-mark,
+stopped/restarted Redis, and stopped/restarted PostgreSQL. It recovered the
+erased queue from the durable outbox in 1,123.26 ms, detected Redis loss in
+511.70 ms and recovered in 5,714.29 ms, and detected PostgreSQL loss in 1.14 ms
+and recovered in 5,708.74 ms. Redis AOF retained an independently enqueued job.
+Readiness fell before drain; the dispatcher admitted no new claim, closed in
+0.89 ms, and a forced active consumer closed in 55.32 ms. Cleanup restored both
+services healthy and left the isolated Redis database empty.
+
+The operational metric seams now report fixed-cardinality outbox backlog/age,
+claim size, publication/error class, lease expiry/reclaim/exhaustion, queue
+depth/oldest age/stalls, dispatch latency, consumer readiness/drain, worker
+process starts/restarts, active handler count, completion/failure, duration,
+and tenant-scoped artifact count/bytes. The full commands and assertion counts
+are recorded in
+`docs/implementation-progress.md`. This evidence completes Phase 0D only; the
+custom-engine decision remains gated on every Phase 0E proof below.
+
 ## Custom-engine go/no-go and Temporal fallback
 
 The custom engine proceeds only if all execution spikes pass with measured,
