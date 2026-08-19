@@ -12,6 +12,8 @@ set -Eeuo pipefail
 : "${POSTGRES_API_RUNTIME_PASSWORD:?POSTGRES_API_RUNTIME_PASSWORD is required}"
 : "${POSTGRES_WORKER_RUNTIME_USER:?POSTGRES_WORKER_RUNTIME_USER is required}"
 : "${POSTGRES_WORKER_RUNTIME_PASSWORD:?POSTGRES_WORKER_RUNTIME_PASSWORD is required}"
+: "${POSTGRES_DISPATCHER_RUNTIME_USER:?POSTGRES_DISPATCHER_RUNTIME_USER is required}"
+: "${POSTGRES_DISPATCHER_RUNTIME_PASSWORD:?POSTGRES_DISPATCHER_RUNTIME_PASSWORD is required}"
 
 # The official image runs this script as the bootstrap superuser only when the
 # data directory is empty. Identifiers and passwords are passed as psql
@@ -29,6 +31,8 @@ psql \
   --set api_runtime_password="$POSTGRES_API_RUNTIME_PASSWORD" \
   --set worker_runtime_user="$POSTGRES_WORKER_RUNTIME_USER" \
   --set worker_runtime_password="$POSTGRES_WORKER_RUNTIME_PASSWORD" \
+  --set dispatcher_runtime_user="$POSTGRES_DISPATCHER_RUNTIME_USER" \
+  --set dispatcher_runtime_password="$POSTGRES_DISPATCHER_RUNTIME_PASSWORD" \
   --set database_name="$POSTGRES_DB" <<'SQL'
 SELECT format(
   'CREATE ROLE %I NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS',
@@ -64,6 +68,13 @@ SELECT format(
 WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'worker_runtime_user')\gexec
 ALTER ROLE :"worker_runtime_user" PASSWORD :'worker_runtime_password';
 
+SELECT format(
+  'CREATE ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS',
+  :'dispatcher_runtime_user'
+)
+WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'dispatcher_runtime_user')\gexec
+ALTER ROLE :"dispatcher_runtime_user" PASSWORD :'dispatcher_runtime_password';
+
 -- Migration must opt into ownership explicitly with SET ROLE; serving roles
 -- are deliberately not members of the owner or migration roles.
 GRANT :"owner_user" TO :"migration_user";
@@ -71,7 +82,7 @@ GRANT :"owner_user" TO :"migration_user";
 ALTER DATABASE :"database_name" OWNER TO :"owner_user";
 REVOKE ALL ON DATABASE :"database_name" FROM PUBLIC;
 GRANT CONNECT ON DATABASE :"database_name"
-  TO :"migration_user", :"maintenance_user", :"api_runtime_user", :"worker_runtime_user";
+  TO :"migration_user", :"maintenance_user", :"api_runtime_user", :"worker_runtime_user", :"dispatcher_runtime_user";
 
 ALTER SCHEMA public OWNER TO :"owner_user";
 REVOKE ALL ON SCHEMA public FROM PUBLIC;

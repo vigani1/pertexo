@@ -15,8 +15,10 @@ services:
       POSTGRES_API_RUNTIME_PASSWORD: ${POSTGRES_API_RUNTIME_PASSWORD:-pertexo-local-api}
       POSTGRES_WORKER_RUNTIME_USER: ${POSTGRES_WORKER_RUNTIME_USER:-pertexo_worker}
       POSTGRES_WORKER_RUNTIME_PASSWORD: ${POSTGRES_WORKER_RUNTIME_PASSWORD:-pertexo-local-worker}
+      POSTGRES_DISPATCHER_RUNTIME_USER: ${POSTGRES_DISPATCHER_RUNTIME_USER:-pertexo_dispatcher}
+      POSTGRES_DISPATCHER_RUNTIME_PASSWORD: ${POSTGRES_DISPATCHER_RUNTIME_PASSWORD:-pertexo-local-dispatcher}
     ports:
-      - '${POSTGRES_PORT:-5432}:5432'
+      - '127.0.0.1:${POSTGRES_PORT:-5432}:5432'
     volumes:
       - pertexo-postgres-data:/var/lib/postgresql
       - ./infrastructure/postgres/init:/docker-entrypoint-initdb.d:ro
@@ -30,5 +32,64 @@ services:
       start_period: 5s
     stop_grace_period: 1m
 
+  redis:
+    image: ${REDIS_IMAGE:-redis:8.2.8-alpine}
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-pertexo-local-redis}
+    command:
+      - redis-server
+      - --appendonly
+      - 'yes'
+      - --appendfsync
+      - everysec
+      - --maxmemory
+      - 256mb
+      - --maxmemory-policy
+      - noeviction
+      - --requirepass
+      - ${REDIS_PASSWORD:-pertexo-local-redis}
+    ports:
+      - '127.0.0.1:${REDIS_PORT:-6379}:6379'
+    volumes:
+      - pertexo-redis-data:/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - redis-cli --no-auth-warning -a "$${REDIS_PASSWORD}" ping | grep -q
+          PONG
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+    stop_grace_period: 30s
+
+  artifact-store:
+    image: ${S3MOCK_IMAGE:-adobe/s3mock:5.1.0}
+    restart: unless-stopped
+    environment:
+      COM_ADOBE_TESTING_S3MOCK_STORE_ROOT: /data
+      COM_ADOBE_TESTING_S3MOCK_STORE_RETAIN_FILES_ON_EXIT: 'true'
+      COM_ADOBE_TESTING_S3MOCK_STORE_REGION: ${ARTIFACT_STORE_REGION:-us-east-1}
+      COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS: ${ARTIFACT_STORE_BUCKET:-pertexo-artifacts}
+    ports:
+      - '127.0.0.1:${ARTIFACT_STORE_PORT:-9090}:9090'
+    volumes:
+      - pertexo-artifact-data:/data
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - --spider
+        - -q
+        - http://localhost:9090/favicon.ico
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+    stop_grace_period: 30s
+
 volumes:
   pertexo-postgres-data:
+  pertexo-redis-data:
+  pertexo-artifact-data:
