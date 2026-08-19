@@ -16,7 +16,7 @@ not complete a phase.
 | Phase 0B — PostgreSQL tenancy and RLS proof | Complete | ADR 003; commits `bad4b9e`, `9b4f6a4`, `a3bec51`, `6458fd4`; PostgreSQL 18.6 clean migration; 31 RLS integration tests |
 | Phase 0C — HTTP and observability foundation | Complete | Commit `e8093d2`; 47 API/worker/observability tests; compiled role and OTLP trace/metric smoke checks |
 | Phase 0D — queue, outbox, and duplicate-delivery proof | Complete | ADRs 005–006; migration head `0006_execution_vocabulary.sql`; 158 unit, 76 real integration, and one destructive recovery assertion |
-| Phase 0E — execution durability proofs and engine gate | Not started | — |
+| Phase 0E — execution durability proofs and engine gate | In progress | ADRs 007–009 required before state-machine, bounded-loop, and expression implementation |
 | Phase 1 — identity/workspace vertical slice | Not started | — |
 | Phase 2 — workflow authoring vertical slice | Not started | — |
 | Phase 3 — first executable-node slice | Not started | — |
@@ -232,7 +232,7 @@ gaps are resolved below.
 
 ## Phase 0E — Execution durability proofs and engine gate
 
-Status: **Not started**
+Status: **In progress**
 
 - [ ] Prove coordinator and node-attempt crash recovery.
 - [ ] Prove checkpoint reconstruction from PostgreSQL-authoritative state.
@@ -244,6 +244,14 @@ Status: **Not started**
 - [ ] Record executable fixtures, automated failure tests, and measured results.
 - [ ] Pass the custom-engine go/no-go gate or complete the required Temporal
       evaluation.
+
+Current work:
+
+- Draft and accept ADR 007 for run/node state machines, logical retries,
+  idempotency, and `outcome_unknown`.
+- Draft and accept ADR 008 for structured bounded loops and arbitrary-cycle
+  rejection.
+- Draft and accept ADR 009 for deterministic, capability-restricted JSONata.
 
 ## Later phases
 
