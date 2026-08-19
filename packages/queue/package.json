@@ -33,11 +33,6 @@
       "types": "./dist/defaults.d.ts",
       "node": "./dist/defaults.js",
       "default": "./dist/defaults.js"
-    },
-    "./checksum": {
-      "types": "./dist/checksum.d.ts",
-      "node": "./dist/checksum.js",
-      "default": "./dist/checksum.js"
     }
   },
   "browser": {
@@ -46,8 +41,7 @@
     "./dist/names.js": false,
     "./dist/producer.js": false,
     "./dist/consumer.js": false,
-    "./dist/defaults.js": false,
-    "./dist/checksum.js": false
+    "./dist/defaults.js": false
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

@@ -13,7 +13,7 @@ import {
 } from '@pertexo/observability/transport-metrics';
 import {
   JOB_NAME,
-  QUEUE_NAME,
+  QUEUE_FOR_JOB,
   QueueNotReadyError,
   QueuePublishTimeoutError,
   parseQueueJob,
@@ -79,56 +79,34 @@ class TransportOperationTimeoutError extends Error {
   }
 }
 
+const transportJobByName = Object.freeze({
+  [JOB_NAME.advanceWorkflowRun]: {
+    jobName: JOB_NAME.advanceWorkflowRun,
+    queueName: QUEUE_FOR_JOB[JOB_NAME.advanceWorkflowRun],
+  },
+  [JOB_NAME.executeNodeAttempt]: {
+    jobName: JOB_NAME.executeNodeAttempt,
+    queueName: QUEUE_FOR_JOB[JOB_NAME.executeNodeAttempt],
+  },
+  [JOB_NAME.reconcileWorkflowTriggers]: {
+    jobName: JOB_NAME.reconcileWorkflowTriggers,
+    queueName: QUEUE_FOR_JOB[JOB_NAME.reconcileWorkflowTriggers],
+  },
+  [JOB_NAME.expireArtifacts]: {
+    jobName: JOB_NAME.expireArtifacts,
+    queueName: QUEUE_FOR_JOB[JOB_NAME.expireArtifacts],
+  },
+} as const satisfies Record<QueueJob['name'], TransportJob>);
+
+const transportJobNameSchema = z.enum(JOB_NAME);
+
 function transportJob(job: QueueJob): TransportJob {
-  switch (job.name) {
-    case JOB_NAME.advanceWorkflowRun:
-      return {
-        jobName: JOB_NAME.advanceWorkflowRun,
-        queueName: QUEUE_NAME.workflowCoordinator,
-      };
-    case JOB_NAME.executeNodeAttempt:
-      return {
-        jobName: JOB_NAME.executeNodeAttempt,
-        queueName: QUEUE_NAME.nodeAttempts,
-      };
-    case JOB_NAME.reconcileWorkflowTriggers:
-      return {
-        jobName: JOB_NAME.reconcileWorkflowTriggers,
-        queueName: QUEUE_NAME.triggerLifecycle,
-      };
-    case JOB_NAME.expireArtifacts:
-      return {
-        jobName: JOB_NAME.expireArtifacts,
-        queueName: QUEUE_NAME.maintenance,
-      };
-  }
+  return transportJobByName[job.name];
 }
 
 function transportJobName(jobName: string): TransportJob | undefined {
-  switch (jobName) {
-    case JOB_NAME.advanceWorkflowRun:
-      return {
-        jobName: JOB_NAME.advanceWorkflowRun,
-        queueName: QUEUE_NAME.workflowCoordinator,
-      };
-    case JOB_NAME.executeNodeAttempt:
-      return {
-        jobName: JOB_NAME.executeNodeAttempt,
-        queueName: QUEUE_NAME.nodeAttempts,
-      };
-    case JOB_NAME.reconcileWorkflowTriggers:
-      return {
-        jobName: JOB_NAME.reconcileWorkflowTriggers,
-        queueName: QUEUE_NAME.triggerLifecycle,
-      };
-    case JOB_NAME.expireArtifacts:
-      return {
-        jobName: JOB_NAME.expireArtifacts,
-        queueName: QUEUE_NAME.maintenance,
-      };
-    default:
-      return undefined;
-  }
+  const parsed = transportJobNameSchema.safeParse(jobName);
+  return parsed.success ? transportJobByName[parsed.data] : undefined;
 }
 
 function transportErrorClass(error: unknown): TransportErrorClass {

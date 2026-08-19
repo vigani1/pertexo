@@ -27,12 +27,6 @@ export {
   type QueueClassJobDefaults,
 } from './defaults.js';
 export {
-  canonicalizeQueueJob,
-  canonicalizeQueueJobData,
-  queueJobChecksum,
-  queueJobEnvelopeChecksum,
-} from './checksum.js';
-export {
   BullMqQueueProducer,
   QueueConfigurationError,
   QueueNotReadyError,
