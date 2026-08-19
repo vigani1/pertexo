@@ -183,6 +183,54 @@ describe('outbox dispatcher', () => {
     });
   });
 
+  it('samples tenant artifact capacity after durable maintenance publication', async () => {
+    const artifactId = '55555555-5555-4555-8555-555555555555';
+    const payload = { artifactId };
+    const selected = boundaries([
+      event({
+        aggregateId: artifactId,
+        aggregateType: 'artifact',
+        jobName: JOB_NAME.expireArtifacts,
+        payload,
+        payloadChecksum: checksum(payload),
+      }),
+    ]);
+    const observeArtifactCapacity = vi.fn().mockResolvedValue(undefined);
+    const dispatcher = createDispatcher(selected);
+    dispatcher.configureRuntimeHooks({ observeArtifactCapacity });
+
+    await expect(dispatcher.dispatchOnce()).resolves.toMatchObject({
+      published: 1,
+    });
+    expect(observeArtifactCapacity).toHaveBeenCalledOnce();
+    expect(observeArtifactCapacity).toHaveBeenCalledWith(WORKSPACE_ID);
+  });
+
+  it('does not change durable publication when artifact sampling fails', async () => {
+    const artifactId = '55555555-5555-4555-8555-555555555555';
+    const payload = { artifactId };
+    const selected = boundaries([
+      event({
+        aggregateId: artifactId,
+        aggregateType: 'artifact',
+        jobName: JOB_NAME.expireArtifacts,
+        payload,
+        payloadChecksum: checksum(payload),
+      }),
+    ]);
+    const dispatcher = createDispatcher(selected);
+    dispatcher.configureRuntimeHooks({
+      observeArtifactCapacity: vi
+        .fn()
+        .mockRejectedValue(new Error('metric query failed')),
+    });
+
+    await expect(dispatcher.dispatchOnce()).resolves.toMatchObject({
+      failed: 0,
+      published: 1,
+    });
+  });
+
   it('records retry claims, stale leases, and exhausted attempts without dynamic labels', async () => {
     const retried = boundaries([event({ publishAttempts: 2 })]);
     vi.mocked(retried.database.markPublished).mockResolvedValue(false);

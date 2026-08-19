@@ -43,6 +43,10 @@ const optionsSchema = z
 
 export type OutboxDispatcherOptions = Readonly<z.input<typeof optionsSchema>>;
 
+export type OutboxDispatcherRuntimeHooks = Readonly<{
+  observeArtifactCapacity(workspaceId: string): Promise<void>;
+}>;
+
 export type OutboxDispatchResult = Readonly<{
   claimed: number;
   failed: number;
@@ -181,6 +185,7 @@ function bounded<T>(promise: Promise<T>, timeoutMillis: number): Promise<T> {
 
 export class OutboxDispatcher {
   private readonly options: z.output<typeof optionsSchema>;
+  private runtimeHooks: OutboxDispatcherRuntimeHooks | undefined;
   private lifecycle: 'idle' | 'running' | 'closed' = 'idle';
   private loopPromise: Promise<void> | undefined;
   private wakeLoop: (() => void) | undefined;
@@ -200,6 +205,14 @@ export class OutboxDispatcher {
     if (this.lifecycle === 'running') return;
     this.lifecycle = 'running';
     this.loopPromise = this.runLoop();
+  }
+
+  public configureRuntimeHooks(hooks: OutboxDispatcherRuntimeHooks): void {
+    this.assertOpen();
+    if (this.lifecycle !== 'idle' || this.runtimeHooks !== undefined) {
+      throw new Error('Outbox dispatcher runtime hooks are already configured');
+    }
+    this.runtimeHooks = Object.freeze(hooks);
   }
 
   public async dispatchOnce(): Promise<OutboxDispatchResult> {
@@ -311,6 +324,8 @@ export class OutboxDispatcher {
         this.observeMetrics(() => {
           this.metrics.recordOutboxLeaseEvent('expired');
         });
+      } else if (job.name === JOB_NAME.expireArtifacts) {
+        await this.observeArtifactCapacity(event.workspaceId);
       }
       return marked ? 'published' : 'stale';
     } catch (error: unknown) {
@@ -375,6 +390,18 @@ export class OutboxDispatcher {
       observe();
     } catch {
       // Operational telemetry cannot alter durable dispatch behavior.
+    }
+  }
+
+  private async observeArtifactCapacity(workspaceId: string): Promise<void> {
+    if (this.runtimeHooks === undefined) return;
+    try {
+      await bounded(
+        this.runtimeHooks.observeArtifactCapacity(workspaceId),
+        this.options.operationTimeoutMillis,
+      );
+    } catch {
+      // Artifact gauges cannot alter durable publication acknowledgement.
     }
   }
 

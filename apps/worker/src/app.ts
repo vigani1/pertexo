@@ -10,7 +10,9 @@ import type {
 import type { TransportMetrics } from '@pertexo/observability/transport-metrics';
 
 import type { WorkerConfig } from './config/worker-config.js';
+import { WORKSPACE_DATABASE } from './platform/database/database.module.js';
 import { NestLoggerAdapter } from './platform/observability/observability.module.js';
+import { observeWorkspaceArtifactCapacity } from './runtime/artifact-metrics.js';
 import { WorkerReadiness } from './runtime/worker-readiness.js';
 import {
   OUTBOX_DISPATCHER,
@@ -41,11 +43,17 @@ export async function createWorkerApplication(
 
   try {
     await application.get(WorkerReadiness).checkReadiness();
-    application.get<OutboxDispatcher>(OUTBOX_DISPATCHER).start();
+    const dispatcher = application.get<OutboxDispatcher>(OUTBOX_DISPATCHER);
+    const metrics = application.get<TransportMetrics>(TRANSPORT_METRICS);
+    const database = application.get<WorkspaceDatabase>(WORKSPACE_DATABASE);
+    dispatcher.configureRuntimeHooks({
+      observeArtifactCapacity: async (workspaceId: string): Promise<void> => {
+        await observeWorkspaceArtifactCapacity(database, metrics, workspaceId);
+      },
+    });
+    dispatcher.start();
     try {
-      application
-        .get<TransportMetrics>(TRANSPORT_METRICS)
-        .recordWorkerProcessStart();
+      metrics.recordWorkerProcessStart();
     } catch (error: unknown) {
       dependencies.logger.warn('worker.process_start_metric_failed', {}, error);
     }
