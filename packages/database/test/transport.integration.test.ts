@@ -530,6 +530,79 @@ describe('transactional outbox persistence', () => {
 });
 
 describe('transactional inbox duplicate proof', () => {
+  it('grants serving roles only the receipt completion update', async () => {
+    const pool = new Pool({ connectionString: migrationUrl, max: 1 });
+    const client = await pool.connect();
+    try {
+      await client.query('begin');
+      await client.query('set local role pertexo_owner');
+      const privileges = await client.query<{
+        api_completed_at_update: boolean;
+        api_table_update: boolean;
+        worker_completed_at_update: boolean;
+        worker_table_update: boolean;
+      }>(`
+        select
+          has_table_privilege('pertexo_api', table_class.oid, 'UPDATE')
+            as api_table_update,
+          has_column_privilege(
+            'pertexo_api', table_class.oid, 'completed_at', 'UPDATE'
+          ) as api_completed_at_update,
+          has_table_privilege('pertexo_worker', table_class.oid, 'UPDATE')
+            as worker_table_update,
+          has_column_privilege(
+            'pertexo_worker', table_class.oid, 'completed_at', 'UPDATE'
+          ) as worker_completed_at_update
+        from pg_class table_class
+        where table_class.oid = 'app.inbox_receipts'::regclass
+      `);
+      expect(privileges.rows).toEqual([
+        {
+          api_completed_at_update: true,
+          api_table_update: false,
+          worker_completed_at_update: true,
+          worker_table_update: false,
+        },
+      ]);
+      await client.query('commit');
+    } catch (error: unknown) {
+      await client.query('rollback').catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+      await pool.end();
+    }
+  });
+
+  it.each([
+    ['API', apiDatabase],
+    ['worker', workerDatabase],
+  ])(
+    'allows the %s role to complete receipts but not rewrite immutable identity',
+    async (_role, selectedDatabase) => {
+      const messageId = randomUUID();
+      await consumeInboxMessage(
+        selectedDatabase,
+        workspaceA,
+        {
+          consumerName: 'least-privilege-proof',
+          messageId,
+          payloadChecksum: checksumA,
+        },
+        () => Promise.resolve(undefined),
+      );
+
+      await expect(
+        selectedDatabase.withWorkspace(workspaceA, ({ db }) =>
+          db
+            .update(inboxReceipts)
+            .set({ payloadChecksum: checksumB })
+            .where(eq(inboxReceipts.messageId, messageId)),
+        ),
+      ).rejects.toSatisfy(hasPostgresCode('42501'));
+    },
+  );
+
   it('atomically records one attempt, event, usage charge, and provider intent', async () => {
     const messageId = randomUUID();
     const logicalAttemptId = randomUUID();
