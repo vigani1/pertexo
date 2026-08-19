@@ -19,6 +19,7 @@ export const TRANSPORT_METRIC_NAME = Object.freeze({
   queueDepth: 'pertexo.transport.queue.depth',
   queueOldestJobAge: 'pertexo.transport.queue.oldest_job_age',
   queueStalls: 'pertexo.transport.queue.stalls',
+  workerProcessStarts: 'pertexo.worker.process.starts',
 } as const);
 
 export type TransportErrorClass =
@@ -120,6 +121,7 @@ export interface TransportMetrics {
     measurement: OutboxDispatchLatencyMeasurement,
   ): void;
   recordQueueStall(queueName: TransportJob['queueName']): void;
+  recordWorkerProcessStart(): void;
 }
 
 export interface TransportMetricsOptions {
@@ -263,6 +265,13 @@ export function createTransportMetrics(
     description: 'Artifact bytes by lifecycle status',
     unit: 'By',
   });
+  const workerProcessStarts = meter.createCounter(
+    TRANSPORT_METRIC_NAME.workerProcessStarts,
+    {
+      description: 'Successful worker process compositions, including restarts',
+      unit: '{process}',
+    },
+  );
 
   return Object.freeze({
     addActiveConcurrency(change: ActiveConcurrencyChange): void {
@@ -339,6 +348,9 @@ export function createTransportMetrics(
     },
     recordQueueStall(queueName: TransportJob['queueName']): void {
       queueStalls.add(1, { queue_name: queueName });
+    },
+    recordWorkerProcessStart(): void {
+      workerProcessStarts.add(1);
     },
   });
 }

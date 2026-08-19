@@ -15,8 +15,10 @@ export {
   completeArtifactRemoval,
   createPendingArtifact,
   finalizeArtifactUpload,
+  readArtifactCapacity,
 } from './artifacts.js';
 export type {
+  ArtifactCapacityObservation,
   ArtifactRecord,
   ArtifactStatus,
   ClaimDueUnfinalizedArtifactInput,

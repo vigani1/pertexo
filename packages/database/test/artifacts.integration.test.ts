@@ -12,6 +12,7 @@ import {
   completeArtifactRemoval,
   createPendingArtifact,
   finalizeArtifactUpload,
+  readArtifactCapacity,
 } from '../src/artifacts.js';
 import { parseDatabaseConfig } from '../src/config.js';
 import { createWorkspaceDatabase } from '../src/database.js';
@@ -177,6 +178,39 @@ describe('artifact metadata lifecycle', () => {
         db.select().from(artifacts).where(eq(artifacts.id, input.artifactId)),
       ),
     ).resolves.toEqual([]);
+  });
+
+  it('aggregates artifact count and bytes only inside the active workspace context', async () => {
+    const pending = pendingInput({ byteLength: 27 });
+    const available = pendingInput({ byteLength: 41 });
+    const hidden = pendingInput({ byteLength: 59 });
+    await database.withWorkspace(workspaceA, async (transaction) => {
+      await createPendingArtifact(transaction, pending);
+      await createPendingArtifact(transaction, available);
+      await finalizeArtifactUpload(transaction, {
+        artifactId: available.artifactId,
+        byteLength: available.byteLength,
+        mediaType: available.mediaType,
+        sha256: available.sha256,
+        storageKey: available.storageKey,
+        workspaceId: workspaceA,
+      });
+    });
+    await database.withWorkspace(workspaceB, (transaction) =>
+      createPendingArtifact(transaction, {
+        ...hidden,
+        storageKey: `workspaces/${workspaceB}/artifacts/${hidden.artifactId}`,
+      }),
+    );
+
+    await expect(
+      database.withWorkspace(workspaceA, readArtifactCapacity),
+    ).resolves.toEqual([
+      { bytes: 41, count: 1, status: 'available' },
+      { bytes: 0, count: 0, status: 'deleted' },
+      { bytes: 0, count: 0, status: 'deleting' },
+      { bytes: 27, count: 1, status: 'pending' },
+    ]);
   });
 
   it('atomically finalizes exact validated metadata and treats an exact replay as idempotent', async () => {

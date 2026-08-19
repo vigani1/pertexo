@@ -100,6 +100,7 @@ function transportMetrics(): TransportMetrics {
     recordOutboxPublish: vi.fn(),
     recordOutboxDispatchLatency: vi.fn(),
     recordQueueStall: vi.fn(),
+    recordWorkerProcessStart: vi.fn(),
   };
 }
 

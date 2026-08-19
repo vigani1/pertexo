@@ -7,6 +7,7 @@ import type {
   StructuredLogger,
   TelemetryLifecycle,
 } from '@pertexo/observability';
+import type { TransportMetrics } from '@pertexo/observability/transport-metrics';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createWorkerApplication } from '../src/app.js';
@@ -74,6 +75,28 @@ const logger: StructuredLogger = {
   warn: vi.fn(),
 };
 
+function transportMetrics(): {
+  metrics: TransportMetrics;
+  recordWorkerProcessStart: ReturnType<typeof vi.fn>;
+} {
+  const recordWorkerProcessStart = vi.fn();
+  const metrics = {
+    addActiveConcurrency: vi.fn(),
+    observeArtifacts: vi.fn(),
+    observeOutbox: vi.fn(),
+    observeQueue: vi.fn(),
+    recordConsumerLifecycle: vi.fn(),
+    recordHandlerFinished: vi.fn(),
+    recordOutboxClaim: vi.fn(),
+    recordOutboxDispatchLatency: vi.fn(),
+    recordOutboxLeaseEvent: vi.fn(),
+    recordOutboxPublish: vi.fn(),
+    recordQueueStall: vi.fn(),
+    recordWorkerProcessStart,
+  } satisfies TransportMetrics;
+  return { metrics, recordWorkerProcessStart };
+}
+
 function dependencies(
   selectedDatabase: WorkspaceDatabase = database,
   telemetry: TelemetryLifecycle = {
@@ -101,6 +124,7 @@ function dependencies(
     publish: vi.fn(),
     waitUntilReady: vi.fn().mockResolvedValue(undefined),
   };
+  const metrics = transportMetrics();
   return {
     database: selectedDatabase,
     dispatcherClose,
@@ -110,17 +134,34 @@ function dependencies(
     queueProducer,
     queueClose,
     telemetry,
+    transportMetrics: metrics.metrics,
+    workerProcessStart: metrics.recordWorkerProcessStart,
   };
 }
 
 describe('worker application bootstrap', () => {
   it('creates a standalone context without an HTTP server', async () => {
-    const app = await createWorkerApplication(workerConfig, dependencies());
+    const selected = dependencies();
+    const app = await createWorkerApplication(workerConfig, selected);
 
     try {
       expect('getHttpServer' in app).toBe(false);
+      expect(selected.workerProcessStart).toHaveBeenCalledOnce();
     } finally {
       await app.close();
+    }
+  });
+
+  it('counts each newly composed worker process instance', async () => {
+    const selected = dependencies();
+    const first = await createWorkerApplication(workerConfig, selected);
+    await first.close();
+    const restarted = await createWorkerApplication(workerConfig, selected);
+
+    try {
+      expect(selected.workerProcessStart).toHaveBeenCalledTimes(2);
+    } finally {
+      await restarted.close();
     }
   });
 

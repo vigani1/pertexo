@@ -290,6 +290,21 @@ describe('createTransportMetrics', () => {
     expect(serialized).not.toContain('outbox_event_id');
   });
 
+  it('counts every successful worker process start without dynamic labels', () => {
+    const harness = metricHarness();
+    const metrics = createTransportMetrics({ meter: harness.meter });
+
+    metrics.recordWorkerProcessStart();
+    metrics.recordWorkerProcessStart();
+
+    expect(
+      values(harness.counters, TRANSPORT_METRIC_NAME.workerProcessStarts),
+    ).toEqual([
+      { attributes: undefined, value: 1 },
+      { attributes: undefined, value: 1 },
+    ]);
+  });
+
   it.each([
     () => {
       createTransportMetrics().recordOutboxClaim({ batchSize: -1 });

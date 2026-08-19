@@ -12,7 +12,10 @@ import type { TransportMetrics } from '@pertexo/observability/transport-metrics'
 import type { WorkerConfig } from './config/worker-config.js';
 import { NestLoggerAdapter } from './platform/observability/observability.module.js';
 import { WorkerReadiness } from './runtime/worker-readiness.js';
-import { OUTBOX_DISPATCHER } from './transport/transport.module.js';
+import {
+  OUTBOX_DISPATCHER,
+  TRANSPORT_METRICS,
+} from './transport/transport.module.js';
 import type { OutboxDispatcher } from './transport/outbox-dispatcher.js';
 import { WorkerModule } from './worker.module.js';
 
@@ -39,6 +42,13 @@ export async function createWorkerApplication(
   try {
     await application.get(WorkerReadiness).checkReadiness();
     application.get<OutboxDispatcher>(OUTBOX_DISPATCHER).start();
+    try {
+      application
+        .get<TransportMetrics>(TRANSPORT_METRICS)
+        .recordWorkerProcessStart();
+    } catch (error: unknown) {
+      dependencies.logger.warn('worker.process_start_metric_failed', {}, error);
+    }
   } catch (error: unknown) {
     await application.close();
     throw error;

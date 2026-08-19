@@ -15,6 +15,7 @@ import {
   finalizeArtifactUpload,
   parseDatabaseConfig,
 } from '@pertexo/database';
+import type { TransportMetrics } from '@pertexo/observability/transport-metrics';
 import {
   createQueueConsumer,
   createQueueProducer,
@@ -28,7 +29,9 @@ import type {
   QueueProducer,
 } from '@pertexo/queue';
 import { eq } from 'drizzle-orm';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+import { observeWorkspaceArtifactCapacity } from '../src/runtime/artifact-metrics.js';
 
 const integration =
   process.env.ARTIFACT_STORE_INTEGRATION === 'true' &&
@@ -209,6 +212,40 @@ describeIntegration('Phase 0D artifact reference delivery proof', () => {
       );
       expect(removed.status).toBe('deleted');
       await expect(store.head(expiredMetadata)).resolves.toBeNull();
+
+      const observeArtifacts = vi.fn<TransportMetrics['observeArtifacts']>();
+      const metrics = {
+        addActiveConcurrency: vi.fn(),
+        observeArtifacts,
+        observeOutbox: vi.fn(),
+        observeQueue: vi.fn(),
+        recordConsumerLifecycle: vi.fn(),
+        recordHandlerFinished: vi.fn(),
+        recordOutboxClaim: vi.fn(),
+        recordOutboxDispatchLatency: vi.fn(),
+        recordOutboxLeaseEvent: vi.fn(),
+        recordOutboxPublish: vi.fn(),
+        recordQueueStall: vi.fn(),
+        recordWorkerProcessStart: vi.fn(),
+      } satisfies TransportMetrics;
+      await expect(
+        observeWorkspaceArtifactCapacity(
+          database,
+          metrics,
+          metadata.workspaceId,
+        ),
+      ).resolves.toEqual([
+        { bytes: body.byteLength, count: 1, status: 'available' },
+        { bytes: body.byteLength, count: 1, status: 'deleted' },
+        { bytes: 0, count: 0, status: 'deleting' },
+        { bytes: body.byteLength, count: 1, status: 'pending' },
+      ]);
+      expect(observeArtifacts.mock.calls.map(([value]) => value)).toEqual([
+        { bytes: body.byteLength, count: 1, status: 'available' },
+        { bytes: body.byteLength, count: 1, status: 'deleted' },
+        { bytes: 0, count: 0, status: 'deleting' },
+        { bytes: body.byteLength, count: 1, status: 'pending' },
+      ]);
 
       let resolveDelivery: ((delivery: QueueDelivery) => void) | undefined;
       const delivered = new Promise<QueueDelivery>((resolve) => {
