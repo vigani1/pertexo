@@ -6,6 +6,16 @@ import {
   parseArtifactStoreConfig,
 } from '@pertexo/artifact-store';
 import {
+  artifactStorageKey,
+  artifacts,
+  claimDueUnfinalizedArtifact,
+  completeArtifactRemoval,
+  createPendingArtifact,
+  createWorkspaceDatabase,
+  finalizeArtifactUpload,
+  parseDatabaseConfig,
+} from '@pertexo/database';
+import {
   createQueueConsumer,
   createQueueProducer,
   JOB_NAME,
@@ -17,6 +27,7 @@ import type {
   QueueJob,
   QueueProducer,
 } from '@pertexo/queue';
+import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
 const integration =
@@ -25,6 +36,9 @@ const integration =
 const describeIntegration = integration ? describe : describe.skip;
 const redisUrl =
   process.env.REDIS_URL ?? 'redis://:pertexo-local-redis@127.0.0.1:6379/0';
+const apiDatabaseUrl =
+  process.env.DATABASE_API_URL ??
+  'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
 
 function sha256Hex(body: Buffer): string {
   return createHash('sha256').update(body).digest('hex');
@@ -54,6 +68,9 @@ async function bounded<T>(
 describeIntegration('Phase 0D artifact reference delivery proof', () => {
   it('finalizes a direct upload before delivering only its identifiers', async () => {
     const store = createArtifactStore(parseArtifactStoreConfig(process.env));
+    const database = createWorkspaceDatabase(
+      parseDatabaseConfig({ connectionString: apiDatabaseUrl, max: 2 }),
+    );
     const body = Buffer.from('phase-0d finalized artifact');
     const corruptedBody = Buffer.from(body);
     corruptedBody[0] = corruptedBody[0] === 0x50 ? 0x51 : 0x50;
@@ -68,11 +85,49 @@ describeIntegration('Phase 0D artifact reference delivery proof', () => {
       ...metadata,
       artifactId: randomUUID(),
     };
+    const expiredMetadata = {
+      ...metadata,
+      artifactId: randomUUID(),
+    };
+    const expiresAt = new Date(Date.now() + 300_000);
     const outboxEventId = randomUUID();
     let consumer: QueueConsumer | undefined;
     let producer: QueueProducer | undefined;
 
     try {
+      await database.withWorkspace(
+        metadata.workspaceId,
+        async (transaction) => {
+          await createPendingArtifact(transaction, {
+            ...metadata,
+            expiresAt,
+            purpose: 'workflow-input',
+            storageKey: artifactStorageKey(
+              metadata.workspaceId,
+              metadata.artifactId,
+            ),
+          });
+          await createPendingArtifact(transaction, {
+            ...corruptMetadata,
+            expiresAt,
+            purpose: 'workflow-input',
+            storageKey: artifactStorageKey(
+              corruptMetadata.workspaceId,
+              corruptMetadata.artifactId,
+            ),
+          });
+          await createPendingArtifact(transaction, {
+            ...expiredMetadata,
+            expiresAt: new Date(Date.now() - 1_000),
+            purpose: 'workflow-input',
+            storageKey: artifactStorageKey(
+              expiredMetadata.workspaceId,
+              expiredMetadata.artifactId,
+            ),
+          });
+        },
+      );
+
       const corruptUpload = await store.beginDirectUpload({
         ...corruptMetadata,
         expiresInSeconds: 300,
@@ -93,6 +148,14 @@ describeIntegration('Phase 0D artifact reference delivery proof', () => {
       await expect(
         store.validateDirectUpload(corruptMetadata),
       ).rejects.toBeInstanceOf(ArtifactIntegrityError);
+      await expect(
+        database.withWorkspace(metadata.workspaceId, ({ db }) =>
+          db
+            .select({ status: artifacts.status })
+            .from(artifacts)
+            .where(eq(artifacts.id, corruptMetadata.artifactId)),
+        ),
+      ).resolves.toEqual([{ status: 'pending' }]);
 
       const upload = await store.beginDirectUpload({
         ...metadata,
@@ -104,9 +167,48 @@ describeIntegration('Phase 0D artifact reference delivery proof', () => {
         method: upload.method,
       });
       expect(uploadResponse.ok).toBe(true);
-      await expect(store.validateDirectUpload(metadata)).resolves.toEqual(
-        metadata,
+      const validated = await store.validateDirectUpload(metadata);
+      const finalized = await database.withWorkspace(
+        metadata.workspaceId,
+        (transaction) =>
+          finalizeArtifactUpload(transaction, {
+            ...validated,
+            storageKey: artifactStorageKey(
+              validated.workspaceId,
+              validated.artifactId,
+            ),
+          }),
       );
+      expect(finalized.status).toBe('available');
+
+      const expiredUpload = await store.beginDirectUpload({
+        ...expiredMetadata,
+        expiresInSeconds: 300,
+      });
+      const expiredUploadResponse = await fetch(expiredUpload.url, {
+        body,
+        headers: expiredUpload.headers,
+        method: expiredUpload.method,
+      });
+      expect(expiredUploadResponse.ok).toBe(true);
+      const claimedForRemoval = await database.withWorkspace(
+        expiredMetadata.workspaceId,
+        (transaction) =>
+          claimDueUnfinalizedArtifact(transaction, {
+            artifactId: expiredMetadata.artifactId,
+          }),
+      );
+      expect(claimedForRemoval.id).toBe(expiredMetadata.artifactId);
+      await store.delete(expiredMetadata);
+      const removed = await database.withWorkspace(
+        expiredMetadata.workspaceId,
+        (transaction) =>
+          completeArtifactRemoval(transaction, {
+            artifactId: expiredMetadata.artifactId,
+          }),
+      );
+      expect(removed.status).toBe('deleted');
+      await expect(store.head(expiredMetadata)).resolves.toBeNull();
 
       let resolveDelivery: ((delivery: QueueDelivery) => void) | undefined;
       const delivered = new Promise<QueueDelivery>((resolve) => {
@@ -180,7 +282,9 @@ describeIntegration('Phase 0D artifact reference delivery proof', () => {
       await consumer?.close().catch(() => undefined);
       await store.delete(metadata).catch(() => undefined);
       await store.delete(corruptMetadata).catch(() => undefined);
+      await store.delete(expiredMetadata).catch(() => undefined);
       store.close();
+      await database.close();
     }
   });
 });

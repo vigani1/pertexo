@@ -4,8 +4,38 @@ export {
   parseOutboxDispatcherConfig,
 } from './config.js';
 export type { DatabaseConfig, MigrationConfig } from './config.js';
+export {
+  ARTIFACT_STATUS,
+  ArtifactFinalizeConflictError,
+  ArtifactLifecycleConflictError,
+  ArtifactMetadataNotFoundError,
+  artifactStorageKey,
+  claimDueUnfinalizedArtifact,
+  claimDueUnfinalizedArtifacts,
+  completeArtifactRemoval,
+  createPendingArtifact,
+  finalizeArtifactUpload,
+} from './artifacts.js';
+export type {
+  ArtifactRecord,
+  ArtifactStatus,
+  ClaimDueUnfinalizedArtifactInput,
+  ClaimDueUnfinalizedArtifactsInput,
+  CompleteArtifactRemovalInput,
+  CreatePendingArtifactInput,
+  FinalizeArtifactInput,
+} from './artifacts.js';
 export { createWorkspaceDatabase } from './database.js';
 export type { WorkspaceDatabase } from './database.js';
+export {
+  acceptWorkflowRun,
+  IdempotencyRecordCorruptError,
+  IdempotencyRequestConflictError,
+} from './execution-acceptance.js';
+export type {
+  AcceptedWorkflowRun,
+  AcceptWorkflowRunInput,
+} from './execution-acceptance.js';
 export {
   EXPECTED_MIGRATION_HEAD,
   checkDatabaseReadiness,
@@ -33,10 +63,16 @@ export {
 } from './outbox.js';
 export type { InsertedOutboxEvent, OutboxEventInput } from './outbox.js';
 export {
+  artifacts,
   databaseSchema,
+  idempotencyRecords,
   inboxReceipts,
   outboxEvents,
   rlsProbeRecords,
+  runCheckpoints,
+  runEvents,
+  transportSecurityAuditFacts,
+  workflowRuns,
 } from './schema.js';
 export { parseWorkspaceId, withWorkspaceTransaction } from './workspace.js';
 export type {
