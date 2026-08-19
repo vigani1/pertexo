@@ -43,6 +43,7 @@ const database = createWorkspaceDatabase(
 const migrationConfig = {
   apiRuntimeRole: 'pertexo_api',
   connectionString: migrationUrl,
+  dispatcherRole: 'pertexo_dispatcher',
   ownerRole: 'pertexo_owner',
   workerRuntimeRole: 'pertexo_worker',
 } as const;
@@ -394,7 +395,7 @@ describe.each([
 describe('database readiness', () => {
   it('verifies migration, PostgreSQL, ownership, RLS, and runtime role compatibility', async () => {
     await expect(database.checkReadiness()).resolves.toEqual({
-      migrationHead: '0000_rls_probe.sql',
+      migrationHead: '0001_queue_transport.sql',
       postgresMajor: 18,
       role: 'pertexo_api',
     });
