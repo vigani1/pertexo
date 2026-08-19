@@ -15,7 +15,7 @@ not complete a phase.
 | Phase 0A — repository and process skeleton | Complete | ADR 001; commits `8d064cd`, `c80a70c`; `pnpm check`; compiled API and worker smoke checks |
 | Phase 0B — PostgreSQL tenancy and RLS proof | Complete | ADR 003; commits `bad4b9e`, `9b4f6a4`, `a3bec51`, `6458fd4`; PostgreSQL 18.6 clean migration; 31 RLS integration tests |
 | Phase 0C — HTTP and observability foundation | Complete | Commit `e8093d2`; 47 API/worker/observability tests; compiled role and OTLP trace/metric smoke checks |
-| Phase 0D — queue, outbox, and duplicate-delivery proof | Not started | — |
+| Phase 0D — queue, outbox, and duplicate-delivery proof | In progress | ADR 005 accepted (`ec8cba7`); Redis and S3-compatible local infrastructure verified |
 | Phase 0E — execution durability proofs and engine gate | Not started | — |
 | Phase 1 — identity/workspace vertical slice | Not started | — |
 | Phase 2 — workflow authoring vertical slice | Not started | — |
@@ -140,9 +140,9 @@ Evidence:
 
 ## Phase 0D — Queue, outbox, and duplicate-delivery proof
 
-Status: **Not started**
+Status: **In progress**
 
-- [ ] Accept ADR 005 before execution persistence.
+- [x] Accept ADR 005 before execution persistence.
 - [ ] Add local Redis and BullMQ infrastructure.
 - [ ] Add versioned identifier-only job contracts.
 - [ ] Implement transactional outbox claiming and publication.
@@ -150,6 +150,15 @@ Status: **Not started**
 - [ ] Prove duplicate delivery cannot duplicate logical attempts, events, usage,
       or provider calls beyond documented retry semantics.
 - [ ] Add local S3-compatible storage and bounded artifact plumbing.
+
+Interim evidence:
+
+- ADR: [ADR 005](./adr/005-postgresql-authority-bullmq-outbox-engine-gate.md)
+- Commit: `ec8cba7`
+- Infrastructure: exact `redis:8.2.8-alpine` and `adobe/s3mock:5.1.0`
+  images start healthy on loopback-only ports; Redis rejects unauthenticated
+  access, reports AOF `everysec` plus `noeviction`, and retained a probe value
+  across a container restart
 
 ## Phase 0E — Execution durability proofs and engine gate
 
