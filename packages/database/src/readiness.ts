@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0005_inbox_least_privilege.sql';
+export const EXPECTED_MIGRATION_HEAD = '0006_execution_vocabulary.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{

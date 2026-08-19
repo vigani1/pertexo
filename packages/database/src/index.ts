@@ -29,12 +29,18 @@ export { createWorkspaceDatabase } from './database.js';
 export type { WorkspaceDatabase } from './database.js';
 export {
   acceptWorkflowRun,
+  IDEMPOTENCY_STATUS,
+  IDEMPOTENCY_STATUS_VALUES,
   IdempotencyRecordCorruptError,
   IdempotencyRequestConflictError,
+  RUN_STATUS,
+  RUN_STATUS_VALUES,
 } from './execution-acceptance.js';
 export type {
   AcceptedWorkflowRun,
   AcceptWorkflowRunInput,
+  IdempotencyStatus,
+  RunStatus,
 } from './execution-acceptance.js';
 export {
   EXPECTED_MIGRATION_HEAD,

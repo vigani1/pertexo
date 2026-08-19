@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { canonicalOutboxPayloadChecksum, insertOutboxEvent } from './outbox.js';
@@ -35,14 +35,38 @@ const acceptWorkflowRunInputSchema = z
   .strict();
 
 const resultRefSchema = z.object({ outboxEventId: z.uuid() }).strict();
-const workflowRunStatusSchema = z.enum([
-  'cancelled',
-  'failed',
-  'queued',
-  'running',
-  'succeeded',
-  'waiting',
-]);
+
+export const RUN_STATUS = {
+  queued: 'queued',
+  running: 'running',
+  waiting: 'waiting',
+  succeeded: 'succeeded',
+  failed: 'failed',
+  canceled: 'canceled',
+  timedOut: 'timed_out',
+  outcomeUnknown: 'outcome_unknown',
+} as const;
+
+export type RunStatus = (typeof RUN_STATUS)[keyof typeof RUN_STATUS];
+export const RUN_STATUS_VALUES = Object.values(RUN_STATUS) as [
+  RunStatus,
+  ...RunStatus[],
+];
+
+export const IDEMPOTENCY_STATUS = {
+  inProgress: 'in_progress',
+  completed: 'completed',
+  failed: 'failed',
+} as const;
+
+export type IdempotencyStatus =
+  (typeof IDEMPOTENCY_STATUS)[keyof typeof IDEMPOTENCY_STATUS];
+export const IDEMPOTENCY_STATUS_VALUES = Object.values(IDEMPOTENCY_STATUS) as [
+  IdempotencyStatus,
+  ...IdempotencyStatus[],
+];
+
+const workflowRunStatusSchema = z.enum(RUN_STATUS_VALUES);
 
 export type AcceptWorkflowRunInput = Readonly<
   z.input<typeof acceptWorkflowRunInputSchema>
@@ -113,7 +137,7 @@ async function readExistingAcceptance(
   const resultRef = resultRefSchema.safeParse(row.resultRef);
   const runStatus = workflowRunStatusSchema.safeParse(row.runStatus);
   if (
-    row.idempotencyStatus !== 'completed' ||
+    row.idempotencyStatus !== IDEMPOTENCY_STATUS.completed ||
     row.acceptedAt === null ||
     !resultRef.success ||
     !runStatus.success
@@ -140,7 +164,7 @@ export async function acceptWorkflowRun(
   const outboxEventId = randomUUID();
   const resultRef = { outboxEventId } as const;
 
-  const claimed = await transaction.db
+  const insertedClaim = await transaction.db
     .insert(idempotencyRecords)
     .values({
       id: idempotencyRecordId,
@@ -149,9 +173,9 @@ export async function acceptWorkflowRun(
       scope: parsed.scope,
       keyHash: parsed.keyHash,
       requestHash: parsed.requestHash,
-      status: 'completed',
+      status: IDEMPOTENCY_STATUS.inProgress,
       resourceId: runId,
-      resultRef,
+      resultRef: {},
     })
     .onConflictDoNothing({
       target: [
@@ -163,7 +187,7 @@ export async function acceptWorkflowRun(
     })
     .returning({ id: idempotencyRecords.id });
 
-  if (claimed.length === 0) {
+  if (insertedClaim.length === 0) {
     return readExistingAcceptance(transaction, parsed);
   }
 
@@ -175,7 +199,7 @@ export async function acceptWorkflowRun(
       workflowId: parsed.workflowId,
       workflowVersionId: parsed.workflowVersionId,
       triggerType: parsed.triggerType,
-      status: 'queued',
+      status: RUN_STATUS.queued,
     })
     .returning({ acceptedAt: workflowRuns.createdAt });
   const insertedRun = insertedRuns[0];
@@ -216,11 +240,29 @@ export async function acceptWorkflowRun(
     payloadChecksum: canonicalOutboxPayloadChecksum(payload),
   });
 
+  const completedClaims = await transaction.db
+    .update(idempotencyRecords)
+    .set({
+      resultRef,
+      status: IDEMPOTENCY_STATUS.completed,
+      updatedAt: sql`now()`,
+    })
+    .where(
+      and(
+        eq(idempotencyRecords.id, idempotencyRecordId),
+        eq(idempotencyRecords.status, IDEMPOTENCY_STATUS.inProgress),
+      ),
+    )
+    .returning({ id: idempotencyRecords.id });
+  if (completedClaims.length !== 1) {
+    throw new IdempotencyRecordCorruptError();
+  }
+
   return Object.freeze({
     acceptedAt: insertedRun.acceptedAt,
     duplicate: false,
     outboxEventId,
     runId,
-    status: 'queued',
+    status: RUN_STATUS.queued,
   });
 }

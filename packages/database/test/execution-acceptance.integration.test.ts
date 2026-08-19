@@ -8,7 +8,9 @@ import { parseDatabaseConfig } from '../src/config.js';
 import { createWorkspaceDatabase } from '../src/database.js';
 import {
   acceptWorkflowRun,
+  IDEMPOTENCY_STATUS_VALUES,
   IdempotencyRequestConflictError,
+  RUN_STATUS_VALUES,
 } from '../src/execution-acceptance.js';
 import { migrateDatabase } from '../src/migrations.js';
 import {
@@ -139,10 +141,10 @@ describe('atomic workflow run acceptance', () => {
     await apiDatabase.withWorkspace(workspaceA, async ({ db }) => {
       expect(
         await db
-          .select({ count: count() })
+          .select({ status: idempotencyRecords.status })
           .from(idempotencyRecords)
           .where(eq(idempotencyRecords.resourceId, accepted.runId)),
-      ).toEqual([{ count: 1 }]);
+      ).toEqual([{ status: 'completed' }]);
       expect(
         await db
           .select({ status: workflowRuns.status })
@@ -272,6 +274,87 @@ describe('atomic workflow run acceptance', () => {
     ).rejects.toSatisfy(hasPostgresCode('42501'));
   });
 
+  it('accepts canonical execution statuses and rejects legacy spellings', async () => {
+    const runtime = new Pool({ connectionString: apiUrl, max: 1 });
+    const client = await runtime.connect();
+    try {
+      await client.query('begin');
+      await client.query(`select set_config('app.workspace_id', $1, true)`, [
+        workspaceA,
+      ]);
+
+      for (const status of RUN_STATUS_VALUES) {
+        await client.query(
+          `
+            insert into app.workflow_runs (
+              id, workspace_id, workflow_id, workflow_version_id,
+              trigger_type, status
+            ) values ($1, $2, $3, $4, 'manual', $5)
+          `,
+          [randomUUID(), workspaceA, workflowId, workflowVersionId, status],
+        );
+      }
+
+      await client.query('savepoint reject_legacy_run_status');
+      await expect(
+        client.query(
+          `
+            insert into app.workflow_runs (
+              id, workspace_id, workflow_id, workflow_version_id,
+              trigger_type, status
+            ) values ($1, $2, $3, $4, 'manual', 'cancelled')
+          `,
+          [randomUUID(), workspaceA, workflowId, workflowVersionId],
+        ),
+      ).rejects.toSatisfy(hasPostgresCode('23514'));
+      await client.query('rollback to savepoint reject_legacy_run_status');
+
+      for (const status of IDEMPOTENCY_STATUS_VALUES) {
+        await client.query(
+          `
+            insert into app.idempotency_records (
+              id, workspace_id, operation, scope, key_hash, request_hash,
+              status, resource_id, result_ref
+            ) values ($1, $2, 'workflow.run.accept', $3, $4, $5, $6, $7, '{}')
+          `,
+          [
+            randomUUID(),
+            workspaceA,
+            `status:${status}`,
+            createHash('sha256').update(`key:${status}`).digest('hex'),
+            createHash('sha256').update(`request:${status}`).digest('hex'),
+            status,
+            randomUUID(),
+          ],
+        );
+      }
+
+      await client.query('savepoint reject_legacy_idempotency_status');
+      await expect(
+        client.query(
+          `
+            insert into app.idempotency_records (
+              id, workspace_id, operation, scope, key_hash, request_hash,
+              status, resource_id, result_ref
+            ) values ($1, $2, 'workflow.run.accept', 'legacy-status', $3, $4,
+              'claimed', $5, '{}')
+          `,
+          [randomUUID(), workspaceA, keyHash, requestHash, randomUUID()],
+        ),
+      ).rejects.toSatisfy(hasPostgresCode('23514'));
+      await client.query(
+        'rollback to savepoint reject_legacy_idempotency_status',
+      );
+      await client.query('rollback');
+    } catch (error: unknown) {
+      await client.query('rollback').catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+      await runtime.end();
+    }
+  });
+
   it('forces RLS and grants only the acceptance operations to runtime roles', async () => {
     const owner = new Pool({ connectionString: migrationUrl, max: 1 });
     try {
@@ -343,6 +426,50 @@ describe('atomic workflow run acceptance', () => {
         expect(row.canInsert).toBe(row.roleName === 'pertexo_api');
         expect(row.canUpdate).toBe(false);
         expect(row.canDelete).toBe(false);
+      }
+
+      const idempotencyUpdatePrivileges = await owner.query<{
+        canUpdate: boolean;
+        columnName: string;
+        roleName: string;
+      }>(`
+        with runtime_roles(role_name) as (
+          values ('pertexo_api'), ('pertexo_dispatcher'), ('pertexo_worker')
+        ), idempotency_columns(column_name) as (
+          values
+            ('status'),
+            ('result_ref'),
+            ('updated_at'),
+            ('request_hash'),
+            ('resource_id')
+        ), idempotency_relation(oid) as (
+          select table_class.oid
+          from pg_class table_class
+          join pg_namespace table_namespace
+            on table_namespace.oid = table_class.relnamespace
+          where table_namespace.nspname = 'app'
+            and table_class.relname = 'idempotency_records'
+        )
+        select
+          role_name as "roleName",
+          column_name as "columnName",
+          has_column_privilege(
+            role_name,
+            idempotency_relation.oid,
+            column_name,
+            'UPDATE'
+          ) as "canUpdate"
+        from runtime_roles
+        cross join idempotency_columns
+        cross join idempotency_relation
+        order by role_name, column_name
+      `);
+      expect(idempotencyUpdatePrivileges.rows).toHaveLength(15);
+      for (const row of idempotencyUpdatePrivileges.rows) {
+        expect(row.canUpdate).toBe(
+          row.roleName === 'pertexo_api' &&
+            ['result_ref', 'status', 'updated_at'].includes(row.columnName),
+        );
       }
     } finally {
       await owner.end();
