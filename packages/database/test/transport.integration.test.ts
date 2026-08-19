@@ -202,11 +202,12 @@ describe('transactional outbox persistence', () => {
         await insertOutboxEvent(transaction, eventInput);
         await transaction.db.execute(sql`
           insert into app.queue_duplicate_probe_acceptances
-            (id, workspace_id, acceptance_key, outbox_event_id)
+            (id, workspace_id, acceptance_key, request_hash, outbox_event_id)
           values (
             ${acceptanceId},
             ${transaction.workspaceId},
             ${`accept:${acceptanceId}`},
+            ${checksumA},
             ${eventInput.id}
           )
         `);
@@ -237,6 +238,68 @@ describe('transactional outbox persistence', () => {
         .from(outboxEvents);
       expect(acceptanceCount.rows[0]).toEqual({ count: 1 });
       expect(outboxCount).toEqual([{ count: 1 }]);
+    });
+  });
+
+  it('returns an existing acceptance for the same request hash and rejects key reuse', async () => {
+    const acceptanceKey = `accept:${randomUUID()}`;
+    const accept = async (requestHash: string): Promise<string> =>
+      apiDatabase.withWorkspace(workspaceA, async (transaction) => {
+        const acceptanceId = randomUUID();
+        const claimed = await transaction.db.execute(sql`
+          insert into app.queue_duplicate_probe_acceptances
+            (id, workspace_id, acceptance_key, request_hash)
+          values (
+            ${acceptanceId},
+            ${transaction.workspaceId},
+            ${acceptanceKey},
+            ${requestHash}
+          )
+          on conflict (workspace_id, acceptance_key) do nothing
+          returning id
+        `);
+        if (claimed.rows.length === 0) {
+          const existing = await transaction.db.execute(sql`
+            select request_hash, outbox_event_id
+            from app.queue_duplicate_probe_acceptances
+            where workspace_id = ${transaction.workspaceId}
+              and acceptance_key = ${acceptanceKey}
+          `);
+          const row = existing.rows[0];
+          if (row?.request_hash !== requestHash) {
+            throw new Error('idempotency.request_hash_mismatch');
+          }
+          if (typeof row.outbox_event_id !== 'string') {
+            throw new Error('idempotency.acceptance_incomplete');
+          }
+          return row.outbox_event_id;
+        }
+
+        const eventInput = outboxInput();
+        await insertOutboxEvent(transaction, eventInput);
+        await transaction.db.execute(sql`
+          update app.queue_duplicate_probe_acceptances
+          set outbox_event_id = ${eventInput.id}
+          where id = ${acceptanceId}
+        `);
+        return eventInput.id;
+      });
+
+    const first = await accept(checksumA);
+    await expect(accept(checksumA)).resolves.toBe(first);
+    await expect(accept(checksumB)).rejects.toThrow(
+      'idempotency.request_hash_mismatch',
+    );
+    await apiDatabase.withWorkspace(workspaceA, async ({ db }) => {
+      const rows = await db.execute(sql`
+        select count(*)::integer as count
+        from app.queue_duplicate_probe_acceptances
+        where acceptance_key = ${acceptanceKey}
+      `);
+      expect(rows.rows[0]).toEqual({ count: 1 });
+      expect(await db.select({ count: count() }).from(outboxEvents)).toEqual([
+        { count: 1 },
+      ]);
     });
   });
 

@@ -64,11 +64,39 @@ CREATE TABLE IF NOT EXISTS app.queue_duplicate_probe_acceptances (
   id uuid PRIMARY KEY,
   workspace_id uuid NOT NULL,
   acceptance_key varchar(128) NOT NULL,
-  outbox_event_id uuid NOT NULL REFERENCES app.outbox_events(id),
+  request_hash char(64) NOT NULL,
+  outbox_event_id uuid REFERENCES app.outbox_events(id),
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (workspace_id, acceptance_key),
-  UNIQUE (workspace_id, outbox_event_id)
+  UNIQUE (workspace_id, outbox_event_id),
+  CONSTRAINT queue_duplicate_probe_acceptance_request_hash
+    CHECK (request_hash ~ '^[0-9a-f]{64}$')
 );
+
+-- Keep the fixture forward-compatible for a developer volume created by an
+-- earlier revision of this test-only schema.
+ALTER TABLE app.queue_duplicate_probe_acceptances
+  ADD COLUMN IF NOT EXISTS request_hash char(64);
+UPDATE app.queue_duplicate_probe_acceptances
+SET request_hash = repeat('0', 64)
+WHERE request_hash IS NULL;
+ALTER TABLE app.queue_duplicate_probe_acceptances
+  ALTER COLUMN request_hash SET NOT NULL,
+  ALTER COLUMN outbox_event_id DROP NOT NULL;
+DO $constraint$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'queue_duplicate_probe_acceptance_request_hash'
+      AND conrelid = 'app.queue_duplicate_probe_acceptances'::regclass
+  ) THEN
+    ALTER TABLE app.queue_duplicate_probe_acceptances
+      ADD CONSTRAINT queue_duplicate_probe_acceptance_request_hash
+      CHECK (request_hash ~ '^[0-9a-f]{64}$');
+  END IF;
+END
+$constraint$;
 
 DO $fixture$
 DECLARE
