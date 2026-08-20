@@ -3,6 +3,7 @@
   "files": [],
   "references": [
     { "path": "./packages/artifact-store/tsconfig.json" },
+    { "path": "./packages/node-sdk/tsconfig.json" },
     { "path": "./packages/workflow-model/tsconfig.json" },
     { "path": "./packages/contracts/tsconfig.json" },
     { "path": "./packages/database/tsconfig.json" },

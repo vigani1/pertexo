@@ -177,6 +177,130 @@ export default tseslint.config(
     },
   },
   {
+    files: ['packages/node-sdk/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                '**/apps/**',
+                '@nestjs/*',
+                '@pertexo/api',
+                '@pertexo/api/*',
+                '@pertexo/worker',
+                '@pertexo/worker/*',
+                '@pertexo/artifact-store',
+                '@pertexo/artifact-store/*',
+                '@pertexo/database',
+                '@pertexo/database/*',
+                '@pertexo/observability',
+                '@pertexo/observability/*',
+                '@pertexo/queue',
+                '@pertexo/queue/*',
+                '@pertexo/workflow-model',
+                '@pertexo/workflow-model/*',
+                '@pertexo/nodes-core',
+                '@pertexo/nodes-core/*',
+                'bullmq',
+                'drizzle-orm',
+                'ioredis',
+                'pg',
+              ],
+              message:
+                'The node SDK owns portable node contracts and cannot depend on infrastructure, graph runtime, or core implementations.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: [
+      'packages/node-sdk/src/index.ts',
+      'packages/node-sdk/src/release.ts',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                '**/apps/**',
+                '@nestjs/*',
+                '@pertexo/api',
+                '@pertexo/api/*',
+                '@pertexo/worker',
+                '@pertexo/worker/*',
+                '@pertexo/artifact-store',
+                '@pertexo/artifact-store/*',
+                '@pertexo/database',
+                '@pertexo/database/*',
+                '@pertexo/observability',
+                '@pertexo/observability/*',
+                '@pertexo/queue',
+                '@pertexo/queue/*',
+                '@pertexo/workflow-model',
+                '@pertexo/workflow-model/*',
+                '@pertexo/nodes-core',
+                '@pertexo/nodes-core/*',
+                'bullmq',
+                'drizzle-orm',
+                'ioredis',
+                'pg',
+              ],
+              message:
+                'The node SDK browser entry cannot depend on infrastructure, graph runtime, or core implementations.',
+            },
+            {
+              group: ['node:*', './server', './server.js', './server-only.js'],
+              message:
+                'The node SDK browser entry cannot import Node builtins or server-only implementation modules.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['packages/nodes-core/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                '**/apps/**',
+                '@nestjs/*',
+                '@pertexo/api',
+                '@pertexo/api/*',
+                '@pertexo/worker',
+                '@pertexo/worker/*',
+                '@pertexo/artifact-store',
+                '@pertexo/artifact-store/*',
+                '@pertexo/database',
+                '@pertexo/database/*',
+                '@pertexo/observability',
+                '@pertexo/observability/*',
+                '@pertexo/queue',
+                '@pertexo/queue/*',
+                'bullmq',
+                'drizzle-orm',
+                'ioredis',
+                'pg',
+              ],
+              message:
+                'Core nodes own pure definitions and executors, not application infrastructure or providers.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: [
       'packages/workflow-model/**/*.ts',
       'packages/workflow-engine/**/*.ts',
@@ -202,6 +326,8 @@ export default tseslint.config(
                 '@pertexo/queue/*',
                 '@pertexo/worker',
                 '@pertexo/worker/*',
+                '@pertexo/nodes-core',
+                '@pertexo/nodes-core/*',
                 'bullmq',
                 'drizzle-orm',
                 'ioredis',
@@ -239,6 +365,10 @@ export default tseslint.config(
                 '@pertexo/worker/*',
                 '@pertexo/workflow-engine',
                 '@pertexo/workflow-engine/*',
+                '@pertexo/node-sdk',
+                '@pertexo/node-sdk/*',
+                '@pertexo/nodes-core',
+                '@pertexo/nodes-core/*',
                 'bullmq',
                 'drizzle-orm',
                 'ioredis',
