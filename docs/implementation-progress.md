@@ -19,7 +19,7 @@ not complete a phase.
 | Phase 0E — execution durability proofs and engine gate | Complete | ADRs 005 and 007–009; commits through `0322837`; 239 unit, 96 real-service integration, five process-recovery, one SSE-outage, and one transport-outage assertions; custom-engine GO |
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
-| Phase 3 — first executable-node slice | In progress | ADR 010; node SDK/core registry commits `85385cc`–`94426f7`; retained V1/V2 identity `5e72a26`, `9d101ff`; strict boundary and executable operations `10eed1b`, `5ea5075`; 143 focused assertions; no persistence/publication adapter yet |
+| Phase 3 — first executable-node slice | In progress | ADR 010; node SDK/core registry `85385cc`–`94426f7`; retained V1/V2 identity and operations through `5ea5075`; migration head `0013_published_workflow_execution.sql`; published projection `83c57c6`; consumers/publication still disabled |
 | Phase 4 — first side-effecting integration slice | Not started | — |
 | Phase 5 — orchestration slice | Not started | — |
 | Phase 6 — V1 providers and triggers | Not started | — |
@@ -727,7 +727,7 @@ Initial evidence:
 
 ## Phase 3 — First executable-node slice
 
-Status: **In progress — package foundations, retained V1/V2 identity, strict engine boundary, and executable operations complete**
+Status: **In progress — package foundations, executable identity/operations, and published-version projection persistence complete**
 
 Phase 3 has completed its design prerequisites and the first package-level
 implementation checkpoint. No core node is exposed through a placement or
@@ -790,7 +790,7 @@ Production execution and persistence:
       request idempotency, gapless events, checkpoints, node runs, attempts,
       leases/fence tokens, cancellation, and transactional outbox effects under
       their documented transaction and compare-and-swap boundaries.
-- [ ] Add a reviewed migration granting the worker only the immutable published
+- [x] Add a reviewed migration granting the worker only the immutable published
       workflow-version read access required by execution; prove it cannot read
       drafts, mutate authoring data, cross workspaces, own tables, or bypass
       forced RLS.
@@ -1031,6 +1031,22 @@ Current evidence:
   typecheck, and diff checks. Independent Spec and Standards re-reviews returned
   GO with no blocker/high findings after mapped-input overflow was classified as
   `attempt_invalid` and proven not to invoke the executor.
+- Commit `83c57c6` adds migration head
+  `0013_published_workflow_execution.sql`, preserving Phase 2 `wf:v1` rows while
+  adding a total-valued immutable V1/V2 storage invariant, a 1-MiB database
+  backstop, V2-only tenant RLS, and exact worker column grants that exclude the
+  authoring graph and publication metadata. Readiness exact-matches the schema,
+  constraints, policy, configured worker role, role attributes, and grants; the
+  worker also rejects a connection authenticated as the wrong role. The narrow
+  reader returns only an unverified `v2_projection` for the engine to verify and
+  keeps the database package dependency-free from workflow semantics. Database,
+  API, and worker suites pass 19, 169, and 41 unit assertions; an isolated clean
+  migration and full PostgreSQL suite pass 140 assertions, and a separate
+  retained-0012 upgrade preserves the V1 checksum with all executable columns
+  null. Independent Spec and Standards reviews returned GO with no blocker/high
+  findings. The shared local database remains safely at 0012 because its old
+  recorded 0012 checksum differs from the checked-in migration; no migration
+  history was bypassed or rewritten.
 - Concrete nodes-core composition for Set/Map resolution, V2 immutable retained
   fixtures, workflow-model publication adaptation, persistence, worker
   consumers, API, SSE, and the complete executable graph remain unchecked and
