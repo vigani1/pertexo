@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0009_oidc_login_transactions.sql';
+export const EXPECTED_MIGRATION_HEAD = '0010_oidc_transaction_capacity.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -26,6 +26,7 @@ interface ReadinessRow {
   phase1_policy_compatible: boolean;
   phase1_schema_compatible: boolean;
   oidc_grants_compatible: boolean;
+  oidc_capacity_compatible: boolean;
   oidc_schema_compatible: boolean;
   postgres_major: number;
   relforcerowsecurity: boolean;
@@ -180,6 +181,32 @@ export async function checkDatabaseReadiness(
         and not has_table_privilege(current_user, 'app.oidc_login_transactions', 'DELETE')
       ) as oidc_grants_compatible,
       (
+        exists (
+          select 1
+          from pg_proc proc
+          join pg_namespace namespace on namespace.oid = proc.pronamespace
+          where namespace.nspname = 'app'
+            and proc.proname = 'enforce_oidc_login_transaction_capacity'
+            and proc.prosecdef
+            and pg_get_userbyid(proc.proowner) = $1
+            and proc.proconfig = array['search_path=pg_catalog, pg_temp']
+            and not has_function_privilege(current_user, proc.oid, 'EXECUTE')
+        )
+        and exists (
+          select 1
+          from pg_trigger trig
+          join pg_proc proc on proc.oid = trig.tgfoid
+          join pg_namespace namespace on namespace.oid = proc.pronamespace
+          where trig.tgrelid = to_regclass('app.oidc_login_transactions')
+            and trig.tgname = 'oidc_login_transactions_capacity'
+            and not trig.tgisinternal
+            and trig.tgenabled = 'O'
+            and trig.tgtype = 7
+            and namespace.nspname = 'app'
+            and proc.proname = 'enforce_oidc_login_transaction_capacity'
+        )
+      ) as oidc_capacity_compatible,
+      (
         select name
         from pertexo_internal.schema_migrations
         order by name desc
@@ -232,6 +259,9 @@ export async function checkDatabaseReadiness(
   }
   if (!row.oidc_grants_compatible) {
     throw new Error('OIDC login transaction grants are incompatible');
+  }
+  if (!row.oidc_capacity_compatible) {
+    throw new Error('OIDC login transaction capacity guard is incompatible');
   }
   if (
     !row.can_select ||

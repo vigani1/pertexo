@@ -43,6 +43,10 @@ export class OidcTransactionSealingError extends Error {
   public override readonly name = 'OidcTransactionSealingError';
 }
 
+export class OidcTransactionCapacityError extends Error {
+  public override readonly name = 'OidcTransactionCapacityError';
+}
+
 export type OidcLoginTransactionStore = Readonly<{
   create(transaction: OidcLoginTransaction): Promise<void>;
   consume(
@@ -66,6 +70,12 @@ function parseSealed(value: SealedOidcSecret): SealedOidcSecret {
 function isConflict(error: unknown): boolean {
   return (
     error instanceof Error && (error as { code?: string }).code === '23505'
+  );
+}
+
+function isCapacityExhausted(error: unknown): boolean {
+  return (
+    error instanceof Error && (error as { code?: string }).code === '54000'
   );
 }
 
@@ -120,6 +130,12 @@ export function createOidcLoginTransactionStore(
           throw new IdentityConflictError('OIDC login state already exists', {
             cause: error,
           });
+        }
+        if (isCapacityExhausted(error)) {
+          throw new OidcTransactionCapacityError(
+            'OIDC login transaction capacity is exhausted',
+            { cause: error },
+          );
         }
         throw error;
       }

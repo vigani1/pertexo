@@ -11,6 +11,7 @@ import {
   createOidcLoginTransactionStore,
   IdentityConflictError,
   IdentityNotFoundError,
+  OidcTransactionCapacityError,
   parseDatabaseConfig,
   auditEvents,
   workspaceMemberships,
@@ -76,6 +77,85 @@ function pgCode(error: unknown): string | undefined {
     current = current.cause;
   }
   return undefined;
+}
+
+async function replaceOidcTransactions(input: {
+  active?: number;
+  consumed?: number;
+  stale?: number;
+}): Promise<void> {
+  const pool = new Pool({ connectionString: migrationUrl, max: 1 });
+  const client = await pool.connect();
+  try {
+    await client.query('begin');
+    await client.query('set local role pertexo_owner');
+    await client.query(
+      'alter table app.oidc_login_transactions disable trigger oidc_login_transactions_capacity',
+    );
+    await client.query('delete from app.oidc_login_transactions');
+    const variants = [
+      {
+        count: input.active ?? 0,
+        prefix: `active-${randomUUID()}`,
+        createdAt: "clock_timestamp() - interval '1 minute'",
+        expiresAt: "clock_timestamp() + interval '1 hour'",
+        consumedAt: 'null',
+      },
+      {
+        count: input.consumed ?? 0,
+        prefix: `consumed-${randomUUID()}`,
+        createdAt: "clock_timestamp() - interval '2 minutes'",
+        expiresAt: "clock_timestamp() + interval '1 hour'",
+        consumedAt: "clock_timestamp() - interval '1 minute'",
+      },
+      {
+        count: input.stale ?? 0,
+        prefix: `stale-${randomUUID()}`,
+        createdAt: "clock_timestamp() - interval '2 hours'",
+        expiresAt: "clock_timestamp() - interval '1 hour'",
+        consumedAt: 'null',
+      },
+    ];
+    for (const variant of variants) {
+      if (variant.count === 0) continue;
+      await client.query(
+        `insert into app.oidc_login_transactions
+           (state_digest, code_verifier_ciphertext, code_verifier_nonce,
+            code_verifier_tag, code_verifier_key_version, nonce_ciphertext,
+            nonce_nonce, nonce_tag, nonce_key_version, expires_at, consumed_at,
+            created_at)
+         select md5($1 || series::text) || md5(series::text || $1),
+                'sealed-verifier', 'nonce', 'tag', 'test-v1',
+                'sealed-nonce', 'nonce', 'tag', 'test-v1',
+                ${variant.expiresAt}, ${variant.consumedAt}, ${variant.createdAt}
+         from generate_series(1, $2::integer) as series`,
+        [variant.prefix, variant.count],
+      );
+    }
+    await client.query(
+      'alter table app.oidc_login_transactions enable trigger oidc_login_transactions_capacity',
+    );
+    await client.query('commit');
+  } catch (error: unknown) {
+    await client.query('rollback').catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+    await pool.end();
+  }
+}
+
+async function clearOidcTransactions(): Promise<void> {
+  await replaceOidcTransactions({});
+}
+
+function oidcTransaction() {
+  return {
+    stateDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+    codeVerifier: `verifier-${randomUUID()}`,
+    nonce: `nonce-${randomUUID()}`,
+    expiresAt: new Date(Date.now() + 60_000),
+  };
 }
 
 beforeAll(async () => {
@@ -614,5 +694,150 @@ describe('identity/workspace persistence', () => {
       (await oidcStore.consume(expiredDigest, new Date(Date.now() + 120_000)))
         .status,
     ).toBe('expired');
+  });
+
+  it('guards OIDC admission with a locked owner function and no runtime cleanup privilege', async () => {
+    const pool = new Pool({ connectionString: apiUrl, max: 1 });
+    try {
+      const result = await pool.query<{
+        can_delete: boolean;
+        can_execute: boolean;
+        owner: string;
+        proconfig: string[] | null;
+        prosecdef: boolean;
+        runtime_roles_restricted: boolean;
+        trigger_enabled: string;
+      }>(`
+        select
+          pg_get_userbyid(proc.proowner) as owner,
+          proc.prosecdef,
+          proc.proconfig,
+          has_function_privilege(
+            current_user,
+            proc.oid,
+            'EXECUTE'
+          ) as can_execute,
+          has_table_privilege(
+            current_user,
+            'app.oidc_login_transactions',
+            'DELETE'
+          ) as can_delete,
+          (
+            select bool_and(
+              not has_function_privilege(runtime.role_name, proc.oid, 'EXECUTE')
+              and not has_table_privilege(
+                runtime.role_name,
+                'app.oidc_login_transactions',
+                'DELETE'
+              )
+            )
+            from (values
+              ('pertexo_api'),
+              ('pertexo_worker'),
+              ('pertexo_dispatcher')
+            ) as runtime(role_name)
+          ) as runtime_roles_restricted,
+          trig.tgenabled as trigger_enabled
+        from pg_proc proc
+        join pg_namespace namespace on namespace.oid = proc.pronamespace
+        join pg_trigger trig on trig.tgfoid = proc.oid
+        where namespace.nspname = 'app'
+          and proc.proname = 'enforce_oidc_login_transaction_capacity'
+          and trig.tgname = 'oidc_login_transactions_capacity'
+      `);
+      expect(result.rows[0]).toEqual({
+        owner: 'pertexo_owner',
+        prosecdef: true,
+        proconfig: ['search_path=pg_catalog, pg_temp'],
+        can_execute: false,
+        can_delete: false,
+        runtime_roles_restricted: true,
+        trigger_enabled: 'O',
+      });
+    } finally {
+      await pool.end();
+    }
+  });
+
+  it('resumes stale OIDC cleanup in bounded batches', async () => {
+    await replaceOidcTransactions({ stale: 1_001 });
+    try {
+      await oidcStore.create(oidcTransaction());
+      const pool = new Pool({ connectionString: apiUrl, max: 1 });
+      try {
+        const first = await pool.query<{ stale: string; total: string }>(`
+          select
+            count(*) filter (where expires_at <= clock_timestamp())::text as stale,
+            count(*)::text as total
+          from app.oidc_login_transactions
+        `);
+        expect(first.rows[0]).toEqual({ stale: '1', total: '2' });
+        await oidcStore.create(oidcTransaction());
+        const second = await pool.query<{ stale: string; total: string }>(`
+          select
+            count(*) filter (where expires_at <= clock_timestamp())::text as stale,
+            count(*)::text as total
+          from app.oidc_login_transactions
+        `);
+        expect(second.rows[0]).toEqual({ stale: '0', total: '2' });
+      } finally {
+        await pool.end();
+      }
+    } finally {
+      await clearOidcTransactions();
+    }
+  });
+
+  it('atomically caps active OIDC transactions under concurrent admission', async () => {
+    await replaceOidcTransactions({ active: 9_999 });
+    try {
+      const results = await Promise.allSettled([
+        oidcStore.create(oidcTransaction()),
+        oidcStore.create(oidcTransaction()),
+      ]);
+      expect(
+        results.filter((result) => result.status === 'fulfilled'),
+      ).toHaveLength(1);
+      const rejected = results.find((result) => result.status === 'rejected');
+      expect(rejected?.status).toBe('rejected');
+      if (rejected?.status === 'rejected') {
+        expect(rejected.reason).toBeInstanceOf(OidcTransactionCapacityError);
+        expect(pgCode(rejected.reason)).toBe('54000');
+      }
+      const pool = new Pool({ connectionString: apiUrl, max: 1 });
+      try {
+        const active = await pool.query<{ count: string }>(`
+          select count(*)::text as count
+          from app.oidc_login_transactions
+          where consumed_at is null and expires_at > clock_timestamp()
+        `);
+        expect(active.rows[0]?.count).toBe('10000');
+      } finally {
+        await pool.end();
+      }
+    } finally {
+      await clearOidcTransactions();
+    }
+  });
+
+  it('bounds retained OIDC rows even when transactions are consumed quickly', async () => {
+    await replaceOidcTransactions({ consumed: 19_999 });
+    try {
+      await oidcStore.create(oidcTransaction());
+      await expect(oidcStore.create(oidcTransaction())).rejects.toBeInstanceOf(
+        OidcTransactionCapacityError,
+      );
+      const pool = new Pool({ connectionString: apiUrl, max: 1 });
+      try {
+        const total = await pool.query<{ count: string }>(
+          'select count(*)::text as count from app.oidc_login_transactions',
+        );
+        expect(total.rows[0]?.count).toBe('20000');
+      } finally {
+        await pool.end();
+      }
+    } finally {
+      await clearOidcTransactions();
+    }
   });
 });

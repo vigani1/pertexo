@@ -427,7 +427,7 @@ describe.each([
 describe('database readiness', () => {
   it('verifies migration, PostgreSQL, ownership, RLS, and runtime role compatibility', async () => {
     await expect(database.checkReadiness()).resolves.toEqual({
-      migrationHead: '0009_oidc_login_transactions.sql',
+      migrationHead: '0010_oidc_transaction_capacity.sql',
       postgresMajor: 18,
       role: 'pertexo_api',
     });
@@ -471,6 +471,23 @@ describe('database readiness', () => {
       } finally {
         await executeAsOwner(
           'grant insert on app.rls_probe_records to pertexo_api',
+        );
+      }
+    });
+  });
+
+  it('detects a disabled OIDC capacity trigger', async () => {
+    await withReadinessDriftLock(async () => {
+      await executeAsOwner(
+        'alter table app.oidc_login_transactions disable trigger oidc_login_transactions_capacity',
+      );
+      try {
+        await expect(database.checkReadiness()).rejects.toThrow(
+          'OIDC login transaction capacity guard is incompatible',
+        );
+      } finally {
+        await executeAsOwner(
+          'alter table app.oidc_login_transactions enable trigger oidc_login_transactions_capacity',
         );
       }
     });

@@ -60,6 +60,7 @@ export type {
 } from './identity-workspace.js';
 export {
   createOidcLoginTransactionStore,
+  OidcTransactionCapacityError,
   OidcTransactionSealingError,
 } from './oidc-login-transactions.js';
 export type {
