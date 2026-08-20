@@ -1,4 +1,5 @@
 import { WorkflowEngineError } from './errors.js';
+import { compareOrdinal } from './ordering.js';
 import type {
   BranchLedgerEntry,
   JoinPolicy,
@@ -31,7 +32,7 @@ export type JoinDecision =
 
 export function settleJoin(join: JoinState): JoinDecision {
   const ledger = [...join.ledger].sort((left, right) =>
-    left.branchId.localeCompare(right.branchId),
+    compareOrdinal(left.branchId, right.branchId),
   );
   if (
     new Set(ledger.map(({ branchId }) => branchId)).size !== ledger.length ||
@@ -104,7 +105,7 @@ export function recordBranchDisposition(
       existing.output?.reference === update.output?.reference
     ) {
       return [...ledger].sort((left, right) =>
-        left.branchId.localeCompare(right.branchId),
+        compareOrdinal(left.branchId, right.branchId),
       );
     }
     throw new WorkflowEngineError(
@@ -114,7 +115,7 @@ export function recordBranchDisposition(
   }
   return ledger
     .map((entry) => (entry.branchId === update.branchId ? update : entry))
-    .sort((left, right) => left.branchId.localeCompare(right.branchId));
+    .sort((left, right) => compareOrdinal(left.branchId, right.branchId));
 }
 
 export interface LoopAdmission {

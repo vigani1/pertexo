@@ -1,6 +1,7 @@
 import { parseCheckpoint, reconstructReadySet } from './checkpoint.js';
 import { WorkflowEngineError } from './errors.js';
-import { deriveReadyNodes, parseSchedulerGraph } from './graph-scheduler.js';
+import { deriveReadyNodes, type SchedulerState } from './graph-scheduler.js';
+import { compareOrdinal } from './ordering.js';
 import {
   admitLoopIterations,
   completeLoopIteration,
@@ -85,9 +86,9 @@ export type WorkflowObservation =
       readonly reasonCode?: string;
     };
 
-export interface AdvanceWorkflowInput {
-  readonly checkpoint: unknown;
-  readonly graph?: unknown;
+export interface AdvanceWorkflowFromSchedulerStateInput {
+  readonly checkpoint: WorkflowCheckpointV1;
+  readonly schedulerState?: SchedulerState;
   readonly observations?: readonly WorkflowObservation[];
   readonly occurredAt: string;
   readonly maximumAdmissions: number;
@@ -104,8 +105,8 @@ const nodeEventName: Readonly<Partial<Record<NodeStatus, EngineEventName>>> = {
   outcome_unknown: 'node.outcome_unknown',
 };
 
-export function advanceWorkflow(
-  input: AdvanceWorkflowInput,
+export function advanceWorkflowFromSchedulerState(
+  input: AdvanceWorkflowFromSchedulerStateInput,
 ): WorkflowTransitionPlan {
   if (
     !Number.isSafeInteger(input.maximumAdmissions) ||
@@ -116,9 +117,8 @@ export function advanceWorkflow(
       'maximumAdmissions must be non-negative',
     );
   }
-  const current = parseCheckpoint(input.checkpoint);
-  const graph =
-    input.graph === undefined ? undefined : parseSchedulerGraph(input.graph);
+  const current = input.checkpoint;
+  const graph = input.schedulerState;
   const invocations = new Map(
     current.invocations.map((invocation) => [
       invocation.invocationKey,
@@ -384,7 +384,7 @@ export function advanceWorkflow(
   }
 
   for (const join of [...joins.values()].sort((left, right) =>
-    left.joinId.localeCompare(right.joinId),
+    compareOrdinal(left.joinId, right.joinId),
   )) {
     if (
       join.selectedBranchIds !== undefined ||
@@ -436,7 +436,7 @@ export function advanceWorkflow(
 
   if (!cancelRequested) {
     for (const loop of [...loops.values()].sort((left, right) =>
-      left.loopId.localeCompare(right.loopId),
+      compareOrdinal(left.loopId, right.loopId),
     )) {
       assertLoopInvocations(current.workflowVersionId, loop, invocations);
       const admission = admitLoopIterations(loop, remainingIterationBudget);
@@ -532,7 +532,7 @@ export function advanceWorkflow(
   }
 
   const ordered = [...invocations.values()].sort((left, right) =>
-    left.invocationKey.localeCompare(right.invocationKey),
+    compareOrdinal(left.invocationKey, right.invocationKey),
   );
   const readySet = ordered
     .filter(({ status }) => status === 'ready')
@@ -564,7 +564,7 @@ export function advanceWorkflow(
   }
 
   const finalInvocations = [...invocations.values()].sort((left, right) =>
-    left.invocationKey.localeCompare(right.invocationKey),
+    compareOrdinal(left.invocationKey, right.invocationKey),
   );
   const nonterminal = finalInvocations.filter(({ status }) =>
     ['pending', 'ready', 'running', 'waiting'].includes(status),
@@ -671,7 +671,9 @@ function observationOrder(
 ): number {
   const leftKey = observationKey(left);
   const rightKey = observationKey(right);
-  return leftKey.localeCompare(rightKey) || left.kind.localeCompare(right.kind);
+  return (
+    compareOrdinal(leftKey, rightKey) || compareOrdinal(left.kind, right.kind)
+  );
 }
 
 function observationKey(observation: WorkflowObservation): string {

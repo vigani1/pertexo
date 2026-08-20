@@ -1,8 +1,12 @@
-export { advanceWorkflow } from './advance-workflow.js';
+import './server-only.js';
+
+export { advanceWorkflow, executeNodeAttempt } from './operations.js';
 export type {
   AdvanceWorkflowInput,
-  WorkflowObservation,
-} from './advance-workflow.js';
+  ExecuteNodeAttemptInput,
+  NodeAttemptOutcome,
+  NodeExecutionRegistry,
+} from './operations.js';
 export {
   createCheckpoint,
   parseCheckpoint,
@@ -23,11 +27,10 @@ export {
 export type {
   CompiledWorkflowExecutableV2,
   ExecutableRuntimePoliciesV1,
+  VerifiedWorkflowExecutableV2,
   WorkflowExecutableNodeV2,
   WorkflowExecutableV2,
 } from './executable-workflow.js';
-export { deriveReadyNodes, parseSchedulerGraph } from './graph-scheduler.js';
-export type { ReadyNodeDecision, SchedulerGraph } from './graph-scheduler.js';
 export {
   admitLoopIterations,
   completeLoopIteration,

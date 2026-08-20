@@ -22,8 +22,8 @@ import {
   parseQueueJob,
   QUEUE_NAME,
 } from '@pertexo/queue';
-import * as engine from '@pertexo/workflow-engine';
-import type { WorkflowCheckpointV1 } from '@pertexo/workflow-engine';
+import * as engine from '@pertexo/workflow-engine/testing';
+import type { WorkflowCheckpointV1 } from '@pertexo/workflow-engine/testing';
 import * as model from '@pertexo/workflow-model';
 import { sql } from 'drizzle-orm';
 import { Pool } from 'pg';

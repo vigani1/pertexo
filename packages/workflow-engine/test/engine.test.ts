@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  advanceWorkflow,
   admitLoopIterations,
   assertAttemptTransition,
   assertNodeTransition,
@@ -24,6 +23,7 @@ import {
   type WorkflowCheckpointV1,
   WORKFLOW_CHECKPOINT_LIMITS_V1,
 } from '../src/index.js';
+import { advanceWorkflow, deriveReadyNodes } from '../src/testing.js';
 
 const occurredAt = '2026-08-20T10:00:00.000Z';
 const chainGraph = {
@@ -355,6 +355,19 @@ describe('checkpoint seam', () => {
 });
 
 describe('AdvanceWorkflow operation', () => {
+  it('uses ordinal node ordering for deterministic admissions', () => {
+    expect(
+      deriveReadyNodes({
+        graph: {
+          nodes: [{ id: 'a' }, { id: 'Z' }],
+          edges: [],
+        },
+        workflowVersionId: 'version-1',
+        invocations: [],
+      }).map(({ nodeId }) => nodeId),
+    ).toEqual(['Z', 'a']);
+  });
+
   it('fails closed on malformed scheduler graph input', () => {
     const accessorNode = { id: 'a' } as Record<string, unknown>;
     Object.defineProperty(accessorNode, 'disabled', {

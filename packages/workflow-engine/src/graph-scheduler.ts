@@ -1,13 +1,9 @@
-import {
-  parseWorkflowGraphDraft,
-  validateWorkflowGraph,
-} from '@pertexo/workflow-model/graph';
-
 import { invocationKey } from './scheduling.js';
-import { WorkflowEngineError } from './errors.js';
+import { compareOrdinal } from './ordering.js';
 import type { InvocationState } from './types.js';
 
-export interface SchedulerGraph {
+/** Private execution projection derived only from a verified executable. */
+export interface SchedulerState {
   readonly nodes: readonly {
     readonly id: string;
     readonly disabled?: boolean;
@@ -24,35 +20,8 @@ export interface ReadyNodeDecision {
   readonly disposition: 'ready' | 'skipped';
 }
 
-export function parseSchedulerGraph(value: unknown): SchedulerGraph {
-  try {
-    const graph = parseWorkflowGraphDraft(value);
-    const validation = validateWorkflowGraph(graph);
-    if (!validation.ok)
-      throw new WorkflowEngineError(
-        'graph_invalid',
-        validation.issues.map(({ code }) => code).join(','),
-      );
-    return {
-      nodes: graph.nodes.map(({ id, disabled }) =>
-        disabled === undefined ? { id } : { id, disabled },
-      ),
-      edges: graph.edges.map(({ source, target }) => ({
-        source: { nodeId: source.nodeId },
-        target: { nodeId: target.nodeId },
-      })),
-    };
-  } catch (error) {
-    if (error instanceof WorkflowEngineError) throw error;
-    throw new WorkflowEngineError(
-      'graph_invalid',
-      error instanceof Error ? error.message : 'graph parsing failed',
-    );
-  }
-}
-
 export function deriveReadyNodes(input: {
-  readonly graph: SchedulerGraph;
+  readonly graph: SchedulerState;
   readonly workflowVersionId: string;
   readonly invocations: readonly InvocationState[];
 }): readonly ReadyNodeDecision[] {
@@ -74,7 +43,7 @@ export function deriveReadyNodes(input: {
     predecessors.get(edge.target.nodeId)?.push(edge.source.nodeId);
   }
   return [...input.graph.nodes]
-    .sort((left, right) => left.id.localeCompare(right.id))
+    .sort((left, right) => compareOrdinal(left.id, right.id))
     .filter((node) => {
       if (invocationByNode.has(node.id)) return false;
       return (predecessors.get(node.id) ?? []).every((predecessor) => {

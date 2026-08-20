@@ -75,9 +75,29 @@ export interface WorkflowExecutableV2 {
   readonly compatibilityReleaseFingerprint: string;
 }
 
+declare const verifiedExecutableV2: unique symbol;
+export type VerifiedWorkflowExecutableV2 = WorkflowExecutableV2 & {
+  readonly [verifiedExecutableV2]: true;
+};
+
 export interface CompiledWorkflowExecutableV2 {
-  readonly envelope: WorkflowExecutableV2;
+  readonly envelope: VerifiedWorkflowExecutableV2;
   readonly checksum: `wf:v2:sha256:${string}`;
+}
+const authenticExecutableIdentities = new WeakSet<object>();
+
+function registerExecutableIdentity(
+  value: CompiledWorkflowExecutableV2,
+): CompiledWorkflowExecutableV2 {
+  authenticExecutableIdentities.add(value);
+  return value;
+}
+
+export function assertAuthenticExecutableIdentity(
+  value: CompiledWorkflowExecutableV2,
+): void {
+  if (!authenticExecutableIdentities.has(value))
+    fail('workflow executable identity was not verified in this process');
 }
 
 const token = (
@@ -323,11 +343,13 @@ function buildBoundary(input: {
   };
   const normalizedEnvelope = freezeExecutable(
     parseBoundary({ envelope, admissionRelease: release }),
+  ) as VerifiedWorkflowExecutableV2;
+  return registerExecutableIdentity(
+    Object.freeze({
+      envelope: normalizedEnvelope,
+      checksum: computeWorkflowExecutableChecksumV2(normalizedEnvelope),
+    }),
   );
-  return {
-    envelope: normalizedEnvelope,
-    checksum: computeWorkflowExecutableChecksumV2(normalizedEnvelope),
-  };
 }
 
 /**
@@ -513,6 +535,11 @@ function assertSafeExecutableJson(value: unknown): void {
   }
 }
 
+export function normalizeBoundedEngineJson(value: unknown): JsonValue {
+  assertSafeExecutableJson(value);
+  return JSON.parse(canonicalJson(value)) as JsonValue;
+}
+
 function parseIdentity(value: unknown, label: string): DefinitionIdentity {
   const identity = record(value, label);
   exactKeys(identity, ['key', 'version']);
@@ -674,7 +701,9 @@ function parseBoundary(input: {
   readonly execution?: { readonly alreadyAdmitted: boolean };
 }): WorkflowExecutableV2 {
   assertSafeExecutableJson(input.envelope);
-  const normalizedEnvelope: unknown = JSON.parse(canonicalJson(input.envelope));
+  const normalizedEnvelope: unknown = normalizeBoundedEngineJson(
+    input.envelope,
+  );
   const envelope = record(normalizedEnvelope, 'executable envelope');
   exactKeys(envelope, [
     'schemaVersion',
@@ -695,8 +724,8 @@ function parseBoundary(input: {
   let alreadyAdmitted = false;
   if (input.execution !== undefined) {
     assertSafeExecutableJson(input.execution);
-    const normalizedExecution: unknown = JSON.parse(
-      canonicalJson(input.execution),
+    const normalizedExecution: unknown = normalizeBoundedEngineJson(
+      input.execution,
     );
     const execution = record(normalizedExecution, 'execution context');
     exactKeys(execution, ['alreadyAdmitted']);
@@ -788,9 +817,11 @@ export function parseWorkflowExecutableV2(input: {
   readonly admissionRelease: unknown;
   readonly currentRelease?: unknown;
   readonly execution?: { readonly alreadyAdmitted: boolean };
-}): WorkflowExecutableV2 {
+}): VerifiedWorkflowExecutableV2 {
   try {
-    return freezeExecutable(parseBoundary(input));
+    return freezeExecutable(
+      parseBoundary(input),
+    ) as VerifiedWorkflowExecutableV2;
   } catch (error) {
     normalizeError(error);
   }
@@ -807,5 +838,5 @@ export function verifyWorkflowExecutableV2(input: {
   const checksum = computeWorkflowExecutableChecksumV2(envelope);
   if (input.checksum !== checksum)
     fail('workflow executable V2 checksum does not match');
-  return { envelope, checksum };
+  return registerExecutableIdentity(Object.freeze({ envelope, checksum }));
 }

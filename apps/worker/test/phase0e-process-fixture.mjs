@@ -16,7 +16,10 @@ import {
 } from '@pertexo/database';
 import { createQueueTraceRunner } from '@pertexo/observability/queue-tracing';
 import { createQueueConsumer, JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
-import { advanceWorkflow, parseCheckpoint } from '@pertexo/workflow-engine';
+import {
+  advanceWorkflow,
+  parseCheckpoint,
+} from '@pertexo/workflow-engine/testing';
 import { sql } from 'drizzle-orm';
 
 const input = JSON.parse(process.env.PHASE0E_CHILD_INPUT ?? '{}');

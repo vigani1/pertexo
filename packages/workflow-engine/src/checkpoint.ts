@@ -1,6 +1,7 @@
 import { types as nodeTypes } from 'node:util';
 
 import { WorkflowEngineError } from './errors.js';
+import { compareOrdinal } from './ordering.js';
 import { invocationKey } from './scheduling.js';
 import {
   NODE_STATUSES,
@@ -354,7 +355,7 @@ function parseLedger(value: unknown): readonly BranchLedgerEntry[] {
     };
   });
   return [...ledger].sort((left, right) =>
-    left.branchId.localeCompare(right.branchId),
+    compareOrdinal(left.branchId, right.branchId),
   );
 }
 
@@ -688,7 +689,7 @@ function parseCheckpointBoundary(value: unknown): WorkflowCheckpointV1 {
   const invocations = value.invocations
     .map(parseInvocation)
     .sort((left, right) =>
-      left.invocationKey.localeCompare(right.invocationKey),
+      compareOrdinal(left.invocationKey, right.invocationKey),
     );
   assertCheckpoint(
     new Set(invocations.map(({ invocationKey }) => invocationKey)).size ===
@@ -697,14 +698,14 @@ function parseCheckpointBoundary(value: unknown): WorkflowCheckpointV1 {
   );
   const joins = value.joins
     .map(parseJoin)
-    .sort((left, right) => left.joinId.localeCompare(right.joinId));
+    .sort((left, right) => compareOrdinal(left.joinId, right.joinId));
   assertCheckpoint(
     new Set(joins.map(({ joinId }) => joinId)).size === joins.length,
     'join IDs must be unique',
   );
   const loops = value.loops
     .map(parseLoop)
-    .sort((left, right) => left.loopId.localeCompare(right.loopId));
+    .sort((left, right) => compareOrdinal(left.loopId, right.loopId));
   assertCheckpoint(
     new Set(loops.map(({ loopId }) => loopId)).size === loops.length,
     'loop IDs must be unique',
