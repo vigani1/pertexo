@@ -123,7 +123,7 @@ async function assertWorkspaceAcceptsNewRuns(
 async function readExistingAcceptance(
   transaction: WorkspaceTransaction,
   input: z.output<typeof acceptWorkflowRunInputSchema>,
-): Promise<AcceptedWorkflowRun> {
+): Promise<AcceptedWorkflowRun | null> {
   const rows = await transaction.db
     .select({
       requestHash: idempotencyRecords.requestHash,
@@ -153,7 +153,7 @@ async function readExistingAcceptance(
   const row = rows[0];
 
   if (row === undefined) {
-    throw new IdempotencyRecordCorruptError();
+    return null;
   }
   if (row.requestHash !== input.requestHash) {
     throw new IdempotencyRequestConflictError();
@@ -183,6 +183,9 @@ export async function acceptWorkflowRun(
   input: AcceptWorkflowRunInput,
 ): Promise<AcceptedWorkflowRun> {
   const parsed = acceptWorkflowRunInputSchema.parse(input);
+  const existing = await readExistingAcceptance(transaction, parsed);
+  if (existing !== null) return existing;
+
   await assertWorkspaceAcceptsNewRuns(transaction);
   const idempotencyRecordId = randomUUID();
   const runId = randomUUID();
@@ -213,7 +216,9 @@ export async function acceptWorkflowRun(
     .returning({ id: idempotencyRecords.id });
 
   if (insertedClaim.length === 0) {
-    return readExistingAcceptance(transaction, parsed);
+    const racedAcceptance = await readExistingAcceptance(transaction, parsed);
+    if (racedAcceptance === null) throw new IdempotencyRecordCorruptError();
+    return racedAcceptance;
   }
 
   const insertedRuns = await transaction.db

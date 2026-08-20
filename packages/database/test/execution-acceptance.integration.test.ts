@@ -392,6 +392,43 @@ describe('atomic workflow run acceptance', () => {
     await expectAcceptanceRecordCounts(1);
   });
 
+  it.each(['suspended', 'pending_deletion', 'deleted'] as const)(
+    'returns durable accepted truth for an exact retry after the workspace becomes %s',
+    async (status) => {
+      const first = await apiDatabase.withWorkspace(workspaceA, (transaction) =>
+        acceptWorkflowRun(transaction, acceptanceInput()),
+      );
+      const owner = new Pool({ connectionString: migrationUrl, max: 1 });
+      try {
+        await owner.query('set role pertexo_owner');
+        await owner.query(
+          `update app.workspaces
+           set status = $2::varchar,
+               deletion_requested_at = case when $2::text = 'suspended' then null else now() end,
+               deletion_requested_by = case when $2::text = 'suspended' then null::uuid else $3::uuid end,
+               deletion_reason = case when $2::text = 'suspended' then null::varchar else 'fixture deletion'::varchar end,
+               purge_after = case when $2::text = 'suspended' then null else now() + interval '30 days' end
+           where id = $1`,
+          [workspaceA, status, workspaceCreatorId],
+        );
+      } finally {
+        await owner.end();
+      }
+
+      await expect(
+        apiDatabase.withWorkspace(workspaceA, (transaction) =>
+          acceptWorkflowRun(transaction, acceptanceInput()),
+        ),
+      ).resolves.toEqual({ ...first, duplicate: true });
+      await expect(
+        apiDatabase.withWorkspace(workspaceA, (transaction) =>
+          acceptWorkflowRun(transaction, acceptanceInput(otherRequestHash)),
+        ),
+      ).rejects.toBeInstanceOf(IdempotencyRequestConflictError);
+      await expectAcceptanceRecordCounts(1);
+    },
+  );
+
   it('rolls the entire acceptance back when its surrounding transaction fails', async () => {
     await expect(
       apiDatabase.withWorkspace(workspaceA, async (transaction) => {

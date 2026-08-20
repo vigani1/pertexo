@@ -10,6 +10,7 @@ import {
   createWorkspaceDatabase,
   createOidcLoginTransactionStore,
   IdentityConflictError,
+  IdentityNotFoundError,
   parseDatabaseConfig,
   auditEvents,
   workspaceMemberships,
@@ -128,6 +129,66 @@ describe('identity/workspace persistence', () => {
     expect(await identityDatabase.revokeSession(ownerSessionId)).toBe(true);
     expect(await identityDatabase.revokeSession(ownerSessionId)).toBe(false);
   });
+
+  it.each(['suspended', 'deleted'] as const)(
+    'fails closed across identity, session, and workspace access when a user is %s',
+    async (status) => {
+      const issuer = `https://issuer-${randomUUID()}.example.test`;
+      const providerSubject = randomUUID();
+      const resolved = await identityDatabase.resolveOrCreateIdentity({
+        issuer,
+        providerSubject,
+        email: `${randomUUID()}@example.test`,
+        displayName: 'Status controlled user',
+      });
+      const sessionDigest = createHash('sha256')
+        .update(randomUUID())
+        .digest('hex');
+      await identityDatabase.createSession({
+        userId: resolved.user.id,
+        tokenDigest: sessionDigest,
+        expiresAt: new Date(Date.now() + 60_000),
+      });
+      const workspace = await identityDatabase.createWorkspaceWithOwner({
+        name: 'Status controlled workspace',
+        slug: `status-${randomUUID().slice(0, 12)}`,
+        ownerUserId: resolved.user.id,
+      });
+
+      const owner = new Pool({ connectionString: migrationUrl, max: 1 });
+      try {
+        await owner.query('set role pertexo_owner');
+        await owner.query('update app.users set status = $2 where id = $1', [
+          resolved.user.id,
+          status,
+        ]);
+      } finally {
+        await owner.end();
+      }
+
+      await expect(
+        identityDatabase.resolveOrCreateIdentity({
+          issuer,
+          providerSubject,
+          email: resolved.user.email,
+          displayName: resolved.user.displayName,
+        }),
+      ).rejects.toBeInstanceOf(IdentityNotFoundError);
+      await expect(
+        identityDatabase.createSession({
+          userId: resolved.user.id,
+          tokenDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+          expiresAt: new Date(Date.now() + 60_000),
+        }),
+      ).rejects.toBeInstanceOf(IdentityNotFoundError);
+      await expect(
+        identityDatabase.findActiveSessionByDigest(sessionDigest),
+      ).resolves.toBeNull();
+      await expect(
+        identityDatabase.findWorkspaceAccess(resolved.user.id, workspace.id),
+      ).resolves.toBeNull();
+    },
+  );
 
   it('revokes a session by digest atomically with one concurrent winner', async () => {
     const tokenDigest = createHash('sha256').update(randomUUID()).digest('hex');

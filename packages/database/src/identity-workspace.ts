@@ -564,6 +564,11 @@ export function createIdentityWorkspaceDatabase(
         const existingRow = existing.rows[0] as
           Record<string, unknown> | undefined;
         if (existingRow !== undefined) {
+          if (existingRow.user_status !== USER_STATUS.active) {
+            throw new IdentityNotFoundError(
+              'Authentication identity is not available',
+            );
+          }
           return {
             user: mapUser({
               id: existingRow.user_id,
@@ -633,6 +638,7 @@ export function createIdentityWorkspaceDatabase(
                   w.status as workspace_status
            from app.workspace_memberships m
            join app.workspaces w on w.id = m.workspace_id
+           join app.users u on u.id = m.user_id and u.status = 'active'
            where m.workspace_id = $1 and m.user_id = $2`,
           [workspaceId, actorId],
         );
@@ -664,7 +670,9 @@ export function createIdentityWorkspaceDatabase(
         const result = await pool.query(
           `insert into app.sessions
              (id, user_id, token_digest, expires_at, user_agent, ip_address)
-           values ($1, $2, $3, $4, $5, $6)
+           select $1, u.id, $3, $4, $5, $6
+           from app.users u
+           where u.id = $2 and u.status = 'active'
            returning id, user_id, token_digest, expires_at, revoked_at,
                      user_agent, ip_address, created_at`,
           [
@@ -676,7 +684,11 @@ export function createIdentityWorkspaceDatabase(
             input.ipAddress ?? null,
           ],
         );
-        return mapSession(result.rows[0] as Record<string, unknown>);
+        const row = result.rows[0] as Record<string, unknown> | undefined;
+        if (row === undefined) {
+          throw new IdentityNotFoundError('User is not available');
+        }
+        return mapSession(row);
       } catch (error: unknown) {
         databaseConflict(
           error,
@@ -689,11 +701,12 @@ export function createIdentityWorkspaceDatabase(
       tokenDigestInput: string,
     ): Promise<SessionRecord | null> => {
       const result = await pool.query(
-        `select id, user_id, token_digest, expires_at, revoked_at,
-                user_agent, ip_address, created_at
-         from app.sessions
-         where token_digest = $1 and revoked_at is null
-           and expires_at > clock_timestamp()`,
+        `select s.id, s.user_id, s.token_digest, s.expires_at, s.revoked_at,
+                s.user_agent, s.ip_address, s.created_at
+         from app.sessions s
+         join app.users u on u.id = s.user_id and u.status = 'active'
+         where s.token_digest = $1 and s.revoked_at is null
+           and s.expires_at > clock_timestamp()`,
         [digestSchema.parse(tokenDigestInput)],
       );
       const row = result.rows[0] as Record<string, unknown> | undefined;
