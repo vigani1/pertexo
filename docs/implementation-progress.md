@@ -17,7 +17,7 @@ not complete a phase.
 | Phase 0C — HTTP and observability foundation | Complete | Commit `e8093d2`; 47 API/worker/observability tests; compiled role and OTLP trace/metric smoke checks |
 | Phase 0D — queue, outbox, and duplicate-delivery proof | Complete | ADRs 005–006; migration head `0006_execution_vocabulary.sql`; 158 unit, 76 real integration, and one destructive recovery assertion |
 | Phase 0E — execution durability proofs and engine gate | Complete | ADRs 005 and 007–009; commits through `0322837`; 239 unit, 96 real-service integration, five process-recovery, one SSE-outage, and one transport-outage assertions; custom-engine GO |
-| Phase 1 — identity/workspace vertical slice | Not started | — |
+| Phase 1 — identity/workspace vertical slice | In progress | ADR 004 accepted; implementation checklist expanded; persistence foundation is next |
 | Phase 2 — workflow authoring vertical slice | Not started | — |
 | Phase 3 — first executable-node slice | Not started | — |
 | Phase 4 — first side-effecting integration slice | Not started | — |
@@ -334,6 +334,47 @@ Current evidence:
   decision after the independent implementation review made this final
   ADR/progress record its sole remaining condition. The Temporal fallback is
   therefore not required at this gate.
+
+## Phase 1 — Identity/workspace vertical slice
+
+Status: **In progress**
+
+- [x] Accept the managed OIDC and internal authorization decision before
+      implementation.
+- [ ] Add reviewed migrations for platform users, identities, sessions, and
+      workspaces plus forced-RLS memberships and append-only audit events.
+- [ ] Prove least-privilege runtime grants, absent-context failure, cross-tenant
+      isolation, pool cleanup, and audit immutability with real PostgreSQL roles.
+- [ ] Implement one managed OIDC authorization-code flow with single-use state,
+      nonce, PKCE, callback verification, and a narrow provider-neutral port.
+- [ ] Issue digest-only opaque sessions with bounded expiry/revocation, secure
+      cookie policy, rotation seams, and CSRF protection for browser mutations.
+- [ ] Build immutable actor/request context and named capability authorization
+      that proves membership before opening a workspace RLS transaction.
+- [ ] Atomically create a workspace, owner membership, and request/trace-linked
+      audit event through the authorized API slice.
+- [ ] Implement workspace deletion request and restore foundations with local
+      session revocation, access/run/trigger prevention seams, and restore to
+      `suspended` without silently re-enabling access.
+- [ ] Prove the complete login-to-authorized-command flow with unit/application
+      tests and real PostgreSQL plus a fake OIDC provider, including replay,
+      tamper, expiry, revocation, CSRF, role/capability, rollback, conflict, and
+      sanitized RFC 9457 error cases.
+- [ ] Record API contracts, fixed-cardinality auth/workspace telemetry, command
+      matrix, assertion counts, migration evidence, and independent
+      blocker/high review before completion.
+
+Current evidence:
+
+- ADR 004 (`a59cce2`) accepts managed OIDC, opaque local sessions, explicit
+  workspace selection, role-to-capability policy, PostgreSQL-first audit, and
+  durable deletion/restore boundaries. It explicitly defers invitations,
+  custom passwords, enterprise claim/group sync, multi-provider abstraction,
+  service accounts, and API keys from this slice.
+- ADR 003 remains authoritative for direct `workspace_id`, forced RLS,
+  least-privilege runtime roles, and `SET LOCAL` transaction scope.
+- Phase 0E completed the custom-engine gate in `b9c923d`; Phase 1 has no
+  remaining execution-foundation prerequisite.
 
 ## Later phases
 
