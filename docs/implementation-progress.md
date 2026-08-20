@@ -18,7 +18,7 @@ not complete a phase.
 | Phase 0D — queue, outbox, and duplicate-delivery proof | Complete | ADRs 005–006; migration head `0006_execution_vocabulary.sql`; 158 unit, 76 real integration, and one destructive recovery assertion |
 | Phase 0E — execution durability proofs and engine gate | Complete | ADRs 005 and 007–009; commits through `0322837`; 239 unit, 96 real-service integration, five process-recovery, one SSE-outage, and one transport-outage assertions; custom-engine GO |
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
-| Phase 2 — workflow authoring vertical slice | In progress | ADRs, canonical graph/HTTP contracts, persistence, held dispatch boundary, and real HTTP slice complete; repository-wide gates and completion reviews remain |
+| Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 3 — first executable-node slice | Not started | — |
 | Phase 4 — first side-effecting integration slice | Not started | — |
 | Phase 5 — orchestration slice | Not started | — |
@@ -485,13 +485,12 @@ Current evidence:
 
 ## Phase 2 — Workflow authoring vertical slice
 
-Status: **In progress**
+Status: **Complete**
 
 The required ADRs and the workflow-authoring thin slice have been implemented
 through persistence, HTTP/runtime composition, generated public contracts, and
-real-service verification. Phase 2 remains in progress while the final
-Spec/Standards review findings are corrected and the whole slice is reverified
-against the plan's vertical-slice completion rule.
+real-service verification. The final repository-wide gates and independent
+Spec/Standards reviews passed with no remaining blocker/high findings.
 
 Plan-aligned checklist:
 
@@ -586,13 +585,13 @@ Plan-aligned checklist:
       inclusion/exclusion, authorization, cross-workspace isolation, RLS/grants,
       and safe problem responses with unit plus real PostgreSQL/HTTP integration
       tests.
-- [ ] Run the repository-wide quality gate and the full applicable real-service
+- [x] Run the repository-wide quality gate and the full applicable real-service
       integration suite, record exact assertion counts and migration head, and
       resolve every blocker/high finding from independent Spec and Standards
       completion reviews.
-- [ ] Connect the canvas only after every API, authorization, conflict, publish,
-      contract, and verification item above passes; canvas work does not count
-      toward backend Phase 2 completion.
+- [x] Keep canvas integration deferred until every API, authorization,
+      conflict, publish, contract, and verification item above passes; no
+      canvas work is used as backend Phase 2 completion evidence.
 
 Thin-slice exclusions:
 
@@ -700,6 +699,31 @@ Initial evidence:
   session/CSRF authorization, RLS-hidden access, create/list/read/save/validate/
   publish/version listing, missing and stale preconditions, exact publication
   replay, and safe typed problem responses.
+- Commit `63d4c42` restores canonical graph ownership to the browser-safe
+  `@pertexo/workflow-model/graph-contract` export, makes public contracts consume
+  that owner in the plan-aligned direction, centralizes RFC 9457 problem-schema
+  construction, and publishes required strong `ETag` response contracts.
+  Commit `843a0e2` removes the pre-replay draft read, preserves same-transaction
+  revision/ETag conflict pairs, emits the created draft ETag, and adds the
+  request/trace and concurrency regressions required by the completion review.
+- Final `pnpm check` passes formatting, lint, deterministic contract drift,
+  every typecheck and production build, and 414 unit assertions: 28 artifact,
+  32 observability, 35 queue, 41 engine, 45 workflow-model, seven contracts, 17
+  database, 40 worker, and 169 API.
+- Commit `80de849` makes the root real-service gate deterministic by running the
+  four suites sequentially against shared local services. On a fresh isolated
+  PostgreSQL 18 database migrated zero-to-head
+  `0012_workflow_authoring.sql`, `pnpm test:integration` passes 150 assertions:
+  two object-store, 135 database, six worker/PostgreSQL/Redis/BullMQ, and seven
+  API/PostgreSQL/SSE. The temporary database was dropped afterward; PostgreSQL
+  and Redis remained healthy.
+- Independent Spec and Standards completion reviews at `0ca1edd` returned GO
+  with no blocker/high findings after verifying publish replay ordering,
+  same-snapshot conflict hints, canonical graph ownership, shared problem
+  contracts, request/trace regression coverage, package boundaries, generated
+  artifacts, tracker accuracy, and commit coherence. Targeted re-reviews at
+  `80de849` also returned GO for the deterministic full-integration gate and its
+  150-assertion evidence.
 
 ## Later phases
 
