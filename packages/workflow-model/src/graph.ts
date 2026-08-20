@@ -776,6 +776,54 @@ export function workflowRetainedExecutableChecksum(input: unknown): string {
   return checksumExecutableProjection(executableGraphProjection(graph));
 }
 
+export interface RetainedWorkflowVersionV1 {
+  readonly format: 'v1';
+  readonly executable: false;
+  readonly graphSchemaVersion: 1;
+  readonly graph: WorkflowGraph;
+  readonly checksum: `wf:v1:sha256:${string}`;
+}
+
+type WorkflowChecksumV1 = `wf:v1:sha256:${string}`;
+const workflowChecksumV1Pattern = /^wf:v1:sha256:[a-f0-9]{64}$/u;
+const workflowChecksumV1Schema = z.custom<WorkflowChecksumV1>(
+  (value) => typeof value === 'string' && workflowChecksumV1Pattern.test(value),
+  'invalid workflow V1 checksum',
+);
+
+const retainedWorkflowVersionV1Schema = z
+  .object({
+    schemaVersion: z.literal(1),
+    graphJson: z.unknown(),
+    checksum: workflowChecksumV1Schema,
+    executableSchemaVersion: z.null(),
+    executableJson: z.null(),
+    compatibilityReleaseEpoch: z.null(),
+  })
+  .strict();
+
+/**
+ * Verifies a retained Phase 2 row under its original V1 identity rules.
+ * V1 remains readable for diagnosis and migration, but deliberately cannot be
+ * admitted for execution because it has no pinned executor or runtime policy.
+ */
+export function parseRetainedWorkflowVersionV1(
+  input: unknown,
+): RetainedWorkflowVersionV1 {
+  const retained = retainedWorkflowVersionV1Schema.parse(input);
+  const graph = parseWorkflowGraphDraft(retained.graphJson);
+  const checksum = workflowRetainedExecutableChecksum(graph);
+  if (checksum !== retained.checksum)
+    throw new Error('retained workflow V1 checksum does not match its graph');
+  return Object.freeze({
+    format: 'v1',
+    executable: false,
+    graphSchemaVersion: 1,
+    graph,
+    checksum: retained.checksum,
+  });
+}
+
 export type WorkflowDraftRepresentationTag = `"draft-v1.${string}"`;
 
 export function workflowDraftRepresentationTag(input: {
