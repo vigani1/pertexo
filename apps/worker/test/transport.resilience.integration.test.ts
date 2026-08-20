@@ -238,7 +238,10 @@ async function insertProofEvent(
       insertOutboxEvent(transaction, {
         aggregateId: runId,
         aggregateType: 'workflow-run',
-        availableAt: new Date(0),
+        // The dispatcher is intentionally cross-workspace. Make this proof row
+        // deterministically earlier than unrelated local development rows so
+        // a bounded global claim always includes the row under test.
+        availableAt: new Date('1900-01-01T00:00:00.000Z'),
         id,
         jobName: JOB_NAME.advanceWorkflowRun,
         payload,
@@ -595,6 +598,9 @@ describeResilience(
 
         await postgresDispatcher.close();
         postgresDispatcher = undefined;
+        await queue.close();
+        queue = undefined;
+        await flushProofRedis();
 
         // Real drain proof: readiness falls before drain, dispatch admits no
         // row, and both dispatcher and an active consumer close within bounds.
