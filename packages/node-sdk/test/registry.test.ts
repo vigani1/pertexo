@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import {
   canonicalCompatibilityReleaseJson,
+  boundedNodeJsonSchema,
   computeCompatibilityReleaseFingerprint,
   computeCompatibilitySelectionFingerprint,
   createRegistryRelease,
@@ -186,6 +187,30 @@ describe('node-sdk registry release contracts', () => {
 });
 
 describe('node-sdk exact server registry', () => {
+  it('keeps browser and server bounded JSON admission in parity', () => {
+    const exact = 'x'.repeat(NODE_EXECUTION_LIMITS_V1.bytes - 2);
+    const over = `${exact}x`;
+    expect(boundedNodeJsonSchema.safeParse(exact).success).toBe(true);
+    expect(() => canonicalizeBoundedJson(exact)).not.toThrow();
+    expect(boundedNodeJsonSchema.safeParse(over).success).toBe(false);
+    expect(() => canonicalizeBoundedJson(over)).toThrow(
+      InvalidBoundedJsonError,
+    );
+
+    const cyclic: Record<string, unknown> = {};
+    cyclic.self = cyclic;
+    expect(boundedNodeJsonSchema.safeParse(cyclic).success).toBe(false);
+    expect(() => canonicalizeBoundedJson(cyclic)).toThrow(
+      InvalidBoundedJsonError,
+    );
+
+    const sparse = new Array<unknown>(1);
+    expect(boundedNodeJsonSchema.safeParse(sparse).success).toBe(false);
+    expect(() => canonicalizeBoundedJson(sparse)).toThrow(
+      InvalidBoundedJsonError,
+    );
+  });
+
   it('enforces scalar byte limits before returning normalized JSON', () => {
     const exact = 'x'.repeat(NODE_EXECUTION_LIMITS_V1.bytes - 2);
     expect(canonicalizeBoundedJson(exact)).toBe(exact);

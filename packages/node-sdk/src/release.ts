@@ -38,6 +38,12 @@ export interface SchemaObject {
 
 export type SchemaDocument = Readonly<Record<string, SchemaJson>>;
 
+export const NODE_JSON_LIMITS_V1 = Object.freeze({
+  bytes: 1_048_576,
+  depth: 64,
+  members: 10_000,
+});
+
 export interface NodePorts {
   readonly inputs: readonly string[];
   readonly outputs: readonly string[];
@@ -98,9 +104,18 @@ const identitySchema = z
   .strict();
 const policyReferenceSchema = identitySchema;
 
-function isSchemaDocument(value: unknown): value is SchemaDocument {
-  if (value === null || typeof value !== 'object' || Array.isArray(value))
-    return false;
+export function isBoundedNodeJson(value: unknown): value is SchemaJson {
+  if (
+    value === null ||
+    typeof value === 'string' ||
+    typeof value === 'boolean' ||
+    (typeof value === 'number' && Number.isFinite(value))
+  )
+    return (
+      new TextEncoder().encode(JSON.stringify(value)).byteLength <=
+      NODE_JSON_LIMITS_V1.bytes
+    );
+  if (typeof value !== 'object') return false;
   const stack: { readonly value: object; readonly depth: number }[] = [
     { value, depth: 1 },
   ];
@@ -109,7 +124,8 @@ function isSchemaDocument(value: unknown): value is SchemaDocument {
   while (stack.length > 0) {
     const current = stack.pop();
     if (current === undefined) break;
-    if (current.depth > 64 || seen.has(current.value)) return false;
+    if (current.depth > NODE_JSON_LIMITS_V1.depth || seen.has(current.value))
+      return false;
     seen.add(current.value);
     if (
       !Array.isArray(current.value) &&
@@ -118,9 +134,20 @@ function isSchemaDocument(value: unknown): value is SchemaDocument {
     )
       return false;
     if (Object.getOwnPropertySymbols(current.value).length > 0) return false;
-    for (const key of Object.keys(current.value)) {
+    const keys = Array.isArray(current.value)
+      ? Array.from({ length: current.value.length }, (_, index) =>
+          String(index),
+        )
+      : Object.keys(current.value);
+    if (
+      Array.isArray(current.value) &&
+      (Object.keys(current.value).length !== current.value.length ||
+        keys.some((key) => !(Number(key) in current.value)))
+    )
+      return false;
+    for (const key of keys) {
       members += 1;
-      if (members > 10_000) return false;
+      if (members > NODE_JSON_LIMITS_V1.members) return false;
       const descriptor = Object.getOwnPropertyDescriptor(current.value, key);
       if (descriptor === undefined || !('value' in descriptor)) return false;
       const child: unknown = descriptor.value;
@@ -137,11 +164,33 @@ function isSchemaDocument(value: unknown): value is SchemaDocument {
   }
   try {
     return (
-      new TextEncoder().encode(JSON.stringify(value)).byteLength <= 1_048_576
+      new TextEncoder().encode(JSON.stringify(value)).byteLength <=
+      NODE_JSON_LIMITS_V1.bytes
     );
   } catch {
     return false;
   }
+}
+
+export const boundedNodeJsonSchema: z.ZodType<SchemaJson> =
+  z.custom<SchemaJson>(isBoundedNodeJson, {
+    message: 'value exceeds the bounded node JSON contract',
+  });
+
+export const boundedNodeJsonRecordSchema: z.ZodType<SchemaDocument> =
+  boundedNodeJsonSchema.refine(
+    (value): value is SchemaDocument =>
+      value !== null && typeof value === 'object' && !Array.isArray(value),
+    'value must be a JSON object',
+  );
+
+function isSchemaDocument(value: unknown): value is SchemaDocument {
+  return (
+    isBoundedNodeJson(value) &&
+    value !== null &&
+    typeof value === 'object' &&
+    !Array.isArray(value)
+  );
 }
 
 const schemaDocumentSchema = z.custom<SchemaDocument>(isSchemaDocument, {

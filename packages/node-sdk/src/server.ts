@@ -11,6 +11,7 @@ import {
   type ExecutorLifecycle,
   type ExecutorManifest,
   type NodeManifest,
+  NODE_JSON_LIMITS_V1,
   nodeManifestSchema,
   type PolicyReference,
   type RegistryRelease,
@@ -27,11 +28,7 @@ interface JsonObject {
   readonly [key: string]: JsonValue;
 }
 
-export const NODE_EXECUTION_LIMITS_V1 = Object.freeze({
-  bytes: 1_048_576,
-  depth: 64,
-  members: 10_000,
-});
+export const NODE_EXECUTION_LIMITS_V1 = NODE_JSON_LIMITS_V1;
 
 export type NodeExecutionKind = 'succeeded' | 'terminal_success';
 
