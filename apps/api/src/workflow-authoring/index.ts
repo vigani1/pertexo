@@ -1,6 +1,7 @@
 export * from './controllers.js';
 export * from './errors.js';
 export * from './etag.js';
+export * from './guards.js';
 export * from './module.js';
 export * from './ports.js';
 export * from './preconditions.js';

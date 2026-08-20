@@ -6,10 +6,6 @@ import type {
 } from '../workspaces/index.js';
 import type { WorkspaceAuthorizationSource } from '../identity-workspace/ports.js';
 import type { WorkflowAuthoringTelemetry } from './telemetry.js';
-import type {
-  CsrfProtectionGuard,
-  SessionAuthenticationGuard,
-} from '../identity-workspace/guards.js';
 
 /** Narrow application persistence seam; database lifecycle is owned by runtime composition. */
 export type WorkflowAuthoringPersistence = Pick<
@@ -26,9 +22,6 @@ export type WorkflowAuthoringPersistence = Pick<
 export type WorkflowAuthoringDependencies = Readonly<{
   persistence: WorkflowAuthoringPersistence;
   authorization: WorkspaceAuthorizationSource | WorkspaceAuthorizationPort;
-  /** Guards are supplied by the identity module; this feature never constructs auth state. */
-  sessionAuthenticationGuard: SessionAuthenticationGuard;
-  csrfProtectionGuard: CsrfProtectionGuard;
   definitionCatalog?: Readonly<{
     schemaVersion: 1;
     definitions: readonly Readonly<{ key: string; version: number }>[];

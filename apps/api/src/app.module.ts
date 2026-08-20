@@ -24,10 +24,15 @@ import {
   IdentityRuntimeModule,
   type ApiIdentityRuntime,
 } from './platform/identity/identity-runtime.module.js';
+import {
+  WorkflowRuntimeModule,
+  type ApiWorkflowRuntime,
+} from './platform/workflow/workflow-runtime.module.js';
 
 export type ApiModuleDependencies = Readonly<{
   database?: WorkspaceDatabase;
   identityRuntime?: ApiIdentityRuntime;
+  workflowRuntime?: ApiWorkflowRuntime;
   logger: StructuredLogger;
   telemetry: TelemetryLifecycle;
 }>;
@@ -67,13 +72,27 @@ export class AppModule {
       },
     });
 
+    const identityModule =
+      dependencies.identityRuntime === undefined
+        ? undefined
+        : IdentityRuntimeModule.register(dependencies.identityRuntime);
+    const featureModules =
+      identityModule === undefined
+        ? []
+        : dependencies.workflowRuntime === undefined
+          ? [identityModule]
+          : [
+              WorkflowRuntimeModule.register(
+                dependencies.workflowRuntime,
+                identityModule,
+              ),
+            ];
+
     return {
       module: AppModule,
       imports: [
         DatabaseModule.register(config.database, databaseOptions),
-        ...(dependencies.identityRuntime === undefined
-          ? []
-          : [IdentityRuntimeModule.register(dependencies.identityRuntime)]),
+        ...featureModules,
         ObservabilityModule.register(
           dependencies.logger,
           dependencies.telemetry,

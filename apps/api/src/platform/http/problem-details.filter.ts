@@ -148,12 +148,17 @@ function fromApplicationError(error: ApplicationError): NormalizedProblem {
     entry.exposeDetail && error.safeDetail !== undefined
       ? text(error.safeDetail, 2_000)
       : undefined;
+  const issues =
+    error.code === 'workflow.invalid'
+      ? safeApplicationIssues(error.details?.issues)
+      : undefined;
   const base = {
     code: error.code,
     status: entry.status,
     title: entry.title,
     ...(detail === undefined ? {} : { detail }),
     cause: error.cause,
+    ...(issues === undefined ? {} : { errors: issues }),
   };
   if (error.code !== 'workflow.revision_conflict') return base;
   const currentRevision = error.details?.currentRevision;
@@ -177,6 +182,25 @@ function fromApplicationError(error: ApplicationError): NormalizedProblem {
     ...base,
     revisionConflict: { currentRevision, currentEtag: parsedEtag.data },
   };
+}
+
+function safeApplicationIssues(
+  value: unknown,
+): readonly ProblemIssue[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const issues = value
+    .slice(0, 100)
+    .map((issue: unknown): ProblemIssue | undefined => {
+      if (typeof issue !== 'object' || issue === null) return undefined;
+      const path = 'path' in issue ? text(issue.path, 1_024) : undefined;
+      const code = 'code' in issue ? text(issue.code, 128) : undefined;
+      const message = 'message' in issue ? text(issue.message, 500) : undefined;
+      return path === undefined || code === undefined || message === undefined
+        ? undefined
+        : { path, code, message };
+    })
+    .filter((issue): issue is ProblemIssue => issue !== undefined);
+  return issues.length === 0 ? undefined : Object.freeze(issues);
 }
 
 function normalize(exception: unknown): NormalizedProblem {

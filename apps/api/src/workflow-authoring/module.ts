@@ -2,9 +2,14 @@ import { Module } from '@nestjs/common';
 import type { DynamicModule, Provider } from '@nestjs/common';
 
 import {
+  DoubleSubmitCsrfPolicy,
+  OpaqueSessionService,
+} from '../identity/index.js';
+import {
   CsrfProtectionGuard,
   SessionAuthenticationGuard,
 } from '../identity-workspace/guards.js';
+import { RequestContextStore } from '../platform/http/index.js';
 import {
   CreateWorkflowUseCase,
   GetWorkflowDraftUseCase,
@@ -14,6 +19,12 @@ import {
   SaveWorkflowDraftUseCase,
   ValidateWorkflowDraftUseCase,
 } from './use-cases.js';
+import {
+  WorkflowCreateGuard,
+  WorkflowPublishGuard,
+  WorkflowReadGuard,
+  WorkflowUpdateGuard,
+} from './guards.js';
 import { WorkflowAuthoringController } from './controllers.js';
 import type { WorkflowAuthoringDependencies } from './ports.js';
 import { NOOP_WORKFLOW_AUTHORING_TELEMETRY } from './telemetry.js';
@@ -30,6 +41,7 @@ import {
 export class WorkflowAuthoringModule {
   public static register(
     dependencies: WorkflowAuthoringDependencies,
+    identityModule: DynamicModule,
   ): DynamicModule {
     const providers: Provider[] = [
       {
@@ -44,13 +56,23 @@ export class WorkflowAuthoringModule {
         provide: WORKFLOW_AUTHORING_TELEMETRY,
         useValue: dependencies.telemetry ?? NOOP_WORKFLOW_AUTHORING_TELEMETRY,
       },
+      WorkflowReadGuard,
+      WorkflowCreateGuard,
+      WorkflowUpdateGuard,
+      WorkflowPublishGuard,
       {
         provide: SessionAuthenticationGuard,
-        useValue: dependencies.sessionAuthenticationGuard,
+        useFactory: (
+          sessions: OpaqueSessionService,
+          contexts: RequestContextStore,
+        ) => new SessionAuthenticationGuard(sessions, contexts),
+        inject: [OpaqueSessionService, RequestContextStore],
       },
       {
         provide: CsrfProtectionGuard,
-        useValue: dependencies.csrfProtectionGuard,
+        useFactory: (csrf: DoubleSubmitCsrfPolicy) =>
+          new CsrfProtectionGuard(csrf),
+        inject: [DoubleSubmitCsrfPolicy],
       },
       ...(dependencies.definitionCatalog === undefined
         ? []
@@ -119,6 +141,7 @@ export class WorkflowAuthoringModule {
     ];
     return {
       module: WorkflowAuthoringModule,
+      imports: [identityModule],
       controllers: [WorkflowAuthoringController],
       providers,
       exports: [

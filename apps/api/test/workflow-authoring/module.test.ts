@@ -18,13 +18,17 @@ const dependencies = {
     publishWorkflow: () => Promise.reject(new Error('not exercised')),
   },
   authorization: { findAccess: () => Promise.resolve(undefined) },
-  sessionAuthenticationGuard: { canActivate: () => true } as never,
-  csrfProtectionGuard: { canActivate: () => true } as never,
 } satisfies WorkflowAuthoringDependencies;
+
+// Nest dynamic modules require a class token.
+// eslint-disable-next-line @typescript-eslint/no-extraneous-class
+class FakeIdentityModule {}
 
 describe('workflow authoring Nest module', () => {
   it('registers each application use case through explicit narrow providers', () => {
-    const dynamic = WorkflowAuthoringModule.register(dependencies);
+    const dynamic = WorkflowAuthoringModule.register(dependencies, {
+      module: FakeIdentityModule,
+    });
     const providers = dynamic.providers ?? [];
     expect(providers).toEqual(
       expect.arrayContaining([

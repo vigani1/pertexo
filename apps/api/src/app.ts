@@ -16,11 +16,18 @@ import {
   type ApiIdentityRuntime,
   type ApiIdentityRuntimeOverrides,
 } from './platform/identity/identity-runtime.module.js';
+import {
+  createApiWorkflowRuntime,
+  type ApiWorkflowRuntime,
+  type ApiWorkflowRuntimeOverrides,
+} from './platform/workflow/workflow-runtime.module.js';
 
 export type ApiApplicationDependencies = Readonly<{
   database?: WorkspaceDatabase;
   identityRuntime?: ApiIdentityRuntime;
   identityOverrides?: ApiIdentityRuntimeOverrides;
+  workflowRuntime?: ApiWorkflowRuntime;
+  workflowOverrides?: ApiWorkflowRuntimeOverrides;
   logger: StructuredLogger;
   telemetry: TelemetryLifecycle;
 }>;
@@ -39,18 +46,31 @@ export async function createApiApplication(
           config.database,
           dependencies.identityOverrides,
         ));
+  const workflowRuntime =
+    dependencies.workflowRuntime ??
+    (identityRuntime === undefined
+      ? undefined
+      : createApiWorkflowRuntime(
+          config.database,
+          identityRuntime,
+          dependencies.workflowOverrides,
+        ));
   let application: NestFastifyApplication;
   try {
     application = await NestFactory.create<NestFastifyApplication>(
       AppModule.register(config, {
         ...dependencies,
         ...(identityRuntime === undefined ? {} : { identityRuntime }),
+        ...(workflowRuntime === undefined ? {} : { workflowRuntime }),
       }),
       new FastifyAdapter(),
       { abortOnError: false, logger: nestLogger },
     );
   } catch (error: unknown) {
-    await identityRuntime?.close().catch(() => undefined);
+    await Promise.allSettled([
+      identityRuntime?.close(),
+      workflowRuntime?.close(),
+    ]);
     throw error;
   }
 

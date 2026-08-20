@@ -9,6 +9,7 @@ import { createApiApplication } from '../src/app.js';
 import type { IdentityWorkspaceDependencies } from '../src/identity-workspace/index.js';
 import { ApiDrainState } from '../src/platform/health/drain-state.js';
 import type { ApiIdentityRuntime } from '../src/platform/identity/identity-runtime.module.js';
+import type { ApiWorkflowRuntime } from '../src/platform/workflow/workflow-runtime.module.js';
 
 const database: WorkspaceDatabase = {
   withWorkspace: async <T>(
@@ -103,6 +104,27 @@ function identityRuntime(
     authorization: { findAccess: () => Promise.resolve(undefined) },
   };
   return Object.freeze({ dependencies: identityDependencies, close });
+}
+
+function workflowRuntime(
+  authorization: IdentityWorkspaceDependencies['authorization'],
+  close = vi.fn().mockResolvedValue(undefined),
+): ApiWorkflowRuntime {
+  return Object.freeze({
+    dependencies: {
+      authorization,
+      persistence: {
+        createWorkflow: () => Promise.reject(new Error('not used')),
+        listWorkflows: () => Promise.resolve({ items: [] }),
+        getDraft: () => Promise.resolve(null),
+        getVersion: () => Promise.resolve(null),
+        listVersions: () => Promise.resolve({ items: [] }),
+        saveDraft: () => Promise.reject(new Error('not used')),
+        publishWorkflow: () => Promise.reject(new Error('not used')),
+      },
+    },
+    close,
+  });
 }
 
 describe('API bootstrap', () => {
@@ -265,8 +287,36 @@ describe('API bootstrap', () => {
     expect(close).toHaveBeenCalledOnce();
   });
 
+  it('registers workflow routes and closes identity and workflow runtimes together', async () => {
+    const identityClose = vi.fn().mockResolvedValue(undefined);
+    const workflowClose = vi.fn().mockResolvedValue(undefined);
+    const selectedIdentityRuntime = identityRuntime(identityClose);
+    application = await createApiApplication(config, {
+      ...dependencies(),
+      identityRuntime: selectedIdentityRuntime,
+      workflowRuntime: workflowRuntime(
+        selectedIdentityRuntime.dependencies.authorization,
+        workflowClose,
+      ),
+    });
+    await application.init();
+
+    const response = await application.inject({
+      method: 'GET',
+      url: '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/workflows',
+    });
+    expect(response.statusCode).toBe(401);
+
+    await application.close();
+    application = undefined;
+    expect(identityClose).toHaveBeenCalledOnce();
+    expect(workflowClose).toHaveBeenCalledOnce();
+  });
+
   it('closes an injected identity runtime when database readiness fails', async () => {
-    const close = vi.fn().mockResolvedValue(undefined);
+    const identityClose = vi.fn().mockResolvedValue(undefined);
+    const workflowClose = vi.fn().mockResolvedValue(undefined);
+    const selectedIdentityRuntime = identityRuntime(identityClose);
     const incompatibleDatabase: WorkspaceDatabase = {
       ...database,
       checkReadiness: vi
@@ -277,9 +327,14 @@ describe('API bootstrap', () => {
     await expect(
       createApiApplication(config, {
         ...dependencies(incompatibleDatabase),
-        identityRuntime: identityRuntime(close),
+        identityRuntime: selectedIdentityRuntime,
+        workflowRuntime: workflowRuntime(
+          selectedIdentityRuntime.dependencies.authorization,
+          workflowClose,
+        ),
       }),
     ).rejects.toThrow('migration mismatch');
-    expect(close).toHaveBeenCalledOnce();
+    expect(identityClose).toHaveBeenCalledOnce();
+    expect(workflowClose).toHaveBeenCalledOnce();
   });
 });

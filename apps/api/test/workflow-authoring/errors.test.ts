@@ -9,6 +9,7 @@ import {
   mapWorkflowAuthoringError,
   WorkflowVersionListingUnavailableError,
 } from '../../src/workflow-authoring/errors.js';
+import { InvalidWorkflowCursorError } from '../../src/workflow-authoring/use-cases.js';
 
 describe('workflow authoring error mapping', () => {
   it('uses shared RFC problem codes and preserves safe revision details', () => {
@@ -40,5 +41,8 @@ describe('workflow authoring error mapping', () => {
     expect(
       mapWorkflowAuthoringError(new WorkflowVersionListingUnavailableError()),
     ).toMatchObject({ code: 'internal.unexpected' });
+    expect(
+      mapWorkflowAuthoringError(new InvalidWorkflowCursorError()),
+    ).toMatchObject({ code: 'request.invalid' });
   });
 });

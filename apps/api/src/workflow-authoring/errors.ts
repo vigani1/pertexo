@@ -16,6 +16,7 @@ import {
   InvalidWorkflowHeaderError,
   PreconditionRequiredError,
 } from './preconditions.js';
+import { InvalidWorkflowCursorError } from './use-cases.js';
 import {
   InvalidWorkflowGraphError,
   WorkflowGraphContractError,
@@ -37,6 +38,10 @@ export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
   if (error instanceof InvalidWorkflowHeaderError)
     return applicationError('request.invalid', {
       safeDetail: error.message,
+    });
+  if (error instanceof InvalidWorkflowCursorError)
+    return applicationError('request.invalid', {
+      safeDetail: 'The workflow cursor is invalid.',
     });
   if (error instanceof AuthorizationError)
     return applicationError(error.code, {

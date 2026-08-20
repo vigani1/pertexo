@@ -202,6 +202,7 @@ export class IdentityWorkspaceModule {
         OidcLoginService,
         OpaqueSessionService,
         CSRF_POLICY,
+        DoubleSubmitCsrfPolicy,
         CreateWorkspaceUseCase,
         WorkspaceLifecycleUseCase,
         SessionAuthenticationGuard,

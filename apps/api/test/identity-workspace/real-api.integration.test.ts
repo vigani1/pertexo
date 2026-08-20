@@ -184,6 +184,142 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     expect(provider.exchangeCount).toBe(exchangeCount);
   });
 
+  it('authors and publishes a workflow through real auth, RLS, ETags, and durable replay', async () => {
+    const cookies = await login();
+    const workspaceResponse = await application.inject({
+      method: 'POST',
+      url: '/v1/workspaces',
+      headers: mutationHeaders(cookies),
+      payload: {
+        name: 'Workflow Proof',
+        slug: `workflow-proof-${randomUUID().slice(0, 12)}`,
+      },
+    });
+    expect(workspaceResponse.statusCode).toBe(201);
+    const workspace = workspaceResponse.json<Readonly<{ id: string }>>();
+    const base = `/v1/workspaces/${workspace.id}/workflows`;
+
+    const created = await application.inject({
+      method: 'POST',
+      url: base,
+      headers: mutationHeaders(cookies, {
+        'idempotency-key': 'workflow-create-proof',
+      }),
+      payload: { name: 'Inbound automation' },
+    });
+    expect(created.statusCode).toBe(201);
+    const createdBody = created.json<
+      Readonly<{
+        workflow: Readonly<{ id: string }>;
+        draft: Readonly<{ revision: number }>;
+      }>
+    >();
+    expect(createdBody.draft.revision).toBe(1);
+
+    const listed = await application.inject({
+      method: 'GET',
+      url: `${base}?limit=1`,
+      headers: { cookie: cookies.cookieHeader },
+    });
+    expect(listed.statusCode).toBe(200);
+    expect(listed.json()).toMatchObject({
+      items: [{ id: createdBody.workflow.id }],
+    });
+
+    const draftUrl = `${base}/${createdBody.workflow.id}/draft`;
+    const firstDraft = await application.inject({
+      method: 'GET',
+      url: draftUrl,
+      headers: { cookie: cookies.cookieHeader },
+    });
+    expect(firstDraft.statusCode).toBe(200);
+    const firstTag = String(firstDraft.headers.etag);
+    expect(firstTag).toMatch(/^"draft-v1\.[A-Za-z0-9_-]{43}"$/u);
+
+    const missingPrecondition = await application.inject({
+      method: 'PUT',
+      url: draftUrl,
+      headers: mutationHeaders(cookies),
+      payload: { graph: emptyWorkflowGraph() },
+    });
+    expectProblem(missingPrecondition, 428, 'request.precondition_required');
+
+    const saved = await application.inject({
+      method: 'PUT',
+      url: draftUrl,
+      headers: mutationHeaders(cookies, { 'if-match': firstTag }),
+      payload: { graph: emptyWorkflowGraph() },
+    });
+    expect(saved.statusCode).toBe(200);
+    expect(saved.json()).toMatchObject({ revision: 2 });
+    const secondTag = String(saved.headers.etag);
+    expect(secondTag).not.toBe(firstTag);
+
+    const stale = await application.inject({
+      method: 'PUT',
+      url: draftUrl,
+      headers: mutationHeaders(cookies, { 'if-match': firstTag }),
+      payload: { graph: emptyWorkflowGraph() },
+    });
+    expectProblem(stale, 412, 'workflow.revision_conflict');
+    expect(stale.headers.etag).toBe(secondTag);
+    expect(stale.json()).toMatchObject({
+      currentRevision: 2,
+      currentEtag: secondTag,
+    });
+
+    const validated = await application.inject({
+      method: 'POST',
+      url: `${base}/${createdBody.workflow.id}/validate`,
+      headers: mutationHeaders(cookies),
+    });
+    expect(validated.statusCode).toBe(200);
+    expect(validated.json()).toMatchObject({ valid: true, issues: [] });
+
+    const publishHeaders = mutationHeaders(cookies, {
+      'idempotency-key': 'workflow-publish-proof',
+      'if-match': secondTag,
+    });
+    const published = await application.inject({
+      method: 'POST',
+      url: `${base}/${createdBody.workflow.id}/publish`,
+      headers: publishHeaders,
+    });
+    expect(published.statusCode).toBe(200);
+    const publishedBody = published.json<
+      Readonly<{
+        version: Readonly<{ id: string }>;
+      }>
+    >();
+
+    const replay = await application.inject({
+      method: 'POST',
+      url: `${base}/${createdBody.workflow.id}/publish`,
+      headers: publishHeaders,
+    });
+    expect(replay.statusCode).toBe(200);
+    expect(replay.json()).toMatchObject({
+      version: { id: publishedBody.version.id },
+    });
+
+    const versions = await application.inject({
+      method: 'GET',
+      url: `${base}/${createdBody.workflow.id}/versions`,
+      headers: { cookie: cookies.cookieHeader },
+    });
+    expect(versions.statusCode).toBe(200);
+    expect(versions.json()).toMatchObject({
+      items: [{ id: publishedBody.version.id }],
+    });
+
+    const hidden = await application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${randomUUID()}/workflows`,
+      headers: { cookie: cookies.cookieHeader },
+    });
+    expectProblem(hidden, 404, 'resource.not_found');
+  });
+
   it('rejects nonce mismatch and sanitizes provider failures as RFC 9457 problems', async () => {
     const nonceStart = await startLogin();
     const nonceState = new URL(nonceStart.authorizationUrl).searchParams.get(
@@ -543,6 +679,10 @@ function mutationHeaders(
     'x-csrf-token': cookies.csrf,
     ...extra,
   };
+}
+
+function emptyWorkflowGraph() {
+  return { schemaVersion: 1, nodes: [], edges: [], settings: {} } as const;
 }
 
 function sha256Hex(value: string): string {

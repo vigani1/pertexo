@@ -306,4 +306,41 @@ describe('RFC 9457 problem details filter', () => {
       cause: undefined,
     });
   });
+
+  it('exposes only bounded typed workflow validation issues', () => {
+    const contexts = new RequestContextStore();
+    const filter = new ProblemDetailsFilter(contexts);
+    const response = responseMock();
+    contexts.run('request-invalid-workflow', () => {
+      filter.catch(
+        applicationError('workflow.invalid', {
+          details: {
+            issues: [
+              {
+                code: 'cycle',
+                path: '/edges/0',
+                message: 'The graph contains a cycle.',
+                secret: 'must-not-leak',
+              },
+              { code: 42, path: '/unsafe', message: 'ignored' },
+            ],
+          },
+        }),
+        hostFor({ url: '/v1/workflows/workflow-1/publish' }, response),
+      );
+    });
+
+    expect(response.body).toMatchObject({
+      code: 'workflow.invalid',
+      status: 422,
+      errors: [
+        {
+          code: 'cycle',
+          path: '/edges/0',
+          message: 'The graph contains a cycle.',
+        },
+      ],
+    });
+    expect(JSON.stringify(response.body)).not.toContain('must-not-leak');
+  });
 });

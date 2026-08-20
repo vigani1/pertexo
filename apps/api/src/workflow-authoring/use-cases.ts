@@ -81,6 +81,13 @@ export type PublishWorkflowInput = WorkflowResourceInput &
 export type ListWorkflowVersionsInput = WorkflowResourceInput &
   Readonly<{ limit?: number; after?: string }>;
 
+export class InvalidWorkflowCursorError extends TypeError {
+  public override readonly name = 'InvalidWorkflowCursorError';
+  public constructor() {
+    super('workflow cursor is invalid');
+  }
+}
+
 const ACTIVE_WORKFLOW_CAPABILITY = 'workflow:read' as const;
 
 export class ListWorkflowsUseCase {
@@ -482,7 +489,7 @@ function decodeWorkflowCursor(
       throw new Error('invalid workflow cursor');
     return { createdAt, id: parsed.id };
   } catch {
-    throw new TypeError('workflow cursor is invalid');
+    throw new InvalidWorkflowCursorError();
   }
 }
 
@@ -511,6 +518,6 @@ function decodeVersionCursor(value: string): number {
       throw new Error('invalid version cursor');
     return parsed.beforeVersionNumber;
   } catch {
-    throw new TypeError('workflow version cursor is invalid');
+    throw new InvalidWorkflowCursorError();
   }
 }

@@ -20,6 +20,12 @@ import {
 import { applicationError } from '../platform/http/index.js';
 import { createActorContext } from '../workspaces/index.js';
 import { mapWorkflowAuthoringError } from './errors.js';
+import {
+  WorkflowCreateGuard,
+  WorkflowPublishGuard,
+  WorkflowReadGuard,
+  WorkflowUpdateGuard,
+} from './guards.js';
 import { parseIdempotencyKey, parseStrongIfMatch } from './preconditions.js';
 import {
   CreateWorkflowUseCase,
@@ -53,7 +59,7 @@ export class WorkflowAuthoringController {
   ) {}
 
   @Get()
-  @UseGuards(SessionAuthenticationGuard)
+  @UseGuards(SessionAuthenticationGuard, WorkflowReadGuard)
   public async list(
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,
@@ -75,7 +81,11 @@ export class WorkflowAuthoringController {
 
   @Post()
   @HttpCode(201)
-  @UseGuards(SessionAuthenticationGuard, CsrfProtectionGuard)
+  @UseGuards(
+    SessionAuthenticationGuard,
+    WorkflowCreateGuard,
+    CsrfProtectionGuard,
+  )
   public async create(
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,
@@ -97,7 +107,7 @@ export class WorkflowAuthoringController {
   }
 
   @Get(':workflowId/draft')
-  @UseGuards(SessionAuthenticationGuard)
+  @UseGuards(SessionAuthenticationGuard, WorkflowReadGuard)
   public async draft(
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,
@@ -118,7 +128,11 @@ export class WorkflowAuthoringController {
   }
 
   @Put(':workflowId/draft')
-  @UseGuards(SessionAuthenticationGuard, CsrfProtectionGuard)
+  @UseGuards(
+    SessionAuthenticationGuard,
+    WorkflowUpdateGuard,
+    CsrfProtectionGuard,
+  )
   public async save(
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,
@@ -144,7 +158,8 @@ export class WorkflowAuthoringController {
   }
 
   @Post(':workflowId/validate')
-  @UseGuards(SessionAuthenticationGuard, CsrfProtectionGuard)
+  @HttpCode(200)
+  @UseGuards(SessionAuthenticationGuard, WorkflowReadGuard, CsrfProtectionGuard)
   public async validate(
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,
@@ -162,7 +177,12 @@ export class WorkflowAuthoringController {
   }
 
   @Post(':workflowId/publish')
-  @UseGuards(SessionAuthenticationGuard, CsrfProtectionGuard)
+  @HttpCode(200)
+  @UseGuards(
+    SessionAuthenticationGuard,
+    WorkflowPublishGuard,
+    CsrfProtectionGuard,
+  )
   public async publish(
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,
@@ -184,7 +204,7 @@ export class WorkflowAuthoringController {
   }
 
   @Get(':workflowId/versions')
-  @UseGuards(SessionAuthenticationGuard)
+  @UseGuards(SessionAuthenticationGuard, WorkflowReadGuard)
   public async versions(
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,

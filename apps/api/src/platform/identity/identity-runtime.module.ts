@@ -131,15 +131,18 @@ class IdentityRuntimeShutdown implements OnApplicationShutdown {
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class
 export class IdentityRuntimeModule {
   public static register(runtime: ApiIdentityRuntime): DynamicModule {
+    const feature = IdentityWorkspaceModule.register(runtime.dependencies);
     return {
       module: IdentityRuntimeModule,
-      imports: [IdentityWorkspaceModule.register(runtime.dependencies)],
+      controllers: feature.controllers ?? [],
       providers: [
+        ...(feature.providers ?? []),
         {
           provide: IdentityRuntimeShutdown,
           useFactory: () => new IdentityRuntimeShutdown(runtime),
         },
       ],
+      exports: feature.exports ?? [],
     };
   }
 }
