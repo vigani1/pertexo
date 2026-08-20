@@ -19,7 +19,7 @@ not complete a phase.
 | Phase 0E — execution durability proofs and engine gate | Complete | ADRs 005 and 007–009; commits through `0322837`; 239 unit, 96 real-service integration, five process-recovery, one SSE-outage, and one transport-outage assertions; custom-engine GO |
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
-| Phase 3 — first executable-node slice | In progress | ADR 010; node SDK/core registry `85385cc`–`94426f7`; retained V1 and pre-publication V2 identity/operations through `8ce1fd9`; migration head `0014_execution_value_persistence.sql`; published projection and bounded run input `83c57c6`, `d04f9f5`; RunStore/consumers/publication still disabled |
+| Phase 3 — first executable-node slice | In progress | ADR 010; node SDK/core registry `85385cc`–`94426f7`; retained V1 and pre-publication V2 identity/operations through `8ce1fd9`; migration head `0015_coordinator_run_store.sql`; published projection, bounded execution values, and coordinator RunStore through `a8c52aa`; consumers/publication remain disabled |
 | Phase 4 — first side-effecting integration slice | Not started | — |
 | Phase 5 — orchestration slice | Not started | — |
 | Phase 6 — V1 providers and triggers | Not started | — |
@@ -727,7 +727,7 @@ Initial evidence:
 
 ## Phase 3 — First executable-node slice
 
-Status: **In progress — package foundations, executable identity/operations, and published-version projection persistence complete**
+Status: **In progress — package foundations, executable identity/operations, published-version projection, and coordinator RunStore persistence complete**
 
 Phase 3 has completed its design prerequisites and the first package-level
 implementation checkpoint. No core node is exposed through a placement or
@@ -786,7 +786,7 @@ Production execution and persistence:
 - [x] Replace unsafe checkpoint assertions at the production boundary with
       bounded schema validation or explicit safe parsing, and reject malformed
       or recursively bypassed graph/checkpoint data.
-- [ ] Persist run acceptance, the immutable workflow-version reference,
+- [x] Persist run acceptance, the immutable workflow-version reference,
       request idempotency, gapless events, checkpoints, node runs, attempts,
       leases/fence tokens, cancellation, and transactional outbox effects under
       their documented transaction and compare-and-swap boundaries.
@@ -794,7 +794,7 @@ Production execution and persistence:
       workflow-version read access required by execution; prove it cannot read
       drafts, mutate authoring data, cross workspaces, own tables, or bypass
       forced RLS.
-- [ ] Implement narrow behavior-named persistence ports such as
+- [x] Implement narrow behavior-named persistence ports such as
       `PublishedWorkflowReader` and `RunStore`; keep SQL, ORM rows, transaction
       assembly, and generic repositories out of engine and consumer seams.
 - [ ] Compose a thin coordinator consumer that loads PostgreSQL-authoritative
@@ -1060,8 +1060,9 @@ Current evidence:
   remains unchecked. The engine passes 68 assertions, workflow-model retains
   its 48 unchanged V1 assertions, and engine/worker typechecks, builds, lint,
   formatting, and independent Spec/Standards reviews are green. Stable provider
-  effect keys remain explicitly owned by the next RunStore checkpoint; current
-  Phase 3 core manifests are safe and no consumer is enabled.
+  provider effect keys remain deferred until the first side-effecting node in
+  Phase 4; current Phase 3 core manifests are safe, the RunStore rejects
+  non-safe admissions, and no consumer is enabled.
 - Commit `d04f9f5` adds migration head
   `0014_execution_value_persistence.sql` and the private V1 persistence codec
   for tagged inline/artifact execution values. The application boundary
@@ -1094,14 +1095,39 @@ Current evidence:
   reject coordinator-owned `skipped`. Workflow-engine, workflow-model, and
   worker suites pass 79, 48, and 41 assertions respectively, with typecheck,
   builds, ESLint, formatting, diff checks, and independent Spec/Standards
-  reviews green. The RunStore must still validate physical attempt/artifact
-  ownership, persist a valid revision-0 checkpoint at run acceptance, and own
-  the atomic CAS/event/node-run/attempt/outbox transaction; those boxes remain
-  unchecked and no consumer is enabled.
+  reviews green. Commit `a8c52aa` subsequently completes the physical
+  attempt/artifact ownership, valid revision-0 acceptance checkpoint, and
+  atomic CAS/event/node-run/attempt/outbox prerequisites; no consumer is yet
+  enabled.
+- Commit `a8c52aa` adds migration head `0015_coordinator_run_store.sql`, a deep
+  `CoordinatorRunStore` with `loadAdvanceState` and `commitAdvancePlan`, and
+  makes a validated revision-0 Phase 3 checkpoint part of the atomic accepted
+  run. The adapter keeps transactions, SQL, physical IDs, RLS, CAS, event
+  cursor reconciliation, output/artifact ownership, transition fingerprints,
+  and identifier-only outbox insertion behind the behavior seam. It consumes
+  PostgreSQL-owned facts under a coherent snapshot, validates the complete
+  engine plan and physical-state delta before a short locked commit, and
+  handles exact replay, stale control facts, capacity-deferred node runs,
+  due-at recovery, cancellation/deadline fencing, and rollback without enabling
+  a worker consumer. Persisted event payloads are safely canonicalized with an
+  exact 4-KiB application boundary; the wider 512-KiB PostgreSQL text backstop
+  accommodates JSONB whitespace/numeric expansion, while keyset reads bound
+  transient allocation and immediately compact every fact back to the exact
+  canonical limit. A fresh disposable PostgreSQL database migrated from zero
+  through 0015 and passed all 182 database integration assertions, including
+  retained upgrade, RLS/grant/readiness drift, concurrent CAS, exact replay,
+  failpoint rollback, hostile single/aggregate payloads, 10,000-fact cursor
+  recovery, and 450 valid exponent-heavy facts whose PostgreSQL text exceeds
+  64 MiB. The database unit suite passes 48 assertions; root `pnpm check`
+  passes formatting, lint, generated-contract drift, all workspace typechecks,
+  518 unit assertions, and all builds. Independent final Spec and
+  Standards/security reviews returned GO with no blocker/high findings. The
+  disposable database catalog was empty after cleanup, and the shared local
+  database was not mutated.
 - Concrete nodes-core composition for Set/Map resolution, V2 immutable retained
-  fixtures, workflow-model publication adaptation, persistence, worker
-  consumers, API, SSE, and the complete executable graph remain unchecked and
-  are owned by the following checkpoints.
+  fixtures, workflow-model publication adaptation, worker consumers, API, SSE,
+  and the complete executable graph remain unchecked and are owned by the
+  following checkpoints.
 
 ## Later phases
 
