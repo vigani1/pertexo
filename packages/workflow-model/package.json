@@ -19,6 +19,10 @@
       "node": "./dist/graph.js",
       "default": "./dist/graph.js"
     },
+    "./graph-contract": {
+      "types": "./dist/graph-contract.d.ts",
+      "default": "./dist/graph-contract.js"
+    },
     "./mapping": {
       "types": "./dist/mapping.d.ts",
       "node": "./dist/mapping.js",
@@ -43,7 +47,6 @@
     "typecheck": "tsc -p tsconfig.test.json --noEmit"
   },
   "dependencies": {
-    "@pertexo/contracts": "workspace:*",
     "jsonata": "2.2.2",
     "zod": "4.4.3"
   }

@@ -4,16 +4,40 @@ import {
   WorkflowGraphContractError,
   safeParseWorkflowGraphDraft,
 } from '../src/index.js';
+import { workflowGraphSchema } from '../src/graph-contract.js';
 
 describe('workflow-model package contract', () => {
-  it('makes every export explicitly server-only', async () => {
+  it('keeps canonical graph ownership browser-safe while server implementation exports remain protected', async () => {
     const json = JSON.parse(
       await readFile(new URL('../package.json', import.meta.url), 'utf8'),
     ) as {
-      exports: Record<string, { node: string; default: string }>;
+      dependencies: Record<string, string>;
+      exports: Record<
+        string,
+        { types: string; node?: string; default: string }
+      >;
       browser: Record<string, false>;
     };
-    for (const value of Object.values(json.exports)) {
+    expect(json.dependencies).not.toHaveProperty('@pertexo/contracts');
+    const graphContract = json.exports['./graph-contract'];
+    if (graphContract === undefined)
+      throw new Error('missing browser-safe graph contract export');
+    expect(graphContract).toEqual({
+      types: './dist/graph-contract.d.ts',
+      default: './dist/graph-contract.js',
+    });
+    expect(json.browser[graphContract.default]).toBeUndefined();
+    expect(
+      await readFile(
+        new URL('../src/graph-contract.ts', import.meta.url),
+        'utf8',
+      ),
+    ).not.toMatch(/(?:from|import) ['"](?:node:|@pertexo\/contracts)/u);
+
+    for (const [name, value] of Object.entries(json.exports)) {
+      if (name === './graph-contract') continue;
+      if (value.node === undefined)
+        throw new Error(`server export ${name} is missing its node target`);
       expect(value.default).toBe(value.node);
       expect(json.browser[value.node]).toBe(false);
       const source = new URL(
@@ -62,6 +86,9 @@ describe('workflow-model package contract', () => {
     if (result.success) throw new Error('expected typed parse failure');
     expect(result.error).toBeInstanceOf(WorkflowGraphContractError);
     expect(result.error).not.toBeInstanceOf(RangeError);
+
+    expect(() => workflowGraphSchema.safeParse(graph)).not.toThrow(RangeError);
+    expect(workflowGraphSchema.safeParse(graph).success).toBe(false);
 
     const publicEntry = await import('../src/index.js');
     expect(publicEntry).not.toHaveProperty('WorkflowGraphInputSchemaV1');

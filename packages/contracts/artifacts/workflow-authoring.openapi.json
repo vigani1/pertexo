@@ -137,6 +137,17 @@
                   "$ref": "#/components/schemas/WorkflowCreateResponse"
                 }
               }
+            },
+            "headers": {
+              "ETag": {
+                "description": "Strong opaque validator for this draft representation",
+                "required": true,
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "string",
+                  "pattern": "^\"draft-v1\\.[A-Za-z0-9_-]{43}\"$"
+                }
+              }
             }
           },
           "400": {
@@ -3839,6 +3850,17 @@
       },
       "PreconditionFailed": {
         "description": "The draft representation is no longer current",
+        "headers": {
+          "ETag": {
+            "description": "Strong opaque validator for this draft representation",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "pattern": "^\"draft-v1\\.[A-Za-z0-9_-]{43}\"$"
+            }
+          }
+        },
         "content": {
           "application/problem+json": {
             "schema": {

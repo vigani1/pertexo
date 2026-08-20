@@ -3,11 +3,11 @@
   "files": [],
   "references": [
     { "path": "./packages/artifact-store/tsconfig.json" },
+    { "path": "./packages/workflow-model/tsconfig.json" },
     { "path": "./packages/contracts/tsconfig.json" },
     { "path": "./packages/database/tsconfig.json" },
     { "path": "./packages/observability/tsconfig.json" },
     { "path": "./packages/queue/tsconfig.json" },
-    { "path": "./packages/workflow-model/tsconfig.json" },
     { "path": "./packages/workflow-engine/tsconfig.json" },
     { "path": "./apps/api/tsconfig.json" },
     { "path": "./apps/worker/tsconfig.json" }

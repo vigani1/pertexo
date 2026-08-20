@@ -32,23 +32,31 @@ export const apiProblemIssueSchema = z
   .strict()
   .readonly();
 
-export const apiProblemSchema = z
-  .object({
-    type: z.string().min(1).max(256),
-    title: z.string().min(1).max(256),
-    status: z.number().int().min(400).max(599),
-    detail: z.string().min(1).max(2_000).optional(),
-    instance: z.string().min(1).max(2_048).optional(),
-    code: apiProblemCodeSchema,
-    requestId: z
-      .string()
-      .min(1)
-      .max(128)
-      .regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u),
-    errors: z.array(apiProblemIssueSchema).max(100).readonly().optional(),
-  })
-  .strict()
-  .readonly();
+export const apiProblemShape = {
+  type: z.string().min(1).max(256),
+  title: z.string().min(1).max(256),
+  status: z.number().int().min(400).max(599),
+  detail: z.string().min(1).max(2_000).optional(),
+  instance: z.string().min(1).max(2_048).optional(),
+  code: apiProblemCodeSchema,
+  requestId: z
+    .string()
+    .min(1)
+    .max(128)
+    .regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u),
+  errors: z.array(apiProblemIssueSchema).max(100).readonly().optional(),
+} satisfies z.ZodRawShape;
+
+export function createApiProblemSchema<Extension extends z.ZodRawShape>(
+  extension: Extension,
+) {
+  return z
+    .object({ ...apiProblemShape, ...extension })
+    .strict()
+    .readonly();
+}
+
+export const apiProblemSchema = createApiProblemSchema({});
 
 export type ApiProblemCode = z.output<typeof apiProblemCodeSchema>;
 export type ApiProblemIssue = z.output<typeof apiProblemIssueSchema>;

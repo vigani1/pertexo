@@ -6,13 +6,19 @@ describe('contracts package boundary', () => {
   it('exposes deliberate browser-safe entry points without server dependencies', async () => {
     const manifest = JSON.parse(
       await readFile(new URL('../package.json', import.meta.url), 'utf8'),
-    ) as { exports: Record<string, { default: string }> };
+    ) as {
+      dependencies: Record<string, string>;
+      exports: Record<string, { default: string }>;
+    };
+    expect(manifest.dependencies).toHaveProperty(
+      '@pertexo/workflow-model',
+      'workspace:*',
+    );
     expect(Object.keys(manifest.exports)).toEqual([
       '.',
       './errors',
       './identity-workspace',
       './workflow-authoring',
-      './workflow-graph',
     ]);
 
     for (const source of [
@@ -22,11 +28,16 @@ describe('contracts package boundary', () => {
       '../src/identity-workspace.ts',
       '../src/workflow-authoring.ts',
       '../src/http/workflow-authoring.ts',
-      '../src/workflow-graph.ts',
     ]) {
       expect(
         await readFile(new URL(source, import.meta.url), 'utf8'),
       ).not.toMatch(/from ['"]node:/u);
     }
+    expect(
+      await readFile(
+        new URL('../src/http/workflow-authoring.ts', import.meta.url),
+        'utf8',
+      ),
+    ).toContain("from '@pertexo/workflow-model/graph-contract'");
   });
 });

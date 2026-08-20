@@ -13,7 +13,7 @@ import {
   type WorkflowGraph,
   type WorkflowNode,
   type WorkflowSettings,
-} from '@pertexo/contracts/workflow-graph';
+} from './graph-contract.js';
 import { z } from 'zod';
 import {
   canonicalJson,

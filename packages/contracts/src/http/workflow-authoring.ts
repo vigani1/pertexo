@@ -1,7 +1,13 @@
 import { z } from 'zod';
+import {
+  workflowGraphSchema,
+  type WorkflowGraph,
+} from '@pertexo/workflow-model/graph-contract';
 
-import { apiProblemIssueSchema } from '../errors/api-problem.js';
-import { workflowGraphSchema, type WorkflowGraph } from '../workflow-graph.js';
+import {
+  apiProblemIssueSchema,
+  createApiProblemSchema,
+} from '../errors/api-problem.js';
 
 /** Opaque, quoted strong HTTP entity tag. Its internal value is not a client contract. */
 export const strongEtagSchema = z
@@ -132,27 +138,17 @@ export const workflowListQuerySchema = z
   .strict();
 export const workflowVersionsQuerySchema = workflowListQuerySchema;
 
-export const workflowRevisionConflictProblemSchema = z
-  .object({
-    type: z.string().min(1).max(256),
-    title: z.string().min(1).max(256),
-    status: z.literal(412),
-    detail: z.string().min(1).max(2_000).optional(),
-    instance: z.string().min(1).max(2_048).optional(),
-    code: z.literal('workflow.revision_conflict'),
-    requestId: z
-      .string()
-      .min(1)
-      .max(128)
-      .regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u),
-    errors: z.array(apiProblemIssueSchema).max(100).readonly().optional(),
-    currentRevision: z.number().int().positive(),
-    currentEtag: strongEtagSchema,
-  })
-  .strict()
-  .readonly();
+export const workflowRevisionConflictProblemSchema = createApiProblemSchema({
+  status: z.literal(412),
+  code: z.literal('workflow.revision_conflict'),
+  currentRevision: z.number().int().positive(),
+  currentEtag: strongEtagSchema,
+});
 
 export type WorkflowSummary = z.output<typeof workflowSummarySchema>;
+export type WorkflowCreateResponse = z.output<
+  typeof workflowCreateResponseSchema
+>;
 export type WorkflowDraftResponse = z.output<
   typeof workflowDraftResponseSchema
 >;

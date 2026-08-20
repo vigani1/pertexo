@@ -54,11 +54,20 @@ export const workflowAuthoringClientContract = Object.freeze({
   schemas,
 });
 
+const etagResponseHeader = {
+  ETag: {
+    description: 'Strong opaque validator for this draft representation',
+    required: true,
+    schema: jsonSchema(strongEtagSchema, 'output'),
+  },
+} as const;
+
 const problemResponses = Object.freeze({
   BadRequest: problemResponse('Invalid request'),
   PreconditionRequired: problemResponse('Precondition required'),
   PreconditionFailed: {
     description: 'The draft representation is no longer current',
+    headers: etagResponseHeader,
     content: {
       'application/problem+json': {
         schema: {
@@ -100,14 +109,6 @@ const csrfParameter = {
   required: true,
   schema: jsonSchema(z.string().min(16).max(512), 'input'),
 } as const;
-const etagResponseHeader = {
-  ETag: {
-    description: 'Strong opaque validator for this draft representation',
-    required: true,
-    schema: jsonSchema(strongEtagSchema, 'output'),
-  },
-} as const;
-
 export const workflowAuthoringOpenApiDocument = Object.freeze({
   openapi: '3.1.0',
   info: {
@@ -138,7 +139,11 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
         parameters: [...pathParameters, csrfParameter, idempotencyParameter],
         requestBody: jsonRequest('WorkflowCreateRequest'),
         responses: {
-          '201': jsonResponse('Workflow created', 'WorkflowCreateResponse'),
+          '201': jsonResponseWithHeaders(
+            'Workflow created',
+            'WorkflowCreateResponse',
+            etagResponseHeader,
+          ),
           '400': responseReference('BadRequest'),
           '401': responseReference('Unauthenticated'),
           '403': responseReference('Forbidden'),

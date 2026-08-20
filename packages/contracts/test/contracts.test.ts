@@ -3,7 +3,10 @@ import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 
 import { CONTRACT_ARTIFACTS } from '../src/artifacts.js';
-import { apiProblemSchema } from '../src/errors/api-problem.js';
+import {
+  apiProblemSchema,
+  apiProblemShape,
+} from '../src/errors/api-problem.js';
 import {
   identityWorkspaceClientContract,
   identityWorkspaceOpenApiDocument,
@@ -23,6 +26,16 @@ import {
 
 describe('public contracts package', () => {
   it('owns strict browser-safe request and RFC 9457 problem schemas', () => {
+    expect(Object.keys(apiProblemShape)).toEqual([
+      'type',
+      'title',
+      'status',
+      'detail',
+      'instance',
+      'code',
+      'requestId',
+      'errors',
+    ]);
     expect(
       workspaceCreateRequestSchema.safeParse({
         name: 'Operations',
@@ -139,6 +152,14 @@ describe('public contracts package', () => {
         .responses['428'],
     ).toEqual({ $ref: '#/components/responses/PreconditionRequired' });
     expect(
+      workflowAuthoringOpenApiDocument.components.responses.PreconditionFailed
+        .headers,
+    ).toHaveProperty('ETag.required', true);
+    expect(
+      paths['/v1/workspaces/{workspaceId}/workflows'].post.responses['201']
+        .headers,
+    ).toHaveProperty('ETag');
+    expect(
       workflowAuthoringClientContract.schemas.WorkflowDraftResponse,
     ).toBeDefined();
     expect(
@@ -152,6 +173,19 @@ describe('public contracts package', () => {
         currentEtag: '"draft-v1.AFBYOY0XvOEWP2AEVMsJCblYcXq0biQBej1xbQP46YE"',
       }),
     ).toMatchObject({ status: 412, currentRevision: 2 });
+    expect(
+      workflowRevisionConflictProblemSchema.safeParse({
+        type: 'urn:pertexo:problem:workflow.revision_conflict',
+        title: 'Draft changed',
+        status: 412,
+        detail: 'Reload the draft.',
+        code: 'workflow.revision_conflict',
+        requestId: 'request-42',
+        currentRevision: 2,
+        currentEtag: '"draft-v1.AFBYOY0XvOEWP2AEVMsJCblYcXq0biQBej1xbQP46YE"',
+        unexpected: true,
+      }).success,
+    ).toBe(false);
 
     for (const operation of [
       paths['/v1/workspaces/{workspaceId}/workflows'].post,

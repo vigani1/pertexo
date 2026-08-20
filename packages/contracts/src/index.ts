@@ -17,4 +17,3 @@ export {
   workflowAuthoringOpenApiDocument,
 } from './workflow-authoring.js';
 export * from './http/workflow-authoring.js';
-export * from './workflow-graph.js';
