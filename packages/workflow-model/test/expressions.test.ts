@@ -1,7 +1,9 @@
+import { createHash } from 'node:crypto';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { JsonValue } from '../src/canonical-json.js';
+import { canonicalJson, type JsonValue } from '../src/canonical-json.js';
 import {
   EXPRESSION_POLICY_V1,
+  JSONATA_EVALUATOR_DIAGNOSTICS,
   JsonataEvaluator,
   validateExpression,
 } from '../src/expressions.js';
@@ -444,6 +446,7 @@ describe('restricted JSONata policy v1', () => {
       policyVersion: 1,
       context: { runInput: { b: 2, a: 1 }, nodeOutputs: {} },
     } as const;
+    const startedAt = performance.now();
     const first = new JsonataEvaluator({ maxActive: 2 });
     evaluators.push(first);
     const repeated = await Promise.all(
@@ -455,6 +458,30 @@ describe('restricted JSONata policy v1', () => {
     await first.shutdown();
     const restarted = new JsonataEvaluator({ maxActive: 2 });
     evaluators.push(restarted);
-    expect(await restarted.evaluate(request)).toEqual(repeated[0]);
+    const restartedResult = await restarted.evaluate(request);
+    expect(restartedResult).toEqual(repeated[0]);
+    expect(restartedResult.kind).toBe('value');
+    if (restartedResult.kind !== 'value') throw new Error('expected a value');
+    const resultBytes = canonicalJson(restartedResult.value);
+    const checksum = createHash('sha256').update(resultBytes).digest('hex');
+    const elapsedMs = performance.now() - startedAt;
+    expect(resultBytes).toBe('{"a":1,"b":2}');
+    expect(checksum).toBe(
+      '43258cff783fe7036d8a43033f830adfc60ec037382473548ac742b888292777',
+    );
+    expect(elapsedMs).toBeGreaterThan(0);
+    console.info(
+      'jsonata_engine_gate',
+      JSON.stringify({
+        elapsedMs: Number(elapsedMs.toFixed(2)),
+        resultChecksumSha256: checksum,
+        evaluatorPackage: JSONATA_EVALUATOR_DIAGNOSTICS.library,
+        evaluatorPackageVersion: JSONATA_EVALUATOR_DIAGNOSTICS.libraryVersion,
+        policyVersion: JSONATA_EVALUATOR_DIAGNOSTICS.policyVersion,
+        evaluations: 101,
+        workers: 2,
+        poolRestarted: true,
+      }),
+    );
   });
 });
