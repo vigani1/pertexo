@@ -17,7 +17,7 @@ not complete a phase.
 | Phase 0C — HTTP and observability foundation | Complete | Commit `e8093d2`; 47 API/worker/observability tests; compiled role and OTLP trace/metric smoke checks |
 | Phase 0D — queue, outbox, and duplicate-delivery proof | Complete | ADRs 005–006; migration head `0006_execution_vocabulary.sql`; 158 unit, 76 real integration, and one destructive recovery assertion |
 | Phase 0E — execution durability proofs and engine gate | Complete | ADRs 005 and 007–009; commits through `0322837`; 239 unit, 96 real-service integration, five process-recovery, one SSE-outage, and one transport-outage assertions; custom-engine GO |
-| Phase 1 — identity/workspace vertical slice | In progress | ADR 004 accepted; authorization, persistence, OIDC/session, and generic OIDC infrastructure foundations committed; API runtime composition is next |
+| Phase 1 — identity/workspace vertical slice | In progress | ADR 004 accepted; identity runtime, lifecycle/conflict semantics, telemetry/contracts, and run-admission fencing committed; real-stack API proof is next |
 | Phase 2 — workflow authoring vertical slice | Not started | — |
 | Phase 3 — first executable-node slice | Not started | — |
 | Phase 4 — first side-effecting integration slice | Not started | — |
@@ -417,6 +417,25 @@ Current evidence:
   API suite pass, together with API typecheck, production build, scoped ESLint,
   Prettier, and diff checks. Production configuration/runtime registration and
   the real-PostgreSQL fake-provider proof remain pending.
+- Commit `e47097c` completes the public identity/workspace API boundary with a
+  stable `workspace.conflict` 409 problem, explicit owner-only deletion and
+  recovery source states, fixed-cardinality operation telemetry, and OpenAPI
+  3.1 plus browser client schemas projected from the owning Zod contracts.
+  The complete API suite passes 126 assertions; 13 focused real-PostgreSQL
+  lifecycle assertions and scoped typecheck/build/lint/format checks pass.
+- Commit `7be65b2` composes the generic OIDC provider, AES-GCM keyring, identity
+  database, durable OIDC transaction store, persistence adapter, and Nest
+  feature module from validated production configuration. Shutdown owns both
+  pools, staging/production fail closed without secure identity settings, and
+  the injected runtime seam remains available for real-stack tests. Production
+  metrics/traces use the global OpenTelemetry provider and telemetry failures
+  cannot change command truth; 23 focused bootstrap/config/runtime assertions
+  pass with API typecheck, build, ESLint, Prettier, and diff checks.
+- Commit `e09f5a5` takes a PostgreSQL workspace lifecycle lock before atomic run
+  acceptance. Missing, suspended, pending-deletion, and deleted workspaces fail
+  closed, while admission-versus-deletion races serialize in either truthful
+  order. The focused real-PostgreSQL acceptance/runtime suites pass 31
+  assertions with database typecheck, build, ESLint, and Prettier checks.
 
 ## Later phases
 
