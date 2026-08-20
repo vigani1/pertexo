@@ -18,7 +18,7 @@ not complete a phase.
 | Phase 0D — queue, outbox, and duplicate-delivery proof | Complete | ADRs 005–006; migration head `0006_execution_vocabulary.sql`; 158 unit, 76 real integration, and one destructive recovery assertion |
 | Phase 0E — execution durability proofs and engine gate | Complete | ADRs 005 and 007–009; commits through `0322837`; 239 unit, 96 real-service integration, five process-recovery, one SSE-outage, and one transport-outage assertions; custom-engine GO |
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
-| Phase 2 — workflow authoring vertical slice | In progress | ADRs, canonical graph identity, and tenant-scoped persistence complete; dispatch and HTTP slice remain |
+| Phase 2 — workflow authoring vertical slice | In progress | ADRs, canonical graph identity, persistence, and held dispatch boundary complete; HTTP slice remains |
 | Phase 3 — first executable-node slice | Not started | — |
 | Phase 4 — first side-effecting integration slice | Not started | — |
 | Phase 5 — orchestration slice | Not started | — |
@@ -550,7 +550,7 @@ Plan-aligned checklist:
       returns `workflow.revision_conflict` `412`, while a distinct key with the
       same current executable content is a new publish attempt that reuses the
       existing version and records its own audit/outbox effects.
-- [ ] Add a validated dispatcher job-kind allowlist. Phase 2 excludes
+- [x] Add a validated dispatcher job-kind allowlist. Phase 2 excludes
       `reconcile-workflow-triggers`, keeping those outbox rows durable,
       unpublished, unleased, and unattempted in PostgreSQL and absent from
       Redis until Phase 6 deploys a ready consumer before enabling that kind.
@@ -665,6 +665,15 @@ Initial evidence:
   publication step, checksum/version reuse, immutable history, RLS/grants,
   readiness drift, exact graph-size limits, and corrupt retained-checksum
   rejection before pointer, audit, or outbox mutation.
+- Commit `0e989a7` adds the deployment capability gate for outbox dispatch. The
+  Phase 2 default is an empty enabled-job set because production composes no
+  queue consumers yet; any configured kind must be in the build allowlist and
+  have a composed ready consumer before a row can be claimed. The real
+  PostgreSQL+Redis+BullMQ proof passes five assertions: enabled work publishes,
+  `reconcile-workflow-triggers` remains unpublished, unleased, unattempted, and
+  absent from Redis, and the job-leading partial index serves enabled claims
+  despite a 2,000-row held backlog. Database and worker unit suites pass 17 and
+  40 assertions respectively.
 - Independent Spec and Standards reviews returned GO for the model and
   persistence checkpoint. The worker role cannot read workflow versions, every
   workflow stays inactive, and reconciliation outbox rows remain held pending
