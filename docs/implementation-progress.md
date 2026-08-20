@@ -406,6 +406,9 @@ Current evidence:
   scoped ESLint, Prettier, and diff checks pass. Root runtime registration and
   the real-PostgreSQL/fake-provider API proof remain pending, so no additional
   completion box is checked yet.
+- Commit `3d1a731` exposes only the middleware-validated request identifier to
+  downstream guards/controllers, keeping audit request IDs aligned with the
+  RFC problem response instead of re-reading an untrusted header.
 
 ## Later phases
 
