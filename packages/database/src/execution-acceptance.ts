@@ -97,6 +97,29 @@ export class IdempotencyRecordCorruptError extends Error {
   }
 }
 
+export class WorkspaceRunAdmissionDeniedError extends Error {
+  public override readonly name = 'WorkspaceRunAdmissionDeniedError';
+
+  public constructor() {
+    super('workspace.run_admission_denied');
+  }
+}
+
+async function assertWorkspaceAcceptsNewRuns(
+  transaction: WorkspaceTransaction,
+): Promise<void> {
+  const result = await transaction.db.execute<{ status: string }>(sql`
+    select status
+    from app.workspaces
+    where id = ${transaction.workspaceId}
+    for share
+  `);
+
+  if (result.rows[0]?.status !== 'active') {
+    throw new WorkspaceRunAdmissionDeniedError();
+  }
+}
+
 async function readExistingAcceptance(
   transaction: WorkspaceTransaction,
   input: z.output<typeof acceptWorkflowRunInputSchema>,
@@ -160,6 +183,7 @@ export async function acceptWorkflowRun(
   input: AcceptWorkflowRunInput,
 ): Promise<AcceptedWorkflowRun> {
   const parsed = acceptWorkflowRunInputSchema.parse(input);
+  await assertWorkspaceAcceptsNewRuns(transaction);
   const idempotencyRecordId = randomUUID();
   const runId = randomUUID();
   const outboxEventId = randomUUID();

@@ -47,6 +47,7 @@ const worker = createWorkspaceDatabase(
 );
 const workspaceA = randomUUID();
 const workspaceB = randomUUID();
+const workspaceCreatorId = randomUUID();
 const traceparent = `00-${'a'.repeat(32)}-${'b'.repeat(16)}-01`;
 
 const migrationConfig = {
@@ -67,6 +68,31 @@ async function resetFixture(): Promise<void> {
         app.idempotency_records, app.run_events, app.run_checkpoints,
         app.workflow_runs, app.outbox_events cascade
     `);
+    await pool.query(
+      `insert into app.users (id, email, display_name, status)
+       values ($1, $2, 'Runtime fixture owner', 'active')
+       on conflict (id) do update set status = 'active'`,
+      [workspaceCreatorId, `runtime-${workspaceCreatorId}@example.test`],
+    );
+    await pool.query(
+      `insert into app.workspaces (id, name, slug, status, created_by)
+       values
+         ($1, 'Runtime A', $3, 'active', $5),
+         ($2, 'Runtime B', $4, 'active', $5)
+       on conflict (id) do update set
+         status = 'active',
+         deletion_requested_at = null,
+         deletion_requested_by = null,
+         deletion_reason = null,
+         purge_after = null`,
+      [
+        workspaceA,
+        workspaceB,
+        `runtime-a-${workspaceA}`,
+        `runtime-b-${workspaceB}`,
+        workspaceCreatorId,
+      ],
+    );
     await pool.query('commit');
   } catch (error: unknown) {
     await pool.query('rollback').catch(() => undefined);

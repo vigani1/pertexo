@@ -11,6 +11,7 @@ import {
   IDEMPOTENCY_STATUS_VALUES,
   IdempotencyRequestConflictError,
   RUN_STATUS_VALUES,
+  WorkspaceRunAdmissionDeniedError,
 } from '../src/execution-acceptance.js';
 import { migrateDatabase } from '../src/migrations.js';
 import {
@@ -38,6 +39,7 @@ const workflowVersionId = randomUUID();
 const keyHash = createHash('sha256').update('acceptance-key').digest('hex');
 const requestHash = createHash('sha256').update('request-a').digest('hex');
 const otherRequestHash = createHash('sha256').update('request-b').digest('hex');
+const workspaceCreatorId = randomUUID();
 
 const apiDatabase = createWorkspaceDatabase(
   parseDatabaseConfig({ connectionString: apiUrl, max: 4 }),
@@ -110,6 +112,31 @@ async function resetExecutionFixture(): Promise<void> {
         app.outbox_events
       cascade
     `);
+    await client.query(
+      `insert into app.users (id, email, display_name, status)
+       values ($1, $2, 'Execution fixture owner', 'active')
+       on conflict (id) do update set status = 'active'`,
+      [workspaceCreatorId, `execution-${workspaceCreatorId}@example.test`],
+    );
+    await client.query(
+      `insert into app.workspaces (id, name, slug, status, created_by)
+       values
+         ($1, 'Execution A', $3, 'active', $5),
+         ($2, 'Execution B', $4, 'active', $5)
+       on conflict (id) do update set
+         status = 'active',
+         deletion_requested_at = null,
+         deletion_requested_by = null,
+         deletion_reason = null,
+         purge_after = null`,
+      [
+        workspaceA,
+        workspaceB,
+        `execution-a-${workspaceA}`,
+        `execution-b-${workspaceB}`,
+        workspaceCreatorId,
+      ],
+    );
     await client.query('commit');
   } catch (error: unknown) {
     await client.query('rollback').catch(() => undefined);
@@ -131,6 +158,167 @@ afterAll(async () => {
 });
 
 describe('atomic workflow run acceptance', () => {
+  it.each(['suspended', 'pending_deletion', 'deleted'] as const)(
+    'rejects new runs while the workspace is %s without persisting acceptance state',
+    async (status) => {
+      const owner = new Pool({ connectionString: migrationUrl, max: 1 });
+      const client = await owner.connect();
+      try {
+        await client.query('begin');
+        await client.query('set local role pertexo_owner');
+        await client.query(
+          `update app.workspaces
+           set status = $2::varchar,
+               deletion_requested_at = case when $2::text = 'suspended' then null else now() end,
+               deletion_requested_by = case when $2::text = 'suspended' then null::uuid else $3::uuid end,
+               deletion_reason = case when $2::text = 'suspended' then null::varchar else 'fixture deletion'::varchar end,
+               purge_after = case when $2::text = 'suspended' then null else now() + interval '30 days' end
+           where id = $1`,
+          [workspaceA, status, workspaceCreatorId],
+        );
+        await client.query('commit');
+      } catch (error: unknown) {
+        await client.query('rollback').catch(() => undefined);
+        throw error;
+      } finally {
+        client.release();
+        await owner.end();
+      }
+
+      await expect(
+        apiDatabase.withWorkspace(workspaceA, (transaction) =>
+          acceptWorkflowRun(transaction, acceptanceInput()),
+        ),
+      ).rejects.toBeInstanceOf(WorkspaceRunAdmissionDeniedError);
+      await expectAcceptanceRecordCounts(0);
+    },
+  );
+
+  it('fails closed when the workspace lifecycle row does not exist', async () => {
+    await expect(
+      apiDatabase.withWorkspace(randomUUID(), (transaction) =>
+        acceptWorkflowRun(transaction, acceptanceInput()),
+      ),
+    ).rejects.toBeInstanceOf(WorkspaceRunAdmissionDeniedError);
+    await expectAcceptanceRecordCounts(0);
+  });
+
+  it('waits for an in-flight deletion and rejects after deletion wins the row lock', async () => {
+    const owner = new Pool({ connectionString: migrationUrl, max: 1 });
+    const deletion = await owner.connect();
+    try {
+      await deletion.query('begin');
+      await deletion.query('set local role pertexo_owner');
+      await deletion.query(
+        `update app.workspaces
+         set status = 'pending_deletion',
+             deletion_requested_at = now(),
+             deletion_requested_by = $2,
+             deletion_reason = 'concurrent deletion',
+             purge_after = now() + interval '30 days'
+         where id = $1`,
+        [workspaceA, workspaceCreatorId],
+      );
+
+      const admission = apiDatabase.withWorkspace(workspaceA, (transaction) =>
+        acceptWorkflowRun(transaction, acceptanceInput()),
+      );
+      const stateBeforeCommit = await Promise.race([
+        admission.then(
+          () => 'settled',
+          () => 'settled',
+        ),
+        new Promise<'waiting'>((resolve) => {
+          setTimeout(() => {
+            resolve('waiting');
+          }, 50);
+        }),
+      ]);
+      expect(stateBeforeCommit).toBe('waiting');
+
+      await deletion.query('commit');
+      await expect(admission).rejects.toBeInstanceOf(
+        WorkspaceRunAdmissionDeniedError,
+      );
+      await expectAcceptanceRecordCounts(0);
+    } catch (error: unknown) {
+      await deletion.query('rollback').catch(() => undefined);
+      throw error;
+    } finally {
+      deletion.release();
+      await owner.end();
+    }
+  });
+
+  it('lets an admitted run commit before a racing deletion takes effect', async () => {
+    let releaseAdmission!: () => void;
+    const holdAdmission = new Promise<void>((resolve) => {
+      releaseAdmission = resolve;
+    });
+    let acceptanceLocked!: () => void;
+    const admissionLocked = new Promise<void>((resolve) => {
+      acceptanceLocked = resolve;
+    });
+
+    const admission = apiDatabase.withWorkspace(
+      workspaceA,
+      async (transaction) => {
+        const accepted = await acceptWorkflowRun(
+          transaction,
+          acceptanceInput(),
+        );
+        acceptanceLocked();
+        await holdAdmission;
+        return accepted;
+      },
+    );
+    await admissionLocked;
+
+    const owner = new Pool({ connectionString: migrationUrl, max: 1 });
+    const deletionClient = await owner.connect();
+    await deletionClient.query('begin');
+    await deletionClient.query('set local role pertexo_owner');
+    const deletion = deletionClient.query(
+      `update app.workspaces
+       set status = 'pending_deletion',
+           deletion_requested_at = now(),
+           deletion_requested_by = $2,
+           deletion_reason = 'concurrent deletion',
+           purge_after = now() + interval '30 days'
+       where id = $1
+       returning status`,
+      [workspaceA, workspaceCreatorId],
+    );
+    try {
+      const stateBeforeAdmissionCommit = await Promise.race([
+        deletion.then(() => 'settled'),
+        new Promise<'waiting'>((resolve) => {
+          setTimeout(() => {
+            resolve('waiting');
+          }, 50);
+        }),
+      ]);
+      expect(stateBeforeAdmissionCommit).toBe('waiting');
+
+      releaseAdmission();
+      await expect(admission).resolves.toMatchObject({
+        duplicate: false,
+        status: 'queued',
+      });
+      await expect(deletion).resolves.toMatchObject({
+        rows: [{ status: 'pending_deletion' }],
+      });
+      await deletionClient.query('commit');
+      await expectAcceptanceRecordCounts(1);
+    } finally {
+      releaseAdmission();
+      await Promise.allSettled([admission, deletion]);
+      await deletionClient.query('rollback').catch(() => undefined);
+      deletionClient.release();
+      await owner.end();
+    }
+  });
+
   it('commits one queued run, accepted event, revision-0 checkpoint, idempotency claim, and coordinator outbox', async () => {
     const accepted = await apiDatabase.withWorkspace(
       workspaceA,

@@ -77,6 +77,7 @@ export {
   IdempotencyRequestConflictError,
   RUN_STATUS,
   RUN_STATUS_VALUES,
+  WorkspaceRunAdmissionDeniedError,
 } from './execution-acceptance.js';
 export type {
   AcceptedWorkflowRun,
