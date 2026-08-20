@@ -188,6 +188,7 @@ export {
 export type {
   CreateWorkflowInput,
   CreateWorkflowResult,
+  ListWorkflowVersionsInput,
   ListWorkflowsInput,
   PublishWorkflowInput,
   PublishWorkflowResult,
@@ -196,7 +197,9 @@ export type {
   WorkflowAuthoringDatabaseOptions,
   WorkflowAuthoringTestHooks,
   WorkflowDraftRecord,
+  WorkflowPage,
   WorkflowRecord,
+  WorkflowVersionPage,
   WorkflowVersionRecord,
 } from './workflow-authoring.js';
 export type {

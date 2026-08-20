@@ -2,6 +2,12 @@ import { createHash, randomUUID } from 'node:crypto';
 
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import {
+  EMPTY_DEFINITION_CATALOG_V1,
+  workflowCompatibilityReport,
+  workflowDraftRepresentationTag,
+  type WorkflowDefinitionCatalogV1,
+} from '@pertexo/workflow-model/graph';
 
 import { parseDatabaseConfig } from '../src/config.js';
 import { createIdentityWorkspaceDatabase } from '../src/identity-workspace.js';
@@ -10,8 +16,10 @@ import { checkDatabaseReadiness } from '../src/readiness.js';
 import {
   createWorkflowAuthoringDatabase,
   WorkflowCreateIdempotencyConflictError,
+  WorkflowNotFoundError,
   WorkflowPublishIdempotencyConflictError,
   WorkflowRevisionConflictError,
+  type WorkflowAuthoringDatabase,
 } from '../src/workflow-authoring.js';
 
 const migrationUrl =
@@ -86,6 +94,30 @@ function deferred(): Readonly<{
 
 async function yieldToPostgres(): Promise<void> {
   await new Promise<void>((resolve) => setTimeout(resolve, 20));
+}
+
+async function currentRepresentationTag(
+  database: WorkflowAuthoringDatabase,
+  scopedWorkspaceId: string,
+  scopedWorkflowId: string,
+  scopedActorId: string,
+  definitionCatalog: WorkflowDefinitionCatalogV1 = EMPTY_DEFINITION_CATALOG_V1,
+): Promise<string> {
+  const draft = await database.getDraft(
+    scopedWorkspaceId,
+    scopedWorkflowId,
+    scopedActorId,
+  );
+  if (draft === null) throw new Error('Expected workflow draft');
+  return workflowDraftRepresentationTag({
+    workflowId: scopedWorkflowId,
+    revision: draft.revision,
+    graph: draft.graphJson,
+    compatibilityFingerprint: workflowCompatibilityReport(
+      draft.graphJson,
+      definitionCatalog,
+    ).fingerprint,
+  });
 }
 
 async function executeAsOwner(
@@ -169,7 +201,12 @@ beforeAll(async () => {
   otherWorkflowId = otherWorkflow.workflowId;
   const otherPublication = await authoring.publishWorkflow({
     actorId: otherActorId,
-    expectedRevision: 1,
+    representationTag: await currentRepresentationTag(
+      authoring,
+      otherWorkspaceId,
+      otherWorkflowId,
+      otherActorId,
+    ),
     idempotencyKey: 'publish-other-workflow',
     requestHash: '0'.repeat(64),
     workflowId: otherWorkflowId,
@@ -279,6 +316,10 @@ describe('workflow authoring persistence', () => {
     } as const;
     const created = await authoring.createWorkflow(createInput);
     workflowId = created.workflowId;
+    expect(created).toMatchObject({
+      workflow: { id: workflowId, name: 'First workflow' },
+      draft: { workflowId, revision: 1, schemaVersion: 1, workspaceId },
+    });
     await expect(
       authoring.getDraft(workspaceId, workflowId, actorId),
     ).resolves.toMatchObject({ revision: 1, schemaVersion: 1, workspaceId });
@@ -290,7 +331,7 @@ describe('workflow authoring persistence', () => {
     ).rejects.toBeInstanceOf(WorkflowCreateIdempotencyConflictError);
     await expect(
       authoring.listWorkflows({ workspaceId, actorId }),
-    ).resolves.toHaveLength(1);
+    ).resolves.toMatchObject({ items: [{ id: workflowId }] });
 
     const concurrentInput = {
       ...createInput,
@@ -302,15 +343,20 @@ describe('workflow authoring persistence', () => {
       authoring.createWorkflow(concurrentInput),
     ]);
     expect(concurrent[0].workflowId).toBe(concurrent[1].workflowId);
-    await expect(
-      authoring.listWorkflows({ workspaceId, actorId, limit: 2 }),
-    ).resolves.toHaveLength(2);
+    const listed = await authoring.listWorkflows({
+      workspaceId,
+      actorId,
+      limit: 2,
+    });
+    expect(Array.isArray(listed.items)).toBe(true);
     const firstPage = await authoring.listWorkflows({
       workspaceId,
       actorId,
       limit: 1,
     });
-    const firstWorkflow = firstPage[0];
+    expect(firstPage.items).toHaveLength(1);
+    expect(firstPage.nextCursor).toBeDefined();
+    const firstWorkflow = firstPage.items[0];
     expect(firstWorkflow).toBeDefined();
     if (firstWorkflow === undefined) throw new Error('Missing first page row');
     const rename = await apiPool.connect();
@@ -333,7 +379,7 @@ describe('workflow authoring persistence', () => {
       after: { createdAt: firstWorkflow.createdAt, id: firstWorkflow.id },
       limit: 10,
     });
-    expect(secondPage.map((workflow) => workflow.id)).not.toContain(
+    expect(secondPage.items.map((workflow) => workflow.id)).not.toContain(
       firstWorkflow.id,
     );
 
@@ -612,7 +658,12 @@ describe('workflow authoring persistence', () => {
     await expect(
       authoring.publishWorkflow({
         actorId,
-        expectedRevision: 1,
+        representationTag: await currentRepresentationTag(
+          authoring,
+          workspaceId,
+          corrupted.workflowId,
+          actorId,
+        ),
         idempotencyKey: 'publish-corrupt-version-proof',
         requestHash: 'f'.repeat(64),
         workflowId: corrupted.workflowId,
@@ -672,7 +723,13 @@ describe('workflow authoring persistence', () => {
       });
       const first = await catalogAuthoring.publishWorkflow({
         actorId,
-        expectedRevision: 1,
+        representationTag: await currentRepresentationTag(
+          catalogAuthoring,
+          workspaceId,
+          created.workflowId,
+          actorId,
+          testDefinitionCatalog,
+        ),
         idempotencyKey: 'publish-canonical-first',
         requestHash: '1'.repeat(64),
         workflowId: created.workflowId,
@@ -707,7 +764,13 @@ describe('workflow authoring persistence', () => {
       });
       const presentationOnly = await catalogAuthoring.publishWorkflow({
         actorId,
-        expectedRevision: 2,
+        representationTag: await currentRepresentationTag(
+          catalogAuthoring,
+          workspaceId,
+          created.workflowId,
+          actorId,
+          testDefinitionCatalog,
+        ),
         idempotencyKey: 'publish-canonical-presentation',
         requestHash: '2'.repeat(64),
         workflowId: created.workflowId,
@@ -730,7 +793,13 @@ describe('workflow authoring persistence', () => {
       });
       const executableChange = await catalogAuthoring.publishWorkflow({
         actorId,
-        expectedRevision: 3,
+        representationTag: await currentRepresentationTag(
+          catalogAuthoring,
+          workspaceId,
+          created.workflowId,
+          actorId,
+          testDefinitionCatalog,
+        ),
         idempotencyKey: 'publish-canonical-executable',
         requestHash: '3'.repeat(64),
         workflowId: created.workflowId,
@@ -752,7 +821,12 @@ describe('workflow authoring persistence', () => {
       await expect(
         authoring.publishWorkflow({
           actorId,
-          expectedRevision: 4,
+          representationTag: await currentRepresentationTag(
+            authoring,
+            workspaceId,
+            created.workflowId,
+            actorId,
+          ),
           idempotencyKey: 'publish-after-unsupported-history',
           requestHash: '4'.repeat(64),
           workflowId: created.workflowId,
@@ -800,7 +874,117 @@ describe('workflow authoring persistence', () => {
         name: 'First workflow',
         workspaceId,
       }),
-    ).resolves.toEqual({ workflowId });
+    ).resolves.toMatchObject({ workflowId });
+  });
+
+  it('denies saves after the workflow is archived', async () => {
+    const created = await authoring.createWorkflow({
+      actorId,
+      emptyGraph,
+      idempotencyKey: 'create-archived-save-proof',
+      name: 'Archived save proof',
+      workspaceId,
+    });
+    const client = await apiPool.connect();
+    try {
+      await client.query('begin');
+      await client.query("select set_config('app.workspace_id', $1, true)", [
+        workspaceId,
+      ]);
+      await client.query(
+        "update app.workflows set lifecycle_status = 'archived' where id = $1",
+        [created.workflowId],
+      );
+      await client.query('commit');
+    } finally {
+      client.release();
+    }
+
+    await expect(
+      authoring.saveDraft({
+        actorId,
+        expectedRevision: 1,
+        graphJson: { ...emptyGraph, settings: { maxRunDurationMs: 1_000 } },
+        workflowId: created.workflowId,
+        workspaceId,
+      }),
+    ).rejects.toBeInstanceOf(WorkflowNotFoundError);
+    const facts = await queryAsOwner<{ audits: string; revision: number }>(
+      `select draft.revision,
+              (select count(*) from app.audit_events audit
+               where audit.target_id = draft.workflow_id
+                 and audit.action = 'workflow.draft_saved')::text as audits
+       from app.workflow_drafts draft where draft.workflow_id = $1`,
+      [created.workflowId],
+      workspaceId,
+    );
+    expect(facts[0]).toEqual({ audits: '0', revision: 1 });
+  });
+
+  it('lists immutable versions with a bounded deterministic cursor', async () => {
+    const created = await authoring.createWorkflow({
+      actorId,
+      emptyGraph,
+      idempotencyKey: 'create-version-page-proof',
+      name: 'Version page proof',
+      workspaceId,
+    });
+    for (const [index, duration] of [undefined, 1_000, 2_000].entries()) {
+      if (duration !== undefined) {
+        await authoring.saveDraft({
+          actorId,
+          expectedRevision: index,
+          graphJson: {
+            ...emptyGraph,
+            settings: { maxRunDurationMs: duration },
+          },
+          workflowId: created.workflowId,
+          workspaceId,
+        });
+      }
+      await authoring.publishWorkflow({
+        actorId,
+        representationTag: await currentRepresentationTag(
+          authoring,
+          workspaceId,
+          created.workflowId,
+          actorId,
+        ),
+        idempotencyKey: `publish-version-page-${String(index + 1)}`,
+        requestHash: createHash('sha256')
+          .update(`version-page-${String(index + 1)}`)
+          .digest('hex'),
+        workflowId: created.workflowId,
+        workspaceId,
+      });
+    }
+
+    const first = await authoring.listVersions({
+      actorId,
+      limit: 2,
+      workflowId: created.workflowId,
+      workspaceId,
+    });
+    expect(first.items.map((version) => version.versionNumber)).toEqual([3, 2]);
+    expect(first.nextCursor).toEqual({ beforeVersionNumber: 2 });
+    if (first.nextCursor === undefined)
+      throw new Error('Expected version cursor');
+    await expect(
+      authoring.listVersions({
+        actorId,
+        beforeVersionNumber: first.nextCursor.beforeVersionNumber,
+        limit: 2,
+        workflowId: created.workflowId,
+        workspaceId,
+      }),
+    ).resolves.toMatchObject({ items: [{ versionNumber: 1 }] });
+    await expect(
+      authoring.listVersions({
+        actorId,
+        workflowId: otherWorkflowId,
+        workspaceId,
+      }),
+    ).rejects.toThrow('Workflow is not visible');
   });
 
   it('serializes both save-first and publish-first lock orders without graph skew', async () => {
@@ -813,6 +997,12 @@ describe('workflow authoring persistence', () => {
     });
     const saveLocked = deferred();
     const releaseSave = deferred();
+    const saveFirstTag = await currentRepresentationTag(
+      authoring,
+      workspaceId,
+      saveFirstDraft.workflowId,
+      actorId,
+    );
     const saveFirstDatabase = createWorkflowAuthoringDatabase(
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
       {
@@ -838,7 +1028,7 @@ describe('workflow authoring persistence', () => {
       await saveLocked.promise;
       const publish = authoring.publishWorkflow({
         actorId,
-        expectedRevision: 1,
+        representationTag: saveFirstTag,
         idempotencyKey: 'publish-save-first-race',
         requestHash: '5'.repeat(64),
         workflowId: saveFirstDraft.workflowId,
@@ -861,6 +1051,12 @@ describe('workflow authoring persistence', () => {
     });
     const publishLocked = deferred();
     const releasePublish = deferred();
+    const publishFirstTag = await currentRepresentationTag(
+      authoring,
+      workspaceId,
+      publishFirstDraft.workflowId,
+      actorId,
+    );
     const publishFirstDatabase = createWorkflowAuthoringDatabase(
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
       {
@@ -875,7 +1071,7 @@ describe('workflow authoring persistence', () => {
     try {
       const publish = publishFirstDatabase.publishWorkflow({
         actorId,
-        expectedRevision: 1,
+        representationTag: publishFirstTag,
         idempotencyKey: 'publish-publish-first-race',
         requestHash: '7'.repeat(64),
         workflowId: publishFirstDraft.workflowId,
@@ -931,10 +1127,16 @@ describe('workflow authoring persistence', () => {
         },
       );
       try {
+        const representationTag = await currentRepresentationTag(
+          authoring,
+          workspaceId,
+          created.workflowId,
+          actorId,
+        );
         await expect(
           faulting.publishWorkflow({
             actorId,
-            expectedRevision: 1,
+            representationTag,
             idempotencyKey: `publish-rollback-${step}`,
             requestHash: createHash('sha256').update(step).digest('hex'),
             workflowId: created.workflowId,
@@ -995,7 +1197,12 @@ describe('workflow authoring persistence', () => {
     await expect(
       authoring.publishWorkflow({
         actorId,
-        expectedRevision: 2,
+        representationTag: await currentRepresentationTag(
+          authoring,
+          workspaceId,
+          invalid.workflowId,
+          actorId,
+        ),
         idempotencyKey: 'publish-validator-failure',
         requestHash: '8'.repeat(64),
         workflowId: invalid.workflowId,
@@ -1015,9 +1222,16 @@ describe('workflow authoring persistence', () => {
   it('publishes atomically, replays exactly, and rejects changed key reuse', async () => {
     const draft = await authoring.getDraft(workspaceId, workflowId, actorId);
     expect(draft).not.toBeNull();
+    if (draft === null) throw new Error('Expected workflow draft');
+    const representationTag = workflowDraftRepresentationTag({
+      workflowId,
+      revision: draft.revision,
+      graph: draft.graphJson,
+      compatibilityFingerprint: draft.compatibility.fingerprint,
+    });
     const input = {
       actorId,
-      expectedRevision: draft?.revision ?? 0,
+      representationTag,
       idempotencyKey: 'publish-proof',
       requestHash: 'a'.repeat(64),
       workflowId,
@@ -1043,8 +1257,8 @@ describe('workflow authoring persistence', () => {
     const published = publications[0];
     const saved = await authoring.saveDraft({
       actorId,
-      expectedRevision: input.expectedRevision,
-      graphJson: draft?.graphJson ?? {},
+      expectedRevision: draft.revision,
+      graphJson: draft.graphJson,
       workflowId,
       workspaceId,
     });
@@ -1062,13 +1276,23 @@ describe('workflow authoring persistence', () => {
     const currentPublications = await Promise.all([
       authoring.publishWorkflow({
         ...input,
-        expectedRevision: saved.revision,
+        representationTag: workflowDraftRepresentationTag({
+          workflowId,
+          revision: saved.revision,
+          graph: saved.graphJson,
+          compatibilityFingerprint: saved.compatibility.fingerprint,
+        }),
         idempotencyKey: 'publish-current-distinct-a',
         requestHash: 'd'.repeat(64),
       }),
       authoring.publishWorkflow({
         ...input,
-        expectedRevision: saved.revision,
+        representationTag: workflowDraftRepresentationTag({
+          workflowId,
+          revision: saved.revision,
+          graph: saved.graphJson,
+          compatibilityFingerprint: saved.compatibility.fingerprint,
+        }),
         idempotencyKey: 'publish-current-distinct-b',
         requestHash: 'f'.repeat(64),
       }),
