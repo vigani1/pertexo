@@ -24,6 +24,8 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
+    "@opentelemetry/api": "1.9.0",
+    "@opentelemetry/sdk-node": "0.221.0",
     "@pertexo/artifact-store": "workspace:*",
     "@pertexo/workflow-engine": "workspace:*",
     "@pertexo/workflow-model": "workspace:*",

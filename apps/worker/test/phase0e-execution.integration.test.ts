@@ -8,7 +8,6 @@ import {
   AttemptFenceConflictError,
   AttemptReconciliationRequiredError,
   commitCoordinatorTransition,
-  commitDueNodeAdmission,
   completeNodeAttempt,
   createOutboxDispatcherDatabase,
   createWorkspaceDatabase,
@@ -532,7 +531,7 @@ async function startRun(
   };
 }
 
-async function publishOutbox(): Promise<number> {
+async function publishOutbox(duplicateAggregateId?: string): Promise<number> {
   const producer = createQueueProducer({ redisUrl });
   await producer.waitUntilReady(5_000);
   let published = 0;
@@ -547,6 +546,9 @@ async function publishOutbox(): Promise<number> {
     for (const event of batch.events) {
       const job = parseQueueJob({ name: event.jobName, data: event.payload });
       await producer.publish(job);
+      if (event.aggregateId === duplicateAggregateId) {
+        await producer.publish(job);
+      }
       if (await dispatcherDatabase.markPublished(event.id, event.leaseToken)) {
         published += 1;
       }
@@ -834,23 +836,73 @@ describeIntegration('Phase 0E real execution recovery fixture', () => {
     expect(due[0]?.kind).toBe('wait');
 
     const nextAttemptId = randomUUID();
-    await workerDatabase.withWorkspace(WORKSPACE_ID, (transaction) =>
-      commitDueNodeAdmission(transaction, {
-        attemptId: nextAttemptId,
-        engineVersion: ENGINE_VERSION,
-        expectedAttemptNumber: 1,
-        expectedRevision: 1,
-        nodeRunId: started.nodeRunId,
-        schedulerState: asSchedulerState(started.checkpoint),
-        traceparent: TRACEPARENT,
-      }),
+    const duplicateResumeInput = {
+      attemptId: nextAttemptId,
+      engineVersion: ENGINE_VERSION,
+      expectedAttemptNumber: 1,
+      expectedRevision: 1,
+      nodeRunId: started.nodeRunId,
+      schedulerState: asSchedulerState(started.checkpoint),
+      traceparent: TRACEPARENT,
+      workspaceId: WORKSPACE_ID,
+    };
+    const duplicateResumeResults = await Promise.all([
+      runProofChild('resume-due', duplicateResumeInput),
+      runProofChild('resume-due', duplicateResumeInput),
+    ]);
+    expect(
+      duplicateResumeResults
+        .map(({ duplicateFenced }) => duplicateFenced)
+        .sort(),
+    ).toEqual([false, true]);
+    const resumeFacts = await workerDatabase.withWorkspace(
+      WORKSPACE_ID,
+      ({ db }) =>
+        db
+          .execute<{
+            attempt_count: string;
+            current_attempt_number: number;
+            node_ready_event_count: string;
+            outbox_count: string;
+            revision: number;
+          }>(
+            sql`
+            select c.revision, n.current_attempt_number,
+              (select count(*) from app.node_attempts a
+               where a.workspace_id = ${WORKSPACE_ID}
+                 and a.node_run_id = ${started.nodeRunId}) as attempt_count,
+              (select count(*) from app.run_events e
+               where e.workspace_id = ${WORKSPACE_ID}
+                 and e.workflow_run_id = ${runId}
+                 and e.type = 'node.ready'
+                 and e.payload ->> 'attemptId' = ${nextAttemptId}) as node_ready_event_count,
+              (select count(*) from app.outbox_events o
+               where o.workspace_id = ${WORKSPACE_ID}
+                 and o.aggregate_id = ${nextAttemptId}) as outbox_count
+            from app.run_checkpoints c
+            join app.node_runs n
+              on n.workspace_id = c.workspace_id
+             and n.workflow_run_id = c.workflow_run_id
+            where c.workspace_id = ${WORKSPACE_ID}
+              and c.workflow_run_id = ${runId}
+              and n.id = ${started.nodeRunId}
+          `,
+          )
+          .then((result) => result.rows[0]),
     );
-    const resumedChild = spawnProofChild('consume-complete', {
+    expect(resumeFacts).toEqual({
+      attempt_count: '2',
+      current_attempt_number: 2,
+      node_ready_event_count: '1',
+      outbox_count: '1',
+      revision: 2,
+    });
+    const resumedChild = spawnProofChild('consume-complete-traced', {
       traceparent: TRACEPARENT,
       workerId: 'phase0e-wait-fresh-child',
     });
     await resumedChild.next((message) => message.ready === true);
-    await publishOutbox();
+    await publishOutbox(nextAttemptId);
     const resumed = await resumedChild.next(
       (message) =>
         message.injectionPoint ===
@@ -858,6 +910,23 @@ describeIntegration('Phase 0E real execution recovery fixture', () => {
     );
     expect(resumed.status).toBe('completed');
     expect(resumed.deliveryTraceparent).toBe(TRACEPARENT);
+    expect(resumed.activeSpan).toMatchObject({
+      traceId: '1'.repeat(32),
+    });
+    expect(resumed.exportedSpan).toMatchObject({
+      attributes: {
+        'messaging.destination.name': QUEUE_NAME.nodeAttempts,
+        'messaging.operation.name': 'process',
+        'messaging.operation.type': 'process',
+        'pertexo.job.name': 'execute-node-attempt',
+      },
+      kind: 4,
+      parentSpanId: '2'.repeat(16),
+      traceId: '1'.repeat(32),
+    });
+    expect((resumed.activeSpan as { readonly spanId: string }).spanId).toBe(
+      (resumed.exportedSpan as { readonly spanId: string }).spanId,
+    );
     expect((await resumedChild.exited).code).toBe(0);
     expect((await readAttemptState(nextAttemptId)).attemptStatus).toBe(
       'succeeded',
@@ -867,7 +936,10 @@ describeIntegration('Phase 0E real execution recovery fixture', () => {
         event: 'phase0e.execution.measurements',
         redisRestartMs,
         redisRecoveryToResumeMs: restartRecoveredAt - waitEnteredAt,
+        resumeDuplicateFenced: true,
+        resumeDuplicateQueuePublished: true,
         traceparent: TRACEPARENT,
+        traceSpanActivated: true,
         waitResumeMs: performance.now() - restartRecoveredAt,
       })}\n`,
     );
@@ -1058,6 +1130,136 @@ describeIntegration('Phase 0E real execution recovery fixture', () => {
     );
   });
 
+  it('aborts active cooperative work from durable cancellation during Redis loss and preserves completed effects', async () => {
+    const runId = await acceptRun();
+    const started = await startRun(runId, 'safe');
+    const providerEffectKey = `phase0e-completed-effect:${randomUUID()}`;
+    const activeChild = spawnProofChild('consume-cancel-cooperative', {
+      providerEffectKey,
+      workerId: 'phase0e-cancel-active-child',
+    });
+    await activeChild.next((message) => message.ready === true);
+    expect(await publishOutbox()).toBeGreaterThan(0);
+    const active = await activeChild.next(
+      (message) =>
+        message.injectionPoint ===
+        'executor.cooperative_work_active_after_completed_effect',
+    );
+    expect(active).toMatchObject({
+      executorSignalAborted: false,
+      providerEffectKey,
+    });
+
+    let redisStopped = false;
+    const outageStartedAt = performance.now();
+    try {
+      await compose('stop', '--timeout', '10', 'redis');
+      redisStopped = true;
+      const canceled = await runProofChild('cancel', {
+        runId,
+        workspaceId: WORKSPACE_ID,
+      });
+      expect(canceled).toHaveProperty('canceled');
+      const terminated = await activeChild.next(
+        (message) =>
+          message.injectionPoint ===
+          'executor.cooperative_cancellation_committed',
+      );
+      expect(terminated).toMatchObject({
+        abortReason: 'durable workflow cancellation observed',
+        durableSignalAborted: true,
+        executorSignalAborted: true,
+        providerEffectKey,
+        transportSignalAborted: false,
+      });
+    } finally {
+      await compose('up', '-d', '--wait', 'redis');
+      redisStopped = false;
+      await assertRedisProofHealth();
+    }
+    expect(redisStopped).toBe(false);
+    expect((await activeChild.exited).code).toBe(0);
+
+    const cancellationFacts = await workerDatabase.withWorkspace(
+      WORKSPACE_ID,
+      ({ db }) =>
+        db
+          .execute<{
+            attempt_output_ref: unknown;
+            attempt_status: string;
+            cancellation_durable: boolean;
+            effect_count: number;
+            node_output_ref: unknown;
+            node_status: string;
+          }>(
+            sql`
+            select a.status as attempt_status,
+              a.output_ref as attempt_output_ref,
+              n.status as node_status,
+              n.output_ref as node_output_ref,
+              r.cancel_requested_at is not null as cancellation_durable,
+              (select invocation_count
+               from app.phase0e_provider_effects e
+               where e.workspace_id = ${WORKSPACE_ID}
+                 and e.effect_key = ${providerEffectKey}) as effect_count
+            from app.node_attempts a
+            join app.node_runs n
+              on n.workspace_id = a.workspace_id and n.id = a.node_run_id
+            join app.workflow_runs r
+              on r.workspace_id = n.workspace_id
+             and r.id = n.workflow_run_id
+            where a.workspace_id = ${WORKSPACE_ID}
+              and a.id = ${started.attemptId}
+          `,
+          )
+          .then((result) => result.rows[0]),
+    );
+    expect(cancellationFacts).toMatchObject({
+      attempt_output_ref: {
+        completedEffectKey: providerEffectKey,
+        completedEffectTruthful: true,
+      },
+      attempt_status: 'canceled',
+      cancellation_durable: true,
+      effect_count: 1,
+      node_output_ref: {
+        completedEffectKey: providerEffectKey,
+        completedEffectTruthful: true,
+      },
+      node_status: 'canceled',
+    });
+
+    const freshClaim = await runProofChild('claim', {
+      attemptId: started.attemptId,
+      leaseDurationSeconds: 5,
+      markDispatched: false,
+      workerId: 'phase0e-cancel-fresh-worker',
+      workspaceId: WORKSPACE_ID,
+    });
+    expect(freshClaim.lease).toBeNull();
+    const freshAdmission = await runProofChild('admit-after-cancel', {
+      attemptId: randomUUID(),
+      engineVersion: ENGINE_VERSION,
+      nodeRunId: randomUUID(),
+      runId,
+      traceparent: TRACEPARENT,
+      workflowVersionId: WORKFLOW_VERSION_ID,
+      workspaceId: WORKSPACE_ID,
+    });
+    expect(freshAdmission).toMatchObject({
+      admissionBlocked: true,
+      error: 'execution.cancel_stops_admission',
+    });
+    process.stdout.write(
+      `${JSON.stringify({
+        cancellationOutageRecoveryMs: performance.now() - outageStartedAt,
+        completedEffectCount: cancellationFacts?.effect_count,
+        event: 'phase0e.cooperative_cancellation_recovery',
+        providerEffectKey,
+      })}\n`,
+    );
+  });
+
   it('stops new admission durably on cancellation and reconstructs branch/join/loop state deterministically', async () => {
     const initial = engine.createCheckpoint({
       engineVersion: ENGINE_VERSION,
@@ -1074,7 +1276,11 @@ describeIntegration('Phase 0E real execution recovery fixture', () => {
       {
         kind: 'branch_disposition',
         joinId: 'join-all',
-        branch: { branchId: 'all-a', disposition: 'arrived' },
+        branch: {
+          branchId: 'all-a',
+          disposition: 'arrived',
+          output: { kind: 'inline', reference: 'output-all-a' },
+        },
       },
       {
         kind: 'branch_disposition',
@@ -1111,7 +1317,11 @@ describeIntegration('Phase 0E real execution recovery fixture', () => {
       {
         kind: 'branch_disposition',
         joinId: 'join-count',
-        branch: { branchId: 'count-a', disposition: 'arrived' },
+        branch: {
+          branchId: 'count-a',
+          disposition: 'arrived',
+          output: { kind: 'artifact', reference: 'output-count-a' },
+        },
       },
       {
         kind: 'branch_disposition',
@@ -1160,6 +1370,7 @@ describeIntegration('Phase 0E real execution recovery fixture', () => {
     );
     const secondAdvanceInput = {
       checkpoint: firstAdvance.checkpoint,
+      graph: schedulerGraph(),
       observations: [
         {
           kind: 'branch_disposition',
@@ -1169,11 +1380,13 @@ describeIntegration('Phase 0E real execution recovery fixture', () => {
         { kind: 'loop_iteration_completed', loopId: 'loop-1', ordinal: 0 },
       ],
       occurredAt: '2026-08-20T00:01:00.000Z',
-      maximumAdmissions: 10,
+      maximumAdmissions: 0,
     } as const;
     const secondAdvance = engine.advanceWorkflow(secondAdvanceInput);
     const replayedSecondAdvance = engine.advanceWorkflow(secondAdvanceInput);
     expect(replayedSecondAdvance).toEqual(secondAdvance);
+    expect(secondAdvance.attempts).toEqual([]);
+    expect(secondAdvance.checkpoint.readySet.length).toBeGreaterThan(0);
     expect(secondAdvance.checkpoint.loops).toContainEqual(
       expect.objectContaining({
         activeOrdinals: [1, 2],
@@ -1240,18 +1453,91 @@ describeIntegration('Phase 0E real execution recovery fixture', () => {
         traceparent: TRACEPARENT,
       }),
     );
-    const childRoundtrip = await runProofChild('engine-roundtrip', {
+    const recoveredTransitionInput = {
+      engineVersion: ENGINE_VERSION,
       maximumAdmissions: secondAdvanceInput.maximumAdmissions,
       observations: secondAdvanceInput.observations,
       occurredAt: secondAdvanceInput.occurredAt,
       runId: persistenceRunId,
+      traceparent: TRACEPARENT,
       workflowVersionId: WORKFLOW_VERSION_ID,
       workspaceId: WORKSPACE_ID,
-    });
-    expect(childRoundtrip.plan).toEqual(secondAdvance);
-    expect(childRoundtrip.checkpointJson).toBe(
-      JSON.stringify(secondAdvance.checkpoint),
+    };
+    const preCheckpointChild = spawnProofChild(
+      'engine-recover-compute-hang',
+      recoveredTransitionInput,
     );
+    const preCheckpoint = await preCheckpointChild.next(
+      (message) =>
+        message.injectionPoint ===
+        'scheduler.recovery_complete_before_recovered_checkpoint_cas',
+    );
+    expect(preCheckpoint.plan).toEqual(secondAdvance);
+    expect(preCheckpoint.workflowVersionId).toBe(WORKFLOW_VERSION_ID);
+    expect(preCheckpoint.persistedRevision).toBe(1);
+    await preCheckpointChild.kill();
+    expect((await preCheckpointChild.exited).signal).toBe('SIGKILL');
+
+    const postCheckpointChild = spawnProofChild(
+      'engine-recover-commit-hang',
+      recoveredTransitionInput,
+    );
+    const postCheckpoint = await postCheckpointChild.next(
+      (message) =>
+        message.injectionPoint ===
+        'scheduler.recovered_checkpoint_committed_before_delivery_ack',
+    );
+    expect(postCheckpoint.plan).toEqual(secondAdvance);
+    expect(postCheckpoint.immutableGraphChecksum).toBe(
+      preCheckpoint.immutableGraphChecksum,
+    );
+    expect(postCheckpoint.workflowVersionId).toBe(WORKFLOW_VERSION_ID);
+    await postCheckpointChild.kill();
+    expect((await postCheckpointChild.exited).signal).toBe('SIGKILL');
+
+    const duplicateRecoveredTransition = await runProofChild(
+      'engine-recover-commit',
+      {
+        ...recoveredTransitionInput,
+        replayPlan: postCheckpoint.plan,
+      },
+    );
+    expect(duplicateRecoveredTransition).toMatchObject({
+      duplicateFenced: true,
+      replayExpectedRevision: 1,
+    });
+    const recoveredCheckpointFacts = await workerDatabase.withWorkspace(
+      WORKSPACE_ID,
+      ({ db }) =>
+        db
+          .execute<{
+            event_count: string;
+            revision: number;
+            scheduler_state: unknown;
+          }>(
+            sql`
+            select c.revision, c.scheduler_state,
+              (select count(*) from app.run_events e
+               where e.workspace_id = ${WORKSPACE_ID}
+                 and e.workflow_run_id = ${persistenceRunId}) as event_count
+            from app.run_checkpoints c
+            where c.workspace_id = ${WORKSPACE_ID}
+              and c.workflow_run_id = ${persistenceRunId}
+          `,
+          )
+          .then((result) => result.rows[0]),
+    );
+    expect(recoveredCheckpointFacts).toEqual({
+      event_count: '2',
+      revision: 2,
+      scheduler_state: secondAdvance.checkpoint,
+    });
+    expect(
+      (recoveredCheckpointFacts?.scheduler_state as EngineCheckpoint).joins,
+    ).toEqual(secondAdvance.checkpoint.joins);
+    expect(
+      (recoveredCheckpointFacts?.scheduler_state as EngineCheckpoint).loops,
+    ).toEqual(secondAdvance.checkpoint.loops);
 
     const runId = await acceptRun();
     const started = await startRun(runId);
@@ -1297,8 +1583,10 @@ describeIntegration('Phase 0E real execution recovery fixture', () => {
         event: 'phase0e.scheduler_process_recovery',
         exactLoopConcurrency: 2,
         exactLoopIterations: 3,
+        postCheckpointCrashSignal: 'SIGKILL',
+        preCheckpointCrashSignal: 'SIGKILL',
         policies: ['all', 'any', 'count'],
-        persistedRevision: childRoundtrip.persistedRevision,
+        persistedRevision: recoveredCheckpointFacts?.revision,
       })}\n`,
     );
   });
