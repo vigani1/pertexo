@@ -1,5 +1,6 @@
 import {
   IdentityConflictError,
+  IdempotencyRequestConflictError,
   WorkspaceLifecycleConflictError,
 } from '@pertexo/database';
 import { describe, expect, it } from 'vitest';
@@ -50,6 +51,18 @@ describe('identity/workspace conflict mapping', () => {
     expect(error).toEqual({
       code: 'workspace.conflict',
       safeDetail: 'The workspace slug is already in use.',
+    });
+    expect(APPLICATION_ERROR_CATALOG[error.code].status).toBe(409);
+  });
+
+  it('maps a reused idempotency key with changed input to the stable conflict', () => {
+    const error = mapIdentityWorkspaceError(
+      new IdempotencyRequestConflictError(),
+    );
+
+    expect(error).toEqual({
+      code: 'request.idempotency_conflict',
+      safeDetail: 'The idempotency key was already used for another request.',
     });
     expect(APPLICATION_ERROR_CATALOG[error.code].status).toBe(409);
   });

@@ -5,6 +5,11 @@ import type { DatabaseError, PoolClient } from 'pg';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from './config.js';
+import {
+  IDEMPOTENCY_STATUS,
+  IdempotencyRecordCorruptError,
+  IdempotencyRequestConflictError,
+} from './execution-acceptance.js';
 
 const uuidSchema = z.uuid();
 const digestSchema = z.string().regex(/^[0-9a-f]{64}$/u);
@@ -12,6 +17,12 @@ const metadataSchema = z
   .record(z.string(), z.json())
   .refine((value) => Buffer.byteLength(JSON.stringify(value), 'utf8') <= 8192);
 const issuerSchema = z.url().max(2048);
+const idempotencyKeySchema = z
+  .string()
+  .min(1)
+  .max(128)
+  .regex(/^[\x21-\x7e]+$/u)
+  .refine((value) => !value.includes(','));
 
 export const USER_STATUS = {
   active: 'active',
@@ -170,6 +181,14 @@ export type WorkspaceWithOwnerInput = Readonly<{
   requestId?: string;
   traceId?: string;
   metadata?: Record<string, unknown>;
+  idempotencyKey?: string;
+}>;
+
+export type WorkspaceCommandOptions = Readonly<{
+  requestId?: string;
+  traceId?: string;
+  metadata?: Record<string, unknown>;
+  idempotencyKey?: string;
 }>;
 
 export type WorkspaceLifecycleResult = Readonly<{
@@ -202,22 +221,14 @@ export type IdentityWorkspaceDatabase = Readonly<{
   requestWorkspaceDeletion(
     workspaceId: string,
     actorUserId: string,
-    purgeAfter: Date,
+    purgeAfter: Date | undefined,
     reason: string,
-    options?: Readonly<{
-      requestId?: string;
-      traceId?: string;
-      metadata?: Record<string, unknown>;
-    }>,
+    options?: WorkspaceCommandOptions,
   ): Promise<WorkspaceLifecycleResult>;
   restoreWorkspace(
     workspaceId: string,
     actorUserId: string,
-    options?: Readonly<{
-      requestId?: string;
-      traceId?: string;
-      metadata?: Record<string, unknown>;
-    }>,
+    options?: WorkspaceCommandOptions,
   ): Promise<WorkspaceLifecycleResult>;
   close(): Promise<void>;
 }>;
@@ -341,13 +352,240 @@ function mapWorkspace(row: Record<string, unknown>): WorkspaceRecord {
   });
 }
 
-async function assertNoPlatformContext(client: PoolClient): Promise<void> {
-  const result = await client.query<{ workspace_id: string | null }>(
-    "select current_setting('app.workspace_id', true) as workspace_id",
+const durableWorkspaceResultSchema = z
+  .object({
+    workspace: z
+      .object({
+        id: z.uuid(),
+        name: z.string(),
+        slug: z.string(),
+        status: z.enum([
+          WORKSPACE_STATUS.active,
+          WORKSPACE_STATUS.suspended,
+          WORKSPACE_STATUS.pendingDeletion,
+          WORKSPACE_STATUS.deleted,
+        ]),
+        createdBy: z.uuid(),
+        deletionRequestedAt: z.iso.datetime().nullable(),
+        deletionRequestedBy: z.uuid().nullable(),
+        deletionReason: z.string().nullable(),
+        purgeAfter: z.iso.datetime().nullable(),
+        createdAt: z.iso.datetime(),
+        updatedAt: z.iso.datetime(),
+      })
+      .strict(),
+    revokedSessionCount: z.number().int().nonnegative(),
+  })
+  .strict();
+
+function durableWorkspaceResult(
+  workspace: WorkspaceRecord,
+  revokedSessionCount: number,
+): z.output<typeof durableWorkspaceResultSchema> {
+  return durableWorkspaceResultSchema.parse({
+    workspace: {
+      ...workspace,
+      deletionRequestedAt: workspace.deletionRequestedAt?.toISOString() ?? null,
+      purgeAfter: workspace.purgeAfter?.toISOString() ?? null,
+      createdAt: workspace.createdAt.toISOString(),
+      updatedAt: workspace.updatedAt.toISOString(),
+    },
+    revokedSessionCount,
+  });
+}
+
+function parseDurableWorkspaceResult(value: unknown): WorkspaceLifecycleResult {
+  const result = durableWorkspaceResultSchema.safeParse(value);
+  if (!result.success) throw new IdempotencyRecordCorruptError();
+  const workspace = result.data.workspace;
+  return Object.freeze({
+    workspace: Object.freeze({
+      ...workspace,
+      deletionRequestedAt:
+        workspace.deletionRequestedAt === null
+          ? null
+          : new Date(workspace.deletionRequestedAt),
+      purgeAfter:
+        workspace.purgeAfter === null ? null : new Date(workspace.purgeAfter),
+      createdAt: new Date(workspace.createdAt),
+      updatedAt: new Date(workspace.updatedAt),
+    }),
+    revokedSessionCount: result.data.revokedSessionCount,
+  });
+}
+
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => canonicalJson(item)).join(',')}]`;
+  }
+  if (value !== null && typeof value === 'object') {
+    return `{${Object.entries(value)
+      .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+      .map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`)
+      .join(',')}}`;
+  }
+  if (value === undefined) return 'null';
+  return JSON.stringify(value);
+}
+
+function sha256(value: string): string {
+  return createHash('sha256').update(value).digest('hex');
+}
+
+function commandRequestHash(value: Record<string, unknown>): string {
+  return sha256(canonicalJson(value));
+}
+
+function commandKeyHash(value: string | undefined): string {
+  return sha256(idempotencyKeySchema.parse(value ?? randomUUID()));
+}
+
+type CommandClaim =
+  | Readonly<{ claimed: true; id: string }>
+  | Readonly<{ claimed: false; result: WorkspaceLifecycleResult }>;
+
+async function claimWorkspaceCreationCommand(
+  client: PoolClient,
+  actorUserId: string,
+  keyHash: string,
+  requestHash: string,
+): Promise<CommandClaim> {
+  const operation = 'workspace.create';
+  const inserted = await client.query<{ id: string }>(
+    `insert into app.workspace_creation_idempotency_records
+       (id, actor_user_id, operation, key_hash, request_hash, status)
+     values ($1, $2, $3, $4, $5, 'in_progress')
+     on conflict (actor_user_id, operation, key_hash) do nothing
+     returning id`,
+    [randomUUID(), actorUserId, operation, keyHash, requestHash],
   );
-  const value = result.rows[0]?.workspace_id;
-  if (value !== undefined && value !== null && value !== '') {
-    throw new Error('Pooled PostgreSQL client retained workspace context');
+  const insertedId = inserted.rows[0]?.id;
+  if (insertedId !== undefined) return { claimed: true, id: insertedId };
+
+  const existing = await client.query<{
+    request_hash: string;
+    result_ref: unknown;
+    status: string;
+  }>(
+    `select request_hash, status, result_ref
+     from app.workspace_creation_idempotency_records
+     where actor_user_id = $1 and operation = $2 and key_hash = $3`,
+    [actorUserId, operation, keyHash],
+  );
+  const row = existing.rows[0];
+  if (row === undefined) throw new IdempotencyRecordCorruptError();
+  if (row.request_hash !== requestHash) {
+    throw new IdempotencyRequestConflictError();
+  }
+  if (row.status !== IDEMPOTENCY_STATUS.completed) {
+    throw new IdempotencyRecordCorruptError();
+  }
+  return {
+    claimed: false,
+    result: parseDurableWorkspaceResult(row.result_ref),
+  };
+}
+
+async function completeWorkspaceCreationCommand(
+  client: PoolClient,
+  claimId: string,
+  result: WorkspaceLifecycleResult,
+): Promise<void> {
+  const completed = await client.query(
+    `update app.workspace_creation_idempotency_records
+     set status = 'completed', resource_id = $2, result_ref = $3::jsonb,
+         updated_at = clock_timestamp()
+     where id = $1 and status = 'in_progress'`,
+    [
+      claimId,
+      result.workspace.id,
+      JSON.stringify(
+        durableWorkspaceResult(result.workspace, result.revokedSessionCount),
+      ),
+    ],
+  );
+  if (completed.rowCount !== 1) throw new IdempotencyRecordCorruptError();
+}
+
+async function claimWorkspaceLifecycleCommand(
+  client: PoolClient,
+  workspaceId: string,
+  operation: 'workspace.deletion.request' | 'workspace.restore',
+  keyHash: string,
+  requestHash: string,
+): Promise<CommandClaim> {
+  const scope = 'workspace.lifecycle';
+  const claimId = randomUUID();
+  const inserted = await client.query<{ id: string }>(
+    `insert into app.idempotency_records
+       (id, workspace_id, operation, scope, key_hash, request_hash, status,
+        resource_id, result_ref)
+     values ($1, $2, $3, $4, $5, $6, 'in_progress', $2, '{}'::jsonb)
+     on conflict (workspace_id, operation, scope, key_hash) do nothing
+     returning id`,
+    [claimId, workspaceId, operation, scope, keyHash, requestHash],
+  );
+  if (inserted.rowCount === 1) return { claimed: true, id: claimId };
+
+  const existing = await client.query<{
+    request_hash: string;
+    result_ref: unknown;
+    status: string;
+  }>(
+    `select request_hash, status, result_ref
+     from app.idempotency_records
+     where workspace_id = $1 and operation = $2 and scope = $3 and key_hash = $4`,
+    [workspaceId, operation, scope, keyHash],
+  );
+  const row = existing.rows[0];
+  if (row === undefined) throw new IdempotencyRecordCorruptError();
+  if (row.request_hash !== requestHash) {
+    throw new IdempotencyRequestConflictError();
+  }
+  if (row.status !== IDEMPOTENCY_STATUS.completed) {
+    throw new IdempotencyRecordCorruptError();
+  }
+  return {
+    claimed: false,
+    result: parseDurableWorkspaceResult(row.result_ref),
+  };
+}
+
+async function completeWorkspaceLifecycleCommand(
+  client: PoolClient,
+  claimId: string,
+  result: WorkspaceLifecycleResult,
+): Promise<void> {
+  const completed = await client.query(
+    `update app.idempotency_records
+     set status = 'completed', result_ref = $2::jsonb,
+         updated_at = clock_timestamp()
+     where id = $1 and status = 'in_progress'`,
+    [
+      claimId,
+      JSON.stringify(
+        durableWorkspaceResult(result.workspace, result.revokedSessionCount),
+      ),
+    ],
+  );
+  if (completed.rowCount !== 1) throw new IdempotencyRecordCorruptError();
+}
+
+async function assertNoPlatformContext(client: PoolClient): Promise<void> {
+  const result = await client.query<{
+    actor_id: string | null;
+    workspace_id: string | null;
+  }>(
+    `select current_setting('app.workspace_id', true) as workspace_id,
+            current_setting('app.actor_id', true) as actor_id`,
+  );
+  const row = result.rows[0];
+  if (
+    [row?.workspace_id, row?.actor_id].some(
+      (value) => value !== undefined && value !== null && value !== '',
+    )
+  ) {
+    throw new Error('Pooled PostgreSQL client retained platform context');
   }
 }
 
@@ -355,6 +593,7 @@ async function withTransaction<T>(
   pool: Pool,
   workspaceId: string | undefined,
   operation: (client: PoolClient) => Promise<T>,
+  actorId?: string,
 ): Promise<T> {
   const client = await pool.connect();
   let open = false;
@@ -366,6 +605,11 @@ async function withTransaction<T>(
     if (workspaceId !== undefined) {
       await client.query("select set_config('app.workspace_id', $1, true)", [
         parseUuid(workspaceId),
+      ]);
+    }
+    if (actorId !== undefined) {
+      await client.query("select set_config('app.actor_id', $1, true)", [
+        parseUuid(actorId),
       ]);
     }
     const result = await operation(client);
@@ -748,41 +992,67 @@ export function createIdentityWorkspaceDatabase(
       if (!/^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/.test(slug)) {
         throw new Error('Invalid workspace slug');
       }
+      const keyHash = commandKeyHash(input.idempotencyKey);
+      const requestHash = commandRequestHash({
+        actorId: ownerUserId,
+        metadata,
+        name,
+        requestedWorkspaceId: input.id ?? null,
+        slug,
+      });
       try {
-        return await withTransaction(pool, id, async (client) => {
-          const workspaceResult = await client.query(
-            `insert into app.workspaces (id, name, slug, status, created_by)
+        return await withTransaction(
+          pool,
+          id,
+          async (client) => {
+            const claim = await claimWorkspaceCreationCommand(
+              client,
+              ownerUserId,
+              keyHash,
+              requestHash,
+            );
+            if (!claim.claimed) return claim.result.workspace;
+
+            const workspaceResult = await client.query(
+              `insert into app.workspaces (id, name, slug, status, created_by)
              values ($1, $2, $3, 'active', $4)
              returning id, name, slug, status, created_by,
                        deletion_requested_at, deletion_requested_by, deletion_reason,
                        purge_after,
                        created_at, updated_at`,
-            [id, name, slug, ownerUserId],
-          );
-          await client.query(
-            `insert into app.workspace_memberships
+              [id, name, slug, ownerUserId],
+            );
+            await client.query(
+              `insert into app.workspace_memberships
                (workspace_id, user_id, role, status)
              values ($1, $2, 'owner', 'active')`,
-            [id, ownerUserId],
-          );
-          await client.query(
-            `insert into app.audit_events
+              [id, ownerUserId],
+            );
+            await client.query(
+              `insert into app.audit_events
                (id, workspace_id, actor_user_id, action, target_type, target_id,
                 request_id, trace_id, metadata)
              values ($1, $2, $3, 'workspace.created', 'workspace', $2, $4, $5, $6::jsonb)`,
-            [
-              randomUUID(),
-              id,
-              ownerUserId,
-              input.requestId ?? null,
-              input.traceId ?? null,
-              JSON.stringify(metadata),
-            ],
-          );
-          return mapWorkspace(
-            workspaceResult.rows[0] as Record<string, unknown>,
-          );
-        });
+              [
+                randomUUID(),
+                id,
+                ownerUserId,
+                input.requestId ?? null,
+                input.traceId ?? null,
+                JSON.stringify(metadata),
+              ],
+            );
+            const workspace = mapWorkspace(
+              workspaceResult.rows[0] as Record<string, unknown>,
+            );
+            await completeWorkspaceCreationCommand(client, claim.id, {
+              workspace,
+              revokedSessionCount: 0,
+            });
+            return workspace;
+          },
+          ownerUserId,
+        );
       } catch (error: unknown) {
         databaseConflict(
           error,
@@ -795,16 +1065,32 @@ export function createIdentityWorkspaceDatabase(
     requestWorkspaceDeletion: async (
       workspaceIdInput: string,
       actorUserIdInput: string,
-      purgeAfter: Date,
+      purgeAfter: Date | undefined,
       reason: string,
       options = {},
     ): Promise<WorkspaceLifecycleResult> => {
       const workspaceId = parseUuid(workspaceIdInput);
       const actorUserId = parseUuid(actorUserIdInput);
-      if (!(purgeAfter instanceof Date) || purgeAfter.getTime() <= Date.now()) {
+      if (
+        purgeAfter !== undefined &&
+        (!(purgeAfter instanceof Date) ||
+          !Number.isFinite(purgeAfter.getTime()) ||
+          purgeAfter.getTime() <= Date.now())
+      ) {
         throw new Error('Workspace purge deadline must be in the future');
       }
+      const purgeDeadline =
+        purgeAfter ?? new Date(Date.now() + 30 * 24 * 60 * 60_000);
       const deletionReason = z.string().trim().min(1).max(512).parse(reason);
+      const metadata = parseMetadata(options.metadata);
+      const keyHash = commandKeyHash(options.idempotencyKey);
+      const requestHash = commandRequestHash({
+        actorId: actorUserId,
+        metadata,
+        purgeAfter: purgeAfter?.toISOString() ?? null,
+        reason: deletionReason,
+        workspaceId,
+      });
       return withTransaction(pool, workspaceId, async (client) => {
         const actor = await client.query(
           `select 1 from app.workspace_memberships
@@ -817,6 +1103,15 @@ export function createIdentityWorkspaceDatabase(
             'Workspace actor is not an active member',
           );
         }
+        const claim = await claimWorkspaceLifecycleCommand(
+          client,
+          workspaceId,
+          'workspace.deletion.request',
+          keyHash,
+          requestHash,
+        );
+        if (!claim.claimed) return claim.result;
+
         const result = await client.query(
           `update app.workspaces
            set status = 'pending_deletion', deletion_requested_at = clock_timestamp(),
@@ -827,7 +1122,7 @@ export function createIdentityWorkspaceDatabase(
                      deletion_requested_at, deletion_requested_by, deletion_reason,
                      purge_after,
                      created_at, updated_at`,
-          [workspaceId, actorUserId, deletionReason, purgeAfter],
+          [workspaceId, actorUserId, deletionReason, purgeDeadline],
         );
         if (result.rowCount !== 1) {
           throw new WorkspaceLifecycleConflictError(
@@ -857,13 +1152,19 @@ export function createIdentityWorkspaceDatabase(
             actorUserId,
             options.requestId ?? null,
             options.traceId ?? null,
-            JSON.stringify(parseMetadata(options.metadata)),
+            JSON.stringify(metadata),
           ],
         );
-        return {
+        const commandResult = {
           workspace: mapWorkspace(result.rows[0] as Record<string, unknown>),
           revokedSessionCount: revoked.rowCount ?? 0,
         };
+        await completeWorkspaceLifecycleCommand(
+          client,
+          claim.id,
+          commandResult,
+        );
+        return commandResult;
       });
     },
 
@@ -874,6 +1175,13 @@ export function createIdentityWorkspaceDatabase(
     ): Promise<WorkspaceLifecycleResult> => {
       const workspaceId = parseUuid(workspaceIdInput);
       const actorUserId = parseUuid(actorUserIdInput);
+      const metadata = parseMetadata(options.metadata);
+      const keyHash = commandKeyHash(options.idempotencyKey);
+      const requestHash = commandRequestHash({
+        actorId: actorUserId,
+        metadata,
+        workspaceId,
+      });
       return withTransaction(pool, workspaceId, async (client) => {
         const actor = await client.query(
           `select 1 from app.workspace_memberships
@@ -886,6 +1194,15 @@ export function createIdentityWorkspaceDatabase(
             'Workspace actor is not an active member',
           );
         }
+        const claim = await claimWorkspaceLifecycleCommand(
+          client,
+          workspaceId,
+          'workspace.restore',
+          keyHash,
+          requestHash,
+        );
+        if (!claim.claimed) return claim.result;
+
         const result = await client.query(
           `update app.workspaces
            set status = 'suspended', deletion_requested_at = null,
@@ -917,13 +1234,19 @@ export function createIdentityWorkspaceDatabase(
             actorUserId,
             options.requestId ?? null,
             options.traceId ?? null,
-            JSON.stringify(parseMetadata(options.metadata)),
+            JSON.stringify(metadata),
           ],
         );
-        return {
+        const commandResult = {
           workspace: mapWorkspace(result.rows[0] as Record<string, unknown>),
           revokedSessionCount: 0,
         };
+        await completeWorkspaceLifecycleCommand(
+          client,
+          claim.id,
+          commandResult,
+        );
+        return commandResult;
       });
     },
 

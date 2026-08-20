@@ -166,6 +166,7 @@ export {
   users,
   workspaceMemberships,
   workspaces,
+  workspaceCreationIdempotencyRecords,
   workflowRuns,
 } from './schema.js';
 export {

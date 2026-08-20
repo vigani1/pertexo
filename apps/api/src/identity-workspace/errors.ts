@@ -1,5 +1,6 @@
 import {
   IdentityConflictError,
+  IdempotencyRequestConflictError,
   WorkspaceLifecycleConflictError,
 } from '@pertexo/database';
 import {
@@ -50,6 +51,11 @@ export function mapIdentityWorkspaceError(error: unknown): ApplicationError {
     }
     return applicationError('request.invalid', {
       safeDetail: 'The request conflicts with existing identity data.',
+    });
+  }
+  if (error instanceof IdempotencyRequestConflictError) {
+    return applicationError('request.idempotency_conflict', {
+      safeDetail: 'The idempotency key was already used for another request.',
     });
   }
   return applicationError('internal.unexpected', { cause: error });

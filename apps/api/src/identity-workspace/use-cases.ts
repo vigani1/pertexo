@@ -87,6 +87,7 @@ export class OidcApplicationService {
 
 export type CreateWorkspaceInput = Readonly<{
   actorId: string;
+  idempotencyKey: string;
   name: string;
   slug: string;
   requestId?: string;
@@ -112,6 +113,7 @@ export class CreateWorkspaceUseCase {
         });
         const workspace = await this.persistence.createWorkspaceWithOwner({
           ownerUserId: input.actorId,
+          idempotencyKey: input.idempotencyKey,
           name: request.name,
           slug: request.slug,
           ...(input.requestId === undefined
@@ -128,6 +130,7 @@ export class CreateWorkspaceUseCase {
 
 export type WorkspaceLifecycleInput = Readonly<{
   actor: ActorContext;
+  idempotencyKey: string;
   routeWorkspaceId: string;
   requestId?: string;
   traceId?: string;
@@ -135,7 +138,7 @@ export type WorkspaceLifecycleInput = Readonly<{
 }>;
 
 export type RequestDeletionInput = WorkspaceLifecycleInput &
-  Readonly<{ purgeAfter: Date; reason: string }>;
+  Readonly<{ purgeAfter?: Date; reason: string }>;
 
 export class WorkspaceLifecycleUseCase {
   public constructor(
@@ -209,11 +212,13 @@ export class WorkspaceLifecycleUseCase {
 }
 
 function auditOptions(input: WorkspaceLifecycleInput): Readonly<{
+  idempotencyKey: string;
   requestId?: string;
   traceId?: string;
   metadata?: Record<string, unknown>;
 }> {
   return {
+    idempotencyKey: input.idempotencyKey,
     requestId: input.requestId ?? input.actor.requestId,
     ...(input.traceId === undefined && input.actor.traceId === undefined
       ? {}

@@ -45,6 +45,7 @@ export interface IdentityWorkspacePersistence extends SessionStorePort {
       name: string;
       slug: string;
       ownerUserId: string;
+      idempotencyKey: string;
       requestId?: string;
       traceId?: string;
       metadata?: Record<string, unknown>;
@@ -53,14 +54,14 @@ export interface IdentityWorkspacePersistence extends SessionStorePort {
   requestWorkspaceDeletion(
     workspaceId: WorkspaceId,
     actorUserId: string,
-    purgeAfter: Date,
+    purgeAfter: Date | undefined,
     reason: string,
-    options?: AuditOptions,
+    options: WorkspaceCommandOptions,
   ): Promise<WorkspaceLifecyclePersistenceResult>;
   restoreWorkspace(
     workspaceId: WorkspaceId,
     actorUserId: string,
-    options?: AuditOptions,
+    options: WorkspaceCommandOptions,
   ): Promise<WorkspaceLifecyclePersistenceResult>;
 }
 
@@ -83,6 +84,9 @@ export type AuditOptions = Readonly<{
   traceId?: string;
   metadata?: Record<string, unknown>;
 }>;
+
+export type WorkspaceCommandOptions = AuditOptions &
+  Readonly<{ idempotencyKey: string }>;
 
 export interface WorkspaceAuthorizationReader {
   findAccess(query: WorkspaceAccessQuery): Promise<WorkspaceAccess | undefined>;

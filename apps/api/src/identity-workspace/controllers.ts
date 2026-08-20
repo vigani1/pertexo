@@ -38,6 +38,7 @@ import {
   WorkspaceLifecycleUseCase,
 } from './use-cases.js';
 import {
+  idempotencyKeySchema,
   oidcCallbackRequestSchema,
   oidcStartResponseSchema,
   workspaceCreateRequestSchema,
@@ -164,6 +165,7 @@ export class WorkspaceController {
       const session = authenticatedSession(request);
       return await this.createWorkspace.execute({
         actorId: session.userId,
+        idempotencyKey: requestIdempotencyKey(request),
         name: input.name,
         slug: input.slug,
         requestId: requestIdentifier(request),
@@ -198,13 +200,13 @@ export class WorkspaceController {
         requestId,
         ...traceFields(traceId),
       });
-      const purgeAfter = deletion.purgeAfter
-        ? new Date(deletion.purgeAfter)
-        : new Date(Date.now() + 30 * 24 * 60 * 60_000);
       return await this.lifecycle.requestDeletion({
         actor,
+        idempotencyKey: requestIdempotencyKey(request),
         routeWorkspaceId: workspaceId,
-        purgeAfter,
+        ...(deletion.purgeAfter === undefined
+          ? {}
+          : { purgeAfter: new Date(deletion.purgeAfter) }),
         reason: deletion.reason,
         requestId,
         ...traceFields(traceId),
@@ -238,6 +240,7 @@ export class WorkspaceController {
       });
       return await this.lifecycle.restore({
         actor,
+        idempotencyKey: requestIdempotencyKey(request),
         routeWorkspaceId: workspaceId,
         requestId,
         ...traceFields(traceId),
@@ -246,6 +249,13 @@ export class WorkspaceController {
       return throwApplicationError(mapIdentityWorkspaceError(error));
     }
   }
+}
+
+function requestIdempotencyKey(request: IdentityWorkspaceRequest): string {
+  const entry = Object.entries(request.headers ?? {}).find(
+    ([name]) => name.toLowerCase() === 'idempotency-key',
+  );
+  return idempotencyKeySchema.parse(entry?.[1]);
 }
 
 class ResponseCookieBoundary {

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import {
+  idempotencyKeySchema,
   oidcAuthorizationCodeSchema,
   oidcCallbackRequestSchema,
   oidcStartResponseSchema,
@@ -66,7 +67,7 @@ export const identityWorkspaceOpenApiDocument = Object.freeze({
       post: {
         operationId: 'createWorkspace',
         security: [{ cookieSession: [] }],
-        parameters: [csrfHeaderParameter()],
+        parameters: [csrfHeaderParameter(), idempotencyHeaderParameter()],
         requestBody: jsonRequest('WorkspaceCreateRequest'),
         responses: {
           '201': jsonResponse('Workspace created', 'WorkspaceResponse'),
@@ -77,7 +78,11 @@ export const identityWorkspaceOpenApiDocument = Object.freeze({
       post: {
         operationId: 'requestWorkspaceDeletion',
         security: [{ cookieSession: [] }],
-        parameters: [pathParameter('workspaceId'), csrfHeaderParameter()],
+        parameters: [
+          pathParameter('workspaceId'),
+          csrfHeaderParameter(),
+          idempotencyHeaderParameter(),
+        ],
         requestBody: jsonRequest('WorkspaceDeletionRequest'),
         responses: {
           '201': jsonResponse(
@@ -89,7 +94,11 @@ export const identityWorkspaceOpenApiDocument = Object.freeze({
       delete: {
         operationId: 'restoreWorkspace',
         security: [{ cookieSession: [] }],
-        parameters: [pathParameter('workspaceId'), csrfHeaderParameter()],
+        parameters: [
+          pathParameter('workspaceId'),
+          csrfHeaderParameter(),
+          idempotencyHeaderParameter(),
+        ],
         responses: {
           '200': jsonResponse(
             'Workspace restored as suspended',
@@ -159,5 +168,14 @@ function csrfHeaderParameter() {
     in: 'header',
     required: true,
     schema: { type: 'string', minLength: 16, maxLength: 256 },
+  } as const;
+}
+
+function idempotencyHeaderParameter() {
+  return {
+    name: 'Idempotency-Key',
+    in: 'header',
+    required: true,
+    schema: jsonSchema(idempotencyKeySchema, 'input'),
   } as const;
 }

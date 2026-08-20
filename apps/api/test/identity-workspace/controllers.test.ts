@@ -212,6 +212,22 @@ describe('identity/workspace controllers', () => {
         { reason: 'retire it' },
       ),
     ).rejects.toMatchObject({ code: 'request.invalid' });
+
+    await expect(
+      workspaceController.create(request, {
+        name: 'Missing key',
+        slug: 'missing-key',
+      }),
+    ).rejects.toMatchObject({ code: 'request.invalid' });
+    await expect(
+      workspaceController.create(
+        {
+          ...request,
+          headers: { 'idempotency-key': ['one', 'two'] },
+        },
+        { name: 'Ambiguous key', slug: 'ambiguous-key' },
+      ),
+    ).rejects.toMatchObject({ code: 'request.invalid' });
   });
 
   it('maps an OIDC provider outage to the stable application error', async () => {

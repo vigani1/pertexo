@@ -64,6 +64,16 @@ describe('identity/workspace generated contracts', () => {
     ).toContainEqual(
       expect.objectContaining({ in: 'header', name: 'x-csrf-token' }),
     );
+    expect(
+      identityWorkspaceOpenApiDocument.paths['/v1/workspaces'].post.parameters,
+    ).toContainEqual(
+      expect.objectContaining({ in: 'header', name: 'Idempotency-Key' }),
+    );
+    expect(
+      identityWorkspaceOpenApiDocument.paths['/v1/auth/logout'].post.parameters,
+    ).not.toContainEqual(
+      expect.objectContaining({ in: 'header', name: 'Idempotency-Key' }),
+    );
   });
 
   it('preserves strict writes and bounded field constraints in generated JSON Schema', () => {

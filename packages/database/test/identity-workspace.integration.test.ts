@@ -10,6 +10,7 @@ import {
   createWorkspaceDatabase,
   createOidcLoginTransactionStore,
   IdentityConflictError,
+  IdempotencyRequestConflictError,
   IdentityNotFoundError,
   OidcTransactionCapacityError,
   parseDatabaseConfig,
@@ -516,6 +517,83 @@ describe('identity/workspace persistence', () => {
     ]);
   });
 
+  it('persists exact deletion and restore command results with one concurrent winner', async () => {
+    const workspace = await identityDatabase.createWorkspaceWithOwner({
+      name: 'Idempotent lifecycle workspace',
+      slug: `lifecycle-${randomUUID().slice(0, 12)}`,
+      ownerUserId,
+    });
+    const otherUser = await identityDatabase.createUser({
+      email: `${randomUUID()}@example.test`,
+      displayName: 'Second lifecycle actor',
+    });
+    await tenantDatabase.withWorkspace(workspace.id, async ({ db }) => {
+      await db.insert(workspaceMemberships).values({
+        workspaceId: workspace.id,
+        userId: otherUser.id,
+        role: 'admin',
+        status: 'active',
+      });
+    });
+    await identityDatabase.createSession({
+      userId: ownerUserId,
+      tokenDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+
+    const purgeAfter = new Date(Date.now() + 60_000);
+    const deletionKey = `delete-${randomUUID()}`;
+    const deletionCommand = () =>
+      identityDatabase.requestWorkspaceDeletion(
+        workspace.id,
+        ownerUserId,
+        purgeAfter,
+        'idempotent deletion',
+        { idempotencyKey: deletionKey },
+      );
+    const [deletedLeft, deletedRight] = await Promise.all([
+      deletionCommand(),
+      deletionCommand(),
+    ]);
+    expect(deletedRight).toEqual(deletedLeft);
+    await expect(
+      identityDatabase.requestWorkspaceDeletion(
+        workspace.id,
+        ownerUserId,
+        purgeAfter,
+        'changed deletion request',
+        { idempotencyKey: deletionKey },
+      ),
+    ).rejects.toBeInstanceOf(IdempotencyRequestConflictError);
+
+    const restoreKey = `restore-${randomUUID()}`;
+    const restoreCommand = () =>
+      identityDatabase.restoreWorkspace(workspace.id, ownerUserId, {
+        idempotencyKey: restoreKey,
+      });
+    const [restoredLeft, restoredRight] = await Promise.all([
+      restoreCommand(),
+      restoreCommand(),
+    ]);
+    expect(restoredRight).toEqual(restoredLeft);
+    await expect(
+      identityDatabase.restoreWorkspace(workspace.id, otherUser.id, {
+        idempotencyKey: restoreKey,
+      }),
+    ).rejects.toBeInstanceOf(IdempotencyRequestConflictError);
+
+    const events = await tenantDatabase.withWorkspace(
+      workspace.id,
+      async ({ db }) =>
+        db.select({ action: auditEvents.action }).from(auditEvents),
+    );
+    expect(events.map(({ action }) => action)).toEqual([
+      'workspace.created',
+      'workspace.deletion_requested',
+      'workspace.restored',
+    ]);
+  });
+
   it('rejects restore after the PostgreSQL purge deadline without changing state or audit history', async () => {
     const workspace = await identityDatabase.createWorkspaceWithOwner({
       name: 'Expired Restore Workspace',
@@ -626,6 +704,39 @@ describe('identity/workspace persistence', () => {
     } finally {
       await pool.end();
     }
+  });
+
+  it('returns one durable workspace creation for concurrent exact idempotency retries and conflicts on changed input', async () => {
+    const slug = `idempotent-${randomUUID().slice(0, 12)}`;
+    const idempotencyKey = `create-${randomUUID()}`;
+    const command = {
+      name: 'Idempotent workspace',
+      slug,
+      ownerUserId,
+      idempotencyKey,
+    } as const;
+
+    const [left, right] = await Promise.all([
+      identityDatabase.createWorkspaceWithOwner(command),
+      identityDatabase.createWorkspaceWithOwner(command),
+    ]);
+
+    expect(right).toEqual(left);
+    await expect(
+      identityDatabase.createWorkspaceWithOwner({
+        ...command,
+        name: 'Changed workspace request',
+      }),
+    ).rejects.toBeInstanceOf(IdempotencyRequestConflictError);
+    const aggregate = await tenantDatabase.withWorkspace(
+      left.id,
+      async ({ db }) => ({
+        memberships: await db.select().from(workspaceMemberships),
+        events: await db.select().from(auditEvents),
+      }),
+    );
+    expect(aggregate.memberships).toHaveLength(1);
+    expect(aggregate.events).toHaveLength(1);
   });
 
   it('resolves one exact issuer/subject identity under concurrent first login', async () => {

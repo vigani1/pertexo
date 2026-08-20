@@ -224,11 +224,13 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
 
     const requestId = `phase1-create-${randomUUID()}`;
     const traceId = randomUUID().replaceAll('-', '');
+    const creationKey = `create-${randomUUID()}`;
     const created = await application.inject({
       method: 'POST',
       url: '/v1/workspaces',
       headers: mutationHeaders(cookies, {
         'x-request-id': requestId,
+        'idempotency-key': creationKey,
         traceparent: `00-${traceId}-0123456789abcdef-01`,
       }),
       payload: { name: 'Phase One Workspace', slug },
@@ -238,6 +240,26 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     const workspace = created.json<{ id: string; status: string }>();
     expect(workspace.status).toBe('active');
     primaryWorkspaceId = workspace.id;
+
+    const creationRetry = await application.inject({
+      method: 'POST',
+      url: '/v1/workspaces',
+      headers: mutationHeaders(cookies, {
+        'idempotency-key': creationKey,
+      }),
+      payload: { name: 'Phase One Workspace', slug },
+    });
+    expect(creationRetry.statusCode).toBe(201);
+    expect(creationRetry.json()).toEqual(created.json());
+    const changedCreation = await application.inject({
+      method: 'POST',
+      url: '/v1/workspaces',
+      headers: mutationHeaders(cookies, {
+        'idempotency-key': creationKey,
+      }),
+      payload: { name: 'Changed Workspace', slug },
+    });
+    expectProblem(changedCreation, 409, 'request.idempotency_conflict');
 
     const aggregate = await workspaceAggregate(workspace.id);
     expect(aggregate.memberships).toHaveLength(1);
@@ -280,16 +302,28 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
   it('records deletion reason, revokes sessions, restores once, and reports lifecycle conflicts', async () => {
     const deletionCookies = await login();
     const deletionRequestId = `phase1-delete-${randomUUID()}`;
+    const deletionKey = `delete-${randomUUID()}`;
     const deletion = await application.inject({
       method: 'POST',
       url: `/v1/workspaces/${primaryWorkspaceId}/deletion`,
       headers: mutationHeaders(deletionCookies, {
         'x-request-id': deletionRequestId,
+        'idempotency-key': deletionKey,
       }),
       payload: { reason: 'customer requested integration deletion' },
     });
     expect(deletion.statusCode).toBe(201);
     expect(deletion.json()).toMatchObject({ status: 'pending_deletion' });
+
+    const revokedDeletionRetry = await application.inject({
+      method: 'POST',
+      url: `/v1/workspaces/${primaryWorkspaceId}/deletion`,
+      headers: mutationHeaders(deletionCookies, {
+        'idempotency-key': deletionKey,
+      }),
+      payload: { reason: 'customer requested integration deletion' },
+    });
+    expectProblem(revokedDeletionRetry, 401, 'auth.unauthenticated');
 
     const revoked = await application.inject({
       method: 'POST',
@@ -313,13 +347,37 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     });
 
     const restoreCookies = await login();
+    const deletionReplay = await application.inject({
+      method: 'POST',
+      url: `/v1/workspaces/${primaryWorkspaceId}/deletion`,
+      headers: mutationHeaders(restoreCookies, {
+        'idempotency-key': deletionKey,
+      }),
+      payload: { reason: 'customer requested integration deletion' },
+    });
+    expect(deletionReplay.statusCode).toBe(201);
+    expect(deletionReplay.json()).toEqual(deletion.json());
+
+    const restoreKey = `restore-${randomUUID()}`;
     const restore = await application.inject({
       method: 'DELETE',
       url: `/v1/workspaces/${primaryWorkspaceId}/deletion`,
-      headers: mutationHeaders(restoreCookies),
+      headers: mutationHeaders(restoreCookies, {
+        'idempotency-key': restoreKey,
+      }),
     });
     expect(restore.statusCode).toBe(200);
     expect(restore.json()).toMatchObject({ status: 'suspended' });
+
+    const restoreRetry = await application.inject({
+      method: 'DELETE',
+      url: `/v1/workspaces/${primaryWorkspaceId}/deletion`,
+      headers: mutationHeaders(restoreCookies, {
+        'idempotency-key': restoreKey,
+      }),
+    });
+    expect(restoreRetry.statusCode).toBe(200);
+    expect(restoreRetry.json()).toEqual(restore.json());
 
     const repeatedRestore = await application.inject({
       method: 'DELETE',
@@ -332,6 +390,11 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
       status: 'suspended',
       deletionReason: null,
     });
+    expect(restored.events.map(({ action }) => action)).toEqual([
+      'workspace.created',
+      'workspace.deletion_requested',
+      'workspace.restored',
+    ]);
   });
 
   it('rejects explicitly revoked and expired sessions without exposing cookie values', async () => {
@@ -476,6 +539,7 @@ function mutationHeaders(
 ): Readonly<Record<string, string>> {
   return {
     cookie: cookies.cookieHeader,
+    'idempotency-key': `command-${randomUUID()}`,
     'x-csrf-token': cookies.csrf,
     ...extra,
   };

@@ -19,6 +19,7 @@ const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const sessionId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const workspaceId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const requestId = 'request-42';
+const idempotencyKey = 'workspace-command-42';
 
 function workspace() {
   return {
@@ -154,6 +155,7 @@ describe('identity/workspace application use cases', () => {
 
     const result = await app.execute({
       actorId,
+      idempotencyKey,
       name: ' Operations ',
       slug: 'operations',
       requestId,
@@ -168,6 +170,7 @@ describe('identity/workspace application use cases', () => {
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(vi.mocked(store.createWorkspaceWithOwner)).toHaveBeenCalledWith({
       ownerUserId: actorId,
+      idempotencyKey,
       name: 'Operations',
       slug: 'operations',
       requestId,
@@ -186,6 +189,7 @@ describe('identity/workspace application use cases', () => {
     await expect(
       app.requestDeletion({
         actor: actor(),
+        idempotencyKey,
         routeWorkspaceId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
         purgeAfter: new Date('2026-09-20T12:00:00.000Z'),
         reason: 'retiring the temporary workspace',
@@ -207,6 +211,7 @@ describe('identity/workspace application use cases', () => {
     await expect(
       app.requestDeletion({
         actor: actor(),
+        idempotencyKey,
         routeWorkspaceId: workspaceId,
         purgeAfter: new Date('2026-09-20T12:00:00.000Z'),
         reason: 'retiring the temporary workspace',
@@ -226,6 +231,7 @@ describe('identity/workspace application use cases', () => {
     await expect(
       app.requestDeletion({
         actor: actor(),
+        idempotencyKey,
         routeWorkspaceId: workspaceId,
         purgeAfter: new Date('2026-09-20T12:00:00.000Z'),
         reason: 'retiring the temporary workspace',
@@ -249,13 +255,18 @@ describe('identity/workspace application use cases', () => {
     await expect(
       app.requestDeletion({
         actor: actor(),
+        idempotencyKey,
         routeWorkspaceId: workspaceId,
         purgeAfter: new Date('2026-09-20T12:00:00.000Z'),
         reason: 'retiring the suspended workspace',
       }),
     ).resolves.toMatchObject({ status: 'pending_deletion' });
     await expect(
-      app.restore({ actor: actor(), routeWorkspaceId: workspaceId }),
+      app.restore({
+        actor: actor(),
+        idempotencyKey,
+        routeWorkspaceId: workspaceId,
+      }),
     ).resolves.toMatchObject({ status: 'suspended' });
     const conflict = new WorkspaceLifecycleConflictError(
       'invalid_state',
@@ -264,7 +275,11 @@ describe('identity/workspace application use cases', () => {
     // eslint-disable-next-line @typescript-eslint/unbound-method
     vi.mocked(store.restoreWorkspace).mockRejectedValueOnce(conflict);
     await expect(
-      app.restore({ actor: actor(), routeWorkspaceId: workspaceId }),
+      app.restore({
+        actor: actor(),
+        idempotencyKey,
+        routeWorkspaceId: workspaceId,
+      }),
     ).rejects.toBe(conflict);
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(vi.mocked(store.restoreWorkspace)).toHaveBeenCalledTimes(2);
@@ -278,7 +293,11 @@ describe('identity/workspace application use cases', () => {
     const app = new WorkspaceLifecycleUseCase(store, authorization);
 
     await expect(
-      app.restore({ actor: actor(), routeWorkspaceId: workspaceId }),
+      app.restore({
+        actor: actor(),
+        idempotencyKey,
+        routeWorkspaceId: workspaceId,
+      }),
     ).rejects.toMatchObject({ code: 'auth.forbidden' });
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(vi.mocked(store.restoreWorkspace)).not.toHaveBeenCalled();
@@ -298,6 +317,7 @@ describe('identity/workspace application use cases', () => {
     await expect(
       app.requestDeletion({
         actor: actor(),
+        idempotencyKey,
         routeWorkspaceId: workspaceId,
         purgeAfter: new Date('2026-09-20T12:00:00.000Z'),
         reason: 'retiring the temporary workspace',
@@ -306,6 +326,7 @@ describe('identity/workspace application use cases', () => {
     await expect(
       app.restore({
         actor: actor(),
+        idempotencyKey,
         routeWorkspaceId: workspaceId,
       }),
     ).resolves.toMatchObject({ status: 'suspended' });
@@ -316,6 +337,7 @@ describe('identity/workspace application use cases', () => {
     await expect(
       app.requestDeletion({
         actor: actor(),
+        idempotencyKey,
         routeWorkspaceId: workspaceId,
         purgeAfter: new Date('2026-09-20T12:00:00.000Z'),
         reason: 'retiring the temporary workspace',

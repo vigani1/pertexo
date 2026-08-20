@@ -602,6 +602,33 @@ export const idempotencyRecords = appSchema.table(
   ],
 );
 
+export const workspaceCreationIdempotencyRecords = appSchema.table(
+  'workspace_creation_idempotency_records',
+  {
+    id: uuid('id').primaryKey(),
+    actorUserId: uuid('actor_user_id').notNull(),
+    operation: varchar('operation', { length: 64 }).notNull(),
+    keyHash: varchar('key_hash', { length: 64 }).notNull(),
+    requestHash: varchar('request_hash', { length: 64 }).notNull(),
+    status: varchar('status', { length: 16 }).notNull(),
+    resourceId: uuid('resource_id'),
+    resultRef: jsonb('result_ref').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('workspace_creation_idempotency_active_key_unique').on(
+      table.actorUserId,
+      table.operation,
+      table.keyHash,
+    ),
+  ],
+);
+
 export const databaseSchema = {
   artifacts,
   auditEvents,
@@ -621,4 +648,5 @@ export const databaseSchema = {
   workspaceMemberships,
   workspaces,
   workflowRuns,
+  workspaceCreationIdempotencyRecords,
 };
