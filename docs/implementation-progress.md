@@ -17,7 +17,7 @@ not complete a phase.
 | Phase 0C — HTTP and observability foundation | Complete | Commit `e8093d2`; 47 API/worker/observability tests; compiled role and OTLP trace/metric smoke checks |
 | Phase 0D — queue, outbox, and duplicate-delivery proof | Complete | ADRs 005–006; migration head `0006_execution_vocabulary.sql`; 158 unit, 76 real integration, and one destructive recovery assertion |
 | Phase 0E — execution durability proofs and engine gate | Complete | ADRs 005 and 007–009; commits through `0322837`; 239 unit, 96 real-service integration, five process-recovery, one SSE-outage, and one transport-outage assertions; custom-engine GO |
-| Phase 1 — identity/workspace vertical slice | In progress | ADR 004 accepted; authorization, OIDC/session, and identity/workspace persistence foundations committed; API composition is next |
+| Phase 1 — identity/workspace vertical slice | In progress | ADR 004 accepted; authorization, persistence, OIDC/session, and generic OIDC infrastructure foundations committed; API runtime composition is next |
 | Phase 2 — workflow authoring vertical slice | Not started | — |
 | Phase 3 — first executable-node slice | Not started | — |
 | Phase 4 — first side-effecting integration slice | Not started | — |
@@ -409,6 +409,14 @@ Current evidence:
 - Commit `3d1a731` exposes only the middleware-validated request identifier to
   downstream guards/controllers, keeping audit request IDs aligned with the
   RFC problem response instead of re-reading an untrusted header.
+- Commit `9ed528a` adds the provider infrastructure boundary: stateless generic
+  OIDC discovery endpoints with bounded authorization/token/JWKS I/O, strict
+  signature/issuer/audience/algorithm/nonce claim validation, and AES-256-GCM
+  sealing of durable PKCE/nonce material with associated data and key rotation.
+  Fourteen focused infrastructure assertions and the complete 106-assertion
+  API suite pass, together with API typecheck, production build, scoped ESLint,
+  Prettier, and diff checks. Production configuration/runtime registration and
+  the real-PostgreSQL fake-provider proof remain pending.
 
 ## Later phases
 
