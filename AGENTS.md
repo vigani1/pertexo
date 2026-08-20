@@ -32,7 +32,14 @@
   history unless the user explicitly requests it.
 - Never include secrets, local environment files, generated runtime data, or
   unrelated formatting changes in a commit.
-- At handoff, report the commits created and any remaining uncommitted changes.
+- After a coherent checkpoint is committed and its relevant verification is
+  green, push the branch to its configured upstream. Do not push broken,
+  unreviewed, WIP, secret-bearing, or unrelated changes.
+- Before pushing, fetch the remote and confirm the local branch is not behind
+  or diverged. Never force-push or rewrite remote history unless the user
+  explicitly requests it.
+- At handoff, report the commits created, the pushed branch/upstream, and any
+  remaining uncommitted changes.
 
 ## Commit checkpoints
 
