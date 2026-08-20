@@ -20,7 +20,7 @@
     "format:check": "prettier --check .",
     "lint": "eslint .",
     "test": "pnpm --recursive --if-present test",
-    "test:integration": "pnpm --recursive --if-present test:integration",
+    "test:integration": "pnpm --filter @pertexo/artifact-store test:integration && pnpm --filter @pertexo/database test:integration && pnpm --filter @pertexo/worker test:integration && pnpm --filter @pertexo/api test:integration",
     "typecheck": "tsc --build --pretty false && pnpm --recursive --if-present typecheck"
   },
   "devDependencies": {
