@@ -94,6 +94,11 @@ jobs:
       - name: Run real integration suites
         run: pnpm test:integration
 
+      - name: Run Phase 0E execution recovery proof
+        env:
+          PHASE0E_EXECUTION_INTEGRATION: 'true'
+        run: pnpm --filter @pertexo/worker test:phase0e
+
       - name: Run sequential service-loss resilience proof
         env:
           WORKER_TRANSPORT_RESILIENCE: 'true'

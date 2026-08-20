@@ -9,6 +9,7 @@
     "start": "node dist/main.js",
     "test": "vitest run",
     "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:phase0e": "vitest run --config vitest.phase0e.config.ts",
     "test:resilience": "vitest run --config vitest.resilience.config.ts",
     "typecheck": "tsc -p tsconfig.test.json --noEmit"
   },
@@ -24,6 +25,8 @@
   },
   "devDependencies": {
     "@pertexo/artifact-store": "workspace:*",
+    "@pertexo/workflow-engine": "workspace:*",
+    "@pertexo/workflow-model": "workspace:*",
     "@types/pg": "8.21.0",
     "bullmq": "6.1.2",
     "drizzle-orm": "0.45.2",
