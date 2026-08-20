@@ -19,7 +19,7 @@ not complete a phase.
 | Phase 0E — execution durability proofs and engine gate | Complete | ADRs 005 and 007–009; commits through `0322837`; 239 unit, 96 real-service integration, five process-recovery, one SSE-outage, and one transport-outage assertions; custom-engine GO |
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
-| Phase 3 — first executable-node slice | In progress | ADR 010; node SDK/core registry commits `85385cc`–`94426f7`; retained V1/V2 identity `5e72a26`, `9d101ff`; strict engine boundary `10eed1b`; 137 focused assertions; no publication adapter yet |
+| Phase 3 — first executable-node slice | In progress | ADR 010; node SDK/core registry commits `85385cc`–`94426f7`; retained V1/V2 identity `5e72a26`, `9d101ff`; strict boundary and executable operations `10eed1b`, `5ea5075`; 143 focused assertions; no persistence/publication adapter yet |
 | Phase 4 — first side-effecting integration slice | Not started | — |
 | Phase 5 — orchestration slice | Not started | — |
 | Phase 6 — V1 providers and triggers | Not started | — |
@@ -727,7 +727,7 @@ Initial evidence:
 
 ## Phase 3 — First executable-node slice
 
-Status: **In progress — package foundations, retained V1/V2 identity, and strict engine boundary complete**
+Status: **In progress — package foundations, retained V1/V2 identity, strict engine boundary, and executable operations complete**
 
 Phase 3 has completed its design prerequisites and the first package-level
 implementation checkpoint. No core node is exposed through a placement or
@@ -772,7 +772,7 @@ Thin-slice scope and node contracts:
 
 Production execution and persistence:
 
-- [ ] Deepen the engine around the two production operations
+- [x] Deepen the engine around the two production operations
       `AdvanceWorkflow` and `ExecuteNodeAttempt`, with the canonical published
       graph adapted into private scheduler state rather than a second public
       graph model.
@@ -1018,10 +1018,23 @@ Current evidence:
   independent Spec and Standards reviews returned GO with no blocker/high
   findings. Publication config-schema validation and the concrete executor
   adapter remain unchecked next-checkpoint work.
-- Set/Map ValueSource/JSONata resolution, V2 immutable retained fixtures,
-  workflow-model publication adaptation, persistence, worker consumers, API,
-  SSE, and the complete executable graph remain unchecked and are owned by the
-  following checkpoints.
+- Commit `5ea5075` makes verified V2 identity mandatory at the production
+  `AdvanceWorkflow` and `ExecuteNodeAttempt` seams. It derives private scheduler
+  state from the pinned envelope, binds run/workflow/node/attempt identities,
+  validates checkpoints and root invocation keys, resolves only declared
+  direct-upstream ValueSources under the restricted JSONata policy, propagates
+  cancellation, preserves a result already confirmed by the executor, and
+  returns bounded typed outcomes without leaking raw failures. Generic graph
+  helpers moved to the server-only testing export, and deterministic code-unit
+  ordering now covers scheduler/checkpoint/join/loop behavior. The engine passes
+  64 focused assertions, typecheck, build, ESLint, formatting, worker fixture
+  typecheck, and diff checks. Independent Spec and Standards re-reviews returned
+  GO with no blocker/high findings after mapped-input overflow was classified as
+  `attempt_invalid` and proven not to invoke the executor.
+- Concrete nodes-core composition for Set/Map resolution, V2 immutable retained
+  fixtures, workflow-model publication adaptation, persistence, worker
+  consumers, API, SSE, and the complete executable graph remain unchecked and
+  are owned by the following checkpoints.
 
 ## Later phases
 
