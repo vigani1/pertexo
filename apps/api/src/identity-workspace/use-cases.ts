@@ -26,6 +26,12 @@ import {
   type IdentityWorkspaceTelemetry,
 } from './telemetry.js';
 
+const LIFECYCLE_VISIBLE_STATUSES = [
+  'active',
+  'suspended',
+  'pending_deletion',
+] as const satisfies readonly WorkspaceStatus[];
+
 export interface OidcLoginPort {
   startLogin(): Promise<
     Readonly<{ authorizationUrl: string; expiresAt: Date }>
@@ -144,10 +150,11 @@ export class WorkspaceLifecycleUseCase {
     return this.telemetry.measure(
       IDENTITY_WORKSPACE_OPERATION.workspaceRequestDeletion,
       async () => {
-        await this.authorize(input, 'workspace:manage', [
-          'active',
-          'suspended',
-        ]);
+        await this.authorize(
+          input,
+          'workspace:manage',
+          LIFECYCLE_VISIBLE_STATUSES,
+        );
         const result = await this.persistence.requestWorkspaceDeletion(
           input.routeWorkspaceId,
           input.actor.actorId,
@@ -168,7 +175,11 @@ export class WorkspaceLifecycleUseCase {
     return this.telemetry.measure(
       IDENTITY_WORKSPACE_OPERATION.workspaceRestore,
       async () => {
-        await this.authorize(input, 'workspace:manage', ['pending_deletion']);
+        await this.authorize(
+          input,
+          'workspace:manage',
+          LIFECYCLE_VISIBLE_STATUSES,
+        );
         const result = await this.persistence.restoreWorkspace(
           input.routeWorkspaceId,
           input.actor.actorId,

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { WorkspaceLifecycleConflictError } from '@pertexo/database';
 
 import {
   CreateWorkspaceUseCase,
@@ -234,7 +235,7 @@ describe('identity/workspace application use cases', () => {
     expect(vi.mocked(store.requestWorkspaceDeletion)).not.toHaveBeenCalled();
   });
 
-  it('allows owner lifecycle commands only from their explicit source states', async () => {
+  it('authorizes visible owner lifecycle states and leaves exact transition conflicts to persistence', async () => {
     const store = persistence();
     const authorization: WorkspaceAuthorizationReader = {
       findAccess: vi
@@ -256,11 +257,31 @@ describe('identity/workspace application use cases', () => {
     await expect(
       app.restore({ actor: actor(), routeWorkspaceId: workspaceId }),
     ).resolves.toMatchObject({ status: 'suspended' });
+    const conflict = new WorkspaceLifecycleConflictError(
+      'invalid_state',
+      'Workspace is not pending deletion',
+    );
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    vi.mocked(store.restoreWorkspace).mockRejectedValueOnce(conflict);
+    await expect(
+      app.restore({ actor: actor(), routeWorkspaceId: workspaceId }),
+    ).rejects.toBe(conflict);
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(vi.mocked(store.restoreWorkspace)).toHaveBeenCalledTimes(2);
+  });
+
+  it('denies lifecycle access to a deleted workspace before persistence', async () => {
+    const store = persistence();
+    const authorization: WorkspaceAuthorizationReader = {
+      findAccess: vi.fn().mockResolvedValue(activeAccess('owner', 'deleted')),
+    };
+    const app = new WorkspaceLifecycleUseCase(store, authorization);
+
     await expect(
       app.restore({ actor: actor(), routeWorkspaceId: workspaceId }),
     ).rejects.toMatchObject({ code: 'auth.forbidden' });
     // eslint-disable-next-line @typescript-eslint/unbound-method
-    expect(vi.mocked(store.restoreWorkspace)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(store.restoreWorkspace)).not.toHaveBeenCalled();
   });
 
   it('returns lifecycle transitions and preserves persistence failures for rollback/error mapping', async () => {
