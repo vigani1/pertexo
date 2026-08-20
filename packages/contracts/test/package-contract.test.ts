@@ -11,6 +11,8 @@ describe('contracts package boundary', () => {
       '.',
       './errors',
       './identity-workspace',
+      './workflow-authoring',
+      './workflow-graph',
     ]);
 
     for (const source of [
@@ -18,6 +20,9 @@ describe('contracts package boundary', () => {
       '../src/errors/api-problem.ts',
       '../src/http/identity-workspace.ts',
       '../src/identity-workspace.ts',
+      '../src/workflow-authoring.ts',
+      '../src/http/workflow-authoring.ts',
+      '../src/workflow-graph.ts',
     ]) {
       expect(
         await readFile(new URL(source, import.meta.url), 'utf8'),

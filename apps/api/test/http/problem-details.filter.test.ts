@@ -263,7 +263,7 @@ describe('RFC 9457 problem details filter', () => {
     },
   );
 
-  it('logs safe catalog problems at their declared severity with context', () => {
+  it('renders typed revision conflicts with the current strong validator', () => {
     const contexts = new RequestContextStore();
     const logger = { log: vi.fn() };
     const filter = new ProblemDetailsFilter(contexts, logger);
@@ -273,11 +273,29 @@ describe('RFC 9457 problem details filter', () => {
       contexts.setActor({ actorId: 'actor-1', kind: 'user' });
       contexts.setWorkspace('11111111-1111-4111-8111-111111111111');
       filter.catch(
-        applicationError('workflow.revision_conflict'),
+        applicationError('workflow.revision_conflict', {
+          safeDetail: 'The draft changed.',
+          details: {
+            currentRevision: 2,
+            currentEtag:
+              '"draft-v1.AFBYOY0XvOEWP2AEVMsJCblYcXq0biQBej1xbQP46YE"',
+          },
+        }),
         hostFor({ url: '/v1/workflows/workflow-1' }, response),
       );
     });
 
+    expect(response.status).toHaveBeenCalledWith(412);
+    expect(response.header).toHaveBeenCalledWith(
+      'etag',
+      '"draft-v1.AFBYOY0XvOEWP2AEVMsJCblYcXq0biQBej1xbQP46YE"',
+    );
+    expect(response.body).toMatchObject({
+      code: 'workflow.revision_conflict',
+      status: 412,
+      currentRevision: 2,
+      currentEtag: '"draft-v1.AFBYOY0XvOEWP2AEVMsJCblYcXq0biQBej1xbQP46YE"',
+    });
     expect(logger.log).toHaveBeenCalledWith({
       code: 'workflow.revision_conflict',
       requestId: 'request-contextual',

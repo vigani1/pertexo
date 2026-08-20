@@ -1,5 +1,19 @@
 import './server-only.js';
 import { createHash } from 'node:crypto';
+import {
+  WORKFLOW_EXECUTION_LIMITS_V1,
+  WORKFLOW_GRAPH_CONTRACT_LIMITS,
+  workflowGraphSchema,
+  workflowSettingsSchemaV1,
+  type ForEachStructure,
+  type NodeId,
+  type StructuredBody,
+  type ValueSource,
+  type WorkflowEdge,
+  type WorkflowGraph,
+  type WorkflowNode,
+  type WorkflowSettings,
+} from '@pertexo/contracts/workflow-graph';
 import { z } from 'zod';
 import {
   canonicalJson,
@@ -8,57 +22,16 @@ import {
   type JsonValue,
 } from './canonical-json.js';
 
-export type NodeId = string;
-export type ValueSource =
-  | { readonly kind: 'literal'; readonly value: JsonValue }
-  | { readonly kind: 'run_input'; readonly path: string }
-  | {
-      readonly kind: 'node_output';
-      readonly nodeId: NodeId;
-      readonly path: string;
-    }
-  | {
-      readonly kind: 'expression';
-      readonly language: 'jsonata';
-      readonly expression: string;
-      readonly policyVersion: number;
-    };
-export interface WorkflowEdge {
-  readonly id: string;
-  readonly source: { readonly nodeId: NodeId; readonly port: string };
-  readonly target: { readonly nodeId: NodeId; readonly port: string };
-}
-export interface WorkflowSettings {
-  readonly maxRunDurationMs?: number;
-}
-export interface StructuredBody extends WorkflowGraph {
-  readonly inputPorts: readonly string[];
-  readonly outputPorts: readonly string[];
-}
-export interface ForEachStructure {
-  readonly kind: 'for_each';
-  readonly maxIterations: number;
-  readonly maxConcurrency: number;
-  readonly body: StructuredBody;
-}
-export interface WorkflowNode {
-  readonly id: NodeId;
-  readonly definition: { readonly key: string; readonly version: number };
-  readonly position: { readonly x: number; readonly y: number };
-  readonly configVersion: number;
-  readonly config: Readonly<Record<string, JsonValue>>;
-  readonly inputMappings: Readonly<Record<string, ValueSource>>;
-  readonly connectionRefs: Readonly<Record<string, string>>;
-  readonly label?: string;
-  readonly disabled?: boolean;
-  readonly structured?: ForEachStructure;
-}
-export interface WorkflowGraph {
-  readonly schemaVersion: number;
-  readonly nodes: readonly WorkflowNode[];
-  readonly edges: readonly WorkflowEdge[];
-  readonly settings: WorkflowSettings;
-}
+export type {
+  ForEachStructure,
+  NodeId,
+  StructuredBody,
+  ValueSource,
+  WorkflowEdge,
+  WorkflowGraph,
+  WorkflowNode,
+  WorkflowSettings,
+};
 
 export interface WorkflowGraphLimits {
   readonly nodes: number;
@@ -72,151 +45,14 @@ export interface WorkflowGraphLimits {
   readonly inputDepth: number;
 }
 export const WORKFLOW_GRAPH_LIMITS: WorkflowGraphLimits = Object.freeze({
-  nodes: 1_000,
-  edges: 4_000,
-  graphBytes: 1_048_576,
-  maxLoopIterations: 1_000,
-  maxLoopConcurrency: 1_000,
+  ...WORKFLOW_GRAPH_CONTRACT_LIMITS,
   maxExpandedInvocations: 1_000,
   structuredDepth: 32,
   jsonValueDepth: 64,
-  inputDepth: 256,
 });
-export const WORKFLOW_EXECUTION_LIMITS_V1 = Object.freeze({
-  maxRunDurationMs: 3_600_000,
-});
-
-const identifierSchema = z.string().min(1);
-const positiveVersionSchema = z.number().int().positive();
-const jsonRecordSchema = z.record(z.string(), z.json());
-const valueSourceSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('literal'), value: z.json() }).strict(),
-  z.object({ kind: z.literal('run_input'), path: z.string() }).strict(),
-  z
-    .object({
-      kind: z.literal('node_output'),
-      nodeId: identifierSchema,
-      path: z.string(),
-    })
-    .strict(),
-  z
-    .object({
-      kind: z.literal('expression'),
-      language: z.literal('jsonata'),
-      expression: z.string(),
-      policyVersion: positiveVersionSchema,
-    })
-    .strict(),
-]);
-export const WorkflowSettingsSchemaV1 = z
-  .object({
-    maxRunDurationMs: z
-      .number()
-      .int()
-      .positive()
-      .max(WORKFLOW_EXECUTION_LIMITS_V1.maxRunDurationMs)
-      .optional(),
-  })
-  .strict();
-
-const workflowGraphShape = (): z.ZodType => {
-  const graph: z.ZodType = z.lazy(() =>
-    z
-      .object({
-        schemaVersion: z.literal(1),
-        nodes: z
-          .array(
-            z
-              .object({
-                id: identifierSchema,
-                definition: z
-                  .object({
-                    key: identifierSchema,
-                    version: positiveVersionSchema,
-                  })
-                  .strict(),
-                position: z.object({ x: z.number(), y: z.number() }).strict(),
-                configVersion: positiveVersionSchema,
-                config: jsonRecordSchema,
-                inputMappings: z.record(z.string(), valueSourceSchema),
-                connectionRefs: z.record(z.string(), identifierSchema),
-                label: z.string().optional(),
-                disabled: z.boolean().optional(),
-                structured: z
-                  .lazy(() =>
-                    z
-                      .object({
-                        kind: z.literal('for_each'),
-                        maxIterations: z
-                          .number()
-                          .int()
-                          .positive()
-                          .max(WORKFLOW_GRAPH_LIMITS.maxLoopIterations),
-                        maxConcurrency: z
-                          .number()
-                          .int()
-                          .positive()
-                          .max(WORKFLOW_GRAPH_LIMITS.maxLoopConcurrency),
-                        body: z
-                          .object({
-                            schemaVersion: z.literal(1),
-                            nodes: z.array(z.unknown()),
-                            edges: z.array(z.unknown()),
-                            settings: WorkflowSettingsSchemaV1,
-                            inputPorts: z.array(identifierSchema),
-                            outputPorts: z.array(identifierSchema),
-                          })
-                          .strict()
-                          .transform((body, context) => {
-                            const { inputPorts, outputPorts, ...bodyGraph } =
-                              body;
-                            const result = graph.safeParse(bodyGraph);
-                            if (!result.success) {
-                              for (const issue of result.error.issues)
-                                context.addIssue({
-                                  code: 'custom',
-                                  message: issue.message,
-                                  path: issue.path,
-                                });
-                              return z.NEVER;
-                            }
-                            return {
-                              ...(result.data as WorkflowGraph),
-                              inputPorts,
-                              outputPorts,
-                            };
-                          }),
-                      })
-                      .strict(),
-                  )
-                  .optional(),
-              })
-              .strict(),
-          )
-          .max(WORKFLOW_GRAPH_LIMITS.nodes),
-        edges: z
-          .array(
-            z
-              .object({
-                id: identifierSchema,
-                source: z
-                  .object({ nodeId: identifierSchema, port: identifierSchema })
-                  .strict(),
-                target: z
-                  .object({ nodeId: identifierSchema, port: identifierSchema })
-                  .strict(),
-              })
-              .strict(),
-          )
-          .max(WORKFLOW_GRAPH_LIMITS.edges),
-        settings: WorkflowSettingsSchemaV1,
-      })
-      .strict(),
-  );
-  return graph;
-};
-
-const workflowGraphInputSchemaV1 = workflowGraphShape();
+export { WORKFLOW_EXECUTION_LIMITS_V1 };
+export const WorkflowSettingsSchemaV1 = workflowSettingsSchemaV1;
+const workflowGraphInputSchemaV1 = workflowGraphSchema;
 
 export class InvalidWorkflowGraphError extends TypeError {
   constructor(readonly issues: readonly GraphValidationIssue[]) {
@@ -526,7 +362,7 @@ export function parseWorkflowGraphDraft(input: unknown): WorkflowGraph {
       'graph bytes exceed the graph limit',
     );
   preflightWorkflowGraph(input);
-  const graph = workflowGraphInputSchemaV1.parse(input) as WorkflowGraph;
+  const graph = workflowGraphInputSchemaV1.parse(input);
   enforceDraftResourceLimits(graph);
   return graph;
 }
@@ -938,6 +774,38 @@ export function workflowRetainedExecutableChecksum(input: unknown): string {
   const validation = validateWorkflowGraph(graph);
   if (!validation.ok) throw new InvalidWorkflowGraphError(validation.issues);
   return checksumExecutableProjection(executableGraphProjection(graph));
+}
+
+export type WorkflowDraftRepresentationTag = `"draft-v1.${string}"`;
+
+export function workflowDraftRepresentationTag(input: {
+  readonly workflowId: string;
+  readonly revision: number;
+  readonly graph: unknown;
+  readonly compatibilityFingerprint: string;
+}): WorkflowDraftRepresentationTag {
+  const workflowId = z.uuid().parse(input.workflowId);
+  const revision = z.number().int().positive().parse(input.revision);
+  const graph = parseWorkflowGraphDraft(input.graph);
+  const compatibilityFingerprint = z
+    .string()
+    .min(1)
+    .max(256)
+    .parse(input.compatibilityFingerprint);
+  const digest = createHash('sha256')
+    .update(
+      canonicalJson({
+        domain: 'pertexo.workflow.draft-representation',
+        tagVersion: 1,
+        workflowId,
+        revision,
+        schemaVersion: graph.schemaVersion,
+        graph,
+        compatibilityFingerprint,
+      }),
+    )
+    .digest('base64url');
+  return `"draft-v1.${digest}"`;
 }
 
 export type InvocationScopePart =

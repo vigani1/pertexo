@@ -5,6 +5,7 @@ export const API_PROBLEM_CODES = [
   'auth.forbidden',
   'resource.not_found',
   'request.invalid',
+  'request.precondition_required',
   'request.idempotency_conflict',
   'workspace.quota_exceeded',
   'workspace.conflict',

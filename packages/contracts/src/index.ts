@@ -12,3 +12,9 @@ export {
   identityWorkspaceOpenApiDocument,
 } from './identity-workspace.js';
 export * from './http/identity-workspace.js';
+export {
+  workflowAuthoringClientContract,
+  workflowAuthoringOpenApiDocument,
+} from './workflow-authoring.js';
+export * from './http/workflow-authoring.js';
+export * from './workflow-graph.js';

@@ -1,6 +1,11 @@
 import { randomUUID } from 'node:crypto';
 
 import type { ApiProblem, ApiProblemIssue } from '@pertexo/contracts/errors';
+import {
+  strongEtagSchema,
+  workflowRevisionConflictProblemSchema,
+  type WorkflowRevisionConflictProblem,
+} from '@pertexo/contracts/workflow-authoring';
 import { Catch, HttpException } from '@nestjs/common';
 import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
 import { ZodError } from 'zod';
@@ -24,7 +29,7 @@ import {
 export const HTTP_ERROR_LOGGER = Symbol('HTTP_ERROR_LOGGER');
 
 export type ProblemIssue = ApiProblemIssue;
-export type ProblemDetails = ApiProblem;
+export type ProblemDetails = ApiProblem | WorkflowRevisionConflictProblem;
 
 export type HttpErrorLogEntry = Readonly<{
   code: ApplicationErrorCode;
@@ -53,6 +58,10 @@ type NormalizedProblem = Readonly<{
   title: string;
   detail?: string;
   errors?: readonly ProblemIssue[];
+  revisionConflict?: Readonly<{
+    currentRevision: number;
+    currentEtag: string;
+  }>;
   cause?: unknown;
 }>;
 
@@ -139,12 +148,34 @@ function fromApplicationError(error: ApplicationError): NormalizedProblem {
     entry.exposeDetail && error.safeDetail !== undefined
       ? text(error.safeDetail, 2_000)
       : undefined;
-  return {
+  const base = {
     code: error.code,
     status: entry.status,
     title: entry.title,
     ...(detail === undefined ? {} : { detail }),
     cause: error.cause,
+  };
+  if (error.code !== 'workflow.revision_conflict') return base;
+  const currentRevision = error.details?.currentRevision;
+  const currentEtag = error.details?.currentEtag;
+  const parsedEtag = strongEtagSchema.safeParse(currentEtag);
+  if (
+    typeof currentRevision !== 'number' ||
+    !Number.isSafeInteger(currentRevision) ||
+    currentRevision < 1 ||
+    !parsedEtag.success
+  ) {
+    const fallback = APPLICATION_ERROR_CATALOG['internal.unexpected'];
+    return {
+      code: 'internal.unexpected',
+      status: fallback.status,
+      title: fallback.title,
+      cause: error,
+    };
+  }
+  return {
+    ...base,
+    revisionConflict: { currentRevision, currentEtag: parsedEtag.data },
   };
 }
 
@@ -267,7 +298,7 @@ export class ProblemDetailsFilter implements ExceptionFilter {
     const context = contextFor(this.contexts, request);
     const requestId = context.requestId;
     const instance = instanceFrom(request);
-    const problem: ProblemDetails = Object.freeze({
+    const baseProblem = {
       type: `urn:pertexo:problem:${normalized.code}`,
       title: normalized.title,
       status: normalized.status,
@@ -276,7 +307,22 @@ export class ProblemDetailsFilter implements ExceptionFilter {
       code: normalized.code,
       requestId,
       ...(normalized.errors === undefined ? {} : { errors: normalized.errors }),
-    });
+    };
+    const problem: ProblemDetails =
+      normalized.revisionConflict === undefined
+        ? Object.freeze(baseProblem)
+        : workflowRevisionConflictProblemSchema.parse({
+            ...baseProblem,
+            ...normalized.revisionConflict,
+          });
+
+    if (normalized.revisionConflict !== undefined) {
+      setResponseHeader(
+        response,
+        'etag',
+        normalized.revisionConflict.currentEtag,
+      );
+    }
 
     if (this.logger !== undefined) {
       void Promise.resolve(

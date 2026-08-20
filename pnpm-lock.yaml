@@ -56,6 +56,9 @@ importers:
       '@pertexo/observability':
         specifier: workspace:*
         version: link:../../packages/observability
+      '@pertexo/workflow-model':
+        specifier: workspace:*
+        version: link:../../packages/workflow-model
       fastify:
         specifier: 5.12.0
         version: 5.12.0
@@ -217,6 +220,9 @@ importers:
 
   packages/workflow-model:
     dependencies:
+      '@pertexo/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       jsonata:
         specifier: 2.2.2
         version: 2.2.2

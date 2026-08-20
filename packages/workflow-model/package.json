@@ -43,6 +43,7 @@
     "typecheck": "tsc -p tsconfig.test.json --noEmit"
   },
   "dependencies": {
+    "@pertexo/contracts": "workspace:*",
     "jsonata": "2.2.2",
     "zod": "4.4.3"
   }

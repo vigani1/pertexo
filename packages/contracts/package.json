@@ -16,6 +16,14 @@
     "./identity-workspace": {
       "types": "./dist/identity-workspace.d.ts",
       "default": "./dist/identity-workspace.js"
+    },
+    "./workflow-authoring": {
+      "types": "./dist/workflow-authoring.d.ts",
+      "default": "./dist/workflow-authoring.js"
+    },
+    "./workflow-graph": {
+      "types": "./dist/workflow-graph.d.ts",
+      "default": "./dist/workflow-graph.js"
     }
   },
   "scripts": {

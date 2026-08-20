@@ -8,6 +8,7 @@ import {
   parseWorkflowGraphDraft,
   parseWorkflowGraphForPublish,
   workflowCompatibilityReport,
+  workflowDraftRepresentationTag,
   workflowExecutableChecksum as computeWorkflowExecutableChecksum,
   workflowRetainedExecutableChecksum,
   type WorkflowGraph,
@@ -587,5 +588,33 @@ describe('workflow executable identity V1', () => {
         }),
       ).not.toBe(checksum);
     }
+  });
+});
+
+describe('workflow draft representation tag V1', () => {
+  it('has a stable opaque golden value and includes compatibility identity', () => {
+    const graph = fixture();
+    const fingerprint = workflowCompatibilityReport(
+      graph,
+      TEST_DEFINITION_CATALOG_V1,
+    ).fingerprint;
+    const input = {
+      workflowId: '11111111-1111-4111-8111-111111111111',
+      revision: 7,
+      graph,
+      compatibilityFingerprint: fingerprint,
+    } as const;
+    expect(workflowDraftRepresentationTag(input)).toBe(
+      '"draft-v1.AFBYOY0XvOEWP2AEVMsJCblYcXq0biQBej1xbQP46YE"',
+    );
+    expect(
+      workflowDraftRepresentationTag({
+        ...input,
+        compatibilityFingerprint: `${fingerprint}:changed`,
+      }),
+    ).not.toBe(workflowDraftRepresentationTag(input));
+    expect(workflowDraftRepresentationTag({ ...input, revision: 8 })).not.toBe(
+      workflowDraftRepresentationTag(input),
+    );
   });
 });

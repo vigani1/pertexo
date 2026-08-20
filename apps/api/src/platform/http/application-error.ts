@@ -25,6 +25,12 @@ export const APPLICATION_ERROR_CATALOG = {
     severity: 'info',
     exposeDetail: true,
   },
+  'request.precondition_required': {
+    status: 428,
+    title: 'Precondition required',
+    severity: 'info',
+    exposeDetail: true,
+  },
   'request.idempotency_conflict': {
     status: 409,
     title: 'Idempotency conflict',
@@ -44,7 +50,7 @@ export const APPLICATION_ERROR_CATALOG = {
     exposeDetail: true,
   },
   'workflow.revision_conflict': {
-    status: 409,
+    status: 412,
     title: 'Workflow revision conflict',
     severity: 'warn',
     exposeDetail: true,
