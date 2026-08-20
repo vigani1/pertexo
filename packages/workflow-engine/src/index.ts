@@ -11,6 +11,21 @@ export {
 } from './checkpoint.js';
 export { WorkflowEngineError } from './errors.js';
 export type { EngineErrorCode } from './errors.js';
+export {
+  buildWorkflowExecutableV2,
+  composeExecutableCompatibilityRelease,
+  computeWorkflowExecutableChecksumV2,
+  parseWorkflowExecutableV2,
+  PHASE3_RUNTIME_POLICIES_V1,
+  verifyWorkflowExecutableV2,
+  WORKFLOW_EXECUTABLE_LIMITS_V2,
+} from './executable-workflow.js';
+export type {
+  CompiledWorkflowExecutableV2,
+  ExecutableRuntimePoliciesV1,
+  WorkflowExecutableNodeV2,
+  WorkflowExecutableV2,
+} from './executable-workflow.js';
 export { deriveReadyNodes, parseSchedulerGraph } from './graph-scheduler.js';
 export type { ReadyNodeDecision, SchedulerGraph } from './graph-scheduler.js';
 export {
