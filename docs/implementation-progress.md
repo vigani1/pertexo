@@ -487,10 +487,11 @@ Current evidence:
 
 Status: **In progress**
 
-The phase has started at its required ADR/design prerequisite. No implementation
-item below is complete yet. Phase 2 remains incomplete until the whole thin
-slice satisfies the plan's vertical-slice completion rule with executable
-evidence.
+The required ADRs and the workflow-authoring thin slice have been implemented
+through persistence, HTTP/runtime composition, generated public contracts, and
+real-service verification. Phase 2 remains in progress while the final
+Spec/Standards review findings are corrected and the whole slice is reverified
+against the plan's vertical-slice completion rule.
 
 Plan-aligned checklist:
 
