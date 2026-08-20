@@ -99,6 +99,44 @@ describe('identity/workspace telemetry', () => {
       'workspace.restore',
     ]);
   });
+
+  it('cannot change command truth when telemetry instruments fail', async () => {
+    const instrumentFailure = createIdentityWorkspaceTelemetry({
+      meter: {
+        createCounter: () => {
+          throw new Error('meter unavailable');
+        },
+        createHistogram: vi.fn(),
+      },
+      tracer: {
+        startActiveSpan: vi.fn(),
+      },
+    });
+    await expect(
+      instrumentFailure.measure(
+        IDENTITY_WORKSPACE_OPERATION.workspaceCreate,
+        () => Promise.resolve('committed'),
+      ),
+    ).resolves.toBe('committed');
+
+    const fixture = telemetryFixture([100, 110]);
+    fixture.counter.add.mockImplementation(() => {
+      throw new Error('export failed');
+    });
+    fixture.span.setAttribute.mockImplementation(() => {
+      throw new Error('span failed');
+    });
+    fixture.span.end.mockImplementation(() => {
+      throw new Error('span end failed');
+    });
+    const telemetry = createIdentityWorkspaceTelemetry(fixture.options);
+
+    await expect(
+      telemetry.measure(IDENTITY_WORKSPACE_OPERATION.workspaceCreate, () =>
+        Promise.resolve('committed'),
+      ),
+    ).resolves.toBe('committed');
+  });
 });
 
 function telemetryFixture(nowValues: readonly number[]) {

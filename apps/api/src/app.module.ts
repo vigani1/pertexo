@@ -20,9 +20,14 @@ import type {
   HttpErrorLogger,
 } from './platform/http/problem-details.filter.js';
 import { ObservabilityModule } from './platform/observability/observability.module.js';
+import {
+  IdentityRuntimeModule,
+  type ApiIdentityRuntime,
+} from './platform/identity/identity-runtime.module.js';
 
 export type ApiModuleDependencies = Readonly<{
   database?: WorkspaceDatabase;
+  identityRuntime?: ApiIdentityRuntime;
   logger: StructuredLogger;
   telemetry: TelemetryLifecycle;
 }>;
@@ -66,6 +71,9 @@ export class AppModule {
       module: AppModule,
       imports: [
         DatabaseModule.register(config.database, databaseOptions),
+        ...(dependencies.identityRuntime === undefined
+          ? []
+          : [IdentityRuntimeModule.register(dependencies.identityRuntime)]),
         ObservabilityModule.register(
           dependencies.logger,
           dependencies.telemetry,

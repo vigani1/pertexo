@@ -9,6 +9,19 @@ const API_NODE_ENVIRONMENTS = [
   'production',
 ] as const;
 
+const OIDC_SIGNING_ALGORITHMS = [
+  'ES256',
+  'ES384',
+  'ES512',
+  'EdDSA',
+  'PS256',
+  'PS384',
+  'PS512',
+  'RS256',
+  'RS384',
+  'RS512',
+] as const;
+
 const apiEnvironmentSchema = z.object({
   DATABASE_API_URL: z
     .url()
@@ -32,7 +45,41 @@ const apiEnvironmentSchema = z.object({
     .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
     .default('info'),
   OTEL_EXPORTER_OTLP_ENDPOINT: z.url().optional(),
+  OIDC_ALLOWED_ALGORITHMS: z.string().optional(),
+  OIDC_AUTHORIZATION_ENDPOINT: z.url().optional(),
+  OIDC_CLIENT_ID: z.string().trim().min(1).max(256).optional(),
+  OIDC_CLIENT_SECRET: z.string().min(1).max(512).optional(),
+  OIDC_ISSUER: z.url().optional(),
+  OIDC_JWKS_URI: z.url().optional(),
+  OIDC_REDIRECT_URI: z.url().optional(),
+  OIDC_SCOPES: z.string().optional(),
+  OIDC_TIMEOUT_MILLIS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(30_000)
+    .default(5_000),
+  OIDC_TOKEN_ENDPOINT: z.url().optional(),
+  OIDC_TRANSACTION_KEY: z.string().optional(),
+  OIDC_TRANSACTION_KEY_VERSION: z.string().optional(),
+  OIDC_TRANSACTION_PREVIOUS_KEYS: z.string().optional(),
+  OIDC_TRANSACTION_TTL_MILLIS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(10 * 60_000)
+    .default(5 * 60_000),
   PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
+  SESSION_COOKIE_SAME_SITE: z.enum(['lax', 'strict', 'none']).default('lax'),
+  SESSION_COOKIE_SECURE: z
+    .enum(['true', 'false'])
+    .transform((value) => value === 'true')
+    .default(true),
+  SESSION_TTL_MILLIS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(24 * 60 * 60_000),
   SERVICE_VERSION: z.string().trim().min(1).default('0.0.0-dev'),
   POSTGRES_OWNER_USER: z
     .string()
@@ -41,6 +88,32 @@ const apiEnvironmentSchema = z.object({
 });
 
 export type ApiNodeEnvironment = (typeof API_NODE_ENVIRONMENTS)[number];
+
+export type ApiIdentityConfig = Readonly<{
+  oidc: Readonly<{
+    issuer: string;
+    authorizationEndpoint: string;
+    tokenEndpoint: string;
+    jwksUri: string;
+    clientId: string;
+    clientSecret?: string;
+    redirectUri: string;
+    scopes: readonly string[];
+    allowedAlgorithms: readonly (typeof OIDC_SIGNING_ALGORITHMS)[number][];
+    timeoutMillis: number;
+    transactionTtlMillis: number;
+    allowInsecureHttpForTests: boolean;
+  }>;
+  secretEncryption: Readonly<{
+    current: Readonly<{ version: string; key: string }>;
+    previous: readonly Readonly<{ version: string; key: string }>[];
+  }>;
+  session: Readonly<{
+    ttlMillis: number;
+    secureCookie: boolean;
+    sameSite: 'lax' | 'strict' | 'none';
+  }>;
+}>;
 
 export type ApiConfig = Readonly<{
   database: Readonly<{
@@ -51,6 +124,7 @@ export type ApiConfig = Readonly<{
     ownerRole: string;
   }>;
   host: string;
+  identity?: ApiIdentityConfig;
   nodeEnv: ApiNodeEnvironment;
   observability: ObservabilityConfig;
   port: number;
@@ -69,6 +143,7 @@ export function parseApiConfig(
       ? {}
       : { otlpHttpEndpoint: parsed.OTEL_EXPORTER_OTLP_ENDPOINT }),
   });
+  const identity = parseIdentityConfig(parsed, environment);
 
   return Object.freeze({
     database: Object.freeze({
@@ -79,8 +154,163 @@ export function parseApiConfig(
       ownerRole: parsed.POSTGRES_OWNER_USER,
     }),
     host: parsed.HOST,
+    ...(identity === undefined ? {} : { identity }),
     nodeEnv: parsed.NODE_ENV,
     observability,
     port: parsed.PORT,
   });
+}
+
+type ParsedApiEnvironment = z.output<typeof apiEnvironmentSchema>;
+
+function parseIdentityConfig(
+  environment: ParsedApiEnvironment,
+  rawEnvironment: Record<string, string | undefined>,
+): ApiIdentityConfig | undefined {
+  const required = [
+    environment.OIDC_ISSUER,
+    environment.OIDC_AUTHORIZATION_ENDPOINT,
+    environment.OIDC_TOKEN_ENDPOINT,
+    environment.OIDC_JWKS_URI,
+    environment.OIDC_CLIENT_ID,
+    environment.OIDC_REDIRECT_URI,
+    environment.OIDC_TRANSACTION_KEY,
+    environment.OIDC_TRANSACTION_KEY_VERSION,
+  ];
+  const configured = Object.entries(rawEnvironment).some(
+    ([name, value]) =>
+      value !== undefined &&
+      (name.startsWith('OIDC_') || name.startsWith('SESSION_')),
+  );
+  const deployed =
+    environment.NODE_ENV === 'staging' || environment.NODE_ENV === 'production';
+  if (!configured && !deployed) return undefined;
+  if (required.some((value) => value === undefined)) {
+    throw new Error('Identity configuration is incomplete');
+  }
+  const issuer = requiredIdentityValue(environment.OIDC_ISSUER);
+  const authorizationEndpoint = requiredIdentityValue(
+    environment.OIDC_AUTHORIZATION_ENDPOINT,
+  );
+  const tokenEndpoint = requiredIdentityValue(environment.OIDC_TOKEN_ENDPOINT);
+  const jwksUri = requiredIdentityValue(environment.OIDC_JWKS_URI);
+  const clientId = requiredIdentityValue(environment.OIDC_CLIENT_ID);
+  const redirectUri = requiredIdentityValue(environment.OIDC_REDIRECT_URI);
+  const encryptionKey = requiredIdentityValue(environment.OIDC_TRANSACTION_KEY);
+  const encryptionKeyVersion = requiredIdentityValue(
+    environment.OIDC_TRANSACTION_KEY_VERSION,
+  );
+  if (
+    deployed &&
+    [issuer, authorizationEndpoint, tokenEndpoint, jwksUri, redirectUri].some(
+      (value) => new URL(value).protocol !== 'https:',
+    )
+  ) {
+    throw new Error('HTTPS identity endpoints are required when deployed');
+  }
+  if (deployed && !environment.SESSION_COOKIE_SECURE) {
+    throw new Error('Secure session cookies are required when deployed');
+  }
+  if (
+    environment.SESSION_COOKIE_SAME_SITE === 'none' &&
+    !environment.SESSION_COOKIE_SECURE
+  ) {
+    throw new Error('SameSite=None requires secure session cookies');
+  }
+
+  try {
+    const scopes = parseDelimitedValues(
+      environment.OIDC_SCOPES ?? 'openid profile email',
+      /\s+/u,
+      z.string().regex(/^[A-Za-z0-9._:-]{1,64}$/u),
+      16,
+    );
+    const allowedAlgorithms = parseDelimitedValues(
+      environment.OIDC_ALLOWED_ALGORITHMS ?? 'RS256',
+      /,/u,
+      z.enum(OIDC_SIGNING_ALGORITHMS),
+      OIDC_SIGNING_ALGORITHMS.length,
+    );
+    const previous = parsePreviousKeys(
+      environment.OIDC_TRANSACTION_PREVIOUS_KEYS,
+    );
+    const identity = {
+      oidc: Object.freeze({
+        issuer,
+        authorizationEndpoint,
+        tokenEndpoint,
+        jwksUri,
+        clientId,
+        ...(environment.OIDC_CLIENT_SECRET === undefined
+          ? {}
+          : { clientSecret: environment.OIDC_CLIENT_SECRET }),
+        redirectUri,
+        scopes,
+        allowedAlgorithms,
+        timeoutMillis: environment.OIDC_TIMEOUT_MILLIS,
+        transactionTtlMillis: environment.OIDC_TRANSACTION_TTL_MILLIS,
+        allowInsecureHttpForTests: environment.NODE_ENV === 'test',
+      }),
+      secretEncryption: Object.freeze({
+        current: Object.freeze({
+          version: encryptionKeyVersion,
+          key: encryptionKey,
+        }),
+        previous,
+      }),
+      session: Object.freeze({
+        ttlMillis: environment.SESSION_TTL_MILLIS,
+        secureCookie: environment.SESSION_COOKIE_SECURE,
+        sameSite: environment.SESSION_COOKIE_SAME_SITE,
+      }),
+    } satisfies ApiIdentityConfig;
+    return Object.freeze(identity);
+  } catch {
+    // Configuration errors are deliberately sanitized because this boundary
+    // parses provider credentials and encryption keys.
+    throw new Error('Identity configuration is invalid');
+  }
+}
+
+function requiredIdentityValue(value: string | undefined): string {
+  if (value === undefined) {
+    throw new Error('Identity configuration is incomplete');
+  }
+  return value;
+}
+
+function parseDelimitedValues<T extends string>(
+  input: string,
+  delimiter: RegExp,
+  schema: z.ZodType<T>,
+  maximum: number,
+): readonly T[] {
+  const values = input
+    .split(delimiter)
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+  return Object.freeze(z.array(schema).min(1).max(maximum).parse(values));
+}
+
+function parsePreviousKeys(
+  input: string | undefined,
+): readonly Readonly<{ version: string; key: string }>[] {
+  if (input === undefined) return Object.freeze([]);
+  const schema = z
+    .array(
+      z
+        .object({
+          version: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/u),
+          key: z.string().min(1),
+        })
+        .strict(),
+    )
+    .max(8);
+  return Object.freeze(
+    schema
+      .parse(JSON.parse(input) as unknown)
+      .map((entry) =>
+        Object.freeze({ version: entry.version, key: entry.key }),
+      ),
+  );
 }

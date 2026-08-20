@@ -6,7 +6,9 @@ import type {
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createApiApplication } from '../src/app.js';
+import type { IdentityWorkspaceDependencies } from '../src/identity-workspace/index.js';
 import { ApiDrainState } from '../src/platform/health/drain-state.js';
+import type { ApiIdentityRuntime } from '../src/platform/identity/identity-runtime.module.js';
 
 const database: WorkspaceDatabase = {
   withWorkspace: async <T>(
@@ -62,6 +64,45 @@ function dependencies(
   selectedTelemetry: TelemetryLifecycle = telemetry,
 ) {
   return { database: selectedDatabase, logger, telemetry: selectedTelemetry };
+}
+
+function identityRuntime(
+  close = vi.fn().mockResolvedValue(undefined),
+): ApiIdentityRuntime {
+  const identityDependencies: IdentityWorkspaceDependencies = {
+    config: {
+      oidc: {
+        issuer: 'https://identity.example.test',
+        authorizationEndpoint: 'https://identity.example.test/authorize',
+        clientId: 'client',
+        redirectUri: 'https://api.example.test/v1/auth/oidc/callback',
+        scopes: ['openid'],
+        transactionTtlMillis: 300_000,
+      },
+    },
+    provider: {
+      authorizationUrl: () => 'https://identity.example.test/authorize',
+      exchangeCode: () => Promise.reject(new Error('not used')),
+    },
+    transactions: {
+      create: () => Promise.resolve(),
+      consume: () => Promise.resolve({ status: 'missing' }),
+    },
+    persistence: {
+      create: () => Promise.resolve(),
+      findByDigest: () => Promise.resolve(undefined),
+      revokeByDigest: () => Promise.resolve(false),
+      resolveOrCreateIdentity: () =>
+        Promise.resolve({
+          userId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        }),
+      createWorkspaceWithOwner: () => Promise.reject(new Error('not used')),
+      requestWorkspaceDeletion: () => Promise.reject(new Error('not used')),
+      restoreWorkspace: () => Promise.reject(new Error('not used')),
+    },
+    authorization: { findAccess: () => Promise.resolve(undefined) },
+  };
+  return Object.freeze({ dependencies: identityDependencies, close });
 }
 
 describe('API bootstrap', () => {
@@ -202,5 +243,43 @@ describe('API bootstrap', () => {
     application = undefined;
 
     expect(shutdown).toHaveBeenCalledOnce();
+  });
+
+  it('registers an injected identity runtime and owns its close lifecycle', async () => {
+    const close = vi.fn().mockResolvedValue(undefined);
+    const selectedIdentityRuntime = identityRuntime(close);
+    application = await createApiApplication(config, {
+      ...dependencies(),
+      identityRuntime: selectedIdentityRuntime,
+    });
+    await application.init();
+
+    const response = await application.inject({
+      method: 'GET',
+      url: '/v1/auth/oidc/start',
+    });
+    expect(response.statusCode).toBe(200);
+
+    await application.close();
+    application = undefined;
+    expect(close).toHaveBeenCalledOnce();
+  });
+
+  it('closes an injected identity runtime when database readiness fails', async () => {
+    const close = vi.fn().mockResolvedValue(undefined);
+    const incompatibleDatabase: WorkspaceDatabase = {
+      ...database,
+      checkReadiness: vi
+        .fn()
+        .mockRejectedValue(new Error('migration mismatch')),
+    };
+
+    await expect(
+      createApiApplication(config, {
+        ...dependencies(incompatibleDatabase),
+        identityRuntime: identityRuntime(close),
+      }),
+    ).rejects.toThrow('migration mismatch');
+    expect(close).toHaveBeenCalledOnce();
   });
 });

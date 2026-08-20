@@ -72,46 +72,73 @@ export type IdentityWorkspaceTelemetryOptions = Readonly<{
 export function createIdentityWorkspaceTelemetry(
   options: IdentityWorkspaceTelemetryOptions,
 ): IdentityWorkspaceTelemetry {
-  const operations = options.meter.createCounter(
-    IDENTITY_WORKSPACE_METRIC_NAME.operations,
-    {
-      description:
-        'Completed identity and workspace operations by bounded operation and outcome',
-      unit: '{operation}',
-    },
-  );
-  const duration = options.meter.createHistogram(
-    IDENTITY_WORKSPACE_METRIC_NAME.duration,
-    {
-      description:
-        'Identity and workspace operation duration by bounded operation and outcome',
-      unit: 's',
-    },
-  );
+  let operations: IdentityWorkspaceCounter;
+  let duration: IdentityWorkspaceHistogram;
+  try {
+    operations = options.meter.createCounter(
+      IDENTITY_WORKSPACE_METRIC_NAME.operations,
+      {
+        description:
+          'Completed identity and workspace operations by bounded operation and outcome',
+        unit: '{operation}',
+      },
+    );
+    duration = options.meter.createHistogram(
+      IDENTITY_WORKSPACE_METRIC_NAME.duration,
+      {
+        description:
+          'Identity and workspace operation duration by bounded operation and outcome',
+        unit: 's',
+      },
+    );
+  } catch {
+    return NOOP_IDENTITY_WORKSPACE_TELEMETRY;
+  }
   const monotonicNow = options.monotonicNow ?? (() => performance.now());
 
   return Object.freeze({
     measure: <T>(
       operation: IdentityWorkspaceOperation,
       work: () => Promise<T>,
-    ): Promise<T> =>
-      options.tracer.startActiveSpan(
-        `pertexo.identity_workspace.${operation}`,
-        async (span): Promise<T> => {
-          const startedAt = monotonicNow();
-          span.setAttribute('operation', operation);
-          try {
-            const result = await work();
-            record('succeeded', operation, startedAt, monotonicNow(), span);
-            return result;
-          } catch (error: unknown) {
-            record('failed', operation, startedAt, monotonicNow(), span);
-            throw error;
-          } finally {
-            span.end();
-          }
-        },
-      ),
+    ): Promise<T> => {
+      try {
+        return options.tracer.startActiveSpan(
+          `pertexo.identity_workspace.${operation}`,
+          async (span): Promise<T> => {
+            const startedAt = safeNow(monotonicNow);
+            safeSpanAttribute(span, 'operation', operation);
+            try {
+              const result = await work();
+              record(
+                'succeeded',
+                operation,
+                startedAt,
+                safeNow(monotonicNow),
+                span,
+              );
+              return result;
+            } catch (error: unknown) {
+              record(
+                'failed',
+                operation,
+                startedAt,
+                safeNow(monotonicNow),
+                span,
+              );
+              throw error;
+            } finally {
+              try {
+                span.end();
+              } catch {
+                // Telemetry is diagnostic and cannot change command truth.
+              }
+            }
+          },
+        );
+      } catch {
+        return work();
+      }
+    },
   });
 
   function record(
@@ -121,10 +148,35 @@ export function createIdentityWorkspaceTelemetry(
     finishedAt: number,
     span: IdentityWorkspaceSpan,
   ): void {
-    const attributes = { operation, outcome } as const;
-    span.setAttribute('outcome', outcome);
-    operations.add(1, attributes);
-    duration.record(Math.max(0, finishedAt - startedAt) / 1_000, attributes);
+    try {
+      const attributes = { operation, outcome } as const;
+      safeSpanAttribute(span, 'outcome', outcome);
+      operations.add(1, attributes);
+      duration.record(Math.max(0, finishedAt - startedAt) / 1_000, attributes);
+    } catch {
+      // Telemetry is diagnostic and cannot change command truth.
+    }
+  }
+}
+
+function safeNow(monotonicNow: () => number): number {
+  try {
+    const value = monotonicNow();
+    return Number.isFinite(value) ? value : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function safeSpanAttribute(
+  span: IdentityWorkspaceSpan,
+  name: 'operation' | 'outcome',
+  value: IdentityWorkspaceOperation | IdentityWorkspaceOutcome,
+): void {
+  try {
+    span.setAttribute(name, value);
+  } catch {
+    // Telemetry is diagnostic and cannot change command truth.
   }
 }
 
