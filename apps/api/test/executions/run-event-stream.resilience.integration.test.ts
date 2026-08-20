@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import {
   acceptWorkflowRun,
   appendRunEvent,
+  createIdentityWorkspaceDatabase,
   createWorkspaceDatabase,
   parseDatabaseConfig,
   type WorkspaceDatabase,
@@ -117,6 +118,23 @@ describe.runIf(enabled)('destructive Redis-loss SSE reconstruction', () => {
 
   it('reconnects after Redis loss and reconstructs durable events exactly once', async () => {
     const workspaceId = randomUUID();
+    const identityDatabase = createIdentityWorkspaceDatabase(
+      databaseConfig(apiUrl ?? ''),
+    );
+    try {
+      const owner = await identityDatabase.createUser({
+        email: `sse-resilience-${workspaceId}@example.test`,
+        displayName: 'SSE resilience fixture owner',
+      });
+      await identityDatabase.createWorkspaceWithOwner({
+        id: workspaceId,
+        name: 'SSE resilience fixture workspace',
+        slug: `sse-resilience-${workspaceId}`,
+        ownerUserId: owner.id,
+      });
+    } finally {
+      await identityDatabase.close();
+    }
     const accepted = await apiDatabase.withWorkspace(
       workspaceId,
       async (transaction) =>

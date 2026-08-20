@@ -3,6 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import {
   acceptWorkflowRun,
   appendRunEvent,
+  createIdentityWorkspaceDatabase,
   createWorkspaceDatabase,
   parseDatabaseConfig,
   type WorkspaceDatabase,
@@ -48,6 +49,23 @@ describe.runIf(enabled)('real PostgreSQL-authoritative run event SSE', () => {
   let runId: string;
 
   beforeAll(async () => {
+    const identityDatabase = createIdentityWorkspaceDatabase(
+      databaseConfig(apiUrl ?? ''),
+    );
+    try {
+      const owner = await identityDatabase.createUser({
+        email: `sse-${workspaceId}@example.test`,
+        displayName: 'SSE fixture owner',
+      });
+      await identityDatabase.createWorkspaceWithOwner({
+        id: workspaceId,
+        name: 'SSE fixture workspace',
+        slug: `sse-${workspaceId}`,
+        ownerUserId: owner.id,
+      });
+    } finally {
+      await identityDatabase.close();
+    }
     apiDatabase = createWorkspaceDatabase(databaseConfig(apiUrl ?? ''));
     workerDatabase = createWorkspaceDatabase(databaseConfig(workerUrl ?? ''));
     liveSource = new RedisRunEventSource({ redisUrl: redisUrl ?? '' });
