@@ -1,0 +1,48 @@
+{
+  "name": "@pertexo/workflow-model",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "node": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./canonical-json": {
+      "types": "./dist/canonical-json.d.ts",
+      "node": "./dist/canonical-json.js",
+      "default": "./dist/canonical-json.js"
+    },
+    "./graph": {
+      "types": "./dist/graph.d.ts",
+      "node": "./dist/graph.js",
+      "default": "./dist/graph.js"
+    },
+    "./mapping": {
+      "types": "./dist/mapping.d.ts",
+      "node": "./dist/mapping.js",
+      "default": "./dist/mapping.js"
+    },
+    "./expressions": {
+      "types": "./dist/expressions.d.ts",
+      "node": "./dist/expressions.js",
+      "default": "./dist/expressions.js"
+    }
+  },
+  "browser": {
+    "./dist/index.js": false,
+    "./dist/canonical-json.js": false,
+    "./dist/graph.js": false,
+    "./dist/mapping.js": false,
+    "./dist/expressions.js": false
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.test.json --noEmit"
+  },
+  "dependencies": {
+    "jsonata": "2.2.2"
+  }
+}

@@ -177,6 +177,81 @@ export default tseslint.config(
     },
   },
   {
+    files: [
+      'packages/workflow-model/**/*.ts',
+      'packages/workflow-engine/**/*.ts',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                '**/apps/**',
+                '@nestjs/*',
+                '@pertexo/api',
+                '@pertexo/api/*',
+                '@pertexo/artifact-store',
+                '@pertexo/artifact-store/*',
+                '@pertexo/database',
+                '@pertexo/database/*',
+                '@pertexo/observability',
+                '@pertexo/observability/*',
+                '@pertexo/queue',
+                '@pertexo/queue/*',
+                '@pertexo/worker',
+                '@pertexo/worker/*',
+                'bullmq',
+                'drizzle-orm',
+                'ioredis',
+              ],
+              message:
+                'Workflow model and engine packages own pure deterministic policy and cannot depend on persistence, transport, frameworks, observability, artifacts, or applications.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['packages/workflow-model/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                '**/apps/**',
+                '@nestjs/*',
+                '@pertexo/api',
+                '@pertexo/api/*',
+                '@pertexo/artifact-store',
+                '@pertexo/artifact-store/*',
+                '@pertexo/database',
+                '@pertexo/database/*',
+                '@pertexo/observability',
+                '@pertexo/observability/*',
+                '@pertexo/queue',
+                '@pertexo/queue/*',
+                '@pertexo/worker',
+                '@pertexo/worker/*',
+                '@pertexo/workflow-engine',
+                '@pertexo/workflow-engine/*',
+                'bullmq',
+                'drizzle-orm',
+                'ioredis',
+              ],
+              message:
+                'The workflow model is a lower-level deterministic contract and cannot depend on the engine or server infrastructure.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ['apps/api/**/*.ts'],
     rules: {
       'no-restricted-imports': [

@@ -180,6 +180,14 @@ importers:
         specifier: 4.4.3
         version: 4.4.3
 
+  packages/workflow-engine: {}
+
+  packages/workflow-model:
+    dependencies:
+      jsonata:
+        specifier: 2.2.2
+        version: 2.2.2
+
 packages:
 
   '@aws-sdk/checksums@3.1000.28':
@@ -1929,6 +1937,10 @@ packages:
 
   json-stable-stringify-without-jsonify@1.0.1:
     resolution: {integrity: sha512-Bdboy+l7tA3OGW6FjyFHWkP5LuByj1Tk33Ljyq0axyzdk9//JSi2u3fP1QSmd1KNwq6VOKYGlAu87CisVir6Pw==}
+
+  jsonata@2.2.2:
+    resolution: {integrity: sha512-XDFH2PuaAXv0AXJEWwElXbqADmKFGKMLMkFb+qOz0EhjQW2EIJ6pgtordLU+4u3IVERyBfqy6bi6kZKEncvRqA==}
+    engines: {node: '>= 8'}
 
   keyv@4.5.4:
     resolution: {integrity: sha512-oxVHkHR/EJf2CNXnWxRLW6mg7JyCCUcG0DtEGmL2ctUo1PNTin1PUil+r/+4r5MpVgC/fn1kjsx7mjSujKqIpw==}
@@ -4510,6 +4522,8 @@ snapshots:
   json-schema-traverse@1.0.0: {}
 
   json-stable-stringify-without-jsonify@1.0.1: {}
+
+  jsonata@2.2.2: {}
 
   keyv@4.5.4:
     dependencies:
