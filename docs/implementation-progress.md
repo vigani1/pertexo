@@ -17,7 +17,7 @@ not complete a phase.
 | Phase 0C — HTTP and observability foundation | Complete | Commit `e8093d2`; 47 API/worker/observability tests; compiled role and OTLP trace/metric smoke checks |
 | Phase 0D — queue, outbox, and duplicate-delivery proof | Complete | ADRs 005–006; migration head `0006_execution_vocabulary.sql`; 158 unit, 76 real integration, and one destructive recovery assertion |
 | Phase 0E — execution durability proofs and engine gate | Complete | ADRs 005 and 007–009; commits through `0322837`; 239 unit, 96 real-service integration, five process-recovery, one SSE-outage, and one transport-outage assertions; custom-engine GO |
-| Phase 1 — identity/workspace vertical slice | In progress | ADR 004 accepted; identity runtime, lifecycle/conflict semantics, telemetry/contracts, and run-admission fencing committed; real-stack API proof is next |
+| Phase 1 — identity/workspace vertical slice | In progress | ADR 004 accepted; full identity/workspace slice and five-scenario real-stack API proof are green; final regression matrix and independent re-review remain |
 | Phase 2 — workflow authoring vertical slice | Not started | — |
 | Phase 3 — first executable-node slice | Not started | — |
 | Phase 4 — first side-effecting integration slice | Not started | — |
@@ -351,12 +351,12 @@ Status: **In progress**
       cookie policy, rotation seams, and CSRF protection for browser mutations.
 - [x] Build immutable actor/request context and named capability authorization
       that proves membership before opening a workspace RLS transaction.
-- [ ] Atomically create a workspace, owner membership, and request/trace-linked
+- [x] Atomically create a workspace, owner membership, and request/trace-linked
       audit event through the authorized API slice.
-- [ ] Implement workspace deletion request and restore foundations with local
+- [x] Implement workspace deletion request and restore foundations with local
       session revocation, access/run/trigger prevention seams, and restore to
       `suspended` without silently re-enabling access.
-- [ ] Prove the complete login-to-authorized-command flow with unit/application
+- [x] Prove the complete login-to-authorized-command flow with unit/application
       tests and real PostgreSQL plus a fake OIDC provider, including replay,
       tamper, expiry, revocation, CSRF, role/capability, rollback, conflict, and
       sanitized RFC 9457 error cases.
@@ -436,6 +436,22 @@ Current evidence:
   closed, while admission-versus-deletion races serialize in either truthful
   order. The focused real-PostgreSQL acceptance/runtime suites pass 31
   assertions with database typecheck, build, ESLint, and Prettier checks.
+- Security review fixes are committed in `b17e250`, `4a82030`, `2ac0134`,
+  `10791af`, `1f8abf8`, and `ea91dbd`: mandatory bounded OIDC token lifetime,
+  inactive-user denial, durable accepted-run idempotency after deletion,
+  reachable 409 lifecycle conflicts, stable 503 provider availability,
+  bounded durable OIDC transaction storage, and authenticated ALS
+  actor/workspace correlation. Migration head `0010_oidc_transaction_capacity.sql`
+  passes clean zero-to-head and `0009`-to-`0010`; the full real-PostgreSQL
+  database matrix passes 117 assertions.
+- Commit `af9f1f0` adds the CI-gated real PostgreSQL plus Nest HTTP and fake OIDC
+  proof. Five consolidated scenarios pass in 5.75 seconds and cover durable
+  state/nonce/PKCE, replay/tamper, secure opaque cookies, CSRF, atomic
+  workspace/owner/audit creation, forged access, deletion/session revocation,
+  pre-purge restore, conflicts, expiry, logout, rollback evidence, and
+  sanitized RFC 9457 failures. API typecheck, build, ESLint, Prettier, and diff
+  checks pass. Final repository-wide integration/regression and independent
+  re-review remain before the phase can be marked complete.
 
 ## Later phases
 
