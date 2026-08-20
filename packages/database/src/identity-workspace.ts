@@ -172,6 +172,7 @@ export type IdentityWorkspaceDatabase = Readonly<{
   createSession(input: CreateSessionInput): Promise<SessionRecord>;
   findActiveSessionByDigest(tokenDigest: string): Promise<SessionRecord | null>;
   revokeSession(sessionId: string): Promise<boolean>;
+  revokeSessionByDigest(tokenDigest: string): Promise<boolean>;
   createWorkspaceWithOwner(
     input: WorkspaceWithOwnerInput,
   ): Promise<WorkspaceRecord>;
@@ -678,6 +679,18 @@ export function createIdentityWorkspaceDatabase(
          set revoked_at = coalesce(revoked_at, clock_timestamp())
          where id = $1 and revoked_at is null`,
         [parseUuid(sessionIdInput)],
+      );
+      return result.rowCount === 1;
+    },
+
+    revokeSessionByDigest: async (
+      tokenDigestInput: string,
+    ): Promise<boolean> => {
+      const result = await pool.query(
+        `update app.sessions
+         set revoked_at = clock_timestamp()
+         where token_digest = $1 and revoked_at is null`,
+        [digestSchema.parse(tokenDigestInput)],
       );
       return result.rowCount === 1;
     },

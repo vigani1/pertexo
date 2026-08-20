@@ -128,6 +128,26 @@ describe('identity/workspace persistence', () => {
     expect(await identityDatabase.revokeSession(ownerSessionId)).toBe(false);
   });
 
+  it('revokes a session by digest atomically with one concurrent winner', async () => {
+    const tokenDigest = createHash('sha256').update(randomUUID()).digest('hex');
+    await identityDatabase.createSession({
+      userId: ownerUserId,
+      tokenDigest,
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    const outcomes = await Promise.all([
+      identityDatabase.revokeSessionByDigest(tokenDigest),
+      identityDatabase.revokeSessionByDigest(tokenDigest),
+    ]);
+    expect(outcomes.sort()).toEqual([false, true]);
+    await expect(
+      identityDatabase.revokeSessionByDigest(tokenDigest),
+    ).resolves.toBe(false);
+    await expect(
+      identityDatabase.revokeSessionByDigest('not-a-sha256-digest'),
+    ).rejects.toThrow();
+  });
+
   it('creates owner membership and audit atomically under workspace RLS', async () => {
     const rows = await tenantDatabase.withWorkspace(
       workspaceId,
