@@ -8,6 +8,7 @@ import type {
   DatabaseConfig,
   WorkspaceDatabase,
   WorkspaceTransaction,
+  WorkspaceTransactionOptions,
 } from '@pertexo/database';
 import { createWorkspaceDatabase } from '@pertexo/database';
 
@@ -21,8 +22,9 @@ export class NestWorkspaceDatabase
   public withWorkspace<T>(
     workspaceId: string,
     operation: (transaction: WorkspaceTransaction) => Promise<T>,
+    options?: WorkspaceTransactionOptions,
   ): Promise<T> {
-    return this.database.withWorkspace(workspaceId, operation);
+    return this.database.withWorkspace(workspaceId, operation, options);
   }
 
   public checkReadiness(): ReturnType<WorkspaceDatabase['checkReadiness']> {

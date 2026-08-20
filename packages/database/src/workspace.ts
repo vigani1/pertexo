@@ -15,6 +15,10 @@ export type WorkspaceTransaction = Readonly<{
   workspaceId: WorkspaceId;
 }>;
 
+export type WorkspaceTransactionOptions = Readonly<{
+  signal?: AbortSignal;
+}>;
+
 export function parseWorkspaceId(value: string): WorkspaceId {
   return workspaceIdSchema.parse(value) as WorkspaceId;
 }
@@ -33,10 +37,36 @@ export async function withWorkspaceTransaction<T>(
   pool: Pool,
   workspaceIdInput: string,
   operation: (transaction: WorkspaceTransaction) => Promise<T>,
+  options: WorkspaceTransactionOptions = {},
 ): Promise<T> {
   const workspaceId = parseWorkspaceId(workspaceIdInput);
+  const abortError = new Error('Workspace transaction aborted');
+  abortError.name = 'AbortError';
+  if (options.signal?.aborted) throw abortError;
+
   const client = await pool.connect();
   let transactionOpen = false;
+  let clientReleased = false;
+
+  const releaseForAbort = (): void => {
+    if (clientReleased) return;
+    clientReleased = true;
+    // PoolClient.release(error) removes the connection from the pool and
+    // force-closes an active query. This is the only reliable cancellation
+    // seam available to node-postgres for a query already on the wire.
+    client.release(abortError);
+  };
+  const destroyClient = (): void => {
+    if (clientReleased) return;
+    clientReleased = true;
+    client.release(true);
+  };
+
+  if (options.signal?.aborted) {
+    releaseForAbort();
+    throw abortError;
+  }
+  options.signal?.addEventListener('abort', releaseForAbort, { once: true });
 
   try {
     await assertNoWorkspaceContext(client);
@@ -58,14 +88,18 @@ export async function withWorkspaceTransaction<T>(
     await client.query('commit');
     transactionOpen = false;
     await assertNoWorkspaceContext(client);
+    clientReleased = true;
     client.release();
     return result;
   } catch (error: unknown) {
+    if (options.signal?.aborted) throw abortError;
+    if (clientReleased) throw error;
     if (transactionOpen) {
       try {
         await client.query('rollback');
       } catch (rollbackError: unknown) {
-        client.release(true);
+        destroyClient();
+        if (options.signal?.aborted) throw abortError;
         throw new AggregateError(
           [error, rollbackError],
           'Workspace transaction rollback failed',
@@ -75,14 +109,18 @@ export async function withWorkspaceTransaction<T>(
 
     try {
       await assertNoWorkspaceContext(client);
+      clientReleased = true;
       client.release();
     } catch (cleanupError: unknown) {
-      client.release(true);
+      destroyClient();
+      if (options.signal?.aborted) throw abortError;
       throw new AggregateError(
         [error, cleanupError],
         'Workspace context cleanup failed',
       );
     }
     throw error;
+  } finally {
+    options.signal?.removeEventListener('abort', releaseForAbort);
   }
 }

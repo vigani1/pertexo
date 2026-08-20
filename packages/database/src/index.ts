@@ -120,7 +120,11 @@ export {
   transportSecurityAuditFacts,
   workflowRuns,
 } from './schema.js';
-export { parseWorkspaceId, withWorkspaceTransaction } from './workspace.js';
+export {
+  parseWorkspaceId,
+  withWorkspaceTransaction,
+  type WorkspaceTransactionOptions,
+} from './workspace.js';
 export type {
   WorkspaceDrizzle,
   WorkspaceId,

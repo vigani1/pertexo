@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { Pool } from 'pg';
 import type { DatabaseError, PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -208,6 +208,38 @@ describe('workspace transaction boundary', () => {
 
     expect(aRows.some((row) => row.id === recordB)).toBe(false);
     expect(bRows.some((row) => row.id === recordA)).toBe(false);
+  });
+
+  it('cancels a blocked workspace query and destroys the pooled client', async () => {
+    const controller = new AbortController();
+    let queryStarted!: () => void;
+    const started = new Promise<void>((resolve) => {
+      queryStarted = resolve;
+    });
+    const startedAt = Date.now();
+    const pending = database.withWorkspace(
+      workspaceA,
+      async ({ db }) => {
+        queryStarted();
+        await db.execute(sql`select pg_sleep(30)`);
+      },
+      { signal: controller.signal },
+    );
+
+    await started;
+    controller.abort();
+
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+    expect(Date.now() - startedAt).toBeLessThan(2_000);
+
+    await expect(
+      database.withWorkspace(workspaceA, async ({ db }) => {
+        const result = await db.execute<{ workspace_id: string }>(sql`
+          select current_setting('app.workspace_id', true) as workspace_id
+        `);
+        return result.rows[0]?.workspace_id;
+      }),
+    ).resolves.toBe(workspaceA);
   });
 
   it('isolates concurrent workspace transactions sharing one pool', async () => {

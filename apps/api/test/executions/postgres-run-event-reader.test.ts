@@ -32,7 +32,11 @@ describe('PostgreSQL run event reader', () => {
       async <T>(
         workspaceId: string,
         operation: (selected: WorkspaceTransaction) => Promise<T>,
-      ): Promise<T> => operation(transaction),
+        options?: { readonly signal?: AbortSignal },
+      ): Promise<T> => {
+        void options;
+        return operation(transaction);
+      },
     );
     const database = {
       checkReadiness: vi.fn(),
@@ -48,10 +52,11 @@ describe('PostgreSQL run event reader', () => {
       workspaceId: WORKSPACE_ID,
     });
 
-    expect(withWorkspace).toHaveBeenCalledWith(
-      WORKSPACE_ID,
-      expect.any(Function),
-    );
+    expect(withWorkspace).toHaveBeenCalledTimes(1);
+    expect(
+      (withWorkspace.mock.calls[0]?.[2] as { signal?: AbortSignal } | undefined)
+        ?.signal,
+    ).toBeInstanceOf(AbortSignal);
     expect(events).toEqual([
       {
         createdAt: '2026-08-20T00:00:00.000Z',
@@ -78,5 +83,40 @@ describe('PostgreSQL run event reader', () => {
       }),
     ).resolves.toEqual([]);
     expect(withWorkspace).not.toHaveBeenCalled();
+  });
+
+  it('returns promptly when an in-flight workspace read is canceled', async () => {
+    const controller = new AbortController();
+    let rejectRead!: (error: Error) => void;
+    const withWorkspace = vi.fn(
+      async (
+        _workspaceId: string,
+        _operation: (transaction: WorkspaceTransaction) => Promise<unknown>,
+        options?: { signal?: AbortSignal },
+      ): Promise<never> =>
+        new Promise<never>((_, reject) => {
+          rejectRead = reject;
+          options?.signal?.addEventListener(
+            'abort',
+            () => {
+              rejectRead(new Error('query canceled'));
+            },
+            { once: true },
+          );
+        }),
+    );
+    const database = { withWorkspace } as unknown as WorkspaceDatabase;
+    const pending = createPostgresRunEventReader(database).readPage({
+      afterSequence: 0,
+      limit: 100,
+      runId: RUN_ID,
+      signal: controller.signal,
+      workspaceId: WORKSPACE_ID,
+    });
+
+    controller.abort();
+
+    await expect(pending).resolves.toEqual([]);
+    expect(withWorkspace).toHaveBeenCalledTimes(1);
   });
 });

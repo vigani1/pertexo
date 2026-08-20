@@ -18,15 +18,22 @@ export function createPostgresRunEventReader(
     ): Promise<readonly PersistedRunEvent[]> => {
       if (isAborted(input.signal)) return [];
 
-      const page = await database.withWorkspace(
-        input.workspaceId,
-        async (transaction) =>
-          readRunEventsAfter(transaction, {
-            afterSequence: input.afterSequence,
-            limit: input.limit,
-            runId: input.runId,
-          }),
-      );
+      let page: Awaited<ReturnType<typeof readRunEventsAfter>>;
+      try {
+        page = await database.withWorkspace(
+          input.workspaceId,
+          async (transaction) =>
+            readRunEventsAfter(transaction, {
+              afterSequence: input.afterSequence,
+              limit: input.limit,
+              runId: input.runId,
+            }),
+          { signal: input.signal },
+        );
+      } catch (error: unknown) {
+        if (isAborted(input.signal)) return [];
+        throw error;
+      }
 
       if (isAborted(input.signal)) return [];
       return Object.freeze(
