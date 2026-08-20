@@ -393,7 +393,7 @@ describe('node-sdk exact server registry', () => {
     ).resolves.toMatchObject({ kind: 'terminal_success' });
   });
 
-  it('checks cancellation before and after the executor boundary', async () => {
+  it('rejects cancellation before execution and preserves confirmed success', async () => {
     const before = new AbortController();
     before.abort();
     const normal = createNodeRegistry({
@@ -446,7 +446,7 @@ describe('node-sdk exact server registry', () => {
         input: {},
         signal: after.signal,
       }),
-    ).rejects.toBeInstanceOf(NodeExecutionAbortedError);
+    ).resolves.toEqual({ kind: 'succeeded', output: {} });
   });
 
   it('maps config, input, and output schema failures to stable errors', async () => {

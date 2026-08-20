@@ -692,7 +692,6 @@ export function createNodeRegistry(options: NodeRegistryOptions): NodeRegistry {
       input,
       signal: request.signal,
     });
-    assertNotAborted(request.signal);
     let output: unknown;
     try {
       output = definition.outputSchema.parse(canonicalizeBoundedJson(result));
