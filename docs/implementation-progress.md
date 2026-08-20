@@ -375,9 +375,11 @@ Current evidence:
   least-privilege runtime roles, and `SET LOCAL` transaction scope.
 - Phase 0E completed the custom-engine gate in `b9c923d`; Phase 1 has no
   remaining execution-foundation prerequisite.
-- Commit `76f5924` adds the immutable actor context, canonical workspace roles
+- Commits `76f5924` and `c5f8112` add the immutable actor context, canonical workspace roles
   and named capabilities, fail-closed membership/workspace authorization, and
-  bounded credential-redacting audit facts. Its focused Vitest suite passes 18
+  bounded credential-redacting audit facts. Actor, workspace, and session
+  identities now fail closed unless they are UUID-compatible with persistence.
+  The focused Vitest suite passes 20
   adversarial assertions; scoped ESLint, Prettier, and staged diff checks pass.
 
 ## Later phases
