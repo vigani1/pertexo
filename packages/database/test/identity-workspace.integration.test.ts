@@ -585,7 +585,10 @@ describe('identity/workspace persistence', () => {
     const events = await tenantDatabase.withWorkspace(
       workspace.id,
       async ({ db }) =>
-        db.select({ action: auditEvents.action }).from(auditEvents),
+        db
+          .select({ action: auditEvents.action })
+          .from(auditEvents)
+          .orderBy(auditEvents.occurredAt, auditEvents.id),
     );
     expect(events.map(({ action }) => action)).toEqual([
       'workspace.created',
