@@ -19,7 +19,7 @@ not complete a phase.
 | Phase 0E — execution durability proofs and engine gate | Complete | ADRs 005 and 007–009; commits through `0322837`; 239 unit, 96 real-service integration, five process-recovery, one SSE-outage, and one transport-outage assertions; custom-engine GO |
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
-| Phase 3 — first executable-node slice | In progress | ADR 010 accepted; tracker expanded; implementation not started |
+| Phase 3 — first executable-node slice | In progress | ADR 010; node SDK/core registry commits `85385cc`–`94426f7`; 31 focused assertions; no publication adapter yet |
 | Phase 4 — first side-effecting integration slice | Not started | — |
 | Phase 5 — orchestration slice | Not started | — |
 | Phase 6 — V1 providers and triggers | Not started | — |
@@ -727,11 +727,12 @@ Initial evidence:
 
 ## Phase 3 — First executable-node slice
 
-Status: **In progress — prerequisite accepted; implementation not started**
+Status: **In progress — node SDK and core-node package foundations complete**
 
-Phase 3 has completed its design prerequisites. No implementation criterion
-below is complete, and no node may enter the publishable registry until the
-complete vertical-slice evidence has passed.
+Phase 3 has completed its design prerequisites and the first package-level
+implementation checkpoint. No core node is exposed through a placement or
+publication catalog; the complete vertical-slice evidence must pass before
+publication is enabled.
 
 Design prerequisites:
 
@@ -745,18 +746,18 @@ Thin-slice scope and node contracts:
 
 - [ ] Implement exactly one executable graph: Manual Trigger -> Set/Map ->
       Terminate.
-- [ ] Use the exact definition identities `core.manual@1`, `core.set@1`, and
+- [x] Use the exact definition identities `core.manual@1`, `core.set@1`, and
       `core.terminate@1` and the separately owned exact executor identities
       `core.manual@1`, `core.set@1`, and `core.terminate@1`; matching names do
       not merge definition and executor identity.
-- [ ] Add browser- and worker-safe versioned definition/config schemas for all
+- [x] Add browser- and worker-safe versioned definition/config schemas for all
       three nodes, with bounded inputs and outputs and stable canonical node
       type/version constants.
-- [ ] Add the node SDK definition and executor contracts without NestJS, ORM,
+- [x] Add the node SDK definition and executor contracts without NestJS, ORM,
       Redis, BullMQ, or provider dependencies.
 - [ ] Add the core-node registry and adapt its definition catalog to the
       workflow model without reversing canonical graph ownership.
-- [ ] Keep browser-safe manifests limited to metadata, schemas, lifecycle,
+- [x] Keep browser-safe manifests limited to metadata, schemas, lifecycle,
       compatibility, and exact executor references; prove package export maps
       make server executor implementations impossible to resolve in a browser
       build.
@@ -765,7 +766,7 @@ Thin-slice scope and node contracts:
 - [ ] Prove pinned executor lookup, retained-version compatibility, supported
       config migration, and fail-closed missing/retired/incompatible executor
       behavior.
-- [ ] Keep every Phase 3 node absent from the publishable registry until its
+- [x] Keep every Phase 3 node absent from the publishable registry until its
       contracts, authorization, use case, adapters, telemetry, idempotency,
       cancellation, API/job documentation, and happy/failure-path tests pass.
 
@@ -965,9 +966,28 @@ Current evidence:
 
 - ADR 010 is accepted after independent Spec and Standards reviews resolved the
   durable pinning, rollout/readiness, race-safe retirement-policy, continuation-
-  drain, and Phase 3 scope findings. This checklist records the resulting
-  implementation contract; no Phase 3 code has started, and every
-  implementation and verification criterion remains unchecked.
+  drain, and Phase 3 scope findings.
+- Commit `85385cc` adds the browser-safe compatibility-release and schema
+  contracts plus a server-only exact registry. Follow-up fixes `2d5bfdc`,
+  `16abe41`, and `0ec4009` align browser/server JSON admission, publish bounded
+  schema documents, and reject oversized sparse arrays before allocation. The
+  node SDK passes 18 focused assertions, typecheck, build, ESLint, formatting,
+  browser-resolution denial, and independent Spec/Standards reviews with no
+  blocker/high findings.
+- Commit `94426f7` adds the exact `core.manual@1`, `core.set@1`, and
+  `core.terminate@1` definition/executor pairs in per-node definition,
+  validation, and executor modules. It pins bounded-JSON and restricted-JSONata
+  policies, exposes only browser metadata and schemas at the root, and exposes
+  only compatibility, historical lookup, and execution from the server entry;
+  placement/publication adapters remain intentionally absent. The package
+  passes 13 focused assertions, typecheck, build, ESLint, formatting, root
+  TypeScript build, frozen install, and an actual browser-condition server
+  import denial. Independent incremental Spec and Standards reviews returned
+  GO with no blocker/high findings.
+- Set/Map ValueSource/JSONata resolution, V2 immutable retained fixtures,
+  workflow-model publication adaptation, persistence, worker consumers, API,
+  SSE, and the complete executable graph remain unchecked and are owned by the
+  following checkpoints.
 
 ## Later phases
 
