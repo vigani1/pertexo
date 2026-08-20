@@ -19,7 +19,7 @@ not complete a phase.
 | Phase 0E — execution durability proofs and engine gate | Complete | ADRs 005 and 007–009; commits through `0322837`; 239 unit, 96 real-service integration, five process-recovery, one SSE-outage, and one transport-outage assertions; custom-engine GO |
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
-| Phase 3 — first executable-node slice | In progress | ADR 010; node SDK/core registry commits `85385cc`–`94426f7`; 31 focused assertions; no publication adapter yet |
+| Phase 3 — first executable-node slice | In progress | ADR 010; node SDK/core registry commits `85385cc`–`94426f7`; retained-V1 verifier `5e72a26`; 79 focused assertions; no publication adapter yet |
 | Phase 4 — first side-effecting integration slice | Not started | — |
 | Phase 5 — orchestration slice | Not started | — |
 | Phase 6 — V1 providers and triggers | Not started | — |
@@ -727,7 +727,7 @@ Initial evidence:
 
 ## Phase 3 — First executable-node slice
 
-Status: **In progress — node SDK and core-node package foundations complete**
+Status: **In progress — node SDK/core foundations and retained-V1 verification complete**
 
 Phase 3 has completed its design prerequisites and the first package-level
 implementation checkpoint. No core node is exposed through a placement or
@@ -984,6 +984,14 @@ Current evidence:
   TypeScript build, frozen install, and an actual browser-condition server
   import denial. Independent incremental Spec and Standards reviews returned
   GO with no blocker/high findings.
+- Commit `5e72a26` adds a retained Phase 2 `wf:v1` row verifier that preserves
+  the original graph/checksum identity, requires every executable-envelope
+  field to remain null, and returns an explicitly readable but non-executable
+  result. The workflow-model package passes 48 focused assertions, typecheck,
+  build, ESLint, formatting, and diff checks; an independent Spec/Standards
+  review returned GO with no blocker/high findings. The combined V2/checksum
+  checklist remains unchecked until the executable V2 envelope and retained
+  fixtures are complete.
 - Set/Map ValueSource/JSONata resolution, V2 immutable retained fixtures,
   workflow-model publication adaptation, persistence, worker consumers, API,
   SSE, and the complete executable graph remain unchecked and are owned by the
