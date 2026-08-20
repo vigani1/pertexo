@@ -4,6 +4,7 @@ import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { canonicalOutboxPayloadChecksum, insertOutboxEvent } from './outbox.js';
+import { serializeStoredExecutionJsonValue } from './stored-execution-value.js';
 import type { WorkspaceTransaction } from './workspace.js';
 
 const boundedJson = (maximumBytes: number) =>
@@ -68,7 +69,7 @@ export type RunEventType = (typeof RUN_EVENT_TYPE)[keyof typeof RUN_EVENT_TYPE];
 const runEventSchema = z
   .object({
     type: z.enum(Object.values(RUN_EVENT_TYPE)),
-    payload: boundedJson(4096),
+    payload: z.unknown(),
   })
   .strict();
 
@@ -263,6 +264,35 @@ async function appendLockedRunEvent(
   event: z.input<typeof runEventSchema>,
 ): Promise<number> {
   const parsed = runEventSchema.parse(event);
+  let normalizedPayload: unknown;
+  try {
+    normalizedPayload = JSON.parse(
+      serializeStoredExecutionJsonValue(parsed.payload),
+    ) as unknown;
+  } catch {
+    throw new ExecutionStateConflictError('execution.event_payload_invalid');
+  }
+  if (
+    normalizedPayload === null ||
+    typeof normalizedPayload !== 'object' ||
+    Array.isArray(normalizedPayload)
+  )
+    throw new ExecutionStateConflictError('execution.event_payload_invalid');
+  const versionedPayload: Record<string, unknown> = Object.create(
+    null,
+  ) as Record<string, unknown>;
+  Object.assign(versionedPayload, normalizedPayload);
+  versionedPayload.schemaVersion = 1;
+  let serializedPayload: string;
+  try {
+    serializedPayload = serializeStoredExecutionJsonValue(versionedPayload);
+  } catch {
+    throw new ExecutionStateConflictError('execution.event_payload_invalid');
+  }
+  if (Buffer.byteLength(serializedPayload, 'utf8') > 4096)
+    throw new ExecutionStateConflictError(
+      'JSON value must not exceed 4096 UTF-8 bytes',
+    );
   const result = await transaction.db.execute<{ sequence: number }>(sql`
     insert into app.run_events (workspace_id, workflow_run_id, sequence, type, payload)
     select
@@ -270,7 +300,7 @@ async function appendLockedRunEvent(
       ${runId},
       coalesce(max(sequence), 0) + 1,
       ${parsed.type},
-      ${JSON.stringify(parsed.payload)}::jsonb
+      ${serializedPayload}::jsonb
     from app.run_events
     where workspace_id = ${transaction.workspaceId}
       and workflow_run_id = ${runId}

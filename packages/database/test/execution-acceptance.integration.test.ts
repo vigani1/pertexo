@@ -77,6 +77,7 @@ function acceptanceInput(
 ) {
   return {
     engineVersion: 'phase0-engine-v1',
+    initialCheckpoint: initialCheckpoint(),
     keyHash,
     operation: 'workflow.run.accept',
     requestHash: requestHashOverride,
@@ -85,6 +86,25 @@ function acceptanceInput(
     triggerType: 'manual',
     workflowId,
     workflowVersionId,
+  } as const;
+}
+
+function initialCheckpoint() {
+  return {
+    schemaVersion: 1,
+    engineVersion: 'phase0-engine-v1',
+    workflowVersionId,
+    revision: 0,
+    runStatus: 'queued',
+    nextEventSequence: 2,
+    readySet: [],
+    admittedInvocationKeys: [],
+    invocations: [],
+    joins: [],
+    loops: [],
+    remainingIterationBudget: 0,
+    cancelRequested: false,
+    deadlineExpired: false,
   } as const;
 }
 
@@ -381,6 +401,62 @@ describe('atomic workflow run acceptance', () => {
         },
       ]);
     });
+  });
+
+  it('persists the caller-supplied initial checkpoint with the acceptance event cursor', async () => {
+    const checkpoint = initialCheckpoint();
+    const accepted = await apiDatabase.withWorkspace(
+      workspaceA,
+      (transaction) =>
+        acceptWorkflowRun(transaction, {
+          ...acceptanceInput(),
+          initialCheckpoint: checkpoint,
+        }),
+    );
+
+    await apiDatabase.withWorkspace(workspaceA, async ({ db }) => {
+      expect(
+        await db
+          .select({ schedulerState: runCheckpoints.schedulerState })
+          .from(runCheckpoints)
+          .where(eq(runCheckpoints.workflowRunId, accepted.runId)),
+      ).toEqual([{ schedulerState: checkpoint }]);
+    });
+
+    await expect(
+      apiDatabase.withWorkspace(workspaceA, (transaction) =>
+        acceptWorkflowRun(transaction, {
+          ...acceptanceInput(),
+          initialCheckpoint: checkpoint,
+        }),
+      ),
+    ).resolves.toMatchObject({ duplicate: true, runId: accepted.runId });
+    await expect(
+      apiDatabase.withWorkspace(workspaceA, (transaction) =>
+        acceptWorkflowRun(transaction, {
+          ...acceptanceInput(),
+          initialCheckpoint: {
+            ...checkpoint,
+            remainingIterationBudget: 1,
+          },
+        }),
+      ),
+    ).rejects.toBeInstanceOf(IdempotencyRequestConflictError);
+  });
+
+  it('rejects an invalid initial checkpoint before persisting acceptance state', async () => {
+    await expect(
+      apiDatabase.withWorkspace(workspaceA, (transaction) =>
+        acceptWorkflowRun(transaction, {
+          ...acceptanceInput(),
+          initialCheckpoint: {
+            ...initialCheckpoint(),
+            nextEventSequence: 1,
+          },
+        }),
+      ),
+    ).rejects.toMatchObject({ name: 'Phase3CheckpointInvalidError' });
+    await expectAcceptanceRecordCounts(0);
   });
 
   it('atomically stores a tagged inline run input at the exact application byte limit', async () => {

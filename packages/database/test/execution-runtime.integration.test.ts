@@ -17,6 +17,7 @@ import {
   commitCoordinatorTransition,
   completeNodeAttempt,
   dispatchDueWorkflowWaits,
+  ExecutionStateConflictError,
   heartbeatNodeAttempt,
   markNodeAttemptDispatched,
   readDueNodeRuns,
@@ -118,8 +119,26 @@ async function acceptRun(
   deadlineAt?: Date,
 ): Promise<string> {
   return api.withWorkspace(workspaceId, async (transaction) => {
+    const engineVersion = 'phase0e-v1';
+    const workflowVersionId = randomUUID();
     const accepted = await acceptWorkflowRun(transaction, {
-      engineVersion: 'phase0e-v1',
+      engineVersion,
+      initialCheckpoint: {
+        schemaVersion: 1,
+        engineVersion,
+        workflowVersionId,
+        revision: 0,
+        runStatus: 'queued',
+        nextEventSequence: 2,
+        readySet: [],
+        admittedInvocationKeys: [],
+        invocations: [],
+        joins: [],
+        loops: [],
+        remainingIterationBudget: 0,
+        cancelRequested: false,
+        deadlineExpired: false,
+      },
       ...(deadlineAt === undefined ? {} : { deadlineAt }),
       keyHash: createHash('sha256').update(randomUUID()).digest('hex'),
       operation: 'workflow.run.accept',
@@ -127,7 +146,7 @@ async function acceptRun(
       scope: `manual:${randomUUID()}`,
       triggerType: 'manual',
       workflowId: randomUUID(),
-      workflowVersionId: randomUUID(),
+      workflowVersionId,
     });
     return accepted.runId;
   });
@@ -239,6 +258,10 @@ describe('durable execution persistence', () => {
       }),
     );
     expect(secondPage.events.map((event) => event.sequence)).toEqual([2]);
+    expect(secondPage.events[0]?.payload).toMatchObject({
+      progress: 25,
+      schemaVersion: 1,
+    });
     await expect(
       worker.withWorkspace(workspaceB, (transaction) =>
         readRunEventsAfter(transaction, {
@@ -256,7 +279,8 @@ describe('durable execution persistence', () => {
       db.execute(sql`
         insert into app.run_events
           (workspace_id, workflow_run_id, sequence, type, payload)
-        values (${workspaceA}, ${runId}, 3, 'node.progress', '{"progress": 50}'::jsonb)
+        values (${workspaceA}, ${runId}, 3, 'node.progress',
+          '{"schemaVersion": 1, "progress": 50}'::jsonb)
       `),
     );
     await expect(
@@ -268,6 +292,167 @@ describe('durable execution persistence', () => {
         }),
       ),
     ).rejects.toThrow('execution.run_event_gap');
+  });
+
+  it('canonically versions event payloads without invoking inherited toJSON hooks', async () => {
+    const runId = await acceptRun();
+    const objectToJson = Object.getOwnPropertyDescriptor(
+      Object.prototype,
+      'toJSON',
+    );
+    const arrayToJson = Object.getOwnPropertyDescriptor(
+      Array.prototype,
+      'toJSON',
+    );
+    const progress = [25, 50];
+    const payload = { progress };
+    let hookCalls = 0;
+    const inheritedHook = function (this: unknown): unknown {
+      if (this === payload || this === progress) {
+        hookCalls += 1;
+        return { replaced: true };
+      }
+      return this;
+    };
+    let observedHookCalls: number | undefined;
+    let persistedPayload: unknown;
+    Object.defineProperty(Object.prototype, 'toJSON', {
+      configurable: true,
+      value: inheritedHook,
+    });
+    Object.defineProperty(Array.prototype, 'toJSON', {
+      configurable: true,
+      value: inheritedHook,
+    });
+    try {
+      await worker.withWorkspace(workspaceA, (transaction) =>
+        appendRunEvent(transaction, {
+          event: {
+            payload,
+            type: 'node.progress',
+          },
+          runId,
+        }),
+      );
+      const events = await worker.withWorkspace(workspaceA, (transaction) =>
+        readRunEventsAfter(transaction, {
+          afterSequence: 1,
+          limit: 10,
+          runId,
+        }),
+      );
+      persistedPayload = events.events[0]?.payload;
+      observedHookCalls = hookCalls;
+    } finally {
+      if (objectToJson === undefined)
+        delete (Object.prototype as { toJSON?: unknown }).toJSON;
+      else Object.defineProperty(Object.prototype, 'toJSON', objectToJson);
+      if (arrayToJson === undefined)
+        delete (Array.prototype as { toJSON?: unknown }).toJSON;
+      else Object.defineProperty(Array.prototype, 'toJSON', arrayToJson);
+    }
+    expect(persistedPayload).toEqual({
+      progress: [25, 50],
+      schemaVersion: 1,
+    });
+    expect(observedHookCalls).toBe(0);
+  });
+
+  it('rejects hostile event payload accessors and proxies without invoking them', async () => {
+    const runId = await acceptRun();
+    let getterCalls = 0;
+    const accessorPayload: Record<string, unknown> = {};
+    Object.defineProperty(accessorPayload, 'progress', {
+      enumerable: true,
+      get: () => {
+        getterCalls += 1;
+        return 25;
+      },
+    });
+    let proxyTrapCalls = 0;
+    const hostileProxy = new Proxy(
+      {},
+      {
+        ownKeys: () => {
+          proxyTrapCalls += 1;
+          return [];
+        },
+      },
+    );
+    for (const payload of [
+      accessorPayload,
+      hostileProxy,
+      { nested: hostileProxy },
+    ])
+      await expect(
+        worker.withWorkspace(workspaceA, (transaction) =>
+          appendRunEvent(transaction, {
+            event: { payload, type: 'node.progress' },
+            runId,
+          }),
+        ),
+      ).rejects.toBeInstanceOf(ExecutionStateConflictError);
+    expect(getterCalls).toBe(0);
+    expect(proxyTrapCalls).toBe(0);
+  });
+
+  it('enforces the event byte limit after adding the schema version', async () => {
+    const runId = await acceptRun();
+    const envelopeBytes = Buffer.byteLength(
+      '{"data":"","schemaVersion":1}',
+      'utf8',
+    );
+    const exactData = 'x'.repeat(4096 - envelopeBytes);
+    await expect(
+      worker.withWorkspace(workspaceA, (transaction) =>
+        appendRunEvent(transaction, {
+          event: { payload: { data: exactData }, type: 'node.progress' },
+          runId,
+        }),
+      ),
+    ).resolves.toBe(2);
+    await expect(
+      worker.withWorkspace(workspaceA, (transaction) =>
+        appendRunEvent(transaction, {
+          event: {
+            payload: { data: `${exactData}x` },
+            type: 'node.progress',
+          },
+          runId,
+        }),
+      ),
+    ).rejects.toThrow('JSON value must not exceed 4096 UTF-8 bytes');
+
+    const exponentRunId = await acceptRun();
+    const exponentHeavyPayload = {
+      numbers: Array.from({ length: 500 }, () => 1e308),
+    };
+    expect(
+      Buffer.byteLength(
+        JSON.stringify({ ...exponentHeavyPayload, schemaVersion: 1 }),
+        'utf8',
+      ),
+    ).toBeLessThanOrEqual(4096);
+    await expect(
+      worker.withWorkspace(workspaceA, (transaction) =>
+        appendRunEvent(transaction, {
+          event: { payload: exponentHeavyPayload, type: 'node.progress' },
+          runId: exponentRunId,
+        }),
+      ),
+    ).resolves.toBe(2);
+
+    const directSqlRunId = await acceptRun();
+    await expect(
+      worker.withWorkspace(workspaceA, ({ db }) =>
+        db.execute(sql`
+          insert into app.run_events
+            (workspace_id, workflow_run_id, sequence, type, payload)
+          values (${workspaceA}, ${directSqlRunId}, 2, 'node.progress',
+            jsonb_build_object('schemaVersion', 1, 'data', repeat('x', 524289)))
+        `),
+      ),
+    ).rejects.toSatisfy(hasPostgresCode('23514'));
   });
 
   it('atomically advances a checkpoint and admits one identifier-only attempt', async () => {

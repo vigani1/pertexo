@@ -128,6 +128,16 @@ export {
 } from './readiness.js';
 export type { DatabaseReadiness } from './readiness.js';
 export {
+  CoordinatorPlanInvalidError,
+  CoordinatorRunStateCorruptError,
+  createCoordinatorRunStore,
+} from './coordinator-run-store.js';
+export type {
+  CommitAdvancePlanResult,
+  CoordinatorRunStore,
+  LoadAdvanceStateResult,
+} from './coordinator-run-store.js';
+export {
   createPublishedWorkflowReader,
   PublishedWorkflowVersionCorruptError,
 } from './published-workflow-reader.js';

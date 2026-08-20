@@ -436,6 +436,11 @@ async function acceptRun(deadlineAt?: Date): Promise<string> {
   return apiDatabase.withWorkspace(WORKSPACE_ID, async (transaction) => {
     const result = await acceptWorkflowRun(transaction, {
       engineVersion: ENGINE_VERSION,
+      initialCheckpoint: engine.createCheckpoint({
+        engineVersion: ENGINE_VERSION,
+        iterationBudget: 8,
+        workflowVersionId: WORKFLOW_VERSION_ID,
+      }),
       ...(deadlineAt === undefined ? {} : { deadlineAt }),
       keyHash: createHash('sha256').update(randomUUID()).digest('hex'),
       operation: 'workflow.run.accept',

@@ -39,6 +39,25 @@ const databaseConfig = (connectionString: string) =>
 const digest = (value: string): string =>
   createHash('sha256').update(value).digest('hex');
 
+function initialCheckpoint(engineVersion: string, workflowVersionId: string) {
+  return {
+    schemaVersion: 1,
+    engineVersion,
+    workflowVersionId,
+    revision: 0,
+    runStatus: 'queued',
+    nextEventSequence: 2,
+    readySet: [],
+    admittedInvocationKeys: [],
+    invocations: [],
+    joins: [],
+    loops: [],
+    remainingIterationBudget: 0,
+    cancelRequested: false,
+    deadlineExpired: false,
+  } as const;
+}
+
 describe.runIf(enabled)('real PostgreSQL-authoritative run event SSE', () => {
   const workspaceId = randomUUID();
   let apiDatabase: WorkspaceDatabase;
@@ -74,18 +93,24 @@ describe.runIf(enabled)('real PostgreSQL-authoritative run event SSE', () => {
       enableOfflineQueue: false,
       maxRetriesPerRequest: 1,
     });
+    const engineVersion = 'phase0e-fixture-v1';
+    const workflowVersionId = randomUUID();
     const accepted = await apiDatabase.withWorkspace(
       workspaceId,
       async (transaction) =>
         acceptWorkflowRun(transaction, {
-          engineVersion: 'phase0e-fixture-v1',
+          engineVersion,
+          initialCheckpoint: initialCheckpoint(
+            engineVersion,
+            workflowVersionId,
+          ),
           keyHash: digest(`key:${workspaceId}`),
           operation: 'workflow.run.accept',
           requestHash: digest(`request:${workspaceId}`),
           scope: `sse-fixture:${workspaceId}`,
           triggerType: 'api',
           workflowId: randomUUID(),
-          workflowVersionId: randomUUID(),
+          workflowVersionId,
         }),
     );
     runId = accepted.runId;

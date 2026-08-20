@@ -46,6 +46,25 @@ const databaseConfig = (connectionString: string) =>
 const sleep = (milliseconds: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, milliseconds));
 
+function initialCheckpoint(engineVersion: string, workflowVersionId: string) {
+  return {
+    schemaVersion: 1,
+    engineVersion,
+    workflowVersionId,
+    revision: 0,
+    runStatus: 'queued',
+    nextEventSequence: 2,
+    readySet: [],
+    admittedInvocationKeys: [],
+    invocations: [],
+    joins: [],
+    loops: [],
+    remainingIterationBudget: 0,
+    cancelRequested: false,
+    deadlineExpired: false,
+  } as const;
+}
+
 async function compose(...arguments_: readonly string[]): Promise<string> {
   const result = await execFileAsync('docker', ['compose', ...arguments_], {
     cwd: repositoryRoot,
@@ -135,18 +154,24 @@ describe.runIf(enabled)('destructive Redis-loss SSE reconstruction', () => {
     } finally {
       await identityDatabase.close();
     }
+    const engineVersion = 'phase0e-sse-resilience-v1';
+    const workflowVersionId = randomUUID();
     const accepted = await apiDatabase.withWorkspace(
       workspaceId,
       async (transaction) =>
         acceptWorkflowRun(transaction, {
-          engineVersion: 'phase0e-sse-resilience-v1',
+          engineVersion,
+          initialCheckpoint: initialCheckpoint(
+            engineVersion,
+            workflowVersionId,
+          ),
           keyHash: createHash('sha256').update(randomUUID()).digest('hex'),
           operation: 'workflow.run.accept',
           requestHash: createHash('sha256').update(randomUUID()).digest('hex'),
           scope: `sse-resilience:${workspaceId}`,
           triggerType: 'manual',
           workflowId: randomUUID(),
-          workflowVersionId: randomUUID(),
+          workflowVersionId,
         }),
     );
     const runId = accepted.runId;

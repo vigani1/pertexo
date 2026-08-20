@@ -437,6 +437,10 @@ export const runCheckpoints = appSchema.table(
   {
     workflowRunId: uuid('workflow_run_id').primaryKey(),
     workspaceId: uuid('workspace_id').notNull(),
+    workflowVersionId: uuid('workflow_version_id').notNull(),
+    lastTransitionFingerprint: varchar('last_transition_fingerprint', {
+      length: 64,
+    }),
     revision: integer('revision').notNull(),
     engineVersion: varchar('engine_version', { length: 64 }).notNull(),
     schedulerState: jsonb('scheduler_state').notNull(),

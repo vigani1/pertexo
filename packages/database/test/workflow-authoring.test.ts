@@ -12,9 +12,7 @@ const migrationUrl = new URL(
 
 describe('workflow authoring migration contract', () => {
   it('advances the reviewed migration head', () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0014_execution_value_persistence.sql',
-    );
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0015_coordinator_run_store.sql');
   });
 
   it('emits the identifier-only trigger-reconciliation payload', () => {

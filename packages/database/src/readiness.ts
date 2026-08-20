@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0014_execution_value_persistence.sql';
+export const EXPECTED_MIGRATION_HEAD = '0015_coordinator_run_store.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -35,6 +35,7 @@ interface ReadinessRow {
   phase3_policy_compatible: boolean;
   phase3_schema_compatible: boolean;
   execution_values_compatible: boolean;
+  coordinator_run_store_compatible: boolean;
   postgres_major: number;
   relforcerowsecurity: boolean;
   relrowsecurity: boolean;
@@ -514,9 +515,36 @@ export async function checkDatabaseReadiness(
             and not attnotnull and not attisdropped
         )
         and (select count(*) = 17 from pg_attribute where attrelid = to_regclass('app.workflow_runs') and attnum > 0 and not attisdropped)
-        and (select count(*) = 10 from pg_attribute where attrelid = to_regclass('app.run_checkpoints') and attnum > 0 and not attisdropped)
+        and exists (
+          select 1 from pg_attribute where attrelid = to_regclass('app.run_checkpoints')
+            and attname = 'workflow_version_id' and atttypid = 'uuid'::regtype
+            and attnotnull and not attisdropped
+        )
+        and exists (
+          select 1 from pg_attribute where attrelid = to_regclass('app.run_checkpoints')
+            and attname = 'last_transition_fingerprint'
+            and atttypid = 'character varying'::regtype
+            and atttypmod = 68 and not attnotnull and not attisdropped
+        )
+        and (select count(*) = 12 from pg_attribute where attrelid = to_regclass('app.run_checkpoints') and attnum > 0 and not attisdropped)
+        and exists (
+          select 1 from pg_constraint where conrelid = to_regclass('app.workflow_runs')
+            and conname = 'workflow_runs_workspace_version_identity_unique'
+            and pg_get_constraintdef(oid) = 'UNIQUE (workspace_id, id, workflow_version_id)'
+        )
+        and exists (
+          select 1 from pg_constraint where conrelid = to_regclass('app.run_checkpoints')
+            and conname = 'run_checkpoints_transition_fingerprint_valid'
+            and pg_get_constraintdef(oid) = 'CHECK (((last_transition_fingerprint IS NULL) OR ((last_transition_fingerprint)::text ~ ''^[0-9a-f]{64}$''::text)))'
+        )
+        and exists (
+          select 1 from pg_constraint where conrelid = to_regclass('app.run_checkpoints')
+            and conname = 'run_checkpoints_run_version_workspace_fk'
+            and pg_get_constraintdef(oid) = 'FOREIGN KEY (workspace_id, workflow_run_id, workflow_version_id) REFERENCES app.workflow_runs(workspace_id, id, workflow_version_id) ON DELETE CASCADE'
+        )
         and not exists (
           select 1 from (values
+            ('run_events', 'run_events_payload_bounded', 'CHECK ((octet_length((payload)::text) <= 524288))'),
             ('workflow_runs', 'workflow_runs_input_ref_bounded', 'CHECK (((input_ref IS NULL) OR (octet_length((input_ref)::text) <= 4194304)))'),
             ('workflow_runs', 'workflow_runs_output_ref_bounded', 'CHECK (((output_ref IS NULL) OR (octet_length((output_ref)::text) <= 4194304)))'),
             ('run_checkpoints', 'run_checkpoints_scheduler_state_bounded', 'CHECK ((octet_length((scheduler_state)::text) <= 4194304))'),
@@ -534,9 +562,11 @@ export async function checkDatabaseReadiness(
         and not exists (
           select 1 from (values
             ('workflow_runs', 'workflow_runs_workspace_scope'),
+            ('run_events', 'run_events_workspace_scope'),
             ('run_checkpoints', 'run_checkpoints_workspace_scope'),
             ('node_runs', 'node_runs_workspace_scope'),
-            ('node_attempts', 'node_attempts_workspace_scope')
+            ('node_attempts', 'node_attempts_workspace_scope'),
+            ('artifacts', 'artifacts_workspace_scope')
           ) expected(table_name, policy_name)
           where (select count(*) from pg_policy where polrelid = to_regclass('app.' || expected.table_name)) <> 1
             or not exists (
@@ -578,6 +608,115 @@ export async function checkDatabaseReadiness(
           )
         )
       ) as execution_values_compatible,
+      (
+        has_table_privilege($2, 'app.workflow_runs', 'SELECT')
+        and has_table_privilege($2, 'app.run_checkpoints', 'SELECT')
+        and has_table_privilege($2, 'app.run_events', 'SELECT')
+        and has_table_privilege($2, 'app.node_runs', 'SELECT')
+        and has_table_privilege($2, 'app.node_attempts', 'SELECT')
+        and has_table_privilege($2, 'app.artifacts', 'SELECT')
+        and has_table_privilege($2, 'app.node_runs', 'INSERT')
+        and has_table_privilege($2, 'app.node_attempts', 'INSERT')
+        and has_table_privilege($2, 'app.run_events', 'INSERT')
+        and has_table_privilege($2, 'app.outbox_events', 'INSERT')
+        and not has_table_privilege($2, 'app.workflow_runs', 'INSERT')
+        and not has_table_privilege($2, 'app.run_checkpoints', 'INSERT')
+        and not has_table_privilege($2, 'app.run_events', 'UPDATE')
+        and not has_table_privilege($2, 'app.outbox_events', 'UPDATE')
+        and not exists (
+          select 1 from (values
+            ('workflow_runs'), ('run_checkpoints'), ('run_events'),
+            ('node_runs'), ('node_attempts'), ('artifacts'), ('outbox_events')
+          ) protected(table_name)
+          join pg_class relation
+            on relation.oid = to_regclass('app.' || protected.table_name)
+          where not relation.relrowsecurity or not relation.relforcerowsecurity
+        )
+        and not exists (
+          select 1
+          from information_schema.column_privileges privilege
+          where privilege.table_schema='app'
+            and privilege.grantee=$2
+            and privilege.privilege_type='UPDATE'
+            and privilege.table_name in (
+              'workflow_runs', 'run_checkpoints', 'node_runs', 'node_attempts'
+            )
+            and not (
+              (privilege.table_name='workflow_runs' and privilege.column_name in (
+                'status','started_at','completed_at','output_ref','error_summary','updated_at'
+              ))
+              or (privilege.table_name='run_checkpoints' and privilege.column_name in (
+                'revision','engine_version','scheduler_state','resume_at',
+                'resume_lease_owner','resume_lease_token','resume_lease_expires_at',
+                'updated_at','last_transition_fingerprint'
+              ))
+              or (privilege.table_name='node_runs' and privilege.column_name in (
+                'status','output_ref','current_attempt_id','current_attempt_number',
+                'resume_at','retry_due_at','safe_error_code','updated_at',
+                'started_at','completed_at'
+              ))
+              or (privilege.table_name='node_attempts' and privilege.column_name in (
+                'status','lease_owner','lease_expires_at','fence_token',
+                'dispatch_marked_at','output_ref','safe_error_code','error_summary',
+                'reconciliation_ref','updated_at','started_at','completed_at'
+              ))
+            )
+        )
+        and exists (
+          select 1 from pg_policy policy
+          where policy.polrelid = to_regclass('app.outbox_events')
+            and policy.polname = 'outbox_events_tenant_insert'
+            and policy.polcmd = 'a'
+            and cardinality(policy.polroles) = 2
+            and (select oid from pg_roles where rolname = $2) = any(policy.polroles)
+            and policy.polqual is null
+            and pg_get_expr(policy.polwithcheck, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
+        )
+        and has_column_privilege($2, 'app.workflow_runs', 'status', 'UPDATE')
+        and not exists (
+          select 1 from (values
+            ('workflow_runs', 'started_at'),
+            ('workflow_runs', 'completed_at'),
+            ('workflow_runs', 'updated_at'),
+            ('run_checkpoints', 'engine_version'),
+            ('run_checkpoints', 'scheduler_state'),
+            ('run_checkpoints', 'last_transition_fingerprint'),
+            ('run_checkpoints', 'resume_at'),
+            ('run_checkpoints', 'resume_lease_owner'),
+            ('run_checkpoints', 'resume_lease_token'),
+            ('run_checkpoints', 'resume_lease_expires_at'),
+            ('run_checkpoints', 'updated_at'),
+            ('node_runs', 'current_attempt_id'),
+            ('node_runs', 'current_attempt_number'),
+            ('node_runs', 'resume_at'),
+            ('node_runs', 'retry_due_at'),
+            ('node_runs', 'completed_at'),
+            ('node_runs', 'safe_error_code'),
+            ('node_runs', 'updated_at')
+          ) required(table_name, column_name)
+          where not has_column_privilege(
+            $2,
+            'app.' || required.table_name,
+            required.column_name,
+            'UPDATE'
+          )
+        )
+        and has_column_privilege($2, 'app.run_checkpoints', 'revision', 'UPDATE')
+        and has_column_privilege($2, 'app.run_checkpoints', 'scheduler_state', 'UPDATE')
+        and has_column_privilege($2, 'app.node_runs', 'status', 'UPDATE')
+        and has_column_privilege($2, 'app.node_attempts', 'status', 'UPDATE')
+        and not has_column_privilege($2, 'app.run_checkpoints', 'workflow_version_id', 'UPDATE')
+        and not exists (
+          select 1 from (values
+            ('workflow_runs'), ('run_checkpoints'), ('run_events'),
+            ('node_runs'), ('node_attempts'), ('artifacts'), ('outbox_events')
+          ) protected(table_name)
+          where has_table_privilege($2, 'app.' || protected.table_name, 'DELETE')
+             or has_table_privilege($2, 'app.' || protected.table_name, 'TRUNCATE')
+             or has_table_privilege($2, 'app.' || protected.table_name, 'REFERENCES')
+             or has_table_privilege($2, 'app.' || protected.table_name, 'TRIGGER')
+        )
+      ) as coordinator_run_store_compatible,
       (
         select name
         from pertexo_internal.schema_migrations
@@ -657,6 +796,9 @@ export async function checkDatabaseReadiness(
   }
   if (!row.execution_values_compatible) {
     throw new Error('Execution value persistence is incompatible');
+  }
+  if (!row.coordinator_run_store_compatible) {
+    throw new Error('Coordinator RunStore grants are incompatible');
   }
   const hasProtectedTableAccess =
     row.can_select || row.can_insert || row.can_update || row.can_delete;

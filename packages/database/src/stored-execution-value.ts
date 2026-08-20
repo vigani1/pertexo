@@ -39,7 +39,7 @@ export class StoredExecutionValueInvalidError extends TypeError {
 }
 
 const uuidPattern =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 
 function invalid(): never {
   throw new StoredExecutionValueInvalidError();
@@ -348,4 +348,14 @@ export function serializeStoredExecutionValueV1(value: unknown): string {
   return parsed.kind === 'artifact'
     ? `{"artifactId":${JSON.stringify(parsed.artifactId)},"kind":"artifact","schemaVersion":1}`
     : `{"kind":"inline","schemaVersion":1,"value":${canonicalJson(parsed.value)}}`;
+}
+
+export function serializeStoredExecutionJsonValue(value: unknown): string {
+  const parsed = parseStoredExecutionValueV1({
+    schemaVersion: 1,
+    kind: 'inline',
+    value,
+  });
+  if (parsed.kind !== 'inline') invalid();
+  return canonicalJson(parsed.value);
 }

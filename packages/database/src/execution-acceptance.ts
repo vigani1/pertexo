@@ -1,9 +1,13 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 import { and, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { canonicalOutboxPayloadChecksum, insertOutboxEvent } from './outbox.js';
+import {
+  parseInitialPhase3Checkpoint,
+  serializePersistedPhase3Checkpoint,
+} from './phase3-checkpoint.js';
 import {
   idempotencyRecords,
   runCheckpoints,
@@ -24,6 +28,7 @@ const traceparentSchema = z
 const acceptWorkflowRunInputSchema = z
   .object({
     engineVersion: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/u),
+    initialCheckpoint: z.unknown(),
     deadlineAt: z.date().optional(),
     keyHash: sha256Schema,
     operation: z.literal('workflow.run.accept'),
@@ -37,7 +42,12 @@ const acceptWorkflowRunInputSchema = z
   })
   .strict();
 
-const resultRefSchema = z.object({ outboxEventId: z.uuid() }).strict();
+const resultRefSchema = z
+  .object({
+    outboxEventId: z.uuid(),
+    initialCheckpointHash: sha256Schema.optional(),
+  })
+  .strict();
 
 export const RUN_STATUS = {
   queued: 'queued',
@@ -125,6 +135,7 @@ async function assertWorkspaceAcceptsNewRuns(
 async function readExistingAcceptance(
   transaction: WorkspaceTransaction,
   input: z.output<typeof acceptWorkflowRunInputSchema>,
+  initialCheckpointHash: string | undefined,
 ): Promise<AcceptedWorkflowRun | null> {
   const rows = await transaction.db
     .select({
@@ -170,6 +181,9 @@ async function readExistingAcceptance(
   ) {
     throw new IdempotencyRecordCorruptError();
   }
+  if (resultRef.data.initialCheckpointHash !== initialCheckpointHash) {
+    throw new IdempotencyRequestConflictError();
+  }
 
   return Object.freeze({
     acceptedAt: row.acceptedAt,
@@ -193,14 +207,30 @@ export async function acceptWorkflowRun(
           kind: 'inline',
           value: parsed.runInput,
         });
-  const existing = await readExistingAcceptance(transaction, parsed);
+  const initialCheckpointJson = serializePersistedPhase3Checkpoint(
+    parseInitialPhase3Checkpoint(parsed.initialCheckpoint, {
+      engineVersion: parsed.engineVersion,
+      workflowVersionId: parsed.workflowVersionId,
+    }),
+  );
+  const initialCheckpointHash = createHash('sha256')
+    .update(initialCheckpointJson)
+    .digest('hex');
+  const existing = await readExistingAcceptance(
+    transaction,
+    parsed,
+    initialCheckpointHash,
+  );
   if (existing !== null) return existing;
 
   await assertWorkspaceAcceptsNewRuns(transaction);
   const idempotencyRecordId = randomUUID();
   const runId = randomUUID();
   const outboxEventId = randomUUID();
-  const resultRef = { outboxEventId } as const;
+  const resultRef = {
+    outboxEventId,
+    initialCheckpointHash,
+  } as const;
 
   const insertedClaim = await transaction.db
     .insert(idempotencyRecords)
@@ -226,7 +256,11 @@ export async function acceptWorkflowRun(
     .returning({ id: idempotencyRecords.id });
 
   if (insertedClaim.length === 0) {
-    const racedAcceptance = await readExistingAcceptance(transaction, parsed);
+    const racedAcceptance = await readExistingAcceptance(
+      transaction,
+      parsed,
+      initialCheckpointHash,
+    );
     if (racedAcceptance === null) throw new IdempotencyRecordCorruptError();
     return racedAcceptance;
   }
@@ -256,14 +290,15 @@ export async function acceptWorkflowRun(
     workflowRunId: runId,
     sequence: 1,
     type: 'run.queued',
-    payload: {},
+    payload: { schemaVersion: 1 },
   });
   await transaction.db.insert(runCheckpoints).values({
     workflowRunId: runId,
     workspaceId: transaction.workspaceId,
+    workflowVersionId: parsed.workflowVersionId,
     revision: 0,
     engineVersion: parsed.engineVersion,
-    schedulerState: {},
+    schedulerState: sql`${initialCheckpointJson}::jsonb`,
   });
 
   const payload = {

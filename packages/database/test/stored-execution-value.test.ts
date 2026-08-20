@@ -326,6 +326,21 @@ describe('StoredExecutionValueV1', () => {
     for (const malformed of [
       { schemaVersion: 2, kind: 'artifact', artifactId },
       { schemaVersion: 1, kind: 'artifact', artifactId: 'not-a-uuid' },
+      {
+        schemaVersion: 1,
+        kind: 'artifact',
+        artifactId: '00000000-0000-0000-8000-000000000000',
+      },
+      {
+        schemaVersion: 1,
+        kind: 'artifact',
+        artifactId: '00000000-0000-4000-0000-000000000000',
+      },
+      {
+        schemaVersion: 1,
+        kind: 'artifact',
+        artifactId: artifactId.toUpperCase(),
+      },
       { schemaVersion: 1, kind: 'artifact', artifactId, extra: true },
       { schemaVersion: 1, kind: 'inline' },
       '{not json',
