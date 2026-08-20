@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
+import { apiProblemSchema } from '@pertexo/contracts/errors';
 
 import {
   identityWorkspaceClientContract,
@@ -16,6 +17,7 @@ describe('identity/workspace generated contracts', () => {
     expect(identityWorkspaceClientContract).toEqual({
       schemaVersion: '1.0.0',
       schemas: {
+        ApiProblem: generated(apiProblemSchema, 'output'),
         OidcCallbackRequest: generated(oidcCallbackRequestSchema, 'input'),
         OidcStartResponse: generated(oidcStartResponseSchema, 'output'),
         WorkspaceCreateRequest: generated(

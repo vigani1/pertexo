@@ -1,0 +1,31 @@
+{
+  "name": "@pertexo/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./errors": {
+      "types": "./dist/errors/api-problem.d.ts",
+      "default": "./dist/errors/api-problem.js"
+    },
+    "./identity-workspace": {
+      "types": "./dist/identity-workspace.d.ts",
+      "default": "./dist/identity-workspace.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "contracts:check": "tsx scripts/generate-artifacts.ts --check",
+    "contracts:generate": "tsx scripts/generate-artifacts.ts --write",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.test.json --noEmit"
+  },
+  "dependencies": {
+    "zod": "4.4.3"
+  }
+}

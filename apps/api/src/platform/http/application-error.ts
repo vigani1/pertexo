@@ -1,3 +1,5 @@
+import type { ApiProblemCode } from '@pertexo/contracts/errors';
+
 export const APPLICATION_ERROR_CATALOG = {
   'auth.unauthenticated': {
     status: 401,
@@ -101,9 +103,17 @@ export const APPLICATION_ERROR_CATALOG = {
     severity: 'error',
     exposeDetail: false,
   },
-} as const;
+} as const satisfies Record<
+  ApiProblemCode,
+  Readonly<{
+    status: number;
+    title: string;
+    severity: 'error' | 'info' | 'warn';
+    exposeDetail: boolean;
+  }>
+>;
 
-export type ApplicationErrorCode = keyof typeof APPLICATION_ERROR_CATALOG;
+export type ApplicationErrorCode = ApiProblemCode;
 export type ApplicationErrorCatalogEntry =
   (typeof APPLICATION_ERROR_CATALOG)[ApplicationErrorCode];
 

@@ -47,6 +47,9 @@ importers:
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
+      '@pertexo/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@pertexo/database':
         specifier: workspace:*
         version: link:../../packages/database
@@ -135,6 +138,12 @@ importers:
       '@aws-sdk/s3-request-presigner':
         specifier: 3.1111.0
         version: 3.1111.0
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
+
+  packages/contracts:
+    dependencies:
       zod:
         specifier: 4.4.3
         version: 4.4.3

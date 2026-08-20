@@ -21,7 +21,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['**/test/**/*.ts', '**/vitest*.config.ts'],
+    files: ['**/scripts/**/*.ts', '**/test/**/*.ts', '**/vitest*.config.ts'],
     languageOptions: {
       parserOptions: {
         project: ['apps/*/tsconfig.test.json', 'packages/*/tsconfig.test.json'],

@@ -1,5 +1,6 @@
 import { BadRequestException, HttpException } from '@nestjs/common';
 import type { ArgumentsHost } from '@nestjs/common';
+import { apiProblemSchema } from '@pertexo/contracts/errors';
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
@@ -74,6 +75,7 @@ describe('RFC 9457 problem details filter', () => {
       code: 'auth.forbidden',
       requestId: 'request-forbidden',
     });
+    expect(apiProblemSchema.safeParse(response.body).success).toBe(true);
   });
 
   it('renders workspace semantic conflicts as stable RFC 9457 409 problems', () => {

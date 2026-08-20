@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import type { ApiProblem, ApiProblemIssue } from '@pertexo/contracts/errors';
 import { Catch, HttpException } from '@nestjs/common';
 import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
 import { ZodError } from 'zod';
@@ -22,22 +23,8 @@ import {
 
 export const HTTP_ERROR_LOGGER = Symbol('HTTP_ERROR_LOGGER');
 
-export type ProblemIssue = Readonly<{
-  path: string;
-  code: string;
-  message: string;
-}>;
-
-export type ProblemDetails = Readonly<{
-  type: string;
-  title: string;
-  status: number;
-  detail?: string;
-  instance?: string;
-  code: ApplicationErrorCode;
-  requestId: string;
-  errors?: readonly ProblemIssue[];
-}>;
+export type ProblemIssue = ApiProblemIssue;
+export type ProblemDetails = ApiProblem;
 
 export type HttpErrorLogEntry = Readonly<{
   code: ApplicationErrorCode;
@@ -81,11 +68,13 @@ function text(value: unknown, maximumLength: number): string | undefined {
 }
 
 function pointer(path: readonly PropertyKey[]): string {
-  return path.reduce<string>(
-    (current, segment) =>
-      `${current}/${String(segment).replaceAll('~', '~0').replaceAll('/', '~1')}`,
-    '',
-  );
+  return path
+    .reduce<string>(
+      (current, segment) =>
+        `${current}/${String(segment).replaceAll('~', '~0').replaceAll('/', '~1')}`,
+      '',
+    )
+    .slice(0, 1_024);
 }
 
 function zodIssues(error: ZodError): readonly ProblemIssue[] {

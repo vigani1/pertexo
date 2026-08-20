@@ -4,3 +4,4 @@ node_modules
 pnpm-lock.yaml
 AGENTS.md
 docs
+packages/contracts/artifacts/*.json
