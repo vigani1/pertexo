@@ -193,6 +193,48 @@ describe('generic OIDC provider adapter', () => {
     },
   );
 
+  it('requires bounded OIDC token lifetime claims', async () => {
+    const { privateKey, publicKey } = await generateKeyPair('RS256');
+    const baseClaims = {
+      iss: configuration.issuer,
+      sub: 'subject-123',
+      aud: configuration.clientId,
+      nonce: request.nonce,
+    };
+    const now = Math.floor(Date.now() / 1_000);
+    const tokens = [
+      await new SignJWT(baseClaims)
+        .setProtectedHeader({ alg: 'RS256', kid: 'test-key' })
+        .setExpirationTime(now + 300)
+        .sign(privateKey),
+      await new SignJWT(baseClaims)
+        .setProtectedHeader({ alg: 'RS256', kid: 'test-key' })
+        .setIssuedAt(now)
+        .sign(privateKey),
+      await new SignJWT(baseClaims)
+        .setProtectedHeader({ alg: 'RS256', kid: 'test-key' })
+        .setIssuedAt(now - 700)
+        .setExpirationTime(now + 300)
+        .sign(privateKey),
+      await new SignJWT(baseClaims)
+        .setProtectedHeader({ alg: 'RS256', kid: 'test-key' })
+        .setIssuedAt(now - 400)
+        .setExpirationTime(now - 120)
+        .sign(privateKey),
+    ];
+
+    for (const token of tokens) {
+      const { adapter } = adapterWithToken(token, publicKey);
+      await expect(
+        adapter.exchangeCode({
+          code: 'one-time-code',
+          codeVerifier: 'a'.repeat(43),
+          redirectUri: request.redirectUri,
+        }),
+      ).rejects.toMatchObject({ code: 'identity.provider_rejected' });
+    }
+  });
+
   it('rejects timeout, non-2xx, and bounded-body failures safely', async () => {
     const { privateKey, publicKey } = await generateKeyPair('RS256');
     const token = await signedToken(privateKey);

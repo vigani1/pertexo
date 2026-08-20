@@ -46,6 +46,8 @@ const adapterConfigurationSchema = z
       .positive()
       .max(262_144)
       .default(65_536),
+    maxTokenAgeSeconds: z.number().int().positive().max(3_600).default(600),
+    clockToleranceSeconds: z.number().int().min(0).max(300).default(30),
     allowInsecureHttpForTests: z.boolean().default(false),
   })
   .superRefine((value, context) => {
@@ -83,6 +85,8 @@ const verifiedClaimsSchema = z.object({
   email: z.string().trim().pipe(z.email().max(320)).optional(),
   name: z.string().trim().min(1).max(256).optional(),
   email_verified: z.boolean().optional(),
+  exp: z.number().int().positive(),
+  iat: z.number().int().positive(),
 });
 
 export type GenericOidcAdapterConfiguration = Readonly<
@@ -261,6 +265,8 @@ export class GenericOidcProviderAdapter implements OidcProviderPort {
           issuer: this.configuration.issuer,
           audience: this.configuration.clientId,
           algorithms: this.configuration.allowedAlgorithms,
+          clockTolerance: this.configuration.clockToleranceSeconds,
+          maxTokenAge: `${String(this.configuration.maxTokenAgeSeconds)}s`,
         },
       );
       claims = verifiedClaimsSchema.parse(verified.payload);
