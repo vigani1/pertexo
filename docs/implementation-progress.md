@@ -973,7 +973,11 @@ Current evidence:
   schema documents, and reject oversized sparse arrays before allocation. The
   node SDK passes 18 focused assertions, typecheck, build, ESLint, formatting,
   browser-resolution denial, and independent Spec/Standards reviews with no
-  blocker/high findings.
+  blocker/high findings. Commit `786c23c` corrects the cancellation race at
+  the executor boundary: cancellation still rejects before execution, while a
+  result already confirmed by the executor remains truthful success and
+  proceeds through bounded output validation, as required by ADR 007. The
+  node-sdk and core-node suites remain green at 18 and 13 assertions.
 - Commit `94426f7` adds the exact `core.manual@1`, `core.set@1`, and
   `core.terminate@1` definition/executor pairs in per-node definition,
   validation, and executor modules. It pins bounded-JSON and restricted-JSONata
