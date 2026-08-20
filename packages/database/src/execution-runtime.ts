@@ -439,7 +439,9 @@ export async function commitCoordinatorTransition(
     const outboxEventId = randomUUID();
     const payload = {
       attemptId: admission.attemptId,
+      nodeRunId: admission.nodeRunId,
       outboxEventId,
+      runId: parsed.runId,
       schemaVersion: 1,
       workspaceId: transaction.workspaceId,
       ...(parsed.traceparent === undefined

@@ -277,13 +277,13 @@ describe('durable execution persistence', () => {
         run_status: 'running',
       });
       const payload = persisted.rows[0]?.payload;
-      expect(
-        typeof payload === 'object' &&
-          payload !== null &&
-          'attemptId' in payload
-          ? payload.attemptId
-          : undefined,
-      ).toBe(admitted.attemptId);
+      expect(payload).toMatchObject({
+        attemptId: admitted.attemptId,
+        nodeRunId: admitted.nodeRunId,
+        runId,
+        schemaVersion: 1,
+        workspaceId: workspaceA,
+      });
       const events = await db.execute(sql`
         select sequence, type from app.run_events
         where workflow_run_id = ${runId} order by sequence
