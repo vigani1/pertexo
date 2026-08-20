@@ -59,6 +59,7 @@ export type AuthorizeWorkspaceInput = Readonly<{
   capability: AuthorizationCapability;
   access: WorkspaceAuthorizationPort | WorkspaceAccessLookup;
   disclosure?: DisclosurePolicy;
+  allowedWorkspaceStatuses?: readonly WorkspaceStatus[];
 }>;
 
 function denied(
@@ -152,8 +153,9 @@ export async function authorizeWorkspace(
   if (record.membershipStatus !== 'active') {
     throw denied(disclosure, 'workspace membership is not active');
   }
-  if (record.workspaceStatus !== 'active') {
-    throw denied(disclosure, 'workspace is not active');
+  const allowedWorkspaceStatuses = input.allowedWorkspaceStatuses ?? ['active'];
+  if (!allowedWorkspaceStatuses.includes(record.workspaceStatus)) {
+    throw denied(disclosure, 'workspace lifecycle does not allow this action');
   }
   if (!hasCapability(record.role, input.capability)) {
     throw denied(disclosure, 'actor lacks the requested workspace capability');

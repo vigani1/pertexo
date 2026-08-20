@@ -50,13 +50,14 @@ function persistence(): IdentityWorkspacePersistence {
 
 function activeAccess(
   role: WorkspaceAccess['role'] = 'owner',
+  workspaceStatus: WorkspaceAccess['workspaceStatus'] = 'active',
 ): WorkspaceAccess {
   return {
     actorId,
     workspaceId,
     role,
     membershipStatus: 'active',
-    workspaceStatus: 'active',
+    workspaceStatus,
   };
 }
 
@@ -214,10 +215,62 @@ describe('identity/workspace application use cases', () => {
     expect(vi.mocked(store.requestWorkspaceDeletion)).not.toHaveBeenCalled();
   });
 
+  it('keeps a missing workspace indistinguishable from unauthorized access', async () => {
+    const store = persistence();
+    const authorization: WorkspaceAuthorizationReader = {
+      findAccess: vi.fn().mockResolvedValue(undefined),
+    };
+    const app = new WorkspaceLifecycleUseCase(store, authorization);
+
+    await expect(
+      app.requestDeletion({
+        actor: actor(),
+        routeWorkspaceId: workspaceId,
+        purgeAfter: new Date('2026-09-20T12:00:00.000Z'),
+        reason: 'retiring the temporary workspace',
+      }),
+    ).rejects.toMatchObject({ code: 'auth.forbidden' });
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(vi.mocked(store.requestWorkspaceDeletion)).not.toHaveBeenCalled();
+  });
+
+  it('allows owner lifecycle commands only from their explicit source states', async () => {
+    const store = persistence();
+    const authorization: WorkspaceAuthorizationReader = {
+      findAccess: vi
+        .fn()
+        .mockResolvedValueOnce(activeAccess('owner', 'suspended'))
+        .mockResolvedValueOnce(activeAccess('owner', 'pending_deletion'))
+        .mockResolvedValueOnce(activeAccess()),
+    };
+    const app = new WorkspaceLifecycleUseCase(store, authorization);
+
+    await expect(
+      app.requestDeletion({
+        actor: actor(),
+        routeWorkspaceId: workspaceId,
+        purgeAfter: new Date('2026-09-20T12:00:00.000Z'),
+        reason: 'retiring the suspended workspace',
+      }),
+    ).resolves.toMatchObject({ status: 'pending_deletion' });
+    await expect(
+      app.restore({ actor: actor(), routeWorkspaceId: workspaceId }),
+    ).resolves.toMatchObject({ status: 'suspended' });
+    await expect(
+      app.restore({ actor: actor(), routeWorkspaceId: workspaceId }),
+    ).rejects.toMatchObject({ code: 'auth.forbidden' });
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(vi.mocked(store.restoreWorkspace)).toHaveBeenCalledTimes(1);
+  });
+
   it('returns lifecycle transitions and preserves persistence failures for rollback/error mapping', async () => {
     const store = persistence();
     const authorization: WorkspaceAuthorizationReader = {
-      findAccess: vi.fn().mockResolvedValue(activeAccess()),
+      findAccess: vi
+        .fn()
+        .mockResolvedValueOnce(activeAccess())
+        .mockResolvedValueOnce(activeAccess('owner', 'pending_deletion'))
+        .mockResolvedValue(activeAccess()),
     };
     const app = new WorkspaceLifecycleUseCase(store, authorization);
 

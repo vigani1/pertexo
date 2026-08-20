@@ -74,6 +74,32 @@ describe('RFC 9457 problem details filter', () => {
     });
   });
 
+  it('renders workspace semantic conflicts as stable RFC 9457 409 problems', () => {
+    const contexts = new RequestContextStore();
+    const filter = new ProblemDetailsFilter(contexts);
+    const response = responseMock();
+
+    contexts.run('request-workspace-conflict', () => {
+      filter.catch(
+        applicationError('workspace.conflict', {
+          safeDetail: 'The workspace slug is already in use.',
+        }),
+        hostFor({ url: '/v1/workspaces' }, response),
+      );
+    });
+
+    expect(response.status).toHaveBeenCalledWith(409);
+    expect(response.body).toEqual({
+      type: 'urn:pertexo:problem:workspace.conflict',
+      title: 'Workspace conflict',
+      status: 409,
+      detail: 'The workspace slug is already in use.',
+      instance: '/v1/workspaces',
+      code: 'workspace.conflict',
+      requestId: 'request-workspace-conflict',
+    });
+  });
+
   it('converts Zod issues to bounded pointer-addressed validation errors', () => {
     const contexts = new RequestContextStore();
     const filter = new ProblemDetailsFilter(contexts);

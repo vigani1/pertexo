@@ -12,6 +12,7 @@ import type {
   WorkspaceAccessQuery,
 } from '../workspaces/index.js';
 import type { WorkspaceAccess, WorkspaceId } from '../workspaces/index.js';
+import type { IdentityWorkspaceTelemetry } from './telemetry.js';
 
 export type IdentityWorkspaceConfig = Readonly<{
   oidc: Readonly<{
@@ -98,6 +99,7 @@ export type IdentityWorkspaceDependencies = Readonly<{
   authorization: WorkspaceAuthorizationSource;
   crypto?: IdentityCrypto;
   clock?: IdentityClock;
+  telemetry?: IdentityWorkspaceTelemetry;
 }>;
 
 export type SessionCookieWriter = SessionCookieBoundary;

@@ -39,16 +39,39 @@ export const MEMBERSHIP_ROLE = {
 export type MembershipRole =
   (typeof MEMBERSHIP_ROLE)[keyof typeof MEMBERSHIP_ROLE];
 
+export type IdentityConflictReason = 'identity' | 'workspace_slug';
+
 export class IdentityConflictError extends Error {
   public override readonly name = 'IdentityConflictError';
+
+  public readonly reason: IdentityConflictReason;
+
+  public constructor(
+    message: string,
+    options: ErrorOptions & Readonly<{ reason?: IdentityConflictReason }> = {},
+  ) {
+    super(message, options);
+    this.reason = options.reason ?? 'identity';
+  }
 }
 
 export class IdentityNotFoundError extends Error {
   public override readonly name = 'IdentityNotFoundError';
 }
 
+export type WorkspaceLifecycleConflictReason =
+  'actor_inactive' | 'invalid_state';
+
 export class WorkspaceLifecycleConflictError extends Error {
   public override readonly name = 'WorkspaceLifecycleConflictError';
+
+  public constructor(
+    public readonly reason: WorkspaceLifecycleConflictReason,
+    message: string,
+    options?: ErrorOptions,
+  ) {
+    super(message, options);
+  }
 }
 
 export type UserRecord = Readonly<{
@@ -234,11 +257,15 @@ function parseMetadata(
   return parsed;
 }
 
-function databaseConflict(error: unknown, message: string): never {
+function databaseConflict(
+  error: unknown,
+  message: string,
+  reason: IdentityConflictReason = 'identity',
+): never {
   const code =
     error instanceof Error ? (error as DatabaseError).code : undefined;
   if (code === '23505' || code === '23503' || code === '23514') {
-    throw new IdentityConflictError(message, { cause: error });
+    throw new IdentityConflictError(message, { cause: error, reason });
   }
   throw error;
 }
@@ -747,6 +774,7 @@ export function createIdentityWorkspaceDatabase(
         databaseConflict(
           error,
           'Workspace creation conflicts with an existing record',
+          'workspace_slug',
         );
       }
     },
@@ -772,6 +800,7 @@ export function createIdentityWorkspaceDatabase(
         );
         if (actor.rowCount !== 1) {
           throw new WorkspaceLifecycleConflictError(
+            'actor_inactive',
             'Workspace actor is not an active member',
           );
         }
@@ -780,7 +809,7 @@ export function createIdentityWorkspaceDatabase(
            set status = 'pending_deletion', deletion_requested_at = clock_timestamp(),
                deletion_requested_by = $2, deletion_reason = $3,
                purge_after = $4, updated_at = clock_timestamp()
-           where id = $1 and status = 'active'
+           where id = $1 and status in ('active', 'suspended')
            returning id, name, slug, status, created_by,
                      deletion_requested_at, deletion_requested_by, deletion_reason,
                      purge_after,
@@ -788,7 +817,10 @@ export function createIdentityWorkspaceDatabase(
           [workspaceId, actorUserId, deletionReason, purgeAfter],
         );
         if (result.rowCount !== 1) {
-          throw new WorkspaceLifecycleConflictError('Workspace is not active');
+          throw new WorkspaceLifecycleConflictError(
+            'invalid_state',
+            'Workspace is neither active nor suspended',
+          );
         }
         const revoked = await client.query(
           `update app.sessions s
@@ -837,6 +869,7 @@ export function createIdentityWorkspaceDatabase(
         );
         if (actor.rowCount !== 1) {
           throw new WorkspaceLifecycleConflictError(
+            'actor_inactive',
             'Workspace actor is not an active member',
           );
         }
@@ -854,6 +887,7 @@ export function createIdentityWorkspaceDatabase(
         );
         if (result.rowCount !== 1) {
           throw new WorkspaceLifecycleConflictError(
+            'invalid_state',
             'Workspace is not pending deletion',
           );
         }

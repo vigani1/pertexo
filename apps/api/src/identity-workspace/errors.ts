@@ -1,4 +1,8 @@
 import {
+  IdentityConflictError,
+  WorkspaceLifecycleConflictError,
+} from '@pertexo/database';
+import {
   applicationError,
   type ApplicationError,
 } from '../platform/http/index.js';
@@ -28,15 +32,22 @@ export function mapIdentityWorkspaceError(error: unknown): ApplicationError {
   if (isIdentityError(error)) {
     return mapIdentityError(error);
   }
-  if (
-    error instanceof Error &&
-    error.name === 'WorkspaceLifecycleConflictError'
-  ) {
+  if (error instanceof WorkspaceLifecycleConflictError) {
+    if (error.reason === 'invalid_state') {
+      return applicationError('workspace.conflict', {
+        safeDetail: 'The workspace is not in a valid state for this operation.',
+      });
+    }
     return applicationError('auth.forbidden', {
       safeDetail: 'The workspace cannot perform this lifecycle operation.',
     });
   }
-  if (error instanceof Error && error.name === 'IdentityConflictError') {
+  if (error instanceof IdentityConflictError) {
+    if (error.reason === 'workspace_slug') {
+      return applicationError('workspace.conflict', {
+        safeDetail: 'The workspace slug is already in use.',
+      });
+    }
     return applicationError('request.invalid', {
       safeDetail: 'The request conflicts with existing identity data.',
     });

@@ -46,7 +46,15 @@ import {
   type IdentityWorkspaceRequest,
 } from './types.js';
 import { requestIdentifier, traceIdentifier } from './request-identifiers.js';
-import { SESSION_COOKIE_POLICY } from './tokens.js';
+import {
+  IDENTITY_WORKSPACE_TELEMETRY,
+  SESSION_COOKIE_POLICY,
+} from './tokens.js';
+import {
+  IDENTITY_WORKSPACE_OPERATION,
+  NOOP_IDENTITY_WORKSPACE_TELEMETRY,
+  type IdentityWorkspaceTelemetry,
+} from './telemetry.js';
 
 export const OIDC_SESSION_RESPONSE = Object.freeze({
   status: 204,
@@ -60,8 +68,10 @@ export class OidcController {
     oidc: OidcLoginService,
     sessions: OpaqueSessionService,
     private readonly csrf: DoubleSubmitCsrfPolicy,
+    @Inject(IDENTITY_WORKSPACE_TELEMETRY)
+    telemetry: IdentityWorkspaceTelemetry = NOOP_IDENTITY_WORKSPACE_TELEMETRY,
   ) {
-    this.application = new OidcApplicationService(oidc, sessions);
+    this.application = new OidcApplicationService(oidc, sessions, telemetry);
   }
 
   @Get('start')
@@ -104,6 +114,8 @@ export class SessionController {
     private readonly sessions: OpaqueSessionService,
     @Inject(SESSION_COOKIE_POLICY)
     private readonly cookiePolicy: SessionCookiePolicy,
+    @Inject(IDENTITY_WORKSPACE_TELEMETRY)
+    private readonly telemetry: IdentityWorkspaceTelemetry = NOOP_IDENTITY_WORKSPACE_TELEMETRY,
   ) {}
 
   @Post('logout')
@@ -117,11 +129,16 @@ export class SessionController {
       const token = sessionToken(request);
       if (token === undefined)
         return throwApplicationError(applicationError('auth.unauthenticated'));
-      await this.sessions.revoke(token);
-      response.header('set-cookie', [
-        clearCookie(SESSION_COOKIE_NAME, true, this.cookiePolicy),
-        clearCookie(CSRF_COOKIE_NAME, false, this.cookiePolicy),
-      ]);
+      await this.telemetry.measure(
+        IDENTITY_WORKSPACE_OPERATION.sessionLogout,
+        async () => {
+          await this.sessions.revoke(token);
+          response.header('set-cookie', [
+            clearCookie(SESSION_COOKIE_NAME, true, this.cookiePolicy),
+            clearCookie(CSRF_COOKIE_NAME, false, this.cookiePolicy),
+          ]);
+        },
+      );
     } catch (error: unknown) {
       return throwApplicationError(mapIdentityWorkspaceError(error));
     }

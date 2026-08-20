@@ -35,6 +35,12 @@ export const APPLICATION_ERROR_CATALOG = {
     severity: 'warn',
     exposeDetail: true,
   },
+  'workspace.conflict': {
+    status: 409,
+    title: 'Workspace conflict',
+    severity: 'info',
+    exposeDetail: true,
+  },
   'workflow.revision_conflict': {
     status: 409,
     title: 'Workflow revision conflict',

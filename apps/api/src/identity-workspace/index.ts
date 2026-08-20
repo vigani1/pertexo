@@ -36,3 +36,25 @@ export * from './ports.js';
 export * from './tokens.js';
 export * from './types.js';
 export { requestIdentifier, traceIdentifier } from './request-identifiers.js';
+export {
+  identityWorkspaceClientContract,
+  identityWorkspaceOpenApiDocument,
+} from './contracts.js';
+export {
+  createIdentityWorkspaceTelemetry,
+  IDENTITY_WORKSPACE_METRIC_NAME,
+  IDENTITY_WORKSPACE_OPERATION,
+  NOOP_IDENTITY_WORKSPACE_TELEMETRY,
+} from './telemetry.js';
+export type {
+  IdentityWorkspaceCounter,
+  IdentityWorkspaceHistogram,
+  IdentityWorkspaceMeter,
+  IdentityWorkspaceMetricAttributes,
+  IdentityWorkspaceOperation,
+  IdentityWorkspaceOutcome,
+  IdentityWorkspaceSpan,
+  IdentityWorkspaceTelemetry,
+  IdentityWorkspaceTelemetryOptions,
+  IdentityWorkspaceTracer,
+} from './telemetry.js';

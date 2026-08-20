@@ -1,9 +1,12 @@
 import { z } from 'zod';
 
+export const oidcAuthorizationCodeSchema = z.string().min(1).max(4_096);
+export const oidcStateSchema = z.string().min(16).max(512);
+
 export const oidcCallbackRequestSchema = z
   .object({
-    code: z.string().min(1).max(4_096),
-    state: z.string().min(16).max(512),
+    code: oidcAuthorizationCodeSchema,
+    state: oidcStateSchema,
   })
   .strict();
 
@@ -33,8 +36,10 @@ export const workspaceDeletionRequestSchema = z
   })
   .strict();
 
+export const workspaceIdentifierSchema = z.uuid();
+
 export const workspaceIdParamSchema = z
-  .object({ workspaceId: z.uuid() })
+  .object({ workspaceId: workspaceIdentifierSchema })
   .strict();
 
 export const workspaceResponseSchema = z

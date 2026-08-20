@@ -9,6 +9,7 @@ import {
   createIdentityWorkspaceDatabase,
   createWorkspaceDatabase,
   createOidcLoginTransactionStore,
+  IdentityConflictError,
   parseDatabaseConfig,
   auditEvents,
   workspaceMemberships,
@@ -347,6 +348,19 @@ describe('identity/workspace persistence', () => {
     );
     expect(restored.workspace.status).toBe('suspended');
     expect(restored.workspace.deletionReason).toBeNull();
+    await expect(
+      identityDatabase.restoreWorkspace(workspaceId, ownerUserId),
+    ).rejects.toMatchObject({ reason: 'invalid_state' });
+    const repeatedDeletion = await identityDatabase.requestWorkspaceDeletion(
+      workspaceId,
+      ownerUserId,
+      new Date(Date.now() + 60_000),
+      'delete after suspended restore',
+    );
+    expect(repeatedDeletion.workspace.status).toBe('pending_deletion');
+    await expect(
+      identityDatabase.restoreWorkspace(workspaceId, ownerUserId),
+    ).resolves.toMatchObject({ workspace: { status: 'suspended' } });
     const events = await tenantDatabase.withWorkspace(
       workspaceId,
       async ({ db }) =>
@@ -354,6 +368,8 @@ describe('identity/workspace persistence', () => {
     );
     expect(events.map((event) => event.action)).toEqual([
       'workspace.created',
+      'workspace.deletion_requested',
+      'workspace.restored',
       'workspace.deletion_requested',
       'workspace.restored',
     ]);
@@ -395,6 +411,13 @@ describe('identity/workspace persistence', () => {
     expect(
       outcomes.filter((outcome) => outcome.status === 'rejected'),
     ).toHaveLength(1);
+    const rejected = outcomes.find((outcome) => outcome.status === 'rejected');
+    expect(rejected).toBeDefined();
+    if (rejected?.status !== 'rejected') {
+      throw new Error('Expected one workspace slug conflict');
+    }
+    expect(rejected.reason).toBeInstanceOf(IdentityConflictError);
+    expect(rejected.reason).toMatchObject({ reason: 'workspace_slug' });
     const pool = new Pool({ connectionString: apiUrl, max: 1 });
     try {
       const result = await pool.query<{ id: string }>(

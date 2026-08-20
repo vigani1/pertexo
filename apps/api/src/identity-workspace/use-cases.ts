@@ -9,6 +9,7 @@ import {
   type ActorContext,
   type AuthorizedWorkspaceContext,
   type AuthorizationCapability,
+  type WorkspaceStatus,
 } from '../workspaces/index.js';
 import {
   workspaceCreateRequestSchema,
@@ -19,6 +20,11 @@ import type {
   IdentityWorkspacePersistence,
   WorkspaceAuthorizationSource,
 } from './ports.js';
+import {
+  IDENTITY_WORKSPACE_OPERATION,
+  NOOP_IDENTITY_WORKSPACE_TELEMETRY,
+  type IdentityWorkspaceTelemetry,
+} from './telemetry.js';
 
 export interface OidcLoginPort {
   startLogin(): Promise<
@@ -40,28 +46,36 @@ export class OidcApplicationService {
   public constructor(
     private readonly oidc: OidcLoginPort,
     private readonly sessions: SessionIssuePort,
+    private readonly telemetry: IdentityWorkspaceTelemetry = NOOP_IDENTITY_WORKSPACE_TELEMETRY,
   ) {}
 
   public start(): Promise<
     Readonly<{ authorizationUrl: string; expiresAt: Date }>
   > {
-    return this.oidc.startLogin();
+    return this.telemetry.measure(IDENTITY_WORKSPACE_OPERATION.oidcStart, () =>
+      this.oidc.startLogin(),
+    );
   }
 
   public async complete(
     input: unknown,
     cookieBoundary: SessionCookieBoundary,
   ): Promise<SessionIssueResult & Readonly<{ userId: string }>> {
-    const callback = oidcCallbackInputSchema.parse(input);
-    const result = await this.oidc.completeLogin(callback);
-    const session = await this.sessions.issue(
-      { userId: result.internalIdentity.userId },
-      cookieBoundary,
+    return this.telemetry.measure(
+      IDENTITY_WORKSPACE_OPERATION.oidcCallback,
+      async () => {
+        const callback = oidcCallbackInputSchema.parse(input);
+        const result = await this.oidc.completeLogin(callback);
+        const session = await this.sessions.issue(
+          { userId: result.internalIdentity.userId },
+          cookieBoundary,
+        );
+        return Object.freeze({
+          ...session,
+          userId: result.internalIdentity.userId,
+        });
+      },
     );
-    return Object.freeze({
-      ...session,
-      userId: result.internalIdentity.userId,
-    });
   }
 }
 
@@ -77,24 +91,32 @@ export type CreateWorkspaceInput = Readonly<{
 export class CreateWorkspaceUseCase {
   public constructor(
     private readonly persistence: IdentityWorkspacePersistence,
+    private readonly telemetry: IdentityWorkspaceTelemetry = NOOP_IDENTITY_WORKSPACE_TELEMETRY,
   ) {}
 
   public async execute(
     input: CreateWorkspaceInput,
   ): Promise<WorkspaceResponse> {
-    const request = workspaceCreateRequestSchema.parse({
-      name: input.name,
-      slug: input.slug,
-    });
-    const workspace = await this.persistence.createWorkspaceWithOwner({
-      ownerUserId: input.actorId,
-      name: request.name,
-      slug: request.slug,
-      ...(input.requestId === undefined ? {} : { requestId: input.requestId }),
-      ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
-      metadata: input.metadata ?? {},
-    });
-    return workspaceResponseSchema.parse(toWorkspaceResponse(workspace));
+    return this.telemetry.measure(
+      IDENTITY_WORKSPACE_OPERATION.workspaceCreate,
+      async () => {
+        const request = workspaceCreateRequestSchema.parse({
+          name: input.name,
+          slug: input.slug,
+        });
+        const workspace = await this.persistence.createWorkspaceWithOwner({
+          ownerUserId: input.actorId,
+          name: request.name,
+          slug: request.slug,
+          ...(input.requestId === undefined
+            ? {}
+            : { requestId: input.requestId }),
+          ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
+          metadata: input.metadata ?? {},
+        });
+        return workspaceResponseSchema.parse(toWorkspaceResponse(workspace));
+      },
+    );
   }
 }
 
@@ -113,37 +135,56 @@ export class WorkspaceLifecycleUseCase {
   public constructor(
     private readonly persistence: IdentityWorkspacePersistence,
     private readonly authorization: WorkspaceAuthorizationSource,
+    private readonly telemetry: IdentityWorkspaceTelemetry = NOOP_IDENTITY_WORKSPACE_TELEMETRY,
   ) {}
 
   public async requestDeletion(
     input: RequestDeletionInput,
   ): Promise<WorkspaceResponse> {
-    await this.authorize(input, 'workspace:manage');
-    const result = await this.persistence.requestWorkspaceDeletion(
-      input.routeWorkspaceId,
-      input.actor.actorId,
-      input.purgeAfter,
-      input.reason,
-      auditOptions(input),
+    return this.telemetry.measure(
+      IDENTITY_WORKSPACE_OPERATION.workspaceRequestDeletion,
+      async () => {
+        await this.authorize(input, 'workspace:manage', [
+          'active',
+          'suspended',
+        ]);
+        const result = await this.persistence.requestWorkspaceDeletion(
+          input.routeWorkspaceId,
+          input.actor.actorId,
+          input.purgeAfter,
+          input.reason,
+          auditOptions(input),
+        );
+        return workspaceResponseSchema.parse(
+          toWorkspaceResponse(result.workspace),
+        );
+      },
     );
-    return workspaceResponseSchema.parse(toWorkspaceResponse(result.workspace));
   }
 
   public async restore(
     input: WorkspaceLifecycleInput,
   ): Promise<WorkspaceResponse> {
-    await this.authorize(input, 'workspace:manage');
-    const result = await this.persistence.restoreWorkspace(
-      input.routeWorkspaceId,
-      input.actor.actorId,
-      auditOptions(input),
+    return this.telemetry.measure(
+      IDENTITY_WORKSPACE_OPERATION.workspaceRestore,
+      async () => {
+        await this.authorize(input, 'workspace:manage', ['pending_deletion']);
+        const result = await this.persistence.restoreWorkspace(
+          input.routeWorkspaceId,
+          input.actor.actorId,
+          auditOptions(input),
+        );
+        return workspaceResponseSchema.parse(
+          toWorkspaceResponse(result.workspace),
+        );
+      },
     );
-    return workspaceResponseSchema.parse(toWorkspaceResponse(result.workspace));
   }
 
   private authorize(
     input: WorkspaceLifecycleInput,
     capability: AuthorizationCapability,
+    allowedWorkspaceStatuses: readonly WorkspaceStatus[],
   ): Promise<AuthorizedWorkspaceContext> {
     return authorizeWorkspace({
       actor: input.actor,
@@ -151,6 +192,7 @@ export class WorkspaceLifecycleUseCase {
       capability,
       access: this.authorization,
       disclosure: 'forbidden',
+      allowedWorkspaceStatuses,
     });
   }
 }

@@ -32,7 +32,12 @@ import {
   OIDC_TRANSACTIONS,
   WORKSPACE_AUTHORIZATION,
   SESSION_COOKIE_POLICY,
+  IDENTITY_WORKSPACE_TELEMETRY,
 } from './tokens.js';
+import {
+  NOOP_IDENTITY_WORKSPACE_TELEMETRY,
+  type IdentityWorkspaceTelemetry,
+} from './telemetry.js';
 
 @Module({})
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class
@@ -48,6 +53,10 @@ export class IdentityWorkspaceModule {
       { provide: IDENTITY_WORKSPACE_CONFIG, useValue: dependencies.config },
       { provide: IDENTITY_CRYPTO, useValue: crypto },
       { provide: IDENTITY_CLOCK, useValue: clock },
+      {
+        provide: IDENTITY_WORKSPACE_TELEMETRY,
+        useValue: dependencies.telemetry ?? NOOP_IDENTITY_WORKSPACE_TELEMETRY,
+      },
       { provide: OIDC_PROVIDER, useValue: dependencies.provider },
       { provide: OIDC_TRANSACTIONS, useValue: dependencies.transactions },
       {
@@ -133,16 +142,23 @@ export class IdentityWorkspaceModule {
         provide: CreateWorkspaceUseCase,
         useFactory: (
           persistence: IdentityWorkspaceDependencies['persistence'],
-        ) => new CreateWorkspaceUseCase(persistence),
-        inject: [IDENTITY_WORKSPACE_PERSISTENCE],
+          telemetry: IdentityWorkspaceTelemetry,
+        ) => new CreateWorkspaceUseCase(persistence, telemetry),
+        inject: [IDENTITY_WORKSPACE_PERSISTENCE, IDENTITY_WORKSPACE_TELEMETRY],
       },
       {
         provide: WorkspaceLifecycleUseCase,
         useFactory: (
           persistence: IdentityWorkspaceDependencies['persistence'],
           authorization: IdentityWorkspaceDependencies['authorization'],
-        ) => new WorkspaceLifecycleUseCase(persistence, authorization),
-        inject: [IDENTITY_WORKSPACE_PERSISTENCE, WORKSPACE_AUTHORIZATION],
+          telemetry: IdentityWorkspaceTelemetry,
+        ) =>
+          new WorkspaceLifecycleUseCase(persistence, authorization, telemetry),
+        inject: [
+          IDENTITY_WORKSPACE_PERSISTENCE,
+          WORKSPACE_AUTHORIZATION,
+          IDENTITY_WORKSPACE_TELEMETRY,
+        ],
       },
       {
         provide: SessionAuthenticationGuard,
@@ -161,8 +177,13 @@ export class IdentityWorkspaceModule {
         useFactory: (
           sessions: OpaqueSessionService,
           policy: SessionCookiePolicy,
-        ) => new SessionController(sessions, policy),
-        inject: [OpaqueSessionService, SESSION_COOKIE_POLICY],
+          telemetry: IdentityWorkspaceTelemetry,
+        ) => new SessionController(sessions, policy, telemetry),
+        inject: [
+          OpaqueSessionService,
+          SESSION_COOKIE_POLICY,
+          IDENTITY_WORKSPACE_TELEMETRY,
+        ],
       },
     ];
     return {
