@@ -891,7 +891,9 @@ export function createIdentityWorkspaceDatabase(
            set status = 'suspended', deletion_requested_at = null,
                deletion_requested_by = null, deletion_reason = null, purge_after = null,
                updated_at = clock_timestamp()
-           where id = $1 and status = 'pending_deletion'
+           where id = $1
+             and status = 'pending_deletion'
+             and purge_after > clock_timestamp()
            returning id, name, slug, status, created_by,
                      deletion_requested_at, deletion_requested_by, deletion_reason,
                      purge_after,
@@ -901,7 +903,7 @@ export function createIdentityWorkspaceDatabase(
         if (result.rowCount !== 1) {
           throw new WorkspaceLifecycleConflictError(
             'invalid_state',
-            'Workspace is not pending deletion',
+            'Workspace is not restorable',
           );
         }
         await client.query(

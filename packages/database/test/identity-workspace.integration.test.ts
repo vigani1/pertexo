@@ -458,7 +458,7 @@ describe('identity/workspace persistence', () => {
     ).resolves.not.toBeNull();
   });
 
-  it('revokes member sessions atomically and restores to suspended', async () => {
+  it('revokes member sessions atomically and restores to suspended before the purge deadline', async () => {
     const extraSession = await identityDatabase.createSession({
       userId: ownerUserId,
       tokenDigest: createHash('sha256').update(randomUUID()).digest('hex'),
@@ -513,6 +513,51 @@ describe('identity/workspace persistence', () => {
       'workspace.restored',
       'workspace.deletion_requested',
       'workspace.restored',
+    ]);
+  });
+
+  it('rejects restore after the PostgreSQL purge deadline without changing state or audit history', async () => {
+    const workspace = await identityDatabase.createWorkspaceWithOwner({
+      name: 'Expired Restore Workspace',
+      slug: `expired-restore-${randomUUID().slice(0, 12)}`,
+      ownerUserId,
+    });
+    await identityDatabase.requestWorkspaceDeletion(
+      workspace.id,
+      ownerUserId,
+      new Date(Date.now() + 60_000),
+      'deadline boundary test',
+    );
+
+    const owner = new Pool({ connectionString: migrationUrl, max: 1 });
+    try {
+      await owner.query('set role pertexo_owner');
+      await owner.query(
+        `update app.workspaces
+         set deletion_requested_at = clock_timestamp() - interval '2 seconds',
+             purge_after = clock_timestamp() - interval '1 second'
+         where id = $1`,
+        [workspace.id],
+      );
+    } finally {
+      await owner.end();
+    }
+
+    await expect(
+      identityDatabase.restoreWorkspace(workspace.id, ownerUserId),
+    ).rejects.toMatchObject({ reason: 'invalid_state' });
+    await expect(
+      identityDatabase.findWorkspaceAccess(ownerUserId, workspace.id),
+    ).resolves.toMatchObject({ workspaceStatus: 'pending_deletion' });
+
+    const events = await tenantDatabase.withWorkspace(
+      workspace.id,
+      async ({ db }) =>
+        db.select({ action: auditEvents.action }).from(auditEvents),
+    );
+    expect(events.map((event) => event.action)).toEqual([
+      'workspace.created',
+      'workspace.deletion_requested',
     ]);
   });
 
