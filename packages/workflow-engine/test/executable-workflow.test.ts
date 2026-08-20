@@ -15,6 +15,7 @@ import {
   advanceWorkflow,
   buildWorkflowExecutableV2,
   composeExecutableCompatibilityRelease,
+  computeWorkflowExecutableChecksumV2,
   createCheckpoint,
   executeNodeAttempt,
   invocationKey,
@@ -66,6 +67,8 @@ function nodeRelease(input?: {
   readonly mutateSet?: boolean;
   readonly unrelated?: boolean;
   readonly driftCapability?: boolean;
+  readonly manualRetryClass?: NodeManifest['retryClass'];
+  readonly setRetryClass?: NodeManifest['retryClass'];
 }): RegistryRelease {
   const definitions = [
     manifest('core.manual'),
@@ -76,10 +79,17 @@ function nodeRelease(input?: {
     manifest('core.terminate'),
     ...(input?.unrelated ? [manifest('test.unrelated')] : []),
   ];
+  const manual = definitions.find(
+    ({ definition }) => definition.key === 'core.manual',
+  );
+  const set = definitions.find(
+    ({ definition }) => definition.key === 'core.set',
+  );
+  if (manual !== undefined && input?.manualRetryClass !== undefined)
+    Object.assign(manual, { retryClass: input.manualRetryClass });
+  if (set !== undefined && input?.setRetryClass !== undefined)
+    Object.assign(set, { retryClass: input.setRetryClass });
   if (input?.driftCapability) {
-    const set = definitions.find(
-      ({ definition }) => definition.key === 'core.set',
-    );
     if (set !== undefined) Object.assign(set, { capabilities: ['drifted'] });
   }
   return createRegistryRelease({
@@ -152,7 +162,7 @@ function graph(reverse = false) {
 }
 
 describe('workflow executable V2 identity', () => {
-  it('composes engine-owned policies and produces the retained golden checksum', () => {
+  it('composes engine-owned policies and produces the pre-publication golden checksum', () => {
     const release = composeExecutableCompatibilityRelease(nodeRelease());
     const compiled = buildWorkflowExecutableV2({ graph: graph(), release });
     expect(compiled.envelope.graph.nodes.map(({ id }) => id)).toEqual([
@@ -160,8 +170,13 @@ describe('workflow executable V2 identity', () => {
       'set',
       'terminate',
     ]);
+    expect(
+      compiled.envelope.graph.nodes.map(
+        ({ sideEffectClass }) => sideEffectClass,
+      ),
+    ).toEqual(['safe', 'safe', 'safe']);
     expect(compiled.checksum).toBe(
-      'wf:v2:sha256:5bd46722bf6e3a0b436a65a0acf18479772d40b33589f1e5a565bb24db470bf2',
+      'wf:v2:sha256:83af8d0f5a0827ce0036124d7bcfb2da4935b2f633d1f5f92d3fc3873f0faeff',
     );
     expect(
       verifyWorkflowExecutableV2({
@@ -214,6 +229,90 @@ describe('workflow executable V2 identity', () => {
     );
   });
 
+  it('pins side-effect class into behavior identity and rejects a mutated pin', () => {
+    const safeRelease = composeExecutableCompatibilityRelease(nodeRelease());
+    const idempotentRelease = composeExecutableCompatibilityRelease(
+      nodeRelease({ setRetryClass: 'idempotent-with-key' }),
+    );
+    const safe = buildWorkflowExecutableV2({
+      graph: graph(),
+      release: safeRelease,
+    });
+    const idempotent = buildWorkflowExecutableV2({
+      graph: graph(),
+      release: idempotentRelease,
+    });
+    expect(
+      idempotent.envelope.graph.nodes.find(({ id }) => id === 'set')
+        ?.sideEffectClass,
+    ).toBe('idempotent_with_key');
+    expect(idempotent.checksum).not.toBe(safe.checksum);
+
+    const mutated = structuredClone(safe.envelope);
+    const set = mutated.graph.nodes.find(({ id }) => id === 'set');
+    if (set === undefined) throw new Error('fixture set node missing');
+    Object.assign(set, { sideEffectClass: 'unsafe' });
+    expect(computeWorkflowExecutableChecksumV2(mutated)).not.toBe(
+      safe.checksum,
+    );
+    expect(() =>
+      parseWorkflowExecutableV2({
+        envelope: mutated,
+        admissionRelease: safeRelease,
+      }),
+    ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
+
+    for (const invalidClass of ['idempotent-with-key', 'unknown']) {
+      const wrong = structuredClone(safe.envelope);
+      const wrongSet = wrong.graph.nodes.find(({ id }) => id === 'set');
+      if (wrongSet === undefined) throw new Error('fixture set node missing');
+      Object.assign(wrongSet, { sideEffectClass: invalidClass });
+      expect(() =>
+        parseWorkflowExecutableV2({
+          envelope: wrong,
+          admissionRelease: safeRelease,
+        }),
+      ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
+    }
+
+    const missing = structuredClone(safe.envelope);
+    const missingSet = missing.graph.nodes.find(({ id }) => id === 'set');
+    if (missingSet === undefined) throw new Error('fixture set node missing');
+    Reflect.deleteProperty(missingSet, 'sideEffectClass');
+    expect(() =>
+      parseWorkflowExecutableV2({
+        envelope: missing,
+        admissionRelease: safeRelease,
+      }),
+    ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
+
+    const driftedCurrent = composeExecutableCompatibilityRelease(
+      nodeRelease({ epoch: 2, setRetryClass: 'idempotent-with-key' }),
+    );
+    expect(() =>
+      parseWorkflowExecutableV2({
+        envelope: safe.envelope,
+        admissionRelease: safeRelease,
+        currentRelease: driftedCurrent,
+      }),
+    ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
+  });
+
+  it('maps all manifest retry classes once into pinned ADR 007 vocabulary', () => {
+    const release = composeExecutableCompatibilityRelease(
+      nodeRelease({
+        manualRetryClass: 'unsafe',
+        setRetryClass: 'idempotent-with-key',
+      }),
+    );
+    expect(
+      buildWorkflowExecutableV2({
+        graph: graph(),
+        release,
+      }).envelope.graph.nodes.map(({ sideEffectClass }) => sideEffectClass),
+    ).toEqual(['unsafe', 'idempotent_with_key', 'safe']);
+  });
+
   it('executes retained exact pins under a later release without rewriting provenance', () => {
     const admission = composeExecutableCompatibilityRelease(nodeRelease());
     const current = composeExecutableCompatibilityRelease(
@@ -223,13 +322,15 @@ describe('workflow executable V2 identity', () => {
       graph: graph(),
       release: admission,
     });
+    const retained = parseWorkflowExecutableV2({
+      envelope: compiled.envelope,
+      admissionRelease: admission,
+      currentRelease: current,
+    });
+    expect(retained.compatibilityReleaseEpoch).toBe(1);
     expect(
-      parseWorkflowExecutableV2({
-        envelope: compiled.envelope,
-        admissionRelease: admission,
-        currentRelease: current,
-      }).compatibilityReleaseEpoch,
-    ).toBe(1);
+      retained.graph.nodes.map(({ sideEffectClass }) => sideEffectClass),
+    ).toEqual(['safe', 'safe', 'safe']);
     expect(() =>
       buildWorkflowExecutableV2({ graph: graph(), release: current }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
@@ -243,14 +344,18 @@ describe('workflow executable V2 identity', () => {
         currentRelease: blocked,
       }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
+    const retirementBlocked = parseWorkflowExecutableV2({
+      envelope: compiled.envelope,
+      admissionRelease: admission,
+      currentRelease: blocked,
+      execution: { alreadyAdmitted: true },
+    });
+    expect(retirementBlocked.compatibilityReleaseEpoch).toBe(1);
     expect(
-      parseWorkflowExecutableV2({
-        envelope: compiled.envelope,
-        admissionRelease: admission,
-        currentRelease: blocked,
-        execution: { alreadyAdmitted: true },
-      }).compatibilityReleaseEpoch,
-    ).toBe(1);
+      retirementBlocked.graph.nodes.map(
+        ({ sideEffectClass }) => sideEffectClass,
+      ),
+    ).toEqual(['safe', 'safe', 'safe']);
     expect(() =>
       parseWorkflowExecutableV2({
         envelope: compiled.envelope,
@@ -539,6 +644,67 @@ describe('Phase 3 production operations', () => {
         signal: new AbortController().signal,
       }),
     ).rejects.toMatchObject({ code: 'executable_invalid' });
+  });
+
+  it('carries exact pinned side-effect classes into attempt admissions', async () => {
+    const release = composeExecutableCompatibilityRelease(
+      nodeRelease({
+        manualRetryClass: 'unsafe',
+        setRetryClass: 'idempotent-with-key',
+      }),
+    );
+    const executable = buildWorkflowExecutableV2({ graph: graph(), release });
+    const checkpoint = createCheckpoint({
+      engineVersion: 'engine-v1',
+      workflowVersionId: 'version-1',
+      iterationBudget: 0,
+    });
+    const manual = await advanceWorkflow({
+      runId: 'run-1',
+      executable,
+      workflowVersionId: 'version-1',
+      checkpoint,
+      occurredAt: '2026-08-20T10:00:00.000Z',
+      maximumAdmissions: 1,
+      observations: [],
+      signal: new AbortController().signal,
+    });
+    const manualAttempt = manual.attempts[0];
+    if (manualAttempt === undefined) throw new Error('manual was not admitted');
+    expect(manualAttempt).toMatchObject({
+      nodeId: 'manual',
+      sideEffectClass: 'unsafe',
+    });
+    const completedManual = await advanceWorkflow({
+      runId: 'run-1',
+      executable,
+      workflowVersionId: 'version-1',
+      checkpoint: manual.checkpoint,
+      occurredAt: '2026-08-20T10:01:00.000Z',
+      maximumAdmissions: 1,
+      observations: [
+        {
+          kind: 'outcome',
+          invocationKey: manualAttempt.invocationKey,
+          status: 'succeeded',
+        },
+      ],
+      signal: new AbortController().signal,
+    });
+    const set = await advanceWorkflow({
+      runId: 'run-1',
+      executable,
+      workflowVersionId: 'version-1',
+      checkpoint: completedManual.checkpoint,
+      occurredAt: '2026-08-20T10:02:00.000Z',
+      maximumAdmissions: 1,
+      observations: [],
+      signal: new AbortController().signal,
+    });
+    expect(set.attempts[0]).toMatchObject({
+      nodeId: 'set',
+      sideEffectClass: 'idempotent_with_key',
+    });
   });
 
   it('resolves mapped inputs and preserves confirmed success after abort', async () => {

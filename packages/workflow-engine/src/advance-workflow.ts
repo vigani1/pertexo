@@ -154,7 +154,7 @@ export function advanceWorkflowFromSchedulerState(
   }
 
   if (
-    graph !== undefined &&
+    graph?.deriveReadiness === true &&
     !cancelRequested &&
     (runStatus === 'running' || runStatus === 'waiting')
   ) {
@@ -560,6 +560,7 @@ export function advanceWorkflowFromSchedulerState(
       invocationKey: key,
       nodeId: running.nodeId,
       attemptNumber: running.attemptNumber,
+      sideEffectClass: schedulerNodeSideEffectClass(graph, running.nodeId),
     });
   }
 
@@ -752,6 +753,24 @@ function sameLoopDeclaration(left: LoopState, right: LoopState): boolean {
 
 function rootInvocationKey(workflowVersionId: string, nodeId: string): string {
   return createInvocationKey({ workflowVersionId, nodeId });
+}
+
+function schedulerNodeSideEffectClass(
+  schedulerState: SchedulerState | undefined,
+  nodeId: string,
+): AttemptAdmissionPlan['sideEffectClass'] {
+  if (schedulerState === undefined)
+    throw new WorkflowEngineError(
+      'checkpoint_invalid',
+      'scheduler state is required for attempt admission',
+    );
+  const node = schedulerState.nodes.find(({ id }) => id === nodeId);
+  if (node === undefined)
+    throw new WorkflowEngineError(
+      'checkpoint_invalid',
+      `scheduler node ${nodeId} is missing`,
+    );
+  return node.sideEffectClass;
 }
 
 function loopInvocationKey(

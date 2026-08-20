@@ -1,12 +1,15 @@
 import { invocationKey } from './scheduling.js';
 import { compareOrdinal } from './ordering.js';
 import type { InvocationState } from './types.js';
+import type { SideEffectClass } from './types.js';
 
 /** Private execution projection derived only from a verified executable. */
 export interface SchedulerState {
+  readonly deriveReadiness: boolean;
   readonly nodes: readonly {
     readonly id: string;
     readonly disabled?: boolean;
+    readonly sideEffectClass: SideEffectClass;
   }[];
   readonly edges: readonly {
     readonly source: { readonly nodeId: string };

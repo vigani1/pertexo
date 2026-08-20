@@ -61,7 +61,8 @@ async function loadRecoveryFacts(database) {
 
 function schedulerGraph(graph) {
   return {
-    nodes: graph.nodes.map(({ id }) => ({ id })),
+    deriveReadiness: true,
+    nodes: graph.nodes.map(({ id }) => ({ id, sideEffectClass: 'safe' })),
     edges: graph.edges.map(({ source, target }) => ({ source, target })),
   };
 }
@@ -87,7 +88,7 @@ async function computePlan(database) {
   const checkpoint = parseCheckpoint(facts.scheduler_state);
   const plan = advanceWorkflow({
     checkpoint,
-    graph: schedulerGraph(facts.graph),
+    schedulerState: schedulerGraph(facts.graph),
     maximumAdmissions: 1,
     occurredAt: input.occurredAt,
   });
@@ -264,6 +265,7 @@ async function engineRoundtrip() {
     );
     const plan = advanceWorkflow({
       checkpoint,
+      schedulerState: schedulerGraph(facts.graph),
       maximumAdmissions: input.maximumAdmissions,
       observations: input.observations,
       occurredAt: input.occurredAt,
@@ -290,7 +292,7 @@ async function recoverEngineTransition(mode) {
       input.replayPlan ??
       advanceWorkflow({
         checkpoint,
-        graph: schedulerGraph(facts.graph),
+        schedulerState: schedulerGraph(facts.graph),
         maximumAdmissions: input.maximumAdmissions,
         observations: input.observations,
         occurredAt: input.occurredAt,

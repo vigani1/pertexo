@@ -135,6 +135,7 @@ export interface AttemptAdmissionPlan {
   readonly invocationKey: string;
   readonly nodeId: string;
   readonly attemptNumber: number;
+  readonly sideEffectClass: SideEffectClass;
   readonly providerIdempotencyKey?: string;
 }
 

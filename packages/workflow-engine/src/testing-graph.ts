@@ -18,8 +18,11 @@ export function parseSchedulerGraph(value: unknown): SchedulerGraph {
         validation.issues.map(({ code }) => code).join(','),
       );
     return {
+      deriveReadiness: true,
       nodes: graph.nodes.map(({ id, disabled }) =>
-        disabled === undefined ? { id } : { id, disabled },
+        disabled === undefined
+          ? { id, sideEffectClass: 'safe' }
+          : { id, disabled, sideEffectClass: 'safe' },
       ),
       edges: graph.edges.map(({ source, target }) => ({
         source: { nodeId: source.nodeId },

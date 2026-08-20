@@ -176,10 +176,14 @@ function schedulerState(
   executable: CompiledWorkflowExecutableV2,
 ): SchedulerState {
   return {
-    nodes: executable.envelope.graph.nodes.map(({ id, disabled }) => ({
-      id,
-      disabled,
-    })),
+    deriveReadiness: true,
+    nodes: executable.envelope.graph.nodes.map(
+      ({ id, disabled, sideEffectClass: pinnedSideEffectClass }) => ({
+        id,
+        disabled,
+        sideEffectClass: pinnedSideEffectClass,
+      }),
+    ),
     edges: executable.envelope.graph.edges.map(({ source, target }) => ({
       source: { nodeId: source.nodeId },
       target: { nodeId: target.nodeId },

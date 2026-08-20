@@ -12,6 +12,7 @@ import type { WorkflowTransitionPlan } from './types.js';
 export interface AdvanceWorkflowInput {
   readonly checkpoint: unknown;
   readonly graph?: unknown;
+  readonly schedulerState?: SchedulerGraph;
   readonly observations?: readonly WorkflowObservation[];
   readonly occurredAt: string;
   readonly maximumAdmissions: number;
@@ -20,11 +21,15 @@ export interface AdvanceWorkflowInput {
 export function advanceWorkflow(
   input: AdvanceWorkflowInput,
 ): WorkflowTransitionPlan {
+  if (input.graph !== undefined && input.schedulerState !== undefined)
+    throw new Error('provide graph or schedulerState, not both');
   return advanceWorkflowFromSchedulerState({
     checkpoint: parseCheckpoint(input.checkpoint),
-    ...(input.graph === undefined
-      ? {}
-      : { schedulerState: parseSchedulerGraph(input.graph) }),
+    ...(input.schedulerState !== undefined
+      ? { schedulerState: input.schedulerState }
+      : input.graph !== undefined
+        ? { schedulerState: parseSchedulerGraph(input.graph) }
+        : {}),
     ...(input.observations === undefined
       ? {}
       : { observations: input.observations }),

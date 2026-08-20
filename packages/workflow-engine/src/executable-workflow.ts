@@ -25,6 +25,7 @@ import {
 } from '@pertexo/workflow-model/graph';
 
 import { WorkflowEngineError } from './errors.js';
+import type { SideEffectClass } from './types.js';
 
 export const PHASE3_RUNTIME_POLICIES_V1 = Object.freeze({
   scheduler: Object.freeze({ key: 'engine.scheduler', version: 1 }),
@@ -55,6 +56,7 @@ export interface WorkflowExecutableNodeV2 {
   readonly inputMappings: Readonly<Record<string, ValueSource>>;
   readonly connectionRefs: Readonly<Record<string, string>>;
   readonly disabled: boolean;
+  readonly sideEffectClass: SideEffectClass;
   readonly executor: ExecutorIdentity;
   readonly executorAbi: number;
   readonly policyReferences: readonly PolicyReference[];
@@ -282,6 +284,7 @@ function executableNode(
     inputMappings: node.inputMappings,
     connectionRefs: node.connectionRefs,
     disabled: node.disabled ?? false,
+    sideEffectClass: sideEffectClass(definition.retryClass),
     executor: definition.executor,
     executorAbi: executor.abiVersion,
     policyReferences: [...definition.policyReferences].sort(compareIdentity),
@@ -580,6 +583,36 @@ function parsePolicies(value: unknown): readonly PolicyReference[] {
   return [...policies].sort(compareIdentity);
 }
 
+function parseSideEffectClass(value: unknown): SideEffectClass {
+  switch (value) {
+    case 'safe':
+    case 'idempotent_with_key':
+    case 'unsafe':
+      return value;
+    default:
+      fail('node side-effect class is invalid');
+  }
+}
+
+function sideEffectClass(
+  retryClass: NodeManifest['retryClass'],
+): SideEffectClass {
+  switch (retryClass) {
+    case 'safe':
+      return 'safe';
+    case 'idempotent-with-key':
+      return 'idempotent_with_key';
+    case 'unsafe':
+      return 'unsafe';
+    default:
+      return unreachableRetryClass(retryClass);
+  }
+}
+
+function unreachableRetryClass(value: never): never {
+  fail(`unsupported retry class ${String(value)}`);
+}
+
 function immutableDefinitionBehavior(manifest: NodeManifest): unknown {
   return {
     schemaVersion: manifest.schemaVersion,
@@ -642,6 +675,7 @@ function validatePin(
   const definition = parseIdentity(raw.definition, 'node definition');
   const executor = parseIdentity(raw.executor, 'node executor');
   const policies = parsePolicies(raw.policyReferences);
+  const selectedSideEffectClass = parseSideEffectClass(raw.sideEffectClass);
   const admissionDefinition = definitionManifest(admission, definition);
   const currentDefinition = definitionManifest(current, definition);
   const admissionExecutor = executorManifest(admission, executor);
@@ -661,6 +695,9 @@ function validatePin(
     currentDefinition.configVersion !== node.configVersion ||
     raw.executorAbi !== admissionExecutor.abiVersion ||
     raw.executorAbi !== currentExecutor.abiVersion ||
+    selectedSideEffectClass !==
+      sideEffectClass(admissionDefinition.retryClass) ||
+    selectedSideEffectClass !== sideEffectClass(currentDefinition.retryClass) ||
     expectedPolicies !==
       canonicalJson(
         [...admissionDefinition.policyReferences].sort(compareIdentity),
@@ -688,6 +725,7 @@ function validatePin(
     inputMappings: node.inputMappings,
     connectionRefs: node.connectionRefs,
     disabled: node.disabled ?? false,
+    sideEffectClass: selectedSideEffectClass,
     executor,
     executorAbi: admissionExecutor.abiVersion,
     policyReferences: policies,
@@ -759,6 +797,7 @@ function parseBoundary(input: {
       'inputMappings',
       'connectionRefs',
       'disabled',
+      'sideEffectClass',
       'executor',
       'executorAbi',
       'policyReferences',

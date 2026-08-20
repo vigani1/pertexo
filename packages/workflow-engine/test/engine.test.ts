@@ -23,7 +23,13 @@ import {
   type WorkflowCheckpointV1,
   WORKFLOW_CHECKPOINT_LIMITS_V1,
 } from '../src/index.js';
-import { advanceWorkflow, deriveReadyNodes } from '../src/testing.js';
+import {
+  advanceWorkflow as advanceWorkflowForTesting,
+  deriveReadyNodes,
+  parseSchedulerGraph,
+  type AdvanceWorkflowInput,
+  type SchedulerGraph,
+} from '../src/testing.js';
 
 const occurredAt = '2026-08-20T10:00:00.000Z';
 const chainGraph = {
@@ -53,6 +59,35 @@ function checkpoint(): WorkflowCheckpointV1 {
     workflowVersionId: 'version-1',
     iterationBudget: 1_000,
   });
+}
+
+function explicitSchedulerState(input: AdvanceWorkflowInput): SchedulerGraph {
+  if (input.schedulerState !== undefined) return input.schedulerState;
+  if (input.graph !== undefined) return parseSchedulerGraph(input.graph);
+  const parsed = parseCheckpoint(input.checkpoint);
+  const nodeIds = new Set(parsed.invocations.map(({ nodeId }) => nodeId));
+  for (const observation of input.observations ?? []) {
+    if (observation.kind === 'ready') nodeIds.add(observation.nodeId);
+    else if (observation.kind === 'join_declared')
+      nodeIds.add(observation.joinId);
+    else if (
+      observation.kind === 'loop_started' ||
+      observation.kind === 'loop_iteration_completed'
+    )
+      nodeIds.add(observation.loopId);
+  }
+  return {
+    deriveReadiness: false,
+    nodes: [...nodeIds].map((id) => ({ id, sideEffectClass: 'safe' })),
+    edges: [],
+  };
+}
+
+function advanceWorkflow(input: AdvanceWorkflowInput) {
+  const schedulerState = explicitSchedulerState(input);
+  const { graph: _, ...withoutGraph } = input;
+  void _;
+  return advanceWorkflowForTesting({ ...withoutGraph, schedulerState });
 }
 
 describe('checkpoint seam', () => {
@@ -355,11 +390,33 @@ describe('checkpoint seam', () => {
 });
 
 describe('AdvanceWorkflow operation', () => {
+  it('rejects attempt admission without explicit scheduler state', () => {
+    expect(() =>
+      advanceWorkflowForTesting({
+        checkpoint: checkpoint(),
+        occurredAt,
+        maximumAdmissions: 1,
+        observations: [
+          { kind: 'ready', invocationKey: 'node', nodeId: 'node' },
+        ],
+      }),
+    ).toThrow(
+      expect.objectContaining({
+        code: 'checkpoint_invalid',
+        message: 'scheduler state is required for attempt admission',
+      }),
+    );
+  });
+
   it('uses ordinal node ordering for deterministic admissions', () => {
     expect(
       deriveReadyNodes({
         graph: {
-          nodes: [{ id: 'a' }, { id: 'Z' }],
+          deriveReadiness: true,
+          nodes: [
+            { id: 'a', sideEffectClass: 'safe' },
+            { id: 'Z', sideEffectClass: 'safe' },
+          ],
           edges: [],
         },
         workflowVersionId: 'version-1',
@@ -562,7 +619,12 @@ describe('AdvanceWorkflow operation', () => {
     });
     expect(resumed.checkpoint.runStatus).toBe('running');
     expect(resumed.attempts).toEqual([
-      { invocationKey: 'wait', nodeId: 'wait', attemptNumber: 2 },
+      {
+        invocationKey: 'wait',
+        nodeId: 'wait',
+        attemptNumber: 2,
+        sideEffectClass: 'safe',
+      },
     ]);
   });
 

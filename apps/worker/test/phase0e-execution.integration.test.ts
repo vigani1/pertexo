@@ -412,11 +412,12 @@ function fixtureGraph(): Record<string, unknown> {
 
 function schedulerGraph(): engine.SchedulerGraph {
   return {
+    deriveReadiness: true,
     nodes: [
-      { id: 'root' },
-      { id: 'branch-a' },
-      { id: 'branch-b' },
-      { id: 'join' },
+      { id: 'root', sideEffectClass: 'safe' },
+      { id: 'branch-a', sideEffectClass: 'safe' },
+      { id: 'branch-b', sideEffectClass: 'safe' },
+      { id: 'join', sideEffectClass: 'safe' },
     ],
     edges: [
       { source: { nodeId: 'root' }, target: { nodeId: 'branch-a' } },
@@ -483,7 +484,7 @@ async function startRun(
   });
   const plan = engine.advanceWorkflow({
     checkpoint: initial,
-    graph: schedulerGraph(),
+    schedulerState: schedulerGraph(),
     occurredAt: new Date().toISOString(),
     maximumAdmissions: 1,
   });
@@ -1354,6 +1355,16 @@ describeIntegration('Phase 0E real execution recovery fixture', () => {
     ] as const;
     const firstAdvance = engine.advanceWorkflow({
       checkpoint: initial,
+      schedulerState: {
+        deriveReadiness: false,
+        nodes: ['join-all', 'join-any', 'join-count', 'loop-1'].map(
+          (id): engine.SchedulerGraph['nodes'][number] => ({
+            id,
+            sideEffectClass: 'safe',
+          }),
+        ),
+        edges: [],
+      },
       observations: branchAndLoopObservations,
       occurredAt: '2026-08-20T00:00:00.000Z',
       maximumAdmissions: 10,
@@ -1379,7 +1390,7 @@ describeIntegration('Phase 0E real execution recovery fixture', () => {
     );
     const secondAdvanceInput = {
       checkpoint: firstAdvance.checkpoint,
-      graph: schedulerGraph(),
+      schedulerState: schedulerGraph(),
       observations: [
         {
           kind: 'branch_disposition',
