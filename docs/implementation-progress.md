@@ -395,6 +395,9 @@ Current evidence:
   runs both pass the full 100-assertion real-PostgreSQL suite; 13 assertions
   belong to the new Phase 1 repository slice. Database unit tests (10),
   typecheck, build, ESLint, Prettier, and diff checks pass.
+- Commit `6bb356e` adds one-statement digest revocation with a concurrent
+  one-winner/idempotency regression, raising the focused Phase 1 repository
+  suite to 14 assertions and the full database integration matrix to 101.
 
 ## Later phases
 
