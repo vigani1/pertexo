@@ -98,6 +98,62 @@ const admissionSchema = z
     }
   });
 
+const traceparentSchema = z
+  .string()
+  .regex(
+    /^00-[\da-f]{32}-[\da-f]{16}-[\da-f]{2}$/,
+    'traceparent must use the bounded W3C version 00 format',
+  )
+  .refine(
+    (value) => value.slice(3, 35) !== '0'.repeat(32),
+    'traceparent trace-id must not be all zeroes',
+  )
+  .refine(
+    (value) => value.slice(36, 52) !== '0'.repeat(16),
+    'traceparent parent-id must not be all zeroes',
+  );
+
+const executeNodeAttemptPayloadSchema = z
+  .object({
+    attemptId: z.uuid(),
+    nodeRunId: z.uuid(),
+    outboxEventId: z.uuid(),
+    runId: z.uuid(),
+    schemaVersion: z.literal(1),
+    traceparent: traceparentSchema.optional(),
+    workspaceId: z.uuid(),
+  })
+  .strict();
+
+function createExecuteNodeAttemptPayload(
+  input: Readonly<
+    Omit<z.input<typeof executeNodeAttemptPayloadSchema>, 'schemaVersion'>
+  >,
+): Readonly<Record<string, string | number>> {
+  const parsed = executeNodeAttemptPayloadSchema.parse({
+    ...input,
+    schemaVersion: 1,
+  });
+  return parsed.traceparent === undefined
+    ? {
+        attemptId: parsed.attemptId,
+        nodeRunId: parsed.nodeRunId,
+        outboxEventId: parsed.outboxEventId,
+        runId: parsed.runId,
+        schemaVersion: parsed.schemaVersion,
+        workspaceId: parsed.workspaceId,
+      }
+    : {
+        attemptId: parsed.attemptId,
+        nodeRunId: parsed.nodeRunId,
+        outboxEventId: parsed.outboxEventId,
+        runId: parsed.runId,
+        schemaVersion: parsed.schemaVersion,
+        traceparent: parsed.traceparent,
+        workspaceId: parsed.workspaceId,
+      };
+}
+
 const coordinatorTransitionSchema = z
   .object({
     admissions: z.array(admissionSchema).max(64),
@@ -437,17 +493,16 @@ export async function commitCoordinatorTransition(
       payload: eventPayload,
     });
     const outboxEventId = randomUUID();
-    const payload = {
+    const payload = createExecuteNodeAttemptPayload({
       attemptId: admission.attemptId,
       nodeRunId: admission.nodeRunId,
       outboxEventId,
       runId: parsed.runId,
-      schemaVersion: 1,
       workspaceId: transaction.workspaceId,
       ...(parsed.traceparent === undefined
         ? {}
         : { traceparent: parsed.traceparent }),
-    };
+    });
     await insertOutboxEvent(transaction, {
       id: outboxEventId,
       aggregateId: admission.attemptId,
@@ -954,17 +1009,16 @@ export async function commitDueNodeAdmission(
     },
   });
   const outboxEventId = randomUUID();
-  const payload = {
+  const payload = createExecuteNodeAttemptPayload({
     attemptId: parsed.attemptId,
     nodeRunId: parsed.nodeRunId,
     outboxEventId,
     runId: checkpointRow.workflow_run_id,
-    schemaVersion: 1,
     workspaceId: transaction.workspaceId,
     ...(parsed.traceparent === undefined
       ? {}
       : { traceparent: parsed.traceparent }),
-  };
+  });
   await insertOutboxEvent(transaction, {
     aggregateId: parsed.attemptId,
     aggregateType: 'node-attempt',
@@ -1167,12 +1221,16 @@ export async function reconcileExpiredNodeAttempt(
   const locked = await transaction.db.execute<{
     dispatch_marked_at: Date | null;
     fence_token: string;
+    lease_expired: boolean | null;
+    lease_expires_at: Date | null;
     node_run_id: string;
     run_id: string;
     side_effect_class: SideEffectClass;
     status: string;
   }>(sql`
     select a.status, a.fence_token, a.dispatch_marked_at, a.side_effect_class,
+           a.lease_expires_at,
+           (a.lease_expires_at <= clock_timestamp()) as lease_expired,
            a.node_run_id, n.workflow_run_id as run_id
     from app.node_attempts a
     join app.node_runs n on n.workspace_id = a.workspace_id and n.id = a.node_run_id
@@ -1185,6 +1243,9 @@ export async function reconcileExpiredNodeAttempt(
     Number(row.fence_token) !== parsed.expectedFenceToken
   )
     throw new AttemptFenceConflictError();
+  if (row.lease_expired !== true) {
+    throw new AttemptReconciliationRequiredError();
+  }
   const mayReclaim =
     row.dispatch_marked_at === null ||
     row.side_effect_class === SIDE_EFFECT_CLASS.safe ||
@@ -1194,7 +1255,7 @@ export async function reconcileExpiredNodeAttempt(
   }
   const nextFence = parsed.expectedFenceToken + 1;
   const nextStatus = parsed.action === 'reclaim' ? 'ready' : 'outcome_unknown';
-  await transaction.db.execute(sql`
+  const updated = await transaction.db.execute(sql`
     update app.node_attempts
     set status = ${nextStatus}, fence_token = ${nextFence}, lease_owner = null,
         lease_expires_at = null,
@@ -1202,7 +1263,12 @@ export async function reconcileExpiredNodeAttempt(
         completed_at = case when ${nextStatus} = 'outcome_unknown' then clock_timestamp() else null end,
         updated_at = clock_timestamp()
     where workspace_id = ${transaction.workspaceId} and id = ${parsed.attemptId}
+      and status = 'running' and fence_token = ${parsed.expectedFenceToken}
+      and lease_expires_at <= clock_timestamp()
   `);
+  if (updated.rowCount !== 1) {
+    throw new AttemptReconciliationRequiredError();
+  }
   if (nextStatus === 'outcome_unknown') {
     await transaction.db.execute(sql`
       update app.node_runs
@@ -1222,17 +1288,24 @@ export async function reconcileExpiredNodeAttempt(
   const outboxEventId = randomUUID();
   const payload =
     parsed.action === 'reclaim'
-      ? {
+      ? createExecuteNodeAttemptPayload({
           attemptId: parsed.attemptId,
+          nodeRunId: row.node_run_id,
           outboxEventId,
-          schemaVersion: 1,
+          runId: row.run_id,
           workspaceId: transaction.workspaceId,
-        }
+          ...(parsed.traceparent === undefined
+            ? {}
+            : { traceparent: parsed.traceparent }),
+        })
       : {
           outboxEventId,
           runId: row.run_id,
           schemaVersion: 1,
           workspaceId: transaction.workspaceId,
+          ...(parsed.traceparent === undefined
+            ? {}
+            : { traceparent: parsed.traceparent }),
         };
   await insertOutboxEvent(transaction, {
     aggregateId: parsed.action === 'reclaim' ? parsed.attemptId : row.run_id,
@@ -1243,17 +1316,9 @@ export async function reconcileExpiredNodeAttempt(
       parsed.action === 'reclaim'
         ? 'execute-node-attempt'
         : 'advance-workflow-run',
-    payload: {
-      ...payload,
-      ...(parsed.traceparent === undefined
-        ? {}
-        : { traceparent: parsed.traceparent }),
-    },
+    payload,
     payloadChecksum: canonicalOutboxPayloadChecksum({
       ...payload,
-      ...(parsed.traceparent === undefined
-        ? {}
-        : { traceparent: parsed.traceparent }),
     }),
     schemaVersion: 1,
   });

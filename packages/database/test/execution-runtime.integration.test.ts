@@ -47,6 +47,7 @@ const worker = createWorkspaceDatabase(
 );
 const workspaceA = randomUUID();
 const workspaceB = randomUUID();
+const traceparent = `00-${'a'.repeat(32)}-${'b'.repeat(16)}-01`;
 
 const migrationConfig = {
   apiRuntimeRole: 'pertexo_api',
@@ -667,6 +668,140 @@ describe('durable execution persistence', () => {
         }),
       ),
     ).rejects.toThrow('execution.attempt_terminal_conflict');
+  });
+
+  it('denies reconciliation during a live lease and emits the complete execute payload after expiry', async () => {
+    const runId = await acceptRun();
+    const admitted = await startRun(runId, admission('safe'));
+    await worker.withWorkspace(workspaceA, (transaction) =>
+      claimNodeAttempt(transaction, {
+        attemptId: admitted.attemptId,
+        leaseDurationSeconds: 30,
+        workerId: 'reconcile-worker',
+      }),
+    );
+
+    await expect(
+      worker.withWorkspace(workspaceA, (transaction) =>
+        reconcileExpiredNodeAttempt(transaction, {
+          action: 'reclaim',
+          attemptId: admitted.attemptId,
+          expectedFenceToken: 1,
+        }),
+      ),
+    ).rejects.toBeInstanceOf(AttemptReconciliationRequiredError);
+    await expect(
+      worker.withWorkspace(workspaceA, (transaction) =>
+        reconcileExpiredNodeAttempt(transaction, {
+          action: 'outcome_unknown',
+          attemptId: admitted.attemptId,
+          expectedFenceToken: 1,
+        }),
+      ),
+    ).rejects.toBeInstanceOf(AttemptReconciliationRequiredError);
+
+    await worker.withWorkspace(workspaceA, ({ db }) =>
+      db.execute(sql`
+        update app.node_attempts
+        set lease_expires_at = clock_timestamp() - interval '1 second'
+        where id = ${admitted.attemptId}
+      `),
+    );
+    const reconciled = await worker.withWorkspace(workspaceA, (transaction) =>
+      reconcileExpiredNodeAttempt(transaction, {
+        action: 'reclaim',
+        attemptId: admitted.attemptId,
+        expectedFenceToken: 1,
+        traceparent,
+      }),
+    );
+    expect(reconciled.fenceToken).toBe(2);
+
+    await worker.withWorkspace(workspaceA, async ({ db }) => {
+      const outbox = await db.execute<{
+        aggregate_id: string;
+        job_name: string;
+        payload: unknown;
+      }>(sql`
+        select aggregate_id, job_name, payload
+        from app.outbox_events
+        where id = ${reconciled.outboxEventId}
+      `);
+      expect(outbox.rows).toEqual([
+        {
+          aggregate_id: admitted.attemptId,
+          job_name: 'execute-node-attempt',
+          payload: {
+            attemptId: admitted.attemptId,
+            nodeRunId: admitted.nodeRunId,
+            outboxEventId: reconciled.outboxEventId,
+            runId,
+            schemaVersion: 1,
+            traceparent,
+            workspaceId: workspaceA,
+          },
+        },
+      ]);
+    });
+  });
+
+  it('serializes concurrent expired reconciliation and fences the loser', async () => {
+    const runId = await acceptRun();
+    const admitted = await startRun(runId, admission('safe'));
+    await worker.withWorkspace(workspaceA, async (transaction) => {
+      await claimNodeAttempt(transaction, {
+        attemptId: admitted.attemptId,
+        leaseDurationSeconds: 30,
+        workerId: 'reconcile-worker',
+      });
+      await transaction.db.execute(sql`
+        update app.node_attempts
+        set lease_expires_at = clock_timestamp() - interval '1 second'
+        where id = ${admitted.attemptId}
+      `);
+    });
+
+    const outcomes = await Promise.allSettled([
+      worker.withWorkspace(workspaceA, (transaction) =>
+        reconcileExpiredNodeAttempt(transaction, {
+          action: 'reclaim',
+          attemptId: admitted.attemptId,
+          expectedFenceToken: 1,
+        }),
+      ),
+      worker.withWorkspace(workspaceA, (transaction) =>
+        reconcileExpiredNodeAttempt(transaction, {
+          action: 'reclaim',
+          attemptId: admitted.attemptId,
+          expectedFenceToken: 1,
+        }),
+      ),
+    ]);
+    expect(
+      outcomes.filter((outcome) => outcome.status === 'fulfilled'),
+    ).toHaveLength(1);
+    const rejected = outcomes.find((outcome) => outcome.status === 'rejected');
+    expect(
+      rejected?.status === 'rejected' ? rejected.reason : undefined,
+    ).toBeInstanceOf(AttemptFenceConflictError);
+    await worker.withWorkspace(workspaceA, async ({ db }) => {
+      const state = await db.execute<{
+        fence_token: string;
+        status: string;
+      }>(sql`
+        select fence_token, status
+        from app.node_attempts
+        where id = ${admitted.attemptId}
+      `);
+      expect(state.rows).toEqual([{ fence_token: '2', status: 'ready' }]);
+      const events = await db.execute<{ count: number }>(sql`
+        select count(*)::integer as count
+        from app.outbox_events
+        where aggregate_id = ${admitted.attemptId}
+          and job_name = 'execute-node-attempt'
+      `);
+      expect(events.rows).toEqual([{ count: 2 }]);
+    });
   });
 
   it('forces workspace isolation and exposes no mutation path to the API for attempt history', async () => {
