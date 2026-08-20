@@ -5,6 +5,7 @@ export const IDENTITY_ERROR_CODES = [
   'identity.transaction_replayed',
   'identity.callback_rejected',
   'identity.provider_rejected',
+  'identity.provider_unavailable',
   'identity.issuer_mismatch',
   'identity.audience_mismatch',
   'identity.nonce_mismatch',
@@ -27,6 +28,8 @@ const SAFE_MESSAGES: Readonly<Record<IdentityErrorCode, string>> = {
     'The login transaction has already been used.',
   'identity.callback_rejected': 'The identity callback was rejected.',
   'identity.provider_rejected': 'The identity provider rejected the login.',
+  'identity.provider_unavailable':
+    'The identity provider is temporarily unavailable.',
   'identity.issuer_mismatch':
     'The identity provider is not configured for this application.',
   'identity.audience_mismatch':
@@ -44,9 +47,9 @@ const SAFE_MESSAGES: Readonly<Record<IdentityErrorCode, string>> = {
 /** A mapping-ready error whose message never contains credential or provider data. */
 export class IdentityError extends Error {
   readonly code: IdentityErrorCode;
-  readonly status: 400 | 401 | 403 | 502;
+  readonly status: 400 | 401 | 403 | 503;
 
-  constructor(code: IdentityErrorCode, status?: 400 | 401 | 403 | 502) {
+  constructor(code: IdentityErrorCode, status?: 400 | 401 | 403 | 503) {
     super(SAFE_MESSAGES[code]);
     this.name = 'IdentityError';
     this.code = code;
@@ -54,9 +57,9 @@ export class IdentityError extends Error {
   }
 }
 
-function defaultStatus(code: IdentityErrorCode): 400 | 401 | 403 | 502 {
+function defaultStatus(code: IdentityErrorCode): 400 | 401 | 403 | 503 {
   if (code === 'identity.csrf_failed') return 403;
-  if (code === 'identity.provider_rejected') return 502;
+  if (code === 'identity.provider_unavailable') return 503;
   if (
     code === 'identity.session_invalid' ||
     code === 'identity.session_expired' ||

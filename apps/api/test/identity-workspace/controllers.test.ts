@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   DoubleSubmitCsrfPolicy,
+  IdentityError,
   nodeIdentityCrypto,
   OpaqueSessionService,
 } from '../../src/identity/index.js';
@@ -211,5 +212,28 @@ describe('identity/workspace controllers', () => {
         { reason: 'retire it' },
       ),
     ).rejects.toMatchObject({ code: 'request.invalid' });
+  });
+
+  it('maps an OIDC provider outage to the stable application error', async () => {
+    const oidc = {
+      completeLogin: vi
+        .fn()
+        .mockRejectedValue(new IdentityError('identity.provider_unavailable')),
+    } as unknown as OidcLoginService;
+    const controller = new OidcController(
+      oidc,
+      { issue: vi.fn() } as never,
+      new DoubleSubmitCsrfPolicy(nodeIdentityCrypto),
+    );
+
+    await expect(
+      controller.callback(
+        { code: 'authorization-code', state: 'state-value-123456' },
+        { header: vi.fn() },
+      ),
+    ).rejects.toMatchObject({
+      code: 'provider.unavailable',
+      safeDetail: 'The identity provider is temporarily unavailable.',
+    });
   });
 });

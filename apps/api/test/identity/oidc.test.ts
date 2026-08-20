@@ -191,7 +191,7 @@ describe('managed OIDC application service', () => {
       await expect(
         setup.app.completeLogin({ code: 'one-time-code', state }),
       ).rejects.toMatchObject({
-        code: 'identity.provider_rejected',
+        code: 'identity.provider_unavailable',
       });
     }
     await expect(
@@ -233,7 +233,7 @@ describe('managed OIDC application service', () => {
     });
   });
 
-  it('does not expose provider failures or secret values through typed errors', async () => {
+  it('classifies opaque provider failures as unavailable without exposing secret values', async () => {
     const setup = service(new FakeClock());
     await setup.app.startLogin();
     setup.provider.exchangeCode = () => {
@@ -246,7 +246,10 @@ describe('managed OIDC application service', () => {
       });
     } catch (error) {
       expect(error).toBeInstanceOf(IdentityError);
-      expect(error).toMatchObject({ code: 'identity.provider_rejected' });
+      expect(error).toMatchObject({
+        code: 'identity.provider_unavailable',
+        status: 503,
+      });
       expect(String(error)).not.toContain('provider-token');
     }
   });

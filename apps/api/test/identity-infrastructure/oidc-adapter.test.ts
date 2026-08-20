@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 
 import {
   digestBase64Url,
-  IdentityError,
   nodeIdentityCrypto,
   type OidcAuthorizationRequest,
 } from '../../src/identity/index.js';
@@ -235,7 +234,7 @@ describe('generic OIDC provider adapter', () => {
     }
   });
 
-  it('rejects timeout, non-2xx, and bounded-body failures safely', async () => {
+  it('classifies transport timeouts and provider 5xx responses as unavailable', async () => {
     const { privateKey, publicKey } = await generateKeyPair('RS256');
     const token = await signedToken(privateKey);
     const slowFetch: typeof fetch = async (_input, init) =>
@@ -251,7 +250,10 @@ describe('generic OIDC provider adapter', () => {
         codeVerifier: 'a'.repeat(43),
         redirectUri: request.redirectUri,
       }),
-    ).rejects.toMatchObject({ code: 'identity.provider_rejected' });
+    ).rejects.toMatchObject({
+      code: 'identity.provider_unavailable',
+      status: 503,
+    });
 
     const nonOkFetch: typeof fetch = () =>
       Promise.resolve(new Response('provider-secret-error', { status: 503 }));
@@ -262,21 +264,29 @@ describe('generic OIDC provider adapter', () => {
         codeVerifier: 'a'.repeat(43),
         redirectUri: request.redirectUri,
       }),
-    ).rejects.toMatchObject({ code: 'identity.provider_rejected' });
+    ).rejects.toMatchObject({
+      code: 'identity.provider_unavailable',
+      status: 503,
+    });
+  });
+
+  it('keeps invalid token responses and redirects as rejected callbacks', async () => {
+    const { privateKey, publicKey } = await generateKeyPair('RS256');
+    const token = await signedToken(privateKey);
 
     const boundedFetch: typeof fetch = () =>
       Promise.resolve(new Response('x'.repeat(2_000), { status: 200 }));
     const bounded = adapterWithToken(token, publicKey, boundedFetch);
-    try {
-      await bounded.adapter.exchangeCode({
+    await expect(
+      bounded.adapter.exchangeCode({
         code: 'one-time-code',
         codeVerifier: 'a'.repeat(43),
         redirectUri: request.redirectUri,
-      });
-    } catch (error) {
-      expect(error).toBeInstanceOf(IdentityError);
-      expect(String(error)).not.toContain('provider-secret');
-    }
+      }),
+    ).rejects.toMatchObject({
+      code: 'identity.provider_rejected',
+      status: 400,
+    });
 
     const streamingFetch: typeof fetch = () =>
       Promise.resolve(
@@ -315,6 +325,40 @@ describe('generic OIDC provider adapter', () => {
         redirectUri: request.redirectUri,
       }),
     ).rejects.toMatchObject({ code: 'identity.provider_rejected' });
+  });
+
+  it('classifies remote JWKS endpoint failures as unavailable', async () => {
+    const { privateKey } = await generateKeyPair('RS256');
+    const token = await signedToken(privateKey);
+    const fetchImpl: typeof fetch = (input) => {
+      const url = input instanceof Request ? input.url : input.toString();
+      if (url === configuration.tokenEndpoint) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ id_token: token }), { status: 200 }),
+        );
+      }
+      return Promise.resolve(
+        new Response('provider-jwks-secret', { status: 503 }),
+      );
+    };
+    const adapter = new GenericOidcProviderAdapter(configuration, {
+      fetch: fetchImpl,
+    });
+
+    try {
+      await adapter.exchangeCode({
+        code: 'one-time-code',
+        codeVerifier: 'a'.repeat(43),
+        redirectUri: request.redirectUri,
+      });
+      throw new Error('expected JWKS failure');
+    } catch (error: unknown) {
+      expect(error).toMatchObject({
+        code: 'identity.provider_unavailable',
+        status: 503,
+      });
+      expect(String(error)).not.toContain('provider-jwks-secret');
+    }
   });
 
   it('requires HTTPS unless explicitly opted into test HTTP endpoints', () => {

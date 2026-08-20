@@ -7,7 +7,7 @@ import {
   encodeBase64Url,
   nodeIdentityCrypto,
 } from './crypto.js';
-import { IdentityError } from './errors.js';
+import { IdentityError, isIdentityError } from './errors.js';
 import type {
   IdentityClock,
   InternalIdentityMapperPort,
@@ -111,8 +111,13 @@ export class OidcLoginService {
       scopes: this.configuration.scopes,
     });
 
+    let authorizationUrl: string;
     try {
-      const authorizationUrl = this.provider.authorizationUrl(request);
+      authorizationUrl = this.provider.authorizationUrl(request);
+    } catch (error: unknown) {
+      throw providerBoundaryError(error);
+    }
+    try {
       if (
         typeof authorizationUrl !== 'string' ||
         authorizationUrl.length > 8_192
@@ -179,8 +184,8 @@ export class OidcLoginService {
         codeVerifier: transaction.codeVerifier,
         redirectUri: this.configuration.redirectUri,
       });
-    } catch {
-      throw new IdentityError('identity.provider_rejected');
+    } catch (error: unknown) {
+      throw providerBoundaryError(error);
     }
 
     let claims: z.output<typeof tokenResponseSchema>;
@@ -255,4 +260,19 @@ export class OidcLoginService {
       verifiedProfile,
     });
   }
+}
+
+function providerBoundaryError(error: unknown): IdentityError {
+  if (
+    isIdentityError(error) &&
+    (error.code === 'identity.provider_rejected' ||
+      error.code === 'identity.provider_unavailable')
+  ) {
+    return error;
+  }
+  return new IdentityError(
+    isIdentityError(error)
+      ? 'identity.provider_rejected'
+      : 'identity.provider_unavailable',
+  );
 }

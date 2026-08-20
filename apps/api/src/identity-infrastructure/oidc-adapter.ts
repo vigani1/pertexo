@@ -8,6 +8,7 @@ import { z } from 'zod';
 
 import {
   IdentityError,
+  isIdentityError,
   type OidcAuthorizationRequest,
   type OidcProviderPort,
   type OidcTokenResponse,
@@ -106,6 +107,13 @@ type GenericOidcAdapterOptions = Readonly<{
   verificationKey?: KeyInput;
   remoteJwks?: ReturnType<typeof createRemoteJWKSet>;
 }>;
+
+class ProviderTransportError extends Error {
+  public constructor() {
+    super('OIDC provider transport failed');
+    this.name = 'ProviderTransportError';
+  }
+}
 
 /** Generic OIDC protocol adapter. Provider credentials and tokens never cross this boundary. */
 export class GenericOidcProviderAdapter implements OidcProviderPort {
@@ -227,27 +235,39 @@ export class GenericOidcProviderAdapter implements OidcProviderPort {
       });
     } catch {
       clearTimeout(timeout);
+      throw new IdentityError('identity.provider_unavailable');
+    }
+    if (hasCrossOriginRedirect(response, this.configuration.tokenEndpoint)) {
+      clearTimeout(timeout);
       throw new IdentityError('identity.provider_rejected');
+    }
+    if (!response.ok) {
+      clearTimeout(timeout);
+      throw new IdentityError(
+        response.status === 408 ||
+          response.status === 429 ||
+          response.status >= 500
+          ? 'identity.provider_unavailable'
+          : 'identity.provider_rejected',
+      );
     }
     let body: string;
     try {
-      if (hasCrossOriginRedirect(response, this.configuration.tokenEndpoint)) {
-        throw new Error('cross-origin token redirect');
-      }
       const bytes = await readBoundedResponse(
         response,
         this.configuration.maxTokenResponseBytes,
         controller.signal,
       );
       body = new TextDecoder().decode(bytes);
-    } catch {
+    } catch (error: unknown) {
       clearTimeout(timeout);
-      throw new IdentityError('identity.provider_rejected');
+      throw new IdentityError(
+        error instanceof ProviderTransportError || controller.signal.aborted
+          ? 'identity.provider_unavailable'
+          : 'identity.provider_rejected',
+      );
     }
     clearTimeout(timeout);
-    if (!response.ok) {
-      throw new IdentityError('identity.provider_rejected');
-    }
 
     let tokenResponse: z.output<typeof tokenResponseSchema>;
     try {
@@ -277,8 +297,13 @@ export class GenericOidcProviderAdapter implements OidcProviderPort {
       ) {
         throw new Error('authorized party mismatch');
       }
-    } catch {
-      throw new IdentityError('identity.provider_rejected');
+    } catch (error: unknown) {
+      if (isIdentityError(error)) throw error;
+      throw new IdentityError(
+        isJwksFailure(error)
+          ? 'identity.provider_unavailable'
+          : 'identity.provider_rejected',
+      );
     }
 
     return Object.freeze({
@@ -321,6 +346,9 @@ export class GenericOidcProviderAdapter implements OidcProviderPort {
       if (hasCrossOriginRedirect(response, this.configuration.jwksUri)) {
         throw new Error('cross-origin JWKS redirect');
       }
+      if (!response.ok) {
+        throw new Error('JWKS endpoint unavailable');
+      }
       const bytes = await readBoundedResponse(
         response,
         262_144,
@@ -331,6 +359,8 @@ export class GenericOidcProviderAdapter implements OidcProviderPort {
         statusText: response.statusText,
         headers: response.headers,
       });
+    } catch {
+      throw new IdentityError('identity.provider_unavailable');
     } finally {
       clearTimeout(timeout);
       options.signal.removeEventListener('abort', abort);
@@ -374,6 +404,13 @@ function hasCrossOriginRedirect(
     return true;
   }
   return response.status >= 300 && response.status < 400;
+}
+
+function isJwksFailure(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null || !('code' in error)) {
+    return false;
+  }
+  return typeof error.code === 'string' && error.code.startsWith('ERR_JWKS_');
 }
 
 async function readBoundedResponse(
@@ -455,7 +492,7 @@ async function readChunk(
       void reader.cancel().catch(() => {
         /* already cancelled */
       });
-      reject(new Error('response aborted'));
+      reject(new ProviderTransportError());
     };
     signal.addEventListener('abort', onAbort, { once: true });
     const readPromise = reader.read() as Promise<unknown>;
@@ -464,11 +501,9 @@ async function readChunk(
         signal.removeEventListener('abort', onAbort);
         resolve(result);
       },
-      (error: unknown) => {
+      () => {
         signal.removeEventListener('abort', onAbort);
-        reject(
-          error instanceof Error ? error : new Error('response read failed'),
-        );
+        reject(new ProviderTransportError());
       },
     );
   });

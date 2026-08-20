@@ -8,6 +8,8 @@ import {
   RequestContextStore,
   applicationError,
 } from '../../src/platform/http/index.js';
+import { IdentityError } from '../../src/identity/index.js';
+import { mapIdentityWorkspaceError } from '../../src/identity-workspace/index.js';
 
 interface ResponseMock {
   body?: unknown;
@@ -98,6 +100,33 @@ describe('RFC 9457 problem details filter', () => {
       code: 'workspace.conflict',
       requestId: 'request-workspace-conflict',
     });
+  });
+
+  it('renders identity provider outages as a fixed safe RFC 9457 503 problem', () => {
+    const contexts = new RequestContextStore();
+    const filter = new ProblemDetailsFilter(contexts);
+    const response = responseMock();
+
+    contexts.run('request-provider-outage', () => {
+      filter.catch(
+        mapIdentityWorkspaceError(
+          new IdentityError('identity.provider_unavailable'),
+        ),
+        hostFor({ url: '/v1/auth/oidc/callback?code=secret' }, response),
+      );
+    });
+
+    expect(response.status).toHaveBeenCalledWith(503);
+    expect(response.body).toEqual({
+      type: 'urn:pertexo:problem:provider.unavailable',
+      title: 'Provider unavailable',
+      status: 503,
+      detail: 'The identity provider is temporarily unavailable.',
+      instance: '/v1/auth/oidc/callback',
+      code: 'provider.unavailable',
+      requestId: 'request-provider-outage',
+    });
+    expect(JSON.stringify(response.body)).not.toContain('secret');
   });
 
   it('converts Zod issues to bounded pointer-addressed validation errors', () => {

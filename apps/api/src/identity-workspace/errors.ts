@@ -68,8 +68,11 @@ function mapIdentityError(error: IdentityError): ApplicationError {
       safeDetail: 'The request could not be verified.',
     });
   }
-  if (error.code === 'identity.provider_rejected') {
-    return applicationError('internal.unexpected', { cause: error });
+  if (error.code === 'identity.provider_unavailable') {
+    return applicationError('provider.unavailable', {
+      safeDetail: 'The identity provider is temporarily unavailable.',
+      cause: error,
+    });
   }
   return applicationError('request.invalid', { safeDetail: error.message });
 }
