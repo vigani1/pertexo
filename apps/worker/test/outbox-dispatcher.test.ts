@@ -11,6 +11,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 /* eslint-disable @typescript-eslint/unbound-method -- assertions target injected boundary fakes */
 
 import {
+  createDispatchConsumerCapabilityRegistry,
+  DispatchConsumerCapabilityError,
+  type DispatchConsumerCapabilityRegistry,
+} from '../src/transport/dispatch-consumer-capabilities.js';
+import {
   OutboxDispatcher,
   OutboxPayloadChecksumError,
 } from '../src/transport/outbox-dispatcher.js';
@@ -108,6 +113,10 @@ function createDispatcher(
   selected = boundaries(),
   drainState = new WorkerDrainState(),
   metrics = transportMetrics(),
+  consumerCapabilities: DispatchConsumerCapabilityRegistry = readyCapabilities([
+    JOB_NAME.advanceWorkflowRun,
+    JOB_NAME.expireArtifacts,
+  ]),
 ): OutboxDispatcher {
   return new OutboxDispatcher(
     selected.database,
@@ -115,6 +124,7 @@ function createDispatcher(
     drainState,
     {
       batchSize: 10,
+      enabledJobNames: [JOB_NAME.advanceWorkflowRun, JOB_NAME.expireArtifacts],
       leaseDurationMillis: 30_000,
       leaseOwner: 'worker-a',
       maxAttempts: 3,
@@ -122,12 +132,104 @@ function createDispatcher(
       retryDelayMillis: 1_000,
     },
     metrics,
+    consumerCapabilities,
+  );
+}
+
+function readyCapabilities(
+  jobNames: readonly (typeof JOB_NAME)[keyof typeof JOB_NAME][],
+): DispatchConsumerCapabilityRegistry {
+  return createDispatchConsumerCapabilityRegistry(
+    jobNames.map((jobName) => ({
+      jobName,
+      consumer: {
+        isReady: () => true,
+        waitUntilReady: () => Promise.resolve(),
+      },
+    })),
   );
 }
 
 describe('outbox dispatcher', () => {
   beforeEach(() => {
     vi.useRealTimers();
+  });
+
+  it('rejects a job kind unsupported by this dispatcher build', () => {
+    const selected = boundaries([]);
+
+    expect(
+      () =>
+        new OutboxDispatcher(
+          selected.database,
+          selected.producer,
+          new WorkerDrainState(),
+          {
+            batchSize: 10,
+            enabledJobNames: [JOB_NAME.reconcileWorkflowTriggers],
+            leaseDurationMillis: 30_000,
+            leaseOwner: 'worker-a',
+            maxAttempts: 3,
+            pollIntervalMillis: 10,
+            retryDelayMillis: 1_000,
+          },
+        ),
+    ).toThrow();
+  });
+
+  it('holds every row when no dispatch kind or consumer is composed', async () => {
+    const selected = boundaries([event()]);
+    const dispatcher = new OutboxDispatcher(
+      selected.database,
+      selected.producer,
+      new WorkerDrainState(),
+      {
+        batchSize: 10,
+        enabledJobNames: [],
+        leaseDurationMillis: 30_000,
+        leaseOwner: 'worker-a',
+        maxAttempts: 3,
+        pollIntervalMillis: 10,
+        retryDelayMillis: 1_000,
+      },
+    );
+
+    await expect(dispatcher.checkReadiness()).resolves.toBeUndefined();
+    await expect(dispatcher.dispatchOnce()).resolves.toEqual({
+      claimed: 0,
+      failed: 0,
+      published: 0,
+      stale: 0,
+    });
+    expect(selected.database.claimBatch).not.toHaveBeenCalled();
+    expect(selected.producer.publish).not.toHaveBeenCalled();
+  });
+
+  it('fails readiness and refuses claims when configuration lacks a ready consumer', async () => {
+    const selected = boundaries([event()]);
+    const dispatcher = new OutboxDispatcher(
+      selected.database,
+      selected.producer,
+      new WorkerDrainState(),
+      {
+        batchSize: 10,
+        enabledJobNames: [JOB_NAME.advanceWorkflowRun],
+        leaseDurationMillis: 30_000,
+        leaseOwner: 'worker-a',
+        maxAttempts: 3,
+        pollIntervalMillis: 10,
+        retryDelayMillis: 1_000,
+      },
+    );
+
+    await expect(dispatcher.checkReadiness()).rejects.toBeInstanceOf(
+      DispatchConsumerCapabilityError,
+    );
+    await expect(dispatcher.dispatchOnce()).rejects.toBeInstanceOf(
+      DispatchConsumerCapabilityError,
+    );
+    expect(selected.database.claimBatch).not.toHaveBeenCalled();
+    expect(selected.producer.publish).not.toHaveBeenCalled();
   });
 
   it('publishes a validated queue contract and conditionally marks its lease', async () => {
@@ -158,6 +260,14 @@ describe('outbox dispatcher', () => {
       EVENT_ID,
       LEASE_TOKEN,
     );
+    expect(selected.database.claimBatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enabledJobNames: [
+          JOB_NAME.advanceWorkflowRun,
+          JOB_NAME.expireArtifacts,
+        ],
+      }),
+    );
     expect(metrics.recordOutboxClaim).toHaveBeenCalledWith({ batchSize: 1 });
     expect(metrics.recordOutboxPublish).toHaveBeenCalledWith({
       jobName: JOB_NAME.advanceWorkflowRun,
@@ -180,6 +290,39 @@ describe('outbox dispatcher', () => {
     expect(metrics.observeOutbox).toHaveBeenCalledWith({
       backlog: 7,
       oldestAgeSeconds: 12,
+    });
+    expect(selected.database.observeBacklog).toHaveBeenCalledWith({
+      enabledJobNames: [JOB_NAME.advanceWorkflowRun, JOB_NAME.expireArtifacts],
+    });
+  });
+
+  it('observes queue metrics only for enabled dispatch capabilities', async () => {
+    const selected = boundaries([]);
+    vi.mocked(selected.producer.observe).mockResolvedValue([
+      {
+        depth: 3,
+        oldestJobAgeSeconds: 2,
+        queueName: 'workflow-coordinator',
+      },
+      {
+        depth: 99,
+        oldestJobAgeSeconds: 90,
+        queueName: 'trigger-lifecycle',
+      },
+    ]);
+    const metrics = transportMetrics();
+
+    await createDispatcher(
+      selected,
+      new WorkerDrainState(),
+      metrics,
+    ).dispatchOnce();
+
+    expect(metrics.observeQueue).toHaveBeenCalledOnce();
+    expect(metrics.observeQueue).toHaveBeenCalledWith({
+      depth: 3,
+      oldestJobAgeSeconds: 2,
+      queueName: 'workflow-coordinator',
     });
   });
 

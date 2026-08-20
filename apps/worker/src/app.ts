@@ -14,6 +14,7 @@ import { WORKSPACE_DATABASE } from './platform/database/database.module.js';
 import { NestLoggerAdapter } from './platform/observability/observability.module.js';
 import { observeWorkspaceArtifactCapacity } from './runtime/artifact-metrics.js';
 import { WorkerReadiness } from './runtime/worker-readiness.js';
+import type { DispatchConsumerCapabilityRegistry } from './transport/dispatch-consumer-capabilities.js';
 import {
   OUTBOX_DISPATCHER,
   TRANSPORT_METRICS,
@@ -23,6 +24,7 @@ import { WorkerModule } from './worker.module.js';
 
 export type WorkerApplicationDependencies = Readonly<{
   database?: WorkspaceDatabase;
+  dispatchConsumerCapabilities?: DispatchConsumerCapabilityRegistry;
   dispatcherDatabase?: OutboxDispatcherDatabase;
   queueProducer?: QueueProducer;
   logger: StructuredLogger;

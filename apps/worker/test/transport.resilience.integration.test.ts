@@ -347,6 +347,7 @@ function createDispatcher(
     database,
     dispatcher: new OutboxDispatcher(database, producer, drainState, {
       batchSize: 100,
+      enabledJobNames: [JOB_NAME.advanceWorkflowRun],
       leaseDurationMillis: 1_000,
       leaseOwner,
       maxAttempts: 5,
@@ -457,6 +458,7 @@ describeResilience(
         // PostgreSQL outbox row, and every Redis key is then lost.
         await insertProofEvent(workspaceId, queueLossEventId);
         const claimed = await redisBoundaries.database.claimBatch({
+          enabledJobNames: [JOB_NAME.advanceWorkflowRun],
           leaseDurationMillis: 1_000,
           leaseOwner: 'resilience-crashed',
           leaseToken: randomUUID(),

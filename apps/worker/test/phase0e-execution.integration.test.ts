@@ -16,7 +16,12 @@ import {
   readExpiredAttemptReconciliations,
   reconcileExpiredNodeAttempt,
 } from '@pertexo/database';
-import { createQueueProducer, parseQueueJob, QUEUE_NAME } from '@pertexo/queue';
+import {
+  createQueueProducer,
+  JOB_NAME,
+  parseQueueJob,
+  QUEUE_NAME,
+} from '@pertexo/queue';
 import * as engine from '@pertexo/workflow-engine';
 import type { WorkflowCheckpointV1 } from '@pertexo/workflow-engine';
 import * as model from '@pertexo/workflow-model';
@@ -537,6 +542,10 @@ async function publishOutbox(duplicateAggregateId?: string): Promise<number> {
   let published = 0;
   try {
     const batch = await dispatcherDatabase.claimBatch({
+      enabledJobNames: [
+        JOB_NAME.advanceWorkflowRun,
+        JOB_NAME.executeNodeAttempt,
+      ],
       leaseDurationMillis: 5_000,
       leaseOwner: `phase0e:${randomUUID()}`,
       leaseToken: randomUUID(),

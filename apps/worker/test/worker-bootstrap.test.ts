@@ -56,6 +56,7 @@ const workerConfig = {
   },
   outboxDispatcher: {
     batchSize: 10,
+    enabledJobNames: [],
     leaseDurationMillis: 30_000,
     leaseOwner: 'outbox:test-worker',
     maxAttempts: 3,

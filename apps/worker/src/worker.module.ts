@@ -17,10 +17,12 @@ import type { WorkerConfig } from './config/worker-config.js';
 import { DatabaseModule } from './platform/database/database.module.js';
 import { ObservabilityModule } from './platform/observability/observability.module.js';
 import { WorkerReadiness } from './runtime/worker-readiness.js';
+import type { DispatchConsumerCapabilityRegistry } from './transport/dispatch-consumer-capabilities.js';
 import { TransportModule } from './transport/transport.module.js';
 
 export type WorkerModuleDependencies = Readonly<{
   database?: WorkspaceDatabase;
+  dispatchConsumerCapabilities?: DispatchConsumerCapabilityRegistry;
   dispatcherDatabase?: OutboxDispatcherDatabase;
   queueProducer?: QueueProducer;
   logger: StructuredLogger;
@@ -46,6 +48,12 @@ export class WorkerModule {
       imports: [
         DatabaseModule.register(config.database, databaseOptions),
         TransportModule.register(config, {
+          ...(dependencies.dispatchConsumerCapabilities === undefined
+            ? {}
+            : {
+                dispatchConsumerCapabilities:
+                  dependencies.dispatchConsumerCapabilities,
+              }),
           ...(dependencies.dispatcherDatabase === undefined
             ? {}
             : { dispatcherDatabase: dependencies.dispatcherDatabase }),

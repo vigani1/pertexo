@@ -4,10 +4,44 @@ import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
 } from '../src/outbox.js';
+import { createOutboxDispatcherDatabase } from '../src/dispatcher.js';
+import { parseDatabaseConfig } from '../src/config.js';
 
 const checksum = 'a'.repeat(64);
 
 describe('transport persistence input boundary', () => {
+  it('holds all work for an empty allowlist and rejects duplicates before querying PostgreSQL', async () => {
+    const dispatcher = createOutboxDispatcherDatabase(
+      parseDatabaseConfig({
+        connectionString:
+          'postgresql://dispatcher:secret@127.0.0.1:1/unreachable',
+        connectionTimeoutMillis: 1,
+        max: 1,
+      }),
+    );
+
+    await expect(
+      dispatcher.claimBatch({
+        enabledJobNames: [],
+        leaseDurationMillis: 30_000,
+        leaseOwner: 'validation-proof',
+        leaseToken: '11111111-1111-4111-8111-111111111111',
+        limit: 1,
+        maxAttempts: 3,
+      }),
+    ).resolves.toEqual({ events: [], exhaustedCount: 0 });
+    await expect(
+      dispatcher.observeBacklog({ enabledJobNames: [] }),
+    ).resolves.toEqual({ backlog: 0 });
+    await expect(
+      dispatcher.observeBacklog({
+        enabledJobNames: ['advance-workflow-run', 'advance-workflow-run'],
+      }),
+    ).rejects.toThrow();
+
+    await dispatcher.close();
+  });
+
   it('rejects an outbox payload larger than the 4 KiB queue contract cap', async () => {
     await expect(
       insertOutboxEvent(null as never, {

@@ -18,6 +18,7 @@ import type { QueueConsumerObserver } from '@pertexo/queue';
 
 import type { WorkerConfig } from '../config/worker-config.js';
 import { WorkerDrainState } from '../runtime/worker-drain-state.js';
+import type { DispatchConsumerCapabilityRegistry } from './dispatch-consumer-capabilities.js';
 import { OutboxDispatcher } from './outbox-dispatcher.js';
 import { createQueueMetricsObserver } from './transport-metrics-adapter.js';
 
@@ -26,6 +27,7 @@ export const QUEUE_CONSUMER_OBSERVER = Symbol('QUEUE_CONSUMER_OBSERVER');
 export const TRANSPORT_METRICS = Symbol('TRANSPORT_METRICS');
 
 export type TransportModuleDependencies = Readonly<{
+  dispatchConsumerCapabilities?: DispatchConsumerCapabilityRegistry;
   dispatcherDatabase?: OutboxDispatcherDatabase;
   queueProducer?: QueueProducer;
   transportMetrics?: TransportMetrics;
@@ -69,6 +71,7 @@ function dispatcherProvider(
         drainState,
         config.outboxDispatcher,
         metrics,
+        dependencies.dispatchConsumerCapabilities,
       ),
   };
 }

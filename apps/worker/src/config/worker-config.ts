@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { parseObservabilityConfig } from '@pertexo/observability/config';
+import { JOB_NAME, type JobName } from '@pertexo/queue';
 
 const workerEnvironments = [
   'development',
@@ -16,6 +17,46 @@ const workerLogLevels = [
   'debug',
   'trace',
 ] as const;
+
+export const PHASE_2_DISPATCH_CAPABILITIES = Object.freeze([
+  JOB_NAME.advanceWorkflowRun,
+  JOB_NAME.executeNodeAttempt,
+  JOB_NAME.expireArtifacts,
+] as const satisfies readonly JobName[]);
+
+const phase2DispatchCapabilitySet = new Set<JobName>(
+  PHASE_2_DISPATCH_CAPABILITIES,
+);
+
+export function isPhase2DispatchCapability(jobName: JobName): boolean {
+  return phase2DispatchCapabilitySet.has(jobName);
+}
+
+const enabledJobNamesSchema = z
+  .string()
+  .transform((value) =>
+    value.trim() === ''
+      ? []
+      : value.split(',').map((jobName) => jobName.trim()),
+  )
+  .pipe(z.array(z.enum(JOB_NAME)))
+  .superRefine((jobNames, context) => {
+    if (new Set(jobNames).size !== jobNames.length) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Dispatcher job names must be unique',
+      });
+    }
+    for (const jobName of jobNames) {
+      if (!isPhase2DispatchCapability(jobName)) {
+        context.addIssue({
+          code: 'custom',
+          message: `Job kind is not supported by this Phase 2 dispatcher build: ${jobName}`,
+        });
+      }
+    }
+  })
+  .transform((jobNames) => Object.freeze([...jobNames]));
 
 export const workerConfigSchema = z
   .object({
@@ -61,6 +102,7 @@ export const workerConfigSchema = z
       .min(1)
       .max(100)
       .default(25),
+    OUTBOX_DISPATCH_JOB_NAMES: enabledJobNamesSchema.default(Object.freeze([])),
     OUTBOX_DISPATCH_LEASE_MILLIS: z.coerce
       .number()
       .int()
@@ -114,6 +156,7 @@ export const workerConfigSchema = z
       DATABASE_DISPATCHER_POOL_MAX,
       REDIS_URL,
       OUTBOX_DISPATCH_BATCH_SIZE,
+      OUTBOX_DISPATCH_JOB_NAMES,
       OUTBOX_DISPATCH_LEASE_MILLIS,
       OUTBOX_DISPATCH_MAX_ATTEMPTS,
       OUTBOX_DISPATCH_OPERATION_TIMEOUT_MILLIS,
@@ -153,6 +196,7 @@ export const workerConfigSchema = z
       },
       outboxDispatcher: {
         batchSize: OUTBOX_DISPATCH_BATCH_SIZE,
+        enabledJobNames: OUTBOX_DISPATCH_JOB_NAMES,
         leaseDurationMillis: OUTBOX_DISPATCH_LEASE_MILLIS,
         leaseOwner: `outbox:${WORKER_INSTANCE_ID}`,
         maxAttempts: OUTBOX_DISPATCH_MAX_ATTEMPTS,

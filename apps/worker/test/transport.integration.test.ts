@@ -31,6 +31,11 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 /* eslint-disable @typescript-eslint/unbound-method -- assertions target injected metric boundary fakes */
 
 import { WorkerDrainState } from '../src/runtime/worker-drain-state.js';
+import {
+  createDispatchConsumerCapabilityRegistry,
+  DispatchConsumerCapabilityError,
+  type DispatchConsumerCapabilityRegistry,
+} from '../src/transport/dispatch-consumer-capabilities.js';
 import { OutboxDispatcher } from '../src/transport/outbox-dispatcher.js';
 import { createQueueMetricsObserver } from '../src/transport/transport-metrics-adapter.js';
 
@@ -149,7 +154,31 @@ async function insertRunEvent(
   return id;
 }
 
-function createDispatcher(owner: string, batchSize = 100): OutboxDispatcher {
+function readyCapabilities(
+  jobNames: readonly (typeof JOB_NAME)[keyof typeof JOB_NAME][],
+): DispatchConsumerCapabilityRegistry {
+  return createDispatchConsumerCapabilityRegistry(
+    jobNames.map((jobName) => ({
+      jobName,
+      consumer: {
+        isReady: () => true,
+        waitUntilReady: () => Promise.resolve(),
+      },
+    })),
+  );
+}
+
+function createDispatcher(
+  owner: string,
+  batchSize = 100,
+  enabledJobNames: readonly (typeof JOB_NAME)[keyof typeof JOB_NAME][] = [
+    JOB_NAME.advanceWorkflowRun,
+    JOB_NAME.executeNodeAttempt,
+  ],
+  consumerCapabilities: DispatchConsumerCapabilityRegistry = readyCapabilities(
+    enabledJobNames,
+  ),
+): OutboxDispatcher {
   return new OutboxDispatcher(
     createOutboxDispatcherDatabase(
       parseDatabaseConfig({ connectionString: dispatcherUrl, max: 1 }),
@@ -158,12 +187,15 @@ function createDispatcher(owner: string, batchSize = 100): OutboxDispatcher {
     new WorkerDrainState(),
     {
       batchSize,
+      enabledJobNames,
       leaseDurationMillis: 1_000,
       leaseOwner: owner,
       maxAttempts: 3,
       operationTimeoutMillis: 5_000,
       retryDelayMillis: 100,
     },
+    undefined,
+    consumerCapabilities,
   );
 }
 
@@ -380,6 +412,122 @@ describeIntegration(
       }
     });
 
+    it('derives dispatch from a composed ready consumer and holds unsupported work', async () => {
+      const enabledId = await insertRunEvent();
+      const heldId = randomUUID();
+      const payload = {
+        publishedVersionId: randomUUID(),
+        workflowId: randomUUID(),
+      };
+      await apiDatabase.withWorkspace(workspaceId, (transaction) =>
+        insertOutboxEvent(transaction, {
+          aggregateId: payload.workflowId,
+          aggregateType: 'workflow',
+          availableAt: new Date(0),
+          id: heldId,
+          jobName: JOB_NAME.reconcileWorkflowTriggers,
+          payload,
+          payloadChecksum: checksum(payload),
+          schemaVersion: 1,
+        }).then(() => undefined),
+      );
+      const noConsumerDispatcher = createDispatcher(
+        'integration-no-consumer',
+        100,
+        [],
+        createDispatchConsumerCapabilityRegistry([]),
+      );
+      const mismatchedDispatcher = createDispatcher(
+        'integration-mismatched-consumer',
+        100,
+        [JOB_NAME.advanceWorkflowRun],
+        createDispatchConsumerCapabilityRegistry([]),
+      );
+      const enabledQueue = new Queue(QUEUE_NAME.workflowCoordinator, {
+        connection: redisConnection(),
+      });
+      const heldQueue = new Queue(QUEUE_NAME.triggerLifecycle, {
+        connection: redisConnection(),
+      });
+      const consumerStarted = deferred();
+      const releaseConsumer = deferred();
+      const consumer = createQueueConsumer({
+        handler: async (delivery) => {
+          if (delivery.data.outboxEventId !== enabledId) return;
+          consumerStarted.resolve();
+          await releaseConsumer.promise;
+        },
+        queueName: QUEUE_NAME.workflowCoordinator,
+        redisUrl,
+      });
+      const dispatcher = createDispatcher(
+        'integration-phase2-allowlist',
+        100,
+        [JOB_NAME.advanceWorkflowRun],
+        createDispatchConsumerCapabilityRegistry([
+          { consumer, jobName: JOB_NAME.advanceWorkflowRun },
+        ]),
+      );
+      try {
+        await noConsumerDispatcher.checkReadiness();
+        await expect(noConsumerDispatcher.dispatchOnce()).resolves.toEqual({
+          claimed: 0,
+          failed: 0,
+          published: 0,
+          stale: 0,
+        });
+        await expect(
+          mismatchedDispatcher.checkReadiness(),
+        ).rejects.toBeInstanceOf(DispatchConsumerCapabilityError);
+        await dispatcher.checkReadiness();
+        await expect(dispatcher.dispatchOnce()).resolves.toMatchObject({
+          claimed: 1,
+          published: 1,
+        });
+        await expect(
+          enabledQueue.getJob(`outbox-${enabledId}`),
+        ).resolves.toBeDefined();
+        await expect(
+          heldQueue.getJob(`outbox-${heldId}`),
+        ).resolves.toBeUndefined();
+        await consumerStarted.promise;
+
+        const held = await apiDatabase.withWorkspace(workspaceId, ({ db }) =>
+          db
+            .select({
+              failedAt: outboxEvents.failedAt,
+              leaseExpiresAt: outboxEvents.leaseExpiresAt,
+              leaseOwner: outboxEvents.leaseOwner,
+              leaseToken: outboxEvents.leaseToken,
+              publishAttempts: outboxEvents.publishAttempts,
+              publishedAt: outboxEvents.publishedAt,
+            })
+            .from(outboxEvents)
+            .where(eq(outboxEvents.id, heldId)),
+        );
+        expect(held).toEqual([
+          {
+            failedAt: null,
+            leaseExpiresAt: null,
+            leaseOwner: null,
+            leaseToken: null,
+            publishAttempts: 0,
+            publishedAt: null,
+          },
+        ]);
+      } finally {
+        releaseConsumer.resolve();
+        await Promise.all([
+          noConsumerDispatcher.close(),
+          mismatchedDispatcher.close(),
+          dispatcher.close(),
+          consumer.close(),
+          enabledQueue.close(),
+          heldQueue.close(),
+        ]);
+      }
+    });
+
     it('reclaims enqueue-before-mark and Bull redelivery becomes an inbox no-op', async () => {
       const id = await insertRunEvent(randomUUID(), TRACEPARENT);
       const logicalAttemptId = randomUUID();
@@ -540,6 +688,7 @@ describeIntegration(
           firstCoordinator.waitUntilReady(),
         ]);
         const claimed = await rawDispatcher.claimBatch({
+          enabledJobNames: [JOB_NAME.advanceWorkflowRun],
           leaseDurationMillis: 1_000,
           leaseOwner: 'integration-crashed',
           leaseToken: randomUUID(),

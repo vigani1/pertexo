@@ -13,20 +13,32 @@ import {
 } from '@pertexo/observability/transport-metrics';
 import {
   JOB_NAME,
+  QUEUE_FOR_JOB,
   QueueNotReadyError,
   QueuePublishTimeoutError,
   parseQueueJob,
   type QueueJob,
+  type JobName,
   type QueueProducer,
 } from '@pertexo/queue';
 import { z } from 'zod';
 
+import { isPhase2DispatchCapability } from '../config/worker-config.js';
 import type { WorkerDrainState } from '../runtime/worker-drain-state.js';
+import {
+  DispatchConsumerCapabilityError,
+  NO_DISPATCH_CONSUMER_CAPABILITIES,
+  type DispatchConsumerCapabilityRegistry,
+} from './dispatch-consumer-capabilities.js';
 import { transportJobForName } from './transport-job.js';
 
 const optionsSchema = z
   .object({
     batchSize: z.number().int().min(1).max(100),
+    enabledJobNames: z
+      .array(z.enum(JOB_NAME))
+      .refine((values) => new Set(values).size === values.length)
+      .refine((values) => values.every(isPhase2DispatchCapability)),
     leaseDurationMillis: z.number().int().min(1_000).max(300_000),
     leaseOwner: z.string().regex(/^[A-Za-z0-9._:-]{1,128}$/u),
     maxAttempts: z.number().int().min(1).max(1_000),
@@ -41,7 +53,11 @@ const optionsSchema = z
   })
   .strict();
 
-export type OutboxDispatcherOptions = Readonly<z.input<typeof optionsSchema>>;
+export type OutboxDispatcherOptions = Readonly<
+  Omit<z.input<typeof optionsSchema>, 'enabledJobNames'> & {
+    enabledJobNames: readonly JobName[];
+  }
+>;
 
 export type OutboxDispatcherRuntimeHooks = Readonly<{
   observeArtifactCapacity(workspaceId: string): Promise<void>;
@@ -184,7 +200,12 @@ function bounded<T>(promise: Promise<T>, timeoutMillis: number): Promise<T> {
 }
 
 export class OutboxDispatcher {
-  private readonly options: z.output<typeof optionsSchema>;
+  private readonly options: Readonly<
+    Omit<z.output<typeof optionsSchema>, 'enabledJobNames'> & {
+      enabledJobNames: readonly JobName[];
+    }
+  >;
+  private readonly enabledQueueNames: ReadonlySet<string>;
   private runtimeHooks: OutboxDispatcherRuntimeHooks | undefined;
   private lifecycle: 'idle' | 'running' | 'closed' = 'idle';
   private loopPromise: Promise<void> | undefined;
@@ -196,8 +217,21 @@ export class OutboxDispatcher {
     private readonly drainState: WorkerDrainState,
     options: OutboxDispatcherOptions,
     private readonly metrics: TransportMetrics = createTransportMetrics(),
+    private readonly consumerCapabilities: DispatchConsumerCapabilityRegistry = NO_DISPATCH_CONSUMER_CAPABILITIES,
   ) {
-    this.options = Object.freeze(optionsSchema.parse(options));
+    const parsed = optionsSchema.parse({
+      ...options,
+      enabledJobNames: [...options.enabledJobNames],
+    });
+    this.options = Object.freeze({
+      ...parsed,
+      enabledJobNames: Object.freeze([...parsed.enabledJobNames]),
+    });
+    this.enabledQueueNames = new Set(
+      this.options.enabledJobNames.map(
+        (jobName: JobName) => QUEUE_FOR_JOB[jobName],
+      ),
+    );
   }
 
   public start(): void {
@@ -218,8 +252,11 @@ export class OutboxDispatcher {
   public async dispatchOnce(): Promise<OutboxDispatchResult> {
     this.assertOpen();
     if (!this.drainState.canAcceptWork()) return EMPTY_RESULT;
+    if (this.options.enabledJobNames.length === 0) return EMPTY_RESULT;
+    const enabledJobNames = this.assertConsumerCapabilitiesReady();
 
     const claim = await this.database.claimBatch({
+      enabledJobNames,
       leaseDurationMillis: this.options.leaseDurationMillis,
       leaseOwner: this.options.leaseOwner,
       leaseToken: randomUUID(),
@@ -262,6 +299,7 @@ export class OutboxDispatcher {
     await Promise.all([
       this.database.checkReadiness(),
       this.producer.waitUntilReady(),
+      this.consumerCapabilities.assertReady(this.options.enabledJobNames),
     ]);
   }
 
@@ -385,6 +423,16 @@ export class OutboxDispatcher {
     if (this.lifecycle === 'closed') throw new OutboxDispatcherClosedError();
   }
 
+  private assertConsumerCapabilitiesReady(): readonly JobName[] {
+    const readyJobNames = new Set(this.consumerCapabilities.readyJobNames());
+    for (const jobName of this.options.enabledJobNames) {
+      if (!readyJobNames.has(jobName)) {
+        throw new DispatchConsumerCapabilityError(jobName);
+      }
+    }
+    return this.options.enabledJobNames;
+  }
+
   private observeMetrics(observe: () => void): void {
     try {
       observe();
@@ -413,7 +461,9 @@ export class OutboxDispatcher {
       );
       this.observeMetrics(() => {
         for (const observation of observations) {
-          this.metrics.observeQueue(observation);
+          if (this.enabledQueueNames.has(observation.queueName)) {
+            this.metrics.observeQueue(observation);
+          }
         }
       });
     } catch {
@@ -424,7 +474,9 @@ export class OutboxDispatcher {
   private async observeOutbox(): Promise<void> {
     try {
       const observation = await bounded(
-        this.database.observeBacklog(),
+        this.database.observeBacklog({
+          enabledJobNames: this.options.enabledJobNames,
+        }),
         this.options.operationTimeoutMillis,
       );
       this.observeMetrics(() => {

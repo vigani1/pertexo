@@ -8,11 +8,22 @@ import {
 } from './readiness.js';
 
 const claimInputSchema = z.object({
+  enabledJobNames: z
+    .array(z.string().regex(/^[a-z][a-z0-9-]{0,127}$/u))
+    .max(64)
+    .refine((values) => new Set(values).size === values.length),
   leaseDurationMillis: z.number().int().min(1_000).max(300_000),
   leaseOwner: z.string().regex(/^[A-Za-z0-9._:-]{1,128}$/u),
   leaseToken: z.uuid(),
   limit: z.number().int().min(1).max(100),
   maxAttempts: z.number().int().min(1).max(1_000),
+});
+
+const observeBacklogInputSchema = z.object({
+  enabledJobNames: z
+    .array(z.string().regex(/^[a-z][a-z0-9-]{0,127}$/u))
+    .max(64)
+    .refine((values) => new Set(values).size === values.length),
 });
 
 const leasedEventSchema = z.object({
@@ -26,7 +37,14 @@ const releaseInputSchema = leasedEventSchema.extend({
   retryAt: z.date(),
 });
 
-export type ClaimOutboxBatchInput = Readonly<z.input<typeof claimInputSchema>>;
+export type ClaimOutboxBatchInput = Readonly<
+  Omit<z.input<typeof claimInputSchema>, 'enabledJobNames'> & {
+    enabledJobNames: readonly string[];
+  }
+>;
+export type ObserveOutboxBacklogInput = Readonly<{
+  enabledJobNames: readonly string[];
+}>;
 export type LeasedOutboxEvent = Readonly<{
   aggregateId: string;
   aggregateType: string;
@@ -63,7 +81,9 @@ export interface OutboxDispatcherDatabase {
   releaseOrFail(
     input: z.input<typeof releaseInputSchema>,
   ): Promise<ReleaseOutboxResult>;
-  observeBacklog(): Promise<OutboxBacklogSnapshot>;
+  observeBacklog(
+    input: ObserveOutboxBacklogInput,
+  ): Promise<OutboxBacklogSnapshot>;
   checkReadiness(): Promise<void>;
   close(): Promise<void>;
 }
@@ -118,6 +138,7 @@ async function checkDispatcherReadiness(
     can_update: boolean;
     can_update_immutable: boolean;
     can_update_table: boolean;
+    dispatch_index_compatible: boolean;
     migration_head: string | null;
     owner_member: boolean;
     policy_count: number;
@@ -162,6 +183,15 @@ async function checkDispatcherReadiness(
         ) as can_update_immutable,
         has_table_privilege(current_user, table_class.oid, 'INSERT') as can_insert,
         has_table_privilege(current_user, table_class.oid, 'DELETE') as can_delete,
+        exists (
+          select 1 from pg_indexes
+          where schemaname = 'app'
+            and tablename = 'outbox_events'
+            and indexname = 'outbox_events_dispatch_job_due_idx'
+            and indexdef like '%job_name, available_at, id%'
+            and indexdef like '%published_at IS NULL%'
+            and indexdef like '%failed_at IS NULL%'
+        ) as dispatch_index_compatible,
         (
           select count(*)::integer
           from pg_policy policy
@@ -197,6 +227,7 @@ async function checkDispatcherReadiness(
     row.can_update_table ||
     row.can_insert ||
     row.can_delete ||
+    !row.dispatch_index_compatible ||
     row.policy_count !== 2 ||
     row.rolsuper ||
     row.rolbypassrls ||
@@ -216,7 +247,16 @@ export function createOutboxDispatcherDatabase(
     claimBatch: async (
       input: ClaimOutboxBatchInput,
     ): Promise<ClaimOutboxBatchResult> => {
-      const parsed = claimInputSchema.parse(input);
+      const parsed = claimInputSchema.parse({
+        ...input,
+        enabledJobNames: [...input.enabledJobNames],
+      });
+      if (parsed.enabledJobNames.length === 0) {
+        return Object.freeze({
+          events: Object.freeze([]),
+          exhaustedCount: 0,
+        });
+      }
       const client = await pool.connect();
       try {
         await client.query('begin');
@@ -227,6 +267,7 @@ export function createOutboxDispatcherDatabase(
               from app.outbox_events
               where published_at is null
                 and failed_at is null
+                and job_name = any($5::varchar[])
                 and available_at <= clock_timestamp()
                 and (lease_expires_at is null or lease_expires_at <= clock_timestamp())
               order by available_at, id
@@ -243,7 +284,7 @@ export function createOutboxDispatcherDatabase(
                 updated_at = clock_timestamp()
               from candidates
               where event.id = candidates.id
-                and candidates.publish_attempts >= $5
+                and candidates.publish_attempts >= $6
               returning event.id
             )
             , leased as (
@@ -256,7 +297,7 @@ export function createOutboxDispatcherDatabase(
                 updated_at = clock_timestamp()
               from candidates
               where event.id = candidates.id
-                and candidates.publish_attempts < $5
+                and candidates.publish_attempts < $6
               returning event.*
             )
             select
@@ -272,6 +313,7 @@ export function createOutboxDispatcherDatabase(
             parsed.leaseOwner,
             parsed.leaseToken,
             parsed.leaseDurationMillis,
+            parsed.enabledJobNames,
             parsed.maxAttempts,
           ],
         );
@@ -357,11 +399,20 @@ export function createOutboxDispatcherDatabase(
           ? 'failed'
           : 'retry_scheduled';
     },
-    observeBacklog: async (): Promise<OutboxBacklogSnapshot> => {
+    observeBacklog: async (
+      input: ObserveOutboxBacklogInput,
+    ): Promise<OutboxBacklogSnapshot> => {
+      const parsed = observeBacklogInputSchema.parse({
+        enabledJobNames: [...input.enabledJobNames],
+      });
+      if (parsed.enabledJobNames.length === 0) {
+        return Object.freeze({ backlog: 0 });
+      }
       const result = await pool.query<{
         backlog: number;
         oldest_age_seconds: number | null;
-      }>(`
+      }>(
+        `
         select
           count(*)::integer as backlog,
           extract(
@@ -370,12 +421,15 @@ export function createOutboxDispatcherDatabase(
         from app.outbox_events
         where published_at is null
           and failed_at is null
+          and job_name = any($1::varchar[])
           and available_at <= clock_timestamp()
           and (
             lease_expires_at is null
             or lease_expires_at <= clock_timestamp()
           )
-      `);
+      `,
+        [parsed.enabledJobNames],
+      );
       const row = result.rows[0];
       if (row === undefined) {
         throw new Error('Outbox backlog observation returned no row');
