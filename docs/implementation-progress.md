@@ -19,7 +19,7 @@ not complete a phase.
 | Phase 0E — execution durability proofs and engine gate | Complete | ADRs 005 and 007–009; commits through `0322837`; 239 unit, 96 real-service integration, five process-recovery, one SSE-outage, and one transport-outage assertions; custom-engine GO |
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
-| Phase 3 — first executable-node slice | Not started | — |
+| Phase 3 — first executable-node slice | In progress | ADR 010 accepted; tracker expanded; implementation not started |
 | Phase 4 — first side-effecting integration slice | Not started | — |
 | Phase 5 — orchestration slice | Not started | — |
 | Phase 6 — V1 providers and triggers | Not started | — |
@@ -724,6 +724,250 @@ Initial evidence:
   artifacts, tracker accuracy, and commit coherence. Targeted re-reviews at
   `80de849` also returned GO for the deterministic full-integration gate and its
   150-assertion evidence.
+
+## Phase 3 — First executable-node slice
+
+Status: **In progress — prerequisite accepted; implementation not started**
+
+Phase 3 has completed its design prerequisites. No implementation criterion
+below is complete, and no node may enter the publishable registry until the
+complete vertical-slice evidence has passed.
+
+Design prerequisites:
+
+- [x] Expand this tracker with the exact Phase 3 scope, exclusions, coherent
+      checkpoints, and completion evidence required by the authoritative plan.
+- [x] Review and accept ADR 010 for node/executor compatibility, version
+      resolution, migration, rolling readiness, and retirement before releasing
+      the node registry.
+
+Thin-slice scope and node contracts:
+
+- [ ] Implement exactly one executable graph: Manual Trigger -> Set/Map ->
+      Terminate.
+- [ ] Use the exact definition identities `core.manual@1`, `core.set@1`, and
+      `core.terminate@1` and the separately owned exact executor identities
+      `core.manual@1`, `core.set@1`, and `core.terminate@1`; matching names do
+      not merge definition and executor identity.
+- [ ] Add browser- and worker-safe versioned definition/config schemas for all
+      three nodes, with bounded inputs and outputs and stable canonical node
+      type/version constants.
+- [ ] Add the node SDK definition and executor contracts without NestJS, ORM,
+      Redis, BullMQ, or provider dependencies.
+- [ ] Add the core-node registry and adapt its definition catalog to the
+      workflow model without reversing canonical graph ownership.
+- [ ] Keep browser-safe manifests limited to metadata, schemas, lifecycle,
+      compatibility, and exact executor references; prove package export maps
+      make server executor implementations impossible to resolve in a browser
+      build.
+- [ ] Resolve Set/Map inputs through the accepted restricted-JSONata policy and
+      validate configuration and mapped output at every untrusted seam.
+- [ ] Prove pinned executor lookup, retained-version compatibility, supported
+      config migration, and fail-closed missing/retired/incompatible executor
+      behavior.
+- [ ] Keep every Phase 3 node absent from the publishable registry until its
+      contracts, authorization, use case, adapters, telemetry, idempotency,
+      cancellation, API/job documentation, and happy/failure-path tests pass.
+
+Production execution and persistence:
+
+- [ ] Deepen the engine around the two production operations
+      `AdvanceWorkflow` and `ExecuteNodeAttempt`, with the canonical published
+      graph adapted into private scheduler state rather than a second public
+      graph model.
+- [ ] Introduce the versioned Phase 3 published-executable envelope separately
+      from the definition-only authoring graph. Pin each node's exact definition,
+      config, executor, and applicable runtime-policy references in immutable
+      published bytes.
+- [ ] Introduce executable projection/checksum version 2 for that envelope
+      rather than silently changing `wf:v1`; retain, parse, and verify Phase 2
+      `wf:v1` immutable versions under their original graph and checksum rules.
+- [ ] Replace unsafe checkpoint assertions at the production boundary with
+      bounded schema validation or explicit safe parsing, and reject malformed
+      or recursively bypassed graph/checkpoint data.
+- [ ] Persist run acceptance, the immutable workflow-version reference,
+      request idempotency, gapless events, checkpoints, node runs, attempts,
+      leases/fence tokens, cancellation, and transactional outbox effects under
+      their documented transaction and compare-and-swap boundaries.
+- [ ] Add a reviewed migration granting the worker only the immutable published
+      workflow-version read access required by execution; prove it cannot read
+      drafts, mutate authoring data, cross workspaces, own tables, or bypass
+      forced RLS.
+- [ ] Implement narrow behavior-named persistence ports such as
+      `PublishedWorkflowReader` and `RunStore`; keep SQL, ORM rows, transaction
+      assembly, and generic repositories out of engine and consumer seams.
+- [ ] Compose a thin coordinator consumer that loads PostgreSQL-authoritative
+      state, advances one checkpoint revision, records ordered events, and
+      emits continuation/node-attempt outbox work atomically.
+- [ ] Compose a separate thin node-attempt consumer that claims with a lease and
+      fence token, executes outside long database transactions with an
+      `AbortSignal`, records the truthful outcome, and emits continuation work.
+- [ ] Preserve IDs-only versioned queue payloads, at-least-once delivery,
+      idempotent redelivery, readiness-gated dispatch, bounded draining, and
+      PostgreSQL ownership of durable retries and cancellation.
+- [ ] Complete the exact Manual -> Set/Map -> Terminate graph after duplicate
+      coordinator and attempt delivery without duplicating node effects,
+      terminal events, or terminal state.
+
+Compatibility rollout, readiness, and retirement:
+
+- [ ] Define and enforce separate definition and executor lifecycle transitions,
+      including placement, publication, execution, retention, retirement, and
+      historical read behavior without identity reuse or latest-version
+      substitution.
+- [ ] Compute the deterministic full-release fingerprint over the complete
+      compatibility catalog and a distinct selection fingerprint over only the
+      definitions, executors, migrations, and runtime policies pinned by one V2
+      envelope; use the correct fingerprint in authoring tags, durable release
+      records, executable identity, and retained compatibility fixtures.
+- [ ] Prove additive-before-subtractive rolling releases: the complete worker
+      cohort supports and reports an exact compatibility epoch/fingerprint
+      before API publication or placement can create a reference, and mixed API
+      replicas fail closed through the documented conservative ETag conflict.
+- [ ] Persist append-only audited compatibility-release records plus the
+      current epoch/fingerprint in PostgreSQL. Require role-specific expected-
+      pair validation, target-pair preactivation readiness, deployment approval,
+      and same-transaction current-release locking for publication and new
+      admission; deployment evidence supports but never replaces the durable
+      authority.
+- [ ] Make readiness fail closed on duplicate identities, invalid bindings,
+      unsupported graph/config/checksum/evaluator/job/event versions, migration
+      or grant drift, and local registry/expected-fingerprint disagreement;
+      keep cross-workspace dependency inspection out of serving-role readiness.
+- [ ] Enforce the Phase 3 non-removal invariant: all three executors remain in
+      the active/retained release, no serving or maintenance path can move them
+      to `retirement_blocked` or `retired`, and no subtractive worker artifact
+      can omit them.
+- [ ] Prove retired historical versions remain readable but are described as
+      executable or reproducible only while their exact executor and replay
+      support window remain retained.
+
+API, SSE, and cancellation:
+
+- [ ] Add generated Zod/OpenAPI/client contracts and stable RFC 9457 problems
+      for starting, reading, streaming, and canceling this graph without
+      exposing checkpoints, ORM rows, or internal engine objects.
+- [ ] Implement authorized `StartWorkflowRun`, `GetWorkflowRun`,
+      `StreamRunEvents`, and `CancelWorkflowRun` use cases with thin NestJS
+      controllers and canonical workspace/request/trace context.
+- [ ] Return `202 Accepted` only after the queued run, immutable version
+      reference, initial event/checkpoint, idempotency record, and outbox row
+      commit atomically; exact idempotency replays must return the original run.
+- [ ] Prove through the real HTTP/API and PostgreSQL path that reusing an
+      idempotency key with a different canonical request hash fails with the
+      stable conflict problem and creates no duplicate run, event, checkpoint,
+      idempotency, or outbox row.
+- [ ] Reconstruct SSE from PostgreSQL-authoritative ordered events using bounded
+      subscribe-before-read catch-up, opaque Redis wake-ups, reconnect cursors,
+      and backfill after Redis loss.
+- [ ] Make cancellation durable and monotonic, prevent new admission after the
+      cancel boundary, cooperatively abort active work, and report completed
+      work and unknown outcomes truthfully.
+- [ ] Prove authorization, capability checks, hidden cross-workspace resources,
+      CSRF for browser mutations, safe errors/logs, bounded telemetry, and
+      audit/usage effects where applicable.
+
+Required completion evidence:
+
+- [ ] Pass focused unit, typecheck, lint, format, build, and deterministic
+      generated-contract, OpenAPI/client, migration-manifest, and other
+      generated-artifact drift gates for every changed package and role.
+- [ ] Apply every reviewed SQL migration from the completed Phase 2 head
+      `80de849` through the fixed Phase 3 head, as well as from a clean zero
+      state, and prove the checked-in migration manifest, schema model,
+      readiness introspection, grants, constraints, and immutable-version
+      triggers agree.
+- [ ] Pass real PostgreSQL role/RLS/migration tests for run acceptance,
+      idempotency, version loading, checkpoint CAS, events, attempts,
+      cancellation, and least-privilege grants from a clean zero-to-head
+      migration.
+- [ ] Retain at least one immutable graph/executable/checksum fixture for every
+      supported definition/executor pair and every supported executable format,
+      including Phase 2 `wf:v1`; prove each fixture selects only its exact
+      executor or remains safely readable when it is intentionally
+      non-executable.
+- [ ] Pass real PostgreSQL + Redis + BullMQ tests for the full thin graph,
+      duplicate deliveries, enqueue-before-mark recovery, consumer readiness,
+      drain behavior, and process restart boundaries.
+- [ ] Re-run every applicable Phase 0B tenancy failure: absent workspace
+      context, cross-workspace reads/writes, commit/rollback and sequential/
+      concurrent pool reuse, non-owner/non-`BYPASSRLS` runtime roles, forbidden
+      grants, forced-RLS/policy drift, and incompatible migration readiness.
+- [ ] Re-run every applicable Phase 0C HTTP/observability failure: invalid or
+      propagated request identity, safe RFC 9457 mapping, recursive secret/error
+      redaction, trace/metric bootstrap and correlation, dependency readiness,
+      bootstrap cleanup, graceful `SIGTERM` drain, and package/server-only export
+      boundaries.
+- [ ] Re-run every applicable Phase 0D queue/outbox failure: transactional
+      rollback, duplicate delivery and concurrent inbox fencing, checksum
+      mismatch audit, enqueue-before-mark recovery, Redis and PostgreSQL outage/
+      recovery, propagated queue trace context, timeout/abort/unrecoverable
+      handling, readiness loss, bounded active drain, and no post-drain claims.
+- [ ] Re-run every Phase 0E execution failure fixture: coordinator crashes
+      before and after checkpoint commit, node-attempt crashes before dispatch
+      and after idempotent/unsafe dispatch, expired-attempt reconciliation,
+      durable wait/retry recovery fixtures that remain applicable to the shared
+      runtime, cancellation during active work and restart, and exact
+      redelivery fencing.
+- [ ] Re-run the Phase 0E Redis-loss SSE reconstruction and worker transport
+      outage/drain fixtures, proving PostgreSQL remains authoritative and no
+      work is claimed after readiness falls.
+- [ ] Run the root `pnpm check` and the complete real-service integration
+      matrix sequentially in dependency-safe order, then record commands,
+      versions, assertion counts, timings, migration head, and cleanup/health
+      evidence here.
+- [ ] Complete independent Spec and Standards reviews against the fixed Phase 3
+      HEAD with no blocker/high findings, including package direction,
+      generated artifacts, manifest/lockfile coherence, unsafe casts, node
+      compatibility, and tracker accuracy.
+- [ ] Mark Phase 3 complete only after every box above is checked and concrete
+      commits and verification evidence replace this prerequisite-only status.
+
+Explicit exclusions for Phase 3:
+
+- No provider calls, connections, secrets, generic HTTP Request, previews, or
+  other side-effecting integration behavior; those begin in Phase 4.
+- No Condition, Switch, Wait, For Each, Parallel, Merge, schedules, webhooks,
+  polling, failure notifications, or arbitrary-cycle expansion.
+- No durable delay ownership in BullMQ, queue payloads containing graphs or
+  large values, generic repository layer, CQRS framework, microservice split,
+  or controller-owned business transactions.
+- Existing Phase 0 branch/join/loop proofs remain regression fixtures only;
+  they do not make those nodes publishable in this slice.
+- The ADR 010 retirement maintenance command, dependency query across later
+  replay/trigger paths, retirement CAS finalization, and real subtractive fleet
+  rollout remain deferred until the first executor retirement after the owning
+  slices and Phase 7 operator controls exist. Phase 3 proves non-removal rather
+  than scaffolding those future paths.
+
+Planned coherent checkpoints:
+
+1. Accept ADR 010 and record the final compatibility/retirement contract.
+2. Add the functional node SDK, three core definitions/executors, registry
+   adapter, and compatibility tests without empty package scaffolding.
+3. Add the version-2 published-executable envelope/checksum, retained-v1
+   validation, production engine seams, and safe canonical graph/checkpoint
+   adapter with in-memory thin-graph verification.
+4. Add the worker published-version grant migration and narrow execution
+   persistence adapters with real PostgreSQL/RLS evidence.
+5. Add the coordinator behavior and enable its dispatch capability only when
+   the composed consumer is ready.
+6. Add node-attempt execution and enable its dispatch capability only when the
+   complete executor path is ready; combine checkpoints 5 and 6 if separating
+   them would leave a broken or dispatchable half-state.
+7. Add the authorized run API, PostgreSQL-authoritative SSE reconstruction, and
+   durable cancellation vertical slice with generated contracts.
+8. Re-run all quality, real-service, applicable Phase 0B–0E failure, retained-
+   compatibility, generated-drift, and independent review gates, then record
+   final evidence in this tracker.
+
+Current evidence:
+
+- ADR 010 is accepted after independent Spec and Standards reviews resolved the
+  durable pinning, rollout/readiness, race-safe retirement-policy, continuation-
+  drain, and Phase 3 scope findings. This checklist records the resulting
+  implementation contract; no Phase 3 code has started, and every
+  implementation and verification criterion remains unchecked.
 
 ## Later phases
 
