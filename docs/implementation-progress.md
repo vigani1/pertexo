@@ -17,7 +17,7 @@ not complete a phase.
 | Phase 0C — HTTP and observability foundation | Complete | Commit `e8093d2`; 47 API/worker/observability tests; compiled role and OTLP trace/metric smoke checks |
 | Phase 0D — queue, outbox, and duplicate-delivery proof | Complete | ADRs 005–006; migration head `0006_execution_vocabulary.sql`; 158 unit, 76 real integration, and one destructive recovery assertion |
 | Phase 0E — execution durability proofs and engine gate | Complete | ADRs 005 and 007–009; commits through `0322837`; 239 unit, 96 real-service integration, five process-recovery, one SSE-outage, and one transport-outage assertions; custom-engine GO |
-| Phase 1 — identity/workspace vertical slice | In progress | ADR 004 accepted; full identity/workspace slice and five-scenario real-stack API proof are green; final regression matrix and independent re-review remain |
+| Phase 1 — identity/workspace vertical slice | In progress | ADR 004 accepted; full slice, durable command idempotency, 343-unit and 133-real-service gates are green; independent completion re-review is running |
 | Phase 2 — workflow authoring vertical slice | Not started | — |
 | Phase 3 — first executable-node slice | Not started | — |
 | Phase 4 — first side-effecting integration slice | Not started | — |
@@ -452,6 +452,22 @@ Current evidence:
   sanitized RFC 9457 failures. API typecheck, build, ESLint, Prettier, and diff
   checks pass. Final repository-wide integration/regression and independent
   re-review remain before the phase can be marked complete.
+- Commit `9c01492` enforces the PostgreSQL-authoritative pre-purge restore
+  deadline; an expired restore remains pending deletion, adds no audit fact,
+  and maps to `workspace.conflict`.
+- Commit `80e1c4c` requires bounded visible-ASCII `Idempotency-Key` headers for
+  workspace creation, deletion, and restore. Creation claims are actor-scoped
+  under forced RLS; lifecycle claims reuse tenant-scoped forced-RLS records.
+  Claims, aggregate changes, audit, session revocation, and durable results
+  commit atomically. Exact concurrent/re-authenticated retries return the same
+  result with one audit/revocation, while changed requests return
+  `request.idempotency_conflict`; revoked sessions remain unauthorized.
+  Migration head `0011_workspace_creation_idempotency.sql` is applied.
+- Final pre-review gates: `pnpm check` passes formatting, lint, typechecks, 343
+  unit assertions, and all production builds. The full real-service command
+  passes 133 assertions: 120 PostgreSQL, two object-store, five worker, and six
+  API. The final independent blocker/high re-review is the only remaining
+  Phase 1 completion condition.
 
 ## Later phases
 
