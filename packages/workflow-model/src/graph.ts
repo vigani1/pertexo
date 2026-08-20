@@ -1,7 +1,9 @@
 import './server-only.js';
 import { createHash } from 'node:crypto';
+import { z } from 'zod';
 import {
   canonicalJson,
+  canonicalizeJson,
   inspectJsonValue,
   type JsonValue,
 } from './canonical-json.js';
@@ -26,7 +28,9 @@ export interface WorkflowEdge {
   readonly source: { readonly nodeId: NodeId; readonly port: string };
   readonly target: { readonly nodeId: NodeId; readonly port: string };
 }
-export type WorkflowSettings = Readonly<Record<string, JsonValue>>;
+export interface WorkflowSettings {
+  readonly maxRunDurationMs?: number;
+}
 export interface StructuredBody extends WorkflowGraph {
   readonly inputPorts: readonly string[];
   readonly outputPorts: readonly string[];
@@ -63,6 +67,9 @@ export interface WorkflowGraphLimits {
   readonly maxLoopIterations: number;
   readonly maxLoopConcurrency: number;
   readonly maxExpandedInvocations: number;
+  readonly structuredDepth: number;
+  readonly jsonValueDepth: number;
+  readonly inputDepth: number;
 }
 export const WORKFLOW_GRAPH_LIMITS: WorkflowGraphLimits = Object.freeze({
   nodes: 1_000,
@@ -71,6 +78,493 @@ export const WORKFLOW_GRAPH_LIMITS: WorkflowGraphLimits = Object.freeze({
   maxLoopIterations: 1_000,
   maxLoopConcurrency: 1_000,
   maxExpandedInvocations: 1_000,
+  structuredDepth: 32,
+  jsonValueDepth: 64,
+  inputDepth: 256,
+});
+export const WORKFLOW_EXECUTION_LIMITS_V1 = Object.freeze({
+  maxRunDurationMs: 3_600_000,
+});
+
+const identifierSchema = z.string().min(1);
+const positiveVersionSchema = z.number().int().positive();
+const jsonRecordSchema = z.record(z.string(), z.json());
+const valueSourceSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('literal'), value: z.json() }).strict(),
+  z.object({ kind: z.literal('run_input'), path: z.string() }).strict(),
+  z
+    .object({
+      kind: z.literal('node_output'),
+      nodeId: identifierSchema,
+      path: z.string(),
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal('expression'),
+      language: z.literal('jsonata'),
+      expression: z.string(),
+      policyVersion: positiveVersionSchema,
+    })
+    .strict(),
+]);
+export const WorkflowSettingsSchemaV1 = z
+  .object({
+    maxRunDurationMs: z
+      .number()
+      .int()
+      .positive()
+      .max(WORKFLOW_EXECUTION_LIMITS_V1.maxRunDurationMs)
+      .optional(),
+  })
+  .strict();
+
+const workflowGraphShape = (): z.ZodType => {
+  const graph: z.ZodType = z.lazy(() =>
+    z
+      .object({
+        schemaVersion: z.literal(1),
+        nodes: z
+          .array(
+            z
+              .object({
+                id: identifierSchema,
+                definition: z
+                  .object({
+                    key: identifierSchema,
+                    version: positiveVersionSchema,
+                  })
+                  .strict(),
+                position: z.object({ x: z.number(), y: z.number() }).strict(),
+                configVersion: positiveVersionSchema,
+                config: jsonRecordSchema,
+                inputMappings: z.record(z.string(), valueSourceSchema),
+                connectionRefs: z.record(z.string(), identifierSchema),
+                label: z.string().optional(),
+                disabled: z.boolean().optional(),
+                structured: z
+                  .lazy(() =>
+                    z
+                      .object({
+                        kind: z.literal('for_each'),
+                        maxIterations: z
+                          .number()
+                          .int()
+                          .positive()
+                          .max(WORKFLOW_GRAPH_LIMITS.maxLoopIterations),
+                        maxConcurrency: z
+                          .number()
+                          .int()
+                          .positive()
+                          .max(WORKFLOW_GRAPH_LIMITS.maxLoopConcurrency),
+                        body: z
+                          .object({
+                            schemaVersion: z.literal(1),
+                            nodes: z.array(z.unknown()),
+                            edges: z.array(z.unknown()),
+                            settings: WorkflowSettingsSchemaV1,
+                            inputPorts: z.array(identifierSchema),
+                            outputPorts: z.array(identifierSchema),
+                          })
+                          .strict()
+                          .transform((body, context) => {
+                            const { inputPorts, outputPorts, ...bodyGraph } =
+                              body;
+                            const result = graph.safeParse(bodyGraph);
+                            if (!result.success) {
+                              for (const issue of result.error.issues)
+                                context.addIssue({
+                                  code: 'custom',
+                                  message: issue.message,
+                                  path: issue.path,
+                                });
+                              return z.NEVER;
+                            }
+                            return {
+                              ...(result.data as WorkflowGraph),
+                              inputPorts,
+                              outputPorts,
+                            };
+                          }),
+                      })
+                      .strict(),
+                  )
+                  .optional(),
+              })
+              .strict(),
+          )
+          .max(WORKFLOW_GRAPH_LIMITS.nodes),
+        edges: z
+          .array(
+            z
+              .object({
+                id: identifierSchema,
+                source: z
+                  .object({ nodeId: identifierSchema, port: identifierSchema })
+                  .strict(),
+                target: z
+                  .object({ nodeId: identifierSchema, port: identifierSchema })
+                  .strict(),
+              })
+              .strict(),
+          )
+          .max(WORKFLOW_GRAPH_LIMITS.edges),
+        settings: WorkflowSettingsSchemaV1,
+      })
+      .strict(),
+  );
+  return graph;
+};
+
+const workflowGraphInputSchemaV1 = workflowGraphShape();
+
+export class InvalidWorkflowGraphError extends TypeError {
+  constructor(readonly issues: readonly GraphValidationIssue[]) {
+    super('workflow graph failed semantic validation');
+    this.name = 'InvalidWorkflowGraphError';
+  }
+}
+
+export type WorkflowGraphContractIssueCode =
+  'structured_depth' | 'json_value_depth' | 'invalid_json' | 'graph_limit';
+
+export class WorkflowGraphContractError extends TypeError {
+  constructor(
+    readonly code: WorkflowGraphContractIssueCode,
+    readonly path: string,
+    message: string,
+  ) {
+    super(`${message} at ${path}`);
+    this.name = 'WorkflowGraphContractError';
+  }
+}
+
+function ownDataValue(value: object, key: string, path: string): unknown {
+  const descriptor = Object.getOwnPropertyDescriptor(value, key);
+  if (descriptor === undefined) return undefined;
+  if (!('value' in descriptor))
+    throw new WorkflowGraphContractError(
+      'invalid_json',
+      path,
+      'accessors are not valid graph input',
+    );
+  return descriptor.value;
+}
+
+function preflightJsonDocument(input: unknown): number {
+  type Frame =
+    | {
+        readonly kind: 'value';
+        readonly value: unknown;
+        readonly path: string;
+        readonly depth: number;
+      }
+    | { readonly kind: 'exit'; readonly value: object };
+  const stack: Frame[] = [{ kind: 'value', value: input, path: '$', depth: 1 }];
+  const ancestors = new Set<object>();
+  let bytes = 0;
+  while (stack.length > 0) {
+    const frame = stack.pop();
+    if (frame === undefined) continue;
+    if (frame.kind === 'exit') {
+      ancestors.delete(frame.value);
+      continue;
+    }
+    if (frame.depth > WORKFLOW_GRAPH_LIMITS.inputDepth)
+      throw new WorkflowGraphContractError(
+        'json_value_depth',
+        frame.path,
+        `graph input depth exceeds ${String(WORKFLOW_GRAPH_LIMITS.inputDepth)}`,
+      );
+    const value = frame.value;
+    if (value === null) {
+      bytes += 4;
+      continue;
+    }
+    if (typeof value === 'string') {
+      bytes += Buffer.byteLength(JSON.stringify(value), 'utf8');
+      continue;
+    }
+    if (typeof value === 'boolean') {
+      bytes += value ? 4 : 5;
+      continue;
+    }
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      bytes += Buffer.byteLength(JSON.stringify(value), 'utf8');
+      continue;
+    }
+    if (typeof value !== 'object')
+      throw new WorkflowGraphContractError(
+        'invalid_json',
+        frame.path,
+        'value is not JSON',
+      );
+    if (ancestors.has(value))
+      throw new WorkflowGraphContractError(
+        'invalid_json',
+        frame.path,
+        'cyclic values are not JSON',
+      );
+    if (Object.getOwnPropertySymbols(value).length > 0)
+      throw new WorkflowGraphContractError(
+        'invalid_json',
+        frame.path,
+        'symbol properties are not JSON',
+      );
+    ancestors.add(value);
+    stack.push({ kind: 'exit', value });
+    if (Array.isArray(value)) {
+      bytes += 2 + Math.max(0, value.length - 1);
+      for (let index = value.length - 1; index >= 0; index -= 1) {
+        if (!(index in value))
+          throw new WorkflowGraphContractError(
+            'invalid_json',
+            `${frame.path}[${String(index)}]`,
+            'sparse arrays are not JSON',
+          );
+        stack.push({
+          kind: 'value',
+          value: ownDataValue(
+            value,
+            String(index),
+            `${frame.path}[${String(index)}]`,
+          ),
+          path: `${frame.path}[${String(index)}]`,
+          depth: frame.depth + 1,
+        });
+      }
+      continue;
+    }
+    const prototype = Object.getPrototypeOf(value) as object | null;
+    if (prototype !== Object.prototype && prototype !== null)
+      throw new WorkflowGraphContractError(
+        'invalid_json',
+        frame.path,
+        'object must be plain',
+      );
+    const keys = Object.keys(value);
+    bytes += 2 + Math.max(0, keys.length - 1);
+    for (let index = keys.length - 1; index >= 0; index -= 1) {
+      const key = keys[index];
+      if (key === undefined) continue;
+      bytes += Buffer.byteLength(JSON.stringify(key), 'utf8') + 1;
+      stack.push({
+        kind: 'value',
+        value: ownDataValue(value, key, `${frame.path}.${key}`),
+        path: `${frame.path}.${key}`,
+        depth: frame.depth + 1,
+      });
+    }
+  }
+  return bytes;
+}
+
+function preflightJsonValue(value: unknown, path: string): void {
+  const stack: {
+    readonly value: unknown;
+    readonly path: string;
+    depth: number;
+  }[] = [{ value, path, depth: 1 }];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (current === undefined) continue;
+    if (current.depth > WORKFLOW_GRAPH_LIMITS.jsonValueDepth)
+      throw new WorkflowGraphContractError(
+        'json_value_depth',
+        current.path,
+        `JSON value depth exceeds ${String(WORKFLOW_GRAPH_LIMITS.jsonValueDepth)}`,
+      );
+    if (
+      current.value === null ||
+      typeof current.value === 'string' ||
+      typeof current.value === 'boolean' ||
+      (typeof current.value === 'number' && Number.isFinite(current.value))
+    )
+      continue;
+    if (typeof current.value !== 'object')
+      throw new WorkflowGraphContractError(
+        'invalid_json',
+        current.path,
+        'value is not JSON',
+      );
+    if (Object.getOwnPropertySymbols(current.value).length > 0)
+      throw new WorkflowGraphContractError(
+        'invalid_json',
+        current.path,
+        'symbol properties are not JSON',
+      );
+    if (Array.isArray(current.value)) {
+      for (let index = 0; index < current.value.length; index += 1) {
+        if (!(index in current.value))
+          throw new WorkflowGraphContractError(
+            'invalid_json',
+            `${current.path}[${String(index)}]`,
+            'sparse arrays are not JSON',
+          );
+        stack.push({
+          value: ownDataValue(
+            current.value,
+            String(index),
+            `${current.path}[${String(index)}]`,
+          ),
+          path: `${current.path}[${String(index)}]`,
+          depth: current.depth + 1,
+        });
+      }
+      continue;
+    }
+    const prototype = Object.getPrototypeOf(current.value) as object | null;
+    if (prototype !== Object.prototype && prototype !== null)
+      throw new WorkflowGraphContractError(
+        'invalid_json',
+        current.path,
+        'object must be plain',
+      );
+    for (const key of Object.keys(current.value))
+      stack.push({
+        value: ownDataValue(current.value, key, `${current.path}.${key}`),
+        path: `${current.path}.${key}`,
+        depth: current.depth + 1,
+      });
+  }
+}
+
+function preflightWorkflowGraph(input: unknown): void {
+  const graphs: {
+    readonly value: unknown;
+    readonly path: string;
+    depth: number;
+  }[] = [{ value: input, path: '$', depth: 0 }];
+  while (graphs.length > 0) {
+    const current = graphs.pop();
+    if (current === undefined || current.value === null) continue;
+    if (current.depth > WORKFLOW_GRAPH_LIMITS.structuredDepth)
+      throw new WorkflowGraphContractError(
+        'structured_depth',
+        current.path,
+        `structured graph depth exceeds ${String(WORKFLOW_GRAPH_LIMITS.structuredDepth)}`,
+      );
+    if (typeof current.value !== 'object' || Array.isArray(current.value))
+      continue;
+    const nodes = ownDataValue(current.value, 'nodes', `${current.path}.nodes`);
+    if (!Array.isArray(nodes)) continue;
+    for (let index = 0; index < nodes.length; index += 1) {
+      const nodePath = `${current.path}.nodes[${String(index)}]`;
+      const node = ownDataValue(nodes, String(index), nodePath);
+      if (node === null || typeof node !== 'object' || Array.isArray(node))
+        continue;
+      const config = ownDataValue(node, 'config', `${nodePath}.config`);
+      if (config !== undefined)
+        preflightJsonValue(config, `${nodePath}.config`);
+      const mappings = ownDataValue(
+        node,
+        'inputMappings',
+        `${nodePath}.inputMappings`,
+      );
+      if (mappings !== null && typeof mappings === 'object') {
+        for (const key of Object.keys(mappings)) {
+          const mappingPath = `${nodePath}.inputMappings.${key}`;
+          const mapping = ownDataValue(mappings, key, mappingPath);
+          if (mapping !== null && typeof mapping === 'object') {
+            const kind = ownDataValue(mapping, 'kind', `${mappingPath}.kind`);
+            if (kind === 'literal')
+              preflightJsonValue(
+                ownDataValue(mapping, 'value', `${mappingPath}.value`),
+                `${mappingPath}.value`,
+              );
+          }
+        }
+      }
+      const structured = ownDataValue(
+        node,
+        'structured',
+        `${nodePath}.structured`,
+      );
+      if (structured !== null && typeof structured === 'object')
+        graphs.push({
+          value: ownDataValue(
+            structured,
+            'body',
+            `${nodePath}.structured.body`,
+          ),
+          path: `${nodePath}.structured.body`,
+          depth: current.depth + 1,
+        });
+    }
+  }
+}
+
+function enforceDraftResourceLimits(graph: WorkflowGraph): void {
+  const stack: WorkflowGraph[] = [graph];
+  let nodes = 0;
+  let edges = 0;
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (current === undefined) continue;
+    nodes += current.nodes.length;
+    edges += current.edges.length;
+    if (
+      nodes > WORKFLOW_GRAPH_LIMITS.nodes ||
+      edges > WORKFLOW_GRAPH_LIMITS.edges
+    )
+      throw new WorkflowGraphContractError(
+        'graph_limit',
+        '$',
+        'aggregate node or edge count exceeds the graph limit',
+      );
+    for (const node of current.nodes)
+      if (node.structured !== undefined) stack.push(node.structured.body);
+  }
+}
+
+export function parseWorkflowGraphDraft(input: unknown): WorkflowGraph {
+  const bytes = preflightJsonDocument(input);
+  if (bytes > WORKFLOW_GRAPH_LIMITS.graphBytes)
+    throw new WorkflowGraphContractError(
+      'graph_limit',
+      '$',
+      'graph bytes exceed the graph limit',
+    );
+  preflightWorkflowGraph(input);
+  const graph = workflowGraphInputSchemaV1.parse(input) as WorkflowGraph;
+  enforceDraftResourceLimits(graph);
+  return graph;
+}
+
+export type WorkflowGraphDraftParseResult =
+  | { readonly success: true; readonly data: WorkflowGraph }
+  | {
+      readonly success: false;
+      readonly error: WorkflowGraphContractError | z.ZodError;
+    };
+
+export function safeParseWorkflowGraphDraft(
+  input: unknown,
+): WorkflowGraphDraftParseResult {
+  try {
+    return { success: true, data: parseWorkflowGraphDraft(input) };
+  } catch (error) {
+    if (
+      error instanceof WorkflowGraphContractError ||
+      error instanceof z.ZodError
+    )
+      return { success: false, error };
+    return {
+      success: false,
+      error: new WorkflowGraphContractError(
+        'invalid_json',
+        '$',
+        error instanceof Error ? error.message : 'graph parsing failed',
+      ),
+    };
+  }
+}
+
+export const EMPTY_WORKFLOW_GRAPH_V1: WorkflowGraph = Object.freeze({
+  schemaVersion: 1,
+  nodes: Object.freeze([]),
+  edges: Object.freeze([]),
+  settings: Object.freeze({}),
 });
 export type GraphIssueCode =
   | 'duplicate_node_id'
@@ -81,6 +575,7 @@ export type GraphIssueCode =
   | 'invalid_structured_body'
   | 'expansion_limit'
   | 'graph_limit'
+  | 'unknown_definition'
   | 'invalid_graph';
 export interface GraphValidationIssue {
   readonly code: GraphIssueCode;
@@ -242,6 +737,190 @@ export function validateWorkflowGraph(
   return issues.length === 0
     ? { ok: true, issues: [], expandedInvocations }
     : { ok: false, issues, expandedInvocations };
+}
+
+export interface WorkflowDefinitionCatalogV1 {
+  readonly schemaVersion: 1;
+  readonly definitions: readonly {
+    readonly key: string;
+    readonly version: number;
+  }[];
+}
+
+export const EMPTY_DEFINITION_CATALOG_V1: WorkflowDefinitionCatalogV1 =
+  Object.freeze({ schemaVersion: 1, definitions: Object.freeze([]) });
+
+export interface WorkflowCompatibilityIssue {
+  readonly code: 'unknown_definition';
+  readonly definitionKey: string;
+  readonly version: number;
+}
+
+export interface WorkflowCompatibilityReport {
+  readonly compatible: boolean;
+  readonly fingerprint: string;
+  readonly issues: readonly WorkflowCompatibilityIssue[];
+}
+
+function compareOrdinal(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
+function definitionCatalogFingerprint(
+  catalog: WorkflowDefinitionCatalogV1,
+): string {
+  const digest = createHash('sha256')
+    .update(
+      canonicalJson({
+        domain: 'pertexo.workflow.definition-compatibility',
+        catalogVersion: catalog.schemaVersion,
+        definitions: [...catalog.definitions].sort(
+          (left, right) =>
+            compareOrdinal(left.key, right.key) || left.version - right.version,
+        ),
+      }),
+    )
+    .digest('hex');
+  return `wf-compat:v1:sha256:${digest}`;
+}
+
+export const EMPTY_DEFINITION_CATALOG_FINGERPRINT_V1 =
+  definitionCatalogFingerprint(EMPTY_DEFINITION_CATALOG_V1);
+
+function compatibilityForGraph(
+  graph: WorkflowGraph,
+  catalog: WorkflowDefinitionCatalogV1,
+): WorkflowCompatibilityReport {
+  const known = new Set(
+    catalog.definitions.map(
+      (definition) => `${definition.key}\u0000${String(definition.version)}`,
+    ),
+  );
+  const unknown = new Map<string, WorkflowCompatibilityIssue>();
+  const stack: WorkflowGraph[] = [graph];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (current === undefined) continue;
+    for (const node of current.nodes) {
+      const identity = `${node.definition.key}\u0000${String(node.definition.version)}`;
+      if (!known.has(identity))
+        unknown.set(identity, {
+          code: 'unknown_definition',
+          definitionKey: node.definition.key,
+          version: node.definition.version,
+        });
+      if (node.structured !== undefined) stack.push(node.structured.body);
+    }
+  }
+  const issues = [...unknown.values()].sort(
+    (left, right) =>
+      compareOrdinal(left.definitionKey, right.definitionKey) ||
+      left.version - right.version,
+  );
+  return {
+    compatible: issues.length === 0,
+    fingerprint: definitionCatalogFingerprint(catalog),
+    issues,
+  };
+}
+
+export function workflowCompatibilityReport(
+  input: unknown,
+  catalog: WorkflowDefinitionCatalogV1 = EMPTY_DEFINITION_CATALOG_V1,
+): WorkflowCompatibilityReport {
+  return compatibilityForGraph(parseWorkflowGraphDraft(input), catalog);
+}
+
+export function parseWorkflowGraphForPublish(
+  input: unknown,
+  catalog: WorkflowDefinitionCatalogV1 = EMPTY_DEFINITION_CATALOG_V1,
+): WorkflowGraph {
+  const graph = parseWorkflowGraphDraft(input);
+  const validation = validateWorkflowGraph(graph);
+  const compatibility = compatibilityForGraph(graph, catalog);
+  const compatibilityIssues: GraphValidationIssue[] = compatibility.issues.map(
+    (issue) => ({
+      code: 'unknown_definition',
+      path: '$.nodes',
+      message: `unknown definition ${issue.definitionKey}@${String(issue.version)}`,
+    }),
+  );
+  const issues = validation.ok
+    ? compatibilityIssues
+    : [...validation.issues, ...compatibilityIssues];
+  if (issues.length > 0) throw new InvalidWorkflowGraphError(issues);
+  return graph;
+}
+
+function executableGraphProjection(
+  graph: WorkflowGraph,
+): Readonly<Record<string, JsonValue>> {
+  return canonicalizeJson({
+    schemaVersion: graph.schemaVersion,
+    nodes: [...graph.nodes]
+      .sort((left, right) => compareOrdinal(left.id, right.id))
+      .map((node) => {
+        const projected: Record<string, JsonValue> = {
+          id: node.id,
+          definition: node.definition,
+          configVersion: node.configVersion,
+          config: node.config,
+          inputMappings: node.inputMappings,
+          connectionRefs: node.connectionRefs,
+          disabled: node.disabled ?? false,
+        };
+        if (node.structured !== undefined) {
+          projected.structured = {
+            kind: node.structured.kind,
+            maxIterations: node.structured.maxIterations,
+            maxConcurrency: node.structured.maxConcurrency,
+            body: {
+              ...executableGraphProjection(node.structured.body),
+              inputPorts: node.structured.body.inputPorts,
+              outputPorts: node.structured.body.outputPorts,
+            },
+          };
+        }
+        return projected;
+      }),
+    edges: [...graph.edges]
+      .sort((left, right) => compareOrdinal(left.id, right.id))
+      .map((edge) => ({
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+      })),
+    settings:
+      graph.settings.maxRunDurationMs === undefined
+        ? {}
+        : { maxRunDurationMs: graph.settings.maxRunDurationMs },
+  }) as Readonly<Record<string, JsonValue>>;
+}
+
+export function workflowExecutableProjection(
+  input: unknown,
+  catalog: WorkflowDefinitionCatalogV1 = EMPTY_DEFINITION_CATALOG_V1,
+): JsonValue {
+  return executableGraphProjection(
+    parseWorkflowGraphForPublish(input, catalog),
+  );
+}
+
+export function workflowExecutableChecksum(
+  input: unknown,
+  catalog: WorkflowDefinitionCatalogV1 = EMPTY_DEFINITION_CATALOG_V1,
+): string {
+  const projection = workflowExecutableProjection(input, catalog);
+  const digest = createHash('sha256')
+    .update(
+      canonicalJson({
+        domain: 'pertexo.workflow.executable',
+        checksumVersion: 1,
+        graph: projection,
+      }),
+    )
+    .digest('hex');
+  return `wf:v1:sha256:${digest}`;
 }
 
 export type InvocationScopePart =
