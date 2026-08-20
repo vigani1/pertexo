@@ -32,6 +32,7 @@ const config = {
     idleTimeoutMillis: 30_000,
     max: 5,
     ownerRole: 'pertexo_owner',
+    workerRuntimeRole: 'pertexo_worker',
   },
   host: '127.0.0.1',
   nodeEnv: 'test' as const,

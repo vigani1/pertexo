@@ -127,6 +127,17 @@ export {
   checkDatabaseReadiness,
 } from './readiness.js';
 export type { DatabaseReadiness } from './readiness.js';
+export {
+  createPublishedWorkflowReader,
+  PublishedWorkflowVersionCorruptError,
+} from './published-workflow-reader.js';
+export type {
+  PublishedWorkflowReader,
+  PublishedWorkflowReadResult,
+  PublishedWorkflowV2Projection,
+  PublishedWorkflowVersionIdentity,
+  ReadPublishedWorkflowForExecutionInput,
+} from './published-workflow-reader.js';
 export { createOutboxDispatcherDatabase } from './dispatcher.js';
 export type {
   ClaimOutboxBatchInput,

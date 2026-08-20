@@ -5,6 +5,7 @@ import type {
 } from '@nestjs/common';
 import { Module } from '@nestjs/common';
 import type {
+  DatabaseReadiness,
   DatabaseConfig,
   WorkspaceDatabase,
   WorkspaceTransaction,
@@ -16,7 +17,10 @@ export const WORKSPACE_DATABASE = Symbol('WORKSPACE_DATABASE');
 export class NestWorkspaceDatabase
   implements WorkspaceDatabase, OnApplicationShutdown
 {
-  public constructor(private readonly database: WorkspaceDatabase) {}
+  public constructor(
+    private readonly database: WorkspaceDatabase,
+    private readonly expectedWorkerRole: string,
+  ) {}
 
   public withWorkspace<T>(
     workspaceId: string,
@@ -25,8 +29,12 @@ export class NestWorkspaceDatabase
     return this.database.withWorkspace(workspaceId, operation);
   }
 
-  public checkReadiness(): ReturnType<WorkspaceDatabase['checkReadiness']> {
-    return this.database.checkReadiness();
+  public async checkReadiness(): Promise<DatabaseReadiness> {
+    const readiness = await this.database.checkReadiness();
+    if (readiness.role !== this.expectedWorkerRole) {
+      throw new Error('Worker database role is incompatible');
+    }
+    return readiness;
   }
 
   public close(): ReturnType<WorkspaceDatabase['close']> {
@@ -51,6 +59,7 @@ function createDatabaseProvider(
     useFactory: (): NestWorkspaceDatabase =>
       new NestWorkspaceDatabase(
         options.database ?? createWorkspaceDatabase(config),
+        config.workerRuntimeRole,
       ),
   };
 }

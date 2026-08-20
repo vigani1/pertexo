@@ -21,6 +21,7 @@ describe('parseWorkerConfig', () => {
         idleTimeoutMillis: 30_000,
         max: 5,
         ownerRole: 'pertexo_owner',
+        workerRuntimeRole: 'pertexo_worker',
       },
       dispatcherDatabase: {
         connectionString:
@@ -29,6 +30,7 @@ describe('parseWorkerConfig', () => {
         idleTimeoutMillis: 30_000,
         max: 2,
         ownerRole: 'pertexo_owner',
+        workerRuntimeRole: 'pertexo_worker',
       },
       nodeEnv: 'development',
       logLevel: 'info',
@@ -62,6 +64,7 @@ describe('parseWorkerConfig', () => {
       REDIS_URL: 'redis://:secret@localhost:6379/0',
       NODE_ENV: 'test',
       LOG_LEVEL: 'debug',
+      POSTGRES_WORKER_RUNTIME_USER: 'custom_worker',
     });
 
     expect(config).toEqual({
@@ -72,6 +75,7 @@ describe('parseWorkerConfig', () => {
         idleTimeoutMillis: 30_000,
         max: 5,
         ownerRole: 'pertexo_owner',
+        workerRuntimeRole: 'custom_worker',
       },
       dispatcherDatabase: {
         connectionString:
@@ -80,6 +84,7 @@ describe('parseWorkerConfig', () => {
         idleTimeoutMillis: 30_000,
         max: 2,
         ownerRole: 'pertexo_owner',
+        workerRuntimeRole: 'custom_worker',
       },
       nodeEnv: 'test',
       logLevel: 'debug',

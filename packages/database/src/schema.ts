@@ -705,6 +705,9 @@ export const workflowVersions = appSchema.table(
     schemaVersion: integer('schema_version').notNull(),
     graphJson: jsonb('graph_json').notNull(),
     checksum: varchar('checksum', { length: 77 }).notNull(),
+    executableSchemaVersion: integer('executable_schema_version'),
+    executableJson: jsonb('executable_json'),
+    compatibilityReleaseEpoch: integer('compatibility_release_epoch'),
     publishedBy: uuid('published_by').notNull(),
     publishedAt: timestamp('published_at', {
       withTimezone: true,

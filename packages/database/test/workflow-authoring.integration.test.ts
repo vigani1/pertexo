@@ -244,6 +244,12 @@ describe('workflow authoring persistence', () => {
         supportedChecksumAlgorithms: [],
       }),
     ).rejects.toThrow('Workflow checksum support is incompatible');
+    await expect(
+      checkDatabaseReadiness(apiPool, {
+        ownerRole: 'pertexo_owner',
+        supportedExecutableSchemaVersions: [],
+      }),
+    ).rejects.toThrow('Workflow executable schema support is incompatible');
   });
 
   it('fails readiness on policy, grant, function, and dispatch-index drift', async () => {
@@ -272,9 +278,13 @@ describe('workflow authoring persistence', () => {
         'Workflow authoring runtime grants are incompatible',
       );
     } finally {
-      await executeAsOwner(
-        'revoke select on app.workflow_versions from pertexo_worker',
-      );
+      await executeAsOwner(`
+        revoke select on app.workflow_versions from pertexo_worker;
+        grant select (
+          id, workspace_id, workflow_id, version_number, schema_version,
+          checksum, executable_schema_version, executable_json,
+          compatibility_release_epoch
+        ) on app.workflow_versions to pertexo_worker`);
     }
 
     const creatorSignature = `app.create_workflow_with_draft(

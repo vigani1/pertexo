@@ -11,6 +11,7 @@ import type { TransportMetrics } from '@pertexo/observability/transport-metrics'
 import { describe, expect, it, vi } from 'vitest';
 
 import { createWorkerApplication } from '../src/app.js';
+import { NestWorkspaceDatabase } from '../src/platform/database/database.module.js';
 import { WorkerDrainState } from '../src/runtime/worker-drain-state.js';
 import { WorkerReadiness } from '../src/runtime/worker-readiness.js';
 
@@ -36,6 +37,7 @@ const workerConfig = {
     idleTimeoutMillis: 30_000,
     max: 5,
     ownerRole: 'pertexo_owner',
+    workerRuntimeRole: 'pertexo_worker',
   },
   dispatcherDatabase: {
     connectionString:
@@ -44,6 +46,7 @@ const workerConfig = {
     idleTimeoutMillis: 30_000,
     max: 2,
     ownerRole: 'pertexo_owner',
+    workerRuntimeRole: 'pertexo_worker',
   },
   nodeEnv: 'test' as const,
   logLevel: 'debug' as const,
@@ -141,6 +144,26 @@ function dependencies(
 }
 
 describe('worker application bootstrap', () => {
+  it('fails readiness when the connection is not the configured worker role', async () => {
+    const wrongRoleDatabase: WorkspaceDatabase = {
+      ...database,
+      checkReadiness: () =>
+        Promise.resolve({
+          migrationHead: '0013_published_workflow_execution.sql',
+          postgresMajor: 18,
+          role: 'pertexo_api',
+        }),
+    };
+    const wrapped = new NestWorkspaceDatabase(
+      wrongRoleDatabase,
+      'pertexo_worker',
+    );
+
+    await expect(wrapped.checkReadiness()).rejects.toThrow(
+      'Worker database role is incompatible',
+    );
+  });
+
   it('creates a standalone context without an HTTP server', async () => {
     const selected = dependencies();
     const app = await createWorkerApplication(workerConfig, selected);

@@ -13,6 +13,10 @@ const databaseConfigSchema = z.object({
     .string()
     .regex(/^[a-z_][a-z0-9_]*$/u)
     .default('pertexo_owner'),
+  workerRuntimeRole: z
+    .string()
+    .regex(/^[a-z_][a-z0-9_]*$/u)
+    .default('pertexo_worker'),
 });
 
 export type DatabaseConfig = Readonly<z.output<typeof databaseConfigSchema>>;
@@ -94,6 +98,10 @@ const dispatcherEnvironmentSchema = z.object({
     .string()
     .regex(/^[a-z_][a-z0-9_]*$/u)
     .default('pertexo_owner'),
+  POSTGRES_WORKER_RUNTIME_USER: z
+    .string()
+    .regex(/^[a-z_][a-z0-9_]*$/u)
+    .default('pertexo_worker'),
 });
 
 export function parseOutboxDispatcherConfig(
@@ -106,5 +114,6 @@ export function parseOutboxDispatcherConfig(
     idleTimeoutMillis: parsed.DATABASE_IDLE_TIMEOUT_MILLIS,
     max: parsed.DATABASE_DISPATCHER_POOL_MAX,
     ownerRole: parsed.POSTGRES_OWNER_USER,
+    workerRuntimeRole: parsed.POSTGRES_WORKER_RUNTIME_USER,
   });
 }

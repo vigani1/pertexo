@@ -85,6 +85,10 @@ const apiEnvironmentSchema = z.object({
     .string()
     .regex(/^[a-z_][a-z0-9_]*$/u)
     .default('pertexo_owner'),
+  POSTGRES_WORKER_RUNTIME_USER: z
+    .string()
+    .regex(/^[a-z_][a-z0-9_]*$/u)
+    .default('pertexo_worker'),
 });
 
 export type ApiNodeEnvironment = (typeof API_NODE_ENVIRONMENTS)[number];
@@ -122,6 +126,7 @@ export type ApiConfig = Readonly<{
     idleTimeoutMillis: number;
     max: number;
     ownerRole: string;
+    workerRuntimeRole: string;
   }>;
   host: string;
   identity?: ApiIdentityConfig;
@@ -152,6 +157,7 @@ export function parseApiConfig(
       idleTimeoutMillis: parsed.DATABASE_IDLE_TIMEOUT_MILLIS,
       max: parsed.DATABASE_POOL_MAX,
       ownerRole: parsed.POSTGRES_OWNER_USER,
+      workerRuntimeRole: parsed.POSTGRES_WORKER_RUNTIME_USER,
     }),
     host: parsed.HOST,
     ...(identity === undefined ? {} : { identity }),

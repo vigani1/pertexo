@@ -145,6 +145,10 @@ export const workerConfigSchema = z
       .string()
       .regex(/^[a-z_][a-z0-9_]*$/u)
       .default('pertexo_owner'),
+    POSTGRES_WORKER_RUNTIME_USER: z
+      .string()
+      .regex(/^[a-z_][a-z0-9_]*$/u)
+      .default('pertexo_worker'),
   })
   .transform(
     ({
@@ -168,6 +172,7 @@ export const workerConfigSchema = z
       OTEL_EXPORTER_OTLP_ENDPOINT,
       SERVICE_VERSION,
       POSTGRES_OWNER_USER,
+      POSTGRES_WORKER_RUNTIME_USER,
     }) => ({
       nodeEnv: NODE_ENV,
       logLevel: LOG_LEVEL,
@@ -186,6 +191,7 @@ export const workerConfigSchema = z
         idleTimeoutMillis: DATABASE_IDLE_TIMEOUT_MILLIS,
         max: DATABASE_POOL_MAX,
         ownerRole: POSTGRES_OWNER_USER,
+        workerRuntimeRole: POSTGRES_WORKER_RUNTIME_USER,
       },
       dispatcherDatabase: {
         connectionString: DATABASE_DISPATCHER_URL,
@@ -193,6 +199,7 @@ export const workerConfigSchema = z
         idleTimeoutMillis: DATABASE_IDLE_TIMEOUT_MILLIS,
         max: DATABASE_DISPATCHER_POOL_MAX,
         ownerRole: POSTGRES_OWNER_USER,
+        workerRuntimeRole: POSTGRES_WORKER_RUNTIME_USER,
       },
       outboxDispatcher: {
         batchSize: OUTBOX_DISPATCH_BATCH_SIZE,

@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0012_workflow_authoring.sql';
+export const EXPECTED_MIGRATION_HEAD = '0013_published_workflow_execution.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -31,6 +31,9 @@ interface ReadinessRow {
   phase2_grants_compatible: boolean;
   phase2_policy_compatible: boolean;
   phase2_schema_compatible: boolean;
+  phase3_grants_compatible: boolean;
+  phase3_policy_compatible: boolean;
+  phase3_schema_compatible: boolean;
   postgres_major: number;
   relforcerowsecurity: boolean;
   relrowsecurity: boolean;
@@ -41,8 +44,10 @@ interface ReadinessRow {
 
 type ReadinessOptions = Readonly<{
   ownerRole: string;
+  workerRuntimeRole?: string;
   supportedGraphSchemaVersions?: readonly number[];
   supportedChecksumAlgorithms?: readonly string[];
+  supportedExecutableSchemaVersions?: readonly number[];
 }>;
 
 export async function checkDatabaseReadiness(
@@ -60,12 +65,22 @@ export async function checkDatabaseReadiness(
   }
   const supportedChecksumAlgorithms = options.supportedChecksumAlgorithms ?? [
     'wf:v1:sha256',
+    'wf:v2:sha256',
   ];
   if (
-    supportedChecksumAlgorithms.length !== 1 ||
-    supportedChecksumAlgorithms[0] !== 'wf:v1:sha256'
+    supportedChecksumAlgorithms.length !== 2 ||
+    supportedChecksumAlgorithms[0] !== 'wf:v1:sha256' ||
+    supportedChecksumAlgorithms[1] !== 'wf:v2:sha256'
   ) {
     throw new Error('Workflow checksum support is incompatible');
+  }
+  const supportedExecutableSchemaVersions =
+    options.supportedExecutableSchemaVersions ?? [2];
+  if (
+    supportedExecutableSchemaVersions.length !== 1 ||
+    supportedExecutableSchemaVersions[0] !== 2
+  ) {
+    throw new Error('Workflow executable schema support is incompatible');
   }
   const result = await pool.query<ReadinessRow>(
     `
@@ -315,6 +330,9 @@ export async function checkDatabaseReadiness(
             ('workflow_versions','schema_version','integer',true),
             ('workflow_versions','graph_json','jsonb',true),
             ('workflow_versions','checksum','character varying(77)',true),
+            ('workflow_versions','executable_schema_version','integer',false),
+            ('workflow_versions','executable_json','jsonb',false),
+            ('workflow_versions','compatibility_release_epoch','integer',false),
             ('workflow_versions','published_by','uuid',true),
             ('workflow_versions','published_at','timestamp with time zone',true)
           ) expected(table_name,column_name,type_name,is_not_null)
@@ -338,7 +356,7 @@ export async function checkDatabaseReadiness(
         and exists (select 1 from pg_constraint where conrelid=to_regclass('app.workflows') and conname='workflows_published_version_workspace_fk' and contype='f' and confrelid=to_regclass('app.workflow_versions') and confdeltype='r')
         and (select count(*) = 9 from pg_attribute where attrelid = to_regclass('app.workflows') and attnum > 0 and not attisdropped)
         and (select count(*) = 7 from pg_attribute where attrelid = to_regclass('app.workflow_drafts') and attnum > 0 and not attisdropped)
-        and (select count(*) = 9 from pg_attribute where attrelid = to_regclass('app.workflow_versions') and attnum > 0 and not attisdropped)
+        and (select count(*) = 12 from pg_attribute where attrelid = to_regclass('app.workflow_versions') and attnum > 0 and not attisdropped)
         and exists (select 1 from pg_attribute where attrelid = to_regclass('app.workflows') and attname = 'published_version_id' and atttypid = 'uuid'::regtype and not attnotnull)
         and exists (select 1 from pg_attribute where attrelid = to_regclass('app.workflow_drafts') and attname = 'graph_json' and atttypid = 'jsonb'::regtype and attnotnull)
         and exists (select 1 from pg_attribute where attrelid = to_regclass('app.workflow_versions') and attname = 'checksum' and atttypid = 'varchar'::regtype and atttypmod = 81 and attnotnull)
@@ -357,7 +375,7 @@ export async function checkDatabaseReadiness(
         (select relrowsecurity and relforcerowsecurity from pg_class where oid = to_regclass('app.workflows'))
         and (select relrowsecurity and relforcerowsecurity from pg_class where oid = to_regclass('app.workflow_drafts'))
         and (select relrowsecurity and relforcerowsecurity from pg_class where oid = to_regclass('app.workflow_versions'))
-        and (select count(*) from pg_policy where polrelid in (to_regclass('app.workflows'), to_regclass('app.workflow_drafts'), to_regclass('app.workflow_versions'))) = 3
+        and (select count(*) from pg_policy where polrelid in (to_regclass('app.workflows'), to_regclass('app.workflow_drafts'), to_regclass('app.workflow_versions'))) = 4
         and exists (select 1 from pg_policy p where p.polrelid = to_regclass('app.workflows') and p.polname = 'workflows_workspace_scope' and p.polqual is not null and p.polwithcheck is not null and cardinality(p.polroles) = 2 and (select oid from pg_roles where rolname = $1) = any(p.polroles) and exists (select 1 from unnest(p.polroles) policy_role where policy_role <> (select oid from pg_roles where rolname = $1) and has_function_privilege(pg_get_userbyid(policy_role), 'app.create_workflow_with_draft(uuid,uuid,character varying,uuid,integer,jsonb,character,character,character varying,character varying)', 'EXECUTE')))
         and exists (select 1 from pg_policy p where p.polrelid = to_regclass('app.workflow_drafts') and p.polname = 'workflow_drafts_workspace_scope' and p.polqual is not null and p.polwithcheck is not null and cardinality(p.polroles) = 2 and (select oid from pg_roles where rolname = $1) = any(p.polroles) and exists (select 1 from unnest(p.polroles) policy_role where policy_role <> (select oid from pg_roles where rolname = $1) and has_function_privilege(pg_get_userbyid(policy_role), 'app.create_workflow_with_draft(uuid,uuid,character varying,uuid,integer,jsonb,character,character,character varying,character varying)', 'EXECUTE')))
         and exists (select 1 from pg_policy p where p.polrelid = to_regclass('app.workflow_versions') and p.polname = 'workflow_versions_workspace_scope' and p.polqual is not null and p.polwithcheck is not null and cardinality(p.polroles) = 2 and (select oid from pg_roles where rolname = $1) = any(p.polroles) and exists (select 1 from unnest(p.polroles) policy_role where policy_role <> (select oid from pg_roles where rolname = $1) and has_function_privilege(pg_get_userbyid(policy_role), 'app.create_workflow_with_draft(uuid,uuid,character varying,uuid,integer,jsonb,character,character,character varying,character varying)', 'EXECUTE')))
@@ -434,6 +452,60 @@ export async function checkDatabaseReadiness(
         end
       ) as phase2_grants_compatible,
       (
+        exists (
+          select 1 from pg_constraint
+          where conrelid = to_regclass('app.workflow_versions')
+            and conname = 'workflow_versions_checksum_format'
+            and pg_get_constraintdef(oid) = 'CHECK ((((((checksum)::text ~ ''^wf:v1:sha256:[0-9a-f]{64}$''::text) AND (executable_schema_version IS NULL) AND (executable_json IS NULL) AND (compatibility_release_epoch IS NULL)) OR (((checksum)::text ~ ''^wf:v2:sha256:[0-9a-f]{64}$''::text) AND (executable_schema_version IS NOT NULL) AND (executable_schema_version = 2) AND (executable_json IS NOT NULL) AND (jsonb_typeof(executable_json) = ''object''::text) AND (compatibility_release_epoch IS NOT NULL) AND (compatibility_release_epoch > 0))) IS TRUE))'
+        )
+        and exists (
+          select 1 from pg_constraint
+          where conrelid = to_regclass('app.workflow_versions')
+            and conname = 'workflow_versions_executable_bounded'
+            and pg_get_constraintdef(oid) = 'CHECK (((executable_json IS NULL) OR (octet_length((executable_json)::text) <= 1048576)))'
+        )
+      ) as phase3_schema_compatible,
+      exists (
+        select 1 from pg_policy policy
+        where policy.polrelid = to_regclass('app.workflow_versions')
+          and policy.polname = 'workflow_versions_worker_execution_read'
+          and policy.polcmd = 'r'
+          and cardinality(policy.polroles) = 1
+          and policy.polroles[1] = (select oid from pg_roles where rolname = $2)
+          and pg_get_expr(policy.polqual, policy.polrelid) = '(((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text)) AND ((checksum)::text ~~ ''wf:v2:sha256:%''::text) AND (executable_schema_version = 2) AND (executable_json IS NOT NULL) AND (compatibility_release_epoch > 0))'
+          and policy.polwithcheck is null
+      ) as phase3_policy_compatible,
+      (
+        select
+          not worker_role.rolsuper
+          and not worker_role.rolbypassrls
+          and not pg_has_role(worker_role.rolname, $1::name, 'MEMBER')
+          and pg_get_userbyid((select relowner from pg_class where oid = to_regclass('app.workflow_versions'))) <> worker_role.rolname
+          and has_column_privilege(worker_role.rolname, 'app.workflow_versions', 'id', 'SELECT')
+          and has_column_privilege(worker_role.rolname, 'app.workflow_versions', 'workspace_id', 'SELECT')
+          and has_column_privilege(worker_role.rolname, 'app.workflow_versions', 'workflow_id', 'SELECT')
+          and has_column_privilege(worker_role.rolname, 'app.workflow_versions', 'version_number', 'SELECT')
+          and has_column_privilege(worker_role.rolname, 'app.workflow_versions', 'schema_version', 'SELECT')
+          and has_column_privilege(worker_role.rolname, 'app.workflow_versions', 'checksum', 'SELECT')
+          and has_column_privilege(worker_role.rolname, 'app.workflow_versions', 'executable_schema_version', 'SELECT')
+          and has_column_privilege(worker_role.rolname, 'app.workflow_versions', 'executable_json', 'SELECT')
+          and has_column_privilege(worker_role.rolname, 'app.workflow_versions', 'compatibility_release_epoch', 'SELECT')
+          and not has_column_privilege(worker_role.rolname, 'app.workflow_versions', 'graph_json', 'SELECT')
+          and not has_column_privilege(worker_role.rolname, 'app.workflow_versions', 'published_by', 'SELECT')
+          and not has_column_privilege(worker_role.rolname, 'app.workflow_versions', 'published_at', 'SELECT')
+          and not has_table_privilege(worker_role.rolname, 'app.workflow_versions', 'SELECT')
+          and not has_table_privilege(worker_role.rolname, 'app.workflow_versions', 'INSERT')
+          and not has_table_privilege(worker_role.rolname, 'app.workflow_versions', 'UPDATE')
+          and not has_table_privilege(worker_role.rolname, 'app.workflow_versions', 'DELETE')
+          and not has_table_privilege(worker_role.rolname, 'app.workflow_versions', 'TRUNCATE')
+          and not has_table_privilege(worker_role.rolname, 'app.workflow_versions', 'REFERENCES')
+          and not has_table_privilege(worker_role.rolname, 'app.workflow_versions', 'TRIGGER')
+          and not has_table_privilege(worker_role.rolname, 'app.workflows', 'SELECT')
+          and not has_table_privilege(worker_role.rolname, 'app.workflow_drafts', 'SELECT')
+        from pg_roles worker_role
+        where worker_role.rolname = $2
+      ) as phase3_grants_compatible,
+      (
         select name
         from pertexo_internal.schema_migrations
         order by name desc
@@ -443,7 +515,7 @@ export async function checkDatabaseReadiness(
     join pg_class table_class on table_class.oid = 'app.rls_probe_records'::regclass
     where role.rolname = current_user
   `,
-    [options.ownerRole],
+    [options.ownerRole, options.workerRuntimeRole ?? 'pertexo_worker'],
   );
   const row = result.rows[0];
 
@@ -498,6 +570,17 @@ export async function checkDatabaseReadiness(
   }
   if (!row.phase2_grants_compatible) {
     throw new Error('Workflow authoring runtime grants are incompatible');
+  }
+  if (!row.phase3_schema_compatible) {
+    throw new Error('Published workflow execution schema is incompatible');
+  }
+  if (!row.phase3_policy_compatible) {
+    throw new Error(
+      'Published workflow execution row-level security is incompatible',
+    );
+  }
+  if (!row.phase3_grants_compatible) {
+    throw new Error('Published workflow execution grants are incompatible');
   }
   const hasProtectedTableAccess =
     row.can_select || row.can_insert || row.can_update || row.can_delete;

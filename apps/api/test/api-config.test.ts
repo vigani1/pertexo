@@ -17,6 +17,7 @@ describe('parseApiConfig', () => {
         idleTimeoutMillis: 30_000,
         max: 5,
         ownerRole: 'pertexo_owner',
+        workerRuntimeRole: 'pertexo_worker',
       },
       host: '0.0.0.0',
       nodeEnv: 'development',
@@ -39,6 +40,7 @@ describe('parseApiConfig', () => {
       HOST: '127.0.0.1',
       NODE_ENV: 'test',
       PORT: '4312',
+      POSTGRES_WORKER_RUNTIME_USER: 'custom_worker',
     });
 
     expect(config).toEqual({
@@ -49,6 +51,7 @@ describe('parseApiConfig', () => {
         idleTimeoutMillis: 30_000,
         max: 5,
         ownerRole: 'pertexo_owner',
+        workerRuntimeRole: 'custom_worker',
       },
       host: '127.0.0.1',
       nodeEnv: 'test',

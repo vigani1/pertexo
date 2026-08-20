@@ -19,6 +19,7 @@ describe('database configuration', () => {
       idleTimeoutMillis: 30_000,
       max: 10,
       ownerRole: 'pertexo_owner',
+      workerRuntimeRole: 'pertexo_worker',
     });
     expect(Object.isFrozen(config)).toBe(true);
   });
@@ -63,6 +64,7 @@ describe('database configuration', () => {
       idleTimeoutMillis: 30_000,
       max: 2,
       ownerRole: 'pertexo_owner',
+      workerRuntimeRole: 'pertexo_worker',
     });
   });
 });
