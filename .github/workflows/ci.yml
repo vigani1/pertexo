@@ -45,6 +45,7 @@ jobs:
       ARTIFACT_STORE_FORCE_PATH_STYLE: 'true'
       ARTIFACT_STORE_INTEGRATION: 'true'
       API_SSE_INTEGRATION: 'true'
+      API_IDENTITY_INTEGRATION: 'true'
       WORKER_TRANSPORT_INTEGRATION: 'true'
 
     steps:
@@ -92,7 +93,9 @@ jobs:
           test "$(redis_config maxmemory-policy)" = "noeviction"
 
       - name: Run real integration suites
-        run: pnpm test:integration
+        run: |
+          pnpm db:migrate
+          pnpm test:integration
 
       - name: Run Phase 0E execution recovery proof
         env:

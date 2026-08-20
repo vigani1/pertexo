@@ -13,6 +13,7 @@ import {
   authorizeWorkspace,
   createActorContext,
   type AuthorizationCapability,
+  type WorkspaceStatus,
 } from '../workspaces/index.js';
 import type {
   IdentityWorkspaceRequest,
@@ -81,6 +82,9 @@ export class WorkspaceCapabilityGuard implements CanActivate {
     private readonly authorization: WorkspaceAuthorizationSource,
     private readonly contexts: RequestContextStore,
     private readonly disclosure: 'forbidden' | 'not_found' = 'not_found',
+    private readonly allowedWorkspaceStatuses: readonly WorkspaceStatus[] = [
+      'active',
+    ],
   ) {}
 
   public async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -104,6 +108,7 @@ export class WorkspaceCapabilityGuard implements CanActivate {
         capability: this.capability,
         access: this.authorization,
         disclosure: this.disclosure,
+        allowedWorkspaceStatuses: this.allowedWorkspaceStatuses,
       });
       request.authorizedWorkspace = authorizedWorkspace;
       this.contexts.setWorkspace(authorizedWorkspace.workspaceId);
@@ -123,7 +128,11 @@ export class WorkspaceManageGuard extends WorkspaceCapabilityGuard {
     @Inject(RequestContextStore)
     contexts: RequestContextStore,
   ) {
-    super('workspace:manage', authorization, contexts, 'forbidden');
+    super('workspace:manage', authorization, contexts, 'forbidden', [
+      'active',
+      'suspended',
+      'pending_deletion',
+    ]);
   }
 }
 
