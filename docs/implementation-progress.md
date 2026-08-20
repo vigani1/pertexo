@@ -19,7 +19,7 @@ not complete a phase.
 | Phase 0E — execution durability proofs and engine gate | Complete | ADRs 005 and 007–009; commits through `0322837`; 239 unit, 96 real-service integration, five process-recovery, one SSE-outage, and one transport-outage assertions; custom-engine GO |
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
-| Phase 3 — first executable-node slice | In progress | ADR 010; node SDK/core registry `85385cc`–`94426f7`; retained V1/V2 identity and operations through `5ea5075`; migration head `0013_published_workflow_execution.sql`; published projection `83c57c6`; consumers/publication still disabled |
+| Phase 3 — first executable-node slice | In progress | ADR 010; node SDK/core registry `85385cc`–`94426f7`; retained V1 and pre-publication V2 identity/operations through `e8da105`; migration head `0013_published_workflow_execution.sql`; published projection `83c57c6`; consumers/publication still disabled |
 | Phase 4 — first side-effecting integration slice | Not started | — |
 | Phase 5 — orchestration slice | Not started | — |
 | Phase 6 — V1 providers and triggers | Not started | — |
@@ -1047,6 +1047,21 @@ Current evidence:
   findings. The shared local database remains safely at 0012 because its old
   recorded 0012 checksum differs from the checked-in migration; no migration
   history was bypassed or rewritten.
+- Commit `e8da105` completes the pre-publication V2 identity by pinning the
+  ADR 007 `safe | idempotent_with_key | unsafe` side-effect class in every
+  executable node and copying that authenticated value into every attempt
+  admission. One exhaustive compiler boundary maps the node-SDK manifest
+  spelling, while parsing checks the pin against both admission and current
+  releases and the behavior checksum includes it. Core scheduling no longer has
+  a synthesized-safe fallback and fails closed when admission lacks explicit
+  scheduler metadata. The V2 golden checksum changed before any V2 row could be
+  published or durably admitted: publication remains disabled, the shared
+  database is still at the V1-only 0012 schema, and the retained-V2 fixture box
+  remains unchecked. The engine passes 68 assertions, workflow-model retains
+  its 48 unchanged V1 assertions, and engine/worker typechecks, builds, lint,
+  formatting, and independent Spec/Standards reviews are green. Stable provider
+  effect keys remain explicitly owned by the next RunStore checkpoint; current
+  Phase 3 core manifests are safe and no consumer is enabled.
 - Concrete nodes-core composition for Set/Map resolution, V2 immutable retained
   fixtures, workflow-model publication adaptation, persistence, worker
   consumers, API, SSE, and the complete executable graph remain unchecked and
