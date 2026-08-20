@@ -179,6 +179,15 @@ importers:
         specifier: 4.4.3
         version: 4.4.3
 
+  packages/nodes-core:
+    dependencies:
+      '@pertexo/node-sdk':
+        specifier: workspace:*
+        version: link:../node-sdk
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
+
   packages/observability:
     dependencies:
       '@opentelemetry/api':
