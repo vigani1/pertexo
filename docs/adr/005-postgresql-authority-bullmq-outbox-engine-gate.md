@@ -206,6 +206,70 @@ are recorded in
 `docs/implementation-progress.md`. This evidence completes Phase 0D only; the
 custom-engine decision remains gated on every Phase 0E proof below.
 
+### Phase 0E implementation evidence and decision
+
+Phase 0E passed on 2026-08-20 against PostgreSQL 18.6, Redis 8.2.8,
+BullMQ 6.1.2, Node.js 24, OpenTelemetry API 1.9.0/SDK 0.221.0, JSONata 2.2.2,
+and migration head `0007_execution_runtime.sql`. The final command matrix was:
+
+- `pnpm install --frozen-lockfile`;
+- `pnpm check`;
+- `ARTIFACT_STORE_INTEGRATION=true WORKER_TRANSPORT_INTEGRATION=true
+  API_SSE_INTEGRATION=true pnpm test:integration`;
+- `PHASE0E_EXECUTION_INTEGRATION=true pnpm --filter @pertexo/worker
+  test:phase0e`;
+- `API_SSE_RESILIENCE_INTEGRATION=true pnpm --filter @pertexo/api
+  test:sse-resilience`; and
+- `WORKER_TRANSPORT_RESILIENCE=true pnpm --filter @pertexo/worker
+  test:resilience`.
+
+The process fixture passed five destructive assertions in 41.16 seconds. It
+SIGKILLed coordinator processes after immutable-version/checkpoint recovery and
+on both sides of checkpoint CAS, then proved exact fresh-process reconstruction
+and stale-revision fencing without inventing a domain event. It SIGKILLed a
+safe attempt worker before dispatch and idempotent-with-key and unsafe attempt
+workers after dispatch; fencing retained one provider effect and persisted
+truthful `outcome_unknown` where required. The database rejected live-lease
+reconciliation and emitted the complete strict attempt identity after expiry.
+
+The durable wait held no database lease or BullMQ active slot, rejected early
+resume, restarted Redis in 5,976.94 ms, reached due recovery in 7,102.69 ms,
+and completed in a fresh worker in 726.57 ms. Concurrent due coordinators and
+duplicate production BullMQ publication produced one logical resumed attempt,
+event, outbox row, and completion. Active cooperative work observed durable
+PostgreSQL cancellation through an `AbortSignal` while Redis was unavailable;
+recovery took 12,241.58 ms, no fresh worker could claim or admit work, and the
+already completed external effect remained recorded exactly once. A separate
+cancellation restart completed in 5,975.06 ms.
+
+Persisted all/any/count joins, skipped and missing branches, and an exact
+bounded loop were reconstructed from the run-pinned immutable graph plus
+checkpoint across pre- and post-CAS process death, including duplicate
+completion replay. Separate executable validation cases reject over-limit
+loops, conflicting completion facts, and arbitrary cycles before persistence.
+The resumed worker activated and exported a real OpenTelemetry consumer span
+with the recovered W3C parent.
+The SSE fixture detected Redis publication loss in 1.09 ms, restored Redis
+health in 5,797.18 ms, and reconstructed the exact PostgreSQL sequence in
+5,810.51 ms. The restricted evaluator ran 101 deterministic evaluations across
+two workers and a restart in 836.15 ms, using JSONata 2.2.2 and policy V1, with
+canonical result SHA-256
+`43258cff783fe7036d8a43033f830adfc60ec037382473548ac742b888292777`.
+
+Cleanup restored authenticated Redis `PONG`, left isolated Redis DB 15 empty,
+and verified PostgreSQL health. The full repository gate passed 239 unit tests;
+the normal real-service matrix passed 88 database, two object-store, one API
+SSE, and five worker assertions. The final implementation review found the
+measured ADR/progress record to be the only remaining gate condition.
+
+**Custom-engine decision: GO.** The checkpointed PostgreSQL + BullMQ engine may
+proceed because recovery is derived from immutable PostgreSQL state, duplicate
+delivery is fenced/idempotent, waits and cancellation do not depend on Redis
+authority, unsafe effects fail conservatively, and the bounded expression
+runtime and recovery observability passed executable gates. The Temporal
+fallback is not required at this gate; any future violation of these invariants
+reopens the decision rather than weakening it silently.
+
 ## Custom-engine go/no-go and Temporal fallback
 
 The custom engine proceeds only if all execution spikes pass with measured,
