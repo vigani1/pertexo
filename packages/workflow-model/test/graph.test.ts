@@ -113,6 +113,36 @@ describe('workflow graph validation', () => {
         maxExpandedInvocations: 100,
       }).issues.some((issue) => issue.code === 'expansion_limit'),
     ).toBe(true);
+    expect(
+      validateWorkflowGraph(graph([loop]), { nodes: 1 }).issues.some(
+        (issue) => issue.code === 'graph_limit',
+      ),
+    ).toBe(true);
+    expect(
+      validateWorkflowGraph(
+        graph([
+          {
+            ...loop,
+            structured: {
+              ...loop.structured,
+              kind: 'other' as never,
+            },
+          },
+        ]),
+      ).issues.some((issue) => issue.code === 'invalid_structured_body'),
+    ).toBe(true);
+  });
+  it('requires the exact published graph and structured schema versions', () => {
+    expect(
+      validateWorkflowGraph({ ...graph([]), schemaVersion: 2 }).issues,
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'invalid_graph',
+          path: '$.schemaVersion',
+        }),
+      ]),
+    );
   });
   it('derives stable keys from run, version, node, and ordered scope only', () => {
     const input = {

@@ -85,6 +85,7 @@ export async function resolveValueSource(
   source: ValueSource,
   context: ExpressionContextV1,
   evaluator: JsonataEvaluator = sharedEvaluator,
+  signal?: AbortSignal,
 ): Promise<ValueResolution> {
   if (source.kind === 'literal')
     return { kind: 'value', value: canonicalizeJson(source.value) };
@@ -96,11 +97,13 @@ export async function resolveValueSource(
       ? { kind: 'missing' }
       : resolveJsonPath(output, source.path);
   }
-  const result = await evaluator.evaluate({
+  const request = {
     expression: source.expression,
     policyVersion: source.policyVersion,
     context,
-  });
+    ...(signal === undefined ? {} : { signal }),
+  };
+  const result = await evaluator.evaluate(request);
   return result.kind === 'error'
     ? {
         kind: 'error',

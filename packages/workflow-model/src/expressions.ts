@@ -179,6 +179,14 @@ function astSize(root: Ast): {
           disallowed = 'callable';
       }
       if (
+        (node.type === 'path' || node.type === 'name') &&
+        (Object.hasOwn(node, 'group') ||
+          Object.hasOwn(node, 'focus') ||
+          Object.hasOwn(node, 'index') ||
+          Object.hasOwn(node, 'tuple'))
+      )
+        disallowed = 'path_metadata';
+      if (
         node.type === 'variable' &&
         parentKey !== 'procedure' &&
         node.value !== ''
@@ -267,6 +275,20 @@ interface Pending {
   readonly resolve: (result: ExpressionResult) => void;
   queuedAbort: (() => void) | undefined;
 }
+function projectExpressionContext(value: unknown): ExpressionContextV1 {
+  if (value === null || typeof value !== 'object')
+    throw new TypeError('expression context must be an object');
+  const context = value as Record<string, unknown>;
+  if (
+    !Object.hasOwn(context, 'runInput') ||
+    !Object.hasOwn(context, 'nodeOutputs')
+  )
+    throw new TypeError('expression context requires runInput and nodeOutputs');
+  return canonicalizeJson({
+    runInput: context.runInput,
+    nodeOutputs: context.nodeOutputs,
+  }) as unknown as ExpressionContextV1;
+}
 export class JsonataEvaluator {
   readonly #maxActive: number;
   readonly #maxQueued: number;
@@ -299,9 +321,11 @@ export class JsonataEvaluator {
       request.policyVersion,
     );
     if (validation.kind === 'error') return Promise.resolve(validation);
+    let context: ExpressionContextV1;
     let inspection;
     try {
-      inspection = inspectJsonValue(request.context);
+      context = projectExpressionContext(request.context);
+      inspection = inspectJsonValue(context);
     } catch (cause) {
       return Promise.resolve(
         error(
@@ -334,9 +358,7 @@ export class JsonataEvaluator {
       const pending: Pending = {
         request: {
           ...request,
-          context: canonicalizeJson(
-            request.context,
-          ) as unknown as ExpressionContextV1,
+          context,
         },
         resolve,
         queuedAbort: undefined,

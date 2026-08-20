@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { JsonataEvaluator } from '../src/expressions.js';
 import { resolveJsonPath, resolveValueSource } from '../src/mapping.js';
 
 describe('value sources', () => {
@@ -36,5 +37,31 @@ describe('value sources', () => {
         context,
       ),
     ).toEqual({ kind: 'missing' });
+  });
+  it('propagates the execution cancellation signal through expression mapping', async () => {
+    const controller = new AbortController();
+    let received: AbortSignal | undefined;
+    const evaluator = {
+      evaluate: (request: { signal?: AbortSignal }) => {
+        received = request.signal;
+        return Promise.resolve({
+          kind: 'value' as const,
+          value: 'ok' as const,
+          canonicalBytes: 4,
+        });
+      },
+    } as unknown as JsonataEvaluator;
+    await resolveValueSource(
+      {
+        kind: 'expression',
+        language: 'jsonata',
+        expression: '"ok"',
+        policyVersion: 1,
+      },
+      { runInput: null, nodeOutputs: {} },
+      evaluator,
+      controller.signal,
+    );
+    expect(received).toBe(controller.signal);
   });
 });

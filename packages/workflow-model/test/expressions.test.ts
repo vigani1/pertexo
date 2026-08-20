@@ -43,6 +43,18 @@ describe('restricted JSONata policy v1', () => {
     expect(validateExpression('runInput.constructor', 1)).toEqual({
       kind: 'valid',
     });
+    for (const source of [
+      'runInput@$focus',
+      'runInput#$index',
+      'runInput{key: value}',
+    ]) {
+      expect(validateExpression(source, 1)).toEqual(
+        expect.objectContaining({
+          kind: 'error',
+          code: 'disallowed_construct',
+        }),
+      );
+    }
     expect(validateExpression('x', 999)).toEqual(
       expect.objectContaining({ kind: 'error', code: 'invalid_expression' }),
     );
@@ -118,6 +130,27 @@ describe('restricted JSONata policy v1', () => {
       (await evaluator.evaluate({ expression: '(', policyVersion: 1, context }))
         .kind,
     ).toBe('error');
+  });
+  it('projects evaluator context to the two declared fields before isolation', async () => {
+    const evaluator = new JsonataEvaluator();
+    evaluators.push(evaluator);
+    const context = {
+      runInput: { name: 'Ada' },
+      nodeOutputs: {},
+      secret: 'must never reach JSONata',
+    } as never;
+    expect(
+      await evaluator.evaluate({
+        expression: '$keys($)',
+        policyVersion: 1,
+        context,
+      }),
+    ).toEqual(
+      expect.objectContaining({
+        kind: 'value',
+        value: ['nodeOutputs', 'runInput'],
+      }),
+    );
   });
   it('supports the allowed navigation, filter, construction, and operator profile', async () => {
     const evaluator = new JsonataEvaluator();

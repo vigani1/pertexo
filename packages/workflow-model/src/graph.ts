@@ -99,6 +99,14 @@ export type GraphValidationResult =
       readonly expandedInvocations: number;
     };
 
+function isForEachStructure(value: unknown): value is ForEachStructure {
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    (value as { readonly kind?: unknown }).kind === 'for_each'
+  );
+}
+
 export function validateWorkflowGraph(
   graph: WorkflowGraph,
   overrides: Partial<WorkflowGraphLimits> = {},
@@ -106,20 +114,20 @@ export function validateWorkflowGraph(
   const limits = { ...WORKFLOW_GRAPH_LIMITS, ...overrides };
   const issues: GraphValidationIssue[] = [];
   const globalNodeIds = new Set<string>();
+  const aggregate = { nodes: 0, edges: 0 };
   const issue = (code: GraphIssueCode, path: string, message: string): void => {
     issues.push({ code, path, message });
   };
   const validate = (current: WorkflowGraph, path: string): number => {
-    if (!Number.isInteger(current.schemaVersion) || current.schemaVersion < 1)
+    if (current.schemaVersion !== 1)
       issue(
         'invalid_graph',
         `${path}.schemaVersion`,
-        'schemaVersion must be a positive integer',
+        'schemaVersion must be exactly 1',
       );
-    if (
-      current.nodes.length > limits.nodes ||
-      current.edges.length > limits.edges
-    )
+    aggregate.nodes += current.nodes.length;
+    aggregate.edges += current.edges.length;
+    if (aggregate.nodes > limits.nodes || aggregate.edges > limits.edges)
       issue('graph_limit', path, 'node or edge count exceeds the graph limit');
     const localIds = new Set<string>();
     const edgeIds = new Set<string>();
@@ -172,7 +180,16 @@ export function validateWorkflowGraph(
     for (const currentNode of current.nodes) {
       expansion += 1;
       if (!currentNode.structured) continue;
-      const loop = currentNode.structured;
+      const structured: unknown = currentNode.structured;
+      if (!isForEachStructure(structured)) {
+        issue(
+          'invalid_structured_body',
+          `${path}.nodes.${currentNode.id}.structured.kind`,
+          'structured nodes must use kind for_each',
+        );
+        continue;
+      }
+      const loop = structured;
       if (
         !Number.isInteger(loop.maxIterations) ||
         loop.maxIterations < 1 ||
