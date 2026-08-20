@@ -1289,7 +1289,10 @@ describeIntegration('Phase 0E real execution recovery fixture', () => {
         branch: {
           branchId: 'all-a',
           disposition: 'arrived',
-          output: { kind: 'inline', reference: 'output-all-a' },
+          output: {
+            kind: 'inline',
+            attemptId: '00000000-0000-4000-8000-000000000201',
+          },
         },
       },
       {
@@ -1330,7 +1333,10 @@ describeIntegration('Phase 0E real execution recovery fixture', () => {
         branch: {
           branchId: 'count-a',
           disposition: 'arrived',
-          output: { kind: 'artifact', reference: 'output-count-a' },
+          output: {
+            kind: 'artifact',
+            artifactId: '00000000-0000-4000-8000-000000000202',
+          },
         },
       },
       {
@@ -1346,7 +1352,10 @@ describeIntegration('Phase 0E real execution recovery fixture', () => {
       {
         kind: 'loop_started',
         loopId: 'loop-1',
-        collection: { kind: 'inline', reference: 'collection-1' },
+        collection: {
+          kind: 'inline',
+          attemptId: '00000000-0000-4000-8000-000000000203',
+        },
         collectionChecksum: 'a'.repeat(64),
         collectionSize: 3,
         maxIterations: 3,
@@ -1435,7 +1444,10 @@ describeIntegration('Phase 0E real execution recovery fixture', () => {
           {
             kind: 'loop_started',
             loopId: 'loop-over-limit',
-            collection: { kind: 'inline', reference: 'collection-over' },
+            collection: {
+              kind: 'inline',
+              attemptId: '00000000-0000-4000-8000-000000000204',
+            },
             collectionChecksum: 'b'.repeat(64),
             collectionSize: 4,
             maxConcurrency: 2,

@@ -20,6 +20,7 @@ import type {
   JoinPolicy,
   JoinState,
   LoopState,
+  NodeRunAdmissionPlan,
   NodeStatus,
   OutputReference,
   WorkflowCheckpointV1,
@@ -27,6 +28,7 @@ import type {
 } from './types.js';
 
 export type WorkflowObservation =
+  | { readonly kind: 'cursor_only' }
   | {
       readonly kind: 'ready';
       readonly invocationKey: string;
@@ -54,6 +56,7 @@ export type WorkflowObservation =
     }
   | { readonly kind: 'resume'; readonly invocationKey: string }
   | { readonly kind: 'cancel_requested' }
+  | { readonly kind: 'deadline_expired'; readonly occurredAt?: string }
   | {
       readonly kind: 'join_declared';
       readonly joinId: string;
@@ -92,6 +95,16 @@ export interface AdvanceWorkflowFromSchedulerStateInput {
   readonly observations?: readonly WorkflowObservation[];
   readonly occurredAt: string;
   readonly maximumAdmissions: number;
+  /** Production source facts are already durable events and must not be emitted again. */
+  readonly persistedObservationCursor?: Readonly<{
+    expectedNextEventSequence: number;
+    consumedThroughEventSequence: number;
+  }>;
+  readonly deadlineExpiration?: Readonly<{ readonly occurredAt: string }>;
+  readonly dueResumptions?: readonly Readonly<{
+    readonly invocationKey: string;
+    readonly occurredAt: string;
+  }>[];
 }
 
 const nodeEventName: Readonly<Partial<Record<NodeStatus, EngineEventName>>> = {
@@ -133,7 +146,36 @@ export function advanceWorkflowFromSchedulerState(
   );
   let remainingIterationBudget = current.remainingIterationBudget;
   const eventDrafts: Omit<EngineEventPlan, 'sequence'>[] = [];
+  const nodeRunAdmissionKeys = new Set<string>();
+  const externalFactsArePersisted =
+    input.persistedObservationCursor !== undefined;
+  if (
+    input.persistedObservationCursor !== undefined &&
+    input.persistedObservationCursor.expectedNextEventSequence !==
+      current.nextEventSequence
+  )
+    throw new WorkflowEngineError(
+      'observation_invalid',
+      'persisted observation cursor does not match checkpoint',
+    );
+  const consumedThroughEventSequence =
+    input.persistedObservationCursor?.consumedThroughEventSequence ??
+    current.nextEventSequence - 1;
+  const consumedObservationCount =
+    consumedThroughEventSequence - current.nextEventSequence + 1;
+  if (
+    consumedObservationCount < 0 ||
+    (externalFactsArePersisted &&
+      consumedObservationCount !== (input.observations ?? []).length)
+  )
+    throw new WorkflowEngineError(
+      'observation_invalid',
+      'persisted observation cursor is invalid',
+    );
   let cancelRequested = current.cancelRequested;
+  let deadlineExpired = current.deadlineExpired;
+  let deadlineOccurredAt = input.deadlineExpiration?.occurredAt;
+  if (input.deadlineExpiration !== undefined) deadlineExpired = true;
   let runStatus = current.runStatus;
   const coordinatorNodeIds = new Set([
     ...current.joins.map(({ joinId }) => joinId),
@@ -146,8 +188,42 @@ export function advanceWorkflowFromSchedulerState(
           : [],
     ),
   ]);
+  const observations = externalFactsArePersisted
+    ? [...(input.observations ?? [])]
+    : [...(input.observations ?? [])].sort(observationOrder);
+  for (const observation of observations) {
+    if (observation.kind === 'cancel_requested') {
+      if (!cancelRequested && !externalFactsArePersisted)
+        eventDrafts.push(event('run.cancel_requested', input.occurredAt));
+      cancelRequested = true;
+    } else if (observation.kind === 'deadline_expired') {
+      deadlineExpired = true;
+      deadlineOccurredAt = observation.occurredAt ?? input.occurredAt;
+    }
+  }
 
-  if (runStatus === 'queued') {
+  for (const due of input.dueResumptions ?? []) {
+    if (cancelRequested || deadlineExpired) continue;
+    const existing = invocations.get(due.invocationKey);
+    if (existing === undefined)
+      throw new WorkflowEngineError(
+        'checkpoint_invalid',
+        `unknown invocation ${due.invocationKey}`,
+      );
+    if (existing.status === 'ready' || existing.status === 'running') continue;
+    assertNodeTransition(existing.status, 'ready');
+    const { resumeAt: _, ...rest } = existing;
+    void _;
+    const resumed = { ...rest, status: 'ready' as const };
+    invocations.set(existing.invocationKey, resumed);
+    eventDrafts.push(event('node.ready', due.occurredAt, resumed));
+    if (runStatus === 'waiting') {
+      assertRunTransition(runStatus, 'running');
+      runStatus = 'running';
+    }
+  }
+
+  if (runStatus === 'queued' && !cancelRequested && !deadlineExpired) {
     assertRunTransition(runStatus, 'running');
     runStatus = 'running';
     eventDrafts.push(event('run.started', input.occurredAt));
@@ -156,6 +232,7 @@ export function advanceWorkflowFromSchedulerState(
   if (
     graph?.deriveReadiness === true &&
     !cancelRequested &&
+    !deadlineExpired &&
     (runStatus === 'running' || runStatus === 'waiting')
   ) {
     for (const decision of deriveReadyNodes({
@@ -171,6 +248,7 @@ export function advanceWorkflowFromSchedulerState(
         attemptNumber: 0,
       };
       invocations.set(invocation.invocationKey, invocation);
+      nodeRunAdmissionKeys.add(invocation.invocationKey);
       eventDrafts.push(
         event(
           decision.disposition === 'ready' ? 'node.ready' : 'node.skipped',
@@ -181,14 +259,13 @@ export function advanceWorkflowFromSchedulerState(
     }
   }
 
-  const observations = [...(input.observations ?? [])].sort(observationOrder);
   for (const observation of observations) {
-    if (observation.kind === 'cancel_requested') {
-      if (!cancelRequested)
-        eventDrafts.push(event('run.cancel_requested', input.occurredAt));
-      cancelRequested = true;
+    if (observation.kind === 'cursor_only') continue;
+    if (
+      observation.kind === 'cancel_requested' ||
+      observation.kind === 'deadline_expired'
+    )
       continue;
-    }
     if (observation.kind === 'join_declared') {
       if (cancelRequested) continue;
       const declared = declaredJoin(observation);
@@ -206,13 +283,15 @@ export function advanceWorkflowFromSchedulerState(
         current.workflowVersionId,
         observation.joinId,
       );
-      if (!invocations.has(joinKey))
+      if (!invocations.has(joinKey)) {
         invocations.set(joinKey, {
           invocationKey: joinKey,
           nodeId: observation.joinId,
           status: 'pending',
           attemptNumber: 0,
         });
+        nodeRunAdmissionKeys.add(joinKey);
+      }
       continue;
     }
     if (observation.kind === 'branch_disposition') {
@@ -248,13 +327,15 @@ export function advanceWorkflowFromSchedulerState(
         current.workflowVersionId,
         observation.loopId,
       );
-      if (!invocations.has(loopKey))
+      if (!invocations.has(loopKey)) {
         invocations.set(loopKey, {
           invocationKey: loopKey,
           nodeId: observation.loopId,
           status: 'pending',
           attemptNumber: 0,
         });
+        nodeRunAdmissionKeys.add(loopKey);
+      }
       continue;
     }
     if (observation.kind === 'loop_iteration_completed') {
@@ -301,14 +382,15 @@ export function advanceWorkflowFromSchedulerState(
           'checkpoint_invalid',
           `missing event mapping for ${status}`,
         );
-      eventDrafts.push(
-        event(
-          eventName,
-          input.occurredAt,
-          completedInvocation,
-          observation.reasonCode,
-        ),
-      );
+      if (!externalFactsArePersisted)
+        eventDrafts.push(
+          event(
+            eventName,
+            input.occurredAt,
+            completedInvocation,
+            observation.reasonCode,
+          ),
+        );
       continue;
     }
     const existing = invocations.get(observation.invocationKey);
@@ -321,6 +403,7 @@ export function advanceWorkflowFromSchedulerState(
         attemptNumber: 0,
       };
       invocations.set(observation.invocationKey, ready);
+      nodeRunAdmissionKeys.add(observation.invocationKey);
       eventDrafts.push(event('node.ready', input.occurredAt, ready));
       continue;
     }
@@ -337,7 +420,8 @@ export function advanceWorkflowFromSchedulerState(
         status: 'waiting',
         resumeAt: observation.resumeAt,
       });
-      eventDrafts.push(event('node.waiting', input.occurredAt, existing));
+      if (!externalFactsArePersisted)
+        eventDrafts.push(event('node.waiting', input.occurredAt, existing));
       continue;
     }
     if (observation.kind === 'resume') {
@@ -346,7 +430,8 @@ export function advanceWorkflowFromSchedulerState(
       void _;
       const resumed = { ...rest, status: 'ready' as const };
       invocations.set(existing.invocationKey, resumed);
-      eventDrafts.push(event('node.ready', input.occurredAt, resumed));
+      if (!externalFactsArePersisted)
+        eventDrafts.push(event('node.ready', input.occurredAt, resumed));
       if (runStatus === 'waiting') {
         assertRunTransition(runStatus, 'running');
         runStatus = 'running';
@@ -378,9 +463,10 @@ export function advanceWorkflowFromSchedulerState(
         `missing event mapping for ${observation.status}`,
       );
     }
-    eventDrafts.push(
-      event(eventName, input.occurredAt, completed, observation.reasonCode),
-    );
+    if (!externalFactsArePersisted)
+      eventDrafts.push(
+        event(eventName, input.occurredAt, completed, observation.reasonCode),
+      );
   }
 
   for (const join of [...joins.values()].sort((left, right) =>
@@ -434,7 +520,7 @@ export function advanceWorkflowFromSchedulerState(
     }
   }
 
-  if (!cancelRequested) {
+  if (!cancelRequested && !deadlineExpired) {
     for (const loop of [...loops.values()].sort((left, right) =>
       compareOrdinal(left.loopId, right.loopId),
     )) {
@@ -460,6 +546,7 @@ export function advanceWorkflowFromSchedulerState(
           attemptNumber: 0,
         };
         invocations.set(iterationKey, ready);
+        nodeRunAdmissionKeys.add(iterationKey);
         eventDrafts.push(event('node.ready', input.occurredAt, ready));
       }
       const updated = admission.loop;
@@ -494,6 +581,63 @@ export function advanceWorkflowFromSchedulerState(
     }
   }
 
+  if (deadlineExpired) {
+    const timeoutOccurredAt = deadlineOccurredAt ?? input.occurredAt;
+    for (const loop of loops.values()) {
+      let updated = loop;
+      for (const ordinal of loop.activeOrdinals) {
+        const iterationKey = loopInvocationKey(
+          current.workflowVersionId,
+          loop.loopId,
+          ordinal,
+        );
+        const iteration = invocations.get(iterationKey);
+        if (iteration?.status !== 'ready' && iteration?.status !== 'waiting')
+          continue;
+        const stoppedStatus =
+          iteration.status === 'waiting'
+            ? ('timed_out' as const)
+            : ('canceled' as const);
+        assertNodeTransition(iteration.status, stoppedStatus);
+        const stopped = { ...iteration, status: stoppedStatus };
+        invocations.set(iterationKey, stopped);
+        eventDrafts.push(
+          event(
+            stoppedStatus === 'timed_out' ? 'node.timed_out' : 'node.canceled',
+            timeoutOccurredAt,
+            stopped,
+          ),
+        );
+        updated = completeLoopIteration(updated, ordinal);
+      }
+      loops.set(loop.loopId, updated);
+    }
+    for (const invocation of invocations.values()) {
+      if (
+        invocation.status !== 'pending' &&
+        invocation.status !== 'ready' &&
+        invocation.status !== 'waiting'
+      )
+        continue;
+      const stoppedStatus =
+        invocation.status === 'waiting'
+          ? ('timed_out' as const)
+          : ('canceled' as const);
+      assertNodeTransition(invocation.status, stoppedStatus);
+      const { resumeAt: _, ...withoutResumeAt } = invocation;
+      void _;
+      const stopped = { ...withoutResumeAt, status: stoppedStatus };
+      invocations.set(invocation.invocationKey, stopped);
+      eventDrafts.push(
+        event(
+          stoppedStatus === 'timed_out' ? 'node.timed_out' : 'node.canceled',
+          timeoutOccurredAt,
+          stopped,
+        ),
+      );
+    }
+  }
+
   if (cancelRequested) {
     for (const loop of loops.values()) {
       let updated = loop;
@@ -504,9 +648,12 @@ export function advanceWorkflowFromSchedulerState(
           ordinal,
         );
         const iteration = invocations.get(iterationKey);
-        if (iteration?.status !== 'ready') continue;
+        if (iteration?.status !== 'ready' && iteration?.status !== 'waiting')
+          continue;
         assertNodeTransition(iteration.status, 'canceled');
-        const canceled = { ...iteration, status: 'canceled' as const };
+        const { resumeAt: _, ...withoutResumeAt } = iteration;
+        void _;
+        const canceled = { ...withoutResumeAt, status: 'canceled' as const };
         invocations.set(iterationKey, canceled);
         eventDrafts.push(event('node.canceled', input.occurredAt, canceled));
         updated = completeLoopIteration(updated, ordinal);
@@ -521,11 +668,17 @@ export function advanceWorkflowFromSchedulerState(
         ),
     );
     for (const invocation of invocations.values()) {
-      if (invocation.status !== 'pending' && invocation.status !== 'ready')
+      if (
+        invocation.status !== 'pending' &&
+        invocation.status !== 'ready' &&
+        invocation.status !== 'waiting'
+      )
         continue;
       if (activeLoopParents.has(invocation.invocationKey)) continue;
       assertNodeTransition(invocation.status, 'canceled');
-      const canceled = { ...invocation, status: 'canceled' as const };
+      const { resumeAt: _, ...withoutResumeAt } = invocation;
+      void _;
+      const canceled = { ...withoutResumeAt, status: 'canceled' as const };
       invocations.set(invocation.invocationKey, canceled);
       eventDrafts.push(event('node.canceled', input.occurredAt, canceled));
     }
@@ -537,9 +690,10 @@ export function advanceWorkflowFromSchedulerState(
   const readySet = ordered
     .filter(({ status }) => status === 'ready')
     .map(({ invocationKey }) => invocationKey);
-  const admittedKeys = cancelRequested
-    ? []
-    : readySet.slice(0, input.maximumAdmissions);
+  const admittedKeys =
+    cancelRequested || deadlineExpired
+      ? []
+      : readySet.slice(0, input.maximumAdmissions);
   const attempts: AttemptAdmissionPlan[] = [];
   for (const key of admittedKeys) {
     const invocation = invocations.get(key);
@@ -574,10 +728,14 @@ export function advanceWorkflowFromSchedulerState(
     graph?.nodes.some(
       ({ id }) => !finalInvocations.some(({ nodeId }) => nodeId === id),
     ) === true;
-  const runIsActive = runStatus === 'running' || runStatus === 'waiting';
+  const runIsActive =
+    runStatus === 'queued' ||
+    runStatus === 'running' ||
+    runStatus === 'waiting';
   if (runIsActive && nonterminal.length === 0) {
     const terminalStatus = deriveTerminalRunStatus({
       cancelRequested,
+      deadlineExpired,
       graphIncomplete,
       invocations: finalInvocations,
     });
@@ -596,16 +754,19 @@ export function advanceWorkflowFromSchedulerState(
     eventDrafts.push(event('run.waiting', input.occurredAt));
   }
 
+  const firstDerivedEventSequence =
+    current.nextEventSequence + consumedObservationCount;
   const events = eventDrafts.map((draft, offset) => ({
     ...draft,
-    sequence: current.nextEventSequence + offset,
+    sequence: firstDerivedEventSequence + offset,
   }));
   const checkpoint = parseCheckpoint({
     ...current,
     revision: current.revision + 1,
     runStatus,
-    nextEventSequence: current.nextEventSequence + events.length,
+    nextEventSequence: firstDerivedEventSequence + events.length,
     cancelRequested,
+    deadlineExpired,
     joins: [...joins.values()],
     loops: [...loops.values()],
     remainingIterationBudget,
@@ -618,7 +779,30 @@ export function advanceWorkflowFromSchedulerState(
       invocations: finalInvocations,
     }),
   });
-  return { expectedRevision: current.revision, checkpoint, events, attempts };
+  const nodeRunAdmissions: NodeRunAdmissionPlan[] = [...nodeRunAdmissionKeys]
+    .sort(compareOrdinal)
+    .map((invocationKey) => {
+      const invocation = invocations.get(invocationKey);
+      if (invocation === undefined)
+        throw new WorkflowEngineError(
+          'checkpoint_invalid',
+          `materialized invocation ${invocationKey} is missing`,
+        );
+      return {
+        invocationKey,
+        nodeId: invocation.nodeId,
+        sideEffectClass: schedulerNodeSideEffectClass(graph, invocation.nodeId),
+      };
+    });
+  return {
+    expectedRevision: current.revision,
+    expectedNextEventSequence: current.nextEventSequence,
+    consumedThroughEventSequence,
+    checkpoint,
+    events,
+    nodeRunAdmissions,
+    attempts,
+  };
 }
 
 function isTerminalNodeStatus(status: NodeStatus): boolean {
@@ -636,11 +820,18 @@ function sameOutputReference(
   left: OutputReference | undefined,
   right: OutputReference | undefined,
 ): boolean {
-  return left?.kind === right?.kind && left?.reference === right?.reference;
+  if (left?.kind !== right?.kind) return false;
+  if (left === undefined || right === undefined) return true;
+  return left.kind === 'inline' && right.kind === 'inline'
+    ? left.attemptId === right.attemptId
+    : left.kind === 'artifact' && right.kind === 'artifact'
+      ? left.artifactId === right.artifactId
+      : false;
 }
 
 function deriveTerminalRunStatus(input: {
   readonly cancelRequested: boolean;
+  readonly deadlineExpired: boolean;
   readonly graphIncomplete: boolean;
   readonly invocations: readonly InvocationState[];
 }):
@@ -652,6 +843,7 @@ function deriveTerminalRunStatus(input: {
   const statuses = new Set(input.invocations.map(({ status }) => status));
   if (statuses.has('outcome_unknown')) return 'outcome_unknown';
   if (input.cancelRequested) return 'canceled';
+  if (input.deadlineExpired) return 'timed_out';
   if (statuses.has('timed_out')) return 'timed_out';
   if (statuses.has('failed')) return 'failed';
   if (statuses.has('canceled')) return 'canceled';
@@ -679,7 +871,9 @@ function observationOrder(
 
 function observationKey(observation: WorkflowObservation): string {
   switch (observation.kind) {
+    case 'cursor_only':
     case 'cancel_requested':
+    case 'deadline_expired':
       return '';
     case 'join_declared':
       return `1:join:${observation.joinId}`;
@@ -743,7 +937,7 @@ function sameLoopDeclaration(left: LoopState, right: LoopState): boolean {
   return (
     left.loopId === right.loopId &&
     left.collection.kind === right.collection.kind &&
-    left.collection.reference === right.collection.reference &&
+    sameOutputReference(left.collection, right.collection) &&
     left.collectionChecksum === right.collectionChecksum &&
     left.collectionSize === right.collectionSize &&
     left.maxIterations === right.maxIterations &&

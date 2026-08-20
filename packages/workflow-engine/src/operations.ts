@@ -22,8 +22,9 @@ import {
 } from './executable-workflow.js';
 import { parseCheckpoint } from './checkpoint.js';
 import type { SchedulerState } from './graph-scheduler.js';
+import { compareOrdinal } from './ordering.js';
 import { invocationKey as createInvocationKey } from './scheduling.js';
-import type { WorkflowTransitionPlan } from './types.js';
+import type { OutputReference, WorkflowTransitionPlan } from './types.js';
 
 function operationError(
   code:
@@ -64,26 +65,175 @@ function exactKeys(
     operationError('observation_invalid', 'observation fields are invalid');
 }
 
-type OutcomeStatus = Extract<
+type OutcomeObservation = Extract<
   WorkflowObservation,
   { readonly kind: 'outcome' }
->['status'];
+>;
+type PersistedOutcomeStatus = Exclude<OutcomeObservation['status'], 'skipped'>;
 
-function isOutcomeStatus(value: unknown): value is OutcomeStatus {
+export type PersistedWorkflowObservation = Readonly<
+  { readonly sequence: number; readonly occurredAt: string } & (
+    | Readonly<{
+        readonly kind: 'outcome';
+        readonly invocationKey: string;
+        readonly status: PersistedOutcomeStatus;
+        readonly output?: OutputReference;
+        readonly reasonCode?: string;
+        readonly attemptId: string;
+        readonly attemptNumber: number;
+      }>
+    | { readonly kind: 'cancel_requested' }
+    | {
+        readonly kind: 'cursor_only';
+        readonly eventName: 'node.started' | 'node.progress';
+        readonly invocationKey: string;
+        readonly attemptId: string;
+        readonly attemptNumber: number;
+      }
+    | {
+        readonly kind: 'wait';
+        readonly eventName: 'node.waiting' | 'node.retry_scheduled';
+        readonly invocationKey: string;
+        readonly attemptId: string;
+        readonly attemptNumber: number;
+        readonly resumeAt: string;
+      }
+  )
+>;
+
+export type DeadlineExpiredObservation = Readonly<{
+  readonly kind: 'deadline_expired';
+  readonly occurredAt: string;
+}>;
+
+export type DueAtObservation = Readonly<{
+  readonly kind: 'due_at';
+  readonly occurredAt: string;
+  readonly invocationKey: string;
+}>;
+
+type ParsedPersistedObservations = Readonly<{
+  observations: readonly WorkflowObservation[];
+  deadlineExpiration?: DeadlineExpiredObservation;
+  dueResumptions: readonly DueAtObservation[];
+  cursor: Readonly<{
+    expectedNextEventSequence: number;
+    consumedThroughEventSequence: number;
+  }>;
+}>;
+
+const uuidPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
+
+function isPersistedOutcomeStatus(
+  value: unknown,
+): value is PersistedOutcomeStatus {
   return (
     typeof value === 'string' &&
-    [
-      'succeeded',
-      'failed',
-      'canceled',
-      'timed_out',
-      'outcome_unknown',
-      'skipped',
-    ].some((candidate) => candidate === value)
+    ['succeeded', 'failed', 'canceled', 'timed_out', 'outcome_unknown'].some(
+      (candidate) => candidate === value,
+    )
   );
 }
 
-function parseObservations(value: unknown): readonly WorkflowObservation[] {
+function isCanonicalTimestamp(value: unknown): value is string {
+  if (typeof value !== 'string' || value.length > 35) return false;
+  const milliseconds = Date.parse(value);
+  return (
+    Number.isFinite(milliseconds) &&
+    new Date(milliseconds).toISOString() === value
+  );
+}
+
+function samePersistedFact(
+  left: PersistedWorkflowObservation,
+  right: PersistedWorkflowObservation,
+): boolean {
+  if (
+    left.sequence !== right.sequence ||
+    left.occurredAt !== right.occurredAt ||
+    left.kind !== right.kind
+  )
+    return false;
+  if (left.kind === 'cancel_requested')
+    return right.kind === 'cancel_requested';
+  if (left.kind === 'cursor_only')
+    return (
+      right.kind === 'cursor_only' &&
+      left.eventName === right.eventName &&
+      left.invocationKey === right.invocationKey &&
+      left.attemptId === right.attemptId &&
+      left.attemptNumber === right.attemptNumber
+    );
+  if (left.kind === 'wait')
+    return (
+      right.kind === 'wait' &&
+      left.eventName === right.eventName &&
+      left.invocationKey === right.invocationKey &&
+      left.attemptId === right.attemptId &&
+      left.attemptNumber === right.attemptNumber &&
+      left.resumeAt === right.resumeAt
+    );
+  if (right.kind !== 'outcome') return false;
+  return (
+    left.attemptId === right.attemptId &&
+    left.attemptNumber === right.attemptNumber &&
+    left.invocationKey === right.invocationKey &&
+    left.status === right.status &&
+    left.reasonCode === right.reasonCode &&
+    left.output?.kind === right.output?.kind &&
+    (left.output?.kind === 'inline' && right.output?.kind === 'inline'
+      ? left.output.attemptId === right.output.attemptId
+      : left.output?.kind === 'artifact' && right.output?.kind === 'artifact'
+        ? left.output.artifactId === right.output.artifactId
+        : left.output === undefined && right.output === undefined)
+  );
+}
+
+function staleFactMatchesCheckpoint(
+  observation: PersistedWorkflowObservation,
+  checkpoint: ReturnType<typeof parseCheckpoint>,
+): boolean {
+  if (observation.kind === 'cancel_requested')
+    return checkpoint.cancelRequested;
+  if (observation.kind === 'cursor_only') {
+    return checkpoint.invocations.some(
+      ({ invocationKey, attemptNumber }) =>
+        invocationKey === observation.invocationKey &&
+        attemptNumber === observation.attemptNumber,
+    );
+  }
+  if (observation.kind === 'wait') {
+    const invocation = checkpoint.invocations.find(
+      ({ invocationKey }) => invocationKey === observation.invocationKey,
+    );
+    return (
+      invocation?.status === 'waiting' &&
+      invocation.attemptNumber === observation.attemptNumber &&
+      invocation.resumeAt === observation.resumeAt
+    );
+  }
+  const invocation = checkpoint.invocations.find(
+    ({ invocationKey }) => invocationKey === observation.invocationKey,
+  );
+  return (
+    invocation?.attemptNumber === observation.attemptNumber &&
+    invocation.status === observation.status &&
+    invocation.output?.kind === observation.output?.kind &&
+    (invocation.output?.kind === 'inline' &&
+    observation.output?.kind === 'inline'
+      ? invocation.output.attemptId === observation.output.attemptId
+      : invocation.output?.kind === 'artifact' &&
+          observation.output?.kind === 'artifact'
+        ? invocation.output.artifactId === observation.output.artifactId
+        : invocation.output === undefined && observation.output === undefined)
+  );
+}
+
+function parseObservations(
+  value: unknown,
+  checkpoint: ReturnType<typeof parseCheckpoint>,
+): ParsedPersistedObservations {
   let normalized: JsonValue;
   try {
     normalized = normalizeBoundedEngineJson(value ?? []);
@@ -96,60 +246,334 @@ function parseObservations(value: unknown): readonly WorkflowObservation[] {
   if (!Array.isArray(normalized))
     operationError('observation_invalid', 'observations must be an array');
   const items = normalized as readonly JsonValue[];
-  return items.map((item): WorkflowObservation => {
-    const observation = record(item, 'observation_invalid', 'observation');
-    if (observation.kind === 'cancel_requested') {
-      exactKeys(observation, ['kind']);
-      return { kind: 'cancel_requested' };
-    }
-    if (observation.kind !== 'outcome')
-      operationError(
-        'observation_invalid',
-        'observation kind is unsupported in Phase 3',
-      );
-    exactKeys(
-      observation,
-      ['kind', 'invocationKey', 'status'],
-      ['output', 'reasonCode'],
-    );
-    if (
-      typeof observation.invocationKey !== 'string' ||
-      !isOutcomeStatus(observation.status)
-    )
-      operationError('observation_invalid', 'outcome observation is invalid');
-    let output:
-      | { readonly kind: 'inline' | 'artifact'; readonly reference: string }
-      | undefined;
-    if (observation.output !== undefined) {
-      const candidate = record(
-        observation.output,
-        'observation_invalid',
-        'output reference',
-      );
-      exactKeys(candidate, ['kind', 'reference']);
+  const parsed: (
+    PersistedWorkflowObservation | DeadlineExpiredObservation | DueAtObservation
+  )[] = items.map(
+    (
+      item,
+    ):
+      | PersistedWorkflowObservation
+      | DeadlineExpiredObservation
+      | DueAtObservation => {
+      const observation = record(item, 'observation_invalid', 'observation');
+      if (observation.kind === 'deadline_expired') {
+        exactKeys(observation, ['kind', 'occurredAt']);
+        if (!isCanonicalTimestamp(observation.occurredAt))
+          operationError(
+            'observation_invalid',
+            'deadline timestamp is invalid',
+          );
+        return {
+          kind: 'deadline_expired',
+          occurredAt: observation.occurredAt,
+        };
+      }
+      if (observation.kind === 'due_at') {
+        exactKeys(observation, ['kind', 'occurredAt', 'invocationKey']);
+        if (
+          !isCanonicalTimestamp(observation.occurredAt) ||
+          typeof observation.invocationKey !== 'string' ||
+          observation.invocationKey.length === 0 ||
+          observation.invocationKey.length > 256
+        )
+          operationError('observation_invalid', 'due observation is invalid');
+        return {
+          kind: observation.kind,
+          occurredAt: observation.occurredAt,
+          invocationKey: observation.invocationKey,
+        };
+      }
       if (
-        (candidate.kind !== 'inline' && candidate.kind !== 'artifact') ||
-        typeof candidate.reference !== 'string' ||
-        candidate.reference.length === 0
+        !Number.isSafeInteger(observation.sequence) ||
+        typeof observation.sequence !== 'number' ||
+        observation.sequence <= 0 ||
+        !isCanonicalTimestamp(observation.occurredAt)
       )
-        operationError('observation_invalid', 'output reference is invalid');
-      output = { kind: candidate.kind, reference: candidate.reference };
+        operationError('observation_invalid', 'observation cursor is invalid');
+      if (observation.kind === 'cancel_requested') {
+        exactKeys(observation, ['kind', 'sequence', 'occurredAt']);
+        return {
+          kind: 'cancel_requested',
+          sequence: observation.sequence,
+          occurredAt: observation.occurredAt,
+        };
+      }
+      if (observation.kind === 'cursor_only') {
+        exactKeys(observation, [
+          'kind',
+          'eventName',
+          'sequence',
+          'occurredAt',
+          'invocationKey',
+          'attemptId',
+          'attemptNumber',
+        ]);
+        if (
+          observation.eventName !== 'node.started' &&
+          observation.eventName !== 'node.progress'
+        )
+          operationError('observation_invalid', 'cursor event name is invalid');
+        if (
+          typeof observation.invocationKey !== 'string' ||
+          observation.invocationKey.length === 0 ||
+          observation.invocationKey.length > 256 ||
+          typeof observation.attemptId !== 'string' ||
+          !uuidPattern.test(observation.attemptId) ||
+          typeof observation.attemptNumber !== 'number' ||
+          !Number.isSafeInteger(observation.attemptNumber) ||
+          observation.attemptNumber <= 0
+        )
+          operationError('observation_invalid', 'cursor event is invalid');
+        return {
+          kind: observation.kind,
+          eventName: observation.eventName,
+          sequence: observation.sequence,
+          occurredAt: observation.occurredAt,
+          invocationKey: observation.invocationKey,
+          attemptId: observation.attemptId,
+          attemptNumber: observation.attemptNumber,
+        };
+      }
+      if (observation.kind === 'wait') {
+        exactKeys(observation, [
+          'kind',
+          'eventName',
+          'sequence',
+          'occurredAt',
+          'invocationKey',
+          'attemptId',
+          'attemptNumber',
+          'resumeAt',
+        ]);
+        if (
+          (observation.eventName !== 'node.waiting' &&
+            observation.eventName !== 'node.retry_scheduled') ||
+          typeof observation.invocationKey !== 'string' ||
+          observation.invocationKey.length === 0 ||
+          observation.invocationKey.length > 256 ||
+          typeof observation.attemptId !== 'string' ||
+          !uuidPattern.test(observation.attemptId) ||
+          typeof observation.attemptNumber !== 'number' ||
+          !Number.isSafeInteger(observation.attemptNumber) ||
+          observation.attemptNumber <= 0 ||
+          !isCanonicalTimestamp(observation.resumeAt)
+        )
+          operationError('observation_invalid', 'wait observation is invalid');
+        return {
+          kind: observation.kind,
+          eventName: observation.eventName,
+          sequence: observation.sequence,
+          occurredAt: observation.occurredAt,
+          invocationKey: observation.invocationKey,
+          attemptId: observation.attemptId,
+          attemptNumber: observation.attemptNumber,
+          resumeAt: observation.resumeAt,
+        };
+      }
+      if (observation.kind !== 'outcome')
+        operationError(
+          'observation_invalid',
+          'observation kind is unsupported in Phase 3',
+        );
+      exactKeys(
+        observation,
+        [
+          'kind',
+          'sequence',
+          'occurredAt',
+          'attemptId',
+          'attemptNumber',
+          'invocationKey',
+          'status',
+        ],
+        ['output', 'reasonCode'],
+      );
+      if (
+        typeof observation.invocationKey !== 'string' ||
+        typeof observation.attemptId !== 'string' ||
+        !uuidPattern.test(observation.attemptId) ||
+        typeof observation.attemptNumber !== 'number' ||
+        !Number.isSafeInteger(observation.attemptNumber) ||
+        observation.attemptNumber <= 0 ||
+        !isPersistedOutcomeStatus(observation.status)
+      )
+        operationError('observation_invalid', 'outcome observation is invalid');
+      let output: Extract<
+        WorkflowObservation,
+        { readonly kind: 'outcome' }
+      >['output'];
+      if (observation.output !== undefined) {
+        const candidate = record(
+          observation.output,
+          'observation_invalid',
+          'output reference',
+        );
+        if (candidate.kind === 'inline') {
+          exactKeys(candidate, ['kind', 'attemptId']);
+          if (
+            typeof candidate.attemptId !== 'string' ||
+            !uuidPattern.test(candidate.attemptId) ||
+            candidate.attemptId !== observation.attemptId
+          )
+            operationError(
+              'observation_invalid',
+              'inline output must reference the completing attempt',
+            );
+          output = { kind: candidate.kind, attemptId: candidate.attemptId };
+        } else if (candidate.kind === 'artifact') {
+          exactKeys(candidate, ['kind', 'artifactId']);
+          if (
+            typeof candidate.artifactId !== 'string' ||
+            !uuidPattern.test(candidate.artifactId)
+          )
+            operationError('observation_invalid', 'artifact output is invalid');
+          output = { kind: candidate.kind, artifactId: candidate.artifactId };
+        } else
+          operationError(
+            'observation_invalid',
+            'output reference kind is invalid',
+          );
+      }
+      if (
+        observation.reasonCode !== undefined &&
+        (typeof observation.reasonCode !== 'string' ||
+          observation.reasonCode.length === 0 ||
+          observation.reasonCode.length > 128)
+      )
+        operationError('observation_invalid', 'reasonCode is invalid');
+      return {
+        kind: 'outcome',
+        sequence: observation.sequence,
+        occurredAt: observation.occurredAt,
+        attemptId: observation.attemptId,
+        attemptNumber: observation.attemptNumber,
+        invocationKey: observation.invocationKey,
+        status: observation.status,
+        ...(output === undefined ? {} : { output }),
+        ...(observation.reasonCode === undefined
+          ? {}
+          : { reasonCode: observation.reasonCode }),
+      };
+    },
+  );
+  let deadlineExpiration: DeadlineExpiredObservation | undefined;
+  const dueResumptions: DueAtObservation[] = [];
+  const sequenced: PersistedWorkflowObservation[] = [];
+  for (const observation of parsed) {
+    if (observation.kind === 'due_at') {
+      const previous = dueResumptions.find(
+        ({ invocationKey }) => invocationKey === observation.invocationKey,
+      );
+      if (
+        previous !== undefined &&
+        previous.occurredAt !== observation.occurredAt
+      )
+        operationError('observation_invalid', 'due observation conflicts');
+      if (previous === undefined) dueResumptions.push(observation);
+      continue;
+    }
+    if (observation.kind !== 'deadline_expired') {
+      sequenced.push(observation);
+      continue;
     }
     if (
-      observation.reasonCode !== undefined &&
-      typeof observation.reasonCode !== 'string'
+      deadlineExpiration !== undefined &&
+      deadlineExpiration.occurredAt !== observation.occurredAt
     )
-      operationError('observation_invalid', 'reasonCode is invalid');
-    return {
-      kind: 'outcome',
-      invocationKey: observation.invocationKey,
-      status: observation.status,
-      ...(output === undefined ? {} : { output }),
-      ...(observation.reasonCode === undefined
-        ? {}
-        : { reasonCode: observation.reasonCode }),
-    };
-  });
+      operationError('observation_invalid', 'deadline observation conflicts');
+    deadlineExpiration = observation;
+  }
+  dueResumptions.sort(
+    (left, right) =>
+      compareOrdinal(left.invocationKey, right.invocationKey) ||
+      compareOrdinal(left.occurredAt, right.occurredAt),
+  );
+  for (const due of dueResumptions) {
+    const invocation = checkpoint.invocations.find(
+      ({ invocationKey }) => invocationKey === due.invocationKey,
+    );
+    if (invocation === undefined)
+      operationError('observation_invalid', 'due invocation is unknown');
+    if (invocation.status === 'waiting') {
+      if (
+        invocation.resumeAt === undefined ||
+        due.occurredAt < invocation.resumeAt
+      )
+        operationError('observation_invalid', 'due observation is early');
+      continue;
+    }
+    if (invocation.status !== 'ready' && invocation.status !== 'running')
+      operationError('observation_invalid', 'due invocation is not resumable');
+  }
+  const unique: PersistedWorkflowObservation[] = [];
+  for (const observation of sequenced) {
+    const previous = unique.at(-1);
+    if (previous !== undefined && observation.sequence < previous.sequence)
+      operationError('observation_invalid', 'observations are out of order');
+    if (previous?.sequence === observation.sequence) {
+      if (!samePersistedFact(previous, observation))
+        operationError('observation_invalid', 'observation sequence conflicts');
+      continue;
+    }
+    unique.push(observation);
+  }
+  const fresh: PersistedWorkflowObservation[] = [];
+  for (const observation of unique) {
+    if (observation.sequence < checkpoint.nextEventSequence) {
+      if (!staleFactMatchesCheckpoint(observation, checkpoint))
+        operationError('observation_invalid', 'stale observation conflicts');
+      continue;
+    }
+    const expected = checkpoint.nextEventSequence + fresh.length;
+    if (observation.sequence !== expected)
+      operationError('observation_invalid', 'observation sequence has a gap');
+    fresh.push(observation);
+  }
+  for (const observation of fresh) {
+    if (
+      observation.kind !== 'outcome' &&
+      observation.kind !== 'wait' &&
+      observation.kind !== 'cursor_only'
+    )
+      continue;
+    const invocation = checkpoint.invocations.find(
+      ({ invocationKey }) => invocationKey === observation.invocationKey,
+    );
+    if (invocation?.attemptNumber !== observation.attemptNumber)
+      operationError('observation_invalid', 'observation attempt is stale');
+  }
+  return {
+    observations: fresh.map((observation): WorkflowObservation => {
+      if (observation.kind === 'cancel_requested')
+        return { kind: observation.kind };
+      if (observation.kind === 'cursor_only') return { kind: observation.kind };
+      if (observation.kind === 'wait') {
+        return {
+          kind: observation.kind,
+          invocationKey: observation.invocationKey,
+          resumeAt: observation.resumeAt,
+        };
+      }
+      return {
+        kind: observation.kind,
+        invocationKey: observation.invocationKey,
+        status: observation.status,
+        ...(observation.output === undefined
+          ? {}
+          : { output: observation.output }),
+        ...(observation.reasonCode === undefined
+          ? {}
+          : { reasonCode: observation.reasonCode }),
+      };
+    }),
+    cursor: {
+      expectedNextEventSequence: checkpoint.nextEventSequence,
+      consumedThroughEventSequence:
+        checkpoint.nextEventSequence + fresh.length - 1,
+    },
+    dueResumptions,
+    ...(deadlineExpiration === undefined ? {} : { deadlineExpiration }),
+  };
 }
 
 export interface AdvanceWorkflowInput {
@@ -247,10 +671,23 @@ export async function advanceWorkflow(
       'checkpoint workflow version does not match executable identity',
     );
   assertCheckpointMatchesExecutable(checkpoint, input.executable);
+  const persistedObservations = parseObservations(
+    input.observations,
+    checkpoint,
+  );
   const plan = advanceWorkflowFromSchedulerState({
     checkpoint,
     schedulerState: schedulerState(input.executable),
-    observations: parseObservations(input.observations),
+    observations: persistedObservations.observations,
+    ...(persistedObservations.deadlineExpiration === undefined
+      ? {}
+      : {
+          deadlineExpiration: {
+            occurredAt: persistedObservations.deadlineExpiration.occurredAt,
+          },
+        }),
+    persistedObservationCursor: persistedObservations.cursor,
+    dueResumptions: persistedObservations.dueResumptions,
     occurredAt: input.occurredAt,
     maximumAdmissions: input.maximumAdmissions,
   });

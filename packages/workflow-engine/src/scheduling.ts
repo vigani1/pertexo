@@ -102,7 +102,12 @@ export function recordBranchDisposition(
     if (
       existing.disposition === update.disposition &&
       existing.output?.kind === update.output?.kind &&
-      existing.output?.reference === update.output?.reference
+      (existing.output?.kind === 'inline' && update.output?.kind === 'inline'
+        ? existing.output.attemptId === update.output.attemptId
+        : existing.output?.kind === 'artifact' &&
+            update.output?.kind === 'artifact'
+          ? existing.output.artifactId === update.output.artifactId
+          : existing.output === undefined && update.output === undefined)
     ) {
       return [...ledger].sort((left, right) =>
         compareOrdinal(left.branchId, right.branchId),

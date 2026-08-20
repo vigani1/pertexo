@@ -91,6 +91,13 @@ function advanceWorkflow(input: AdvanceWorkflowInput) {
 }
 
 describe('checkpoint seam', () => {
+  it('defaults the additive retained deadline flag to false', () => {
+    const { deadlineExpired: _, ...retained } = checkpoint();
+    void _;
+    expect(parseCheckpoint(retained).deadlineExpired).toBe(false);
+    expect(checkpoint().deadlineExpired).toBe(false);
+  });
+
   it('fails closed for an unsupported checkpoint version', () => {
     expect(() => parseCheckpoint({ schemaVersion: 2 })).toThrow(
       expect.objectContaining({ code: 'checkpoint_unsupported' }),
@@ -124,7 +131,7 @@ describe('checkpoint seam', () => {
             nodeId: 'done',
             status: 'succeeded',
             attemptNumber: 1,
-            output: { kind: 'bogus', reference: '' },
+            output: { kind: 'inline', attemptId: 'not-a-uuid' },
           },
         ],
       },
@@ -160,7 +167,10 @@ describe('checkpoint seam', () => {
         loops: [
           {
             loopId: 'loop',
-            collection: { kind: 'artifact', reference: 'a' },
+            collection: {
+              kind: 'artifact',
+              artifactId: '00000000-0000-4000-8000-000000000101',
+            },
             collectionChecksum: 'sha256:a',
             collectionSize: 0,
             maxConcurrency: 1,
@@ -171,7 +181,10 @@ describe('checkpoint seam', () => {
           },
           {
             loopId: 'loop',
-            collection: { kind: 'artifact', reference: 'a' },
+            collection: {
+              kind: 'artifact',
+              artifactId: '00000000-0000-4000-8000-000000000101',
+            },
             collectionChecksum: 'sha256:a',
             collectionSize: 0,
             maxConcurrency: 1,
@@ -189,7 +202,10 @@ describe('checkpoint seam', () => {
         loops: [
           {
             loopId: 'loop',
-            collection: { kind: 'artifact', reference: 'a' },
+            collection: {
+              kind: 'artifact',
+              artifactId: '00000000-0000-4000-8000-000000000101',
+            },
             collectionChecksum: 'sha256:a',
             collectionSize: 3,
             maxConcurrency: 1,
@@ -527,7 +543,10 @@ describe('AdvanceWorkflow operation', () => {
       maximumAdmissions: 1,
       observations: [{ kind: 'ready', invocationKey: 'task', nodeId: 'task' }],
     });
-    const output = { kind: 'artifact', reference: 'artifact-1' } as const;
+    const output = {
+      kind: 'artifact',
+      artifactId: '00000000-0000-4000-8000-000000000101',
+    } as const;
     const completed = advanceWorkflow({
       checkpoint: running.checkpoint,
       occurredAt,
@@ -583,7 +602,10 @@ describe('AdvanceWorkflow operation', () => {
             kind: 'outcome',
             invocationKey: 'task',
             status: 'succeeded',
-            output: { kind: 'artifact', reference: 'artifact-2' },
+            output: {
+              kind: 'artifact',
+              artifactId: '00000000-0000-4000-8000-000000000102',
+            },
           },
         ],
       }),
@@ -831,7 +853,10 @@ describe('AdvanceWorkflow operation', () => {
         {
           kind: 'loop_started',
           loopId: 'loop',
-          collection: { kind: 'artifact', reference: 'artifact-1' },
+          collection: {
+            kind: 'artifact',
+            artifactId: '00000000-0000-4000-8000-000000000101',
+          },
           collectionChecksum: 'sha256:abc',
           collectionSize: 3,
           maxIterations: 3,
@@ -888,7 +913,10 @@ describe('AdvanceWorkflow operation', () => {
         {
           kind: 'loop_started',
           loopId: 'loop',
-          collection: { kind: 'artifact', reference: 'artifact-1' },
+          collection: {
+            kind: 'artifact',
+            artifactId: '00000000-0000-4000-8000-000000000101',
+          },
           collectionChecksum: 'sha256:abc',
           collectionSize: 3,
           maxIterations: 3,
@@ -922,7 +950,10 @@ describe('AdvanceWorkflow operation', () => {
         {
           kind: 'loop_started',
           loopId: 'a',
-          collection: { kind: 'artifact', reference: 'artifact-1' },
+          collection: {
+            kind: 'artifact',
+            artifactId: '00000000-0000-4000-8000-000000000101',
+          },
           collectionChecksum: 'sha256:abc',
           collectionSize: 1,
           maxIterations: 1,
@@ -1015,7 +1046,10 @@ describe('branch and join scheduling', () => {
     const arrived = recordBranchDisposition(initial, {
       branchId: 'a',
       disposition: 'arrived',
-      output: { kind: 'artifact', reference: 'artifact-1' },
+      output: {
+        kind: 'artifact',
+        artifactId: '00000000-0000-4000-8000-000000000101',
+      },
     });
     const recorded = arrived.find(({ branchId }) => branchId === 'a');
     if (recorded === undefined) throw new Error('expected branch a');
@@ -1033,7 +1067,10 @@ describe('bounded ForEach scheduling', () => {
   it('pins a collection reference and admits canonical bounded batches', () => {
     const loop = createLoopState({
       loopId: 'loop',
-      collection: { kind: 'artifact', reference: 'artifact-1' },
+      collection: {
+        kind: 'artifact',
+        artifactId: '00000000-0000-4000-8000-000000000101',
+      },
       collectionChecksum: 'sha256:abc',
       collectionSize: 4,
       maxIterations: 4,
@@ -1054,7 +1091,10 @@ describe('bounded ForEach scheduling', () => {
     expect(() =>
       createLoopState({
         loopId: 'loop',
-        collection: { kind: 'inline', reference: 'values' },
+        collection: {
+          kind: 'inline',
+          attemptId: '00000000-0000-4000-8000-000000000103',
+        },
         collectionChecksum: 'sha256:abc',
         collectionSize: 4,
         maxIterations: 3,
@@ -1067,7 +1107,10 @@ describe('bounded ForEach scheduling', () => {
   it('completes an empty collection without admissions', () => {
     const loop = createLoopState({
       loopId: 'empty',
-      collection: { kind: 'inline', reference: '[]' },
+      collection: {
+        kind: 'inline',
+        attemptId: '00000000-0000-4000-8000-000000000104',
+      },
       collectionChecksum: 'sha256:empty',
       collectionSize: 0,
       maxIterations: 10,
@@ -1084,7 +1127,10 @@ describe('bounded ForEach scheduling', () => {
     expect(() =>
       createLoopState({
         loopId: 'nested',
-        collection: { kind: 'inline', reference: '[1,2]' },
+        collection: {
+          kind: 'inline',
+          attemptId: '00000000-0000-4000-8000-000000000105',
+        },
         collectionChecksum: 'sha256:nested',
         collectionSize: 2,
         maxIterations: 10,

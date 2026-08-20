@@ -263,16 +263,26 @@ function sortedUnique(
 
 function parseOutputReference(value: unknown, label: string): OutputReference {
   assertCheckpoint(isRecord(value), `${label} must be an object`);
-  assertExactKeys(value, ['kind', 'reference']);
-  assertCheckpoint(
-    value.kind === 'inline' || value.kind === 'artifact',
-    `${label} kind is invalid`,
-  );
-  assertCheckpoint(
-    typeof value.reference === 'string' && value.reference.length > 0,
-    `${label} reference is required`,
-  );
-  return { kind: value.kind, reference: value.reference };
+  const uuidPattern =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
+  if (value.kind === 'inline') {
+    assertExactKeys(value, ['kind', 'attemptId']);
+    assertCheckpoint(
+      typeof value.attemptId === 'string' && uuidPattern.test(value.attemptId),
+      `${label} attemptId must be a canonical UUID`,
+    );
+    return { kind: value.kind, attemptId: value.attemptId };
+  }
+  if (value.kind === 'artifact') {
+    assertExactKeys(value, ['kind', 'artifactId']);
+    assertCheckpoint(
+      typeof value.artifactId === 'string' &&
+        uuidPattern.test(value.artifactId),
+      `${label} artifactId must be a canonical UUID`,
+    );
+    return { kind: value.kind, artifactId: value.artifactId };
+  }
+  assertCheckpoint(false, `${label} kind is invalid`);
 }
 
 function parseInvocation(value: unknown): InvocationState {
@@ -628,21 +638,25 @@ function parseCheckpointBoundary(value: unknown): WorkflowCheckpointV1 {
     );
   }
   assertCheckpoint(isRecord(value), 'checkpoint must be an object');
-  assertExactKeys(value, [
-    'schemaVersion',
-    'engineVersion',
-    'workflowVersionId',
-    'revision',
-    'runStatus',
-    'nextEventSequence',
-    'readySet',
-    'admittedInvocationKeys',
-    'invocations',
-    'joins',
-    'loops',
-    'remainingIterationBudget',
-    'cancelRequested',
-  ]);
+  assertExactKeys(
+    value,
+    [
+      'schemaVersion',
+      'engineVersion',
+      'workflowVersionId',
+      'revision',
+      'runStatus',
+      'nextEventSequence',
+      'readySet',
+      'admittedInvocationKeys',
+      'invocations',
+      'joins',
+      'loops',
+      'remainingIterationBudget',
+      'cancelRequested',
+    ],
+    ['deadlineExpired'],
+  );
   assertCheckpoint(
     value.schemaVersion === 1,
     'checkpoint schemaVersion must be 1',
@@ -684,6 +698,11 @@ function parseCheckpointBoundary(value: unknown): WorkflowCheckpointV1 {
   assertCheckpoint(
     typeof value.cancelRequested === 'boolean',
     'cancelRequested is invalid',
+  );
+  assertCheckpoint(
+    value.deadlineExpired === undefined ||
+      typeof value.deadlineExpired === 'boolean',
+    'deadlineExpired is invalid',
   );
 
   const invocations = value.invocations
@@ -758,7 +777,9 @@ function parseCheckpointBoundary(value: unknown): WorkflowCheckpointV1 {
     else
       assertCheckpoint(
         joinInvocation.status === 'pending' ||
-          (value.cancelRequested && joinInvocation.status === 'canceled'),
+          (value.cancelRequested && joinInvocation.status === 'canceled') ||
+          (value.deadlineExpired === true &&
+            joinInvocation.status === 'canceled'),
         'unsettled join invocation is inconsistent',
       );
   }
@@ -776,9 +797,11 @@ function parseCheckpointBoundary(value: unknown): WorkflowCheckpointV1 {
     assertCheckpoint(
       loopComplete
         ? parent.status === 'succeeded' ||
-            (value.cancelRequested && parent.status === 'canceled')
+            (value.cancelRequested && parent.status === 'canceled') ||
+            (value.deadlineExpired === true && parent.status === 'canceled')
         : parent.status === 'pending' ||
-            (value.cancelRequested && parent.status === 'canceled'),
+            (value.cancelRequested && parent.status === 'canceled') ||
+            (value.deadlineExpired === true && parent.status === 'canceled'),
       'loop parent invocation is inconsistent',
     );
     for (const ordinal of loop.activeOrdinals) {
@@ -834,6 +857,7 @@ function parseCheckpointBoundary(value: unknown): WorkflowCheckpointV1 {
     readySet,
     remainingIterationBudget: value.remainingIterationBudget,
     cancelRequested: value.cancelRequested,
+    deadlineExpired: value.deadlineExpired ?? false,
   };
 }
 
@@ -888,5 +912,6 @@ export function createCheckpoint(input: {
     loops: [],
     remainingIterationBudget: input.iterationBudget,
     cancelRequested: false,
+    deadlineExpired: false,
   };
 }

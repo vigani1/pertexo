@@ -3,9 +3,12 @@ import './server-only.js';
 export { advanceWorkflow, executeNodeAttempt } from './operations.js';
 export type {
   AdvanceWorkflowInput,
+  DeadlineExpiredObservation,
+  DueAtObservation,
   ExecuteNodeAttemptInput,
   NodeAttemptOutcome,
   NodeExecutionRegistry,
+  PersistedWorkflowObservation,
 } from './operations.js';
 export {
   createCheckpoint,

@@ -39,10 +39,9 @@ export type SideEffectClass = 'safe' | 'idempotent_with_key' | 'unsafe';
 export type BranchDisposition =
   'pending' | 'arrived' | 'skipped' | 'missing' | 'failed' | 'canceled';
 
-export interface OutputReference {
-  readonly kind: 'inline' | 'artifact';
-  readonly reference: string;
-}
+export type OutputReference =
+  | Readonly<{ readonly kind: 'inline'; readonly attemptId: string }>
+  | Readonly<{ readonly kind: 'artifact'; readonly artifactId: string }>;
 
 export interface InvocationState {
   readonly invocationKey: string;
@@ -99,6 +98,7 @@ export interface WorkflowCheckpointV1 {
   readonly loops: readonly LoopState[];
   readonly remainingIterationBudget: number;
   readonly cancelRequested: boolean;
+  readonly deadlineExpired: boolean;
 }
 
 export type EngineEventName =
@@ -139,9 +139,18 @@ export interface AttemptAdmissionPlan {
   readonly providerIdempotencyKey?: string;
 }
 
+export interface NodeRunAdmissionPlan {
+  readonly invocationKey: string;
+  readonly nodeId: string;
+  readonly sideEffectClass: SideEffectClass;
+}
+
 export interface WorkflowTransitionPlan {
   readonly expectedRevision: number;
+  readonly expectedNextEventSequence: number;
+  readonly consumedThroughEventSequence: number;
   readonly checkpoint: WorkflowCheckpointV1;
   readonly events: readonly EngineEventPlan[];
+  readonly nodeRunAdmissions: readonly NodeRunAdmissionPlan[];
   readonly attempts: readonly AttemptAdmissionPlan[];
 }
