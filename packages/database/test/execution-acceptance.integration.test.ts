@@ -21,6 +21,10 @@ import {
   runEvents,
   workflowRuns,
 } from '../src/schema.js';
+import {
+  STORED_EXECUTION_VALUE_LIMITS_V1,
+  StoredExecutionValueInvalidError,
+} from '../src/stored-execution-value.js';
 
 const migrationUrl =
   process.env.DATABASE_MIGRATION_URL ??
@@ -67,12 +71,16 @@ function hasPostgresCode(expectedCode: string): (error: unknown) => boolean {
   };
 }
 
-function acceptanceInput(requestHashOverride = requestHash) {
+function acceptanceInput(
+  requestHashOverride = requestHash,
+  runInput?: unknown,
+) {
   return {
     engineVersion: 'phase0-engine-v1',
     keyHash,
     operation: 'workflow.run.accept',
     requestHash: requestHashOverride,
+    ...(runInput === undefined ? {} : { runInput }),
     scope: `workflow:${workflowId}:manual`,
     triggerType: 'manual',
     workflowId,
@@ -369,6 +377,155 @@ describe('atomic workflow run acceptance', () => {
             runId: accepted.runId,
             schemaVersion: 1,
             workspaceId: workspaceA,
+          },
+        },
+      ]);
+    });
+  });
+
+  it('atomically stores a tagged inline run input at the exact application byte limit', async () => {
+    const runInput = 'x'.repeat(
+      STORED_EXECUTION_VALUE_LIMITS_V1.inlineBytes - 2,
+    );
+    const accepted = await apiDatabase.withWorkspace(
+      workspaceA,
+      (transaction) =>
+        acceptWorkflowRun(transaction, acceptanceInput(requestHash, runInput)),
+    );
+
+    await apiDatabase.withWorkspace(workspaceA, async ({ db }) => {
+      await expect(
+        db
+          .select({ inputRef: workflowRuns.inputRef })
+          .from(workflowRuns)
+          .where(eq(workflowRuns.id, accepted.runId)),
+      ).resolves.toEqual([
+        {
+          inputRef: { schemaVersion: 1, kind: 'inline', value: runInput },
+        },
+      ]);
+    });
+  });
+
+  it('persists canonical input without inherited toJSON hooks', async () => {
+    const objectDescriptor = Object.getOwnPropertyDescriptor(
+      Object.prototype,
+      'toJSON',
+    );
+    const arrayDescriptor = Object.getOwnPropertyDescriptor(
+      Array.prototype,
+      'toJSON',
+    );
+    let inputHookCalls = 0;
+    try {
+      Object.defineProperty(Object.prototype, 'toJSON', {
+        configurable: true,
+        value: function (this: unknown): unknown {
+          if (
+            typeof this === 'object' &&
+            this !== null &&
+            Object.hasOwn(this, 'kind') &&
+            Object.hasOwn(this, 'schemaVersion')
+          )
+            inputHookCalls += 1;
+          return this;
+        },
+      });
+      Object.defineProperty(Array.prototype, 'toJSON', {
+        configurable: true,
+        value: function (this: unknown): unknown {
+          inputHookCalls += 1;
+          return this;
+        },
+      });
+      const accepted = await apiDatabase.withWorkspace(
+        workspaceA,
+        (transaction) =>
+          acceptWorkflowRun(
+            transaction,
+            acceptanceInput(requestHash, { nested: [1, 2, 3] }),
+          ),
+      );
+      await apiDatabase.withWorkspace(workspaceA, async ({ db }) => {
+        await expect(
+          db
+            .select({ inputRef: workflowRuns.inputRef })
+            .from(workflowRuns)
+            .where(eq(workflowRuns.id, accepted.runId)),
+        ).resolves.toEqual([
+          {
+            inputRef: {
+              schemaVersion: 1,
+              kind: 'inline',
+              value: { nested: [1, 2, 3] },
+            },
+          },
+        ]);
+      });
+      expect(inputHookCalls).toBe(0);
+    } finally {
+      if (objectDescriptor === undefined)
+        Reflect.deleteProperty(Object.prototype, 'toJSON');
+      else Object.defineProperty(Object.prototype, 'toJSON', objectDescriptor);
+      if (arrayDescriptor === undefined)
+        Reflect.deleteProperty(Array.prototype, 'toJSON');
+      else Object.defineProperty(Array.prototype, 'toJSON', arrayDescriptor);
+    }
+  });
+
+  it('rejects oversized or hostile run input before writing acceptance state', async () => {
+    let getterCalls = 0;
+    const hostile = Object.defineProperty({}, 'secret', {
+      enumerable: true,
+      get: () => {
+        getterCalls += 1;
+        return true;
+      },
+    });
+    for (const runInput of [
+      'x'.repeat(STORED_EXECUTION_VALUE_LIMITS_V1.inlineBytes - 1),
+      hostile,
+    ]) {
+      await expect(
+        apiDatabase.withWorkspace(workspaceA, (transaction) =>
+          acceptWorkflowRun(
+            transaction,
+            acceptanceInput(requestHash, runInput),
+          ),
+        ),
+      ).rejects.toBeInstanceOf(StoredExecutionValueInvalidError);
+      await expectAcceptanceRecordCounts(0);
+    }
+    expect(getterCalls).toBe(0);
+  });
+
+  it('keeps the first durable run input on an exact idempotent replay', async () => {
+    const first = await apiDatabase.withWorkspace(workspaceA, (transaction) =>
+      acceptWorkflowRun(
+        transaction,
+        acceptanceInput(requestHash, { retained: true }),
+      ),
+    );
+    await expect(
+      apiDatabase.withWorkspace(workspaceA, (transaction) =>
+        acceptWorkflowRun(
+          transaction,
+          acceptanceInput(requestHash, { retained: false }),
+        ),
+      ),
+    ).resolves.toEqual({ ...first, duplicate: true });
+    await apiDatabase.withWorkspace(workspaceA, async ({ db }) => {
+      await expect(
+        db
+          .select({ inputRef: workflowRuns.inputRef })
+          .from(workflowRuns)
+          .where(eq(workflowRuns.id, first.runId)),
+      ).resolves.toEqual([
+        {
+          inputRef: {
+            schemaVersion: 1,
+            kind: 'inline',
+            value: { retained: true },
           },
         },
       ]);

@@ -10,6 +10,7 @@ import {
   runEvents,
   workflowRuns,
 } from './schema.js';
+import { serializeStoredExecutionValueV1 } from './stored-execution-value.js';
 import type { WorkspaceTransaction } from './workspace.js';
 
 const sha256Schema = z.string().regex(/^[0-9a-f]{64}$/u);
@@ -27,6 +28,7 @@ const acceptWorkflowRunInputSchema = z
     keyHash: sha256Schema,
     operation: z.literal('workflow.run.accept'),
     requestHash: sha256Schema,
+    runInput: z.unknown().optional(),
     scope: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u),
     traceparent: traceparentSchema,
     triggerType: z.enum(['api', 'manual', 'replay', 'schedule', 'webhook']),
@@ -183,6 +185,14 @@ export async function acceptWorkflowRun(
   input: AcceptWorkflowRunInput,
 ): Promise<AcceptedWorkflowRun> {
   const parsed = acceptWorkflowRunInputSchema.parse(input);
+  const storedRunInputJson =
+    parsed.runInput === undefined
+      ? null
+      : serializeStoredExecutionValueV1({
+          schemaVersion: 1,
+          kind: 'inline',
+          value: parsed.runInput,
+        });
   const existing = await readExistingAcceptance(transaction, parsed);
   if (existing !== null) return existing;
 
@@ -228,6 +238,8 @@ export async function acceptWorkflowRun(
       workspaceId: transaction.workspaceId,
       workflowId: parsed.workflowId,
       workflowVersionId: parsed.workflowVersionId,
+      inputRef:
+        storedRunInputJson === null ? null : sql`${storedRunInputJson}::jsonb`,
       triggerType: parsed.triggerType,
       ...(parsed.deadlineAt === undefined
         ? {}

@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0013_published_workflow_execution.sql';
+export const EXPECTED_MIGRATION_HEAD = '0014_execution_value_persistence.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -34,6 +34,7 @@ interface ReadinessRow {
   phase3_grants_compatible: boolean;
   phase3_policy_compatible: boolean;
   phase3_schema_compatible: boolean;
+  execution_values_compatible: boolean;
   postgres_major: number;
   relforcerowsecurity: boolean;
   relrowsecurity: boolean;
@@ -506,6 +507,78 @@ export async function checkDatabaseReadiness(
         where worker_role.rolname = $2
       ) as phase3_grants_compatible,
       (
+        exists (
+          select 1 from pg_attribute
+          where attrelid = to_regclass('app.workflow_runs')
+            and attname = 'input_ref' and atttypid = 'jsonb'::regtype
+            and not attnotnull and not attisdropped
+        )
+        and (select count(*) = 17 from pg_attribute where attrelid = to_regclass('app.workflow_runs') and attnum > 0 and not attisdropped)
+        and (select count(*) = 10 from pg_attribute where attrelid = to_regclass('app.run_checkpoints') and attnum > 0 and not attisdropped)
+        and not exists (
+          select 1 from (values
+            ('workflow_runs', 'workflow_runs_input_ref_bounded', 'CHECK (((input_ref IS NULL) OR (octet_length((input_ref)::text) <= 4194304)))'),
+            ('workflow_runs', 'workflow_runs_output_ref_bounded', 'CHECK (((output_ref IS NULL) OR (octet_length((output_ref)::text) <= 4194304)))'),
+            ('run_checkpoints', 'run_checkpoints_scheduler_state_bounded', 'CHECK ((octet_length((scheduler_state)::text) <= 4194304))'),
+            ('node_runs', 'node_runs_input_ref_bounded', 'CHECK (((input_ref IS NULL) OR (octet_length((input_ref)::text) <= 4194304)))'),
+            ('node_runs', 'node_runs_output_ref_bounded', 'CHECK (((output_ref IS NULL) OR (octet_length((output_ref)::text) <= 4194304)))'),
+            ('node_attempts', 'node_attempts_output_ref_bounded', 'CHECK (((output_ref IS NULL) OR (octet_length((output_ref)::text) <= 4194304)))')
+          ) expected(table_name, constraint_name, definition)
+          where not exists (
+            select 1 from pg_constraint constraint_record
+            where constraint_record.conrelid = to_regclass('app.' || expected.table_name)
+              and constraint_record.conname = expected.constraint_name
+              and pg_get_constraintdef(constraint_record.oid) = expected.definition
+          )
+        )
+        and not exists (
+          select 1 from (values
+            ('workflow_runs', 'workflow_runs_workspace_scope'),
+            ('run_checkpoints', 'run_checkpoints_workspace_scope'),
+            ('node_runs', 'node_runs_workspace_scope'),
+            ('node_attempts', 'node_attempts_workspace_scope')
+          ) expected(table_name, policy_name)
+          where (select count(*) from pg_policy where polrelid = to_regclass('app.' || expected.table_name)) <> 1
+            or not exists (
+              select 1 from pg_policy policy
+              where policy.polrelid = to_regclass('app.' || expected.table_name)
+                and policy.polname = expected.policy_name
+                and policy.polcmd = '*'
+                and cardinality(policy.polroles) = 2
+                and (select oid from pg_roles where rolname = $2) = any(policy.polroles)
+                and pg_get_expr(policy.polqual, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
+                and pg_get_expr(policy.polwithcheck, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
+            )
+        )
+        and not exists (
+          select 1 from (values ('workflow_runs', 'input_ref')) protected(table_name, column_name)
+          where has_column_privilege($2, 'app.' || protected.table_name, protected.column_name, 'UPDATE')
+        )
+        and has_column_privilege($2, 'app.workflow_runs', 'input_ref', 'SELECT')
+        and not has_column_privilege($2, 'app.workflow_runs', 'input_ref', 'INSERT')
+        and not exists (
+          select 1 from pg_policy policy, unnest(policy.polroles) runtime_role
+          where policy.polrelid = to_regclass('app.workflow_runs')
+            and policy.polname = 'workflow_runs_workspace_scope'
+            and runtime_role <> (select oid from pg_roles where rolname = $2)
+            and (
+              not has_column_privilege(pg_get_userbyid(runtime_role), 'app.workflow_runs', 'input_ref', 'SELECT')
+              or not has_column_privilege(pg_get_userbyid(runtime_role), 'app.workflow_runs', 'input_ref', 'INSERT')
+              or has_column_privilege(pg_get_userbyid(runtime_role), 'app.workflow_runs', 'input_ref', 'UPDATE')
+            )
+        )
+        and not exists (
+          select 1 from (values
+            ('workflow_runs'), ('run_checkpoints'), ('node_runs'), ('node_attempts')
+          ) expected(table_name)
+          where not exists (
+            select 1 from pg_class table_record
+            where table_record.oid = to_regclass('app.' || expected.table_name)
+              and table_record.relrowsecurity and table_record.relforcerowsecurity
+          )
+        )
+      ) as execution_values_compatible,
+      (
         select name
         from pertexo_internal.schema_migrations
         order by name desc
@@ -581,6 +654,9 @@ export async function checkDatabaseReadiness(
   }
   if (!row.phase3_grants_compatible) {
     throw new Error('Published workflow execution grants are incompatible');
+  }
+  if (!row.execution_values_compatible) {
+    throw new Error('Execution value persistence is incompatible');
   }
   const hasProtectedTableAccess =
     row.can_select || row.can_insert || row.can_update || row.can_delete;

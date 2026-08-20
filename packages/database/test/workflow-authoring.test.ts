@@ -13,7 +13,7 @@ const migrationUrl = new URL(
 describe('workflow authoring migration contract', () => {
   it('advances the reviewed migration head', () => {
     expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0013_published_workflow_execution.sql',
+      '0014_execution_value_persistence.sql',
     );
   });
 

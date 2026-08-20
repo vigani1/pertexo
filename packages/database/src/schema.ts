@@ -380,6 +380,7 @@ export const workflowRuns = appSchema.table(
       withTimezone: true,
       mode: 'date',
     }),
+    inputRef: jsonb('input_ref'),
     outputRef: jsonb('output_ref'),
     errorSummary: varchar('error_summary', { length: 2048 }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
