@@ -17,7 +17,7 @@ not complete a phase.
 | Phase 0C — HTTP and observability foundation | Complete | Commit `e8093d2`; 47 API/worker/observability tests; compiled role and OTLP trace/metric smoke checks |
 | Phase 0D — queue, outbox, and duplicate-delivery proof | Complete | ADRs 005–006; migration head `0006_execution_vocabulary.sql`; 158 unit, 76 real integration, and one destructive recovery assertion |
 | Phase 0E — execution durability proofs and engine gate | Complete | ADRs 005 and 007–009; commits through `0322837`; 239 unit, 96 real-service integration, five process-recovery, one SSE-outage, and one transport-outage assertions; custom-engine GO |
-| Phase 1 — identity/workspace vertical slice | In progress | ADR 004 accepted; full slice, durable command idempotency, 343-unit and 133-real-service gates are green; independent completion re-review is running |
+| Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 2 — workflow authoring vertical slice | Not started | — |
 | Phase 3 — first executable-node slice | Not started | — |
 | Phase 4 — first side-effecting integration slice | Not started | — |
@@ -337,7 +337,7 @@ Current evidence:
 
 ## Phase 1 — Identity/workspace vertical slice
 
-Status: **In progress**
+Status: **Complete**
 
 - [x] Accept the managed OIDC and internal authorization decision before
       implementation.
@@ -360,7 +360,7 @@ Status: **In progress**
       tests and real PostgreSQL plus a fake OIDC provider, including replay,
       tamper, expiry, revocation, CSRF, role/capability, rollback, conflict, and
       sanitized RFC 9457 error cases.
-- [ ] Record API contracts, fixed-cardinality auth/workspace telemetry, command
+- [x] Record API contracts, fixed-cardinality auth/workspace telemetry, command
       matrix, assertion counts, migration evidence, and independent
       blocker/high review before completion.
 
@@ -463,11 +463,25 @@ Current evidence:
   result with one audit/revocation, while changed requests return
   `request.idempotency_conflict`; revoked sessions remain unauthorized.
   Migration head `0011_workspace_creation_idempotency.sql` is applied.
-- Final pre-review gates: `pnpm check` passes formatting, lint, typechecks, 343
-  unit assertions, and all production builds. The full real-service command
+- Commit `76939ce` adds the browser-safe `@pertexo/contracts` package as the
+  owner of the Phase 1 HTTP Zod schemas and public RFC 9457 problem taxonomy.
+  The API consumes those shared contracts, every route documents reusable
+  `application/problem+json` responses, and deterministic OpenAPI 3.1 plus
+  client-schema JSON artifacts are committed. `pnpm contracts:check`
+  byte-compares regenerated output, and the root `pnpm check` gate runs that
+  drift check before typechecking and tests.
+- Final gates: `pnpm check` passes formatting, lint, generated-contract drift,
+  typechecks, 347 unit assertions, and all production builds. The full
+  real-service command (`ARTIFACT_STORE_INTEGRATION=true
+  WORKER_TRANSPORT_INTEGRATION=true API_SSE_INTEGRATION=true
+  API_IDENTITY_INTEGRATION=true pnpm test:integration`)
   passes 133 assertions: 120 PostgreSQL, two object-store, five worker, and six
-  API. The final independent blocker/high re-review is the only remaining
-  Phase 1 completion condition.
+  API. Migration head is `0011_workspace_creation_idempotency.sql`.
+- Independent Spec review found no remaining blocker/high after the restore
+  deadline and durable idempotency fixes. Independent Standards re-review at
+  `76939ce` independently passed contract drift, typecheck, four contract
+  tests, build, and diff checks and returned a clean Phase 1 completion GO with
+  no new blocker/high finding.
 
 ## Later phases
 
