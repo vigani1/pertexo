@@ -565,6 +565,17 @@ describe('durable execution persistence', () => {
           status: 'ready',
         },
       ]);
+      const outbox = await db.execute<{ payload: unknown }>(sql`
+        select payload from app.outbox_events
+        where aggregate_id = ${nextAttemptId}
+      `);
+      expect(outbox.rows[0]?.payload).toMatchObject({
+        attemptId: nextAttemptId,
+        nodeRunId: admitted.nodeRunId,
+        runId,
+        schemaVersion: 1,
+        workspaceId: workspaceA,
+      });
     });
   });
 

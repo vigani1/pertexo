@@ -956,7 +956,9 @@ export async function commitDueNodeAdmission(
   const outboxEventId = randomUUID();
   const payload = {
     attemptId: parsed.attemptId,
+    nodeRunId: parsed.nodeRunId,
     outboxEventId,
+    runId: checkpointRow.workflow_run_id,
     schemaVersion: 1,
     workspaceId: transaction.workspaceId,
     ...(parsed.traceparent === undefined
