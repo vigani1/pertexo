@@ -18,7 +18,7 @@ not complete a phase.
 | Phase 0D — queue, outbox, and duplicate-delivery proof | Complete | ADRs 005–006; migration head `0006_execution_vocabulary.sql`; 158 unit, 76 real integration, and one destructive recovery assertion |
 | Phase 0E — execution durability proofs and engine gate | Complete | ADRs 005 and 007–009; commits through `0322837`; 239 unit, 96 real-service integration, five process-recovery, one SSE-outage, and one transport-outage assertions; custom-engine GO |
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
-| Phase 2 — workflow authoring vertical slice | In progress | ADR 002 and ADR 011 accepted; no implementation checkpoint complete |
+| Phase 2 — workflow authoring vertical slice | In progress | ADRs, canonical graph identity, and tenant-scoped persistence complete; dispatch and HTTP slice remain |
 | Phase 3 — first executable-node slice | Not started | — |
 | Phase 4 — first side-effecting integration slice | Not started | — |
 | Phase 5 — orchestration slice | Not started | — |
@@ -506,13 +506,13 @@ Plan-aligned checklist:
 - [ ] Own the canonical graph, authoring request/response, validation-report,
       and published-version Zod contracts in the appropriate shared packages;
       parse them at every HTTP and persistence seam.
-- [ ] Add reviewed PostgreSQL migrations only for `workflows`,
+- [x] Add reviewed PostgreSQL migrations only for `workflows`,
       `workflow_drafts`, and `workflow_versions`, reusing the existing audit and
       outbox foundations. Enforce tenant scope, forced RLS, least-privilege
       runtime grants, indexes, same-workflow published-pointer integrity,
       exactly one live mutable draft per workflow, immutable version rows, and
       unique version/checksum constraints.
-- [ ] Create a workflow and its one empty JSONB draft atomically, with an
+- [x] Create a workflow and its one empty JSONB draft atomically, with an
       idempotent retry contract and an audit fact; the draft cannot be omitted,
       duplicated, deleted, or replaced independently of its workflow.
 - [ ] List workspace workflows with deterministic cursor pagination and load
@@ -530,7 +530,7 @@ Plan-aligned checklist:
 - [ ] Validate the current draft read-only using the same graph limits and
       pinned-definition compatibility rules used by publication, returning a
       stable typed validation report without mutating the draft.
-- [ ] Define a versioned canonical executable projection for checksum identity.
+- [x] Define a versioned canonical executable projection for checksum identity.
       It includes execution-relevant graph/schema/definition/settings content
       but excludes presentation-only metadata such as node position and label;
       focused fixtures must prove both included and excluded fields.
@@ -554,11 +554,11 @@ Plan-aligned checklist:
       `reconcile-workflow-triggers`, keeping those outbox rows durable,
       unpublished, unleased, and unattempted in PostgreSQL and absent from
       Redis until Phase 6 deploys a ready consumer before enabling that kind.
-- [ ] Return the existing immutable version when identical executable content
+- [x] Return the existing immutable version when identical executable content
       is published again; never clone content merely to increment a version
       number, and keep published snapshots unchanged when the draft later
       changes.
-- [ ] Prove save-versus-publish races cannot produce a mixed snapshot: publish
+- [x] Prove save-versus-publish races cannot produce a mixed snapshot: publish
       freezes exactly one draft revision, the immutable version matches that
       complete revision, and a concurrent successful save affects only the live
       draft and never the frozen published version.
@@ -648,8 +648,27 @@ Initial evidence:
 - ADR 002 and ADR 011 are accepted before implementation. They define the
   executable-content identity, immutable publication, publish idempotency,
   held reconciliation-outbox boundary, strong `If-Match`/ETag behavior, and
-  future collaboration boundary. No Phase 2 implementation checkbox is marked
-  complete yet.
+  future collaboration boundary.
+- Commit `eb3b286` adds the bounded V1 graph contract, separate draft and
+  publication parsers, definition compatibility, deterministic executable
+  projection, and versioned SHA-256 identity. Its 44-test suite covers exact
+  and one-over graph/depth/resource limits, cycle/dangling/unknown-definition
+  rejection, presentation-field identity exclusions, execution-field identity
+  inclusion, and retained-version checksum verification without requiring an
+  historical definition to remain active.
+- Commit `1a182fd` adds migration `0012_workflow_authoring.sql`, Drizzle schema,
+  tenant-scoped authoring repository, and fail-closed readiness. A clean
+  PostgreSQL 18 database applied through head `0012`; 17 database unit tests and
+  133 real PostgreSQL integration assertions passed. The proof covers atomic
+  workflow plus revision-1 draft creation, durable create/publish idempotency,
+  cursor pagination, CAS saves, both save/publish lock orders, rollback at every
+  publication step, checksum/version reuse, immutable history, RLS/grants,
+  readiness drift, exact graph-size limits, and corrupt retained-checksum
+  rejection before pointer, audit, or outbox mutation.
+- Independent Spec and Standards reviews returned GO for the model and
+  persistence checkpoint. The worker role cannot read workflow versions, every
+  workflow stays inactive, and reconciliation outbox rows remain held pending
+  the separate dispatch-capability checkpoint and the Phase 6 consumer.
 
 ## Later phases
 
