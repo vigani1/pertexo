@@ -19,7 +19,7 @@ not complete a phase.
 | Phase 0E — execution durability proofs and engine gate | Complete | ADRs 005 and 007–009; commits through `0322837`; 239 unit, 96 real-service integration, five process-recovery, one SSE-outage, and one transport-outage assertions; custom-engine GO |
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
-| Phase 3 — first executable-node slice | In progress | ADR 010; node SDK/core registry `85385cc`–`94426f7`; retained V1 and pre-publication V2 identity/operations through `e8da105`; migration head `0013_published_workflow_execution.sql`; published projection `83c57c6`; consumers/publication still disabled |
+| Phase 3 — first executable-node slice | In progress | ADR 010; node SDK/core registry `85385cc`–`94426f7`; retained V1 and pre-publication V2 identity/operations through `e8da105`; migration head `0014_execution_value_persistence.sql`; published projection and bounded run input `83c57c6`, `d04f9f5`; consumers/publication still disabled |
 | Phase 4 — first side-effecting integration slice | Not started | — |
 | Phase 5 — orchestration slice | Not started | — |
 | Phase 6 — V1 providers and triggers | Not started | — |
@@ -1062,6 +1062,23 @@ Current evidence:
   formatting, and independent Spec/Standards reviews are green. Stable provider
   effect keys remain explicitly owned by the next RunStore checkpoint; current
   Phase 3 core manifests are safe and no consumer is enabled.
+- Commit `d04f9f5` adds migration head
+  `0014_execution_value_persistence.sql` and the private V1 persistence codec
+  for tagged inline/artifact execution values. The application boundary
+  enforces an exact 256-KiB inline value, depth 64, and 10,000 recursive members
+  with bounded iterative allocation, strict own-data/Unicode/number semantics,
+  cycle rejection, alias-safe cloning, and canonical serialization. Atomic run
+  acceptance now stores optional input through a parameterized canonical
+  `::jsonb` value, preventing inherited `toJSON` hooks from changing data after
+  validation. PostgreSQL uses a documented 4-MiB coarse backstop on only the six
+  future value/checkpoint columns because `jsonb::text` whitespace and exponent
+  expansion do not match canonical bytes; legacy Phase 0E shapes remain valid.
+  Database tests pass 43 unit and 150 isolated PostgreSQL assertions, including
+  clean and retained-0013 migrations, exact/over/hostile values, scientific
+  numbers, a checkpoint above the former 16-KiB bound, RLS/grants/readiness
+  drift, rollback, replay, and prototype-pollution proofs. Spec and Standards
+  reviews returned GO. Full checkpoint/version CAS and output persistence remain
+  deliberately owned by the next RunStore checkpoints.
 - Concrete nodes-core composition for Set/Map resolution, V2 immutable retained
   fixtures, workflow-model publication adaptation, persistence, worker
   consumers, API, SSE, and the complete executable graph remain unchecked and
