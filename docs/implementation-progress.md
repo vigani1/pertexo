@@ -17,7 +17,7 @@ not complete a phase.
 | Phase 0C — HTTP and observability foundation | Complete | Commit `e8093d2`; 47 API/worker/observability tests; compiled role and OTLP trace/metric smoke checks |
 | Phase 0D — queue, outbox, and duplicate-delivery proof | Complete | ADRs 005–006; migration head `0006_execution_vocabulary.sql`; 158 unit, 76 real integration, and one destructive recovery assertion |
 | Phase 0E — execution durability proofs and engine gate | Complete | ADRs 005 and 007–009; commits through `0322837`; 239 unit, 96 real-service integration, five process-recovery, one SSE-outage, and one transport-outage assertions; custom-engine GO |
-| Phase 1 — identity/workspace vertical slice | In progress | ADR 004 accepted; immutable actor and workspace capability policy committed; persistence foundation is next |
+| Phase 1 — identity/workspace vertical slice | In progress | ADR 004 accepted; authorization, OIDC/session, and identity/workspace persistence foundations committed; API composition is next |
 | Phase 2 — workflow authoring vertical slice | Not started | — |
 | Phase 3 — first executable-node slice | Not started | — |
 | Phase 4 — first side-effecting integration slice | Not started | — |
@@ -341,9 +341,9 @@ Status: **In progress**
 
 - [x] Accept the managed OIDC and internal authorization decision before
       implementation.
-- [ ] Add reviewed migrations for platform users, identities, sessions, and
+- [x] Add reviewed migrations for platform users, identities, sessions, and
       workspaces plus forced-RLS memberships and append-only audit events.
-- [ ] Prove least-privilege runtime grants, absent-context failure, cross-tenant
+- [x] Prove least-privilege runtime grants, absent-context failure, cross-tenant
       isolation, pool cleanup, and audit immutability with real PostgreSQL roles.
 - [x] Implement one managed OIDC authorization-code flow with single-use state,
       nonce, PKCE, callback verification, and a narrow provider-neutral port.
@@ -386,6 +386,14 @@ Current evidence:
   mapping, UUID-backed digest-only opaque sessions, secure cookie/rotation
   policy, and double-submit CSRF defense. Its focused Vitest suite passes 19
   adversarial assertions; the complete API suite passes 77 assertions and API
+  typecheck, build, ESLint, Prettier, and diff checks pass.
+- Commit `88b42da` adds migration head `0009_oidc_login_transactions.sql`,
+  atomic issuer/subject identity resolution, digest-only sessions, sealed
+  single-use OIDC transactions, forced-RLS memberships, append-only audit,
+  workspace creation/access/deletion/restore repositories, and narrow worker
+  lifecycle visibility. Clean zero-to-head and previous-head (`0007`) upgrade
+  runs both pass the full 100-assertion real-PostgreSQL suite; 13 assertions
+  belong to the new Phase 1 repository slice. Database unit tests (10),
   typecheck, build, ESLint, Prettier, and diff checks pass.
 
 ## Later phases
