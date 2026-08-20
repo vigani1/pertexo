@@ -17,7 +17,7 @@ not complete a phase.
 | Phase 0C — HTTP and observability foundation | Complete | Commit `e8093d2`; 47 API/worker/observability tests; compiled role and OTLP trace/metric smoke checks |
 | Phase 0D — queue, outbox, and duplicate-delivery proof | Complete | ADRs 005–006; migration head `0006_execution_vocabulary.sql`; 158 unit, 76 real integration, and one destructive recovery assertion |
 | Phase 0E — execution durability proofs and engine gate | Complete | ADRs 005 and 007–009; commits through `0322837`; 239 unit, 96 real-service integration, five process-recovery, one SSE-outage, and one transport-outage assertions; custom-engine GO |
-| Phase 1 — identity/workspace vertical slice | In progress | ADR 004 accepted; implementation checklist expanded; persistence foundation is next |
+| Phase 1 — identity/workspace vertical slice | In progress | ADR 004 accepted; immutable actor and workspace capability policy committed; persistence foundation is next |
 | Phase 2 — workflow authoring vertical slice | Not started | — |
 | Phase 3 — first executable-node slice | Not started | — |
 | Phase 4 — first side-effecting integration slice | Not started | — |
@@ -349,7 +349,7 @@ Status: **In progress**
       nonce, PKCE, callback verification, and a narrow provider-neutral port.
 - [ ] Issue digest-only opaque sessions with bounded expiry/revocation, secure
       cookie policy, rotation seams, and CSRF protection for browser mutations.
-- [ ] Build immutable actor/request context and named capability authorization
+- [x] Build immutable actor/request context and named capability authorization
       that proves membership before opening a workspace RLS transaction.
 - [ ] Atomically create a workspace, owner membership, and request/trace-linked
       audit event through the authorized API slice.
@@ -375,6 +375,10 @@ Current evidence:
   least-privilege runtime roles, and `SET LOCAL` transaction scope.
 - Phase 0E completed the custom-engine gate in `b9c923d`; Phase 1 has no
   remaining execution-foundation prerequisite.
+- Commit `76f5924` adds the immutable actor context, canonical workspace roles
+  and named capabilities, fail-closed membership/workspace authorization, and
+  bounded credential-redacting audit facts. Its focused Vitest suite passes 18
+  adversarial assertions; scoped ESLint, Prettier, and staged diff checks pass.
 
 ## Later phases
 
