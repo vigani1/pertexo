@@ -158,7 +158,7 @@ const coordinatorTransitionSchema = z
   .object({
     admissions: z.array(admissionSchema).max(64),
     engineVersion: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/u),
-    event: runEventSchema,
+    event: runEventSchema.optional(),
     expectedRevision: z.number().int().nonnegative(),
     nextRunStatus: z.enum([
       'running',
@@ -414,8 +414,25 @@ export async function commitCoordinatorTransition(
     throw new CheckpointRevisionConflictError();
   }
   const run = await lockRun(transaction, parsed.runId);
-  if (!allowedRunTransitions[run.status]?.has(parsed.nextRunStatus)) {
+  const changesRunStatus = run.status !== parsed.nextRunStatus;
+  const advancesActiveCheckpoint =
+    !changesRunStatus && (run.status === 'running' || run.status === 'waiting');
+  if (
+    (!changesRunStatus && !advancesActiveCheckpoint) ||
+    (changesRunStatus &&
+      !allowedRunTransitions[run.status]?.has(parsed.nextRunStatus))
+  ) {
     throw new ExecutionStateConflictError('execution.invalid_run_transition');
+  }
+  if (changesRunStatus && parsed.event === undefined) {
+    throw new ExecutionStateConflictError(
+      'execution.run_transition_event_required',
+    );
+  }
+  if (!changesRunStatus && parsed.event !== undefined) {
+    throw new ExecutionStateConflictError(
+      'execution.event_without_run_transition',
+    );
   }
   if (
     run.deadlineAt !== null &&
@@ -454,7 +471,9 @@ export async function commitCoordinatorTransition(
         updated_at = clock_timestamp()
     where workspace_id = ${transaction.workspaceId} and id = ${parsed.runId}
   `);
-  await appendLockedRunEvent(transaction, parsed.runId, parsed.event);
+  if (parsed.event !== undefined) {
+    await appendLockedRunEvent(transaction, parsed.runId, parsed.event);
+  }
 
   const admittedAttemptIds: string[] = [];
   for (const admission of parsed.admissions) {

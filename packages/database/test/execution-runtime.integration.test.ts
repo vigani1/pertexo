@@ -350,6 +350,169 @@ describe('durable execution persistence', () => {
     }
   });
 
+  it('commits a pure checkpoint without inventing an event and fences its redelivery', async () => {
+    const runId = await acceptRun();
+    await worker.withWorkspace(workspaceA, (transaction) =>
+      commitCoordinatorTransition(transaction, {
+        admissions: [],
+        engineVersion: 'phase0e-v1',
+        event: { payload: {}, type: 'run.started' },
+        expectedRevision: 0,
+        nextRunStatus: 'running',
+        resumeAt: null,
+        runId,
+        schedulerState: { cursor: 0 },
+      }),
+    );
+
+    await expect(
+      worker.withWorkspace(workspaceA, (transaction) =>
+        commitCoordinatorTransition(transaction, {
+          admissions: [],
+          engineVersion: 'phase0e-v1',
+          expectedRevision: 1,
+          nextRunStatus: 'running',
+          resumeAt: null,
+          runId,
+          schedulerState: { cursor: 1 },
+        }),
+      ),
+    ).resolves.toEqual({ admittedAttemptIds: [], revision: 2 });
+
+    await expect(
+      worker.withWorkspace(workspaceA, (transaction) =>
+        commitCoordinatorTransition(transaction, {
+          admissions: [],
+          engineVersion: 'phase0e-v1',
+          expectedRevision: 1,
+          nextRunStatus: 'running',
+          resumeAt: null,
+          runId,
+          schedulerState: { cursor: 1 },
+        }),
+      ),
+    ).rejects.toBeInstanceOf(CheckpointRevisionConflictError);
+
+    await worker.withWorkspace(workspaceA, (transaction) =>
+      commitCoordinatorTransition(transaction, {
+        admissions: [],
+        engineVersion: 'phase0e-v1',
+        event: { payload: { resumeAt: 'later' }, type: 'run.waiting' },
+        expectedRevision: 2,
+        nextRunStatus: 'waiting',
+        resumeAt: new Date(Date.now() + 10_000),
+        runId,
+        schedulerState: { cursor: 1, waiting: true },
+      }),
+    );
+
+    await worker.withWorkspace(workspaceA, async ({ db }) => {
+      const state = await db.execute(sql`
+        select c.revision, c.scheduler_state, r.status
+        from app.run_checkpoints c
+        join app.workflow_runs r
+          on r.workspace_id = c.workspace_id
+         and r.id = c.workflow_run_id
+        where c.workspace_id = ${workspaceA}
+          and c.workflow_run_id = ${runId}
+      `);
+      expect(state.rows[0]).toMatchObject({
+        revision: 3,
+        scheduler_state: { cursor: 1, waiting: true },
+        status: 'waiting',
+      });
+      const events = await db.execute(sql`
+        select sequence, type
+        from app.run_events
+        where workspace_id = ${workspaceA}
+          and workflow_run_id = ${runId}
+        order by sequence
+      `);
+      expect(events.rows).toEqual([
+        { sequence: 1, type: 'run.queued' },
+        { sequence: 2, type: 'run.started' },
+        { sequence: 3, type: 'run.waiting' },
+      ]);
+    });
+  });
+
+  it('requires an event when a checkpoint changes the durable run status', async () => {
+    const runId = await acceptRun();
+    await worker.withWorkspace(workspaceA, (transaction) =>
+      commitCoordinatorTransition(transaction, {
+        admissions: [],
+        engineVersion: 'phase0e-v1',
+        event: { payload: {}, type: 'run.started' },
+        expectedRevision: 0,
+        nextRunStatus: 'running',
+        resumeAt: null,
+        runId,
+        schedulerState: {},
+      }),
+    );
+
+    await expect(
+      worker.withWorkspace(workspaceA, (transaction) =>
+        commitCoordinatorTransition(transaction, {
+          admissions: [],
+          engineVersion: 'phase0e-v1',
+          expectedRevision: 1,
+          nextRunStatus: 'waiting',
+          resumeAt: new Date(Date.now() + 10_000),
+          runId,
+          schedulerState: { waiting: true },
+        }),
+      ),
+    ).rejects.toThrow('execution.run_transition_event_required');
+
+    await worker.withWorkspace(workspaceA, async ({ db }) => {
+      const state = await db.execute(sql`
+        select c.revision, r.status,
+          (select count(*)::integer
+             from app.run_events e
+            where e.workspace_id = ${workspaceA}
+              and e.workflow_run_id = ${runId}) as event_count
+        from app.run_checkpoints c
+        join app.workflow_runs r
+          on r.workspace_id = c.workspace_id
+         and r.id = c.workflow_run_id
+        where c.workspace_id = ${workspaceA}
+          and c.workflow_run_id = ${runId}
+      `);
+      expect(state.rows[0]).toEqual({
+        event_count: 2,
+        revision: 1,
+        status: 'running',
+      });
+    });
+
+    await worker.withWorkspace(workspaceA, (transaction) =>
+      commitCoordinatorTransition(transaction, {
+        admissions: [],
+        engineVersion: 'phase0e-v1',
+        event: { payload: {}, type: 'run.succeeded' },
+        expectedRevision: 1,
+        nextRunStatus: 'succeeded',
+        resumeAt: null,
+        runId,
+        schedulerState: { completed: true },
+      }),
+    );
+    await expect(
+      worker.withWorkspace(workspaceA, (transaction) =>
+        commitCoordinatorTransition(transaction, {
+          admissions: [],
+          engineVersion: 'phase0e-v1',
+          expectedRevision: 2,
+          nextRunStatus: 'succeeded',
+          resumeAt: null,
+          runId,
+          schedulerState: { completed: true },
+        }),
+      ),
+    ).rejects.toThrow('execution.invalid_run_transition');
+  });
+
   it('rolls back checkpoint, events, attempt, and outbox together on duplicate invocation', async () => {
     const runId = await acceptRun();
     const first = await startRun(runId);
