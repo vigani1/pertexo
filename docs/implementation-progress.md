@@ -345,9 +345,9 @@ Status: **In progress**
       workspaces plus forced-RLS memberships and append-only audit events.
 - [ ] Prove least-privilege runtime grants, absent-context failure, cross-tenant
       isolation, pool cleanup, and audit immutability with real PostgreSQL roles.
-- [ ] Implement one managed OIDC authorization-code flow with single-use state,
+- [x] Implement one managed OIDC authorization-code flow with single-use state,
       nonce, PKCE, callback verification, and a narrow provider-neutral port.
-- [ ] Issue digest-only opaque sessions with bounded expiry/revocation, secure
+- [x] Issue digest-only opaque sessions with bounded expiry/revocation, secure
       cookie policy, rotation seams, and CSRF protection for browser mutations.
 - [x] Build immutable actor/request context and named capability authorization
       that proves membership before opening a workspace RLS transaction.
@@ -381,6 +381,12 @@ Current evidence:
   identities now fail closed unless they are UUID-compatible with persistence.
   The focused Vitest suite passes 20
   adversarial assertions; scoped ESLint, Prettier, and staged diff checks pass.
+- Commit `7e336ca` adds the provider-neutral OIDC authorization-code service,
+  single-use digest-keyed state/nonce/PKCE contracts, bounded verified profile
+  mapping, UUID-backed digest-only opaque sessions, secure cookie/rotation
+  policy, and double-submit CSRF defense. Its focused Vitest suite passes 19
+  adversarial assertions; the complete API suite passes 77 assertions and API
+  typecheck, build, ESLint, Prettier, and diff checks pass.
 
 ## Later phases
 
