@@ -16,7 +16,7 @@ not complete a phase.
 | Phase 0B — PostgreSQL tenancy and RLS proof | Complete | ADR 003; commits `bad4b9e`, `9b4f6a4`, `a3bec51`, `6458fd4`; PostgreSQL 18.6 clean migration; 31 RLS integration tests |
 | Phase 0C — HTTP and observability foundation | Complete | Commit `e8093d2`; 47 API/worker/observability tests; compiled role and OTLP trace/metric smoke checks |
 | Phase 0D — queue, outbox, and duplicate-delivery proof | Complete | ADRs 005–006; migration head `0006_execution_vocabulary.sql`; 158 unit, 76 real integration, and one destructive recovery assertion |
-| Phase 0E — execution durability proofs and engine gate | In progress | ADRs 007–009 accepted; durable runtime, bounded model/evaluator, checkpoint engine, and PostgreSQL-authoritative SSE foundations implemented; cross-stack crash/restart gate remains |
+| Phase 0E — execution durability proofs and engine gate | In progress | ADRs 007–009; 41 engine and 24 model assertions; migration head `0007_execution_runtime.sql`; four real execution recovery assertions passed; composed SSE outage and final go/no-go remain |
 | Phase 1 — identity/workspace vertical slice | Not started | — |
 | Phase 2 — workflow authoring vertical slice | Not started | — |
 | Phase 3 — first executable-node slice | Not started | — |
@@ -234,11 +234,11 @@ gaps are resolved below.
 
 Status: **In progress**
 
-- [ ] Prove coordinator and node-attempt crash recovery.
-- [ ] Prove checkpoint reconstruction from PostgreSQL-authoritative state.
-- [ ] Prove waits survive worker and Redis restarts without occupying workers.
-- [ ] Prove durable cancellation behavior.
-- [ ] Prove deterministic branch, join, and bounded-loop recovery.
+- [x] Prove coordinator and node-attempt crash recovery.
+- [x] Prove checkpoint reconstruction from PostgreSQL-authoritative state.
+- [x] Prove waits survive worker and Redis restarts without occupying workers.
+- [x] Prove durable cancellation behavior.
+- [x] Prove deterministic branch, join, and bounded-loop recovery.
 - [ ] Prove SSE reconstruction after Redis loss.
 - [x] Prove restricted JSONata evaluation limits and determinism.
 - [ ] Record executable fixtures, automated failure tests, and measured results.
@@ -272,10 +272,28 @@ Current evidence:
   bounded pages from PostgreSQL, then sequence 4 arrived live. A destructive
   Redis restart/recovery exercise is still required before checking the SSE
   criterion.
-- The remaining unchecked criteria require the shared real PostgreSQL,
-  Redis/BullMQ execution fixture, measured crash/restart injection results, and
-  the final custom-engine go/no-go review; package-level tests alone do not
-  satisfy them.
+- Commit `72b249c` resolves the independent engine review: cancellation cannot
+  admit ready work, terminal/wait aggregation is truthful, exact duplicate
+  outcomes are idempotent, malformed joins/loops/checkpoints fail closed,
+  provider keys are bounded versioned digests, and integrated coordinator
+  observations own deterministic join settlement and loop admission across a
+  JSON checkpoint round trip. The engine suite passes 41 assertions.
+- Commits `97f1a70` and `8ee526b` fix two defects found by the real composition
+  proof: initial and resumed node-attempt outbox payloads now contain the exact
+  run/node/attempt identifiers required by the strict queue contract. Both
+  paths retain 83/83 real PostgreSQL integration assertions.
+- Commit `2a28211` adds the dedicated real PostgreSQL+Redis/BullMQ execution
+  fixture and CI gate. Four assertions inject coordinator pre-commit
+  recomputation and post-commit CAS conflict, stale attempt completion,
+  safe/idempotent reclaim, unsafe post-dispatch ambiguity, durable
+  cancellation, deterministic integrated branch/join/loop replay, and a real
+  Redis stop/restart during a durable wait. The waiting node held no worker
+  lease; Redis restarted in 6,036.02 ms, recovery-to-resume took 7,100.90 ms,
+  and the resumed attempt completed in 94.36 ms. Cleanup restored authenticated
+  `PONG`, left Redis DB 15 empty, and PostgreSQL remained healthy.
+- The remaining unchecked criteria require the composed SSE Redis-outage proof,
+  a final independent blocker/high review, and the custom-engine go/no-go
+  decision. Package-level tests alone do not satisfy those gates.
 
 ## Later phases
 
