@@ -45,7 +45,7 @@ export class WorkflowRevisionConflictError extends Error {
   public override readonly name = 'WorkflowRevisionConflictError';
   public constructor(
     public readonly currentRevision: number,
-    public readonly currentEtag?: string,
+    public readonly currentEtag: string,
   ) {
     super('Workflow draft revision does not match');
   }

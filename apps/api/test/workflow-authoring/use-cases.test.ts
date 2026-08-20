@@ -216,6 +216,72 @@ describe('workflow authoring application seams', () => {
     expect(publishInput?.requestHash).toMatch(/^[0-9a-f]{64}$/u);
   });
 
+  it('lets persistence resolve an exact publish replay before reading a fresh draft', async () => {
+    const getDraft = vi
+      .fn()
+      .mockRejectedValue(
+        new Error('publish replay must not perform a fresh draft read'),
+      );
+    const publishWorkflow = vi.fn().mockResolvedValue({
+      version: version(),
+      reused: true,
+      replayed: true,
+    });
+    const store = persistence({ getDraft, publishWorkflow });
+    const result = await new PublishWorkflowUseCase(
+      store,
+      authorization(),
+    ).execute({
+      actor,
+      routeWorkspaceId: workspaceId,
+      workflowId,
+      representationTag:
+        '"draft-v1.abcdefghijklmnopqrstuvwxyz0123456789_-abcde"',
+      idempotencyKey: 'publish-replay-42',
+    });
+
+    expect(result.reused).toBe(true);
+    expect(publishWorkflow).toHaveBeenCalledOnce();
+    expect(getDraft).not.toHaveBeenCalled();
+  });
+
+  it('reports a CAS conflict revision and ETag from one persistence snapshot', async () => {
+    const currentEtag = createDraftRepresentationTag({
+      workflowId,
+      revision: 2,
+      schemaVersion: 1,
+      graph,
+      compatibilityFingerprint: fingerprint,
+    });
+    const getDraft = vi.fn().mockResolvedValue(draft());
+    const saveDraft = vi
+      .fn()
+      .mockRejectedValue(new WorkflowRevisionConflictError(2, currentEtag));
+    const store = persistence({ getDraft, saveDraft });
+    const failure = await new SaveWorkflowDraftUseCase(store, authorization())
+      .execute({
+        actor,
+        routeWorkspaceId: workspaceId,
+        workflowId,
+        representationTag: createDraftRepresentationTag({
+          workflowId,
+          revision: 1,
+          schemaVersion: 1,
+          graph,
+          compatibilityFingerprint: fingerprint,
+        }),
+        graph,
+      })
+      .catch((error: unknown) => error);
+
+    expect(failure).toBeInstanceOf(WorkflowRevisionConflictError);
+    if (!(failure instanceof WorkflowRevisionConflictError))
+      throw new Error('expected workflow revision conflict');
+    expect(failure.currentRevision).toBe(2);
+    expect(failure.currentEtag).toBe(currentEtag);
+    expect(getDraft).toHaveBeenCalledOnce();
+  });
+
   it('uses named read capability for list, validate, and version listing', async () => {
     const access = authorization();
     const store = persistence();
@@ -248,10 +314,11 @@ describe('workflow authoring application seams', () => {
       name: ' Operations ',
       idempotencyKey: 'create-42',
     });
-    expect(result).toMatchObject({
+    expect(result.body).toMatchObject({
       workflow: { id: workflowId, name: 'Operations' },
       draft: { workflowId, revision: 1 },
     });
+    expect(result.representationTag).toMatch(/^"draft-v1\./u);
     expect(store.createWorkflow).toHaveBeenCalledWith(
       expect.objectContaining({
         emptyGraph: graph,

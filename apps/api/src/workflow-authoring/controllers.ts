@@ -92,17 +92,20 @@ export class WorkflowAuthoringController {
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,
     @Body() body: unknown,
+    @Res({ passthrough: true }) response: WorkflowResponse,
   ) {
     try {
       const { workspaceId } = workspaceParams(params);
       const input = workflowCreateRequestSchema.parse(body);
-      return await this.createWorkflow.execute({
+      const result = await this.createWorkflow.execute({
         actor: actorFrom(request, workspaceId),
         routeWorkspaceId: workspaceId,
         name: input.name,
         idempotencyKey: parseIdempotencyKey(header(request, 'idempotency-key')),
         ...requestIdentifiers(request),
       });
+      response.header('ETag', result.representationTag);
+      return result.body;
     } catch (error: unknown) {
       return throwWorkflowApplicationError(error);
     }

@@ -14,6 +14,7 @@ import {
   workflowVersionsQuerySchema,
   workflowVersionsResponseSchema,
   workflowGraphSchema,
+  type WorkflowCreateResponse,
   type WorkflowDraftResponse,
   type WorkflowPublishResponse,
   type WorkflowSummary,
@@ -41,6 +42,7 @@ export {
 };
 
 export type {
+  WorkflowCreateResponse,
   WorkflowDraftResponse,
   WorkflowPublishResponse,
   WorkflowSummary,

@@ -29,6 +29,7 @@ import {
   workflowValidateResponseSchema,
   workflowVersionResponseSchema,
   workflowVersionsResponseSchema,
+  type WorkflowCreateResponse,
   type WorkflowDraftResponse,
   type WorkflowPublishResponse,
   type WorkflowSummary,
@@ -49,6 +50,10 @@ import {
 
 export type WorkflowDraftResult = Readonly<{
   body: WorkflowDraftResponse;
+  representationTag: string;
+}>;
+export type WorkflowCreateResult = Readonly<{
+  body: WorkflowCreateResponse;
   representationTag: string;
 }>;
 
@@ -137,7 +142,7 @@ export class CreateWorkflowUseCase {
     private readonly telemetry: WorkflowAuthoringTelemetry = NOOP_WORKFLOW_AUTHORING_TELEMETRY,
   ) {}
 
-  public execute(input: CreateWorkflowInput): Promise<unknown> {
+  public execute(input: CreateWorkflowInput): Promise<WorkflowCreateResult> {
     return this.telemetry.measure(
       WORKFLOW_AUTHORING_OPERATION.create,
       async () => {
@@ -154,9 +159,13 @@ export class CreateWorkflowUseCase {
             : { requestId: input.requestId }),
           ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
         });
-        return workflowCreateResponseSchema.parse({
-          workflow: toWorkflowSummary(created.workflow),
-          draft: toDraft(created.draft).body,
+        const draft = toDraft(created.draft);
+        return Object.freeze({
+          body: workflowCreateResponseSchema.parse({
+            workflow: toWorkflowSummary(created.workflow),
+            draft: draft.body,
+          }),
+          representationTag: draft.representationTag,
         });
       },
     );
@@ -224,9 +233,10 @@ export class SaveWorkflowDraftUseCase {
           return toDraft(saved);
         } catch (error: unknown) {
           if (!(error instanceof WorkflowRevisionConflictError)) throw error;
-          const latest = await this.currentDraft(input);
-          const latestTag = toDraft(latest).representationTag;
-          throw revisionConflict(latest, error.currentEtag ?? latestTag);
+          // The persistence CAS conflict contains the revision and strong
+          // representation tag read by the same failed transaction. A second
+          // draft read could observe a later save and pair mismatched values.
+          throw error;
         }
       },
     );
@@ -299,16 +309,9 @@ export class PublishWorkflowUseCase {
       WORKFLOW_AUTHORING_OPERATION.publish,
       async () => {
         await authorize(input, 'workflow:publish', this.authorization);
-        // Read only to establish visibility and a useful current revision. The
-        // opaque If-Match is always handed to persistence; exact idempotent
-        // replays must be resolved before any stale-tag rejection.
-        const current = await this.persistence.getDraft(
-          input.routeWorkspaceId,
-          input.workflowId,
-          input.actor.actorId,
-        );
-        if (current === null)
-          throw new WorkflowNotFoundError('Workflow is not visible');
+        // The opaque If-Match is handed to persistence without a preliminary
+        // draft read. Persistence must resolve an exact idempotent replay
+        // before looking up the current draft or evaluating the tag.
         const result = await this.persistence.publishWorkflow({
           workspaceId: input.routeWorkspaceId,
           workflowId: input.workflowId,

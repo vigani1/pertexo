@@ -208,6 +208,9 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
       payload: { name: 'Inbound automation' },
     });
     expect(created.statusCode).toBe(201);
+    expect(String(created.headers.etag)).toMatch(
+      /^"draft-v1\.[A-Za-z0-9_-]{43}"$/u,
+    );
     const createdBody = created.json<
       Readonly<{
         workflow: Readonly<{ id: string }>;

@@ -61,9 +61,7 @@ export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
       safeDetail: 'The workflow draft has changed; reload it before retrying.',
       details: {
         currentRevision: error.currentRevision,
-        ...(error.currentEtag === undefined
-          ? {}
-          : { currentEtag: error.currentEtag }),
+        currentEtag: error.currentEtag,
       },
     });
   if (error instanceof InvalidWorkflowGraphError)
