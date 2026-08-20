@@ -77,6 +77,7 @@ describe('request context', () => {
     );
 
     expect(context).toMatchObject({ requestId: 'client-request-42' });
+    expect(context?.requestId).toBe('client-request-42');
     expect(context?.actor).toBeUndefined();
     expect(context?.workspaceId).toBeUndefined();
   });
@@ -87,8 +88,14 @@ describe('request context', () => {
     let echoedId: string | undefined;
     let contextId: string | undefined;
 
+    const request: {
+      headers: { 'x-request-id': string };
+      requestId?: string;
+    } = {
+      headers: { 'x-request-id': 'bad request\r\nforged-header: true' },
+    };
     await middleware.use(
-      { headers: { 'x-request-id': 'bad request\r\nforged-header: true' } },
+      request,
       {
         header: (_name: string, value: string): void => {
           echoedId = value;
@@ -103,6 +110,7 @@ describe('request context', () => {
     expect(contextId).not.toBe('bad request\r\nforged-header: true');
     expect(contextId).not.toMatch(/[\r\n]/u);
     expect(echoedId).toBe(contextId);
+    expect(request.requestId).toBe(contextId);
     expect(contextId).toMatch(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u);
   });
 });

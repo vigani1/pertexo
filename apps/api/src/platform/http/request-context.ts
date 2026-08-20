@@ -90,6 +90,8 @@ function headerValue(
 
 export interface HttpRequestLike {
   headers?: Readonly<Record<string, string | readonly string[] | undefined>>;
+  /** Validated server request ID for downstream guards/controllers. */
+  requestId?: RequestId;
   url?: string;
 }
 
@@ -192,6 +194,7 @@ export class RequestContextMiddleware {
   ): void | Promise<void> {
     const requestId = headerValue(request.headers, 'x-request-id');
     const context = createRequestContext(requestId);
+    request.requestId = context.requestId;
     setResponseHeader(response, 'x-request-id', context.requestId);
     return this.contexts.run(context, next);
   }
