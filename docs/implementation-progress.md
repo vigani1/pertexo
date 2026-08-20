@@ -19,7 +19,7 @@ not complete a phase.
 | Phase 0E — execution durability proofs and engine gate | Complete | ADRs 005 and 007–009; commits through `0322837`; 239 unit, 96 real-service integration, five process-recovery, one SSE-outage, and one transport-outage assertions; custom-engine GO |
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
-| Phase 3 — first executable-node slice | In progress | ADR 010; node SDK/core registry commits `85385cc`–`94426f7`; retained-V1 verifier `5e72a26`; strict engine boundary `10eed1b`; 128 focused assertions; no publication adapter yet |
+| Phase 3 — first executable-node slice | In progress | ADR 010; node SDK/core registry commits `85385cc`–`94426f7`; retained V1/V2 identity `5e72a26`, `9d101ff`; strict engine boundary `10eed1b`; 137 focused assertions; no publication adapter yet |
 | Phase 4 — first side-effecting integration slice | Not started | — |
 | Phase 5 — orchestration slice | Not started | — |
 | Phase 6 — V1 providers and triggers | Not started | — |
@@ -727,7 +727,7 @@ Initial evidence:
 
 ## Phase 3 — First executable-node slice
 
-Status: **In progress — package foundations, retained V1, and strict engine boundary complete**
+Status: **In progress — package foundations, retained V1/V2 identity, and strict engine boundary complete**
 
 Phase 3 has completed its design prerequisites and the first package-level
 implementation checkpoint. No core node is exposed through a placement or
@@ -776,11 +776,11 @@ Production execution and persistence:
       `AdvanceWorkflow` and `ExecuteNodeAttempt`, with the canonical published
       graph adapted into private scheduler state rather than a second public
       graph model.
-- [ ] Introduce the versioned Phase 3 published-executable envelope separately
+- [x] Introduce the versioned Phase 3 published-executable envelope separately
       from the definition-only authoring graph. Pin each node's exact definition,
       config, executor, and applicable runtime-policy references in immutable
       published bytes.
-- [ ] Introduce executable projection/checksum version 2 for that envelope
+- [x] Introduce executable projection/checksum version 2 for that envelope
       rather than silently changing `wf:v1`; retain, parse, and verify Phase 2
       `wf:v1` immutable versions under their original graph and checksum rules.
 - [x] Replace unsafe checkpoint assertions at the production boundary with
@@ -1000,6 +1000,20 @@ Current evidence:
   build, ESLint, formatting, and diff checks; an independent review returned
   GO after adversarial dense/wide allocation, hidden-property, and inherited
   behavior regressions were fixed.
+- Commit `9d101ff` adds the engine-owned executable V2 envelope and
+  `wf:v2:sha256` behavior identity without changing the authoring graph or V1
+  checksum. It composes exact engine policies with a locked node release,
+  canonically pins definitions, config/mappings, connections, disabled state,
+  executors/ABI, applicable policies and original release provenance, and
+  supports exact retained execution under compatible active/retained releases.
+  Final-envelope limits, own-data normalization, active admission, manifest
+  drift, policy-version matching, ordinal ordering, later-release invariance,
+  retirement-blocked admission, deep freezing, mutation sensitivity, and the
+  golden checksum are executable regressions. The engine now passes 58 focused
+  assertions plus typecheck, build, ESLint, formatting and diff checks;
+  independent Spec and Standards reviews returned GO with no blocker/high
+  findings. Publication config-schema validation and the concrete executor
+  adapter remain unchecked next-checkpoint work.
 - Set/Map ValueSource/JSONata resolution, V2 immutable retained fixtures,
   workflow-model publication adaptation, persistence, worker consumers, API,
   SSE, and the complete executable graph remain unchecked and are owned by the
