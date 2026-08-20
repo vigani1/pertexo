@@ -4,12 +4,14 @@ import { describe, expect, it } from 'vitest';
 import {
   CreateWorkspaceUseCase,
   IdentityWorkspaceModule,
+  WorkspaceManageGuard,
   type IdentityWorkspaceDependencies,
 } from '../../src/identity-workspace/index.js';
 import {
   OidcLoginService,
   OpaqueSessionService,
 } from '../../src/identity/index.js';
+import { HttpPlatformModule } from '../../src/platform/http/index.js';
 
 const dependencies: IdentityWorkspaceDependencies = {
   config: {
@@ -81,10 +83,15 @@ const dependencies: IdentityWorkspaceDependencies = {
   authorization: { findAccess: () => Promise.resolve(undefined) },
 };
 
+const identityWorkspaceTestModule = {
+  ...IdentityWorkspaceModule.register(dependencies),
+  imports: [HttpPlatformModule],
+};
+
 describe('identity/workspace Nest module', () => {
   it('resolves explicit service providers through a real Nest application context', async () => {
     const context = await NestFactory.createApplicationContext(
-      IdentityWorkspaceModule.register(dependencies),
+      identityWorkspaceTestModule,
       { logger: false, abortOnError: false },
     );
     try {
@@ -94,6 +101,9 @@ describe('identity/workspace Nest module', () => {
       );
       expect(context.get(CreateWorkspaceUseCase)).toBeInstanceOf(
         CreateWorkspaceUseCase,
+      );
+      expect(context.get(WorkspaceManageGuard)).toBeInstanceOf(
+        WorkspaceManageGuard,
       );
     } finally {
       await context.close();

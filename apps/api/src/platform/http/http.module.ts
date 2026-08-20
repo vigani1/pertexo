@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import type {
   DynamicModule,
   MiddlewareConsumer,
@@ -33,6 +33,7 @@ const problemFilterProvider: Provider = {
   inject: [REQUEST_CONTEXT_STORE, HTTP_ERROR_LOGGER],
 };
 
+@Global()
 @Module({
   providers: [
     RequestContextStore,

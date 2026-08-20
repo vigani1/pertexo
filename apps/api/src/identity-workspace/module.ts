@@ -8,12 +8,17 @@ import {
   nodeIdentityCrypto,
 } from '../identity/index.js';
 import type { IdentityClock, IdentityCrypto } from '../identity/index.js';
+import { RequestContextStore } from '../platform/http/index.js';
 import {
   OidcController,
   SessionController,
   WorkspaceController,
 } from './controllers.js';
-import { CsrfProtectionGuard, SessionAuthenticationGuard } from './guards.js';
+import {
+  CsrfProtectionGuard,
+  SessionAuthenticationGuard,
+  WorkspaceManageGuard,
+} from './guards.js';
 import {
   CreateWorkspaceUseCase,
   WorkspaceLifecycleUseCase,
@@ -162,9 +167,11 @@ export class IdentityWorkspaceModule {
       },
       {
         provide: SessionAuthenticationGuard,
-        useFactory: (sessions: OpaqueSessionService) =>
-          new SessionAuthenticationGuard(sessions),
-        inject: [OpaqueSessionService],
+        useFactory: (
+          sessions: OpaqueSessionService,
+          contexts: RequestContextStore,
+        ) => new SessionAuthenticationGuard(sessions, contexts),
+        inject: [OpaqueSessionService, RequestContextStore],
       },
       {
         provide: CsrfProtectionGuard,
@@ -172,6 +179,7 @@ export class IdentityWorkspaceModule {
           new CsrfProtectionGuard(csrf),
         inject: [CSRF_POLICY],
       },
+      WorkspaceManageGuard,
       {
         provide: SessionController,
         useFactory: (
@@ -198,6 +206,7 @@ export class IdentityWorkspaceModule {
         WorkspaceLifecycleUseCase,
         SessionAuthenticationGuard,
         CsrfProtectionGuard,
+        WorkspaceManageGuard,
       ],
     };
   }

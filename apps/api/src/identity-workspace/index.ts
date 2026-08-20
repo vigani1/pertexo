@@ -8,6 +8,7 @@ export {
   CsrfProtectionGuard,
   SessionAuthenticationGuard,
   WorkspaceCapabilityGuard,
+  WorkspaceManageGuard,
   CSRF_COOKIE_NAME,
   CSRF_HEADER_NAME,
   SESSION_COOKIE_NAME,

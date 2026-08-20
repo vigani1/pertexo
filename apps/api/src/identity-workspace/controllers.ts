@@ -30,6 +30,7 @@ import {
   SESSION_COOKIE_NAME,
   SessionAuthenticationGuard,
   sessionToken,
+  WorkspaceManageGuard,
 } from './guards.js';
 import {
   CreateWorkspaceUseCase,
@@ -174,7 +175,11 @@ export class WorkspaceController {
   }
 
   @Post(':workspaceId/deletion')
-  @UseGuards(SessionAuthenticationGuard, CsrfProtectionGuard)
+  @UseGuards(
+    SessionAuthenticationGuard,
+    CsrfProtectionGuard,
+    WorkspaceManageGuard,
+  )
   public async requestDeletion(
     @Req() request: IdentityWorkspaceRequest,
     @Param() params: unknown,
@@ -210,7 +215,11 @@ export class WorkspaceController {
   }
 
   @Delete(':workspaceId/deletion')
-  @UseGuards(SessionAuthenticationGuard, CsrfProtectionGuard)
+  @UseGuards(
+    SessionAuthenticationGuard,
+    CsrfProtectionGuard,
+    WorkspaceManageGuard,
+  )
   public async restore(
     @Req() request: IdentityWorkspaceRequest,
     @Param() params: unknown,

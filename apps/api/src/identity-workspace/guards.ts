@@ -1,11 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 
 import {
   DoubleSubmitCsrfPolicy,
   OpaqueSessionService,
 } from '../identity/index.js';
-import { applicationError } from '../platform/http/index.js';
+import {
+  applicationError,
+  RequestContextStore,
+} from '../platform/http/index.js';
 import {
   authorizeWorkspace,
   createActorContext,
@@ -15,9 +18,10 @@ import type {
   IdentityWorkspaceRequest,
   AuthenticatedRequestSession,
 } from './types.js';
-import type { WorkspaceAuthorizationReader } from './ports.js';
+import type { WorkspaceAuthorizationSource } from './ports.js';
 import { mapIdentityWorkspaceError } from './errors.js';
 import { requestIdentifier, traceIdentifier } from './request-identifiers.js';
+import { WORKSPACE_AUTHORIZATION } from './tokens.js';
 
 export const SESSION_COOKIE_NAME = 'pertexo_session';
 export const CSRF_COOKIE_NAME = 'pertexo_csrf';
@@ -25,7 +29,10 @@ export const CSRF_HEADER_NAME = 'x-csrf-token';
 
 @Injectable()
 export class SessionAuthenticationGuard implements CanActivate {
-  public constructor(private readonly sessions: OpaqueSessionService) {}
+  public constructor(
+    private readonly sessions: OpaqueSessionService,
+    private readonly contexts: RequestContextStore,
+  ) {}
 
   public async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = requestFrom(context);
@@ -34,7 +41,13 @@ export class SessionAuthenticationGuard implements CanActivate {
       return throwApplicationError(applicationError('auth.unauthenticated'));
     }
     try {
-      request.identitySession = await this.sessions.authenticate(rawToken);
+      const session = await this.sessions.authenticate(rawToken);
+      request.identitySession = session;
+      this.contexts.setActor({
+        actorId: session.userId,
+        kind: 'user',
+        credentialId: session.sessionId,
+      });
       return true;
     } catch (error: unknown) {
       return throwApplicationError(mapIdentityWorkspaceError(error));
@@ -65,7 +78,9 @@ export class CsrfProtectionGuard implements CanActivate {
 export class WorkspaceCapabilityGuard implements CanActivate {
   public constructor(
     private readonly capability: AuthorizationCapability,
-    private readonly authorization: WorkspaceAuthorizationReader,
+    private readonly authorization: WorkspaceAuthorizationSource,
+    private readonly contexts: RequestContextStore,
+    private readonly disclosure: 'forbidden' | 'not_found' = 'not_found',
   ) {}
 
   public async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -83,17 +98,32 @@ export class WorkspaceCapabilityGuard implements CanActivate {
         requestId: requestIdentifier(request),
         ...traceFields(traceIdentifier(request)),
       });
-      request.authorizedWorkspace = await authorizeWorkspace({
+      const authorizedWorkspace = await authorizeWorkspace({
         actor,
         routeWorkspaceId,
         capability: this.capability,
         access: this.authorization,
-        disclosure: 'not_found',
+        disclosure: this.disclosure,
       });
+      request.authorizedWorkspace = authorizedWorkspace;
+      this.contexts.setWorkspace(authorizedWorkspace.workspaceId);
       return true;
     } catch (error: unknown) {
       return throwApplicationError(mapIdentityWorkspaceError(error));
     }
+  }
+}
+
+/** Fixed-capability guard for the current workspace lifecycle endpoints. */
+@Injectable()
+export class WorkspaceManageGuard extends WorkspaceCapabilityGuard {
+  public constructor(
+    @Inject(WORKSPACE_AUTHORIZATION)
+    authorization: WorkspaceAuthorizationSource,
+    @Inject(RequestContextStore)
+    contexts: RequestContextStore,
+  ) {
+    super('workspace:manage', authorization, contexts, 'forbidden');
   }
 }
 
