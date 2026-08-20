@@ -19,7 +19,7 @@ not complete a phase.
 | Phase 0E — execution durability proofs and engine gate | Complete | ADRs 005 and 007–009; commits through `0322837`; 239 unit, 96 real-service integration, five process-recovery, one SSE-outage, and one transport-outage assertions; custom-engine GO |
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
-| Phase 3 — first executable-node slice | In progress | ADR 010; node SDK/core registry `85385cc`–`94426f7`; retained V1 and pre-publication V2 identity/operations through `e8da105`; migration head `0014_execution_value_persistence.sql`; published projection and bounded run input `83c57c6`, `d04f9f5`; consumers/publication still disabled |
+| Phase 3 — first executable-node slice | In progress | ADR 010; node SDK/core registry `85385cc`–`94426f7`; retained V1 and pre-publication V2 identity/operations through `8ce1fd9`; migration head `0014_execution_value_persistence.sql`; published projection and bounded run input `83c57c6`, `d04f9f5`; RunStore/consumers/publication still disabled |
 | Phase 4 — first side-effecting integration slice | Not started | — |
 | Phase 5 — orchestration slice | Not started | — |
 | Phase 6 — V1 providers and triggers | Not started | — |
@@ -1079,6 +1079,25 @@ Current evidence:
   drift, rollback, replay, and prototype-pollution proofs. Spec and Standards
   reviews returned GO. Full checkpoint/version CAS and output persistence remain
   deliberately owned by the next RunStore checkpoints.
+- Commit `8ce1fd9` deepens coordinator recovery around PostgreSQL-owned facts
+  before the RunStore is enabled. The engine consumes every contiguous durable
+  event sequence, including cursor-only start/progress facts and attempt-fenced
+  waits, retries, outcomes, and cancellation, without re-emitting source-owned
+  events; derived events begin strictly after the persisted high-water.
+  Unsequenced database-clock deadline and due facts are distinct from the event
+  cursor, deterministic, state-gated, and idempotent. Deadline and cancellation
+  stop new materialization/admission while preserving running-attempt truth,
+  and every newly materialized invocation now has an explicit deterministic
+  node-run admission independent of the attempt cap. Checkpoint output locators
+  are canonical UUID-backed attempt or artifact identities, and inline outcomes
+  must reference the completing attempt. Persisted attempt outcomes explicitly
+  reject coordinator-owned `skipped`. Workflow-engine, workflow-model, and
+  worker suites pass 79, 48, and 41 assertions respectively, with typecheck,
+  builds, ESLint, formatting, diff checks, and independent Spec/Standards
+  reviews green. The RunStore must still validate physical attempt/artifact
+  ownership, persist a valid revision-0 checkpoint at run acceptance, and own
+  the atomic CAS/event/node-run/attempt/outbox transaction; those boxes remain
+  unchecked and no consumer is enabled.
 - Concrete nodes-core composition for Set/Map resolution, V2 immutable retained
   fixtures, workflow-model publication adaptation, persistence, worker
   consumers, API, SSE, and the complete executable graph remain unchecked and
