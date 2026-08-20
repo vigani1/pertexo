@@ -188,6 +188,11 @@ describe('node-sdk registry release contracts', () => {
 
 describe('node-sdk exact server registry', () => {
   it('keeps browser and server bounded JSON admission in parity', () => {
+    expect(
+      generateSchemaDocument(boundedNodeJsonSchema)[
+        'x-pertexo-node-json-limits'
+      ],
+    ).toEqual(NODE_EXECUTION_LIMITS_V1);
     const exact = 'x'.repeat(NODE_EXECUTION_LIMITS_V1.bytes - 2);
     const over = `${exact}x`;
     expect(boundedNodeJsonSchema.safeParse(exact).success).toBe(true);

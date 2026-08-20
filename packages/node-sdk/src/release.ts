@@ -210,7 +210,27 @@ export const definitionIdentitySchema = identitySchema;
 export const executorIdentitySchema = identitySchema;
 export const policyReferenceSchemaV1 = policyReferenceSchema;
 
+function boundedSchemaDocument(kind: 'value' | 'record'): SchemaDocument {
+  const structural = z.toJSONSchema(
+    kind === 'value' ? z.json() : z.record(z.string(), z.json()),
+  );
+  return cloneAndFreeze(
+    schemaDocumentSchema.parse({
+      ...structural,
+      'x-pertexo-node-json-limits': NODE_JSON_LIMITS_V1,
+    }),
+  );
+}
+
+export const BOUNDED_NODE_JSON_SCHEMA_DOCUMENT = boundedSchemaDocument('value');
+export const BOUNDED_NODE_JSON_RECORD_SCHEMA_DOCUMENT =
+  boundedSchemaDocument('record');
+
 export function generateSchemaDocument(schema: z.ZodType): SchemaDocument {
+  if (schema === boundedNodeJsonSchema)
+    return BOUNDED_NODE_JSON_SCHEMA_DOCUMENT;
+  if (schema === boundedNodeJsonRecordSchema)
+    return BOUNDED_NODE_JSON_RECORD_SCHEMA_DOCUMENT;
   return cloneAndFreeze(schemaDocumentSchema.parse(z.toJSONSchema(schema)));
 }
 
