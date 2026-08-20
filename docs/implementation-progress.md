@@ -398,6 +398,14 @@ Current evidence:
 - Commit `6bb356e` adds one-statement digest revocation with a concurrent
   one-winner/idempotency regression, raising the focused Phase 1 repository
   suite to 14 assertions and the full database integration matrix to 101.
+- Commit `7ed8517` adds the thin Nest identity/workspace application boundary:
+  strict contracts, OIDC callback/session and aligned CSRF cookies, logout,
+  immutable session authentication, pre-transaction workspace capability
+  checks, create/delete/restore use cases, database adapters, and stable safe
+  error mapping. Its focused suite passes 15 assertions across five files;
+  scoped ESLint, Prettier, and diff checks pass. Root runtime registration and
+  the real-PostgreSQL/fake-provider API proof remain pending, so no additional
+  completion box is checked yet.
 
 ## Later phases
 
