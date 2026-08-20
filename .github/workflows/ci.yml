@@ -99,6 +99,11 @@ jobs:
           PHASE0E_EXECUTION_INTEGRATION: 'true'
         run: pnpm --filter @pertexo/worker test:phase0e
 
+      - name: Run SSE Redis-loss recovery proof
+        env:
+          API_SSE_RESILIENCE_INTEGRATION: 'true'
+        run: pnpm --filter @pertexo/api test:sse-resilience
+
       - name: Run sequential service-loss resilience proof
         env:
           WORKER_TRANSPORT_RESILIENCE: 'true'

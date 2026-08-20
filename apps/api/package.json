@@ -9,6 +9,7 @@
     "start": "node dist/main.js",
     "test": "vitest run",
     "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:sse-resilience": "vitest run --config vitest.sse-resilience.config.ts",
     "typecheck": "tsc -p tsconfig.test.json --noEmit"
   },
   "dependencies": {
