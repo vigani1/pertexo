@@ -2005,6 +2005,7 @@ auth.unauthenticated
 auth.forbidden
 resource.not_found
 request.invalid
+request.precondition_required
 request.idempotency_conflict
 workspace.quota_exceeded
 workflow.revision_conflict
@@ -2023,6 +2024,10 @@ internal.unexpected
   whether details may be returned.
 - Zod issues become pointer-addressed `errors`; malformed input is `400`, while
   semantically invalid state is generally `409` or `422`.
+- A missing required `If-Match` precondition is
+  `request.precondition_required` with HTTP `428`. A failed strong `If-Match`
+  comparison is `workflow.revision_conflict` with HTTP `412`; the draft save
+  and publish APIs use this same conditional-request contract.
 - `404` may intentionally hide unauthorized workspace resources. Authorization
   policy decides this consistently.
 - Provider response bodies are sanitized and bounded before persistence.

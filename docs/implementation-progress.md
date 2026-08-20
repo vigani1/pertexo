@@ -18,7 +18,7 @@ not complete a phase.
 | Phase 0D — queue, outbox, and duplicate-delivery proof | Complete | ADRs 005–006; migration head `0006_execution_vocabulary.sql`; 158 unit, 76 real integration, and one destructive recovery assertion |
 | Phase 0E — execution durability proofs and engine gate | Complete | ADRs 005 and 007–009; commits through `0322837`; 239 unit, 96 real-service integration, five process-recovery, one SSE-outage, and one transport-outage assertions; custom-engine GO |
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
-| Phase 2 — workflow authoring vertical slice | Not started | — |
+| Phase 2 — workflow authoring vertical slice | In progress | ADR 002 and ADR 011 accepted; no implementation checkpoint complete |
 | Phase 3 — first executable-node slice | Not started | — |
 | Phase 4 — first side-effecting integration slice | Not started | — |
 | Phase 5 — orchestration slice | Not started | — |
@@ -483,10 +483,178 @@ Current evidence:
   tests, build, and diff checks and returned a clean Phase 1 completion GO with
   no new blocker/high finding.
 
+## Phase 2 — Workflow authoring vertical slice
+
+Status: **In progress**
+
+The phase has started at its required ADR/design prerequisite. No implementation
+item below is complete yet. Phase 2 remains incomplete until the whole thin
+slice satisfies the plan's vertical-slice completion rule with executable
+evidence.
+
+Plan-aligned checklist:
+
+- [x] Accept ADR 002 for PostgreSQL JSONB drafts, immutable versions,
+      versioned executable-projection checksum identity, and identical-content
+      version reuse before workflow persistence is implemented.
+- [x] Accept ADR 011 for whole-graph optimistic draft concurrency,
+      strong ETag semantics, HTTP preconditions, conflict responses, and the
+      future collaboration boundary before the draft save API is implemented.
+- [ ] Define the workflow-authoring domain vocabulary and canonical constants,
+      including lifecycle/activation states, draft revision rules, graph schema
+      versioning, and immutable version identity.
+- [ ] Own the canonical graph, authoring request/response, validation-report,
+      and published-version Zod contracts in the appropriate shared packages;
+      parse them at every HTTP and persistence seam.
+- [ ] Add reviewed PostgreSQL migrations only for `workflows`,
+      `workflow_drafts`, and `workflow_versions`, reusing the existing audit and
+      outbox foundations. Enforce tenant scope, forced RLS, least-privilege
+      runtime grants, indexes, same-workflow published-pointer integrity,
+      exactly one live mutable draft per workflow, immutable version rows, and
+      unique version/checksum constraints.
+- [ ] Create a workflow and its one empty JSONB draft atomically, with an
+      idempotent retry contract and an audit fact; the draft cannot be omitted,
+      duplicated, deleted, or replaced independently of its workflow.
+- [ ] List workspace workflows with deterministic cursor pagination and load
+      one authorized draft with its revision, strong ETag, and
+      definition-compatibility report without exposing cross-workspace
+      existence. The strong validator covers the complete returned
+      representation, including the compatibility fingerprint; a registry
+      rollout may therefore require a safe refetch instead of treating two
+      different reports as equivalent.
+- [ ] Save one coherent, structurally valid, within-limit graph snapshot only
+      when a required strong `If-Match` value matches; return HTTP `428` when
+      the precondition is absent and HTTP `412` with
+      `workflow.revision_conflict` when it is stale or does not match. Increment
+      the revision on success and never overwrite concurrent work.
+- [ ] Validate the current draft read-only using the same graph limits and
+      pinned-definition compatibility rules used by publication, returning a
+      stable typed validation report without mutating the draft.
+- [ ] Define a versioned canonical executable projection for checksum identity.
+      It includes execution-relevant graph/schema/definition/settings content
+      but excludes presentation-only metadata such as node position and label;
+      focused fixtures must prove both included and excluded fields.
+- [ ] Publish in one transaction: require the same strong `If-Match` contract
+      plus an `Idempotency-Key`, lock and freeze that coherent draft revision,
+      run deterministic validation, calculate the versioned
+      executable-projection checksum, create or reuse one immutable version,
+      update the same workflow's published pointer while keeping activation
+      inactive, append the audit fact, and write one versioned
+      `workflow.published` outbox record at the existing typed
+      `reconcile-workflow-triggers` dispatch boundary.
+- [ ] Give publish commands durable idempotency semantics: an exact retry with
+      the same key, original `If-Match`, and request hash returns the stored
+      result before current-state comparison and without another audit fact or
+      outbox record; reusing the key for a changed request returns
+      `request.idempotency_conflict`; a distinct key with a stale validator
+      returns `workflow.revision_conflict` `412`, while a distinct key with the
+      same current executable content is a new publish attempt that reuses the
+      existing version and records its own audit/outbox effects.
+- [ ] Add a validated dispatcher job-kind allowlist. Phase 2 excludes
+      `reconcile-workflow-triggers`, keeping those outbox rows durable,
+      unpublished, unleased, and unattempted in PostgreSQL and absent from
+      Redis until Phase 6 deploys a ready consumer before enabling that kind.
+- [ ] Return the existing immutable version when identical executable content
+      is published again; never clone content merely to increment a version
+      number, and keep published snapshots unchanged when the draft later
+      changes.
+- [ ] Prove save-versus-publish races cannot produce a mixed snapshot: publish
+      freezes exactly one draft revision, the immutable version matches that
+      complete revision, and a concurrent successful save affects only the live
+      draft and never the frozen published version.
+- [ ] Expose and document only the Phase 2 endpoints: list/create workflows,
+      get/save draft, validate, publish, and list immutable versions. Controllers
+      remain limited to contract parsing, authenticated actor/workspace context,
+      one use-case call, and response mapping.
+- [ ] Enforce named workflow read/update/publish capabilities plus active
+      workspace membership at the application boundary and PostgreSQL tenant
+      isolation through the real Phase 0/1 runtime roles.
+- [ ] Map malformed input, hidden resources, authorization failures, revision
+      conflicts (`428`/`412`), invalid workflows, idempotency conflicts, and
+      unexpected failures through the shared RFC 9457 catalog with bounded safe
+      logs.
+- [ ] Add fixed-cardinality traces/metrics and the relevant audit/outbox effects
+      without workflow, workspace, actor, or version IDs in metric labels.
+- [ ] Publish browser-safe shared client contracts and deterministic generated
+      API/client artifacts, and make contract drift a required verification
+      gate before the canvas consumes the API.
+- [ ] Prove the use-case transaction boundaries, rollback behavior, exact and
+      conflicting retries, strong-ETag preconditions, concurrent draft saves,
+      save-versus-publish races, concurrent/duplicate publishes, exactly one
+      live draft, immutable frozen history, executable-projection checksum
+      inclusion/exclusion, authorization, cross-workspace isolation, RLS/grants,
+      and safe problem responses with unit plus real PostgreSQL/HTTP integration
+      tests.
+- [ ] Run the repository-wide quality gate and the full applicable real-service
+      integration suite, record exact assertion counts and migration head, and
+      resolve every blocker/high finding from independent Spec and Standards
+      completion reviews.
+- [ ] Connect the canvas only after every API, authorization, conflict, publish,
+      contract, and verification item above passes; canvas work does not count
+      toward backend Phase 2 completion.
+
+Thin-slice exclusions:
+
+- Executable node definitions, run/event/checkpoint persistence, coordinator or
+  node-attempt jobs, SSE run reconstruction, cancellation, worker reads of
+  immutable workflow versions, and unsupported-version execution proofs remain
+  Phase 3. The Phase 2 worker role receives no workflow-version read grant.
+- Connections, credentials, generic HTTP execution, node preview/test execution,
+  bounded artifact behavior, `workflow_integration_usage` persistence, and its
+  projection proof remain Phase 4.
+- Condition/Switch, loops, parallel/merge, Wait, providers, webhook/Schedule
+  triggers, desired-trigger persistence, external trigger reconciliation and
+  activation proof, and production operations remain Phases 5–7. Phase 2 emits
+  only the typed reconciliation boundary, holds it behind the dispatcher
+  allowlist, and leaves workflows inactive.
+- Folders, tags, templates, workflow dependencies, sub-workflows, multiplayer
+  merging, and gesture-by-gesture database records remain explicitly deferred.
+
+Verification and evidence gates:
+
+- ADR 002 and ADR 011 must remain authoritative for their affected code.
+- Migrations must pass clean zero-to-head and supported prior-head upgrades;
+  schema compatibility, forced RLS, grants, constraints, and immutability must
+  be exercised under the actual API and migration roles.
+- The real dispatcher and worker composition must prove the held reconciliation
+  kind is not claimed or enqueued while other enabled kinds still dispatch.
+- Focused checks may support individual checkpoints, but phase completion
+  requires the repository-wide quality gate, generated-contract drift check,
+  full applicable real-service suite, and independent Spec/Standards review.
+- Evidence must name the accepted ADRs, coherent commits, migration head,
+  exact commands and assertion counts, transaction/failure exercises, and
+  review outcomes. Generated files, unit tests, or prose alone are insufficient.
+
+Logical checkpoint intent:
+
+- Record the accepted persistence and concurrency decisions as one reviewable
+  documentation checkpoint before implementation.
+- Land the canonical model/contracts and deterministic checksum behavior as a
+  coherent checkpoint with focused tests.
+- Land the tenant-scoped schema plus persistence adapters and real PostgreSQL
+  proofs as one or more independently reviewable, working checkpoints.
+- Land each complete API/use-case behavior with its authorization, errors,
+  telemetry, audit/outbox effects, client contract, and relevant tests rather
+  than committing controller or table scaffolding by itself.
+- Record final integration evidence and mark Phase 2 complete only after all
+  checklist items and completion reviews pass. The number of commits follows
+  coherent reviewable purposes; it is not predetermined.
+
+Initial evidence:
+
+- Phase 0's custom-engine gate and Phase 1's authenticated actor/workspace,
+  authorization, forced-RLS, audit, problem-details, telemetry, idempotency,
+  and shared-contract foundations are complete and available to this slice.
+- ADR 002 and ADR 011 are accepted before implementation. They define the
+  executable-content identity, immutable publication, publish idempotency,
+  held reconciliation-outbox boundary, strong `If-Match`/ETag behavior, and
+  future collaboration boundary. No Phase 2 implementation checkbox is marked
+  complete yet.
+
 ## Later phases
 
 Use the delivery plan and vertical-slice completion rule as the checklist for
-Phases 1–7. Expand the relevant phase here before implementation begins; do not
+Phases 3–7. Expand the relevant phase here before implementation begins; do not
 mark a phase complete from a high-level summary alone.
 
 ## Update protocol
