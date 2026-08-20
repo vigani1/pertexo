@@ -13,14 +13,14 @@ import {
   type WorkspaceAccess,
 } from '../../src/workspaces/index.js';
 
-const workspaceId = 'workspace-a';
-const actorId = 'user-a';
+const workspaceId = '11111111-1111-4111-8111-111111111111';
+const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 
 function actor() {
   return createActorContext({
     actorId,
     workspaceId,
-    sessionId: 'session-a',
+    sessionId: '22222222-2222-4222-8222-222222222222',
     requestId: 'request-a',
     traceId: 'trace-a',
   });
@@ -196,7 +196,7 @@ describe('workspace authorization policy', () => {
     await expect(
       authorizeWorkspace({
         actor: actor(),
-        routeWorkspaceId: 'workspace-forged',
+        routeWorkspaceId: '33333333-3333-4333-8333-333333333333',
         capability: 'workflow:read',
         access: () => {
           lookups += 1;
@@ -264,9 +264,43 @@ describe('immutable actor context', () => {
         actorId,
         kind: 'service_account',
         workspaceId,
-        sessionId: 'session-a',
+        sessionId: '22222222-2222-4222-8222-222222222222',
         requestId: 'request-a',
       }),
     ).toThrow(/kind/u);
+  });
+
+  it('requires canonical UUIDs for internal actor, workspace, and session identities', () => {
+    for (const field of ['actorId', 'workspaceId', 'sessionId'] as const) {
+      expect(() =>
+        createActorContext({
+          actorId,
+          workspaceId,
+          sessionId: '22222222-2222-4222-8222-222222222222',
+          requestId: 'request-a',
+          [field]: 'not-a-uuid',
+        }),
+      ).toThrow(/UUID/u);
+    }
+  });
+
+  it('keeps request and trace identifiers bounded and header-safe', () => {
+    expect(() =>
+      createActorContext({
+        actorId,
+        workspaceId,
+        sessionId: '22222222-2222-4222-8222-222222222222',
+        requestId: 'a'.repeat(129),
+      }),
+    ).toThrow(/bounded/u);
+    expect(() =>
+      createActorContext({
+        actorId,
+        workspaceId,
+        sessionId: '22222222-2222-4222-8222-222222222222',
+        requestId: 'request-a',
+        traceId: 'trace\r\nforged',
+      }),
+    ).toThrow(/bounded/u);
   });
 });

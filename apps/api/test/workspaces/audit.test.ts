@@ -6,9 +6,9 @@ import {
 } from '../../src/workspaces/index.js';
 
 const actor = createActorContext({
-  actorId: 'user-a',
-  workspaceId: 'workspace-a',
-  sessionId: 'session-a',
+  actorId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  workspaceId: '11111111-1111-4111-8111-111111111111',
+  sessionId: '22222222-2222-4222-8222-222222222222',
   requestId: 'request-a',
   traceId: 'trace-a',
 });
@@ -33,9 +33,9 @@ describe('safe workspace audit facts', () => {
 
     expect(fact).toMatchObject({
       event: 'workspace.member.role_changed',
-      actorId: 'user-a',
+      actorId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
       actorKind: 'user',
-      workspaceId: 'workspace-a',
+      workspaceId: '11111111-1111-4111-8111-111111111111',
       requestId: 'request-a',
       traceId: 'trace-a',
       target: { type: 'membership', id: 'membership-a' },

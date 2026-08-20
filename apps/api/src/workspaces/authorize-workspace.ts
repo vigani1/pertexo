@@ -14,8 +14,8 @@ import {
 } from './types.js';
 import {
   createActorContext,
+  isCanonicalUuid,
   isActorContext,
-  isSafeIdentifier,
 } from './actor-context.js';
 import { hasCapability } from './policy.js';
 
@@ -84,8 +84,8 @@ function invalid(message: string): AuthorizationError {
 
 function validateAccess(access: WorkspaceAccess): boolean {
   return (
-    typeof access.actorId === 'string' &&
-    typeof access.workspaceId === 'string' &&
+    isCanonicalUuid(access.actorId) &&
+    isCanonicalUuid(access.workspaceId) &&
     isOneOf(ROLES, access.role) &&
     isOneOf(MEMBERSHIP_STATUSES, access.membershipStatus) &&
     isOneOf(WORKSPACE_STATUSES, access.workspaceStatus)
@@ -117,7 +117,7 @@ export async function authorizeWorkspace(
     );
   }
   const actor = createActorContext(input.actor);
-  if (!isSafeIdentifier(input.routeWorkspaceId)) {
+  if (!isCanonicalUuid(input.routeWorkspaceId)) {
     throw invalid('route workspace id is required');
   }
   if (!isOneOf(AUTHORIZATION_CAPABILITIES, input.capability)) {

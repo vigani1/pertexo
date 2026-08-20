@@ -1,9 +1,15 @@
 import type { ActorContext, WorkspaceId } from './types.js';
 
-const identifierPattern = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$/u;
+const uuidPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+const boundedIdentifierPattern = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
+
+export function isCanonicalUuid(value: unknown): value is string {
+  return typeof value === 'string' && uuidPattern.test(value);
+}
 
 export function isSafeIdentifier(value: unknown): value is string {
-  return typeof value === 'string' && identifierPattern.test(value);
+  return typeof value === 'string' && boundedIdentifierPattern.test(value);
 }
 
 export type CreateActorContextInput = Readonly<{
@@ -22,6 +28,13 @@ function requireIdentifier(value: string, name: string): string {
   return value;
 }
 
+function requireUuid(value: string, name: string): string {
+  if (!isCanonicalUuid(value)) {
+    throw new TypeError(`${name} must be a canonical UUID`);
+  }
+  return value;
+}
+
 export function createActorContext(
   input: CreateActorContextInput,
 ): ActorContext {
@@ -30,10 +43,10 @@ export function createActorContext(
   }
 
   const context: ActorContext = {
-    actorId: requireIdentifier(input.actorId, 'actorId'),
+    actorId: requireUuid(input.actorId, 'actorId'),
     kind: 'user',
-    workspaceId: requireIdentifier(input.workspaceId, 'workspaceId'),
-    sessionId: requireIdentifier(input.sessionId, 'sessionId'),
+    workspaceId: requireUuid(input.workspaceId, 'workspaceId'),
+    sessionId: requireUuid(input.sessionId, 'sessionId'),
     requestId: requireIdentifier(input.requestId, 'requestId'),
     ...(input.traceId === undefined
       ? {}
@@ -51,9 +64,9 @@ export function isActorContext(value: unknown): value is ActorContext {
   const candidate = value as Partial<ActorContext>;
   return (
     candidate.kind === 'user' &&
-    isSafeIdentifier(candidate.actorId) &&
-    isSafeIdentifier(candidate.workspaceId) &&
-    isSafeIdentifier(candidate.sessionId) &&
+    isCanonicalUuid(candidate.actorId) &&
+    isCanonicalUuid(candidate.workspaceId) &&
+    isCanonicalUuid(candidate.sessionId) &&
     isSafeIdentifier(candidate.requestId) &&
     (candidate.traceId === undefined || isSafeIdentifier(candidate.traceId))
   );
