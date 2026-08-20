@@ -1,3 +1,4 @@
+export { createPostgresRunEventReader } from './postgres-run-event-reader.js';
 export {
   RedisRunEventPublisher,
   RedisRunEventPublisherConfigurationError,
