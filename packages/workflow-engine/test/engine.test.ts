@@ -22,6 +22,7 @@ import {
   type BranchLedgerEntry,
   type JoinPolicy,
   type WorkflowCheckpointV1,
+  WORKFLOW_CHECKPOINT_LIMITS_V1,
 } from '../src/index.js';
 
 const occurredAt = '2026-08-20T10:00:00.000Z';
@@ -170,9 +171,217 @@ describe('checkpoint seam', () => {
       expect.objectContaining({ code: 'checkpoint_invalid' }),
     );
   });
+
+  it('rejects oversized and accessor-backed checkpoint collections before traversal', () => {
+    const oversized = {
+      ...checkpoint(),
+      readySet: Array.from(
+        { length: 10_001 },
+        (_, index) => `node-${String(index)}`,
+      ),
+    };
+    expect(() => parseCheckpoint(oversized)).toThrow(
+      expect.objectContaining({ code: 'checkpoint_invalid' }),
+    );
+
+    const accessorBacked = { ...checkpoint() } as Record<string, unknown>;
+    Object.defineProperty(accessorBacked, 'invocations', {
+      enumerable: true,
+      get: () => [],
+    });
+    expect(() => parseCheckpoint(accessorBacked)).toThrow(
+      expect.objectContaining({ code: 'checkpoint_invalid' }),
+    );
+
+    const hugeSparse: unknown[] = [];
+    hugeSparse.length = 4_294_967_295;
+    expect(() =>
+      parseCheckpoint({ ...checkpoint(), invocations: hugeSparse }),
+    ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
+  });
+
+  it('rejects non-JSON structure, unknown fields, and the byte-limit one-over', () => {
+    expect(() =>
+      parseCheckpoint({ ...checkpoint(), unexpected: true }),
+    ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
+    expect(() =>
+      parseCheckpoint(
+        Object.assign(Object.create({ inherited: true }), checkpoint()),
+      ),
+    ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
+    const sparse: unknown[] = [];
+    sparse.length = 1;
+    expect(() =>
+      parseCheckpoint({ ...checkpoint(), invocations: sparse }),
+    ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
+    expect(() =>
+      parseCheckpoint({
+        ...checkpoint(),
+        engineVersion: 'x'.repeat(4 * 1_048_576),
+      }),
+    ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
+  });
+
+  it('accepts exact 256 KiB including escaped and surrogate string bytes', () => {
+    const base = checkpoint();
+    const encoder = new TextEncoder();
+    const baseBytes = encoder.encode(JSON.stringify(base)).byteLength;
+    const originalValueBytes = encoder.encode(
+      JSON.stringify(base.engineVersion),
+    ).byteLength;
+    const escapedPrefix = '"\\\n\ud800😀';
+    const escapedPrefixBytes = encoder.encode(
+      JSON.stringify(escapedPrefix),
+    ).byteLength;
+    const requiredValueBytes =
+      WORKFLOW_CHECKPOINT_LIMITS_V1.bytes - baseBytes + originalValueBytes;
+    const exact = {
+      ...base,
+      engineVersion:
+        escapedPrefix + 'x'.repeat(requiredValueBytes - escapedPrefixBytes),
+    };
+    expect(encoder.encode(JSON.stringify(exact)).byteLength).toBe(
+      WORKFLOW_CHECKPOINT_LIMITS_V1.bytes,
+    );
+    expect(parseCheckpoint(exact).engineVersion).toBe(exact.engineVersion);
+  });
+
+  it('never invokes inherited toJSON while measuring checkpoint bytes', () => {
+    let getterCalls = 0;
+    const original = Object.getOwnPropertyDescriptor(
+      Object.prototype,
+      'toJSON',
+    );
+    Object.defineProperty(Object.prototype, 'toJSON', {
+      configurable: true,
+      get() {
+        getterCalls += 1;
+        return () => checkpoint();
+      },
+    });
+    try {
+      expect(parseCheckpoint(checkpoint()).schemaVersion).toBe(1);
+      expect(() =>
+        parseCheckpoint({ ...checkpoint(), engineVersion: () => 'bad' }),
+      ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
+      expect(getterCalls).toBe(0);
+    } finally {
+      if (original === undefined)
+        Reflect.deleteProperty(Object.prototype, 'toJSON');
+      else Object.defineProperty(Object.prototype, 'toJSON', original);
+    }
+  });
+
+  it('rejects hidden fields and accessors without invoking them', () => {
+    let getterCalls = 0;
+    const hiddenRequired = { ...checkpoint() } as Record<string, unknown>;
+    Object.defineProperty(hiddenRequired, 'engineVersion', {
+      enumerable: false,
+      get: () => {
+        getterCalls += 1;
+        return 'engine-v1';
+      },
+    });
+    expect(() => parseCheckpoint(hiddenRequired)).toThrow(
+      expect.objectContaining({ code: 'checkpoint_invalid' }),
+    );
+    expect(getterCalls).toBe(0);
+
+    const hiddenUnknown = { ...checkpoint() } as Record<string, unknown>;
+    Object.defineProperty(hiddenUnknown, 'hidden', {
+      enumerable: false,
+      value: true,
+    });
+    expect(() => parseCheckpoint(hiddenUnknown)).toThrow(
+      expect.objectContaining({ code: 'checkpoint_invalid' }),
+    );
+  });
+
+  it('rejects top-level and nested proxies without running their traps', () => {
+    let trapCalls = 0;
+    const hostile = new Proxy(checkpoint(), {
+      getPrototypeOf: () => {
+        trapCalls += 1;
+        throw new Error('proxy trap ran');
+      },
+      ownKeys: () => {
+        trapCalls += 1;
+        throw new Error('proxy trap ran');
+      },
+    });
+    expect(() => parseCheckpoint(hostile)).toThrow(
+      expect.objectContaining({ code: 'checkpoint_invalid' }),
+    );
+    const nested = {
+      ...checkpoint(),
+      invocations: [
+        new Proxy(
+          {
+            invocationKey: 'a',
+            nodeId: 'a',
+            status: 'ready',
+            attemptNumber: 0,
+          },
+          {
+            getOwnPropertyDescriptor: () => {
+              trapCalls += 1;
+              throw new Error('nested proxy trap ran');
+            },
+          },
+        ),
+      ],
+      readySet: ['a'],
+    };
+    expect(() => parseCheckpoint(nested)).toThrow(
+      expect.objectContaining({ code: 'checkpoint_invalid' }),
+    );
+    expect(trapCalls).toBe(0);
+  });
+
+  it('rejects a wide object at the incremental member cap', () => {
+    const wide: Record<string, number> = {};
+    for (
+      let index = 0;
+      index <= WORKFLOW_CHECKPOINT_LIMITS_V1.members;
+      index += 1
+    )
+      wide[`field-${String(index)}`] = index;
+    const startedAt = performance.now();
+    expect(() =>
+      parseCheckpoint({ ...checkpoint(), engineVersion: wide }),
+    ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
+    expect(performance.now() - startedAt).toBeLessThan(1_000);
+  });
 });
 
 describe('AdvanceWorkflow operation', () => {
+  it('fails closed on malformed scheduler graph input', () => {
+    const accessorNode = { id: 'a' } as Record<string, unknown>;
+    Object.defineProperty(accessorNode, 'disabled', {
+      enumerable: true,
+      get: () => false,
+    });
+    expect(() =>
+      advanceWorkflow({
+        checkpoint: checkpoint(),
+        graph: { nodes: [accessorNode], edges: [] },
+        occurredAt,
+        maximumAdmissions: 1,
+      }),
+    ).toThrow(expect.objectContaining({ code: 'graph_invalid' }));
+    expect(() =>
+      advanceWorkflow({
+        checkpoint: checkpoint(),
+        graph: {
+          nodes: [{ id: 'a' }],
+          edges: [{ source: { nodeId: 'missing' }, target: { nodeId: 'a' } }],
+        },
+        occurredAt,
+        maximumAdmissions: 1,
+      }),
+    ).toThrow(expect.objectContaining({ code: 'graph_invalid' }));
+  });
+
   it('derives roots and successors from the immutable graph on separate checkpoint advances', () => {
     const root = advanceWorkflow({
       checkpoint: checkpoint(),

@@ -16,5 +16,8 @@
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.test.json --noEmit"
+  },
+  "dependencies": {
+    "@pertexo/workflow-model": "workspace:*"
   }
 }

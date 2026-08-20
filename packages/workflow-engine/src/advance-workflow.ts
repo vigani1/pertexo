@@ -1,6 +1,6 @@
 import { parseCheckpoint, reconstructReadySet } from './checkpoint.js';
 import { WorkflowEngineError } from './errors.js';
-import { deriveReadyNodes, type SchedulerGraph } from './graph-scheduler.js';
+import { deriveReadyNodes, parseSchedulerGraph } from './graph-scheduler.js';
 import {
   admitLoopIterations,
   completeLoopIteration,
@@ -86,8 +86,8 @@ export type WorkflowObservation =
     };
 
 export interface AdvanceWorkflowInput {
-  readonly checkpoint: WorkflowCheckpointV1;
-  readonly graph?: SchedulerGraph;
+  readonly checkpoint: unknown;
+  readonly graph?: unknown;
   readonly observations?: readonly WorkflowObservation[];
   readonly occurredAt: string;
   readonly maximumAdmissions: number;
@@ -117,6 +117,8 @@ export function advanceWorkflow(
     );
   }
   const current = parseCheckpoint(input.checkpoint);
+  const graph =
+    input.graph === undefined ? undefined : parseSchedulerGraph(input.graph);
   const invocations = new Map(
     current.invocations.map((invocation) => [
       invocation.invocationKey,
@@ -152,12 +154,12 @@ export function advanceWorkflow(
   }
 
   if (
-    input.graph !== undefined &&
+    graph !== undefined &&
     !cancelRequested &&
     (runStatus === 'running' || runStatus === 'waiting')
   ) {
     for (const decision of deriveReadyNodes({
-      graph: input.graph,
+      graph,
       workflowVersionId: current.workflowVersionId,
       invocations: [...invocations.values()],
     })) {
@@ -568,7 +570,7 @@ export function advanceWorkflow(
     ['pending', 'ready', 'running', 'waiting'].includes(status),
   );
   const graphIncomplete =
-    input.graph?.nodes.some(
+    graph?.nodes.some(
       ({ id }) => !finalInvocations.some(({ nodeId }) => nodeId === id),
     ) === true;
   const runIsActive = runStatus === 'running' || runStatus === 'waiting';

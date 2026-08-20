@@ -234,7 +234,11 @@ importers:
         specifier: 4.4.3
         version: 4.4.3
 
-  packages/workflow-engine: {}
+  packages/workflow-engine:
+    dependencies:
+      '@pertexo/workflow-model':
+        specifier: workspace:*
+        version: link:../workflow-model
 
   packages/workflow-model:
     dependencies:

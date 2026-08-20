@@ -1,4 +1,10 @@
+import {
+  parseWorkflowGraphDraft,
+  validateWorkflowGraph,
+} from '@pertexo/workflow-model/graph';
+
 import { invocationKey } from './scheduling.js';
+import { WorkflowEngineError } from './errors.js';
 import type { InvocationState } from './types.js';
 
 export interface SchedulerGraph {
@@ -16,6 +22,33 @@ export interface ReadyNodeDecision {
   readonly invocationKey: string;
   readonly nodeId: string;
   readonly disposition: 'ready' | 'skipped';
+}
+
+export function parseSchedulerGraph(value: unknown): SchedulerGraph {
+  try {
+    const graph = parseWorkflowGraphDraft(value);
+    const validation = validateWorkflowGraph(graph);
+    if (!validation.ok)
+      throw new WorkflowEngineError(
+        'graph_invalid',
+        validation.issues.map(({ code }) => code).join(','),
+      );
+    return {
+      nodes: graph.nodes.map(({ id, disabled }) =>
+        disabled === undefined ? { id } : { id, disabled },
+      ),
+      edges: graph.edges.map(({ source, target }) => ({
+        source: { nodeId: source.nodeId },
+        target: { nodeId: target.nodeId },
+      })),
+    };
+  } catch (error) {
+    if (error instanceof WorkflowEngineError) throw error;
+    throw new WorkflowEngineError(
+      'graph_invalid',
+      error instanceof Error ? error.message : 'graph parsing failed',
+    );
+  }
 }
 
 export function deriveReadyNodes(input: {

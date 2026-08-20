@@ -7,10 +7,11 @@ export {
   createCheckpoint,
   parseCheckpoint,
   reconstructReadySet,
+  WORKFLOW_CHECKPOINT_LIMITS_V1,
 } from './checkpoint.js';
 export { WorkflowEngineError } from './errors.js';
 export type { EngineErrorCode } from './errors.js';
-export { deriveReadyNodes } from './graph-scheduler.js';
+export { deriveReadyNodes, parseSchedulerGraph } from './graph-scheduler.js';
 export type { ReadyNodeDecision, SchedulerGraph } from './graph-scheduler.js';
 export {
   admitLoopIterations,
