@@ -23,6 +23,7 @@ const traceparentSchema = z
 const acceptWorkflowRunInputSchema = z
   .object({
     engineVersion: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/u),
+    deadlineAt: z.date().optional(),
     keyHash: sha256Schema,
     operation: z.literal('workflow.run.accept'),
     requestHash: sha256Schema,
@@ -199,6 +200,9 @@ export async function acceptWorkflowRun(
       workflowId: parsed.workflowId,
       workflowVersionId: parsed.workflowVersionId,
       triggerType: parsed.triggerType,
+      ...(parsed.deadlineAt === undefined
+        ? {}
+        : { deadlineAt: parsed.deadlineAt }),
       status: RUN_STATUS.queued,
     })
     .returning({ acceptedAt: workflowRuns.createdAt });
@@ -210,7 +214,7 @@ export async function acceptWorkflowRun(
     workspaceId: transaction.workspaceId,
     workflowRunId: runId,
     sequence: 1,
-    type: 'run.accepted',
+    type: 'run.queued',
     payload: {},
   });
   await transaction.db.insert(runCheckpoints).values({

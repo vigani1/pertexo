@@ -156,7 +156,7 @@ describe('atomic workflow run acceptance', () => {
           .select({ sequence: runEvents.sequence, type: runEvents.type })
           .from(runEvents)
           .where(eq(runEvents.workflowRunId, accepted.runId)),
-      ).toEqual([{ sequence: 1, type: 'run.accepted' }]);
+      ).toEqual([{ sequence: 1, type: 'run.queued' }]);
       expect(
         await db
           .select({ revision: runCheckpoints.revision })
@@ -423,7 +423,11 @@ describe('atomic workflow run acceptance', () => {
       expect(privileges.rows).toHaveLength(12);
       for (const row of privileges.rows) {
         expect(row.canSelect).toBe(row.roleName !== 'pertexo_dispatcher');
-        expect(row.canInsert).toBe(row.roleName === 'pertexo_api');
+        expect(row.canInsert).toBe(
+          row.roleName === 'pertexo_api' ||
+            (row.roleName === 'pertexo_worker' &&
+              row.tableName === 'run_events'),
+        );
         expect(row.canUpdate).toBe(false);
         expect(row.canDelete).toBe(false);
       }
