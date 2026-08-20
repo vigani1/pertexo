@@ -1,4 +1,4 @@
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
@@ -7,41 +7,40 @@ import {
   acceptWorkflowRun,
   AttemptFenceConflictError,
   AttemptReconciliationRequiredError,
-  CheckpointRevisionConflictError,
-  claimNodeAttempt,
   commitCoordinatorTransition,
   commitDueNodeAdmission,
   completeNodeAttempt,
   createOutboxDispatcherDatabase,
   createWorkspaceDatabase,
-  markNodeAttemptDispatched,
   parseDatabaseConfig,
   readDueNodeRuns,
   readExpiredAttemptReconciliations,
   reconcileExpiredNodeAttempt,
-  requestWorkflowRunCancellation,
-  suspendNodeAttemptUntil,
 } from '@pertexo/database';
-import {
-  createQueueConsumer,
-  createQueueProducer,
-  JOB_NAME,
-  parseQueueJob,
-  QUEUE_NAME,
-} from '@pertexo/queue';
-import type { QueueConsumer } from '@pertexo/queue';
+import { createQueueProducer, parseQueueJob, QUEUE_NAME } from '@pertexo/queue';
 import * as engine from '@pertexo/workflow-engine';
 import type { WorkflowCheckpointV1 } from '@pertexo/workflow-engine';
 import * as model from '@pertexo/workflow-model';
 import { sql } from 'drizzle-orm';
 import { Pool } from 'pg';
 import { performance } from 'node:perf_hooks';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from 'vitest';
 
 const integrationEnabled = process.env.PHASE0E_EXECUTION_INTEGRATION === 'true';
 const describeIntegration = integrationEnabled ? describe : describe.skip;
 const execFileAsync = promisify(execFile);
 const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
+const processFixturePath = fileURLToPath(
+  new URL('./phase0e-process-fixture.mjs', import.meta.url),
+);
 
 const migrationUrl =
   process.env.DATABASE_MIGRATION_URL ??
@@ -64,6 +63,7 @@ const configuredRedisUrl =
 const WORKFLOW_VERSION_ID = randomUUID();
 const WORKSPACE_ID = randomUUID();
 const ENGINE_VERSION = 'phase0e-v1';
+const TRACEPARENT = `00-${'1'.repeat(32)}-${'2'.repeat(16)}-01`;
 const redisUrl = (() => {
   const parsed = new URL(configuredRedisUrl);
   parsed.pathname = '/15';
@@ -122,10 +122,65 @@ async function resetFixture(): Promise<void> {
   try {
     await client.query('begin');
     await client.query('set local role pertexo_owner');
+    await client.query(`select set_config('app.workspace_id', $1, true)`, [
+      WORKSPACE_ID,
+    ]);
     await client.query(`
       truncate table app.node_attempts, app.node_runs,
         app.idempotency_records, app.run_events, app.run_checkpoints,
-        app.workflow_runs, app.outbox_events cascade
+        app.workflow_runs, app.outbox_events,
+        app.phase0e_workflow_versions, app.phase0e_provider_effects cascade
+    `);
+    await client.query(
+      `insert into app.phase0e_workflow_versions (workspace_id, id, graph)
+       values ($1, $2, $3::jsonb)`,
+      [WORKSPACE_ID, WORKFLOW_VERSION_ID, JSON.stringify(fixtureGraph())],
+    );
+    await client.query('commit');
+  } catch (error: unknown) {
+    await client.query('rollback').catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+    await pool.end();
+  }
+}
+
+async function prepareProcessFixtures(): Promise<void> {
+  const pool = new Pool({ connectionString: migrationUrl, max: 1 });
+  const client = await pool.connect();
+  try {
+    await client.query('begin');
+    await client.query('set local role pertexo_owner');
+    await client.query(`
+      create table if not exists app.phase0e_workflow_versions (
+        workspace_id uuid not null,
+        id uuid not null,
+        graph jsonb not null,
+        created_at timestamptz not null default clock_timestamp(),
+        primary key (workspace_id, id)
+      );
+      create table if not exists app.phase0e_provider_effects (
+        workspace_id uuid not null,
+        effect_key text not null,
+        invocation_count integer not null,
+        primary key (workspace_id, effect_key)
+      );
+      alter table app.phase0e_workflow_versions enable row level security;
+      alter table app.phase0e_workflow_versions force row level security;
+      alter table app.phase0e_provider_effects enable row level security;
+      alter table app.phase0e_provider_effects force row level security;
+      drop policy if exists phase0e_workflow_workspace on app.phase0e_workflow_versions;
+      create policy phase0e_workflow_workspace on app.phase0e_workflow_versions
+        using (workspace_id = nullif(current_setting('app.workspace_id', true), '')::uuid)
+        with check (workspace_id = nullif(current_setting('app.workspace_id', true), '')::uuid);
+      drop policy if exists phase0e_effect_workspace on app.phase0e_provider_effects;
+      create policy phase0e_effect_workspace on app.phase0e_provider_effects
+        using (workspace_id = nullif(current_setting('app.workspace_id', true), '')::uuid)
+        with check (workspace_id = nullif(current_setting('app.workspace_id', true), '')::uuid);
+      revoke all on app.phase0e_workflow_versions, app.phase0e_provider_effects from public;
+      grant select on app.phase0e_workflow_versions to pertexo_worker;
+      grant select, insert, update on app.phase0e_provider_effects to pertexo_worker;
     `);
     await client.query('commit');
   } catch (error: unknown) {
@@ -135,6 +190,112 @@ async function resetFixture(): Promise<void> {
     client.release();
     await pool.end();
   }
+}
+
+interface ProofChild {
+  readonly next: (
+    predicate?: (value: Record<string, unknown>) => boolean,
+  ) => Promise<Record<string, unknown>>;
+  readonly kill: () => Promise<void>;
+  readonly exited: Promise<{
+    readonly code: number | null;
+    readonly signal: NodeJS.Signals | null;
+  }>;
+}
+
+const activeProofChildren = new Set<ProofChild>();
+
+function spawnProofChild(
+  action: string,
+  input: Record<string, unknown>,
+): ProofChild {
+  const child = spawn(process.execPath, [processFixturePath, action], {
+    cwd: repositoryRoot,
+    env: {
+      ...process.env,
+      DATABASE_API_URL: apiUrl,
+      DATABASE_WORKER_URL: workerUrl,
+      PHASE0E_CHILD_INPUT: JSON.stringify(input),
+      PHASE0E_REDIS_URL: redisUrl,
+    },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  const messages: Record<string, unknown>[] = [];
+  const waiters: {
+    readonly predicate: (value: Record<string, unknown>) => boolean;
+    readonly resolve: (value: Record<string, unknown>) => void;
+  }[] = [];
+  let stdoutBuffer = '';
+  let stderr = '';
+  child.stdout.setEncoding('utf8');
+  child.stderr.setEncoding('utf8');
+  child.stderr.on('data', (chunk: string) => {
+    stderr += chunk;
+  });
+  child.stdout.on('data', (chunk: string) => {
+    stdoutBuffer += chunk;
+    const lines = stdoutBuffer.split('\n');
+    stdoutBuffer = lines.pop() ?? '';
+    for (const line of lines) {
+      if (line.trim() === '') continue;
+      const message = JSON.parse(line) as Record<string, unknown>;
+      const waiterIndex = waiters.findIndex(({ predicate }) =>
+        predicate(message),
+      );
+      if (waiterIndex === -1) messages.push(message);
+      else waiters.splice(waiterIndex, 1)[0]?.resolve(message);
+    }
+  });
+  const exited = new Promise<{
+    readonly code: number | null;
+    readonly signal: NodeJS.Signals | null;
+  }>((resolve) => {
+    child.once('exit', (code, signal) => {
+      resolve({ code, signal });
+    });
+  });
+  const proofChild: ProofChild = {
+    exited,
+    next: async (predicate = () => true) => {
+      const existingIndex = messages.findIndex(predicate);
+      if (existingIndex !== -1)
+        return messages.splice(existingIndex, 1)[0] ?? {};
+      return Promise.race([
+        new Promise<Record<string, unknown>>((resolve) => {
+          waiters.push({ predicate, resolve });
+        }),
+        exited.then(({ code, signal }) => {
+          throw new Error(
+            `Phase 0E child exited before evidence: code=${String(code)} signal=${String(signal)} stderr=${stderr}`,
+          );
+        }),
+        new Promise<never>((_, reject) => {
+          setTimeout(() => {
+            reject(new Error(`Phase 0E child evidence timeout: ${stderr}`));
+          }, 15_000);
+        }),
+      ]);
+    },
+    kill: async () => {
+      child.kill('SIGKILL');
+      await exited;
+    },
+  };
+  activeProofChildren.add(proofChild);
+  void exited.then(() => activeProofChildren.delete(proofChild));
+  return proofChild;
+}
+
+async function runProofChild(
+  action: string,
+  input: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const child = spawnProofChild(action, input);
+  const message = await child.next();
+  const exit = await child.exited;
+  if (exit.code !== 0)
+    throw new Error(`Phase 0E child failed with ${String(exit.code)}`);
+  return message;
 }
 
 async function compose(...arguments_: readonly string[]): Promise<string> {
@@ -179,6 +340,24 @@ async function assertRedisProofHealth(): Promise<void> {
   );
   if (response !== 'PONG')
     throw new Error('Phase 0E Redis did not return PONG');
+}
+
+async function redisQueueActiveCount(): Promise<number> {
+  const response = await compose(
+    'exec',
+    '-T',
+    'redis',
+    'redis-cli',
+    '--raw',
+    '--no-auth-warning',
+    '-a',
+    redisPassword,
+    '-n',
+    '15',
+    'LLEN',
+    `bull:${QUEUE_NAME.nodeAttempts}:active`,
+  );
+  return Number(response);
 }
 
 async function restartRedisService(): Promise<number> {
@@ -265,6 +444,24 @@ async function acceptRun(deadlineAt?: Date): Promise<string> {
   });
 }
 
+async function initializeRunCheckpoint(
+  runId: string,
+): Promise<EngineCheckpoint> {
+  const initial = engine.createCheckpoint({
+    engineVersion: ENGINE_VERSION,
+    iterationBudget: 8,
+    workflowVersionId: WORKFLOW_VERSION_ID,
+  });
+  await workerDatabase.withWorkspace(WORKSPACE_ID, ({ db }) =>
+    db.execute(sql`
+      update app.run_checkpoints
+      set scheduler_state = ${JSON.stringify(initial)}::jsonb
+      where workspace_id = ${WORKSPACE_ID} and workflow_run_id = ${runId}
+    `),
+  );
+  return initial;
+}
+
 async function startRun(
   runId: string,
   sideEffectClass: 'safe' | 'idempotent_with_key' | 'unsafe' = 'safe',
@@ -323,6 +520,7 @@ async function startRun(
       resumeAt: null,
       runId,
       schedulerState: asSchedulerState(plan.checkpoint),
+      traceparent: TRACEPARENT,
     }),
   );
   return {
@@ -374,61 +572,12 @@ async function waitFor<T>(
   return value;
 }
 
-function createAttemptConsumer(
-  mode: 'complete' | 'wait',
-  workerId: string,
-  waitUntil: Date,
-): QueueConsumer {
-  return createQueueConsumer({
-    drainTimeoutMs: 5_000,
-    queueName: QUEUE_NAME.nodeAttempts,
-    redisUrl,
-    timeoutMs: 10_000,
-    handler: async (delivery) => {
-      if (delivery.name !== JOB_NAME.executeNodeAttempt) return;
-      const attempt = await workerDatabase.withWorkspace(
-        delivery.data.workspaceId,
-        (transaction) =>
-          claimNodeAttempt(transaction, {
-            attemptId: delivery.data.attemptId,
-            leaseDurationSeconds: 5,
-            workerId,
-          }),
-      );
-      if (attempt === null) return;
-      if (mode === 'wait') {
-        await workerDatabase.withWorkspace(
-          delivery.data.workspaceId,
-          (transaction) =>
-            suspendNodeAttemptUntil(transaction, {
-              attemptId: attempt.attemptId,
-              dueAt: waitUntil,
-              fenceToken: attempt.fenceToken,
-              safeErrorCode: null,
-              workerId,
-            }),
-        );
-        return;
-      }
-      await workerDatabase.withWorkspace(
-        delivery.data.workspaceId,
-        (transaction) =>
-          completeNodeAttempt(transaction, {
-            attemptId: attempt.attemptId,
-            fenceToken: attempt.fenceToken,
-            outputRef: { inline: { completed: true } },
-            status: 'succeeded',
-            workerId,
-          }),
-      );
-    },
-  });
-}
-
 async function readAttemptState(attemptId: string): Promise<{
   readonly attemptStatus: string;
   readonly leaseExpiresAt: Date | null;
   readonly leaseOwner: string | null;
+  readonly nodeResumeAt: Date | null;
+  readonly nodeStatus: string;
   readonly runStatus: string;
 }> {
   return workerDatabase.withWorkspace(WORKSPACE_ID, ({ db }) =>
@@ -437,10 +586,13 @@ async function readAttemptState(attemptId: string): Promise<{
         attempt_status: string;
         lease_expires_at: Date | null;
         lease_owner: string | null;
+        node_resume_at: Date | null;
+        node_status: string;
         run_status: string;
       }>(
         sql`
       select a.status as attempt_status, a.lease_expires_at, a.lease_owner,
+        n.resume_at as node_resume_at, n.status as node_status,
         r.status as run_status
       from app.node_attempts a
       join app.node_runs n on n.workspace_id = a.workspace_id and n.id = a.node_run_id
@@ -453,8 +605,14 @@ async function readAttemptState(attemptId: string): Promise<{
         if (row === undefined) throw new Error('attempt fixture row missing');
         return {
           attemptStatus: row.attempt_status,
-          leaseExpiresAt: row.lease_expires_at,
+          leaseExpiresAt:
+            row.lease_expires_at === null
+              ? null
+              : new Date(row.lease_expires_at),
           leaseOwner: row.lease_owner,
+          nodeResumeAt:
+            row.node_resume_at === null ? null : new Date(row.node_resume_at),
+          nodeStatus: row.node_status,
           runStatus: row.run_status,
         };
       }),
@@ -464,10 +622,19 @@ async function readAttemptState(attemptId: string): Promise<{
 describeIntegration('Phase 0E real execution recovery fixture', () => {
   beforeAll(async () => {
     await migrate();
+    await prepareProcessFixtures();
   });
   beforeEach(async () => {
     await resetFixture();
     await flushRedisProofDatabase();
+  });
+  afterEach(async () => {
+    await Promise.allSettled(
+      [...activeProofChildren].map(async (child) => child.kill()),
+    );
+    await compose('up', '-d', '--wait', 'redis');
+    await flushRedisProofDatabase();
+    await assertRedisProofHealth();
   });
   afterAll(async () => {
     await Promise.all([
@@ -477,43 +644,48 @@ describeIntegration('Phase 0E real execution recovery fixture', () => {
     ]);
   });
 
-  it('recomputes a coordinator transition before checkpoint CAS and fences a post-checkpoint crash', async () => {
+  it('kills and reconstructs coordinator processes on both sides of the checkpoint CAS', async () => {
     const graph = fixtureGraph();
     expect(model.validateWorkflowGraph(graph as never)).toMatchObject({
       expandedInvocations: 4,
       ok: true,
     });
-    const initial = engine.createCheckpoint({
-      engineVersion: ENGINE_VERSION,
-      iterationBudget: 8,
-      workflowVersionId: WORKFLOW_VERSION_ID,
-    });
-    const input = {
-      checkpoint: initial,
-      graph: schedulerGraph(),
-      occurredAt: '2026-08-20T00:00:00.000Z',
-      maximumAdmissions: 1,
-    } as const;
-    const beforeCrash = engine.advanceWorkflow(input);
-    const recomputed = engine.advanceWorkflow(input);
-    expect(recomputed).toEqual(beforeCrash);
-
     const runId = await acceptRun();
-    await startRun(runId);
-    await expect(
-      workerDatabase.withWorkspace(WORKSPACE_ID, (transaction) =>
-        commitCoordinatorTransition(transaction, {
-          admissions: [],
-          engineVersion: ENGINE_VERSION,
-          event: { payload: {}, type: 'run.started' },
-          expectedRevision: 0,
-          nextRunStatus: 'running',
-          resumeAt: null,
-          runId,
-          schedulerState: asSchedulerState(beforeCrash.checkpoint),
-        }),
-      ),
-    ).rejects.toBeInstanceOf(CheckpointRevisionConflictError);
+    await initializeRunCheckpoint(runId);
+    const recoveryInput = {
+      attemptId: randomUUID(),
+      engineVersion: ENGINE_VERSION,
+      nodeRunId: randomUUID(),
+      occurredAt: '2026-08-20T00:00:00.000Z',
+      runId,
+      traceparent: TRACEPARENT,
+      workflowVersionId: WORKFLOW_VERSION_ID,
+      workspaceId: WORKSPACE_ID,
+    };
+    const computedChild = spawnProofChild('compute-hang', recoveryInput);
+    const computed = await computedChild.next(
+      (message) =>
+        message.injectionPoint ===
+        'coordinator.compute_complete_before_checkpoint_cas',
+    );
+    await computedChild.kill();
+    expect((await computedChild.exited).signal).toBe('SIGKILL');
+    expect(computed.workflowVersionId).toBe(WORKFLOW_VERSION_ID);
+    const beforeCommit = await workerDatabase.withWorkspace(
+      WORKSPACE_ID,
+      ({ db }) =>
+        db
+          .execute<{ revision: number }>(
+            sql`
+            select revision from app.run_checkpoints
+            where workspace_id = ${WORKSPACE_ID} and workflow_run_id = ${runId}
+          `,
+          )
+          .then((result) => result.rows[0]),
+    );
+    expect(beforeCommit?.revision).toBe(0);
+    const recovered = await runProofChild('commit', recoveryInput);
+    expect(recovered.plan).toEqual(computed.plan);
     const persisted = await workerDatabase.withWorkspace(
       WORKSPACE_ID,
       ({ db }) =>
@@ -531,38 +703,112 @@ describeIntegration('Phase 0E real execution recovery fixture', () => {
     expect(persisted?.scheduler_state).toEqual(
       expect.objectContaining({ workflowVersionId: WORKFLOW_VERSION_ID }),
     );
+
+    const postCommitRunId = await acceptRun();
+    await initializeRunCheckpoint(postCommitRunId);
+    const postCommitInput = {
+      ...recoveryInput,
+      attemptId: randomUUID(),
+      nodeRunId: randomUUID(),
+      runId: postCommitRunId,
+    };
+    const committedChild = spawnProofChild('commit-hang', postCommitInput);
+    const committed = await committedChild.next(
+      (message) =>
+        message.injectionPoint ===
+        'coordinator.checkpoint_committed_before_queue_ack',
+    );
+    await committedChild.kill();
+    expect((await committedChild.exited).signal).toBe('SIGKILL');
+    const redelivery = await runProofChild('commit', {
+      ...postCommitInput,
+      replayPlan: committed.plan,
+    });
+    expect(redelivery).toMatchObject({ duplicateFenced: true });
+    const facts = await workerDatabase.withWorkspace(WORKSPACE_ID, ({ db }) =>
+      db
+        .execute<{
+          attempt_count: string;
+          matching_traceparents: string;
+          node_count: string;
+          revision: number;
+        }>(
+          sql`
+          select c.revision,
+            (select count(*) from app.node_runs n
+             where n.workspace_id = ${WORKSPACE_ID} and n.workflow_run_id = ${postCommitRunId}) as node_count,
+            (select count(*) from app.node_attempts a join app.node_runs n
+               on n.workspace_id = a.workspace_id and n.id = a.node_run_id
+             where n.workspace_id = ${WORKSPACE_ID} and n.workflow_run_id = ${postCommitRunId}) as attempt_count,
+            (select count(*) from app.outbox_events o
+             where o.workspace_id = ${WORKSPACE_ID}
+               and o.aggregate_id = ${postCommitInput.attemptId}
+               and o.payload ->> 'traceparent' = ${TRACEPARENT}) as matching_traceparents
+          from app.run_checkpoints c
+          where c.workspace_id = ${WORKSPACE_ID} and c.workflow_run_id = ${postCommitRunId}
+        `,
+        )
+        .then((result) => result.rows[0]),
+    );
+    expect(facts).toMatchObject({
+      attempt_count: '1',
+      matching_traceparents: '1',
+      node_count: '1',
+      revision: 1,
+    });
+    process.stdout.write(
+      `${JSON.stringify({
+        event: 'phase0e.process_recovery',
+        injectionPoints: [computed.injectionPoint, committed.injectionPoint],
+        traceparent: TRACEPARENT,
+      })}\n`,
+    );
   });
 
   it('uses real BullMQ delivery, survives a Redis service restart during a durable wait, and resumes without a worker lease', async () => {
     const runId = await acceptRun();
     const started = await startRun(runId);
-    const resumeAt = new Date(Date.now() + 250);
-    const consumer = createAttemptConsumer('wait', 'phase0e-wait-1', resumeAt);
-    await consumer.waitUntilReady(5_000);
+    const resumeAt = new Date(Date.now() + 3_000);
+    const waitingChild = spawnProofChild('consume-wait', {
+      resumeAt: resumeAt.toISOString(),
+      workerId: 'phase0e-wait-child',
+    });
+    await waitingChild.next((message) => message.ready === true);
     let redisRestartMs: number | undefined;
     let restartAttempted = false;
     const waitEnteredAt = performance.now();
     try {
       expect(await publishOutbox()).toBeGreaterThan(0);
-      await waitFor(
-        () => readAttemptState(started.attemptId),
-        (state) => state.attemptStatus === 'succeeded',
+      const suspended = await waitingChild.next(
+        (message) =>
+          message.injectionPoint === 'wait.persisted_before_worker_exit',
       );
+      expect(suspended.status).toBe('suspended');
+      expect(suspended.deliveryTraceparent).toBe(TRACEPARENT);
+      expect((await waitingChild.exited).code).toBe(0);
       const waiting = await readAttemptState(started.attemptId);
       expect(waiting).toMatchObject({
         attemptStatus: 'succeeded',
         leaseExpiresAt: null,
         leaseOwner: null,
+        nodeStatus: 'waiting',
       });
+      expect(waiting.nodeResumeAt?.getTime()).toBe(resumeAt.getTime());
+      expect(await redisQueueActiveCount()).toBe(0);
+      const earlyDue = await workerDatabase.withWorkspace(
+        WORKSPACE_ID,
+        (transaction) => readDueNodeRuns(transaction, 10),
+      );
+      expect(earlyDue).not.toContainEqual(
+        expect.objectContaining({ nodeRunId: started.nodeRunId }),
+      );
 
-      // The durable wait is now the source of truth. Restart the actual
-      // Compose service while the worker consumer is still connected; the
-      // worker/producer must reconnect and no task lease may be reacquired.
+      // The durable wait is now the source of truth and its child worker has
+      // exited. Redis is deliberately restarted with no active worker slot.
       restartAttempted = true;
       redisRestartMs = await restartRedisService();
       await flushRedisProofDatabase();
     } finally {
-      await consumer.close();
       if (restartAttempted) {
         // A failed restart must never leave the shared dependency down.
         await compose('up', '-d', '--wait', 'redis');
@@ -596,23 +842,23 @@ describeIntegration('Phase 0E real execution recovery fixture', () => {
         expectedRevision: 1,
         nodeRunId: started.nodeRunId,
         schedulerState: asSchedulerState(started.checkpoint),
+        traceparent: TRACEPARENT,
       }),
     );
-    const restartedConsumer = createAttemptConsumer(
-      'complete',
-      'phase0e-wait-2',
-      resumeAt,
+    const resumedChild = spawnProofChild('consume-complete', {
+      traceparent: TRACEPARENT,
+      workerId: 'phase0e-wait-fresh-child',
+    });
+    await resumedChild.next((message) => message.ready === true);
+    await publishOutbox();
+    const resumed = await resumedChild.next(
+      (message) =>
+        message.injectionPoint ===
+        'wait.fresh_worker_completed_resumed_attempt',
     );
-    await restartedConsumer.waitUntilReady(5_000);
-    try {
-      await publishOutbox();
-      await waitFor(
-        () => readAttemptState(nextAttemptId),
-        (state) => state.attemptStatus === 'succeeded',
-      );
-    } finally {
-      await restartedConsumer.close();
-    }
+    expect(resumed.status).toBe('completed');
+    expect(resumed.deliveryTraceparent).toBe(TRACEPARENT);
+    expect((await resumedChild.exited).code).toBe(0);
     expect((await readAttemptState(nextAttemptId)).attemptStatus).toBe(
       'succeeded',
     );
@@ -621,24 +867,31 @@ describeIntegration('Phase 0E real execution recovery fixture', () => {
         event: 'phase0e.execution.measurements',
         redisRestartMs,
         redisRecoveryToResumeMs: restartRecoveredAt - waitEnteredAt,
+        traceparent: TRACEPARENT,
         waitResumeMs: performance.now() - restartRecoveredAt,
       })}\n`,
     );
   });
 
-  it('rejects stale completion, distinguishes safe/idempotent reclaim from unsafe outcome_unknown, and deduplicates provider effects', async () => {
+  it('kills attempt processes before and after dispatch and applies the pinned side-effect truth table', async () => {
     const safeRun = await acceptRun();
     const safe = await startRun(safeRun);
-    const firstLease = await workerDatabase.withWorkspace(
-      WORKSPACE_ID,
-      (transaction) =>
-        claimNodeAttempt(transaction, {
-          attemptId: safe.attemptId,
-          leaseDurationSeconds: 1,
-          workerId: 'phase0e-safe-1',
-        }),
+    const safeCrashInput = {
+      attemptId: safe.attemptId,
+      leaseDurationSeconds: 1,
+      markDispatched: false,
+      workerId: 'phase0e-safe-crashed',
+      workspaceId: WORKSPACE_ID,
+    };
+    const safeChild = spawnProofChild('claim-hang', safeCrashInput);
+    const safeCrash = await safeChild.next(
+      (message) =>
+        message.injectionPoint ===
+        'attempt.claim_complete_before_provider_dispatch',
     );
-    expect(firstLease).not.toBeNull();
+    await safeChild.kill();
+    expect((await safeChild.exited).signal).toBe('SIGKILL');
+    const firstLease = safeCrash.lease as { readonly fenceToken: number };
     await new Promise<void>((resolve) => setTimeout(resolve, 1_200));
     const expired = await workerDatabase.withWorkspace(
       WORKSPACE_ID,
@@ -656,76 +909,117 @@ describeIntegration('Phase 0E real execution recovery fixture', () => {
         reconcileExpiredNodeAttempt(transaction, {
           action: 'reclaim',
           attemptId: safe.attemptId,
-          expectedFenceToken: firstLease?.fenceToken ?? 0,
+          expectedFenceToken: firstLease.fenceToken,
+          traceparent: TRACEPARENT,
         }),
     );
     await expect(
       workerDatabase.withWorkspace(WORKSPACE_ID, (transaction) =>
         completeNodeAttempt(transaction, {
           attemptId: safe.attemptId,
-          fenceToken: firstLease?.fenceToken ?? 0,
+          fenceToken: firstLease.fenceToken,
           status: 'succeeded',
-          workerId: 'phase0e-safe-1',
+          workerId: 'phase0e-safe-crashed',
         }),
       ),
     ).rejects.toBeInstanceOf(AttemptFenceConflictError);
-    expect(reclaimed.fenceToken).toBe((firstLease?.fenceToken ?? 0) + 1);
+    expect(reclaimed.fenceToken).toBe(firstLease.fenceToken + 1);
+    const safeRecovered = await runProofChild('claim', {
+      ...safeCrashInput,
+      leaseDurationSeconds: 5,
+      workerId: 'phase0e-safe-recovered',
+    });
+    const safeRecoveredLease = safeRecovered.lease as {
+      readonly fenceToken: number;
+    };
+    await workerDatabase.withWorkspace(WORKSPACE_ID, (transaction) =>
+      completeNodeAttempt(transaction, {
+        attemptId: safe.attemptId,
+        fenceToken: safeRecoveredLease.fenceToken,
+        outputRef: { inline: { recovered: true } },
+        status: 'succeeded',
+        traceparent: TRACEPARENT,
+        workerId: 'phase0e-safe-recovered',
+      }),
+    );
 
     const idempotentRun = await acceptRun();
     const idempotent = await startRun(idempotentRun, 'idempotent_with_key');
-    const idempotentLease = await workerDatabase.withWorkspace(
-      WORKSPACE_ID,
-      (transaction) =>
-        claimNodeAttempt(transaction, {
-          attemptId: idempotent.attemptId,
-          leaseDurationSeconds: 5,
-          workerId: 'phase0e-provider',
-        }),
-    );
-    const providerEffects = new Set<string>();
     const providerKey = idempotent.providerIdempotencyKey;
-    if (idempotentLease === null || providerKey === null)
-      throw new Error('idempotent fixture lease missing');
-    providerEffects.add(providerKey);
-    providerEffects.add(providerKey);
-    const completion = {
+    if (providerKey === null) throw new Error('provider key missing');
+    const idempotentCrashInput = {
       attemptId: idempotent.attemptId,
-      fenceToken: idempotentLease.fenceToken,
-      outputRef: { inline: { providerKey } },
-      status: 'succeeded' as const,
-      workerId: 'phase0e-provider',
+      leaseDurationSeconds: 1,
+      markDispatched: true,
+      providerEffectKey: providerKey,
+      workerId: 'phase0e-idempotent-crashed',
+      workspaceId: WORKSPACE_ID,
+    };
+    const idempotentChild = spawnProofChild('claim-hang', idempotentCrashInput);
+    const idempotentCrash = await idempotentChild.next(
+      (message) =>
+        message.injectionPoint ===
+        'attempt.provider_dispatch_complete_before_attempt_commit',
+    );
+    await idempotentChild.kill();
+    const idempotentLease = idempotentCrash.lease as {
+      readonly fenceToken: number;
+    };
+    await new Promise<void>((resolve) => setTimeout(resolve, 1_200));
+    await workerDatabase.withWorkspace(WORKSPACE_ID, (transaction) =>
+      reconcileExpiredNodeAttempt(transaction, {
+        action: 'reclaim',
+        attemptId: idempotent.attemptId,
+        expectedFenceToken: idempotentLease.fenceToken,
+        traceparent: TRACEPARENT,
+      }),
+    );
+    const idempotentRecovered = await runProofChild('claim', {
+      ...idempotentCrashInput,
+      leaseDurationSeconds: 5,
+      workerId: 'phase0e-idempotent-recovered',
+    });
+    const idempotentRecoveredLease = idempotentRecovered.lease as {
+      readonly fenceToken: number;
     };
     await workerDatabase.withWorkspace(WORKSPACE_ID, (transaction) =>
-      completeNodeAttempt(transaction, completion),
+      completeNodeAttempt(transaction, {
+        attemptId: idempotent.attemptId,
+        fenceToken: idempotentRecoveredLease.fenceToken,
+        outputRef: { inline: { providerKey } },
+        status: 'succeeded',
+        traceparent: TRACEPARENT,
+        workerId: 'phase0e-idempotent-recovered',
+      }),
     );
-    await expect(
-      workerDatabase.withWorkspace(WORKSPACE_ID, (transaction) =>
-        completeNodeAttempt(transaction, completion),
-      ),
-    ).resolves.toMatchObject({ duplicate: true });
-    expect(providerEffects).toHaveLength(1);
+    const effects = await workerDatabase.withWorkspace(WORKSPACE_ID, ({ db }) =>
+      db
+        .execute<{ invocation_count: number }>(
+          sql`
+            select invocation_count from app.phase0e_provider_effects
+            where workspace_id = ${WORKSPACE_ID} and effect_key = ${providerKey}
+          `,
+        )
+        .then((result) => result.rows),
+    );
+    expect(effects).toEqual([{ invocation_count: 1 }]);
 
     const unsafeRun = await acceptRun();
     const unsafe = await startRun(unsafeRun, 'unsafe');
-    const unsafeLease = await workerDatabase.withWorkspace(
-      WORKSPACE_ID,
-      (transaction) =>
-        claimNodeAttempt(transaction, {
-          attemptId: unsafe.attemptId,
-          leaseDurationSeconds: 1,
-          workerId: 'phase0e-unsafe',
-        }),
+    const unsafeChild = spawnProofChild('claim-hang', {
+      attemptId: unsafe.attemptId,
+      leaseDurationSeconds: 1,
+      markDispatched: true,
+      workerId: 'phase0e-unsafe-crashed',
+      workspaceId: WORKSPACE_ID,
+    });
+    const unsafeCrash = await unsafeChild.next(
+      (message) =>
+        message.injectionPoint ===
+        'attempt.provider_dispatch_complete_before_attempt_commit',
     );
-    if (unsafeLease === null) throw new Error('unsafe fixture lease missing');
-    await workerDatabase.withWorkspace(WORKSPACE_ID, (transaction) =>
-      // The dispatch marker is the durable point after which an unsafe retry
-      // cannot be proven absent.
-      markNodeAttemptDispatched(transaction, {
-        attemptId: unsafe.attemptId,
-        fenceToken: unsafeLease.fenceToken,
-        workerId: 'phase0e-unsafe',
-      }).then(() => undefined),
-    );
+    await unsafeChild.kill();
+    const unsafeLease = unsafeCrash.lease as { readonly fenceToken: number };
     await new Promise<void>((resolve) => setTimeout(resolve, 1_200));
     await expect(
       workerDatabase.withWorkspace(WORKSPACE_ID, (transaction) =>
@@ -743,11 +1037,24 @@ describeIntegration('Phase 0E real execution recovery fixture', () => {
           attemptId: unsafe.attemptId,
           expectedFenceToken: unsafeLease.fenceToken,
           evidenceRef: { reason: 'phase0e-crash-after-dispatch' },
+          traceparent: TRACEPARENT,
         }),
       ),
     ).resolves.toMatchObject({ fenceToken: unsafeLease.fenceToken + 1 });
     expect((await readAttemptState(unsafe.attemptId)).attemptStatus).toBe(
       'outcome_unknown',
+    );
+    process.stdout.write(
+      `${JSON.stringify({
+        event: 'phase0e.attempt_process_recovery',
+        injectionPoints: [
+          safeCrash.injectionPoint,
+          idempotentCrash.injectionPoint,
+          unsafeCrash.injectionPoint,
+        ],
+        providerEffects: effects.length,
+        traceparent: TRACEPARENT,
+      })}\n`,
     );
   });
 
@@ -760,19 +1067,61 @@ describeIntegration('Phase 0E real execution recovery fixture', () => {
     const branchAndLoopObservations = [
       {
         kind: 'join_declared',
-        joinId: 'join-1',
+        joinId: 'join-all',
+        policy: { kind: 'all' },
+        branchIds: ['all-a', 'all-b', 'all-c'],
+      },
+      {
+        kind: 'branch_disposition',
+        joinId: 'join-all',
+        branch: { branchId: 'all-a', disposition: 'arrived' },
+      },
+      {
+        kind: 'branch_disposition',
+        joinId: 'join-all',
+        branch: { branchId: 'all-b', disposition: 'skipped' },
+      },
+      {
+        kind: 'branch_disposition',
+        joinId: 'join-all',
+        branch: { branchId: 'all-c', disposition: 'missing' },
+      },
+      {
+        kind: 'join_declared',
+        joinId: 'join-any',
         policy: { kind: 'any' },
         branchIds: ['a', 'b'],
       },
       {
         kind: 'branch_disposition',
-        joinId: 'join-1',
+        joinId: 'join-any',
         branch: { branchId: 'a', disposition: 'arrived' },
       },
       {
         kind: 'branch_disposition',
-        joinId: 'join-1',
-        branch: { branchId: 'b', disposition: 'skipped' },
+        joinId: 'join-any',
+        branch: { branchId: 'b', disposition: 'arrived' },
+      },
+      {
+        kind: 'join_declared',
+        joinId: 'join-count',
+        policy: { kind: 'count', count: 2 },
+        branchIds: ['count-c', 'count-a', 'count-b'],
+      },
+      {
+        kind: 'branch_disposition',
+        joinId: 'join-count',
+        branch: { branchId: 'count-a', disposition: 'arrived' },
+      },
+      {
+        kind: 'branch_disposition',
+        joinId: 'join-count',
+        branch: { branchId: 'count-b', disposition: 'missing' },
+      },
+      {
+        kind: 'branch_disposition',
+        joinId: 'join-count',
+        branch: { branchId: 'count-c', disposition: 'arrived' },
       },
       {
         kind: 'loop_started',
@@ -790,11 +1139,21 @@ describeIntegration('Phase 0E real execution recovery fixture', () => {
       occurredAt: '2026-08-20T00:00:00.000Z',
       maximumAdmissions: 10,
     });
-    expect(firstAdvance.checkpoint.joins).toContainEqual(
-      expect.objectContaining({
-        joinId: 'join-1',
-        selectedBranchIds: ['a'],
-      }),
+    expect(firstAdvance.checkpoint.joins).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          joinId: 'join-all',
+          selectedBranchIds: ['all-a'],
+        }),
+        expect.objectContaining({
+          joinId: 'join-any',
+          selectedBranchIds: ['a'],
+        }),
+        expect.objectContaining({
+          joinId: 'join-count',
+          selectedBranchIds: ['count-a', 'count-c'],
+        }),
+      ]),
     );
     expect(firstAdvance.checkpoint.loops).toContainEqual(
       expect.objectContaining({ activeOrdinals: [0, 1], nextOrdinal: 2 }),
@@ -802,6 +1161,11 @@ describeIntegration('Phase 0E real execution recovery fixture', () => {
     const secondAdvanceInput = {
       checkpoint: firstAdvance.checkpoint,
       observations: [
+        {
+          kind: 'branch_disposition',
+          joinId: 'join-any',
+          branch: { branchId: 'b', disposition: 'arrived' },
+        },
         { kind: 'loop_iteration_completed', loopId: 'loop-1', ordinal: 0 },
       ],
       occurredAt: '2026-08-20T00:01:00.000Z',
@@ -816,58 +1180,126 @@ describeIntegration('Phase 0E real execution recovery fixture', () => {
         terminalOrdinals: [0],
       }),
     );
+    expect(() =>
+      engine.advanceWorkflow({
+        checkpoint: firstAdvance.checkpoint,
+        maximumAdmissions: 10,
+        observations: [
+          {
+            kind: 'branch_disposition',
+            joinId: 'join-any',
+            branch: { branchId: 'b', disposition: 'missing' },
+          },
+        ],
+        occurredAt: '2026-08-20T00:01:00.000Z',
+      }),
+    ).toThrow(expect.objectContaining({ code: 'join_invalid' }));
+    expect(() =>
+      engine.advanceWorkflow({
+        checkpoint: initial,
+        maximumAdmissions: 10,
+        observations: [
+          {
+            kind: 'loop_started',
+            loopId: 'loop-over-limit',
+            collection: { kind: 'inline', reference: 'collection-over' },
+            collectionChecksum: 'b'.repeat(64),
+            collectionSize: 4,
+            maxConcurrency: 2,
+            maxIterations: 3,
+          },
+        ],
+        occurredAt: '2026-08-20T00:00:00.000Z',
+      }),
+    ).toThrow(expect.objectContaining({ code: 'loop_limit_exceeded' }));
+
+    const cyclicGraph = fixtureGraph();
+    (cyclicGraph.edges as Record<string, unknown>[]).push({
+      id: 'edge-cycle',
+      source: { nodeId: 'join', port: 'out' },
+      target: { nodeId: 'root', port: 'in' },
+    });
+    const cycleValidation = model.validateWorkflowGraph(cyclicGraph as never);
+    expect(cycleValidation.ok).toBe(false);
+    expect(cycleValidation.issues.some(({ code }) => code === 'cycle')).toBe(
+      true,
+    );
+
+    const persistenceRunId = await acceptRun();
+    await initializeRunCheckpoint(persistenceRunId);
+    await workerDatabase.withWorkspace(WORKSPACE_ID, (transaction) =>
+      commitCoordinatorTransition(transaction, {
+        admissions: [],
+        engineVersion: ENGINE_VERSION,
+        event: { payload: {}, type: 'run.started' },
+        expectedRevision: 0,
+        nextRunStatus: 'running',
+        resumeAt: null,
+        runId: persistenceRunId,
+        schedulerState: asSchedulerState(firstAdvance.checkpoint),
+        traceparent: TRACEPARENT,
+      }),
+    );
+    const childRoundtrip = await runProofChild('engine-roundtrip', {
+      maximumAdmissions: secondAdvanceInput.maximumAdmissions,
+      observations: secondAdvanceInput.observations,
+      occurredAt: secondAdvanceInput.occurredAt,
+      runId: persistenceRunId,
+      workflowVersionId: WORKFLOW_VERSION_ID,
+      workspaceId: WORKSPACE_ID,
+    });
+    expect(childRoundtrip.plan).toEqual(secondAdvance);
+    expect(childRoundtrip.checkpointJson).toBe(
+      JSON.stringify(secondAdvance.checkpoint),
+    );
 
     const runId = await acceptRun();
     const started = await startRun(runId);
-    await apiDatabase.withWorkspace(WORKSPACE_ID, (transaction) =>
-      requestWorkflowRunCancellation(transaction, {
-        actor: 'phase0e-test',
-        reason: 'fixture cancellation',
+    const canceled = await runProofChild('cancel', {
+      runId,
+      workspaceId: WORKSPACE_ID,
+    });
+    expect(canceled).toHaveProperty('canceled');
+    let cancelRestartMs: number;
+    try {
+      cancelRestartMs = await restartRedisService();
+      await flushRedisProofDatabase();
+      await assertRedisProofHealth();
+      const canceledClaim = await runProofChild('claim', {
+        attemptId: started.attemptId,
+        leaseDurationSeconds: 5,
+        markDispatched: false,
+        workerId: 'phase0e-canceled-fresh-worker',
+        workspaceId: WORKSPACE_ID,
+      });
+      expect(canceledClaim.lease).toBeNull();
+      const canceledAdmission = await runProofChild('admit-after-cancel', {
+        attemptId: randomUUID(),
+        engineVersion: ENGINE_VERSION,
+        nodeRunId: randomUUID(),
         runId,
-      }),
+        traceparent: TRACEPARENT,
+        workflowVersionId: WORKFLOW_VERSION_ID,
+        workspaceId: WORKSPACE_ID,
+      });
+      expect(canceledAdmission).toMatchObject({
+        admissionBlocked: true,
+        error: 'execution.cancel_stops_admission',
+      });
+    } finally {
+      await compose('up', '-d', '--wait', 'redis');
+      await flushRedisProofDatabase();
+      await assertRedisProofHealth();
+    }
+    process.stdout.write(
+      `${JSON.stringify({
+        cancellationRedisRestartMs: cancelRestartMs,
+        event: 'phase0e.scheduler_process_recovery',
+        exactLoopConcurrency: 2,
+        exactLoopIterations: 3,
+        policies: ['all', 'any', 'count'],
+        persistedRevision: childRoundtrip.persistedRevision,
+      })}\n`,
     );
-    await expect(
-      workerDatabase.withWorkspace(WORKSPACE_ID, (transaction) =>
-        commitCoordinatorTransition(transaction, {
-          admissions: [
-            {
-              attemptId: randomUUID(),
-              attemptNumber: 1,
-              branchContext: {},
-              invocationKey: 'engine:new-admission',
-              nodeId: 'new-node',
-              nodeRunId: randomUUID(),
-              sideEffectClass: 'safe',
-            },
-          ],
-          engineVersion: ENGINE_VERSION,
-          event: { payload: {}, type: 'run.succeeded' },
-          expectedRevision: 1,
-          nextRunStatus: 'succeeded',
-          resumeAt: null,
-          runId,
-          schedulerState: asSchedulerState(started.checkpoint),
-        }),
-      ),
-    ).rejects.toThrow('execution.cancel_stops_admission');
-
-    const secondRun = await acceptRun();
-    const second = await startRun(secondRun);
-    await apiDatabase.withWorkspace(WORKSPACE_ID, (transaction) =>
-      requestWorkflowRunCancellation(transaction, {
-        actor: 'phase0e-test',
-        reason: 'cancel before claim',
-        runId: secondRun,
-      }),
-    );
-    await expect(
-      workerDatabase.withWorkspace(WORKSPACE_ID, (transaction) =>
-        claimNodeAttempt(transaction, {
-          attemptId: second.attemptId,
-          leaseDurationSeconds: 5,
-          workerId: 'phase0e-canceled',
-        }),
-      ),
-    ).resolves.toBeNull();
   });
 });
