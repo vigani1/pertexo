@@ -16,6 +16,8 @@ import {
   CsrfProtectionGuard,
   SessionAuthenticationGuard,
   authenticatedSession,
+  requestIdentifier,
+  traceIdentifier,
 } from '../identity-workspace/index.js';
 import { applicationError } from '../platform/http/index.js';
 import { createActorContext } from '../workspaces/index.js';
@@ -244,16 +246,14 @@ function workflowParams(value: unknown): Readonly<{
 
 function actorFrom(request: WorkflowAuthoringRequest, workspaceId: string) {
   const session = authenticatedSession(request);
+  const traceId = traceIdentifier(request);
   try {
     return createActorContext({
       actorId: session.userId,
       workspaceId,
       sessionId: session.sessionId,
-      requestId:
-        request.requestId ??
-        headerString(request, 'x-request-id') ??
-        'workflow-request',
-      ...(request.traceId === undefined ? {} : { traceId: request.traceId }),
+      requestId: requestIdentifier(request),
+      ...(traceId === undefined ? {} : { traceId }),
     });
   } catch (error: unknown) {
     return throwWorkflowApplicationError(
@@ -266,13 +266,13 @@ function actorFrom(request: WorkflowAuthoringRequest, workspaceId: string) {
 }
 
 function requestIdentifiers(request: WorkflowAuthoringRequest): Readonly<{
-  requestId?: string;
+  requestId: string;
   traceId?: string;
 }> {
-  const requestId = headerString(request, 'x-request-id') ?? request.requestId;
-  const traceId = request.traceId ?? headerString(request, 'traceparent');
+  const requestId = requestIdentifier(request);
+  const traceId = traceIdentifier(request);
   return {
-    ...(requestId === undefined ? {} : { requestId }),
+    requestId,
     ...(traceId === undefined ? {} : { traceId }),
   };
 }
