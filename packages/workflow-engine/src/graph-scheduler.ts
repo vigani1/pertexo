@@ -23,9 +23,18 @@ export function deriveReadyNodes(input: {
   readonly workflowVersionId: string;
   readonly invocations: readonly InvocationState[];
 }): readonly ReadyNodeDecision[] {
-  const invocationByNode = new Map(
-    input.invocations.map((invocation) => [invocation.nodeId, invocation]),
-  );
+  const invocationByNode = new Map<string, InvocationState>();
+  for (const invocation of input.invocations) {
+    const existing = invocationByNode.get(invocation.nodeId);
+    const isRoot =
+      invocation.invocationKey ===
+      invocationKey({
+        workflowVersionId: input.workflowVersionId,
+        nodeId: invocation.nodeId,
+      });
+    if (existing === undefined || isRoot)
+      invocationByNode.set(invocation.nodeId, invocation);
+  }
   const predecessors = new Map<string, string[]>();
   for (const node of input.graph.nodes) predecessors.set(node.id, []);
   for (const edge of input.graph.edges) {

@@ -69,6 +69,8 @@ export interface JoinState {
   readonly policy: JoinPolicy;
   readonly ledger: readonly BranchLedgerEntry[];
   readonly selectedBranchIds?: readonly string[];
+  readonly unsatisfiedReasonCode?:
+    'branch_failed' | 'branch_canceled' | 'insufficient_arrivals';
 }
 
 export interface LoopState {

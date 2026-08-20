@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import type { SideEffectClass } from './types.js';
 
 export interface RetryPolicy {
@@ -67,13 +69,23 @@ export function providerIdempotencyKey(input: {
   readonly invocationKey: string;
   readonly operationIdentity: string;
 }): string {
-  const raw = [
-    input.namespace,
-    input.runId,
-    input.invocationKey,
-    input.operationIdentity,
-  ]
-    .map(encodeURIComponent)
-    .join('.');
-  return `v1.${raw}`;
+  if (
+    !input.namespace ||
+    !input.runId ||
+    !input.invocationKey ||
+    !input.operationIdentity
+  )
+    throw new TypeError('provider idempotency identity must be non-empty');
+  const digest = createHash('sha256')
+    .update(
+      JSON.stringify({
+        invocationKey: input.invocationKey,
+        namespace: input.namespace,
+        operationIdentity: input.operationIdentity,
+        runId: input.runId,
+      }),
+      'utf8',
+    )
+    .digest('hex');
+  return `v1.${digest}`;
 }

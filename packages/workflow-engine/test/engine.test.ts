@@ -77,6 +77,99 @@ describe('checkpoint seam', () => {
     ).toEqual(['a', 'z']);
     expect(reconstructReadySet(parsed)).toEqual(['a', 'z']);
   });
+
+  it.each([
+    [
+      'invalid output reference',
+      {
+        invocations: [
+          {
+            invocationKey: 'done',
+            nodeId: 'done',
+            status: 'succeeded',
+            attemptNumber: 1,
+            output: { kind: 'bogus', reference: '' },
+          },
+        ],
+      },
+    ],
+    [
+      'duplicate join IDs',
+      {
+        joins: [
+          { joinId: 'join', policy: { kind: 'all' }, ledger: [] },
+          { joinId: 'join', policy: { kind: 'all' }, ledger: [] },
+        ],
+      },
+    ],
+    [
+      'inconsistent persisted join selection',
+      {
+        joins: [
+          {
+            joinId: 'join',
+            policy: { kind: 'any' },
+            ledger: [
+              { branchId: 'a', disposition: 'arrived' },
+              { branchId: 'b', disposition: 'arrived' },
+            ],
+            selectedBranchIds: ['b'],
+          },
+        ],
+      },
+    ],
+    [
+      'duplicate loop IDs',
+      {
+        loops: [
+          {
+            loopId: 'loop',
+            collection: { kind: 'artifact', reference: 'a' },
+            collectionChecksum: 'sha256:a',
+            collectionSize: 0,
+            maxConcurrency: 1,
+            maxIterations: 1,
+            nextOrdinal: 0,
+            activeOrdinals: [],
+            terminalOrdinals: [],
+          },
+          {
+            loopId: 'loop',
+            collection: { kind: 'artifact', reference: 'a' },
+            collectionChecksum: 'sha256:a',
+            collectionSize: 0,
+            maxConcurrency: 1,
+            maxIterations: 1,
+            nextOrdinal: 0,
+            activeOrdinals: [],
+            terminalOrdinals: [],
+          },
+        ],
+      },
+    ],
+    [
+      'loop cursor gap',
+      {
+        loops: [
+          {
+            loopId: 'loop',
+            collection: { kind: 'artifact', reference: 'a' },
+            collectionChecksum: 'sha256:a',
+            collectionSize: 3,
+            maxConcurrency: 1,
+            maxIterations: 3,
+            nextOrdinal: 2,
+            activeOrdinals: [],
+            terminalOrdinals: [],
+          },
+        ],
+      },
+    ],
+  ] as const)('fails closed on %s', (_label, change) => {
+    expect(() => parseCheckpoint({ ...checkpoint(), ...change })).toThrow(
+      expect.objectContaining({ code: 'checkpoint_invalid' }),
+    );
+  });
 });
 
 describe('AdvanceWorkflow operation', () => {
@@ -148,6 +241,76 @@ describe('AdvanceWorkflow operation', () => {
     expect(duplicate.checkpoint.invocations).toHaveLength(1);
   });
 
+  it('makes exact duplicate outcomes idempotent and rejects conflicting outcomes', () => {
+    const running = advanceWorkflow({
+      checkpoint: checkpoint(),
+      occurredAt,
+      maximumAdmissions: 1,
+      observations: [{ kind: 'ready', invocationKey: 'task', nodeId: 'task' }],
+    });
+    const output = { kind: 'artifact', reference: 'artifact-1' } as const;
+    const completed = advanceWorkflow({
+      checkpoint: running.checkpoint,
+      occurredAt,
+      maximumAdmissions: 0,
+      observations: [
+        {
+          kind: 'outcome',
+          invocationKey: 'task',
+          status: 'succeeded',
+          output,
+        },
+      ],
+    });
+    const duplicate = advanceWorkflow({
+      checkpoint: completed.checkpoint,
+      occurredAt,
+      maximumAdmissions: 0,
+      observations: [
+        {
+          kind: 'outcome',
+          invocationKey: 'task',
+          status: 'succeeded',
+          output,
+        },
+      ],
+    });
+
+    expect(duplicate.events).toEqual([]);
+    expect(duplicate.checkpoint.invocations).toEqual(
+      completed.checkpoint.invocations,
+    );
+    expect(() =>
+      advanceWorkflow({
+        checkpoint: completed.checkpoint,
+        occurredAt,
+        maximumAdmissions: 0,
+        observations: [
+          {
+            kind: 'outcome',
+            invocationKey: 'task',
+            status: 'failed',
+          },
+        ],
+      }),
+    ).toThrow(expect.objectContaining({ code: 'transition_invalid' }));
+    expect(() =>
+      advanceWorkflow({
+        checkpoint: completed.checkpoint,
+        occurredAt,
+        maximumAdmissions: 0,
+        observations: [
+          {
+            kind: 'outcome',
+            invocationKey: 'task',
+            status: 'succeeded',
+            output: { kind: 'artifact', reference: 'artifact-2' },
+          },
+        ],
+      }),
+    ).toThrow(expect.objectContaining({ code: 'transition_invalid' }));
+  });
+
   it('persists waits without a slot and resumes from the checkpoint', () => {
     const running = advanceWorkflow({
       checkpoint: checkpoint(),
@@ -207,6 +370,300 @@ describe('AdvanceWorkflow operation', () => {
         ({ invocationKey }) => invocationKey === 'later',
       ),
     ).toBe(false);
+  });
+
+  it('does not admit already-ready work when cancellation is observed', () => {
+    const ready = advanceWorkflow({
+      checkpoint: checkpoint(),
+      occurredAt,
+      maximumAdmissions: 0,
+      observations: [
+        { kind: 'ready', invocationKey: 'later', nodeId: 'later' },
+      ],
+    });
+    const canceled = advanceWorkflow({
+      checkpoint: ready.checkpoint,
+      occurredAt,
+      maximumAdmissions: 1,
+      observations: [{ kind: 'cancel_requested' }],
+    });
+
+    expect(canceled.attempts).toEqual([]);
+    expect(canceled.checkpoint.invocations).toEqual([
+      expect.objectContaining({ invocationKey: 'later', status: 'canceled' }),
+    ]);
+    expect(canceled.checkpoint.runStatus).toBe('canceled');
+  });
+
+  it.each([
+    ['canceled', 'canceled'],
+    ['timed_out', 'timed_out'],
+    ['failed', 'failed'],
+    ['outcome_unknown', 'outcome_unknown'],
+  ] as const)(
+    'derives run %s from a terminal node outcome',
+    (nodeStatus, runStatus) => {
+      const running = advanceWorkflow({
+        checkpoint: checkpoint(),
+        occurredAt,
+        maximumAdmissions: 1,
+        observations: [
+          { kind: 'ready', invocationKey: 'node', nodeId: 'node' },
+        ],
+      });
+      const terminal = advanceWorkflow({
+        checkpoint: running.checkpoint,
+        occurredAt,
+        maximumAdmissions: 0,
+        observations: [
+          { kind: 'outcome', invocationKey: 'node', status: nodeStatus },
+        ],
+      });
+
+      expect(terminal.checkpoint.runStatus).toBe(runStatus);
+    },
+  );
+
+  it('marks a mixed succeeded and waiting run as waiting', () => {
+    const running = advanceWorkflow({
+      checkpoint: checkpoint(),
+      occurredAt,
+      maximumAdmissions: 2,
+      observations: [
+        { kind: 'ready', invocationKey: 'done', nodeId: 'done' },
+        { kind: 'ready', invocationKey: 'wait', nodeId: 'wait' },
+      ],
+    });
+    const waiting = advanceWorkflow({
+      checkpoint: running.checkpoint,
+      occurredAt,
+      maximumAdmissions: 0,
+      observations: [
+        { kind: 'outcome', invocationKey: 'done', status: 'succeeded' },
+        {
+          kind: 'wait',
+          invocationKey: 'wait',
+          resumeAt: '2026-08-21T10:00:00.000Z',
+        },
+      ],
+    });
+
+    expect(waiting.checkpoint.runStatus).toBe('waiting');
+  });
+
+  it('settles joins and persists canonical selection through advancement', () => {
+    const settled = advanceWorkflow({
+      checkpoint: checkpoint(),
+      occurredAt,
+      maximumAdmissions: 1,
+      observations: [
+        {
+          kind: 'join_declared',
+          joinId: 'join',
+          policy: { kind: 'any' },
+          branchIds: ['b', 'a'],
+        },
+        {
+          kind: 'branch_disposition',
+          joinId: 'join',
+          branch: { branchId: 'b', disposition: 'arrived' },
+        },
+        {
+          kind: 'branch_disposition',
+          joinId: 'join',
+          branch: { branchId: 'a', disposition: 'arrived' },
+        },
+      ],
+    });
+
+    expect(settled.checkpoint.joins).toEqual([
+      {
+        joinId: 'join',
+        policy: { kind: 'any' },
+        ledger: [
+          { branchId: 'a', disposition: 'arrived' },
+          { branchId: 'b', disposition: 'arrived' },
+        ],
+        selectedBranchIds: ['a'],
+      },
+    ]);
+    expect(settled.attempts).toEqual([
+      expect.objectContaining({ nodeId: 'join', attemptNumber: 1 }),
+    ]);
+    const duplicate = advanceWorkflow({
+      checkpoint: settled.checkpoint,
+      occurredAt,
+      maximumAdmissions: 1,
+      observations: [
+        {
+          kind: 'branch_disposition',
+          joinId: 'join',
+          branch: { branchId: 'b', disposition: 'arrived' },
+        },
+      ],
+    });
+    expect(duplicate.checkpoint.joins[0]?.selectedBranchIds).toEqual(['a']);
+    expect(duplicate.attempts).toEqual([]);
+  });
+
+  it('persists an unsatisfied join as a typed terminal failure', () => {
+    const failed = advanceWorkflow({
+      checkpoint: checkpoint(),
+      occurredAt,
+      maximumAdmissions: 1,
+      observations: [
+        {
+          kind: 'join_declared',
+          joinId: 'join',
+          policy: { kind: 'count', count: 2 },
+          branchIds: ['a', 'b'],
+        },
+        {
+          kind: 'branch_disposition',
+          joinId: 'join',
+          branch: { branchId: 'a', disposition: 'arrived' },
+        },
+        {
+          kind: 'branch_disposition',
+          joinId: 'join',
+          branch: { branchId: 'b', disposition: 'missing' },
+        },
+      ],
+    });
+
+    expect(failed.attempts).toEqual([]);
+    expect(failed.checkpoint.joins[0]).toMatchObject({
+      unsatisfiedReasonCode: 'insufficient_arrivals',
+    });
+    expect(failed.checkpoint.runStatus).toBe('failed');
+  });
+
+  it('reconstructs bounded loop admission from the checkpoint', () => {
+    const first = advanceWorkflow({
+      checkpoint: checkpoint(),
+      occurredAt,
+      maximumAdmissions: 10,
+      observations: [
+        {
+          kind: 'loop_started',
+          loopId: 'loop',
+          collection: { kind: 'artifact', reference: 'artifact-1' },
+          collectionChecksum: 'sha256:abc',
+          collectionSize: 3,
+          maxIterations: 3,
+          maxConcurrency: 2,
+        },
+      ],
+    });
+    expect(first.checkpoint.loops).toEqual([
+      expect.objectContaining({
+        loopId: 'loop',
+        nextOrdinal: 2,
+        activeOrdinals: [0, 1],
+        terminalOrdinals: [],
+      }),
+    ]);
+    expect(first.attempts).toHaveLength(2);
+
+    const reconstructed = advanceWorkflow({
+      checkpoint: JSON.parse(
+        JSON.stringify(first.checkpoint),
+      ) as WorkflowCheckpointV1,
+      occurredAt,
+      maximumAdmissions: 10,
+    });
+    expect(reconstructed.attempts).toEqual([]);
+    expect(reconstructed.checkpoint.loops).toEqual(first.checkpoint.loops);
+
+    const continued = advanceWorkflow({
+      checkpoint: first.checkpoint,
+      occurredAt,
+      maximumAdmissions: 10,
+      observations: [
+        { kind: 'loop_iteration_completed', loopId: 'loop', ordinal: 1 },
+      ],
+    });
+    expect(continued.checkpoint.loops).toEqual([
+      expect.objectContaining({
+        nextOrdinal: 3,
+        activeOrdinals: [0, 2],
+        terminalOrdinals: [1],
+      }),
+    ]);
+    expect(continued.attempts).toEqual([
+      expect.objectContaining({ nodeId: 'loop', attemptNumber: 1 }),
+    ]);
+  });
+
+  it('cancels ready loop iterations without admitting another batch', () => {
+    const ready = advanceWorkflow({
+      checkpoint: checkpoint(),
+      occurredAt,
+      maximumAdmissions: 0,
+      observations: [
+        {
+          kind: 'loop_started',
+          loopId: 'loop',
+          collection: { kind: 'artifact', reference: 'artifact-1' },
+          collectionChecksum: 'sha256:abc',
+          collectionSize: 3,
+          maxIterations: 3,
+          maxConcurrency: 2,
+        },
+      ],
+    });
+    const canceled = advanceWorkflow({
+      checkpoint: ready.checkpoint,
+      occurredAt,
+      maximumAdmissions: 10,
+      observations: [{ kind: 'cancel_requested' }],
+    });
+
+    expect(canceled.attempts).toEqual([]);
+    expect(canceled.checkpoint.loops[0]).toMatchObject({
+      nextOrdinal: 2,
+      activeOrdinals: [],
+      terminalOrdinals: [0, 1],
+    });
+    expect(canceled.checkpoint.runStatus).toBe('canceled');
+  });
+
+  it('holds graph successors until the persisted loop parent completes', () => {
+    const first = advanceWorkflow({
+      checkpoint: checkpoint(),
+      graph: chainGraph,
+      occurredAt,
+      maximumAdmissions: 1,
+      observations: [
+        {
+          kind: 'loop_started',
+          loopId: 'a',
+          collection: { kind: 'artifact', reference: 'artifact-1' },
+          collectionChecksum: 'sha256:abc',
+          collectionSize: 1,
+          maxIterations: 1,
+          maxConcurrency: 1,
+        },
+      ],
+    });
+    expect(first.attempts.map(({ nodeId }) => nodeId)).toEqual(['a']);
+    const completed = advanceWorkflow({
+      checkpoint: first.checkpoint,
+      graph: chainGraph,
+      occurredAt,
+      maximumAdmissions: 1,
+      observations: [
+        { kind: 'loop_iteration_completed', loopId: 'a', ordinal: 0 },
+      ],
+    });
+    expect(completed.attempts).toEqual([]);
+    const successor = advanceWorkflow({
+      checkpoint: completed.checkpoint,
+      graph: chainGraph,
+      occurredAt,
+      maximumAdmissions: 1,
+    });
+    expect(successor.attempts.map(({ nodeId }) => nodeId)).toEqual(['b']);
   });
 });
 
@@ -388,7 +845,17 @@ describe('retry, wait, cancellation, and transition policy', () => {
       invocationKey: 'node',
       operationIdentity: 'http.post.v1',
     };
-    expect(providerIdempotencyKey(input)).toBe(providerIdempotencyKey(input));
+    expect(providerIdempotencyKey(input)).toBe(
+      'v1.fc0b851d7fb6df8735e56d5cb8bb36956147162cdc1286601d755e33345c8fa1',
+    );
+    expect(
+      providerIdempotencyKey({
+        namespace: 'n'.repeat(1_000),
+        runId: 'r'.repeat(1_000),
+        invocationKey: 'i'.repeat(1_000),
+        operationIdentity: 'o'.repeat(1_000),
+      }),
+    ).toHaveLength(67);
   });
 
   it('never retries an unsafe possibly dispatched ambiguous effect', () => {
