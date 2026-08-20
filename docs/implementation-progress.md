@@ -18,7 +18,7 @@ not complete a phase.
 | Phase 0D — queue, outbox, and duplicate-delivery proof | Complete | ADRs 005–006; migration head `0006_execution_vocabulary.sql`; 158 unit, 76 real integration, and one destructive recovery assertion |
 | Phase 0E — execution durability proofs and engine gate | Complete | ADRs 005 and 007–009; commits through `0322837`; 239 unit, 96 real-service integration, five process-recovery, one SSE-outage, and one transport-outage assertions; custom-engine GO |
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
-| Phase 2 — workflow authoring vertical slice | In progress | ADRs, canonical graph identity, persistence, and held dispatch boundary complete; HTTP slice remains |
+| Phase 2 — workflow authoring vertical slice | In progress | ADRs, canonical graph/HTTP contracts, persistence, held dispatch boundary, and real HTTP slice complete; repository-wide gates and completion reviews remain |
 | Phase 3 — first executable-node slice | Not started | — |
 | Phase 4 — first side-effecting integration slice | Not started | — |
 | Phase 5 — orchestration slice | Not started | — |
@@ -500,10 +500,10 @@ Plan-aligned checklist:
 - [x] Accept ADR 011 for whole-graph optimistic draft concurrency,
       strong ETag semantics, HTTP preconditions, conflict responses, and the
       future collaboration boundary before the draft save API is implemented.
-- [ ] Define the workflow-authoring domain vocabulary and canonical constants,
+- [x] Define the workflow-authoring domain vocabulary and canonical constants,
       including lifecycle/activation states, draft revision rules, graph schema
       versioning, and immutable version identity.
-- [ ] Own the canonical graph, authoring request/response, validation-report,
+- [x] Own the canonical graph, authoring request/response, validation-report,
       and published-version Zod contracts in the appropriate shared packages;
       parse them at every HTTP and persistence seam.
 - [x] Add reviewed PostgreSQL migrations only for `workflows`,
@@ -515,26 +515,26 @@ Plan-aligned checklist:
 - [x] Create a workflow and its one empty JSONB draft atomically, with an
       idempotent retry contract and an audit fact; the draft cannot be omitted,
       duplicated, deleted, or replaced independently of its workflow.
-- [ ] List workspace workflows with deterministic cursor pagination and load
+- [x] List workspace workflows with deterministic cursor pagination and load
       one authorized draft with its revision, strong ETag, and
       definition-compatibility report without exposing cross-workspace
       existence. The strong validator covers the complete returned
       representation, including the compatibility fingerprint; a registry
       rollout may therefore require a safe refetch instead of treating two
       different reports as equivalent.
-- [ ] Save one coherent, structurally valid, within-limit graph snapshot only
+- [x] Save one coherent, structurally valid, within-limit graph snapshot only
       when a required strong `If-Match` value matches; return HTTP `428` when
       the precondition is absent and HTTP `412` with
       `workflow.revision_conflict` when it is stale or does not match. Increment
       the revision on success and never overwrite concurrent work.
-- [ ] Validate the current draft read-only using the same graph limits and
+- [x] Validate the current draft read-only using the same graph limits and
       pinned-definition compatibility rules used by publication, returning a
       stable typed validation report without mutating the draft.
 - [x] Define a versioned canonical executable projection for checksum identity.
       It includes execution-relevant graph/schema/definition/settings content
       but excludes presentation-only metadata such as node position and label;
       focused fixtures must prove both included and excluded fields.
-- [ ] Publish in one transaction: require the same strong `If-Match` contract
+- [x] Publish in one transaction: require the same strong `If-Match` contract
       plus an `Idempotency-Key`, lock and freeze that coherent draft revision,
       run deterministic validation, calculate the versioned
       executable-projection checksum, create or reuse one immutable version,
@@ -542,7 +542,7 @@ Plan-aligned checklist:
       inactive, append the audit fact, and write one versioned
       `workflow.published` outbox record at the existing typed
       `reconcile-workflow-triggers` dispatch boundary.
-- [ ] Give publish commands durable idempotency semantics: an exact retry with
+- [x] Give publish commands durable idempotency semantics: an exact retry with
       the same key, original `If-Match`, and request hash returns the stored
       result before current-state comparison and without another audit fact or
       outbox record; reusing the key for a changed request returns
@@ -562,23 +562,23 @@ Plan-aligned checklist:
       freezes exactly one draft revision, the immutable version matches that
       complete revision, and a concurrent successful save affects only the live
       draft and never the frozen published version.
-- [ ] Expose and document only the Phase 2 endpoints: list/create workflows,
+- [x] Expose and document only the Phase 2 endpoints: list/create workflows,
       get/save draft, validate, publish, and list immutable versions. Controllers
       remain limited to contract parsing, authenticated actor/workspace context,
       one use-case call, and response mapping.
-- [ ] Enforce named workflow read/update/publish capabilities plus active
+- [x] Enforce named workflow read/update/publish capabilities plus active
       workspace membership at the application boundary and PostgreSQL tenant
       isolation through the real Phase 0/1 runtime roles.
-- [ ] Map malformed input, hidden resources, authorization failures, revision
+- [x] Map malformed input, hidden resources, authorization failures, revision
       conflicts (`428`/`412`), invalid workflows, idempotency conflicts, and
       unexpected failures through the shared RFC 9457 catalog with bounded safe
       logs.
-- [ ] Add fixed-cardinality traces/metrics and the relevant audit/outbox effects
+- [x] Add fixed-cardinality traces/metrics and the relevant audit/outbox effects
       without workflow, workspace, actor, or version IDs in metric labels.
-- [ ] Publish browser-safe shared client contracts and deterministic generated
+- [x] Publish browser-safe shared client contracts and deterministic generated
       API/client artifacts, and make contract drift a required verification
       gate before the canvas consumes the API.
-- [ ] Prove the use-case transaction boundaries, rollback behavior, exact and
+- [x] Prove the use-case transaction boundaries, rollback behavior, exact and
       conflicting retries, strong-ETag preconditions, concurrent draft saves,
       save-versus-publish races, concurrent/duplicate publishes, exactly one
       live draft, immutable frozen history, executable-projection checksum
@@ -678,6 +678,27 @@ Initial evidence:
   persistence checkpoint. The worker role cannot read workflow versions, every
   workflow stays inactive, and reconciliation outbox rows remain held pending
   the separate dispatch-capability checkpoint and the Phase 6 consumer.
+- Commit `91c6b6e` adds the browser-safe workflow-authoring contracts, one
+  guarded graph-schema source shared with the server model, deterministic
+  OpenAPI/client artifacts, the complete-representation strong ETag codec, and
+  typed RFC 9457 `428`/`412` handling. Contracts pass 7 tests and drift
+  verification; workflow-model passes 45 tests; the focused problem filter
+  passes 9 tests.
+- Commit `537162d` deepens the persistence seam with atomic create read models,
+  compatibility-aware drafts, deterministic workflow/version pages,
+  archived-save denial, conflict ETags, and exact publish replay before
+  current-state comparison. Database unit tests pass 17 assertions and the
+  focused real PostgreSQL authoring suite passes 14 assertions at migration
+  head `0012_workflow_authoring.sql`.
+- Commit `16bc14a` adds the application use cases, strict precondition parsing,
+  bounded telemetry, authorization, error mapping, and thin controllers.
+  Commit `5a9e8fa` composes them with the existing identity guards, canonical
+  authorized workspace context, real workflow database lifecycle, OTel
+  adapters, and Nest bootstrap/shutdown. The API suite passes 165 tests and the
+  consolidated real PostgreSQL HTTP suite passes 6 scenarios, including
+  session/CSRF authorization, RLS-hidden access, create/list/read/save/validate/
+  publish/version listing, missing and stale preconditions, exact publication
+  replay, and safe typed problem responses.
 
 ## Later phases
 
