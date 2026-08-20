@@ -134,6 +134,11 @@ export function isBoundedNodeJson(value: unknown): value is SchemaJson {
     )
       return false;
     if (Object.getOwnPropertySymbols(current.value).length > 0) return false;
+    if (
+      Array.isArray(current.value) &&
+      current.value.length > NODE_JSON_LIMITS_V1.members
+    )
+      return false;
     const keys = Array.isArray(current.value)
       ? Array.from({ length: current.value.length }, (_, index) =>
           String(index),

@@ -329,6 +329,8 @@ export function canonicalizeBoundedJson(
     throw new InvalidBoundedJsonError('value is not JSON');
 
   const rootIsArray = Array.isArray(value);
+  if (rootIsArray && value.length > limits.members)
+    throw new InvalidBoundedJsonError('JSON member limit exceeded');
   if (!rootIsArray && !isPlainObject(value))
     throw new InvalidBoundedJsonError('object must be plain');
   if (Object.getOwnPropertySymbols(value).length > 0)
@@ -337,7 +339,7 @@ export function canonicalizeBoundedJson(
   const rootKeys = rootIsArray
     ? Array.from({ length: value.length }, (_, index) => String(index))
     : Object.keys(value);
-  const ancestors = new Set<object>([value]);
+  const seen = new Set<object>([value]);
   const stack: JsonFrame[] = [
     { source: value, target: root, keys: rootKeys, index: 0, depth: 1 },
   ];
@@ -346,7 +348,6 @@ export function canonicalizeBoundedJson(
     const frame = stack[stack.length - 1];
     if (frame === undefined) break;
     if (frame.index >= frame.keys.length) {
-      ancestors.delete(frame.source);
       stack.pop();
       continue;
     }
@@ -373,19 +374,22 @@ export function canonicalizeBoundedJson(
     const childDepth = frame.depth + 1;
     if (childDepth > limits.depth)
       throw new InvalidBoundedJsonError('JSON depth limit exceeded');
-    if (ancestors.has(child)) throw new InvalidBoundedJsonError('cyclic value');
+    if (seen.has(child))
+      throw new InvalidBoundedJsonError('repeated object reference');
     if (!Array.isArray(child) && !isPlainObject(child))
       throw new InvalidBoundedJsonError('object must be plain');
     if (Object.getOwnPropertySymbols(child).length > 0)
       throw new InvalidBoundedJsonError('symbol properties are not JSON');
     const childIsArray = Array.isArray(child);
+    if (childIsArray && child.length > limits.members)
+      throw new InvalidBoundedJsonError('JSON member limit exceeded');
     const childTarget: MutableObject | JsonValue[] = childIsArray ? [] : {};
     if (Array.isArray(frame.target)) frame.target[Number(key)] = childTarget;
     else frame.target[key] = childTarget;
     const childKeys = childIsArray
       ? Array.from({ length: child.length }, (_, index) => String(index))
       : Object.keys(child);
-    ancestors.add(child);
+    seen.add(child);
     stack.push({
       source: child,
       target: childTarget,

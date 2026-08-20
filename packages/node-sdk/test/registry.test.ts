@@ -214,6 +214,23 @@ describe('node-sdk exact server registry', () => {
     expect(() => canonicalizeBoundedJson(sparse)).toThrow(
       InvalidBoundedJsonError,
     );
+
+    const oversizedSparse = new Array<unknown>(
+      NODE_EXECUTION_LIMITS_V1.members + 1,
+    );
+    expect(boundedNodeJsonSchema.safeParse(oversizedSparse).success).toBe(
+      false,
+    );
+    expect(() => canonicalizeBoundedJson(oversizedSparse)).toThrow(
+      InvalidBoundedJsonError,
+    );
+
+    const shared = { value: true };
+    const repeated = [shared, shared];
+    expect(boundedNodeJsonSchema.safeParse(repeated).success).toBe(false);
+    expect(() => canonicalizeBoundedJson(repeated)).toThrow(
+      InvalidBoundedJsonError,
+    );
   });
 
   it('enforces scalar byte limits before returning normalized JSON', () => {
