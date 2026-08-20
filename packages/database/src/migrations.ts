@@ -21,6 +21,7 @@ function quoteIdentifier(identifier: string): string {
 
 function renderMigration(sql: string, config: MigrationConfig): string {
   return sql
+    .replaceAll('{{owner_role}}', quoteIdentifier(config.ownerRole))
     .replaceAll('{{api_runtime_role}}', quoteIdentifier(config.apiRuntimeRole))
     .replaceAll('{{dispatcher_role}}', quoteIdentifier(config.dispatcherRole))
     .replaceAll(

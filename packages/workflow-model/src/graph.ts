@@ -910,7 +910,12 @@ export function workflowExecutableChecksum(
   input: unknown,
   catalog: WorkflowDefinitionCatalogV1 = EMPTY_DEFINITION_CATALOG_V1,
 ): string {
-  const projection = workflowExecutableProjection(input, catalog);
+  return checksumExecutableProjection(
+    workflowExecutableProjection(input, catalog),
+  );
+}
+
+function checksumExecutableProjection(projection: JsonValue): string {
   const digest = createHash('sha256')
     .update(
       canonicalJson({
@@ -921,6 +926,18 @@ export function workflowExecutableChecksum(
     )
     .digest('hex');
   return `wf:v1:sha256:${digest}`;
+}
+
+/**
+ * Recomputes the canonical identity of a retained V1 version without requiring
+ * its pinned definitions to remain in the active publication catalog.
+ * Structural and graph-semantic corruption still fails closed.
+ */
+export function workflowRetainedExecutableChecksum(input: unknown): string {
+  const graph = parseWorkflowGraphDraft(input);
+  const validation = validateWorkflowGraph(graph);
+  if (!validation.ok) throw new InvalidWorkflowGraphError(validation.issues);
+  return checksumExecutableProjection(executableGraphProjection(graph));
 }
 
 export type InvocationScopePart =

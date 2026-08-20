@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   bigint,
+  foreignKey,
   index,
   inet,
   integer,
@@ -629,6 +630,116 @@ export const workspaceCreationIdempotencyRecords = appSchema.table(
   ],
 );
 
+export const workflows = appSchema.table(
+  'workflows',
+  {
+    id: uuid('id').primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    name: varchar('name', { length: 128 }).notNull(),
+    lifecycleStatus: varchar('lifecycle_status', { length: 32 })
+      .default('active')
+      .notNull(),
+    activationStatus: varchar('activation_status', { length: 32 })
+      .default('inactive')
+      .notNull(),
+    publishedVersionId: uuid('published_version_id'),
+    createdBy: uuid('created_by').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .default(sql`date_trunc('milliseconds', clock_timestamp())`)
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('workflows_workspace_identity_unique').on(
+      table.workspaceId,
+      table.id,
+    ),
+    index('workflows_workspace_created_idx').on(
+      table.workspaceId,
+      table.createdAt,
+      table.id,
+    ),
+    index('workflows_workspace_name_idx').on(
+      table.workspaceId,
+      table.name,
+      table.id,
+    ),
+  ],
+);
+
+export const workflowDrafts = appSchema.table(
+  'workflow_drafts',
+  {
+    workflowId: uuid('workflow_id').primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    revision: integer('revision').default(1).notNull(),
+    schemaVersion: integer('schema_version').notNull(),
+    graphJson: jsonb('graph_json').notNull(),
+    updatedBy: uuid('updated_by').notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.workspaceId, table.workflowId],
+      foreignColumns: [workflows.workspaceId, workflows.id],
+      name: 'workflow_drafts_workflow_workspace_fk',
+    }).onDelete('cascade'),
+    index('workflow_drafts_workspace_idx').on(
+      table.workspaceId,
+      table.workflowId,
+    ),
+  ],
+);
+
+export const workflowVersions = appSchema.table(
+  'workflow_versions',
+  {
+    id: uuid('id').primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    workflowId: uuid('workflow_id').notNull(),
+    versionNumber: integer('version_number').notNull(),
+    schemaVersion: integer('schema_version').notNull(),
+    graphJson: jsonb('graph_json').notNull(),
+    checksum: varchar('checksum', { length: 77 }).notNull(),
+    publishedBy: uuid('published_by').notNull(),
+    publishedAt: timestamp('published_at', {
+      withTimezone: true,
+      mode: 'date',
+    })
+      .default(sql`clock_timestamp()`)
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('workflow_versions_workspace_identity_unique').on(
+      table.workspaceId,
+      table.workflowId,
+      table.id,
+    ),
+    uniqueIndex('workflow_versions_number_unique').on(
+      table.workflowId,
+      table.versionNumber,
+    ),
+    uniqueIndex('workflow_versions_checksum_unique').on(
+      table.workflowId,
+      table.checksum,
+    ),
+    foreignKey({
+      columns: [table.workspaceId, table.workflowId],
+      foreignColumns: [workflows.workspaceId, workflows.id],
+      name: 'workflow_versions_workflow_workspace_fk',
+    }),
+    index('workflow_versions_workspace_workflow_idx').on(
+      table.workspaceId,
+      table.workflowId,
+      table.versionNumber.desc(),
+    ),
+  ],
+);
+
 export const databaseSchema = {
   artifacts,
   auditEvents,
@@ -647,6 +758,9 @@ export const databaseSchema = {
   users,
   workspaceMemberships,
   workspaces,
+  workflowDrafts,
+  workflowVersions,
+  workflows,
   workflowRuns,
   workspaceCreationIdempotencyRecords,
 };

@@ -150,6 +150,9 @@ importers:
 
   packages/database:
     dependencies:
+      '@pertexo/workflow-model':
+        specifier: workspace:*
+        version: link:../workflow-model
       drizzle-orm:
         specifier: 0.45.2
         version: 0.45.2(@opentelemetry/api@1.9.0)(@types/pg@8.21.0)(pg@8.23.0)

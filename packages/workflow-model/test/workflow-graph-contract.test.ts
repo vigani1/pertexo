@@ -9,6 +9,7 @@ import {
   parseWorkflowGraphForPublish,
   workflowCompatibilityReport,
   workflowExecutableChecksum as computeWorkflowExecutableChecksum,
+  workflowRetainedExecutableChecksum,
   type WorkflowGraph,
 } from '../src/graph.js';
 
@@ -365,6 +366,19 @@ describe('workflow graph V1 public contract', () => {
 });
 
 describe('workflow executable identity V1', () => {
+  it('verifies retained identity without requiring an active definition', () => {
+    const retained = fixture();
+    expect(workflowCompatibilityReport(retained)).toMatchObject({
+      compatible: false,
+    });
+    expect(workflowRetainedExecutableChecksum(retained)).toBe(
+      workflowExecutableChecksum(retained),
+    );
+    expect(() => computeWorkflowExecutableChecksum(retained)).toThrow(
+      InvalidWorkflowGraphError,
+    );
+  });
+
   it('is deterministic across key insertion, collection order, and processes', () => {
     const input = fixture();
     const reordered: WorkflowGraph = {

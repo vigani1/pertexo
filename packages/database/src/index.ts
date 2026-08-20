@@ -167,6 +167,9 @@ export {
   workspaceMemberships,
   workspaces,
   workspaceCreationIdempotencyRecords,
+  workflowDrafts,
+  workflowVersions,
+  workflows,
   workflowRuns,
 } from './schema.js';
 export {
@@ -174,6 +177,28 @@ export {
   withWorkspaceTransaction,
   type WorkspaceTransactionOptions,
 } from './workspace.js';
+export {
+  createWorkflowAuthoringDatabase,
+  reconcileWorkflowTriggersPayload,
+  WorkflowNotFoundError,
+  WorkflowCreateIdempotencyConflictError,
+  WorkflowPublishIdempotencyConflictError,
+  WorkflowRevisionConflictError,
+} from './workflow-authoring.js';
+export type {
+  CreateWorkflowInput,
+  CreateWorkflowResult,
+  ListWorkflowsInput,
+  PublishWorkflowInput,
+  PublishWorkflowResult,
+  SaveWorkflowDraftInput,
+  WorkflowAuthoringDatabase,
+  WorkflowAuthoringDatabaseOptions,
+  WorkflowAuthoringTestHooks,
+  WorkflowDraftRecord,
+  WorkflowRecord,
+  WorkflowVersionRecord,
+} from './workflow-authoring.js';
 export type {
   WorkspaceDrizzle,
   WorkspaceId,
