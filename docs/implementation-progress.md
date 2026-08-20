@@ -16,7 +16,7 @@ not complete a phase.
 | Phase 0B — PostgreSQL tenancy and RLS proof | Complete | ADR 003; commits `bad4b9e`, `9b4f6a4`, `a3bec51`, `6458fd4`; PostgreSQL 18.6 clean migration; 31 RLS integration tests |
 | Phase 0C — HTTP and observability foundation | Complete | Commit `e8093d2`; 47 API/worker/observability tests; compiled role and OTLP trace/metric smoke checks |
 | Phase 0D — queue, outbox, and duplicate-delivery proof | Complete | ADRs 005–006; migration head `0006_execution_vocabulary.sql`; 158 unit, 76 real integration, and one destructive recovery assertion |
-| Phase 0E — execution durability proofs and engine gate | In progress | ADRs 007–009 required before state-machine, bounded-loop, and expression implementation |
+| Phase 0E — execution durability proofs and engine gate | In progress | ADRs 007–009 accepted; durable runtime, bounded model/evaluator, checkpoint engine, and PostgreSQL-authoritative SSE foundations implemented; cross-stack crash/restart gate remains |
 | Phase 1 — identity/workspace vertical slice | Not started | — |
 | Phase 2 — workflow authoring vertical slice | Not started | — |
 | Phase 3 — first executable-node slice | Not started | — |
@@ -240,18 +240,42 @@ Status: **In progress**
 - [ ] Prove durable cancellation behavior.
 - [ ] Prove deterministic branch, join, and bounded-loop recovery.
 - [ ] Prove SSE reconstruction after Redis loss.
-- [ ] Prove restricted JSONata evaluation limits and determinism.
+- [x] Prove restricted JSONata evaluation limits and determinism.
 - [ ] Record executable fixtures, automated failure tests, and measured results.
 - [ ] Pass the custom-engine go/no-go gate or complete the required Temporal
       evaluation.
 
-Current work:
+Current evidence:
 
-- Draft and accept ADR 007 for run/node state machines, logical retries,
-  idempotency, and `outcome_unknown`.
-- Draft and accept ADR 008 for structured bounded loops and arbitrary-cycle
-  rejection.
-- Draft and accept ADR 009 for deterministic, capability-restricted JSONata.
+- ADRs 007, 008, and 009 are accepted before their implementation decisions;
+  commit `5b4dadc` records the state/retry/idempotency, bounded-loop, and
+  restricted-JSONata contracts.
+- Commits `7ef4b3e`, `064cd64`, and `7d7c3b9` add the pure checkpoint engine and
+  bounded workflow model. The model's 24-test suite covers the exact V1 graph
+  boundary, nested aggregate limits, deterministic canonical bytes and
+  invocation keys, the restricted AST/capability surface, all exact/one-over
+  input/output/depth/expression limits, hard worker-thread timeout and
+  replacement, active/queued cancellation, shutdown, and repeated/two-worker/
+  fresh-worker determinism. The engine is being hardened against independent
+  review findings before its recovery proof is accepted.
+- Commit `e4c80b2` adds migration `0007_execution_runtime.sql` and the durable
+  execution repository: checkpoint CAS, gapless events, run/node/attempt state,
+  leases and fence tokens, durable waits/retries/cancellation/deadlines, and
+  unsafe-attempt reconciliation. A zero-state PostgreSQL 18.6 migration applied
+  revisions `0000` through `0007`; 10 database unit tests and 83 real PostgreSQL
+  integration assertions passed.
+- Commits `92119cd` and `bdd7180` add bounded subscribe-before-read SSE
+  reconstruction, opaque Redis wake-up channels, a bounded publisher, and a
+  production PostgreSQL/RLS reader. The API has 37 unit assertions and one real
+  PostgreSQL+Redis composition assertion: notifications published before the
+  subscriber were lost, reconnect from sequence 1 backfilled sequences 2–3 in
+  bounded pages from PostgreSQL, then sequence 4 arrived live. A destructive
+  Redis restart/recovery exercise is still required before checking the SSE
+  criterion.
+- The remaining unchecked criteria require the shared real PostgreSQL,
+  Redis/BullMQ execution fixture, measured crash/restart injection results, and
+  the final custom-engine go/no-go review; package-level tests alone do not
+  satisfy them.
 
 ## Later phases
 
