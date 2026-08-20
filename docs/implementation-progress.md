@@ -16,7 +16,7 @@ not complete a phase.
 | Phase 0B — PostgreSQL tenancy and RLS proof | Complete | ADR 003; commits `bad4b9e`, `9b4f6a4`, `a3bec51`, `6458fd4`; PostgreSQL 18.6 clean migration; 31 RLS integration tests |
 | Phase 0C — HTTP and observability foundation | Complete | Commit `e8093d2`; 47 API/worker/observability tests; compiled role and OTLP trace/metric smoke checks |
 | Phase 0D — queue, outbox, and duplicate-delivery proof | Complete | ADRs 005–006; migration head `0006_execution_vocabulary.sql`; 158 unit, 76 real integration, and one destructive recovery assertion |
-| Phase 0E — execution durability proofs and engine gate | In progress | ADRs 007–009; 41 engine and 24 model assertions; migration head `0007_execution_runtime.sql`; four real execution recovery assertions passed; composed SSE outage and final go/no-go remain |
+| Phase 0E — execution durability proofs and engine gate | In progress | ADRs 007–009; 239 unit and 94 real-service integration assertions; process-kill, Redis-loss, and SSE recovery fixtures pass; four final proof gaps keep the custom-engine gate at no-go |
 | Phase 1 — identity/workspace vertical slice | Not started | — |
 | Phase 2 — workflow authoring vertical slice | Not started | — |
 | Phase 3 — first executable-node slice | Not started | — |
@@ -236,10 +236,13 @@ Status: **In progress**
 
 - [x] Prove coordinator and node-attempt crash recovery.
 - [x] Prove checkpoint reconstruction from PostgreSQL-authoritative state.
-- [x] Prove waits survive worker and Redis restarts without occupying workers.
-- [x] Prove durable cancellation behavior.
-- [x] Prove deterministic branch, join, and bounded-loop recovery.
-- [ ] Prove SSE reconstruction after Redis loss.
+- [ ] Prove waits survive worker and Redis restarts without occupying workers,
+      including duplicate resume delivery.
+- [ ] Prove durable cancellation behavior, including cooperative abort of active
+      work and truthful completed effects.
+- [ ] Prove deterministic branch, join, and bounded-loop recovery across
+      coordinator crashes on both sides of checkpoint commit.
+- [x] Prove SSE reconstruction after Redis loss.
 - [x] Prove restricted JSONata evaluation limits and determinism.
 - [ ] Record executable fixtures, automated failure tests, and measured results.
 - [ ] Pass the custom-engine go/no-go gate or complete the required Temporal
@@ -264,14 +267,18 @@ Current evidence:
   unsafe-attempt reconciliation. A zero-state PostgreSQL 18.6 migration applied
   revisions `0000` through `0007`; 10 database unit tests and 83 real PostgreSQL
   integration assertions passed.
-- Commits `92119cd` and `bdd7180` add bounded subscribe-before-read SSE
+- Commits `92119cd`, `bdd7180`, `ec7a985`, and `5751cfc` add bounded
+  subscribe-before-read SSE
   reconstruction, opaque Redis wake-up channels, a bounded publisher, and a
   production PostgreSQL/RLS reader. The API has 37 unit assertions and one real
   PostgreSQL+Redis composition assertion: notifications published before the
   subscriber were lost, reconnect from sequence 1 backfilled sequences 2–3 in
-  bounded pages from PostgreSQL, then sequence 4 arrived live. A destructive
-  Redis restart/recovery exercise is still required before checking the SSE
-  criterion.
+  bounded pages from PostgreSQL, then sequence 4 arrived live. The destructive
+  fixture stopped Redis, detected publication failure in 1.09 ms, restored
+  Redis health in 5,797.18 ms, and reconstructed the gap from PostgreSQL in
+  5,810.51 ms. Aborting an SSE read now destroys an in-flight PostgreSQL client;
+  the real `pg_sleep(30)` regression aborts in under two seconds and the next
+  checkout receives clean workspace context.
 - Commit `72b249c` resolves the independent engine review: cancellation cannot
   admit ready work, terminal/wait aggregation is truthful, exact duplicate
   outcomes are idempotent, malformed joins/loops/checkpoints fail closed,
@@ -282,18 +289,34 @@ Current evidence:
   proof: initial and resumed node-attempt outbox payloads now contain the exact
   run/node/attempt identifiers required by the strict queue contract. Both
   paths retain 83/83 real PostgreSQL integration assertions.
-- Commit `2a28211` adds the dedicated real PostgreSQL+Redis/BullMQ execution
-  fixture and CI gate. Four assertions inject coordinator pre-commit
-  recomputation and post-commit CAS conflict, stale attempt completion,
-  safe/idempotent reclaim, unsafe post-dispatch ambiguity, durable
-  cancellation, deterministic integrated branch/join/loop replay, and a real
-  Redis stop/restart during a durable wait. The waiting node held no worker
-  lease; Redis restarted in 6,036.02 ms, recovery-to-resume took 7,100.90 ms,
-  and the resumed attempt completed in 94.36 ms. Cleanup restored authenticated
-  `PONG`, left Redis DB 15 empty, and PostgreSQL remained healthy.
-- The remaining unchecked criteria require the composed SSE Redis-outage proof,
-  a final independent blocker/high review, and the custom-engine go/no-go
-  decision. Package-level tests alone do not satisfy those gates.
+- Commits `2a28211`, `fff4146`, `fc69686`, and `0136e45` harden the dedicated
+  real PostgreSQL+Redis/BullMQ execution and resilience gates. Four process
+  assertions SIGKILL coordinator children after computation and after durable
+  checkpoint commit, then reconstruct from a forced-RLS immutable workflow
+  version in fresh processes. Attempt children are killed before dispatch and
+  after idempotent/unsafe dispatch; fencing produces one provider effect and
+  truthful `outcome_unknown`. Reconciliation rejects live leases and emits the
+  complete strict queue identity after expiry. The durable-wait proof releases
+  its worker lease and BullMQ active slot, rejects early resume, restarts Redis
+  in 6,060.45 ms, reaches the due/resume boundary in 7,167.19 ms, and completes
+  in a fresh child in 333.11 ms. Cancellation survives a separate 5,945.29 ms
+  Redis restart. Cleanup restores authenticated `PONG`, leaves Redis DB 15
+  empty, and verifies PostgreSQL health.
+- Commit `dbe3659` records the restricted JSONata gate output: 101 evaluations
+  across two workers and a pool restart completed in 836.15 ms with canonical
+  SHA-256 `43258cff783fe7036d8a43033f830adfc60ec037382473548ac742b888292777`,
+  evaluator `jsonata` 2.2.2, and policy version 1.
+- Current verification is green for `pnpm install --frozen-lockfile`,
+  `pnpm check` (239 unit assertions), the normal real-service matrix (86
+  database, two object-store, one API SSE, and five worker assertions), four
+  destructive Phase 0E process assertions, one destructive SSE assertion, and
+  one transport outage/drain assertion.
+- The 2026-08-20 independent gate remains **no-go** until four executable proof
+  gaps close: cooperative cancellation of active work, duplicate durable-wait
+  resume delivery, branch/join/loop recovery with coordinator crashes on both
+  sides of checkpoint commit, and an activated OpenTelemetry consumer span
+  after recovery. The tracker and ADR 005 must record the final measured result
+  only after a clean follow-up review.
 
 ## Later phases
 
