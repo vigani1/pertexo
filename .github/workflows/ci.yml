@@ -44,6 +44,7 @@ jobs:
       ARTIFACT_STORE_BUCKET: pertexo-artifacts
       ARTIFACT_STORE_FORCE_PATH_STYLE: 'true'
       ARTIFACT_STORE_INTEGRATION: 'true'
+      API_SSE_INTEGRATION: 'true'
       WORKER_TRANSPORT_INTEGRATION: 'true'
 
     steps:
