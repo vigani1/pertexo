@@ -1,0 +1,514 @@
+import { createHash, randomUUID } from 'node:crypto';
+
+import { eq } from 'drizzle-orm';
+import { Pool } from 'pg';
+import type { DatabaseError } from 'pg';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+import {
+  createIdentityWorkspaceDatabase,
+  createWorkspaceDatabase,
+  createOidcLoginTransactionStore,
+  parseDatabaseConfig,
+  auditEvents,
+  workspaceMemberships,
+} from '../src/index.js';
+import { migrateDatabase } from '../src/migrations.js';
+
+const migrationUrl =
+  process.env.DATABASE_MIGRATION_URL ??
+  'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
+const apiUrl =
+  process.env.DATABASE_API_URL ??
+  'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
+const workerUrl =
+  process.env.DATABASE_WORKER_URL ??
+  'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
+
+const migrationConfig = {
+  apiRuntimeRole: 'pertexo_api',
+  connectionString: migrationUrl,
+  dispatcherRole: 'pertexo_dispatcher',
+  ownerRole: 'pertexo_owner',
+  workerRuntimeRole: 'pertexo_worker',
+} as const;
+
+const identityDatabase = createIdentityWorkspaceDatabase(
+  parseDatabaseConfig({ connectionString: apiUrl, max: 3 }),
+);
+const tenantDatabase = createWorkspaceDatabase(
+  parseDatabaseConfig({ connectionString: apiUrl, max: 3 }),
+);
+const oidcStore = createOidcLoginTransactionStore(
+  parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
+  {
+    seal: (plaintext, associatedData) => ({
+      ciphertext: Buffer.from(
+        `${associatedData}:${plaintext}`,
+        'utf8',
+      ).toString('base64url'),
+      nonce: 'test-nonce',
+      tag: 'test-tag',
+      keyVersion: 'test-v1',
+    }),
+    open: (sealed, associatedData) => {
+      const decoded = Buffer.from(sealed.ciphertext, 'base64url').toString(
+        'utf8',
+      );
+      const prefix = `${associatedData}:`;
+      if (!decoded.startsWith(prefix))
+        throw new Error('associated data mismatch');
+      return decoded.slice(prefix.length);
+    },
+  },
+);
+let ownerUserId: string;
+let workspaceId: string;
+let ownerSessionId: string;
+
+function pgCode(error: unknown): string | undefined {
+  let current: unknown = error;
+  while (current instanceof Error) {
+    const code = (current as DatabaseError).code;
+    if (code !== undefined) return code;
+    current = current.cause;
+  }
+  return undefined;
+}
+
+beforeAll(async () => {
+  await migrateDatabase(migrationConfig);
+  const user = await identityDatabase.createUser({
+    email: `${randomUUID()}@example.test`,
+    displayName: 'Phase One Owner',
+  });
+  ownerUserId = user.id;
+  await identityDatabase.linkAuthIdentity({
+    userId: ownerUserId,
+    issuer: 'https://issuer.example.test',
+    providerSubject: randomUUID(),
+  });
+  const session = await identityDatabase.createSession({
+    userId: ownerUserId,
+    tokenDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+    expiresAt: new Date(Date.now() + 60_000),
+  });
+  ownerSessionId = session.id;
+  const workspace = await identityDatabase.createWorkspaceWithOwner({
+    name: 'Identity Workspace',
+    slug: `identity-${randomUUID().slice(0, 12)}`,
+    ownerUserId,
+    requestId: 'request-phase1',
+  });
+  workspaceId = workspace.id;
+});
+
+afterAll(async () => {
+  await identityDatabase.close();
+  await tenantDatabase.close();
+  await oidcStore.close();
+});
+
+describe('identity/workspace persistence', () => {
+  it('links identities idempotently and only resolves live session digests', async () => {
+    const liveDigest = createHash('sha256').update(randomUUID()).digest('hex');
+    const live = await identityDatabase.createSession({
+      userId: ownerUserId,
+      tokenDigest: liveDigest,
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    expect(
+      (await identityDatabase.findActiveSessionByDigest(liveDigest))?.id,
+    ).toBe(live.id);
+    const session = await identityDatabase.findActiveSessionByDigest(
+      createHash('sha256').update('missing').digest('hex'),
+    );
+    expect(session).toBeNull();
+    expect(await identityDatabase.revokeSession(ownerSessionId)).toBe(true);
+    expect(await identityDatabase.revokeSession(ownerSessionId)).toBe(false);
+  });
+
+  it('creates owner membership and audit atomically under workspace RLS', async () => {
+    const rows = await tenantDatabase.withWorkspace(
+      workspaceId,
+      async ({ db }) => {
+        const memberships = await db.select().from(workspaceMemberships);
+        const events = await db
+          .select()
+          .from(auditEvents)
+          .where(eq(auditEvents.workspaceId, workspaceId));
+        return { memberships, events };
+      },
+    );
+    expect(rows.memberships).toHaveLength(1);
+    expect(rows.memberships[0]?.role).toBe('owner');
+    expect(rows.events).toHaveLength(1);
+    expect(rows.events[0]?.action).toBe('workspace.created');
+  });
+
+  it('returns only the exact actor/workspace authorization row', async () => {
+    await expect(
+      identityDatabase.findWorkspaceAccess(ownerUserId, workspaceId),
+    ).resolves.toEqual({
+      actorId: ownerUserId,
+      workspaceId,
+      role: 'owner',
+      membershipStatus: 'active',
+      workspaceStatus: 'active',
+    });
+    await expect(
+      identityDatabase.findWorkspaceAccess(randomUUID(), workspaceId),
+    ).resolves.toBeNull();
+    await expect(
+      identityDatabase.findWorkspaceAccess(ownerUserId, randomUUID()),
+    ).resolves.toBeNull();
+  });
+
+  it('keeps worker identity access least-privilege while allowing workspace status reads', async () => {
+    const catalog = new Pool({ connectionString: migrationUrl, max: 1 });
+    const catalogClient = await catalog.connect();
+    try {
+      await catalogClient.query('begin');
+      await catalogClient.query('set local role pertexo_owner');
+      const privileges = await catalogClient.query<{
+        authIdentities: boolean;
+        sessions: boolean;
+        users: boolean;
+        workspaceId: boolean;
+        workspaceName: boolean;
+        workspaceStatus: boolean;
+      }>(`
+        select
+          has_table_privilege('pertexo_worker', 'app.users', 'SELECT') as "users",
+          has_table_privilege('pertexo_worker', 'app.auth_identities', 'SELECT') as "authIdentities",
+          has_table_privilege('pertexo_worker', 'app.sessions', 'SELECT') as "sessions",
+          has_column_privilege('pertexo_worker', 'app.workspaces', 'id', 'SELECT') as "workspaceId",
+          has_column_privilege('pertexo_worker', 'app.workspaces', 'status', 'SELECT') as "workspaceStatus",
+          has_column_privilege('pertexo_worker', 'app.workspaces', 'name', 'SELECT') as "workspaceName"
+      `);
+      expect(privileges.rows[0]).toEqual({
+        users: false,
+        authIdentities: false,
+        sessions: false,
+        workspaceId: true,
+        workspaceStatus: true,
+        workspaceName: false,
+      });
+      await catalogClient.query('commit');
+    } catch (error: unknown) {
+      await catalogClient.query('rollback').catch(() => undefined);
+      throw error;
+    } finally {
+      catalogClient.release();
+      await catalog.end();
+    }
+
+    const worker = new Pool({ connectionString: workerUrl, max: 1 });
+    try {
+      await expect(
+        worker.query('select id, status from app.workspaces'),
+      ).resolves.toBeTruthy();
+      for (const statement of [
+        'select email from app.users',
+        'select issuer from app.auth_identities',
+        'select token_digest from app.sessions',
+        'select name from app.workspaces',
+        'select workspace_id from app.workspace_memberships',
+        'select workspace_id from app.audit_events',
+      ]) {
+        await expect(worker.query(statement)).rejects.toSatisfy(
+          (error: unknown) => {
+            let current: unknown = error;
+            while (current instanceof Error) {
+              if ((current as { code?: string }).code === '42501') return true;
+              current = current.cause;
+            }
+            return false;
+          },
+        );
+      }
+    } finally {
+      await worker.end();
+    }
+  });
+
+  it('fails closed without context and prevents cross-workspace reads', async () => {
+    const secondUser = await identityDatabase.createUser({
+      email: `${randomUUID()}@example.test`,
+      displayName: 'Second Owner',
+    });
+    const second = await identityDatabase.createWorkspaceWithOwner({
+      name: 'Second Workspace',
+      slug: `second-${randomUUID().slice(0, 12)}`,
+      ownerUserId: secondUser.id,
+    });
+    const crossRead = await tenantDatabase.withWorkspace(
+      workspaceId,
+      async ({ db }) => {
+        const memberships = await db
+          .select()
+          .from(workspaceMemberships)
+          .where(eq(workspaceMemberships.workspaceId, second.id));
+        const events = await db
+          .select()
+          .from(auditEvents)
+          .where(eq(auditEvents.workspaceId, second.id));
+        return { memberships, events };
+      },
+    );
+    expect(crossRead.memberships).toEqual([]);
+    expect(crossRead.events).toEqual([]);
+
+    const pool = new Pool({ connectionString: apiUrl, max: 1 });
+    try {
+      const result = await pool.query('select * from app.audit_events');
+      expect(result.rows).toEqual([]);
+      const memberships = await pool.query(
+        'select * from app.workspace_memberships',
+      );
+      expect(memberships.rows).toEqual([]);
+    } finally {
+      await pool.end();
+    }
+  });
+
+  it('rolls back deletion state and session changes when audit facts are unsafe', async () => {
+    const digest = createHash('sha256').update(randomUUID()).digest('hex');
+    await identityDatabase.createSession({
+      userId: ownerUserId,
+      tokenDigest: digest,
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    await expect(
+      identityDatabase.requestWorkspaceDeletion(
+        workspaceId,
+        ownerUserId,
+        new Date(Date.now() + 60_000),
+        'rollback test',
+        { metadata: { token: 'forbidden' } },
+      ),
+    ).rejects.toThrow('Unsafe audit metadata key');
+    await expect(
+      identityDatabase.findWorkspaceAccess(ownerUserId, workspaceId),
+    ).resolves.toMatchObject({ workspaceStatus: 'active' });
+    await expect(
+      identityDatabase.findActiveSessionByDigest(digest),
+    ).resolves.not.toBeNull();
+  });
+
+  it('revokes member sessions atomically and restores to suspended', async () => {
+    const extraSession = await identityDatabase.createSession({
+      userId: ownerUserId,
+      tokenDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    const result = await identityDatabase.requestWorkspaceDeletion(
+      workspaceId,
+      ownerUserId,
+      new Date(Date.now() + 60_000),
+      'customer requested deletion',
+      { requestId: 'delete-request' },
+    );
+    expect(result.workspace.status).toBe('pending_deletion');
+    expect(result.workspace.deletionReason).toBe('customer requested deletion');
+    expect(result.revokedSessionCount).toBeGreaterThanOrEqual(1);
+    expect(
+      await identityDatabase.findActiveSessionByDigest(
+        extraSession.tokenDigest,
+      ),
+    ).toBeNull();
+
+    const restored = await identityDatabase.restoreWorkspace(
+      workspaceId,
+      ownerUserId,
+      {
+        requestId: 'restore-request',
+      },
+    );
+    expect(restored.workspace.status).toBe('suspended');
+    expect(restored.workspace.deletionReason).toBeNull();
+    const events = await tenantDatabase.withWorkspace(
+      workspaceId,
+      async ({ db }) =>
+        db.select({ action: auditEvents.action }).from(auditEvents),
+    );
+    expect(events.map((event) => event.action)).toEqual([
+      'workspace.created',
+      'workspace.deletion_requested',
+      'workspace.restored',
+    ]);
+  });
+
+  it('denies audit updates and deletes to the API runtime role', async () => {
+    await expect(
+      tenantDatabase.withWorkspace(workspaceId, async ({ db }) =>
+        db
+          .update(auditEvents)
+          .set({ action: 'tampered' })
+          .where(eq(auditEvents.workspaceId, workspaceId)),
+      ),
+    ).rejects.toSatisfy((error: unknown) => pgCode(error) === '42501');
+    await expect(
+      tenantDatabase.withWorkspace(workspaceId, async ({ db }) =>
+        db.delete(auditEvents).where(eq(auditEvents.workspaceId, workspaceId)),
+      ),
+    ).rejects.toSatisfy((error: unknown) => pgCode(error) === '42501');
+  });
+
+  it('serializes duplicate workspace slugs and leaves one complete aggregate', async () => {
+    const slug = `concurrent-${randomUUID().slice(0, 12)}`;
+    const outcomes = await Promise.allSettled([
+      identityDatabase.createWorkspaceWithOwner({
+        name: 'Concurrent A',
+        slug,
+        ownerUserId,
+      }),
+      identityDatabase.createWorkspaceWithOwner({
+        name: 'Concurrent B',
+        slug,
+        ownerUserId,
+      }),
+    ]);
+    expect(
+      outcomes.filter((outcome) => outcome.status === 'fulfilled'),
+    ).toHaveLength(1);
+    expect(
+      outcomes.filter((outcome) => outcome.status === 'rejected'),
+    ).toHaveLength(1);
+    const pool = new Pool({ connectionString: apiUrl, max: 1 });
+    try {
+      const result = await pool.query<{ id: string }>(
+        `select w.id from app.workspaces w where w.slug = $1`,
+        [slug],
+      );
+      expect(result.rows).toHaveLength(1);
+      const aggregateId = result.rows[0]?.id;
+      if (aggregateId === undefined)
+        throw new Error('Concurrent workspace was not returned');
+      const aggregate = await tenantDatabase.withWorkspace(
+        aggregateId,
+        async ({ db }) => ({
+          members: await db.select().from(workspaceMemberships),
+          events: await db.select().from(auditEvents),
+        }),
+      );
+      expect(aggregate.members).toHaveLength(1);
+      expect(aggregate.events).toHaveLength(1);
+    } finally {
+      await pool.end();
+    }
+  });
+
+  it('resolves one exact issuer/subject identity under concurrent first login', async () => {
+    const issuer = `https://issuer-${randomUUID()}.example.test`;
+    const subject = randomUUID();
+    const results = await Promise.all([
+      identityDatabase.resolveOrCreateIdentity({
+        issuer,
+        providerSubject: subject,
+        email: `${randomUUID()}@example.test`,
+        displayName: 'First profile',
+      }),
+      identityDatabase.resolveOrCreateIdentity({
+        issuer,
+        providerSubject: subject,
+        email: `${randomUUID()}@example.test`,
+        displayName: 'Second profile',
+      }),
+    ]);
+    const first = results[0];
+    const second = results[1];
+    expect(first.user.id).toBe(second.user.id);
+    expect(first.identity.id).toBe(second.identity.id);
+
+    const sameEmail = `${randomUUID()}@example.test`;
+    const separateA = await identityDatabase.resolveOrCreateIdentity({
+      issuer: `https://issuer-a-${randomUUID()}.example.test`,
+      providerSubject: randomUUID(),
+      email: sameEmail,
+      displayName: 'Profile A',
+    });
+    await expect(
+      identityDatabase.resolveOrCreateIdentity({
+        issuer: `https://issuer-b-${randomUUID()}.example.test`,
+        providerSubject: randomUUID(),
+        email: sameEmail,
+        displayName: 'Profile B',
+      }),
+    ).rejects.toBeInstanceOf(Error);
+    const emailPool = new Pool({ connectionString: apiUrl, max: 1 });
+    try {
+      const users = await emailPool.query<{ count: string }>(
+        'select count(*)::text as count from app.users where lower(email) = lower($1)',
+        [sameEmail],
+      );
+      expect(separateA.user.id).toBeTruthy();
+      expect(users.rows[0]?.count).toBe('1');
+    } finally {
+      await emailPool.end();
+    }
+  });
+
+  it('rejects credential-shaped audit metadata before persistence', async () => {
+    await expect(
+      identityDatabase.createWorkspaceWithOwner({
+        name: 'Unsafe metadata',
+        slug: `unsafe-${randomUUID().slice(0, 12)}`,
+        ownerUserId,
+        metadata: { token: 'must-not-persist' },
+      }),
+    ).rejects.toThrow('Unsafe audit metadata key');
+  });
+
+  it('seals OIDC verifier and nonce, consumes once, and classifies expiry/replay atomically', async () => {
+    const stateDigest = createHash('sha256').update(randomUUID()).digest('hex');
+    const codeVerifier = `verifier-${randomUUID()}`;
+    const nonce = `nonce-${randomUUID()}`;
+    const expiresAt = new Date(Date.now() + 60_000);
+    await oidcStore.create({ stateDigest, codeVerifier, nonce, expiresAt });
+    const rawPool = new Pool({ connectionString: apiUrl, max: 1 });
+    const raw = await rawPool.connect();
+    try {
+      const row = await raw.query<{
+        code_verifier_ciphertext: string;
+        nonce_ciphertext: string;
+        consumed_at: Date | null;
+      }>(
+        `select code_verifier_ciphertext, nonce_ciphertext, consumed_at
+         from app.oidc_login_transactions where state_digest = $1`,
+        [stateDigest],
+      );
+      expect(row.rows[0]?.code_verifier_ciphertext).not.toContain(codeVerifier);
+      expect(row.rows[0]?.nonce_ciphertext).not.toContain(nonce);
+      expect(row.rows[0]?.consumed_at).toBeNull();
+    } finally {
+      raw.release();
+      await rawPool.end();
+    }
+    const [first, second] = await Promise.all([
+      oidcStore.consume(stateDigest, new Date()),
+      oidcStore.consume(stateDigest, new Date()),
+    ]);
+    expect([first.status, second.status].sort()).toEqual(['ok', 'replayed']);
+    const successful = first.status === 'ok' ? first : second;
+    expect(successful.transaction?.codeVerifier).toBe(codeVerifier);
+    expect(successful.transaction?.nonce).toBe(nonce);
+    expect((await oidcStore.consume(stateDigest, new Date())).status).toBe(
+      'replayed',
+    );
+
+    const expiredDigest = createHash('sha256')
+      .update(randomUUID())
+      .digest('hex');
+    await oidcStore.create({
+      stateDigest: expiredDigest,
+      codeVerifier,
+      nonce,
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    expect(
+      (await oidcStore.consume(expiredDigest, new Date(Date.now() + 120_000)))
+        .status,
+    ).toBe('expired');
+  });
+});

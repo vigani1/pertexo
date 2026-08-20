@@ -30,6 +30,44 @@ export type {
 export { createWorkspaceDatabase } from './database.js';
 export type { WorkspaceDatabase } from './database.js';
 export {
+  createIdentityWorkspaceDatabase,
+  IdentityConflictError,
+  IdentityNotFoundError,
+  MEMBERSHIP_ROLE,
+  USER_STATUS,
+  WORKSPACE_STATUS,
+  WorkspaceLifecycleConflictError,
+} from './identity-workspace.js';
+export type {
+  AuthIdentityRecord,
+  CreateAuthIdentityInput,
+  CreateSessionInput,
+  CreateUserInput,
+  IdentityWorkspaceDatabase,
+  MembershipRole,
+  ResolveOrCreateIdentityInput,
+  ResolvedIdentity,
+  SessionRecord,
+  UserStatus,
+  UserRecord,
+  WorkspaceAccessRecord,
+  WorkspaceLifecycleResult,
+  WorkspaceRecord,
+  WorkspaceStatus,
+  WorkspaceWithOwnerInput,
+} from './identity-workspace.js';
+export {
+  createOidcLoginTransactionStore,
+  OidcTransactionSealingError,
+} from './oidc-login-transactions.js';
+export type {
+  OidcLoginTransaction,
+  OidcLoginTransactionStore,
+  OidcSecretEncryptionAdapter,
+  OidcTransactionConsumeResult,
+  SealedOidcSecret,
+} from './oidc-login-transactions.js';
+export {
   acceptWorkflowRun,
   IDEMPOTENCY_STATUS,
   IDEMPOTENCY_STATUS_VALUES,
@@ -108,6 +146,8 @@ export {
 export type { InsertedOutboxEvent, OutboxEventInput } from './outbox.js';
 export {
   artifacts,
+  auditEvents,
+  authIdentities,
   databaseSchema,
   idempotencyRecords,
   inboxReceipts,
@@ -117,7 +157,11 @@ export {
   rlsProbeRecords,
   runCheckpoints,
   runEvents,
+  sessions,
   transportSecurityAuditFacts,
+  users,
+  workspaceMemberships,
+  workspaces,
   workflowRuns,
 } from './schema.js';
 export {

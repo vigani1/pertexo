@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0007_execution_runtime.sql';
+export const EXPECTED_MIGRATION_HEAD = '0009_oidc_login_transactions.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -22,6 +22,11 @@ interface ReadinessRow {
   owner_member: boolean;
   owner: string;
   policy_compatible: boolean;
+  phase1_grants_compatible: boolean;
+  phase1_policy_compatible: boolean;
+  phase1_schema_compatible: boolean;
+  oidc_grants_compatible: boolean;
+  oidc_schema_compatible: boolean;
   postgres_major: number;
   relforcerowsecurity: boolean;
   relrowsecurity: boolean;
@@ -88,6 +93,93 @@ export async function checkDatabaseReadiness(
           and workspace_attribute.attnum = any(table_index.indkey)
       ) as schema_compatible,
       (
+        to_regclass('app.users') is not null
+        and to_regclass('app.auth_identities') is not null
+        and to_regclass('app.sessions') is not null
+        and to_regclass('app.workspaces') is not null
+        and to_regclass('app.workspace_memberships') is not null
+        and to_regclass('app.audit_events') is not null
+        and exists (
+          select 1 from pg_attribute a
+          where a.attrelid = to_regclass('app.workspace_memberships')
+            and a.attname = 'workspace_id' and a.attnotnull
+            and a.atttypid = 'uuid'::regtype and not a.attisdropped
+        )
+        and exists (
+          select 1 from pg_attribute a
+          where a.attrelid = to_regclass('app.audit_events')
+            and a.attname = 'workspace_id' and a.attnotnull
+            and a.atttypid = 'uuid'::regtype and not a.attisdropped
+        )
+      ) as phase1_schema_compatible,
+      (
+        (select c.relrowsecurity and c.relforcerowsecurity
+         from pg_class c where c.oid = to_regclass('app.workspace_memberships'))
+        and
+        (select c.relrowsecurity and c.relforcerowsecurity
+         from pg_class c where c.oid = to_regclass('app.audit_events'))
+        and exists (
+          select 1 from pg_policy p
+          where p.polrelid = to_regclass('app.workspace_memberships')
+            and p.polname = 'workspace_memberships_workspace_scope'
+            and p.polqual is not null and p.polwithcheck is not null
+        )
+        and exists (
+          select 1 from pg_policy p
+          where p.polrelid = to_regclass('app.audit_events')
+            and p.polname = 'audit_events_workspace_select'
+            and p.polqual is not null
+        )
+        and exists (
+          select 1 from pg_policy p
+          where p.polrelid = to_regclass('app.audit_events')
+            and p.polname = 'audit_events_workspace_insert'
+            and p.polwithcheck is not null
+        )
+      ) as phase1_policy_compatible,
+      (
+        has_table_privilege(current_user, 'app.users', 'SELECT')
+        and has_table_privilege(current_user, 'app.sessions', 'SELECT')
+        and has_table_privilege(current_user, 'app.workspaces', 'SELECT')
+        and has_table_privilege(current_user, 'app.workspace_memberships', 'SELECT')
+        and has_table_privilege(current_user, 'app.audit_events', 'SELECT')
+        and not has_table_privilege(current_user, 'app.audit_events', 'UPDATE')
+        and not has_table_privilege(current_user, 'app.audit_events', 'DELETE')
+      ) as phase1_grants_compatible,
+      (
+        to_regclass('app.oidc_login_transactions') is not null
+        and exists (
+          select 1 from pg_attribute a
+          where a.attrelid = to_regclass('app.oidc_login_transactions')
+            and a.attname = 'state_digest' and a.attnotnull
+            and a.atttypid = 'bpchar'::regtype and not a.attisdropped
+        )
+        and exists (
+          select 1 from pg_attribute a
+          where a.attrelid = to_regclass('app.oidc_login_transactions')
+            and a.attname = 'code_verifier_ciphertext' and a.attnotnull
+            and not a.attisdropped
+        )
+        and exists (
+          select 1 from pg_attribute a
+          where a.attrelid = to_regclass('app.oidc_login_transactions')
+            and a.attname = 'nonce_ciphertext' and a.attnotnull
+            and not a.attisdropped
+        )
+        and exists (
+          select 1 from pg_attribute a
+          where a.attrelid = to_regclass('app.oidc_login_transactions')
+            and a.attname = 'expires_at' and a.attnotnull
+            and not a.attisdropped
+        )
+      ) as oidc_schema_compatible,
+      (
+        has_table_privilege(current_user, 'app.oidc_login_transactions', 'SELECT')
+        and has_table_privilege(current_user, 'app.oidc_login_transactions', 'INSERT')
+        and has_column_privilege(current_user, 'app.oidc_login_transactions', 'consumed_at', 'UPDATE')
+        and not has_table_privilege(current_user, 'app.oidc_login_transactions', 'DELETE')
+      ) as oidc_grants_compatible,
+      (
         select name
         from pertexo_internal.schema_migrations
         order by name desc
@@ -123,6 +215,23 @@ export async function checkDatabaseReadiness(
   }
   if (!row.policy_compatible) {
     throw new Error('Workspace row-level security policy is incompatible');
+  }
+  if (!row.phase1_schema_compatible) {
+    throw new Error('Identity/workspace schema is incompatible');
+  }
+  if (!row.phase1_policy_compatible) {
+    throw new Error(
+      'Identity/workspace row-level security policy is incompatible',
+    );
+  }
+  if (!row.phase1_grants_compatible) {
+    throw new Error('Identity/workspace runtime grants are incompatible');
+  }
+  if (!row.oidc_schema_compatible) {
+    throw new Error('OIDC login transaction schema is incompatible');
+  }
+  if (!row.oidc_grants_compatible) {
+    throw new Error('OIDC login transaction grants are incompatible');
   }
   if (
     !row.can_select ||
