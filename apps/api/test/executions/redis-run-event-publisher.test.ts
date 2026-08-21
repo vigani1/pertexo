@@ -42,7 +42,10 @@ describe('Redis run event publisher', () => {
         workspaceId: WORKSPACE_ID,
       }),
     ).resolves.toEqual({ receivers: 2 });
-    expect(fake.publications).toHaveLength(1);
+    await expect(
+      publisher.resync({ runId: RUN_ID, workspaceId: WORKSPACE_ID }),
+    ).resolves.toEqual({ receivers: 2 });
+    expect(fake.publications).toHaveLength(2);
     expect(fake.publications[0]?.channel).not.toContain(RUN_ID);
     expect(JSON.parse(fake.publications[0]?.payload ?? '')).toEqual({
       kind: 'event',
@@ -51,6 +54,10 @@ describe('Redis run event publisher', () => {
       workspaceId: WORKSPACE_ID,
     });
     expect(fake.publications[0]?.payload).not.toContain('payload');
+    expect(fake.publications[1]).toEqual({
+      channel: fake.publications[0]?.channel,
+      payload: JSON.stringify({ kind: 'resync' }),
+    });
     await publisher.close();
     expect(fake.disconnected).toBe(true);
   });

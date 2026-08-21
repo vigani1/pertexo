@@ -107,6 +107,24 @@ describe('Redis run event source', () => {
     await subscription.close();
   });
 
+  it('forwards a worker resync hint on the opaque subscribed channel', async () => {
+    const fake = new FakeRedis();
+    const subscription = await sourceWithFake(fake).subscribe({
+      runId: RUN_ID,
+      signal: new AbortController().signal,
+      workspaceId: WORKSPACE_ID,
+    });
+    const channel = fake.subscribedChannels[0];
+    expect(channel).toBeDefined();
+    fake.emit('message', channel, JSON.stringify({ kind: 'resync' }));
+
+    await expect(subscription[Symbol.asyncIterator]().next()).resolves.toEqual({
+      done: false,
+      value: { kind: 'resync' },
+    });
+    await subscription.close();
+  });
+
   it('disconnects and completes the iterator when the request is aborted', async () => {
     const fake = new FakeRedis();
     const controller = new AbortController();

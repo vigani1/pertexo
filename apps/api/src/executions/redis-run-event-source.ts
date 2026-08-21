@@ -1,7 +1,8 @@
 import { Buffer } from 'node:buffer';
-import { createHash } from 'node:crypto';
 
 import { Redis } from 'ioredis';
+import { runEventChannel } from '@pertexo/queue/run-event-notifications';
+export { runEventChannel } from '@pertexo/queue/run-event-notifications';
 import { z } from 'zod';
 
 import {
@@ -57,18 +58,6 @@ function parseRedisUrl(value: string): string {
     );
   }
   return value;
-}
-
-/** Redis channel names reveal neither workspace nor run identifiers. */
-export function runEventChannel(workspaceId: string, runId: string): string {
-  const identity = z
-    .object({ runId: z.uuid(), workspaceId: z.uuid() })
-    .strict()
-    .parse({ runId, workspaceId });
-  const digest = createHash('sha256')
-    .update(`v1\0${identity.workspaceId}\0${identity.runId}`)
-    .digest('base64url');
-  return `run-events:v1:${digest}`;
 }
 
 class BoundedNotificationQueue implements AsyncIterable<LiveRunEventNotification> {
@@ -220,7 +209,7 @@ export class RedisRunEventSource implements LiveRunEventSource {
         const notification = safeParseLiveRunEventNotification(
           JSON.parse(message),
         );
-        if (notification?.kind === 'event') queue.push(notification);
+        if (notification !== undefined) queue.push(notification);
       } catch {
         // Pub/sub is untrusted transport input. A malformed hint is discarded;
         // later valid/reconnect hints still reconstruct from PostgreSQL.

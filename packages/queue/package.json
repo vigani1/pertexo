@@ -33,6 +33,11 @@
       "types": "./dist/defaults.d.ts",
       "node": "./dist/defaults.js",
       "default": "./dist/defaults.js"
+    },
+    "./run-event-notifications": {
+      "types": "./dist/run-event-notifications.d.ts",
+      "node": "./dist/run-event-notifications.js",
+      "default": "./dist/run-event-notifications.js"
     }
   },
   "browser": {
@@ -41,7 +46,8 @@
     "./dist/names.js": false,
     "./dist/producer.js": false,
     "./dist/consumer.js": false,
-    "./dist/defaults.js": false
+    "./dist/defaults.js": false,
+    "./dist/run-event-notifications.js": false
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

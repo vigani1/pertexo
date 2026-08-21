@@ -12,9 +12,9 @@ export {
   RedisRunEventSource,
   RedisRunEventSourceConfigurationError,
   RedisRunEventSubscribeError,
-  runEventChannel,
   type RedisRunEventSourceOptions,
 } from './redis-run-event-source.js';
+export { runEventChannel } from '@pertexo/queue/run-event-notifications';
 export {
   RunEventStreamInvariantError,
   safeParseLiveRunEventNotification,

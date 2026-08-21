@@ -59,6 +59,9 @@ importers:
       '@pertexo/observability':
         specifier: workspace:*
         version: link:../../packages/observability
+      '@pertexo/queue':
+        specifier: workspace:*
+        version: link:../../packages/queue
       '@pertexo/workflow-engine':
         specifier: workspace:*
         version: link:../../packages/workflow-engine

@@ -48,6 +48,20 @@ export {
   createQueueConsumer,
   unrecoverableQueueError,
 } from './consumer.js';
+export {
+  RedisRunEventNotificationPublisher,
+  RunEventNotificationConfigurationError,
+  RunEventNotificationPublishError,
+  encodeRunEventReference,
+  encodeRunEventResync,
+  runEventChannel,
+} from './run-event-notifications.js';
+export type {
+  RunEventIdentity,
+  RunEventNotificationPublisher,
+  RunEventNotificationPublisherOptions,
+  RunEventReference,
+} from './run-event-notifications.js';
 export type {
   QueueConsumer,
   QueueConsumerCloseResult,
