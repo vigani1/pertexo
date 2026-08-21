@@ -6,6 +6,10 @@ import {
   createOidcLoginTransactionStore,
   createWorkspaceDatabase,
   parseDatabaseConfig,
+  outboxEvents,
+  runCheckpoints,
+  runEvents,
+  workflowRuns,
   workspaceMemberships,
   workspaces,
   type WorkspaceDatabase,
@@ -390,6 +394,34 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     });
     expect(cancelReplay.statusCode).toBe(200);
     expect(cancelReplay.json()).toMatchObject({ alreadyRequested: true });
+
+    const durableRunEffects = await workspaceDatabase.withWorkspace(
+      workspace.id,
+      async (transaction) => {
+        const runs = await transaction.db.select().from(workflowRuns);
+        const checkpoints = await transaction.db.select().from(runCheckpoints);
+        const events = await transaction.db.select().from(runEvents);
+        const outbox = await transaction.db.select().from(outboxEvents);
+        return {
+          runs: runs.filter(({ id }) => id === startedBody.run.id).length,
+          checkpoints: checkpoints.filter(
+            ({ workflowRunId }) => workflowRunId === startedBody.run.id,
+          ).length,
+          events: events.filter(
+            ({ workflowRunId }) => workflowRunId === startedBody.run.id,
+          ).length,
+          outbox: outbox.filter(
+            ({ aggregateId }) => aggregateId === startedBody.run.id,
+          ).length,
+        };
+      },
+    );
+    expect(durableRunEffects).toEqual({
+      runs: 1,
+      checkpoints: 1,
+      events: 2,
+      outbox: 2,
+    });
 
     const storedSession = await identityDatabase.findActiveSessionByDigest(
       sha256Hex(cookies.rawSession),
