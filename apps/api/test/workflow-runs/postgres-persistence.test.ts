@@ -2,6 +2,7 @@ import { CORE_REGISTRY_RELEASE } from '@pertexo/nodes-core';
 import {
   buildWorkflowExecutableV2,
   composeExecutableCompatibilityRelease,
+  describeExecutableCompatibilityRelease,
   parseCheckpoint,
 } from '@pertexo/workflow-engine';
 import { describe, expect, it, vi } from 'vitest';
@@ -82,6 +83,13 @@ function run() {
 describe('PostgreSQL workflow run persistence adapter', () => {
   it('verifies the exact V2 release and creates the initial event-bound checkpoint', async () => {
     const compiled = executable();
+    expect(
+      describeExecutableCompatibilityRelease(
+        composeExecutableCompatibilityRelease(CORE_REGISTRY_RELEASE),
+      ).fingerprint,
+    ).toBe(
+      'node-compat:v1:sha256:cf21b2e644563beb8b031481e9d5182b361b4ae2d4abd1d7d86d7b3fe0299f59',
+    );
     const start = vi.fn<WorkflowRunDatabase['start']>(async (input) => {
       await Promise.resolve();
       const initial = input.checkpointFactory({

@@ -22,6 +22,7 @@ export {
   buildWorkflowExecutableV2,
   composeExecutableCompatibilityRelease,
   computeWorkflowExecutableChecksumV2,
+  describeExecutableCompatibilityRelease,
   parseWorkflowExecutableV2,
   PHASE3_RUNTIME_POLICIES_V1,
   verifyWorkflowExecutableV2,
@@ -29,6 +30,7 @@ export {
 } from './executable-workflow.js';
 export type {
   CompiledWorkflowExecutableV2,
+  ExecutableCompatibilityReleaseDescription,
   ExecutableRuntimePoliciesV1,
   VerifiedWorkflowExecutableV2,
   WorkflowExecutableNodeV2,

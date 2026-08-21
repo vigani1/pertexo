@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { types as nodeTypes } from 'node:util';
 
 import {
+  canonicalCompatibilityReleaseJson,
   computeCompatibilitySelectionFingerprint,
   createRegistryRelease,
   NODE_JSON_LIMITS_V1,
@@ -199,6 +200,27 @@ export function composeExecutableCompatibilityRelease(
       ],
     });
   } catch (error) {
+    normalizeError(error);
+  }
+}
+
+export type ExecutableCompatibilityReleaseDescription = Readonly<{
+  epoch: number;
+  fingerprint: string;
+  catalogJson: string;
+}>;
+
+export function describeExecutableCompatibilityRelease(
+  releaseInput: unknown,
+): ExecutableCompatibilityReleaseDescription {
+  try {
+    const release = parseRegistryRelease(releaseInput);
+    return Object.freeze({
+      epoch: release.epoch,
+      fingerprint: release.fingerprint,
+      catalogJson: canonicalCompatibilityReleaseJson(release),
+    });
+  } catch (error: unknown) {
     normalizeError(error);
   }
 }

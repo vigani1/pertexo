@@ -48,7 +48,9 @@ export const workflowCompatibilityIssueSchema = z
 export const workflowCompatibilityReportSchema = z
   .object({
     compatible: z.boolean(),
-    fingerprint: z.string().regex(/^wf-compat:v1:sha256:[0-9a-f]{64}$/u),
+    fingerprint: z
+      .string()
+      .regex(/^(?:wf-compat|node-compat):v1:sha256:[0-9a-f]{64}$/u),
     issues: z.array(workflowCompatibilityIssueSchema).max(1_000),
   })
   .strict();

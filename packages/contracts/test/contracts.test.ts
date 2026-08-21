@@ -14,6 +14,7 @@ import {
 import { workspaceCreateRequestSchema } from '../src/http/identity-workspace.js';
 import {
   strongEtagSchema,
+  workflowCompatibilityReportSchema,
   workflowCreateRequestSchema,
   workflowDraftSaveRequestSchema,
   workflowGraphSchema,
@@ -102,6 +103,14 @@ describe('public contracts package', () => {
   });
 
   it('defines strict workflow authoring seams with strong ETag preconditions', () => {
+    expect(
+      workflowCompatibilityReportSchema.safeParse({
+        compatible: true,
+        fingerprint:
+          'node-compat:v1:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        issues: [],
+      }).success,
+    ).toBe(true);
     expect(
       workflowCreateRequestSchema.safeParse({
         name: 'Inbound',

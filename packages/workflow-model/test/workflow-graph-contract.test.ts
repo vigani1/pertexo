@@ -592,6 +592,18 @@ describe('workflow executable identity V1', () => {
 });
 
 describe('workflow draft representation tag V1', () => {
+  it('uses a supplied durable release fingerprint as authoring identity', () => {
+    const graph = fixture();
+    const releaseFingerprint =
+      'node-compat:v1:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    const report = workflowCompatibilityReport(graph, {
+      ...TEST_DEFINITION_CATALOG_V1,
+      releaseFingerprint,
+    });
+
+    expect(report.fingerprint).toBe(releaseFingerprint);
+  });
+
   it('has a stable opaque golden value and includes compatibility identity', () => {
     const graph = fixture();
     const fingerprint = workflowCompatibilityReport(

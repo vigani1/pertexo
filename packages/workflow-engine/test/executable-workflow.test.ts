@@ -17,6 +17,7 @@ import {
   composeExecutableCompatibilityRelease,
   computeWorkflowExecutableChecksumV2,
   createCheckpoint,
+  describeExecutableCompatibilityRelease,
   executeNodeAttempt,
   invocationKey,
   parseWorkflowExecutableV2,
@@ -162,6 +163,17 @@ function graph(reverse = false) {
 }
 
 describe('workflow executable V2 identity', () => {
+  it('describes the exact durable compatibility authority for a deployment artifact', () => {
+    const release = composeExecutableCompatibilityRelease(nodeRelease());
+    const description = describeExecutableCompatibilityRelease(release);
+
+    expect(description.epoch).toBe(1);
+    expect(description.fingerprint).toBe(release.fingerprint);
+    expect(description.catalogJson).toContain(
+      '"domain":"pertexo.node-compatibility-release"',
+    );
+  });
+
   it('composes engine-owned policies and produces the pre-publication golden checksum', () => {
     const release = composeExecutableCompatibilityRelease(nodeRelease());
     const compiled = buildWorkflowExecutableV2({ graph: graph(), release });
