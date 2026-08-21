@@ -5,6 +5,7 @@ import { z } from 'zod';
 import type { WorkspaceDrizzle } from './workspace.js';
 
 const MAXIMUM_COMPATIBILITY_CATALOG_BYTES = 128 * 1024;
+const MAXIMUM_ROLLING_RELEASES = 2;
 const fingerprintSchema = z
   .string()
   .regex(/^node-compat:v1:sha256:[0-9a-f]{64}$/u);
@@ -22,6 +23,9 @@ export type CompatibilityReleaseExpectation = Readonly<{
   /** Canonical compatibility-release projection owned by node-sdk. */
   catalogJson: string;
 }>;
+
+export type CompatibilityReleaseExpectationSet =
+  readonly CompatibilityReleaseExpectation[];
 
 export class CompatibilityReleaseMismatchError extends Error {
   public override readonly name = 'CompatibilityReleaseMismatchError';
@@ -66,6 +70,35 @@ export function parseCompatibilityReleaseExpectation(
   return Object.freeze({ ...parsed });
 }
 
+export function parseCompatibilityReleaseExpectationSet(
+  input: unknown,
+): CompatibilityReleaseExpectationSet {
+  const releases = z
+    .array(z.unknown())
+    .min(1)
+    .max(MAXIMUM_ROLLING_RELEASES)
+    .parse(input)
+    .map(parseCompatibilityReleaseExpectation);
+  const identities = releases.map(
+    ({ epoch, fingerprint }) => `${String(epoch)}\u0000${fingerprint}`,
+  );
+  if (new Set(identities).size !== identities.length)
+    throw new TypeError('Compatibility release expectations must be unique');
+  return Object.freeze(releases);
+}
+
+function expectedSetJson(
+  expectations: CompatibilityReleaseExpectationSet,
+): string {
+  return JSON.stringify(
+    expectations.map(({ epoch, fingerprint, catalogJson }) => ({
+      epoch,
+      fingerprint,
+      catalog: JSON.parse(catalogJson) as unknown,
+    })),
+  );
+}
+
 export async function lockExpectedCompatibilityRelease(
   database: WorkspaceDrizzle,
   input: CompatibilityReleaseExpectation,
@@ -92,6 +125,64 @@ export async function checkExpectedCompatibilityRelease(
   input: CompatibilityReleaseExpectation,
 ): Promise<void> {
   await lockExpectedCompatibilityReleaseWithClient(pool, input);
+}
+
+export async function checkExpectedCompatibilityReleaseSet(
+  pool: Pool,
+  input: CompatibilityReleaseExpectationSet,
+): Promise<void> {
+  await lockExpectedCompatibilityReleaseSetWithClient(pool, input);
+}
+
+export async function lockExpectedCompatibilityReleaseSetWithClient(
+  client: Pick<Pool | PoolClient, 'query'>,
+  input: CompatibilityReleaseExpectationSet,
+): Promise<void> {
+  const expected = parseCompatibilityReleaseExpectationSet(input);
+  try {
+    const result = await client.query(
+      `select epoch, fingerprint, catalog_json
+         from app.lock_node_compatibility_current_supported($1::jsonb)`,
+      [expectedSetJson(expected)],
+    );
+    if (result.rows.length !== 1) throw new CompatibilityReleaseMismatchError();
+  } catch (error: unknown) {
+    if (error instanceof CompatibilityReleaseMismatchError) throw error;
+    throw new CompatibilityReleaseMismatchError();
+  }
+}
+
+export async function checkCompatibilityReleasePreactivationTarget(
+  pool: Pool,
+  supportedInput: CompatibilityReleaseExpectationSet,
+  targetInput: CompatibilityReleaseExpectation,
+): Promise<void> {
+  const supported = parseCompatibilityReleaseExpectationSet(supportedInput);
+  const target = parseCompatibilityReleaseExpectation(targetInput);
+  if (
+    !supported.some(
+      (release) =>
+        release.epoch === target.epoch &&
+        release.fingerprint === target.fingerprint &&
+        release.catalogJson === target.catalogJson,
+    )
+  )
+    throw new CompatibilityReleaseMismatchError();
+  try {
+    const result = await pool.query(
+      `select epoch, fingerprint
+         from app.node_compatibility_releases
+        where epoch = $1
+          and fingerprint = $2
+          and catalog_json = $3::jsonb
+        `,
+      [target.epoch, target.fingerprint, target.catalogJson],
+    );
+    if (result.rows.length !== 1) throw new CompatibilityReleaseMismatchError();
+  } catch (error: unknown) {
+    if (error instanceof CompatibilityReleaseMismatchError) throw error;
+    throw new CompatibilityReleaseMismatchError();
+  }
 }
 
 export async function lockExpectedCompatibilityReleaseWithClient(

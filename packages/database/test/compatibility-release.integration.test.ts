@@ -12,8 +12,13 @@ import {
   checkExpectedCompatibilityRelease,
   CompatibilityReleaseMismatchError,
 } from '../src/compatibility-release.js';
+import { createCompatibilityReleaseMaintenance } from '../src/compatibility-release-maintenance.js';
+import { parseDatabaseConfig } from '../src/config.js';
 import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../src/migrations.js';
-import { checkDatabaseReadiness } from '../src/readiness.js';
+import {
+  checkDatabasePreactivationReadiness,
+  checkDatabaseReadiness,
+} from '../src/readiness.js';
 import { PHASE3_COMPATIBILITY_EXPECTATION } from './phase3-compatibility-fixture.js';
 
 const adminUrl =
@@ -33,7 +38,12 @@ const dispatcherBaseUrl =
   'postgresql://pertexo_dispatcher:pertexo-local-dispatcher@localhost:5432/pertexo';
 const databaseName = `pertexo_test_compatibility_${randomUUID().replaceAll('-', '')}`;
 const upgradeDatabaseName = `pertexo_test_compatibility_upgrade_${randomUUID().replaceAll('-', '')}`;
-const databaseNames = [databaseName, upgradeDatabaseName] as const;
+const rolloutDatabaseName = `pertexo_test_compatibility_rollout_${randomUUID().replaceAll('-', '')}`;
+const databaseNames = [
+  databaseName,
+  upgradeDatabaseName,
+  rolloutDatabaseName,
+] as const;
 const catalogSchema = z.looseObject({
   executors: z.array(
     z.looseObject({
@@ -98,11 +108,11 @@ function migrationConfig(name: string) {
   } as const;
 }
 
-async function migrateThrough0017(name: string): Promise<void> {
-  const directory = await mkdtemp(path.join(tmpdir(), 'pertexo-0017-'));
+async function migrateThrough0018(name: string): Promise<void> {
+  const directory = await mkdtemp(path.join(tmpdir(), 'pertexo-0018-'));
   try {
     const migrations = (await readdir(MIGRATIONS_DIRECTORY)).filter(
-      (migration) => /^\d{4}_.+\.sql$/u.test(migration) && migration < '0018_',
+      (migration) => /^\d{4}_.+\.sql$/u.test(migration) && migration < '0019_',
     );
     await Promise.all(
       migrations.map((migration) =>
@@ -127,7 +137,8 @@ beforeAll(async () => {
     ownerRole: 'pertexo_owner',
     workerRuntimeRole: 'pertexo_worker',
   });
-  await migrateThrough0017(upgradeDatabaseName);
+  await migrateDatabase(migrationConfig(rolloutDatabaseName));
+  await migrateThrough0018(upgradeDatabaseName);
   await migrateDatabase(migrationConfig(upgradeDatabaseName));
 }, 60_000);
 
@@ -136,6 +147,281 @@ afterAll(async () => {
 });
 
 describe('durable node compatibility release authority', () => {
+  it('requires exact API and worker preactivation cohorts before activation', async () => {
+    const owner = new Pool({
+      connectionString: databaseUrl(migrationBaseUrl, rolloutDatabaseName),
+      max: 1,
+    });
+    const api = new Pool({
+      connectionString: databaseUrl(apiBaseUrl, rolloutDatabaseName),
+      max: 1,
+    });
+    const targetEpoch = 2;
+    const targetFingerprint = PHASE3_COMPATIBILITY_EXPECTATION.fingerprint;
+    const deploymentId = `phase3-rollout-${randomUUID()}`;
+    const approvalId = randomUUID();
+    const activationId = randomUUID();
+    const apiArtifactIds = ['api-a', 'api-b'] as const;
+    const workerArtifactIds = ['worker-a', 'worker-b'] as const;
+    const targetExpectation = {
+      ...PHASE3_COMPATIBILITY_EXPECTATION,
+      epoch: targetEpoch,
+    };
+    const rollingExpectations = [
+      PHASE3_COMPATIBILITY_EXPECTATION,
+      targetExpectation,
+    ] as const;
+    try {
+      await owner.query('begin');
+      await owner.query('set local role pertexo_owner');
+      await owner.query(
+        `select app.prepare_node_compatibility_release(
+           $1, $2, $3::jsonb, 1, $4, 'deployment', $5, $6
+         )`,
+        [
+          targetEpoch,
+          targetFingerprint,
+          PHASE3_COMPATIBILITY_EXPECTATION.catalogJson,
+          PHASE3_COMPATIBILITY_EXPECTATION.fingerprint,
+          'phase3-rollout-controller',
+          'Prepare an additive rolling-overlap release',
+        ],
+      );
+      await owner.query('commit');
+
+      await expect(
+        checkDatabasePreactivationReadiness(api, {
+          ownerRole: 'pertexo_owner',
+          workerRuntimeRole: 'pertexo_worker',
+          expectedCompatibilityReleases: rollingExpectations,
+          preactivationTarget: targetExpectation,
+        }),
+      ).resolves.toMatchObject({
+        migrationHead: '0019_node_compatibility_preactivation.sql',
+      });
+
+      for (const [roleKind, artifactId] of [
+        ['api', apiArtifactIds[0]],
+        ['worker', workerArtifactIds[0]],
+      ] as const) {
+        await owner.query('begin');
+        await owner.query('set local role pertexo_owner');
+        await owner.query(
+          `select app.record_node_compatibility_preactivation(
+             $1, $2, $3, $4, $5, $6, $7::jsonb
+           )`,
+          [
+            randomUUID(),
+            deploymentId,
+            targetEpoch,
+            targetFingerprint,
+            roleKind,
+            artifactId,
+            PHASE3_COMPATIBILITY_EXPECTATION.catalogJson,
+          ],
+        );
+        await owner.query('commit');
+      }
+
+      await owner.query('begin');
+      await owner.query('set local role pertexo_owner');
+      await expect(
+        owner.query(
+          `select app.approve_node_compatibility_activation(
+             $1, $2, $3, $4, $5::jsonb, $6::jsonb, $7, $8
+           )`,
+          [
+            approvalId,
+            deploymentId,
+            targetEpoch,
+            targetFingerprint,
+            JSON.stringify(apiArtifactIds),
+            JSON.stringify(workerArtifactIds),
+            'phase3-rollout-controller',
+            'Approve only after the complete named cohorts report ready',
+          ],
+        ),
+      ).rejects.toSatisfy(pgCode('P0001'));
+      await owner.query('rollback');
+
+      for (const [roleKind, artifactId] of [
+        ['api', apiArtifactIds[1]],
+        ['worker', workerArtifactIds[1]],
+      ] as const) {
+        await owner.query('begin');
+        await owner.query('set local role pertexo_owner');
+        await owner.query(
+          `select app.record_node_compatibility_preactivation(
+             $1, $2, $3, $4, $5, $6, $7::jsonb
+           )`,
+          [
+            randomUUID(),
+            deploymentId,
+            targetEpoch,
+            targetFingerprint,
+            roleKind,
+            artifactId,
+            PHASE3_COMPATIBILITY_EXPECTATION.catalogJson,
+          ],
+        );
+        await owner.query('commit');
+      }
+
+      await owner.query('begin');
+      await owner.query('set local role pertexo_owner');
+      await owner.query(
+        `select app.approve_node_compatibility_activation(
+           $1, $2, $3, $4, $5::jsonb, $6::jsonb, $7, $8
+         )`,
+        [
+          approvalId,
+          deploymentId,
+          targetEpoch,
+          targetFingerprint,
+          JSON.stringify(apiArtifactIds),
+          JSON.stringify(workerArtifactIds),
+          'phase3-rollout-controller',
+          'Approve the fully ready rolling cohort',
+        ],
+      );
+      await owner.query(
+        `select app.activate_node_compatibility_release(
+           $1, 1, $2, $3, $4, $5, $6
+         )`,
+        [
+          activationId,
+          PHASE3_COMPATIBILITY_EXPECTATION.fingerprint,
+          approvalId,
+          'deployment',
+          'phase3-rollout-controller',
+          'Activate the prevalidated additive release',
+        ],
+      );
+      await owner.query('commit');
+
+      await expect(
+        api.query(
+          `select epoch, fingerprint, activation_approval_id
+             from app.node_compatibility_current`,
+        ),
+      ).resolves.toMatchObject({
+        rows: [
+          {
+            activation_approval_id: approvalId,
+            epoch: targetEpoch,
+            fingerprint: targetFingerprint,
+          },
+        ],
+      });
+      await expect(
+        checkDatabaseReadiness(api, {
+          ownerRole: 'pertexo_owner',
+          workerRuntimeRole: 'pertexo_worker',
+          expectedCompatibilityReleases: rollingExpectations,
+        }),
+      ).resolves.toMatchObject({
+        migrationHead: '0019_node_compatibility_preactivation.sql',
+      });
+      await expect(
+        checkDatabaseReadiness(api, {
+          ownerRole: 'pertexo_owner',
+          workerRuntimeRole: 'pertexo_worker',
+          expectedCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
+        }),
+      ).rejects.toBeInstanceOf(CompatibilityReleaseMismatchError);
+    } finally {
+      await owner.end();
+      await api.end();
+    }
+  });
+
+  it('exposes one transaction-owning maintenance seam for the deployment controller', async () => {
+    const maintenance = createCompatibilityReleaseMaintenance(
+      parseDatabaseConfig({
+        connectionString: databaseUrl(migrationBaseUrl, rolloutDatabaseName),
+        max: 1,
+        ownerRole: 'pertexo_owner',
+        workerRuntimeRole: 'pertexo_worker',
+      }),
+    );
+    const predecessor = {
+      ...PHASE3_COMPATIBILITY_EXPECTATION,
+      epoch: 2,
+    };
+    const target = { ...predecessor, epoch: 3 };
+    const deploymentId = `phase3-maintenance-${randomUUID()}`;
+    const approvalId = randomUUID();
+    try {
+      const preparation = {
+        actorId: 'phase3-rollout-controller',
+        actorKind: 'deployment',
+        expectedPredecessor: predecessor,
+        reason: 'Prepare through the behavior-named maintenance boundary',
+        target,
+      } as const;
+      await maintenance.prepare(preparation);
+      await maintenance.prepare(preparation);
+      await Promise.all(
+        (
+          [
+            ['api', 'api-maintenance'],
+            ['worker', 'worker-maintenance'],
+          ] as const
+        ).map(async ([roleKind, artifactId]) =>
+          maintenance.recordPreactivation({
+            artifactId,
+            checkId: randomUUID(),
+            deploymentId,
+            roleKind,
+            target,
+          }),
+        ),
+      );
+      await maintenance.approve({
+        actorId: 'phase3-rollout-controller',
+        approvalId,
+        deploymentId,
+        reason: 'Approve the exact API and worker artifacts',
+        requiredApiArtifacts: ['api-maintenance'],
+        requiredWorkerArtifacts: ['worker-maintenance'],
+        target,
+      });
+      await maintenance.approve({
+        actorId: 'phase3-rollout-controller',
+        approvalId,
+        deploymentId,
+        reason: 'Approve the exact API and worker artifacts',
+        requiredApiArtifacts: ['api-maintenance'],
+        requiredWorkerArtifacts: ['worker-maintenance'],
+        target,
+      });
+      const activation = {
+        activationId: randomUUID(),
+        actorId: 'phase3-rollout-controller',
+        actorKind: 'deployment',
+        approvalId,
+        expectedPredecessor: predecessor,
+        reason: 'Activate through the audited maintenance boundary',
+      } as const;
+      await maintenance.activate(activation);
+      await maintenance.activate(activation);
+
+      const api = new Pool({
+        connectionString: databaseUrl(apiBaseUrl, rolloutDatabaseName),
+        max: 1,
+      });
+      try {
+        await expect(
+          checkExpectedCompatibilityRelease(api, target),
+        ).resolves.toBeUndefined();
+      } finally {
+        await api.end();
+      }
+    } finally {
+      await maintenance.close();
+    }
+  });
+
   it('matches the local API and worker artifacts and fails closed on drift', async () => {
     for (const base of [apiBaseUrl, workerBaseUrl]) {
       const pool = new Pool({ connectionString: databaseUrl(base), max: 1 });
@@ -147,7 +433,7 @@ describe('durable node compatibility release authority', () => {
             expectedCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0018_phase3_core_executor_non_removal.sql',
+          migrationHead: '0019_node_compatibility_preactivation.sql',
         });
         await expect(
           checkExpectedCompatibilityRelease(pool, {
@@ -162,7 +448,7 @@ describe('durable node compatibility release authority', () => {
     }
   });
 
-  it('upgrades the completed 0017 head without rewriting prior state', async () => {
+  it('upgrades the completed 0018 head without rewriting prior state', async () => {
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, upgradeDatabaseName),
       max: 1,
@@ -175,7 +461,7 @@ describe('durable node compatibility release authority', () => {
           expectedCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0018_phase3_core_executor_non_removal.sql',
+        migrationHead: '0019_node_compatibility_preactivation.sql',
       });
     } finally {
       await pool.end();
@@ -189,6 +475,22 @@ describe('durable node compatibility release authority', () => {
         await expect(
           pool.query(
             `update app.node_compatibility_current set activated_at = clock_timestamp()`,
+          ),
+        ).rejects.toSatisfy(pgCode('42501'));
+        await expect(
+          pool.query(
+            'select * from app.node_compatibility_preactivation_checks',
+          ),
+        ).rejects.toSatisfy(pgCode('42501'));
+        await expect(
+          pool.query(
+            `select app.prepare_node_compatibility_release(
+               2, $1, $2::jsonb, 1, $1, 'deployment', 'forbidden', 'forbidden'
+             )`,
+            [
+              PHASE3_COMPATIBILITY_EXPECTATION.fingerprint,
+              PHASE3_COMPATIBILITY_EXPECTATION.catalogJson,
+            ],
           ),
         ).rejects.toSatisfy(pgCode('42501'));
         if (base === dispatcherBaseUrl) {
@@ -392,6 +694,40 @@ describe('durable node compatibility release authority', () => {
       await owner.query('begin').catch(() => undefined);
       await owner.query('set local role pertexo_owner').catch(() => undefined);
       await owner.query(originalDefinition).catch(() => undefined);
+      await owner.query('commit').catch(() => undefined);
+      await owner.end();
+      await api.end();
+    }
+  });
+
+  it('fails readiness on preactivation evidence grant drift', async () => {
+    const owner = new Pool({
+      connectionString: databaseUrl(migrationBaseUrl),
+      max: 1,
+    });
+    const api = new Pool({ connectionString: databaseUrl(apiBaseUrl), max: 1 });
+    try {
+      await owner.query('begin');
+      await owner.query('set local role pertexo_owner');
+      await owner.query(
+        'grant select on app.node_compatibility_preactivation_checks to pertexo_api',
+      );
+      await owner.query('commit');
+      await expect(
+        checkDatabaseReadiness(api, {
+          ownerRole: 'pertexo_owner',
+          workerRuntimeRole: 'pertexo_worker',
+          expectedCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
+        }),
+      ).rejects.toThrow('preactivation authority');
+    } finally {
+      await owner.query('begin').catch(() => undefined);
+      await owner.query('set local role pertexo_owner').catch(() => undefined);
+      await owner
+        .query(
+          'revoke select on app.node_compatibility_preactivation_checks from pertexo_api',
+        )
+        .catch(() => undefined);
       await owner.query('commit').catch(() => undefined);
       await owner.end();
       await api.end();

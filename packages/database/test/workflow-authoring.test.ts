@@ -13,7 +13,7 @@ const migrationUrl = new URL(
 describe('workflow authoring migration contract', () => {
   it('advances the reviewed migration head', () => {
     expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0018_phase3_core_executor_non_removal.sql',
+      '0019_node_compatibility_preactivation.sql',
     );
   });
 

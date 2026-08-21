@@ -5,12 +5,21 @@ export {
 } from './config.js';
 export type { DatabaseConfig, MigrationConfig } from './config.js';
 export {
+  checkCompatibilityReleasePreactivationTarget,
   checkExpectedCompatibilityRelease,
+  checkExpectedCompatibilityReleaseSet,
   CompatibilityReleaseMismatchError,
   lockExpectedCompatibilityRelease,
+  lockExpectedCompatibilityReleaseSetWithClient,
   parseCompatibilityReleaseExpectation,
+  parseCompatibilityReleaseExpectationSet,
 } from './compatibility-release.js';
-export type { CompatibilityReleaseExpectation } from './compatibility-release.js';
+export type {
+  CompatibilityReleaseExpectation,
+  CompatibilityReleaseExpectationSet,
+} from './compatibility-release.js';
+export { createCompatibilityReleaseMaintenance } from './compatibility-release-maintenance.js';
+export type { CompatibilityReleaseMaintenance } from './compatibility-release-maintenance.js';
 export {
   ARTIFACT_STATUS,
   ArtifactFinalizeConflictError,
@@ -133,8 +142,9 @@ export type {
 export {
   EXPECTED_MIGRATION_HEAD,
   checkDatabaseReadiness,
+  checkDatabasePreactivationReadiness,
 } from './readiness.js';
-export type { DatabaseReadiness } from './readiness.js';
+export type { DatabaseReadiness, ReadinessOptions } from './readiness.js';
 export {
   CoordinatorDeliveryMismatchError,
   CoordinatorPlanInvalidError,

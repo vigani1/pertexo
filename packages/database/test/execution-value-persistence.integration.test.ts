@@ -237,7 +237,7 @@ describe('execution value persistence migration', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0018_phase3_core_executor_non_removal.sql',
+          migrationHead: '0019_node_compatibility_preactivation.sql',
           role: expectedRole,
         });
       } finally {

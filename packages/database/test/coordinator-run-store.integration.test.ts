@@ -515,7 +515,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0018_phase3_core_executor_non_removal.sql',
+          migrationHead: '0019_node_compatibility_preactivation.sql',
           role: 'pertexo_worker',
         });
       } finally {
@@ -541,7 +541,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0018_phase3_core_executor_non_removal.sql',
+        migrationHead: '0019_node_compatibility_preactivation.sql',
         role: 'pertexo_worker',
       });
       const catalog = await readinessPool.query<{
@@ -780,7 +780,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0018_phase3_core_executor_non_removal.sql',
+        migrationHead: '0019_node_compatibility_preactivation.sql',
       });
     } finally {
       await readinessPool.end();
@@ -913,7 +913,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         workerRuntimeRole: 'pertexo_worker',
       }),
     ).resolves.toMatchObject({
-      migrationHead: '0018_phase3_core_executor_non_removal.sql',
+      migrationHead: '0019_node_compatibility_preactivation.sql',
     });
     await readinessPool.end();
   });
