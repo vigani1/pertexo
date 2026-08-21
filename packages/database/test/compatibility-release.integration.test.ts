@@ -253,15 +253,18 @@ describe('durable node compatibility release authority', () => {
         pgCode('23514'),
       );
 
-      const blocked = structuredClone(retained);
-      const blockedSet = blocked.executors.find(
-        ({ executor }) => executor.key === 'core.set',
-      );
-      if (blockedSet === undefined) throw new Error('core Set fixture missing');
-      blockedSet.lifecycle = 'retirement_blocked';
-      await expect(insertCandidate(3, blocked)).rejects.toSatisfy(
-        pgCode('23514'),
-      );
+      for (const lifecycle of ['staged', 'retirement_blocked', 'retired']) {
+        const unavailable = structuredClone(retained);
+        const unavailableSet = unavailable.executors.find(
+          ({ executor }) => executor.key === 'core.set',
+        );
+        if (unavailableSet === undefined)
+          throw new Error('core Set fixture missing');
+        unavailableSet.lifecycle = lifecycle;
+        await expect(insertCandidate(3, unavailable)).rejects.toSatisfy(
+          pgCode('23514'),
+        );
+      }
 
       const duplicated = structuredClone(retained);
       const manual = duplicated.executors.find(

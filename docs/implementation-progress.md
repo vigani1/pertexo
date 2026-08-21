@@ -19,7 +19,7 @@ not complete a phase.
 | Phase 0E — execution durability proofs and engine gate | Complete | ADRs 005 and 007–009; commits through `0322837`; 239 unit, 96 real-service integration, five process-recovery, one SSE-outage, and one transport-outage assertions; custom-engine GO |
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
-| Phase 3 — first executable-node slice | In progress | ADR 010; node SDK/core registry `85385cc`–`94426f7`; retained V1 and pre-publication V2 identity/operations through `8ce1fd9`; migration head `0016_engine_invocation_keys.sql`; published projection, bounded execution values, coordinator RunStore, and readiness-gated coordinator consumer through `9d8d3c5`; attempt execution/publication remain disabled |
+| Phase 3 — first executable-node slice | In progress | ADR 010; executable registry/runtime and public run slice through `a7eaf42`; durable compatibility authority, retained fixtures, lifecycle/non-removal, and recovery matrix through `66dafb7`; migration head `0018_phase3_core_executor_non_removal.sql`; rolling preactivation and final evidence remain |
 | Phase 4 — first side-effecting integration slice | Not started | — |
 | Phase 5 — orchestration slice | Not started | — |
 | Phase 6 — V1 providers and triggers | Not started | — |
@@ -727,15 +727,17 @@ Initial evidence:
 
 ## Phase 3 — First executable-node slice
 
-Status: **In progress — executable packages, persistence, consumers, public run API, and PostgreSQL-authoritative SSE complete; active-cancellation recovery, durable compatibility rollout, and final evidence remain**
+Status: **In progress — executable packages, persistence, consumers, public run API, PostgreSQL-authoritative SSE, active-cancellation recovery, and the initial durable compatibility release are complete; rolling preactivation and final evidence remain**
 
 Phase 3 has completed its design prerequisites, package foundations, durable
 coordinator/attempt state, and readiness-gated execution consumers. The exact
 Manual -> Set/Map -> Terminate graph now executes through PostgreSQL, Redis, and
 BullMQ with duplicate attempt delivery. Authorized publication now compiles and
 stores its exact V2 executable envelope, and the public Start/Get/Stream/Cancel
-slice is live. Placement, durable compatibility-release authority, active-work
-cancellation recovery, and the final Phase 0/fleet evidence gates remain.
+slice is live. The initial durable compatibility-release authority, exact
+retained fixtures, active-work cancellation recovery, and the Phase 3
+non-removal barrier are now complete. Rolling target preactivation/deployment
+approval and the final Phase 0/fleet evidence gates remain.
 
 Design prerequisites:
 
@@ -766,7 +768,7 @@ Thin-slice scope and node contracts:
       build.
 - [x] Resolve Set/Map inputs through the accepted restricted-JSONata policy and
       validate configuration and mapped output at every untrusted seam.
-- [ ] Prove pinned executor lookup, retained-version compatibility, supported
+- [x] Prove pinned executor lookup, retained-version compatibility, supported
       config migration, and fail-closed missing/retired/incompatible executor
       behavior.
 - [x] Keep every Phase 3 node absent from the publishable registry until its
@@ -806,7 +808,7 @@ Production execution and persistence:
 - [x] Compose a separate thin node-attempt consumer that claims with a lease and
       fence token, executes outside long database transactions with an
       `AbortSignal`, records the truthful outcome, and emits continuation work.
-- [ ] Preserve IDs-only versioned queue payloads, at-least-once delivery,
+- [x] Preserve IDs-only versioned queue payloads, at-least-once delivery,
       idempotent redelivery, readiness-gated dispatch, bounded draining, and
       PostgreSQL ownership of durable retries and cancellation.
 - [x] Complete the exact Manual -> Set/Map -> Terminate graph after duplicate
@@ -815,11 +817,11 @@ Production execution and persistence:
 
 Compatibility rollout, readiness, and retirement:
 
-- [ ] Define and enforce separate definition and executor lifecycle transitions,
+- [x] Define and enforce separate definition and executor lifecycle transitions,
       including placement, publication, execution, retention, retirement, and
       historical read behavior without identity reuse or latest-version
       substitution.
-- [ ] Compute the deterministic full-release fingerprint over the complete
+- [x] Compute the deterministic full-release fingerprint over the complete
       compatibility catalog and a distinct selection fingerprint over only the
       definitions, executors, migrations, and runtime policies pinned by one V2
       envelope; use the correct fingerprint in authoring tags, durable release
@@ -838,11 +840,11 @@ Compatibility rollout, readiness, and retirement:
       unsupported graph/config/checksum/evaluator/job/event versions, migration
       or grant drift, and local registry/expected-fingerprint disagreement;
       keep cross-workspace dependency inspection out of serving-role readiness.
-- [ ] Enforce the Phase 3 non-removal invariant: all three executors remain in
+- [x] Enforce the Phase 3 non-removal invariant: all three executors remain in
       the active/retained release, no serving or maintenance path can move them
       to `retirement_blocked` or `retired`, and no subtractive worker artifact
       can omit them.
-- [ ] Prove retired historical versions remain readable but are described as
+- [x] Prove retired historical versions remain readable but are described as
       executable or reproducible only while their exact executor and replay
       support window remain retained.
 
@@ -864,7 +866,7 @@ API, SSE, and cancellation:
 - [x] Reconstruct SSE from PostgreSQL-authoritative ordered events using bounded
       subscribe-before-read catch-up, opaque Redis wake-ups, reconnect cursors,
       and backfill after Redis loss.
-- [ ] Make cancellation durable and monotonic, prevent new admission after the
+- [x] Make cancellation durable and monotonic, prevent new admission after the
       cancel boundary, cooperatively abort active work, and report completed
       work and unknown outcomes truthfully.
 - [ ] Prove authorization, capability checks, hidden cross-workspace resources,
@@ -885,7 +887,7 @@ Required completion evidence:
       idempotency, version loading, checkpoint CAS, events, attempts,
       cancellation, and least-privilege grants from a clean zero-to-head
       migration.
-- [ ] Retain at least one immutable graph/executable/checksum fixture for every
+- [x] Retain at least one immutable graph/executable/checksum fixture for every
       supported definition/executor pair and every supported executable format,
       including Phase 2 `wf:v1`; prove each fixture selects only its exact
       executor or remains safely readable when it is intentionally
@@ -907,7 +909,7 @@ Required completion evidence:
       mismatch audit, enqueue-before-mark recovery, Redis and PostgreSQL outage/
       recovery, propagated queue trace context, timeout/abort/unrecoverable
       handling, readiness loss, bounded active drain, and no post-drain claims.
-- [ ] Re-run every Phase 0E execution failure fixture: coordinator crashes
+- [x] Re-run every Phase 0E execution failure fixture: coordinator crashes
       before and after checkpoint commit, node-attempt crashes before dispatch
       and after idempotent/unsafe dispatch, expired-attempt reconciliation,
       durable wait/retry recovery fixtures that remain applicable to the shared
@@ -1206,16 +1208,59 @@ Current evidence:
   under CSRF/RLS, verifies the one-run/one-checkpoint/two-event/two-outbox
   durable cardinality, strips cancellation actor/reason from SSE, and hides a
   foreign workspace.
-- Current validation is green: root `pnpm check` passes formatting, ESLint,
+- At `a7eaf42`, root `pnpm check` passes formatting, ESLint,
   deterministic generated-artifact drift, all workspace typechecks, 559 unit
   assertions, and all production builds. On the isolated PostgreSQL 18
   database already migrated through `0016_engine_invocation_keys.sql`, focused
   database suites pass 38 assertions, the authenticated real API suite passes
   six end-to-end cases, the real PostgreSQL/Redis SSE proof passes, and the real
-  PostgreSQL/Redis/BullMQ coordinator proof passes three cases. The remaining
-  unchecked work is the active-work cancellation/restart matrix, durable
-  compatibility-release/fleet authority, retained compatibility/failure
-  matrix completion, and independent final Phase 3 review.
+  PostgreSQL/Redis/BullMQ coordinator proof passes three cases. At that point
+  active-work cancellation/restart, durable compatibility-release/fleet
+  authority, retained compatibility, and final Phase 3 review remained open.
+- Commits `6e28d20` and `85f0b4c` bind authoring compatibility tags, V2
+  executable provenance, publication, new run admission, worker version reads,
+  and API/worker readiness to one engine-derived compatibility epoch,
+  full-release fingerprint, and canonical catalog. Migration
+  `0017_node_compatibility_releases.sql` stores the immutable audited release
+  and singleton current pointer; serving roles can only read or take the
+  same-transaction share lock. Exact completed command replays resolve before
+  current-release comparison, while distinct mixed-release commands fail
+  closed. Clean/upgrade PostgreSQL, authenticated API, worker transport, and
+  real publication-vs-pointer-lock proofs are green.
+- Commit `37ce837` restores the shared Phase 0E process fixture to the active
+  workspace admission and explicit scheduler-state contracts. The full five-
+  case process-boundary matrix passes: coordinator crashes on both sides of
+  checkpoint CAS, Redis restart wait recovery, attempt crashes before/after
+  provider dispatch, cooperative cancellation through Redis loss with one
+  confirmed effect, and cancellation-fenced branch/all-any-count join/three-
+  iteration loop reconstruction. Worker unit/typecheck/build/lint/format gates
+  pass at 64 assertions.
+- Commit `de23aee` retains one immutable production-core V2 graph, executable
+  envelope, selection/release fingerprints, and
+  `wf:v2:sha256:41379300875e74902768205f533500fb1c6f50cdc91e649a119de02c990f2fe8`.
+  Rebuilding against the actual core release is byte-identical; exact Manual,
+  Set/Map, and Terminate definition/executor pairs produce their canonical
+  results, while executor-version substitution fails closed. Together with
+  the retained `wf:v1` non-executable fixture and retained/retired engine
+  lifecycle tests, every Phase 3 executable format and core pair has retained
+  evidence.
+- Commit `31877e8` records and enforces separate definition and executor
+  successor transitions in the node SDK. Successors cannot skip lifecycle
+  gates, change compatibility behavior under an existing identity, add an
+  executor outside `staged`, or remove a definition/executor before `retired`;
+  placement, publication, historical, active/retained execution, and exact-
+  version failure tests remain green at 20 node-SDK assertions.
+- Commit `66dafb7` advances the migration head to
+  `0018_phase3_core_executor_non_removal.sql`. A PostgreSQL insert guard makes
+  the Phase 3 non-removal invariant durable: every future release must contain
+  exactly one `core.manual@1`, `core.set@1`, and `core.terminate@1` executor in
+  `active` or `retained`. Clean and `0017` upgrades accept the real retained
+  successor and reject omitted, blocked, retired, staged, or duplicated core
+  identities; readiness attests the exact trigger/function body, owner,
+  search path, ACL, and enabled state. The database package passes 55 unit and
+  196 full PostgreSQL integration assertions; API 183 and worker 64 unit tests,
+  all affected typechecks/builds, ESLint, formatting, and diff checks are
+  green.
 
 ## Later phases
 
