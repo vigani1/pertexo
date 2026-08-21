@@ -85,6 +85,7 @@ export type {
   AcceptWorkflowRunInput,
   IdempotencyStatus,
   RunStatus,
+  WorkflowRunAcceptanceReplayInput,
 } from './execution-acceptance.js';
 export {
   appendRunEvent,
@@ -247,3 +248,19 @@ export type {
   NodeAttemptLease,
   NodeAttemptRunStore,
 } from './node-attempt-run-store.js';
+export {
+  createWorkflowRunDatabase,
+  WorkflowRunNotExecutableError,
+  WorkflowRunNotFoundError,
+  WorkflowRunReadCapacityError,
+} from './workflow-run-api.js';
+export type {
+  CancelWorkflowRunInput,
+  GetWorkflowRunInput,
+  StartPublishedWorkflowRunInput,
+  WorkflowNodeRunRecord as ApiWorkflowNodeRunRecord,
+  WorkflowRunCheckpointFactory,
+  WorkflowRunDatabase,
+  WorkflowRunReadModel as ApiWorkflowRunReadModel,
+  WorkflowRunRecord as ApiWorkflowRunRecord,
+} from './workflow-run-api.js';

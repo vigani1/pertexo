@@ -53,9 +53,15 @@ importers:
       '@pertexo/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@pertexo/nodes-core':
+        specifier: workspace:*
+        version: link:../../packages/nodes-core
       '@pertexo/observability':
         specifier: workspace:*
         version: link:../../packages/observability
+      '@pertexo/workflow-engine':
+        specifier: workspace:*
+        version: link:../../packages/workflow-engine
       '@pertexo/workflow-model':
         specifier: workspace:*
         version: link:../../packages/workflow-model

@@ -134,8 +134,12 @@ async function assertWorkspaceAcceptsNewRuns(
 
 async function readExistingAcceptance(
   transaction: WorkspaceTransaction,
-  input: z.output<typeof acceptWorkflowRunInputSchema>,
+  input: Pick<
+    z.output<typeof acceptWorkflowRunInputSchema>,
+    'keyHash' | 'operation' | 'requestHash' | 'scope'
+  >,
   initialCheckpointHash: string | undefined,
+  verifyInitialCheckpointHash = true,
 ): Promise<AcceptedWorkflowRun | null> {
   const rows = await transaction.db
     .select({
@@ -181,7 +185,10 @@ async function readExistingAcceptance(
   ) {
     throw new IdempotencyRecordCorruptError();
   }
-  if (resultRef.data.initialCheckpointHash !== initialCheckpointHash) {
+  if (
+    verifyInitialCheckpointHash &&
+    resultRef.data.initialCheckpointHash !== initialCheckpointHash
+  ) {
     throw new IdempotencyRequestConflictError();
   }
 
@@ -192,6 +199,26 @@ async function readExistingAcceptance(
     runId: row.resourceId,
     status: runStatus.data,
   });
+}
+
+const acceptanceReplayInputSchema = acceptWorkflowRunInputSchema.pick({
+  keyHash: true,
+  operation: true,
+  requestHash: true,
+  scope: true,
+});
+
+export type WorkflowRunAcceptanceReplayInput = Readonly<
+  z.input<typeof acceptanceReplayInputSchema>
+>;
+
+/** Resolve a completed exact request replay before reading current workflow state. */
+export async function readWorkflowRunAcceptanceReplay(
+  transaction: WorkspaceTransaction,
+  input: WorkflowRunAcceptanceReplayInput,
+): Promise<AcceptedWorkflowRun | null> {
+  const parsed = acceptanceReplayInputSchema.parse(input);
+  return readExistingAcceptance(transaction, parsed, undefined, false);
 }
 
 export async function acceptWorkflowRun(

@@ -4,3 +4,4 @@ export * from './controllers.js';
 export * from './errors.js';
 export * from './guards.js';
 export * from './module.js';
+export * from './postgres-persistence.js';

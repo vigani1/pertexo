@@ -109,6 +109,37 @@ function identityFromRow(
   });
 }
 
+export function classifyPublishedWorkflowVersionRow(
+  row: unknown,
+): PublishedWorkflowReadResult {
+  if (row === undefined) return Object.freeze({ kind: 'not_found' });
+
+  const retained = retainedV1RowSchema.safeParse(row);
+  if (retained.success) {
+    return Object.freeze({
+      kind: 'non_executable',
+      workflowVersion: identityFromRow(retained.data),
+    });
+  }
+
+  const executable = executableV2RowSchema.safeParse(row);
+  if (!executable.success) throw new PublishedWorkflowVersionCorruptError();
+  return Object.freeze({
+    kind: 'v2_projection',
+    workflowVersion: Object.freeze({
+      checksum: executable.data.checksum,
+      compatibilityReleaseEpoch: executable.data.compatibility_release_epoch,
+      executableJson: executable.data.executable_json,
+      executableSchemaVersion: executable.data.executable_schema_version,
+      id: executable.data.id,
+      schemaVersion: executable.data.schema_version,
+      versionNumber: executable.data.version_number,
+      workflowId: executable.data.workflow_id,
+      workspaceId: executable.data.workspace_id,
+    }),
+  });
+}
+
 export function createPublishedWorkflowReader(
   config: DatabaseConfig,
 ): PublishedWorkflowReader {
@@ -145,37 +176,7 @@ export function createPublishedWorkflowReader(
               limit 1
             `,
           );
-          const row: unknown = result.rows[0];
-          if (row === undefined) return Object.freeze({ kind: 'not_found' });
-
-          const retained = retainedV1RowSchema.safeParse(row);
-          if (retained.success) {
-            return Object.freeze({
-              kind: 'non_executable',
-              workflowVersion: identityFromRow(retained.data),
-            });
-          }
-
-          const executable = executableV2RowSchema.safeParse(row);
-          if (!executable.success) {
-            throw new PublishedWorkflowVersionCorruptError();
-          }
-          return Object.freeze({
-            kind: 'v2_projection',
-            workflowVersion: Object.freeze({
-              checksum: executable.data.checksum,
-              compatibilityReleaseEpoch:
-                executable.data.compatibility_release_epoch,
-              executableJson: executable.data.executable_json,
-              executableSchemaVersion:
-                executable.data.executable_schema_version,
-              id: executable.data.id,
-              schemaVersion: executable.data.schema_version,
-              versionNumber: executable.data.version_number,
-              workflowId: executable.data.workflow_id,
-              workspaceId: executable.data.workspace_id,
-            }),
-          });
+          return classifyPublishedWorkflowVersionRow(result.rows[0]);
         },
         transactionOptions,
       );
