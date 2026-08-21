@@ -695,17 +695,7 @@ describe('Phase 3 production operations', () => {
       ],
       signal: new AbortController().signal,
     });
-    const set = await advanceWorkflow({
-      runId: 'run-1',
-      executable,
-      workflowVersionId: 'version-1',
-      checkpoint: completedManual.checkpoint,
-      occurredAt: '2026-08-20T10:02:00.000Z',
-      maximumAdmissions: 1,
-      observations: [],
-      signal: new AbortController().signal,
-    });
-    expect(set.attempts[0]).toMatchObject({
+    expect(completedManual.attempts[0]).toMatchObject({
       nodeId: 'set',
       sideEffectClass: 'idempotent_with_key',
     });
@@ -763,12 +753,14 @@ describe('Phase 3 production operations', () => {
     expect(advanced.consumedThroughEventSequence).toBe(
       started.checkpoint.nextEventSequence,
     );
-    expect(advanced.events).toEqual([]);
+    expect(advanced.events).toEqual([
+      expect.objectContaining({ name: 'node.ready', sequence: 5 }),
+    ]);
     expect(advanced.events).not.toContainEqual(
       expect.objectContaining({ name: 'node.succeeded' }),
     );
     expect(advanced.checkpoint.nextEventSequence).toBe(
-      started.checkpoint.nextEventSequence + 1,
+      started.checkpoint.nextEventSequence + 2,
     );
   });
 

@@ -229,36 +229,6 @@ export function advanceWorkflowFromSchedulerState(
     eventDrafts.push(event('run.started', input.occurredAt));
   }
 
-  if (
-    graph?.deriveReadiness === true &&
-    !cancelRequested &&
-    !deadlineExpired &&
-    (runStatus === 'running' || runStatus === 'waiting')
-  ) {
-    for (const decision of deriveReadyNodes({
-      graph,
-      workflowVersionId: current.workflowVersionId,
-      invocations: [...invocations.values()],
-    })) {
-      if (coordinatorNodeIds.has(decision.nodeId)) continue;
-      const invocation: InvocationState = {
-        invocationKey: decision.invocationKey,
-        nodeId: decision.nodeId,
-        status: decision.disposition,
-        attemptNumber: 0,
-      };
-      invocations.set(invocation.invocationKey, invocation);
-      nodeRunAdmissionKeys.add(invocation.invocationKey);
-      eventDrafts.push(
-        event(
-          decision.disposition === 'ready' ? 'node.ready' : 'node.skipped',
-          input.occurredAt,
-          invocation,
-        ),
-      );
-    }
-  }
-
   for (const observation of observations) {
     if (observation.kind === 'cursor_only') continue;
     if (
@@ -467,6 +437,36 @@ export function advanceWorkflowFromSchedulerState(
       eventDrafts.push(
         event(eventName, input.occurredAt, completed, observation.reasonCode),
       );
+  }
+
+  if (
+    graph?.deriveReadiness === true &&
+    !cancelRequested &&
+    !deadlineExpired &&
+    (runStatus === 'running' || runStatus === 'waiting')
+  ) {
+    for (const decision of deriveReadyNodes({
+      graph,
+      workflowVersionId: current.workflowVersionId,
+      invocations: [...invocations.values()],
+    })) {
+      if (coordinatorNodeIds.has(decision.nodeId)) continue;
+      const invocation: InvocationState = {
+        invocationKey: decision.invocationKey,
+        nodeId: decision.nodeId,
+        status: decision.disposition,
+        attemptNumber: 0,
+      };
+      invocations.set(invocation.invocationKey, invocation);
+      nodeRunAdmissionKeys.add(invocation.invocationKey);
+      eventDrafts.push(
+        event(
+          decision.disposition === 'ready' ? 'node.ready' : 'node.skipped',
+          input.occurredAt,
+          invocation,
+        ),
+      );
+    }
   }
 
   for (const join of [...joins.values()].sort((left, right) =>

@@ -468,7 +468,7 @@ describe('AdvanceWorkflow operation', () => {
     ).toThrow(expect.objectContaining({ code: 'graph_invalid' }));
   });
 
-  it('derives roots and successors from the immutable graph on separate checkpoint advances', () => {
+  it('derives a successor in the same transition that consumes its prerequisite outcome', () => {
     const root = advanceWorkflow({
       checkpoint: checkpoint(),
       graph: chainGraph,
@@ -487,14 +487,7 @@ describe('AdvanceWorkflow operation', () => {
         { kind: 'outcome', invocationKey: rootKey, status: 'succeeded' },
       ],
     });
-    expect(completed.attempts).toEqual([]);
-    const successor = advanceWorkflow({
-      checkpoint: completed.checkpoint,
-      graph: chainGraph,
-      occurredAt,
-      maximumAdmissions: 1,
-    });
-    expect(successor.attempts.map(({ nodeId }) => nodeId)).toEqual(['b']);
+    expect(completed.attempts.map(({ nodeId }) => nodeId)).toEqual(['b']);
   });
 
   it('is deterministic across pre-commit recomputation and admits in canonical order', () => {
