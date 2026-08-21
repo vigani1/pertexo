@@ -57,7 +57,7 @@ function redisConnection(): {
 } {
   const parsed = new URL(redisUrl);
   return {
-    db: 12,
+    db: Number(parsed.pathname.slice(1) || '0'),
     host: parsed.hostname,
     port: Number(parsed.port || 6379),
     ...(parsed.password === ''

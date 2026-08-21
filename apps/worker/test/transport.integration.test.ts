@@ -89,12 +89,14 @@ function checksum(value: unknown): string {
 }
 
 function redisConnection(): {
+  db: number;
   host: string;
   password?: string;
   port: number;
 } {
   const url = new URL(redisUrl);
   return {
+    db: Number(url.pathname.slice(1) || '0'),
     host: url.hostname,
     port: Number(url.port || 6379),
     ...(url.password === ''
