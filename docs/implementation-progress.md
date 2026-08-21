@@ -19,7 +19,7 @@ not complete a phase.
 | Phase 0E — execution durability proofs and engine gate | Complete | ADRs 005 and 007–009; commits through `0322837`; 239 unit, 96 real-service integration, five process-recovery, one SSE-outage, and one transport-outage assertions; custom-engine GO |
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
-| Phase 3 — first executable-node slice | In progress | ADR 010; executable registry/runtime and public run slice through `a7eaf42`; durable compatibility authority, preactivation approval, retained fixtures, lifecycle/non-removal, and recovery matrix through `111a049`; migration head `0019_node_compatibility_preactivation.sql`; additive artifact overlap and final evidence remain |
+| Phase 3 — first executable-node slice | In progress | ADR 010; executable registry/runtime and public run slice through `a7eaf42`; durable compatibility authority, additive overlap, retained fixtures, lifecycle/non-removal, and recovery matrix through `6a5f43c`; migration head `0019_node_compatibility_preactivation.sql`; final evidence and review remain |
 | Phase 4 — first side-effecting integration slice | Not started | — |
 | Phase 5 — orchestration slice | Not started | — |
 | Phase 6 — V1 providers and triggers | Not started | — |
@@ -727,7 +727,7 @@ Initial evidence:
 
 ## Phase 3 — First executable-node slice
 
-Status: **In progress — executable packages, persistence, consumers, public run API, PostgreSQL-authoritative SSE, active-cancellation recovery, and durable preactivation-gated compatibility activation are complete; additive artifact overlap and final evidence remain**
+Status: **In progress — executable packages, persistence, consumers, public run API, PostgreSQL-authoritative SSE, active-cancellation recovery, and additive preactivation-gated compatibility rollout are complete; final evidence and review remain**
 
 Phase 3 has completed its design prerequisites, package foundations, durable
 coordinator/attempt state, and readiness-gated execution consumers. The exact
@@ -737,8 +737,7 @@ stores its exact V2 executable envelope, and the public Start/Get/Stream/Cancel
 slice is live. The initial durable compatibility-release authority, exact
 retained fixtures, active-work cancellation recovery, and the Phase 3
 non-removal barrier and audited target preactivation/deployment approval are now
-complete. The additive artifact-overlap proof and final Phase 0/fleet evidence
-gates remain.
+complete. The final Phase 0/fleet evidence and completion-review gates remain.
 
 Design prerequisites:
 
@@ -827,7 +826,7 @@ Compatibility rollout, readiness, and retirement:
       definitions, executors, migrations, and runtime policies pinned by one V2
       envelope; use the correct fingerprint in authoring tags, durable release
       records, executable identity, and retained compatibility fixtures.
-- [ ] Prove additive-before-subtractive rolling releases: the complete worker
+- [x] Prove additive-before-subtractive rolling releases: the complete worker
       cohort supports and reports an exact compatibility epoch/fingerprint
       before API publication or placement can create a reference, and mixed API
       replicas fail closed through the documented conservative ETag conflict.
@@ -1275,6 +1274,18 @@ Current evidence:
   `0018` upgrade PostgreSQL runs pass 199 assertions; the root static gate
   passes 568 unit assertions, all typechecks, generated drift, lint, formatting,
   and builds.
+- Commit `6a5f43c` makes the additive overlap executable by one real artifact.
+  The engine accepts only one validated current-to-next successor pair and
+  resolves exact epoch/fingerprint identities without a latest fallback;
+  nodes-core binds the same immutable Manual, Set/Map, and Terminate
+  implementations to a lifecycle-only successor while rejecting gaps or
+  unimplemented identities. API and worker database readiness use the bounded
+  expected-set path. The real 0019 rollout proof prepares the target, runs
+  separate API and worker target probes, records the named cohort, approves and
+  activates it, keeps the overlap artifact ready, and makes the old API artifact
+  fail closed. Strong draft ETags differ across the actual current/target
+  fingerprints. The root gate passes 572 unit assertions and the focused
+  PostgreSQL rollout proof passes on a fresh zero-to-head database.
 
 ## Later phases
 
