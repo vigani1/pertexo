@@ -17,3 +17,8 @@ export {
   workflowAuthoringOpenApiDocument,
 } from './workflow-authoring.js';
 export * from './http/workflow-authoring.js';
+export {
+  workflowRunsClientContract,
+  workflowRunsOpenApiDocument,
+} from './workflow-runs.js';
+export * from './http/workflow-runs.js';

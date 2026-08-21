@@ -19,6 +19,7 @@ describe('contracts package boundary', () => {
       './errors',
       './identity-workspace',
       './workflow-authoring',
+      './workflow-runs',
     ]);
 
     for (const source of [

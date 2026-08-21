@@ -23,6 +23,14 @@ import {
   workflowAuthoringClientContract,
   workflowAuthoringOpenApiDocument,
 } from '../src/workflow-authoring.js';
+import {
+  workflowRunsClientContract,
+  workflowRunsOpenApiDocument,
+} from '../src/workflow-runs.js';
+import {
+  workflowRunCancelRequestSchema,
+  workflowRunStartRequestSchema,
+} from '../src/http/workflow-runs.js';
 
 describe('public contracts package', () => {
   it('owns strict browser-safe request and RFC 9457 problem schemas', () => {
@@ -233,5 +241,54 @@ describe('public contracts package', () => {
     }
     expect(() => workflowGraphSchema.safeParse(graph)).not.toThrow(RangeError);
     expect(workflowGraphSchema.safeParse(graph).success).toBe(false);
+  });
+
+  it('defines strict Phase 3 run contracts without exposing engine state', () => {
+    expect(
+      workflowRunStartRequestSchema.safeParse({
+        input: { customerId: 'customer-42' },
+        deadlineAt: '2026-08-21T18:00:00.000Z',
+      }).success,
+    ).toBe(true);
+    expect(
+      workflowRunStartRequestSchema.safeParse({
+        input: {},
+        initialCheckpoint: { revision: 0 },
+      }).success,
+    ).toBe(false);
+    expect(
+      workflowRunCancelRequestSchema.safeParse({ reason: 'operator request' })
+        .success,
+    ).toBe(true);
+    expect(
+      workflowRunCancelRequestSchema.safeParse({ reason: 'x'.repeat(501) })
+        .success,
+    ).toBe(false);
+
+    expect(Object.keys(workflowRunsOpenApiDocument.paths)).toEqual([
+      '/v1/workspaces/{workspaceId}/workflows/{workflowId}/runs',
+      '/v1/workspaces/{workspaceId}/runs/{runId}',
+      '/v1/workspaces/{workspaceId}/runs/{runId}/events',
+      '/v1/workspaces/{workspaceId}/runs/{runId}/cancel',
+    ]);
+    const start =
+      workflowRunsOpenApiDocument.paths[
+        '/v1/workspaces/{workspaceId}/workflows/{workflowId}/runs'
+      ].post;
+    expect(start.responses['202']).toBeDefined();
+    expect(start.parameters.map((parameter) => parameter.name)).toEqual(
+      expect.arrayContaining(['Idempotency-Key', 'x-csrf-token']),
+    );
+    const stream =
+      workflowRunsOpenApiDocument.paths[
+        '/v1/workspaces/{workspaceId}/runs/{runId}/events'
+      ].get;
+    expect(stream.parameters.map((parameter) => parameter.name)).toContain(
+      'Last-Event-ID',
+    );
+    expect(stream.responses['200'].content).toHaveProperty('text/event-stream');
+    expect(workflowRunsClientContract.schemas).not.toHaveProperty(
+      'WorkflowCheckpoint',
+    );
   });
 });

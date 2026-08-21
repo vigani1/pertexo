@@ -6,6 +6,10 @@ import {
   workflowAuthoringClientContract,
   workflowAuthoringOpenApiDocument,
 } from './workflow-authoring.js';
+import {
+  workflowRunsClientContract,
+  workflowRunsOpenApiDocument,
+} from './workflow-runs.js';
 
 export const CONTRACT_ARTIFACTS = Object.freeze([
   Object.freeze({
@@ -23,5 +27,13 @@ export const CONTRACT_ARTIFACTS = Object.freeze([
   Object.freeze({
     fileName: 'workflow-authoring.openapi.json',
     content: `${JSON.stringify(workflowAuthoringOpenApiDocument, undefined, 2)}\n`,
+  }),
+  Object.freeze({
+    fileName: 'workflow-runs.client-schema.json',
+    content: `${JSON.stringify(workflowRunsClientContract, undefined, 2)}\n`,
+  }),
+  Object.freeze({
+    fileName: 'workflow-runs.openapi.json',
+    content: `${JSON.stringify(workflowRunsOpenApiDocument, undefined, 2)}\n`,
   }),
 ]);

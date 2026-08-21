@@ -20,6 +20,10 @@
     "./workflow-authoring": {
       "types": "./dist/workflow-authoring.d.ts",
       "default": "./dist/workflow-authoring.js"
+    },
+    "./workflow-runs": {
+      "types": "./dist/workflow-runs.d.ts",
+      "default": "./dist/workflow-runs.js"
     }
   },
   "scripts": {
