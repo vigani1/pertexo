@@ -7,7 +7,10 @@ import {
   boundedNodeJsonSchema,
   computeCompatibilityReleaseFingerprint,
   computeCompatibilitySelectionFingerprint,
+  createRegistryReleaseSuccessor,
   createRegistryRelease,
+  DEFINITION_LIFECYCLE_TRANSITIONS,
+  EXECUTOR_LIFECYCLE_TRANSITIONS,
   generateSchemaDocument,
   nodeManifestSchema,
   registryReleaseSchema,
@@ -99,6 +102,99 @@ function release(): ReturnType<typeof createRegistryRelease> {
 }
 
 describe('node-sdk registry release contracts', () => {
+  it('enforces monotonic definition and executor lifecycle successors', () => {
+    expect(DEFINITION_LIFECYCLE_TRANSITIONS).toEqual({
+      active: ['deprecated', 'migration_required'],
+      deprecated: ['migration_required', 'retired'],
+      migration_required: ['retired'],
+      retired: [],
+    });
+    expect(EXECUTOR_LIFECYCLE_TRANSITIONS).toEqual({
+      staged: ['active'],
+      active: ['retained'],
+      retained: ['retirement_blocked'],
+      retirement_blocked: ['retained', 'retired'],
+      retired: [],
+    });
+
+    const one = release();
+    const retained = createRegistryReleaseSuccessor({
+      previous: one,
+      epoch: 2,
+      definitions: one.definitions,
+      executors: one.executors.map((item) => ({
+        ...item,
+        lifecycle: 'retained' as const,
+      })),
+      policies: one.policies,
+    });
+    expect(retained.executors[0]?.lifecycle).toBe('retained');
+    expect(() =>
+      createRegistryReleaseSuccessor({
+        previous: retained,
+        epoch: 3,
+        definitions: retained.definitions,
+        executors: retained.executors.map((item) => ({
+          ...item,
+          lifecycle: 'active' as const,
+        })),
+        policies: retained.policies,
+      }),
+    ).toThrow('executor lifecycle transition');
+    expect(() =>
+      createRegistryReleaseSuccessor({
+        previous: one,
+        epoch: 2,
+        definitions: one.definitions.map((item) => ({
+          ...item,
+          lifecycle: 'retired' as const,
+        })),
+        executors: one.executors,
+        policies: one.policies,
+      }),
+    ).toThrow('definition lifecycle transition');
+  });
+
+  it('requires stable identity behavior and reviewed additive/removal states', () => {
+    const one = release();
+    expect(() =>
+      createRegistryReleaseSuccessor({
+        previous: one,
+        epoch: 2,
+        definitions: [{ ...manifest, retryClass: 'unsafe' }],
+        executors: one.executors,
+        policies: one.policies,
+      }),
+    ).toThrow('definition identity behavior');
+    expect(() =>
+      createRegistryReleaseSuccessor({
+        previous: one,
+        epoch: 2,
+        definitions: one.definitions,
+        executors: [
+          ...one.executors,
+          {
+            abiVersion: 1,
+            definitions: [],
+            executor: { key: 'test.new', version: 1 },
+            lifecycle: 'active',
+            policyReferences: [],
+          },
+        ],
+        policies: one.policies,
+      }),
+    ).toThrow('new executor must be staged');
+    expect(() =>
+      createRegistryReleaseSuccessor({
+        previous: one,
+        epoch: 2,
+        definitions: [],
+        executors: [],
+        policies: one.policies,
+      }),
+    ).toThrow('cannot be removed before retired');
+  });
+
   it('produces a declaration-order-independent full fingerprint', () => {
     const one = release();
     const reversed = createRegistryRelease({

@@ -25,6 +25,34 @@ export type DefinitionLifecycle =
 export type ExecutorLifecycle =
   'staged' | 'active' | 'retained' | 'retirement_blocked' | 'retired';
 
+export const DEFINITION_LIFECYCLE_TRANSITIONS: Readonly<
+  Record<DefinitionLifecycle, readonly DefinitionLifecycle[]>
+> = Object.freeze({
+  active: Object.freeze<DefinitionLifecycle[]>([
+    'deprecated',
+    'migration_required',
+  ]),
+  deprecated: Object.freeze<DefinitionLifecycle[]>([
+    'migration_required',
+    'retired',
+  ]),
+  migration_required: Object.freeze<DefinitionLifecycle[]>(['retired']),
+  retired: Object.freeze<DefinitionLifecycle[]>([]),
+});
+
+export const EXECUTOR_LIFECYCLE_TRANSITIONS: Readonly<
+  Record<ExecutorLifecycle, readonly ExecutorLifecycle[]>
+> = Object.freeze({
+  staged: Object.freeze<ExecutorLifecycle[]>(['active']),
+  active: Object.freeze<ExecutorLifecycle[]>(['retained']),
+  retained: Object.freeze<ExecutorLifecycle[]>(['retirement_blocked']),
+  retirement_blocked: Object.freeze<ExecutorLifecycle[]>([
+    'retained',
+    'retired',
+  ]),
+  retired: Object.freeze<ExecutorLifecycle[]>([]),
+});
+
 export type RetryClass = 'safe' | 'idempotent-with-key' | 'unsafe';
 export type ResourceClass = 'io' | 'cpu';
 
@@ -446,7 +474,7 @@ function sha256Hex(input: string): string {
     .join('');
 }
 
-function definitionProjection(manifest: NodeManifest): unknown {
+function definitionProjection(manifest: NodeManifest) {
   return {
     schemaVersion: manifest.schemaVersion,
     definition: manifest.definition,
@@ -471,7 +499,7 @@ function definitionProjection(manifest: NodeManifest): unknown {
   };
 }
 
-function executorProjection(executor: ExecutorManifest): unknown {
+function executorProjection(executor: ExecutorManifest) {
   return {
     executor: executor.executor,
     abiVersion: executor.abiVersion,
@@ -673,4 +701,120 @@ export function parseRegistryRelease(input: unknown): RegistryRelease {
       'release fingerprint does not match its canonical projection',
     );
   return cloneAndFreeze(parsed);
+}
+
+export type RegistryReleaseSuccessorInput = RegistryReleaseInput &
+  Readonly<{ previous: RegistryRelease }>;
+
+function lifecycleTransitionAllowed<State extends string>(
+  transitions: Readonly<Record<State, readonly State[]>>,
+  previous: State,
+  next: State,
+): boolean {
+  return previous === next || transitions[previous].includes(next);
+}
+
+function immutableDefinitionJson(manifest: NodeManifest): string {
+  const { lifecycle, ...behavior } = definitionProjection(manifest);
+  void lifecycle;
+  return stableJson(behavior);
+}
+
+function immutableExecutorJson(manifest: ExecutorManifest): string {
+  const { lifecycle, ...behavior } = executorProjection(manifest);
+  void lifecycle;
+  return stableJson(behavior);
+}
+
+/**
+ * Constructs one audited release successor without reusing an identity for new
+ * behavior or skipping a lifecycle gate. Initial/bootstrap and retained-record
+ * parsing continue to use createRegistryRelease directly.
+ */
+export function createRegistryReleaseSuccessor(
+  input: RegistryReleaseSuccessorInput,
+): RegistryRelease {
+  const { previous: previousInput, ...successorInput } = input;
+  const previous = parseRegistryRelease(previousInput);
+  const next = createRegistryRelease(successorInput);
+  if (next.epoch <= previous.epoch)
+    throw new Error('compatibility release epoch must increase');
+
+  const nextDefinitions = new Map(
+    next.definitions.map((manifest) => [
+      identityToken(manifest.definition),
+      manifest,
+    ]),
+  );
+  const previousDefinitions = new Map(
+    previous.definitions.map((manifest) => [
+      identityToken(manifest.definition),
+      manifest,
+    ]),
+  );
+  for (const manifest of previous.definitions) {
+    const successor = nextDefinitions.get(identityToken(manifest.definition));
+    if (successor === undefined) {
+      if (manifest.lifecycle !== 'retired')
+        throw new Error('definition cannot be removed before retired');
+      continue;
+    }
+    if (
+      immutableDefinitionJson(manifest) !== immutableDefinitionJson(successor)
+    )
+      throw new Error('definition identity behavior cannot change');
+    if (
+      !lifecycleTransitionAllowed(
+        DEFINITION_LIFECYCLE_TRANSITIONS,
+        manifest.lifecycle,
+        successor.lifecycle,
+      )
+    )
+      throw new Error('definition lifecycle transition is not allowed');
+  }
+  for (const manifest of next.definitions)
+    if (
+      !previousDefinitions.has(identityToken(manifest.definition)) &&
+      manifest.lifecycle !== 'active'
+    )
+      throw new Error('new definition must be active');
+
+  const nextExecutors = new Map(
+    next.executors.map((manifest) => [
+      identityToken(manifest.executor),
+      manifest,
+    ]),
+  );
+  const previousExecutors = new Map(
+    previous.executors.map((manifest) => [
+      identityToken(manifest.executor),
+      manifest,
+    ]),
+  );
+  for (const manifest of previous.executors) {
+    const successor = nextExecutors.get(identityToken(manifest.executor));
+    if (successor === undefined) {
+      if (manifest.lifecycle !== 'retired')
+        throw new Error('executor cannot be removed before retired');
+      continue;
+    }
+    if (immutableExecutorJson(manifest) !== immutableExecutorJson(successor))
+      throw new Error('executor identity behavior cannot change');
+    if (
+      !lifecycleTransitionAllowed(
+        EXECUTOR_LIFECYCLE_TRANSITIONS,
+        manifest.lifecycle,
+        successor.lifecycle,
+      )
+    )
+      throw new Error('executor lifecycle transition is not allowed');
+  }
+  for (const manifest of next.executors)
+    if (
+      !previousExecutors.has(identityToken(manifest.executor)) &&
+      manifest.lifecycle !== 'staged'
+    )
+      throw new Error('new executor must be staged');
+
+  return next;
 }

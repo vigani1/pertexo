@@ -123,6 +123,14 @@ A definition advances through these catalog states:
 | `migration_required` | blocked | blocked until an explicit draft migration and republish |
 | `retired` | blocked | blocked |
 
+Definition state changes are monotonic. A new definition enters `active`;
+allowed changes are `active -> deprecated`, `active -> migration_required`,
+`deprecated -> migration_required`, `deprecated -> retired`, and
+`migration_required -> retired`. `retired` is terminal, and a definition may
+be omitted from a later release only after it is retired. A manifest must use a
+new definition version for any compatibility-relevant behavior change rather
+than changing behavior under an existing identity.
+
 An executor advances through these release states:
 
 | Executor state | New V2 reference | New run/replay/trigger admission | Existing admitted run |
@@ -136,7 +144,10 @@ An executor advances through these release states:
 Normal transitions are `staged -> active -> retained -> retirement_blocked ->
 retired`. A failed retirement remains `retirement_blocked`; reopening admission
 requires a separately audited later release that explicitly returns it to
-`retained`. States never mutate inside an immutable release record.
+`retained`. A newly added executor enters `staged`, compatibility-relevant
+behavior cannot change under an existing executor identity, and an executor may
+be omitted only after it is retired. States never mutate inside an immutable
+release record.
 
 Each compatibility release has a deterministic fingerprint over a versioned,
 canonically ordered projection of every definition identity and lifecycle
