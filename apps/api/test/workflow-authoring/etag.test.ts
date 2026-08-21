@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { createRegistryReleaseSuccessor } from '@pertexo/node-sdk';
+import { CORE_REGISTRY_RELEASE } from '@pertexo/nodes-core';
+import { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';
 
 import {
   createDraftRepresentationTag,
@@ -51,5 +54,36 @@ describe('workflow authoring strong draft ETag', () => {
         }),
       ),
     ).not.toBe(baseline);
+  });
+
+  it('makes mixed current/target API replicas conservatively conflict', () => {
+    const current = composeExecutableCompatibilityRelease(
+      CORE_REGISTRY_RELEASE,
+    );
+    const target = composeExecutableCompatibilityRelease(
+      createRegistryReleaseSuccessor({
+        previous: CORE_REGISTRY_RELEASE,
+        epoch: CORE_REGISTRY_RELEASE.epoch + 1,
+        definitions: CORE_REGISTRY_RELEASE.definitions.map((manifest) => ({
+          ...manifest,
+          lifecycle:
+            manifest.definition.key === 'core.manual'
+              ? ('deprecated' as const)
+              : manifest.lifecycle,
+        })),
+        executors: CORE_REGISTRY_RELEASE.executors,
+        policies: CORE_REGISTRY_RELEASE.policies,
+      }),
+    );
+
+    expect(
+      createDraftRepresentationTag(
+        representation({ compatibilityFingerprint: current.fingerprint }),
+      ),
+    ).not.toBe(
+      createDraftRepresentationTag(
+        representation({ compatibilityFingerprint: target.fingerprint }),
+      ),
+    );
   });
 });

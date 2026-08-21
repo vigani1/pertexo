@@ -29,6 +29,7 @@
     "@opentelemetry/api": "1.9.0",
     "@opentelemetry/sdk-node": "0.221.0",
     "@pertexo/artifact-store": "workspace:*",
+    "@pertexo/node-sdk": "workspace:*",
     "@pertexo/workflow-model": "workspace:*",
     "@types/pg": "8.21.0",
     "bullmq": "6.1.2",

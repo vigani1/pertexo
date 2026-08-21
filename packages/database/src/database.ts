@@ -2,6 +2,7 @@ import { Pool } from 'pg';
 
 import type { DatabaseConfig } from './config.js';
 import type { CompatibilityReleaseExpectation } from './compatibility-release.js';
+import type { CompatibilityReleaseExpectationSet } from './compatibility-release.js';
 import { checkDatabaseReadiness } from './readiness.js';
 import type { DatabaseReadiness } from './readiness.js';
 import { withWorkspaceTransaction } from './workspace.js';
@@ -24,8 +25,16 @@ export function createWorkspaceDatabase(
   config: DatabaseConfig,
   options: Readonly<{
     compatibilityRelease?: CompatibilityReleaseExpectation;
+    compatibilityReleases?: CompatibilityReleaseExpectationSet;
   }> = {},
 ): WorkspaceDatabase {
+  if (
+    options.compatibilityRelease !== undefined &&
+    options.compatibilityReleases !== undefined
+  )
+    throw new Error(
+      'Compatibility release database configuration is ambiguous',
+    );
   const pool = new Pool(config);
 
   return Object.freeze({
@@ -42,6 +51,9 @@ export function createWorkspaceDatabase(
         ...(options.compatibilityRelease === undefined
           ? {}
           : { expectedCompatibilityRelease: options.compatibilityRelease }),
+        ...(options.compatibilityReleases === undefined
+          ? {}
+          : { expectedCompatibilityReleases: options.compatibilityReleases }),
       }),
     close: async (): Promise<void> => pool.end(),
   });

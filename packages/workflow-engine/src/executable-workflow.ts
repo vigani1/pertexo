@@ -5,6 +5,7 @@ import {
   canonicalCompatibilityReleaseJson,
   computeCompatibilitySelectionFingerprint,
   createRegistryRelease,
+  createRegistryReleaseSuccessor,
   NODE_JSON_LIMITS_V1,
   parseRegistryRelease,
   type DefinitionIdentity,
@@ -210,6 +211,11 @@ export type ExecutableCompatibilityReleaseDescription = Readonly<{
   catalogJson: string;
 }>;
 
+export type ExecutableCompatibilityReleaseSupport = Readonly<{
+  descriptions: readonly ExecutableCompatibilityReleaseDescription[];
+  resolve(epoch: number, fingerprint: string): RegistryRelease;
+}>;
+
 export function describeExecutableCompatibilityRelease(
   releaseInput: unknown,
 ): ExecutableCompatibilityReleaseDescription {
@@ -219,6 +225,57 @@ export function describeExecutableCompatibilityRelease(
       epoch: release.epoch,
       fingerprint: release.fingerprint,
       catalogJson: canonicalCompatibilityReleaseJson(release),
+    });
+  } catch (error: unknown) {
+    normalizeError(error);
+  }
+}
+
+export function createExecutableCompatibilityReleaseSupport(
+  releaseInputs: readonly unknown[],
+): ExecutableCompatibilityReleaseSupport {
+  try {
+    if (releaseInputs.length < 1 || releaseInputs.length > 2)
+      fail('artifact supports only one rolling overlap');
+    const releases = releaseInputs
+      .map(parseRegistryRelease)
+      .sort((left, right) => left.epoch - right.epoch);
+    if (new Set(releases.map(({ epoch }) => epoch)).size !== releases.length)
+      fail('compatibility release epochs must be unique');
+    const previous = releases[0];
+    const target = releases[1];
+    if (previous !== undefined && target !== undefined) {
+      if (target.epoch !== previous.epoch + 1)
+        fail('compatibility release is not the next successor');
+      const successor = createRegistryReleaseSuccessor({
+        epoch: target.epoch,
+        definitions: target.definitions,
+        executors: target.executors,
+        policies: target.policies,
+        previous,
+      });
+      if (successor.fingerprint !== target.fingerprint)
+        fail('compatibility release successor fingerprint changed');
+    }
+    const byPair = new Map(
+      releases.map((release) => [
+        `${String(release.epoch)}\u0000${release.fingerprint}`,
+        release,
+      ]),
+    );
+    const descriptions = Object.freeze(
+      releases.map(describeExecutableCompatibilityRelease),
+    );
+    return Object.freeze({
+      descriptions,
+      resolve: (epoch: number, fingerprint: string): RegistryRelease => {
+        if (!Number.isInteger(epoch) || epoch < 1)
+          fail('compatibility release is not supported by this artifact');
+        const release = byPair.get(`${String(epoch)}\u0000${fingerprint}`);
+        if (release === undefined)
+          fail('compatibility release is not supported by this artifact');
+        return release;
+      },
     });
   } catch (error: unknown) {
     normalizeError(error);

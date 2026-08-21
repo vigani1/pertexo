@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createRegistryReleaseSuccessor } from '@pertexo/node-sdk';
 
 import {
   CORE_BOUNDED_JSON_POLICY,
@@ -12,7 +13,10 @@ import {
   CORE_TERMINATE_DEFINITION,
   CORE_TERMINATE_EXECUTOR,
 } from '../src/index.js';
-import { createCoreNodeRegistry } from '../src/server.js';
+import {
+  createCoreNodeRegistry,
+  createCoreNodeRegistryForRelease,
+} from '../src/server.js';
 
 const signal = new AbortController().signal;
 
@@ -50,6 +54,48 @@ describe('core node release', () => {
 });
 
 describe('core node execution', () => {
+  it('binds the exact core implementations to a lifecycle-only successor', async () => {
+    const successor = createRegistryReleaseSuccessor({
+      previous: CORE_REGISTRY_RELEASE,
+      epoch: 2,
+      definitions: CORE_REGISTRY_RELEASE.definitions.map((manifest) => ({
+        ...manifest,
+        lifecycle:
+          manifest.definition.key === 'core.manual'
+            ? ('deprecated' as const)
+            : manifest.lifecycle,
+      })),
+      executors: CORE_REGISTRY_RELEASE.executors,
+      policies: CORE_REGISTRY_RELEASE.policies,
+    });
+    const registry = createCoreNodeRegistryForRelease(successor);
+
+    await expect(
+      registry.execute({
+        config: {},
+        definition: CORE_MANUAL_DEFINITION,
+        executor: CORE_MANUAL_EXECUTOR,
+        input: { rollout: true },
+        signal,
+      }),
+    ).resolves.toEqual({
+      kind: 'succeeded',
+      output: { rollout: true },
+    });
+    expect(registry.compatibility.fingerprint).toBe(successor.fingerprint);
+    expect(() =>
+      createCoreNodeRegistryForRelease(
+        createRegistryReleaseSuccessor({
+          previous: CORE_REGISTRY_RELEASE,
+          epoch: 3,
+          definitions: CORE_REGISTRY_RELEASE.definitions,
+          executors: CORE_REGISTRY_RELEASE.executors,
+          policies: CORE_REGISTRY_RELEASE.policies,
+        }),
+      ),
+    ).toThrow('next successor');
+  });
+
   it('does not expose placement or publication catalogs before vertical-slice completion', () => {
     expect(Object.keys(createCoreNodeRegistry()).sort()).toEqual([
       'compatibility',

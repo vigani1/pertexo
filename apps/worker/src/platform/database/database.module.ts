@@ -14,7 +14,7 @@ import { createWorkspaceDatabase } from '@pertexo/database';
 import { CORE_REGISTRY_RELEASE } from '@pertexo/nodes-core';
 import {
   composeExecutableCompatibilityRelease,
-  describeExecutableCompatibilityRelease,
+  createExecutableCompatibilityReleaseSupport,
 } from '@pertexo/workflow-engine';
 
 export const WORKSPACE_DATABASE = Symbol('WORKSPACE_DATABASE');
@@ -65,9 +65,9 @@ function createDatabaseProvider(
       new NestWorkspaceDatabase(
         options.database ??
           createWorkspaceDatabase(config, {
-            compatibilityRelease: describeExecutableCompatibilityRelease(
+            compatibilityReleases: createExecutableCompatibilityReleaseSupport([
               composeExecutableCompatibilityRelease(CORE_REGISTRY_RELEASE),
-            ),
+            ]).descriptions,
           }),
         config.workerRuntimeRole,
       ),

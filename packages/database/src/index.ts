@@ -20,6 +20,8 @@ export type {
 } from './compatibility-release.js';
 export { createCompatibilityReleaseMaintenance } from './compatibility-release-maintenance.js';
 export type { CompatibilityReleaseMaintenance } from './compatibility-release-maintenance.js';
+export { createCompatibilityReleaseReadinessProbe } from './compatibility-release-readiness.js';
+export type { CompatibilityReleaseReadinessProbe } from './compatibility-release-readiness.js';
 export {
   ARTIFACT_STATUS,
   ArtifactFinalizeConflictError,

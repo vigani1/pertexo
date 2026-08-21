@@ -22,6 +22,7 @@ export {
   buildWorkflowExecutableV2,
   composeExecutableCompatibilityRelease,
   computeWorkflowExecutableChecksumV2,
+  createExecutableCompatibilityReleaseSupport,
   describeExecutableCompatibilityRelease,
   parseWorkflowExecutableV2,
   PHASE3_RUNTIME_POLICIES_V1,
@@ -31,6 +32,7 @@ export {
 export type {
   CompiledWorkflowExecutableV2,
   ExecutableCompatibilityReleaseDescription,
+  ExecutableCompatibilityReleaseSupport,
   ExecutableRuntimePoliciesV1,
   VerifiedWorkflowExecutableV2,
   WorkflowExecutableNodeV2,

@@ -16,6 +16,7 @@ import {
   buildWorkflowExecutableV2,
   composeExecutableCompatibilityRelease,
   computeWorkflowExecutableChecksumV2,
+  createExecutableCompatibilityReleaseSupport,
   createCheckpoint,
   describeExecutableCompatibilityRelease,
   executeNodeAttempt,
@@ -172,6 +173,49 @@ describe('workflow executable V2 identity', () => {
     expect(description.catalogJson).toContain(
       '"domain":"pertexo.node-compatibility-release"',
     );
+  });
+
+  it('supports only one validated current-to-target rolling overlap', () => {
+    const current = composeExecutableCompatibilityRelease(
+      nodeRelease({ epoch: 1 }),
+    );
+    const target = composeExecutableCompatibilityRelease(
+      nodeRelease({ epoch: 2 }),
+    );
+    const support = createExecutableCompatibilityReleaseSupport([
+      current,
+      target,
+    ]);
+
+    expect(support.descriptions).toEqual([
+      describeExecutableCompatibilityRelease(current),
+      describeExecutableCompatibilityRelease(target),
+    ]);
+    expect(support.resolve(current.epoch, current.fingerprint)).toEqual(
+      current,
+    );
+    expect(support.resolve(target.epoch, target.fingerprint)).toEqual(target);
+    expect(() => support.resolve(3, target.fingerprint)).toThrow(
+      'not supported by this artifact',
+    );
+    expect(
+      buildWorkflowExecutableV2({ graph: graph(), release: current }).checksum,
+    ).toBe(
+      buildWorkflowExecutableV2({ graph: graph(), release: target }).checksum,
+    );
+    expect(() =>
+      createExecutableCompatibilityReleaseSupport([
+        current,
+        composeExecutableCompatibilityRelease(nodeRelease({ epoch: 3 })),
+      ]),
+    ).toThrow('successor');
+    expect(() =>
+      createExecutableCompatibilityReleaseSupport([
+        current,
+        target,
+        composeExecutableCompatibilityRelease(nodeRelease({ epoch: 3 })),
+      ]),
+    ).toThrow('one rolling overlap');
   });
 
   it('composes engine-owned policies and produces the pre-publication golden checksum', () => {

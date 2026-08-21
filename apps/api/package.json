@@ -9,6 +9,7 @@
     "start": "node dist/main.js",
     "test": "vitest run",
     "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:compatibility-rollout": "vitest run --config vitest.compatibility-rollout.config.ts",
     "test:sse-resilience": "vitest run --config vitest.sse-resilience.config.ts",
     "typecheck": "tsc -p tsconfig.test.json --noEmit"
   },
@@ -30,5 +31,8 @@
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2",
     "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@pertexo/node-sdk": "workspace:*"
   }
 }

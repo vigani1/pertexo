@@ -6,6 +6,8 @@ import {
   parseCompatibilityReleaseExpectation,
   parseCompatibilityReleaseExpectationSet,
 } from '../src/compatibility-release.js';
+import { parseDatabaseConfig } from '../src/config.js';
+import { createWorkspaceDatabase } from '../src/database.js';
 import { EXPECTED_MIGRATION_HEAD } from '../src/readiness.js';
 
 const migrationUrl = new URL(
@@ -117,5 +119,16 @@ describe('node compatibility release persistence', () => {
         { ...release, epoch: 3 },
       ]),
     ).toThrow();
+    expect(() =>
+      createWorkspaceDatabase(
+        parseDatabaseConfig({
+          connectionString: 'postgresql://localhost/pertexo',
+        }),
+        {
+          compatibilityRelease: release,
+          compatibilityReleases: [release],
+        },
+      ),
+    ).toThrow('ambiguous');
   });
 });
