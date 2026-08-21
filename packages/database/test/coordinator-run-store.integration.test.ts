@@ -12,6 +12,9 @@ import {
   CoordinatorRunStateCorruptError,
   checkDatabaseReadiness,
   createCoordinatorRunStore,
+  createNodeAttemptRunStore,
+  NodeAttemptDeliveryMismatchError,
+  NodeAttemptStateCorruptError,
   parseDatabaseConfig,
 } from '../src/index.js';
 import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../src/migrations.js';
@@ -61,6 +64,14 @@ const migrationConfig = {
 } as const;
 
 const rawStore = createCoordinatorRunStore(
+  parseDatabaseConfig({
+    connectionString: databaseUrl(workerBaseUrl),
+    max: 6,
+    ownerRole: 'pertexo_owner',
+    workerRuntimeRole: 'pertexo_worker',
+  }),
+);
+const nodeAttemptStore = createNodeAttemptRunStore(
   parseDatabaseConfig({
     connectionString: databaseUrl(workerBaseUrl),
     max: 6,
@@ -121,7 +132,7 @@ async function createDatabase(): Promise<void> {
 }
 
 async function dropDatabase(): Promise<void> {
-  await store.close();
+  await Promise.all([store.close(), nodeAttemptStore.close()]);
   const admin = new Pool({ connectionString: adminBaseUrl, max: 1 });
   try {
     await admin.query(`drop database if exists "${databaseName}" with (force)`);
@@ -340,6 +351,7 @@ async function insertRun(input: {
   schedulerState?: unknown;
   status?: string;
   deadlineAt?: string;
+  inputRef?: unknown;
 }): Promise<string> {
   const workspaceId = input.workspaceId ?? workspaceA;
   const runId = randomUUID();
@@ -347,8 +359,9 @@ async function insertRun(input: {
   await asRuntime(apiBaseUrl, workspaceId, async (client) => {
     await client.query(
       `insert into app.workflow_runs (
-         id,workspace_id,workflow_id,workflow_version_id,trigger_type,status,deadline_at
-       ) values ($1,$2,$3,$4,'manual',$5,$6)`,
+         id,workspace_id,workflow_id,workflow_version_id,trigger_type,status,
+         deadline_at,input_ref
+       ) values ($1,$2,$3,$4,'manual',$5,$6,$7::jsonb)`,
       [
         runId,
         workspaceId,
@@ -356,6 +369,7 @@ async function insertRun(input: {
         workflowVersionId,
         input.status ?? 'queued',
         input.deadlineAt ?? null,
+        input.inputRef === undefined ? null : JSON.stringify(input.inputRef),
       ],
     );
     await client.query(
@@ -3334,5 +3348,256 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
       inbox: 0,
       revision: 0,
     });
+  });
+
+  it('claims one transport-bound ready attempt with a durable fence', async () => {
+    const runId = await insertRun({
+      inputRef: {
+        schemaVersion: 1,
+        kind: 'inline',
+        value: { hello: 'world' },
+      },
+    });
+    const invocationKey = `${versionA}|manual|b:|i:`;
+    const committed = await store.commitAdvancePlan({
+      workspaceId: workspaceA,
+      runId,
+      workflowVersionId: versionA,
+      signal: new AbortController().signal,
+      plan: {
+        expectedRevision: 0,
+        expectedNextEventSequence: 2,
+        consumedThroughEventSequence: 1,
+        checkpoint: checkpoint({
+          revision: 1,
+          runStatus: 'running',
+          nextEventSequence: 4,
+          admittedInvocationKeys: [invocationKey],
+          invocations: [
+            {
+              invocationKey,
+              nodeId: 'manual',
+              status: 'running',
+              attemptNumber: 1,
+            },
+          ],
+        }),
+        events: [
+          {
+            schemaVersion: 1,
+            sequence: 2,
+            name: 'run.started',
+            occurredAt: '2026-08-21T00:00:00.000Z',
+          },
+          {
+            schemaVersion: 1,
+            sequence: 3,
+            name: 'node.ready',
+            occurredAt: '2026-08-21T00:00:00.000Z',
+            invocationKey,
+            nodeId: 'manual',
+            attemptNumber: 0,
+          },
+        ],
+        nodeRunAdmissions: [
+          { invocationKey, nodeId: 'manual', sideEffectClass: 'safe' },
+        ],
+        attempts: [
+          {
+            invocationKey,
+            nodeId: 'manual',
+            attemptNumber: 1,
+            sideEffectClass: 'safe',
+          },
+        ],
+      },
+    });
+    if (committed.kind !== 'committed')
+      throw new Error('fixture did not commit');
+    const admission = committed.admittedAttempts[0];
+    if (admission === undefined) throw new Error('fixture attempt missing');
+    const outbox = await asRuntime(workerBaseUrl, workspaceA, (client) =>
+      client.query<{ id: string; payload_checksum: string }>(
+        `select id,payload_checksum from app.outbox_events
+         where workspace_id=$1 and aggregate_id=$2
+           and job_name='execute-node-attempt'`,
+        [workspaceA, admission.attemptId],
+      ),
+    );
+    const delivery = outbox.rows[0];
+    if (delivery === undefined) throw new Error('fixture delivery missing');
+
+    const claimed = await nodeAttemptStore.claimDelivery({
+      workspaceId: workspaceA,
+      runId,
+      nodeRunId: admission.nodeRunId,
+      attemptId: admission.attemptId,
+      delivery: {
+        outboxEventId: delivery.id,
+        payloadChecksum: delivery.payload_checksum,
+      },
+      leaseDurationSeconds: 30,
+      workerId: 'attempt-worker-1',
+      signal: new AbortController().signal,
+    });
+    expect(claimed).toMatchObject({
+      kind: 'claimed',
+      lease: {
+        attemptId: admission.attemptId,
+        attemptNumber: 1,
+        fenceToken: 1,
+        invocationKey,
+        nodeId: 'manual',
+        nodeRunId: admission.nodeRunId,
+        runId,
+        sideEffectClass: 'safe',
+        workflowVersionId: versionA,
+      },
+    });
+    if (claimed.kind !== 'claimed') throw new Error('attempt was not claimed');
+    await expect(
+      nodeAttemptStore.claimDelivery({
+        workspaceId: workspaceA,
+        runId,
+        nodeRunId: admission.nodeRunId,
+        attemptId: admission.attemptId,
+        delivery: {
+          outboxEventId: delivery.id,
+          payloadChecksum: delivery.payload_checksum,
+        },
+        leaseDurationSeconds: 30,
+        workerId: 'attempt-worker-2',
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({ kind: 'duplicate' });
+    await expect(
+      nodeAttemptStore.loadInputs({
+        lease: claimed.lease,
+        upstreamNodeIds: [],
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({
+      abortRequested: false,
+      completedNodeOutputs: {},
+      runInput: { hello: 'world' },
+    });
+    const dispatched = await nodeAttemptStore.markDispatched({
+      lease: claimed.lease,
+      signal: new AbortController().signal,
+    });
+    expect(dispatched.dispatchedAt).toBeInstanceOf(Date);
+    const heartbeat = await nodeAttemptStore.heartbeat({
+      lease: claimed.lease,
+      leaseDurationSeconds: 30,
+      signal: new AbortController().signal,
+    });
+    expect(heartbeat.abortRequested).toBe(false);
+    expect(heartbeat.leaseExpiresAt).toBeInstanceOf(Date);
+    const completed = await nodeAttemptStore.complete({
+      lease: claimed.lease,
+      outcome: { status: 'succeeded', output: { hello: 'world' } },
+      traceparent: '00-11111111111111111111111111111111-2222222222222222-01',
+      signal: new AbortController().signal,
+    });
+    if (completed.kind !== 'committed')
+      throw new Error('attempt completion did not commit');
+    expect(completed.outboxEventId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u,
+    );
+    const terminal = await asRuntime(workerBaseUrl, workspaceA, (client) =>
+      client.query<{
+        attempt_status: string;
+        node_status: string;
+        output_matches: boolean;
+        terminal_events: number;
+        continuation_outbox: number;
+        completed_receipts: number;
+      }>(
+        `select
+           attempt.status attempt_status,node.status node_status,
+           attempt.output_ref=node.output_ref output_matches,
+           (select count(*)::int from app.run_events
+             where workflow_run_id=$1 and type='node.succeeded') terminal_events,
+           (select count(*)::int from app.outbox_events
+             where aggregate_id=$1 and job_name='advance-workflow-run'
+               and id=$5) continuation_outbox,
+           (select count(*)::int from app.inbox_receipts
+             where message_id=$4 and completed_at is not null) completed_receipts
+         from app.node_attempts attempt
+         join app.node_runs node on node.id=attempt.node_run_id
+         where attempt.workspace_id=$2 and attempt.id=$3`,
+        [
+          runId,
+          workspaceA,
+          admission.attemptId,
+          delivery.id,
+          completed.outboxEventId,
+        ],
+      ),
+    );
+    expect(terminal.rows[0]).toEqual({
+      attempt_status: 'succeeded',
+      node_status: 'succeeded',
+      output_matches: true,
+      terminal_events: 1,
+      continuation_outbox: 1,
+      completed_receipts: 1,
+    });
+    await expect(
+      nodeAttemptStore.complete({
+        lease: claimed.lease,
+        outcome: { status: 'succeeded', output: { hello: 'world' } },
+        traceparent: '00-11111111111111111111111111111111-2222222222222222-01',
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({ kind: 'duplicate', outboxEventId: null });
+    await expect(
+      nodeAttemptStore.complete({
+        lease: claimed.lease,
+        outcome: { status: 'succeeded', output: { hello: 'changed' } },
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toBeInstanceOf(NodeAttemptStateCorruptError);
+    await expect(
+      nodeAttemptStore.claimDelivery({
+        workspaceId: workspaceA,
+        runId,
+        nodeRunId: admission.nodeRunId,
+        attemptId: admission.attemptId,
+        delivery: {
+          outboxEventId: delivery.id,
+          payloadChecksum: delivery.payload_checksum,
+        },
+        leaseDurationSeconds: 30,
+        workerId: 'attempt-worker-1',
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({ kind: 'duplicate' });
+    await expect(
+      nodeAttemptStore.claimDelivery({
+        workspaceId: workspaceA,
+        runId: randomUUID(),
+        nodeRunId: admission.nodeRunId,
+        attemptId: admission.attemptId,
+        delivery: {
+          outboxEventId: delivery.id,
+          payloadChecksum: delivery.payload_checksum,
+        },
+        leaseDurationSeconds: 30,
+        workerId: 'attempt-worker-1',
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toBeInstanceOf(NodeAttemptDeliveryMismatchError);
+    await expect(
+      asRuntime(workerBaseUrl, workspaceA, (client) =>
+        client.query<{ count: number }>(
+          `select count(*)::int count
+           from app.transport_security_audit_facts
+           where workspace_id=$1 and consumer_name='node-attempt-worker'
+             and message_id=$2`,
+          [workspaceA, delivery.id],
+        ),
+      ),
+    ).resolves.toMatchObject({ rows: [{ count: 1 }] });
   });
 });

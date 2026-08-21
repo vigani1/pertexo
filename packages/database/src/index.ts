@@ -231,3 +231,19 @@ export type {
   WorkspaceId,
   WorkspaceTransaction,
 } from './workspace.js';
+export {
+  createNodeAttemptRunStore,
+  NodeAttemptControlActiveError,
+  NodeAttemptDeliveryMismatchError,
+  NodeAttemptOutputInvalidError,
+  NodeAttemptReconciliationRequiredError,
+  NodeAttemptStateCorruptError,
+} from './node-attempt-run-store.js';
+export type {
+  CompleteNodeAttemptResult,
+  NodeAttemptCompletion,
+  NodeAttemptClaimResult,
+  NodeAttemptInputs,
+  NodeAttemptLease,
+  NodeAttemptRunStore,
+} from './node-attempt-run-store.js';
