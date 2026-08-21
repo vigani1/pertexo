@@ -727,14 +727,15 @@ Initial evidence:
 
 ## Phase 3 — First executable-node slice
 
-Status: **In progress — executable packages, persistence, coordinator/node-attempt consumers, and the exact thin graph complete; API/SSE/cancellation and durable compatibility rollout remain**
+Status: **In progress — executable packages, persistence, consumers, public run API, and PostgreSQL-authoritative SSE complete; active-cancellation recovery, durable compatibility rollout, and final evidence remain**
 
 Phase 3 has completed its design prerequisites, package foundations, durable
 coordinator/attempt state, and readiness-gated execution consumers. The exact
 Manual -> Set/Map -> Terminate graph now executes through PostgreSQL, Redis, and
-BullMQ with duplicate attempt delivery. No core node is exposed through a
-placement or publication catalog until the remaining authorized API, SSE,
-cancellation, durable compatibility-release, and final evidence gates pass.
+BullMQ with duplicate attempt delivery. Authorized publication now compiles and
+stores its exact V2 executable envelope, and the public Start/Get/Stream/Cancel
+slice is live. Placement, durable compatibility-release authority, active-work
+cancellation recovery, and the final Phase 0/fleet evidence gates remain.
 
 Design prerequisites:
 
@@ -757,7 +758,7 @@ Thin-slice scope and node contracts:
       type/version constants.
 - [x] Add the node SDK definition and executor contracts without NestJS, ORM,
       Redis, BullMQ, or provider dependencies.
-- [ ] Add the core-node registry and adapt its definition catalog to the
+- [x] Add the core-node registry and adapt its definition catalog to the
       workflow model without reversing canonical graph ownership.
 - [x] Keep browser-safe manifests limited to metadata, schemas, lifecycle,
       compatibility, and exact executor references; prove package export maps
@@ -847,20 +848,20 @@ Compatibility rollout, readiness, and retirement:
 
 API, SSE, and cancellation:
 
-- [ ] Add generated Zod/OpenAPI/client contracts and stable RFC 9457 problems
+- [x] Add generated Zod/OpenAPI/client contracts and stable RFC 9457 problems
       for starting, reading, streaming, and canceling this graph without
       exposing checkpoints, ORM rows, or internal engine objects.
-- [ ] Implement authorized `StartWorkflowRun`, `GetWorkflowRun`,
+- [x] Implement authorized `StartWorkflowRun`, `GetWorkflowRun`,
       `StreamRunEvents`, and `CancelWorkflowRun` use cases with thin NestJS
       controllers and canonical workspace/request/trace context.
-- [ ] Return `202 Accepted` only after the queued run, immutable version
+- [x] Return `202 Accepted` only after the queued run, immutable version
       reference, initial event/checkpoint, idempotency record, and outbox row
       commit atomically; exact idempotency replays must return the original run.
-- [ ] Prove through the real HTTP/API and PostgreSQL path that reusing an
+- [x] Prove through the real HTTP/API and PostgreSQL path that reusing an
       idempotency key with a different canonical request hash fails with the
       stable conflict problem and creates no duplicate run, event, checkpoint,
       idempotency, or outbox row.
-- [ ] Reconstruct SSE from PostgreSQL-authoritative ordered events using bounded
+- [x] Reconstruct SSE from PostgreSQL-authoritative ordered events using bounded
       subscribe-before-read catch-up, opaque Redis wake-ups, reconnect cursors,
       and backfill after Redis loss.
 - [ ] Make cancellation durable and monotonic, prevent new admission after the
@@ -872,15 +873,15 @@ API, SSE, and cancellation:
 
 Required completion evidence:
 
-- [ ] Pass focused unit, typecheck, lint, format, build, and deterministic
+- [x] Pass focused unit, typecheck, lint, format, build, and deterministic
       generated-contract, OpenAPI/client, migration-manifest, and other
       generated-artifact drift gates for every changed package and role.
-- [ ] Apply every reviewed SQL migration from the completed Phase 2 head
+- [x] Apply every reviewed SQL migration from the completed Phase 2 head
       `80de849` through the fixed Phase 3 head, as well as from a clean zero
       state, and prove the checked-in migration manifest, schema model,
       readiness introspection, grants, constraints, and immutable-version
       triggers agree.
-- [ ] Pass real PostgreSQL role/RLS/migration tests for run acceptance,
+- [x] Pass real PostgreSQL role/RLS/migration tests for run acceptance,
       idempotency, version loading, checkpoint CAS, events, attempts,
       cancellation, and least-privilege grants from a clean zero-to-head
       migration.
@@ -1174,10 +1175,47 @@ Current evidence:
   through `0016_engine_invocation_keys.sql`; the full database suite passed 184
   assertions, and the real worker proof passed three coordinator/attempt
   cases. All disposable databases were dropped (`pertexo_test_% = []`); the
-  stale shared development database was not reset or rewritten. API, SSE,
-  durable cancellation commands, durable compatibility releases/readiness,
-  publication enablement, and the final Phase 0B–0E/fleet review matrix remain
-  unchecked next-checkpoint work.
+  stale shared development database was not reset or rewritten. At
+  `d06b370`, API/SSE/cancellation/publication and durable compatibility/final
+  review were still the next checkpoints; the following evidence records which
+  of those gates are now closed.
+- Commits `27e1720` and `c57e89e` add generated Start/Get/Stream/Cancel
+  contracts plus the authorization-first application/controller seams. Commit
+  `d397f72` adds the deep PostgreSQL command adapter: exact start replay resolves
+  before current publication state, new acceptance atomically writes the
+  immutable version/run/checkpoint/event/idempotency/outbox set, Get returns a
+  bounded purpose-built projection, and cancellation writes its durable event,
+  continuation outbox, and audit once. Focused database integration proves one
+  run/checkpoint, two source events, two outbox rows, and two audits across
+  exact start/cancel replays, request-hash conflict, and cross-workspace reads.
+- Commits `61f8f0c`, `56acb98`, and `88fcf4d` move the opaque hashed-channel
+  Redis notification transport into the queue owner and publish best-effort
+  resync hints after committed coordinator and node-attempt transitions. Redis
+  remains non-authoritative: API Start/Cancel and worker handlers never change
+  a committed PostgreSQL result when a hint fails, and SSE always rereads
+  ordered durable events.
+- Commit `a7eaf42` activates the complete public slice. Production authoring
+  adapts the core registry without reversing graph ownership, compiles the
+  exact V2 envelope inside the locked publication transaction, preserves V1
+  read/checksum behavior, and publishes a V2 checksum contract. The workflow
+  runtime composes run persistence, PostgreSQL event reads, opaque Redis hints,
+  bounded public payload projection, lifecycle cleanup, and the four NestJS
+  routes. A real authenticated HTTP/PostgreSQL/Redis proof publishes the
+  Manual -> Terminate core graph, returns `202`, exactly replays the original
+  run, rejects a changed request with the stable 409 problem, reads and cancels
+  under CSRF/RLS, verifies the one-run/one-checkpoint/two-event/two-outbox
+  durable cardinality, strips cancellation actor/reason from SSE, and hides a
+  foreign workspace.
+- Current validation is green: root `pnpm check` passes formatting, ESLint,
+  deterministic generated-artifact drift, all workspace typechecks, 559 unit
+  assertions, and all production builds. On the isolated PostgreSQL 18
+  database already migrated through `0016_engine_invocation_keys.sql`, focused
+  database suites pass 38 assertions, the authenticated real API suite passes
+  six end-to-end cases, the real PostgreSQL/Redis SSE proof passes, and the real
+  PostgreSQL/Redis/BullMQ coordinator proof passes three cases. The remaining
+  unchecked work is the active-work cancellation/restart matrix, durable
+  compatibility-release/fleet authority, retained compatibility/failure
+  matrix completion, and independent final Phase 3 review.
 
 ## Later phases
 
