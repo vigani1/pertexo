@@ -5,7 +5,8 @@ import {
   type CompatibilityReleaseExpectation,
 } from './compatibility-release.js';
 
-export const EXPECTED_MIGRATION_HEAD = '0017_node_compatibility_releases.sql';
+export const EXPECTED_MIGRATION_HEAD =
+  '0018_phase3_core_executor_non_removal.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -920,6 +921,30 @@ async function checkCompatibilityReleaseSchema(
             where tgrelid = to_regclass('app.node_compatibility_releases')
               and tgname = 'node_compatibility_releases_immutable'
               and tgenabled = 'O' and not tgisinternal
+         )
+         and exists (
+           select 1 from pg_trigger trigger
+            where trigger.tgrelid = to_regclass('app.node_compatibility_releases')
+              and trigger.tgname = 'node_compatibility_releases_phase3_core_non_removal'
+              and trigger.tgenabled = 'O' and not trigger.tgisinternal
+              and trigger.tgtype = 7
+              and trigger.tgfoid = 'app.enforce_phase3_core_executor_non_removal()'::regprocedure
+         )
+         and exists (
+           select 1
+             from pg_proc function
+             join pg_namespace namespace on namespace.oid = function.pronamespace
+            where namespace.nspname = 'app'
+              and function.proname = 'enforce_phase3_core_executor_non_removal'
+              and not function.prosecdef
+              and pg_get_userbyid(function.proowner) = $1
+              and function.proconfig = array['search_path=pg_catalog, app']::text[]
+              and md5(function.prosrc) = '338c35d21e71957aed153ac764b2e450'
+              and not exists (
+                select 1
+                  from aclexplode(coalesce(function.proacl, acldefault('f', function.proowner))) acl
+                 where acl.grantee = 0 and acl.privilege_type = 'EXECUTE'
+              )
          )
          and exists (
            select 1

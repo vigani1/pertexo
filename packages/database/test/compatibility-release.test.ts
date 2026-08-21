@@ -9,13 +9,18 @@ const migrationUrl = new URL(
   '../migrations/0017_node_compatibility_releases.sql',
   import.meta.url,
 );
+const nonRemovalMigrationUrl = new URL(
+  '../migrations/0018_phase3_core_executor_non_removal.sql',
+  import.meta.url,
+);
 
 describe('node compatibility release persistence', () => {
   it('owns one append-only initial release and a durable current pointer', async () => {
     const migration = await readFile(migrationUrl, 'utf8');
+    const nonRemovalMigration = await readFile(nonRemovalMigrationUrl, 'utf8');
 
     expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0017_node_compatibility_releases.sql',
+      '0018_phase3_core_executor_non_removal.sql',
     );
     expect(migration).toContain('CREATE TABLE app.node_compatibility_releases');
     expect(migration).toContain('CREATE TABLE app.node_compatibility_current');
@@ -30,6 +35,15 @@ describe('node compatibility release persistence', () => {
     expect(migration).toMatch(
       /REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER[\s\S]+FROM \{\{api_runtime_role\}\}, \{\{worker_runtime_role\}\}, \{\{dispatcher_role\}\}/u,
     );
+    expect(nonRemovalMigration).toContain(
+      'app.enforce_phase3_core_executor_non_removal',
+    );
+    expect(nonRemovalMigration).toContain(
+      'node_compatibility_releases_phase3_core_non_removal',
+    );
+    for (const key of ['core.manual', 'core.set', 'core.terminate'])
+      expect(nonRemovalMigration).toContain(key);
+    expect(nonRemovalMigration).toContain("IN ('active', 'retained')");
   });
 
   it('accepts only a bounded canonical V1 catalog expectation', () => {
