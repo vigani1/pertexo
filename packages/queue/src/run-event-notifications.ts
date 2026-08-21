@@ -153,13 +153,11 @@ export class RedisRunEventNotificationPublisher implements RunEventNotificationP
       const receivers = await Promise.race([
         this.redis.publish(channel, payload),
         new Promise<never>((_resolve, reject) => {
-          timer = setTimeout(
-            () =>
-              reject(
-                new RunEventNotificationPublishError('Redis publish timed out'),
-              ),
-            this.publishTimeoutMs,
-          );
+          timer = setTimeout(() => {
+            reject(
+              new RunEventNotificationPublishError('Redis publish timed out'),
+            );
+          }, this.publishTimeoutMs);
         }),
       ]);
       return { receivers };
