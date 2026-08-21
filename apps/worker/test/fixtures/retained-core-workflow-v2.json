@@ -1,0 +1,163 @@
+{
+  "format": "pertexo.retained-workflow-v2-fixture",
+  "schemaVersion": 1,
+  "graph": {
+    "schemaVersion": 1,
+    "settings": { "maxRunDurationMs": 60000 },
+    "nodes": [
+      {
+        "id": "manual",
+        "definition": { "key": "core.manual", "version": 1 },
+        "position": { "x": 0, "y": 0 },
+        "configVersion": 1,
+        "config": {},
+        "inputMappings": {},
+        "connectionRefs": {}
+      },
+      {
+        "id": "set",
+        "definition": { "key": "core.set", "version": 1 },
+        "position": { "x": 10, "y": 0 },
+        "configVersion": 1,
+        "config": {},
+        "inputMappings": {
+          "literal": { "kind": "literal", "value": 1 },
+          "fromRun": { "kind": "run_input", "path": "$.name" }
+        },
+        "connectionRefs": {}
+      },
+      {
+        "id": "terminate",
+        "definition": { "key": "core.terminate", "version": 1 },
+        "position": { "x": 20, "y": 0 },
+        "configVersion": 1,
+        "config": {},
+        "inputMappings": {
+          "result": { "kind": "node_output", "nodeId": "set", "path": "$" }
+        },
+        "connectionRefs": {}
+      }
+    ],
+    "edges": [
+      {
+        "id": "manual-set",
+        "source": { "nodeId": "manual", "port": "out" },
+        "target": { "nodeId": "set", "port": "in" }
+      },
+      {
+        "id": "set-terminate",
+        "source": { "nodeId": "set", "port": "out" },
+        "target": { "nodeId": "terminate", "port": "in" }
+      }
+    ]
+  },
+  "executable": {
+    "schemaVersion": 2,
+    "sourceGraphSchemaVersion": 1,
+    "graph": {
+      "settings": { "maxRunDurationMs": 60000 },
+      "nodes": [
+        {
+          "id": "manual",
+          "definition": { "key": "core.manual", "version": 1 },
+          "configVersion": 1,
+          "config": {},
+          "inputMappings": {},
+          "connectionRefs": {},
+          "disabled": false,
+          "sideEffectClass": "safe",
+          "executor": { "key": "core.manual", "version": 1 },
+          "executorAbi": 1,
+          "policyReferences": [{ "key": "node.json.bounded", "version": 1 }]
+        },
+        {
+          "id": "set",
+          "definition": { "key": "core.set", "version": 1 },
+          "configVersion": 1,
+          "config": {},
+          "inputMappings": {
+            "fromRun": { "kind": "run_input", "path": "$.name" },
+            "literal": { "kind": "literal", "value": 1 }
+          },
+          "connectionRefs": {},
+          "disabled": false,
+          "sideEffectClass": "safe",
+          "executor": { "key": "core.set", "version": 1 },
+          "executorAbi": 1,
+          "policyReferences": [
+            { "key": "jsonata.restricted", "version": 1 },
+            { "key": "node.json.bounded", "version": 1 }
+          ]
+        },
+        {
+          "id": "terminate",
+          "definition": { "key": "core.terminate", "version": 1 },
+          "configVersion": 1,
+          "config": {},
+          "inputMappings": {
+            "result": { "kind": "node_output", "nodeId": "set", "path": "$" }
+          },
+          "connectionRefs": {},
+          "disabled": false,
+          "sideEffectClass": "safe",
+          "executor": { "key": "core.terminate", "version": 1 },
+          "executorAbi": 1,
+          "policyReferences": [{ "key": "node.json.bounded", "version": 1 }]
+        }
+      ],
+      "edges": [
+        {
+          "id": "manual-set",
+          "source": { "nodeId": "manual", "port": "out" },
+          "target": { "nodeId": "set", "port": "in" }
+        },
+        {
+          "id": "set-terminate",
+          "source": { "nodeId": "set", "port": "out" },
+          "target": { "nodeId": "terminate", "port": "in" }
+        }
+      ]
+    },
+    "runtimePolicies": {
+      "scheduler": { "key": "engine.scheduler", "version": 1 },
+      "checkpoint": { "key": "engine.checkpoint", "version": 1 },
+      "retry": { "key": "engine.retry", "version": 1 },
+      "timeout": { "key": "engine.timeout", "version": 1 },
+      "cancellation": { "key": "engine.cancellation", "version": 1 }
+    },
+    "configMigrations": [],
+    "compatibilitySelectionFingerprint": "engine-select:v1:sha256:257bec5f5fd7d7a7c6585c625229dd2aa6dcacfe7cd18b004bdc8cd8235e53bf",
+    "compatibilityReleaseEpoch": 1,
+    "compatibilityReleaseFingerprint": "node-compat:v1:sha256:cf21b2e644563beb8b031481e9d5182b361b4ae2d4abd1d7d86d7b3fe0299f59"
+  },
+  "checksum": "wf:v2:sha256:41379300875e74902768205f533500fb1c6f50cdc91e649a119de02c990f2fe8",
+  "executions": [
+    {
+      "nodeId": "manual",
+      "definition": { "key": "core.manual", "version": 1 },
+      "executor": { "key": "core.manual", "version": 1 },
+      "input": { "name": "Ada" },
+      "expected": { "kind": "succeeded", "output": { "name": "Ada" } }
+    },
+    {
+      "nodeId": "set",
+      "definition": { "key": "core.set", "version": 1 },
+      "executor": { "key": "core.set", "version": 1 },
+      "input": { "fromRun": "Ada", "literal": 1 },
+      "expected": {
+        "kind": "succeeded",
+        "output": { "fromRun": "Ada", "literal": 1 }
+      }
+    },
+    {
+      "nodeId": "terminate",
+      "definition": { "key": "core.terminate", "version": 1 },
+      "executor": { "key": "core.terminate", "version": 1 },
+      "input": { "result": { "fromRun": "Ada", "literal": 1 } },
+      "expected": {
+        "kind": "terminal_success",
+        "output": { "result": { "fromRun": "Ada", "literal": 1 } }
+      }
+    }
+  ]
+}
