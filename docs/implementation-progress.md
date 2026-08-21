@@ -19,7 +19,7 @@ not complete a phase.
 | Phase 0E — execution durability proofs and engine gate | Complete | ADRs 005 and 007–009; commits through `0322837`; 239 unit, 96 real-service integration, five process-recovery, one SSE-outage, and one transport-outage assertions; custom-engine GO |
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
-| Phase 3 — first executable-node slice | In progress | ADR 010; node SDK/core registry `85385cc`–`94426f7`; retained V1 and pre-publication V2 identity/operations through `8ce1fd9`; migration head `0015_coordinator_run_store.sql`; published projection, bounded execution values, and coordinator RunStore through `a8c52aa`; consumers/publication remain disabled |
+| Phase 3 — first executable-node slice | In progress | ADR 010; node SDK/core registry `85385cc`–`94426f7`; retained V1 and pre-publication V2 identity/operations through `8ce1fd9`; migration head `0016_engine_invocation_keys.sql`; published projection, bounded execution values, coordinator RunStore, and readiness-gated coordinator consumer through `9d8d3c5`; attempt execution/publication remain disabled |
 | Phase 4 — first side-effecting integration slice | Not started | — |
 | Phase 5 — orchestration slice | Not started | — |
 | Phase 6 — V1 providers and triggers | Not started | — |
@@ -727,12 +727,12 @@ Initial evidence:
 
 ## Phase 3 — First executable-node slice
 
-Status: **In progress — package foundations, executable identity/operations, published-version projection, and coordinator RunStore persistence complete**
+Status: **In progress — package foundations, executable identity/operations, published-version projection, RunStore persistence, and the coordinator consumer complete**
 
-Phase 3 has completed its design prerequisites and the first package-level
-implementation checkpoint. No core node is exposed through a placement or
-publication catalog; the complete vertical-slice evidence must pass before
-publication is enabled.
+Phase 3 has completed its design prerequisites, package foundations, durable
+coordinator state, and readiness-gated coordinator consumer. No core node is
+exposed through a placement or publication catalog; node-attempt execution and
+the complete vertical-slice evidence must pass before publication is enabled.
 
 Design prerequisites:
 
@@ -797,7 +797,7 @@ Production execution and persistence:
 - [x] Implement narrow behavior-named persistence ports such as
       `PublishedWorkflowReader` and `RunStore`; keep SQL, ORM rows, transaction
       assembly, and generic repositories out of engine and consumer seams.
-- [ ] Compose a thin coordinator consumer that loads PostgreSQL-authoritative
+- [x] Compose a thin coordinator consumer that loads PostgreSQL-authoritative
       state, advances one checkpoint revision, records ordered events, and
       emits continuation/node-attempt outbox work atomically.
 - [ ] Compose a separate thin node-attempt consumer that claims with a lease and
@@ -1124,10 +1124,28 @@ Current evidence:
   Standards/security reviews returned GO with no blocker/high findings. The
   disposable database catalog was empty after cleanup, and the shared local
   database was not mutated.
+- Commit `9d8d3c5` composes the production workflow coordinator around the
+  published-version reader, authenticated V2 engine, and RunStore, and exposes
+  `advance-workflow-run` to the dispatcher only when that exact consumer is
+  composed and ready. Migration `0016_engine_invocation_keys.sql` admits the
+  engine's canonical URI-component invocation identity while retaining legacy
+  Phase 0E rows. The transport path binds each BullMQ delivery to its durable
+  outbox aggregate and canonical checksum, records the inbox receipt in the
+  same transaction as the checkpoint transition, makes exact redelivery a
+  no-op, and records a durable security audit fact before rejecting a forged
+  payload that reuses a valid outbox ID. Readiness now proves the coordinator's
+  exact outbox/inbox/audit policies and least-privilege grants. A clean
+  zero-to-0016 PostgreSQL run passes all 183 database integration assertions;
+  the real PostgreSQL + Redis + BullMQ coordinator proof passes two transition,
+  exact-redelivery, and forged-delivery cases. Root `pnpm check` passes
+  formatting, lint, generated-contract drift, all typechecks, 530 unit
+  assertions, and all builds. A final two-axis checkpoint review found no
+  blocker/high issue. The disposable database was dropped; attempt execution
+  and publication remain disabled.
 - Concrete nodes-core composition for Set/Map resolution, V2 immutable retained
-  fixtures, workflow-model publication adaptation, worker consumers, API, SSE,
-  and the complete executable graph remain unchecked and are owned by the
-  following checkpoints.
+  fixtures, workflow-model publication adaptation, the node-attempt consumer,
+  API, SSE, and the complete executable graph remain unchecked and are owned by
+  the following checkpoints.
 
 ## Later phases
 
