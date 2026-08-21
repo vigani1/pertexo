@@ -35,6 +35,11 @@ describe('parseWorkerConfig', () => {
       },
       nodeEnv: 'development',
       logLevel: 'info',
+      nodeAttempt: {
+        heartbeatIntervalMillis: 10_000,
+        leaseDurationSeconds: 30,
+        workerId: 'worker-local',
+      },
       observability: {
         environment: 'development',
         logLevel: 'info',
@@ -90,6 +95,11 @@ describe('parseWorkerConfig', () => {
       },
       nodeEnv: 'test',
       logLevel: 'debug',
+      nodeAttempt: {
+        heartbeatIntervalMillis: 10_000,
+        leaseDurationSeconds: 30,
+        workerId: 'worker-local',
+      },
       observability: {
         environment: 'test',
         logLevel: 'debug',
@@ -112,6 +122,7 @@ describe('parseWorkerConfig', () => {
     expect(Object.isFrozen(config)).toBe(true);
     expect(Object.isFrozen(config.database)).toBe(true);
     expect(Object.isFrozen(config.coordinator)).toBe(true);
+    expect(Object.isFrozen(config.nodeAttempt)).toBe(true);
   });
 
   it.each(['0', '65', '1.5'])(
@@ -129,6 +140,20 @@ describe('parseWorkerConfig', () => {
       ).toThrow(/invalid worker configuration/i);
     },
   );
+
+  it('rejects a node-attempt heartbeat that cannot renew before lease expiry', () => {
+    expect(() =>
+      parseWorkerConfig({
+        DATABASE_DISPATCHER_URL:
+          'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
+        DATABASE_WORKER_URL:
+          'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+        REDIS_URL: 'redis://:secret@localhost:6379/0',
+        NODE_ATTEMPT_LEASE_SECONDS: '5',
+        NODE_ATTEMPT_HEARTBEAT_MILLIS: '5000',
+      }),
+    ).toThrow(/invalid worker configuration/i);
+  });
 
   it('rejects an unsupported log level before the worker starts', () => {
     expect(() =>

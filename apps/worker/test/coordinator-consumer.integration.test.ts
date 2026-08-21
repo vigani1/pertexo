@@ -17,6 +17,7 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createCoordinatorRuntime } from '../src/execution/coordinator-runtime.js';
+import { createNodeAttemptRuntime } from '../src/execution/node-attempt-runtime.js';
 
 const enabled = process.env.WORKER_TRANSPORT_INTEGRATION === 'true';
 const describeIntegration = enabled ? describe : describe.skip;
@@ -80,21 +81,49 @@ function graph() {
         connectionRefs: {},
       },
       {
-        id: 'terminate',
-        definition: { key: 'core.terminate', version: 1 },
+        id: 'set',
+        definition: { key: 'core.set', version: 1 },
         position: { x: 10, y: 0 },
         configVersion: 1,
         config: {},
         inputMappings: {
-          result: { kind: 'node_output' as const, nodeId: 'manual', path: '$' },
+          literal: { kind: 'literal' as const, value: 1 },
+          fromRun: { kind: 'run_input' as const, path: '$.hello' },
+          fromNode: {
+            kind: 'node_output' as const,
+            nodeId: 'manual',
+            path: '$.hello',
+          },
+          expression: {
+            kind: 'expression' as const,
+            language: 'jsonata' as const,
+            expression: 'runInput.hello',
+            policyVersion: 1,
+          },
+        },
+        connectionRefs: {},
+      },
+      {
+        id: 'terminate',
+        definition: { key: 'core.terminate', version: 1 },
+        position: { x: 20, y: 0 },
+        configVersion: 1,
+        config: {},
+        inputMappings: {
+          result: { kind: 'node_output' as const, nodeId: 'set', path: '$' },
         },
         connectionRefs: {},
       },
     ],
     edges: [
       {
-        id: 'manual-terminate',
+        id: 'manual-set',
         source: { nodeId: 'manual', port: 'out' },
+        target: { nodeId: 'set', port: 'in' },
+      },
+      {
+        id: 'set-terminate',
+        source: { nodeId: 'set', port: 'out' },
         target: { nodeId: 'terminate', port: 'in' },
       },
     ],
@@ -206,6 +235,14 @@ async function setupFixture(): Promise<void> {
   } finally {
     await queue.close();
   }
+  const attemptQueue = new Queue(QUEUE_NAME.nodeAttempts, {
+    connection: redisConnection(),
+  });
+  try {
+    await attemptQueue.obliterate({ force: true });
+  } finally {
+    await attemptQueue.close();
+  }
 }
 
 async function cleanupFixture(): Promise<void> {
@@ -216,6 +253,14 @@ async function cleanupFixture(): Promise<void> {
     await queue.obliterate({ force: true });
   } finally {
     await queue.close();
+    const attemptQueue = new Queue(QUEUE_NAME.nodeAttempts, {
+      connection: redisConnection(),
+    });
+    try {
+      await attemptQueue.obliterate({ force: true });
+    } finally {
+      await attemptQueue.close();
+    }
     await apiDatabase.close();
     await ownerPool.end();
     await workerPool.end();
@@ -237,6 +282,7 @@ async function acceptRun(): Promise<
       initialCheckpoint,
       keyHash: createHash('sha256').update(randomUUID()).digest('hex'),
       operation: 'workflow.run.accept',
+      runInput: { hello: 'world' },
       requestHash: createHash('sha256').update(randomUUID()).digest('hex'),
       scope: `coordinator:${workflowId}`,
       triggerType: 'manual',
@@ -244,6 +290,67 @@ async function acceptRun(): Promise<
       workflowVersionId,
     }),
   );
+}
+
+async function waitForAttemptOutbox(
+  runId: string,
+  excludedIds: readonly string[] = [],
+): Promise<{
+  attemptId: string;
+  nodeRunId: string;
+  outboxEventId: string;
+}> {
+  const rows = await waitFor(
+    () =>
+      workerQuery<{
+        attempt_id: string;
+        id: string;
+        node_run_id: string;
+      }>(
+        `select outbox.id,attempt.id attempt_id,node.id node_run_id
+         from app.outbox_events outbox
+         join app.node_attempts attempt
+           on attempt.workspace_id=outbox.workspace_id
+          and attempt.id=outbox.aggregate_id
+         join app.node_runs node
+           on node.workspace_id=attempt.workspace_id
+          and node.id=attempt.node_run_id
+         where outbox.workspace_id=$1 and node.workflow_run_id=$2
+           and outbox.job_name='execute-node-attempt'
+           and not (outbox.id=any($3::uuid[]))
+         order by outbox.created_at,outbox.id`,
+        [workspaceId, runId, excludedIds],
+      ),
+    (value) => value.length > 0,
+  );
+  const row = rows[0];
+  if (row === undefined) throw new Error('attempt outbox missing');
+  return {
+    attemptId: row.attempt_id,
+    nodeRunId: row.node_run_id,
+    outboxEventId: row.id,
+  };
+}
+
+async function waitForCoordinatorOutbox(
+  runId: string,
+  excludedIds: readonly string[],
+): Promise<string> {
+  const rows = await waitFor(
+    () =>
+      workerQuery<{ id: string }>(
+        `select id from app.outbox_events
+         where workspace_id=$1 and aggregate_id=$2
+           and job_name='advance-workflow-run'
+           and not (id=any($3::uuid[]))
+         order by created_at,id`,
+        [workspaceId, runId, excludedIds],
+      ),
+    (value) => value.length > 0,
+  );
+  const row = rows[0];
+  if (row === undefined) throw new Error('coordinator outbox missing');
+  return row.id;
 }
 
 describeIntegration('Phase 3 coordinator consumer', () => {
@@ -373,6 +480,218 @@ describeIntegration('Phase 3 coordinator consumer', () => {
         producer.close(),
         runtime.close(),
         queue.close(),
+      ]);
+    }
+  });
+
+  it('executes Manual through Set/Map to Terminate across durable coordinator continuations', async () => {
+    const accepted = await acceptRun();
+    const database = parseDatabaseConfig({
+      connectionString: workerUrl,
+      max: 6,
+    });
+    const coordinator = await createCoordinatorRuntime({
+      database,
+      maximumAdmissions: 1,
+      redisUrl,
+    });
+    const attempts = await createNodeAttemptRuntime({
+      database,
+      heartbeatIntervalMillis: 1_000,
+      leaseDurationSeconds: 10,
+      redisUrl,
+      workerId: `integration-${randomUUID()}`,
+    });
+    const producer = createQueueProducer({ redisUrl });
+    const attemptQueue = new Queue(QUEUE_NAME.nodeAttempts, {
+      connection: redisConnection(),
+    });
+    const coordinatorOutboxes = [accepted.outboxEventId];
+    const attemptOutboxes: string[] = [];
+
+    try {
+      await Promise.all([
+        coordinator.consumer.waitUntilReady(5_000),
+        attempts.consumer.waitUntilReady(5_000),
+        producer.waitUntilReady(5_000),
+      ]);
+      const initialJob = await producer.publish({
+        name: JOB_NAME.advanceWorkflowRun,
+        data: {
+          schemaVersion: 1,
+          workspaceId,
+          runId: accepted.runId,
+          outboxEventId: accepted.outboxEventId,
+        },
+      });
+      const coordinatorQueue = new Queue(QUEUE_NAME.workflowCoordinator, {
+        connection: redisConnection(),
+      });
+      const initialTransition = await waitFor(
+        async () => {
+          const [rows, queued] = await Promise.all([
+            workerQuery<{ revision: number }>(
+              `select revision from app.run_checkpoints
+               where workspace_id=$1 and workflow_run_id=$2`,
+              [workspaceId, accepted.runId],
+            ),
+            coordinatorQueue.getJob(initialJob.jobId),
+          ]);
+          return {
+            revision: rows[0]?.revision,
+            state: await queued?.getState(),
+            failedReason: queued?.failedReason,
+          };
+        },
+        (value) => value.revision === 1 || value.state === 'failed',
+      );
+      await coordinatorQueue.close();
+      if (initialTransition.revision !== 1)
+        throw new Error(
+          `initial coordinator failed: ${initialTransition.failedReason ?? 'unknown'}`,
+        );
+
+      for (const expectedNodeId of ['manual', 'set', 'terminate'] as const) {
+        const attempt = await waitForAttemptOutbox(
+          accepted.runId,
+          attemptOutboxes,
+        );
+        attemptOutboxes.push(attempt.outboxEventId);
+        await producer.publish({
+          name: JOB_NAME.executeNodeAttempt,
+          data: {
+            schemaVersion: 1,
+            workspaceId,
+            runId: accepted.runId,
+            nodeRunId: attempt.nodeRunId,
+            attemptId: attempt.attemptId,
+            outboxEventId: attempt.outboxEventId,
+          },
+        });
+        await waitFor(
+          () =>
+            workerQuery<{ node_id: string; status: string }>(
+              `select node_id,status from app.node_runs
+               where workspace_id=$1 and id=$2`,
+              [workspaceId, attempt.nodeRunId],
+            ),
+          (rows) =>
+            rows[0]?.node_id === expectedNodeId &&
+            rows[0].status === 'succeeded',
+        );
+        const completedJob = await waitFor(
+          () => attemptQueue.getJob(`outbox-${attempt.outboxEventId}`),
+          (job) => job !== undefined,
+        );
+        if (completedJob === undefined)
+          throw new Error('completed attempt job disappeared');
+        await waitFor(
+          () => completedJob.getState(),
+          (state) => state === 'completed',
+        );
+        await completedJob.remove();
+        await producer.publish({
+          name: JOB_NAME.executeNodeAttempt,
+          data: {
+            schemaVersion: 1,
+            workspaceId,
+            runId: accepted.runId,
+            nodeRunId: attempt.nodeRunId,
+            attemptId: attempt.attemptId,
+            outboxEventId: attempt.outboxEventId,
+          },
+        });
+        const replay = await waitFor(
+          () => attemptQueue.getJob(`outbox-${attempt.outboxEventId}`),
+          (job) => job !== undefined,
+        );
+        if (replay === undefined)
+          throw new Error('replayed attempt job disappeared');
+        await waitFor(
+          () => replay.getState(),
+          (state) => state === 'completed',
+        );
+        const continuation = await waitForCoordinatorOutbox(
+          accepted.runId,
+          coordinatorOutboxes,
+        );
+        coordinatorOutboxes.push(continuation);
+        await producer.publish({
+          name: JOB_NAME.advanceWorkflowRun,
+          data: {
+            schemaVersion: 1,
+            workspaceId,
+            runId: accepted.runId,
+            outboxEventId: continuation,
+          },
+        });
+      }
+
+      const terminal = await waitFor(
+        () =>
+          workerQuery<{
+            event_types: string[];
+            revision: number;
+            status: string;
+          }>(
+            `select run.status,checkpoint.revision,
+                    array_agg(event.type order by event.sequence) event_types
+             from app.workflow_runs run
+             join app.run_checkpoints checkpoint
+               on checkpoint.workspace_id=run.workspace_id
+              and checkpoint.workflow_run_id=run.id
+             join app.run_events event
+               on event.workspace_id=run.workspace_id
+              and event.workflow_run_id=run.id
+             where run.workspace_id=$1 and run.id=$2
+             group by run.status,checkpoint.revision`,
+            [workspaceId, accepted.runId],
+          ),
+        (rows) => rows[0]?.status === 'succeeded',
+      );
+      expect(terminal[0]?.revision).toBe(4);
+      expect(terminal[0]?.event_types).toEqual([
+        'run.queued',
+        'run.started',
+        'node.ready',
+        'node.started',
+        'node.succeeded',
+        'node.ready',
+        'node.started',
+        'node.succeeded',
+        'node.ready',
+        'node.started',
+        'node.succeeded',
+        'run.succeeded',
+      ]);
+      await expect(
+        workerQuery<{ output_ref: unknown }>(
+          `select output_ref from app.node_runs
+           where workspace_id=$1 and workflow_run_id=$2 and node_id='terminate'`,
+          [workspaceId, accepted.runId],
+        ),
+      ).resolves.toEqual([
+        {
+          output_ref: {
+            schemaVersion: 1,
+            kind: 'inline',
+            value: {
+              result: {
+                expression: 'world',
+                fromNode: 'world',
+                fromRun: 'world',
+                literal: 1,
+              },
+            },
+          },
+        },
+      ]);
+    } finally {
+      await Promise.allSettled([
+        producer.close(),
+        attemptQueue.close(),
+        attempts.close(),
+        coordinator.close(),
       ]);
     }
   });

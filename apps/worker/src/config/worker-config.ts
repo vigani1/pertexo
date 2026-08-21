@@ -139,6 +139,18 @@ export const workerConfigSchema = z
       .min(1)
       .max(64)
       .default(32),
+    NODE_ATTEMPT_LEASE_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(300)
+      .default(30),
+    NODE_ATTEMPT_HEARTBEAT_MILLIS: z.coerce
+      .number()
+      .int()
+      .min(10)
+      .max(299_999)
+      .default(10_000),
     WORKER_INSTANCE_ID: z
       .string()
       .regex(/^[A-Za-z0-9._:-]{1,96}$/u)
@@ -155,6 +167,17 @@ export const workerConfigSchema = z
       .string()
       .regex(/^[a-z_][a-z0-9_]*$/u)
       .default('pertexo_worker'),
+  })
+  .superRefine((value, context) => {
+    if (
+      value.NODE_ATTEMPT_HEARTBEAT_MILLIS >=
+      value.NODE_ATTEMPT_LEASE_SECONDS * 1_000
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['NODE_ATTEMPT_HEARTBEAT_MILLIS'],
+        message: 'Node-attempt heartbeat must be shorter than its lease',
+      });
   })
   .transform(
     ({
@@ -173,6 +196,8 @@ export const workerConfigSchema = z
       OUTBOX_DISPATCH_POLL_MILLIS,
       OUTBOX_DISPATCH_RETRY_MILLIS,
       WORKFLOW_COORDINATOR_MAX_ADMISSIONS,
+      NODE_ATTEMPT_LEASE_SECONDS,
+      NODE_ATTEMPT_HEARTBEAT_MILLIS,
       WORKER_INSTANCE_ID,
       NODE_ENV,
       LOG_LEVEL,
@@ -221,6 +246,11 @@ export const workerConfigSchema = z
       coordinator: {
         maximumAdmissions: WORKFLOW_COORDINATOR_MAX_ADMISSIONS,
       },
+      nodeAttempt: {
+        heartbeatIntervalMillis: NODE_ATTEMPT_HEARTBEAT_MILLIS,
+        leaseDurationSeconds: NODE_ATTEMPT_LEASE_SECONDS,
+        workerId: WORKER_INSTANCE_ID,
+      },
       redisUrl: REDIS_URL,
     }),
   );
@@ -241,6 +271,7 @@ export function parseWorkerConfig(
     database: Object.freeze(result.data.database),
     dispatcherDatabase: Object.freeze(result.data.dispatcherDatabase),
     coordinator: Object.freeze(result.data.coordinator),
+    nodeAttempt: Object.freeze(result.data.nodeAttempt),
     outboxDispatcher: Object.freeze(result.data.outboxDispatcher),
   });
 }

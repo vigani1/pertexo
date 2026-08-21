@@ -21,6 +21,10 @@ import {
   createCoordinatorRuntime,
   type CoordinatorRuntime,
 } from '../execution/coordinator-runtime.js';
+import {
+  createNodeAttemptRuntime,
+  type NodeAttemptRuntime,
+} from '../execution/node-attempt-runtime.js';
 import { WorkerDrainState } from '../runtime/worker-drain-state.js';
 import {
   createDispatchConsumerCapabilityRegistry,
@@ -33,12 +37,14 @@ export const OUTBOX_DISPATCHER = Symbol('OUTBOX_DISPATCHER');
 export const QUEUE_CONSUMER_OBSERVER = Symbol('QUEUE_CONSUMER_OBSERVER');
 export const TRANSPORT_METRICS = Symbol('TRANSPORT_METRICS');
 export const COORDINATOR_RUNTIME = Symbol('COORDINATOR_RUNTIME');
+export const NODE_ATTEMPT_RUNTIME = Symbol('NODE_ATTEMPT_RUNTIME');
 export const DISPATCH_CONSUMER_CAPABILITIES = Symbol(
   'DISPATCH_CONSUMER_CAPABILITIES',
 );
 
 export type TransportModuleDependencies = Readonly<{
   coordinatorRuntime?: CoordinatorRuntime;
+  nodeAttemptRuntime?: NodeAttemptRuntime;
   dispatchConsumerCapabilities?: DispatchConsumerCapabilityRegistry;
   dispatcherDatabase?: OutboxDispatcherDatabase;
   queueProducer?: QueueProducer;
@@ -54,6 +60,8 @@ class OutboxDispatcherLifecycle
     private readonly dispatcher: OutboxDispatcher,
     @Inject(COORDINATOR_RUNTIME)
     private readonly coordinatorRuntime: CoordinatorRuntime | undefined,
+    @Inject(NODE_ATTEMPT_RUNTIME)
+    private readonly nodeAttemptRuntime: NodeAttemptRuntime | undefined,
     private readonly drainState: WorkerDrainState,
   ) {}
 
@@ -67,10 +75,44 @@ class OutboxDispatcherLifecycle
       ...(this.coordinatorRuntime === undefined
         ? []
         : [this.coordinatorRuntime.close()]),
+      ...(this.nodeAttemptRuntime === undefined
+        ? []
+        : [this.nodeAttemptRuntime.close()]),
     ]);
     const failure = results.find((result) => result.status === 'rejected');
     if (failure?.status === 'rejected') throw failure.reason;
   }
+}
+
+function nodeAttemptRuntimeProvider(
+  config: WorkerConfig,
+  dependencies: TransportModuleDependencies,
+): Provider {
+  return {
+    provide: NODE_ATTEMPT_RUNTIME,
+    inject: [QUEUE_CONSUMER_OBSERVER],
+    useFactory: async (
+      observer: QueueConsumerObserver,
+    ): Promise<NodeAttemptRuntime | undefined> => {
+      if (dependencies.nodeAttemptRuntime !== undefined)
+        return dependencies.nodeAttemptRuntime;
+      if (
+        dependencies.dispatchConsumerCapabilities !== undefined ||
+        !config.outboxDispatcher.enabledJobNames.includes(
+          JOB_NAME.executeNodeAttempt,
+        )
+      )
+        return undefined;
+      return createNodeAttemptRuntime({
+        database: config.database,
+        heartbeatIntervalMillis: config.nodeAttempt.heartbeatIntervalMillis,
+        leaseDurationSeconds: config.nodeAttempt.leaseDurationSeconds,
+        observer,
+        redisUrl: config.redisUrl,
+        workerId: config.nodeAttempt.workerId,
+      });
+    },
+  };
 }
 
 function dispatcherProvider(
@@ -136,21 +178,30 @@ function dispatchCapabilitiesProvider(
 ): Provider {
   return {
     provide: DISPATCH_CONSUMER_CAPABILITIES,
-    inject: [COORDINATOR_RUNTIME],
+    inject: [COORDINATOR_RUNTIME, NODE_ATTEMPT_RUNTIME],
     useFactory: (
       runtime: CoordinatorRuntime | undefined,
+      nodeAttemptRuntime: NodeAttemptRuntime | undefined,
     ): DispatchConsumerCapabilityRegistry =>
       dependencies.dispatchConsumerCapabilities ??
-      createDispatchConsumerCapabilityRegistry(
-        runtime === undefined
+      createDispatchConsumerCapabilityRegistry([
+        ...(runtime === undefined
           ? []
           : [
               {
                 jobName: JOB_NAME.advanceWorkflowRun,
                 consumer: runtime.consumer,
-              },
-            ],
-      ),
+              } as const,
+            ]),
+        ...(nodeAttemptRuntime === undefined
+          ? []
+          : [
+              {
+                jobName: JOB_NAME.executeNodeAttempt,
+                consumer: nodeAttemptRuntime.consumer,
+              } as const,
+            ]),
+      ]),
   };
 }
 
@@ -163,6 +214,10 @@ export class TransportModule {
     dependencies: TransportModuleDependencies = {},
   ): DynamicModule {
     const runtimeProvider = coordinatorRuntimeProvider(config, dependencies);
+    const attemptRuntimeProvider = nodeAttemptRuntimeProvider(
+      config,
+      dependencies,
+    );
     const capabilitiesProvider = dispatchCapabilitiesProvider(dependencies);
     const provider = dispatcherProvider(config, dependencies);
     const metricsProvider: Provider = {
@@ -183,6 +238,7 @@ export class TransportModule {
         metricsProvider,
         observerProvider,
         runtimeProvider,
+        attemptRuntimeProvider,
         capabilitiesProvider,
         provider,
         OutboxDispatcherLifecycle,

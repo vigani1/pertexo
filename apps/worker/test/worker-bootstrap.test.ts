@@ -18,6 +18,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { createWorkerApplication } from '../src/app.js';
 import type { CoordinatorRuntime } from '../src/execution/coordinator-runtime.js';
+import type { NodeAttemptRuntime } from '../src/execution/node-attempt-runtime.js';
 import { NestWorkspaceDatabase } from '../src/platform/database/database.module.js';
 import { WorkerDrainState } from '../src/runtime/worker-drain-state.js';
 import { WorkerReadiness } from '../src/runtime/worker-readiness.js';
@@ -38,6 +39,11 @@ const database: WorkspaceDatabase = {
 
 const workerConfig = {
   coordinator: { maximumAdmissions: 32 },
+  nodeAttempt: {
+    heartbeatIntervalMillis: 10_000,
+    leaseDurationSeconds: 30,
+    workerId: 'worker-test',
+  },
   database: {
     connectionString:
       'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
@@ -227,6 +233,38 @@ describe('worker application bootstrap', () => {
       await app.close();
     }
     expect(coordinatorRuntime.close).toHaveBeenCalledOnce();
+  });
+
+  it('gates node-attempt dispatch on the composed consumer and closes it on shutdown', async () => {
+    const selected = dependencies();
+    const consumer: QueueConsumer = {
+      close: vi.fn().mockResolvedValue({ abortedJobs: 0, forced: false }),
+      isReady: vi.fn().mockReturnValue(true),
+      waitUntilReady: vi.fn().mockResolvedValue(undefined),
+    };
+    const nodeAttemptRuntime: NodeAttemptRuntime = {
+      consumer,
+      close: vi.fn().mockResolvedValue(undefined),
+    };
+    const enabledConfig = {
+      ...workerConfig,
+      outboxDispatcher: {
+        ...workerConfig.outboxDispatcher,
+        enabledJobNames: [JOB_NAME.executeNodeAttempt],
+      },
+    };
+    const app = await createWorkerApplication(enabledConfig, {
+      ...selected,
+      nodeAttemptRuntime,
+    });
+
+    expect(consumer.waitUntilReady).toHaveBeenCalledOnce();
+    try {
+      expect(consumer.isReady).toHaveBeenCalled();
+    } finally {
+      await app.close();
+    }
+    expect(nodeAttemptRuntime.close).toHaveBeenCalledOnce();
   });
 
   it('fails startup and closes resources when database readiness fails', async () => {
