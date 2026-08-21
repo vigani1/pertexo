@@ -15,9 +15,11 @@ import {
   InvalidQueueDeliveryError,
   JOB_NAME,
   QUEUE_NAME,
+  RedisRunEventNotificationPublisher,
   type QueueConsumer,
   type QueueConsumerObserver,
   type QueueJobHandler,
+  type RunEventNotificationPublisher,
   unrecoverableQueueError,
 } from '@pertexo/queue';
 import {
@@ -53,6 +55,7 @@ export type NodeAttemptRuntimeOptions = Readonly<{
 export type NodeAttemptRuntimeDependencies = Readonly<{
   consumerFactory?: typeof createQueueConsumer;
   engine?: NodeAttemptExecutionEngine;
+  notifications?: RunEventNotificationPublisher;
   reader?: PublishedWorkflowReader;
   registry?: NodeExecutionRegistry;
   runStore?: NodeAttemptRunStore;
@@ -108,10 +111,14 @@ export async function createNodeAttemptRuntime(
     dependencies.runStore ?? createNodeAttemptRunStore(options.database);
   const reader =
     dependencies.reader ?? createPublishedWorkflowReader(options.database);
+  const notifications =
+    dependencies.notifications ??
+    new RedisRunEventNotificationPublisher({ redisUrl: options.redisUrl });
   const handler = createNodeAttemptHandler({
     engine,
     heartbeatIntervalMillis: options.heartbeatIntervalMillis,
     leaseDurationSeconds: options.leaseDurationSeconds,
+    notifications,
     reader,
     registry,
     runStore,
@@ -127,7 +134,11 @@ export async function createNodeAttemptRuntime(
       traceRunner: createQueueTraceRunner(),
     });
   } catch (error: unknown) {
-    await Promise.allSettled([reader.close(), runStore.close()]);
+    await Promise.allSettled([
+      notifications.close(),
+      reader.close(),
+      runStore.close(),
+    ]);
     throw error;
   }
   let closePromise: Promise<void> | undefined;
@@ -137,6 +148,7 @@ export async function createNodeAttemptRuntime(
       closePromise ??= (async (): Promise<void> => {
         const results = await Promise.allSettled([
           consumer.close(),
+          notifications.close(),
           reader.close(),
           runStore.close(),
         ]);

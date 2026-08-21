@@ -115,10 +115,16 @@ describe('coordinator handler', () => {
     const engine: CoordinatorAdvanceEngine = {
       advance: vi.fn().mockResolvedValue({ kind: 'transition', plan }),
     };
+    const resync = vi.fn().mockResolvedValue({ receivers: 1 });
     const handler = createCoordinatorHandler({
       clock: { now: () => '2026-08-21T00:00:00.000Z' },
       engine,
       maximumAdmissions: 32,
+      notifications: {
+        close: vi.fn().mockResolvedValue(undefined),
+        publish: vi.fn(),
+        resync,
+      },
       reader,
       runStore,
     });
@@ -158,6 +164,10 @@ describe('coordinator handler', () => {
       plan,
       traceparent: TRACEPARENT,
       signal,
+    });
+    expect(resync).toHaveBeenCalledWith({
+      workspaceId: WORKSPACE_ID,
+      runId: RUN_ID,
     });
   });
 

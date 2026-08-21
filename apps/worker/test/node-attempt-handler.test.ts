@@ -172,10 +172,16 @@ describe('NodeAttemptHandler', () => {
         kind: 'succeeded',
         output: { hello: 'world' },
       });
+    const resync = vi.fn().mockResolvedValue({ receivers: 1 });
     const handler = createNodeAttemptHandler({
       engine,
       heartbeatIntervalMillis: 1_000,
       leaseDurationSeconds: 30,
+      notifications: {
+        close: vi.fn().mockResolvedValue(undefined),
+        publish: vi.fn(),
+        resync,
+      },
       reader,
       registry: { execute: registryExecute },
       runStore: store,
@@ -198,6 +204,10 @@ describe('NodeAttemptHandler', () => {
       outcome: { status: 'succeeded', output: { hello: 'world' } },
     });
     expect(complete.mock.calls[0]?.[0].signal).toBeInstanceOf(AbortSignal);
+    expect(resync).toHaveBeenCalledWith({
+      workspaceId: WORKSPACE_ID,
+      runId: RUN_ID,
+    });
   });
 
   it('records durable cancellation before dispatching an executor', async () => {

@@ -13,9 +13,11 @@ import {
   InvalidQueueDeliveryError,
   JOB_NAME,
   QUEUE_NAME,
+  RedisRunEventNotificationPublisher,
   type QueueConsumer,
   type QueueConsumerObserver,
   type QueueJobHandler,
+  type RunEventNotificationPublisher,
   unrecoverableQueueError,
 } from '@pertexo/queue';
 import { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';
@@ -44,6 +46,7 @@ export type CoordinatorRuntimeDependencies = Readonly<{
   clock?: Readonly<{ now(): string }>;
   consumerFactory?: typeof createQueueConsumer;
   engine?: CoordinatorAdvanceEngine;
+  notifications?: RunEventNotificationPublisher;
   reader?: PublishedWorkflowReader;
   runStore?: CoordinatorRunStore;
 }>;
@@ -101,10 +104,14 @@ export async function createCoordinatorRuntime(
     dependencies.runStore ?? createCoordinatorRunStore(options.database);
   const reader =
     dependencies.reader ?? createPublishedWorkflowReader(options.database);
+  const notifications =
+    dependencies.notifications ??
+    new RedisRunEventNotificationPublisher({ redisUrl: options.redisUrl });
   const handler = createCoordinatorHandler({
     clock: dependencies.clock ?? systemClock(),
     engine,
     maximumAdmissions: options.maximumAdmissions,
+    notifications,
     reader,
     runStore,
   });
@@ -118,7 +125,11 @@ export async function createCoordinatorRuntime(
       traceRunner: createQueueTraceRunner(),
     });
   } catch (error: unknown) {
-    await Promise.allSettled([reader.close(), runStore.close()]);
+    await Promise.allSettled([
+      notifications.close(),
+      reader.close(),
+      runStore.close(),
+    ]);
     throw error;
   }
   let closePromise: Promise<void> | undefined;
@@ -129,6 +140,7 @@ export async function createCoordinatorRuntime(
       closePromise ??= (async (): Promise<void> => {
         const consumerResult = await Promise.allSettled([consumer.close()]);
         const adapterResults = await Promise.allSettled([
+          notifications.close(),
           reader.close(),
           runStore.close(),
         ]);

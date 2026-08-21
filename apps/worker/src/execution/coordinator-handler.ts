@@ -8,6 +8,7 @@ import {
   jobIdForOutboxEvent,
   type QueueDelivery,
   type QueueHandlerContext,
+  type RunEventNotificationPublisher,
 } from '@pertexo/queue';
 import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 
@@ -69,6 +70,7 @@ export type CoordinatorHandlerDependencies = Readonly<{
   clock: Readonly<{ now(): string }>;
   engine: CoordinatorAdvanceEngine;
   maximumAdmissions: number;
+  notifications?: RunEventNotificationPublisher;
   reader: PublishedWorkflowReader;
   runStore: CoordinatorRunStore;
 }>;
@@ -153,10 +155,27 @@ export function createCoordinatorHandler(
       if (committed.kind === 'not_found') {
         throw new CoordinatorHandlerStateError('commit_not_found');
       }
+      if (committed.kind === 'committed')
+        await publishResync(dependencies.notifications, {
+          workspaceId: delivery.data.workspaceId,
+          runId: loaded.state.runId,
+        });
       return Object.freeze({
         kind: committed.kind,
         revision: committed.revision,
       });
     },
   });
+}
+
+async function publishResync(
+  notifications: RunEventNotificationPublisher | undefined,
+  identity: Readonly<{ workspaceId: string; runId: string }>,
+): Promise<void> {
+  if (notifications === undefined) return;
+  try {
+    await notifications.resync(identity);
+  } catch {
+    // PostgreSQL is authoritative; a later hint or reconnect backfills events.
+  }
 }

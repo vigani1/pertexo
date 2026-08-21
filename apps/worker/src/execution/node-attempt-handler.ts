@@ -11,6 +11,7 @@ import {
   jobIdForOutboxEvent,
   type QueueDelivery,
   type QueueHandlerContext,
+  type RunEventNotificationPublisher,
 } from '@pertexo/queue';
 import type {
   NodeAttemptOutcome,
@@ -59,6 +60,7 @@ export type NodeAttemptHandlerDependencies = Readonly<{
   engine: NodeAttemptExecutionEngine;
   heartbeatIntervalMillis: number;
   leaseDurationSeconds: number;
+  notifications?: RunEventNotificationPublisher;
   reader: PublishedWorkflowReader;
   registry: NodeExecutionRegistry;
   runStore: NodeAttemptRunStore;
@@ -118,9 +120,25 @@ async function completeControlOutcome(
       : { traceparent: delivery.data.traceparent }),
     signal,
   });
-  return Object.freeze({
-    kind: completed.kind === 'committed' ? 'committed' : 'duplicate',
-  });
+  return completionResult(dependencies, lease, completed.kind);
+}
+
+async function completionResult(
+  dependencies: NodeAttemptHandlerDependencies,
+  lease: NodeAttemptLease,
+  kind: 'committed' | 'duplicate',
+): Promise<NodeAttemptHandlerResult> {
+  if (kind === 'committed' && dependencies.notifications !== undefined) {
+    try {
+      await dependencies.notifications.resync({
+        workspaceId: lease.workspaceId,
+        runId: lease.runId,
+      });
+    } catch {
+      // PostgreSQL is authoritative; a later hint or reconnect backfills.
+    }
+  }
+  return Object.freeze({ kind });
 }
 
 export function createNodeAttemptHandler(
@@ -267,9 +285,11 @@ export function createNodeAttemptHandler(
               : { traceparent: delivery.data.traceparent }),
             signal: context.signal,
           });
-          return Object.freeze({
-            kind: completed.kind === 'committed' ? 'committed' : 'duplicate',
-          });
+          return await completionResult(
+            dependencies,
+            claimed.lease,
+            completed.kind,
+          );
         } catch (error: unknown) {
           if (!(error instanceof NodeAttemptOutputInvalidError)) throw error;
           const completed = await dependencies.runStore.complete({
@@ -283,9 +303,11 @@ export function createNodeAttemptHandler(
               : { traceparent: delivery.data.traceparent }),
             signal: context.signal,
           });
-          return Object.freeze({
-            kind: completed.kind === 'committed' ? 'committed' : 'duplicate',
-          });
+          return await completionResult(
+            dependencies,
+            claimed.lease,
+            completed.kind,
+          );
         }
       } catch (error: unknown) {
         if (durableAbortReason !== undefined)
@@ -315,9 +337,11 @@ export function createNodeAttemptHandler(
               : { traceparent: delivery.data.traceparent }),
             signal: context.signal,
           });
-          return Object.freeze({
-            kind: completed.kind === 'committed' ? 'committed' : 'duplicate',
-          });
+          return await completionResult(
+            dependencies,
+            claimed.lease,
+            completed.kind,
+          );
         }
         throw error;
       } finally {
