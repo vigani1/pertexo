@@ -13,6 +13,7 @@ import {
   WorkflowEngineError,
   composeExecutableCompatibilityRelease,
   createCheckpoint,
+  describeExecutableCompatibilityRelease,
   verifyWorkflowExecutableV2,
 } from '@pertexo/workflow-engine';
 
@@ -39,10 +40,16 @@ export type PostgresWorkflowRunPersistence = Readonly<{
 
 export function createPostgresWorkflowRunPersistence(
   config: DatabaseConfig,
-  database: WorkflowRunDatabase = createWorkflowRunDatabase(config),
+  databaseInput?: WorkflowRunDatabase,
   notifications?: RunEventNotificationPublisher,
 ): PostgresWorkflowRunPersistence {
   const release = composeExecutableCompatibilityRelease(CORE_REGISTRY_RELEASE);
+  const database =
+    databaseInput ??
+    createWorkflowRunDatabase(
+      config,
+      describeExecutableCompatibilityRelease(release),
+    );
   const persistence: WorkflowRunPersistence = Object.freeze({
     start: async (input: StartWorkflowRunCommand) => {
       try {

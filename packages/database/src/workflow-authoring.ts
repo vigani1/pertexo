@@ -16,6 +16,11 @@ import {
 } from '@pertexo/workflow-model/graph';
 
 import type { DatabaseConfig } from './config.js';
+import {
+  lockExpectedCompatibilityReleaseWithClient,
+  parseCompatibilityReleaseExpectation,
+  type CompatibilityReleaseExpectation,
+} from './compatibility-release.js';
 import { canonicalOutboxPayloadChecksum } from './outbox.js';
 
 const uuidSchema = z.uuid();
@@ -214,6 +219,8 @@ export type WorkflowAuthoringDatabase = Readonly<{
 }>;
 
 export type WorkflowAuthoringTestHooks = Readonly<{
+  /** Integration-test synchronization seam after the durable release lock. */
+  afterCompatibilityReleaseLock?: () => Promise<void>;
   /** Integration-test synchronization seam; runtime composition must omit it. */
   afterSaveCas?: () => Promise<void>;
   /** Integration-test synchronization/fault seam after both publish locks. */
@@ -224,6 +231,7 @@ export type WorkflowAuthoringTestHooks = Readonly<{
 }>;
 
 export type WorkflowAuthoringDatabaseOptions = Readonly<{
+  compatibilityRelease?: CompatibilityReleaseExpectation;
   definitionCatalog?: WorkflowDefinitionCatalogV1;
   executableCompiler?: WorkflowExecutableCompiler;
   testHooks?: WorkflowAuthoringTestHooks;
@@ -234,6 +242,7 @@ export type WorkflowExecutableCompiler = (graph: WorkflowGraph) => Readonly<{
   executableSchemaVersion: 2;
   executableJson: unknown;
   compatibilityReleaseEpoch: number;
+  compatibilityReleaseFingerprint: string;
 }>;
 
 function mapWorkflow(row: Record<string, unknown>): WorkflowRecord {
@@ -407,10 +416,23 @@ export function createWorkflowAuthoringDatabase(
   config: DatabaseConfig,
   options: WorkflowAuthoringDatabaseOptions = {},
 ): WorkflowAuthoringDatabase {
-  // Runtime import is kept here so the public package remains straightforward to test.
-  const pool = new Pool(config);
   const definitionCatalog =
     options.definitionCatalog ?? EMPTY_DEFINITION_CATALOG_V1;
+  const compatibilityRelease =
+    options.compatibilityRelease === undefined
+      ? undefined
+      : parseCompatibilityReleaseExpectation(options.compatibilityRelease);
+  if (
+    options.executableCompiler !== undefined &&
+    (compatibilityRelease === undefined ||
+      definitionCatalog.releaseFingerprint !== compatibilityRelease.fingerprint)
+  ) {
+    throw new TypeError(
+      'Executable workflow publication requires matching compatibility authority',
+    );
+  }
+  // Runtime import is kept here so the public package remains straightforward to test.
+  const pool = new Pool(config);
   return Object.freeze({
     createWorkflow: async (input) =>
       withAuthorTransaction(
@@ -752,6 +774,13 @@ export function createWorkflowAuthoringDatabase(
             const replay = durablePublishResult(claimed.result_ref);
             return Object.freeze({ ...replay, replayed: true });
           }
+          if (compatibilityRelease !== undefined) {
+            await lockExpectedCompatibilityReleaseWithClient(
+              client,
+              compatibilityRelease,
+            );
+            await options.testHooks?.afterCompatibilityReleaseLock?.();
+          }
           const workflow = await client.query(
             "select id from app.workflows where workspace_id = $1 and id = $2 and lifecycle_status = 'active' for update",
             [input.workspaceId, workflowId],
@@ -801,9 +830,27 @@ export function createWorkflowAuthoringDatabase(
                     executableSchemaVersion: z.literal(2),
                     executableJson: z.record(z.string(), z.unknown()),
                     compatibilityReleaseEpoch: z.number().int().positive(),
+                    compatibilityReleaseFingerprint: z
+                      .string()
+                      .regex(/^node-compat:v1:sha256:[0-9a-f]{64}$/u),
                   })
                   .strict()
                   .parse(compiled);
+          if (
+            executable !== undefined &&
+            (executable.compatibilityReleaseEpoch !==
+              compatibilityRelease?.epoch ||
+              executable.compatibilityReleaseFingerprint !==
+                compatibilityRelease.fingerprint ||
+              executable.executableJson.compatibilityReleaseEpoch !==
+                compatibilityRelease.epoch ||
+              executable.executableJson.compatibilityReleaseFingerprint !==
+                compatibilityRelease.fingerprint)
+          ) {
+            throw new Error(
+              'Compiled workflow compatibility release does not match the locked authority',
+            );
+          }
           const checksum = checksumSchema.parse(
             executable?.checksum ??
               workflowExecutableChecksum(graph, definitionCatalog),

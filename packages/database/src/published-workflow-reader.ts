@@ -3,6 +3,11 @@ import { Pool } from 'pg';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from './config.js';
+import {
+  lockExpectedCompatibilityRelease,
+  parseCompatibilityReleaseExpectation,
+  type CompatibilityReleaseExpectation,
+} from './compatibility-release.js';
 import { withWorkspaceTransaction } from './workspace.js';
 
 const readInputSchema = z
@@ -142,8 +147,12 @@ export function classifyPublishedWorkflowVersionRow(
 
 export function createPublishedWorkflowReader(
   config: DatabaseConfig,
+  compatibilityReleaseInput: CompatibilityReleaseExpectation,
 ): PublishedWorkflowReader {
   const pool = new Pool(config);
+  const compatibilityRelease = parseCompatibilityReleaseExpectation(
+    compatibilityReleaseInput,
+  );
 
   return Object.freeze({
     readForExecution: async (
@@ -158,6 +167,10 @@ export function createPublishedWorkflowReader(
         pool,
         parsedInput.workspaceId,
         async (transaction) => {
+          await lockExpectedCompatibilityRelease(
+            transaction.db,
+            compatibilityRelease,
+          );
           const result = await transaction.db.execute(
             sql<Record<string, unknown>>`
               select

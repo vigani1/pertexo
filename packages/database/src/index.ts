@@ -5,6 +5,13 @@ export {
 } from './config.js';
 export type { DatabaseConfig, MigrationConfig } from './config.js';
 export {
+  checkExpectedCompatibilityRelease,
+  CompatibilityReleaseMismatchError,
+  lockExpectedCompatibilityRelease,
+  parseCompatibilityReleaseExpectation,
+} from './compatibility-release.js';
+export type { CompatibilityReleaseExpectation } from './compatibility-release.js';
+export {
   ARTIFACT_STATUS,
   ArtifactFinalizeConflictError,
   ArtifactLifecycleConflictError,
@@ -181,6 +188,8 @@ export {
   idempotencyRecords,
   inboxReceipts,
   nodeAttempts,
+  nodeCompatibilityCurrent,
+  nodeCompatibilityReleases,
   nodeRuns,
   outboxEvents,
   rlsProbeRecords,

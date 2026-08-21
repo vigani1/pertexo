@@ -6,6 +6,11 @@ import { z } from 'zod';
 
 import type { DatabaseConfig } from './config.js';
 import {
+  lockExpectedCompatibilityRelease,
+  parseCompatibilityReleaseExpectation,
+  type CompatibilityReleaseExpectation,
+} from './compatibility-release.js';
+import {
   acceptWorkflowRun,
   readWorkflowRunAcceptanceReplay,
 } from './execution-acceptance.js';
@@ -204,15 +209,20 @@ export class WorkflowRunReadCapacityError extends Error {
 
 export function createWorkflowRunDatabase(
   config: DatabaseConfig,
+  compatibilityReleaseInput: CompatibilityReleaseExpectation,
 ): WorkflowRunDatabase {
   const pool = new Pool(config);
+  const compatibilityRelease = parseCompatibilityReleaseExpectation(
+    compatibilityReleaseInput,
+  );
   return Object.freeze({
     start: async (input: StartPublishedWorkflowRunInput) => {
       const parsed = startInputSchema.parse(input);
       return withWorkspaceTransaction(
         pool,
         parsed.workspaceId,
-        async (transaction) => startInTransaction(transaction, parsed),
+        async (transaction) =>
+          startInTransaction(transaction, parsed, compatibilityRelease),
         parsed.signal === undefined ? {} : { signal: parsed.signal },
       );
     },
@@ -241,6 +251,7 @@ export function createWorkflowRunDatabase(
 async function startInTransaction(
   transaction: WorkspaceTransaction,
   input: z.output<typeof startInputSchema>,
+  compatibilityRelease: CompatibilityReleaseExpectation,
 ): Promise<Readonly<{ run: WorkflowRunRecord; replayed: boolean }>> {
   const identity = {
     keyHash: input.idempotencyKeyHash,
@@ -254,6 +265,8 @@ async function startInTransaction(
     if (run === undefined) throw new WorkflowRunNotFoundError();
     return Object.freeze({ run, replayed: true });
   }
+
+  await lockExpectedCompatibilityRelease(transaction.db, compatibilityRelease);
 
   const projection = await lockPublishedExecution(
     transaction,

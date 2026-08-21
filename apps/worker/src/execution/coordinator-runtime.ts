@@ -20,7 +20,10 @@ import {
   type RunEventNotificationPublisher,
   unrecoverableQueueError,
 } from '@pertexo/queue';
-import { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';
+import {
+  composeExecutableCompatibilityRelease,
+  describeExecutableCompatibilityRelease,
+} from '@pertexo/workflow-engine';
 
 import { createCoordinatorAdvanceEngine } from './coordinator-engine.js';
 import {
@@ -103,7 +106,11 @@ export async function createCoordinatorRuntime(
   const runStore =
     dependencies.runStore ?? createCoordinatorRunStore(options.database);
   const reader =
-    dependencies.reader ?? createPublishedWorkflowReader(options.database);
+    dependencies.reader ??
+    createPublishedWorkflowReader(
+      options.database,
+      describeExecutableCompatibilityRelease(release),
+    );
   const notifications =
     dependencies.notifications ??
     new RedisRunEventNotificationPublisher({ redisUrl: options.redisUrl });

@@ -24,6 +24,7 @@ import {
 } from '@pertexo/queue';
 import {
   composeExecutableCompatibilityRelease,
+  describeExecutableCompatibilityRelease,
   type NodeExecutionRegistry,
 } from '@pertexo/workflow-engine';
 
@@ -110,7 +111,11 @@ export async function createNodeAttemptRuntime(
   const runStore =
     dependencies.runStore ?? createNodeAttemptRunStore(options.database);
   const reader =
-    dependencies.reader ?? createPublishedWorkflowReader(options.database);
+    dependencies.reader ??
+    createPublishedWorkflowReader(
+      options.database,
+      describeExecutableCompatibilityRelease(release),
+    );
   const notifications =
     dependencies.notifications ??
     new RedisRunEventNotificationPublisher({ redisUrl: options.redisUrl });

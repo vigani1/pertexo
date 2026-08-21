@@ -10,8 +10,10 @@ import {
 } from '@pertexo/workflow-model/graph';
 
 import { parseDatabaseConfig } from '../src/config.js';
+import { CompatibilityReleaseMismatchError } from '../src/compatibility-release.js';
 import { createIdentityWorkspaceDatabase } from '../src/identity-workspace.js';
 import { migrateDatabase } from '../src/migrations.js';
+import { PHASE3_COMPATIBILITY_EXPECTATION } from './phase3-compatibility-fixture.js';
 import { checkDatabaseReadiness } from '../src/readiness.js';
 import {
   createWorkflowAuthoringDatabase,
@@ -76,6 +78,11 @@ const testDefinitionCatalog = Object.freeze({
   definitions: Object.freeze([
     Object.freeze({ key: 'test.placeholder', version: 1 }),
   ]),
+});
+const phase3EmptyDefinitionCatalog = Object.freeze({
+  schemaVersion: 1 as const,
+  releaseFingerprint: PHASE3_COMPATIBILITY_EXPECTATION.fingerprint,
+  definitions: Object.freeze([]),
 });
 const authoring = createWorkflowAuthoringDatabase(
   parseDatabaseConfig({ connectionString: apiUrl, max: 4 }),
@@ -850,15 +857,26 @@ describe('workflow authoring persistence', () => {
 
   it('atomically persists an injected executable V2 publication projection', async () => {
     const checksum = `wf:v2:sha256:${'a'.repeat(64)}` as const;
-    const executableJson = { schemaVersion: 2, marker: 'compiled-in-api' };
+    const executableDefinitionCatalog = phase3EmptyDefinitionCatalog;
+    const executableJson = {
+      schemaVersion: 2,
+      marker: 'compiled-in-api',
+      compatibilityReleaseEpoch: 1,
+      compatibilityReleaseFingerprint:
+        PHASE3_COMPATIBILITY_EXPECTATION.fingerprint,
+    };
     const executableAuthoring = createWorkflowAuthoringDatabase(
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
       {
+        compatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
+        definitionCatalog: executableDefinitionCatalog,
         executableCompiler: () => ({
           checksum,
           executableSchemaVersion: 2,
           executableJson,
-          compatibilityReleaseEpoch: 7,
+          compatibilityReleaseEpoch: 1,
+          compatibilityReleaseFingerprint:
+            PHASE3_COMPATIBILITY_EXPECTATION.fingerprint,
         }),
       },
     );
@@ -870,19 +888,22 @@ describe('workflow authoring persistence', () => {
         name: 'V2 publication proof',
         workspaceId,
       });
-      const published = await executableAuthoring.publishWorkflow({
+      const representationTag = await currentRepresentationTag(
+        executableAuthoring,
+        workspaceId,
+        created.workflowId,
         actorId,
-        representationTag: await currentRepresentationTag(
-          executableAuthoring,
-          workspaceId,
-          created.workflowId,
-          actorId,
-        ),
+        executableDefinitionCatalog,
+      );
+      const command = {
+        actorId,
+        representationTag,
         idempotencyKey: 'publish-v2-publication-proof',
         requestHash: '7'.repeat(64),
         workflowId: created.workflowId,
         workspaceId,
-      });
+      } as const;
+      const published = await executableAuthoring.publishWorkflow(command);
 
       expect(published.version.checksum).toBe(checksum);
       await expect(
@@ -899,11 +920,174 @@ describe('workflow authoring persistence', () => {
           checksum,
           executable_schema_version: 2,
           executable_json: executableJson,
-          compatibility_release_epoch: 7,
+          compatibility_release_epoch: 1,
         },
       ]);
+
+      const drifted = createWorkflowAuthoringDatabase(
+        parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
+        {
+          compatibilityRelease: {
+            ...PHASE3_COMPATIBILITY_EXPECTATION,
+            fingerprint:
+              'node-compat:v1:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+          },
+          definitionCatalog: {
+            schemaVersion: 1,
+            releaseFingerprint:
+              'node-compat:v1:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+            definitions: [],
+          },
+          executableCompiler: () => ({
+            checksum,
+            executableSchemaVersion: 2,
+            executableJson,
+            compatibilityReleaseEpoch: 1,
+            compatibilityReleaseFingerprint:
+              PHASE3_COMPATIBILITY_EXPECTATION.fingerprint,
+          }),
+        },
+      );
+      try {
+        await expect(drifted.publishWorkflow(command)).resolves.toMatchObject({
+          replayed: true,
+          version: { id: published.version.id },
+        });
+        await expect(
+          drifted.publishWorkflow({
+            ...command,
+            idempotencyKey: 'publish-v2-drifted-release',
+            requestHash: '8'.repeat(64),
+          }),
+        ).rejects.toBeInstanceOf(CompatibilityReleaseMismatchError);
+      } finally {
+        await drifted.close();
+      }
+
+      const corruptCompiler = createWorkflowAuthoringDatabase(
+        parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
+        {
+          compatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
+          definitionCatalog: {
+            schemaVersion: 1,
+            releaseFingerprint: PHASE3_COMPATIBILITY_EXPECTATION.fingerprint,
+            definitions: [],
+          },
+          executableCompiler: () => ({
+            checksum,
+            executableSchemaVersion: 2,
+            executableJson: {
+              ...executableJson,
+              compatibilityReleaseFingerprint:
+                'node-compat:v1:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+            },
+            compatibilityReleaseEpoch: 1,
+            compatibilityReleaseFingerprint:
+              PHASE3_COMPATIBILITY_EXPECTATION.fingerprint,
+          }),
+        },
+      );
+      try {
+        await expect(
+          corruptCompiler.publishWorkflow({
+            ...command,
+            idempotencyKey: 'publish-v2-corrupt-envelope-release',
+            requestHash: '9'.repeat(64),
+          }),
+        ).rejects.toThrow('does not match the locked authority');
+      } finally {
+        await corruptCompiler.close();
+      }
     } finally {
       await executableAuthoring.close();
+    }
+  });
+
+  it('holds the durable compatibility pointer lock through publication commit', async () => {
+    const releaseLocked = deferred();
+    const releasePublication = deferred();
+    const checksum = `wf:v2:sha256:${'b'.repeat(64)}` as const;
+    const executableJson = {
+      schemaVersion: 2,
+      compatibilityReleaseEpoch: 1,
+      compatibilityReleaseFingerprint:
+        PHASE3_COMPATIBILITY_EXPECTATION.fingerprint,
+    };
+    const lockingAuthoring = createWorkflowAuthoringDatabase(
+      parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
+      {
+        compatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
+        definitionCatalog: phase3EmptyDefinitionCatalog,
+        executableCompiler: () => ({
+          checksum,
+          executableSchemaVersion: 2,
+          executableJson,
+          compatibilityReleaseEpoch: 1,
+          compatibilityReleaseFingerprint:
+            PHASE3_COMPATIBILITY_EXPECTATION.fingerprint,
+        }),
+        testHooks: {
+          afterCompatibilityReleaseLock: async () => {
+            releaseLocked.resolve();
+            await releasePublication.promise;
+          },
+        },
+      },
+    );
+    const owner = await ownerPool.connect();
+    try {
+      const created = await lockingAuthoring.createWorkflow({
+        actorId,
+        emptyGraph,
+        idempotencyKey: 'create-compatibility-lock-proof',
+        name: 'Compatibility lock proof',
+        workspaceId,
+      });
+      const representationTag = await currentRepresentationTag(
+        lockingAuthoring,
+        workspaceId,
+        created.workflowId,
+        actorId,
+        phase3EmptyDefinitionCatalog,
+      );
+      const publication = lockingAuthoring.publishWorkflow({
+        actorId,
+        representationTag,
+        idempotencyKey: 'publish-compatibility-lock-proof',
+        requestHash: 'a'.repeat(64),
+        workflowId: created.workflowId,
+        workspaceId,
+      });
+      await releaseLocked.promise;
+
+      await owner.query('begin');
+      await owner.query('set local role pertexo_owner');
+      let pointerUpdateCompleted = false;
+      const pointerUpdate = owner
+        .query(
+          `update app.node_compatibility_current
+              set activated_at = activated_at
+            where singleton`,
+        )
+        .then(() => {
+          pointerUpdateCompleted = true;
+        });
+      await yieldToPostgres();
+      expect(pointerUpdateCompleted).toBe(false);
+
+      releasePublication.resolve();
+      await expect(publication).resolves.toMatchObject({
+        version: { checksum },
+      });
+      await pointerUpdate;
+      await owner.query('commit');
+    } catch (error: unknown) {
+      releasePublication.resolve();
+      await owner.query('rollback').catch(() => undefined);
+      throw error;
+    } finally {
+      owner.release();
+      await lockingAuthoring.close();
     }
   });
 

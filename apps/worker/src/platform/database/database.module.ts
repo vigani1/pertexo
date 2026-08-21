@@ -11,6 +11,11 @@ import type {
   WorkspaceTransaction,
 } from '@pertexo/database';
 import { createWorkspaceDatabase } from '@pertexo/database';
+import { CORE_REGISTRY_RELEASE } from '@pertexo/nodes-core';
+import {
+  composeExecutableCompatibilityRelease,
+  describeExecutableCompatibilityRelease,
+} from '@pertexo/workflow-engine';
 
 export const WORKSPACE_DATABASE = Symbol('WORKSPACE_DATABASE');
 
@@ -58,7 +63,12 @@ function createDatabaseProvider(
     provide: WORKSPACE_DATABASE,
     useFactory: (): NestWorkspaceDatabase =>
       new NestWorkspaceDatabase(
-        options.database ?? createWorkspaceDatabase(config),
+        options.database ??
+          createWorkspaceDatabase(config, {
+            compatibilityRelease: describeExecutableCompatibilityRelease(
+              composeExecutableCompatibilityRelease(CORE_REGISTRY_RELEASE),
+            ),
+          }),
         config.workerRuntimeRole,
       ),
   };

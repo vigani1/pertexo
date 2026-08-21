@@ -10,6 +10,7 @@ import { migrateDatabase } from '../src/migrations.js';
 import { createPublishedWorkflowReader } from '../src/published-workflow-reader.js';
 import { checkDatabaseReadiness } from '../src/readiness.js';
 import { createWorkflowAuthoringDatabase } from '../src/workflow-authoring.js';
+import { PHASE3_COMPATIBILITY_EXPECTATION } from './phase3-compatibility-fixture.js';
 
 const migrationUrl =
   process.env.DATABASE_MIGRATION_URL ??
@@ -38,9 +39,11 @@ const authoring = createWorkflowAuthoringDatabase(
 );
 const apiReader = createPublishedWorkflowReader(
   parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
+  PHASE3_COMPATIBILITY_EXPECTATION,
 );
 const workerReader = createPublishedWorkflowReader(
   parseDatabaseConfig({ connectionString: workerUrl, max: 2 }),
+  PHASE3_COMPATIBILITY_EXPECTATION,
 );
 
 const actorId = randomUUID();

@@ -1,6 +1,7 @@
 import { Pool } from 'pg';
 
 import type { DatabaseConfig } from './config.js';
+import type { CompatibilityReleaseExpectation } from './compatibility-release.js';
 import { checkDatabaseReadiness } from './readiness.js';
 import type { DatabaseReadiness } from './readiness.js';
 import { withWorkspaceTransaction } from './workspace.js';
@@ -21,6 +22,9 @@ export interface WorkspaceDatabase {
 
 export function createWorkspaceDatabase(
   config: DatabaseConfig,
+  options: Readonly<{
+    compatibilityRelease?: CompatibilityReleaseExpectation;
+  }> = {},
 ): WorkspaceDatabase {
   const pool = new Pool(config);
 
@@ -35,6 +39,9 @@ export function createWorkspaceDatabase(
       checkDatabaseReadiness(pool, {
         ownerRole: config.ownerRole,
         workerRuntimeRole: config.workerRuntimeRole,
+        ...(options.compatibilityRelease === undefined
+          ? {}
+          : { expectedCompatibilityRelease: options.compatibilityRelease }),
       }),
     close: async (): Promise<void> => pool.end(),
   });

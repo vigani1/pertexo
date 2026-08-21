@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   bigint,
+  boolean,
   foreignKey,
   index,
   inet,
@@ -748,6 +749,61 @@ export const workflowVersions = appSchema.table(
   ],
 );
 
+export const nodeCompatibilityReleases = appSchema.table(
+  'node_compatibility_releases',
+  {
+    epoch: integer('epoch').primaryKey(),
+    schemaVersion: integer('schema_version').notNull(),
+    fingerprint: varchar('fingerprint', { length: 128 }).notNull(),
+    catalogJson: jsonb('catalog_json').notNull(),
+    predecessorEpoch: integer('predecessor_epoch'),
+    preparedByKind: varchar('prepared_by_kind', { length: 32 }).notNull(),
+    preparedBy: varchar('prepared_by', { length: 128 }).notNull(),
+    reason: varchar('reason', { length: 500 }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.predecessorEpoch],
+      foreignColumns: [table.epoch],
+      name: 'node_compatibility_releases_predecessor_fk',
+    }),
+    uniqueIndex('node_compatibility_releases_epoch_fingerprint_unique').on(
+      table.epoch,
+      table.fingerprint,
+    ),
+  ],
+);
+
+export const nodeCompatibilityCurrent = appSchema.table(
+  'node_compatibility_current',
+  {
+    singleton: boolean('singleton').default(true).primaryKey(),
+    epoch: integer('epoch').notNull(),
+    fingerprint: varchar('fingerprint', { length: 128 }).notNull(),
+    activatedByKind: varchar('activated_by_kind', { length: 32 }).notNull(),
+    activatedBy: varchar('activated_by', { length: 128 }).notNull(),
+    activatedAt: timestamp('activated_at', {
+      withTimezone: true,
+      mode: 'date',
+    })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.epoch, table.fingerprint],
+      foreignColumns: [
+        nodeCompatibilityReleases.epoch,
+        nodeCompatibilityReleases.fingerprint,
+      ],
+      name: 'node_compatibility_current_release_fk',
+    }),
+  ],
+);
+
 export const databaseSchema = {
   artifacts,
   auditEvents,
@@ -755,6 +811,8 @@ export const databaseSchema = {
   idempotencyRecords,
   inboxReceipts,
   nodeAttempts,
+  nodeCompatibilityCurrent,
+  nodeCompatibilityReleases,
   nodeRuns,
   oidcLoginTransactions,
   outboxEvents,

@@ -1,6 +1,11 @@
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0016_engine_invocation_keys.sql';
+import {
+  checkExpectedCompatibilityRelease,
+  type CompatibilityReleaseExpectation,
+} from './compatibility-release.js';
+
+export const EXPECTED_MIGRATION_HEAD = '0017_node_compatibility_releases.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -47,6 +52,7 @@ interface ReadinessRow {
 type ReadinessOptions = Readonly<{
   ownerRole: string;
   workerRuntimeRole?: string;
+  expectedCompatibilityRelease?: CompatibilityReleaseExpectation;
   supportedGraphSchemaVersions?: readonly number[];
   supportedChecksumAlgorithms?: readonly string[];
   supportedExecutableSchemaVersions?: readonly number[];
@@ -868,9 +874,93 @@ export async function checkDatabaseReadiness(
     throw new Error('Runtime database role is privileged');
   }
 
+  await checkCompatibilityReleaseSchema(
+    pool,
+    options.ownerRole,
+    options.workerRuntimeRole ?? 'pertexo_worker',
+    options.expectedCompatibilityRelease !== undefined,
+  );
+  if (options.expectedCompatibilityRelease !== undefined) {
+    await checkExpectedCompatibilityRelease(
+      pool,
+      options.expectedCompatibilityRelease,
+    );
+  }
+
   return Object.freeze({
     migrationHead: row.migration_head,
     postgresMajor: row.postgres_major,
     role: row.current_user,
   });
+}
+
+async function checkCompatibilityReleaseSchema(
+  pool: Pool,
+  ownerRole: string,
+  workerRole: string,
+  requireCurrentRoleRead: boolean,
+): Promise<void> {
+  const result = await pool.query<{
+    compatible: boolean;
+    current_role_can_read: boolean;
+    current_role_can_write: boolean;
+    worker_can_read: boolean;
+    worker_can_write: boolean;
+  }>(
+    `select
+       (
+         to_regclass('app.node_compatibility_releases') is not null
+         and to_regclass('app.node_compatibility_current') is not null
+         and pg_get_userbyid((select relowner from pg_class where oid = to_regclass('app.node_compatibility_releases'))) = $1
+         and pg_get_userbyid((select relowner from pg_class where oid = to_regclass('app.node_compatibility_current'))) = $1
+         and (select count(*) = 9 from pg_attribute where attrelid = to_regclass('app.node_compatibility_releases') and attnum > 0 and not attisdropped)
+         and (select count(*) = 6 from pg_attribute where attrelid = to_regclass('app.node_compatibility_current') and attnum > 0 and not attisdropped)
+         and exists (
+           select 1 from pg_trigger
+            where tgrelid = to_regclass('app.node_compatibility_releases')
+              and tgname = 'node_compatibility_releases_immutable'
+              and tgenabled = 'O' and not tgisinternal
+         )
+         and exists (
+           select 1
+             from pg_proc function
+             join pg_namespace namespace on namespace.oid = function.pronamespace
+            where namespace.nspname = 'app'
+              and function.proname = 'lock_node_compatibility_current'
+              and function.prosecdef
+              and pg_get_userbyid(function.proowner) = $1
+              and function.proconfig = array['search_path=pg_catalog, app']::text[]
+         )
+       ) as compatible,
+       (
+         has_table_privilege(current_user, 'app.node_compatibility_releases', 'SELECT')
+         and has_table_privilege(current_user, 'app.node_compatibility_current', 'SELECT')
+         and has_function_privilege(current_user, 'app.lock_node_compatibility_current(integer, character varying, jsonb)', 'EXECUTE')
+       ) as current_role_can_read,
+       (
+         has_table_privilege(current_user, 'app.node_compatibility_releases', 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
+         or has_table_privilege(current_user, 'app.node_compatibility_current', 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
+       ) as current_role_can_write,
+       (
+         has_table_privilege($2, 'app.node_compatibility_releases', 'SELECT')
+         and has_table_privilege($2, 'app.node_compatibility_current', 'SELECT')
+         and has_function_privilege($2, 'app.lock_node_compatibility_current(integer, character varying, jsonb)', 'EXECUTE')
+       ) as worker_can_read,
+       (
+         has_table_privilege($2, 'app.node_compatibility_releases', 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
+         or has_table_privilege($2, 'app.node_compatibility_current', 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
+       ) as worker_can_write`,
+    [ownerRole, workerRole],
+  );
+  const row = result.rows[0];
+  if (
+    row === undefined ||
+    !row.compatible ||
+    row.worker_can_write ||
+    !row.worker_can_read ||
+    row.current_role_can_write ||
+    (requireCurrentRoleRead && !row.current_role_can_read)
+  ) {
+    throw new Error('Node compatibility release authority is incompatible');
+  }
 }

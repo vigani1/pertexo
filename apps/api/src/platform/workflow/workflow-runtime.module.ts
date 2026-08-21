@@ -5,6 +5,7 @@ import { CORE_REGISTRY_RELEASE } from '@pertexo/nodes-core';
 import {
   buildWorkflowExecutableV2,
   composeExecutableCompatibilityRelease,
+  describeExecutableCompatibilityRelease,
 } from '@pertexo/workflow-engine';
 import {
   createWorkspaceDatabase,
@@ -63,8 +64,11 @@ export function createApiWorkflowRuntime(
   const compatibilityRelease = composeExecutableCompatibilityRelease(
     CORE_REGISTRY_RELEASE,
   );
+  const compatibilityReleaseDescription =
+    describeExecutableCompatibilityRelease(compatibilityRelease);
   const definitionCatalog = Object.freeze({
     schemaVersion: 1 as const,
+    releaseFingerprint: compatibilityRelease.fingerprint,
     definitions: Object.freeze(
       CORE_REGISTRY_RELEASE.definitions.map(({ definition }) =>
         Object.freeze({ ...definition }),
@@ -74,6 +78,7 @@ export function createApiWorkflowRuntime(
   const database =
     overrides.database ??
     createWorkflowAuthoringDatabase(databaseConfig, {
+      compatibilityRelease: compatibilityReleaseDescription,
       definitionCatalog,
       executableCompiler: (graph) => {
         const compiled = buildWorkflowExecutableV2({
@@ -86,6 +91,8 @@ export function createApiWorkflowRuntime(
           executableJson: compiled.envelope,
           compatibilityReleaseEpoch:
             compiled.envelope.compatibilityReleaseEpoch,
+          compatibilityReleaseFingerprint:
+            compiled.envelope.compatibilityReleaseFingerprint,
         });
       },
     });
@@ -104,7 +111,10 @@ export function createApiWorkflowRuntime(
       : undefined;
   const eventDatabase =
     overrides.runStreamer === undefined
-      ? (overrides.eventDatabase ?? createWorkspaceDatabase(databaseConfig))
+      ? (overrides.eventDatabase ??
+        createWorkspaceDatabase(databaseConfig, {
+          compatibilityRelease: compatibilityReleaseDescription,
+        }))
       : undefined;
   const liveSource =
     overrides.runStreamer === undefined
