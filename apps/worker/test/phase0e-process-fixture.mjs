@@ -67,6 +67,10 @@ function schedulerGraph(graph) {
   };
 }
 
+function schedulerState(graph) {
+  return input.schedulerState ?? schedulerGraph(graph);
+}
+
 function admission(plan) {
   const planned = plan.attempts[0];
   if (!planned) throw new Error('recovery plan has no attempt');
@@ -88,7 +92,7 @@ async function computePlan(database) {
   const checkpoint = parseCheckpoint(facts.scheduler_state);
   const plan = advanceWorkflow({
     checkpoint,
-    schedulerState: schedulerGraph(facts.graph),
+    schedulerState: schedulerState(facts.graph),
     maximumAdmissions: 1,
     occurredAt: input.occurredAt,
   });
@@ -265,7 +269,7 @@ async function engineRoundtrip() {
     );
     const plan = advanceWorkflow({
       checkpoint,
-      schedulerState: schedulerGraph(facts.graph),
+      schedulerState: schedulerState(facts.graph),
       maximumAdmissions: input.maximumAdmissions,
       observations: input.observations,
       occurredAt: input.occurredAt,
@@ -292,7 +296,7 @@ async function recoverEngineTransition(mode) {
       input.replayPlan ??
       advanceWorkflow({
         checkpoint,
-        schedulerState: schedulerGraph(facts.graph),
+        schedulerState: schedulerState(facts.graph),
         maximumAdmissions: input.maximumAdmissions,
         observations: input.observations,
         occurredAt: input.occurredAt,

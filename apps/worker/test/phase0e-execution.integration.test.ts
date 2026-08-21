@@ -66,6 +66,7 @@ const configuredRedisUrl =
 // slice; production runtime facts are still written through the real APIs.
 const WORKFLOW_VERSION_ID = randomUUID();
 const WORKSPACE_ID = randomUUID();
+const ACTOR_ID = randomUUID();
 const ENGINE_VERSION = 'phase0e-v1';
 const TRACEPARENT = `00-${'1'.repeat(32)}-${'2'.repeat(16)}-01`;
 const redisUrl = (() => {
@@ -129,6 +130,18 @@ async function resetFixture(): Promise<void> {
     await client.query(`select set_config('app.workspace_id', $1, true)`, [
       WORKSPACE_ID,
     ]);
+    await client.query(
+      `insert into app.users (id, email, display_name, status)
+       values ($1, $2, 'Phase 0E actor', 'active')
+       on conflict (id) do nothing`,
+      [ACTOR_ID, `phase0e-${ACTOR_ID}@example.test`],
+    );
+    await client.query(
+      `insert into app.workspaces (id, name, slug, status, created_by)
+       values ($1, 'Phase 0E recovery', $2, 'active', $3)
+       on conflict (id) do update set status = 'active'`,
+      [WORKSPACE_ID, `phase0e-${WORKSPACE_ID}`, ACTOR_ID],
+    );
     await client.query(`
       truncate table app.node_attempts, app.node_runs,
         app.idempotency_records, app.run_events, app.run_checkpoints,
@@ -1367,18 +1380,19 @@ describeIntegration('Phase 0E real execution recovery fixture', () => {
         maxConcurrency: 2,
       },
     ] as const;
+    const branchLoopSchedulerState = {
+      deriveReadiness: false,
+      nodes: ['join-all', 'join-any', 'join-count', 'loop-1'].map(
+        (id): engine.SchedulerGraph['nodes'][number] => ({
+          id,
+          sideEffectClass: 'safe',
+        }),
+      ),
+      edges: [],
+    } as const;
     const firstAdvance = engine.advanceWorkflow({
       checkpoint: initial,
-      schedulerState: {
-        deriveReadiness: false,
-        nodes: ['join-all', 'join-any', 'join-count', 'loop-1'].map(
-          (id): engine.SchedulerGraph['nodes'][number] => ({
-            id,
-            sideEffectClass: 'safe',
-          }),
-        ),
-        edges: [],
-      },
+      schedulerState: branchLoopSchedulerState,
       observations: branchAndLoopObservations,
       occurredAt: '2026-08-20T00:00:00.000Z',
       maximumAdmissions: 10,
@@ -1404,7 +1418,7 @@ describeIntegration('Phase 0E real execution recovery fixture', () => {
     );
     const secondAdvanceInput = {
       checkpoint: firstAdvance.checkpoint,
-      schedulerState: schedulerGraph(),
+      schedulerState: branchLoopSchedulerState,
       observations: [
         {
           kind: 'branch_disposition',
@@ -1496,6 +1510,7 @@ describeIntegration('Phase 0E real execution recovery fixture', () => {
       observations: secondAdvanceInput.observations,
       occurredAt: secondAdvanceInput.occurredAt,
       runId: persistenceRunId,
+      schedulerState: branchLoopSchedulerState,
       traceparent: TRACEPARENT,
       workflowVersionId: WORKFLOW_VERSION_ID,
       workspaceId: WORKSPACE_ID,
