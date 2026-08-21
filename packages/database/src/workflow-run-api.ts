@@ -184,6 +184,7 @@ export interface WorkflowRunDatabase {
     Readonly<{
       run: WorkflowRunRecord;
       alreadyRequested: boolean;
+      eventSequence: number | null;
     }>
   >;
   close(): Promise<void>;
@@ -329,7 +330,13 @@ async function lockPublishedExecution(
 async function cancelInTransaction(
   transaction: WorkspaceTransaction,
   input: z.output<typeof cancelInputSchema>,
-): Promise<Readonly<{ run: WorkflowRunRecord; alreadyRequested: boolean }>> {
+): Promise<
+  Readonly<{
+    run: WorkflowRunRecord;
+    alreadyRequested: boolean;
+    eventSequence: number | null;
+  }>
+> {
   const cancellation = await requestWorkflowRunCancellation(transaction, {
     actor: input.actorId,
     runId: input.runId,
@@ -369,6 +376,7 @@ async function cancelInTransaction(
   return Object.freeze({
     run,
     alreadyRequested: cancellation.duplicate,
+    eventSequence: cancellation.eventSequence,
   });
 }
 

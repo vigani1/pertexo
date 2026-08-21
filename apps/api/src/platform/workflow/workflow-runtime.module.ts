@@ -1,13 +1,27 @@
 import type { DynamicModule, OnApplicationShutdown } from '@nestjs/common';
 import { Module } from '@nestjs/common';
 import { metrics, trace } from '@opentelemetry/api';
+import { CORE_REGISTRY_RELEASE } from '@pertexo/nodes-core';
 import {
+  buildWorkflowExecutableV2,
+  composeExecutableCompatibilityRelease,
+} from '@pertexo/workflow-engine';
+import {
+  createWorkspaceDatabase,
   createWorkflowAuthoringDatabase,
   type DatabaseConfig,
+  type WorkspaceDatabase,
   type WorkflowAuthoringDatabase,
 } from '@pertexo/database';
 
 import type { ApiIdentityRuntime } from '../identity/identity-runtime.module.js';
+import {
+  createPostgresRunEventReader,
+  RedisRunEventPublisher,
+  RedisRunEventSource,
+  type LiveRunEventSource,
+  type RunEventNotificationPublisher,
+} from '../../executions/index.js';
 import {
   createWorkflowAuthoringTelemetry,
   WorkflowAuthoringModule,
@@ -16,37 +30,141 @@ import {
   type WorkflowAuthoringSpan,
   type WorkflowAuthoringTracer,
 } from '../../workflow-authoring/index.js';
+import {
+  createPostgresWorkflowRunPersistence,
+  createWorkflowRunEventStreamer,
+  WorkflowRunsModule,
+  type WorkflowRunPersistence,
+  type WorkflowRunsDependencies,
+} from '../../workflow-runs/index.js';
 
 export type ApiWorkflowRuntime = Readonly<{
   dependencies: WorkflowAuthoringDependencies;
+  runDependencies: WorkflowRunsDependencies;
   close(): Promise<void>;
 }>;
 
 export type ApiWorkflowRuntimeOverrides = Readonly<{
   database?: WorkflowAuthoringDatabase;
+  eventDatabase?: WorkspaceDatabase;
+  liveSource?: LiveRunEventSource;
+  notifications?: RunEventNotificationPublisher;
+  runPersistence?: WorkflowRunPersistence;
+  runStreamer?: WorkflowRunsDependencies['streamer'];
   telemetry?: WorkflowAuthoringDependencies['telemetry'];
 }>;
 
 export function createApiWorkflowRuntime(
   databaseConfig: DatabaseConfig,
   identityRuntime: ApiIdentityRuntime,
+  redisUrl: string,
   overrides: ApiWorkflowRuntimeOverrides = {},
 ): ApiWorkflowRuntime {
+  const compatibilityRelease = composeExecutableCompatibilityRelease(
+    CORE_REGISTRY_RELEASE,
+  );
+  const definitionCatalog = Object.freeze({
+    schemaVersion: 1 as const,
+    definitions: Object.freeze(
+      CORE_REGISTRY_RELEASE.definitions.map(({ definition }) =>
+        Object.freeze({ ...definition }),
+      ),
+    ),
+  });
   const database =
-    overrides.database ?? createWorkflowAuthoringDatabase(databaseConfig);
+    overrides.database ??
+    createWorkflowAuthoringDatabase(databaseConfig, {
+      definitionCatalog,
+      executableCompiler: (graph) => {
+        const compiled = buildWorkflowExecutableV2({
+          graph,
+          release: compatibilityRelease,
+        });
+        return Object.freeze({
+          checksum: compiled.checksum,
+          executableSchemaVersion: 2 as const,
+          executableJson: compiled.envelope,
+          compatibilityReleaseEpoch:
+            compiled.envelope.compatibilityReleaseEpoch,
+        });
+      },
+    });
+  const notifications =
+    overrides.notifications ??
+    (overrides.runPersistence === undefined
+      ? new RedisRunEventPublisher({ redisUrl })
+      : undefined);
+  const runAdapter =
+    overrides.runPersistence === undefined
+      ? createPostgresWorkflowRunPersistence(
+          databaseConfig,
+          undefined,
+          notifications,
+        )
+      : undefined;
+  const eventDatabase =
+    overrides.runStreamer === undefined
+      ? (overrides.eventDatabase ?? createWorkspaceDatabase(databaseConfig))
+      : undefined;
+  const liveSource =
+    overrides.runStreamer === undefined
+      ? (overrides.liveSource ?? new RedisRunEventSource({ redisUrl }))
+      : undefined;
+  const runPersistence = overrides.runPersistence ?? runAdapter?.persistence;
+  const runStreamer =
+    overrides.runStreamer ??
+    (eventDatabase === undefined || liveSource === undefined
+      ? undefined
+      : createWorkflowRunEventStreamer(
+          createPostgresRunEventReader(eventDatabase),
+          liveSource,
+        ));
+  if (runPersistence === undefined || runStreamer === undefined) {
+    throw new Error('Workflow run runtime composition is incomplete');
+  }
   const telemetry = overrides.telemetry ?? productionTelemetry();
   let closePromise: Promise<void> | undefined;
   return Object.freeze({
     dependencies: Object.freeze({
       persistence: database,
       authorization: identityRuntime.dependencies.authorization,
+      definitionCatalog,
       telemetry,
     }),
+    runDependencies: Object.freeze({
+      persistence: runPersistence,
+      authorization: identityRuntime.dependencies.authorization,
+      streamer: runStreamer,
+    }),
     close: (): Promise<void> => {
-      closePromise ??= database.close();
+      closePromise ??= closeWorkflowResources(
+        database,
+        runAdapter,
+        eventDatabase,
+        notifications,
+      );
       return closePromise;
     },
   });
+}
+
+async function closeWorkflowResources(
+  authoring: WorkflowAuthoringDatabase,
+  runs: ReturnType<typeof createPostgresWorkflowRunPersistence> | undefined,
+  events: WorkspaceDatabase | undefined,
+  notifications: RunEventNotificationPublisher | undefined,
+): Promise<void> {
+  const results = await Promise.allSettled([
+    authoring.close(),
+    runs?.close(),
+    events?.close(),
+    notifications?.close(),
+  ]);
+  const failures = results.flatMap((result) =>
+    result.status === 'rejected' ? [result.reason as unknown] : [],
+  );
+  if (failures.length > 0)
+    throw new AggregateError(failures, 'Workflow resource shutdown failed');
 }
 
 function productionTelemetry(): NonNullable<
@@ -118,6 +236,7 @@ export class WorkflowRuntimeModule {
       module: WorkflowRuntimeModule,
       imports: [
         WorkflowAuthoringModule.register(runtime.dependencies, identityModule),
+        WorkflowRunsModule.register(runtime.runDependencies, identityModule),
       ],
       providers: [
         {

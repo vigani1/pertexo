@@ -1781,7 +1781,7 @@
             },
             "checksum": {
               "type": "string",
-              "pattern": "^wf:v1:sha256:[0-9a-f]{64}$"
+              "pattern": "^wf:v[12]:sha256:[0-9a-f]{64}$"
             },
             "publishedAt": {
               "type": "string",
@@ -2295,7 +2295,7 @@
         },
         "checksum": {
           "type": "string",
-          "pattern": "^wf:v1:sha256:[0-9a-f]{64}$"
+          "pattern": "^wf:v[12]:sha256:[0-9a-f]{64}$"
         },
         "publishedAt": {
           "type": "string",
@@ -2805,7 +2805,7 @@
               },
               "checksum": {
                 "type": "string",
-                "pattern": "^wf:v1:sha256:[0-9a-f]{64}$"
+                "pattern": "^wf:v[12]:sha256:[0-9a-f]{64}$"
               },
               "publishedAt": {
                 "type": "string",

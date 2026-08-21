@@ -1091,7 +1091,13 @@ const cancellationSchema = z
 export async function requestWorkflowRunCancellation(
   transaction: WorkspaceTransaction,
   input: Readonly<z.input<typeof cancellationSchema>>,
-): Promise<Readonly<{ duplicate: boolean; requestedAt: Date }>> {
+): Promise<
+  Readonly<{
+    duplicate: boolean;
+    eventSequence: number | null;
+    requestedAt: Date;
+  }>
+> {
   const parsed = cancellationSchema.parse(input);
   const result = await transaction.db.execute<{
     cancel_reason: string | null;
@@ -1120,6 +1126,7 @@ export async function requestWorkflowRunCancellation(
     }
     return Object.freeze({
       duplicate: true,
+      eventSequence: null,
       requestedAt: new Date(row.cancel_requested_at),
     });
   }
@@ -1132,7 +1139,7 @@ export async function requestWorkflowRunCancellation(
     where workspace_id = ${transaction.workspaceId} and id = ${parsed.runId}
     returning cancel_requested_at
   `);
-  await appendLockedRunEvent(transaction, parsed.runId, {
+  const eventSequence = await appendLockedRunEvent(transaction, parsed.runId, {
     type: RUN_EVENT_TYPE.cancelRequested,
     payload: {
       actor: parsed.actor,
@@ -1145,6 +1152,7 @@ export async function requestWorkflowRunCancellation(
   }
   return Object.freeze({
     duplicate: false,
+    eventSequence,
     requestedAt: new Date(cancellation.cancel_requested_at),
   });
 }

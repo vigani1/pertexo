@@ -23,8 +23,12 @@ import type {
   OidcProviderPort,
 } from '../../src/identity/index.js';
 import type { ApiConfig } from '../../src/platform/config/api-config.js';
+import { createActorContext } from '../../src/workspaces/index.js';
+import { StreamRunEventsUseCase } from '../../src/workflow-runs/index.js';
 
 const apiUrl = process.env.DATABASE_API_URL;
+const redisUrl =
+  process.env.REDIS_URL ?? 'redis://:pertexo-local-redis@localhost:6379/0';
 const enabled =
   process.env.API_IDENTITY_INTEGRATION === 'true' && apiUrl !== undefined;
 const ownerRole = process.env.POSTGRES_OWNER_USER ?? 'pertexo_owner';
@@ -314,6 +318,115 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     expect(versions.json()).toMatchObject({
       items: [{ id: publishedBody.version.id }],
     });
+
+    const runHeaders = mutationHeaders(cookies, {
+      'idempotency-key': 'workflow-run-start-proof',
+    });
+    const started = await application.inject({
+      method: 'POST',
+      url: `${base}/${createdBody.workflow.id}/runs`,
+      headers: runHeaders,
+      payload: { input: { customerId: 'customer-42' } },
+    });
+    expect(started.statusCode).toBe(202);
+    const startedBody = started.json<
+      Readonly<{
+        run: Readonly<{ id: string; status: string }>;
+        replayed: boolean;
+      }>
+    >();
+    expect(startedBody).toMatchObject({
+      run: { status: 'queued' },
+      replayed: false,
+    });
+
+    const startReplay = await application.inject({
+      method: 'POST',
+      url: `${base}/${createdBody.workflow.id}/runs`,
+      headers: runHeaders,
+      payload: { input: { customerId: 'customer-42' } },
+    });
+    expect(startReplay.statusCode).toBe(202);
+    expect(startReplay.json()).toMatchObject({
+      run: { id: startedBody.run.id },
+      replayed: true,
+    });
+    const startConflict = await application.inject({
+      method: 'POST',
+      url: `${base}/${createdBody.workflow.id}/runs`,
+      headers: runHeaders,
+      payload: { input: { customerId: 'different' } },
+    });
+    expectProblem(startConflict, 409, 'request.idempotency_conflict');
+
+    const runUrl = `/v1/workspaces/${workspace.id}/runs/${startedBody.run.id}`;
+    const readRun = await application.inject({
+      method: 'GET',
+      url: runUrl,
+      headers: { cookie: cookies.cookieHeader },
+    });
+    expect(readRun.statusCode).toBe(200);
+    expect(readRun.json()).toMatchObject({
+      run: {
+        id: startedBody.run.id,
+        workflowVersionId: publishedBody.version.id,
+      },
+      nodes: [],
+    });
+
+    const canceled = await application.inject({
+      method: 'POST',
+      url: `${runUrl}/cancel`,
+      headers: mutationHeaders(cookies),
+      payload: { reason: 'operator request' },
+    });
+    expect(canceled.statusCode).toBe(200);
+    expect(canceled.json()).toMatchObject({ alreadyRequested: false });
+    const cancelReplay = await application.inject({
+      method: 'POST',
+      url: `${runUrl}/cancel`,
+      headers: mutationHeaders(cookies),
+      payload: { reason: 'operator request' },
+    });
+    expect(cancelReplay.statusCode).toBe(200);
+    expect(cancelReplay.json()).toMatchObject({ alreadyRequested: true });
+
+    const storedSession = await identityDatabase.findActiveSessionByDigest(
+      sha256Hex(cookies.rawSession),
+    );
+    if (storedSession === null) throw new Error('Expected active session');
+    const streamAbort = new AbortController();
+    const frames = await application.get(StreamRunEventsUseCase).execute({
+      actor: createActorContext({
+        actorId: storedSession.userId,
+        workspaceId: workspace.id,
+        sessionId: storedSession.id,
+        requestId: 'workflow-run-stream-proof',
+      }),
+      routeWorkspaceId: workspace.id,
+      runId: startedBody.run.id,
+      lastEventId: 1,
+      signal: streamAbort.signal,
+    });
+    const event = await frames[Symbol.asyncIterator]().next();
+    streamAbort.abort();
+    const eventValue = event.value as Readonly<{
+      id: number;
+      event: string;
+      data: string;
+    }>;
+    expect(eventValue).toMatchObject({
+      id: 2,
+      event: 'run.cancel_requested',
+    });
+    expect(eventValue.data).not.toContain('operator request');
+
+    const hiddenRun = await application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${randomUUID()}/runs/${startedBody.run.id}`,
+      headers: { cookie: cookies.cookieHeader },
+    });
+    expectProblem(hiddenRun, 404, 'resource.not_found');
 
     const hidden = await application.inject({
       method: 'GET',
@@ -647,6 +760,7 @@ function config(): ApiConfig {
       serviceVersion: 'phase1-integration',
     },
     port: 3000,
+    redisUrl,
   };
 }
 
@@ -685,7 +799,39 @@ function mutationHeaders(
 }
 
 function emptyWorkflowGraph() {
-  return { schemaVersion: 1, nodes: [], edges: [], settings: {} } as const;
+  return {
+    schemaVersion: 1,
+    settings: { maxRunDurationMs: 60_000 },
+    nodes: [
+      {
+        id: 'manual',
+        definition: { key: 'core.manual', version: 1 },
+        position: { x: 0, y: 0 },
+        configVersion: 1,
+        config: {},
+        inputMappings: {},
+        connectionRefs: {},
+      },
+      {
+        id: 'terminate',
+        definition: { key: 'core.terminate', version: 1 },
+        position: { x: 10, y: 0 },
+        configVersion: 1,
+        config: {},
+        inputMappings: {
+          result: { kind: 'node_output', nodeId: 'manual', path: '$' },
+        },
+        connectionRefs: {},
+      },
+    ],
+    edges: [
+      {
+        id: 'manual-terminate',
+        source: { nodeId: 'manual', port: 'out' },
+        target: { nodeId: 'terminate', port: 'in' },
+      },
+    ],
+  } as const;
 }
 
 function sha256Hex(value: string): string {

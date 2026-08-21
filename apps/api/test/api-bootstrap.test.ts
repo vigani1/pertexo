@@ -44,6 +44,7 @@ const config = {
     serviceVersion: 'test',
   },
   port: 3000,
+  redisUrl: 'redis://localhost:6379/0',
 };
 
 const logger: StructuredLogger = {
@@ -122,6 +123,22 @@ function workflowRuntime(
         listVersions: () => Promise.resolve({ items: [] }),
         saveDraft: () => Promise.reject(new Error('not used')),
         publishWorkflow: () => Promise.reject(new Error('not used')),
+      },
+    },
+    runDependencies: {
+      authorization,
+      persistence: {
+        start: () => Promise.reject(new Error('not used')),
+        get: () => Promise.resolve(undefined),
+        cancel: () => Promise.reject(new Error('not used')),
+      },
+      streamer: {
+        stream: () => ({
+          async *[Symbol.asyncIterator]() {
+            await Promise.resolve();
+            yield { id: 1, event: 'run.queued', data: '{}' };
+          },
+        }),
       },
     },
     close,
@@ -307,6 +324,12 @@ describe('API bootstrap', () => {
       url: '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/workflows',
     });
     expect(response.statusCode).toBe(401);
+
+    const runResponse = await application.inject({
+      method: 'GET',
+      url: '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/runs/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    });
+    expect(runResponse.statusCode).toBe(401);
 
     await application.close();
     application = undefined;

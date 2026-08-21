@@ -848,6 +848,65 @@ describe('workflow authoring persistence', () => {
     }
   });
 
+  it('atomically persists an injected executable V2 publication projection', async () => {
+    const checksum = `wf:v2:sha256:${'a'.repeat(64)}` as const;
+    const executableJson = { schemaVersion: 2, marker: 'compiled-in-api' };
+    const executableAuthoring = createWorkflowAuthoringDatabase(
+      parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
+      {
+        executableCompiler: () => ({
+          checksum,
+          executableSchemaVersion: 2,
+          executableJson,
+          compatibilityReleaseEpoch: 7,
+        }),
+      },
+    );
+    try {
+      const created = await executableAuthoring.createWorkflow({
+        actorId,
+        emptyGraph,
+        idempotencyKey: 'create-v2-publication-proof',
+        name: 'V2 publication proof',
+        workspaceId,
+      });
+      const published = await executableAuthoring.publishWorkflow({
+        actorId,
+        representationTag: await currentRepresentationTag(
+          executableAuthoring,
+          workspaceId,
+          created.workflowId,
+          actorId,
+        ),
+        idempotencyKey: 'publish-v2-publication-proof',
+        requestHash: '7'.repeat(64),
+        workflowId: created.workflowId,
+        workspaceId,
+      });
+
+      expect(published.version.checksum).toBe(checksum);
+      await expect(
+        queryAsOwner(
+          `select checksum, executable_schema_version, executable_json,
+                  compatibility_release_epoch
+             from app.workflow_versions
+            where workspace_id = $1 and id = $2`,
+          [workspaceId, published.version.id],
+          workspaceId,
+        ),
+      ).resolves.toEqual([
+        {
+          checksum,
+          executable_schema_version: 2,
+          executable_json: executableJson,
+          compatibility_release_epoch: 7,
+        },
+      ]);
+    } finally {
+      await executableAuthoring.close();
+    }
+  });
+
   it('allows exactly one racing compare-and-swap save', async () => {
     const results = await Promise.allSettled([
       authoring.saveDraft({

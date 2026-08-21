@@ -27,6 +27,7 @@ import type {
   WorkflowRunPersistence,
 } from './ports.js';
 import { WorkflowRunNotFoundError } from './use-cases.js';
+import type { RunEventNotificationPublisher } from '../executions/index.js';
 
 export const PHASE3_API_ENGINE_VERSION = 'phase3-engine-v1';
 export const PHASE3_API_ITERATION_BUDGET = 1_000;
@@ -39,16 +40,24 @@ export type PostgresWorkflowRunPersistence = Readonly<{
 export function createPostgresWorkflowRunPersistence(
   config: DatabaseConfig,
   database: WorkflowRunDatabase = createWorkflowRunDatabase(config),
+  notifications?: RunEventNotificationPublisher,
 ): PostgresWorkflowRunPersistence {
   const release = composeExecutableCompatibilityRelease(CORE_REGISTRY_RELEASE);
   const persistence: WorkflowRunPersistence = Object.freeze({
     start: async (input: StartWorkflowRunCommand) => {
       try {
-        return await database.start({
+        const result = await database.start({
           ...input,
           checkpointFactory: (projection) =>
             initialCheckpoint(projection, release),
         });
+        if (!result.replayed)
+          await publishHint(notifications, {
+            workspaceId: result.run.workspaceId,
+            runId: result.run.id,
+            sequence: 1,
+          });
+        return result;
       } catch (error: unknown) {
         return mapPersistenceError(error);
       }
@@ -62,7 +71,17 @@ export function createPostgresWorkflowRunPersistence(
     },
     cancel: async (input: CancelWorkflowRunCommand) => {
       try {
-        return await database.cancel(input);
+        const result = await database.cancel(input);
+        if (result.eventSequence !== null)
+          await publishHint(notifications, {
+            workspaceId: result.run.workspaceId,
+            runId: result.run.id,
+            sequence: result.eventSequence,
+          });
+        return {
+          run: result.run,
+          alreadyRequested: result.alreadyRequested,
+        };
       } catch (error: unknown) {
         return mapPersistenceError(error);
       }
@@ -72,6 +91,19 @@ export function createPostgresWorkflowRunPersistence(
     persistence,
     close: (): Promise<void> => database.close(),
   });
+}
+
+async function publishHint(
+  notifications: RunEventNotificationPublisher | undefined,
+  reference: Parameters<RunEventNotificationPublisher['publish']>[0],
+): Promise<void> {
+  if (notifications === undefined) return;
+  try {
+    await notifications.publish(reference);
+  } catch {
+    // Redis is a wake-up hint only. PostgreSQL already committed the command,
+    // and reconnect/backfill reconstructs every authoritative event.
+  }
 }
 
 function initialCheckpoint(

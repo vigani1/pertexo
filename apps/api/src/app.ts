@@ -53,6 +53,7 @@ export async function createApiApplication(
       : createApiWorkflowRuntime(
           config.database,
           identityRuntime,
+          config.redisUrl,
           dependencies.workflowOverrides,
         ));
   let application: NestFastifyApplication;

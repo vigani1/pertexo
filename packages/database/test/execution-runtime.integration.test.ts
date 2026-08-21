@@ -838,7 +838,11 @@ describe('durable execution persistence', () => {
         runId,
       }),
     );
-    expect(retry).toEqual({ ...first, duplicate: true });
+    expect(retry).toEqual({
+      ...first,
+      duplicate: true,
+      eventSequence: null,
+    });
     await expect(startRun(runId)).rejects.toThrow(
       'execution.cancel_stops_admission',
     );

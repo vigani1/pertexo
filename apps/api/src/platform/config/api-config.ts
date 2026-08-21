@@ -70,6 +70,13 @@ const apiEnvironmentSchema = z.object({
     .max(10 * 60_000)
     .default(5 * 60_000),
   PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
+  REDIS_URL: z
+    .url()
+    .refine((value) => {
+      const protocol = new URL(value).protocol;
+      return protocol === 'redis:' || protocol === 'rediss:';
+    }, 'REDIS_URL must use redis:// or rediss://')
+    .optional(),
   SESSION_COOKIE_SAME_SITE: z.enum(['lax', 'strict', 'none']).default('lax'),
   SESSION_COOKIE_SECURE: z
     .enum(['true', 'false'])
@@ -133,6 +140,7 @@ export type ApiConfig = Readonly<{
   nodeEnv: ApiNodeEnvironment;
   observability: ObservabilityConfig;
   port: number;
+  redisUrl: string;
 }>;
 
 export function parseApiConfig(
@@ -149,6 +157,11 @@ export function parseApiConfig(
       : { otlpHttpEndpoint: parsed.OTEL_EXPORTER_OTLP_ENDPOINT }),
   });
   const identity = parseIdentityConfig(parsed, environment);
+  const deployed =
+    parsed.NODE_ENV === 'staging' || parsed.NODE_ENV === 'production';
+  if (deployed && parsed.REDIS_URL === undefined) {
+    throw new Error('REDIS_URL is required when deployed');
+  }
 
   return Object.freeze({
     database: Object.freeze({
@@ -164,6 +177,7 @@ export function parseApiConfig(
     nodeEnv: parsed.NODE_ENV,
     observability,
     port: parsed.PORT,
+    redisUrl: parsed.REDIS_URL ?? 'redis://localhost:6379/0',
   });
 }
 

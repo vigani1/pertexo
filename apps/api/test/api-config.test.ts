@@ -29,6 +29,7 @@ describe('parseApiConfig', () => {
         serviceVersion: '0.0.0-dev',
       },
       port: 3000,
+      redisUrl: 'redis://localhost:6379/0',
     });
     expect(Object.isFrozen(config)).toBe(true);
   });
@@ -63,6 +64,7 @@ describe('parseApiConfig', () => {
         serviceVersion: '0.0.0-dev',
       },
       port: 4312,
+      redisUrl: 'redis://localhost:6379/0',
     });
   });
 
@@ -95,6 +97,7 @@ describe('parseApiConfig', () => {
       OIDC_TRANSACTION_PREVIOUS_KEYS: JSON.stringify([
         { version: 'v1', key: Buffer.alloc(32, 6).toString('base64') },
       ]),
+      REDIS_URL: 'rediss://redis.example.test:6380/0',
     });
 
     expect(config.identity).toMatchObject({
@@ -179,5 +182,24 @@ describe('parseApiConfig', () => {
         PORT: '70000',
       }),
     ).toThrow();
+  });
+
+  it('requires a Redis event-hint endpoint when deployed', () => {
+    expect(() =>
+      parseApiConfig({
+        DATABASE_API_URL:
+          'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+        NODE_ENV: 'staging',
+        OIDC_ISSUER: 'https://identity.example.test',
+        OIDC_AUTHORIZATION_ENDPOINT:
+          'https://identity.example.test/oauth2/authorize',
+        OIDC_TOKEN_ENDPOINT: 'https://identity.example.test/oauth2/token',
+        OIDC_JWKS_URI: 'https://identity.example.test/.well-known/jwks.json',
+        OIDC_CLIENT_ID: 'pertexo-api',
+        OIDC_REDIRECT_URI: 'https://api.example.test/v1/auth/oidc/callback',
+        OIDC_TRANSACTION_KEY: Buffer.alloc(32, 7).toString('base64'),
+        OIDC_TRANSACTION_KEY_VERSION: 'v1',
+      }),
+    ).toThrow('REDIS_URL is required when deployed');
   });
 });

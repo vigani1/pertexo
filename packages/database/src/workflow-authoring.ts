@@ -19,7 +19,14 @@ import type { DatabaseConfig } from './config.js';
 import { canonicalOutboxPayloadChecksum } from './outbox.js';
 
 const uuidSchema = z.uuid();
-const checksumSchema = z.string().regex(/^wf:v1:sha256:[0-9a-f]{64}$/u);
+const retainedChecksumSchema = z.string().regex(/^wf:v1:sha256:[0-9a-f]{64}$/u);
+const executableChecksumSchema = z
+  .string()
+  .regex(/^wf:v2:sha256:[0-9a-f]{64}$/u);
+const checksumSchema = z.union([
+  retainedChecksumSchema,
+  executableChecksumSchema,
+]);
 const digestSchema = z.string().regex(/^[0-9a-f]{64}$/u);
 const nameSchema = z.string().trim().min(1).max(128);
 const idempotencyKeySchema = z
@@ -218,7 +225,15 @@ export type WorkflowAuthoringTestHooks = Readonly<{
 
 export type WorkflowAuthoringDatabaseOptions = Readonly<{
   definitionCatalog?: WorkflowDefinitionCatalogV1;
+  executableCompiler?: WorkflowExecutableCompiler;
   testHooks?: WorkflowAuthoringTestHooks;
+}>;
+
+export type WorkflowExecutableCompiler = (graph: WorkflowGraph) => Readonly<{
+  checksum: `wf:v2:sha256:${string}`;
+  executableSchemaVersion: 2;
+  executableJson: unknown;
+  compatibilityReleaseEpoch: number;
 }>;
 
 function mapWorkflow(row: Record<string, unknown>): WorkflowRecord {
@@ -263,7 +278,10 @@ function mapVersion(row: Record<string, unknown>): WorkflowVersionRecord {
     throw new Error('Stored workflow version schema does not match its graph');
   }
   const checksum = checksumSchema.parse(row.checksum);
-  if (checksum !== workflowRetainedExecutableChecksum(graph)) {
+  if (
+    retainedChecksumSchema.safeParse(checksum).success &&
+    checksum !== workflowRetainedExecutableChecksum(graph)
+  ) {
     throw new Error(
       'Stored workflow version checksum does not match its graph',
     );
@@ -773,8 +791,22 @@ export function createWorkflowAuthoringDatabase(
             definitionCatalog,
           );
           const schemaVersion = graph.schemaVersion;
+          const compiled = options.executableCompiler?.(graph);
+          const executable =
+            compiled === undefined
+              ? undefined
+              : z
+                  .object({
+                    checksum: executableChecksumSchema,
+                    executableSchemaVersion: z.literal(2),
+                    executableJson: z.record(z.string(), z.unknown()),
+                    compatibilityReleaseEpoch: z.number().int().positive(),
+                  })
+                  .strict()
+                  .parse(compiled);
           const checksum = checksumSchema.parse(
-            workflowExecutableChecksum(graph, definitionCatalog),
+            executable?.checksum ??
+              workflowExecutableChecksum(graph, definitionCatalog),
           );
           const retainedResult = await client.query<Record<string, unknown>>(
             `select * from app.workflow_versions
@@ -798,8 +830,13 @@ export function createWorkflowAuthoringDatabase(
           if (!reused) {
             const versionId = randomUUID();
             const inserted = await client.query<Record<string, unknown>>(
-              `insert into app.workflow_versions (id, workspace_id, workflow_id, version_number, schema_version, graph_json, checksum, published_by)
-           select $1, $2, $3, coalesce(max(version_number), 0) + 1, $4, $5::jsonb, $6, $7
+              `insert into app.workflow_versions (
+                 id, workspace_id, workflow_id, version_number, schema_version,
+                 graph_json, checksum, executable_schema_version,
+                 executable_json, compatibility_release_epoch, published_by
+               )
+           select $1, $2, $3, coalesce(max(version_number), 0) + 1, $4,
+                  $5::jsonb, $6, $7, $8::jsonb, $9, $10
            from app.workflow_versions where workspace_id = $2 and workflow_id = $3 returning *`,
               [
                 versionId,
@@ -808,6 +845,11 @@ export function createWorkflowAuthoringDatabase(
                 schemaVersion,
                 JSON.stringify(graph),
                 checksum,
+                executable?.executableSchemaVersion ?? null,
+                executable === undefined
+                  ? null
+                  : JSON.stringify(executable.executableJson),
+                executable?.compatibilityReleaseEpoch ?? null,
                 input.actorId,
               ],
             );
