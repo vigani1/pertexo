@@ -14,6 +14,7 @@ import type {
 import type { TransportMetrics } from '@pertexo/observability/transport-metrics';
 
 import type { WorkerConfig } from './config/worker-config.js';
+import type { CoordinatorRuntime } from './execution/coordinator-runtime.js';
 import { DatabaseModule } from './platform/database/database.module.js';
 import { ObservabilityModule } from './platform/observability/observability.module.js';
 import { WorkerReadiness } from './runtime/worker-readiness.js';
@@ -21,6 +22,7 @@ import type { DispatchConsumerCapabilityRegistry } from './transport/dispatch-co
 import { TransportModule } from './transport/transport.module.js';
 
 export type WorkerModuleDependencies = Readonly<{
+  coordinatorRuntime?: CoordinatorRuntime;
   database?: WorkspaceDatabase;
   dispatchConsumerCapabilities?: DispatchConsumerCapabilityRegistry;
   dispatcherDatabase?: OutboxDispatcherDatabase;
@@ -48,6 +50,9 @@ export class WorkerModule {
       imports: [
         DatabaseModule.register(config.database, databaseOptions),
         TransportModule.register(config, {
+          ...(dependencies.coordinatorRuntime === undefined
+            ? {}
+            : { coordinatorRuntime: dependencies.coordinatorRuntime }),
           ...(dependencies.dispatchConsumerCapabilities === undefined
             ? {}
             : {

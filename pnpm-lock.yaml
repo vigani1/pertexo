@@ -89,12 +89,18 @@ importers:
       '@pertexo/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@pertexo/nodes-core':
+        specifier: workspace:*
+        version: link:../../packages/nodes-core
       '@pertexo/observability':
         specifier: workspace:*
         version: link:../../packages/observability
       '@pertexo/queue':
         specifier: workspace:*
         version: link:../../packages/queue
+      '@pertexo/workflow-engine':
+        specifier: workspace:*
+        version: link:../../packages/workflow-engine
       reflect-metadata:
         specifier: 0.2.2
         version: 0.2.2
@@ -114,9 +120,6 @@ importers:
       '@pertexo/artifact-store':
         specifier: workspace:*
         version: link:../../packages/artifact-store
-      '@pertexo/workflow-engine':
-        specifier: workspace:*
-        version: link:../../packages/workflow-engine
       '@pertexo/workflow-model':
         specifier: workspace:*
         version: link:../../packages/workflow-model

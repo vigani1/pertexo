@@ -7,6 +7,7 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
+  canonicalOutboxPayloadChecksum,
   CoordinatorPlanInvalidError,
   CoordinatorRunStateCorruptError,
   checkDatabaseReadiness,
@@ -27,8 +28,8 @@ const workerBaseUrl =
 const apiBaseUrl =
   process.env.DATABASE_API_URL ??
   'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
-const databaseName = `pertexo_test_0015_run_store_${randomUUID().replaceAll('-', '')}`;
-const zeroDatabaseName = `pertexo_test_0015_zero_${randomUUID().replaceAll('-', '')}`;
+const databaseName = `pertexo_test_0016_run_store_${randomUUID().replaceAll('-', '')}`;
+const zeroDatabaseName = `pertexo_test_0016_zero_${randomUUID().replaceAll('-', '')}`;
 
 const actorId = randomUUID();
 const workspaceA = randomUUID();
@@ -38,6 +39,8 @@ const workflowB = randomUUID();
 const versionA = randomUUID();
 const versionB = randomUUID();
 const retainedRunId = randomUUID();
+const retainedLegacyNodeRunId = randomUUID();
+const retainedLegacyInvocationKey = 'legacy/node#1';
 
 function namedDatabaseUrl(base: string, name: string): string {
   const value = new URL(base);
@@ -57,7 +60,7 @@ const migrationConfig = {
   workerRuntimeRole: 'pertexo_worker',
 } as const;
 
-const store = createCoordinatorRunStore(
+const rawStore = createCoordinatorRunStore(
   parseDatabaseConfig({
     connectionString: databaseUrl(workerBaseUrl),
     max: 6,
@@ -147,6 +150,26 @@ async function migrateThrough0014(): Promise<void> {
   }
 }
 
+async function migrateThrough0015(): Promise<void> {
+  const directory = await mkdtemp(path.join(tmpdir(), 'pertexo-0015-'));
+  try {
+    const names = (await readdir(MIGRATIONS_DIRECTORY)).filter(
+      (name) => /^\d{4}_.+\.sql$/u.test(name) && name < '0016_',
+    );
+    await Promise.all(
+      names.map((name) =>
+        copyFile(
+          path.join(MIGRATIONS_DIRECTORY, name),
+          path.join(directory, name),
+        ),
+      ),
+    );
+    await migrateDatabase(migrationConfig, directory);
+  } finally {
+    await rm(directory, { force: true, recursive: true });
+  }
+}
+
 async function asOwner<T>(
   workspaceId: string,
   operation: (client: Pool) => Promise<T>,
@@ -193,6 +216,70 @@ async function asRuntime<T>(
     await client.end();
   }
 }
+
+type CommitInput = Parameters<typeof rawStore.commitAdvancePlan>[0];
+type TestAcknowledgeInput = Parameters<
+  typeof rawStore.acknowledgeAdvanceDelivery
+>[0];
+type TestLoadInput = Parameters<typeof rawStore.loadAdvanceState>[0];
+type TestCommitInput = Omit<CommitInput, 'delivery'> &
+  Readonly<{ delivery?: CommitInput['delivery'] }>;
+const testDeliveries = new Map<string, Promise<CommitInput['delivery']>>();
+
+function testDelivery(
+  workspaceId: string,
+  runId: string,
+  expectedRevision: unknown,
+): Promise<CommitInput['delivery']> {
+  const key = `${workspaceId}:${runId}:${String(expectedRevision)}`;
+  const existing = testDeliveries.get(key);
+  if (existing !== undefined) return existing;
+  const created = (async (): Promise<CommitInput['delivery']> => {
+    const outboxEventId = randomUUID();
+    const payload = { schemaVersion: 1, workspaceId, outboxEventId, runId };
+    const payloadChecksum = canonicalOutboxPayloadChecksum(payload);
+    await asRuntime(workerBaseUrl, workspaceId, (client) =>
+      client.query(
+        `insert into app.outbox_events (
+           id,workspace_id,job_name,schema_version,aggregate_type,
+           aggregate_id,payload,payload_checksum
+         ) values ($1,$2,'advance-workflow-run',1,'workflow-run',$3,$4::jsonb,$5)`,
+        [
+          outboxEventId,
+          workspaceId,
+          runId,
+          JSON.stringify(payload),
+          payloadChecksum,
+        ],
+      ),
+    );
+    return Object.freeze({ outboxEventId, payloadChecksum });
+  })();
+  testDeliveries.set(key, created);
+  return created;
+}
+
+const store = Object.freeze({
+  acknowledgeAdvanceDelivery: (input: TestAcknowledgeInput) =>
+    rawStore.acknowledgeAdvanceDelivery(input),
+  close: () => rawStore.close(),
+  loadAdvanceState: (input: TestLoadInput) => rawStore.loadAdvanceState(input),
+  commitAdvancePlan: async (input: TestCommitInput) =>
+    rawStore.commitAdvancePlan({
+      ...input,
+      delivery:
+        input.delivery ??
+        (await testDelivery(
+          input.workspaceId,
+          input.runId,
+          typeof input.plan === 'object' &&
+            input.plan !== null &&
+            'expectedRevision' in input.plan
+            ? input.plan.expectedRevision
+            : undefined,
+        )),
+    }),
+});
 
 async function seedIdentityAndExecutables(): Promise<void> {
   await asOwner(workspaceA, async (client) => {
@@ -362,6 +449,21 @@ beforeAll(async () => {
       [retainedRunId, workspaceA],
     );
   });
+  await migrateThrough0015();
+  await asRuntime(workerBaseUrl, workspaceA, (client) =>
+    client.query(
+      `insert into app.node_runs (
+         id,workspace_id,workflow_run_id,node_id,invocation_key,
+         branch_context,status,side_effect_class
+       ) values ($1,$2,$3,'legacy-node',$4,'{}'::jsonb,'pending','safe')`,
+      [
+        retainedLegacyNodeRunId,
+        workspaceA,
+        retainedRunId,
+        retainedLegacyInvocationKey,
+      ],
+    ),
+  );
   await migrateDatabase(migrationConfig);
   await seedIdentityAndExecutables();
 }, 60_000);
@@ -369,7 +471,7 @@ beforeAll(async () => {
 afterAll(dropDatabase);
 
 describe('CoordinatorRunStore on disposable PostgreSQL', () => {
-  it('migrates a zero database through 0015 and reports readiness', async () => {
+  it('migrates a zero database through 0016 and reports readiness', async () => {
     const admin = new Pool({ connectionString: adminBaseUrl, max: 1 });
     try {
       await admin.query(
@@ -399,7 +501,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0015_coordinator_run_store.sql',
+          migrationHead: '0016_engine_invocation_keys.sql',
           role: 'pertexo_worker',
         });
       } finally {
@@ -425,7 +527,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0015_coordinator_run_store.sql',
+        migrationHead: '0016_engine_invocation_keys.sql',
         role: 'pertexo_worker',
       });
       const catalog = await readinessPool.query<{
@@ -535,6 +637,58 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           ),
         );
       }
+      for (const [revoke, restore] of [
+        [
+          'revoke select on app.outbox_events from pertexo_worker',
+          'grant select on app.outbox_events to pertexo_worker',
+        ],
+        [
+          'revoke insert on app.transport_security_audit_facts from pertexo_worker',
+          'grant insert on app.transport_security_audit_facts to pertexo_worker',
+        ],
+      ] as const) {
+        await asOwner(workspaceA, (client) => client.query(revoke));
+        try {
+          await expect(
+            checkDatabaseReadiness(readinessPool, {
+              ownerRole: 'pertexo_owner',
+              workerRuntimeRole: 'pertexo_worker',
+            }),
+          ).rejects.toThrow('Coordinator RunStore grants are incompatible');
+        } finally {
+          await asOwner(workspaceA, (client) => client.query(restore));
+        }
+      }
+      await asOwner(workspaceA, (client) =>
+        client.query(
+          `alter policy inbox_receipts_workspace_scope on app.inbox_receipts
+           using (true) with check (true)`,
+        ),
+      );
+      try {
+        await expect(
+          checkDatabaseReadiness(readinessPool, {
+            ownerRole: 'pertexo_owner',
+            workerRuntimeRole: 'pertexo_worker',
+          }),
+        ).rejects.toThrow('Coordinator RunStore grants are incompatible');
+      } finally {
+        await asOwner(workspaceA, (client) =>
+          client.query(
+            `alter policy inbox_receipts_workspace_scope on app.inbox_receipts
+             using (
+               workspace_id::text = nullif(
+                 current_setting('app.workspace_id', true), ''
+               )
+             )
+             with check (
+               workspace_id::text = nullif(
+                 current_setting('app.workspace_id', true), ''
+               )
+             )`,
+          ),
+        );
+      }
 
       await asOwner(workspaceA, (client) =>
         client.query(
@@ -612,7 +766,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0015_coordinator_run_store.sql',
+        migrationHead: '0016_engine_invocation_keys.sql',
       });
     } finally {
       await readinessPool.end();
@@ -643,6 +797,111 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         signal: new AbortController().signal,
       }),
     ).resolves.toEqual({ kind: 'unsupported_checkpoint' });
+  });
+
+  it('preserves legacy invocation keys and admits only canonical engine identities', async () => {
+    const retained = await asRuntime(workerBaseUrl, workspaceA, (client) =>
+      client.query<{ invocation_key: string }>(
+        `select invocation_key from app.node_runs
+           where workspace_id=$1 and id=$2`,
+        [workspaceA, retainedLegacyNodeRunId],
+      ),
+    );
+    expect(retained.rows).toEqual([
+      { invocation_key: retainedLegacyInvocationKey },
+    ]);
+
+    const runId = await insertRun({});
+    const canonicalKey = `${versionA}|manual|b:|i:`;
+    await expect(
+      asRuntime(workerBaseUrl, workspaceA, (client) =>
+        client.query(
+          `insert into app.node_runs (
+             id,workspace_id,workflow_run_id,node_id,invocation_key,
+             branch_context,status,side_effect_class
+           ) values ($1,$2,$3,'manual',$4,'{}'::jsonb,'pending','safe')`,
+          [randomUUID(), workspaceA, runId, canonicalKey],
+        ),
+      ),
+    ).resolves.toBeDefined();
+    await expect(
+      asRuntime(workerBaseUrl, workspaceA, (client) =>
+        client.query(
+          `insert into app.node_runs (
+             id,workspace_id,workflow_run_id,node_id,invocation_key,
+             branch_context,status,side_effect_class
+           ) values ($1,$2,$3,'mapped',$4,'{}'::jsonb,'pending','safe')`,
+          [
+            randomUUID(),
+            workspaceA,
+            runId,
+            `${versionA}|mapped|b:branch%2Fchild|i:loop%3A1`,
+          ],
+        ),
+      ),
+    ).resolves.toBeDefined();
+
+    for (const malformed of [
+      `|manual|b:|i:`,
+      `${versionA}|manual|b:raw/path|i:`,
+      `${versionA}|manual|b:|i:loop%3a1`,
+      `${versionA}|manual|b:|i:loop:1`,
+      `${versionA}|manual|b:|i:|extra`,
+      `${versionA}|mánuál|b:|i:`,
+    ]) {
+      await expect(
+        asRuntime(workerBaseUrl, workspaceA, (client) =>
+          client.query(
+            `insert into app.node_runs (
+               id,workspace_id,workflow_run_id,node_id,invocation_key,
+               branch_context,status,side_effect_class
+             ) values ($1,$2,$3,'manual',$4,'{}'::jsonb,'pending','safe')`,
+            [randomUUID(), workspaceA, runId, malformed],
+          ),
+        ),
+      ).rejects.toMatchObject({ code: '23514' });
+    }
+
+    const readinessPool = new Pool({
+      connectionString: databaseUrl(workerBaseUrl),
+      max: 1,
+    });
+    await asOwner(workspaceA, (client) =>
+      client.query(
+        `alter table app.node_runs
+           drop constraint node_runs_invocation_key_format,
+           add constraint node_runs_invocation_key_format
+             check (length(invocation_key) > 0)`,
+      ),
+    );
+    try {
+      await expect(
+        checkDatabaseReadiness(readinessPool, {
+          ownerRole: 'pertexo_owner',
+          workerRuntimeRole: 'pertexo_worker',
+        }),
+      ).rejects.toThrow('Coordinator RunStore grants are incompatible');
+    } finally {
+      await asOwner(workspaceA, (client) =>
+        client.query(
+          `alter table app.node_runs
+             drop constraint node_runs_invocation_key_format,
+             add constraint node_runs_invocation_key_format check (
+               invocation_key ~ '^[A-Za-z0-9][A-Za-z0-9._:/#-]{0,255}$'
+               or invocation_key ~ '^([A-Za-z0-9_.!~*()''-]|%[0-9A-F]{2})+\\|([A-Za-z0-9_.!~*()''-]|%[0-9A-F]{2})+\\|b:([A-Za-z0-9_.!~*()''-]|%[0-9A-F]{2})*\\|i:([A-Za-z0-9_.!~*()''-]|%[0-9A-F]{2})*$'
+             )`,
+        ),
+      );
+    }
+    await expect(
+      checkDatabaseReadiness(readinessPool, {
+        ownerRole: 'pertexo_owner',
+        workerRuntimeRole: 'pertexo_worker',
+      }),
+    ).resolves.toMatchObject({
+      migrationHead: '0016_engine_invocation_keys.sql',
+    });
+    await readinessPool.end();
   });
 
   it('loads a valid revision-zero checkpoint at cursor two and enforces workspace RLS', async () => {
@@ -2487,6 +2746,16 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
       kind: 'already_committed',
       revision: 1,
     });
+    const receipts = await asRuntime(workerBaseUrl, workspaceA, (client) =>
+      client.query<{ completed: number }>(
+        `select count(*)::int completed
+         from app.inbox_receipts receipt
+         join app.outbox_events event on event.id=receipt.message_id
+         where event.aggregate_id=$1 and receipt.completed_at is not null`,
+        [runId],
+      ),
+    );
+    expect(receipts.rows[0]?.completed).toBe(1);
   });
 
   it('uses the exact transition fingerprint for event and admission replays', async () => {
@@ -3044,12 +3313,16 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         nodes: number;
         attempts: number;
         events: number;
+        inbox: number;
         revision: number;
       }>(
         `select
            (select count(*)::int from app.node_runs where workflow_run_id=$1) nodes,
            (select count(*)::int from app.node_attempts attempt join app.node_runs node on node.id=attempt.node_run_id where node.workflow_run_id=$1) attempts,
            (select count(*)::int from app.run_events where workflow_run_id=$1) events,
+           (select count(*)::int from app.inbox_receipts receipt
+             join app.outbox_events event on event.id=receipt.message_id
+             where event.aggregate_id=$1) inbox,
            (select revision from app.run_checkpoints where workflow_run_id=$1) revision`,
         [runId],
       ),
@@ -3058,6 +3331,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
       nodes: 0,
       attempts: 0,
       events: 1,
+      inbox: 0,
       revision: 0,
     });
   });

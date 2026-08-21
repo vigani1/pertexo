@@ -18,18 +18,18 @@ const workerLogLevels = [
   'trace',
 ] as const;
 
-export const PHASE_2_DISPATCH_CAPABILITIES = Object.freeze([
+export const SUPPORTED_DISPATCH_CAPABILITIES = Object.freeze([
   JOB_NAME.advanceWorkflowRun,
   JOB_NAME.executeNodeAttempt,
   JOB_NAME.expireArtifacts,
 ] as const satisfies readonly JobName[]);
 
-const phase2DispatchCapabilitySet = new Set<JobName>(
-  PHASE_2_DISPATCH_CAPABILITIES,
+const supportedDispatchCapabilitySet = new Set<JobName>(
+  SUPPORTED_DISPATCH_CAPABILITIES,
 );
 
-export function isPhase2DispatchCapability(jobName: JobName): boolean {
-  return phase2DispatchCapabilitySet.has(jobName);
+export function isSupportedDispatchCapability(jobName: JobName): boolean {
+  return supportedDispatchCapabilitySet.has(jobName);
 }
 
 const enabledJobNamesSchema = z
@@ -48,10 +48,10 @@ const enabledJobNamesSchema = z
       });
     }
     for (const jobName of jobNames) {
-      if (!isPhase2DispatchCapability(jobName)) {
+      if (!isSupportedDispatchCapability(jobName)) {
         context.addIssue({
           code: 'custom',
-          message: `Job kind is not supported by this Phase 2 dispatcher build: ${jobName}`,
+          message: `Job kind is not supported by this dispatcher build: ${jobName}`,
         });
       }
     }
@@ -133,6 +133,12 @@ export const workerConfigSchema = z
       .min(1)
       .max(300_000)
       .default(1_000),
+    WORKFLOW_COORDINATOR_MAX_ADMISSIONS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(64)
+      .default(32),
     WORKER_INSTANCE_ID: z
       .string()
       .regex(/^[A-Za-z0-9._:-]{1,96}$/u)
@@ -166,6 +172,7 @@ export const workerConfigSchema = z
       OUTBOX_DISPATCH_OPERATION_TIMEOUT_MILLIS,
       OUTBOX_DISPATCH_POLL_MILLIS,
       OUTBOX_DISPATCH_RETRY_MILLIS,
+      WORKFLOW_COORDINATOR_MAX_ADMISSIONS,
       WORKER_INSTANCE_ID,
       NODE_ENV,
       LOG_LEVEL,
@@ -211,6 +218,9 @@ export const workerConfigSchema = z
         pollIntervalMillis: OUTBOX_DISPATCH_POLL_MILLIS,
         retryDelayMillis: OUTBOX_DISPATCH_RETRY_MILLIS,
       },
+      coordinator: {
+        maximumAdmissions: WORKFLOW_COORDINATOR_MAX_ADMISSIONS,
+      },
       redisUrl: REDIS_URL,
     }),
   );
@@ -230,6 +240,7 @@ export function parseWorkerConfig(
     ...result.data,
     database: Object.freeze(result.data.database),
     dispatcherDatabase: Object.freeze(result.data.dispatcherDatabase),
+    coordinator: Object.freeze(result.data.coordinator),
     outboxDispatcher: Object.freeze(result.data.outboxDispatcher),
   });
 }

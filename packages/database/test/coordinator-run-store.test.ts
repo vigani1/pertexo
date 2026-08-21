@@ -13,6 +13,10 @@ const migrationUrl = new URL(
   '../migrations/0015_coordinator_run_store.sql',
   import.meta.url,
 );
+const invocationKeyMigrationUrl = new URL(
+  '../migrations/0016_engine_invocation_keys.sql',
+  import.meta.url,
+);
 
 describe('coordinator run store contract', () => {
   it('adds the checkpoint-to-run executable identity binding additively', async () => {
@@ -26,6 +30,19 @@ describe('coordinator run store contract', () => {
       'GRANT UPDATE (last_transition_fingerprint)\n  ON app.run_checkpoints TO {{worker_runtime_role}}',
     );
     expect(sql).not.toMatch(/GRANT\s+(?:INSERT|DELETE|TRUNCATE)/iu);
+  });
+
+  it('widens invocation identities without rewriting retained rows', async () => {
+    const sql = await readFile(invocationKeyMigrationUrl, 'utf8');
+
+    expect(sql).toContain('DROP CONSTRAINT node_runs_invocation_key_format');
+    expect(sql).toContain(
+      "invocation_key ~ '^[A-Za-z0-9][A-Za-z0-9._:/#-]{0,255}$'",
+    );
+    expect(sql).toContain('%[0-9A-F]{2})+\\|');
+    expect(sql).toContain('\\|b:');
+    expect(sql).toContain('\\|i:');
+    expect(sql).not.toMatch(/UPDATE\s+app\.node_runs/iu);
   });
 
   it('maps transition fingerprints only on the checkpoint projection', () => {

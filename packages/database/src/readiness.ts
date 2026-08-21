@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 
-export const EXPECTED_MIGRATION_HEAD = '0015_coordinator_run_store.sql';
+export const EXPECTED_MIGRATION_HEAD = '0016_engine_invocation_keys.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -610,11 +610,23 @@ export async function checkDatabaseReadiness(
       ) as execution_values_compatible,
       (
         has_table_privilege($2, 'app.workflow_runs', 'SELECT')
+        and (
+          select pg_get_expr(constraint_record.conbin, constraint_record.conrelid)
+          from pg_constraint constraint_record
+          where constraint_record.conrelid = to_regclass('app.node_runs')
+            and constraint_record.conname = 'node_runs_invocation_key_format'
+        ) = $invocation_constraint$(((invocation_key)::text ~ '^[A-Za-z0-9][A-Za-z0-9._:/#-]{0,255}$'::text) OR ((invocation_key)::text ~ '^([A-Za-z0-9_.!~*()''-]|%[0-9A-F]{2})+\\|([A-Za-z0-9_.!~*()''-]|%[0-9A-F]{2})+\\|b:([A-Za-z0-9_.!~*()''-]|%[0-9A-F]{2})*\\|i:([A-Za-z0-9_.!~*()''-]|%[0-9A-F]{2})*$'::text))$invocation_constraint$
         and has_table_privilege($2, 'app.run_checkpoints', 'SELECT')
         and has_table_privilege($2, 'app.run_events', 'SELECT')
         and has_table_privilege($2, 'app.node_runs', 'SELECT')
         and has_table_privilege($2, 'app.node_attempts', 'SELECT')
         and has_table_privilege($2, 'app.artifacts', 'SELECT')
+        and has_table_privilege($2, 'app.outbox_events', 'SELECT')
+        and has_table_privilege($2, 'app.inbox_receipts', 'SELECT')
+        and has_table_privilege($2, 'app.inbox_receipts', 'INSERT')
+        and has_column_privilege($2, 'app.inbox_receipts', 'completed_at', 'UPDATE')
+        and has_table_privilege($2, 'app.transport_security_audit_facts', 'SELECT')
+        and has_table_privilege($2, 'app.transport_security_audit_facts', 'INSERT')
         and has_table_privilege($2, 'app.node_runs', 'INSERT')
         and has_table_privilege($2, 'app.node_attempts', 'INSERT')
         and has_table_privilege($2, 'app.run_events', 'INSERT')
@@ -623,10 +635,21 @@ export async function checkDatabaseReadiness(
         and not has_table_privilege($2, 'app.run_checkpoints', 'INSERT')
         and not has_table_privilege($2, 'app.run_events', 'UPDATE')
         and not has_table_privilege($2, 'app.outbox_events', 'UPDATE')
+        and not has_table_privilege($2, 'app.inbox_receipts', 'UPDATE')
+        and not has_table_privilege($2, 'app.transport_security_audit_facts', 'UPDATE')
+        and not exists (
+          select 1 from information_schema.column_privileges privilege
+          where privilege.table_schema='app'
+            and privilege.table_name='inbox_receipts'
+            and privilege.grantee=$2
+            and privilege.privilege_type='UPDATE'
+            and privilege.column_name <> 'completed_at'
+        )
         and not exists (
           select 1 from (values
             ('workflow_runs'), ('run_checkpoints'), ('run_events'),
-            ('node_runs'), ('node_attempts'), ('artifacts'), ('outbox_events')
+            ('node_runs'), ('node_attempts'), ('artifacts'), ('outbox_events'),
+            ('inbox_receipts'), ('transport_security_audit_facts')
           ) protected(table_name)
           join pg_class relation
             on relation.oid = to_regclass('app.' || protected.table_name)
@@ -672,6 +695,32 @@ export async function checkDatabaseReadiness(
             and policy.polqual is null
             and pg_get_expr(policy.polwithcheck, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
         )
+        and exists (
+          select 1 from pg_policy policy
+          where policy.polrelid = to_regclass('app.outbox_events')
+            and policy.polname = 'outbox_events_tenant_select'
+            and policy.polcmd = 'r'
+            and cardinality(policy.polroles) = 2
+            and (select oid from pg_roles where rolname = $2) = any(policy.polroles)
+            and pg_get_expr(policy.polqual, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
+            and policy.polwithcheck is null
+        )
+        and not exists (
+          select 1 from (values
+            ('inbox_receipts', 'inbox_receipts_workspace_scope'),
+            ('transport_security_audit_facts', 'transport_security_audit_facts_workspace_scope')
+          ) expected(table_name, policy_name)
+          where not exists (
+            select 1 from pg_policy policy
+            where policy.polrelid = to_regclass('app.' || expected.table_name)
+              and policy.polname = expected.policy_name
+              and policy.polcmd = '*'
+              and cardinality(policy.polroles) = 2
+              and (select oid from pg_roles where rolname = $2) = any(policy.polroles)
+              and pg_get_expr(policy.polqual, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
+              and pg_get_expr(policy.polwithcheck, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
+          )
+        )
         and has_column_privilege($2, 'app.workflow_runs', 'status', 'UPDATE')
         and not exists (
           select 1 from (values
@@ -709,7 +758,8 @@ export async function checkDatabaseReadiness(
         and not exists (
           select 1 from (values
             ('workflow_runs'), ('run_checkpoints'), ('run_events'),
-            ('node_runs'), ('node_attempts'), ('artifacts'), ('outbox_events')
+            ('node_runs'), ('node_attempts'), ('artifacts'), ('outbox_events'),
+            ('inbox_receipts'), ('transport_security_audit_facts')
           ) protected(table_name)
           where has_table_privilege($2, 'app.' || protected.table_name, 'DELETE')
              or has_table_privilege($2, 'app.' || protected.table_name, 'TRUNCATE')

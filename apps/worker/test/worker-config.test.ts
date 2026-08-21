@@ -14,6 +14,7 @@ describe('parseWorkerConfig', () => {
         REDIS_URL: 'redis://:secret@localhost:6379/0',
       }),
     ).toEqual({
+      coordinator: { maximumAdmissions: 32 },
       database: {
         connectionString:
           'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
@@ -68,6 +69,7 @@ describe('parseWorkerConfig', () => {
     });
 
     expect(config).toEqual({
+      coordinator: { maximumAdmissions: 32 },
       database: {
         connectionString:
           'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
@@ -109,7 +111,24 @@ describe('parseWorkerConfig', () => {
     });
     expect(Object.isFrozen(config)).toBe(true);
     expect(Object.isFrozen(config.database)).toBe(true);
+    expect(Object.isFrozen(config.coordinator)).toBe(true);
   });
+
+  it.each(['0', '65', '1.5'])(
+    'rejects an invalid coordinator admission bound (%s)',
+    (maximumAdmissions) => {
+      expect(() =>
+        parseWorkerConfig({
+          DATABASE_DISPATCHER_URL:
+            'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
+          DATABASE_WORKER_URL:
+            'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+          REDIS_URL: 'redis://:secret@localhost:6379/0',
+          WORKFLOW_COORDINATOR_MAX_ADMISSIONS: maximumAdmissions,
+        }),
+      ).toThrow(/invalid worker configuration/i);
+    },
+  );
 
   it('rejects an unsupported log level before the worker starts', () => {
     expect(() =>
@@ -124,7 +143,7 @@ describe('parseWorkerConfig', () => {
     ).toThrow(/invalid worker configuration/i);
   });
 
-  it('accepts a nonempty unique allowlist of Phase 2 dispatch capabilities', () => {
+  it('accepts a nonempty unique allowlist of supported dispatch capabilities', () => {
     const config = parseWorkerConfig({
       DATABASE_DISPATCHER_URL:
         'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',

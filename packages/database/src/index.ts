@@ -128,12 +128,15 @@ export {
 } from './readiness.js';
 export type { DatabaseReadiness } from './readiness.js';
 export {
+  CoordinatorDeliveryMismatchError,
   CoordinatorPlanInvalidError,
   CoordinatorRunStateCorruptError,
   createCoordinatorRunStore,
 } from './coordinator-run-store.js';
 export type {
+  AcknowledgeAdvanceDeliveryResult,
   CommitAdvancePlanResult,
+  CoordinatorAdvanceDelivery,
   CoordinatorRunStore,
   LoadAdvanceStateResult,
 } from './coordinator-run-store.js';

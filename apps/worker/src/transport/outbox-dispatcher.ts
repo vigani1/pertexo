@@ -23,7 +23,7 @@ import {
 } from '@pertexo/queue';
 import { z } from 'zod';
 
-import { isPhase2DispatchCapability } from '../config/worker-config.js';
+import { isSupportedDispatchCapability } from '../config/worker-config.js';
 import type { WorkerDrainState } from '../runtime/worker-drain-state.js';
 import {
   DispatchConsumerCapabilityError,
@@ -38,7 +38,7 @@ const optionsSchema = z
     enabledJobNames: z
       .array(z.enum(JOB_NAME))
       .refine((values) => new Set(values).size === values.length)
-      .refine((values) => values.every(isPhase2DispatchCapability)),
+      .refine((values) => values.every(isSupportedDispatchCapability)),
     leaseDurationMillis: z.number().int().min(1_000).max(300_000),
     leaseOwner: z.string().regex(/^[A-Za-z0-9._:-]{1,128}$/u),
     maxAttempts: z.number().int().min(1).max(1_000),

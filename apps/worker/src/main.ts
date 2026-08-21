@@ -26,8 +26,8 @@ async function bootstrap(): Promise<void> {
     application = await createWorkerApplication(config, { logger, telemetry });
     logger.info('worker.started');
 
-    // Queue connections will keep the process alive once consumers are added.
-    // Until then, retain the standalone worker process so shutdown hooks can run.
+    // Enabled queue consumers keep their own connections alive. Retain the
+    // process as well when every dispatch capability is intentionally disabled.
     setInterval(() => undefined, KEEP_ALIVE_INTERVAL_MS);
   } catch (error: unknown) {
     if (logger === undefined) {

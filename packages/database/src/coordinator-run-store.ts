@@ -17,6 +17,14 @@ import {
 } from './stored-execution-value.js';
 
 const identitySchema = z.uuid();
+const checksumSchema = z.string().regex(/^[0-9a-f]{64}$/u);
+const coordinatorDeliverySchema = z
+  .object({
+    outboxEventId: z.uuid(),
+    payloadChecksum: checksumSchema,
+  })
+  .strict();
+const coordinatorConsumerName = 'workflow-coordinator';
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const maximumCanonicalEventPayloadBytes = 4096;
@@ -117,6 +125,14 @@ export type CommitAdvancePlanResult =
   | Readonly<{ kind: 'already_committed' | 'stale'; revision: number }>
   | Readonly<{ kind: 'not_found' }>;
 
+export type CoordinatorAdvanceDelivery = Readonly<
+  z.input<typeof coordinatorDeliverySchema>
+>;
+
+export type AcknowledgeAdvanceDeliveryResult = Readonly<{
+  kind: 'acknowledged' | 'duplicate';
+}>;
+
 export interface CoordinatorRunStore {
   loadAdvanceState(
     input: Readonly<{
@@ -127,6 +143,7 @@ export interface CoordinatorRunStore {
   ): Promise<LoadAdvanceStateResult>;
   commitAdvancePlan(
     input: Readonly<{
+      delivery: CoordinatorAdvanceDelivery;
       workspaceId: string;
       runId: string;
       workflowVersionId: string;
@@ -135,6 +152,14 @@ export interface CoordinatorRunStore {
       signal: AbortSignal;
     }>,
   ): Promise<CommitAdvancePlanResult>;
+  acknowledgeAdvanceDelivery(
+    input: Readonly<{
+      delivery: CoordinatorAdvanceDelivery;
+      workspaceId: string;
+      runId: string;
+      signal: AbortSignal;
+    }>,
+  ): Promise<AcknowledgeAdvanceDeliveryResult>;
   close(): Promise<void>;
 }
 
@@ -143,6 +168,9 @@ type LoadAdvanceStateInput = Parameters<
 >[0];
 type CommitAdvancePlanInput = Parameters<
   CoordinatorRunStore['commitAdvancePlan']
+>[0];
+type AcknowledgeAdvanceDeliveryInput = Parameters<
+  CoordinatorRunStore['acknowledgeAdvanceDelivery']
 >[0];
 
 export class CoordinatorPlanInvalidError extends Error {
@@ -158,6 +186,15 @@ export class CoordinatorRunStateCorruptError extends Error {
     super('Persisted coordinator run state is invalid');
   }
 }
+
+export class CoordinatorDeliveryMismatchError extends Error {
+  public override readonly name = 'CoordinatorDeliveryMismatchError';
+  public constructor() {
+    super('Coordinator delivery does not match its durable outbox identity');
+  }
+}
+
+class DeliveryMismatch extends Error {}
 
 function assertNotAborted(signal: AbortSignal): void {
   if (signal.aborted)
@@ -276,6 +313,128 @@ async function withWorkspaceWriteClient<T>(
       client.release();
     }
   }
+}
+
+async function validateAuthoritativeAdvanceDelivery(
+  client: PoolClient,
+  workspaceId: string,
+  runId: string,
+  delivery: CoordinatorAdvanceDelivery,
+): Promise<void> {
+  const result = await client.query<{
+    aggregate_id: string;
+    aggregate_type: string;
+    job_name: string;
+    payload: unknown;
+    payload_checksum: string;
+    schema_version: number;
+  }>(
+    `select aggregate_id, aggregate_type, job_name, payload,
+            payload_checksum, schema_version
+     from app.outbox_events
+     where workspace_id=$1 and id=$2`,
+    [workspaceId, delivery.outboxEventId],
+  );
+  const row = result.rows[0];
+  let storedChecksum: string | undefined;
+  try {
+    storedChecksum =
+      row === undefined
+        ? undefined
+        : createHash('sha256')
+            .update(serializeStoredExecutionJsonValue(row.payload))
+            .digest('hex');
+  } catch {
+    throw new DeliveryMismatch();
+  }
+  if (
+    row?.aggregate_id !== runId ||
+    row.aggregate_type !== 'workflow-run' ||
+    row.job_name !== 'advance-workflow-run' ||
+    row.schema_version !== 1 ||
+    row.payload_checksum !== delivery.payloadChecksum ||
+    storedChecksum !== row.payload_checksum
+  )
+    throw new DeliveryMismatch();
+}
+
+async function claimCoordinatorReceipt(
+  client: PoolClient,
+  workspaceId: string,
+  delivery: CoordinatorAdvanceDelivery,
+): Promise<'new' | 'duplicate'> {
+  const inserted = await client.query(
+    `insert into app.inbox_receipts (
+       consumer_name, message_id, workspace_id, payload_checksum
+     ) values ($1,$2,$3,$4)
+     on conflict (consumer_name,message_id) do nothing
+     returning message_id`,
+    [
+      coordinatorConsumerName,
+      delivery.outboxEventId,
+      workspaceId,
+      delivery.payloadChecksum,
+    ],
+  );
+  if (inserted.rowCount === 1) return 'new';
+  const existing = await client.query<{
+    completed_at: Date | null;
+    payload_checksum: string;
+  }>(
+    `select completed_at, payload_checksum
+     from app.inbox_receipts
+     where consumer_name=$1 and message_id=$2 and workspace_id=$3
+     for update`,
+    [coordinatorConsumerName, delivery.outboxEventId, workspaceId],
+  );
+  const receipt = existing.rows[0];
+  if (receipt?.completed_at == null)
+    throw new CoordinatorRunStateCorruptError();
+  if (receipt.payload_checksum !== delivery.payloadChecksum)
+    throw new DeliveryMismatch();
+  return 'duplicate';
+}
+
+async function completeCoordinatorReceipt(
+  client: PoolClient,
+  workspaceId: string,
+  delivery: CoordinatorAdvanceDelivery,
+): Promise<void> {
+  const completed = await client.query(
+    `update app.inbox_receipts
+     set completed_at=clock_timestamp()
+     where consumer_name=$1 and message_id=$2 and workspace_id=$3
+       and payload_checksum=$4 and completed_at is null`,
+    [
+      coordinatorConsumerName,
+      delivery.outboxEventId,
+      workspaceId,
+      delivery.payloadChecksum,
+    ],
+  );
+  if (completed.rowCount !== 1) throw new CoordinatorRunStateCorruptError();
+}
+
+async function auditCoordinatorDeliveryMismatch(
+  pool: Pool,
+  workspaceId: string,
+  delivery: CoordinatorAdvanceDelivery,
+  signal: AbortSignal,
+): Promise<never> {
+  await withWorkspaceWriteClient(pool, workspaceId, signal, async (client) => {
+    await client.query(
+      `insert into app.transport_security_audit_facts (
+           id,workspace_id,fact_type,consumer_name,message_id
+         ) values ($1,$2,'inbox_checksum_mismatch',$3,$4)`,
+      [
+        randomUUID(),
+        workspaceId,
+        coordinatorConsumerName,
+        delivery.outboxEventId,
+      ],
+    );
+  });
+  throw new CoordinatorDeliveryMismatchError();
 }
 
 function normalizedJson(value: unknown): unknown {
@@ -1376,6 +1535,54 @@ export function createCoordinatorRunStore(
 ): CoordinatorRunStore {
   const pool = new Pool(config);
   return Object.freeze({
+    acknowledgeAdvanceDelivery: async (
+      input: AcknowledgeAdvanceDeliveryInput,
+    ): Promise<AcknowledgeAdvanceDeliveryResult> => {
+      assertNotAborted(input.signal);
+      let workspaceId: string;
+      let runId: string;
+      let delivery: CoordinatorAdvanceDelivery;
+      try {
+        workspaceId = identitySchema.parse(input.workspaceId);
+        runId = identitySchema.parse(input.runId);
+        delivery = coordinatorDeliverySchema.parse(input.delivery);
+      } catch {
+        throw new CoordinatorDeliveryMismatchError();
+      }
+      try {
+        return await withWorkspaceWriteClient(
+          pool,
+          workspaceId,
+          input.signal,
+          async (client) => {
+            await validateAuthoritativeAdvanceDelivery(
+              client,
+              workspaceId,
+              runId,
+              delivery,
+            );
+            const receipt = await claimCoordinatorReceipt(
+              client,
+              workspaceId,
+              delivery,
+            );
+            if (receipt === 'duplicate')
+              return Object.freeze({ kind: 'duplicate' as const });
+            await completeCoordinatorReceipt(client, workspaceId, delivery);
+            return Object.freeze({ kind: 'acknowledged' as const });
+          },
+        );
+      } catch (error: unknown) {
+        if (error instanceof DeliveryMismatch)
+          return auditCoordinatorDeliveryMismatch(
+            pool,
+            workspaceId,
+            delivery,
+            input.signal,
+          );
+        throw error;
+      }
+    },
     loadAdvanceState: async (
       input: LoadAdvanceStateInput,
     ): Promise<LoadAdvanceStateResult> => {
@@ -1605,11 +1812,13 @@ export function createCoordinatorRunStore(
       let runId: string;
       let workflowVersionId: string;
       let traceparent: string | undefined;
+      let delivery: CoordinatorAdvanceDelivery;
       try {
         workspaceId = identitySchema.parse(input.workspaceId);
         runId = identitySchema.parse(input.runId);
         workflowVersionId = identitySchema.parse(input.workflowVersionId);
         traceparent = traceparentSchema.parse(input.traceparent);
+        delivery = coordinatorDeliverySchema.parse(input.delivery);
       } catch {
         throw new CoordinatorPlanInvalidError();
       }
@@ -1623,21 +1832,28 @@ export function createCoordinatorRunStore(
         traceparent,
         workflowVersionId,
       });
-      return withWorkspaceWriteClient(
-        pool,
-        workspaceId,
-        input.signal,
-        async (client) => {
-          const locked = await client.query<{
-            revision: number;
-            scheduler_state: unknown;
-            last_transition_fingerprint: string | null;
-            workflow_version_id: string;
-            status: string;
-            cancel_requested_at: Date | null;
-            deadline_expired: boolean;
-          }>(
-            `select checkpoint.revision, checkpoint.scheduler_state,
+      try {
+        return await withWorkspaceWriteClient(
+          pool,
+          workspaceId,
+          input.signal,
+          async (client) => {
+            await validateAuthoritativeAdvanceDelivery(
+              client,
+              workspaceId,
+              runId,
+              delivery,
+            );
+            const locked = await client.query<{
+              revision: number;
+              scheduler_state: unknown;
+              last_transition_fingerprint: string | null;
+              workflow_version_id: string;
+              status: string;
+              cancel_requested_at: Date | null;
+              deadline_expired: boolean;
+            }>(
+              `select checkpoint.revision, checkpoint.scheduler_state,
                     checkpoint.last_transition_fingerprint,
                     checkpoint.workflow_version_id, run.status,
                     run.cancel_requested_at,
@@ -1649,153 +1865,178 @@ export function createCoordinatorRunStore(
               and checkpoint.workflow_run_id = run.id
              where run.workspace_id = $1 and run.id = $2
              for update of run, checkpoint`,
-            [workspaceId, runId],
-          );
-          const row = locked.rows[0];
-          if (row === undefined) return Object.freeze({ kind: 'not_found' });
-          if (row.workflow_version_id !== workflowVersionId)
-            throw new CoordinatorPlanInvalidError();
-          if (row.revision !== plan.expectedRevision) {
-            if (
-              row.revision === plan.expectedRevision + 1 &&
-              row.last_transition_fingerprint === planFingerprint &&
-              serializeStoredExecutionJsonValue(row.scheduler_state) ===
-                checkpointJson
-            )
-              return Object.freeze({
-                kind: 'already_committed',
-                revision: row.revision,
-              });
-            return Object.freeze({ kind: 'stale', revision: row.revision });
-          }
-          let currentCheckpoint: PersistedPhase3Checkpoint;
-          try {
-            currentCheckpoint = parsePersistedPhase3Checkpoint(
-              row.scheduler_state,
+              [workspaceId, runId],
             );
-          } catch {
-            throw new CoordinatorRunStateCorruptError();
-          }
-          if (
-            currentCheckpoint.workflowVersionId !== workflowVersionId ||
-            currentCheckpoint.revision !== row.revision ||
-            currentCheckpoint.runStatus !== row.status ||
-            currentCheckpoint.nextEventSequence !==
-              plan.expectedNextEventSequence
-          )
-            throw new CoordinatorRunStateCorruptError();
-          validateTransitionDelta(currentCheckpoint, plan);
-          if (
-            !allowedRunTransitions[currentCheckpoint.runStatus]?.has(
-              plan.checkpoint.runStatus,
+            const row = locked.rows[0];
+            if (row === undefined) return Object.freeze({ kind: 'not_found' });
+            if (row.workflow_version_id !== workflowVersionId)
+              throw new CoordinatorPlanInvalidError();
+            if (row.revision !== plan.expectedRevision) {
+              if (
+                row.revision === plan.expectedRevision + 1 &&
+                row.last_transition_fingerprint === planFingerprint &&
+                serializeStoredExecutionJsonValue(row.scheduler_state) ===
+                  checkpointJson
+              ) {
+                const receipt = await claimCoordinatorReceipt(
+                  client,
+                  workspaceId,
+                  delivery,
+                );
+                if (receipt === 'new')
+                  await completeCoordinatorReceipt(
+                    client,
+                    workspaceId,
+                    delivery,
+                  );
+                return Object.freeze({
+                  kind: 'already_committed',
+                  revision: row.revision,
+                });
+              }
+              return Object.freeze({ kind: 'stale', revision: row.revision });
+            }
+            let currentCheckpoint: PersistedPhase3Checkpoint;
+            try {
+              currentCheckpoint = parsePersistedPhase3Checkpoint(
+                row.scheduler_state,
+              );
+            } catch {
+              throw new CoordinatorRunStateCorruptError();
+            }
+            if (
+              currentCheckpoint.workflowVersionId !== workflowVersionId ||
+              currentCheckpoint.revision !== row.revision ||
+              currentCheckpoint.runStatus !== row.status ||
+              currentCheckpoint.nextEventSequence !==
+                plan.expectedNextEventSequence
             )
-          )
-            throw new CoordinatorPlanInvalidError();
-          const highWaterResult = await client.query<{ high_water: number }>(
-            `select coalesce(max(sequence), 0)::int as high_water
+              throw new CoordinatorRunStateCorruptError();
+            validateTransitionDelta(currentCheckpoint, plan);
+            if (
+              !allowedRunTransitions[currentCheckpoint.runStatus]?.has(
+                plan.checkpoint.runStatus,
+              )
+            )
+              throw new CoordinatorPlanInvalidError();
+            const highWaterResult = await client.query<{ high_water: number }>(
+              `select coalesce(max(sequence), 0)::int as high_water
              from app.run_events
              where workspace_id = $1 and workflow_run_id = $2`,
-            [workspaceId, runId],
-          );
-          if (
-            highWaterResult.rows[0]?.high_water !==
-            plan.consumedThroughEventSequence
-          )
-            return Object.freeze({ kind: 'stale', revision: row.revision });
-          const expectedPersistedFactCount = Math.max(
-            0,
-            plan.consumedThroughEventSequence -
-              currentCheckpoint.nextEventSequence +
-              1,
-          );
-          const factCapacity = await persistedFactCapacity(
-            client,
-            workspaceId,
-            runId,
-            currentCheckpoint.nextEventSequence,
-            plan.consumedThroughEventSequence,
-          );
-          if (factCapacity.count !== expectedPersistedFactCount)
-            return Object.freeze({ kind: 'stale', revision: row.revision });
-          if (factCapacity.count > maximumPersistedFacts)
-            throw new CoordinatorRunStateCorruptError();
-          const persistedFacts = await readPersistedFacts(client, {
-            count: factCapacity.count,
-            firstSequence: currentCheckpoint.nextEventSequence,
-            lastSequence: plan.consumedThroughEventSequence,
-            runId,
-            workspaceId,
-          });
-          if (persistedFacts.length !== expectedPersistedFactCount)
-            return Object.freeze({ kind: 'stale', revision: row.revision });
-          validatePersistedFactBatch(persistedFacts);
-          validateStatusTransitions(
-            currentCheckpoint,
-            plan,
-            persistedFacts.map((fact) => ({
-              invocationKey: fact.invocation_key,
-              observation: record(mapEvent(fact)),
-              type: fact.type,
-            })),
-          );
-          if (
-            (currentCheckpoint.cancelRequested &&
-              row.cancel_requested_at === null) ||
-            (currentCheckpoint.deadlineExpired && !row.deadline_expired)
-          )
-            throw new CoordinatorRunStateCorruptError();
-          const authoritativeCancellation =
-            currentCheckpoint.cancelRequested ||
-            row.cancel_requested_at !== null;
-          const authoritativeDeadline =
-            currentCheckpoint.deadlineExpired || row.deadline_expired;
-          if (
-            plan.checkpoint.cancelRequested !== authoritativeCancellation ||
-            plan.checkpoint.deadlineExpired !== authoritativeDeadline
-          ) {
+              [workspaceId, runId],
+            );
             if (
-              (!plan.checkpoint.cancelRequested && authoritativeCancellation) ||
-              (!plan.checkpoint.deadlineExpired && authoritativeDeadline)
+              highWaterResult.rows[0]?.high_water !==
+              plan.consumedThroughEventSequence
             )
               return Object.freeze({ kind: 'stale', revision: row.revision });
-            throw new CoordinatorPlanInvalidError();
-          }
-          await validateCheckpointOutputOwnership(
-            client,
-            workspaceId,
-            runId,
-            plan.checkpoint,
-          );
-          await persistDueReadyTransitions(
-            client,
-            workspaceId,
-            runId,
-            currentCheckpoint,
-            plan.checkpoint,
-          );
-          assertNotAborted(input.signal);
-
-          const invocations = new Map(
-            plan.checkpoint.invocations.map((invocation) => [
-              invocation.invocationKey,
-              invocation,
-            ]),
-          );
-          const physical = new Map<
-            string,
-            { nodeRunId: string; attemptId?: string; attemptNumber?: number }
-          >();
-          for (const admission of plan.nodeRunAdmissions) {
-            const invocation = invocations.get(admission.invocationKey);
-            if (invocation === undefined)
-              throw new CoordinatorPlanInvalidError();
-            const attempt = plan.attempts.find(
-              ({ invocationKey }) => invocationKey === admission.invocationKey,
+            const expectedPersistedFactCount = Math.max(
+              0,
+              plan.consumedThroughEventSequence -
+                currentCheckpoint.nextEventSequence +
+                1,
             );
-            const nodeRunId = randomUUID();
-            const attemptId = attempt === undefined ? undefined : randomUUID();
-            await client.query(
-              `insert into app.node_runs (
+            const factCapacity = await persistedFactCapacity(
+              client,
+              workspaceId,
+              runId,
+              currentCheckpoint.nextEventSequence,
+              plan.consumedThroughEventSequence,
+            );
+            if (factCapacity.count !== expectedPersistedFactCount)
+              return Object.freeze({ kind: 'stale', revision: row.revision });
+            if (factCapacity.count > maximumPersistedFacts)
+              throw new CoordinatorRunStateCorruptError();
+            const persistedFacts = await readPersistedFacts(client, {
+              count: factCapacity.count,
+              firstSequence: currentCheckpoint.nextEventSequence,
+              lastSequence: plan.consumedThroughEventSequence,
+              runId,
+              workspaceId,
+            });
+            if (persistedFacts.length !== expectedPersistedFactCount)
+              return Object.freeze({ kind: 'stale', revision: row.revision });
+            validatePersistedFactBatch(persistedFacts);
+            validateStatusTransitions(
+              currentCheckpoint,
+              plan,
+              persistedFacts.map((fact) => ({
+                invocationKey: fact.invocation_key,
+                observation: record(mapEvent(fact)),
+                type: fact.type,
+              })),
+            );
+            if (
+              (currentCheckpoint.cancelRequested &&
+                row.cancel_requested_at === null) ||
+              (currentCheckpoint.deadlineExpired && !row.deadline_expired)
+            )
+              throw new CoordinatorRunStateCorruptError();
+            const authoritativeCancellation =
+              currentCheckpoint.cancelRequested ||
+              row.cancel_requested_at !== null;
+            const authoritativeDeadline =
+              currentCheckpoint.deadlineExpired || row.deadline_expired;
+            if (
+              plan.checkpoint.cancelRequested !== authoritativeCancellation ||
+              plan.checkpoint.deadlineExpired !== authoritativeDeadline
+            ) {
+              if (
+                (!plan.checkpoint.cancelRequested &&
+                  authoritativeCancellation) ||
+                (!plan.checkpoint.deadlineExpired && authoritativeDeadline)
+              )
+                return Object.freeze({ kind: 'stale', revision: row.revision });
+              throw new CoordinatorPlanInvalidError();
+            }
+            await validateCheckpointOutputOwnership(
+              client,
+              workspaceId,
+              runId,
+              plan.checkpoint,
+            );
+            await persistDueReadyTransitions(
+              client,
+              workspaceId,
+              runId,
+              currentCheckpoint,
+              plan.checkpoint,
+            );
+            assertNotAborted(input.signal);
+            const receipt = await claimCoordinatorReceipt(
+              client,
+              workspaceId,
+              delivery,
+            );
+            if (receipt === 'duplicate')
+              return Object.freeze({
+                kind: 'already_committed' as const,
+                revision: row.revision,
+              });
+
+            const invocations = new Map(
+              plan.checkpoint.invocations.map((invocation) => [
+                invocation.invocationKey,
+                invocation,
+              ]),
+            );
+            const physical = new Map<
+              string,
+              { nodeRunId: string; attemptId?: string; attemptNumber?: number }
+            >();
+            for (const admission of plan.nodeRunAdmissions) {
+              const invocation = invocations.get(admission.invocationKey);
+              if (invocation === undefined)
+                throw new CoordinatorPlanInvalidError();
+              const attempt = plan.attempts.find(
+                ({ invocationKey }) =>
+                  invocationKey === admission.invocationKey,
+              );
+              const nodeRunId = randomUUID();
+              const attemptId =
+                attempt === undefined ? undefined : randomUUID();
+              await client.query(
+                `insert into app.node_runs (
                  id, workspace_id, workflow_run_id, node_id, invocation_key,
                  branch_context, status, side_effect_class,
                  current_attempt_id, current_attempt_number, completed_at
@@ -1803,36 +2044,36 @@ export function createCoordinatorRunStore(
                  $1,$2,$3,$4,$5,'{}'::jsonb,$6::varchar,'safe',$7,$8,
                  case when $6::varchar = 'skipped' then clock_timestamp() else null end
                )`,
-              [
+                [
+                  nodeRunId,
+                  workspaceId,
+                  runId,
+                  admission.nodeId,
+                  admission.invocationKey,
+                  invocation.status === 'skipped' ? 'skipped' : 'ready',
+                  attemptId ?? null,
+                  attempt?.attemptNumber ?? null,
+                ],
+              );
+              physical.set(admission.invocationKey, {
                 nodeRunId,
-                workspaceId,
-                runId,
-                admission.nodeId,
-                admission.invocationKey,
-                invocation.status === 'skipped' ? 'skipped' : 'ready',
-                attemptId ?? null,
-                attempt?.attemptNumber ?? null,
-              ],
-            );
-            physical.set(admission.invocationKey, {
-              nodeRunId,
-              ...(attemptId === undefined || attempt === undefined
-                ? {}
-                : { attemptId, attemptNumber: attempt.attemptNumber }),
-            });
-          }
+                ...(attemptId === undefined || attempt === undefined
+                  ? {}
+                  : { attemptId, attemptNumber: attempt.attemptNumber }),
+              });
+            }
 
-          for (const attempt of plan.attempts) {
-            let ids = physical.get(attempt.invocationKey);
-            if (ids === undefined) {
-              const existing = await client.query<{
-                id: string;
-                current_attempt_number: number | null;
-                side_effect_class: string;
-                status: string;
-                is_due: boolean;
-              }>(
-                `select id, current_attempt_number, side_effect_class, status,
+            for (const attempt of plan.attempts) {
+              let ids = physical.get(attempt.invocationKey);
+              if (ids === undefined) {
+                const existing = await client.query<{
+                  id: string;
+                  current_attempt_number: number | null;
+                  side_effect_class: string;
+                  status: string;
+                  is_due: boolean;
+                }>(
+                  `select id, current_attempt_number, side_effect_class, status,
                         coalesce(retry_due_at, resume_at) is not null
                           and coalesce(retry_due_at, resume_at) <= clock_timestamp()
                           as is_due
@@ -1840,246 +2081,259 @@ export function createCoordinatorRunStore(
                  where workspace_id = $1 and workflow_run_id = $2
                    and invocation_key = $3
                  for update`,
-                [workspaceId, runId, attempt.invocationKey],
-              );
-              const node = existing.rows[0];
-              const isFirstReadyAttempt =
-                node?.status === 'ready' &&
-                (node.current_attempt_number === null
-                  ? attempt.attemptNumber === 1
-                  : node.current_attempt_number === attempt.attemptNumber - 1);
-              const isDueAttempt =
-                node?.status === 'waiting' &&
-                node.is_due &&
-                node.current_attempt_number === attempt.attemptNumber - 1;
-              if (
-                node?.side_effect_class !== 'safe' ||
-                (!isFirstReadyAttempt && !isDueAttempt)
-              )
-                throw new CoordinatorPlanInvalidError();
-              ids = {
-                nodeRunId: node.id,
-                attemptId: randomUUID(),
-                attemptNumber: attempt.attemptNumber,
-              };
-              physical.set(attempt.invocationKey, ids);
-              await client.query(
-                `update app.node_runs
+                  [workspaceId, runId, attempt.invocationKey],
+                );
+                const node = existing.rows[0];
+                const isFirstReadyAttempt =
+                  node?.status === 'ready' &&
+                  (node.current_attempt_number === null
+                    ? attempt.attemptNumber === 1
+                    : node.current_attempt_number ===
+                      attempt.attemptNumber - 1);
+                const isDueAttempt =
+                  node?.status === 'waiting' &&
+                  node.is_due &&
+                  node.current_attempt_number === attempt.attemptNumber - 1;
+                if (
+                  node?.side_effect_class !== 'safe' ||
+                  (!isFirstReadyAttempt && !isDueAttempt)
+                )
+                  throw new CoordinatorPlanInvalidError();
+                ids = {
+                  nodeRunId: node.id,
+                  attemptId: randomUUID(),
+                  attemptNumber: attempt.attemptNumber,
+                };
+                physical.set(attempt.invocationKey, ids);
+                await client.query(
+                  `update app.node_runs
                  set status='ready', current_attempt_id=$1,
                      current_attempt_number=$2, resume_at=null,
                      retry_due_at=null, updated_at=clock_timestamp()
                  where workspace_id=$3 and id=$4`,
-                [
-                  ids.attemptId,
-                  attempt.attemptNumber,
-                  workspaceId,
-                  ids.nodeRunId,
-                ],
-              );
-            }
-            if (ids.attemptId === undefined)
-              throw new CoordinatorPlanInvalidError();
-            await client.query(
-              `insert into app.node_attempts (
+                  [
+                    ids.attemptId,
+                    attempt.attemptNumber,
+                    workspaceId,
+                    ids.nodeRunId,
+                  ],
+                );
+              }
+              if (ids.attemptId === undefined)
+                throw new CoordinatorPlanInvalidError();
+              await client.query(
+                `insert into app.node_attempts (
                  id, workspace_id, node_run_id, attempt_number, status,
                  side_effect_class, provider_idempotency_key
                ) values ($1,$2,$3,$4,'ready','safe',null)`,
-              [
-                ids.attemptId,
+                [
+                  ids.attemptId,
+                  workspaceId,
+                  ids.nodeRunId,
+                  attempt.attemptNumber,
+                ],
+              );
+              const outboxEventId = randomUUID();
+              const payload = {
+                schemaVersion: 1,
                 workspaceId,
-                ids.nodeRunId,
-                attempt.attemptNumber,
-              ],
-            );
-            const outboxEventId = randomUUID();
-            const payload = {
-              schemaVersion: 1,
-              workspaceId,
-              runId,
-              nodeRunId: ids.nodeRunId,
-              attemptId: ids.attemptId,
-              outboxEventId,
-              ...(traceparent === undefined ? {} : { traceparent }),
-            } as const;
-            await client.query(
-              `insert into app.outbox_events (
+                runId,
+                nodeRunId: ids.nodeRunId,
+                attemptId: ids.attemptId,
+                outboxEventId,
+                ...(traceparent === undefined ? {} : { traceparent }),
+              } as const;
+              await client.query(
+                `insert into app.outbox_events (
                  id, workspace_id, job_name, schema_version, aggregate_type,
                  aggregate_id, payload, payload_checksum
                ) values ($1,$2,'execute-node-attempt',1,'node-attempt',$3,$4::jsonb,$5)`,
-              [
-                outboxEventId,
-                workspaceId,
-                ids.attemptId,
-                serializeStoredExecutionJsonValue(payload),
-                canonicalOutboxPayloadChecksum(payload),
-              ],
-            );
-          }
+                [
+                  outboxEventId,
+                  workspaceId,
+                  ids.attemptId,
+                  serializeStoredExecutionJsonValue(payload),
+                  canonicalOutboxPayloadChecksum(payload),
+                ],
+              );
+            }
 
-          const missingEventInvocationKeys = [
-            ...new Set(
-              plan.events.flatMap(({ invocationKey }) =>
-                invocationKey === undefined || physical.has(invocationKey)
-                  ? []
-                  : [invocationKey],
+            const missingEventInvocationKeys = [
+              ...new Set(
+                plan.events.flatMap(({ invocationKey }) =>
+                  invocationKey === undefined || physical.has(invocationKey)
+                    ? []
+                    : [invocationKey],
+                ),
               ),
-            ),
-          ];
-          if (missingEventInvocationKeys.length > 0) {
-            const existingNodes = await client.query<{
-              id: string;
-              invocation_key: string;
-              current_attempt_id: string | null;
-              current_attempt_number: number | null;
-            }>(
-              `select id, invocation_key, current_attempt_id,
+            ];
+            if (missingEventInvocationKeys.length > 0) {
+              const existingNodes = await client.query<{
+                id: string;
+                invocation_key: string;
+                current_attempt_id: string | null;
+                current_attempt_number: number | null;
+              }>(
+                `select id, invocation_key, current_attempt_id,
                       current_attempt_number
                from app.node_runs
                where workspace_id=$1 and workflow_run_id=$2
                  and invocation_key=any($3::varchar[])
                for update`,
-              [workspaceId, runId, missingEventInvocationKeys],
-            );
-            for (const node of existingNodes.rows)
-              physical.set(node.invocation_key, {
-                nodeRunId: node.id,
-                ...(node.current_attempt_id === null
-                  ? {}
-                  : {
-                      attemptId: node.current_attempt_id,
-                      ...(node.current_attempt_number === null
-                        ? {}
-                        : { attemptNumber: node.current_attempt_number }),
-                    }),
-              });
-            if (missingEventInvocationKeys.some((key) => !physical.has(key)))
-              throw new CoordinatorRunStateCorruptError();
-          }
+                [workspaceId, runId, missingEventInvocationKeys],
+              );
+              for (const node of existingNodes.rows)
+                physical.set(node.invocation_key, {
+                  nodeRunId: node.id,
+                  ...(node.current_attempt_id === null
+                    ? {}
+                    : {
+                        attemptId: node.current_attempt_id,
+                        ...(node.current_attempt_number === null
+                          ? {}
+                          : { attemptNumber: node.current_attempt_number }),
+                      }),
+                });
+              if (missingEventInvocationKeys.some((key) => !physical.has(key)))
+                throw new CoordinatorRunStateCorruptError();
+            }
 
-          for (const event of plan.events) {
-            const ids =
-              event.invocationKey === undefined
-                ? undefined
-                : physical.get(event.invocationKey);
-            const payload = {
-              schemaVersion: event.schemaVersion,
-              ...(event.invocationKey === undefined
-                ? {}
-                : { invocationKey: event.invocationKey }),
-              ...(event.nodeId === undefined ? {} : { nodeId: event.nodeId }),
-              ...(event.attemptNumber === undefined
-                ? {}
-                : { attemptNumber: event.attemptNumber }),
-              ...(event.reasonCode === undefined
-                ? {}
-                : { reasonCode: event.reasonCode }),
-              ...(ids === undefined ? {} : { nodeRunId: ids.nodeRunId }),
-              ...(ids?.attemptId !== undefined &&
-              ids.attemptNumber === event.attemptNumber
-                ? { attemptId: ids.attemptId }
-                : {}),
-            };
-            await client.query(
-              `insert into app.run_events (
+            for (const event of plan.events) {
+              const ids =
+                event.invocationKey === undefined
+                  ? undefined
+                  : physical.get(event.invocationKey);
+              const payload = {
+                schemaVersion: event.schemaVersion,
+                ...(event.invocationKey === undefined
+                  ? {}
+                  : { invocationKey: event.invocationKey }),
+                ...(event.nodeId === undefined ? {} : { nodeId: event.nodeId }),
+                ...(event.attemptNumber === undefined
+                  ? {}
+                  : { attemptNumber: event.attemptNumber }),
+                ...(event.reasonCode === undefined
+                  ? {}
+                  : { reasonCode: event.reasonCode }),
+                ...(ids === undefined ? {} : { nodeRunId: ids.nodeRunId }),
+                ...(ids?.attemptId !== undefined &&
+                ids.attemptNumber === event.attemptNumber
+                  ? { attemptId: ids.attemptId }
+                  : {}),
+              };
+              await client.query(
+                `insert into app.run_events (
                  workspace_id, workflow_run_id, sequence, type, payload, created_at
                ) values ($1,$2,$3,$4,$5::jsonb,$6)`,
-              [
-                workspaceId,
-                runId,
-                event.sequence,
-                event.name,
-                serializeStoredExecutionJsonValue(payload),
-                event.occurredAt,
-              ],
-            );
-            const terminalNodeStatus = terminalStatus(event.name);
-            if (
-              terminalNodeStatus !== undefined &&
-              event.invocationKey !== undefined
-            ) {
-              const updatedNode = await client.query(
-                `update app.node_runs
+                [
+                  workspaceId,
+                  runId,
+                  event.sequence,
+                  event.name,
+                  serializeStoredExecutionJsonValue(payload),
+                  event.occurredAt,
+                ],
+              );
+              const terminalNodeStatus = terminalStatus(event.name);
+              if (
+                terminalNodeStatus !== undefined &&
+                event.invocationKey !== undefined
+              ) {
+                const updatedNode = await client.query(
+                  `update app.node_runs
                  set status=$1, completed_at=clock_timestamp(),
                      safe_error_code=$2, resume_at=null, retry_due_at=null,
                      updated_at=clock_timestamp()
                  where workspace_id=$3 and workflow_run_id=$4
                    and invocation_key=$5
                    and status in ('pending','ready','waiting')`,
-                [
-                  terminalNodeStatus,
-                  event.reasonCode ?? null,
-                  workspaceId,
-                  runId,
-                  event.invocationKey,
-                ],
-              );
-              if (updatedNode.rowCount !== 1)
-                throw new CoordinatorRunStateCorruptError();
+                  [
+                    terminalNodeStatus,
+                    event.reasonCode ?? null,
+                    workspaceId,
+                    runId,
+                    event.invocationKey,
+                  ],
+                );
+                if (updatedNode.rowCount !== 1)
+                  throw new CoordinatorRunStateCorruptError();
+              }
             }
-          }
 
-          const checkpointUpdate = await client.query(
-            `update app.run_checkpoints
+            const checkpointUpdate = await client.query(
+              `update app.run_checkpoints
              set revision=$1, engine_version=$2, scheduler_state=$3::jsonb,
                  last_transition_fingerprint=$7,
                  resume_at=null, resume_lease_owner=null,
                  resume_lease_token=null, resume_lease_expires_at=null,
                  updated_at=clock_timestamp()
              where workspace_id=$4 and workflow_run_id=$5 and revision=$6`,
-            [
-              plan.checkpoint.revision,
-              plan.checkpoint.engineVersion,
-              checkpointJson,
-              workspaceId,
-              runId,
-              plan.expectedRevision,
-              planFingerprint,
-            ],
-          );
-          if (checkpointUpdate.rowCount !== 1)
-            throw new CoordinatorRunStateCorruptError();
-          const startedAt = plan.events.find(
-            ({ name }) => name === 'run.started',
-          )?.occurredAt;
-          const completedAt = plan.events.find(
-            ({ name }) =>
-              name.startsWith('run.') && terminalRunStatuses.has(name.slice(4)),
-          )?.occurredAt;
-          await client.query(
-            `update app.workflow_runs
+              [
+                plan.checkpoint.revision,
+                plan.checkpoint.engineVersion,
+                checkpointJson,
+                workspaceId,
+                runId,
+                plan.expectedRevision,
+                planFingerprint,
+              ],
+            );
+            if (checkpointUpdate.rowCount !== 1)
+              throw new CoordinatorRunStateCorruptError();
+            const startedAt = plan.events.find(
+              ({ name }) => name === 'run.started',
+            )?.occurredAt;
+            const completedAt = plan.events.find(
+              ({ name }) =>
+                name.startsWith('run.') &&
+                terminalRunStatuses.has(name.slice(4)),
+            )?.occurredAt;
+            await client.query(
+              `update app.workflow_runs
              set status=$1,
                  started_at=coalesce(started_at,$2::timestamptz),
                  completed_at=case when $3::timestamptz is null
                    then completed_at else $3::timestamptz end,
                  updated_at=clock_timestamp()
              where workspace_id=$4 and id=$5`,
-            [
-              plan.checkpoint.runStatus,
-              startedAt ?? null,
-              completedAt ?? null,
-              workspaceId,
-              runId,
-            ],
+              [
+                plan.checkpoint.runStatus,
+                startedAt ?? null,
+                completedAt ?? null,
+                workspaceId,
+                runId,
+              ],
+            );
+            await completeCoordinatorReceipt(client, workspaceId, delivery);
+            assertNotAborted(input.signal);
+            return Object.freeze({
+              kind: 'committed',
+              revision: plan.checkpoint.revision,
+              admittedAttempts: Object.freeze(
+                plan.attempts.map(({ invocationKey }) => {
+                  const ids = physical.get(invocationKey);
+                  if (ids?.attemptId === undefined)
+                    throw new CoordinatorPlanInvalidError();
+                  return Object.freeze({
+                    invocationKey,
+                    nodeRunId: ids.nodeRunId,
+                    attemptId: ids.attemptId,
+                  });
+                }),
+              ),
+            });
+          },
+        );
+      } catch (error: unknown) {
+        if (error instanceof DeliveryMismatch)
+          return auditCoordinatorDeliveryMismatch(
+            pool,
+            workspaceId,
+            delivery,
+            input.signal,
           );
-          assertNotAborted(input.signal);
-          return Object.freeze({
-            kind: 'committed',
-            revision: plan.checkpoint.revision,
-            admittedAttempts: Object.freeze(
-              plan.attempts.map(({ invocationKey }) => {
-                const ids = physical.get(invocationKey);
-                if (ids?.attemptId === undefined)
-                  throw new CoordinatorPlanInvalidError();
-                return Object.freeze({
-                  invocationKey,
-                  nodeRunId: ids.nodeRunId,
-                  attemptId: ids.attemptId,
-                });
-              }),
-            ),
-          });
-        },
-      );
+        throw error;
+      }
     },
     close: async (): Promise<void> => pool.end(),
   });
