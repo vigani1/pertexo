@@ -19,7 +19,7 @@ not complete a phase.
 | Phase 0E — execution durability proofs and engine gate | Complete | ADRs 005 and 007–009; commits through `0322837`; 239 unit, 96 real-service integration, five process-recovery, one SSE-outage, and one transport-outage assertions; custom-engine GO |
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
-| Phase 3 — first executable-node slice | In progress | ADR 010; executable registry/runtime and public run slice through `a7eaf42`; durable compatibility authority, retained fixtures, lifecycle/non-removal, and recovery matrix through `66dafb7`; migration head `0018_phase3_core_executor_non_removal.sql`; rolling preactivation and final evidence remain |
+| Phase 3 — first executable-node slice | In progress | ADR 010; executable registry/runtime and public run slice through `a7eaf42`; durable compatibility authority, preactivation approval, retained fixtures, lifecycle/non-removal, and recovery matrix through `111a049`; migration head `0019_node_compatibility_preactivation.sql`; additive artifact overlap and final evidence remain |
 | Phase 4 — first side-effecting integration slice | Not started | — |
 | Phase 5 — orchestration slice | Not started | — |
 | Phase 6 — V1 providers and triggers | Not started | — |
@@ -727,7 +727,7 @@ Initial evidence:
 
 ## Phase 3 — First executable-node slice
 
-Status: **In progress — executable packages, persistence, consumers, public run API, PostgreSQL-authoritative SSE, active-cancellation recovery, and the initial durable compatibility release are complete; rolling preactivation and final evidence remain**
+Status: **In progress — executable packages, persistence, consumers, public run API, PostgreSQL-authoritative SSE, active-cancellation recovery, and durable preactivation-gated compatibility activation are complete; additive artifact overlap and final evidence remain**
 
 Phase 3 has completed its design prerequisites, package foundations, durable
 coordinator/attempt state, and readiness-gated execution consumers. The exact
@@ -736,8 +736,9 @@ BullMQ with duplicate attempt delivery. Authorized publication now compiles and
 stores its exact V2 executable envelope, and the public Start/Get/Stream/Cancel
 slice is live. The initial durable compatibility-release authority, exact
 retained fixtures, active-work cancellation recovery, and the Phase 3
-non-removal barrier are now complete. Rolling target preactivation/deployment
-approval and the final Phase 0/fleet evidence gates remain.
+non-removal barrier and audited target preactivation/deployment approval are now
+complete. The additive artifact-overlap proof and final Phase 0/fleet evidence
+gates remain.
 
 Design prerequisites:
 
@@ -830,7 +831,7 @@ Compatibility rollout, readiness, and retirement:
       cohort supports and reports an exact compatibility epoch/fingerprint
       before API publication or placement can create a reference, and mixed API
       replicas fail closed through the documented conservative ETag conflict.
-- [ ] Persist append-only audited compatibility-release records plus the
+- [x] Persist append-only audited compatibility-release records plus the
       current epoch/fingerprint in PostgreSQL. Require role-specific expected-
       pair validation, target-pair preactivation readiness, deployment approval,
       and same-transaction current-release locking for publication and new
@@ -1261,6 +1262,19 @@ Current evidence:
   196 full PostgreSQL integration assertions; API 183 and worker 64 unit tests,
   all affected typechecks/builds, ESLint, formatting, and diff checks are
   green.
+- Commit `111a049` advances the migration head to
+  `0019_node_compatibility_preactivation.sql`. The transaction-owning
+  deployment-maintenance seam prepares only the next release epoch, records
+  immutable API/worker artifact checks against the exact durable target,
+  rejects incomplete named cohorts, persists an immutable approval, and moves
+  the singleton pointer under its predecessor lock only after revalidating the
+  approved cohort. Exact maintenance retries are stable, serving roles cannot
+  read the deployment evidence or execute maintenance functions, and normal
+  readiness accepts at most the current/next exact release pair while the
+  separate target probe validates a prepared non-current release. Clean and
+  `0018` upgrade PostgreSQL runs pass 199 assertions; the root static gate
+  passes 568 unit assertions, all typechecks, generated drift, lint, formatting,
+  and builds.
 
 ## Later phases
 
