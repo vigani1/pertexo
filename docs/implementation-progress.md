@@ -727,12 +727,14 @@ Initial evidence:
 
 ## Phase 3 — First executable-node slice
 
-Status: **In progress — package foundations, executable identity/operations, published-version projection, RunStore persistence, and the coordinator consumer complete**
+Status: **In progress — executable packages, persistence, coordinator/node-attempt consumers, and the exact thin graph complete; API/SSE/cancellation and durable compatibility rollout remain**
 
 Phase 3 has completed its design prerequisites, package foundations, durable
-coordinator state, and readiness-gated coordinator consumer. No core node is
-exposed through a placement or publication catalog; node-attempt execution and
-the complete vertical-slice evidence must pass before publication is enabled.
+coordinator/attempt state, and readiness-gated execution consumers. The exact
+Manual -> Set/Map -> Terminate graph now executes through PostgreSQL, Redis, and
+BullMQ with duplicate attempt delivery. No core node is exposed through a
+placement or publication catalog until the remaining authorized API, SSE,
+cancellation, durable compatibility-release, and final evidence gates pass.
 
 Design prerequisites:
 
@@ -744,7 +746,7 @@ Design prerequisites:
 
 Thin-slice scope and node contracts:
 
-- [ ] Implement exactly one executable graph: Manual Trigger -> Set/Map ->
+- [x] Implement exactly one executable graph: Manual Trigger -> Set/Map ->
       Terminate.
 - [x] Use the exact definition identities `core.manual@1`, `core.set@1`, and
       `core.terminate@1` and the separately owned exact executor identities
@@ -761,7 +763,7 @@ Thin-slice scope and node contracts:
       compatibility, and exact executor references; prove package export maps
       make server executor implementations impossible to resolve in a browser
       build.
-- [ ] Resolve Set/Map inputs through the accepted restricted-JSONata policy and
+- [x] Resolve Set/Map inputs through the accepted restricted-JSONata policy and
       validate configuration and mapped output at every untrusted seam.
 - [ ] Prove pinned executor lookup, retained-version compatibility, supported
       config migration, and fail-closed missing/retired/incompatible executor
@@ -800,13 +802,13 @@ Production execution and persistence:
 - [x] Compose a thin coordinator consumer that loads PostgreSQL-authoritative
       state, advances one checkpoint revision, records ordered events, and
       emits continuation/node-attempt outbox work atomically.
-- [ ] Compose a separate thin node-attempt consumer that claims with a lease and
+- [x] Compose a separate thin node-attempt consumer that claims with a lease and
       fence token, executes outside long database transactions with an
       `AbortSignal`, records the truthful outcome, and emits continuation work.
 - [ ] Preserve IDs-only versioned queue payloads, at-least-once delivery,
       idempotent redelivery, readiness-gated dispatch, bounded draining, and
       PostgreSQL ownership of durable retries and cancellation.
-- [ ] Complete the exact Manual -> Set/Map -> Terminate graph after duplicate
+- [x] Complete the exact Manual -> Set/Map -> Terminate graph after duplicate
       coordinator and attempt delivery without duplicating node effects,
       terminal events, or terminal state.
 
@@ -1142,10 +1144,40 @@ Current evidence:
   assertions, and all builds. A final two-axis checkpoint review found no
   blocker/high issue. The disposable database was dropped; attempt execution
   and publication remain disabled.
-- Concrete nodes-core composition for Set/Map resolution, V2 immutable retained
-  fixtures, workflow-model publication adaptation, the node-attempt consumer,
-  API, SSE, and the complete executable graph remain unchecked and are owned by
-  the following checkpoints.
+- Commit `bbf7535` fixes successor liveness by deriving downstream readiness in
+  the same transition that consumes a persisted terminal attempt fact. This
+  preserves the source-owned event cursor while atomically emitting the next
+  `node.ready`, node-run admission, attempt, and outbox work; the engine remains
+  deterministic and passes 79 assertions.
+- Commit `929b1d8` adds the deep `NodeAttemptRunStore`. It binds the IDs-only
+  BullMQ delivery to the durable outbox checksum, atomically claims a bounded
+  lease and monotonic fence, reconstructs only bounded run/direct-upstream
+  inputs, records the dispatch marker, heartbeats PostgreSQL-owned cancel/deadline
+  truth, and commits the exact terminal attempt/node/event/continuation/receipt
+  transaction. Canonical UUIDs, stale ownership, exact terminal replay,
+  conflicting output, active-lease redelivery, and forged outbox reuse fail
+  closed or become the required no-op; forged reuse records a durable transport
+  security fact.
+- Commit `d06b370` composes the real node-attempt engine/handler/consumer and
+  exposes `execute-node-attempt` to dispatch only when that exact consumer is
+  composed and ready. Execution verifies the pinned V2 envelope, reads only
+  direct upstream values, marks dispatch immediately before the executor,
+  heartbeats outside database transactions, cooperatively aborts on durable
+  cancellation/deadline, preserves confirmed success, and emits continuation
+  work. The real PostgreSQL + Redis + BullMQ proof executes Manual -> Set/Map ->
+  Terminate with literal, run-input, upstream-output, and restricted-JSONata
+  mappings, replays every attempt delivery without duplicate effects, and ends
+  with one canonical terminal event/state.
+- Root `pnpm check` is green at this checkpoint: formatting, ESLint, generated
+  contract drift, all workspace typechecks, 544 unit assertions, and all
+  production builds. A fresh disposable PostgreSQL database migrated from zero
+  through `0016_engine_invocation_keys.sql`; the full database suite passed 184
+  assertions, and the real worker proof passed three coordinator/attempt
+  cases. All disposable databases were dropped (`pertexo_test_% = []`); the
+  stale shared development database was not reset or rewritten. API, SSE,
+  durable cancellation commands, durable compatibility releases/readiness,
+  publication enablement, and the final Phase 0B–0E/fleet review matrix remain
+  unchecked next-checkpoint work.
 
 ## Later phases
 
