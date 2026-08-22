@@ -9,3 +9,5 @@ export * from './telemetry.js';
 export * from './tokens.js';
 export * from './types.js';
 export * from './use-cases.js';
+export * from '../node-testing/controller.js';
+export * from '../node-testing/use-case.js';

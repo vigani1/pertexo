@@ -138,6 +138,7 @@ export {
 } from './execution-acceptance.js';
 export {
   acceptPreviewRun,
+  readPreviewRun,
   PREVIEW_RETENTION_MAX_MS,
   PREVIEW_STATUS,
   PreviewAcceptanceCorruptError,
@@ -149,6 +150,7 @@ export type {
   AcceptedPreviewRun,
   AcceptPreviewRunInput,
   PreviewStatus,
+  PreviewRunRecord,
 } from './preview-execution.js';
 export type {
   AcceptedWorkflowRun,

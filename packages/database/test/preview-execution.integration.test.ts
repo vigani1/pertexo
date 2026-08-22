@@ -12,6 +12,7 @@ import {
   PreviewAdmissionDeniedError,
   PreviewIdempotencyConflictError,
   PriorPreviewInputUnavailableError,
+  readPreviewRun,
 } from '../src/preview-execution.js';
 import {
   auditEvents,
@@ -95,23 +96,6 @@ function input(
     workflowId: workflowA,
     ...overrides,
   } as const;
-}
-
-async function ownerQuery(text: string, values: unknown[] = []): Promise<void> {
-  const pool = new Pool({ connectionString: migrationUrl, max: 1 });
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    await client.query('set local role pertexo_owner');
-    await client.query(text, values);
-    await client.query('commit');
-  } catch (error: unknown) {
-    await client.query('rollback').catch(() => undefined);
-    throw error;
-  } finally {
-    client.release();
-    await pool.end();
-  }
 }
 
 async function ownerWorkspaceQuery(
@@ -431,6 +415,54 @@ describe('durable preview acceptance', () => {
           .where(eq(previewRuns.id, accepted.previewRunId)),
       ),
     ).rejects.toSatisfy((error: unknown) => hasPostgresCode(error, '42501'));
+  });
+
+  it('reads only an unexpired tenant-scoped preview and its stored output', async () => {
+    const accepted = await apiDatabase.withWorkspace(
+      workspaceA,
+      (transaction) => acceptPreviewRun(transaction, input()),
+    );
+    await ownerWorkspaceQuery(
+      workspaceA,
+      `update app.preview_runs
+       set status = 'succeeded', started_at = now(), completed_at = now(),
+           output_ref = '{"schemaVersion":1,"kind":"inline","value":{"ok":true}}'
+       where id = $1`,
+      [accepted.previewRunId],
+    );
+    await expect(
+      apiDatabase.withWorkspace(workspaceA, (transaction) =>
+        readPreviewRun(transaction, {
+          actorUserId: actorId,
+          previewRunId: accepted.previewRunId,
+        }),
+      ),
+    ).resolves.toMatchObject({
+      id: accepted.previewRunId,
+      status: 'succeeded',
+      output: { kind: 'inline', value: { ok: true } },
+    });
+    await expect(
+      apiDatabase.withWorkspace(workspaceB, (transaction) =>
+        readPreviewRun(transaction, {
+          actorUserId: actorId,
+          previewRunId: accepted.previewRunId,
+        }),
+      ),
+    ).resolves.toBeNull();
+
+    await expect(
+      apiDatabase.withWorkspace(workspaceA, (transaction) =>
+        readPreviewRun(
+          transaction,
+          {
+            actorUserId: actorId,
+            previewRunId: accepted.previewRunId,
+          },
+          accepted.expiresAt,
+        ),
+      ),
+    ).resolves.toBeNull();
   });
 
   it('gives the worker only scoped reads and execution-state updates', async () => {

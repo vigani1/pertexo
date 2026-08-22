@@ -90,6 +90,7 @@ export async function prepareNodeValidation(
     nodeId: string;
     release: RegistryRelease;
     sampleInput?: JsonValue;
+    deferInput?: boolean;
   }>,
 ): Promise<
   PreparedNodePreview | Readonly<{ issues: readonly NodeValidationIssue[] }>
@@ -152,38 +153,42 @@ export async function prepareNodeValidation(
         message: 'Connection reference is not declared by this definition',
       });
 
-  const runInput = canonicalizeJson(input.sampleInput ?? {});
   const mapped: Record<string, JsonValue> = {};
-  for (const key of Object.keys(node.inputMappings).sort()) {
-    const source = node.inputMappings[key];
-    if (source === undefined) continue;
-    const resolution = await resolveValueSource(source, {
-      runInput,
-      nodeOutputs: {},
-    });
-    if (resolution.kind === 'value') mapped[key] = resolution.value;
-    else
-      issue(issues, {
-        path: `$.inputMappings.${key}`,
-        code:
-          resolution.kind === 'missing'
-            ? 'node.mapping_missing'
-            : 'node.mapping_invalid',
-        message:
-          resolution.kind === 'error'
-            ? resolution.message
-            : 'Sample input does not resolve this mapping',
+  if (input.deferInput !== true) {
+    const runInput = canonicalizeJson(input.sampleInput ?? {});
+    for (const key of Object.keys(node.inputMappings).sort()) {
+      const source = node.inputMappings[key];
+      if (source === undefined) continue;
+      const resolution = await resolveValueSource(source, {
+        runInput,
+        nodeOutputs: {},
       });
+      if (resolution.kind === 'value') mapped[key] = resolution.value;
+      else
+        issue(issues, {
+          path: `$.inputMappings.${key}`,
+          code:
+            resolution.kind === 'missing'
+              ? 'node.mapping_missing'
+              : 'node.mapping_invalid',
+          message:
+            resolution.kind === 'error'
+              ? resolution.message
+              : 'Sample input does not resolve this mapping',
+        });
+    }
   }
   const resolvedInput = canonicalizeJson(mapped);
-  const parsedInput = definition.inputSchema.safeParse(resolvedInput);
-  if (!parsedInput.success)
-    for (const problem of parsedInput.error.issues)
-      issue(issues, {
-        path: zodPath('$.resolvedInput', problem.path),
-        code: 'node.input_invalid',
-        message: problem.message,
-      });
+  if (input.deferInput !== true) {
+    const parsedInput = definition.inputSchema.safeParse(resolvedInput);
+    if (!parsedInput.success)
+      for (const problem of parsedInput.error.issues)
+        issue(issues, {
+          path: zodPath('$.resolvedInput', problem.path),
+          code: 'node.input_invalid',
+          message: problem.message,
+        });
+  }
 
   return Object.freeze({
     definition: Object.freeze({ ...definition.manifest.definition }),

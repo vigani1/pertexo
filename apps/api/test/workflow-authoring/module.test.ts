@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE } from '@pertexo/node-catalog';
 
+import { NodeTestingController } from '../../src/node-testing/controller.js';
+import {
+  GetPreviewRunUseCase,
+  TestWorkflowNodeUseCase,
+} from '../../src/node-testing/use-case.js';
 import {
   CreateWorkflowUseCase,
   WorkflowAuthoringController,
@@ -36,5 +42,29 @@ describe('workflow authoring Nest module', () => {
       ]),
     );
     expect(dynamic.controllers).toContain(WorkflowAuthoringController);
+    expect(dynamic.controllers).not.toContain(NodeTestingController);
+  });
+
+  it('registers preview routes only when persistence and release are composed', () => {
+    const dynamic = WorkflowAuthoringModule.register(
+      {
+        ...dependencies,
+        nodeTestingPersistence: {
+          getDraft: dependencies.persistence.getDraft,
+          acceptPreview: () => Promise.reject(new Error('not exercised')),
+          readPreview: () => Promise.resolve(null),
+        },
+        nodeTestingRelease: PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+      },
+      { module: FakeIdentityModule },
+    );
+    const providers = dynamic.providers ?? [];
+    expect(dynamic.controllers).toContain(NodeTestingController);
+    expect(providers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ provide: TestWorkflowNodeUseCase }),
+        expect.objectContaining({ provide: GetPreviewRunUseCase }),
+      ]),
+    );
   });
 });

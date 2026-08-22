@@ -119,6 +119,25 @@ export type AcceptedPreviewRun = Readonly<{
   status: PreviewStatus;
 }>;
 
+export type PreviewRunRecord = Readonly<{
+  id: string;
+  workspaceId: string;
+  workflowId: string;
+  draftRevision: number;
+  nodeId: string;
+  status: PreviewStatus;
+  sideEffectClass: 'safe' | 'idempotent_with_key' | 'unsafe';
+  mayContactProvider: boolean;
+  mayCauseExternalSideEffect: boolean;
+  dryRun: 'not_supported' | 'provider_supported';
+  output: ReturnType<typeof parseStoredExecutionValueV1> | null;
+  safeErrorCode: string | null;
+  createdAt: Date;
+  startedAt: Date | null;
+  completedAt: Date | null;
+  expiresAt: Date;
+}>;
+
 export class PreviewIdempotencyConflictError extends Error {
   public override readonly name = 'PreviewIdempotencyConflictError';
   public constructor() {
@@ -212,6 +231,27 @@ async function assertAdmission(
   workflowId: string,
   draftRevision: number,
 ): Promise<void> {
+  await assertPreviewActor(transaction, actorUserId);
+
+  const drafts = await transaction.db
+    .select({ revision: workflowDrafts.revision })
+    .from(workflowDrafts)
+    .where(
+      and(
+        eq(workflowDrafts.workspaceId, transaction.workspaceId),
+        eq(workflowDrafts.workflowId, workflowId),
+      ),
+    )
+    .for('share')
+    .limit(1);
+  if (drafts[0]?.revision !== draftRevision)
+    throw new PreviewAdmissionDeniedError('draft');
+}
+
+async function assertPreviewActor(
+  transaction: WorkspaceTransaction,
+  actorUserId: string,
+): Promise<void> {
   const access = await transaction.db
     .select({
       membershipRole: workspaceMemberships.role,
@@ -234,20 +274,57 @@ async function assertAdmission(
     !['owner', 'admin', 'builder'].includes(row.membershipRole)
   )
     throw new PreviewAdmissionDeniedError('actor');
+}
 
-  const drafts = await transaction.db
-    .select({ revision: workflowDrafts.revision })
-    .from(workflowDrafts)
+export async function readPreviewRun(
+  transaction: WorkspaceTransaction,
+  input: Readonly<{ actorUserId: string; previewRunId: string }>,
+  now: Date = new Date(),
+): Promise<PreviewRunRecord | null> {
+  const actorUserId = z.uuid().parse(input.actorUserId);
+  const previewRunId = z.uuid().parse(input.previewRunId);
+  await assertPreviewActor(transaction, actorUserId);
+  const rows = await transaction.db
+    .select()
+    .from(previewRuns)
     .where(
       and(
-        eq(workflowDrafts.workspaceId, transaction.workspaceId),
-        eq(workflowDrafts.workflowId, workflowId),
+        eq(previewRuns.workspaceId, transaction.workspaceId),
+        eq(previewRuns.id, previewRunId),
+        gt(previewRuns.expiresAt, now),
       ),
     )
-    .for('share')
     .limit(1);
-  if (drafts[0]?.revision !== draftRevision)
-    throw new PreviewAdmissionDeniedError('draft');
+  const row = rows[0];
+  if (row === undefined) return null;
+  const status = previewStatusSchema.parse(row.status);
+  const sideEffectClass = z
+    .enum(['safe', 'idempotent_with_key', 'unsafe'])
+    .parse(row.sideEffectClass);
+  const dryRun = z
+    .enum(['not_supported', 'provider_supported'])
+    .parse(row.dryRun);
+  return Object.freeze({
+    id: row.id,
+    workspaceId: row.workspaceId,
+    workflowId: row.workflowId,
+    draftRevision: row.draftRevision,
+    nodeId: row.nodeId,
+    status,
+    sideEffectClass,
+    mayContactProvider: row.mayContactProvider,
+    mayCauseExternalSideEffect: row.mayCauseExternalSideEffect,
+    dryRun,
+    output:
+      row.outputRef === null
+        ? null
+        : parseStoredExecutionValueV1(row.outputRef),
+    safeErrorCode: row.safeErrorCode,
+    createdAt: row.createdAt,
+    startedAt: row.startedAt,
+    completedAt: row.completedAt,
+    expiresAt: row.expiresAt,
+  });
 }
 
 async function resolveInput(

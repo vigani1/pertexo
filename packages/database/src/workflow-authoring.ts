@@ -27,6 +27,14 @@ import {
   type CompatibilityReleaseExpectation,
 } from './compatibility-release.js';
 import { canonicalOutboxPayloadChecksum } from './outbox.js';
+import {
+  acceptPreviewRun,
+  readPreviewRun,
+  type AcceptedPreviewRun,
+  type AcceptPreviewRunInput,
+  type PreviewRunRecord,
+} from './preview-execution.js';
+import { withWorkspaceTransaction } from './workspace.js';
 
 const uuidSchema = z.uuid();
 const retainedChecksumSchema = z.string().regex(/^wf:v1:sha256:[0-9a-f]{64}$/u);
@@ -230,6 +238,16 @@ export function reconcileWorkflowTriggersPayload(
 }
 
 export type WorkflowAuthoringDatabase = Readonly<{
+  acceptPreview(
+    input: AcceptPreviewRunInput & Readonly<{ workspaceId: string }>,
+  ): Promise<AcceptedPreviewRun>;
+  readPreview(
+    input: Readonly<{
+      workspaceId: string;
+      actorUserId: string;
+      previewRunId: string;
+    }>,
+  ): Promise<PreviewRunRecord | null>;
   createWorkflow(input: CreateWorkflowInput): Promise<CreateWorkflowResult>;
   listWorkflows(input: ListWorkflowsInput): Promise<WorkflowPage>;
   getDraft(
@@ -692,6 +710,14 @@ export function createWorkflowAuthoringDatabase(
   // Runtime import is kept here so the public package remains straightforward to test.
   const pool = new Pool(config);
   return Object.freeze({
+    acceptPreview: async ({ workspaceId, ...input }) =>
+      withWorkspaceTransaction(pool, workspaceId, (transaction) =>
+        acceptPreviewRun(transaction, input),
+      ),
+    readPreview: async ({ workspaceId, ...input }) =>
+      withWorkspaceTransaction(pool, workspaceId, (transaction) =>
+        readPreviewRun(transaction, input),
+      ),
     createWorkflow: async (input) =>
       withAuthorTransaction(
         pool,
