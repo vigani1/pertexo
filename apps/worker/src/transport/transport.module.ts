@@ -114,6 +114,7 @@ function nodeAttemptRuntimeProvider(
         heartbeatIntervalMillis: config.nodeAttempt.heartbeatIntervalMillis,
         leaseDurationSeconds: config.nodeAttempt.leaseDurationSeconds,
         observer,
+        releaseCohort: config.nodeCompatibilityCohort,
         redisUrl: config.redisUrl,
         workerId: config.nodeAttempt.workerId,
       });
@@ -173,6 +174,7 @@ function coordinatorRuntimeProvider(
         database: config.database,
         maximumAdmissions: config.coordinator.maximumAdmissions,
         observer,
+        releaseCohort: config.nodeCompatibilityCohort,
         redisUrl: config.redisUrl,
       });
     },

@@ -7,8 +7,12 @@ import {
   NodeAttemptStateCorruptError,
   type PublishedWorkflowReader,
 } from '@pertexo/database';
-import { CORE_REGISTRY_RELEASE_SUPPORT } from '@pertexo/nodes-core';
-import { createCoreNodeRegistryForRelease } from '@pertexo/nodes-core/server';
+import {
+  platformRegistryReleaseSupport,
+  platformServingRegistryRelease,
+  type PlatformReleaseCohort,
+} from '@pertexo/node-catalog';
+import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
 import { createQueueTraceRunner } from '@pertexo/observability';
 import {
   createQueueConsumer,
@@ -55,6 +59,7 @@ export type NodeAttemptRuntimeOptions = Readonly<{
   database: DatabaseConfig;
   heartbeatIntervalMillis: number;
   leaseDurationSeconds: number;
+  releaseCohort?: PlatformReleaseCohort;
   observer?: QueueConsumerObserver;
   redisUrl: string;
   workerId: string;
@@ -108,12 +113,27 @@ export async function createNodeAttemptRuntime(
     !/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/u.test(options.workerId)
   )
     throw new TypeError('Node-attempt runtime options are invalid');
+  const releaseCohort = options.releaseCohort ?? 'core';
+  if (
+    releaseCohort === 'http_activation' &&
+    !(
+      (options.connectionEncryption !== undefined &&
+        options.artifactStore !== undefined) ||
+      (dependencies.runtimeCapabilities?.connections !== undefined &&
+        dependencies.runtimeCapabilities.artifacts !== undefined)
+    )
+  )
+    throw new TypeError(
+      'HTTP activation requires connection and artifact runtime capabilities',
+    );
   const releaseSupport = createExecutableCompatibilityReleaseSupport(
-    CORE_REGISTRY_RELEASE_SUPPORT.map(composeExecutableCompatibilityRelease),
+    platformRegistryReleaseSupport(releaseCohort).map(
+      composeExecutableCompatibilityRelease,
+    ),
   );
   const firstDescription = releaseSupport.descriptions[0];
-  const latestNodeRelease = CORE_REGISTRY_RELEASE_SUPPORT.at(-1);
-  if (firstDescription === undefined || latestNodeRelease === undefined)
+  const latestNodeRelease = platformServingRegistryRelease(releaseCohort);
+  if (firstDescription === undefined)
     throw new Error('Core compatibility release support is empty');
   const firstRelease = releaseSupport.resolve(
     firstDescription.epoch,
@@ -127,7 +147,7 @@ export async function createNodeAttemptRuntime(
     dependencies.engine ?? createNodeAttemptExecutionEngine(engineOptions);
   const registry =
     dependencies.registry ??
-    createCoreNodeRegistryForRelease(latestNodeRelease);
+    createPlatformNodeRegistryForRelease(latestNodeRelease);
   const runStore =
     dependencies.runStore ?? createNodeAttemptRunStore(options.database);
   const reader =

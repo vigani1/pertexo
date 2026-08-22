@@ -61,7 +61,10 @@ export async function createApiApplication(
           config.database,
           identityRuntime,
           config.redisUrl,
-          dependencies.workflowOverrides,
+          {
+            ...dependencies.workflowOverrides,
+            releaseCohort: config.nodeCompatibilityCohort,
+          },
         ));
   const connectionRuntime =
     dependencies.connectionRuntime ??

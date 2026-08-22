@@ -20,6 +20,7 @@ describe('parseApiConfig', () => {
         workerRuntimeRole: 'pertexo_worker',
       },
       host: '0.0.0.0',
+      nodeCompatibilityCohort: 'core',
       nodeEnv: 'development',
       observability: {
         environment: 'development',
@@ -40,6 +41,7 @@ describe('parseApiConfig', () => {
         'postgresql://pertexo_api:secret@localhost:5432/pertexo',
       HOST: '127.0.0.1',
       NODE_ENV: 'test',
+      NODE_COMPATIBILITY_COHORT: 'http_staging',
       PORT: '4312',
       POSTGRES_WORKER_RUNTIME_USER: 'custom_worker',
     });
@@ -55,6 +57,7 @@ describe('parseApiConfig', () => {
         workerRuntimeRole: 'custom_worker',
       },
       host: '127.0.0.1',
+      nodeCompatibilityCohort: 'http_staging',
       nodeEnv: 'test',
       observability: {
         environment: 'test',

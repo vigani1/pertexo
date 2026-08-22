@@ -4,6 +4,7 @@ import {
   type ArtifactStoreConfig,
 } from '@pertexo/artifact-store';
 import type { AwsConnectionEnvelopeEncryptionConfig } from '@pertexo/integrations/server';
+import { PLATFORM_RELEASE_COHORTS } from '@pertexo/node-catalog';
 import { parseObservabilityConfig } from '@pertexo/observability/config';
 import { JOB_NAME, type JobName } from '@pertexo/queue';
 
@@ -161,6 +162,7 @@ export const workerConfigSchema = z
       .regex(/^[A-Za-z0-9._:-]{1,96}$/u)
       .default('worker-local'),
     NODE_ENV: z.enum(workerEnvironments).default('development'),
+    NODE_COMPATIBILITY_COHORT: z.enum(PLATFORM_RELEASE_COHORTS).default('core'),
     LOG_LEVEL: z.enum(workerLogLevels).default('info'),
     OTEL_EXPORTER_OTLP_ENDPOINT: z.url().optional(),
     SERVICE_VERSION: z.string().trim().min(1).default('0.0.0-dev'),
@@ -205,6 +207,7 @@ export const workerConfigSchema = z
       NODE_ATTEMPT_HEARTBEAT_MILLIS,
       WORKER_INSTANCE_ID,
       NODE_ENV,
+      NODE_COMPATIBILITY_COHORT,
       LOG_LEVEL,
       OTEL_EXPORTER_OTLP_ENDPOINT,
       SERVICE_VERSION,
@@ -212,6 +215,7 @@ export const workerConfigSchema = z
       POSTGRES_WORKER_RUNTIME_USER,
     }) => ({
       nodeEnv: NODE_ENV,
+      nodeCompatibilityCohort: NODE_COMPATIBILITY_COHORT,
       logLevel: LOG_LEVEL,
       observability: parseObservabilityConfig({
         serviceName: 'pertexo-worker',
@@ -349,6 +353,16 @@ export function parseWorkerConfig(
       result.data.nodeEnv === 'staging' || result.data.nodeEnv === 'production';
     const connectionEncryption = connectionEncryptionConfig(raw, deployed);
     const artifactStore = artifactStoreConfig(raw, deployed);
+    if (
+      result.data.nodeCompatibilityCohort === 'http_activation' &&
+      result.data.outboxDispatcher.enabledJobNames.includes(
+        JOB_NAME.executeNodeAttempt,
+      ) &&
+      (connectionEncryption === undefined || artifactStore === undefined)
+    )
+      throw new Error(
+        'HTTP activation workers require connection encryption and artifact storage',
+      );
     return Object.freeze({
       ...result.data,
       ...(connectionEncryption === undefined ? {} : { connectionEncryption }),

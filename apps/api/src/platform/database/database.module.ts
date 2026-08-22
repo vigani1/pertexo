@@ -11,7 +11,10 @@ import type {
   WorkspaceTransactionOptions,
 } from '@pertexo/database';
 import { createWorkspaceDatabase } from '@pertexo/database';
-import { CORE_REGISTRY_RELEASE_SUPPORT } from '@pertexo/nodes-core';
+import {
+  platformRegistryReleaseSupport,
+  type PlatformReleaseCohort,
+} from '@pertexo/node-catalog';
 import {
   composeExecutableCompatibilityRelease,
   createExecutableCompatibilityReleaseSupport,
@@ -47,6 +50,7 @@ export class NestWorkspaceDatabase
 
 type DatabaseModuleOptions = Readonly<{
   database?: WorkspaceDatabase;
+  releaseCohort: PlatformReleaseCohort;
 }>;
 
 function createDatabaseProvider(
@@ -60,7 +64,7 @@ function createDatabaseProvider(
         options.database ??
           createWorkspaceDatabase(config, {
             compatibilityReleases: createExecutableCompatibilityReleaseSupport(
-              CORE_REGISTRY_RELEASE_SUPPORT.map(
+              platformRegistryReleaseSupport(options.releaseCohort).map(
                 composeExecutableCompatibilityRelease,
               ),
             ).descriptions,
@@ -75,7 +79,7 @@ function createDatabaseProvider(
 export class DatabaseModule {
   public static register(
     config: DatabaseConfig,
-    options: DatabaseModuleOptions = {},
+    options: DatabaseModuleOptions,
   ): DynamicModule {
     const databaseProvider = createDatabaseProvider(config, options);
 

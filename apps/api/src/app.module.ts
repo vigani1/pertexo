@@ -55,8 +55,11 @@ export class AppModule {
   ): DynamicModule {
     const databaseOptions =
       dependencies.database === undefined
-        ? {}
-        : { database: dependencies.database };
+        ? { releaseCohort: config.nodeCompatibilityCohort }
+        : {
+            database: dependencies.database,
+            releaseCohort: config.nodeCompatibilityCohort,
+          };
     const httpErrorLogger: HttpErrorLogger = Object.freeze({
       log: (entry: HttpErrorLogEntry): void => {
         logHttpError(

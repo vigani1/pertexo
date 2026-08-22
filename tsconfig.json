@@ -6,6 +6,7 @@
     { "path": "./packages/node-sdk/tsconfig.json" },
     { "path": "./packages/workflow-model/tsconfig.json" },
     { "path": "./packages/nodes-core/tsconfig.json" },
+    { "path": "./packages/node-catalog/tsconfig.json" },
     { "path": "./packages/contracts/tsconfig.json" },
     { "path": "./packages/database/tsconfig.json" },
     { "path": "./packages/observability/tsconfig.json" },

@@ -6,7 +6,10 @@ import {
   type DatabaseConfig,
   type PublishedWorkflowReader,
 } from '@pertexo/database';
-import { CORE_REGISTRY_RELEASE_SUPPORT } from '@pertexo/nodes-core';
+import {
+  platformRegistryReleaseSupport,
+  type PlatformReleaseCohort,
+} from '@pertexo/node-catalog';
 import { createQueueTraceRunner } from '@pertexo/observability';
 import {
   createQueueConsumer,
@@ -41,6 +44,7 @@ export interface CoordinatorRuntime {
 export type CoordinatorRuntimeOptions = Readonly<{
   database: DatabaseConfig;
   maximumAdmissions: number;
+  releaseCohort?: PlatformReleaseCohort;
   observer?: QueueConsumerObserver;
   redisUrl: string;
 }>;
@@ -97,7 +101,9 @@ export async function createCoordinatorRuntime(
     );
   }
   const releaseSupport = createExecutableCompatibilityReleaseSupport(
-    CORE_REGISTRY_RELEASE_SUPPORT.map(composeExecutableCompatibilityRelease),
+    platformRegistryReleaseSupport(options.releaseCohort ?? 'core').map(
+      composeExecutableCompatibilityRelease,
+    ),
   );
   const firstRelease = releaseSupport.resolve(
     releaseSupport.descriptions[0]?.epoch ?? 0,

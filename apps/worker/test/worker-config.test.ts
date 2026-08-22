@@ -34,6 +34,7 @@ describe('parseWorkerConfig', () => {
         workerRuntimeRole: 'pertexo_worker',
       },
       nodeEnv: 'development',
+      nodeCompatibilityCohort: 'core',
       logLevel: 'info',
       nodeAttempt: {
         heartbeatIntervalMillis: 10_000,
@@ -69,6 +70,7 @@ describe('parseWorkerConfig', () => {
         'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
       REDIS_URL: 'redis://:secret@localhost:6379/0',
       NODE_ENV: 'test',
+      NODE_COMPATIBILITY_COHORT: 'http_staging',
       LOG_LEVEL: 'debug',
       POSTGRES_WORKER_RUNTIME_USER: 'custom_worker',
     });
@@ -94,6 +96,7 @@ describe('parseWorkerConfig', () => {
         workerRuntimeRole: 'custom_worker',
       },
       nodeEnv: 'test',
+      nodeCompatibilityCohort: 'http_staging',
       logLevel: 'debug',
       nodeAttempt: {
         heartbeatIntervalMillis: 10_000,
@@ -154,6 +157,31 @@ describe('parseWorkerConfig', () => {
     });
     expect(Object.isFrozen(config.connectionEncryption)).toBe(true);
     expect(Object.isFrozen(config.artifactStore)).toBe(true);
+  });
+
+  it('fails closed when an HTTP activation execution worker lacks required capabilities', () => {
+    let thrown: unknown;
+    try {
+      parseWorkerConfig({
+        DATABASE_DISPATCHER_URL:
+          'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
+        DATABASE_WORKER_URL:
+          'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+        REDIS_URL: 'redis://:secret@localhost:6379/0',
+        NODE_COMPATIBILITY_COHORT: 'http_activation',
+        OUTBOX_DISPATCH_JOB_NAMES: JOB_NAME.executeNodeAttempt,
+      });
+    } catch (error: unknown) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(Error);
+    expect((thrown as Error).message).toBe('Invalid worker configuration');
+    expect((thrown as Error).cause).toEqual(
+      new Error(
+        'HTTP activation workers require connection encryption and artifact storage',
+      ),
+    );
   });
 
   it.each([

@@ -35,6 +35,7 @@ const config = {
     workerRuntimeRole: 'pertexo_worker',
   },
   host: '127.0.0.1',
+  nodeCompatibilityCohort: 'core' as const,
   nodeEnv: 'test' as const,
   observability: {
     environment: 'test' as const,

@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import { parseObservabilityConfig } from '@pertexo/observability/config';
 import type { ObservabilityConfig } from '@pertexo/observability/config';
+import {
+  PLATFORM_RELEASE_COHORTS,
+  type PlatformReleaseCohort,
+} from '@pertexo/node-catalog';
 
 const API_NODE_ENVIRONMENTS = [
   'development',
@@ -44,6 +48,7 @@ const apiEnvironmentSchema = z.object({
   CONNECTION_KMS_REGION: z.string().min(1).max(128).optional(),
   HOST: z.string().trim().min(1).default('0.0.0.0'),
   NODE_ENV: z.enum(API_NODE_ENVIRONMENTS).default('development'),
+  NODE_COMPATIBILITY_COHORT: z.enum(PLATFORM_RELEASE_COHORTS).default('core'),
   LOG_LEVEL: z
     .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
     .default('info'),
@@ -146,6 +151,7 @@ export type ApiConfig = Readonly<{
   host: string;
   identity?: ApiIdentityConfig;
   nodeEnv: ApiNodeEnvironment;
+  nodeCompatibilityCohort: PlatformReleaseCohort;
   observability: ObservabilityConfig;
   port: number;
   redisUrl: string;
@@ -185,6 +191,7 @@ export function parseApiConfig(
     host: parsed.HOST,
     ...(identity === undefined ? {} : { identity }),
     nodeEnv: parsed.NODE_ENV,
+    nodeCompatibilityCohort: parsed.NODE_COMPATIBILITY_COHORT,
     observability,
     port: parsed.PORT,
     redisUrl: parsed.REDIS_URL ?? 'redis://localhost:6379/0',

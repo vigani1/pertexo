@@ -17,6 +17,7 @@
     "@pertexo/artifact-store": "workspace:*",
     "@pertexo/database": "workspace:*",
     "@pertexo/integrations": "workspace:*",
+    "@pertexo/node-catalog": "workspace:*",
     "@pertexo/node-sdk": "workspace:*",
     "@pertexo/nodes-core": "workspace:*",
     "@pertexo/observability": "workspace:*",

@@ -9,7 +9,10 @@ import {
   type PublishedWorkflowV2Projection,
   type WorkflowRunDatabase,
 } from '@pertexo/database';
-import { CORE_REGISTRY_RELEASE_SUPPORT } from '@pertexo/nodes-core';
+import {
+  platformRegistryReleaseSupport,
+  type PlatformReleaseCohort,
+} from '@pertexo/node-catalog';
 import {
   WorkflowEngineError,
   composeExecutableCompatibilityRelease,
@@ -44,9 +47,12 @@ export function createPostgresWorkflowRunPersistence(
   config: DatabaseConfig,
   databaseInput?: WorkflowRunDatabase,
   notifications?: RunEventNotificationPublisher,
+  releaseCohort: PlatformReleaseCohort = 'core',
 ): PostgresWorkflowRunPersistence {
   const releaseSupport = createExecutableCompatibilityReleaseSupport(
-    CORE_REGISTRY_RELEASE_SUPPORT.map(composeExecutableCompatibilityRelease),
+    platformRegistryReleaseSupport(releaseCohort).map(
+      composeExecutableCompatibilityRelease,
+    ),
   );
   const database =
     databaseInput ??

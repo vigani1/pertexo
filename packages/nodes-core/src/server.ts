@@ -35,32 +35,33 @@ import {
   CORE_TERMINATE_OUTPUT_SCHEMA,
 } from './terminate/index.js';
 
-const definitions: readonly NodeDefinitionRegistration[] = [
-  {
-    manifest: CORE_MANUAL_MANIFEST,
-    configSchema: CORE_MANUAL_CONFIG_SCHEMA,
-    inputSchema: CORE_MANUAL_INPUT_SCHEMA,
-    outputSchema: CORE_MANUAL_OUTPUT_SCHEMA,
-  },
-  {
-    manifest: CORE_SET_MANIFEST,
-    configSchema: CORE_SET_CONFIG_SCHEMA,
-    inputSchema: CORE_SET_INPUT_SCHEMA,
-    outputSchema: CORE_SET_OUTPUT_SCHEMA,
-  },
-  {
-    manifest: CORE_TERMINATE_MANIFEST,
-    configSchema: CORE_TERMINATE_CONFIG_SCHEMA,
-    inputSchema: CORE_TERMINATE_INPUT_SCHEMA,
-    outputSchema: CORE_TERMINATE_OUTPUT_SCHEMA,
-  },
-];
+export const CORE_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistration[] =
+  Object.freeze([
+    Object.freeze({
+      manifest: CORE_MANUAL_MANIFEST,
+      configSchema: CORE_MANUAL_CONFIG_SCHEMA,
+      inputSchema: CORE_MANUAL_INPUT_SCHEMA,
+      outputSchema: CORE_MANUAL_OUTPUT_SCHEMA,
+    }),
+    Object.freeze({
+      manifest: CORE_SET_MANIFEST,
+      configSchema: CORE_SET_CONFIG_SCHEMA,
+      inputSchema: CORE_SET_INPUT_SCHEMA,
+      outputSchema: CORE_SET_OUTPUT_SCHEMA,
+    }),
+    Object.freeze({
+      manifest: CORE_TERMINATE_MANIFEST,
+      configSchema: CORE_TERMINATE_CONFIG_SCHEMA,
+      inputSchema: CORE_TERMINATE_INPUT_SCHEMA,
+      outputSchema: CORE_TERMINATE_OUTPUT_SCHEMA,
+    }),
+  ]);
 
-const executors = [
+export const CORE_NODE_EXECUTOR_REGISTRATIONS = Object.freeze([
   coreManualExecutor,
   coreSetExecutor,
   coreTerminateExecutor,
-] as const;
+] as const);
 
 function identityToken(identity: Readonly<{ key: string; version: number }>) {
   return `${identity.key}\u0000${String(identity.version)}`;
@@ -102,7 +103,7 @@ export function createCoreNodeRegistryForRelease(
       throw new Error('Core compatibility release successor changed');
   }
   const definitionsByIdentity = new Map(
-    definitions.map((registration) => [
+    CORE_NODE_DEFINITION_REGISTRATIONS.map((registration) => [
       identityToken(registration.manifest.definition),
       registration,
     ]),
@@ -116,7 +117,7 @@ export function createCoreNodeRegistryForRelease(
     return Object.freeze({ ...registration, manifest });
   });
   const executorsByIdentity = new Map(
-    executors.map((registration) => [
+    CORE_NODE_EXECUTOR_REGISTRATIONS.map((registration) => [
       identityToken(registration.executor),
       registration,
     ]),

@@ -56,6 +56,9 @@ importers:
       '@pertexo/integrations':
         specifier: workspace:*
         version: link:../../packages/integrations
+      '@pertexo/node-catalog':
+        specifier: workspace:*
+        version: link:../../packages/node-catalog
       '@pertexo/nodes-core':
         specifier: workspace:*
         version: link:../../packages/nodes-core
@@ -111,6 +114,9 @@ importers:
       '@pertexo/integrations':
         specifier: workspace:*
         version: link:../../packages/integrations
+      '@pertexo/node-catalog':
+        specifier: workspace:*
+        version: link:../../packages/node-catalog
       '@pertexo/node-sdk':
         specifier: workspace:*
         version: link:../../packages/node-sdk
@@ -209,6 +215,18 @@ importers:
       zod:
         specifier: 4.4.3
         version: 4.4.3
+
+  packages/node-catalog:
+    dependencies:
+      '@pertexo/integrations':
+        specifier: workspace:*
+        version: link:../integrations
+      '@pertexo/node-sdk':
+        specifier: workspace:*
+        version: link:../node-sdk
+      '@pertexo/nodes-core':
+        specifier: workspace:*
+        version: link:../nodes-core
 
   packages/node-sdk:
     dependencies:

@@ -44,8 +44,11 @@ export class WorkerModule {
   ): DynamicModule {
     const databaseOptions =
       dependencies.database === undefined
-        ? {}
-        : { database: dependencies.database };
+        ? { releaseCohort: config.nodeCompatibilityCohort }
+        : {
+            database: dependencies.database,
+            releaseCohort: config.nodeCompatibilityCohort,
+          };
 
     return {
       module: WorkerModule,

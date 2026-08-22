@@ -17,6 +17,7 @@
     "@pertexo/contracts": "workspace:*",
     "@pertexo/database": "workspace:*",
     "@pertexo/integrations": "workspace:*",
+    "@pertexo/node-catalog": "workspace:*",
     "@pertexo/nodes-core": "workspace:*",
     "@pertexo/observability": "workspace:*",
     "@pertexo/queue": "workspace:*",

@@ -1,7 +1,10 @@
 import type { DynamicModule, OnApplicationShutdown } from '@nestjs/common';
 import { Module } from '@nestjs/common';
 import { metrics, trace } from '@opentelemetry/api';
-import { CORE_REGISTRY_RELEASE_SUPPORT } from '@pertexo/nodes-core';
+import {
+  platformRegistryReleaseSupport,
+  type PlatformReleaseCohort,
+} from '@pertexo/node-catalog';
 import {
   buildWorkflowExecutableV2,
   composeExecutableCompatibilityRelease,
@@ -52,14 +55,18 @@ export type ApiWorkflowRuntimeOverrides = Readonly<{
   notifications?: RunEventNotificationPublisher;
   runPersistence?: WorkflowRunPersistence;
   runStreamer?: WorkflowRunsDependencies['streamer'];
+  releaseCohort?: PlatformReleaseCohort;
   telemetry?: WorkflowAuthoringDependencies['telemetry'];
 }>;
 
-function coreWorkflowCompatibility() {
+function coreWorkflowCompatibility(
+  releaseCohort: PlatformReleaseCohort = 'core',
+) {
+  const registryReleaseSupport = platformRegistryReleaseSupport(releaseCohort);
   const releaseSupport = createExecutableCompatibilityReleaseSupport(
-    CORE_REGISTRY_RELEASE_SUPPORT.map(composeExecutableCompatibilityRelease),
+    registryReleaseSupport.map(composeExecutableCompatibilityRelease),
   );
-  const variants = CORE_REGISTRY_RELEASE_SUPPORT.map((nodeRelease) => {
+  const variants = registryReleaseSupport.map((nodeRelease) => {
     const compatibilityRelease =
       composeExecutableCompatibilityRelease(nodeRelease);
     const compatibilityReleaseDescription = releaseSupport.descriptions.find(
@@ -189,10 +196,12 @@ function coreAuthoringOptions(
 
 export function createCoreWorkflowAuthoringDatabase(
   databaseConfig: DatabaseConfig,
+  releaseCohort: PlatformReleaseCohort = 'core',
 ): WorkflowAuthoringDatabase {
+  const compatibility = coreWorkflowCompatibility(releaseCohort);
   return createWorkflowAuthoringDatabase(
     databaseConfig,
-    coreAuthoringOptions(coreWorkflowCompatibility().variants),
+    coreAuthoringOptions(compatibility.variants),
   );
 }
 
@@ -206,7 +215,7 @@ export function createApiWorkflowRuntime(
     releaseSupport: compatibilityReleaseSupport,
     variants,
     definitionCatalog,
-  } = coreWorkflowCompatibility();
+  } = coreWorkflowCompatibility(overrides.releaseCohort);
   const database =
     overrides.database ??
     createWorkflowAuthoringDatabase(
@@ -224,6 +233,7 @@ export function createApiWorkflowRuntime(
           databaseConfig,
           undefined,
           notifications,
+          overrides.releaseCohort,
         )
       : undefined;
   const eventDatabase =
