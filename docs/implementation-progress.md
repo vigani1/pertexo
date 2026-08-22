@@ -1363,7 +1363,7 @@ Connection and secret vertical slice:
       `connection_secret_versions`, and append-only `connection_events` with
       forced RLS, least-privilege API/worker grants, same-connection current
       pointer constraints, lifecycle/status constraints, and safe indexes.
-- [ ] Implement AES-256-GCM envelope encryption through a narrow managed-KMS
+- [x] Implement AES-256-GCM envelope encryption through a narrow managed-KMS
       seam: one generated data key per immutable secret version, authenticated
       workspace/connection/secret-version context, no plaintext database
       columns, fail-closed context mismatch, key rotation by new secret version,
@@ -1520,8 +1520,29 @@ Current evidence:
   0019-to-0020 migration, API/worker readiness, rollback, pointer/FK isolation,
   cross-workspace RLS, immutable triggers, grants, health, and credential-access
   events; 56 database unit assertions, package typecheck, lint, and build pass.
+- Commit `aa4b25b` composes managed AWS KMS configuration and the connection
+  runtime into the API, adds strict create/rotate/revoke contracts and generated
+  OpenAPI/client artifacts, and exposes guarded `connection:manage` commands.
+  Create and rotation idempotency now persist the original secret-free response
+  snapshot and resolve exact retries before KMS, including after later secret
+  rotations; conflicting retries remain stable `409` problems. Credential
+  headers are case-insensitively canonicalized, byte/count bounded, reject
+  transport-controlled headers and control delimiters, and never appear in a
+  response. Application plaintext byte buffers and generated data-key copies
+  are cleared on every success/failure path. The API runtime reports only
+  bounded operation/outcome telemetry and closes its database/KMS resources.
+  Verification at this checkpoint passes 201 API assertions (including a real
+  Nest/Fastify guard-controller stack), 10 contract assertions plus generated
+  artifact drift, 56 database unit assertions, seven fresh PostgreSQL 18
+  connection assertions, and five production encryption-adapter assertions;
+  all affected packages typecheck/build and every changed source/test path
+  passes ESLint. The full repository lint command exceeded Node's default 4 GiB
+  heap during this checkpoint, so it is not used as evidence for Phase 4
+  completion.
 - No Phase 4 endpoint, executor, registry release, or publishable capability is
-  claimed complete yet.
+  claimed complete yet beyond create/rotate/revoke credential management; the
+  SSRF-enforcing connection test, generic HTTP executor, and preview slices
+  remain gated.
 
 ## Later phases
 
