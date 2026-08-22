@@ -125,6 +125,21 @@ export type CreateConnectionInput = RequestMetadata &
     requestHash: string;
   }>;
 
+export type FindConnectionCreateReplayInput = Readonly<{
+  workspaceId: string;
+  actorId: string;
+  idempotencyKey: string;
+  requestHash: string;
+}>;
+
+export type FindConnectionRotateReplayInput = Readonly<{
+  workspaceId: string;
+  actorId: string;
+  connectionId: string;
+  idempotencyKey: string;
+  requestHash: string;
+}>;
+
 export type RotateConnectionSecretInput = RequestMetadata &
   Readonly<{
     workspaceId: string;
@@ -133,6 +148,8 @@ export type RotateConnectionSecretInput = RequestMetadata &
     secretVersionId: string;
     expectedCurrentSecretVersionId: string;
     sealed: SealedConnectionSecretRecord;
+    idempotencyKey: string;
+    requestHash: string;
   }>;
 
 export type RevokeConnectionInput = RequestMetadata &
@@ -168,6 +185,12 @@ export type RecordConnectionHealthInput = RequestMetadata &
 
 export interface ConnectionDatabase {
   createConnection(input: CreateConnectionInput): Promise<ConnectionRecord>;
+  findConnectionCreateReplay(
+    input: FindConnectionCreateReplayInput,
+  ): Promise<ConnectionRecord | null>;
+  findConnectionRotateReplay(
+    input: FindConnectionRotateReplayInput,
+  ): Promise<ConnectionRecord | null>;
   getConnection(
     workspaceId: string,
     connectionId: string,
@@ -342,6 +365,54 @@ function durableCreateResult(value: unknown): Readonly<{
     .parse(value);
 }
 
+const durableConnectionSnapshotSchema = z
+  .object({
+    id: z.uuid(),
+    workspaceId: z.uuid(),
+    providerKey: providerKeySchema,
+    name: connectionNameSchema,
+    authType: z.literal(CONNECTION_AUTH_TYPE.httpHeaders),
+    status: z.enum(CONNECTION_STATUS),
+    currentSecretVersionId: z.uuid(),
+    lastTestedAt: z.iso.datetime().nullable(),
+    lastHealthyAt: z.iso.datetime().nullable(),
+    lastErrorCode: errorCodeSchema.nullable(),
+    createdBy: z.uuid(),
+    createdAt: z.iso.datetime(),
+    updatedAt: z.iso.datetime(),
+  })
+  .strict();
+
+function durableConnectionSnapshot(value: unknown): ConnectionRecord | null {
+  const parsed = durableConnectionSnapshotSchema.safeParse(value);
+  if (!parsed.success) return null;
+  return Object.freeze({
+    ...parsed.data,
+    lastTestedAt:
+      parsed.data.lastTestedAt === null
+        ? null
+        : new Date(parsed.data.lastTestedAt),
+    lastHealthyAt:
+      parsed.data.lastHealthyAt === null
+        ? null
+        : new Date(parsed.data.lastHealthyAt),
+    createdAt: new Date(parsed.data.createdAt),
+    updatedAt: new Date(parsed.data.updatedAt),
+  });
+}
+
+function serializeConnectionSnapshot(
+  connection: ConnectionRecord,
+): Readonly<Record<string, unknown>> {
+  return Object.freeze({
+    ...connection,
+    lastTestedAt: connection.lastTestedAt?.toISOString() ?? null,
+    lastHealthyAt: connection.lastHealthyAt?.toISOString() ?? null,
+    createdAt: connection.createdAt.toISOString(),
+    updatedAt: connection.updatedAt.toISOString(),
+  });
+}
+
 export function createConnectionDatabase(
   config: DatabaseConfig,
 ): ConnectionDatabase {
@@ -402,13 +473,19 @@ export function createConnectionDatabase(
                 'Idempotency key request mismatch',
               );
             if (claimed.status === 'completed') {
+              const snapshot = durableConnectionSnapshot(claimed.result_ref);
+              if (snapshot !== null) {
+                if (snapshot.workspaceId !== workspaceId)
+                  throw new Error('Connection idempotency result is corrupt');
+                return snapshot;
+              }
               const replay = durableCreateResult(claimed.result_ref);
               const existing = await selectConnection(
                 client,
                 workspaceId,
                 replay.connectionId,
               );
-              if (existing?.currentSecretVersionId !== replay.secretVersionId)
+              if (existing === null)
                 throw new Error('Connection idempotency result is corrupt');
               return existing;
             }
@@ -429,6 +506,10 @@ export function createConnectionDatabase(
                 actorId,
               ],
             );
+            const row = inserted.rows[0];
+            if (row === undefined)
+              throw new Error('Connection insert returned no row');
+            const connection = mapConnection(row);
             await client.query(
               `insert into app.connection_secret_versions
                  (id, workspace_id, connection_id, schema_version,
@@ -491,16 +572,13 @@ export function createConnectionDatabase(
                where workspace_id = $2 and operation = 'connection.create'
                  and scope = $3 and key_hash = $4`,
               [
-                JSON.stringify({ connectionId, secretVersionId }),
+                JSON.stringify(serializeConnectionSnapshot(connection)),
                 workspaceId,
                 actorId,
                 digest,
               ],
             );
-            const row = inserted.rows[0];
-            if (row === undefined)
-              throw new Error('Connection insert returned no row');
-            return mapConnection(row);
+            return connection;
           },
         );
       } catch (error: unknown) {
@@ -512,6 +590,114 @@ export function createConnectionDatabase(
           );
         throw error;
       }
+    },
+
+    findConnectionCreateReplay: async (
+      input,
+    ): Promise<ConnectionRecord | null> => {
+      const actorId = uuidSchema.parse(input.actorId);
+      const requestHash = digestSchema.parse(input.requestHash);
+      const digest = keyDigest(input.idempotencyKey);
+      return withConnectionTransaction(
+        pool,
+        input.workspaceId,
+        actorId,
+        async (client, workspaceId) => {
+          await requireConnectionManager(client, workspaceId, actorId);
+          const result = await client.query<{
+            request_hash: string;
+            status: string;
+            result_ref: unknown;
+          }>(
+            `select request_hash, status, result_ref
+             from app.idempotency_records
+             where workspace_id = $1 and operation = 'connection.create'
+               and scope = $2 and key_hash = $3`,
+            [workspaceId, actorId, digest],
+          );
+          const record = result.rows[0];
+          if (record === undefined) return null;
+          if (record.request_hash !== requestHash)
+            throw new ConnectionIdempotencyConflictError(
+              'Idempotency key request mismatch',
+            );
+          if (record.status !== 'completed') return null;
+          const snapshot = durableConnectionSnapshot(record.result_ref);
+          if (snapshot !== null) {
+            if (snapshot.workspaceId !== workspaceId)
+              throw new Error('Connection idempotency result is corrupt');
+            return snapshot;
+          }
+          const replay = durableCreateResult(record.result_ref);
+          const connection = await selectConnection(
+            client,
+            workspaceId,
+            replay.connectionId,
+          );
+          if (connection === null)
+            throw new Error('Connection idempotency result is corrupt');
+          return connection;
+        },
+      );
+    },
+
+    findConnectionRotateReplay: async (
+      input,
+    ): Promise<ConnectionRecord | null> => {
+      const actorId = uuidSchema.parse(input.actorId);
+      const connectionId = uuidSchema.parse(input.connectionId);
+      const requestHash = digestSchema.parse(input.requestHash);
+      const digest = keyDigest(input.idempotencyKey);
+      return withConnectionTransaction(
+        pool,
+        input.workspaceId,
+        actorId,
+        async (client, workspaceId) => {
+          await requireConnectionManager(client, workspaceId, actorId);
+          const scope = `${actorId}:${connectionId}`;
+          const result = await client.query<{
+            request_hash: string;
+            status: string;
+            result_ref: unknown;
+          }>(
+            `select request_hash, status, result_ref
+             from app.idempotency_records
+             where workspace_id = $1
+               and operation = 'connection.secret.rotate'
+               and scope = $2 and key_hash = $3`,
+            [workspaceId, scope, digest],
+          );
+          const record = result.rows[0];
+          if (record === undefined) return null;
+          if (record.request_hash !== requestHash)
+            throw new ConnectionIdempotencyConflictError(
+              'Idempotency key request mismatch',
+            );
+          if (record.status !== 'completed') return null;
+          const snapshot = durableConnectionSnapshot(record.result_ref);
+          if (snapshot !== null) {
+            if (
+              snapshot.id !== connectionId ||
+              snapshot.workspaceId !== workspaceId
+            )
+              throw new Error(
+                'Connection rotation idempotency result is corrupt',
+              );
+            return snapshot;
+          }
+          const replay = durableCreateResult(record.result_ref);
+          const connection = await selectConnection(
+            client,
+            workspaceId,
+            replay.connectionId,
+          );
+          if (replay.connectionId !== connectionId || connection === null)
+            throw new Error(
+              'Connection rotation idempotency result is corrupt',
+            );
+          return connection;
+        },
+      );
     },
 
     getConnection: (workspaceId, connectionId) =>
@@ -529,6 +715,8 @@ export function createConnectionDatabase(
       const secretVersionId = uuidSchema.parse(input.secretVersionId);
       const expected = uuidSchema.parse(input.expectedCurrentSecretVersionId);
       const sealed = sealedSecretSchema.parse(input.sealed);
+      const requestHash = digestSchema.parse(input.requestHash);
+      const digest = keyDigest(input.idempotencyKey);
       const metadata = parseRequestMetadata(input);
       return withConnectionTransaction(
         pool,
@@ -536,6 +724,68 @@ export function createConnectionDatabase(
         actorId,
         async (client, workspaceId) => {
           await requireConnectionManager(client, workspaceId, actorId);
+          const scope = `${actorId}:${connectionId}`;
+          await client.query(
+            `insert into app.idempotency_records
+               (id, workspace_id, operation, scope, key_hash, request_hash,
+                status, resource_id, result_ref)
+             values ($1, $2, 'connection.secret.rotate', $3, $4, $5,
+                     'in_progress', $6, '{}'::jsonb)
+             on conflict (workspace_id, operation, scope, key_hash) do nothing`,
+            [
+              randomUUID(),
+              workspaceId,
+              scope,
+              digest,
+              requestHash,
+              connectionId,
+            ],
+          );
+          const claim = await client.query<{
+            request_hash: string;
+            status: string;
+            result_ref: unknown;
+          }>(
+            `select request_hash, status, result_ref
+             from app.idempotency_records
+             where workspace_id = $1
+               and operation = 'connection.secret.rotate'
+               and scope = $2 and key_hash = $3 for update`,
+            [workspaceId, scope, digest],
+          );
+          const claimed = claim.rows[0];
+          if (claimed === undefined)
+            throw new Error(
+              'Connection rotation idempotency claim is unavailable',
+            );
+          if (claimed.request_hash !== requestHash)
+            throw new ConnectionIdempotencyConflictError(
+              'Idempotency key request mismatch',
+            );
+          if (claimed.status === 'completed') {
+            const snapshot = durableConnectionSnapshot(claimed.result_ref);
+            if (snapshot !== null) {
+              if (
+                snapshot.id !== connectionId ||
+                snapshot.workspaceId !== workspaceId
+              )
+                throw new Error(
+                  'Connection rotation idempotency result is corrupt',
+                );
+              return snapshot;
+            }
+            const replay = durableCreateResult(claimed.result_ref);
+            const existing = await selectConnection(
+              client,
+              workspaceId,
+              replay.connectionId,
+            );
+            if (existing === null || replay.connectionId !== connectionId)
+              throw new Error(
+                'Connection rotation idempotency result is corrupt',
+              );
+            return existing;
+          }
           const connection = await selectConnection(
             client,
             workspaceId,
@@ -599,7 +849,22 @@ export function createConnectionDatabase(
           const row = updated.rows[0];
           if (row === undefined)
             throw new Error('Connection rotation returned no row');
-          return mapConnection(row);
+          const rotated = mapConnection(row);
+          await client.query(
+            `update app.idempotency_records
+             set status = 'completed', result_ref = $1::jsonb,
+                 updated_at = transaction_timestamp()
+             where workspace_id = $2
+               and operation = 'connection.secret.rotate'
+               and scope = $3 and key_hash = $4`,
+            [
+              JSON.stringify(serializeConnectionSnapshot(rotated)),
+              workspaceId,
+              scope,
+              digest,
+            ],
+          );
+          return rotated;
         },
       );
     },

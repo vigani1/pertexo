@@ -39,6 +39,9 @@ const apiEnvironmentSchema = z.object({
     .positive()
     .default(30_000),
   DATABASE_POOL_MAX: z.coerce.number().int().positive().max(20).default(5),
+  CONNECTION_KMS_ENDPOINT: z.url().optional(),
+  CONNECTION_KMS_KEY_REFERENCE: z.string().min(1).max(2_048).optional(),
+  CONNECTION_KMS_REGION: z.string().min(1).max(128).optional(),
   HOST: z.string().trim().min(1).default('0.0.0.0'),
   NODE_ENV: z.enum(API_NODE_ENVIRONMENTS).default('development'),
   LOG_LEVEL: z
@@ -127,6 +130,11 @@ export type ApiIdentityConfig = Readonly<{
 }>;
 
 export type ApiConfig = Readonly<{
+  connections?: Readonly<{
+    kmsKeyReference: string;
+    region: string;
+    endpoint?: string;
+  }>;
   database: Readonly<{
     connectionString: string;
     connectionTimeoutMillis: number;
@@ -157,6 +165,7 @@ export function parseApiConfig(
       : { otlpHttpEndpoint: parsed.OTEL_EXPORTER_OTLP_ENDPOINT }),
   });
   const identity = parseIdentityConfig(parsed, environment);
+  const connections = parseConnectionsConfig(parsed, environment);
   const deployed =
     parsed.NODE_ENV === 'staging' || parsed.NODE_ENV === 'production';
   if (deployed && parsed.REDIS_URL === undefined) {
@@ -164,6 +173,7 @@ export function parseApiConfig(
   }
 
   return Object.freeze({
+    ...(connections === undefined ? {} : { connections }),
     database: Object.freeze({
       connectionString: parsed.DATABASE_API_URL,
       connectionTimeoutMillis: parsed.DATABASE_CONNECTION_TIMEOUT_MILLIS,
@@ -178,6 +188,37 @@ export function parseApiConfig(
     observability,
     port: parsed.PORT,
     redisUrl: parsed.REDIS_URL ?? 'redis://localhost:6379/0',
+  });
+}
+
+function parseConnectionsConfig(
+  environment: ParsedApiEnvironment,
+  rawEnvironment: Record<string, string | undefined>,
+): ApiConfig['connections'] {
+  const configured = Object.entries(rawEnvironment).some(
+    ([name, value]) =>
+      value !== undefined && name.startsWith('CONNECTION_KMS_'),
+  );
+  const deployed =
+    environment.NODE_ENV === 'staging' || environment.NODE_ENV === 'production';
+  if (!configured && !deployed) return undefined;
+  if (
+    environment.CONNECTION_KMS_KEY_REFERENCE === undefined ||
+    environment.CONNECTION_KMS_REGION === undefined
+  )
+    throw new Error('Connection KMS configuration is incomplete');
+  if (
+    deployed &&
+    environment.CONNECTION_KMS_ENDPOINT !== undefined &&
+    new URL(environment.CONNECTION_KMS_ENDPOINT).protocol !== 'https:'
+  )
+    throw new Error('HTTPS connection KMS endpoint is required when deployed');
+  return Object.freeze({
+    kmsKeyReference: environment.CONNECTION_KMS_KEY_REFERENCE,
+    region: environment.CONNECTION_KMS_REGION,
+    ...(environment.CONNECTION_KMS_ENDPOINT === undefined
+      ? {}
+      : { endpoint: environment.CONNECTION_KMS_ENDPOINT }),
   });
 }
 

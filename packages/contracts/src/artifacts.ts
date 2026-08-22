@@ -1,4 +1,8 @@
 import {
+  connectionsClientContract,
+  connectionsOpenApiDocument,
+} from './connections.js';
+import {
   identityWorkspaceClientContract,
   identityWorkspaceOpenApiDocument,
 } from './identity-workspace.js';
@@ -12,6 +16,14 @@ import {
 } from './workflow-runs.js';
 
 export const CONTRACT_ARTIFACTS = Object.freeze([
+  Object.freeze({
+    fileName: 'connections.client-schema.json',
+    content: `${JSON.stringify(connectionsClientContract, undefined, 2)}\n`,
+  }),
+  Object.freeze({
+    fileName: 'connections.openapi.json',
+    content: `${JSON.stringify(connectionsOpenApiDocument, undefined, 2)}\n`,
+  }),
   Object.freeze({
     fileName: 'identity-workspace.client-schema.json',
     content: `${JSON.stringify(identityWorkspaceClientContract, undefined, 2)}\n`,

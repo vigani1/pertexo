@@ -17,6 +17,7 @@ describe('contracts package boundary', () => {
     expect(Object.keys(manifest.exports)).toEqual([
       '.',
       './errors',
+      './connections',
       './identity-workspace',
       './workflow-authoring',
       './workflow-runs',
@@ -24,6 +25,8 @@ describe('contracts package boundary', () => {
 
     for (const source of [
       '../src/index.ts',
+      '../src/connections.ts',
+      '../src/http/connections.ts',
       '../src/errors/api-problem.ts',
       '../src/http/identity-workspace.ts',
       '../src/identity-workspace.ts',

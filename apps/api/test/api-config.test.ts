@@ -97,6 +97,9 @@ describe('parseApiConfig', () => {
       OIDC_TRANSACTION_PREVIOUS_KEYS: JSON.stringify([
         { version: 'v1', key: Buffer.alloc(32, 6).toString('base64') },
       ]),
+      CONNECTION_KMS_KEY_REFERENCE:
+        'arn:aws:kms:eu-central-1:123456789012:key/example',
+      CONNECTION_KMS_REGION: 'eu-central-1',
       REDIS_URL: 'rediss://redis.example.test:6380/0',
     });
 
@@ -119,6 +122,11 @@ describe('parseApiConfig', () => {
     });
     expect(Object.isFrozen(config.identity)).toBe(true);
     expect(Object.isFrozen(config.identity?.oidc.scopes)).toBe(true);
+    expect(config.connections).toEqual({
+      kmsKeyReference: 'arn:aws:kms:eu-central-1:123456789012:key/example',
+      region: 'eu-central-1',
+    });
+    expect(Object.isFrozen(config.connections)).toBe(true);
   });
 
   it('rejects partial local identity configuration without exposing its secret', () => {
@@ -199,7 +207,48 @@ describe('parseApiConfig', () => {
         OIDC_REDIRECT_URI: 'https://api.example.test/v1/auth/oidc/callback',
         OIDC_TRANSACTION_KEY: Buffer.alloc(32, 7).toString('base64'),
         OIDC_TRANSACTION_KEY_VERSION: 'v1',
+        CONNECTION_KMS_KEY_REFERENCE:
+          'arn:aws:kms:eu-central-1:123456789012:key/example',
+        CONNECTION_KMS_REGION: 'eu-central-1',
       }),
     ).toThrow('REDIS_URL is required when deployed');
+  });
+
+  it('rejects partial connection KMS configuration without exposing the key reference', () => {
+    const keyReference = 'should-never-appear';
+    let message = '';
+    try {
+      parseApiConfig({
+        DATABASE_API_URL:
+          'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+        CONNECTION_KMS_KEY_REFERENCE: keyReference,
+      });
+    } catch (error: unknown) {
+      message = error instanceof Error ? error.message : String(error);
+    }
+    expect(message).toBe('Connection KMS configuration is incomplete');
+    expect(message).not.toContain(keyReference);
+  });
+
+  it('rejects an insecure deployed connection KMS endpoint', () => {
+    expect(() =>
+      parseApiConfig({
+        DATABASE_API_URL:
+          'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+        NODE_ENV: 'production',
+        OIDC_ISSUER: 'https://identity.example.test',
+        OIDC_AUTHORIZATION_ENDPOINT: 'https://identity.example.test/authorize',
+        OIDC_TOKEN_ENDPOINT: 'https://identity.example.test/token',
+        OIDC_JWKS_URI: 'https://identity.example.test/jwks',
+        OIDC_CLIENT_ID: 'pertexo-api',
+        OIDC_REDIRECT_URI: 'https://api.example.test/v1/auth/oidc/callback',
+        OIDC_TRANSACTION_KEY: Buffer.alloc(32, 7).toString('base64'),
+        OIDC_TRANSACTION_KEY_VERSION: 'v1',
+        CONNECTION_KMS_KEY_REFERENCE: 'alias/pertexo-connections',
+        CONNECTION_KMS_REGION: 'eu-central-1',
+        CONNECTION_KMS_ENDPOINT: 'http://kms.example.test',
+        REDIS_URL: 'rediss://redis.example.test:6380/0',
+      }),
+    ).toThrow('HTTPS connection KMS endpoint is required when deployed');
   });
 });

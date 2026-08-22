@@ -1,63 +1,82 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Pertexo Identity and Workspace API",
+    "title": "Pertexo Connections API",
     "version": "1.0.0"
   },
   "paths": {
-    "/v1/auth/oidc/start": {
-      "get": {
-        "operationId": "startOidcLogin",
+    "/v1/workspaces/{workspaceId}/connections": {
+      "post": {
+        "operationId": "createConnection",
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 256
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[\\x21-\\x7e]+$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectionCreateRequest"
+              }
+            }
+          }
+        },
         "responses": {
-          "200": {
-            "description": "OIDC authorization transaction",
+          "201": {
+            "description": "Connection created",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OidcStartResponse"
+                  "$ref": "#/components/schemas/ConnectionResponse"
                 }
               }
             }
           },
-          "500": {
-            "$ref": "#/components/responses/Unexpected"
-          }
-        }
-      }
-    },
-    "/v1/auth/oidc/callback": {
-      "get": {
-        "operationId": "completeOidcLogin",
-        "parameters": [
-          {
-            "name": "code",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "$schema": "https://json-schema.org/draft/2020-12/schema",
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 4096
-            }
-          },
-          {
-            "name": "state",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "$schema": "https://json-schema.org/draft/2020-12/schema",
-              "type": "string",
-              "minLength": 16,
-              "maxLength": 512
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Browser session established"
-          },
           "400": {
             "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
           },
           "500": {
             "$ref": "#/components/responses/Unexpected"
@@ -68,116 +87,9 @@
         }
       }
     },
-    "/v1/auth/logout": {
-      "post": {
-        "operationId": "logoutSession",
-        "security": [
-          {
-            "cookieSession": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "x-csrf-token",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "minLength": 16,
-              "maxLength": 256
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Browser session revoked"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthenticated"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "500": {
-            "$ref": "#/components/responses/Unexpected"
-          }
-        }
-      }
-    },
-    "/v1/workspaces": {
-      "post": {
-        "operationId": "createWorkspace",
-        "security": [
-          {
-            "cookieSession": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "x-csrf-token",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "minLength": 16,
-              "maxLength": 256
-            }
-          },
-          {
-            "name": "Idempotency-Key",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "$schema": "https://json-schema.org/draft/2020-12/schema",
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 128,
-              "pattern": "^[\\x21-\\x7e]+$"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/WorkspaceCreateRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Workspace created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WorkspaceResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthenticated"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
-          },
-          "500": {
-            "$ref": "#/components/responses/Unexpected"
-          }
-        }
-      }
-    },
-    "/v1/workspaces/{workspaceId}/deletion": {
-      "post": {
-        "operationId": "requestWorkspaceDeletion",
+    "/v1/workspaces/{workspaceId}/connections/{connectionId}/secret": {
+      "put": {
+        "operationId": "rotateConnectionSecret",
         "security": [
           {
             "cookieSession": []
@@ -186,6 +98,15 @@
         "parameters": [
           {
             "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "connectionId",
             "in": "path",
             "required": true,
             "schema": {
@@ -210,7 +131,6 @@
             "in": "header",
             "required": true,
             "schema": {
-              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
               "minLength": 1,
               "maxLength": 128,
@@ -223,18 +143,18 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/WorkspaceDeletionRequest"
+                "$ref": "#/components/schemas/ConnectionRotateSecretRequest"
               }
             }
           }
         },
         "responses": {
-          "201": {
-            "description": "Workspace deletion requested",
+          "200": {
+            "description": "Connection secret rotated",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkspaceResponse"
+                  "$ref": "#/components/schemas/ConnectionResponse"
                 }
               }
             }
@@ -248,16 +168,24 @@
           "403": {
             "$ref": "#/components/responses/Forbidden"
           },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
           "409": {
             "$ref": "#/components/responses/Conflict"
           },
           "500": {
             "$ref": "#/components/responses/Unexpected"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
           }
         }
-      },
+      }
+    },
+    "/v1/workspaces/{workspaceId}/connections/{connectionId}": {
       "delete": {
-        "operationId": "restoreWorkspace",
+        "operationId": "revokeConnection",
         "security": [
           {
             "cookieSession": []
@@ -266,6 +194,15 @@
         "parameters": [
           {
             "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "connectionId",
             "in": "path",
             "required": true,
             "schema": {
@@ -283,28 +220,16 @@
               "type": "string",
               "minLength": 16,
               "maxLength": 256
-            }
-          },
-          {
-            "name": "Idempotency-Key",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "$schema": "https://json-schema.org/draft/2020-12/schema",
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 128,
-              "pattern": "^[\\x21-\\x7e]+$"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "Workspace restored as suspended",
+            "description": "Connection revoked",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkspaceResponse"
+                  "$ref": "#/components/schemas/ConnectionResponse"
                 }
               }
             }
@@ -318,8 +243,8 @@
           "403": {
             "$ref": "#/components/responses/Forbidden"
           },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
+          "404": {
+            "$ref": "#/components/responses/NotFound"
           },
           "500": {
             "$ref": "#/components/responses/Unexpected"
@@ -432,91 +357,65 @@
         ],
         "additionalProperties": false
       },
-      "OidcCallbackRequest": {
+      "ConnectionCreateRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "readOnly": true,
         "type": "object",
         "properties": {
-          "code": {
+          "providerKey": {
             "type": "string",
-            "minLength": 1,
-            "maxLength": 4096
+            "const": "http"
           },
-          "state": {
-            "type": "string",
-            "minLength": 16,
-            "maxLength": 512
-          }
-        },
-        "required": [
-          "code",
-          "state"
-        ],
-        "additionalProperties": false
-      },
-      "OidcStartResponse": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "authorizationUrl": {
-            "type": "string",
-            "format": "uri"
-          },
-          "expiresAt": {
-            "type": "string",
-            "format": "date-time",
-            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
-          }
-        },
-        "required": [
-          "authorizationUrl",
-          "expiresAt"
-        ],
-        "additionalProperties": false
-      },
-      "WorkspaceCreateRequest": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
           "name": {
             "type": "string",
             "minLength": 1,
             "maxLength": 128
           },
-          "slug": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 64,
-            "pattern": "^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$"
+          "credential": {
+            "readOnly": true,
+            "type": "object",
+            "properties": {
+              "schemaVersion": {
+                "type": "number",
+                "const": 1
+              },
+              "type": {
+                "type": "string",
+                "const": "http_headers"
+              },
+              "headers": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$"
+                },
+                "additionalProperties": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 8192
+                }
+              }
+            },
+            "required": [
+              "schemaVersion",
+              "type",
+              "headers"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
+          "providerKey",
           "name",
-          "slug"
+          "credential"
         ],
         "additionalProperties": false
       },
-      "WorkspaceDeletionRequest": {
+      "ConnectionResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "reason": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 512
-          },
-          "purgeAfter": {
-            "type": "string",
-            "format": "date-time",
-            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-          }
-        },
-        "required": [
-          "reason"
-        ],
-        "additionalProperties": false
-      },
-      "WorkspaceResponse": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "readOnly": true,
         "type": "object",
         "properties": {
           "id": {
@@ -524,20 +423,84 @@
             "format": "uuid",
             "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
           },
-          "name": {
-            "type": "string"
+          "workspaceId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
           },
-          "slug": {
-            "type": "string"
+          "providerKey": {
+            "type": "string",
+            "const": "http"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "authType": {
+            "type": "string",
+            "const": "http_headers"
           },
           "status": {
             "type": "string",
             "enum": [
               "active",
-              "suspended",
-              "pending_deletion",
-              "deleted"
+              "reauthorization_required",
+              "revoked"
             ]
+          },
+          "secretVersionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "health": {
+            "readOnly": true,
+            "type": "object",
+            "properties": {
+              "lastTestedAt": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "lastHealthyAt": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "lastErrorCode": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "lastTestedAt",
+              "lastHealthyAt",
+              "lastErrorCode"
+            ],
+            "additionalProperties": false
           },
           "createdAt": {
             "type": "string",
@@ -552,11 +515,66 @@
         },
         "required": [
           "id",
+          "workspaceId",
+          "providerKey",
           "name",
-          "slug",
+          "authType",
           "status",
+          "secretVersionId",
+          "health",
           "createdAt",
           "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "ConnectionRotateSecretRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "readOnly": true,
+        "type": "object",
+        "properties": {
+          "expectedSecretVersionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "credential": {
+            "readOnly": true,
+            "type": "object",
+            "properties": {
+              "schemaVersion": {
+                "type": "number",
+                "const": 1
+              },
+              "type": {
+                "type": "string",
+                "const": "http_headers"
+              },
+              "headers": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$"
+                },
+                "additionalProperties": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 8192
+                }
+              }
+            },
+            "required": [
+              "schemaVersion",
+              "type",
+              "headers"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "expectedSecretVersionId",
+          "credential"
         ],
         "additionalProperties": false
       }
@@ -592,6 +610,16 @@
           }
         }
       },
+      "NotFound": {
+        "description": "Connection not found",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ApiProblem"
+            }
+          }
+        }
+      },
       "Conflict": {
         "description": "Request conflict",
         "content": {
@@ -602,8 +630,18 @@
           }
         }
       },
+      "ReauthorizationRequired": {
+        "description": "Reauthorization required",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ApiProblem"
+            }
+          }
+        }
+      },
       "ServiceUnavailable": {
-        "description": "Upstream service unavailable",
+        "description": "Key or provider service unavailable",
         "content": {
           "application/problem+json": {
             "schema": {

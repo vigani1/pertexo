@@ -4,6 +4,15 @@ import { describe, expect, it } from 'vitest';
 
 import { CONTRACT_ARTIFACTS } from '../src/artifacts.js';
 import {
+  connectionsClientContract,
+  connectionsOpenApiDocument,
+} from '../src/connections.js';
+import {
+  connectionCreateRequestSchema,
+  connectionResponseSchema,
+  httpHeadersCredentialSchema,
+} from '../src/http/connections.js';
+import {
   apiProblemSchema,
   apiProblemShape,
 } from '../src/errors/api-problem.js';
@@ -34,6 +43,73 @@ import {
 } from '../src/http/workflow-runs.js';
 
 describe('public contracts package', () => {
+  it('defines strict credential input and secret-free connection responses', () => {
+    const parsed = connectionCreateRequestSchema.parse({
+      providerKey: 'http',
+      name: 'Operations API',
+      credential: {
+        schemaVersion: 1,
+        type: 'http_headers',
+        headers: { Authorization: 'Bearer opaque', 'X-API-Key': 'key' },
+      },
+    });
+    expect(parsed.credential.headers).toEqual({
+      authorization: 'Bearer opaque',
+      'x-api-key': 'key',
+    });
+    expect(
+      connectionCreateRequestSchema.safeParse({
+        ...parsed,
+        credential: {
+          ...parsed.credential,
+          headers: { host: 'metadata.internal' },
+        },
+      }).success,
+    ).toBe(false);
+    expect(
+      httpHeadersCredentialSchema.safeParse({
+        schemaVersion: 1,
+        type: 'http_headers',
+        headers: { Authorization: 'a', authorization: 'b' },
+      }).success,
+    ).toBe(false);
+    expect(
+      connectionResponseSchema.safeParse({
+        id: '00000000-0000-4000-8000-000000000001',
+        workspaceId: '00000000-0000-4000-8000-000000000002',
+        providerKey: 'http',
+        name: 'Operations API',
+        authType: 'http_headers',
+        status: 'active',
+        secretVersionId: '00000000-0000-4000-8000-000000000003',
+        health: {
+          lastTestedAt: null,
+          lastHealthyAt: null,
+          lastErrorCode: null,
+        },
+        createdAt: '2026-08-22T18:00:00.000Z',
+        updatedAt: '2026-08-22T18:00:00.000Z',
+        credential: { authorization: 'must-not-leak' },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('documents create, rotate, and revoke connection operations', () => {
+    expect(connectionsClientContract.schemas).toHaveProperty(
+      'ConnectionCreateRequest',
+    );
+    expect(Object.keys(connectionsOpenApiDocument.paths)).toEqual([
+      '/v1/workspaces/{workspaceId}/connections',
+      '/v1/workspaces/{workspaceId}/connections/{connectionId}/secret',
+      '/v1/workspaces/{workspaceId}/connections/{connectionId}',
+    ]);
+    expect(
+      connectionsOpenApiDocument.paths[
+        '/v1/workspaces/{workspaceId}/connections'
+      ].post.parameters.map(({ name }) => name),
+    ).toEqual(['workspaceId', 'x-csrf-token', 'Idempotency-Key']);
+  });
+
   it('owns strict browser-safe request and RFC 9457 problem schemas', () => {
     expect(Object.keys(apiProblemShape)).toEqual([
       'type',

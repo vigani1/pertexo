@@ -12,6 +12,11 @@ import type { ApiConfig } from './platform/config/api-config.js';
 import { WORKSPACE_DATABASE } from './platform/database/database.module.js';
 import { NestLoggerAdapter } from './platform/observability/observability.module.js';
 import {
+  createApiConnectionRuntime,
+  type ApiConnectionRuntime,
+  type ApiConnectionRuntimeOverrides,
+} from './platform/connections/connection-runtime.module.js';
+import {
   createApiIdentityRuntime,
   type ApiIdentityRuntime,
   type ApiIdentityRuntimeOverrides,
@@ -26,6 +31,8 @@ export type ApiApplicationDependencies = Readonly<{
   database?: WorkspaceDatabase;
   identityRuntime?: ApiIdentityRuntime;
   identityOverrides?: ApiIdentityRuntimeOverrides;
+  connectionRuntime?: ApiConnectionRuntime;
+  connectionOverrides?: ApiConnectionRuntimeOverrides;
   workflowRuntime?: ApiWorkflowRuntime;
   workflowOverrides?: ApiWorkflowRuntimeOverrides;
   logger: StructuredLogger;
@@ -56,6 +63,16 @@ export async function createApiApplication(
           config.redisUrl,
           dependencies.workflowOverrides,
         ));
+  const connectionRuntime =
+    dependencies.connectionRuntime ??
+    (identityRuntime === undefined || config.connections === undefined
+      ? undefined
+      : createApiConnectionRuntime(
+          config.connections,
+          config.database,
+          identityRuntime,
+          dependencies.connectionOverrides,
+        ));
   let application: NestFastifyApplication;
   try {
     application = await NestFactory.create<NestFastifyApplication>(
@@ -63,6 +80,7 @@ export async function createApiApplication(
         ...dependencies,
         ...(identityRuntime === undefined ? {} : { identityRuntime }),
         ...(workflowRuntime === undefined ? {} : { workflowRuntime }),
+        ...(connectionRuntime === undefined ? {} : { connectionRuntime }),
       }),
       new FastifyAdapter(),
       { abortOnError: false, logger: nestLogger },
@@ -71,6 +89,7 @@ export async function createApiApplication(
     await Promise.allSettled([
       identityRuntime?.close(),
       workflowRuntime?.close(),
+      connectionRuntime?.close(),
     ]);
     throw error;
   }

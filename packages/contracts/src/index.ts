@@ -1,4 +1,9 @@
 export {
+  connectionsClientContract,
+  connectionsOpenApiDocument,
+} from './connections.js';
+export * from './http/connections.js';
+export {
   API_PROBLEM_CODES,
   apiProblemCodeSchema,
   apiProblemIssueSchema,

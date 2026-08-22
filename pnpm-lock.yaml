@@ -53,6 +53,9 @@ importers:
       '@pertexo/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@pertexo/integrations':
+        specifier: workspace:*
+        version: link:../../packages/integrations
       '@pertexo/nodes-core':
         specifier: workspace:*
         version: link:../../packages/nodes-core

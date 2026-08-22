@@ -21,6 +21,10 @@ import type {
 } from './platform/http/problem-details.filter.js';
 import { ObservabilityModule } from './platform/observability/observability.module.js';
 import {
+  ConnectionRuntimeModule,
+  type ApiConnectionRuntime,
+} from './platform/connections/connection-runtime.module.js';
+import {
   IdentityRuntimeModule,
   type ApiIdentityRuntime,
 } from './platform/identity/identity-runtime.module.js';
@@ -32,6 +36,7 @@ import {
 export type ApiModuleDependencies = Readonly<{
   database?: WorkspaceDatabase;
   identityRuntime?: ApiIdentityRuntime;
+  connectionRuntime?: ApiConnectionRuntime;
   workflowRuntime?: ApiWorkflowRuntime;
   logger: StructuredLogger;
   telemetry: TelemetryLifecycle;
@@ -54,7 +59,9 @@ export class AppModule {
         : { database: dependencies.database };
     const httpErrorLogger: HttpErrorLogger = Object.freeze({
       log: (entry: HttpErrorLogEntry): void => {
-        dependencies.logger[entry.severity](
+        logHttpError(
+          dependencies.logger,
+          entry.severity,
           'http.request_failed',
           {
             code: entry.code,
@@ -79,14 +86,24 @@ export class AppModule {
     const featureModules =
       identityModule === undefined
         ? []
-        : dependencies.workflowRuntime === undefined
-          ? [identityModule]
-          : [
-              WorkflowRuntimeModule.register(
-                dependencies.workflowRuntime,
-                identityModule,
-              ),
-            ];
+        : [
+            ...(dependencies.workflowRuntime === undefined
+              ? [identityModule]
+              : [
+                  WorkflowRuntimeModule.register(
+                    dependencies.workflowRuntime,
+                    identityModule,
+                  ),
+                ]),
+            ...(dependencies.connectionRuntime === undefined
+              ? []
+              : [
+                  ConnectionRuntimeModule.register(
+                    dependencies.connectionRuntime,
+                    identityModule,
+                  ),
+                ]),
+          ];
 
     return {
       module: AppModule,
@@ -103,4 +120,16 @@ export class AppModule {
       providers: [ApiDrainState],
     };
   }
+}
+
+function logHttpError(
+  logger: StructuredLogger,
+  severity: HttpErrorLogEntry['severity'],
+  event: string,
+  fields: Readonly<Record<string, unknown>>,
+  cause: unknown,
+): void {
+  if (severity === 'error') logger.error(event, fields, cause);
+  else if (severity === 'warn') logger.warn(event, fields, cause);
+  else logger.info(event, fields, cause);
 }

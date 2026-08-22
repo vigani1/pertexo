@@ -13,6 +13,7 @@ export {
   CSRF_HEADER_NAME,
   SESSION_COOKIE_NAME,
   authenticatedSession,
+  readHeader,
 } from './guards.js';
 export {
   CreateWorkspaceUseCase,

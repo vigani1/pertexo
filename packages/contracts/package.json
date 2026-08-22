@@ -13,6 +13,10 @@
       "types": "./dist/errors/api-problem.d.ts",
       "default": "./dist/errors/api-problem.js"
     },
+    "./connections": {
+      "types": "./dist/connections.d.ts",
+      "default": "./dist/connections.js"
+    },
     "./identity-workspace": {
       "types": "./dist/identity-workspace.d.ts",
       "default": "./dist/identity-workspace.js"

@@ -21,6 +21,8 @@ export type {
   ConnectionRecord,
   ConnectionStatus,
   CreateConnectionInput,
+  FindConnectionCreateReplayInput,
+  FindConnectionRotateReplayInput,
   RecordConnectionHealthInput,
   ResolveConnectionSecretInput,
   ResolvedConnectionSecretRecord,

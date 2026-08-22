@@ -85,11 +85,23 @@ export const APPLICATION_ERROR_CATALOG = {
     severity: 'warn',
     exposeDetail: true,
   },
+  'connection.conflict': {
+    status: 409,
+    title: 'Connection conflict',
+    severity: 'info',
+    exposeDetail: true,
+  },
   'connection.reauthorization_required': {
     status: 401,
     title: 'Connection reauthorization required',
     severity: 'info',
     exposeDetail: false,
+  },
+  'connection.revoked': {
+    status: 409,
+    title: 'Connection unavailable',
+    severity: 'info',
+    exposeDetail: true,
   },
   'provider.rate_limited': {
     status: 429,

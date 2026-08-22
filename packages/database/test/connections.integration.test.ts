@@ -339,7 +339,7 @@ describe('connection persistence', () => {
   it('uses a compare-and-swap rotation and rejects cross-connection pointers', async () => {
     const first = createInput();
     const second = createInput();
-    await api.createConnection(first);
+    const createdFirst = await api.createConnection(first);
     await api.createConnection(second);
     const nextSecretVersionId = randomUUID();
     const rotated = await api.rotateConnectionSecret({
@@ -349,8 +349,60 @@ describe('connection persistence', () => {
       expectedCurrentSecretVersionId: first.secretVersionId,
       secretVersionId: nextSecretVersionId,
       sealed: sealed(3),
+      idempotencyKey: `rotate-${nextSecretVersionId}`,
+      requestHash: '3'.repeat(64),
     });
     expect(rotated.currentSecretVersionId).toBe(nextSecretVersionId);
+    await expect(
+      api.findConnectionCreateReplay({
+        workspaceId: workspaceA,
+        actorId: ownerA,
+        idempotencyKey: first.idempotencyKey,
+        requestHash: first.requestHash,
+      }),
+    ).resolves.toEqual(createdFirst);
+    await expect(
+      api.findConnectionRotateReplay({
+        workspaceId: workspaceA,
+        actorId: ownerA,
+        connectionId: first.connectionId,
+        idempotencyKey: `rotate-${nextSecretVersionId}`,
+        requestHash: '3'.repeat(64),
+      }),
+    ).resolves.toEqual(rotated);
+    await expect(
+      api.findConnectionRotateReplay({
+        workspaceId: workspaceA,
+        actorId: ownerA,
+        connectionId: first.connectionId,
+        idempotencyKey: `rotate-${nextSecretVersionId}`,
+        requestHash: '8'.repeat(64),
+      }),
+    ).rejects.toBeInstanceOf(ConnectionIdempotencyConflictError);
+    await expect(
+      api.rotateConnectionSecret({
+        workspaceId: workspaceA,
+        actorId: ownerA,
+        connectionId: first.connectionId,
+        expectedCurrentSecretVersionId: first.secretVersionId,
+        secretVersionId: randomUUID(),
+        sealed: sealed(9),
+        idempotencyKey: `rotate-${nextSecretVersionId}`,
+        requestHash: '3'.repeat(64),
+      }),
+    ).resolves.toEqual(rotated);
+    await expect(
+      api.rotateConnectionSecret({
+        workspaceId: workspaceA,
+        actorId: ownerA,
+        connectionId: first.connectionId,
+        expectedCurrentSecretVersionId: first.secretVersionId,
+        secretVersionId: randomUUID(),
+        sealed: sealed(8),
+        idempotencyKey: `rotate-${nextSecretVersionId}`,
+        requestHash: '8'.repeat(64),
+      }),
+    ).rejects.toBeInstanceOf(ConnectionIdempotencyConflictError);
     await expect(
       api.rotateConnectionSecret({
         workspaceId: workspaceA,
@@ -359,8 +411,29 @@ describe('connection persistence', () => {
         expectedCurrentSecretVersionId: first.secretVersionId,
         secretVersionId: randomUUID(),
         sealed: sealed(4),
+        idempotencyKey: `rotate-stale-${first.connectionId}`,
+        requestHash: '4'.repeat(64),
       }),
     ).rejects.toBeInstanceOf(ConnectionSecretVersionConflictError);
+    await api.rotateConnectionSecret({
+      workspaceId: workspaceA,
+      actorId: ownerA,
+      connectionId: first.connectionId,
+      expectedCurrentSecretVersionId: nextSecretVersionId,
+      secretVersionId: randomUUID(),
+      sealed: sealed(5),
+      idempotencyKey: `rotate-later-${first.connectionId}`,
+      requestHash: '5'.repeat(64),
+    });
+    await expect(
+      api.findConnectionRotateReplay({
+        workspaceId: workspaceA,
+        actorId: ownerA,
+        connectionId: first.connectionId,
+        idempotencyKey: `rotate-${nextSecretVersionId}`,
+        requestHash: '3'.repeat(64),
+      }),
+    ).resolves.toEqual(rotated);
 
     const pool = new Pool({ connectionString: databaseUrl(apiBaseUrl) });
     const client = await pool.connect();
