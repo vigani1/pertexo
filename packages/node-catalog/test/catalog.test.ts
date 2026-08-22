@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   HTTP_REQUEST_DEFINITION,
   HTTP_REQUEST_EXECUTOR,
+  HTTP_REQUEST_MANIFEST,
 } from '@pertexo/integrations';
 import type {
   HttpRequestExecutorDependencies,
@@ -24,9 +25,36 @@ import {
   platformRegistryReleaseSupport,
   platformServingRegistryRelease,
 } from '../src/registry.js';
-import { createPlatformNodeRegistryForRelease } from '../src/server.js';
+import {
+  createPlatformNodeRegistryForRelease,
+  resolvePlatformNodeDefinitionForRelease,
+} from '../src/server.js';
 
 describe('platform node compatibility catalog', () => {
+  it('resolves exact definition schemas without constructing or calling an executor', () => {
+    const resolved = resolvePlatformNodeDefinitionForRelease(
+      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+      HTTP_REQUEST_DEFINITION,
+    );
+    expect(resolved.manifest).toStrictEqual(HTTP_REQUEST_MANIFEST);
+    expect(
+      resolved.configSchema.safeParse({
+        method: 'GET',
+        url: 'https://provider.example.test/resource',
+        headers: {},
+        timeoutMillis: 1_000,
+        maxRedirects: 1,
+        maxResponseBytes: 1_024,
+        inlineResponseBytes: 512,
+      }).success,
+    ).toBe(true);
+    expect(() =>
+      resolvePlatformNodeDefinitionForRelease(
+        PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+        { key: 'missing.node', version: 1 },
+      ),
+    ).toThrow(/not implemented/u);
+  });
   it('ships the retained core overlap, staged HTTP introduction, and active successor in order', () => {
     expect(PLATFORM_REGISTRY_RELEASE_HISTORY.map(({ epoch }) => epoch)).toEqual(
       [1, 2, 3, 4],

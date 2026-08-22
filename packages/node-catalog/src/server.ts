@@ -7,7 +7,11 @@ import {
   type HttpRequestExecutorDependencies,
   type HttpRequestExecutorTelemetry,
 } from '@pertexo/integrations/server';
-import { parseRegistryRelease } from '@pertexo/node-sdk';
+import {
+  definitionIdentitySchema,
+  parseRegistryRelease,
+  type DefinitionIdentity,
+} from '@pertexo/node-sdk';
 import {
   createNodeRegistry,
   type NodeDefinitionRegistration,
@@ -39,10 +43,9 @@ export type PlatformNodeRegistryDependencies = Readonly<{
   httpRequestTelemetry?: HttpRequestExecutorTelemetry;
 }>;
 
-export function createPlatformNodeRegistryForRelease(
-  releaseInput: unknown,
-  dependencies: PlatformNodeRegistryDependencies = {},
-): PlatformNodeRegistry {
+export type PlatformNodeDefinition = NodeDefinitionRegistration;
+
+function supportedRelease(releaseInput: unknown) {
   const release = parseRegistryRelease(releaseInput);
   if (
     !PLATFORM_REGISTRY_RELEASE_HISTORY.some(
@@ -52,6 +55,39 @@ export function createPlatformNodeRegistryForRelease(
     )
   )
     throw new Error('Platform compatibility release identity is not supported');
+  return release;
+}
+
+/** Resolve only browser-safe schemas/metadata; this seam cannot execute a node. */
+export function resolvePlatformNodeDefinitionForRelease(
+  releaseInput: unknown,
+  definitionInput: DefinitionIdentity,
+): PlatformNodeDefinition {
+  const release = supportedRelease(releaseInput);
+  const definition = definitionIdentitySchema.parse(definitionInput);
+  const manifest = release.definitions.find(
+    (candidate) =>
+      candidate.definition.key === definition.key &&
+      candidate.definition.version === definition.version,
+  );
+  const registration = [
+    ...CORE_NODE_DEFINITION_REGISTRATIONS,
+    HTTP_REQUEST_DEFINITION_REGISTRATION,
+  ].find(
+    (candidate) =>
+      candidate.manifest.definition.key === definition.key &&
+      candidate.manifest.definition.version === definition.version,
+  );
+  if (manifest === undefined || registration === undefined)
+    throw new Error('Platform compatibility definition is not implemented');
+  return Object.freeze({ ...registration, manifest });
+}
+
+export function createPlatformNodeRegistryForRelease(
+  releaseInput: unknown,
+  dependencies: PlatformNodeRegistryDependencies = {},
+): PlatformNodeRegistry {
+  const release = supportedRelease(releaseInput);
 
   const definitionRegistrations: readonly NodeDefinitionRegistration[] = [
     ...CORE_NODE_DEFINITION_REGISTRATIONS,
