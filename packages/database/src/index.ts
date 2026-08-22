@@ -5,6 +5,30 @@ export {
 } from './config.js';
 export type { DatabaseConfig, MigrationConfig } from './config.js';
 export {
+  CONNECTION_AUTH_TYPE,
+  CONNECTION_EVENT_TYPE,
+  CONNECTION_STATUS,
+  ConnectionConflictError,
+  ConnectionIdempotencyConflictError,
+  ConnectionNotFoundError,
+  ConnectionSecretVersionConflictError,
+  ConnectionUnavailableError,
+  createConnectionDatabase,
+} from './connections.js';
+export type {
+  ConnectionAuthType,
+  ConnectionDatabase,
+  ConnectionRecord,
+  ConnectionStatus,
+  CreateConnectionInput,
+  RecordConnectionHealthInput,
+  ResolveConnectionSecretInput,
+  ResolvedConnectionSecretRecord,
+  RevokeConnectionInput,
+  RotateConnectionSecretInput,
+  SealedConnectionSecretRecord,
+} from './connections.js';
+export {
   checkCompatibilityReleasePreactivationTarget,
   checkExpectedCompatibilityRelease,
   checkExpectedCompatibilityReleaseSet,

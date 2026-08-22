@@ -8,8 +8,7 @@ import {
   type CompatibilityReleaseExpectationSet,
 } from './compatibility-release.js';
 
-export const EXPECTED_MIGRATION_HEAD =
-  '0019_node_compatibility_preactivation.sql';
+export const EXPECTED_MIGRATION_HEAD = '0020_connections.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -43,6 +42,7 @@ interface ReadinessRow {
   phase3_grants_compatible: boolean;
   phase3_policy_compatible: boolean;
   phase3_schema_compatible: boolean;
+  phase4_connections_compatible: boolean;
   execution_values_compatible: boolean;
   coordinator_run_store_compatible: boolean;
   postgres_major: number;
@@ -786,6 +786,74 @@ export async function checkDatabaseReadiness(
         )
       ) as coordinator_run_store_compatible,
       (
+        (select count(*) = 13 from pg_attribute
+         where attrelid = to_regclass('app.connections')
+           and attnum > 0 and not attisdropped)
+        and (select count(*) = 11 from pg_attribute
+             where attrelid = to_regclass('app.connection_secret_versions')
+               and attnum > 0 and not attisdropped)
+        and (select count(*) = 10 from pg_attribute
+             where attrelid = to_regclass('app.connection_events')
+               and attnum > 0 and not attisdropped)
+        and exists (
+          select 1 from pg_constraint
+          where conrelid = to_regclass('app.connections')
+            and conname = 'connections_current_secret_same_connection_fk'
+            and contype = 'f' and condeferrable and condeferred
+        )
+        and exists (
+          select 1 from pg_trigger
+          where tgrelid = to_regclass('app.connection_secret_versions')
+            and tgname = 'connection_secret_versions_immutable'
+            and not tgisinternal
+        )
+        and exists (
+          select 1 from pg_trigger
+          where tgrelid = to_regclass('app.connection_events')
+            and tgname = 'connection_events_immutable'
+            and not tgisinternal
+        )
+        and not exists (
+          select 1 from (values
+            ('connections'),
+            ('connection_secret_versions'),
+            ('connection_events')
+          ) protected(table_name)
+          join pg_class protected_class
+            on protected_class.oid = to_regclass('app.' || protected.table_name)
+          where not protected_class.relrowsecurity
+             or not protected_class.relforcerowsecurity
+             or pg_get_userbyid(protected_class.relowner) <> $1
+             or has_table_privilege(current_user, protected_class.oid, 'DELETE')
+             or has_table_privilege(current_user, protected_class.oid, 'TRUNCATE')
+             or has_table_privilege(current_user, protected_class.oid, 'REFERENCES')
+             or has_table_privilege(current_user, protected_class.oid, 'TRIGGER')
+        )
+        and case when current_user = $2 then
+          has_table_privilege(current_user, 'app.connections', 'SELECT')
+          and not has_table_privilege(current_user, 'app.connections', 'INSERT')
+          and has_column_privilege(current_user, 'app.connections', 'status', 'UPDATE')
+          and has_column_privilege(current_user, 'app.connections', 'last_tested_at', 'UPDATE')
+          and not has_column_privilege(current_user, 'app.connections', 'current_secret_version_id', 'UPDATE')
+          and has_table_privilege(current_user, 'app.connection_secret_versions', 'SELECT')
+          and not has_table_privilege(current_user, 'app.connection_secret_versions', 'INSERT')
+          and not has_table_privilege(current_user, 'app.connection_secret_versions', 'UPDATE')
+          and has_table_privilege(current_user, 'app.connection_events', 'INSERT')
+          and not has_table_privilege(current_user, 'app.connection_events', 'SELECT')
+          and not has_table_privilege(current_user, 'app.connection_events', 'UPDATE')
+        else
+          has_table_privilege(current_user, 'app.connections', 'SELECT')
+          and has_table_privilege(current_user, 'app.connections', 'INSERT')
+          and has_column_privilege(current_user, 'app.connections', 'current_secret_version_id', 'UPDATE')
+          and has_table_privilege(current_user, 'app.connection_secret_versions', 'SELECT')
+          and has_table_privilege(current_user, 'app.connection_secret_versions', 'INSERT')
+          and not has_table_privilege(current_user, 'app.connection_secret_versions', 'UPDATE')
+          and has_table_privilege(current_user, 'app.connection_events', 'SELECT')
+          and has_table_privilege(current_user, 'app.connection_events', 'INSERT')
+          and not has_table_privilege(current_user, 'app.connection_events', 'UPDATE')
+        end
+      ) as phase4_connections_compatible,
+      (
         select name
         from pertexo_internal.schema_migrations
         order by name desc
@@ -867,6 +935,9 @@ export async function checkDatabaseReadiness(
   }
   if (!row.coordinator_run_store_compatible) {
     throw new Error('Coordinator RunStore grants are incompatible');
+  }
+  if (!row.phase4_connections_compatible) {
+    throw new Error('Connection persistence schema or grants are incompatible');
   }
   const hasProtectedTableAccess =
     row.can_select || row.can_insert || row.can_update || row.can_delete;

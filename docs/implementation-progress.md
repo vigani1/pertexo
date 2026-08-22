@@ -1359,7 +1359,7 @@ Connection and secret vertical slice:
 - [ ] Add strict public create/test connection contracts, generated client and
       OpenAPI artifacts, stable RFC 9457 problem codes, opaque identifiers, and
       safe responses that never return credential material.
-- [ ] Add tenant-scoped `connections`, immutable
+- [x] Add tenant-scoped `connections`, immutable
       `connection_secret_versions`, and append-only `connection_events` with
       forced RLS, least-privilege API/worker grants, same-connection current
       pointer constraints, lifecycle/status constraints, and safe indexes.
@@ -1508,8 +1508,20 @@ Current evidence:
   KMS failures into one safe error. Five focused typechecked assertions cover
   exact round trips, context/ciphertext swapping, size failures, AWS KMS command
   context, and safe upstream failure handling; package lint and build pass.
-- No Phase 4 production schema, endpoint, executor, registry release, or
-  publishable capability is claimed complete yet.
+- Migration `0020_connections.sql` adds forced-RLS connection metadata,
+  same-connection deferred current-secret identity, immutable encrypted secret
+  versions, and append-only safe connection events. API grants can create and
+  rotate but cannot rewrite history; worker grants can resolve only current
+  secrets, record health/access facts, and cannot create connections. The
+  persistence module provides exact/conflicting create idempotency, active-name
+  uniqueness, secret-version CAS rotation, idempotent revocation, provider/
+  lifecycle-gated just-in-time resolution, and bounded health truth. Seven
+  fresh PostgreSQL 18 assertions pass for clean zero-to-0020 and supported
+  0019-to-0020 migration, API/worker readiness, rollback, pointer/FK isolation,
+  cross-workspace RLS, immutable triggers, grants, health, and credential-access
+  events; 56 database unit assertions, package typecheck, lint, and build pass.
+- No Phase 4 endpoint, executor, registry release, or publishable capability is
+  claimed complete yet.
 
 ## Later phases
 
