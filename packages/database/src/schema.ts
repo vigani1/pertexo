@@ -689,6 +689,131 @@ export const nodeAttempts = appSchema.table(
   ],
 );
 
+export const previewRuns = appSchema.table(
+  'preview_runs',
+  {
+    id: uuid('id').primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    workflowId: uuid('workflow_id').notNull(),
+    draftRevision: integer('draft_revision').notNull(),
+    draftFingerprint: varchar('draft_fingerprint', { length: 64 }).notNull(),
+    nodeId: varchar('node_id', { length: 256 }).notNull(),
+    definitionKey: varchar('definition_key', { length: 128 }).notNull(),
+    definitionVersion: integer('definition_version').notNull(),
+    executorKey: varchar('executor_key', { length: 128 }).notNull(),
+    executorVersion: integer('executor_version').notNull(),
+    compatibilityReleaseEpoch: integer('compatibility_release_epoch').notNull(),
+    compatibilityReleaseFingerprint: varchar(
+      'compatibility_release_fingerprint',
+      { length: 128 },
+    ).notNull(),
+    actorUserId: uuid('actor_user_id').notNull(),
+    idempotencyKeyHash: varchar('idempotency_key_hash', {
+      length: 64,
+    }).notNull(),
+    requestHash: varchar('request_hash', { length: 64 }).notNull(),
+    executableNodeJson: jsonb('executable_node_json').notNull(),
+    inputRef: jsonb('input_ref').notNull(),
+    priorPreviewRunId: uuid('prior_preview_run_id'),
+    sideEffectClass: varchar('side_effect_class', { length: 32 }).notNull(),
+    mayContactProvider: boolean('may_contact_provider').notNull(),
+    mayCauseExternalSideEffect: boolean(
+      'may_cause_external_side_effect',
+    ).notNull(),
+    dryRun: varchar('dry_run', { length: 32 }).notNull(),
+    status: varchar('status', { length: 32 }).default('queued').notNull(),
+    outputRef: jsonb('output_ref'),
+    safeErrorCode: varchar('safe_error_code', { length: 128 }),
+    traceparent: varchar('traceparent', { length: 55 }),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    startedAt: timestamp('started_at', { withTimezone: true, mode: 'date' }),
+    completedAt: timestamp('completed_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    expiresAt: timestamp('expires_at', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('preview_runs_workspace_identity_unique').on(
+      table.workspaceId,
+      table.id,
+    ),
+    uniqueIndex('preview_runs_workspace_workflow_identity_unique').on(
+      table.workspaceId,
+      table.workflowId,
+      table.id,
+    ),
+    index('preview_runs_workspace_created_idx').on(
+      table.workspaceId,
+      table.createdAt.desc(),
+      table.id,
+    ),
+    index('preview_runs_workflow_created_idx').on(
+      table.workspaceId,
+      table.workflowId,
+      table.createdAt.desc(),
+      table.id,
+    ),
+    index('preview_runs_expiry_idx').on(table.expiresAt, table.id),
+  ],
+);
+
+export const previewAttempts = appSchema.table(
+  'preview_attempts',
+  {
+    id: uuid('id').primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    previewRunId: uuid('preview_run_id').notNull(),
+    status: varchar('status', { length: 32 }).default('queued').notNull(),
+    sideEffectClass: varchar('side_effect_class', { length: 32 }).notNull(),
+    providerIdempotencyKey: varchar('provider_idempotency_key', {
+      length: 256,
+    }),
+    leaseOwner: varchar('lease_owner', { length: 128 }),
+    leaseExpiresAt: timestamp('lease_expires_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    fenceToken: bigint('fence_token', { mode: 'number' }).default(0).notNull(),
+    dispatchMarkedAt: timestamp('dispatch_marked_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    outputRef: jsonb('output_ref'),
+    safeErrorCode: varchar('safe_error_code', { length: 128 }),
+    reconciliationRef: jsonb('reconciliation_ref'),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    startedAt: timestamp('started_at', { withTimezone: true, mode: 'date' }),
+    completedAt: timestamp('completed_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+  },
+  (table) => [
+    uniqueIndex('preview_attempts_workspace_identity_unique').on(
+      table.workspaceId,
+      table.id,
+    ),
+    uniqueIndex('preview_attempts_one_per_run').on(table.previewRunId),
+    index('preview_attempts_claim_idx')
+      .on(table.status, table.leaseExpiresAt, table.id)
+      .where(sql`${table.status} in ('queued', 'running')`),
+  ],
+);
+
 export const idempotencyRecords = appSchema.table(
   'idempotency_records',
   {
@@ -1106,6 +1231,8 @@ export const databaseSchema = {
   nodeRuns,
   oidcLoginTransactions,
   outboxEvents,
+  previewAttempts,
+  previewRuns,
   rlsProbeRecords,
   runCheckpoints,
   runEvents,

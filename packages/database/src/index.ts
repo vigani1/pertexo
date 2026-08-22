@@ -136,6 +136,20 @@ export {
   RUN_STATUS_VALUES,
   WorkspaceRunAdmissionDeniedError,
 } from './execution-acceptance.js';
+export {
+  acceptPreviewRun,
+  PREVIEW_RETENTION_MAX_MS,
+  PREVIEW_STATUS,
+  PreviewAcceptanceCorruptError,
+  PreviewAdmissionDeniedError,
+  PreviewIdempotencyConflictError,
+  PriorPreviewInputUnavailableError,
+} from './preview-execution.js';
+export type {
+  AcceptedPreviewRun,
+  AcceptPreviewRunInput,
+  PreviewStatus,
+} from './preview-execution.js';
 export type {
   AcceptedWorkflowRun,
   AcceptWorkflowRunInput,
