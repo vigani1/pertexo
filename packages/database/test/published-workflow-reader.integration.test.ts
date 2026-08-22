@@ -213,6 +213,7 @@ describe('PublishedWorkflowReader', () => {
       workflowVersion: {
         checksum: `wf:v2:sha256:${'2'.repeat(64)}`,
         compatibilityReleaseEpoch: 7,
+        currentCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
         executableJson: { schemaVersion: 2, nodes: [], edges: [] },
         executableSchemaVersion: 2,
         id: v2VersionId,

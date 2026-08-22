@@ -1,5 +1,6 @@
 import {
   WorkflowCreateIdempotencyConflictError,
+  WorkflowDefinitionPlacementError,
   WorkflowNotFoundError,
   WorkflowPublishIdempotencyConflictError,
   WorkflowRevisionConflictError,
@@ -63,6 +64,12 @@ export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
         currentRevision: error.currentRevision,
         currentEtag: error.currentEtag,
       },
+    });
+  if (error instanceof WorkflowDefinitionPlacementError)
+    return applicationError('workflow.invalid', {
+      safeDetail:
+        'The workflow contains a definition that can no longer be added.',
+      details: { issues: error.issues },
     });
   if (error instanceof InvalidWorkflowGraphError)
     return applicationError('workflow.invalid', {

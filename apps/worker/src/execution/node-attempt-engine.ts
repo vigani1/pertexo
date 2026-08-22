@@ -7,6 +7,7 @@ import type { NodeExecutionRegistry } from '@pertexo/workflow-engine';
 import {
   executeNodeAttempt,
   verifyWorkflowExecutableV2,
+  type ExecutableCompatibilityReleaseSupport,
 } from '@pertexo/workflow-engine';
 
 import type {
@@ -17,19 +18,41 @@ import type {
 export type NodeAttemptExecutionEngineOptions = Readonly<{
   admissionRelease: unknown;
   currentRelease?: unknown;
+  releaseSupport?: ExecutableCompatibilityReleaseSupport;
 }>;
 
 function verifyProjection(
   projection: PublishedWorkflowV2Projection,
   options: NodeAttemptExecutionEngineOptions,
 ) {
+  const supportedCurrent = projection.currentCompatibilityRelease;
+  const admissionDescription = options.releaseSupport?.descriptions.find(
+    ({ epoch }) => epoch === projection.compatibilityReleaseEpoch,
+  );
+  if (
+    options.releaseSupport !== undefined &&
+    (supportedCurrent === undefined || admissionDescription === undefined)
+  )
+    throw new TypeError('Published workflow compatibility release is missing');
+  const admissionRelease =
+    options.releaseSupport === undefined
+      ? options.admissionRelease
+      : options.releaseSupport.resolve(
+          admissionDescription?.epoch ?? 0,
+          admissionDescription?.fingerprint ?? '',
+        );
+  const currentRelease =
+    options.releaseSupport === undefined
+      ? options.currentRelease
+      : options.releaseSupport.resolve(
+          supportedCurrent?.epoch ?? 0,
+          supportedCurrent?.fingerprint ?? '',
+        );
   const executable = verifyWorkflowExecutableV2({
     envelope: projection.executableJson,
     checksum: projection.checksum,
-    admissionRelease: options.admissionRelease,
-    ...(options.currentRelease === undefined
-      ? {}
-      : { currentRelease: options.currentRelease }),
+    admissionRelease,
+    ...(currentRelease === undefined ? {} : { currentRelease }),
     execution: { alreadyAdmitted: true },
   });
   if (

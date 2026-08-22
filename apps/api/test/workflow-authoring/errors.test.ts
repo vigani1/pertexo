@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   WorkflowCreateIdempotencyConflictError,
+  WorkflowDefinitionPlacementError,
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
 } from '@pertexo/database';
@@ -44,5 +45,30 @@ describe('workflow authoring error mapping', () => {
     expect(
       mapWorkflowAuthoringError(new InvalidWorkflowCursorError()),
     ).toMatchObject({ code: 'request.invalid' });
+  });
+
+  it('maps blocked definition placement to a bounded workflow problem', () => {
+    expect(
+      mapWorkflowAuthoringError(
+        new WorkflowDefinitionPlacementError([
+          {
+            code: 'definition_not_placeable',
+            path: '$.nodes.manual.definition',
+            message:
+              'Definition core.manual@1 cannot be newly placed in the current compatibility release.',
+          },
+        ]),
+      ),
+    ).toMatchObject({
+      code: 'workflow.invalid',
+      details: {
+        issues: [
+          {
+            code: 'definition_not_placeable',
+            path: '$.nodes.manual.definition',
+          },
+        ],
+      },
+    });
   });
 });

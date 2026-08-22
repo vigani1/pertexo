@@ -1,8 +1,8 @@
-import { createRegistryReleaseSuccessor } from '@pertexo/node-sdk';
 import {
   CORE_MANUAL_DEFINITION,
   CORE_MANUAL_EXECUTOR,
   CORE_REGISTRY_RELEASE,
+  CORE_REGISTRY_RELEASE_SUCCESSOR,
 } from '@pertexo/nodes-core';
 import { createCoreNodeRegistryForRelease } from '@pertexo/nodes-core/server';
 import {
@@ -12,19 +12,7 @@ import {
 import { describe, expect, it } from 'vitest';
 
 function targetNodeRelease() {
-  return createRegistryReleaseSuccessor({
-    previous: CORE_REGISTRY_RELEASE,
-    epoch: CORE_REGISTRY_RELEASE.epoch + 1,
-    definitions: CORE_REGISTRY_RELEASE.definitions.map((manifest) => ({
-      ...manifest,
-      lifecycle:
-        manifest.definition.key === CORE_MANUAL_DEFINITION.key
-          ? ('deprecated' as const)
-          : manifest.lifecycle,
-    })),
-    executors: CORE_REGISTRY_RELEASE.executors,
-    policies: CORE_REGISTRY_RELEASE.policies,
-  });
+  return CORE_REGISTRY_RELEASE_SUCCESSOR;
 }
 
 describe('worker rolling compatibility cohort', () => {

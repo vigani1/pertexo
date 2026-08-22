@@ -1,11 +1,11 @@
 import type { DynamicModule, OnApplicationShutdown } from '@nestjs/common';
 import { Module } from '@nestjs/common';
 import { metrics, trace } from '@opentelemetry/api';
-import { CORE_REGISTRY_RELEASE } from '@pertexo/nodes-core';
+import { CORE_REGISTRY_RELEASE_SUPPORT } from '@pertexo/nodes-core';
 import {
   buildWorkflowExecutableV2,
   composeExecutableCompatibilityRelease,
-  describeExecutableCompatibilityRelease,
+  createExecutableCompatibilityReleaseSupport,
 } from '@pertexo/workflow-engine';
 import {
   createWorkspaceDatabase,
@@ -55,47 +55,136 @@ export type ApiWorkflowRuntimeOverrides = Readonly<{
   telemetry?: WorkflowAuthoringDependencies['telemetry'];
 }>;
 
+function coreWorkflowCompatibility() {
+  const releaseSupport = createExecutableCompatibilityReleaseSupport(
+    CORE_REGISTRY_RELEASE_SUPPORT.map(composeExecutableCompatibilityRelease),
+  );
+  const variants = CORE_REGISTRY_RELEASE_SUPPORT.map((nodeRelease) => {
+    const compatibilityRelease =
+      composeExecutableCompatibilityRelease(nodeRelease);
+    const compatibilityReleaseDescription = releaseSupport.descriptions.find(
+      ({ epoch, fingerprint }) =>
+        epoch === compatibilityRelease.epoch &&
+        fingerprint === compatibilityRelease.fingerprint,
+    );
+    if (compatibilityReleaseDescription === undefined)
+      throw new Error('Core compatibility release description is missing');
+    const definitionCatalog = Object.freeze({
+      schemaVersion: 1 as const,
+      releaseFingerprint: compatibilityRelease.fingerprint,
+      definitions: Object.freeze(
+        nodeRelease.definitions
+          .filter(
+            (manifest) =>
+              (manifest.lifecycle === 'active' ||
+                manifest.lifecycle === 'deprecated') &&
+              nodeRelease.executors.some(
+                (executor) =>
+                  executor.lifecycle === 'active' &&
+                  executor.executor.key === manifest.executor.key &&
+                  executor.executor.version === manifest.executor.version,
+              ),
+          )
+          .map(({ definition }) => Object.freeze({ ...definition })),
+      ),
+    });
+    const placementDefinitionCatalog = Object.freeze({
+      schemaVersion: 1 as const,
+      releaseFingerprint: compatibilityRelease.fingerprint,
+      definitions: Object.freeze(
+        nodeRelease.definitions
+          .filter(
+            (manifest) =>
+              manifest.lifecycle === 'active' &&
+              nodeRelease.executors.some(
+                (executor) =>
+                  executor.lifecycle === 'active' &&
+                  executor.executor.key === manifest.executor.key &&
+                  executor.executor.version === manifest.executor.version,
+              ),
+          )
+          .map(({ definition }) => Object.freeze({ ...definition })),
+      ),
+    });
+    return Object.freeze({
+      compatibilityRelease,
+      compatibilityReleaseDescription,
+      definitionCatalog,
+      placementDefinitionCatalog,
+    });
+  });
+  const latestVariant = variants.at(-1);
+  if (latestVariant === undefined)
+    throw new Error('Core compatibility release support is empty');
+  return Object.freeze({
+    releaseSupport,
+    variants: Object.freeze(variants),
+    definitionCatalog: latestVariant.definitionCatalog,
+  });
+}
+
+function coreAuthoringOptions(
+  variants: ReturnType<typeof coreWorkflowCompatibility>['variants'],
+) {
+  return {
+    compatibilityReleaseVariants: variants.map(
+      ({
+        compatibilityRelease,
+        compatibilityReleaseDescription,
+        definitionCatalog,
+        placementDefinitionCatalog,
+      }) => ({
+        compatibilityRelease: compatibilityReleaseDescription,
+        definitionCatalog,
+        placementDefinitionCatalog,
+        executableCompiler: (
+          graph: Parameters<typeof buildWorkflowExecutableV2>[0]['graph'],
+        ) => {
+          const compiled = buildWorkflowExecutableV2({
+            graph,
+            release: compatibilityRelease,
+          });
+          return Object.freeze({
+            checksum: compiled.checksum,
+            executableSchemaVersion: 2 as const,
+            executableJson: compiled.envelope,
+            compatibilityReleaseEpoch:
+              compiled.envelope.compatibilityReleaseEpoch,
+            compatibilityReleaseFingerprint:
+              compiled.envelope.compatibilityReleaseFingerprint,
+          });
+        },
+      }),
+    ),
+  } as const;
+}
+
+export function createCoreWorkflowAuthoringDatabase(
+  databaseConfig: DatabaseConfig,
+): WorkflowAuthoringDatabase {
+  return createWorkflowAuthoringDatabase(
+    databaseConfig,
+    coreAuthoringOptions(coreWorkflowCompatibility().variants),
+  );
+}
+
 export function createApiWorkflowRuntime(
   databaseConfig: DatabaseConfig,
   identityRuntime: ApiIdentityRuntime,
   redisUrl: string,
   overrides: ApiWorkflowRuntimeOverrides = {},
 ): ApiWorkflowRuntime {
-  const compatibilityRelease = composeExecutableCompatibilityRelease(
-    CORE_REGISTRY_RELEASE,
-  );
-  const compatibilityReleaseDescription =
-    describeExecutableCompatibilityRelease(compatibilityRelease);
-  const definitionCatalog = Object.freeze({
-    schemaVersion: 1 as const,
-    releaseFingerprint: compatibilityRelease.fingerprint,
-    definitions: Object.freeze(
-      CORE_REGISTRY_RELEASE.definitions.map(({ definition }) =>
-        Object.freeze({ ...definition }),
-      ),
-    ),
-  });
+  const {
+    releaseSupport: compatibilityReleaseSupport,
+    variants,
+    definitionCatalog,
+  } = coreWorkflowCompatibility();
   const database =
     overrides.database ??
-    createWorkflowAuthoringDatabase(databaseConfig, {
-      compatibilityRelease: compatibilityReleaseDescription,
-      definitionCatalog,
-      executableCompiler: (graph) => {
-        const compiled = buildWorkflowExecutableV2({
-          graph,
-          release: compatibilityRelease,
-        });
-        return Object.freeze({
-          checksum: compiled.checksum,
-          executableSchemaVersion: 2 as const,
-          executableJson: compiled.envelope,
-          compatibilityReleaseEpoch:
-            compiled.envelope.compatibilityReleaseEpoch,
-          compatibilityReleaseFingerprint:
-            compiled.envelope.compatibilityReleaseFingerprint,
-        });
-      },
-    });
+    createWorkflowAuthoringDatabase(
+      databaseConfig,
+      coreAuthoringOptions(variants),
+    );
   const notifications =
     overrides.notifications ??
     (overrides.runPersistence === undefined
@@ -113,7 +202,7 @@ export function createApiWorkflowRuntime(
     overrides.runStreamer === undefined
       ? (overrides.eventDatabase ??
         createWorkspaceDatabase(databaseConfig, {
-          compatibilityRelease: compatibilityReleaseDescription,
+          compatibilityReleases: compatibilityReleaseSupport.descriptions,
         }))
       : undefined;
   const liveSource =

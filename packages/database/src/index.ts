@@ -10,6 +10,7 @@ export {
   checkExpectedCompatibilityReleaseSet,
   CompatibilityReleaseMismatchError,
   lockExpectedCompatibilityRelease,
+  lockExpectedCompatibilityReleaseSet,
   lockExpectedCompatibilityReleaseSetWithClient,
   parseCompatibilityReleaseExpectation,
   parseCompatibilityReleaseExpectationSet,
@@ -228,6 +229,7 @@ export {
   reconcileWorkflowTriggersPayload,
   WorkflowNotFoundError,
   WorkflowCreateIdempotencyConflictError,
+  WorkflowDefinitionPlacementError,
   WorkflowPublishIdempotencyConflictError,
   WorkflowRevisionConflictError,
 } from './workflow-authoring.js';
@@ -242,6 +244,7 @@ export type {
   WorkflowAuthoringDatabase,
   WorkflowAuthoringDatabaseOptions,
   WorkflowAuthoringTestHooks,
+  WorkflowDefinitionPlacementIssue,
   WorkflowDraftRecord,
   WorkflowPage,
   WorkflowRecord,

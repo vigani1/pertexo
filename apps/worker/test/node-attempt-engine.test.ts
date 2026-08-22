@@ -2,11 +2,19 @@ import type {
   NodeAttemptLease,
   PublishedWorkflowV2Projection,
 } from '@pertexo/database';
-import { CORE_REGISTRY_RELEASE } from '@pertexo/nodes-core';
-import { createCoreNodeRegistry } from '@pertexo/nodes-core/server';
+import {
+  CORE_REGISTRY_RELEASE,
+  CORE_REGISTRY_RELEASE_SUCCESSOR,
+  CORE_REGISTRY_RELEASE_SUPPORT,
+} from '@pertexo/nodes-core';
+import {
+  createCoreNodeRegistry,
+  createCoreNodeRegistryForRelease,
+} from '@pertexo/nodes-core/server';
 import {
   buildWorkflowExecutableV2,
   composeExecutableCompatibilityRelease,
+  createExecutableCompatibilityReleaseSupport,
 } from '@pertexo/workflow-engine';
 import { describe, expect, it } from 'vitest';
 
@@ -135,5 +143,53 @@ describe('node attempt execution engine', () => {
         lease: { ...lease, sideEffectClass: 'unsafe' },
       }),
     ).toThrow('side-effect');
+  });
+
+  it('executes the prepared target through the production overlap support', async () => {
+    const releaseSupport = createExecutableCompatibilityReleaseSupport(
+      CORE_REGISTRY_RELEASE_SUPPORT.map(composeExecutableCompatibilityRelease),
+    );
+    const target = composeExecutableCompatibilityRelease(
+      CORE_REGISTRY_RELEASE_SUCCESSOR,
+    );
+    const executable = buildWorkflowExecutableV2({
+      graph: graph(),
+      release: target,
+    });
+    const currentCompatibilityRelease = releaseSupport.descriptions.at(-1);
+    if (currentCompatibilityRelease === undefined)
+      throw new Error('target release fixture is missing');
+    const { lease } = fixture('manual');
+    const projection: PublishedWorkflowV2Projection = {
+      id: VERSION_ID,
+      workspaceId: WORKSPACE_ID,
+      workflowId: WORKFLOW_ID,
+      versionNumber: 1,
+      schemaVersion: 1,
+      checksum: executable.checksum,
+      executableSchemaVersion: 2,
+      executableJson: executable.envelope,
+      compatibilityReleaseEpoch: target.epoch,
+      currentCompatibilityRelease,
+    };
+    const engine = createNodeAttemptExecutionEngine({
+      admissionRelease: composeExecutableCompatibilityRelease(
+        CORE_REGISTRY_RELEASE,
+      ),
+      releaseSupport,
+    });
+    const prepared = engine.prepare({ projection, lease });
+
+    await expect(
+      prepared.execute({
+        runInput: { target: true },
+        completedNodeOutputs: {},
+        abortRequested: false,
+        registry: createCoreNodeRegistryForRelease(
+          CORE_REGISTRY_RELEASE_SUCCESSOR,
+        ),
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toMatchObject({ kind: 'succeeded', output: { target: true } });
   });
 });

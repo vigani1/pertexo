@@ -4,16 +4,18 @@ import {
   WorkflowRunNotExecutableError as DatabaseWorkflowRunNotExecutableError,
   WorkflowRunNotFoundError as DatabaseWorkflowRunNotFoundError,
   createWorkflowRunDatabase,
+  type CompatibilityReleaseExpectation,
   type DatabaseConfig,
   type PublishedWorkflowV2Projection,
   type WorkflowRunDatabase,
 } from '@pertexo/database';
-import { CORE_REGISTRY_RELEASE } from '@pertexo/nodes-core';
+import { CORE_REGISTRY_RELEASE_SUPPORT } from '@pertexo/nodes-core';
 import {
   WorkflowEngineError,
   composeExecutableCompatibilityRelease,
   createCheckpoint,
-  describeExecutableCompatibilityRelease,
+  createExecutableCompatibilityReleaseSupport,
+  type ExecutableCompatibilityReleaseSupport,
   verifyWorkflowExecutableV2,
 } from '@pertexo/workflow-engine';
 
@@ -43,20 +45,23 @@ export function createPostgresWorkflowRunPersistence(
   databaseInput?: WorkflowRunDatabase,
   notifications?: RunEventNotificationPublisher,
 ): PostgresWorkflowRunPersistence {
-  const release = composeExecutableCompatibilityRelease(CORE_REGISTRY_RELEASE);
+  const releaseSupport = createExecutableCompatibilityReleaseSupport(
+    CORE_REGISTRY_RELEASE_SUPPORT.map(composeExecutableCompatibilityRelease),
+  );
   const database =
     databaseInput ??
-    createWorkflowRunDatabase(
-      config,
-      describeExecutableCompatibilityRelease(release),
-    );
+    createWorkflowRunDatabase(config, releaseSupport.descriptions);
   const persistence: WorkflowRunPersistence = Object.freeze({
     start: async (input: StartWorkflowRunCommand) => {
       try {
         const result = await database.start({
           ...input,
-          checkpointFactory: (projection) =>
-            initialCheckpoint(projection, release),
+          checkpointFactory: (projection, currentCompatibilityRelease) =>
+            initialCheckpoint(
+              projection,
+              releaseSupport,
+              currentCompatibilityRelease,
+            ),
         });
         if (!result.replayed)
           await publishHint(notifications, {
@@ -115,14 +120,28 @@ async function publishHint(
 
 function initialCheckpoint(
   projection: PublishedWorkflowV2Projection,
-  release: unknown,
+  releaseSupport: ExecutableCompatibilityReleaseSupport,
+  currentCompatibilityRelease: CompatibilityReleaseExpectation,
 ) {
   try {
+    const admissionDescription = releaseSupport.descriptions.find(
+      ({ epoch }) => epoch === projection.compatibilityReleaseEpoch,
+    );
+    if (admissionDescription === undefined)
+      throw new WorkflowRunNotExecutableError();
+    const admissionRelease = releaseSupport.resolve(
+      admissionDescription.epoch,
+      admissionDescription.fingerprint,
+    );
+    const currentRelease = releaseSupport.resolve(
+      currentCompatibilityRelease.epoch,
+      currentCompatibilityRelease.fingerprint,
+    );
     const executable = verifyWorkflowExecutableV2({
       envelope: projection.executableJson,
       checksum: projection.checksum,
-      admissionRelease: release,
-      currentRelease: release,
+      admissionRelease,
+      currentRelease,
     });
     if (
       executable.envelope.compatibilityReleaseEpoch !==

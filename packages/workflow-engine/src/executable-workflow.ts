@@ -340,7 +340,8 @@ function executableNode(
   const definition = definitionManifest(release, node.definition);
   const executor = executorManifest(release, definition.executor);
   if (
-    definition.lifecycle !== 'active' ||
+    (definition.lifecycle !== 'active' &&
+      definition.lifecycle !== 'deprecated') ||
     executor.lifecycle !== 'active' ||
     !executor.definitions.some((value) =>
       sameIdentity(value, definition.definition),
@@ -761,7 +762,8 @@ function validatePin(
   const currentExecutor = executorManifest(current, executor);
   const expectedPolicies = canonicalJson(policies);
   if (
-    admissionDefinition.lifecycle !== 'active' ||
+    (admissionDefinition.lifecycle !== 'active' &&
+      admissionDefinition.lifecycle !== 'deprecated') ||
     admissionExecutor.lifecycle !== 'active' ||
     canonicalJson(immutableDefinitionBehavior(admissionDefinition)) !==
       canonicalJson(immutableDefinitionBehavior(currentDefinition)) ||

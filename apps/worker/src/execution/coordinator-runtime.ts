@@ -6,7 +6,7 @@ import {
   type DatabaseConfig,
   type PublishedWorkflowReader,
 } from '@pertexo/database';
-import { CORE_REGISTRY_RELEASE } from '@pertexo/nodes-core';
+import { CORE_REGISTRY_RELEASE_SUPPORT } from '@pertexo/nodes-core';
 import { createQueueTraceRunner } from '@pertexo/observability';
 import {
   createQueueConsumer,
@@ -22,7 +22,7 @@ import {
 } from '@pertexo/queue';
 import {
   composeExecutableCompatibilityRelease,
-  describeExecutableCompatibilityRelease,
+  createExecutableCompatibilityReleaseSupport,
 } from '@pertexo/workflow-engine';
 
 import { createCoordinatorAdvanceEngine } from './coordinator-engine.js';
@@ -96,12 +96,18 @@ export async function createCoordinatorRuntime(
       'Coordinator maximum admissions must be between 1 and 64',
     );
   }
-  const release = composeExecutableCompatibilityRelease(CORE_REGISTRY_RELEASE);
+  const releaseSupport = createExecutableCompatibilityReleaseSupport(
+    CORE_REGISTRY_RELEASE_SUPPORT.map(composeExecutableCompatibilityRelease),
+  );
+  const firstRelease = releaseSupport.resolve(
+    releaseSupport.descriptions[0]?.epoch ?? 0,
+    releaseSupport.descriptions[0]?.fingerprint ?? '',
+  );
   const engine =
     dependencies.engine ??
     createCoordinatorAdvanceEngine({
-      admissionRelease: release,
-      currentRelease: release,
+      admissionRelease: firstRelease,
+      releaseSupport,
     });
   const runStore =
     dependencies.runStore ?? createCoordinatorRunStore(options.database);
@@ -109,7 +115,7 @@ export async function createCoordinatorRuntime(
     dependencies.reader ??
     createPublishedWorkflowReader(
       options.database,
-      describeExecutableCompatibilityRelease(release),
+      releaseSupport.descriptions,
     );
   const notifications =
     dependencies.notifications ??

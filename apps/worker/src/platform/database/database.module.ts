@@ -11,7 +11,7 @@ import type {
   WorkspaceTransaction,
 } from '@pertexo/database';
 import { createWorkspaceDatabase } from '@pertexo/database';
-import { CORE_REGISTRY_RELEASE } from '@pertexo/nodes-core';
+import { CORE_REGISTRY_RELEASE_SUPPORT } from '@pertexo/nodes-core';
 import {
   composeExecutableCompatibilityRelease,
   createExecutableCompatibilityReleaseSupport,
@@ -65,9 +65,11 @@ function createDatabaseProvider(
       new NestWorkspaceDatabase(
         options.database ??
           createWorkspaceDatabase(config, {
-            compatibilityReleases: createExecutableCompatibilityReleaseSupport([
-              composeExecutableCompatibilityRelease(CORE_REGISTRY_RELEASE),
-            ]).descriptions,
+            compatibilityReleases: createExecutableCompatibilityReleaseSupport(
+              CORE_REGISTRY_RELEASE_SUPPORT.map(
+                composeExecutableCompatibilityRelease,
+              ),
+            ).descriptions,
           }),
         config.workerRuntimeRole,
       ),

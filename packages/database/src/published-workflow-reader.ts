@@ -4,9 +4,11 @@ import { z } from 'zod';
 
 import type { DatabaseConfig } from './config.js';
 import {
-  lockExpectedCompatibilityRelease,
+  lockExpectedCompatibilityReleaseSet,
   parseCompatibilityReleaseExpectation,
+  parseCompatibilityReleaseExpectationSet,
   type CompatibilityReleaseExpectation,
+  type CompatibilityReleaseExpectationSet,
 } from './compatibility-release.js';
 import { withWorkspaceTransaction } from './workspace.js';
 
@@ -65,6 +67,7 @@ export type PublishedWorkflowVersionIdentity = Readonly<{
 export type PublishedWorkflowV2Projection = PublishedWorkflowVersionIdentity &
   Readonly<{
     compatibilityReleaseEpoch: number;
+    currentCompatibilityRelease?: CompatibilityReleaseExpectation;
     executableJson: unknown;
     executableSchemaVersion: 2;
   }>;
@@ -147,12 +150,15 @@ export function classifyPublishedWorkflowVersionRow(
 
 export function createPublishedWorkflowReader(
   config: DatabaseConfig,
-  compatibilityReleaseInput: CompatibilityReleaseExpectation,
+  compatibilityReleaseInput:
+    CompatibilityReleaseExpectation | CompatibilityReleaseExpectationSet,
 ): PublishedWorkflowReader {
   const pool = new Pool(config);
-  const compatibilityRelease = parseCompatibilityReleaseExpectation(
-    compatibilityReleaseInput,
-  );
+  const compatibilityReleases = Array.isArray(compatibilityReleaseInput)
+    ? parseCompatibilityReleaseExpectationSet(compatibilityReleaseInput)
+    : Object.freeze([
+        parseCompatibilityReleaseExpectation(compatibilityReleaseInput),
+      ]);
 
   return Object.freeze({
     readForExecution: async (
@@ -167,10 +173,11 @@ export function createPublishedWorkflowReader(
         pool,
         parsedInput.workspaceId,
         async (transaction) => {
-          await lockExpectedCompatibilityRelease(
-            transaction.db,
-            compatibilityRelease,
-          );
+          const currentCompatibilityRelease =
+            await lockExpectedCompatibilityReleaseSet(
+              transaction.db,
+              compatibilityReleases,
+            );
           const result = await transaction.db.execute(
             sql<Record<string, unknown>>`
               select
@@ -189,7 +196,18 @@ export function createPublishedWorkflowReader(
               limit 1
             `,
           );
-          return classifyPublishedWorkflowVersionRow(result.rows[0]);
+          const classified = classifyPublishedWorkflowVersionRow(
+            result.rows[0],
+          );
+          return classified.kind === 'v2_projection'
+            ? Object.freeze({
+                ...classified,
+                workflowVersion: Object.freeze({
+                  ...classified.workflowVersion,
+                  currentCompatibilityRelease,
+                }),
+              })
+            : classified;
         },
         transactionOptions,
       );

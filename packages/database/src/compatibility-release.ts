@@ -134,10 +134,51 @@ export async function checkExpectedCompatibilityReleaseSet(
   await lockExpectedCompatibilityReleaseSetWithClient(pool, input);
 }
 
+function matchedExpectation(
+  expected: CompatibilityReleaseExpectationSet,
+  row: unknown,
+): CompatibilityReleaseExpectation {
+  const parsed = z
+    .object({
+      epoch: z.coerce.number().int().positive(),
+      fingerprint: fingerprintSchema,
+      catalog_json: z.unknown(),
+    })
+    .loose()
+    .parse(row);
+  const matched = expected.find(
+    (release) =>
+      release.epoch === parsed.epoch &&
+      release.fingerprint === parsed.fingerprint,
+  );
+  if (matched === undefined) throw new CompatibilityReleaseMismatchError();
+  return matched;
+}
+
+export async function lockExpectedCompatibilityReleaseSet(
+  database: WorkspaceDrizzle,
+  input: CompatibilityReleaseExpectationSet,
+): Promise<CompatibilityReleaseExpectation> {
+  const expected = parseCompatibilityReleaseExpectationSet(input);
+  try {
+    const result = await database.execute(sql`
+      select epoch, fingerprint, catalog_json
+      from app.lock_node_compatibility_current_supported(
+        ${expectedSetJson(expected)}::jsonb
+      )
+    `);
+    if (result.rows.length !== 1) throw new CompatibilityReleaseMismatchError();
+    return matchedExpectation(expected, result.rows[0]);
+  } catch (error: unknown) {
+    if (error instanceof CompatibilityReleaseMismatchError) throw error;
+    throw new CompatibilityReleaseMismatchError();
+  }
+}
+
 export async function lockExpectedCompatibilityReleaseSetWithClient(
   client: Pick<Pool | PoolClient, 'query'>,
   input: CompatibilityReleaseExpectationSet,
-): Promise<void> {
+): Promise<CompatibilityReleaseExpectation> {
   const expected = parseCompatibilityReleaseExpectationSet(input);
   try {
     const result = await client.query(
@@ -146,6 +187,7 @@ export async function lockExpectedCompatibilityReleaseSetWithClient(
       [expectedSetJson(expected)],
     );
     if (result.rows.length !== 1) throw new CompatibilityReleaseMismatchError();
+    return matchedExpectation(expected, result.rows[0]);
   } catch (error: unknown) {
     if (error instanceof CompatibilityReleaseMismatchError) throw error;
     throw new CompatibilityReleaseMismatchError();

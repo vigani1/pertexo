@@ -5,6 +5,7 @@ import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import {
   EMPTY_DEFINITION_CATALOG_V1,
+  EMPTY_WORKFLOW_GRAPH_V1,
   parseWorkflowGraphDraft,
   parseWorkflowGraphForPublish,
   workflowCompatibilityReport,
@@ -18,7 +19,9 @@ import {
 import type { DatabaseConfig } from './config.js';
 import {
   lockExpectedCompatibilityReleaseWithClient,
+  lockExpectedCompatibilityReleaseSetWithClient,
   parseCompatibilityReleaseExpectation,
+  parseCompatibilityReleaseExpectationSet,
   type CompatibilityReleaseExpectation,
 } from './compatibility-release.js';
 import { canonicalOutboxPayloadChecksum } from './outbox.js';
@@ -69,6 +72,22 @@ export class WorkflowPublishIdempotencyConflictError extends Error {
 
 export class WorkflowCreateIdempotencyConflictError extends Error {
   public override readonly name = 'WorkflowCreateIdempotencyConflictError';
+}
+
+export type WorkflowDefinitionPlacementIssue = Readonly<{
+  code: 'definition_not_placeable';
+  path: string;
+  message: string;
+}>;
+
+export class WorkflowDefinitionPlacementError extends Error {
+  public override readonly name = 'WorkflowDefinitionPlacementError';
+
+  public constructor(
+    public readonly issues: readonly WorkflowDefinitionPlacementIssue[],
+  ) {
+    super('Workflow draft adds a definition that is not placeable');
+  }
 }
 
 export type WorkflowRecord = Readonly<{
@@ -232,9 +251,18 @@ export type WorkflowAuthoringTestHooks = Readonly<{
 
 export type WorkflowAuthoringDatabaseOptions = Readonly<{
   compatibilityRelease?: CompatibilityReleaseExpectation;
+  compatibilityReleaseVariants?: readonly WorkflowAuthoringCompatibilityVariant[];
   definitionCatalog?: WorkflowDefinitionCatalogV1;
+  placementDefinitionCatalog?: WorkflowDefinitionCatalogV1;
   executableCompiler?: WorkflowExecutableCompiler;
   testHooks?: WorkflowAuthoringTestHooks;
+}>;
+
+export type WorkflowAuthoringCompatibilityVariant = Readonly<{
+  compatibilityRelease: CompatibilityReleaseExpectation;
+  definitionCatalog: WorkflowDefinitionCatalogV1;
+  placementDefinitionCatalog: WorkflowDefinitionCatalogV1;
+  executableCompiler: WorkflowExecutableCompiler;
 }>;
 
 export type WorkflowExecutableCompiler = (graph: WorkflowGraph) => Readonly<{
@@ -244,6 +272,94 @@ export type WorkflowExecutableCompiler = (graph: WorkflowGraph) => Readonly<{
   compatibilityReleaseEpoch: number;
   compatibilityReleaseFingerprint: string;
 }>;
+
+function definitionIdentityToken(
+  definition: Readonly<{ key: string; version: number }>,
+): string {
+  return `${definition.key}\u0000${String(definition.version)}`;
+}
+
+type LocatedWorkflowNode = Readonly<{
+  id: string;
+  definition: Readonly<{ key: string; version: number }>;
+  path: string;
+}>;
+
+function graphNodeLocations(
+  graph: WorkflowGraph,
+): readonly LocatedWorkflowNode[] {
+  const result: LocatedWorkflowNode[] = [];
+  const pending: Readonly<{ graph: WorkflowGraph; path: string }>[] = [
+    { graph, path: '$' },
+  ];
+  while (pending.length > 0) {
+    const current = pending.pop();
+    if (current === undefined) continue;
+    for (const node of current.graph.nodes) {
+      const path = `${current.path}.nodes.${node.id}`;
+      result.push(
+        Object.freeze({ id: node.id, definition: node.definition, path }),
+      );
+      if (node.structured !== undefined) {
+        pending.push({
+          graph: node.structured.body,
+          path: `${path}.structured.body`,
+        });
+      }
+    }
+  }
+  return Object.freeze(result);
+}
+
+function nodeOccurrenceToken(node: LocatedWorkflowNode): string {
+  return `${node.id}\u0000${definitionIdentityToken(node.definition)}`;
+}
+
+function countNodeOccurrences(
+  nodes: readonly LocatedWorkflowNode[],
+): ReadonlyMap<string, number> {
+  const counts = new Map<string, number>();
+  for (const node of nodes) {
+    const token = nodeOccurrenceToken(node);
+    counts.set(token, (counts.get(token) ?? 0) + 1);
+  }
+  return counts;
+}
+
+function requirePlaceableDefinitionAdditions(
+  previous: WorkflowGraph,
+  next: WorkflowGraph,
+  placementCatalog: WorkflowDefinitionCatalogV1 | undefined,
+): void {
+  if (placementCatalog === undefined) return;
+  const placeable = new Set(
+    placementCatalog.definitions.map(definitionIdentityToken),
+  );
+  const previousNodes = graphNodeLocations(previous);
+  const nextNodes = graphNodeLocations(next);
+  const previousOccurrences = countNodeOccurrences(previousNodes);
+  const nextOccurrences = countNodeOccurrences(nextNodes);
+  const issues: WorkflowDefinitionPlacementIssue[] = [];
+  for (const node of nextNodes) {
+    const occurrence = nodeOccurrenceToken(node);
+    if (
+      previousOccurrences.get(occurrence) === 1 &&
+      nextOccurrences.get(occurrence) === 1
+    ) {
+      continue;
+    }
+    if (placeable.has(definitionIdentityToken(node.definition))) continue;
+    issues.push(
+      Object.freeze({
+        code: 'definition_not_placeable',
+        path: `${node.path}.definition`,
+        message: `Definition ${node.definition.key}@${String(node.definition.version)} cannot be newly placed in the current compatibility release.`,
+      }),
+    );
+  }
+  if (issues.length > 0)
+    throw new WorkflowDefinitionPlacementError(Object.freeze(issues));
+}
 
 function mapWorkflow(row: Record<string, unknown>): WorkflowRecord {
   const publishedVersionId = row.published_version_id;
@@ -416,7 +532,17 @@ export function createWorkflowAuthoringDatabase(
   config: DatabaseConfig,
   options: WorkflowAuthoringDatabaseOptions = {},
 ): WorkflowAuthoringDatabase {
-  const definitionCatalog =
+  if (
+    options.compatibilityReleaseVariants !== undefined &&
+    (options.compatibilityRelease !== undefined ||
+      options.definitionCatalog !== undefined ||
+      options.placementDefinitionCatalog !== undefined ||
+      options.executableCompiler !== undefined)
+  )
+    throw new TypeError(
+      'Compatibility release variants cannot be combined with singular publication options',
+    );
+  const defaultDefinitionCatalog =
     options.definitionCatalog ?? EMPTY_DEFINITION_CATALOG_V1;
   const compatibilityRelease =
     options.compatibilityRelease === undefined
@@ -425,12 +551,87 @@ export function createWorkflowAuthoringDatabase(
   if (
     options.executableCompiler !== undefined &&
     (compatibilityRelease === undefined ||
-      definitionCatalog.releaseFingerprint !== compatibilityRelease.fingerprint)
+      defaultDefinitionCatalog.releaseFingerprint !==
+        compatibilityRelease.fingerprint)
   ) {
     throw new TypeError(
       'Executable workflow publication requires matching compatibility authority',
     );
   }
+  if (
+    options.placementDefinitionCatalog !== undefined &&
+    (compatibilityRelease === undefined ||
+      options.placementDefinitionCatalog.releaseFingerprint !==
+        compatibilityRelease.fingerprint)
+  ) {
+    throw new TypeError(
+      'Workflow placement requires matching compatibility authority',
+    );
+  }
+  const compatibilityReleaseVariants = options.compatibilityReleaseVariants;
+  const compatibilityVariants =
+    compatibilityReleaseVariants === undefined
+      ? undefined
+      : Object.freeze(
+          parseCompatibilityReleaseExpectationSet(
+            compatibilityReleaseVariants.map(
+              ({ compatibilityRelease: release }) => release,
+            ),
+          ).map((release) => {
+            const variant = compatibilityReleaseVariants.find(
+              ({ compatibilityRelease: candidate }) =>
+                candidate.epoch === release.epoch &&
+                candidate.fingerprint === release.fingerprint &&
+                candidate.catalogJson === release.catalogJson,
+            );
+            if (
+              variant?.definitionCatalog.releaseFingerprint !==
+                release.fingerprint ||
+              variant.placementDefinitionCatalog.releaseFingerprint !==
+                release.fingerprint
+            )
+              throw new TypeError(
+                'Executable workflow publication requires matching compatibility variants',
+              );
+            return Object.freeze({
+              compatibilityRelease: release,
+              definitionCatalog: variant.definitionCatalog,
+              placementDefinitionCatalog: variant.placementDefinitionCatalog,
+              executableCompiler: variant.executableCompiler,
+            });
+          }),
+        );
+  const defaultVariant = Object.freeze({
+    compatibilityRelease,
+    definitionCatalog: defaultDefinitionCatalog,
+    placementDefinitionCatalog: options.placementDefinitionCatalog,
+    executableCompiler: options.executableCompiler,
+  });
+  const selectCompatibilityVariant = async (
+    client: Pick<PoolClient, 'query'>,
+  ): Promise<typeof defaultVariant> => {
+    if (compatibilityVariants === undefined) {
+      if (compatibilityRelease !== undefined)
+        await lockExpectedCompatibilityReleaseWithClient(
+          client,
+          compatibilityRelease,
+        );
+      return defaultVariant;
+    }
+    const selected = await lockExpectedCompatibilityReleaseSetWithClient(
+      client,
+      compatibilityVariants.map(({ compatibilityRelease: release }) => release),
+    );
+    const variant = compatibilityVariants.find(
+      ({ compatibilityRelease: release }) =>
+        release.epoch === selected.epoch &&
+        release.fingerprint === selected.fingerprint &&
+        release.catalogJson === selected.catalogJson,
+    );
+    if (variant === undefined)
+      throw new Error('Locked compatibility release variant is unavailable');
+    return variant;
+  };
   // Runtime import is kept here so the public package remains straightforward to test.
   const pool = new Pool(config);
   return Object.freeze({
@@ -447,6 +648,13 @@ export function createWorkflowAuthoringDatabase(
             client,
             input.workspaceId,
             input.actorId,
+          );
+          const { definitionCatalog, placementDefinitionCatalog } =
+            await selectCompatibilityVariant(client);
+          requirePlaceableDefinitionAdditions(
+            EMPTY_WORKFLOW_GRAPH_V1,
+            graph,
+            placementDefinitionCatalog,
           );
           const requestHash = canonicalOutboxPayloadChecksum({
             actorId: input.actorId,
@@ -569,6 +777,7 @@ export function createWorkflowAuthoringDatabase(
     getDraft: async (workspaceId, workflowId, actorId) =>
       withAuthorTransaction(pool, workspaceId, actorId, async (client) => {
         await requireWorkspaceReader(client, workspaceId, actorId);
+        const { definitionCatalog } = await selectCompatibilityVariant(client);
         const result = await client.query<Record<string, unknown>>(
           'select * from app.workflow_drafts where workspace_id = $1 and workflow_id = $2',
           [workspaceId, uuidSchema.parse(workflowId)],
@@ -654,6 +863,8 @@ export function createWorkflowAuthoringDatabase(
             input.workspaceId,
             input.actorId,
           );
+          const { definitionCatalog, placementDefinitionCatalog } =
+            await selectCompatibilityVariant(client);
           const graph = parseWorkflowGraphDraft(input.graphJson);
           const expected = z
             .number()
@@ -661,6 +872,35 @@ export function createWorkflowAuthoringDatabase(
             .positive()
             .parse(input.expectedRevision);
           const workflowId = uuidSchema.parse(input.workflowId);
+          const current = await client.query<Record<string, unknown>>(
+            `select draft.* from app.workflow_drafts draft
+             join app.workflows workflow
+               on workflow.workspace_id = draft.workspace_id
+              and workflow.id = draft.workflow_id
+             where draft.workspace_id = $1 and draft.workflow_id = $2
+               and workflow.lifecycle_status = 'active'`,
+            [input.workspaceId, workflowId],
+          );
+          const currentRow = current.rows[0];
+          if (currentRow === undefined)
+            throw new WorkflowNotFoundError('Workflow is not visible');
+          const currentDraft = mapDraft(currentRow, definitionCatalog);
+          if (currentDraft.revision !== expected)
+            throw new WorkflowRevisionConflictError(
+              currentDraft.revision,
+              workflowDraftRepresentationTag({
+                workflowId,
+                revision: currentDraft.revision,
+                graph: currentDraft.graphJson,
+                compatibilityFingerprint:
+                  currentDraft.compatibility.fingerprint,
+              }),
+            );
+          requirePlaceableDefinitionAdditions(
+            currentDraft.graphJson,
+            graph,
+            placementDefinitionCatalog,
+          );
           const result = await client.query<Record<string, unknown>>(
             `update app.workflow_drafts set graph_json = $1::jsonb, schema_version = $2,
            revision = revision + 1, updated_by = $3, updated_at = transaction_timestamp()
@@ -681,7 +921,7 @@ export function createWorkflowAuthoringDatabase(
             ],
           );
           if (result.rows[0] === undefined) {
-            const current = await client.query<Record<string, unknown>>(
+            const latest = await client.query<Record<string, unknown>>(
               `select draft.* from app.workflow_drafts draft
                join app.workflows workflow
                  on workflow.workspace_id = draft.workspace_id
@@ -690,18 +930,17 @@ export function createWorkflowAuthoringDatabase(
                  and workflow.lifecycle_status = 'active'`,
               [input.workspaceId, workflowId],
             );
-            const currentRow = current.rows[0];
-            if (currentRow === undefined)
+            const latestRow = latest.rows[0];
+            if (latestRow === undefined)
               throw new WorkflowNotFoundError('Workflow is not visible');
-            const currentDraft = mapDraft(currentRow, definitionCatalog);
+            const latestDraft = mapDraft(latestRow, definitionCatalog);
             throw new WorkflowRevisionConflictError(
-              currentDraft.revision,
+              latestDraft.revision,
               workflowDraftRepresentationTag({
                 workflowId,
-                revision: currentDraft.revision,
-                graph: currentDraft.graphJson,
-                compatibilityFingerprint:
-                  currentDraft.compatibility.fingerprint,
+                revision: latestDraft.revision,
+                graph: latestDraft.graphJson,
+                compatibilityFingerprint: latestDraft.compatibility.fingerprint,
               }),
             );
           }
@@ -774,11 +1013,13 @@ export function createWorkflowAuthoringDatabase(
             const replay = durablePublishResult(claimed.result_ref);
             return Object.freeze({ ...replay, replayed: true });
           }
-          if (compatibilityRelease !== undefined) {
-            await lockExpectedCompatibilityReleaseWithClient(
-              client,
-              compatibilityRelease,
-            );
+          const variant = await selectCompatibilityVariant(client);
+          const {
+            compatibilityRelease: lockedCompatibilityRelease,
+            definitionCatalog,
+            executableCompiler,
+          } = variant;
+          if (lockedCompatibilityRelease !== undefined) {
             await options.testHooks?.afterCompatibilityReleaseLock?.();
           }
           const workflow = await client.query(
@@ -820,7 +1061,7 @@ export function createWorkflowAuthoringDatabase(
             definitionCatalog,
           );
           const schemaVersion = graph.schemaVersion;
-          const compiled = options.executableCompiler?.(graph);
+          const compiled = executableCompiler?.(graph);
           const executable =
             compiled === undefined
               ? undefined
@@ -836,20 +1077,25 @@ export function createWorkflowAuthoringDatabase(
                   })
                   .strict()
                   .parse(compiled);
-          if (
-            executable !== undefined &&
-            (executable.compatibilityReleaseEpoch !==
-              compatibilityRelease?.epoch ||
+          if (executable !== undefined) {
+            if (lockedCompatibilityRelease === undefined)
+              throw new Error(
+                'Compiled workflow compatibility release has no locked authority',
+              );
+            if (
+              executable.compatibilityReleaseEpoch !==
+                lockedCompatibilityRelease.epoch ||
               executable.compatibilityReleaseFingerprint !==
-                compatibilityRelease.fingerprint ||
+                lockedCompatibilityRelease.fingerprint ||
               executable.executableJson.compatibilityReleaseEpoch !==
-                compatibilityRelease.epoch ||
+                lockedCompatibilityRelease.epoch ||
               executable.executableJson.compatibilityReleaseFingerprint !==
-                compatibilityRelease.fingerprint)
-          ) {
-            throw new Error(
-              'Compiled workflow compatibility release does not match the locked authority',
-            );
+                lockedCompatibilityRelease.fingerprint
+            ) {
+              throw new Error(
+                'Compiled workflow compatibility release does not match the locked authority',
+              );
+            }
           }
           const checksum = checksumSchema.parse(
             executable?.checksum ??

@@ -6,9 +6,11 @@ import { z } from 'zod';
 
 import type { DatabaseConfig } from './config.js';
 import {
-  lockExpectedCompatibilityRelease,
+  lockExpectedCompatibilityReleaseSet,
   parseCompatibilityReleaseExpectation,
+  parseCompatibilityReleaseExpectationSet,
   type CompatibilityReleaseExpectation,
+  type CompatibilityReleaseExpectationSet,
 } from './compatibility-release.js';
 import {
   acceptWorkflowRun,
@@ -167,6 +169,7 @@ export type WorkflowRunReadModel = Readonly<{
 
 export type WorkflowRunCheckpointFactory = (
   projection: PublishedWorkflowV2Projection,
+  currentCompatibilityRelease: CompatibilityReleaseExpectation,
 ) => Readonly<{ engineVersion: string; checkpoint: unknown }>;
 
 export type StartPublishedWorkflowRunInput = Readonly<
@@ -209,12 +212,15 @@ export class WorkflowRunReadCapacityError extends Error {
 
 export function createWorkflowRunDatabase(
   config: DatabaseConfig,
-  compatibilityReleaseInput: CompatibilityReleaseExpectation,
+  compatibilityReleaseInput:
+    CompatibilityReleaseExpectation | CompatibilityReleaseExpectationSet,
 ): WorkflowRunDatabase {
   const pool = new Pool(config);
-  const compatibilityRelease = parseCompatibilityReleaseExpectation(
-    compatibilityReleaseInput,
-  );
+  const compatibilityReleases = Array.isArray(compatibilityReleaseInput)
+    ? parseCompatibilityReleaseExpectationSet(compatibilityReleaseInput)
+    : Object.freeze([
+        parseCompatibilityReleaseExpectation(compatibilityReleaseInput),
+      ]);
   return Object.freeze({
     start: async (input: StartPublishedWorkflowRunInput) => {
       const parsed = startInputSchema.parse(input);
@@ -222,7 +228,7 @@ export function createWorkflowRunDatabase(
         pool,
         parsed.workspaceId,
         async (transaction) =>
-          startInTransaction(transaction, parsed, compatibilityRelease),
+          startInTransaction(transaction, parsed, compatibilityReleases),
         parsed.signal === undefined ? {} : { signal: parsed.signal },
       );
     },
@@ -251,7 +257,7 @@ export function createWorkflowRunDatabase(
 async function startInTransaction(
   transaction: WorkspaceTransaction,
   input: z.output<typeof startInputSchema>,
-  compatibilityRelease: CompatibilityReleaseExpectation,
+  compatibilityReleases: CompatibilityReleaseExpectationSet,
 ): Promise<Readonly<{ run: WorkflowRunRecord; replayed: boolean }>> {
   const identity = {
     keyHash: input.idempotencyKeyHash,
@@ -266,13 +272,19 @@ async function startInTransaction(
     return Object.freeze({ run, replayed: true });
   }
 
-  await lockExpectedCompatibilityRelease(transaction.db, compatibilityRelease);
+  const currentCompatibilityRelease = await lockExpectedCompatibilityReleaseSet(
+    transaction.db,
+    compatibilityReleases,
+  );
 
   const projection = await lockPublishedExecution(
     transaction,
     input.workflowId,
   );
-  const initial = input.checkpointFactory(projection);
+  const initial = input.checkpointFactory(
+    projection,
+    currentCompatibilityRelease,
+  );
   const accepted = await acceptWorkflowRun(transaction, {
     engineVersion: initial.engineVersion,
     initialCheckpoint: initial.checkpoint,

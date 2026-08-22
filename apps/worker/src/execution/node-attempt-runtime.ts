@@ -7,8 +7,8 @@ import {
   NodeAttemptStateCorruptError,
   type PublishedWorkflowReader,
 } from '@pertexo/database';
-import { CORE_REGISTRY_RELEASE } from '@pertexo/nodes-core';
-import { createCoreNodeRegistry } from '@pertexo/nodes-core/server';
+import { CORE_REGISTRY_RELEASE_SUPPORT } from '@pertexo/nodes-core';
+import { createCoreNodeRegistryForRelease } from '@pertexo/nodes-core/server';
 import { createQueueTraceRunner } from '@pertexo/observability';
 import {
   createQueueConsumer,
@@ -24,7 +24,7 @@ import {
 } from '@pertexo/queue';
 import {
   composeExecutableCompatibilityRelease,
-  describeExecutableCompatibilityRelease,
+  createExecutableCompatibilityReleaseSupport,
   type NodeExecutionRegistry,
 } from '@pertexo/workflow-engine';
 
@@ -100,21 +100,33 @@ export async function createNodeAttemptRuntime(
     !/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/u.test(options.workerId)
   )
     throw new TypeError('Node-attempt runtime options are invalid');
-  const release = composeExecutableCompatibilityRelease(CORE_REGISTRY_RELEASE);
+  const releaseSupport = createExecutableCompatibilityReleaseSupport(
+    CORE_REGISTRY_RELEASE_SUPPORT.map(composeExecutableCompatibilityRelease),
+  );
+  const firstDescription = releaseSupport.descriptions[0];
+  const latestNodeRelease = CORE_REGISTRY_RELEASE_SUPPORT.at(-1);
+  if (firstDescription === undefined || latestNodeRelease === undefined)
+    throw new Error('Core compatibility release support is empty');
+  const firstRelease = releaseSupport.resolve(
+    firstDescription.epoch,
+    firstDescription.fingerprint,
+  );
   const engineOptions: NodeAttemptExecutionEngineOptions = {
-    admissionRelease: release,
-    currentRelease: release,
+    admissionRelease: firstRelease,
+    releaseSupport,
   };
   const engine =
     dependencies.engine ?? createNodeAttemptExecutionEngine(engineOptions);
-  const registry = dependencies.registry ?? createCoreNodeRegistry();
+  const registry =
+    dependencies.registry ??
+    createCoreNodeRegistryForRelease(latestNodeRelease);
   const runStore =
     dependencies.runStore ?? createNodeAttemptRunStore(options.database);
   const reader =
     dependencies.reader ??
     createPublishedWorkflowReader(
       options.database,
-      describeExecutableCompatibilityRelease(release),
+      releaseSupport.descriptions,
     );
   const notifications =
     dependencies.notifications ??

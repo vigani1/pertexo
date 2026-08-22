@@ -1,4 +1,7 @@
-import { CORE_REGISTRY_RELEASE } from '@pertexo/nodes-core';
+import {
+  CORE_REGISTRY_RELEASE,
+  CORE_REGISTRY_RELEASE_SUCCESSOR,
+} from '@pertexo/nodes-core';
 import {
   buildWorkflowExecutableV2,
   composeExecutableCompatibilityRelease,
@@ -22,8 +25,8 @@ const workflowVersionId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const runId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const actorId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 
-function executable() {
-  const release = composeExecutableCompatibilityRelease(CORE_REGISTRY_RELEASE);
+function executable(nodeRelease: unknown = CORE_REGISTRY_RELEASE) {
+  const release = composeExecutableCompatibilityRelease(nodeRelease);
   return buildWorkflowExecutableV2({
     release,
     graph: {
@@ -83,6 +86,7 @@ function run() {
 describe('PostgreSQL workflow run persistence adapter', () => {
   it('verifies the exact V2 release and creates the initial event-bound checkpoint', async () => {
     const compiled = executable();
+    const targetCompiled = executable(CORE_REGISTRY_RELEASE_SUCCESSOR);
     expect(
       describeExecutableCompatibilityRelease(
         composeExecutableCompatibilityRelease(CORE_REGISTRY_RELEASE),
@@ -92,25 +96,36 @@ describe('PostgreSQL workflow run persistence adapter', () => {
     );
     const start = vi.fn<WorkflowRunDatabase['start']>(async (input) => {
       await Promise.resolve();
-      const initial = input.checkpointFactory({
-        id: workflowVersionId,
-        workspaceId,
-        workflowId,
-        versionNumber: 1,
-        schemaVersion: 1,
-        checksum: compiled.checksum,
-        executableSchemaVersion: 2,
-        executableJson: compiled.envelope,
-        compatibilityReleaseEpoch: compiled.envelope.compatibilityReleaseEpoch,
-      });
-      expect(initial.engineVersion).toBe(PHASE3_API_ENGINE_VERSION);
-      expect(parseCheckpoint(initial.checkpoint)).toMatchObject({
-        workflowVersionId,
-        engineVersion: PHASE3_API_ENGINE_VERSION,
-        revision: 0,
-        nextEventSequence: 2,
-        runStatus: 'queued',
-      });
+      for (const [nodeRelease, executableVersion] of [
+        [CORE_REGISTRY_RELEASE, compiled],
+        [CORE_REGISTRY_RELEASE_SUCCESSOR, targetCompiled],
+      ] as const) {
+        const initial = input.checkpointFactory(
+          {
+            id: workflowVersionId,
+            workspaceId,
+            workflowId,
+            versionNumber: 1,
+            schemaVersion: 1,
+            checksum: executableVersion.checksum,
+            executableSchemaVersion: 2,
+            executableJson: executableVersion.envelope,
+            compatibilityReleaseEpoch:
+              executableVersion.envelope.compatibilityReleaseEpoch,
+          },
+          describeExecutableCompatibilityRelease(
+            composeExecutableCompatibilityRelease(nodeRelease),
+          ),
+        );
+        expect(initial.engineVersion).toBe(PHASE3_API_ENGINE_VERSION);
+        expect(parseCheckpoint(initial.checkpoint)).toMatchObject({
+          workflowVersionId,
+          engineVersion: PHASE3_API_ENGINE_VERSION,
+          revision: 0,
+          nextEventSequence: 2,
+          runStatus: 'queued',
+        });
+      }
       return { run: run(), replayed: false };
     });
     const close = vi.fn<WorkflowRunDatabase['close']>().mockResolvedValue();
