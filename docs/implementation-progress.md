@@ -20,7 +20,7 @@ not complete a phase.
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
-| Phase 4 — first side-effecting integration slice | In progress | ADRs 007/016; managed connections, secure/streaming HTTP, and worker JIT connection/artifact capabilities complete; `http.request@1` remains outside the release |
+| Phase 4 — first side-effecting integration slice | In progress | ADRs 007/016; managed connections, secure/streaming HTTP, worker JIT connection/artifact capabilities, and published integration-usage projection complete; `http.request@1` remains outside the release |
 | Phase 5 — orchestration slice | Not started | — |
 | Phase 6 — V1 providers and triggers | Not started | — |
 | Phase 7 — production operations | Not started | — |
@@ -1407,7 +1407,7 @@ Generic HTTP Request vertical slice:
 - [ ] Persist bounded structured output inline at or below the declared limit
       and stream larger/unsuitable responses to a workspace-scoped artifact;
       downstream resolution must consume the canonical stored value only.
-- [ ] Add `workflow_integration_usage` as a transactionally rebuilt projection
+- [x] Add `workflow_integration_usage` as a transactionally rebuilt projection
       of the immutable published graph and prove provider/operation/connection
       impact and revocation queries without making it a second graph authority.
 - [ ] Keep `http.request@1` absent from placement/publication/admission until
@@ -1634,6 +1634,27 @@ Current evidence:
   still excluded from production catalogs pending the usage projection,
   canonical downstream artifact resolution, compatibility rollout, telemetry,
   and preview gates.
+- Commit `23e3a0a` advances the migration head to
+  `0021_workflow_integration_usage.sql` and adds the disposable, forced-RLS
+  `workflow_integration_usage` projection. Stable provider/operation metadata
+  is fingerprinted in node releases but excluded from fallback definition
+  compatibility identity; required connection slots are projected recursively
+  from the retained immutable `graph_json`. Publication deletes and rebuilds
+  the exact rows inside its existing version/pointer/outbox/audit/idempotency
+  transaction, including when a presentation-only change reuses a version.
+  The API role alone can select/insert/delete derived rows, while worker and
+  dispatcher roles have no access; execution continues to consume only the
+  immutable workflow version. Covering provider/operation and connection
+  indexes back bounded cursor queries for impact and revocation analysis.
+  Fresh PostgreSQL 18 verification passes 17 authoring/RLS/rollback scenarios
+  and nine clean-install plus supported `0020`-to-`0021` migration/connection
+  scenarios, including cross-workspace isolation and projection restoration
+  from the retained graph. Unit suites pass 23 Node SDK, 52 workflow-model, 77
+  integration, 57 database, and 207 API assertions; affected packages build,
+  typecheck, lint, and format-check cleanly. The PostgreSQL schema/index review
+  shaped the composite tenant-first covering indexes and bounded keyset query
+  interfaces. HTTP release, canonical downstream artifact resolution,
+  telemetry, and preview gates remain incomplete.
 
 ## Later phases
 
