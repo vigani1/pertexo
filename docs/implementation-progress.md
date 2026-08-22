@@ -1500,6 +1500,14 @@ Current evidence:
 - ADR 016 is accepted on 2026-08-22. It separates pure validation from
   explicitly acknowledged durable test execution, pins preview identity,
   isolates production state, and applies ADR 007 truth plus bounded artifacts.
+- The server-only `@pertexo/integrations` foundation composes AES-256-GCM with
+  a managed-KMS data-key seam. It authenticates workspace, connection, and
+  secret-version identities in both KMS encryption context and AEAD associated
+  data, bounds all cryptographic material, clears plaintext key copies, exports
+  no credential implementation to browsers, and collapses malformed/context/
+  KMS failures into one safe error. Five focused typechecked assertions cover
+  exact round trips, context/ciphertext swapping, size failures, AWS KMS command
+  context, and safe upstream failure handling; package lint and build pass.
 - No Phase 4 production schema, endpoint, executor, registry release, or
   publishable capability is claimed complete yet.
 

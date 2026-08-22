@@ -1,0 +1,2 @@
+/** Browser-safe integration metadata is added here as complete slices ship. */
+export const INTEGRATION_MANIFEST_SCHEMA_VERSION = 1 as const;
