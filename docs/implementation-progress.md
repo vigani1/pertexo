@@ -1,6 +1,6 @@
 # Backend Implementation Progress
 
-Last updated: 2026-08-20
+Last updated: 2026-08-22
 
 This file tracks delivery against
 [the authoritative backend plan](./workflow-platform-backend-plan.md). A phase
@@ -19,16 +19,16 @@ not complete a phase.
 | Phase 0E — execution durability proofs and engine gate | Complete | ADRs 005 and 007–009; commits through `0322837`; 239 unit, 96 real-service integration, five process-recovery, one SSE-outage, and one transport-outage assertions; custom-engine GO |
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
-| Phase 3 — first executable-node slice | In progress | ADR 010; executable registry/runtime and public run slice through `a7eaf42`; durable compatibility authority, additive overlap, retained fixtures, lifecycle/non-removal, and recovery matrix through `6a5f43c`; migration head `0019_node_compatibility_preactivation.sql`; final evidence and review remain |
+| Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
 | Phase 4 — first side-effecting integration slice | Not started | — |
 | Phase 5 — orchestration slice | Not started | — |
 | Phase 6 — V1 providers and triggers | Not started | — |
 | Phase 7 — production operations | Not started | — |
 
 The `0A`–`0E` checkpoints are implementation-sized subdivisions of the plan's
-single Phase 0. They do not alter the authoritative scope. Phase 0 remains
-incomplete until every required Phase 0 foundation, executable spike, measured
-result, and custom-engine go/no-go condition has been completed.
+single Phase 0. They do not alter the authoritative scope. Phase 0 is complete
+because every required foundation, executable spike, measured result, and
+custom-engine go/no-go condition has passed.
 
 ## Phase 0A — Repository and process skeleton
 
@@ -727,7 +727,7 @@ Initial evidence:
 
 ## Phase 3 — First executable-node slice
 
-Status: **In progress — executable packages, persistence, consumers, public run API, PostgreSQL-authoritative SSE, active-cancellation recovery, and additive preactivation-gated compatibility rollout are complete; final evidence and review remain**
+Status: **Complete**
 
 Phase 3 has completed its design prerequisites, package foundations, durable
 coordinator/attempt state, and readiness-gated execution consumers. The exact
@@ -737,7 +737,8 @@ stores its exact V2 executable envelope, and the public Start/Get/Stream/Cancel
 slice is live. The initial durable compatibility-release authority, exact
 retained fixtures, active-work cancellation recovery, and the Phase 3
 non-removal barrier and audited target preactivation/deployment approval are now
-complete. The final Phase 0/fleet evidence and completion-review gates remain.
+complete. The complete Phase 0/fleet matrix and independent completion reviews
+are green at fixed implementation commit `7487ae6`.
 
 Design prerequisites:
 
@@ -836,7 +837,7 @@ Compatibility rollout, readiness, and retirement:
       and same-transaction current-release locking for publication and new
       admission; deployment evidence supports but never replaces the durable
       authority.
-- [ ] Make readiness fail closed on duplicate identities, invalid bindings,
+- [x] Make readiness fail closed on duplicate identities, invalid bindings,
       unsupported graph/config/checksum/evaluator/job/event versions, migration
       or grant drift, and local registry/expected-fingerprint disagreement;
       keep cross-workspace dependency inspection out of serving-role readiness.
@@ -869,7 +870,7 @@ API, SSE, and cancellation:
 - [x] Make cancellation durable and monotonic, prevent new admission after the
       cancel boundary, cooperatively abort active work, and report completed
       work and unknown outcomes truthfully.
-- [ ] Prove authorization, capability checks, hidden cross-workspace resources,
+- [x] Prove authorization, capability checks, hidden cross-workspace resources,
       CSRF for browser mutations, safe errors/logs, bounded telemetry, and
       audit/usage effects where applicable.
 
@@ -892,19 +893,19 @@ Required completion evidence:
       including Phase 2 `wf:v1`; prove each fixture selects only its exact
       executor or remains safely readable when it is intentionally
       non-executable.
-- [ ] Pass real PostgreSQL + Redis + BullMQ tests for the full thin graph,
+- [x] Pass real PostgreSQL + Redis + BullMQ tests for the full thin graph,
       duplicate deliveries, enqueue-before-mark recovery, consumer readiness,
       drain behavior, and process restart boundaries.
-- [ ] Re-run every applicable Phase 0B tenancy failure: absent workspace
+- [x] Re-run every applicable Phase 0B tenancy failure: absent workspace
       context, cross-workspace reads/writes, commit/rollback and sequential/
       concurrent pool reuse, non-owner/non-`BYPASSRLS` runtime roles, forbidden
       grants, forced-RLS/policy drift, and incompatible migration readiness.
-- [ ] Re-run every applicable Phase 0C HTTP/observability failure: invalid or
+- [x] Re-run every applicable Phase 0C HTTP/observability failure: invalid or
       propagated request identity, safe RFC 9457 mapping, recursive secret/error
       redaction, trace/metric bootstrap and correlation, dependency readiness,
       bootstrap cleanup, graceful `SIGTERM` drain, and package/server-only export
       boundaries.
-- [ ] Re-run every applicable Phase 0D queue/outbox failure: transactional
+- [x] Re-run every applicable Phase 0D queue/outbox failure: transactional
       rollback, duplicate delivery and concurrent inbox fencing, checksum
       mismatch audit, enqueue-before-mark recovery, Redis and PostgreSQL outage/
       recovery, propagated queue trace context, timeout/abort/unrecoverable
@@ -915,18 +916,18 @@ Required completion evidence:
       durable wait/retry recovery fixtures that remain applicable to the shared
       runtime, cancellation during active work and restart, and exact
       redelivery fencing.
-- [ ] Re-run the Phase 0E Redis-loss SSE reconstruction and worker transport
+- [x] Re-run the Phase 0E Redis-loss SSE reconstruction and worker transport
       outage/drain fixtures, proving PostgreSQL remains authoritative and no
       work is claimed after readiness falls.
-- [ ] Run the root `pnpm check` and the complete real-service integration
+- [x] Run the root `pnpm check` and the complete real-service integration
       matrix sequentially in dependency-safe order, then record commands,
       versions, assertion counts, timings, migration head, and cleanup/health
       evidence here.
-- [ ] Complete independent Spec and Standards reviews against the fixed Phase 3
+- [x] Complete independent Spec and Standards reviews against the fixed Phase 3
       HEAD with no blocker/high findings, including package direction,
       generated artifacts, manifest/lockfile coherence, unsafe casts, node
       compatibility, and tracker accuracy.
-- [ ] Mark Phase 3 complete only after every box above is checked and concrete
+- [x] Mark Phase 3 complete only after every box above is checked and concrete
       commits and verification evidence replace this prerequisite-only status.
 
 Explicit exclusions for Phase 3:
@@ -1286,6 +1287,46 @@ Current evidence:
   fail closed. Strong draft ETags differ across the actual current/target
   fingerprints. The root gate passes 572 unit assertions and the focused
   PostgreSQL rollout proof passes on a fresh zero-to-head database.
+- Commit `7487ae6` closes the production overlap gap across every serving path.
+  API authoring and run admission, worker coordinator and node-attempt loading,
+  and readiness all resolve the exact durable current release from the bounded
+  old/target support set without a latest fallback. Authoring now separates an
+  active-only placement catalog from the active/deprecated publication catalog
+  and compares every root or structured-body node occurrence with the prior CAS
+  revision. A deprecated definition is grandfathered only for one unambiguous
+  stable node ID/definition pair; direct, cloned, duplicate-ID, identity-swapped,
+  and nested new placements fail with the stable workflow problem while the
+  draft remains unchanged. The fresh rollout proof saves Manual before target
+  activation, publishes that retained instance afterward, rejects every
+  postactivation placement bypass, keeps the overlap artifact ready, and makes
+  the old-only artifact fail closed. Independent final Spec and Standards
+  reviews returned GO with no blocker/high findings.
+- At fixed implementation commit `7487ae6`, root `pnpm check` passes formatting,
+  ESLint, deterministic generated-contract drift, every workspace typecheck,
+  575 unit assertions, and every production build. On a fresh PostgreSQL 18.6
+  database migrated from zero through
+  `0019_node_compatibility_preactivation.sql`, the root sequential real-service
+  matrix passes 217 assertions: two S3Mock 5.1.0 object-store, 199 database,
+  nine worker/PostgreSQL/Redis/BullMQ, and seven API/PostgreSQL/SSE assertions.
+  The dependency-ordered `pnpm test:integration` suite durations are 0.33 s,
+  14.50 s, 4.40 s, and 6.22 s respectively.
+  The separate fresh rollout assertion passes after exact API/worker target
+  probes and activation. The five-case Phase 0E process matrix passes in
+  41.90 s, including Redis restart recovery in 7.14 s, cancellation recovery in
+  12.39 s with one confirmed effect, exact join policies, loop concurrency two,
+  and three iterations. The destructive transport proof passes against Redis
+  8.2.8 and BullMQ 6.1.2 with queue-loss recovery in 1.13 s, Redis recovery in
+  5.74 s, PostgreSQL recovery in 5.71 s, zero post-drain claims, and bounded
+  close; PostgreSQL remains authoritative. The SSE Redis-loss proof backfills
+  from PostgreSQL in 5.82 s. Fixed-head compiled-process smoke checks start an
+  API that reports live/ready and the worker with both Phase 3 dispatch
+  consumers ready; `SIGTERM` closes them cleanly in 85 ms and 82 ms
+  respectively. Together with the lifecycle and destructive-drain assertions,
+  this proves readiness falls before shutdown, no post-drain claim occurs, and
+  resources close within the bounded signal window. All explicit disposable
+  databases were dropped, Redis test databases were flushed, no
+  `pertexo_test_%` database remained, and PostgreSQL, Redis, and the object store
+  were healthy after cleanup.
 
 ## Later phases
 
