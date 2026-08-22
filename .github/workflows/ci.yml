@@ -112,6 +112,11 @@ jobs:
           WORKER_TRANSPORT_RESILIENCE: 'true'
         run: pnpm --filter @pertexo/worker test:resilience
 
+      - name: Run additive compatibility rollout proof
+        env:
+          API_COMPATIBILITY_ROLLOUT_INTEGRATION: 'true'
+        run: pnpm --filter @pertexo/api test:compatibility-rollout
+
       - name: Capture integration service logs on failure
         if: failure()
         run: |
