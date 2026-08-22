@@ -1715,6 +1715,24 @@ Current evidence:
   connection/ADR-007 failure proofs, final activation assertion, durable
   validate/test-execute preview slice, full recovery/regression matrix, and
   independent completion reviews.
+- Commit `ef72b01` establishes the browser-safe and transport contract
+  foundation for ADR 016 without claiming executable preview behavior. The
+  public node-test request is a strict `validate`/`test_execute` discriminated
+  union: both modes pin a positive draft revision, execution accepts only
+  bounded manual JSON or one opaque prior-preview identity, and the literal
+  side-effect acknowledgement cannot be omitted or set false. The documented
+  endpoint makes idempotency conditional on execution, returns a bounded
+  field-addressed validation report at `200` or an immutable preview summary at
+  `202`, and exposes a separate workspace-scoped status resource with only
+  bounded inline JSON or an artifact identity. Deterministic client/OpenAPI
+  artifacts and a deliberate browser package export are committed. The new
+  `execute-preview-attempt` transport contract shares the node-attempt pool but
+  carries only workspace, preview-run, preview-attempt, outbox, and trace
+  identifiers; its queue/metric routing is compile-time exhaustive. Verification
+  passes 13 contract, 35 queue, and 32 observability assertions, generated-
+  artifact drift checks, all workspace typechecks, affected builds, and focused
+  ESLint. Persistence, API authorization/validation, worker execution, and the
+  preview failure matrix remain open.
 
 ## Later phases
 
