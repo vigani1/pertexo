@@ -1756,6 +1756,20 @@ Current evidence:
   preview run, one attempt, and one preview outbox row before the disposable
   database was dropped. API validation/status behavior, worker execution,
   cleanup, and crash/outcome proofs remain open.
+- Commit `2edc729` adds the pure validation half of ADR 016 behind a deliberately
+  non-executable server-only catalog seam. The resolver selects one exact node
+  definition from one pinned compatibility release and exposes its manifest and
+  schemas without constructing an executor or possessing credential, DNS,
+  provider, queue, or artifact capabilities. API validation resolves the same
+  literal/run-input/expression mappings used by runtime against bounded sample
+  input, parses configuration and resolved input through the exact schemas,
+  checks declared opaque connection slots, derives the side-effect disclosure
+  from immutable manifest metadata, and caps stable field-addressed issues at
+  100. Missing/ambiguous nodes and definitions unavailable in the pinned release
+  fail closed. Six catalog assertions and the full 44-file/210-assertion API
+  suite pass with affected builds, typechecks, formatting, and ESLint. This is
+  not yet an exposed endpoint: stale-revision handling, connection-use
+  authorization, durable execution acceptance, and status reads remain open.
 
 ## Later phases
 
