@@ -11,6 +11,7 @@ import {
   workflowCompatibilityReport,
   workflowDraftRepresentationTag,
   workflowExecutableChecksum,
+  workflowIntegrationUsage,
   workflowRetainedExecutableChecksum,
   type WorkflowDefinitionCatalogV1,
   type WorkflowGraph,
@@ -51,6 +52,16 @@ const traceparentSchema = z
 const workflowDraftTagSchema = z
   .string()
   .regex(/^"draft-v1\.[A-Za-z0-9_-]{43}"$/u);
+const integrationProviderKeySchema = z
+  .string()
+  .min(1)
+  .max(64)
+  .regex(/^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u);
+const integrationOperationKeySchema = z
+  .string()
+  .min(1)
+  .max(128)
+  .regex(/^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u);
 
 export class WorkflowNotFoundError extends Error {
   public override readonly name = 'WorkflowNotFoundError';
@@ -245,7 +256,13 @@ export type WorkflowAuthoringTestHooks = Readonly<{
   /** Integration-test synchronization/fault seam after both publish locks. */
   afterPublishDraftLock?: () => Promise<void>;
   afterPublishStep?: (
-    step: 'version' | 'pointer' | 'outbox' | 'audit' | 'idempotency',
+    step:
+      | 'version'
+      | 'integration_usage'
+      | 'pointer'
+      | 'outbox'
+      | 'audit'
+      | 'idempotency',
   ) => Promise<void>;
 }>;
 
@@ -1153,6 +1170,49 @@ export function createWorkflowAuthoringDatabase(
           }
           const version = mapVersion(versionRow);
           await options.testHooks?.afterPublishStep?.('version');
+          const integrationUsage = workflowIntegrationUsage(
+            version.graphJson,
+            definitionCatalog,
+          ).map((usage) => ({
+            providerKey: integrationProviderKeySchema.parse(usage.providerKey),
+            operationKey: integrationOperationKeySchema.parse(
+              usage.operationKey,
+            ),
+            connectionId: uuidSchema.parse(usage.connectionId),
+          }));
+          await client.query(
+            `delete from app.workflow_integration_usage
+             where workspace_id = $1 and workflow_version_id = $2`,
+            [input.workspaceId, version.id],
+          );
+          if (integrationUsage.length > 0) {
+            await client.query(
+              `insert into app.workflow_integration_usage (
+                 workspace_id, workflow_version_id, provider_key,
+                 operation_key, connection_id
+               )
+               select $1, $2, usage.provider_key, usage.operation_key,
+                      usage.connection_id
+               from jsonb_to_recordset($3::jsonb) as usage(
+                 provider_key varchar(64), operation_key varchar(128),
+                 connection_id uuid
+               )`,
+              [
+                input.workspaceId,
+                version.id,
+                JSON.stringify(
+                  integrationUsage.map(
+                    ({ providerKey, operationKey, connectionId }) => ({
+                      provider_key: providerKey,
+                      operation_key: operationKey,
+                      connection_id: connectionId,
+                    }),
+                  ),
+                ),
+              ],
+            );
+          }
+          await options.testHooks?.afterPublishStep?.('integration_usage');
           await client.query(
             "update app.workflows set published_version_id = $1, activation_status = 'inactive', updated_at = transaction_timestamp() where workspace_id = $2 and id = $3",
             [version.id, input.workspaceId, workflowId],

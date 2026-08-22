@@ -251,6 +251,7 @@ export {
   workspaces,
   workspaceCreationIdempotencyRecords,
   workflowDrafts,
+  workflowIntegrationUsage,
   workflowVersions,
   workflows,
   workflowRuns,
@@ -269,6 +270,14 @@ export {
   WorkflowPublishIdempotencyConflictError,
   WorkflowRevisionConflictError,
 } from './workflow-authoring.js';
+export { createWorkflowIntegrationUsageDatabase } from './workflow-integration-usage.js';
+export type {
+  FindConnectionImpactInput,
+  FindProviderOperationImpactInput,
+  WorkflowIntegrationImpactPage,
+  WorkflowIntegrationImpactRecord,
+  WorkflowIntegrationUsageDatabase,
+} from './workflow-integration-usage.js';
 export type {
   CreateWorkflowInput,
   CreateWorkflowResult,

@@ -38,6 +38,10 @@ export const HTTP_REQUEST_MANIFEST: NodeManifest = Object.freeze({
   }),
   credentialRequirements: Object.freeze([HTTP_REQUEST_CONNECTION_SLOT]),
   connectionRequirements: Object.freeze([HTTP_REQUEST_CONNECTION_SLOT]),
+  integration: Object.freeze({
+    providerKey: 'http',
+    operationKey: 'request',
+  }),
   retryClass: 'unsafe',
   resourceClass: 'io',
   capabilities: Object.freeze([

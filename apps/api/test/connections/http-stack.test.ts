@@ -26,7 +26,7 @@ const database: WorkspaceDatabase = {
   ): Promise<T> => operation(undefined as never),
   checkReadiness: () =>
     Promise.resolve({
-      migrationHead: '0020_connections.sql',
+      migrationHead: '0021_workflow_integration_usage.sql',
       postgresMajor: 18,
       role: 'pertexo_api',
     }),

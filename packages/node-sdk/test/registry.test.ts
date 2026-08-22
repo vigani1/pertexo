@@ -240,6 +240,29 @@ describe('node-sdk registry release contracts', () => {
     ).toThrow(/unknown executor/u);
   });
 
+  it('validates and fingerprints stable integration operation metadata', () => {
+    const integrated = createRegistryRelease({
+      definitions: [
+        {
+          ...manifest,
+          connectionRequirements: ['primary'],
+          integration: { providerKey: 'http', operationKey: 'request' },
+        },
+      ],
+      epoch: 2,
+      executors: release().executors,
+      policies: release().policies,
+    });
+    expect(integrated.fingerprint).not.toBe(release().fingerprint);
+    expect(registryReleaseSchema.parse(integrated)).toEqual(integrated);
+    expect(
+      nodeManifestSchema.safeParse({
+        ...manifest,
+        integration: { providerKey: 'HTTP', operationKey: 'request' },
+      }).success,
+    ).toBe(false);
+  });
+
   it('rejects recursively deep schema documents before fingerprint traversal', () => {
     let deepSchema: Record<string, unknown> = {};
     for (let depth = 0; depth < 65; depth += 1)

@@ -9,10 +9,14 @@ const migrationUrl = new URL(
   '../migrations/0012_workflow_authoring.sql',
   import.meta.url,
 );
+const integrationUsageMigrationUrl = new URL(
+  '../migrations/0021_workflow_integration_usage.sql',
+  import.meta.url,
+);
 
 describe('workflow authoring migration contract', () => {
   it('advances the reviewed migration head', () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0020_connections.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0021_workflow_integration_usage.sql');
   });
 
   it('emits the identifier-only trigger-reconciliation payload', () => {
@@ -60,6 +64,25 @@ describe('workflow authoring migration contract', () => {
     );
     expect(sql).toContain(
       'REFERENCES app.workflow_versions (workspace_id, workflow_id, id)',
+    );
+  });
+
+  it('defines integration usage as a tenant-scoped disposable projection', async () => {
+    const sql = await readFile(integrationUsageMigrationUrl, 'utf8');
+    expect(sql).toContain('CREATE TABLE app.workflow_integration_usage');
+    expect(sql).toContain('workflow_integration_usage_impact_idx');
+    expect(sql).toContain('workflow_integration_usage_connection_idx');
+    expect(sql).toContain(
+      'ALTER TABLE app.workflow_integration_usage FORCE ROW LEVEL SECURITY',
+    );
+    expect(sql).toContain(
+      'GRANT SELECT, INSERT, DELETE ON app.workflow_integration_usage',
+    );
+    expect(sql).toContain(
+      'REFERENCES app.workflow_versions (workspace_id, id) ON DELETE CASCADE',
+    );
+    expect(sql).toContain(
+      'REFERENCES app.connections (workspace_id, id) ON DELETE RESTRICT',
     );
   });
 

@@ -10,6 +10,10 @@ import {
 } from '@pertexo/workflow-model/graph';
 
 import { parseDatabaseConfig } from '../src/config.js';
+import {
+  CONNECTION_AUTH_TYPE,
+  createConnectionDatabase,
+} from '../src/connections.js';
 import { CompatibilityReleaseMismatchError } from '../src/compatibility-release.js';
 import { createIdentityWorkspaceDatabase } from '../src/identity-workspace.js';
 import { migrateDatabase } from '../src/migrations.js';
@@ -23,6 +27,7 @@ import {
   WorkflowRevisionConflictError,
   type WorkflowAuthoringDatabase,
 } from '../src/workflow-authoring.js';
+import { createWorkflowIntegrationUsageDatabase } from '../src/workflow-integration-usage.js';
 
 const migrationUrl =
   process.env.DATABASE_MIGRATION_URL ??
@@ -1003,6 +1008,174 @@ describe('workflow authoring persistence', () => {
     }
   });
 
+  it('transactionally rebuilds derived integration usage and serves bounded impact queries', async () => {
+    const connectionId = randomUUID();
+    const secretVersionId = randomUUID();
+    const connectionDatabase = createConnectionDatabase(
+      parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
+    );
+    const usageDatabase = createWorkflowIntegrationUsageDatabase(
+      parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
+    );
+    const usageCatalog = Object.freeze({
+      schemaVersion: 1 as const,
+      definitions: Object.freeze([
+        Object.freeze({
+          key: 'test.placeholder',
+          version: 1,
+          integration: Object.freeze({
+            providerKey: 'http',
+            operationKey: 'request',
+            connectionSlots: Object.freeze(['primary']),
+          }),
+        }),
+      ]),
+    });
+    const usageAuthoring = createWorkflowAuthoringDatabase(
+      parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
+      { definitionCatalog: usageCatalog },
+    );
+    try {
+      await connectionDatabase.createConnection({
+        workspaceId,
+        actorId,
+        connectionId,
+        secretVersionId,
+        providerKey: 'http',
+        name: `Usage ${connectionId.slice(0, 8)}`,
+        authType: CONNECTION_AUTH_TYPE.httpHeaders,
+        sealed: {
+          schemaVersion: 1,
+          kmsKeyReference:
+            'arn:aws:kms:eu-central-1:123456789012:key/usage-proof',
+          encryptedDataKey: Buffer.alloc(32, 1).toString('base64url'),
+          ciphertext: Buffer.from('usage-proof').toString('base64url'),
+          nonce: Buffer.alloc(12, 2).toString('base64url'),
+          tag: Buffer.alloc(16, 3).toString('base64url'),
+        },
+        idempotencyKey: `usage-connection-${connectionId}`,
+        requestHash: createHash('sha256').update(connectionId).digest('hex'),
+      });
+      const graph = {
+        ...emptyGraph,
+        nodes: [
+          {
+            ...draftNode('http-usage'),
+            connectionRefs: { primary: connectionId },
+          },
+        ],
+      };
+      const created = await usageAuthoring.createWorkflow({
+        actorId,
+        emptyGraph: graph,
+        idempotencyKey: `create-usage-${connectionId}`,
+        name: 'Integration usage proof',
+        workspaceId,
+      });
+      const published = await usageAuthoring.publishWorkflow({
+        actorId,
+        representationTag: await currentRepresentationTag(
+          usageAuthoring,
+          workspaceId,
+          created.workflowId,
+          actorId,
+          usageCatalog,
+        ),
+        idempotencyKey: `publish-usage-${connectionId}`,
+        requestHash: createHash('sha256')
+          .update(`publish-${connectionId}`)
+          .digest('hex'),
+        workflowId: created.workflowId,
+        workspaceId,
+      });
+
+      await expect(
+        usageDatabase.findProviderOperationImpact({
+          workspaceId,
+          providerKey: 'http',
+          operationKey: 'request',
+          limit: 1,
+        }),
+      ).resolves.toMatchObject({
+        items: [
+          {
+            workflowVersionId: published.version.id,
+            providerKey: 'http',
+            operationKey: 'request',
+            connectionId,
+          },
+        ],
+      });
+      await expect(
+        usageDatabase.findConnectionImpact({ workspaceId, connectionId }),
+      ).resolves.toMatchObject({
+        items: [{ workflowVersionId: published.version.id, connectionId }],
+      });
+      await expect(
+        usageDatabase.findConnectionImpact({
+          workspaceId: otherWorkspaceId,
+          connectionId,
+        }),
+      ).resolves.toEqual({ items: [] });
+
+      const client = await apiPool.connect();
+      try {
+        await client.query('begin');
+        await client.query("select set_config('app.workspace_id', $1, true)", [
+          workspaceId,
+        ]);
+        await client.query(
+          'delete from app.workflow_integration_usage where workflow_version_id = $1',
+          [published.version.id],
+        );
+        await client.query('commit');
+      } finally {
+        client.release();
+      }
+      await usageAuthoring.saveDraft({
+        actorId,
+        expectedRevision: 1,
+        graphJson: {
+          ...graph,
+          nodes: [{ ...graph.nodes[0], label: 'Presentation only' }],
+        },
+        workflowId: created.workflowId,
+        workspaceId,
+      });
+      const rebuilt = await usageAuthoring.publishWorkflow({
+        actorId,
+        representationTag: await currentRepresentationTag(
+          usageAuthoring,
+          workspaceId,
+          created.workflowId,
+          actorId,
+          usageCatalog,
+        ),
+        idempotencyKey: `republish-usage-${connectionId}`,
+        requestHash: createHash('sha256')
+          .update(`republish-${connectionId}`)
+          .digest('hex'),
+        workflowId: created.workflowId,
+        workspaceId,
+      });
+      expect(rebuilt).toMatchObject({
+        reused: true,
+        version: { id: published.version.id, graphJson: graph },
+      });
+      await expect(
+        usageDatabase.findConnectionImpact({ workspaceId, connectionId }),
+      ).resolves.toMatchObject({
+        items: [{ workflowVersionId: published.version.id, connectionId }],
+      });
+    } finally {
+      await Promise.all([
+        connectionDatabase.close(),
+        usageDatabase.close(),
+        usageAuthoring.close(),
+      ]);
+    }
+  });
+
   it('holds the durable compatibility pointer lock through publication commit', async () => {
     const releaseLocked = deferred();
     const releasePublication = deferred();
@@ -1355,6 +1528,7 @@ describe('workflow authoring persistence', () => {
   it('rolls back every material publication step and locked-validator failure', async () => {
     const steps = [
       'version',
+      'integration_usage',
       'pointer',
       'outbox',
       'audit',
@@ -1410,6 +1584,7 @@ describe('workflow authoring persistence', () => {
           commands: string;
           outbox: string;
           pointer: string | null;
+          usage: string;
           versions: string;
         }>(
           `select
@@ -1417,6 +1592,7 @@ describe('workflow authoring persistence', () => {
             (select count(*) from app.audit_events where target_id = $1 and action = 'workflow.published')::text audits,
             (select count(*) from app.outbox_events where aggregate_id = $1 and job_name = 'reconcile-workflow-triggers')::text outbox,
             (select count(*) from app.idempotency_records where resource_id = $1 and operation = 'workflow.publish')::text commands,
+            (select count(*) from app.workflow_integration_usage usage join app.workflow_versions version on version.id = usage.workflow_version_id where version.workflow_id = $1)::text usage,
             (select published_version_id::text from app.workflows where id = $1) pointer`,
           [created.workflowId],
         );
@@ -1425,6 +1601,7 @@ describe('workflow authoring persistence', () => {
           commands: '0',
           outbox: '0',
           pointer: null,
+          usage: '0',
           versions: '0',
         });
         await proof.query('rollback');

@@ -8,7 +8,7 @@ import {
   type CompatibilityReleaseExpectationSet,
 } from './compatibility-release.js';
 
-export const EXPECTED_MIGRATION_HEAD = '0020_connections.sql';
+export const EXPECTED_MIGRATION_HEAD = '0021_workflow_integration_usage.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -43,6 +43,7 @@ interface ReadinessRow {
   phase3_policy_compatible: boolean;
   phase3_schema_compatible: boolean;
   phase4_connections_compatible: boolean;
+  phase4_integration_usage_compatible: boolean;
   execution_values_compatible: boolean;
   coordinator_run_store_compatible: boolean;
   postgres_major: number;
@@ -841,7 +842,12 @@ export async function checkDatabaseReadiness(
           and has_table_privilege(current_user, 'app.connection_events', 'INSERT')
           and not has_table_privilege(current_user, 'app.connection_events', 'SELECT')
           and not has_table_privilege(current_user, 'app.connection_events', 'UPDATE')
-        else
+        when exists (
+          select 1 from pg_policy policy
+          where policy.polrelid = to_regclass('app.connections')
+            and policy.polname = 'connections_workspace_scope'
+            and (select oid from pg_roles where rolname = current_user) = any(policy.polroles)
+        ) then
           has_table_privilege(current_user, 'app.connections', 'SELECT')
           and has_table_privilege(current_user, 'app.connections', 'INSERT')
           and has_column_privilege(current_user, 'app.connections', 'current_secret_version_id', 'UPDATE')
@@ -851,8 +857,77 @@ export async function checkDatabaseReadiness(
           and has_table_privilege(current_user, 'app.connection_events', 'SELECT')
           and has_table_privilege(current_user, 'app.connection_events', 'INSERT')
           and not has_table_privilege(current_user, 'app.connection_events', 'UPDATE')
+        else
+          not has_table_privilege(current_user, 'app.connections', 'SELECT')
+          and not has_table_privilege(current_user, 'app.connections', 'INSERT')
+          and not has_table_privilege(current_user, 'app.connections', 'UPDATE')
+          and not has_table_privilege(current_user, 'app.connection_secret_versions', 'SELECT')
+          and not has_table_privilege(current_user, 'app.connection_secret_versions', 'INSERT')
+          and not has_table_privilege(current_user, 'app.connection_secret_versions', 'UPDATE')
+          and not has_table_privilege(current_user, 'app.connection_events', 'SELECT')
+          and not has_table_privilege(current_user, 'app.connection_events', 'INSERT')
+          and not has_table_privilege(current_user, 'app.connection_events', 'UPDATE')
         end
       ) as phase4_connections_compatible,
+      (
+        (select count(*) = 5 from pg_attribute
+         where attrelid = to_regclass('app.workflow_integration_usage')
+           and attnum > 0 and not attisdropped)
+        and exists (
+          select 1 from pg_constraint
+          where conrelid = to_regclass('app.workflow_integration_usage')
+            and conname = 'workflow_integration_usage_identity_pk'
+            and contype = 'p'
+        )
+        and exists (
+          select 1 from pg_constraint
+          where conrelid = to_regclass('app.workflow_integration_usage')
+            and conname = 'workflow_integration_usage_version_fk'
+            and contype = 'f'
+        )
+        and exists (
+          select 1 from pg_constraint
+          where conrelid = to_regclass('app.workflow_integration_usage')
+            and conname = 'workflow_integration_usage_connection_fk'
+            and contype = 'f'
+        )
+        and exists (
+          select 1 from pg_class protected
+          where protected.oid = to_regclass('app.workflow_integration_usage')
+            and protected.relrowsecurity
+            and protected.relforcerowsecurity
+            and pg_get_userbyid(protected.relowner) = $1
+        )
+        and exists (
+          select 1 from pg_policy policy
+          where policy.polrelid = to_regclass('app.workflow_integration_usage')
+            and policy.polname = 'workflow_integration_usage_workspace_scope'
+            and policy.polcmd = '*'
+            and cardinality(policy.polroles) = 2
+            and (select oid from pg_roles where rolname = $1) = any(policy.polroles)
+            and not ((select oid from pg_roles where rolname = $2) = any(policy.polroles))
+            and pg_get_expr(policy.polqual, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
+            and pg_get_expr(policy.polwithcheck, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
+        )
+        and case when exists (
+          select 1 from pg_policy policy
+          where policy.polrelid = to_regclass('app.workflow_integration_usage')
+            and (select oid from pg_roles where rolname = current_user) = any(policy.polroles)
+        ) then
+          has_table_privilege(current_user, 'app.workflow_integration_usage', 'SELECT')
+          and has_table_privilege(current_user, 'app.workflow_integration_usage', 'INSERT')
+          and not has_table_privilege(current_user, 'app.workflow_integration_usage', 'UPDATE')
+          and has_table_privilege(current_user, 'app.workflow_integration_usage', 'DELETE')
+        else
+          not has_table_privilege(current_user, 'app.workflow_integration_usage', 'SELECT')
+          and not has_table_privilege(current_user, 'app.workflow_integration_usage', 'INSERT')
+          and not has_table_privilege(current_user, 'app.workflow_integration_usage', 'UPDATE')
+          and not has_table_privilege(current_user, 'app.workflow_integration_usage', 'DELETE')
+        end
+        and not has_table_privilege(current_user, 'app.workflow_integration_usage', 'TRUNCATE')
+        and not has_table_privilege(current_user, 'app.workflow_integration_usage', 'REFERENCES')
+        and not has_table_privilege(current_user, 'app.workflow_integration_usage', 'TRIGGER')
+      ) as phase4_integration_usage_compatible,
       (
         select name
         from pertexo_internal.schema_migrations
@@ -938,6 +1013,11 @@ export async function checkDatabaseReadiness(
   }
   if (!row.phase4_connections_compatible) {
     throw new Error('Connection persistence schema or grants are incompatible');
+  }
+  if (!row.phase4_integration_usage_compatible) {
+    throw new Error(
+      'Workflow integration usage schema or grants are incompatible',
+    );
   }
   const hasProtectedTableAccess =
     row.can_select || row.can_insert || row.can_update || row.can_delete;

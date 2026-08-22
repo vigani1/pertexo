@@ -582,8 +582,20 @@ export interface WorkflowDefinitionCatalogV1 {
   readonly definitions: readonly {
     readonly key: string;
     readonly version: number;
+    /** Optional projection metadata; it does not participate in compatibility identity. */
+    readonly integration?: Readonly<{
+      readonly providerKey: string;
+      readonly operationKey: string;
+      readonly connectionSlots: readonly string[];
+    }>;
   }[];
 }
+
+export type WorkflowIntegrationUsage = Readonly<{
+  providerKey: string;
+  operationKey: string;
+  connectionId: string;
+}>;
 
 export const EMPTY_DEFINITION_CATALOG_V1: WorkflowDefinitionCatalogV1 =
   Object.freeze({ schemaVersion: 1, definitions: Object.freeze([]) });
@@ -620,14 +632,73 @@ function definitionCatalogFingerprint(
       canonicalJson({
         domain: 'pertexo.workflow.definition-compatibility',
         catalogVersion: catalog.schemaVersion,
-        definitions: [...catalog.definitions].sort(
-          (left, right) =>
-            compareOrdinal(left.key, right.key) || left.version - right.version,
-        ),
+        definitions: [...catalog.definitions]
+          .map(({ key, version }) => ({ key, version }))
+          .sort(
+            (left, right) =>
+              compareOrdinal(left.key, right.key) ||
+              left.version - right.version,
+          ),
       }),
     )
     .digest('hex');
   return `wf-compat:v1:sha256:${digest}`;
+}
+
+/**
+ * Derive the exact integration index from a graph and its pinned definition
+ * catalog. The result is disposable: the graph remains the sole authority.
+ */
+export function workflowIntegrationUsage(
+  input: unknown,
+  catalog: WorkflowDefinitionCatalogV1 = EMPTY_DEFINITION_CATALOG_V1,
+): readonly WorkflowIntegrationUsage[] {
+  const graph = parseWorkflowGraphDraft(input);
+  const definitions = new Map(
+    catalog.definitions.map((definition) => [
+      `${definition.key}\u0000${String(definition.version)}`,
+      definition.integration,
+    ]),
+  );
+  const usages = new Map<string, WorkflowIntegrationUsage>();
+  const pending: WorkflowGraph[] = [graph];
+  while (pending.length > 0) {
+    const current = pending.pop();
+    if (current === undefined) continue;
+    for (const node of current.nodes) {
+      const integration = definitions.get(
+        `${node.definition.key}\u0000${String(node.definition.version)}`,
+      );
+      if (integration !== undefined) {
+        for (const slot of integration.connectionSlots) {
+          const connectionId = node.connectionRefs[slot];
+          if (connectionId === undefined) {
+            throw new TypeError(
+              `Integration definition ${node.definition.key}@${String(node.definition.version)} requires connection slot ${slot}`,
+            );
+          }
+          const usage = Object.freeze({
+            providerKey: integration.providerKey,
+            operationKey: integration.operationKey,
+            connectionId,
+          });
+          usages.set(
+            `${usage.providerKey}\u0000${usage.operationKey}\u0000${usage.connectionId}`,
+            usage,
+          );
+        }
+      }
+      if (node.structured !== undefined) pending.push(node.structured.body);
+    }
+  }
+  return Object.freeze(
+    [...usages.values()].sort(
+      (left, right) =>
+        compareOrdinal(left.providerKey, right.providerKey) ||
+        compareOrdinal(left.operationKey, right.operationKey) ||
+        compareOrdinal(left.connectionId, right.connectionId),
+    ),
+  );
 }
 
 export const EMPTY_DEFINITION_CATALOG_FINGERPRINT_V1 =

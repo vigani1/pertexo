@@ -164,6 +164,7 @@ describe('http.request@1 candidate definition', () => {
       resourceClass: 'io',
       connectionRequirements: [HTTP_REQUEST_CONNECTION_SLOT],
       credentialRequirements: [HTTP_REQUEST_CONNECTION_SLOT],
+      integration: { providerKey: 'http', operationKey: 'request' },
     });
     expect(HTTP_REQUEST_MANIFEST.capabilities).toEqual([
       'external_http',

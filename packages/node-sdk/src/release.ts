@@ -77,6 +77,12 @@ export interface NodePorts {
   readonly outputs: readonly string[];
 }
 
+/** Stable provider operation identity used by derived workflow impact indexes. */
+export interface NodeIntegrationOperation {
+  readonly providerKey: string;
+  readonly operationKey: string;
+}
+
 export interface NodeManifest {
   readonly schemaVersion: 1;
   readonly definition: DefinitionIdentity;
@@ -88,6 +94,7 @@ export interface NodeManifest {
   readonly ports: NodePorts;
   readonly credentialRequirements: readonly string[];
   readonly connectionRequirements: readonly string[];
+  readonly integration?: NodeIntegrationOperation | undefined;
   readonly retryClass: RetryClass;
   readonly resourceClass: ResourceClass;
   readonly capabilities: readonly string[];
@@ -238,6 +245,20 @@ const identifiersSchema = z
 const portsSchema = z
   .object({ inputs: identifiersSchema, outputs: identifiersSchema })
   .strict();
+const integrationOperationSchema = z
+  .object({
+    providerKey: z
+      .string()
+      .min(1)
+      .max(64)
+      .regex(/^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u),
+    operationKey: z
+      .string()
+      .min(1)
+      .max(128)
+      .regex(/^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u),
+  })
+  .strict();
 
 export const definitionIdentitySchema = identitySchema;
 export const executorIdentitySchema = identitySchema;
@@ -279,6 +300,7 @@ export const nodeManifestSchema = z
     ports: portsSchema,
     credentialRequirements: identifiersSchema,
     connectionRequirements: identifiersSchema,
+    integration: integrationOperationSchema.optional(),
     retryClass: z.enum(['safe', 'idempotent-with-key', 'unsafe']),
     resourceClass: z.enum(['io', 'cpu']),
     capabilities: identifiersSchema,
@@ -489,6 +511,9 @@ function definitionProjection(manifest: NodeManifest) {
     },
     credentialRequirements: [...manifest.credentialRequirements].sort(),
     connectionRequirements: [...manifest.connectionRequirements].sort(),
+    ...(manifest.integration === undefined
+      ? {}
+      : { integration: manifest.integration }),
     retryClass: manifest.retryClass,
     resourceClass: manifest.resourceClass,
     capabilities: [...manifest.capabilities].sort(),

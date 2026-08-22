@@ -85,7 +85,21 @@ function coreWorkflowCompatibility() {
                   executor.executor.version === manifest.executor.version,
               ),
           )
-          .map(({ definition }) => Object.freeze({ ...definition })),
+          .map(({ definition, integration, connectionRequirements }) =>
+            Object.freeze({
+              ...definition,
+              ...(integration === undefined
+                ? {}
+                : {
+                    integration: Object.freeze({
+                      ...integration,
+                      connectionSlots: Object.freeze([
+                        ...connectionRequirements,
+                      ]),
+                    }),
+                  }),
+            }),
+          ),
       ),
     });
     const placementDefinitionCatalog = Object.freeze({
@@ -103,7 +117,21 @@ function coreWorkflowCompatibility() {
                   executor.executor.version === manifest.executor.version,
               ),
           )
-          .map(({ definition }) => Object.freeze({ ...definition })),
+          .map(({ definition, integration, connectionRequirements }) =>
+            Object.freeze({
+              ...definition,
+              ...(integration === undefined
+                ? {}
+                : {
+                    integration: Object.freeze({
+                      ...integration,
+                      connectionSlots: Object.freeze([
+                        ...connectionRequirements,
+                      ]),
+                    }),
+                  }),
+            }),
+          ),
       ),
     });
     return Object.freeze({

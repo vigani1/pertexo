@@ -10,6 +10,7 @@ import {
   workflowCompatibilityReport,
   workflowDraftRepresentationTag,
   workflowExecutableChecksum as computeWorkflowExecutableChecksum,
+  workflowIntegrationUsage,
   workflowRetainedExecutableChecksum,
   type WorkflowGraph,
 } from '../src/graph.js';
@@ -37,6 +38,85 @@ const node = (id: string) => ({
   connectionRefs: { primary: 'connection-1' },
   label: `Node ${id}`,
   disabled: false,
+});
+
+describe('workflow integration usage projection', () => {
+  const catalog = {
+    schemaVersion: 1 as const,
+    definitions: [
+      {
+        key: 'core.set',
+        version: 1,
+        integration: {
+          providerKey: 'http',
+          operationKey: 'request',
+          connectionSlots: ['primary'],
+        },
+      },
+    ],
+  };
+
+  it('derives, deduplicates, and sorts nested provider operation connections', () => {
+    const nested = node('nested');
+    const outer = {
+      ...node('outer'),
+      connectionRefs: { primary: 'connection-2' },
+      structured: {
+        kind: 'for_each' as const,
+        maxIterations: 2,
+        maxConcurrency: 1,
+        body: {
+          schemaVersion: 1,
+          nodes: [nested],
+          edges: [],
+          settings: {},
+          inputPorts: ['item'],
+          outputPorts: ['result'],
+        },
+      },
+    };
+
+    expect(
+      workflowIntegrationUsage(
+        { ...EMPTY_WORKFLOW_GRAPH_V1, nodes: [outer, node('duplicate')] },
+        catalog,
+      ),
+    ).toEqual([
+      {
+        providerKey: 'http',
+        operationKey: 'request',
+        connectionId: 'connection-1',
+      },
+      {
+        providerKey: 'http',
+        operationKey: 'request',
+        connectionId: 'connection-2',
+      },
+    ]);
+  });
+
+  it('fails closed when catalog metadata names an absent connection slot', () => {
+    expect(() =>
+      workflowIntegrationUsage(
+        {
+          ...EMPTY_WORKFLOW_GRAPH_V1,
+          nodes: [{ ...node('missing'), connectionRefs: {} }],
+        },
+        catalog,
+      ),
+    ).toThrow(/requires connection slot primary/u);
+  });
+
+  it('does not let projection metadata change compatibility identity', () => {
+    const withoutMetadata = {
+      schemaVersion: 1 as const,
+      definitions: [{ key: 'core.set', version: 1 }],
+    };
+    const graph = { ...EMPTY_WORKFLOW_GRAPH_V1, nodes: [node('usage')] };
+    expect(workflowCompatibilityReport(graph, catalog).fingerprint).toBe(
+      workflowCompatibilityReport(graph, withoutMetadata).fingerprint,
+    );
+  });
 });
 
 const fixture = (): WorkflowGraph => ({

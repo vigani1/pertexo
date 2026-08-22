@@ -12,7 +12,7 @@ const migrationUrl = new URL(
 
 describe('execution value persistence migration contract', () => {
   it('adds a nullable run input without a partial checkpoint identity invariant', async () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0020_connections.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0021_workflow_integration_usage.sql');
     const sql = await readFile(migrationUrl, 'utf8');
     expect(sql).toContain('ADD COLUMN input_ref jsonb');
     expect(sql).not.toContain('ADD COLUMN workflow_version_id');

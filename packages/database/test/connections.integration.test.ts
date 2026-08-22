@@ -96,11 +96,11 @@ function migrationConfig(name = databaseName) {
   } as const;
 }
 
-async function migrateThrough0019(name: string): Promise<void> {
-  const directory = await mkdtemp(path.join(tmpdir(), 'pertexo-0019-'));
+async function migrateThrough0020(name: string): Promise<void> {
+  const directory = await mkdtemp(path.join(tmpdir(), 'pertexo-0020-'));
   try {
     const migrations = (await readdir(MIGRATIONS_DIRECTORY)).filter(
-      (migration) => /^\d{4}_.+\.sql$/u.test(migration) && migration < '0020_',
+      (migration) => /^\d{4}_.+\.sql$/u.test(migration) && migration < '0021_',
     );
     await Promise.all(
       migrations.map((migration) =>
@@ -198,7 +198,7 @@ beforeAll(async () => {
     createDatabase(upgradeDatabaseName),
   ]);
   await migrateDatabase(migrationConfig());
-  await migrateThrough0019(upgradeDatabaseName);
+  await migrateThrough0020(upgradeDatabaseName);
   upgradeApplied = await migrateDatabase(migrationConfig(upgradeDatabaseName));
   await seedWorkspaces();
   api = createConnectionDatabase(
@@ -224,8 +224,8 @@ afterAll(async () => {
 });
 
 describe('connection persistence', () => {
-  it('upgrades the supported prior head through only the connection migration', async () => {
-    expect(upgradeApplied).toEqual(['0020_connections.sql']);
+  it('upgrades the supported prior head through only the usage migration', async () => {
+    expect(upgradeApplied).toEqual(['0021_workflow_integration_usage.sql']);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, upgradeDatabaseName),
       max: 1,
@@ -236,7 +236,9 @@ describe('connection persistence', () => {
           ownerRole: 'pertexo_owner',
           workerRuntimeRole: 'pertexo_worker',
         }),
-      ).resolves.toMatchObject({ migrationHead: '0020_connections.sql' });
+      ).resolves.toMatchObject({
+        migrationHead: '0021_workflow_integration_usage.sql',
+      });
     } finally {
       await pool.end();
     }
@@ -900,13 +902,17 @@ describe('connection persistence', () => {
           ownerRole: 'pertexo_owner',
           workerRuntimeRole: 'pertexo_worker',
         }),
-      ).resolves.toMatchObject({ migrationHead: '0020_connections.sql' });
+      ).resolves.toMatchObject({
+        migrationHead: '0021_workflow_integration_usage.sql',
+      });
       await expect(
         checkDatabaseReadiness(workerReadinessPool, {
           ownerRole: 'pertexo_owner',
           workerRuntimeRole: 'pertexo_worker',
         }),
-      ).resolves.toMatchObject({ migrationHead: '0020_connections.sql' });
+      ).resolves.toMatchObject({
+        migrationHead: '0021_workflow_integration_usage.sql',
+      });
     } finally {
       await Promise.all([apiReadinessPool.end(), workerReadinessPool.end()]);
     }
