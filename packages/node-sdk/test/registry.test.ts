@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
@@ -26,6 +26,8 @@ import {
   InvalidBoundedJsonError,
   NodeConfigValidationError,
   NodeExecutionAbortedError,
+  NodeDispatchEvidenceError,
+  NodeExecutionRuntimeRequiredError,
   NodeInputValidationError,
   NodeOutputValidationError,
   NodeRegistryCompatibilityError,
@@ -437,6 +439,7 @@ describe('node-sdk exact server registry', () => {
     });
     expect(Object.keys(registry).sort()).toEqual([
       'compatibility',
+      'dispatchMode',
       'execute',
       'historicalCatalog',
       'placementCatalog',
@@ -453,6 +456,135 @@ describe('node-sdk exact server registry', () => {
         signal: new AbortController().signal,
       }),
     ).rejects.toBeInstanceOf(InvalidBoundedJsonError);
+  });
+
+  it('makes ABI 2 dispatch-aware and requires exactly one durable marker', async () => {
+    const dispatchManifest = {
+      ...manifest,
+      executorAbi: 2,
+    } satisfies NodeManifest;
+    const dispatchRelease = createRegistryRelease({
+      definitions: [dispatchManifest],
+      epoch: 1,
+      executors: [
+        {
+          abiVersion: 2,
+          definitions: [definition],
+          executor,
+          lifecycle: 'active',
+          policyReferences: [policy],
+        },
+      ],
+      policies: [policy],
+    });
+    const marker = vi.fn(() => Promise.resolve());
+    const runtime = {
+      workspaceId: '11111111-1111-4111-8111-111111111111',
+      runId: '22222222-2222-4222-8222-222222222222',
+      nodeRunId: '33333333-3333-4333-8333-333333333333',
+      attemptId: '44444444-4444-4444-8444-444444444444',
+      attemptNumber: 1,
+      nodeId: 'node-1',
+      invocationKey: 'invocation-1',
+      sideEffectClass: 'unsafe' as const,
+      beforeDispatch: marker,
+    };
+    const request = {
+      config: {},
+      definition,
+      executor,
+      input: {},
+      connectionRefs: {
+        http_headers: '55555555-5555-4555-8555-555555555555',
+      },
+      signal: new AbortController().signal,
+      runtime,
+    };
+    const registryFor = (execute: NodeExecutorRegistration['execute']) =>
+      createNodeRegistry({
+        definitions: [
+          {
+            manifest: dispatchManifest,
+            configSchema,
+            inputSchema: objectSchema,
+            outputSchema: objectSchema,
+          },
+        ],
+        executors: [
+          {
+            ...executorRegistration(),
+            abiVersion: 2,
+            execute,
+          },
+        ],
+        release: dispatchRelease,
+      });
+
+    const successful = registryFor(async (invocation) => {
+      expect(invocation.connectionRefs).toEqual(request.connectionRefs);
+      await invocation.runtime?.beforeDispatch();
+      return { ok: true };
+    });
+    expect(successful.dispatchMode(request)).toBe('executor_controlled');
+    await expect(successful.execute(request)).resolves.toMatchObject({
+      output: { ok: true },
+    });
+    expect(marker).toHaveBeenCalledOnce();
+
+    await expect(
+      registryFor(() => Promise.resolve({})).execute(request),
+    ).rejects.toBeInstanceOf(NodeDispatchEvidenceError);
+    const { runtime: _runtime, ...withoutRuntime } = request;
+    void _runtime;
+    await expect(successful.execute(withoutRuntime)).rejects.toBeInstanceOf(
+      NodeExecutionRuntimeRequiredError,
+    );
+    await expect(
+      registryFor(async (invocation) => {
+        await invocation.runtime?.beforeDispatch();
+        await invocation.runtime?.beforeDispatch();
+        return {};
+      }).execute({
+        ...request,
+        runtime: { ...runtime, beforeDispatch: marker },
+      }),
+    ).rejects.toMatchObject({ code: 'duplicate_dispatch' });
+  });
+
+  it('rejects executor ABIs whose dispatch contract is unknown', () => {
+    const unsupportedAbi = 3;
+    expect(() =>
+      createNodeRegistry({
+        definitions: [
+          {
+            manifest: { ...manifest, executorAbi: unsupportedAbi },
+            configSchema,
+            inputSchema: objectSchema,
+            outputSchema: objectSchema,
+          },
+        ],
+        executors: [
+          {
+            ...executorRegistration(),
+            abiVersion: unsupportedAbi,
+          },
+        ],
+        release: createRegistryRelease({
+          definitions: [{ ...manifest, executorAbi: unsupportedAbi }],
+          epoch: 1,
+          executors: [
+            {
+              abiVersion: unsupportedAbi,
+              definitions: [definition],
+              executor,
+              lifecycle: 'active',
+              policyReferences: [policy],
+            },
+          ],
+          policies: [policy],
+        }),
+      }),
+    ).toThrow(/unsupported ABI 3/u);
   });
 
   it('derives terminal success from the pinned capability', async () => {

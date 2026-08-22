@@ -18,6 +18,7 @@ import type {
   NodeExecutionRegistry,
 } from '@pertexo/workflow-engine';
 import { WorkflowEngineError } from '@pertexo/workflow-engine';
+import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
 
 type AttemptDelivery = Extract<
   QueueDelivery,
@@ -30,6 +31,7 @@ export interface PreparedNodeAttempt {
     input: Readonly<
       NodeAttemptInputs & {
         registry: NodeExecutionRegistry;
+        runtime?: NodeExecutionRuntime;
         signal: AbortSignal;
       }
     >,
@@ -64,6 +66,7 @@ export type NodeAttemptHandlerDependencies = Readonly<{
   reader: PublishedWorkflowReader;
   registry: NodeExecutionRegistry;
   runStore: NodeAttemptRunStore;
+  runtimeCapabilities?: Pick<NodeExecutionRuntime, 'artifacts' | 'connections'>;
   workerId: string;
 }>;
 
@@ -256,24 +259,60 @@ export function createNodeAttemptHandler(
         }
       })();
       let dispatched = false;
-      const registry: NodeExecutionRegistry = Object.freeze({
-        execute: async (
-          request: Parameters<NodeExecutionRegistry['execute']>[0],
-        ) => {
+      const runtime: NodeExecutionRuntime = Object.freeze({
+        workspaceId: claimed.lease.workspaceId,
+        runId: claimed.lease.runId,
+        nodeRunId: claimed.lease.nodeRunId,
+        attemptId: claimed.lease.attemptId,
+        attemptNumber: claimed.lease.attemptNumber,
+        nodeId: claimed.lease.nodeId,
+        invocationKey: claimed.lease.invocationKey,
+        sideEffectClass: claimed.lease.sideEffectClass,
+        ...(claimed.lease.providerIdempotencyKey === undefined
+          ? {}
+          : {
+              providerIdempotencyKey: claimed.lease.providerIdempotencyKey,
+            }),
+        ...(dependencies.runtimeCapabilities?.connections === undefined
+          ? {}
+          : { connections: dependencies.runtimeCapabilities.connections }),
+        ...(dependencies.runtimeCapabilities?.artifacts === undefined
+          ? {}
+          : { artifacts: dependencies.runtimeCapabilities.artifacts }),
+        beforeDispatch: async (): Promise<void> => {
           if (dispatched)
             throw new NodeAttemptHandlerStateError('duplicate_dispatch');
           await dependencies.runStore.markDispatched({
             lease: claimed.lease,
-            signal: request.signal,
+            signal: executionSignal,
           });
           dispatched = true;
-          return dependencies.registry.execute(request);
+        },
+      });
+      const registry: NodeExecutionRegistry = Object.freeze({
+        ...(dependencies.registry.dispatchMode === undefined
+          ? {}
+          : { dispatchMode: dependencies.registry.dispatchMode }),
+        execute: async (
+          request: Parameters<NodeExecutionRegistry['execute']>[0],
+        ) => {
+          const mode =
+            dependencies.registry.dispatchMode?.(request) ?? 'before_execute';
+          if (mode === 'before_execute') await runtime.beforeDispatch();
+          const result = await dependencies.registry.execute({
+            ...request,
+            runtime,
+          });
+          if (mode === 'executor_controlled' && !dispatched)
+            throw new NodeAttemptHandlerStateError('dispatch_evidence_missing');
+          return result;
         },
       });
       try {
         const outcome = await prepared.execute({
           ...inputs,
           registry,
+          runtime,
           signal: executionSignal,
         });
         try {

@@ -4,6 +4,7 @@ import type {
   PublishedWorkflowV2Projection,
 } from '@pertexo/database';
 import type { NodeExecutionRegistry } from '@pertexo/workflow-engine';
+import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
 import {
   executeNodeAttempt,
   verifyWorkflowExecutableV2,
@@ -103,6 +104,7 @@ function prepareNode(
       input: Readonly<
         NodeAttemptInputs & {
           registry: NodeExecutionRegistry;
+          runtime?: NodeExecutionRuntime;
           signal: AbortSignal;
         }
       >,
@@ -120,6 +122,7 @@ function prepareNode(
         runInput: input.runInput,
         completedNodeOutputs: input.completedNodeOutputs,
         registry: input.registry,
+        ...(input.runtime === undefined ? {} : { runtime: input.runtime }),
         signal: input.signal,
       });
     },

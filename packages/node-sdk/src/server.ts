@@ -1,6 +1,6 @@
 import './server-only.js';
 
-import type { ZodType } from 'zod';
+import { z, type ZodType } from 'zod';
 
 import {
   type DefinitionIdentity,
@@ -29,13 +29,75 @@ interface JsonObject {
 }
 
 export const NODE_EXECUTION_LIMITS_V1 = NODE_JSON_LIMITS_V1;
+export const DISPATCH_AWARE_EXECUTOR_ABI_VERSION = 2 as const;
+const SUPPORTED_EXECUTOR_ABI_VERSIONS = new Set<number>([
+  1,
+  DISPATCH_AWARE_EXECUTOR_ABI_VERSION,
+]);
 
 export type NodeExecutionKind = 'succeeded' | 'terminal_success';
 
 export interface NodeExecutionInvocation<Config, Input> {
   readonly config: Config;
   readonly input: Input;
+  readonly connectionRefs: Readonly<Record<string, string>>;
   readonly signal: AbortSignal;
+  readonly runtime?: NodeExecutionRuntime;
+}
+
+export type NodeSideEffectClass = 'safe' | 'idempotent_with_key' | 'unsafe';
+
+export type ResolvedNodeConnection = Readonly<{
+  connectionId: string;
+  providerKey: string;
+  authType: string;
+  secretVersionId: string;
+  secret: Uint8Array;
+}>;
+
+export interface NodeConnectionRuntime {
+  resolve(
+    input: Readonly<{
+      connectionId: string;
+      expectedProviderKey: string;
+      expectedAuthType: string;
+      purpose: string;
+      signal: AbortSignal;
+    }>,
+  ): Promise<ResolvedNodeConnection>;
+}
+
+export type NodeArtifactReference = Readonly<{
+  artifactId: string;
+  byteLength: number;
+  mediaType: string;
+  sha256: string;
+}>;
+
+export interface NodeArtifactRuntime {
+  write(
+    input: Readonly<{
+      bytes: Uint8Array;
+      mediaType: string;
+      purpose: string;
+      signal: AbortSignal;
+    }>,
+  ): Promise<NodeArtifactReference>;
+}
+
+export interface NodeExecutionRuntime {
+  readonly workspaceId: string;
+  readonly runId: string;
+  readonly nodeRunId: string;
+  readonly attemptId: string;
+  readonly attemptNumber: number;
+  readonly nodeId: string;
+  readonly invocationKey: string;
+  readonly sideEffectClass: NodeSideEffectClass;
+  readonly providerIdempotencyKey?: string;
+  readonly connections?: NodeConnectionRuntime;
+  readonly artifacts?: NodeArtifactRuntime;
+  beforeDispatch(): Promise<void>;
 }
 
 export type NodeExecutionHandler<Config, Input, Output> = (
@@ -81,7 +143,9 @@ export interface NodeExecutionRequest {
   readonly executor: ExecutorIdentity;
   readonly config: unknown;
   readonly input: unknown;
+  readonly connectionRefs?: Readonly<Record<string, string>>;
   readonly signal: AbortSignal;
+  readonly runtime?: NodeExecutionRuntime;
 }
 
 export interface NodeExecutionResult {
@@ -114,6 +178,9 @@ export interface NodeRegistry {
   readonly placementCatalog: () => NodeDefinitionCatalog;
   readonly publicationCatalog: () => NodeDefinitionCatalog;
   readonly historicalCatalog: () => NodeDefinitionCatalog;
+  readonly dispatchMode: (
+    request: Pick<NodeExecutionRequest, 'definition' | 'executor'>,
+  ) => 'before_execute' | 'executor_controlled';
   readonly execute: (
     request: NodeExecutionRequest,
   ) => Promise<NodeExecutionResult>;
@@ -127,7 +194,10 @@ export type NodeErrorCode =
   | 'invalid_config'
   | 'invalid_input'
   | 'invalid_output'
-  | 'invalid_json';
+  | 'invalid_json'
+  | 'runtime_required'
+  | 'dispatch_evidence_missing'
+  | 'duplicate_dispatch';
 
 export class NodeSdkError extends Error {
   constructor(
@@ -204,6 +274,28 @@ export class InvalidBoundedJsonError extends NodeSdkError {
     this.name = 'InvalidBoundedJsonError';
   }
 }
+
+export class NodeExecutionRuntimeRequiredError extends NodeSdkError {
+  constructor() {
+    super(
+      'runtime_required',
+      'dispatch-aware executor requires a node execution runtime',
+    );
+    this.name = 'NodeExecutionRuntimeRequiredError';
+  }
+}
+
+export class NodeDispatchEvidenceError extends NodeSdkError {
+  constructor(code: 'dispatch_evidence_missing' | 'duplicate_dispatch') {
+    super(code, `node provider dispatch evidence failed: ${code}`);
+    this.name = 'NodeDispatchEvidenceError';
+  }
+}
+
+const connectionRefsSchema = z
+  .record(z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u), z.uuid())
+  .refine((value) => Object.keys(value).length <= 16)
+  .transform((value) => Object.freeze({ ...value }));
 
 function identityToken(
   identity: DefinitionIdentity | ExecutorIdentity | PolicyReference,
@@ -434,7 +526,11 @@ export function defineNodeExecutor<Config, Input, Output>(options: {
       options.execute({
         config: options.configSchema.parse(invocation.config),
         input: options.inputSchema.parse(invocation.input),
+        connectionRefs: invocation.connectionRefs,
         signal: invocation.signal,
+        ...(invocation.runtime === undefined
+          ? {}
+          : { runtime: invocation.runtime }),
       }),
   };
 }
@@ -516,6 +612,10 @@ export function createNodeRegistry(options: NodeRegistryOptions): NodeRegistry {
   const executorMap = new Map<string, PinnedNodeExecutor>();
   for (const registration of options.executors) {
     const parsedExecutor = executorIdentitySchema.parse(registration.executor);
+    if (!SUPPORTED_EXECUTOR_ABI_VERSIONS.has(registration.abiVersion))
+      throw new NodeRegistryCompatibilityError(
+        `executor ${parsedExecutor.key}@${String(parsedExecutor.version)} uses unsupported ABI ${String(registration.abiVersion)}`,
+      );
     if (executorMap.has(identityToken(parsedExecutor)))
       throw new NodeRegistryCompatibilityError(
         `duplicate executor identity ${parsedExecutor.key}@${String(parsedExecutor.version)}`,
@@ -659,6 +759,20 @@ export function createNodeRegistry(options: NodeRegistryOptions): NodeRegistry {
     if (pinned === undefined) throw new ExecutorNotFoundError(parsed);
     return pinned;
   };
+  const dispatchMode = (
+    request: Pick<NodeExecutionRequest, 'definition' | 'executor'>,
+  ): 'before_execute' | 'executor_controlled' => {
+    const executor = resolveExecutor(request.executor);
+    const definition = resolveDefinition(request.definition);
+    if (!sameIdentity(definition.manifest.executor, request.executor))
+      throw new NodeRegistryCompatibilityError(
+        `definition ${request.definition.key}@${String(request.definition.version)} is not bound to executor ${request.executor.key}@${String(request.executor.version)}`,
+      );
+    return executor.registration.abiVersion ===
+      DISPATCH_AWARE_EXECUTOR_ABI_VERSION
+      ? 'executor_controlled'
+      : 'before_execute';
+  };
   const execute = async (
     request: NodeExecutionRequest,
   ): Promise<NodeExecutionResult> => {
@@ -672,11 +786,13 @@ export function createNodeRegistry(options: NodeRegistryOptions): NodeRegistry {
     const bounded = canonicalizeBoundedJson({
       config: request.config,
       input: request.input,
+      connectionRefs: request.connectionRefs ?? {},
     });
     if (!isJsonObject(bounded))
       throw new InvalidBoundedJsonError('execution envelope is not an object');
     let config: unknown;
     let input: unknown;
+    let connectionRefs: Readonly<Record<string, string>>;
     try {
       config = definition.configSchema.parse(bounded.config);
     } catch (error) {
@@ -687,11 +803,37 @@ export function createNodeRegistry(options: NodeRegistryOptions): NodeRegistry {
     } catch (error) {
       throw mapSchemaError(error, 'input');
     }
+    try {
+      connectionRefs = connectionRefsSchema.parse(bounded.connectionRefs);
+    } catch (error) {
+      throw mapSchemaError(error, 'config');
+    }
+    const dispatchAware =
+      executor.registration.abiVersion === DISPATCH_AWARE_EXECUTOR_ABI_VERSION;
+    if (dispatchAware && request.runtime === undefined)
+      throw new NodeExecutionRuntimeRequiredError();
+    let dispatchCount = 0;
+    const runtime =
+      request.runtime === undefined
+        ? undefined
+        : Object.freeze({
+            ...request.runtime,
+            beforeDispatch: async (): Promise<void> => {
+              if (dispatchCount !== 0)
+                throw new NodeDispatchEvidenceError('duplicate_dispatch');
+              await request.runtime?.beforeDispatch();
+              dispatchCount += 1;
+            },
+          });
     const result = await executor.registration.execute({
       config,
       input,
+      connectionRefs,
       signal: request.signal,
+      ...(runtime === undefined ? {} : { runtime }),
     });
+    if (dispatchAware && dispatchCount !== 1)
+      throw new NodeDispatchEvidenceError('dispatch_evidence_missing');
     let output: unknown;
     try {
       output = definition.outputSchema.parse(canonicalizeBoundedJson(result));
@@ -713,6 +855,7 @@ export function createNodeRegistry(options: NodeRegistryOptions): NodeRegistry {
     placementCatalog,
     publicationCatalog,
     historicalCatalog,
+    dispatchMode,
     execute,
   });
 }

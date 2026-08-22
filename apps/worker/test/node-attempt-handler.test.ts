@@ -210,6 +210,113 @@ describe('NodeAttemptHandler', () => {
     });
   });
 
+  it('lets a dispatch-aware executor mark immediately before provider I/O', async () => {
+    const attemptLease = {
+      ...lease(),
+      sideEffectClass: 'idempotent_with_key' as const,
+      providerIdempotencyKey: 'provider-attempt-key',
+    };
+    const order: string[] = [];
+    const markDispatched = vi
+      .fn<NodeAttemptRunStore['markDispatched']>()
+      .mockImplementation(() => {
+        order.push('dispatch-marker');
+        return Promise.resolve({ dispatchedAt: new Date() });
+      });
+    const complete = vi
+      .fn<NodeAttemptRunStore['complete']>()
+      .mockResolvedValue({ kind: 'committed', outboxEventId: WORKFLOW_ID });
+    const store = {
+      claimDelivery: vi
+        .fn()
+        .mockResolvedValue({ kind: 'claimed', lease: attemptLease }),
+      close: vi.fn().mockResolvedValue(undefined),
+      complete,
+      heartbeat: vi.fn(),
+      loadInputs: vi.fn().mockResolvedValue({
+        abortRequested: false,
+        completedNodeOutputs: {},
+        runInput: {},
+      }),
+      markDispatched,
+    } satisfies NodeAttemptRunStore;
+    const reader = {
+      close: vi.fn().mockResolvedValue(undefined),
+      readForExecution: vi.fn().mockResolvedValue({
+        kind: 'v2_projection',
+        workflowVersion: projection(),
+      }),
+    } satisfies PublishedWorkflowReader;
+    const execute = vi.fn(
+      async ({
+        registry,
+        signal,
+      }: Parameters<PreparedNodeAttempt['execute']>[0]) => {
+        const result = await registry.execute({
+          definition: { key: 'http.request', version: 1 },
+          executor: { key: 'http.request', version: 1 },
+          config: {},
+          input: {},
+          signal,
+        });
+        return {
+          runId: RUN_ID,
+          nodeRunId: NODE_RUN_ID,
+          attemptId: ATTEMPT_ID,
+          invocationKey: attemptLease.invocationKey,
+          nodeId: attemptLease.nodeId,
+          kind: result.kind,
+          output: result.output,
+        } as const;
+      },
+    );
+    const connections = { resolve: vi.fn() };
+    const registryExecute = vi.fn<NodeExecutionRegistry['execute']>(
+      async (request) => {
+        order.push('executor-start');
+        expect(request.runtime).toMatchObject({
+          workspaceId: WORKSPACE_ID,
+          runId: RUN_ID,
+          nodeRunId: NODE_RUN_ID,
+          attemptId: ATTEMPT_ID,
+          attemptNumber: 1,
+          sideEffectClass: 'idempotent_with_key',
+          providerIdempotencyKey: 'provider-attempt-key',
+          connections,
+        });
+        await request.runtime?.beforeDispatch();
+        order.push('provider-io');
+        return { kind: 'succeeded', output: { status: 204 } };
+      },
+    );
+    const handler = createNodeAttemptHandler({
+      engine: {
+        prepare: vi.fn().mockReturnValue({ upstreamNodeIds: [], execute }),
+      },
+      heartbeatIntervalMillis: 1_000,
+      leaseDurationSeconds: 30,
+      reader,
+      registry: {
+        dispatchMode: () => 'executor_controlled',
+        execute: registryExecute,
+      },
+      runStore: store,
+      runtimeCapabilities: { connections },
+      workerId: 'worker-1',
+    });
+
+    await expect(
+      handler.handle(delivery(), { signal: new AbortController().signal }),
+    ).resolves.toEqual({ kind: 'committed' });
+    expect(order).toEqual(['executor-start', 'dispatch-marker', 'provider-io']);
+    expect(markDispatched).toHaveBeenCalledOnce();
+    expect(complete).toHaveBeenCalledWith(
+      expect.objectContaining({
+        outcome: { status: 'succeeded', output: { status: 204 } },
+      }),
+    );
+  });
+
   it('records durable cancellation before dispatching an executor', async () => {
     const attemptLease = lease();
     const complete = vi

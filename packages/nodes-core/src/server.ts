@@ -69,6 +69,7 @@ function identityToken(identity: Readonly<{ key: string; version: number }>) {
 export interface CoreNodeRegistry {
   readonly compatibility: NodeRegistry['compatibility'];
   readonly historicalCatalog: NodeRegistry['historicalCatalog'];
+  readonly dispatchMode: NodeRegistry['dispatchMode'];
   readonly execute: (
     request: NodeExecutionRequest,
   ) => Promise<NodeExecutionResult>;
@@ -136,6 +137,7 @@ export function createCoreNodeRegistryForRelease(
   return Object.freeze({
     compatibility: registry.compatibility,
     historicalCatalog: registry.historicalCatalog,
+    dispatchMode: registry.dispatchMode,
     execute: registry.execute,
   });
 }

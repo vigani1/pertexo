@@ -3,6 +3,7 @@ import {
   type JsonValue as NodeJsonValue,
   type NodeExecutionRequest,
   type NodeExecutionResult,
+  type NodeExecutionRuntime,
 } from '@pertexo/node-sdk/server';
 import type { JsonValue } from '@pertexo/workflow-model/canonical-json';
 import {
@@ -699,6 +700,9 @@ export interface NodeExecutionRegistry {
   readonly execute: (
     request: NodeExecutionRequest,
   ) => Promise<NodeExecutionResult>;
+  readonly dispatchMode?: (
+    request: Pick<NodeExecutionRequest, 'definition' | 'executor'>,
+  ) => 'before_execute' | 'executor_controlled';
 }
 
 export interface ExecuteNodeAttemptInput {
@@ -713,6 +717,7 @@ export interface ExecuteNodeAttemptInput {
   readonly completedNodeOutputs: unknown;
   readonly registry: NodeExecutionRegistry;
   readonly signal: AbortSignal;
+  readonly runtime?: NodeExecutionRuntime;
 }
 
 export interface NodeAttemptOutcome {
@@ -846,7 +851,9 @@ export async function executeNodeAttempt(
       executor: node.executor,
       config: node.config,
       input: resolvedInput,
+      connectionRefs: node.connectionRefs,
       signal: input.signal,
+      ...(input.runtime === undefined ? {} : { runtime: input.runtime }),
     });
   } catch (error) {
     if (input.signal.aborted || isAbortError(error))

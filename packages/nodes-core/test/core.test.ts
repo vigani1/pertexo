@@ -99,6 +99,7 @@ describe('core node execution', () => {
   it('does not expose placement or publication catalogs before vertical-slice completion', () => {
     expect(Object.keys(createCoreNodeRegistry()).sort()).toEqual([
       'compatibility',
+      'dispatchMode',
       'execute',
       'historicalCatalog',
     ]);

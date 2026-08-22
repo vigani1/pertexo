@@ -27,6 +27,7 @@ import {
   createExecutableCompatibilityReleaseSupport,
   type NodeExecutionRegistry,
 } from '@pertexo/workflow-engine';
+import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
 
 import {
   createNodeAttemptExecutionEngine,
@@ -60,6 +61,7 @@ export type NodeAttemptRuntimeDependencies = Readonly<{
   reader?: PublishedWorkflowReader;
   registry?: NodeExecutionRegistry;
   runStore?: NodeAttemptRunStore;
+  runtimeCapabilities?: Pick<NodeExecutionRuntime, 'artifacts' | 'connections'>;
 }>;
 
 function queueHandler(handler: NodeAttemptHandler): QueueJobHandler {
@@ -139,6 +141,9 @@ export async function createNodeAttemptRuntime(
     reader,
     registry,
     runStore,
+    ...(dependencies.runtimeCapabilities === undefined
+      ? {}
+      : { runtimeCapabilities: dependencies.runtimeCapabilities }),
     workerId: options.workerId,
   });
   let consumer: QueueConsumer;
