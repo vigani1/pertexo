@@ -13,6 +13,7 @@ import {
   PLATFORM_HTTP_ACTIVATION_RELEASE_SUPPORT,
   PLATFORM_HTTP_STAGING_RELEASE_SUPPORT,
   PLATFORM_REGISTRY_RELEASE_SUPPORT,
+  platformExecutableRegistryHistory,
   platformRegistryReleaseSupport,
   platformServingRegistryRelease,
 } from '../src/registry.js';
@@ -43,6 +44,16 @@ describe('platform node compatibility catalog', () => {
     );
     expect(platformServingRegistryRelease('http_staging').epoch).toBe(2);
     expect(platformServingRegistryRelease('http_activation').epoch).toBe(4);
+    expect(
+      platformExecutableRegistryHistory('http_staging').map(
+        ({ epoch }) => epoch,
+      ),
+    ).toEqual([1, 2, 3]);
+    expect(
+      platformExecutableRegistryHistory('http_activation').map(
+        ({ epoch }) => epoch,
+      ),
+    ).toEqual([1, 2, 3, 4]);
     expect(
       PLATFORM_REGISTRY_RELEASE_HTTP_STAGED.executors.find(
         ({ executor }) => executor.key === HTTP_REQUEST_EXECUTOR.key,

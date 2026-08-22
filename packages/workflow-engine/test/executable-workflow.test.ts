@@ -17,6 +17,7 @@ import {
   composeExecutableCompatibilityRelease,
   computeWorkflowExecutableChecksumV2,
   createExecutableCompatibilityReleaseSupport,
+  createExecutableCompatibilityReleaseHistory,
   createCheckpoint,
   describeExecutableCompatibilityRelease,
   executeNodeAttempt,
@@ -216,6 +217,25 @@ describe('workflow executable V2 identity', () => {
         composeExecutableCompatibilityRelease(nodeRelease({ epoch: 3 })),
       ]),
     ).toThrow('one rolling overlap');
+  });
+
+  it('keeps retained executable history separate from the rolling readiness overlap', () => {
+    const releases = [1, 2, 3].map((epoch) =>
+      composeExecutableCompatibilityRelease(nodeRelease({ epoch })),
+    );
+    const history = createExecutableCompatibilityReleaseHistory(releases);
+
+    expect(history.descriptions.map(({ epoch }) => epoch)).toEqual([1, 2, 3]);
+    for (const release of releases)
+      expect(history.resolve(release.epoch, release.fingerprint)).toEqual(
+        release,
+      );
+    expect(() =>
+      createExecutableCompatibilityReleaseHistory([
+        releases[0],
+        composeExecutableCompatibilityRelease(nodeRelease({ epoch: 4 })),
+      ]),
+    ).toThrow('successor');
   });
 
   it('composes engine-owned policies and produces the pre-publication golden checksum', () => {

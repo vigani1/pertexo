@@ -10,6 +10,7 @@ import {
   type WorkflowRunDatabase,
 } from '@pertexo/database';
 import {
+  platformExecutableRegistryHistory,
   platformRegistryReleaseSupport,
   type PlatformReleaseCohort,
 } from '@pertexo/node-catalog';
@@ -17,6 +18,7 @@ import {
   WorkflowEngineError,
   composeExecutableCompatibilityRelease,
   createCheckpoint,
+  createExecutableCompatibilityReleaseHistory,
   createExecutableCompatibilityReleaseSupport,
   type ExecutableCompatibilityReleaseSupport,
   verifyWorkflowExecutableV2,
@@ -49,14 +51,21 @@ export function createPostgresWorkflowRunPersistence(
   notifications?: RunEventNotificationPublisher,
   releaseCohort: PlatformReleaseCohort = 'core',
 ): PostgresWorkflowRunPersistence {
-  const releaseSupport = createExecutableCompatibilityReleaseSupport(
-    platformRegistryReleaseSupport(releaseCohort).map(
+  const releaseSupport = createExecutableCompatibilityReleaseHistory(
+    platformExecutableRegistryHistory(releaseCohort).map(
       composeExecutableCompatibilityRelease,
     ),
   );
   const database =
     databaseInput ??
-    createWorkflowRunDatabase(config, releaseSupport.descriptions);
+    createWorkflowRunDatabase(
+      config,
+      createExecutableCompatibilityReleaseSupport(
+        platformRegistryReleaseSupport(releaseCohort).map(
+          composeExecutableCompatibilityRelease,
+        ),
+      ).descriptions,
+    );
   const persistence: WorkflowRunPersistence = Object.freeze({
     start: async (input: StartWorkflowRunCommand) => {
       try {

@@ -23,6 +23,7 @@ export {
   composeExecutableCompatibilityRelease,
   computeWorkflowExecutableChecksumV2,
   createExecutableCompatibilityReleaseSupport,
+  createExecutableCompatibilityReleaseHistory,
   describeExecutableCompatibilityRelease,
   parseWorkflowExecutableV2,
   PHASE3_RUNTIME_POLICIES_V1,

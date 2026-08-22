@@ -93,6 +93,20 @@ export function platformRegistryReleaseSupport(cohort: PlatformReleaseCohort) {
   }
 }
 
+/** Retained immutable releases executable by a cohort, distinct from readiness. */
+export function platformExecutableRegistryHistory(
+  cohort: PlatformReleaseCohort,
+) {
+  const maximumEpoch = platformRegistryReleaseSupport(cohort).at(-1)?.epoch;
+  if (maximumEpoch === undefined)
+    throw new Error('Platform release cohort is empty');
+  return Object.freeze(
+    PLATFORM_REGISTRY_RELEASE_HISTORY.filter(
+      ({ epoch }) => epoch <= maximumEpoch,
+    ),
+  );
+}
+
 /** Release whose executors the cohort's worker actually dispatches. */
 export function platformServingRegistryRelease(cohort: PlatformReleaseCohort) {
   switch (cohort) {

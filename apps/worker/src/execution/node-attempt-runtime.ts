@@ -8,6 +8,7 @@ import {
   type PublishedWorkflowReader,
 } from '@pertexo/database';
 import {
+  platformExecutableRegistryHistory,
   platformRegistryReleaseSupport,
   platformServingRegistryRelease,
   type PlatformReleaseCohort,
@@ -28,6 +29,7 @@ import {
 } from '@pertexo/queue';
 import {
   composeExecutableCompatibilityRelease,
+  createExecutableCompatibilityReleaseHistory,
   createExecutableCompatibilityReleaseSupport,
   type NodeExecutionRegistry,
 } from '@pertexo/workflow-engine';
@@ -126,8 +128,8 @@ export async function createNodeAttemptRuntime(
     throw new TypeError(
       'HTTP activation requires connection and artifact runtime capabilities',
     );
-  const releaseSupport = createExecutableCompatibilityReleaseSupport(
-    platformRegistryReleaseSupport(releaseCohort).map(
+  const releaseSupport = createExecutableCompatibilityReleaseHistory(
+    platformExecutableRegistryHistory(releaseCohort).map(
       composeExecutableCompatibilityRelease,
     ),
   );
@@ -154,7 +156,11 @@ export async function createNodeAttemptRuntime(
     dependencies.reader ??
     createPublishedWorkflowReader(
       options.database,
-      releaseSupport.descriptions,
+      createExecutableCompatibilityReleaseSupport(
+        platformRegistryReleaseSupport(releaseCohort).map(
+          composeExecutableCompatibilityRelease,
+        ),
+      ).descriptions,
     );
   const notifications =
     dependencies.notifications ??

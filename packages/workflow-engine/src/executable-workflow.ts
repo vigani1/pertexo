@@ -237,14 +237,33 @@ export function createExecutableCompatibilityReleaseSupport(
   try {
     if (releaseInputs.length < 1 || releaseInputs.length > 2)
       fail('artifact supports only one rolling overlap');
+    return createExecutableCompatibilityReleaseHistory(releaseInputs);
+  } catch (error: unknown) {
+    normalizeError(error);
+  }
+}
+
+/**
+ * Every immutable release whose published workflows remain executable by an
+ * artifact. Deployment readiness must use the bounded rolling-support factory
+ * above; retained execution history is a separate compatibility concern.
+ */
+export function createExecutableCompatibilityReleaseHistory(
+  releaseInputs: readonly unknown[],
+): ExecutableCompatibilityReleaseSupport {
+  try {
+    if (releaseInputs.length < 1)
+      fail('executable compatibility history must not be empty');
     const releases = releaseInputs
       .map(parseRegistryRelease)
       .sort((left, right) => left.epoch - right.epoch);
     if (new Set(releases.map(({ epoch }) => epoch)).size !== releases.length)
       fail('compatibility release epochs must be unique');
-    const previous = releases[0];
-    const target = releases[1];
-    if (previous !== undefined && target !== undefined) {
+    for (let index = 1; index < releases.length; index += 1) {
+      const previous = releases[index - 1];
+      const target = releases[index];
+      if (previous === undefined || target === undefined)
+        fail('executable compatibility history is incomplete');
       if (target.epoch !== previous.epoch + 1)
         fail('compatibility release is not the next successor');
       const successor = createRegistryReleaseSuccessor({

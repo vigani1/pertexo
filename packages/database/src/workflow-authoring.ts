@@ -22,6 +22,7 @@ import {
   lockExpectedCompatibilityReleaseWithClient,
   lockExpectedCompatibilityReleaseSetWithClient,
   parseCompatibilityReleaseExpectation,
+  parseCompatibilityReleaseExpectationHistory,
   parseCompatibilityReleaseExpectationSet,
   type CompatibilityReleaseExpectation,
 } from './compatibility-release.js';
@@ -269,6 +270,7 @@ export type WorkflowAuthoringTestHooks = Readonly<{
 export type WorkflowAuthoringDatabaseOptions = Readonly<{
   compatibilityRelease?: CompatibilityReleaseExpectation;
   compatibilityReleaseVariants?: readonly WorkflowAuthoringCompatibilityVariant[];
+  compatibilityReadinessReleases?: readonly CompatibilityReleaseExpectation[];
   definitionCatalog?: WorkflowDefinitionCatalogV1;
   placementDefinitionCatalog?: WorkflowDefinitionCatalogV1;
   executableCompiler?: WorkflowExecutableCompiler;
@@ -559,6 +561,13 @@ export function createWorkflowAuthoringDatabase(
     throw new TypeError(
       'Compatibility release variants cannot be combined with singular publication options',
     );
+  if (
+    options.compatibilityReadinessReleases !== undefined &&
+    options.compatibilityReleaseVariants === undefined
+  )
+    throw new TypeError(
+      'Compatibility readiness releases require publication variants',
+    );
   const defaultDefinitionCatalog =
     options.definitionCatalog ?? EMPTY_DEFINITION_CATALOG_V1;
   const compatibilityRelease =
@@ -590,7 +599,7 @@ export function createWorkflowAuthoringDatabase(
     compatibilityReleaseVariants === undefined
       ? undefined
       : Object.freeze(
-          parseCompatibilityReleaseExpectationSet(
+          parseCompatibilityReleaseExpectationHistory(
             compatibilityReleaseVariants.map(
               ({ compatibilityRelease: release }) => release,
             ),
@@ -618,6 +627,34 @@ export function createWorkflowAuthoringDatabase(
             });
           }),
         );
+  const compatibilityReadinessReleases =
+    options.compatibilityReadinessReleases === undefined
+      ? undefined
+      : parseCompatibilityReleaseExpectationSet(
+          options.compatibilityReadinessReleases,
+        );
+  if (
+    compatibilityVariants !== undefined &&
+    compatibilityVariants.length > 2 &&
+    compatibilityReadinessReleases === undefined
+  )
+    throw new TypeError(
+      'Retained publication history requires bounded compatibility readiness releases',
+    );
+  if (
+    compatibilityReadinessReleases?.some(
+      (readiness) =>
+        !compatibilityVariants?.some(
+          ({ compatibilityRelease: variant }) =>
+            variant.epoch === readiness.epoch &&
+            variant.fingerprint === readiness.fingerprint &&
+            variant.catalogJson === readiness.catalogJson,
+        ),
+    ) === true
+  )
+    throw new TypeError(
+      'Compatibility readiness release is missing a publication variant',
+    );
   const defaultVariant = Object.freeze({
     compatibilityRelease,
     definitionCatalog: defaultDefinitionCatalog,
@@ -637,7 +674,10 @@ export function createWorkflowAuthoringDatabase(
     }
     const selected = await lockExpectedCompatibilityReleaseSetWithClient(
       client,
-      compatibilityVariants.map(({ compatibilityRelease: release }) => release),
+      compatibilityReadinessReleases ??
+        compatibilityVariants.map(
+          ({ compatibilityRelease: release }) => release,
+        ),
     );
     const variant = compatibilityVariants.find(
       ({ compatibilityRelease: release }) =>

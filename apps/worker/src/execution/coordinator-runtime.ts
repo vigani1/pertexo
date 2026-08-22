@@ -7,6 +7,7 @@ import {
   type PublishedWorkflowReader,
 } from '@pertexo/database';
 import {
+  platformExecutableRegistryHistory,
   platformRegistryReleaseSupport,
   type PlatformReleaseCohort,
 } from '@pertexo/node-catalog';
@@ -25,6 +26,7 @@ import {
 } from '@pertexo/queue';
 import {
   composeExecutableCompatibilityRelease,
+  createExecutableCompatibilityReleaseHistory,
   createExecutableCompatibilityReleaseSupport,
 } from '@pertexo/workflow-engine';
 
@@ -100,8 +102,8 @@ export async function createCoordinatorRuntime(
       'Coordinator maximum admissions must be between 1 and 64',
     );
   }
-  const releaseSupport = createExecutableCompatibilityReleaseSupport(
-    platformRegistryReleaseSupport(options.releaseCohort ?? 'core').map(
+  const releaseSupport = createExecutableCompatibilityReleaseHistory(
+    platformExecutableRegistryHistory(options.releaseCohort ?? 'core').map(
       composeExecutableCompatibilityRelease,
     ),
   );
@@ -121,7 +123,11 @@ export async function createCoordinatorRuntime(
     dependencies.reader ??
     createPublishedWorkflowReader(
       options.database,
-      releaseSupport.descriptions,
+      createExecutableCompatibilityReleaseSupport(
+        platformRegistryReleaseSupport(options.releaseCohort ?? 'core').map(
+          composeExecutableCompatibilityRelease,
+        ),
+      ).descriptions,
     );
   const notifications =
     dependencies.notifications ??

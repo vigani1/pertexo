@@ -2,12 +2,14 @@ import type { DynamicModule, OnApplicationShutdown } from '@nestjs/common';
 import { Module } from '@nestjs/common';
 import { metrics, trace } from '@opentelemetry/api';
 import {
+  platformExecutableRegistryHistory,
   platformRegistryReleaseSupport,
   type PlatformReleaseCohort,
 } from '@pertexo/node-catalog';
 import {
   buildWorkflowExecutableV2,
   composeExecutableCompatibilityRelease,
+  createExecutableCompatibilityReleaseHistory,
   createExecutableCompatibilityReleaseSupport,
 } from '@pertexo/workflow-engine';
 import {
@@ -62,9 +64,15 @@ export type ApiWorkflowRuntimeOverrides = Readonly<{
 function coreWorkflowCompatibility(
   releaseCohort: PlatformReleaseCohort = 'core',
 ) {
-  const registryReleaseSupport = platformRegistryReleaseSupport(releaseCohort);
-  const releaseSupport = createExecutableCompatibilityReleaseSupport(
+  const registryReleaseSupport =
+    platformExecutableRegistryHistory(releaseCohort);
+  const releaseSupport = createExecutableCompatibilityReleaseHistory(
     registryReleaseSupport.map(composeExecutableCompatibilityRelease),
+  );
+  const readinessSupport = createExecutableCompatibilityReleaseSupport(
+    platformRegistryReleaseSupport(releaseCohort).map(
+      composeExecutableCompatibilityRelease,
+    ),
   );
   const variants = registryReleaseSupport.map((nodeRelease) => {
     const compatibilityRelease =
@@ -153,6 +161,7 @@ function coreWorkflowCompatibility(
     throw new Error('Core compatibility release support is empty');
   return Object.freeze({
     releaseSupport,
+    readinessSupport,
     variants: Object.freeze(variants),
     definitionCatalog: latestVariant.definitionCatalog,
   });
@@ -160,8 +169,12 @@ function coreWorkflowCompatibility(
 
 function coreAuthoringOptions(
   variants: ReturnType<typeof coreWorkflowCompatibility>['variants'],
+  readinessReleases: ReturnType<
+    typeof coreWorkflowCompatibility
+  >['readinessSupport']['descriptions'],
 ) {
   return {
+    compatibilityReadinessReleases: readinessReleases,
     compatibilityReleaseVariants: variants.map(
       ({
         compatibilityRelease,
@@ -201,7 +214,10 @@ export function createCoreWorkflowAuthoringDatabase(
   const compatibility = coreWorkflowCompatibility(releaseCohort);
   return createWorkflowAuthoringDatabase(
     databaseConfig,
-    coreAuthoringOptions(compatibility.variants),
+    coreAuthoringOptions(
+      compatibility.variants,
+      compatibility.readinessSupport.descriptions,
+    ),
   );
 }
 
@@ -211,16 +227,13 @@ export function createApiWorkflowRuntime(
   redisUrl: string,
   overrides: ApiWorkflowRuntimeOverrides = {},
 ): ApiWorkflowRuntime {
-  const {
-    releaseSupport: compatibilityReleaseSupport,
-    variants,
-    definitionCatalog,
-  } = coreWorkflowCompatibility(overrides.releaseCohort);
+  const { readinessSupport, variants, definitionCatalog } =
+    coreWorkflowCompatibility(overrides.releaseCohort);
   const database =
     overrides.database ??
     createWorkflowAuthoringDatabase(
       databaseConfig,
-      coreAuthoringOptions(variants),
+      coreAuthoringOptions(variants, readinessSupport.descriptions),
     );
   const notifications =
     overrides.notifications ??
@@ -240,7 +253,7 @@ export function createApiWorkflowRuntime(
     overrides.runStreamer === undefined
       ? (overrides.eventDatabase ??
         createWorkspaceDatabase(databaseConfig, {
-          compatibilityReleases: compatibilityReleaseSupport.descriptions,
+          compatibilityReleases: readinessSupport.descriptions,
         }))
       : undefined;
   const liveSource =

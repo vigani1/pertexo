@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   parseCompatibilityReleaseExpectation,
+  parseCompatibilityReleaseExpectationHistory,
   parseCompatibilityReleaseExpectationSet,
 } from '../src/compatibility-release.js';
 import { parseDatabaseConfig } from '../src/config.js';
@@ -93,7 +94,7 @@ describe('node compatibility release persistence', () => {
     ).toThrow();
   });
 
-  it('accepts only a unique one-release rolling overlap', () => {
+  it('separates retained execution history from a bounded rolling readiness overlap', () => {
     const release = {
       epoch: 1,
       fingerprint:
@@ -116,7 +117,17 @@ describe('node compatibility release persistence', () => {
         { ...release, epoch: 2 },
         { ...release, epoch: 3 },
       ]),
-    ).toThrow();
+    ).toThrow('readiness supports one rolling overlap');
+    expect(
+      parseCompatibilityReleaseExpectationHistory([
+        release,
+        { ...release, epoch: 2 },
+        { ...release, epoch: 3 },
+      ]),
+    ).toHaveLength(3);
+    expect(() =>
+      parseCompatibilityReleaseExpectationHistory([release, release]),
+    ).toThrow('must be unique');
     expect(() =>
       createWorkspaceDatabase(
         parseDatabaseConfig({

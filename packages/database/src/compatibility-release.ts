@@ -73,10 +73,18 @@ export function parseCompatibilityReleaseExpectation(
 export function parseCompatibilityReleaseExpectationSet(
   input: unknown,
 ): CompatibilityReleaseExpectationSet {
+  const releases = parseCompatibilityReleaseExpectationHistory(input);
+  if (releases.length > MAXIMUM_ROLLING_RELEASES)
+    throw new TypeError('Compatibility readiness supports one rolling overlap');
+  return releases;
+}
+
+export function parseCompatibilityReleaseExpectationHistory(
+  input: unknown,
+): CompatibilityReleaseExpectationSet {
   const releases = z
     .array(z.unknown())
     .min(1)
-    .max(MAXIMUM_ROLLING_RELEASES)
     .parse(input)
     .map(parseCompatibilityReleaseExpectation);
   const identities = releases.map(

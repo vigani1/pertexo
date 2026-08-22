@@ -50,6 +50,7 @@ export {
   lockExpectedCompatibilityReleaseSetWithClient,
   parseCompatibilityReleaseExpectation,
   parseCompatibilityReleaseExpectationSet,
+  parseCompatibilityReleaseExpectationHistory,
 } from './compatibility-release.js';
 export type {
   CompatibilityReleaseExpectation,
