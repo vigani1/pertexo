@@ -21,6 +21,10 @@
       "types": "./dist/identity-workspace.d.ts",
       "default": "./dist/identity-workspace.js"
     },
+    "./node-testing": {
+      "types": "./dist/node-testing.d.ts",
+      "default": "./dist/node-testing.js"
+    },
     "./workflow-authoring": {
       "types": "./dist/workflow-authoring.d.ts",
       "default": "./dist/workflow-authoring.js"

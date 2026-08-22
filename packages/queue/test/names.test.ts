@@ -22,12 +22,14 @@ describe('queue names', () => {
     expect(JOB_NAME).toEqual({
       advanceWorkflowRun: 'advance-workflow-run',
       executeNodeAttempt: 'execute-node-attempt',
+      executePreviewAttempt: 'execute-preview-attempt',
       reconcileWorkflowTriggers: 'reconcile-workflow-triggers',
       expireArtifacts: 'expire-artifacts',
     });
     expect(QUEUE_FOR_JOB).toEqual({
       [JOB_NAME.advanceWorkflowRun]: QUEUE_NAME.workflowCoordinator,
       [JOB_NAME.executeNodeAttempt]: QUEUE_NAME.nodeAttempts,
+      [JOB_NAME.executePreviewAttempt]: QUEUE_NAME.nodeAttempts,
       [JOB_NAME.reconcileWorkflowTriggers]: QUEUE_NAME.triggerLifecycle,
       [JOB_NAME.expireArtifacts]: QUEUE_NAME.maintenance,
     });

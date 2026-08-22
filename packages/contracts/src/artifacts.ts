@@ -7,6 +7,10 @@ import {
   identityWorkspaceOpenApiDocument,
 } from './identity-workspace.js';
 import {
+  nodeTestingClientContract,
+  nodeTestingOpenApiDocument,
+} from './node-testing.js';
+import {
   workflowAuthoringClientContract,
   workflowAuthoringOpenApiDocument,
 } from './workflow-authoring.js';
@@ -31,6 +35,14 @@ export const CONTRACT_ARTIFACTS = Object.freeze([
   Object.freeze({
     fileName: 'identity-workspace.openapi.json',
     content: `${JSON.stringify(identityWorkspaceOpenApiDocument, undefined, 2)}\n`,
+  }),
+  Object.freeze({
+    fileName: 'node-testing.client-schema.json',
+    content: `${JSON.stringify(nodeTestingClientContract, undefined, 2)}\n`,
+  }),
+  Object.freeze({
+    fileName: 'node-testing.openapi.json',
+    content: `${JSON.stringify(nodeTestingOpenApiDocument, undefined, 2)}\n`,
   }),
   Object.freeze({
     fileName: 'workflow-authoring.client-schema.json',

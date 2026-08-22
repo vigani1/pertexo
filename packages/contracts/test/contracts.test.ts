@@ -22,6 +22,16 @@ import {
   identityWorkspaceClientContract,
   identityWorkspaceOpenApiDocument,
 } from '../src/identity-workspace.js';
+import {
+  nodeTestExecuteAcceptedResponseSchema,
+  nodeTestRequestSchema,
+  nodeValidationResponseSchema,
+  previewRunResponseSchema,
+} from '../src/http/node-testing.js';
+import {
+  nodeTestingClientContract,
+  nodeTestingOpenApiDocument,
+} from '../src/node-testing.js';
 import { workspaceCreateRequestSchema } from '../src/http/identity-workspace.js';
 import {
   strongEtagSchema,
@@ -45,6 +55,148 @@ import {
 } from '../src/http/workflow-runs.js';
 
 describe('public contracts package', () => {
+  it('separates pure validation from acknowledged durable test execution', () => {
+    expect(
+      nodeTestRequestSchema.parse({
+        mode: 'validate',
+        expectedRevision: 4,
+        sampleInput: { customerId: 'customer-1' },
+      }),
+    ).toMatchObject({ mode: 'validate', expectedRevision: 4 });
+    expect(
+      nodeTestRequestSchema.parse({
+        mode: 'test_execute',
+        expectedRevision: 4,
+        input: {
+          kind: 'prior_preview',
+          previewRunId: '11111111-1111-4111-8111-111111111111',
+        },
+        acknowledgeSideEffects: true,
+      }),
+    ).toMatchObject({ mode: 'test_execute' });
+
+    for (const request of [
+      {
+        mode: 'test_execute',
+        expectedRevision: 4,
+        input: { kind: 'manual', value: {} },
+      },
+      {
+        mode: 'test_execute',
+        expectedRevision: 4,
+        input: { kind: 'manual', value: {} },
+        acknowledgeSideEffects: false,
+      },
+      {
+        mode: 'validate',
+        expectedRevision: 4,
+        acknowledgeSideEffects: true,
+      },
+      {
+        mode: 'validate',
+        expectedRevision: 4,
+        schemaVersion: 2,
+      },
+    ])
+      expect(nodeTestRequestSchema.safeParse(request).success).toBe(false);
+  });
+
+  it('bounds validation and secret-free preview status responses', () => {
+    const disclosure = {
+      sideEffectClass: 'unsafe' as const,
+      mayContactProvider: true,
+      mayCauseExternalSideEffect: true,
+      dryRun: 'not_supported' as const,
+    };
+    expect(
+      nodeValidationResponseSchema.safeParse({
+        mode: 'validate',
+        valid: true,
+        revision: 4,
+        nodeId: 'http',
+        issues: [],
+        disclosure,
+      }).success,
+    ).toBe(true);
+
+    const preview = {
+      id: '11111111-1111-4111-8111-111111111111',
+      workspaceId: '22222222-2222-4222-8222-222222222222',
+      workflowId: '33333333-3333-4333-8333-333333333333',
+      draftRevision: 4,
+      nodeId: 'http',
+      status: 'queued' as const,
+      disclosure,
+      output: null,
+      safeErrorCode: null,
+      createdAt: '2026-08-22T20:00:00.000Z',
+      startedAt: null,
+      completedAt: null,
+      expiresAt: '2026-08-23T20:00:00.000Z',
+    };
+    expect(
+      nodeTestExecuteAcceptedResponseSchema.safeParse({
+        mode: 'test_execute',
+        preview,
+        replayed: false,
+      }).success,
+    ).toBe(true);
+    expect(
+      previewRunResponseSchema.safeParse({
+        preview: { ...preview, credential: 'must-not-leak' },
+      }).success,
+    ).toBe(false);
+    expect(
+      nodeValidationResponseSchema.safeParse({
+        mode: 'validate',
+        valid: false,
+        revision: 4,
+        nodeId: 'http',
+        issues: Array.from({ length: 101 }, () => ({
+          path: '$.config.url',
+          code: 'invalid_url',
+          message: 'Invalid URL',
+        })),
+        disclosure,
+      }).success,
+    ).toBe(false);
+  });
+
+  it('documents conditional idempotency and separate preview status reads', () => {
+    expect(nodeTestingClientContract.schemaVersion).toBe('1.0.0');
+    expect(Object.keys(nodeTestingOpenApiDocument.paths)).toEqual([
+      '/v1/workspaces/{workspaceId}/workflows/{workflowId}/nodes/{nodeId}/test',
+      '/v1/workspaces/{workspaceId}/previews/{previewRunId}',
+    ]);
+    const operation =
+      nodeTestingOpenApiDocument.paths[
+        '/v1/workspaces/{workspaceId}/workflows/{workflowId}/nodes/{nodeId}/test'
+      ].post;
+    expect(operation.parameters.map(({ name }) => name)).toEqual([
+      'workspaceId',
+      'workflowId',
+      'nodeId',
+      'x-csrf-token',
+      'Idempotency-Key',
+    ]);
+    expect(operation.parameters.at(-1)).toMatchObject({
+      name: 'Idempotency-Key',
+      required: false,
+    });
+    expect(Object.keys(operation.responses)).toEqual([
+      '200',
+      '202',
+      '400',
+      '401',
+      '403',
+      '404',
+      '409',
+      '422',
+      '428',
+      '500',
+    ]);
+  });
+
   it('defines strict credential input and secret-free connection responses', () => {
     const parsed = connectionCreateRequestSchema.parse({
       providerKey: 'http',

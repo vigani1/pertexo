@@ -18,6 +18,11 @@ export {
 } from './identity-workspace.js';
 export * from './http/identity-workspace.js';
 export {
+  nodeTestingClientContract,
+  nodeTestingOpenApiDocument,
+} from './node-testing.js';
+export * from './http/node-testing.js';
+export {
   workflowAuthoringClientContract,
   workflowAuthoringOpenApiDocument,
 } from './workflow-authoring.js';

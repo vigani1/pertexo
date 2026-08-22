@@ -37,6 +37,10 @@ export type TransportJob =
       readonly queueName: 'node-attempts';
     }
   | {
+      readonly jobName: 'execute-preview-attempt';
+      readonly queueName: 'node-attempts';
+    }
+  | {
       readonly jobName: 'expire-artifacts';
       readonly queueName: 'maintenance';
     }
