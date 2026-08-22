@@ -1384,7 +1384,7 @@ Generic HTTP Request vertical slice:
       server-only executor with versioned strict config/input/output schemas,
       connection requirements, timeout/redirect/response limits, exact retry
       class, resource class, capabilities, and compatibility-release identity.
-- [ ] Add a deep HTTP execution module whose small interface owns URL parsing,
+- [x] Add a deep HTTP execution module whose small interface owns URL parsing,
       allowed schemes, DNS resolution and rebinding-resistant address pinning,
       private/link-local/loopback/metadata-range rejection for IPv4 and IPv6,
       redirect re-resolution, bounded redirects, method/body/header policy,
@@ -1543,6 +1543,24 @@ Current evidence:
   claimed complete yet beyond create/rotate/revoke credential management; the
   SSRF-enforcing connection test, generic HTTP executor, and preview slices
   remain gated.
+- Commit `6b1a6b6` adds the server-only, policy-enforcing HTTP execution
+  boundary. Its single client seam validates a strict bounded request, resolves
+  and rejects every non-public or mixed DNS answer, pins the selected address
+  into the Node HTTP/TLS lookup, re-resolves every bounded redirect, rejects
+  HTTPS downgrade and unsafe method rewriting, and performs exactly one
+  transport call per accepted hop. One total abortable deadline spans DNS,
+  dispatch evidence, redirects, transport, and response streaming. Response
+  headers and bytes are bounded and allowlisted, credential values are redacted
+  from textual and binary bodies, and encoded bodies that cannot be inspected
+  are rejected. Errors retain only a stable safe code, definite/ambiguous
+  classification, and possible-dispatch fact—never adapter causes. The closed
+  ADR 007 matrix retries pre-dispatch work safely, reuses provider keys for
+  `idempotent_with_key`, and makes unsafe ambiguous transport/provider outcomes
+  `outcome_unknown`. Sixty-five typechecked assertions cover IPv4/IPv6 ranges,
+  literal/private/mixed DNS, rebinding-resistant lookup, redirect hops and
+  downgrade, header/body/timeout/response limits, binary redaction, compression,
+  cancellation, error truth, all three side-effect classes, and a real local
+  Node transport pin; package lint and build pass.
 
 ## Later phases
 
