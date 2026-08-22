@@ -20,7 +20,7 @@ not complete a phase.
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
-| Phase 4 — first side-effecting integration slice | In progress | ADRs 007/016; managed connections and secure HTTP complete; dispatch-aware runtime and `http.request@1` candidate staged outside the release |
+| Phase 4 — first side-effecting integration slice | In progress | ADRs 007/016; managed connections, secure/streaming HTTP, and worker JIT connection/artifact capabilities complete; `http.request@1` remains outside the release |
 | Phase 5 — orchestration slice | Not started | — |
 | Phase 6 — V1 providers and triggers | Not started | — |
 | Phase 7 — production operations | Not started | — |
@@ -1395,7 +1395,7 @@ Generic HTTP Request vertical slice:
       oversized requests/responses, and every redirect or DNS hop that no longer
       satisfies policy. Generic API utilities must not become an alternate
       user-URL fetch path.
-- [ ] Resolve connection-backed headers only inside the worker immediately
+- [x] Resolve connection-backed headers only inside the worker immediately
       before dispatch; graph JSON, executable envelopes, jobs, checkpoints,
       events, outputs, logs, traces, metrics, and public problems retain only
       opaque connection IDs and redacted metadata.
@@ -1605,9 +1605,35 @@ Current evidence:
   Verification passes 75 integration-package assertions, 10 contract
   assertions plus generated-artifact drift, and all 207 API assertions; affected
   packages typecheck/build and every changed source/test path passes ESLint.
-  This evidence does not claim streaming artifact persistence, production
-  connection/artifact capability composition, usage projection, additive
-  rollout, or preview completion.
+  At that checkpoint, this evidence did not yet claim streaming artifact
+  persistence or production connection/artifact capability composition. Usage
+  projection, additive rollout, and preview completion remain incomplete.
+- Commit `46450d9` replaces the candidate's buffered large-response handoff
+  with a bounded streaming body consumer. The secure HTTP boundary enforces its
+  total deadline and raw/redacted byte limit while redacting credential values
+  across arbitrary chunk boundaries, closes transport responses on consumer
+  success/failure, and preserves safe sink failures without exposing adapter
+  causes. Small response streams become exact UTF-8/base64 inline values;
+  larger streams pass directly to the invocation artifact capability. The
+  executor now requires and invokes a current-secret assertion before its
+  durable dispatch marker, so rotation/revocation between decrypt and dispatch
+  prevents provider I/O. Verification passes 77 integration assertions and 22
+  Node SDK assertions with affected typechecks, builds, and ESLint green.
+- Commit `7c223ab` composes invocation-scoped worker connection and artifact
+  factories from production configuration. Connection resolution is bound to
+  the lease workspace/worker, decrypts through the managed-KMS adapter, and
+  rechecks workspace, status, provider, auth type, and exact current secret
+  immediately before dispatch. Artifact output is hard-bounded while streaming
+  to a mode-0600 temporary spool, creates pending tenant-scoped metadata before
+  upload, verifies the object-store result, finalizes metadata only afterward,
+  clears mutable chunks, removes the spool on every path, and closes owned DB,
+  KMS, and store resources. Verification passes 75 worker assertions, 56
+  database unit assertions, nine fresh PostgreSQL 18 connection assertions,
+  and two PostgreSQL/Redis/S3-compatible artifact-reference assertions. All
+  affected packages typecheck/build and focused ESLint passes. The HTTP node is
+  still excluded from production catalogs pending the usage projection,
+  canonical downstream artifact resolution, compatibility rollout, telemetry,
+  and preview gates.
 
 ## Later phases
 
