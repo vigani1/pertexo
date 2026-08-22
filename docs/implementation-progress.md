@@ -20,7 +20,7 @@ not complete a phase.
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
-| Phase 4 — first side-effecting integration slice | In progress | ADRs 007/016; managed connections, secure/streaming HTTP, worker JIT capabilities, integration-usage projection, and exact staged/active HTTP rollout proof complete; activation remains gated pending downstream-value, telemetry, preview, and full regression evidence |
+| Phase 4 — first side-effecting integration slice | In progress | ADRs 007/016; managed connections, secure/streaming HTTP, worker JIT capabilities, integration-usage projection, exact rollout, canonical downstream output, and provider telemetry complete; activation remains gated pending remaining failure proofs, preview, and full regression evidence |
 | Phase 5 — orchestration slice | Not started | — |
 | Phase 6 — V1 providers and triggers | Not started | — |
 | Phase 7 — production operations | Not started | — |
@@ -1404,7 +1404,7 @@ Generic HTTP Request vertical slice:
       provider key on every permitted retry; expose adapter retry hints without
       hidden SDK retries; classify definite, retryable, rate-limited, timeout,
       canceled, and ambiguous transport outcomes truthfully.
-- [ ] Persist bounded structured output inline at or below the declared limit
+- [x] Persist bounded structured output inline at or below the declared limit
       and stream larger/unsuitable responses to a workspace-scoped artifact;
       downstream resolution must consume the canonical stored value only.
 - [x] Add `workflow_integration_usage` as a transactionally rebuilt projection
@@ -1687,6 +1687,34 @@ Current evidence:
   claim: canonical downstream persisted-value consumption, provider telemetry,
   preview execution, regression/recovery gates, and completion reviews remain
   open.
+- Commit `d115918` closes the canonical downstream-value gap with a real
+  PostgreSQL coordinator/run-store proof. A completed node persists an
+  HTTP-shaped structured output whose body is an artifact reference into both
+  attempt and node rows. The fixture then mutates the original in-memory output,
+  admits and claims a distinct downstream attempt, and proves `loadInputs`
+  returns the original persisted artifact ID and metadata rather than the
+  transient object. This composes with the existing HTTP executor inline-vs-
+  streaming threshold assertions and the real PostgreSQL/S3-compatible worker
+  artifact proof, where metadata is available only after verified upload and
+  finalization. All 29 coordinator/run-store integration scenarios and the
+  database test typecheck pass; the disposable database is removed by the
+  suite.
+- Commit `4a496a8` wires bounded HTTP provider telemetry through the active
+  catalog and production node-attempt registry. Every request receives one
+  `pertexo.provider.http.request` span, request count/duration metrics, fixed
+  provider/operation/outcome/error/dispatch/storage/status-class attributes,
+  and a dedicated rate-limit counter. URLs, hostnames, connection/workflow/run
+  IDs, credentials, and arbitrary provider values are never attributes.
+  Diagnostics preserve provider truth when tracing or recording fails. The
+  active-registry proof executes HTTP through the telemetry seam, while worker
+  tests verify success, artifact storage, safe failure/rate-limit classes,
+  fixed-cardinality production attributes, span closure, and diagnostic
+  failure isolation. Verification passes 77 integration, five catalog, and 80
+  worker assertions; all three packages build/typecheck and focused
+  format/ESLint checks pass. Remaining Phase 4 gates are the unchecked
+  connection/ADR-007 failure proofs, final activation assertion, durable
+  validate/test-execute preview slice, full recovery/regression matrix, and
+  independent completion reviews.
 
 ## Later phases
 
