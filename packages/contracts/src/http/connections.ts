@@ -126,6 +126,24 @@ export const connectionRotateSecretRequestSchema = z
   .strict()
   .readonly();
 
+export const connectionTestRequestSchema = z
+  .object({
+    url: z
+      .url()
+      .max(2_048)
+      .refine(
+        (value) => utf8ByteLength(value) <= 2_048,
+        'URL exceeds byte limit',
+      )
+      .refine(
+        (value) =>
+          /^https:\/\/[^/?#@]+(?:[/?]|$)/u.test(value) && !value.includes('#'),
+        'connection tests require an HTTPS URL without credentials or a fragment',
+      ),
+  })
+  .strict()
+  .readonly();
+
 export const connectionResponseSchema = z
   .object({
     id: connectionIdentifierSchema,
@@ -149,6 +167,33 @@ export const connectionResponseSchema = z
   .strict()
   .readonly();
 
+export const connectionTestOutcomeSchema = z.discriminatedUnion('ok', [
+  z
+    .object({
+      ok: z.literal(true),
+      httpStatus: z.number().int().min(100).max(599),
+      errorCode: z.null(),
+    })
+    .strict()
+    .readonly(),
+  z
+    .object({
+      ok: z.literal(false),
+      httpStatus: z.number().int().min(100).max(599).nullable(),
+      errorCode: z.string().min(1).max(128),
+    })
+    .strict()
+    .readonly(),
+]);
+
+export const connectionTestResponseSchema = z
+  .object({
+    connection: connectionResponseSchema,
+    outcome: connectionTestOutcomeSchema,
+  })
+  .strict()
+  .readonly();
+
 export const connectionIdParamSchema = z
   .object({ workspaceId: z.uuid(), connectionId: connectionIdentifierSchema })
   .strict()
@@ -166,4 +211,11 @@ export type ConnectionRotateSecretRequest = z.input<
 export type ParsedConnectionRotateSecretRequest = z.output<
   typeof connectionRotateSecretRequestSchema
 >;
+export type ConnectionTestRequest = z.input<typeof connectionTestRequestSchema>;
+export type ParsedConnectionTestRequest = z.output<
+  typeof connectionTestRequestSchema
+>;
 export type ConnectionResponse = z.output<typeof connectionResponseSchema>;
+export type ConnectionTestResponse = z.output<
+  typeof connectionTestResponseSchema
+>;

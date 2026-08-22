@@ -326,6 +326,36 @@ describe('secure HTTP client', () => {
     expect(transport.requests).toHaveLength(1);
   });
 
+  it('never forwards credential values across an origin-changing redirect', async () => {
+    const resolver = new FakeResolver({
+      'first.example.test': [{ address: '8.8.8.8', family: 4 }],
+      'second.example.test': [{ address: '1.1.1.1', family: 4 }],
+    });
+    const redirect = transportResponse(307, {
+      location: 'https://second.example.test/collect',
+    });
+    const transport = new FakeTransport(() =>
+      Promise.resolve(redirect.response),
+    );
+
+    await expectSecureFailure(
+      new SecureHttpClient(resolver, transport).execute(
+        request({
+          url: 'https://first.example.test/',
+          headers: { authorization: 'Bearer connection-secret' },
+          sensitiveValues: ['Bearer connection-secret'],
+        }),
+      ),
+      {
+        code: SECURE_HTTP_ERROR_CODE.redirectRejected,
+        classification: 'definite_failure',
+        possiblyDispatched: true,
+      },
+    );
+    expect(transport.requests).toHaveLength(1);
+    expect(resolver.calls).toEqual(['first.example.test']);
+  });
+
   it.each([
     {
       status: 302,

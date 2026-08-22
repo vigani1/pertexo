@@ -1,11 +1,21 @@
 import type { ConnectionRecord } from '@pertexo/database';
+import {
+  SECURE_HTTP_ERROR_CODE,
+  SecureHttpError,
+  type SecureHttpRequest,
+} from '@pertexo/integrations/server';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { ConnectionPersistence } from '../../src/connections/ports.js';
+import type {
+  ConnectionCommandPersistence,
+  ConnectionHttpClient,
+  ConnectionTestPersistence,
+} from '../../src/connections/ports.js';
 import {
   CreateConnectionUseCase,
   RevokeConnectionUseCase,
   RotateConnectionSecretUseCase,
+  TestConnectionUseCase,
 } from '../../src/connections/use-cases.js';
 import { createActorContext } from '../../src/workspaces/index.js';
 
@@ -57,27 +67,69 @@ function authorization() {
   };
 }
 
-function persistence(overrides: Partial<ConnectionPersistence> = {}) {
+function persistence(overrides: Partial<ConnectionCommandPersistence> = {}) {
   return {
-    createConnection: vi.fn<ConnectionPersistence['createConnection']>(() =>
-      Promise.resolve(record()),
+    createConnection: vi.fn<ConnectionCommandPersistence['createConnection']>(
+      () => Promise.resolve(record()),
     ),
     findConnectionCreateReplay: vi.fn<
-      ConnectionPersistence['findConnectionCreateReplay']
+      ConnectionCommandPersistence['findConnectionCreateReplay']
     >(() => Promise.resolve(null)),
     findConnectionRotateReplay: vi.fn<
-      ConnectionPersistence['findConnectionRotateReplay']
+      ConnectionCommandPersistence['findConnectionRotateReplay']
     >(() => Promise.resolve(null)),
     rotateConnectionSecret: vi.fn<
-      ConnectionPersistence['rotateConnectionSecret']
+      ConnectionCommandPersistence['rotateConnectionSecret']
     >(() =>
       Promise.resolve(record({ currentSecretVersionId: nextSecretVersionId })),
     ),
-    revokeConnection: vi.fn<ConnectionPersistence['revokeConnection']>(() =>
-      Promise.resolve(record({ status: 'revoked' })),
+    revokeConnection: vi.fn<ConnectionCommandPersistence['revokeConnection']>(
+      () => Promise.resolve(record({ status: 'revoked' })),
     ),
     ...overrides,
-  } satisfies ConnectionPersistence;
+  } satisfies ConnectionCommandPersistence;
+}
+
+function testPersistence(overrides: Partial<ConnectionTestPersistence> = {}) {
+  return {
+    startConnectionTest: vi.fn<
+      ConnectionTestPersistence['startConnectionTest']
+    >(() =>
+      Promise.resolve({
+        kind: 'dispatch',
+        dispatchToken: '11111111-1111-4111-8111-111111111111',
+      }),
+    ),
+    resolveConnectionTestSecret: vi.fn<
+      ConnectionTestPersistence['resolveConnectionTestSecret']
+    >(() =>
+      Promise.resolve({
+        connection: record(),
+        secretVersionId,
+        sealed,
+      }),
+    ),
+    markConnectionTestDispatched: vi.fn<
+      ConnectionTestPersistence['markConnectionTestDispatched']
+    >(() => Promise.resolve()),
+    completeConnectionTest: vi.fn<
+      ConnectionTestPersistence['completeConnectionTest']
+    >((input) =>
+      Promise.resolve({
+        connection: record({
+          lastTestedAt: new Date('2026-08-22T12:01:00.000Z'),
+          ...(input.outcome.ok
+            ? { lastHealthyAt: new Date('2026-08-22T12:01:00.000Z') }
+            : { lastErrorCode: input.outcome.errorCode }),
+        }),
+        outcome: input.outcome,
+      }),
+    ),
+    abandonConnectionTest: vi.fn<
+      ConnectionTestPersistence['abandonConnectionTest']
+    >(() => Promise.resolve()),
+    ...overrides,
+  } satisfies ConnectionTestPersistence;
 }
 
 const sealed = Object.freeze({
@@ -91,9 +143,9 @@ const sealed = Object.freeze({
 
 describe('connection application use cases', () => {
   it('authorizes, seals, persists, zeroes plaintext, and returns no credential material', async () => {
-    const createConnection = vi.fn<ConnectionPersistence['createConnection']>(
-      () => Promise.resolve(record()),
-    );
+    const createConnection = vi.fn<
+      ConnectionCommandPersistence['createConnection']
+    >(() => Promise.resolve(record()));
     const store = persistence({ createConnection });
     let plaintext: Uint8Array | undefined;
     const encryption = {
@@ -194,13 +246,13 @@ describe('connection application use cases', () => {
 
   it('rotates through CAS/idempotency inputs and revokes through the same authorization seam', async () => {
     const rotateConnectionSecret = vi.fn<
-      ConnectionPersistence['rotateConnectionSecret']
+      ConnectionCommandPersistence['rotateConnectionSecret']
     >(() =>
       Promise.resolve(record({ currentSecretVersionId: nextSecretVersionId })),
     );
-    const revokeConnection = vi.fn<ConnectionPersistence['revokeConnection']>(
-      () => Promise.resolve(record({ status: 'revoked' })),
-    );
+    const revokeConnection = vi.fn<
+      ConnectionCommandPersistence['revokeConnection']
+    >(() => Promise.resolve(record({ status: 'revoked' })));
     const store = persistence({ rotateConnectionSecret, revokeConnection });
     let plaintext: Uint8Array | undefined;
     const encryption = {
@@ -255,5 +307,205 @@ describe('connection application use cases', () => {
     ).rejects.toMatchObject({ code: 'resource.not_found' });
     expect(store.findConnectionCreateReplay).not.toHaveBeenCalled();
     expect(encryption.seal).not.toHaveBeenCalled();
+  });
+
+  it('decrypts just in time, commits dispatch evidence, and stores only a safe test result', async () => {
+    const store = testPersistence();
+    let plaintext: Uint8Array | undefined;
+    let responseBody: Uint8Array | undefined;
+    const encryption = {
+      seal: vi.fn(),
+      open: vi.fn(() => {
+        plaintext = new TextEncoder().encode(JSON.stringify(credential));
+        return Promise.resolve(plaintext);
+      }),
+    };
+    const httpClient: ConnectionHttpClient = {
+      execute: vi.fn(async (input: SecureHttpRequest) => {
+        expect(input).toMatchObject({
+          url: 'https://provider.example.test/health',
+          method: 'GET',
+          headers: { authorization: 'Bearer deeply-secret-value' },
+          sensitiveValues: ['Bearer deeply-secret-value'],
+        });
+        await input.beforeDispatch();
+        responseBody = new TextEncoder().encode('provider response');
+        return {
+          status: 204,
+          headers: {},
+          body: responseBody,
+          bodyEncoding: 'utf8' as const,
+          finalUrl: 'https://provider.example.test',
+          redirectCount: 0,
+        };
+      }),
+    };
+
+    const result = await new TestConnectionUseCase(
+      store,
+      authorization(),
+      encryption,
+      httpClient,
+    ).execute({
+      actor,
+      routeWorkspaceId: workspaceId,
+      connectionId,
+      idempotencyKey: 'test-42',
+      requestId: 'request-42',
+      request: { url: 'https://provider.example.test/health' },
+    });
+
+    expect(result).toMatchObject({
+      connection: { id: connectionId },
+      outcome: { ok: true, httpStatus: 204, errorCode: null },
+    });
+    expect(store.markConnectionTestDispatched).toHaveBeenCalledOnce();
+    expect(store.completeConnectionTest).toHaveBeenCalledWith(
+      expect.objectContaining({ outcome: { ok: true, httpStatus: 204 } }),
+    );
+    expect(plaintext?.every((byte) => byte === 0)).toBe(true);
+    expect(responseBody?.every((byte) => byte === 0)).toBe(true);
+    expect(JSON.stringify(result)).not.toContain('deeply-secret-value');
+  });
+
+  it('replays a completed test without decrypting or contacting the provider', async () => {
+    const replay = {
+      connection: record({
+        lastTestedAt: new Date('2026-08-22T12:01:00.000Z'),
+        lastHealthyAt: new Date('2026-08-22T12:01:00.000Z'),
+      }),
+      outcome: { ok: true as const, httpStatus: 200 },
+    };
+    const store = testPersistence({
+      startConnectionTest: vi.fn().mockResolvedValue({
+        kind: 'replay',
+        result: replay,
+      }),
+    });
+    const encryption = { seal: vi.fn(), open: vi.fn() };
+    const httpClient = { execute: vi.fn() };
+
+    const result = await new TestConnectionUseCase(
+      store,
+      authorization(),
+      encryption,
+      httpClient,
+    ).execute({
+      actor,
+      routeWorkspaceId: workspaceId,
+      connectionId,
+      idempotencyKey: 'test-replay',
+      request: { url: 'https://provider.example.test/health' },
+    });
+
+    expect(result.outcome).toEqual({
+      ok: true,
+      httpStatus: 200,
+      errorCode: null,
+    });
+    expect(encryption.open).not.toHaveBeenCalled();
+    expect(httpClient.execute).not.toHaveBeenCalled();
+  });
+
+  it('denies a viewer before claiming or decrypting a connection test', async () => {
+    const store = testPersistence();
+    const deniedAuthorization = {
+      findAccess: vi.fn().mockResolvedValue({
+        actorId,
+        workspaceId,
+        role: 'viewer' as const,
+        membershipStatus: 'active' as const,
+        workspaceStatus: 'active' as const,
+      }),
+    };
+    const encryption = { seal: vi.fn(), open: vi.fn() };
+    const httpClient = { execute: vi.fn() };
+
+    await expect(
+      new TestConnectionUseCase(
+        store,
+        deniedAuthorization,
+        encryption,
+        httpClient,
+      ).execute({
+        actor,
+        routeWorkspaceId: workspaceId,
+        connectionId,
+        idempotencyKey: 'test-viewer',
+        request: { url: 'https://provider.example.test/health' },
+      }),
+    ).rejects.toMatchObject({ code: 'resource.not_found' });
+    expect(store.startConnectionTest).not.toHaveBeenCalled();
+    expect(encryption.open).not.toHaveBeenCalled();
+  });
+
+  it('persists a redacted security failure but abandons a failed dispatch marker', async () => {
+    const encryption = {
+      seal: vi.fn(),
+      open: vi.fn(() =>
+        Promise.resolve(new TextEncoder().encode(JSON.stringify(credential))),
+      ),
+    };
+    const securityStore = testPersistence();
+    const securityClient = {
+      execute: vi
+        .fn()
+        .mockRejectedValue(
+          new SecureHttpError(
+            SECURE_HTTP_ERROR_CODE.ssrfBlocked,
+            'definite_failure',
+            false,
+          ),
+        ),
+    };
+    const failed = await new TestConnectionUseCase(
+      securityStore,
+      authorization(),
+      encryption,
+      securityClient,
+    ).execute({
+      actor,
+      routeWorkspaceId: workspaceId,
+      connectionId,
+      idempotencyKey: 'test-ssrf',
+      request: { url: 'https://provider.example.test/health' },
+    });
+    expect(failed.outcome).toEqual({
+      ok: false,
+      httpStatus: null,
+      errorCode: 'connection.test.ssrf_blocked',
+    });
+    expect(securityStore.completeConnectionTest).toHaveBeenCalledOnce();
+
+    const markerStore = testPersistence();
+    const markerClient = {
+      execute: vi
+        .fn()
+        .mockRejectedValue(
+          new SecureHttpError(
+            SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed,
+            'definite_failure',
+            false,
+          ),
+        ),
+    };
+    await expect(
+      new TestConnectionUseCase(
+        markerStore,
+        authorization(),
+        encryption,
+        markerClient,
+      ).execute({
+        actor,
+        routeWorkspaceId: workspaceId,
+        connectionId,
+        idempotencyKey: 'test-marker',
+        request: { url: 'https://provider.example.test/health' },
+      }),
+    ).rejects.toMatchObject({
+      code: SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed,
+    });
+    expect(markerStore.completeConnectionTest).not.toHaveBeenCalled();
+    expect(markerStore.abandonConnectionTest).toHaveBeenCalledOnce();
   });
 });

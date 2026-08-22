@@ -3,9 +3,13 @@ import {
   ConnectionIdempotencyConflictError,
   ConnectionNotFoundError,
   ConnectionSecretVersionConflictError,
+  ConnectionTestInProgressError,
   ConnectionUnavailableError,
 } from '@pertexo/database';
-import { ConnectionSecretEncryptionError } from '@pertexo/integrations/server';
+import {
+  ConnectionSecretEncryptionError,
+  SecureHttpError,
+} from '@pertexo/integrations/server';
 import { z } from 'zod';
 
 import {
@@ -29,7 +33,8 @@ export function mapConnectionError(error: unknown): ApplicationError {
     });
   if (
     error instanceof ConnectionConflictError ||
-    error instanceof ConnectionSecretVersionConflictError
+    error instanceof ConnectionSecretVersionConflictError ||
+    error instanceof ConnectionTestInProgressError
   )
     return applicationError('connection.conflict', {
       safeDetail: 'The connection conflicts with current state.',
@@ -41,6 +46,11 @@ export function mapConnectionError(error: unknown): ApplicationError {
   if (error instanceof ConnectionSecretEncryptionError)
     return applicationError('provider.unavailable', {
       safeDetail: 'Credential protection is temporarily unavailable.',
+      cause: error,
+    });
+  if (error instanceof SecureHttpError)
+    return applicationError('provider.unavailable', {
+      safeDetail: 'The connection test could not be dispatched safely.',
       cause: error,
     });
   return applicationError('internal.unexpected', { cause: error });

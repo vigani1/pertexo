@@ -14,9 +14,20 @@ const dependencies = {
     findConnectionRotateReplay: () => Promise.resolve(null),
     rotateConnectionSecret: () => Promise.reject(new Error('not exercised')),
     revokeConnection: () => Promise.reject(new Error('not exercised')),
+    startConnectionTest: () => Promise.reject(new Error('not exercised')),
+    resolveConnectionTestSecret: () =>
+      Promise.reject(new Error('not exercised')),
+    markConnectionTestDispatched: () =>
+      Promise.reject(new Error('not exercised')),
+    completeConnectionTest: () => Promise.reject(new Error('not exercised')),
+    abandonConnectionTest: () => Promise.reject(new Error('not exercised')),
   },
   authorization: { findAccess: () => Promise.resolve(undefined) },
-  encryption: { seal: () => Promise.reject(new Error('not exercised')) },
+  encryption: {
+    seal: () => Promise.reject(new Error('not exercised')),
+    open: () => Promise.reject(new Error('not exercised')),
+  },
+  httpClient: { execute: () => Promise.reject(new Error('not exercised')) },
 } satisfies ConnectionDependencies;
 
 // Nest dynamic modules require a class token.

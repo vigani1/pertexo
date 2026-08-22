@@ -2,6 +2,7 @@ export const CONNECTION_OPERATION = Object.freeze({
   create: 'connection.create',
   rotate: 'connection.secret.rotate',
   revoke: 'connection.revoke',
+  test: 'connection.test',
 } as const);
 
 export type ConnectionOperation =

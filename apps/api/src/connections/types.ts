@@ -5,9 +5,14 @@ export {
   connectionIdParamSchema,
   connectionResponseSchema,
   connectionRotateSecretRequestSchema,
+  connectionTestRequestSchema,
+  connectionTestResponseSchema,
+  httpHeadersCredentialSchema,
   type ConnectionResponse,
   type ParsedConnectionCreateRequest,
   type ParsedConnectionRotateSecretRequest,
+  type ConnectionTestResponse,
+  type ParsedConnectionTestRequest,
 } from '@pertexo/contracts/connections';
 
 export const connectionWorkspaceParamSchema = z

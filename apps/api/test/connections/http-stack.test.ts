@@ -1,4 +1,5 @@
 import type { ConnectionRecord, WorkspaceDatabase } from '@pertexo/database';
+import { connectionResponseSchema } from '@pertexo/contracts/connections';
 import type {
   StructuredLogger,
   TelemetryLifecycle,
@@ -163,6 +164,12 @@ function connectionRuntime(
   authorization: IdentityWorkspaceDependencies['authorization'],
 ) {
   let stored: ConnectionRecord | null = null;
+  let testResult:
+    | Readonly<{
+        connection: ConnectionRecord;
+        outcome: Readonly<{ ok: true; httpStatus: number }>;
+      }>
+    | undefined;
   const createConnection = vi.fn(
     (
       input: Parameters<
@@ -196,22 +203,106 @@ function connectionRuntime(
       nonce: 'nonce',
       tag: 'tag',
     }),
+    open: vi.fn(() =>
+      Promise.resolve(
+        new TextEncoder().encode(
+          JSON.stringify({
+            schemaVersion: 1,
+            type: 'http_headers',
+            headers: { authorization: credentialValue },
+          }),
+        ),
+      ),
+    ),
   };
+  const markConnectionTestDispatched = vi.fn(() => Promise.resolve());
+  const executeHttp = vi.fn<ConnectionDependencies['httpClient']['execute']>(
+    async (input) => {
+      expect(input.headers).toEqual({ authorization: credentialValue });
+      await input.beforeDispatch();
+      return {
+        status: 204,
+        headers: {},
+        body: new Uint8Array(),
+        bodyEncoding: 'utf8' as const,
+        finalUrl: 'https://provider.example.test',
+        redirectCount: 0,
+      };
+    },
+  );
   const runtime: ApiConnectionRuntime = Object.freeze({
     dependencies: {
       authorization,
       encryption,
+      httpClient: {
+        execute: executeHttp,
+      },
       persistence: {
         createConnection,
         findConnectionCreateReplay: () => Promise.resolve(stored),
         findConnectionRotateReplay: () => Promise.resolve(null),
         rotateConnectionSecret: () => Promise.reject(new Error('not used')),
         revokeConnection: () => Promise.reject(new Error('not used')),
+        startConnectionTest: (
+          input: Parameters<
+            ConnectionDependencies['persistence']['startConnectionTest']
+          >[0],
+        ) => {
+          if (testResult !== undefined)
+            return Promise.resolve({
+              kind: 'replay' as const,
+              result: testResult,
+            });
+          if (stored === null) return Promise.reject(new Error('not created'));
+          return Promise.resolve({
+            kind: 'dispatch' as const,
+            dispatchToken: input.dispatchToken,
+          });
+        },
+        resolveConnectionTestSecret: () => {
+          if (stored === null) return Promise.reject(new Error('not created'));
+          return Promise.resolve({
+            connection: stored,
+            secretVersionId: stored.currentSecretVersionId,
+            sealed: {
+              schemaVersion: 1 as const,
+              kmsKeyReference: 'alias/pertexo-connections',
+              encryptedDataKey: 'encrypted-key',
+              ciphertext: 'ciphertext',
+              nonce: 'nonce',
+              tag: 'tag',
+            },
+          });
+        },
+        markConnectionTestDispatched,
+        completeConnectionTest: (
+          input: Parameters<
+            ConnectionDependencies['persistence']['completeConnectionTest']
+          >[0],
+        ) => {
+          if (stored === null || !input.outcome.ok)
+            return Promise.reject(new Error('unexpected test outcome'));
+          stored = {
+            ...stored,
+            lastTestedAt: new Date('2026-08-22T12:01:00.000Z'),
+            lastHealthyAt: new Date('2026-08-22T12:01:00.000Z'),
+            updatedAt: new Date('2026-08-22T12:01:00.000Z'),
+          };
+          testResult = { connection: stored, outcome: input.outcome };
+          return Promise.resolve(testResult);
+        },
+        abandonConnectionTest: () => Promise.resolve(),
       },
     },
     close: () => Promise.resolve(),
   });
-  return { runtime, createConnection, encryption };
+  return {
+    runtime,
+    createConnection,
+    encryption,
+    executeHttp,
+    markConnectionTestDispatched,
+  };
 }
 
 describe('connections real Nest HTTP stack', () => {
@@ -287,5 +378,31 @@ describe('connections real Nest HTTP stack', () => {
     expect(replay.json()).toEqual(created.json());
     expect(connection.createConnection).toHaveBeenCalledOnce();
     expect(connection.encryption.seal).toHaveBeenCalledOnce();
+
+    const connectionId = connectionResponseSchema.parse(created.json()).id;
+    const testHeaders = { ...headers, 'idempotency-key': 'test-http-stack' };
+    const tested = await application.inject({
+      method: 'POST',
+      url: `${url}/${connectionId}/test`,
+      headers: testHeaders,
+      payload: { url: 'https://provider.example.test/health' },
+    });
+    expect(tested.statusCode).toBe(200);
+    expect(tested.json()).toMatchObject({
+      connection: { id: connectionId, status: 'active' },
+      outcome: { ok: true, httpStatus: 204, errorCode: null },
+    });
+    expect(tested.payload).not.toContain(credentialValue);
+    const testReplay = await application.inject({
+      method: 'POST',
+      url: `${url}/${connectionId}/test`,
+      headers: testHeaders,
+      payload: { url: 'https://provider.example.test/health' },
+    });
+    expect(testReplay.statusCode).toBe(200);
+    expect(testReplay.json()).toEqual(tested.json());
+    expect(connection.executeHttp).toHaveBeenCalledOnce();
+    expect(connection.encryption.open).toHaveBeenCalledOnce();
+    expect(connection.markConnectionTestDispatched).toHaveBeenCalledOnce();
   });
 });

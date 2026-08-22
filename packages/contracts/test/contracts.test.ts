@@ -10,6 +10,8 @@ import {
 import {
   connectionCreateRequestSchema,
   connectionResponseSchema,
+  connectionTestRequestSchema,
+  connectionTestResponseSchema,
   httpHeadersCredentialSchema,
 } from '../src/http/connections.js';
 import {
@@ -94,7 +96,7 @@ describe('public contracts package', () => {
     ).toBe(false);
   });
 
-  it('documents create, rotate, and revoke connection operations', () => {
+  it('documents create, rotate, revoke, and bounded test operations', () => {
     expect(connectionsClientContract.schemas).toHaveProperty(
       'ConnectionCreateRequest',
     );
@@ -102,12 +104,59 @@ describe('public contracts package', () => {
       '/v1/workspaces/{workspaceId}/connections',
       '/v1/workspaces/{workspaceId}/connections/{connectionId}/secret',
       '/v1/workspaces/{workspaceId}/connections/{connectionId}',
+      '/v1/workspaces/{workspaceId}/connections/{connectionId}/test',
     ]);
     expect(
       connectionsOpenApiDocument.paths[
         '/v1/workspaces/{workspaceId}/connections'
       ].post.parameters.map(({ name }) => name),
     ).toEqual(['workspaceId', 'x-csrf-token', 'Idempotency-Key']);
+    expect(
+      connectionsOpenApiDocument.paths[
+        '/v1/workspaces/{workspaceId}/connections/{connectionId}/test'
+      ].post.parameters.map(({ name }) => name),
+    ).toEqual([
+      'workspaceId',
+      'connectionId',
+      'x-csrf-token',
+      'Idempotency-Key',
+    ]);
+    expect(
+      connectionTestRequestSchema.safeParse({
+        url: 'https://provider.example.test/health',
+      }).success,
+    ).toBe(true);
+    for (const request of [
+      { url: 'http://provider.example.test/health' },
+      { url: 'https://user:secret@provider.example.test/health' },
+      { url: 'https://provider.example.test/health#secret' },
+      { url: 'https://provider.example.test/health', extra: true },
+      { url: `https://provider.example.test/${'é'.repeat(1_100)}` },
+    ])
+      expect(connectionTestRequestSchema.safeParse(request).success).toBe(
+        false,
+      );
+    expect(
+      connectionTestResponseSchema.safeParse({
+        connection: {
+          id: '00000000-0000-4000-8000-000000000001',
+          workspaceId: '00000000-0000-4000-8000-000000000002',
+          providerKey: 'http',
+          name: 'Operations API',
+          authType: 'http_headers',
+          status: 'active',
+          secretVersionId: '00000000-0000-4000-8000-000000000003',
+          health: {
+            lastTestedAt: '2026-08-22T18:00:00.000Z',
+            lastHealthyAt: '2026-08-22T18:00:00.000Z',
+            lastErrorCode: null,
+          },
+          createdAt: '2026-08-22T18:00:00.000Z',
+          updatedAt: '2026-08-22T18:00:00.000Z',
+        },
+        outcome: { ok: true, httpStatus: 204, errorCode: null },
+      }).success,
+    ).toBe(true);
   });
 
   it('owns strict browser-safe request and RFC 9457 problem schemas', () => {

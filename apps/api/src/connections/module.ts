@@ -11,7 +11,7 @@ import {
 } from '../identity-workspace/guards.js';
 import { RequestContextStore } from '../platform/http/index.js';
 import { ConnectionsController } from './controllers.js';
-import { ConnectionManageGuard } from './guards.js';
+import { ConnectionManageGuard, ConnectionUseGuard } from './guards.js';
 import type { ConnectionDependencies } from './ports.js';
 import { NOOP_CONNECTION_TELEMETRY } from './telemetry.js';
 import {
@@ -24,6 +24,7 @@ import {
   CreateConnectionUseCase,
   RevokeConnectionUseCase,
   RotateConnectionSecretUseCase,
+  TestConnectionUseCase,
 } from './use-cases.js';
 
 @Module({})
@@ -44,6 +45,7 @@ export class ConnectionsModule {
       { provide: CONNECTION_ENCRYPTION, useValue: dependencies.encryption },
       { provide: CONNECTION_TELEMETRY, useValue: telemetry },
       ConnectionManageGuard,
+      ConnectionUseGuard,
       {
         provide: SessionAuthenticationGuard,
         useFactory: (
@@ -84,6 +86,16 @@ export class ConnectionsModule {
           telemetry,
         ),
       },
+      {
+        provide: TestConnectionUseCase,
+        useValue: new TestConnectionUseCase(
+          dependencies.persistence,
+          dependencies.authorization,
+          dependencies.encryption,
+          dependencies.httpClient,
+          telemetry,
+        ),
+      },
     ];
     return {
       module: ConnectionsModule,
@@ -94,6 +106,7 @@ export class ConnectionsModule {
         CreateConnectionUseCase,
         RotateConnectionSecretUseCase,
         RevokeConnectionUseCase,
+        TestConnectionUseCase,
       ],
     };
   }

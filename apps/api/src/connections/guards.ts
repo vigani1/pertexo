@@ -17,3 +17,14 @@ export class ConnectionManageGuard extends WorkspaceCapabilityGuard {
     ]);
   }
 }
+
+@Injectable()
+export class ConnectionUseGuard extends WorkspaceCapabilityGuard {
+  public constructor(
+    @Inject(CONNECTION_AUTHORIZATION)
+    authorization: WorkspaceAuthorizationSource,
+    contexts: RequestContextStore,
+  ) {
+    super('connection:use', authorization, contexts, 'not_found', ['active']);
+  }
+}

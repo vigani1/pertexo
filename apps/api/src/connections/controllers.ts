@@ -21,16 +21,18 @@ import {
 } from '../identity-workspace/index.js';
 import { createActorContext } from '../workspaces/index.js';
 import { throwConnectionApplicationError } from './errors.js';
-import { ConnectionManageGuard } from './guards.js';
+import { ConnectionManageGuard, ConnectionUseGuard } from './guards.js';
 import {
   CreateConnectionUseCase,
   RevokeConnectionUseCase,
   RotateConnectionSecretUseCase,
+  TestConnectionUseCase,
 } from './use-cases.js';
 import {
   connectionCreateRequestSchema,
   connectionIdParamSchema,
   connectionRotateSecretRequestSchema,
+  connectionTestRequestSchema,
   connectionWorkspaceParamSchema,
   type ConnectionRequest,
 } from './types.js';
@@ -41,6 +43,7 @@ export class ConnectionsController {
     private readonly createConnection: CreateConnectionUseCase,
     private readonly rotateSecret: RotateConnectionSecretUseCase,
     private readonly revokeConnection: RevokeConnectionUseCase,
+    private readonly testConnection: TestConnectionUseCase,
   ) {}
 
   @Post()
@@ -113,6 +116,33 @@ export class ConnectionsController {
         actor: actorFrom(request, route.workspaceId),
         routeWorkspaceId: route.workspaceId,
         connectionId: route.connectionId,
+        ...requestMetadata(request),
+      });
+    } catch (error: unknown) {
+      return throwConnectionApplicationError(error);
+    }
+  }
+
+  @Post(':connectionId/test')
+  @HttpCode(200)
+  @UseGuards(
+    SessionAuthenticationGuard,
+    ConnectionUseGuard,
+    CsrfProtectionGuard,
+  )
+  public async test(
+    @Req() request: ConnectionRequest,
+    @Param() params: unknown,
+    @Body() body: unknown,
+  ) {
+    try {
+      const route = connectionIdParamSchema.parse(params);
+      return await this.testConnection.execute({
+        actor: actorFrom(request, route.workspaceId),
+        routeWorkspaceId: route.workspaceId,
+        connectionId: route.connectionId,
+        request: connectionTestRequestSchema.parse(body),
+        idempotencyKey: idempotencyKey(request),
         ...requestMetadata(request),
       });
     } catch (error: unknown) {

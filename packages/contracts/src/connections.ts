@@ -6,6 +6,8 @@ import {
   connectionIdentifierSchema,
   connectionResponseSchema,
   connectionRotateSecretRequestSchema,
+  connectionTestRequestSchema,
+  connectionTestResponseSchema,
 } from './http/connections.js';
 
 export * from './http/connections.js';
@@ -18,6 +20,8 @@ const schemas = Object.freeze({
     connectionRotateSecretRequestSchema,
     'input',
   ),
+  ConnectionTestRequest: jsonSchema(connectionTestRequestSchema, 'input'),
+  ConnectionTestResponse: jsonSchema(connectionTestResponseSchema, 'output'),
 });
 
 export const connectionsClientContract = Object.freeze({
@@ -124,6 +128,32 @@ export const connectionsOpenApiDocument = Object.freeze({
           '401': responseReference('Unauthenticated'),
           '403': responseReference('Forbidden'),
           '404': responseReference('NotFound'),
+          '500': responseReference('Unexpected'),
+        },
+      },
+    },
+    '/v1/workspaces/{workspaceId}/connections/{connectionId}/test': {
+      post: {
+        operationId: 'testConnection',
+        security: [{ cookieSession: [] }],
+        parameters: [
+          workspaceParameter,
+          connectionParameter,
+          csrfParameter,
+          idempotencyParameter,
+        ],
+        requestBody: jsonRequest('ConnectionTestRequest'),
+        responses: {
+          '200': jsonResponse(
+            'Connection test completed',
+            'ConnectionTestResponse',
+          ),
+          '400': responseReference('BadRequest'),
+          '401': responseReference('Unauthenticated'),
+          '403': responseReference('Forbidden'),
+          '404': responseReference('NotFound'),
+          '409': responseReference('Conflict'),
+          '503': responseReference('ServiceUnavailable'),
           '500': responseReference('Unexpected'),
         },
       },

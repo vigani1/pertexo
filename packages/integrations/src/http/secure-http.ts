@@ -220,6 +220,8 @@ export class SecureHttpClient {
         const next = parseRedirectUrl(location, url);
         if (url.protocol === 'https:' && next.protocol !== 'https:')
           throw failure(SECURE_HTTP_ERROR_CODE.redirectRejected, true, false);
+        if (parsed.sensitiveValues.length > 0 && next.origin !== url.origin)
+          throw failure(SECURE_HTTP_ERROR_CODE.redirectRejected, true, false);
         ({ method, body, headers } = redirectRequest(
           response.status,
           method,

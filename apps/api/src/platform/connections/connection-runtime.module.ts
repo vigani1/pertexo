@@ -8,6 +8,7 @@ import {
 } from '@pertexo/database';
 import {
   createAwsConnectionEnvelopeEncryption,
+  createNodeSecureHttpClient,
   type AwsConnectionEnvelopeEncryptionRuntime,
 } from '@pertexo/integrations/server';
 
@@ -16,6 +17,7 @@ import {
   createConnectionTelemetry,
   type ConnectionDependencies,
   type ConnectionSecretEncryptionPort,
+  type ConnectionHttpClient,
   type ConnectionTelemetry,
 } from '../../connections/index.js';
 import type { ApiIdentityRuntime } from '../identity/identity-runtime.module.js';
@@ -30,6 +32,7 @@ export type ApiConnectionRuntimeOverrides = Readonly<{
   database?: ConnectionDatabase;
   encryption?: ConnectionSecretEncryptionPort;
   telemetry?: ConnectionTelemetry;
+  httpClient?: ConnectionHttpClient;
 }>;
 
 export function createApiConnectionRuntime(
@@ -60,6 +63,7 @@ export function createApiConnectionRuntime(
       persistence: database,
       authorization: identityRuntime.dependencies.authorization,
       encryption,
+      httpClient: overrides.httpClient ?? createNodeSecureHttpClient(),
       telemetry,
     }),
     close: (): Promise<void> => {

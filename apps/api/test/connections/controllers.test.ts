@@ -37,15 +37,22 @@ function controller() {
       Promise.resolve({ id: connectionId }),
     ),
   };
+  const test = {
+    execute: vi.fn<
+      (command: unknown) => Promise<{ connection: { id: string } }>
+    >(() => Promise.resolve({ connection: { id: connectionId } })),
+  };
   return {
     instance: new ConnectionsController(
       create as never,
       rotate as never,
       revoke as never,
+      test as never,
     ),
     create,
     rotate,
     revoke,
+    test,
   };
 }
 
@@ -133,5 +140,29 @@ describe('connections controller public seam', () => {
     expect(revoke.execute).toHaveBeenCalledWith(
       expect.objectContaining({ routeWorkspaceId: workspaceId, connectionId }),
     );
+  });
+
+  it('requires idempotency and forwards a bounded HTTPS connection test', async () => {
+    const { instance, test } = controller();
+    await instance.test(
+      request({ 'idempotency-key': 'test-42' }),
+      { workspaceId, connectionId },
+      { url: 'https://provider.example.test/health' },
+    );
+    expect(test.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routeWorkspaceId: workspaceId,
+        connectionId,
+        idempotencyKey: 'test-42',
+        request: { url: 'https://provider.example.test/health' },
+      }),
+    );
+    await expect(
+      instance.test(
+        request({ 'idempotency-key': 'test-43' }),
+        { workspaceId, connectionId },
+        { url: 'http://provider.example.test/health' },
+      ),
+    ).rejects.toMatchObject({ code: 'request.invalid' });
   });
 });
