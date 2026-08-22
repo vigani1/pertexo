@@ -20,7 +20,7 @@ not complete a phase.
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
-| Phase 4 — first side-effecting integration slice | Not started | — |
+| Phase 4 — first side-effecting integration slice | In progress | ADRs 007/016 accepted; detailed implementation and evidence checklist expanded |
 | Phase 5 — orchestration slice | Not started | — |
 | Phase 6 — V1 providers and triggers | Not started | — |
 | Phase 7 — production operations | Not started | — |
@@ -1328,10 +1328,185 @@ Current evidence:
   `pertexo_test_%` database remained, and PostgreSQL, Redis, and the object store
   were healthy after cleanup.
 
+## Phase 4 — First side-effecting integration slice
+
+Status: **In progress**
+
+Phase 4 must ship the first complete side-effecting vertical slice: create and
+use one encrypted generic-HTTP connection, publish and execute the generic HTTP
+Request node safely, and validate or test that node through an isolated bounded
+preview. Nothing becomes publishable merely because its schema, controller, or
+manifest exists.
+
+Design prerequisites and scope:
+
+- [x] Expand this tracker with the exact Phase 4 scope, exclusions, coherent
+      checkpoints, and completion evidence required by the authoritative plan.
+- [x] Keep accepted ADR 007 authoritative for dispatch evidence, retry,
+      provider idempotency, cancellation, reconciliation, and
+      `outcome_unknown`.
+- [x] Review and accept ADR 016 for read-only validation, explicit
+      side-effecting test execution, preview isolation, idempotency, retention,
+      and bounded values before implementing the node-test API.
+- [ ] Add canonical Connection, Connection secret version, connection health,
+      HTTP Request, Preview run, and preview-attempt vocabulary/constants without
+      introducing generic CRUD or provider base modules.
+- [ ] Keep Slack, email, OAuth completion, webhooks, Schedule, orchestration
+      nodes, polling, and production operations outside this phase.
+
+Connection and secret vertical slice:
+
+- [ ] Add strict public create/test connection contracts, generated client and
+      OpenAPI artifacts, stable RFC 9457 problem codes, opaque identifiers, and
+      safe responses that never return credential material.
+- [ ] Add tenant-scoped `connections`, immutable
+      `connection_secret_versions`, and append-only `connection_events` with
+      forced RLS, least-privilege API/worker grants, same-connection current
+      pointer constraints, lifecycle/status constraints, and safe indexes.
+- [ ] Implement AES-256-GCM envelope encryption through a narrow managed-KMS
+      seam: one generated data key per immutable secret version, authenticated
+      workspace/connection/secret-version context, no plaintext database
+      columns, fail-closed context mismatch, key rotation by new secret version,
+      and zero secret material in thrown errors.
+- [ ] Implement authorized create/rotate/test/revoke behavior and just-in-time
+      worker resolution. Recheck workspace, connection usability, provider/auth
+      compatibility, and `connection:use` immediately before decryption.
+- [ ] Record safe connection and credential-access audit facts, connection
+      health events, traces, bounded metrics, and stable redacted failures.
+- [ ] Prove exact/conflicting request retries, transaction rollback, concurrent
+      name/current-version changes, revocation races, cross-workspace isolation,
+      ciphertext swapping/context failure, KMS failure, and serving-role grants
+      against real PostgreSQL plus the production encryption adapter contract.
+
+Generic HTTP Request vertical slice:
+
+- [ ] Add one browser-safe `http.request@1` action definition and separately
+      server-only executor with versioned strict config/input/output schemas,
+      connection requirements, timeout/redirect/response limits, exact retry
+      class, resource class, capabilities, and compatibility-release identity.
+- [ ] Add a deep HTTP execution module whose small interface owns URL parsing,
+      allowed schemes, DNS resolution and rebinding-resistant address pinning,
+      private/link-local/loopback/metadata-range rejection for IPv4 and IPv6,
+      redirect re-resolution, bounded redirects, method/body/header policy,
+      timeout/abort, response streaming/size bounds, safe error taxonomy, and
+      redaction.
+- [ ] Reject user-info URLs, credential-bearing or hop-by-hop headers, unsafe
+      protocol changes, invalid DNS results, mixed public/private answers,
+      oversized requests/responses, and every redirect or DNS hop that no longer
+      satisfies policy. Generic API utilities must not become an alternate
+      user-URL fetch path.
+- [ ] Resolve connection-backed headers only inside the worker immediately
+      before dispatch; graph JSON, executable envelopes, jobs, checkpoints,
+      events, outputs, logs, traces, metrics, and public problems retain only
+      opaque connection IDs and redacted metadata.
+- [ ] Commit ADR 007 dispatch evidence before network I/O. Exercise `safe`,
+      `idempotent_with_key`, and `unsafe` policy explicitly; reuse the stable
+      provider key on every permitted retry; expose adapter retry hints without
+      hidden SDK retries; classify definite, retryable, rate-limited, timeout,
+      canceled, and ambiguous transport outcomes truthfully.
+- [ ] Persist bounded structured output inline at or below the declared limit
+      and stream larger/unsuitable responses to a workspace-scoped artifact;
+      downstream resolution must consume the canonical stored value only.
+- [ ] Add `workflow_integration_usage` as a transactionally rebuilt projection
+      of the immutable published graph and prove provider/operation/connection
+      impact and revocation queries without making it a second graph authority.
+- [ ] Keep `http.request@1` absent from placement/publication/admission until
+      its connection, security, execution, artifact, telemetry, compatibility,
+      and failure gates all pass; then prove additive old/new API-worker rollout
+      and retained Phase 3 execution with no latest-version fallback.
+
+Validate and test-execute preview vertical slice:
+
+- [ ] Add a strict discriminated node-test request contract. `validate` pins an
+      expected draft revision, resolves mappings/sample input and schemas, and
+      returns bounded field-addressed issues plus side-effect disclosure without
+      decrypting credentials, resolving DNS, queueing work, or contacting a
+      provider.
+- [ ] Require explicit side-effect acknowledgement and request idempotency for
+      `test_execute`; accept bounded manual input or one same-workspace,
+      same-workflow, successful, unexpired prior-preview output reference.
+- [ ] Persist an immutable short-retained Preview run and preview attempt with
+      pinned draft/release/node/executor identity, actor, trace context, input/
+      output references, disclosure, dispatch/lease evidence, and truthful
+      terminal state. Return `202` and execute only in the worker through an
+      identifier-only outbox/queue job.
+- [ ] Keep preview execution separate from workflow versions, production runs,
+      checkpoints, trigger state/cursors, production SSE, and reusable
+      production input. Audit and meter it through safe scoped facts.
+- [ ] Apply the production bounded-value/artifact, redaction, credential,
+      timeout, retry, cancellation, duplicate-delivery, reconciliation, and
+      `outcome_unknown` policies to preview execution, with preview artifacts
+      expiring no later than the preview.
+- [ ] Prove authorization and cross-workspace denial, stale draft conflicts,
+      validation purity, disclosure/acknowledgement, exact and conflicting
+      request retries, duplicate jobs, every pre/post-dispatch crash boundary,
+      timeout/cancel, ambiguous unsafe outcomes, prior-preview scope/expiry,
+      bounded inline/artifact output, safe status reads, and retention cleanup.
+
+Phase-wide verification and evidence gates:
+
+- [ ] Exercise every new contract's success, rejection, unknown-key, version,
+      and generated-artifact drift behavior; retain compile-time registry and
+      server-only package-boundary proofs.
+- [ ] Prove authorization, tenant scope, use-case transactions, real adapters,
+      stable problems/safe logs, traces/metrics/audit/usage effects,
+      idempotency/retry/timeout/cancellation, API/job documentation, and unit,
+      real integration, happy-path, failure, crash, and security behavior for
+      each released connection/node/preview capability.
+- [ ] Re-run all Phase 0D/0E and Phase 3 compatibility/recovery fixtures after
+      the side-effecting registry release, including Redis loss, PostgreSQL
+      loss, SSE reconstruction, duplicate delivery, cancellation, process
+      termination/drain, and retained-old-version execution.
+- [ ] Run root `pnpm check`, clean zero-to-head and prior-head migration paths,
+      and the complete real-service integration matrix sequentially. Record
+      exact commands, versions, assertion counts, timings, migration head,
+      cleanup, and post-test dependency health.
+- [ ] Complete independent Spec and Standards reviews against one fixed Phase 4
+      implementation commit and resolve every blocker/high finding.
+- [ ] Mark Phase 4 complete only after every box above has direct evidence and
+      the coherent implementation/evidence commits are pushed.
+
+Explicit exclusions for Phase 4:
+
+- No universal dry-run promise, API-process node execution, plaintext secret
+  persistence, credentials in graph/queue/event/output data, unbounded provider
+  bodies, or automatic retry of an unsafe possibly dispatched effect.
+- No arbitrary URL-fetch helper exposed outside the policy-enforcing HTTP
+  execution module, DNS decision based only on the original hostname, redirect
+  trust inheritance, SDK-owned hidden retries, or claim of exactly-once effects.
+- No production scheduler mutation, published-version creation, trigger cursor
+  update, or production SSE event from a preview.
+- Existing Phase 0 artifact metadata/store proofs are foundations, not Phase 4
+  completion evidence until HTTP and preview outputs exercise the full bounded
+  inline/artifact lifecycle.
+
+Planned coherent checkpoints:
+
+1. Accept ADR 016 and record the complete Phase 4 checklist before code.
+2. Land connection persistence, envelope encryption, contracts, authorization,
+   API behavior, telemetry, and real database/KMS-adapter proofs.
+3. Land the policy-enforcing generic HTTP package and its exhaustive network,
+   SSRF, timeout, redaction, retry-class, and response-bound fixtures.
+4. Land the publishable HTTP definition/executor, exact compatibility rollout,
+   integration-usage projection, just-in-time credentials, production dispatch,
+   and artifact-backed output behavior.
+5. Land validate/test-execute preview acceptance, worker execution, durable
+   outcomes, status, cleanup, audit/usage, and crash/duplicate/security proofs.
+6. Record the fixed-head full regression matrix and independent completion
+   reviews, then mark Phase 4 complete only if every criterion is proved.
+
+Current evidence:
+
+- ADR 016 is accepted on 2026-08-22. It separates pure validation from
+  explicitly acknowledged durable test execution, pins preview identity,
+  isolates production state, and applies ADR 007 truth plus bounded artifacts.
+- No Phase 4 production schema, endpoint, executor, registry release, or
+  publishable capability is claimed complete yet.
+
 ## Later phases
 
 Use the delivery plan and vertical-slice completion rule as the checklist for
-Phases 3–7. Expand the relevant phase here before implementation begins; do not
+Phases 5–7. Expand the relevant phase here before implementation begins; do not
 mark a phase complete from a high-level summary alone.
 
 ## Update protocol
