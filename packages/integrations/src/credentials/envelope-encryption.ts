@@ -62,15 +62,14 @@ export interface KmsClientLike {
 export class ConnectionSecretEncryptionError extends Error {
   public override readonly name = 'ConnectionSecretEncryptionError';
 
-  public constructor(options?: ErrorOptions) {
-    super('Connection secret encryption failed', options);
+  public constructor() {
+    super('Connection secret encryption failed');
   }
 }
 
 function fail(cause?: unknown): never {
-  throw new ConnectionSecretEncryptionError(
-    cause === undefined ? undefined : { cause },
-  );
+  void cause;
+  throw new ConnectionSecretEncryptionError();
 }
 
 function kmsEncryptionContext(
@@ -174,7 +173,7 @@ export class AwsKmsEnvelopeKeyProvider implements EnvelopeKeyProvider {
     } catch (error: unknown) {
       throw error instanceof ConnectionSecretEncryptionError
         ? error
-        : new ConnectionSecretEncryptionError({ cause: error });
+        : new ConnectionSecretEncryptionError();
     }
   }
 
@@ -211,7 +210,7 @@ export class AwsKmsEnvelopeKeyProvider implements EnvelopeKeyProvider {
     } catch (error: unknown) {
       throw error instanceof ConnectionSecretEncryptionError
         ? error
-        : new ConnectionSecretEncryptionError({ cause: error });
+        : new ConnectionSecretEncryptionError();
     }
   }
 }
@@ -262,7 +261,7 @@ export class ConnectionEnvelopeEncryption {
     } catch (error: unknown) {
       throw error instanceof ConnectionSecretEncryptionError
         ? error
-        : new ConnectionSecretEncryptionError({ cause: error });
+        : new ConnectionSecretEncryptionError();
     } finally {
       boundedPlaintext.fill(0);
       plaintextKey?.fill(0);
@@ -320,7 +319,7 @@ export class ConnectionEnvelopeEncryption {
     } catch (error: unknown) {
       throw error instanceof ConnectionSecretEncryptionError
         ? error
-        : new ConnectionSecretEncryptionError({ cause: error });
+        : new ConnectionSecretEncryptionError();
     } finally {
       plaintextKey?.fill(0);
       providerPlaintextKey?.fill(0);

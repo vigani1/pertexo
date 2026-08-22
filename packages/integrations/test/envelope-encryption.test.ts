@@ -153,11 +153,15 @@ describe('AWS KMS envelope-key adapter', () => {
       'alias/pertexo',
     );
 
-    await expect(provider.generateDataKey(context())).rejects.toEqual(
+    const failure = await provider
+      .generateDataKey(context())
+      .catch((error: unknown) => error);
+    expect(failure).toEqual(
       expect.objectContaining({
         name: 'ConnectionSecretEncryptionError',
         message: 'Connection secret encryption failed',
       }),
     );
+    expect(failure).not.toHaveProperty('cause');
   });
 });

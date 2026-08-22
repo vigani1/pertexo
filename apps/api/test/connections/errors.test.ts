@@ -27,13 +27,13 @@ describe('connection error mapping', () => {
 
   it('maps KMS failure to a safe provider problem without exposing its cause', () => {
     const sensitive = 'kms-account-secret';
-    const mapped = mapConnectionError(
-      new ConnectionSecretEncryptionError({ cause: new Error(sensitive) }),
-    );
+    const failure = new ConnectionSecretEncryptionError();
+    const mapped = mapConnectionError(failure);
     expect(mapped).toMatchObject({
       code: 'provider.unavailable',
       safeDetail: 'Credential protection is temporarily unavailable.',
     });
+    expect(failure).not.toHaveProperty('cause');
     expect(JSON.stringify(mapped)).not.toContain(sensitive);
   });
 });
