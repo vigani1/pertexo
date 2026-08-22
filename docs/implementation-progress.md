@@ -1356,7 +1356,7 @@ Design prerequisites and scope:
 
 Connection and secret vertical slice:
 
-- [ ] Add strict public create/test connection contracts, generated client and
+- [x] Add strict public create/test connection contracts, generated client and
       OpenAPI artifacts, stable RFC 9457 problem codes, opaque identifiers, and
       safe responses that never return credential material.
 - [x] Add tenant-scoped `connections`, immutable
@@ -1368,10 +1368,10 @@ Connection and secret vertical slice:
       workspace/connection/secret-version context, no plaintext database
       columns, fail-closed context mismatch, key rotation by new secret version,
       and zero secret material in thrown errors.
-- [ ] Implement authorized create/rotate/test/revoke behavior and just-in-time
+- [x] Implement authorized create/rotate/test/revoke behavior and just-in-time
       worker resolution. Recheck workspace, connection usability, provider/auth
       compatibility, and `connection:use` immediately before decryption.
-- [ ] Record safe connection and credential-access audit facts, connection
+- [x] Record safe connection and credential-access audit facts, connection
       health events, traces, bounded metrics, and stable redacted failures.
 - [ ] Prove exact/conflicting request retries, transaction rollback, concurrent
       name/current-version changes, revocation races, cross-workspace isolation,
@@ -1539,10 +1539,10 @@ Current evidence:
   passes ESLint. The full repository lint command exceeded Node's default 4 GiB
   heap during this checkpoint, so it is not used as evidence for Phase 4
   completion.
-- No Phase 4 endpoint, executor, registry release, or publishable capability is
-  claimed complete yet beyond create/rotate/revoke credential management; the
-  SSRF-enforcing connection test, generic HTTP executor, and preview slices
-  remain gated.
+- No Phase 4 executor, registry release, or publishable node capability is
+  claimed complete yet. The managed connection API now includes its
+  SSRF-enforcing test endpoint, while the generic HTTP executor and preview
+  slices remain gated.
 - Commit `6b1a6b6` adds the server-only, policy-enforcing HTTP execution
   boundary. Its single client seam validates a strict bounded request, resolves
   and rejects every non-public or mixed DNS answer, pins the selected address
@@ -1561,6 +1561,23 @@ Current evidence:
   downgrade, header/body/timeout/response limits, binary redaction, compression,
   cancellation, error truth, all three side-effect classes, and a real local
   Node transport pin; package lint and build pass.
+- Commit `2bc4ad7` completes the managed connection test endpoint through that
+  boundary. Its strict HTTPS-only request and secret-free result are present in
+  generated OpenAPI/client artifacts; the guarded API requires `connection:use`,
+  CSRF, and request idempotency. A tenant-scoped durable claim returns exact
+  completed replays without KMS or network access, rejects conflicting or
+  concurrent keys, and records a dispatch audit fact before I/O. Membership,
+  connection status, provider identity, claim ownership, and the current secret
+  pointer are rechecked immediately before decryption and again before dispatch.
+  Revocation/rotation races therefore stop dispatch, while a rotation after
+  dispatch prevents an old credential result from changing the new secret's
+  health. Only bounded status/error metadata is persisted or returned; provider
+  bodies and decrypted bytes are cleared, and credential-bearing redirects may
+  not change origin. Verification passes 207 API assertions including the real
+  Nest/Fastify guard-controller stack, 10 contract assertions plus generated
+  artifact drift, 66 integration-package assertions, 56 database unit
+  assertions, and nine fresh PostgreSQL 18 connection assertions. Focused
+  typechecks/builds and ESLint for every changed source/test path pass.
 
 ## Later phases
 
