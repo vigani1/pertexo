@@ -75,6 +75,14 @@ describe('public contracts package', () => {
         headers: { Authorization: 'a', authorization: 'b' },
       }).success,
     ).toBe(false);
+    for (const name of ['accept-encoding', 'idempotency-key'])
+      expect(
+        httpHeadersCredentialSchema.safeParse({
+          schemaVersion: 1,
+          type: 'http_headers',
+          headers: { [name]: 'not-a-credential' },
+        }).success,
+      ).toBe(false);
     expect(
       connectionResponseSchema.safeParse({
         id: '00000000-0000-4000-8000-000000000001',

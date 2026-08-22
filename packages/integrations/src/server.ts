@@ -43,6 +43,11 @@ export {
   classifySecureHttpResponse,
   HTTP_SIDE_EFFECT_CLASS,
 } from './http/outcome-policy.js';
+export {
+  createHttpRequestExecutorRegistration,
+  HttpRequestExecutorError,
+} from './http-request/executor.js';
+export type { HttpRequestExecutorDependencies } from './http-request/executor.js';
 export type {
   HttpExecutionErrorKind,
   HttpOutcomeDecision,

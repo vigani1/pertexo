@@ -16,4 +16,22 @@ describe('integration package exports', () => {
     expect(packageJson.browser['./dist/server.js']).toBe(false);
     expect(packageJson.browser['./dist/server-only.js']).toBe(false);
   });
+
+  it('keeps the HTTP Request definition browser-safe and its executor server-only', async () => {
+    const [browserEntry, definition, validation, serverEntry] =
+      await Promise.all(
+        [
+          '../src/index.ts',
+          '../src/http-request/definition.ts',
+          '../src/http-request/validation.ts',
+          '../src/server.ts',
+        ].map((path) => readFile(new URL(path, import.meta.url), 'utf8')),
+      );
+    for (const source of [browserEntry, definition, validation]) {
+      expect(source).not.toMatch(/node:/u);
+      expect(source).not.toContain('@pertexo/node-sdk/server');
+      expect(source).not.toContain('http-request/executor');
+    }
+    expect(serverEntry).toContain('http-request/executor');
+  });
 });

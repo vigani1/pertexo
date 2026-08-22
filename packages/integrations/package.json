@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-kms": "3.1111.0",
+    "@pertexo/node-sdk": "workspace:*",
     "zod": "4.4.3"
   }
 }

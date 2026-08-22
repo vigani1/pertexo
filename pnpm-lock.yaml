@@ -200,6 +200,9 @@ importers:
       '@aws-sdk/client-kms':
         specifier: 3.1111.0
         version: 3.1111.0
+      '@pertexo/node-sdk':
+        specifier: workspace:*
+        version: link:../node-sdk
       zod:
         specifier: 4.4.3
         version: 4.4.3

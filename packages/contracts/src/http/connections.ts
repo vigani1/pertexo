@@ -24,9 +24,11 @@ const httpHeaderValueSchema = z
     message: 'header values cannot contain control delimiters',
   });
 const prohibitedConnectionHeaders = new Set([
+  'accept-encoding',
   'connection',
   'content-length',
   'host',
+  'idempotency-key',
   'keep-alive',
   'proxy-authenticate',
   'proxy-authorization',
