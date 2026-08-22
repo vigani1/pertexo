@@ -101,14 +101,28 @@ export type SecureHttpRequest = Readonly<{
   beforeDispatch(): Promise<void>;
 }>;
 
-export type SecureHttpResponse = Readonly<{
+export type SecureHttpResponse<Body = Uint8Array> = Readonly<{
   status: number;
   headers: Readonly<Record<string, string>>;
-  body: Uint8Array;
+  body: Body;
   bodyEncoding: 'base64' | 'utf8';
   finalUrl: string;
   redirectCount: number;
 }>;
+
+export type SecureHttpStreamingBody = Readonly<{
+  status: number;
+  headers: Readonly<Record<string, string>>;
+  body: AsyncIterable<Uint8Array>;
+  bodyEncoding: 'base64' | 'utf8';
+  finalUrl: string;
+  redirectCount: number;
+  signal: AbortSignal;
+}>;
+
+export type SecureHttpBodyConsumer<Body> = (
+  response: SecureHttpStreamingBody,
+) => Promise<Body>;
 
 export interface SecureHttpResolver {
   resolve(hostname: string): Promise<readonly ResolvedAddress[]>;
@@ -143,7 +157,23 @@ export class SecureHttpClient {
     private readonly transport: SecureHttpTransport,
   ) {}
 
-  public async execute(input: SecureHttpRequest): Promise<SecureHttpResponse> {
+  public execute(input: SecureHttpRequest): Promise<SecureHttpResponse> {
+    return this.executeStreaming(input, async (response) =>
+      collectBody(response.body),
+    );
+  }
+
+  public executeStreaming<Body>(
+    input: SecureHttpRequest,
+    consume: SecureHttpBodyConsumer<Body>,
+  ): Promise<SecureHttpResponse<Body>> {
+    return this.executeWithBody(input, consume);
+  }
+
+  private async executeWithBody<Body>(
+    input: SecureHttpRequest,
+    consume: SecureHttpBodyConsumer<Body>,
+  ): Promise<SecureHttpResponse<Body>> {
     const parsed = parseRequest(input);
     const timeoutSignal = AbortSignal.timeout(parsed.timeoutMillis);
     const executionSignal =
@@ -234,16 +264,6 @@ export class SecureHttpClient {
       }
 
       try {
-        const responseBody = await raceWithSignal(
-          readBoundedBody(
-            response.body,
-            parsed.maxResponseBytes,
-            executionSignal,
-          ),
-          executionSignal,
-          true,
-          false,
-        );
         const selectedHeaders = selectResponseHeaders(
           response.headers,
           parsed.sensitiveValues,
@@ -260,15 +280,34 @@ export class SecureHttpClient {
             false,
           );
         const textual = isTextualContentType(contentType);
-        const safeBody = redactBytes(responseBody, parsed.sensitiveValues);
-        if (safeBody.byteLength > parsed.maxResponseBytes)
-          throw failure(SECURE_HTTP_ERROR_CODE.responseTooLarge, true, false);
+        const finalUrl = safeFinalUrl(url);
+        const body = await raceWithSignal(
+          consume(
+            Object.freeze({
+              status: response.status,
+              headers: selectedHeaders,
+              body: boundedRedactedBody(
+                response.body,
+                parsed.maxResponseBytes,
+                executionSignal,
+                parsed.sensitiveValues,
+              ),
+              bodyEncoding: textual ? ('utf8' as const) : ('base64' as const),
+              finalUrl,
+              redirectCount,
+              signal: executionSignal,
+            }),
+          ),
+          executionSignal,
+          true,
+          false,
+        );
         return Object.freeze({
           status: response.status,
           headers: selectedHeaders,
-          body: safeBody,
+          body,
           bodyEncoding: textual ? ('utf8' as const) : ('base64' as const),
-          finalUrl: safeFinalUrl(url),
+          finalUrl,
           redirectCount,
         });
       } finally {
@@ -490,24 +529,14 @@ function redirectRequest(
   return { method, headers };
 }
 
-async function readBoundedBody(
+async function collectBody(
   body: AsyncIterable<Uint8Array>,
-  limit: number,
-  signal: AbortSignal | undefined,
 ): Promise<Uint8Array> {
   const chunks: Uint8Array[] = [];
   let size = 0;
-  try {
-    for await (const chunk of body) {
-      assertNotAborted(signal, true, false);
-      size += chunk.byteLength;
-      if (size > limit)
-        throw failure(SECURE_HTTP_ERROR_CODE.responseTooLarge, true, false);
-      chunks.push(new Uint8Array(chunk));
-    }
-  } catch (error: unknown) {
-    if (error instanceof SecureHttpError) throw error;
-    throw mapResponseStreamError(error, signal);
+  for await (const chunk of body) {
+    size += chunk.byteLength;
+    chunks.push(new Uint8Array(chunk));
   }
   const result = new Uint8Array(size);
   let offset = 0;
@@ -516,6 +545,114 @@ async function readBoundedBody(
     offset += chunk.byteLength;
   }
   return result;
+}
+
+function concatenateBytes(left: Uint8Array, right: Uint8Array): Uint8Array {
+  if (left.byteLength === 0) return new Uint8Array(right);
+  if (right.byteLength === 0) return new Uint8Array(left);
+  const result = new Uint8Array(left.byteLength + right.byteLength);
+  result.set(left);
+  result.set(right, left.byteLength);
+  return result;
+}
+
+const REDACTED_BYTES = new TextEncoder().encode('[Redacted]');
+
+function redactAvailable(
+  value: Uint8Array,
+  patterns: readonly Uint8Array[],
+  final: boolean,
+): Readonly<{ emitted: Uint8Array; remaining: Uint8Array }> {
+  if (patterns.length === 0)
+    return Object.freeze({
+      emitted: new Uint8Array(value),
+      remaining: new Uint8Array(),
+    });
+  const maximumPatternBytes = patterns[0]?.byteLength ?? 0;
+  const emitted: number[] = [];
+  let index = 0;
+  while (index < value.byteLength) {
+    const match = patterns.find((pattern) =>
+      matchesBytes(value, pattern, index),
+    );
+    if (match !== undefined) {
+      emitted.push(...REDACTED_BYTES);
+      index += match.byteLength;
+      continue;
+    }
+    if (!final && value.byteLength - index < maximumPatternBytes) break;
+    const byte = value[index];
+    if (byte === undefined) break;
+    emitted.push(byte);
+    index += 1;
+  }
+  return Object.freeze({
+    emitted: Uint8Array.from(emitted),
+    remaining: value.slice(index),
+  });
+}
+
+function redactAndClear(
+  value: Uint8Array,
+  patterns: readonly Uint8Array[],
+  final: boolean,
+): ReturnType<typeof redactAvailable> {
+  try {
+    return redactAvailable(value, patterns, final);
+  } finally {
+    value.fill(0);
+  }
+}
+
+async function* boundedRedactedBody(
+  body: AsyncIterable<Uint8Array>,
+  limit: number,
+  signal: AbortSignal,
+  sensitiveValues: readonly string[],
+): AsyncGenerator<Uint8Array> {
+  const patterns = sensitiveValues
+    .map((value) => new TextEncoder().encode(value))
+    .sort((left, right) => right.byteLength - left.byteLength);
+  let rawBytes = 0;
+  let emittedBytes = 0;
+  let pending: Uint8Array = new Uint8Array();
+  const emit = (value: Uint8Array): Uint8Array | undefined => {
+    if (value.byteLength === 0) return undefined;
+    emittedBytes += value.byteLength;
+    if (emittedBytes > limit)
+      throw failure(SECURE_HTTP_ERROR_CODE.responseTooLarge, true, false);
+    return value;
+  };
+  try {
+    for await (const chunk of body) {
+      assertNotAborted(signal, true, false);
+      rawBytes += chunk.byteLength;
+      if (rawBytes > limit)
+        throw failure(SECURE_HTTP_ERROR_CODE.responseTooLarge, true, false);
+      const previous = pending;
+      try {
+        pending = concatenateBytes(previous, chunk);
+      } finally {
+        previous.fill(0);
+        chunk.fill(0);
+      }
+      const candidate = pending;
+      const redacted = redactAndClear(candidate, patterns, false);
+      pending = redacted.remaining;
+      const output = emit(redacted.emitted);
+      if (output !== undefined) yield output;
+    }
+    const candidate = pending;
+    const redacted = redactAndClear(candidate, patterns, true);
+    pending = redacted.remaining;
+    const output = emit(redacted.emitted);
+    if (output !== undefined) yield output;
+  } catch (error: unknown) {
+    if (error instanceof SecureHttpError) throw error;
+    throw mapResponseStreamError(error, signal);
+  } finally {
+    pending.fill(0);
+  }
 }
 
 function selectResponseHeaders(
@@ -541,48 +678,6 @@ function isTextualContentType(contentType: string): boolean {
     normalized.includes('javascript') ||
     normalized.includes('x-www-form-urlencoded')
   );
-}
-
-function redactBytes(
-  value: Uint8Array,
-  sensitiveValues: readonly string[],
-): Uint8Array {
-  let result: Uint8Array = new Uint8Array(value);
-  for (const sensitive of sensitiveValues) {
-    result = replaceBytes(
-      result,
-      new TextEncoder().encode(sensitive),
-      new TextEncoder().encode('[Redacted]'),
-    );
-  }
-  return result;
-}
-
-function replaceBytes(
-  value: Uint8Array,
-  target: Uint8Array,
-  replacement: Uint8Array,
-): Uint8Array {
-  const chunks: Uint8Array[] = [];
-  let start = 0;
-  let index = 0;
-  while (index <= value.byteLength - target.byteLength) {
-    if (matchesBytes(value, target, index)) {
-      chunks.push(value.slice(start, index), replacement);
-      index += target.byteLength;
-      start = index;
-    } else index += 1;
-  }
-  if (chunks.length === 0) return value;
-  chunks.push(value.slice(start));
-  const size = chunks.reduce((total, chunk) => total + chunk.byteLength, 0);
-  const result = new Uint8Array(size);
-  let offset = 0;
-  for (const chunk of chunks) {
-    result.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return result;
 }
 
 function matchesBytes(

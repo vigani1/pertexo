@@ -206,6 +206,46 @@ describe('secure HTTP client', () => {
     expect(fixture.close).toHaveBeenCalledOnce();
   });
 
+  it('streams bounded output with cross-chunk redaction and preserves safe consumer failures', async () => {
+    const resolver = new FakeResolver({
+      'api.example.test': [{ address: '8.8.8.8', family: 4 }],
+    });
+    const fixture = transportResponse(200, { 'content-type': 'text/plain' }, [
+      'prefix-provider-',
+      'secret-suffix',
+    ]);
+    const client = new SecureHttpClient(
+      resolver,
+      new FakeTransport(() => Promise.resolve(fixture.response)),
+    );
+    const response = await client.executeStreaming(
+      request({ sensitiveValues: ['provider-secret'] }),
+      async (stream) => {
+        const chunks: Uint8Array[] = [];
+        for await (const chunk of stream.body) chunks.push(chunk);
+        return decoder.decode(Buffer.concat(chunks));
+      },
+    );
+    expect(response.body).toBe('prefix-[Redacted]-suffix');
+    expect(fixture.close).toHaveBeenCalledOnce();
+
+    const consumerFailure = new Error('safe storage failure');
+    const failedFixture = transportResponse(200, {}, ['streamed']);
+    await expect(
+      new SecureHttpClient(
+        resolver,
+        new FakeTransport(() => Promise.resolve(failedFixture.response)),
+      ).executeStreaming(request(), async (stream) => {
+        for await (const _chunk of stream.body) {
+          void _chunk;
+          throw consumerFailure;
+        }
+        return undefined;
+      }),
+    ).rejects.toBe(consumerFailure);
+    expect(failedFixture.close).toHaveBeenCalledOnce();
+  });
+
   it.each([
     { url: 'file:///etc/passwd' },
     { url: 'https://user:password@api.example.test/' },

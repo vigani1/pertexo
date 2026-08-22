@@ -65,6 +65,15 @@ export interface NodeConnectionRuntime {
       signal: AbortSignal;
     }>,
   ): Promise<ResolvedNodeConnection>;
+  readonly assertCurrent?: (
+    input: Readonly<{
+      connectionId: string;
+      expectedProviderKey: string;
+      expectedAuthType: string;
+      secretVersionId: string;
+      signal: AbortSignal;
+    }>,
+  ) => Promise<void>;
 }
 
 export type NodeArtifactReference = Readonly<{
@@ -77,7 +86,8 @@ export type NodeArtifactReference = Readonly<{
 export interface NodeArtifactRuntime {
   write(
     input: Readonly<{
-      bytes: Uint8Array;
+      body: AsyncIterable<Uint8Array>;
+      maxBytes: number;
       mediaType: string;
       purpose: string;
       signal: AbortSignal;

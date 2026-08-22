@@ -26,9 +26,11 @@ export {
 } from './http/secure-http.js';
 export type {
   SecureHttpErrorCode,
+  SecureHttpBodyConsumer,
   SecureHttpRequest,
   SecureHttpResolver,
   SecureHttpResponse,
+  SecureHttpStreamingBody,
   SecureHttpTransport,
   SecureHttpTransportRequest,
   SecureHttpTransportResponse,

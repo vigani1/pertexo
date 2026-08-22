@@ -117,7 +117,7 @@ export class HttpRequestExecutorError extends Error {
 }
 
 export type HttpRequestExecutorDependencies = Readonly<{
-  httpClient: Pick<SecureHttpClient, 'execute'>;
+  httpClient: Pick<SecureHttpClient, 'executeStreaming'>;
 }>;
 
 function failedConfiguration(): HttpRequestExecutorError {
@@ -214,13 +214,16 @@ async function executeHttpRequest(
   const config = httpRequestConfigSchema.parse(invocation.config);
   const input = httpRequestInputSchema.parse(invocation.input);
   const runtime = invocation.runtime;
+  if (runtime === undefined) throw failedConfiguration();
+  const connections = runtime.connections;
   if (
-    runtime?.connections === undefined ||
+    connections?.assertCurrent === undefined ||
     runtime.sideEffectClass !== 'unsafe' ||
     runtime.providerIdempotencyKey !== undefined ||
     Object.keys(invocation.connectionRefs).length !== 1
   )
     throw failedConfiguration();
+  const assertCurrent = connections.assertCurrent;
   const connectionId = invocation.connectionRefs[HTTP_REQUEST_CONNECTION_SLOT];
   if (connectionId === undefined) throw failedConfiguration();
   const target = new URL(config.url);
@@ -228,7 +231,7 @@ async function executeHttpRequest(
 
   let resolved;
   try {
-    resolved = await runtime.connections.resolve({
+    resolved = await connections.resolve({
       connectionId,
       expectedProviderKey: 'http',
       expectedAuthType: 'http_headers',
@@ -253,19 +256,38 @@ async function executeHttpRequest(
     body = requestBody(input, config.method);
     let response;
     try {
-      response = await dependencies.httpClient.execute({
-        url: config.url,
-        method: config.method,
-        headers: mergeHeaders(config.headers, credential.headers),
-        ...(body === undefined ? {} : { body }),
-        timeoutMillis: config.timeoutMillis,
-        maxRedirects: config.maxRedirects,
-        maxResponseBytes: config.maxResponseBytes,
-        sensitiveValues: Object.values(credential.headers),
-        signal: invocation.signal,
-        beforeDispatch: () => runtime.beforeDispatch(),
-      });
+      response = await dependencies.httpClient.executeStreaming(
+        {
+          url: config.url,
+          method: config.method,
+          headers: mergeHeaders(config.headers, credential.headers),
+          ...(body === undefined ? {} : { body }),
+          timeoutMillis: config.timeoutMillis,
+          maxRedirects: config.maxRedirects,
+          maxResponseBytes: config.maxResponseBytes,
+          sensitiveValues: Object.values(credential.headers),
+          signal: invocation.signal,
+          beforeDispatch: async () => {
+            await assertCurrent({
+              connectionId,
+              expectedProviderKey: 'http',
+              expectedAuthType: 'http_headers',
+              secretVersionId: resolved.secretVersionId,
+              signal: invocation.signal,
+            });
+            await runtime.beforeDispatch();
+          },
+        },
+        (stream) =>
+          consumeResponseBody(
+            runtime.artifacts,
+            config.inlineResponseBytes,
+            config.maxResponseBytes,
+            stream,
+          ),
+      );
     } catch (error: unknown) {
+      if (error instanceof HttpRequestExecutorError) throw error;
       if (!(error instanceof SecureHttpError))
         throw new HttpRequestExecutorError(
           Object.freeze({ kind: 'outcome_unknown', errorKind: 'network' }),
@@ -276,28 +298,20 @@ async function executeHttpRequest(
         error.possiblyDispatched,
       );
     }
-    try {
-      const decision = classifySecureHttpResponse(
-        response.status,
-        HTTP_SIDE_EFFECT_CLASS.unsafe,
-        false,
-      );
-      if (decision.kind !== 'succeeded')
-        throw new HttpRequestExecutorError(decision, true);
-      const outputBody =
-        response.body.byteLength <= config.inlineResponseBytes
-          ? inlineBody(response.body, response.bodyEncoding)
-          : await writeArtifact(runtime.artifacts, response, invocation.signal);
-      return httpRequestOutputSchema.parse({
-        status: response.status,
-        headers: response.headers,
-        body: outputBody,
-        finalOrigin: response.finalUrl,
-        redirectCount: response.redirectCount,
-      });
-    } finally {
-      response.body.fill(0);
-    }
+    const decision = classifySecureHttpResponse(
+      response.status,
+      HTTP_SIDE_EFFECT_CLASS.unsafe,
+      false,
+    );
+    if (decision.kind !== 'succeeded')
+      throw new HttpRequestExecutorError(decision, true);
+    return httpRequestOutputSchema.parse({
+      status: response.status,
+      headers: response.headers,
+      body: response.body,
+      finalOrigin: response.finalUrl,
+      redirectCount: response.redirectCount,
+    });
   } finally {
     body?.fill(0);
     resolved.secret.fill(0);
@@ -308,7 +322,9 @@ async function writeArtifact(
   artifacts: NonNullable<
     NodeExecutionInvocation<unknown, unknown>['runtime']
   >['artifacts'],
-  response: Awaited<ReturnType<SecureHttpClient['execute']>>,
+  body: AsyncIterable<Uint8Array>,
+  mediaType: string,
+  maxBytes: number,
   signal: AbortSignal,
 ) {
   if (artifacts === undefined)
@@ -319,8 +335,9 @@ async function writeArtifact(
   let reference;
   try {
     reference = await artifacts.write({
-      bytes: response.body,
-      mediaType: response.headers['content-type'] ?? 'application/octet-stream',
+      body,
+      maxBytes,
+      mediaType,
       purpose: 'node-output',
       signal,
     });
@@ -331,6 +348,85 @@ async function writeArtifact(
     );
   }
   return Object.freeze({ kind: 'artifact' as const, ...reference });
+}
+
+function concatenate(chunks: readonly Uint8Array[], byteLength: number) {
+  const result = new Uint8Array(byteLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return result;
+}
+
+async function* continueBody(
+  buffered: readonly Uint8Array[],
+  iterator: AsyncIterator<Uint8Array>,
+): AsyncGenerator<Uint8Array> {
+  try {
+    for (const chunk of buffered) {
+      try {
+        yield chunk;
+      } finally {
+        chunk.fill(0);
+      }
+    }
+    for (;;) {
+      const next = await iterator.next();
+      if (next.done === true) break;
+      const chunk = next.value;
+      try {
+        yield chunk;
+      } finally {
+        chunk.fill(0);
+      }
+    }
+  } finally {
+    await iterator.return?.();
+  }
+}
+
+async function consumeResponseBody(
+  artifacts: NonNullable<
+    NodeExecutionInvocation<unknown, unknown>['runtime']
+  >['artifacts'],
+  inlineLimit: number,
+  maxBytes: number,
+  response: Parameters<Parameters<SecureHttpClient['executeStreaming']>[1]>[0],
+) {
+  const iterator = response.body[Symbol.asyncIterator]();
+  const buffered: Uint8Array[] = [];
+  let byteLength = 0;
+  try {
+    for (;;) {
+      const next = await iterator.next();
+      if (next.done === true) {
+        const bytes = concatenate(buffered, byteLength);
+        try {
+          return inlineBody(bytes, response.bodyEncoding);
+        } finally {
+          bytes.fill(0);
+          for (const chunk of buffered) chunk.fill(0);
+        }
+      }
+      const chunk = next.value;
+      buffered.push(chunk);
+      byteLength += chunk.byteLength;
+      if (byteLength > inlineLimit)
+        return await writeArtifact(
+          artifacts,
+          continueBody(buffered, iterator),
+          response.headers['content-type'] ?? 'application/octet-stream',
+          maxBytes,
+          response.signal,
+        );
+    }
+  } catch (error: unknown) {
+    for (const chunk of buffered) chunk.fill(0);
+    await iterator.return?.();
+    throw error;
+  }
 }
 
 export function createHttpRequestExecutorRegistration(

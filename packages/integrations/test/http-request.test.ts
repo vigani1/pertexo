@@ -2,6 +2,8 @@ import { createRegistryRelease } from '@pertexo/node-sdk';
 import {
   createNodeRegistry,
   DISPATCH_AWARE_EXECUTOR_ABI_VERSION,
+  type NodeArtifactRuntime,
+  type NodeConnectionRuntime,
   type NodeExecutionInvocation,
   type NodeExecutionRuntime,
   type ResolvedNodeConnection,
@@ -19,8 +21,11 @@ import {
   createHttpRequestExecutorRegistration,
   HttpRequestExecutorError,
   SECURE_HTTP_ERROR_CODE,
+  SecureHttpClient,
   SecureHttpError,
   type HttpRequestExecutorDependencies,
+  type SecureHttpBodyConsumer,
+  type SecureHttpResponse,
   type SecureHttpRequest,
 } from '../src/server.js';
 
@@ -63,13 +68,20 @@ function runtime(overrides: Partial<NodeExecutionRuntime> = {}) {
   };
   const beforeDispatch = vi.fn(() => Promise.resolve());
   const resolve = vi.fn(() => Promise.resolve(resolved));
-  const write = vi.fn(() =>
-    Promise.resolve({
-      artifactId: '44444444-4444-4444-8444-444444444444',
-      byteLength: 70_000,
-      mediaType: 'application/octet-stream',
-      sha256: 'a'.repeat(64),
-    }),
+  const assertCurrent = vi.fn<
+    NonNullable<NodeConnectionRuntime['assertCurrent']>
+  >(() => Promise.resolve());
+  const written: number[] = [];
+  const write = vi.fn(
+    async (input: Parameters<NodeArtifactRuntime['write']>[0]) => {
+      for await (const chunk of input.body) written.push(...chunk);
+      return {
+        artifactId: '44444444-4444-4444-8444-444444444444',
+        byteLength: written.length,
+        mediaType: input.mediaType,
+        sha256: 'a'.repeat(64),
+      };
+    },
   );
   return {
     value: {
@@ -82,13 +94,15 @@ function runtime(overrides: Partial<NodeExecutionRuntime> = {}) {
       invocationKey: 'http-node-invocation',
       sideEffectClass: 'unsafe' as const,
       beforeDispatch,
-      connections: { resolve },
+      connections: { assertCurrent, resolve },
       artifacts: { write },
       ...overrides,
     } satisfies NodeExecutionRuntime,
     beforeDispatch,
+    assertCurrent,
     resolve,
     secret,
+    written,
     write,
   };
 }
@@ -107,12 +121,7 @@ function invocation(
   };
 }
 
-function response(
-  body: Uint8Array,
-  status = 201,
-): Awaited<
-  ReturnType<HttpRequestExecutorDependencies['httpClient']['execute']>
-> {
+function response(body: Uint8Array, status = 201): SecureHttpResponse {
   return {
     status,
     headers: { 'content-type': 'application/json' },
@@ -121,6 +130,28 @@ function response(
     finalUrl: 'https://provider.example.test',
     redirectCount: 0,
   };
+}
+
+function streamingHttpClient(
+  execute: (request: SecureHttpRequest) => Promise<SecureHttpResponse>,
+): HttpRequestExecutorDependencies['httpClient'] {
+  const executeStreaming = async <Body>(
+    request: SecureHttpRequest,
+    consume: SecureHttpBodyConsumer<Body>,
+  ): Promise<SecureHttpResponse<Body>> => {
+    const buffered = await execute(request);
+    const signal = request.signal ?? new AbortController().signal;
+    const body = await consume({
+      ...buffered,
+      body: (async function* (): AsyncGenerator<Uint8Array> {
+        await Promise.resolve();
+        yield buffered.body;
+      })(),
+      signal,
+    });
+    return { ...buffered, body };
+  };
+  return { executeStreaming };
 }
 
 describe('http.request@1 candidate definition', () => {
@@ -171,19 +202,18 @@ describe('http.request@1 server executor', () => {
     const state = runtime();
     let requestBody: Uint8Array | undefined;
     const providerBody = encoder.encode('{"created":true}');
-    const httpClient = {
-      execute: vi.fn(async (request: SecureHttpRequest) => {
-        expect(request.headers).toEqual({
-          accept: 'application/json',
-          authorization: 'Bearer executor-secret',
-        });
-        expect(request.sensitiveValues).toEqual(['Bearer executor-secret']);
-        requestBody = request.body;
-        await request.beforeDispatch();
-        expect(state.beforeDispatch).toHaveBeenCalledOnce();
-        return response(providerBody);
-      }),
-    } satisfies HttpRequestExecutorDependencies['httpClient'];
+    const dispatch = vi.fn(async (request: SecureHttpRequest) => {
+      expect(request.headers).toEqual({
+        accept: 'application/json',
+        authorization: 'Bearer executor-secret',
+      });
+      expect(request.sensitiveValues).toEqual(['Bearer executor-secret']);
+      requestBody = request.body;
+      await request.beforeDispatch();
+      expect(state.beforeDispatch).toHaveBeenCalledOnce();
+      return response(providerBody);
+    });
+    const httpClient = streamingHttpClient(dispatch);
     const registration = createHttpRequestExecutorRegistration({ httpClient });
 
     await expect(
@@ -204,6 +234,15 @@ describe('http.request@1 server executor', () => {
         expectedAuthType: 'http_headers',
       }),
     );
+    expect(state.assertCurrent).toHaveBeenCalledOnce();
+    const assertInput = state.assertCurrent.mock.calls[0]?.[0];
+    expect(assertInput).toMatchObject({
+      connectionId,
+      expectedProviderKey: 'http',
+      expectedAuthType: 'http_headers',
+      secretVersionId,
+    });
+    expect(assertInput?.signal).toBeInstanceOf(AbortSignal);
     expect(state.secret.every((byte) => byte === 0)).toBe(true);
     expect(requestBody?.every((byte) => byte === 0)).toBe(true);
     expect(providerBody.every((byte) => byte === 0)).toBe(true);
@@ -212,12 +251,12 @@ describe('http.request@1 server executor', () => {
   it('writes large output through the artifact capability and returns only its reference', async () => {
     const state = runtime();
     const providerBody = new Uint8Array(70_000).fill(7);
-    const httpClient = {
-      execute: vi.fn(async (request: SecureHttpRequest) => {
+    const httpClient = streamingHttpClient(
+      vi.fn(async (request: SecureHttpRequest) => {
         await request.beforeDispatch();
         return response(providerBody);
       }),
-    } satisfies HttpRequestExecutorDependencies['httpClient'];
+    );
     const registration = createHttpRequestExecutorRegistration({ httpClient });
 
     const output = await registration.execute(invocation(state.value));
@@ -230,10 +269,12 @@ describe('http.request@1 server executor', () => {
     });
     expect(state.write).toHaveBeenCalledWith(
       expect.objectContaining({
-        bytes: providerBody,
+        maxBytes: 1_048_576,
         purpose: 'node-output',
       }),
     );
+    expect(state.written).toHaveLength(70_000);
+    expect(state.written.every((byte) => byte === 7)).toBe(true);
     expect(providerBody.every((byte) => byte === 0)).toBe(true);
   });
 
@@ -241,12 +282,10 @@ describe('http.request@1 server executor', () => {
     const ambiguousState = runtime();
     const providerBody = encoder.encode('unavailable');
     const providerFailure = createHttpRequestExecutorRegistration({
-      httpClient: {
-        execute: async (request) => {
-          await request.beforeDispatch();
-          return response(providerBody, 503);
-        },
-      },
+      httpClient: streamingHttpClient(async (request) => {
+        await request.beforeDispatch();
+        return response(providerBody, 503);
+      }),
     }).execute(invocation(ambiguousState.value));
     await expect(providerFailure).rejects.toMatchObject({
       decision: { kind: 'outcome_unknown', errorKind: 'provider' },
@@ -256,16 +295,15 @@ describe('http.request@1 server executor', () => {
 
     const definiteState = runtime();
     const predispatch = createHttpRequestExecutorRegistration({
-      httpClient: {
-        execute: () =>
-          Promise.reject(
-            new SecureHttpError(
-              SECURE_HTTP_ERROR_CODE.dnsFailed,
-              'definite_failure',
-              false,
-            ),
+      httpClient: streamingHttpClient(() =>
+        Promise.reject(
+          new SecureHttpError(
+            SECURE_HTTP_ERROR_CODE.dnsFailed,
+            'definite_failure',
+            false,
           ),
-      },
+        ),
+      ),
     }).execute(invocation(definiteState.value));
     await expect(predispatch).rejects.toMatchObject({
       decision: {
@@ -280,7 +318,9 @@ describe('http.request@1 server executor', () => {
   });
 
   it('fails closed on missing runtime, insecure credential transport, collisions, and invalid bodies', async () => {
-    const httpClient = { execute: vi.fn() };
+    const dispatch =
+      vi.fn<(request: SecureHttpRequest) => Promise<SecureHttpResponse>>();
+    const httpClient = streamingHttpClient(dispatch);
     const registration = createHttpRequestExecutorRegistration({ httpClient });
     const state = runtime();
     const candidateWithRuntime = invocation(state.value);
@@ -297,6 +337,7 @@ describe('http.request@1 server executor', () => {
         config: config({ headers: { 'X-Tenant': 'configured' } }),
         runtime: runtime({
           connections: {
+            assertCurrent: () => Promise.resolve(),
             resolve: () =>
               Promise.resolve({
                 connectionId,
@@ -318,19 +359,21 @@ describe('http.request@1 server executor', () => {
       await expect(registration.execute(candidate)).rejects.toBeInstanceOf(
         HttpRequestExecutorError,
       );
-    expect(httpClient.execute).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalled();
   });
 
   it('collapses unexpected connection, transport, and artifact failures into safe outcomes', async () => {
     const connectionState = runtime({
       connections: {
+        assertCurrent: () => Promise.resolve(),
         resolve: () => Promise.reject(new Error('credential-secret')),
       },
     });
-    const neverCalled = { execute: vi.fn() };
+    const neverCalled =
+      vi.fn<(request: SecureHttpRequest) => Promise<SecureHttpResponse>>();
     await expect(
       createHttpRequestExecutorRegistration({
-        httpClient: neverCalled,
+        httpClient: streamingHttpClient(neverCalled),
       }).execute(invocation(connectionState.value)),
     ).rejects.toEqual(
       new HttpRequestExecutorError(
@@ -338,17 +381,15 @@ describe('http.request@1 server executor', () => {
         false,
       ),
     );
-    expect(neverCalled.execute).not.toHaveBeenCalled();
+    expect(neverCalled).not.toHaveBeenCalled();
 
     const transportState = runtime();
     await expect(
       createHttpRequestExecutorRegistration({
-        httpClient: {
-          execute: async (request: SecureHttpRequest) => {
-            await request.beforeDispatch();
-            throw new Error('provider-secret');
-          },
-        },
+        httpClient: streamingHttpClient(async (request: SecureHttpRequest) => {
+          await request.beforeDispatch();
+          throw new Error('provider-secret');
+        }),
       }).execute(invocation(transportState.value)),
     ).rejects.toEqual(
       new HttpRequestExecutorError(
@@ -364,12 +405,10 @@ describe('http.request@1 server executor', () => {
     });
     await expect(
       createHttpRequestExecutorRegistration({
-        httpClient: {
-          execute: async (request: SecureHttpRequest) => {
-            await request.beforeDispatch();
-            return response(new Uint8Array(70_000));
-          },
-        },
+        httpClient: streamingHttpClient(async (request: SecureHttpRequest) => {
+          await request.beforeDispatch();
+          return response(new Uint8Array(70_000));
+        }),
       }).execute(invocation(artifactState.value)),
     ).rejects.toEqual(
       new HttpRequestExecutorError(
@@ -379,14 +418,49 @@ describe('http.request@1 server executor', () => {
     );
   });
 
+  it('rechecks the resolved secret immediately before dispatch and stops a rotation race', async () => {
+    const state = runtime();
+    const executionRuntime: NodeExecutionRuntime = {
+      ...state.value,
+      connections: {
+        resolve: state.resolve,
+        assertCurrent: () => Promise.reject(new Error('rotated')),
+      },
+    };
+    const dispatch = vi.fn();
+    const registration = createHttpRequestExecutorRegistration({
+      httpClient: new SecureHttpClient(
+        {
+          resolve: () =>
+            Promise.resolve([{ address: '8.8.8.8', family: 4 as const }]),
+        },
+        { dispatch },
+      ),
+    });
+
+    await expect(
+      registration.execute(invocation(executionRuntime)),
+    ).rejects.toMatchObject({
+      decision: {
+        kind: 'retry',
+        errorKind: 'internal',
+        reuseProviderKey: false,
+      },
+      possiblyDispatched: false,
+    });
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(state.beforeDispatch).not.toHaveBeenCalled();
+    expect(state.secret.every((byte) => byte === 0)).toBe(true);
+  });
+
   it('matches an exact ABI 2 registry identity without entering the production release', async () => {
     const state = runtime();
-    const httpClient = {
-      execute: vi.fn(async (request: SecureHttpRequest) => {
+    const httpClient = streamingHttpClient(
+      vi.fn(async (request: SecureHttpRequest) => {
         await request.beforeDispatch();
         return response(encoder.encode('{}'), 200);
       }),
-    } satisfies HttpRequestExecutorDependencies['httpClient'];
+    );
     const registration = createHttpRequestExecutorRegistration(
       { httpClient },
       'active',
