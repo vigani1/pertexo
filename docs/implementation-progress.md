@@ -20,7 +20,7 @@ not complete a phase.
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
-| Phase 4 — first side-effecting integration slice | In progress | ADRs 007/016; managed connections, secure/streaming HTTP, worker JIT capabilities, integration-usage projection, exact rollout, canonical downstream output, provider telemetry, and durable preview acceptance complete; activation remains gated pending remaining failure proofs, preview execution, and full regression evidence |
+| Phase 4 — first side-effecting integration slice | In progress | ADRs 007/016; managed connections, secure/streaming HTTP, worker JIT capabilities, integration-usage projection, exact rollout, canonical downstream output, provider telemetry, and durable preview API acceptance/status complete; activation remains gated pending remaining failure proofs, preview worker execution, and full regression evidence |
 | Phase 5 — orchestration slice | Not started | — |
 | Phase 6 — V1 providers and triggers | Not started | — |
 | Phase 7 — production operations | Not started | — |
@@ -1417,12 +1417,12 @@ Generic HTTP Request vertical slice:
 
 Validate and test-execute preview vertical slice:
 
-- [ ] Add a strict discriminated node-test request contract. `validate` pins an
+- [x] Add a strict discriminated node-test request contract. `validate` pins an
       expected draft revision, resolves mappings/sample input and schemas, and
       returns bounded field-addressed issues plus side-effect disclosure without
       decrypting credentials, resolving DNS, queueing work, or contacting a
       provider.
-- [ ] Require explicit side-effect acknowledgement and request idempotency for
+- [x] Require explicit side-effect acknowledgement and request idempotency for
       `test_execute`; accept bounded manual input or one same-workspace,
       same-workflow, successful, unexpired prior-preview output reference.
 - [ ] Persist an immutable short-retained Preview run and preview attempt with
@@ -1732,7 +1732,7 @@ Current evidence:
   passes 13 contract, 35 queue, and 32 observability assertions, generated-
   artifact drift checks, all workspace typechecks, affected builds, and focused
   ESLint. Persistence, API authorization/validation, worker execution, and the
-  preview failure matrix remain open.
+  preview failure matrix were still open at this checkpoint.
 - Commit `ca7ea19` advances the clean migration head to
   `0022_preview_execution.sql` and adds forced-RLS `preview_runs` plus exactly
   one `preview_attempt` per accepted execution, wholly separate from workflow
@@ -1754,8 +1754,8 @@ Current evidence:
   matrix pass, alongside 57 database unit assertions, all workspace typechecks,
   the database build, and focused ESLint. The final focused proof contained one
   preview run, one attempt, and one preview outbox row before the disposable
-  database was dropped. API validation/status behavior, worker execution,
-  cleanup, and crash/outcome proofs remain open.
+  database was dropped. Worker execution, cleanup, and crash/outcome proofs
+  remain open; API behavior is evidenced by the later `c06e3d4` checkpoint.
 - Commit `2edc729` adds the pure validation half of ADR 016 behind a deliberately
   non-executable server-only catalog seam. The resolver selects one exact node
   definition from one pinned compatibility release and exposes its manifest and
@@ -1767,9 +1767,29 @@ Current evidence:
   from immutable manifest metadata, and caps stable field-addressed issues at
   100. Missing/ambiguous nodes and definitions unavailable in the pinned release
   fail closed. Six catalog assertions and the full 44-file/210-assertion API
-  suite pass with affected builds, typechecks, formatting, and ESLint. This is
-  not yet an exposed endpoint: stale-revision handling, connection-use
-  authorization, durable execution acceptance, and status reads remain open.
+  suite pass with affected builds, typechecks, formatting, and ESLint. Endpoint
+  composition, stale-revision handling, connection-use authorization, durable
+  execution acceptance, and status reads are evidenced by the later `c06e3d4`
+  checkpoint.
+- Commit `c06e3d4` adds the application and HTTP boundary for pure validation,
+  durable test execution acceptance, and scoped preview status reads. The POST
+  route enforces the exact draft revision, conditional `Idempotency-Key`,
+  literal side-effect acknowledgement, `workflow:update`, and `connection:use`
+  whenever the selected node references a connection. It validates manual input
+  with the runtime-shared mapping resolver, defers prior-preview input mapping
+  until the worker reads the persisted canonical copy, pins the exact registry
+  release and executable node snapshot, and returns `200` without persistence
+  for validation or `202` only after atomic acceptance. The GET route rechecks
+  active builder-or-stronger access, relies on forced RLS, hides expired and
+  cross-workspace previews, and returns only the bounded public status shape.
+  Nest registers these routes only when both preview persistence and an exact
+  registry release are supplied; production composition remains deliberately
+  gated until the preview worker is ready. Verification passes 57 database unit
+  assertions, 219 API assertions, both package typechecks/builds, focused
+  ESLint, and eight preview integration scenarios on a fresh PostgreSQL 18
+  database migrated zero-to-`0022`; the disposable database was removed. The
+  remaining preview gates are worker dispatch/execution, output/artifact
+  completion, duplicate/crash/timeout/ambiguity proofs, and retention cleanup.
 
 ## Later phases
 
