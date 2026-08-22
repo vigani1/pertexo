@@ -20,7 +20,7 @@ not complete a phase.
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
-| Phase 4 — first side-effecting integration slice | In progress | ADRs 007/016; managed connections, secure/streaming HTTP, worker JIT capabilities, integration-usage projection, exact rollout, canonical downstream output, and provider telemetry complete; activation remains gated pending remaining failure proofs, preview, and full regression evidence |
+| Phase 4 — first side-effecting integration slice | In progress | ADRs 007/016; managed connections, secure/streaming HTTP, worker JIT capabilities, integration-usage projection, exact rollout, canonical downstream output, provider telemetry, and durable preview acceptance complete; activation remains gated pending remaining failure proofs, preview execution, and full regression evidence |
 | Phase 5 — orchestration slice | Not started | — |
 | Phase 6 — V1 providers and triggers | Not started | — |
 | Phase 7 — production operations | Not started | — |
@@ -1348,7 +1348,7 @@ Design prerequisites and scope:
 - [x] Review and accept ADR 016 for read-only validation, explicit
       side-effecting test execution, preview isolation, idempotency, retention,
       and bounded values before implementing the node-test API.
-- [ ] Add canonical Connection, Connection secret version, connection health,
+- [x] Add canonical Connection, Connection secret version, connection health,
       HTTP Request, Preview run, and preview-attempt vocabulary/constants without
       introducing generic CRUD or provider base modules.
 - [x] Keep Slack, email, OAuth completion, webhooks, Schedule, orchestration
@@ -1733,6 +1733,29 @@ Current evidence:
   artifact drift checks, all workspace typechecks, affected builds, and focused
   ESLint. Persistence, API authorization/validation, worker execution, and the
   preview failure matrix remain open.
+- Commit `ca7ea19` advances the clean migration head to
+  `0022_preview_execution.sql` and adds forced-RLS `preview_runs` plus exactly
+  one `preview_attempt` per accepted execution, wholly separate from workflow
+  versions, production runs, checkpoints, and run events. The immutable run
+  identity pins the workspace/workflow/draft revision and fingerprint, node
+  snapshot, definition/executor and exact compatibility release, actor,
+  idempotency/request hashes, canonical bounded input, optional prior preview,
+  disclosure, trace context, and at-most-24-hour retention deadline. The API
+  role can accept and read but cannot mutate pins; the worker can read and
+  update only execution-state columns and cannot insert attempts or alter the
+  provider idempotency key. Acceptance locks the exact current draft, rechecks
+  an active builder-or-stronger membership, copies only a successful unexpired
+  prior output from the same tenant/workflow, and atomically commits the run,
+  attempt, idempotency result, safe audit fact, and identifier-only outbox job.
+  Exact replays survive later draft edits; conflicting replays, stale revisions,
+  cross-workspace references, and transaction rollback fail without partial
+  facts. A fresh PostgreSQL 18 database migrates zero-to-`0022`; seven focused
+  preview scenarios and the complete 14-file/216-assertion database integration
+  matrix pass, alongside 57 database unit assertions, all workspace typechecks,
+  the database build, and focused ESLint. The final focused proof contained one
+  preview run, one attempt, and one preview outbox row before the disposable
+  database was dropped. API validation/status behavior, worker execution,
+  cleanup, and crash/outcome proofs remain open.
 
 ## Later phases
 
