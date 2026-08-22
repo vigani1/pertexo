@@ -20,7 +20,7 @@ not complete a phase.
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
-| Phase 4 — first side-effecting integration slice | In progress | ADRs 007/016; managed connections, secure/streaming HTTP, worker JIT connection/artifact capabilities, and published integration-usage projection complete; `http.request@1` remains outside the release |
+| Phase 4 — first side-effecting integration slice | In progress | ADRs 007/016; managed connections, secure/streaming HTTP, worker JIT capabilities, integration-usage projection, and exact staged/active HTTP rollout proof complete; activation remains gated pending downstream-value, telemetry, preview, and full regression evidence |
 | Phase 5 — orchestration slice | Not started | — |
 | Phase 6 — V1 providers and triggers | Not started | — |
 | Phase 7 — production operations | Not started | — |
@@ -1653,8 +1653,40 @@ Current evidence:
   integration, 57 database, and 207 API assertions; affected packages build,
   typecheck, lint, and format-check cleanly. The PostgreSQL schema/index review
   shaped the composite tenant-first covering indexes and bounded keyset query
-  interfaces. HTTP release, canonical downstream artifact resolution,
-  telemetry, and preview gates remain incomplete.
+  interfaces. At that checkpoint, HTTP release, canonical downstream artifact
+  resolution, telemetry, and preview gates remained incomplete.
+- Commit `6061f48` adds the browser-safe `@pertexo/node-catalog` and composes
+  the already implemented HTTP manifest/executor additively through two exact
+  rolling cohorts: epoch 2→3 introduces HTTP with a staged executor, and epoch
+  3→4 activates it. API and worker configuration defaults to the unchanged
+  `core` cohort; staging workers continue serving the epoch-2 registry, and an
+  activation node-attempt worker fails closed before adapter creation unless
+  both just-in-time connection and artifact capabilities are present. API
+  authoring, run admission, worker coordinator/node execution, and readiness
+  all receive the selected cohort explicitly. Verification passes four catalog,
+  14 core-node, 207 API, and 77 worker assertions, all affected typechecks, and
+  focused formatting/ESLint. This establishes an explicit deployment artifact
+  path without silently making HTTP part of the default production cohort.
+- Commit `8deeee8` separates the at-most-two-release deployment readiness
+  overlap from retained immutable execution history. The engine validates every
+  contiguous historical successor and resolves only exact epoch/fingerprint
+  identities; authoring selects its current compiler/catalog through the
+  bounded readiness pair while retaining older variants, and API/worker
+  execution verifies old envelopes against the full history. A fresh disposable
+  PostgreSQL 18 database migrated from zero through
+  `0021_workflow_integration_usage.sql` passes the exact epoch 1→2→3→4 rollout:
+  both API and worker target probes precede each activation, old cohorts fail
+  readiness at the next boundary, staged HTTP placement is rejected, active
+  HTTP publishes with one exact provider/operation/connection usage row, and a
+  workflow published under epoch 2 starts successfully after epoch 4. The final
+  database state contained epoch 4, one usage row, and one retained-workflow run;
+  the disposable database was dropped. Unit verification passes 57 database,
+  82 workflow-engine, four catalog, 207 API, and 77 worker assertions plus all
+  affected typechecks and focused lint/format checks. HTTP activation remains
+  explicitly selected rather than default and is not yet a Phase 4 release
+  claim: canonical downstream persisted-value consumption, provider telemetry,
+  preview execution, regression/recovery gates, and completion reviews remain
+  open.
 
 ## Later phases
 
