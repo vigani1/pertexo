@@ -270,7 +270,7 @@ describe('NodeAttemptHandler', () => {
         } as const;
       },
     );
-    const connections = { resolve: vi.fn() };
+    const connections = { assertCurrent: vi.fn(), resolve: vi.fn() };
     const registryExecute = vi.fn<NodeExecutionRegistry['execute']>(
       async (request) => {
         order.push('executor-start');
@@ -301,7 +301,7 @@ describe('NodeAttemptHandler', () => {
         execute: registryExecute,
       },
       runStore: store,
-      runtimeCapabilities: { connections },
+      runtimeCapabilities: { connections: () => connections },
       workerId: 'worker-1',
     });
 

@@ -473,6 +473,24 @@ describe('connection persistence', () => {
       sealed: input.sealed,
     });
     await expect(
+      worker.assertConnectionSecretCurrent({
+        workspaceId: workspaceA,
+        connectionId: input.connectionId,
+        expectedProviderKey: 'http',
+        expectedAuthType: CONNECTION_AUTH_TYPE.httpHeaders,
+        secretVersionId: input.secretVersionId,
+      }),
+    ).resolves.toBeUndefined();
+    await expect(
+      worker.assertConnectionSecretCurrent({
+        workspaceId: workspaceA,
+        connectionId: input.connectionId,
+        expectedProviderKey: 'http',
+        expectedAuthType: CONNECTION_AUTH_TYPE.httpHeaders,
+        secretVersionId: randomUUID(),
+      }),
+    ).rejects.toBeInstanceOf(ConnectionUnavailableError);
+    await expect(
       worker.resolveConnectionSecret({
         workspaceId: workspaceA,
         connectionId: input.connectionId,
@@ -494,6 +512,15 @@ describe('connection persistence', () => {
         expectedProviderKey: 'http',
         workerId: 'worker-connection-test',
         purpose: 'http.request.execute',
+      }),
+    ).rejects.toBeInstanceOf(ConnectionUnavailableError);
+    await expect(
+      worker.assertConnectionSecretCurrent({
+        workspaceId: workspaceA,
+        connectionId: input.connectionId,
+        expectedProviderKey: 'http',
+        expectedAuthType: CONNECTION_AUTH_TYPE.httpHeaders,
+        secretVersionId: input.secretVersionId,
       }),
     ).rejects.toBeInstanceOf(ConnectionUnavailableError);
   });

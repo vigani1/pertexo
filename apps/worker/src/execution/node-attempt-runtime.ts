@@ -27,8 +27,7 @@ import {
   createExecutableCompatibilityReleaseSupport,
   type NodeExecutionRegistry,
 } from '@pertexo/workflow-engine';
-import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
-
+import type { AwsConnectionEnvelopeEncryptionConfig } from '@pertexo/integrations/server';
 import {
   createNodeAttemptExecutionEngine,
   type NodeAttemptExecutionEngineOptions,
@@ -37,8 +36,13 @@ import {
   createNodeAttemptHandler,
   type NodeAttemptExecutionEngine,
   type NodeAttemptHandler,
+  type NodeAttemptRuntimeCapabilityFactories,
   NodeAttemptHandlerStateError,
 } from './node-attempt-handler.js';
+import {
+  createWorkerNodeRuntimeCapabilities,
+  type WorkerNodeRuntimeCapabilities,
+} from './node-runtime-capabilities.js';
 
 export interface NodeAttemptRuntime {
   readonly consumer: QueueConsumer;
@@ -46,6 +50,8 @@ export interface NodeAttemptRuntime {
 }
 
 export type NodeAttemptRuntimeOptions = Readonly<{
+  artifactStore?: ArtifactStoreConfig;
+  connectionEncryption?: AwsConnectionEnvelopeEncryptionConfig;
   database: DatabaseConfig;
   heartbeatIntervalMillis: number;
   leaseDurationSeconds: number;
@@ -61,7 +67,7 @@ export type NodeAttemptRuntimeDependencies = Readonly<{
   reader?: PublishedWorkflowReader;
   registry?: NodeExecutionRegistry;
   runStore?: NodeAttemptRunStore;
-  runtimeCapabilities?: Pick<NodeExecutionRuntime, 'artifacts' | 'connections'>;
+  runtimeCapabilities?: NodeAttemptRuntimeCapabilityFactories;
 }>;
 
 function queueHandler(handler: NodeAttemptHandler): QueueJobHandler {
@@ -133,6 +139,32 @@ export async function createNodeAttemptRuntime(
   const notifications =
     dependencies.notifications ??
     new RedisRunEventNotificationPublisher({ redisUrl: options.redisUrl });
+  let capabilityRuntime: WorkerNodeRuntimeCapabilities | undefined;
+  try {
+    if (
+      dependencies.runtimeCapabilities === undefined &&
+      (options.connectionEncryption !== undefined ||
+        options.artifactStore !== undefined)
+    )
+      capabilityRuntime = await createWorkerNodeRuntimeCapabilities({
+        database: options.database,
+        ...(options.connectionEncryption === undefined
+          ? {}
+          : { connectionEncryption: options.connectionEncryption }),
+        ...(options.artifactStore === undefined
+          ? {}
+          : { artifactStore: options.artifactStore }),
+      });
+  } catch (error: unknown) {
+    await Promise.allSettled([
+      notifications.close(),
+      reader.close(),
+      runStore.close(),
+    ]);
+    throw error;
+  }
+  const runtimeCapabilities =
+    dependencies.runtimeCapabilities ?? capabilityRuntime?.factories;
   const handler = createNodeAttemptHandler({
     engine,
     heartbeatIntervalMillis: options.heartbeatIntervalMillis,
@@ -141,9 +173,7 @@ export async function createNodeAttemptRuntime(
     reader,
     registry,
     runStore,
-    ...(dependencies.runtimeCapabilities === undefined
-      ? {}
-      : { runtimeCapabilities: dependencies.runtimeCapabilities }),
+    ...(runtimeCapabilities === undefined ? {} : { runtimeCapabilities }),
     workerId: options.workerId,
   });
   let consumer: QueueConsumer;
@@ -160,6 +190,7 @@ export async function createNodeAttemptRuntime(
       notifications.close(),
       reader.close(),
       runStore.close(),
+      capabilityRuntime?.close(),
     ]);
     throw error;
   }
@@ -173,6 +204,7 @@ export async function createNodeAttemptRuntime(
           notifications.close(),
           reader.close(),
           runStore.close(),
+          capabilityRuntime?.close(),
         ]);
         const failure = results.find((result) => result.status === 'rejected');
         if (failure?.status === 'rejected') throw failure.reason;
@@ -181,3 +213,4 @@ export async function createNodeAttemptRuntime(
     },
   });
 }
+import type { ArtifactStoreConfig } from '@pertexo/artifact-store';

@@ -28,6 +28,7 @@ export type {
   MarkConnectionTestDispatchedInput,
   CompleteConnectionTestInput,
   AbandonConnectionTestInput,
+  AssertConnectionSecretCurrentInput,
   CreateConnectionInput,
   FindConnectionCreateReplayInput,
   FindConnectionRotateReplayInput,

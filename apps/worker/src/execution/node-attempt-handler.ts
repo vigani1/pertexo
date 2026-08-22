@@ -18,7 +18,11 @@ import type {
   NodeExecutionRegistry,
 } from '@pertexo/workflow-engine';
 import { WorkflowEngineError } from '@pertexo/workflow-engine';
-import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
+import type {
+  NodeArtifactRuntime,
+  NodeConnectionRuntime,
+  NodeExecutionRuntime,
+} from '@pertexo/node-sdk/server';
 
 type AttemptDelivery = Extract<
   QueueDelivery,
@@ -58,6 +62,24 @@ export interface NodeAttemptHandler {
   ): Promise<NodeAttemptHandlerResult>;
 }
 
+export type NodeAttemptCapabilityContext = Readonly<{
+  workspaceId: string;
+  runId: string;
+  nodeRunId: string;
+  attemptId: string;
+  attemptNumber: number;
+  nodeId: string;
+  invocationKey: string;
+  workerId: string;
+}>;
+
+export type NodeAttemptRuntimeCapabilityFactories = Readonly<{
+  connections?: (
+    context: NodeAttemptCapabilityContext,
+  ) => NodeConnectionRuntime;
+  artifacts?: (context: NodeAttemptCapabilityContext) => NodeArtifactRuntime;
+}>;
+
 export type NodeAttemptHandlerDependencies = Readonly<{
   engine: NodeAttemptExecutionEngine;
   heartbeatIntervalMillis: number;
@@ -66,7 +88,7 @@ export type NodeAttemptHandlerDependencies = Readonly<{
   reader: PublishedWorkflowReader;
   registry: NodeExecutionRegistry;
   runStore: NodeAttemptRunStore;
-  runtimeCapabilities?: Pick<NodeExecutionRuntime, 'artifacts' | 'connections'>;
+  runtimeCapabilities?: NodeAttemptRuntimeCapabilityFactories;
   workerId: string;
 }>;
 
@@ -259,6 +281,20 @@ export function createNodeAttemptHandler(
         }
       })();
       let dispatched = false;
+      const capabilityContext: NodeAttemptCapabilityContext = Object.freeze({
+        workspaceId: claimed.lease.workspaceId,
+        runId: claimed.lease.runId,
+        nodeRunId: claimed.lease.nodeRunId,
+        attemptId: claimed.lease.attemptId,
+        attemptNumber: claimed.lease.attemptNumber,
+        nodeId: claimed.lease.nodeId,
+        invocationKey: claimed.lease.invocationKey,
+        workerId: claimed.lease.workerId,
+      });
+      const connections =
+        dependencies.runtimeCapabilities?.connections?.(capabilityContext);
+      const artifacts =
+        dependencies.runtimeCapabilities?.artifacts?.(capabilityContext);
       const runtime: NodeExecutionRuntime = Object.freeze({
         workspaceId: claimed.lease.workspaceId,
         runId: claimed.lease.runId,
@@ -273,12 +309,8 @@ export function createNodeAttemptHandler(
           : {
               providerIdempotencyKey: claimed.lease.providerIdempotencyKey,
             }),
-        ...(dependencies.runtimeCapabilities?.connections === undefined
-          ? {}
-          : { connections: dependencies.runtimeCapabilities.connections }),
-        ...(dependencies.runtimeCapabilities?.artifacts === undefined
-          ? {}
-          : { artifacts: dependencies.runtimeCapabilities.artifacts }),
+        ...(connections === undefined ? {} : { connections }),
+        ...(artifacts === undefined ? {} : { artifacts }),
         beforeDispatch: async (): Promise<void> => {
           if (dispatched)
             throw new NodeAttemptHandlerStateError('duplicate_dispatch');

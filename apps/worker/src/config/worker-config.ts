@@ -1,4 +1,9 @@
 import { z } from 'zod';
+import {
+  parseArtifactStoreConfig,
+  type ArtifactStoreConfig,
+} from '@pertexo/artifact-store';
+import type { AwsConnectionEnvelopeEncryptionConfig } from '@pertexo/integrations/server';
 import { parseObservabilityConfig } from '@pertexo/observability/config';
 import { JOB_NAME, type JobName } from '@pertexo/queue';
 
@@ -255,7 +260,80 @@ export const workerConfigSchema = z
     }),
   );
 
-export type WorkerConfig = Readonly<z.output<typeof workerConfigSchema>>;
+export type WorkerConfig = Readonly<
+  z.output<typeof workerConfigSchema> & {
+    artifactStore?: ArtifactStoreConfig;
+    connectionEncryption?: AwsConnectionEnvelopeEncryptionConfig;
+  }
+>;
+
+function stringEnvironment(
+  environment: Readonly<Record<string, unknown>>,
+): Record<string, string | undefined> {
+  return Object.fromEntries(
+    Object.entries(environment).map(([name, value]) => {
+      if (value === undefined || typeof value === 'string')
+        return [name, value];
+      if (typeof value === 'number' || typeof value === 'boolean')
+        return [name, String(value)];
+      throw new TypeError('Worker environment values must be scalar');
+    }),
+  );
+}
+
+function connectionEncryptionConfig(
+  environment: Readonly<Record<string, string | undefined>>,
+  deployed: boolean,
+): AwsConnectionEnvelopeEncryptionConfig | undefined {
+  const values = [
+    environment.CONNECTION_KMS_KEY_REFERENCE,
+    environment.CONNECTION_KMS_REGION,
+    environment.CONNECTION_KMS_ENDPOINT,
+  ];
+  if (values.every((value) => value === undefined)) return undefined;
+  const parsed = z
+    .object({
+      keyReference: z.string().min(1).max(2_048),
+      region: z.string().min(1).max(128),
+      endpoint: z.url().optional(),
+    })
+    .strict()
+    .parse({
+      keyReference: environment.CONNECTION_KMS_KEY_REFERENCE,
+      region: environment.CONNECTION_KMS_REGION,
+      ...(environment.CONNECTION_KMS_ENDPOINT === undefined
+        ? {}
+        : { endpoint: environment.CONNECTION_KMS_ENDPOINT }),
+    });
+  if (
+    deployed &&
+    parsed.endpoint !== undefined &&
+    new URL(parsed.endpoint).protocol !== 'https:'
+  )
+    throw new Error('HTTPS connection KMS endpoint is required when deployed');
+  return Object.freeze(parsed);
+}
+
+function artifactStoreConfig(
+  environment: Readonly<Record<string, string | undefined>>,
+  deployed: boolean,
+): ArtifactStoreConfig | undefined {
+  const names = [
+    'ARTIFACT_STORE_ACCESS_KEY_ID',
+    'ARTIFACT_STORE_BUCKET',
+    'ARTIFACT_STORE_ENDPOINT',
+    'ARTIFACT_STORE_FORCE_PATH_STYLE',
+    'ARTIFACT_STORE_REGION',
+    'ARTIFACT_STORE_REQUEST_TIMEOUT_MS',
+    'ARTIFACT_STORE_SECRET_ACCESS_KEY',
+    'ARTIFACT_MAX_BYTES',
+  ] as const;
+  if (names.every((name) => environment[name] === undefined)) return undefined;
+  const parsed = parseArtifactStoreConfig(environment);
+  if (deployed && new URL(parsed.endpoint).protocol !== 'https:')
+    throw new Error('HTTPS artifact store endpoint is required when deployed');
+  return parsed;
+}
 
 export function parseWorkerConfig(
   environment: Readonly<Record<string, unknown>> = process.env,
@@ -265,13 +343,23 @@ export function parseWorkerConfig(
   if (!result.success) {
     throw new Error('Invalid worker configuration', { cause: result.error });
   }
-
-  return Object.freeze({
-    ...result.data,
-    database: Object.freeze(result.data.database),
-    dispatcherDatabase: Object.freeze(result.data.dispatcherDatabase),
-    coordinator: Object.freeze(result.data.coordinator),
-    nodeAttempt: Object.freeze(result.data.nodeAttempt),
-    outboxDispatcher: Object.freeze(result.data.outboxDispatcher),
-  });
+  try {
+    const raw = stringEnvironment(environment);
+    const deployed =
+      result.data.nodeEnv === 'staging' || result.data.nodeEnv === 'production';
+    const connectionEncryption = connectionEncryptionConfig(raw, deployed);
+    const artifactStore = artifactStoreConfig(raw, deployed);
+    return Object.freeze({
+      ...result.data,
+      ...(connectionEncryption === undefined ? {} : { connectionEncryption }),
+      ...(artifactStore === undefined ? {} : { artifactStore }),
+      database: Object.freeze(result.data.database),
+      dispatcherDatabase: Object.freeze(result.data.dispatcherDatabase),
+      coordinator: Object.freeze(result.data.coordinator),
+      nodeAttempt: Object.freeze(result.data.nodeAttempt),
+      outboxDispatcher: Object.freeze(result.data.outboxDispatcher),
+    });
+  } catch (error: unknown) {
+    throw new Error('Invalid worker configuration', { cause: error });
+  }
 }

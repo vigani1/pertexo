@@ -7,7 +7,7 @@ import {
 } from '@pertexo/artifact-store';
 import {
   artifactStorageKey,
-  artifacts,
+  artifacts as artifactsTable,
   claimDueUnfinalizedArtifact,
   completeArtifactRemoval,
   createPendingArtifact,
@@ -32,6 +32,7 @@ import { eq } from 'drizzle-orm';
 import { describe, expect, it, vi } from 'vitest';
 
 import { observeWorkspaceArtifactCapacity } from '../src/runtime/artifact-metrics.js';
+import { createWorkerNodeRuntimeCapabilities } from '../src/execution/node-runtime-capabilities.js';
 
 const integration =
   process.env.ARTIFACT_STORE_INTEGRATION === 'true' &&
@@ -42,6 +43,9 @@ const redisUrl =
 const apiDatabaseUrl =
   process.env.DATABASE_API_URL ??
   'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
+const workerDatabaseUrl =
+  process.env.DATABASE_WORKER_URL ??
+  'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
 
 function sha256Hex(body: Buffer): string {
   return createHash('sha256').update(body).digest('hex');
@@ -154,9 +158,9 @@ describeIntegration('Phase 0D artifact reference delivery proof', () => {
       await expect(
         database.withWorkspace(metadata.workspaceId, ({ db }) =>
           db
-            .select({ status: artifacts.status })
-            .from(artifacts)
-            .where(eq(artifacts.id, corruptMetadata.artifactId)),
+            .select({ status: artifactsTable.status })
+            .from(artifactsTable)
+            .where(eq(artifactsTable.id, corruptMetadata.artifactId)),
         ),
       ).resolves.toEqual([{ status: 'pending' }]);
 
@@ -321,6 +325,90 @@ describeIntegration('Phase 0D artifact reference delivery proof', () => {
       await store.delete(corruptMetadata).catch(() => undefined);
       await store.delete(expiredMetadata).catch(() => undefined);
       store.close();
+      await database.close();
+    }
+  });
+});
+
+describeIntegration('Phase 4 worker artifact output capability', () => {
+  it('streams a bounded node response through worker metadata and object-store adapters', async () => {
+    const artifactConfig = parseArtifactStoreConfig(process.env);
+    const runtime = await createWorkerNodeRuntimeCapabilities({
+      database: parseDatabaseConfig({
+        connectionString: workerDatabaseUrl,
+        max: 2,
+      }),
+      artifactStore: artifactConfig,
+    });
+    const verifier = createArtifactStore(artifactConfig);
+    const database = createWorkspaceDatabase(
+      parseDatabaseConfig({ connectionString: apiDatabaseUrl, max: 2 }),
+    );
+    const workspaceId = randomUUID();
+    const context = {
+      workspaceId,
+      runId: randomUUID(),
+      nodeRunId: randomUUID(),
+      attemptId: randomUUID(),
+      attemptNumber: 1,
+      nodeId: 'http-node',
+      invocationKey: 'http-invocation',
+      workerId: 'worker-artifact-integration',
+    } as const;
+    const artifacts = runtime.factories.artifacts?.(context);
+    if (artifacts === undefined) throw new Error('artifact capability missing');
+    const first = Buffer.alloc(40_000, 7);
+    const second = Buffer.alloc(30_000, 9);
+    let reference: Awaited<ReturnType<(typeof artifacts)['write']>> | undefined;
+    try {
+      reference = await artifacts.write({
+        body: (async function* (): AsyncGenerator<Uint8Array> {
+          await Promise.resolve();
+          yield first;
+          yield second;
+        })(),
+        maxBytes: 70_000,
+        mediaType: 'application/octet-stream',
+        purpose: 'node-output',
+        signal: new AbortController().signal,
+      });
+      expect(reference.byteLength).toBe(70_000);
+      expect(reference.sha256).toBe(
+        createHash('sha256')
+          .update(Buffer.alloc(40_000, 7))
+          .update(Buffer.alloc(30_000, 9))
+          .digest('hex'),
+      );
+      const rows = await database.withWorkspace(workspaceId, ({ db }) =>
+        db
+          .select({ status: artifactsTable.status })
+          .from(artifactsTable)
+          .where(eq(artifactsTable.id, reference?.artifactId ?? 'missing')),
+      );
+      expect(rows).toEqual([{ status: 'available' }]);
+      const download = await verifier.getStream({
+        artifactId: reference.artifactId,
+        workspaceId,
+      });
+      const downloaded: Buffer[] = [];
+      for await (const chunk of download.body) {
+        const value: unknown = chunk;
+        if (!(value instanceof Uint8Array))
+          throw new TypeError('artifact download chunk is not bytes');
+        downloaded.push(Buffer.from(value));
+      }
+      expect(Buffer.concat(downloaded)).toEqual(
+        Buffer.concat([Buffer.alloc(40_000, 7), Buffer.alloc(30_000, 9)]),
+      );
+      expect(first.every((byte) => byte === 0)).toBe(true);
+      expect(second.every((byte) => byte === 0)).toBe(true);
+    } finally {
+      if (reference !== undefined)
+        await verifier
+          .delete({ artifactId: reference.artifactId, workspaceId })
+          .catch(() => undefined);
+      verifier.close();
+      await runtime.close();
       await database.close();
     }
   });

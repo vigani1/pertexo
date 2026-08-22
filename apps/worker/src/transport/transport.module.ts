@@ -104,6 +104,12 @@ function nodeAttemptRuntimeProvider(
       )
         return undefined;
       return createNodeAttemptRuntime({
+        ...(config.artifactStore === undefined
+          ? {}
+          : { artifactStore: config.artifactStore }),
+        ...(config.connectionEncryption === undefined
+          ? {}
+          : { connectionEncryption: config.connectionEncryption }),
         database: config.database,
         heartbeatIntervalMillis: config.nodeAttempt.heartbeatIntervalMillis,
         leaseDurationSeconds: config.nodeAttempt.leaseDurationSeconds,

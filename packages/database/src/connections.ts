@@ -168,6 +168,14 @@ export type ResolveConnectionSecretInput = Readonly<{
   traceId?: string;
 }>;
 
+export type AssertConnectionSecretCurrentInput = Readonly<{
+  workspaceId: string;
+  connectionId: string;
+  expectedProviderKey: string;
+  expectedAuthType: ConnectionAuthType;
+  secretVersionId: string;
+}>;
+
 export type RecordConnectionHealthInput = RequestMetadata &
   Readonly<{
     workspaceId: string;
@@ -277,6 +285,9 @@ export interface ConnectionDatabase {
   resolveConnectionSecret(
     input: ResolveConnectionSecretInput,
   ): Promise<ResolvedConnectionSecretRecord>;
+  assertConnectionSecretCurrent(
+    input: AssertConnectionSecretCurrentInput,
+  ): Promise<void>;
   recordConnectionHealth(
     input: RecordConnectionHealthInput,
   ): Promise<ConnectionRecord>;
@@ -1166,6 +1177,44 @@ export function createConnectionDatabase(
             secretVersionId,
             sealed: mapSealed(row),
           });
+        },
+      );
+    },
+
+    assertConnectionSecretCurrent: async (input): Promise<void> => {
+      const connectionId = uuidSchema.parse(input.connectionId);
+      const expectedProviderKey = providerKeySchema.parse(
+        input.expectedProviderKey,
+      );
+      const expectedAuthType = z
+        .literal(CONNECTION_AUTH_TYPE.httpHeaders)
+        .parse(input.expectedAuthType);
+      const secretVersionId = uuidSchema.parse(input.secretVersionId);
+      await withConnectionTransaction(
+        pool,
+        input.workspaceId,
+        undefined,
+        async (client, workspaceId) => {
+          const result = await client.query(
+            `select 1
+             from app.connections connection
+             join app.workspaces workspace on workspace.id = connection.workspace_id
+             where connection.workspace_id = $1 and connection.id = $2
+               and connection.provider_key = $3 and connection.auth_type = $4
+               and connection.current_secret_version_id = $5
+               and connection.status = 'active' and workspace.status = 'active'`,
+            [
+              workspaceId,
+              connectionId,
+              expectedProviderKey,
+              expectedAuthType,
+              secretVersionId,
+            ],
+          );
+          if (result.rowCount !== 1)
+            throw new ConnectionUnavailableError(
+              'Connection is not current for credential use',
+            );
         },
       );
     },

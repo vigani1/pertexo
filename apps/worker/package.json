@@ -14,7 +14,10 @@
     "typecheck": "tsc -p tsconfig.test.json --noEmit"
   },
   "dependencies": {
+    "@pertexo/artifact-store": "workspace:*",
     "@pertexo/database": "workspace:*",
+    "@pertexo/integrations": "workspace:*",
+    "@pertexo/node-sdk": "workspace:*",
     "@pertexo/nodes-core": "workspace:*",
     "@pertexo/observability": "workspace:*",
     "@pertexo/queue": "workspace:*",
@@ -28,8 +31,6 @@
   "devDependencies": {
     "@opentelemetry/api": "1.9.0",
     "@opentelemetry/sdk-node": "0.221.0",
-    "@pertexo/artifact-store": "workspace:*",
-    "@pertexo/node-sdk": "workspace:*",
     "@pertexo/workflow-model": "workspace:*",
     "@types/pg": "8.21.0",
     "bullmq": "6.1.2",

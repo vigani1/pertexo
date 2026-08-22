@@ -125,6 +125,59 @@ describe('parseWorkerConfig', () => {
     expect(Object.isFrozen(config.nodeAttempt)).toBe(true);
   });
 
+  it('parses optional worker connection and artifact capability configuration', () => {
+    const config = parseWorkerConfig({
+      DATABASE_DISPATCHER_URL:
+        'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
+      DATABASE_WORKER_URL:
+        'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+      REDIS_URL: 'redis://:secret@localhost:6379/0',
+      CONNECTION_KMS_KEY_REFERENCE: 'alias/pertexo-connections',
+      CONNECTION_KMS_REGION: 'eu-central-1',
+      CONNECTION_KMS_ENDPOINT: 'http://localhost:4566',
+      ARTIFACT_STORE_ACCESS_KEY_ID: 'local-access',
+      ARTIFACT_STORE_BUCKET: 'pertexo-artifacts',
+      ARTIFACT_STORE_ENDPOINT: 'http://localhost:9090',
+      ARTIFACT_STORE_REGION: 'us-east-1',
+      ARTIFACT_STORE_SECRET_ACCESS_KEY: 'local-secret',
+    });
+
+    expect(config.connectionEncryption).toEqual({
+      keyReference: 'alias/pertexo-connections',
+      region: 'eu-central-1',
+      endpoint: 'http://localhost:4566',
+    });
+    expect(config.artifactStore).toMatchObject({
+      bucket: 'pertexo-artifacts',
+      endpoint: 'http://localhost:9090',
+      maxObjectBytes: 10_485_760,
+    });
+    expect(Object.isFrozen(config.connectionEncryption)).toBe(true);
+    expect(Object.isFrozen(config.artifactStore)).toBe(true);
+  });
+
+  it.each([
+    { CONNECTION_KMS_KEY_REFERENCE: 'alias/incomplete' },
+    { ARTIFACT_STORE_BUCKET: 'pertexo-artifacts' },
+    {
+      NODE_ENV: 'production',
+      CONNECTION_KMS_KEY_REFERENCE: 'alias/pertexo-connections',
+      CONNECTION_KMS_REGION: 'eu-central-1',
+      CONNECTION_KMS_ENDPOINT: 'http://kms.example.test',
+    },
+  ])('rejects incomplete or insecure capability configuration', (override) => {
+    expect(() =>
+      parseWorkerConfig({
+        DATABASE_DISPATCHER_URL:
+          'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
+        DATABASE_WORKER_URL:
+          'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+        REDIS_URL: 'redis://:secret@localhost:6379/0',
+        ...override,
+      }),
+    ).toThrow(/invalid worker configuration/i);
+  });
+
   it.each(['0', '65', '1.5'])(
     'rejects an invalid coordinator admission bound (%s)',
     (maximumAdmissions) => {
