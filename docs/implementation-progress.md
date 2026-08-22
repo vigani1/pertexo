@@ -20,7 +20,7 @@ not complete a phase.
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
-| Phase 4 — first side-effecting integration slice | In progress | ADRs 007/016 accepted; detailed implementation and evidence checklist expanded |
+| Phase 4 — first side-effecting integration slice | In progress | ADRs 007/016; managed connections and secure HTTP complete; dispatch-aware runtime and `http.request@1` candidate staged outside the release |
 | Phase 5 — orchestration slice | Not started | — |
 | Phase 6 — V1 providers and triggers | Not started | — |
 | Phase 7 — production operations | Not started | — |
@@ -1351,7 +1351,7 @@ Design prerequisites and scope:
 - [ ] Add canonical Connection, Connection secret version, connection health,
       HTTP Request, Preview run, and preview-attempt vocabulary/constants without
       introducing generic CRUD or provider base modules.
-- [ ] Keep Slack, email, OAuth completion, webhooks, Schedule, orchestration
+- [x] Keep Slack, email, OAuth completion, webhooks, Schedule, orchestration
       nodes, polling, and production operations outside this phase.
 
 Connection and secret vertical slice:
@@ -1380,7 +1380,7 @@ Connection and secret vertical slice:
 
 Generic HTTP Request vertical slice:
 
-- [ ] Add one browser-safe `http.request@1` action definition and separately
+- [x] Add one browser-safe `http.request@1` action definition and separately
       server-only executor with versioned strict config/input/output schemas,
       connection requirements, timeout/redirect/response limits, exact retry
       class, resource class, capabilities, and compatibility-release identity.
@@ -1390,7 +1390,7 @@ Generic HTTP Request vertical slice:
       redirect re-resolution, bounded redirects, method/body/header policy,
       timeout/abort, response streaming/size bounds, safe error taxonomy, and
       redaction.
-- [ ] Reject user-info URLs, credential-bearing or hop-by-hop headers, unsafe
+- [x] Reject user-info URLs, credential-bearing or hop-by-hop headers, unsafe
       protocol changes, invalid DNS results, mixed public/private answers,
       oversized requests/responses, and every redirect or DNS hop that no longer
       satisfies policy. Generic API utilities must not become an alternate
@@ -1539,10 +1539,11 @@ Current evidence:
   passes ESLint. The full repository lint command exceeded Node's default 4 GiB
   heap during this checkpoint, so it is not used as evidence for Phase 4
   completion.
-- No Phase 4 executor, registry release, or publishable node capability is
-  claimed complete yet. The managed connection API now includes its
-  SSRF-enforcing test endpoint, while the generic HTTP executor and preview
-  slices remain gated.
+- No Phase 4 registry release or publishable node capability is claimed
+  complete yet. The managed connection API includes its SSRF-enforcing test
+  endpoint and a staged generic HTTP executor candidate now exists, while
+  production composition, artifact streaming, integration-usage projection,
+  compatibility rollout, and preview execution remain gated.
 - Commit `6b1a6b6` adds the server-only, policy-enforcing HTTP execution
   boundary. Its single client seam validates a strict bounded request, resolves
   and rejects every non-public or mixed DNS answer, pins the selected address
@@ -1578,6 +1579,35 @@ Current evidence:
   artifact drift, 66 integration-package assertions, 56 database unit
   assertions, and nine fresh PostgreSQL 18 connection assertions. Focused
   typechecks/builds and ESLint for every changed source/test path pass.
+- Commit `d0449aa` adds executor ABI 2 and a narrow dispatch-aware worker
+  runtime. It carries only pinned attempt identity, opaque connection
+  references, optional connection/artifact capabilities, side-effect policy,
+  and a single `beforeDispatch` operation. ABI 2 execution fails closed when
+  runtime evidence is absent, duplicated, or never committed; unknown future
+  ABIs are rejected instead of silently inheriting ABI 1 dispatch behavior.
+  Worker tests prove the order executor start → durable dispatch marker →
+  provider I/O, while ABI 1 retains the Phase 3 pre-execution behavior.
+  Verification passes 22 Node SDK, 81 workflow-engine, 14 core-node, and 68
+  worker assertions; all four packages typecheck and build, and focused
+  formatting and ESLint pass.
+- Commit `99ae053` adds the browser-safe `http.request@1` manifest and strict
+  schemas separately from its server-only staged executor. The manifest pins
+  exact definition/executor ABI 2 identity, unsafe retry class, I/O resource
+  class, connection requirements, capabilities, and network/value policies but
+  is absent from the exact production core release. The executor requires an
+  HTTPS target and one opaque HTTP-header connection, resolves credentials only
+  through the worker runtime immediately before dispatch, rejects configured
+  credential/hop-by-hop headers and case-insensitive collisions, commits the
+  dispatch marker through the secure HTTP boundary, clears mutable secret/body
+  bytes, returns bounded inline values or an artifact reference, and collapses
+  unexpected adapter/storage causes into safe truthful outcomes. An isolated
+  release proves exact ABI compatibility without changing production catalogs.
+  Verification passes 75 integration-package assertions, 10 contract
+  assertions plus generated-artifact drift, and all 207 API assertions; affected
+  packages typecheck/build and every changed source/test path passes ESLint.
+  This evidence does not claim streaming artifact persistence, production
+  connection/artifact capability composition, usage projection, additive
+  rollout, or preview completion.
 
 ## Later phases
 
