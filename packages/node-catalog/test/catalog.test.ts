@@ -3,7 +3,14 @@ import {
   HTTP_REQUEST_DEFINITION,
   HTTP_REQUEST_EXECUTOR,
 } from '@pertexo/integrations';
+import type {
+  HttpRequestExecutorDependencies,
+  SecureHttpBodyConsumer,
+  SecureHttpRequest,
+  SecureHttpResponse,
+} from '@pertexo/integrations/server';
 import { createRegistryReleaseSuccessor } from '@pertexo/node-sdk';
+import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
 import { CORE_SET_DEFINITION, CORE_SET_EXECUTOR } from '@pertexo/nodes-core';
 
 import {
@@ -135,5 +142,103 @@ describe('platform node compatibility catalog', () => {
     expect(() => createPlatformNodeRegistryForRelease(unshipped)).toThrow(
       'Platform compatibility release identity is not supported',
     );
+  });
+
+  it('threads provider telemetry through the active HTTP registry', async () => {
+    const connectionId = '11111111-1111-4111-8111-111111111111';
+    const secret = new TextEncoder().encode(
+      JSON.stringify({
+        schemaVersion: 1,
+        type: 'http_headers',
+        headers: { authorization: 'Bearer telemetry-proof' },
+      }),
+    );
+    const executeStreaming = async <Body>(
+      request: SecureHttpRequest,
+      consume: SecureHttpBodyConsumer<Body>,
+    ): Promise<SecureHttpResponse<Body>> => {
+      await request.beforeDispatch();
+      const signal = request.signal ?? new AbortController().signal;
+      const body = await consume({
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+        body: (async function* (): AsyncGenerator<Uint8Array> {
+          await Promise.resolve();
+          yield new TextEncoder().encode('{"ok":true}');
+        })(),
+        bodyEncoding: 'utf8',
+        finalUrl: 'https://provider.example.test',
+        redirectCount: 0,
+        signal,
+      });
+      return {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+        body,
+        bodyEncoding: 'utf8',
+        finalUrl: 'https://provider.example.test',
+        redirectCount: 0,
+      };
+    };
+    const measure = vi.fn<
+      NonNullable<HttpRequestExecutorDependencies['telemetry']>['measure']
+    >((work) => work());
+    const beforeDispatch = vi.fn().mockResolvedValue(undefined);
+    const runtime = {
+      workspaceId: '22222222-2222-4222-8222-222222222222',
+      runId: '33333333-3333-4333-8333-333333333333',
+      nodeRunId: '44444444-4444-4444-8444-444444444444',
+      attemptId: '55555555-5555-4555-8555-555555555555',
+      attemptNumber: 1,
+      nodeId: 'http',
+      invocationKey: 'http-invocation',
+      sideEffectClass: 'unsafe',
+      beforeDispatch,
+      connections: {
+        assertCurrent: vi.fn().mockResolvedValue(undefined),
+        resolve: vi.fn().mockResolvedValue({
+          connectionId,
+          providerKey: 'http',
+          authType: 'http_headers',
+          secretVersionId: '66666666-6666-4666-8666-666666666666',
+          secret,
+        }),
+      },
+    } satisfies NodeExecutionRuntime;
+    const registry = createPlatformNodeRegistryForRelease(
+      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+      {
+        httpRequest: {
+          httpClient: { executeStreaming },
+        },
+        httpRequestTelemetry: { measure },
+      },
+    );
+
+    await expect(
+      registry.execute({
+        definition: HTTP_REQUEST_DEFINITION,
+        executor: HTTP_REQUEST_EXECUTOR,
+        config: {
+          method: 'GET',
+          url: 'https://provider.example.test/v1/items',
+          headers: { accept: 'application/json' },
+          timeoutMillis: 10_000,
+          maxRedirects: 2,
+          maxResponseBytes: 1_048_576,
+          inlineResponseBytes: 65_536,
+        },
+        input: {},
+        connectionRefs: { http_headers: connectionId },
+        runtime,
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toMatchObject({
+      kind: 'succeeded',
+      output: { body: { kind: 'inline', value: '{"ok":true}' } },
+    });
+    expect(measure).toHaveBeenCalledOnce();
+    expect(beforeDispatch).toHaveBeenCalledOnce();
+    expect(secret.every((byte) => byte === 0)).toBe(true);
   });
 });

@@ -118,7 +118,17 @@ export class HttpRequestExecutorError extends Error {
 
 export type HttpRequestExecutorDependencies = Readonly<{
   httpClient: Pick<SecureHttpClient, 'executeStreaming'>;
+  telemetry?: HttpRequestExecutorTelemetry;
 }>;
+
+export interface HttpRequestExecutorTelemetry {
+  measure(work: () => Promise<HttpRequestOutput>): Promise<HttpRequestOutput>;
+}
+
+export const NOOP_HTTP_REQUEST_EXECUTOR_TELEMETRY: HttpRequestExecutorTelemetry =
+  Object.freeze({
+    measure: (work: () => Promise<HttpRequestOutput>) => work(),
+  });
 
 function failedConfiguration(): HttpRequestExecutorError {
   return new HttpRequestExecutorError(
@@ -443,6 +453,8 @@ export function createHttpRequestExecutorRegistration(
       HTTP_REQUEST_VALUE_POLICY,
     ]),
     execute: (invocation: NodeExecutionInvocation<unknown, unknown>) =>
-      executeHttpRequest(dependencies, invocation),
+      (dependencies.telemetry ?? NOOP_HTTP_REQUEST_EXECUTOR_TELEMETRY).measure(
+        () => executeHttpRequest(dependencies, invocation),
+      ),
   });
 }

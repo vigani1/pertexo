@@ -5,6 +5,7 @@ import {
   createHttpRequestExecutorRegistration,
   createNodeSecureHttpClient,
   type HttpRequestExecutorDependencies,
+  type HttpRequestExecutorTelemetry,
 } from '@pertexo/integrations/server';
 import { parseRegistryRelease } from '@pertexo/node-sdk';
 import {
@@ -35,6 +36,7 @@ export type PlatformNodeRegistry = Readonly<{
 
 export type PlatformNodeRegistryDependencies = Readonly<{
   httpRequest?: HttpRequestExecutorDependencies;
+  httpRequestTelemetry?: HttpRequestExecutorTelemetry;
 }>;
 
 export function createPlatformNodeRegistryForRelease(
@@ -70,8 +72,16 @@ export function createPlatformNodeRegistryForRelease(
     return Object.freeze({ ...registration, manifest });
   });
 
+  const httpRequestDependencies = dependencies.httpRequest ?? {
+    httpClient: createNodeSecureHttpClient(),
+  };
   const httpExecutor = createHttpRequestExecutorRegistration(
-    dependencies.httpRequest ?? { httpClient: createNodeSecureHttpClient() },
+    {
+      ...httpRequestDependencies,
+      ...(dependencies.httpRequestTelemetry === undefined
+        ? {}
+        : { telemetry: dependencies.httpRequestTelemetry }),
+    },
     'active',
   );
   const executorRegistrations: readonly NodeExecutorRegistration[] = [

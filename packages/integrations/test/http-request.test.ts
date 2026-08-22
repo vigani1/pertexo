@@ -215,7 +215,13 @@ describe('http.request@1 server executor', () => {
       return response(providerBody);
     });
     const httpClient = streamingHttpClient(dispatch);
-    const registration = createHttpRequestExecutorRegistration({ httpClient });
+    const measure = vi.fn<
+      NonNullable<HttpRequestExecutorDependencies['telemetry']>['measure']
+    >((work) => work());
+    const registration = createHttpRequestExecutorRegistration({
+      httpClient,
+      telemetry: { measure },
+    });
 
     await expect(
       registration.execute(invocation(state.value)),
@@ -247,6 +253,7 @@ describe('http.request@1 server executor', () => {
     expect(state.secret.every((byte) => byte === 0)).toBe(true);
     expect(requestBody?.every((byte) => byte === 0)).toBe(true);
     expect(providerBody.every((byte) => byte === 0)).toBe(true);
+    expect(measure).toHaveBeenCalledOnce();
   });
 
   it('writes large output through the artifact capability and returns only its reference', async () => {

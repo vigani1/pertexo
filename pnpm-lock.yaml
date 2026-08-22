@@ -105,6 +105,9 @@ importers:
       '@nestjs/core':
         specifier: 11.2.1
         version: 11.2.1(@nestjs/common@11.2.1(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0))(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@opentelemetry/api':
+        specifier: 1.9.0
+        version: 1.9.0
       '@pertexo/artifact-store':
         specifier: workspace:*
         version: link:../../packages/artifact-store
@@ -142,9 +145,6 @@ importers:
         specifier: 4.4.3
         version: 4.4.3
     devDependencies:
-      '@opentelemetry/api':
-        specifier: 1.9.0
-        version: 1.9.0
       '@opentelemetry/sdk-node':
         specifier: 0.221.0
         version: 0.221.0(@opentelemetry/api@1.9.0)(supports-color@7.2.0)

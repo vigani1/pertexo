@@ -38,6 +38,7 @@ import {
   createNodeAttemptExecutionEngine,
   type NodeAttemptExecutionEngineOptions,
 } from './node-attempt-engine.js';
+import { createProductionHttpProviderTelemetry } from './http-provider-telemetry.js';
 import {
   createNodeAttemptHandler,
   type NodeAttemptExecutionEngine,
@@ -149,7 +150,9 @@ export async function createNodeAttemptRuntime(
     dependencies.engine ?? createNodeAttemptExecutionEngine(engineOptions);
   const registry =
     dependencies.registry ??
-    createPlatformNodeRegistryForRelease(latestNodeRelease);
+    createPlatformNodeRegistryForRelease(latestNodeRelease, {
+      httpRequestTelemetry: createProductionHttpProviderTelemetry(),
+    });
   const runStore =
     dependencies.runStore ?? createNodeAttemptRunStore(options.database);
   const reader =

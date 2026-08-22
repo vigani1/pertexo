@@ -48,8 +48,12 @@ export {
 export {
   createHttpRequestExecutorRegistration,
   HttpRequestExecutorError,
+  NOOP_HTTP_REQUEST_EXECUTOR_TELEMETRY,
 } from './http-request/executor.js';
-export type { HttpRequestExecutorDependencies } from './http-request/executor.js';
+export type {
+  HttpRequestExecutorDependencies,
+  HttpRequestExecutorTelemetry,
+} from './http-request/executor.js';
 export type {
   HttpExecutionErrorKind,
   HttpOutcomeDecision,
