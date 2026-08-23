@@ -256,9 +256,19 @@ historical evidence and do not substitute for the final corrected-head gate:
 
 Corrections `dd0d665` and `5dfb5f0` pass affected formatting/ESLint,
 typechecks, builds, unit suites, and the focused six-scenario real-PostgreSQL
-preview-worker integration test. Root `pnpm check` and the complete sequential
-real-service matrix will be appended only after they run at the final
-corrected head.
+preview-worker integration test. At corrected documentation head `d3f1397`:
+
+- root `pnpm check` passes formatting, repository-wide ESLint, generated
+  contract drift, every workspace typecheck and unit suite, and every
+  production build;
+- the dependency-ordered real-service matrix passes on disposable PostgreSQL
+  18 at migration head `0022_preview_execution.sql`: artifact-store 2 in
+  0.269 s, database 230 across 16 files in 16.86 s, worker 11 across four files
+  in 4.48 s, and API 7 across two active files in 6.37 s;
+- the compatibility-rollout suite passes its one assertion last in 1.35 s;
+  and
+- the disposable database was dropped afterward; PostgreSQL 18, Redis 8.2.8,
+  and S3Mock 5.1.0 remained healthy.
 
 ## Session work log — branch `fix/audit-findings` (reviewer guide)
 
@@ -287,15 +297,15 @@ deliberately deferred against the authoritative plan.
 
 ### Verification summary
 
-- The pre-correction checkpoints reported repository-wide `pnpm check` green
-  (format, lint, generated-contract drift, typechecks, unit suites, production
-  builds). The corrective commits have affected-package evidence; their final
-  root gate remains pending.
+- The corrected documentation head `d3f1397` passes repository-wide
+  `pnpm check` (format, lint, generated-contract drift, typechecks, unit suites,
+  production builds).
 - Fresh-isolated-database integration matrices were run repeatedly before the
   corrective review (latest recorded state:
   artifact-store 2, database 230+, worker 10+, API 7 assertions) with the
   disposable database dropped and the shared development database untouched;
-  the corrected-head matrix remains pending. The known shared-DB `0012`
+  the corrected-head matrix then passed with artifact-store 2, database 230,
+  worker 11, API 7, and the rollout assertion last. The known shared-DB `0012`
   checksum drift (Finding 4) is why local full runs use the fresh-database
   procedure.
 - Focused suites added or extended by this session include tenant-context

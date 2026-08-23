@@ -1668,6 +1668,16 @@ Current evidence:
   `outcome_unknown`. Six real-PostgreSQL preview-worker scenarios pass. The
   durable automatic mechanism that schedules such reconciliation/redelivery
   remains an activation blocker and is not delegated to BullMQ retry counts.
+- At corrected documentation head `d3f1397`, root `pnpm check` passes all
+  format, ESLint, generated-contract, typecheck, unit, and production-build
+  gates. The dependency-ordered fresh real-service matrix passes against
+  PostgreSQL 18 migrated zero-to-`0022_preview_execution.sql`: artifact-store
+  2 in 0.269 s, database 230 across 16 files in 16.86 s, worker 11 across four
+  files in 4.48 s, and API 7 across two active files in 6.37 s. The additive
+  compatibility-rollout proof runs last and passes one assertion in 1.35 s.
+  The disposable database is dropped afterward; PostgreSQL, Redis 8.2.8, and
+  S3Mock 5.1.0 remain healthy. This verifies the repair branch but does not
+  close the unchecked Phase 4 activation criteria above.
 - No Phase 4 registry release or publishable node capability is claimed
   complete yet. The managed connection API includes its SSRF-enforcing test
   endpoint and a staged generic HTTP executor candidate now exists, while
