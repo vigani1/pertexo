@@ -1668,6 +1668,17 @@ Current evidence:
   `outcome_unknown`. Six real-PostgreSQL preview-worker scenarios pass. The
   durable automatic mechanism that schedules such reconciliation/redelivery
   remains an activation blocker and is not delegated to BullMQ retry counts.
+- Commit `d44ce6b` closes the final fixed-head review blocker: cancellation
+  raised by the production mapping resolver before provider dispatch now maps
+  to the canonical canceled preview outcome instead of
+  `preview.executor_failed`. Its regression aborts before mapping, proves the
+  executor is never called, and leaves ADR 007 dispatch truth intact. Preview
+  composition also expresses its durable run store as required rather than
+  defending against an impossible optional state. All 98 worker assertions
+  and repository-wide `pnpm check` pass. Independent Standards and Spec
+  reviews against exact head `d44ce6bcf5a705cfa89d8dae1fbf97724c099edb`
+  report no blocker/high merge finding; they retain the explicitly unchecked
+  Phase 4 activation gates.
 - At corrected documentation head `d3f1397`, root `pnpm check` passes all
   format, ESLint, generated-contract, typecheck, unit, and production-build
   gates. The dependency-ordered fresh real-service matrix passes against

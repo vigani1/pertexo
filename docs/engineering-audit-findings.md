@@ -26,6 +26,7 @@ status in [the implementation progress tracker](./implementation-progress.md).
 | 11 | Production preview composition omitted readiness/capabilities and leaked on startup failure | High | Fixed (`dd0d665`) |
 | 12 | Lease loss could manufacture cancellation; reconciliation ignored side-effect class | Critical | Fixed (`dd0d665`, `5dfb5f0`) |
 | 13 | Artifact output, automatic reconciliation, terminal audit/usage/metrics, and retention deletion are incomplete | High | Open (activation blockers) |
+| 14 | Cancellation during preview input mapping could be mislabeled as executor failure | High | Fixed (`d44ce6b`) |
 
 ## Finding 1 — Compatibility-rollout proof absent from CI (High)
 
@@ -223,8 +224,8 @@ production contract:
 Verification at those checkpoints includes affected format/ESLint gates,
 database/queue/observability/workflow-engine/worker/API typechecks and unit
 suites, plus the six-scenario real-PostgreSQL preview-worker integration file.
-The final repository-wide and complete real-service fixed-head gates remain to
-be recorded below rather than inferred from these focused checks.
+The corrected-head repository-wide and complete real-service gates are
+recorded below rather than inferred from these focused checks.
 
 ## Finding 13 — Preview activation remains incomplete (Open)
 
@@ -236,6 +237,23 @@ prior-preview/status HTTP evidence, and the HTTP activation rollout. None is
 made complete by `dd0d665` or `5dfb5f0`. Production node-test route activation
 and the Phase 4 registry release must remain disabled until those requirements
 and the final independent fixed-head reviews pass.
+
+## Finding 14 — Mapping cancellation lost its canonical outcome (Fixed)
+
+The Standards review at `cd8a62b` found that the production mapping resolver
+raises `WorkflowEngineError('attempt_aborted')` when cancellation wins before
+provider execution, but the preview invoker handled only mapping validation
+errors explicitly. The generic executor classifier could therefore label a
+pre-dispatch cancellation as `preview.executor_failed`.
+
+Commit `d44ce6b` maps that engine decision to the canonical canceled preview
+outcome. Its regression starts with an aborted signal, enters a real
+`run_input` mapping, and proves the executor is never called. The same commit
+makes the durable preview store required in the composition type, removing a
+redundant runtime guard for an impossible optional state. All 98 worker tests
+and repository-wide `pnpm check` pass. Independent Standards and Spec
+re-reviews against exact head `d44ce6bcf5a705cfa89d8dae1fbf97724c099edb`
+report no remaining blocker/high merge finding.
 
 ## Verification record for this branch
 
@@ -270,12 +288,18 @@ preview-worker integration test. At corrected documentation head `d3f1397`:
 - the disposable database was dropped afterward; PostgreSQL 18, Redis 8.2.8,
   and S3Mock 5.1.0 remained healthy.
 
+At fixed implementation head `d44ce6b`, root `pnpm check` passes again after
+the mapping-cancellation repair, including all 98 worker assertions. The Spec
+and Standards fixed-head re-reviews report zero blocker/high merge findings.
+The open Phase 4 activation gates in Finding 13 remain unchanged.
+
 ## Session work log — branch `fix/audit-findings` (reviewer guide)
 
-Everything below happened on this branch only; `main` was never touched.
-Commits are listed in order with the reasoning a reviewer needs, followed by
-an explicit register of every place this session interpreted, extended, or
-deliberately deferred against the authoritative plan.
+Everything below was developed and reviewed on this branch before any
+fast-forward merge to `main`. Commits are listed in order with the reasoning a
+reviewer needs, followed by an explicit register of every place this session
+interpreted, extended, or deliberately deferred against the authoritative
+plan.
 
 ### Commit index
 
@@ -294,6 +318,7 @@ deliberately deferred against the authoritative plan.
 | `abe757f` + `4cce3cf` | Unsupported sweep placeholder | Added a job kind with no consumer or authorized serving role. This was not a valid capability and is removed by `dd0d665`; Finding 7 records the correction. |
 | `dd0d665` | Preview correctness repair | Reuses production input mapping, aligns API/worker release identity, fixes unsafe deadline truth and heartbeat lease-loss behavior, composes preview-only readiness plus JIT capabilities, closes startup failures, and removes the unsupported sweep contract. |
 | `5dfb5f0` | Reconciliation truth repair | Reclaims undispatched, safe, and stable-key expired deliveries while reserving `outcome_unknown` for unsafe possibly-dispatched work; automatic reconciliation delivery is still open. |
+| `d44ce6b` | Mapping-cancellation truth repair | Maps the workflow engine's pre-dispatch `attempt_aborted` decision to the canonical canceled preview outcome, proves the executor is never invoked, and makes the already-required durable preview store explicit in the composition type. |
 
 ### Verification summary
 
@@ -310,9 +335,13 @@ deliberately deferred against the authoritative plan.
   procedure.
 - Focused suites added or extended by this session include tenant-context
   hygiene 5, preview persistence/reconciliation 6, preview handler 13,
-  platform preview invoker 2, preview real transport 1, and connection
+  platform preview invoker 3, preview real transport 1, and connection
   concurrency +2. Counts are fixed-head evidence and will be regenerated at
   the final gate.
+- At fixed implementation head `d44ce6b`, repository-wide `pnpm check` passes,
+  including all 98 worker assertions. Independent Standards and Spec reviews
+  report no remaining blocker/high finding for merging this explicitly gated
+  foundation; both reviews retain the Phase 4 activation blockers below.
 
 ### Deviation and interpretation register
 
