@@ -2211,6 +2211,12 @@ Current evidence:
   lease context, and executor ambiguity still crossed packages through an
   unowned structural convention. The fixed-head review gate remains open until
   those findings are regression-tested and Standards is rerun.
+- Commit `efe46e2` resolves the provider-confirmed inline-stream finding. Three
+  failing-first regressions showed that a 2xx response followed by body timeout,
+  cancellation, or network stream failure had been classified as definite;
+  those post-response failures are now ambiguous and unsafe HTTP execution
+  preserves `outcome_unknown`. The focused secure HTTP and HTTP Request suites
+  pass 65 assertions, with integrations typecheck and scoped lint green.
 
 ## Phase 5 — Orchestration slice
 
