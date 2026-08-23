@@ -2236,6 +2236,24 @@ Current evidence:
   zero-to-head migration, readiness, RLS, and due admission; the gate database
   was removed afterward. The user-owned shared `pertexo` database remains
   untouched with its documented historical `0012` checksum mismatch.
+- Independent fixed-head reviews of `67474b3...7f16f9a` remained NO-GO. Spec
+  found that persisted `retry_due_at` work had no production PostgreSQL scanner
+  to wake the coordinator and that the public node-test route omitted the
+  required `/draft` segment. Standards found that adapter retry recommendations
+  bypassed the pinned error-kind allowlist and that a generic preview
+  cancellation could remain definite after the handler had recorded dispatch
+  of unsafe work. The reviews otherwise verified production preview
+  composition, response-stream truth, the finite SDK failure protocol,
+  deterministic bounded backoff, pending-evidence persistence, atomic
+  coordinator resolution, provider-key reuse, and worker/BullMQ non-ownership
+  of business retries.
+- Commits `e94714b` and `ba539cb` close three of those four findings. Executor
+  retry recommendations are now gated by `engine.retry@1`; unsafe dispatched
+  preview cancellation becomes `outcome_unknown`; and the generated contract,
+  controller, and production route test use
+  `/workflows/:workflowId/draft/nodes/:nodeId/test`. The focused engine, worker,
+  contracts, and API suites and typechecks pass. The final Phase 4 gate remains
+  open only for production due-work wake-up and another fixed-head review.
 
 ## Phase 5 — Orchestration slice
 
