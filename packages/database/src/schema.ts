@@ -647,6 +647,10 @@ export const nodeRuns = appSchema.table(
       withTimezone: true,
       mode: 'date',
     }),
+    dueWakeupAt: timestamp('due_wakeup_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
     safeErrorCode: varchar('safe_error_code', { length: 128 }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()

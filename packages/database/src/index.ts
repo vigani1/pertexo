@@ -4,6 +4,8 @@ export {
   parseOutboxDispatcherConfig,
 } from './config.js';
 export type { DatabaseConfig, MigrationConfig } from './config.js';
+export { createDueNodeWakeupScanner } from './due-node-wakeup-scanner.js';
+export type { DueNodeWakeupScanner } from './due-node-wakeup-scanner.js';
 export {
   CONNECTION_AUTH_TYPE,
   CONNECTION_EVENT_TYPE,

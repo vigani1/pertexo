@@ -21,6 +21,71 @@ const VERSION_ID = '33333333-3333-4333-8333-333333333333';
 const OUTBOX_EVENT_ID = '44444444-4444-4444-8444-444444444444';
 
 describe('coordinator runtime', () => {
+  it('polls due PostgreSQL wakeups without overlap and drains the scanner on close', async () => {
+    let releaseScan: (() => void) | undefined;
+    const scanStarted = new Promise<void>((resolve) => {
+      releaseScan = resolve;
+    });
+    const scanner = {
+      claimDueWakeups: vi
+        .fn()
+        .mockRejectedValueOnce(new Error('transient database outage'))
+        .mockImplementation(async () => scanStarted),
+      close: vi.fn().mockResolvedValue(undefined),
+    };
+    const consumer: QueueConsumer = {
+      close: vi.fn().mockResolvedValue({ abortedJobs: 0, forced: false }),
+      isReady: vi.fn().mockReturnValue(true),
+      waitUntilReady: vi.fn().mockResolvedValue(undefined),
+    };
+    const adapter = { close: vi.fn().mockResolvedValue(undefined) };
+    const notifications = {
+      ...adapter,
+      publish: vi.fn().mockResolvedValue(undefined),
+      resync: vi.fn().mockResolvedValue(undefined),
+    };
+    const runtime = await createCoordinatorRuntime(
+      {
+        database: {
+          connectionString:
+            'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+          connectionTimeoutMillis: 5_000,
+          idleTimeoutMillis: 30_000,
+          max: 5,
+          ownerRole: 'pertexo_owner',
+          workerRuntimeRole: 'pertexo_worker',
+        },
+        dueWakeupBatchSize: 10,
+        dueWakeupPollIntervalMillis: 20,
+        maximumAdmissions: 32,
+        redisUrl: 'redis://unreachable.invalid:6379/0',
+      },
+      {
+        consumerFactory: () => consumer,
+        engine: { advance: vi.fn() },
+        notifications,
+        reader: { ...adapter, readForExecution: vi.fn() },
+        runStore: {
+          ...adapter,
+          acknowledgeAdvanceDelivery: vi.fn(),
+          loadAdvanceState: vi.fn(),
+          commitAdvancePlan: vi.fn(),
+        },
+        dueWakeupScanner: scanner,
+      },
+    );
+
+    await vi.waitFor(() => {
+      expect(scanner.claimDueWakeups).toHaveBeenCalledTimes(2);
+    });
+    const closing = runtime.close();
+    expect(scanner.close).not.toHaveBeenCalled();
+    releaseScan?.();
+    await closing;
+    expect(scanner.claimDueWakeups).toHaveBeenCalledTimes(2);
+    expect(scanner.close).toHaveBeenCalledOnce();
+  });
+
   it('composes one traced coordinator consumer and closes every owned adapter', async () => {
     let consumerOptions: QueueConsumerOptions | undefined;
     const consumer: QueueConsumer = {
@@ -91,6 +156,10 @@ describe('coordinator runtime', () => {
             kind: 'no_change',
             revision: 0,
           }),
+        },
+        dueWakeupScanner: {
+          claimDueWakeups: vi.fn().mockResolvedValue(0),
+          close: vi.fn().mockResolvedValue(undefined),
         },
         reader,
         runStore,

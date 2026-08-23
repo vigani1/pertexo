@@ -1515,7 +1515,7 @@ async function persistDueReadyTransitions(
     throw new CoordinatorPlanInvalidError();
   const updated = await client.query(
     `update app.node_runs
-     set status='ready', resume_at=null, retry_due_at=null,
+     set status='ready', resume_at=null, retry_due_at=null, due_wakeup_at=null,
          updated_at=clock_timestamp()
      where workspace_id=$1 and workflow_run_id=$2
        and invocation_key=any($3::varchar[]) and status='waiting'`,
@@ -2187,7 +2187,7 @@ export function createCoordinatorRunStore(
               const nodeStatus = decision === 'retry' ? 'waiting' : decision;
               const updated = await client.query(
                 `update app.node_runs
-                 set status=$4::varchar,retry_due_at=$5,
+                 set status=$4::varchar,retry_due_at=$5,due_wakeup_at=null,
                      completed_at=case when $4::varchar='waiting' then null else clock_timestamp() end,
                      safe_error_code=$6,updated_at=clock_timestamp()
                  where workspace_id=$1 and workflow_run_id=$2
@@ -2297,7 +2297,7 @@ export function createCoordinatorRunStore(
                   `update app.node_runs
                  set status='ready', current_attempt_id=$1,
                      current_attempt_number=$2, resume_at=null,
-                     retry_due_at=null, updated_at=clock_timestamp()
+                      retry_due_at=null, due_wakeup_at=null, updated_at=clock_timestamp()
                  where workspace_id=$3 and id=$4`,
                   [
                     ids.attemptId,
@@ -2436,7 +2436,8 @@ export function createCoordinatorRunStore(
                 const updatedNode = await client.query(
                   `update app.node_runs
                  set status=$1, completed_at=clock_timestamp(),
-                     safe_error_code=$2, resume_at=null, retry_due_at=null,
+                      safe_error_code=$2, resume_at=null, retry_due_at=null,
+                      due_wakeup_at=null,
                      updated_at=clock_timestamp()
                  where workspace_id=$3 and workflow_run_id=$4
                    and invocation_key=$5

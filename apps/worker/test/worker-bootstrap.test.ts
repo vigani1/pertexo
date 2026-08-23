@@ -39,7 +39,11 @@ const database: WorkspaceDatabase = {
 };
 
 const workerConfig = {
-  coordinator: { maximumAdmissions: 32 },
+  coordinator: {
+    dueWakeupBatchSize: 25,
+    dueWakeupPollIntervalMillis: 250,
+    maximumAdmissions: 32,
+  },
   nodeAttempt: {
     heartbeatIntervalMillis: 10_000,
     leaseDurationSeconds: 30,

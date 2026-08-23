@@ -276,6 +276,9 @@ function coordinatorRuntimeProvider(
         return undefined;
       return createCoordinatorRuntime({
         database: config.database,
+        dueWakeupBatchSize: config.coordinator.dueWakeupBatchSize,
+        dueWakeupPollIntervalMillis:
+          config.coordinator.dueWakeupPollIntervalMillis,
         maximumAdmissions: config.coordinator.maximumAdmissions,
         observer,
         releaseCohort: config.nodeCompatibilityCohort,

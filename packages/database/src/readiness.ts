@@ -8,7 +8,7 @@ import {
   type CompatibilityReleaseExpectationSet,
 } from './compatibility-release.js';
 
-export const EXPECTED_MIGRATION_HEAD = '0030_coordinator_retry_decisions.sql';
+export const EXPECTED_MIGRATION_HEAD = '0031_due_node_wakeups.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -48,6 +48,7 @@ interface ReadinessRow {
   phase4_preview_terminal_facts_compatible: boolean;
   execution_values_compatible: boolean;
   coordinator_run_store_compatible: boolean;
+  due_node_wakeups_compatible: boolean;
   postgres_major: number;
   relforcerowsecurity: boolean;
   relrowsecurity: boolean;
@@ -588,7 +589,8 @@ export async function checkDatabaseReadiness(
             ('node_runs', 'node_runs_workspace_scope'),
             ('node_attempts', 'node_attempts_workspace_scope')
           ) expected(table_name, policy_name)
-          where (select count(*) from pg_policy where polrelid = to_regclass('app.' || expected.table_name)) <> 1
+          where (select count(*) from pg_policy where polrelid = to_regclass('app.' || expected.table_name)) <>
+                case when expected.table_name = 'node_runs' then 3 else 1 end
             or not exists (
               select 1 from pg_policy policy
               where policy.polrelid = to_regclass('app.' || expected.table_name)
@@ -723,8 +725,8 @@ export async function checkDatabaseReadiness(
               ))
               or (privilege.table_name='node_runs' and privilege.column_name in (
                 'status','output_ref','current_attempt_id','current_attempt_number',
-                'resume_at','retry_due_at','safe_error_code','updated_at',
-                'started_at','completed_at'
+                 'resume_at','retry_due_at','safe_error_code','updated_at',
+                 'started_at','completed_at','due_wakeup_at'
               ))
               or (privilege.table_name='node_attempts' and privilege.column_name in (
                 'status','lease_owner','lease_expires_at','fence_token',
@@ -788,7 +790,8 @@ export async function checkDatabaseReadiness(
             ('node_runs', 'current_attempt_id'),
             ('node_runs', 'current_attempt_number'),
             ('node_runs', 'resume_at'),
-            ('node_runs', 'retry_due_at'),
+             ('node_runs', 'retry_due_at'),
+             ('node_runs', 'due_wakeup_at'),
             ('node_runs', 'completed_at'),
             ('node_runs', 'safe_error_code'),
             ('node_runs', 'updated_at')
@@ -1231,6 +1234,57 @@ export async function checkDatabaseReadiness(
         and not has_table_privilege(current_user, 'app.usage_events', 'TRIGGER')
       ) as phase4_preview_terminal_facts_compatible,
       (
+        exists (
+          select 1 from pg_attribute
+          where attrelid = 'app.node_runs'::regclass
+            and attname = 'due_wakeup_at' and not attisdropped
+        )
+        and exists (
+          select 1 from pg_constraint
+          where conrelid = 'app.node_runs'::regclass
+            and conname = 'node_runs_due_wakeup_consistent'
+        )
+        and exists (
+          select 1 from pg_proc
+          where oid = to_regprocedure('app.claim_due_node_run_wakeups(integer)')
+            and prosecdef
+            and pg_get_userbyid(proowner) = $1
+            and proconfig = array['search_path=pg_catalog, pg_temp']::text[]
+        )
+        and has_function_privilege($2, 'app.claim_due_node_run_wakeups(integer)', 'EXECUTE')
+        and has_column_privilege($2, 'app.node_runs', 'due_wakeup_at', 'UPDATE')
+        and not exists (
+          select 1
+          from pg_proc function_record,
+               lateral aclexplode(coalesce(
+                 function_record.proacl,
+                 acldefault('f', function_record.proowner)
+               )) privilege
+          where function_record.oid =
+                to_regprocedure('app.claim_due_node_run_wakeups(integer)')
+            and privilege.privilege_type = 'EXECUTE'
+            and privilege.grantee not in (
+              (select oid from pg_roles where rolname = $1),
+              (select oid from pg_roles where rolname = $2)
+            )
+        )
+        and exists (
+          select 1 from pg_policy
+          where polrelid = 'app.node_runs'::regclass
+            and polname = 'node_runs_due_wakeup_owner_select'
+        )
+        and exists (
+          select 1 from pg_policy
+          where polrelid = 'app.node_runs'::regclass
+            and polname = 'node_runs_due_wakeup_owner_update'
+        )
+        and exists (
+          select 1 from pg_policy
+          where polrelid = 'app.outbox_events'::regclass
+            and polname = 'outbox_events_due_wakeup_owner_insert'
+        )
+      ) as due_node_wakeups_compatible,
+      (
         select name
         from pertexo_internal.schema_migrations
         order by name desc
@@ -1312,6 +1366,9 @@ export async function checkDatabaseReadiness(
   }
   if (!row.coordinator_run_store_compatible) {
     throw new Error('Coordinator RunStore grants are incompatible');
+  }
+  if (!row.due_node_wakeups_compatible) {
+    throw new Error('Due node wakeup authority is incompatible');
   }
   if (!row.phase4_connections_compatible) {
     throw new Error('Connection persistence schema or grants are incompatible');

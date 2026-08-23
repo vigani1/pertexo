@@ -1,9 +1,11 @@
 import {
   CoordinatorDeliveryMismatchError,
+  createDueNodeWakeupScanner,
   createCoordinatorRunStore,
   createPublishedWorkflowReader,
   type CoordinatorRunStore,
   type DatabaseConfig,
+  type DueNodeWakeupScanner,
   type PublishedWorkflowReader,
 } from '@pertexo/database';
 import {
@@ -45,6 +47,8 @@ export interface CoordinatorRuntime {
 
 export type CoordinatorRuntimeOptions = Readonly<{
   database: DatabaseConfig;
+  dueWakeupBatchSize?: number;
+  dueWakeupPollIntervalMillis?: number;
   maximumAdmissions: number;
   releaseCohort?: PlatformReleaseCohort;
   observer?: QueueConsumerObserver;
@@ -55,6 +59,7 @@ export type CoordinatorRuntimeDependencies = Readonly<{
   clock?: Readonly<{ now(): string }>;
   consumerFactory?: typeof createQueueConsumer;
   engine?: CoordinatorAdvanceEngine;
+  dueWakeupScanner?: DueNodeWakeupScanner;
   notifications?: RunEventNotificationPublisher;
   reader?: PublishedWorkflowReader;
   runStore?: CoordinatorRunStore;
@@ -89,6 +94,24 @@ function queueHandler(handler: CoordinatorHandler): QueueJobHandler {
   };
 }
 
+function delay(milliseconds: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    if (signal.aborted) {
+      resolve();
+      return;
+    }
+    const onAbort = (): void => {
+      clearTimeout(timeout);
+      resolve();
+    };
+    const timeout = setTimeout(() => {
+      signal.removeEventListener('abort', onAbort);
+      resolve();
+    }, milliseconds);
+    signal.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
 export async function createCoordinatorRuntime(
   options: CoordinatorRuntimeOptions,
   dependencies: CoordinatorRuntimeDependencies = {},
@@ -102,6 +125,23 @@ export async function createCoordinatorRuntime(
       'Coordinator maximum admissions must be between 1 and 64',
     );
   }
+  const dueWakeupBatchSize = options.dueWakeupBatchSize ?? 25;
+  const dueWakeupPollIntervalMillis =
+    options.dueWakeupPollIntervalMillis ?? 250;
+  if (
+    !Number.isSafeInteger(dueWakeupBatchSize) ||
+    dueWakeupBatchSize < 1 ||
+    dueWakeupBatchSize > 100
+  )
+    throw new TypeError('Due wakeup batch size must be between 1 and 100');
+  if (
+    !Number.isSafeInteger(dueWakeupPollIntervalMillis) ||
+    dueWakeupPollIntervalMillis < 10 ||
+    dueWakeupPollIntervalMillis > 60_000
+  )
+    throw new TypeError(
+      'Due wakeup poll interval must be between 10 and 60000',
+    );
   const releaseSupport = createExecutableCompatibilityReleaseHistory(
     platformExecutableRegistryHistory(options.releaseCohort ?? 'core').map(
       composeExecutableCompatibilityRelease,
@@ -132,6 +172,9 @@ export async function createCoordinatorRuntime(
   const notifications =
     dependencies.notifications ??
     new RedisRunEventNotificationPublisher({ redisUrl: options.redisUrl });
+  const dueWakeupScanner =
+    dependencies.dueWakeupScanner ??
+    createDueNodeWakeupScanner(options.database);
   const handler = createCoordinatorHandler({
     clock: dependencies.clock ?? systemClock(),
     engine,
@@ -152,26 +195,46 @@ export async function createCoordinatorRuntime(
   } catch (error: unknown) {
     await Promise.allSettled([
       notifications.close(),
+      dueWakeupScanner.close(),
       reader.close(),
       runStore.close(),
     ]);
     throw error;
   }
+  const scannerAbort = new AbortController();
+  const scannerLoop = (async (): Promise<void> => {
+    while (!scannerAbort.signal.aborted) {
+      try {
+        await dueWakeupScanner.claimDueWakeups(dueWakeupBatchSize);
+      } catch {
+        // A transient database outage must not terminate the coordinator process.
+      }
+      await delay(dueWakeupPollIntervalMillis, scannerAbort.signal);
+    }
+  })();
   let closePromise: Promise<void> | undefined;
 
   return Object.freeze({
     consumer,
     close: (): Promise<void> => {
       closePromise ??= (async (): Promise<void> => {
+        scannerAbort.abort();
         const consumerResult = await Promise.allSettled([consumer.close()]);
+        const scannerDrainResult = await Promise.allSettled([scannerLoop]);
+        const scannerCloseResult = await Promise.allSettled([
+          dueWakeupScanner.close(),
+        ]);
         const adapterResults = await Promise.allSettled([
           notifications.close(),
           reader.close(),
           runStore.close(),
         ]);
-        const failure = [...consumerResult, ...adapterResults].find(
-          (result) => result.status === 'rejected',
-        );
+        const failure = [
+          ...consumerResult,
+          ...scannerDrainResult,
+          ...scannerCloseResult,
+          ...adapterResults,
+        ].find((result) => result.status === 'rejected');
         if (failure?.status === 'rejected') throw failure.reason;
       })();
       return closePromise;

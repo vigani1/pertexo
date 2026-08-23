@@ -14,7 +14,11 @@ describe('parseWorkerConfig', () => {
         REDIS_URL: 'redis://:secret@localhost:6379/0',
       }),
     ).toEqual({
-      coordinator: { maximumAdmissions: 32 },
+      coordinator: {
+        dueWakeupBatchSize: 25,
+        dueWakeupPollIntervalMillis: 250,
+        maximumAdmissions: 32,
+      },
       database: {
         connectionString:
           'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
@@ -76,7 +80,11 @@ describe('parseWorkerConfig', () => {
     });
 
     expect(config).toEqual({
-      coordinator: { maximumAdmissions: 32 },
+      coordinator: {
+        dueWakeupBatchSize: 25,
+        dueWakeupPollIntervalMillis: 250,
+        maximumAdmissions: 32,
+      },
       database: {
         connectionString:
           'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
@@ -221,6 +229,24 @@ describe('parseWorkerConfig', () => {
       ).toThrow(/invalid worker configuration/i);
     },
   );
+
+  it.each([
+    ['WORKFLOW_DUE_WAKEUP_BATCH_SIZE', '0'],
+    ['WORKFLOW_DUE_WAKEUP_BATCH_SIZE', '101'],
+    ['WORKFLOW_DUE_WAKEUP_POLL_MILLIS', '9'],
+    ['WORKFLOW_DUE_WAKEUP_POLL_MILLIS', '60001'],
+  ])('rejects an invalid due-wakeup scanner bound (%s=%s)', (name, value) => {
+    expect(() =>
+      parseWorkerConfig({
+        DATABASE_DISPATCHER_URL:
+          'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
+        DATABASE_WORKER_URL:
+          'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+        REDIS_URL: 'redis://:secret@localhost:6379/0',
+        [name]: value,
+      }),
+    ).toThrow(/invalid worker configuration/i);
+  });
 
   it('rejects a node-attempt heartbeat that cannot renew before lease expiry', () => {
     expect(() =>

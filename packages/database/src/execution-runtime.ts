@@ -889,6 +889,7 @@ async function delayOwnedAttempt(
     set status = 'waiting',
         resume_at = ${kind === 'wait' ? parsed.dueAt : null},
         retry_due_at = ${kind === 'retry' ? parsed.dueAt : null},
+        due_wakeup_at = null,
         safe_error_code = ${parsed.safeErrorCode ?? null},
         updated_at = clock_timestamp()
     where workspace_id = ${transaction.workspaceId} and id = ${row.node_run_id}
@@ -1036,7 +1037,8 @@ export async function commitDueNodeAdmission(
     update app.node_runs
     set status = 'ready', current_attempt_id = ${parsed.attemptId},
         current_attempt_number = ${attemptNumber}, resume_at = null,
-        retry_due_at = null, updated_at = clock_timestamp()
+        retry_due_at = null, due_wakeup_at = null,
+        updated_at = clock_timestamp()
     where workspace_id = ${transaction.workspaceId} and id = ${parsed.nodeRunId}
   `);
   const revision = parsed.expectedRevision + 1;

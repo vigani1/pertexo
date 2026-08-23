@@ -148,6 +148,18 @@ export const workerConfigSchema = z
       .min(1)
       .max(64)
       .default(32),
+    WORKFLOW_DUE_WAKEUP_BATCH_SIZE: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(100)
+      .default(25),
+    WORKFLOW_DUE_WAKEUP_POLL_MILLIS: z.coerce
+      .number()
+      .int()
+      .min(10)
+      .max(60_000)
+      .default(250),
     NODE_ATTEMPT_LEASE_SECONDS: z.coerce
       .number()
       .int()
@@ -206,6 +218,8 @@ export const workerConfigSchema = z
       OUTBOX_DISPATCH_POLL_MILLIS,
       OUTBOX_DISPATCH_RETRY_MILLIS,
       WORKFLOW_COORDINATOR_MAX_ADMISSIONS,
+      WORKFLOW_DUE_WAKEUP_BATCH_SIZE,
+      WORKFLOW_DUE_WAKEUP_POLL_MILLIS,
       NODE_ATTEMPT_LEASE_SECONDS,
       NODE_ATTEMPT_HEARTBEAT_MILLIS,
       WORKER_INSTANCE_ID,
@@ -256,6 +270,8 @@ export const workerConfigSchema = z
         retryDelayMillis: OUTBOX_DISPATCH_RETRY_MILLIS,
       },
       coordinator: {
+        dueWakeupBatchSize: WORKFLOW_DUE_WAKEUP_BATCH_SIZE,
+        dueWakeupPollIntervalMillis: WORKFLOW_DUE_WAKEUP_POLL_MILLIS,
         maximumAdmissions: WORKFLOW_COORDINATOR_MAX_ADMISSIONS,
       },
       nodeAttempt: {
