@@ -187,6 +187,52 @@ describe('preview attempt handler', () => {
     );
   });
 
+  it('persists an executor artifact reference inside the bounded preview output', async () => {
+    const { calls, store } = fakeStore();
+    const artifactId = randomUUID();
+    const write = vi.fn(() =>
+      Promise.resolve({
+        artifactId,
+        byteLength: 70_000,
+        mediaType: 'application/octet-stream',
+        sha256: 'a'.repeat(64),
+      }),
+    );
+    const invoker: PreviewNodeInvoker = {
+      invoke: async ({ runtime, signal }) => {
+        const reference = await runtime?.artifacts?.write({
+          body: (async function* (): AsyncGenerator<Uint8Array> {
+            await Promise.resolve();
+            yield new Uint8Array([1]);
+          })(),
+          maxBytes: 100_000,
+          mediaType: 'application/octet-stream',
+          purpose: 'node-output',
+          signal,
+        });
+        return {
+          output: { body: { kind: 'artifact', ...reference } },
+          status: 'succeeded',
+        };
+      },
+    };
+
+    await createPreviewAttemptHandler({
+      ...deps(store, invoker),
+      runtimeCapabilities: { artifacts: () => ({ write }) },
+    }).handle(deliveryFixture(), context());
+
+    expect(write).toHaveBeenCalledOnce();
+    expect(calls.completions[0]).toMatchObject({
+      output: {
+        kind: 'inline',
+        schemaVersion: 1,
+        value: { body: { kind: 'artifact', artifactId } },
+      },
+      status: 'succeeded',
+    });
+  });
+
   it('returns duplicates without invoking the executor', async () => {
     const { calls, store } = fakeStore({ claimKind: 'duplicate' });
     const invoke = vi.fn();

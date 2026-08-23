@@ -49,6 +49,10 @@ export type TransportJob =
       readonly queueName: 'maintenance';
     }
   | {
+      readonly jobName: 'sweep-expired-previews';
+      readonly queueName: 'maintenance';
+    }
+  | {
       readonly jobName: 'reconcile-workflow-triggers';
       readonly queueName: 'trigger-lifecycle';
     };

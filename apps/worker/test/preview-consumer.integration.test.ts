@@ -1,6 +1,10 @@
 import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 
+import {
+  createArtifactStore,
+  parseArtifactStoreConfig,
+} from '@pertexo/artifact-store';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import type { PoolClient } from 'pg';
@@ -38,9 +42,13 @@ import {
   createPlatformPreviewNodeInvoker,
 } from '../src/execution/preview-attempt-runtime.js';
 import { createPreviewReconciliationRuntime } from '../src/execution/preview-reconciliation-runtime.js';
+import { createPreviewCleanupRuntime } from '../src/execution/preview-cleanup-runtime.js';
+import { createWorkerNodeRuntimeCapabilities } from '../src/execution/node-runtime-capabilities.js';
 
 const enabled = process.env.WORKER_TRANSPORT_INTEGRATION === 'true';
 const describeIntegration = enabled ? describe : describe.skip;
+const itArtifactIntegration =
+  enabled && process.env.ARTIFACT_STORE_INTEGRATION === 'true' ? it : it.skip;
 const adminUrl =
   process.env.DATABASE_ADMIN_URL ??
   'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
@@ -540,6 +548,115 @@ afterAll(async () => {
 });
 
 describeIntegration('preview execution real transport', () => {
+  itArtifactIntegration(
+    'removes an expired preview and its object through the real maintenance path',
+    async () => {
+      const artifactConfig = parseArtifactStoreConfig(process.env);
+      const previewDeadline = new Date(Date.now() + 2_000);
+      const traceparent = validTraceparent(90);
+      const accepted = await withTenantAccept(
+        acceptanceInput(traceparent, { expiresAt: previewDeadline }),
+      );
+      const capabilities = await createWorkerNodeRuntimeCapabilities({
+        artifactStore: artifactConfig,
+        database: parseDatabaseConfig({
+          connectionString: databaseUrl(workerUrl),
+        }),
+      });
+      const verifier = createArtifactStore(artifactConfig);
+      const artifacts = capabilities.factories.artifacts?.({
+        artifactRetentionDeadline: previewDeadline,
+        attemptId: accepted.previewAttemptId,
+        attemptNumber: 1,
+        invocationKey: 'preview:node-1',
+        nodeId: 'node-1',
+        nodeRunId: accepted.previewRunId,
+        previewRunId: accepted.previewRunId,
+        runId: accepted.previewRunId,
+        workerId: 'preview-cleanup-integration',
+        workspaceId,
+      });
+      if (artifacts === undefined)
+        throw new Error('preview artifact capability missing');
+      const reference = await artifacts.write({
+        body: (async function* (): AsyncGenerator<Uint8Array> {
+          await Promise.resolve();
+          yield new TextEncoder().encode('preview cleanup proof');
+        })(),
+        maxBytes: 1_024,
+        mediaType: 'application/octet-stream',
+        purpose: 'node-output',
+        signal: new AbortController().signal,
+      });
+      const cleanupRuntime = await createPreviewCleanupRuntime({
+        artifactStore: artifactConfig,
+        database: parseDatabaseConfig({
+          connectionString: databaseUrl(workerUrl),
+        }),
+        redisUrl,
+      });
+      const dispatcher = createOutboxDispatcherDatabase(
+        parseDatabaseConfig({
+          connectionString: databaseUrl(dispatcherUrl),
+          ownerRole: 'pertexo_owner',
+        }),
+      );
+      const producer = createQueueProducer({ redisUrl });
+      try {
+        await cleanupRuntime.consumer.waitUntilReady(5_000);
+        await expect(
+          verifier.head({ artifactId: reference.artifactId, workspaceId }),
+        ).resolves.toMatchObject({ artifactId: reference.artifactId });
+        const batch = await waitFor(
+          () =>
+            dispatcher.claimBatch({
+              enabledJobNames: [JOB_NAME.sweepExpiredPreviews],
+              leaseDurationMillis: 5_000,
+              leaseOwner: 'preview-cleanup-integration',
+              leaseToken: randomUUID(),
+              limit: 10,
+              maxAttempts: 3,
+            }),
+          (value) => value.events.length > 0,
+        );
+        const event = batch.events.find(
+          (candidate) => candidate.aggregateId === accepted.previewRunId,
+        );
+        if (event === undefined)
+          throw new Error('due preview cleanup outbox missing');
+        await producer.publish(
+          parseQueueJob({ name: event.jobName, data: event.payload }),
+        );
+        await dispatcher.markPublished(event.id, event.leaseToken);
+        await waitFor(
+          () =>
+            withTenantScopedClient(workerPool, { workspaceId }, (client) =>
+              client.query<{ count: string }>(
+                `select count(*)::text as count from app.preview_runs
+                   where workspace_id=$1 and id=$2`,
+                [workspaceId, accepted.previewRunId],
+              ),
+            ).then((result) => result.rows[0]?.count ?? 'missing'),
+          (count) => count === '0',
+        );
+        await expect(
+          verifier.head({ artifactId: reference.artifactId, workspaceId }),
+        ).resolves.toBeNull();
+      } finally {
+        await Promise.allSettled([
+          cleanupRuntime.close(),
+          dispatcher.close(),
+          producer.close(),
+          capabilities.close(),
+        ]);
+        await verifier
+          .delete({ artifactId: reference.artifactId, workspaceId })
+          .catch(() => undefined);
+        verifier.close();
+      }
+    },
+  );
+
   it('executes an accepted preview through BullMQ once and duplicates safely', async () => {
     const delivery = await acceptDelivery(validTraceparent(1));
     const previewStore = createDatabasePreviewAttemptRunStore(

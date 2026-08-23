@@ -29,6 +29,7 @@ export const SUPPORTED_DISPATCH_CAPABILITIES = Object.freeze([
   JOB_NAME.executeNodeAttempt,
   JOB_NAME.executePreviewAttempt,
   JOB_NAME.reconcilePreviewAttempt,
+  JOB_NAME.sweepExpiredPreviews,
   JOB_NAME.expireArtifacts,
 ] as const satisfies readonly JobName[]);
 

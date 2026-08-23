@@ -8,7 +8,7 @@ import {
   type CompatibilityReleaseExpectationSet,
 } from './compatibility-release.js';
 
-export const EXPECTED_MIGRATION_HEAD = '0023_preview_artifact_ownership.sql';
+export const EXPECTED_MIGRATION_HEAD = '0024_preview_retention_cleanup.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -585,8 +585,7 @@ export async function checkDatabaseReadiness(
             ('run_events', 'run_events_workspace_scope'),
             ('run_checkpoints', 'run_checkpoints_workspace_scope'),
             ('node_runs', 'node_runs_workspace_scope'),
-            ('node_attempts', 'node_attempts_workspace_scope'),
-            ('artifacts', 'artifacts_workspace_scope')
+            ('node_attempts', 'node_attempts_workspace_scope')
           ) expected(table_name, policy_name)
           where (select count(*) from pg_policy where polrelid = to_regclass('app.' || expected.table_name)) <> 1
             or not exists (
@@ -599,6 +598,16 @@ export async function checkDatabaseReadiness(
                 and pg_get_expr(policy.polqual, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
                 and pg_get_expr(policy.polwithcheck, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
             )
+        )
+        and exists (
+          select 1 from pg_policy policy
+          where policy.polrelid = to_regclass('app.artifacts')
+            and policy.polname = 'artifacts_workspace_scope'
+            and policy.polcmd = '*'
+            and cardinality(policy.polroles) = 3
+            and (select oid from pg_roles where rolname = $2) = any(policy.polroles)
+            and pg_get_expr(policy.polqual, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
+            and pg_get_expr(policy.polwithcheck, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
         )
         and not exists (
           select 1 from (values ('workflow_runs', 'input_ref')) protected(table_name, column_name)
@@ -956,6 +965,13 @@ export async function checkDatabaseReadiness(
           where tgrelid = to_regclass('app.artifact_links')
             and tgname = 'artifact_link_preview_retention'
             and not tgisinternal
+        )
+        and exists (
+          select 1 from pg_proc routine
+          where routine.oid = to_regprocedure('app.complete_preview_cleanup(uuid,uuid)')
+            and routine.prosecdef
+            and pg_get_userbyid(routine.proowner) = $1
+            and has_function_privilege($2, routine.oid, 'EXECUTE')
         )
         and exists (
           select 1 from pg_class protected

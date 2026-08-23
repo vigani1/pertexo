@@ -16,7 +16,7 @@ const integrationUsageMigrationUrl = new URL(
 
 describe('workflow authoring migration contract', () => {
   it('advances the reviewed migration head', () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0023_preview_artifact_ownership.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0024_preview_retention_cleanup.sql');
   });
 
   it('emits the identifier-only trigger-reconciliation payload', () => {

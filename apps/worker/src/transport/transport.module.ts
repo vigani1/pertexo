@@ -32,6 +32,10 @@ import {
   createPlatformPreviewNodeInvoker,
 } from '../execution/preview-attempt-runtime.js';
 import {
+  createPreviewCleanupRuntime,
+  type PreviewCleanupRuntime,
+} from '../execution/preview-cleanup-runtime.js';
+import {
   createPreviewReconciliationRuntime,
   type PreviewReconciliationRuntime,
 } from '../execution/preview-reconciliation-runtime.js';
@@ -51,6 +55,7 @@ export const NODE_ATTEMPT_RUNTIME = Symbol('NODE_ATTEMPT_RUNTIME');
 export const PREVIEW_RECONCILIATION_RUNTIME = Symbol(
   'PREVIEW_RECONCILIATION_RUNTIME',
 );
+export const PREVIEW_CLEANUP_RUNTIME = Symbol('PREVIEW_CLEANUP_RUNTIME');
 export const DISPATCH_CONSUMER_CAPABILITIES = Symbol(
   'DISPATCH_CONSUMER_CAPABILITIES',
 );
@@ -59,6 +64,7 @@ export type TransportModuleDependencies = Readonly<{
   coordinatorRuntime?: CoordinatorRuntime;
   nodeAttemptRuntime?: NodeAttemptRuntime;
   previewReconciliationRuntime?: PreviewReconciliationRuntime;
+  previewCleanupRuntime?: PreviewCleanupRuntime;
   dispatchConsumerCapabilities?: DispatchConsumerCapabilityRegistry;
   dispatcherDatabase?: OutboxDispatcherDatabase;
   queueProducer?: QueueProducer;
@@ -79,6 +85,8 @@ class OutboxDispatcherLifecycle
     @Inject(PREVIEW_RECONCILIATION_RUNTIME)
     private readonly previewReconciliationRuntime:
       PreviewReconciliationRuntime | undefined,
+    @Inject(PREVIEW_CLEANUP_RUNTIME)
+    private readonly previewCleanupRuntime: PreviewCleanupRuntime | undefined,
     private readonly drainState: WorkerDrainState,
   ) {}
 
@@ -98,10 +106,46 @@ class OutboxDispatcherLifecycle
       ...(this.previewReconciliationRuntime === undefined
         ? []
         : [this.previewReconciliationRuntime.close()]),
+      ...(this.previewCleanupRuntime === undefined
+        ? []
+        : [this.previewCleanupRuntime.close()]),
     ]);
     const failure = results.find((result) => result.status === 'rejected');
     if (failure?.status === 'rejected') throw failure.reason;
   }
+}
+
+function previewCleanupRuntimeProvider(
+  config: WorkerConfig,
+  dependencies: TransportModuleDependencies,
+): Provider {
+  return {
+    provide: PREVIEW_CLEANUP_RUNTIME,
+    inject: [QUEUE_CONSUMER_OBSERVER],
+    useFactory: async (
+      observer: QueueConsumerObserver,
+    ): Promise<PreviewCleanupRuntime | undefined> => {
+      if (dependencies.previewCleanupRuntime !== undefined)
+        return dependencies.previewCleanupRuntime;
+      if (
+        dependencies.dispatchConsumerCapabilities !== undefined ||
+        !config.outboxDispatcher.enabledJobNames.includes(
+          JOB_NAME.sweepExpiredPreviews,
+        )
+      )
+        return undefined;
+      if (config.artifactStore === undefined)
+        throw new TypeError(
+          'Preview cleanup requires the artifact-store capability',
+        );
+      return createPreviewCleanupRuntime({
+        artifactStore: config.artifactStore,
+        database: config.database,
+        observer,
+        redisUrl: config.redisUrl,
+      });
+    },
+  };
 }
 
 function previewReconciliationRuntimeProvider(
@@ -287,11 +331,13 @@ function dispatchCapabilitiesProvider(
       COORDINATOR_RUNTIME,
       NODE_ATTEMPT_RUNTIME,
       PREVIEW_RECONCILIATION_RUNTIME,
+      PREVIEW_CLEANUP_RUNTIME,
     ],
     useFactory: (
       runtime: CoordinatorRuntime | undefined,
       nodeAttemptRuntime: NodeAttemptRuntime | undefined,
       previewReconciliationRuntime: PreviewReconciliationRuntime | undefined,
+      previewCleanupRuntime: PreviewCleanupRuntime | undefined,
     ): DispatchConsumerCapabilityRegistry =>
       dependencies.dispatchConsumerCapabilities ??
       createDispatchConsumerCapabilityRegistry([
@@ -338,6 +384,17 @@ function dispatchCapabilitiesProvider(
                 consumer: previewReconciliationRuntime.consumer,
               } as const,
             ]),
+        ...(previewCleanupRuntime === undefined ||
+        !config.outboxDispatcher.enabledJobNames.includes(
+          JOB_NAME.sweepExpiredPreviews,
+        )
+          ? []
+          : [
+              {
+                jobName: JOB_NAME.sweepExpiredPreviews,
+                consumer: previewCleanupRuntime.consumer,
+              } as const,
+            ]),
       ]),
   };
 }
@@ -356,6 +413,10 @@ export class TransportModule {
       dependencies,
     );
     const reconciliationRuntimeProvider = previewReconciliationRuntimeProvider(
+      config,
+      dependencies,
+    );
+    const cleanupRuntimeProvider = previewCleanupRuntimeProvider(
       config,
       dependencies,
     );
@@ -384,6 +445,7 @@ export class TransportModule {
         runtimeProvider,
         attemptRuntimeProvider,
         reconciliationRuntimeProvider,
+        cleanupRuntimeProvider,
         capabilitiesProvider,
         provider,
         OutboxDispatcherLifecycle,

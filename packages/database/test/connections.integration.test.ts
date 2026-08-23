@@ -227,7 +227,7 @@ describe('connection persistence', () => {
   it('upgrades the supported prior head through only the usage migration', async () => {
     expect(upgradeApplied).toEqual([
       '0021_workflow_integration_usage.sql',
-      '0023_preview_artifact_ownership.sql',
+      '0024_preview_retention_cleanup.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, upgradeDatabaseName),
@@ -240,7 +240,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0023_preview_artifact_ownership.sql',
+        migrationHead: '0024_preview_retention_cleanup.sql',
       });
     } finally {
       await pool.end();
@@ -1032,7 +1032,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0023_preview_artifact_ownership.sql',
+        migrationHead: '0024_preview_retention_cleanup.sql',
       });
       await expect(
         checkDatabaseReadiness(workerReadinessPool, {
@@ -1040,7 +1040,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0023_preview_artifact_ownership.sql',
+        migrationHead: '0024_preview_retention_cleanup.sql',
       });
     } finally {
       await Promise.all([apiReadinessPool.end(), workerReadinessPool.end()]);

@@ -24,6 +24,7 @@ describe('queue names', () => {
       executeNodeAttempt: 'execute-node-attempt',
       executePreviewAttempt: 'execute-preview-attempt',
       reconcilePreviewAttempt: 'reconcile-preview-attempt',
+      sweepExpiredPreviews: 'sweep-expired-previews',
       reconcileWorkflowTriggers: 'reconcile-workflow-triggers',
       expireArtifacts: 'expire-artifacts',
     });
@@ -32,6 +33,7 @@ describe('queue names', () => {
       [JOB_NAME.executeNodeAttempt]: QUEUE_NAME.nodeAttempts,
       [JOB_NAME.executePreviewAttempt]: QUEUE_NAME.nodeAttempts,
       [JOB_NAME.reconcilePreviewAttempt]: QUEUE_NAME.maintenance,
+      [JOB_NAME.sweepExpiredPreviews]: QUEUE_NAME.maintenance,
       [JOB_NAME.reconcileWorkflowTriggers]: QUEUE_NAME.triggerLifecycle,
       [JOB_NAME.expireArtifacts]: QUEUE_NAME.maintenance,
     });

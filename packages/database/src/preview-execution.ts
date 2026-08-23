@@ -401,6 +401,7 @@ export async function acceptPreviewRun(
   const previewRunId = randomUUID();
   const previewAttemptId = randomUUID();
   const outboxEventId = randomUUID();
+  const cleanupOutboxEventId = randomUUID();
   const resultRef = { outboxEventId, previewAttemptId } as const;
 
   const claims = await transaction.db
@@ -492,6 +493,25 @@ export async function acceptPreviewRun(
     aggregateId: previewRunId,
     payload,
     payloadChecksum: canonicalOutboxPayloadChecksum(payload),
+  });
+  const cleanupPayload = {
+    schemaVersion: 1,
+    workspaceId: transaction.workspaceId,
+    outboxEventId: cleanupOutboxEventId,
+    previewRunId,
+    ...(parsed.traceparent === undefined
+      ? {}
+      : { traceparent: parsed.traceparent }),
+  } as const;
+  await insertOutboxEvent(transaction, {
+    id: cleanupOutboxEventId,
+    jobName: 'sweep-expired-previews',
+    schemaVersion: 1,
+    aggregateType: 'preview-run',
+    aggregateId: previewRunId,
+    payload: cleanupPayload,
+    payloadChecksum: canonicalOutboxPayloadChecksum(cleanupPayload),
+    availableAt: parsed.expiresAt,
   });
   await transaction.db.insert(auditEvents).values({
     id: randomUUID(),

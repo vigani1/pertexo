@@ -24,6 +24,11 @@ import {
   artifactStorageKey,
   createPendingPreviewArtifact,
 } from '../src/artifacts.js';
+import {
+  claimPreviewCleanupDelivery,
+  completePreviewArtifactDeletion,
+  finishPreviewCleanupDelivery,
+} from '../src/preview-cleanup.js';
 import { canonicalOutboxPayloadChecksum } from '../src/outbox.js';
 import { migrateDatabase } from '../src/migrations.js';
 import {
@@ -460,6 +465,151 @@ describe('worker-side preview execution seam', () => {
       [workspaceId, overRetainedArtifactId],
     );
     expect(rolledBack.rows[0]).toEqual({ count: '0' });
+  });
+
+  it('deletes expired preview rows and owned artifact metadata through the authorized function', async () => {
+    const previewDeadline = new Date(Date.now() + 250);
+    const accepted = await acceptFixture({ expiresAt: previewDeadline });
+    const cleanup = await scopedQuery<{
+      id: string;
+      payload_checksum: string;
+    }>(
+      `select id,payload_checksum from app.outbox_events
+       where workspace_id=$1 and aggregate_id=$2
+         and job_name='sweep-expired-previews'`,
+      [workspaceId, accepted.previewRunId],
+    );
+    const cleanupRow = cleanup.rows[0];
+    if (cleanupRow === undefined)
+      throw new Error('preview cleanup outbox missing');
+    const artifactIds = [randomUUID(), randomUUID()].toSorted();
+    await withTenantScopedClient(
+      workerPool,
+      { workspaceId },
+      async (client) => {
+        for (const [index, artifactId] of artifactIds.entries()) {
+          await createPendingPreviewArtifact(
+            {
+              db: drizzle(client, { schema: databaseSchema }),
+              workspaceId: parseWorkspaceId(workspaceId),
+            },
+            {
+              artifactId,
+              byteLength: 3,
+              expiresAt: previewDeadline,
+              mediaType: 'application/octet-stream',
+              previewRunId: accepted.previewRunId,
+              purpose: 'node-output',
+              sha256: (index === 0 ? 'c' : 'd').repeat(64),
+              storageKey: artifactStorageKey(workspaceId, artifactId),
+            },
+          );
+        }
+      },
+    );
+    const firstArtifactId = artifactIds[0];
+    const secondArtifactId = artifactIds[1];
+    if (firstArtifactId === undefined || secondArtifactId === undefined)
+      throw new Error('preview cleanup artifact fixtures missing');
+    await ownerPool.query('select pg_sleep(0.3)');
+    const delivery = {
+      outboxEventId: cleanupRow.id,
+      payloadChecksum: cleanupRow.payload_checksum,
+    };
+    await expect(
+      claimPreviewCleanupDelivery(workerPool, {
+        artifactLimit: 1,
+        delivery,
+        previewRunId: accepted.previewRunId,
+        workspaceId,
+      }),
+    ).resolves.toEqual({
+      kind: 'claimed',
+      artifacts: [{ artifactId: firstArtifactId, workspaceId }],
+    });
+    await completePreviewArtifactDeletion(workerPool, {
+      artifactId: firstArtifactId,
+      previewRunId: accepted.previewRunId,
+      workspaceId,
+    });
+    const continued = await finishPreviewCleanupDelivery(workerPool, {
+      delivery,
+      previewRunId: accepted.previewRunId,
+      workspaceId,
+    });
+    expect(continued).toMatchObject({ kind: 'continued' });
+    if (
+      continued.kind !== 'continued' ||
+      continued.cleanupOutboxEventId === undefined
+    )
+      throw new Error('preview cleanup continuation missing');
+    const successor = await scopedQuery<{ payload_checksum: string }>(
+      `select payload_checksum from app.outbox_events
+       where workspace_id=$1 and id=$2`,
+      [workspaceId, continued.cleanupOutboxEventId],
+    );
+    const successorChecksum = successor.rows[0]?.payload_checksum;
+    if (successorChecksum === undefined)
+      throw new Error('preview cleanup continuation checksum missing');
+    const successorDelivery = {
+      outboxEventId: continued.cleanupOutboxEventId,
+      payloadChecksum: successorChecksum,
+    };
+    await expect(
+      claimPreviewCleanupDelivery(workerPool, {
+        artifactLimit: 1,
+        delivery: successorDelivery,
+        previewRunId: accepted.previewRunId,
+        workspaceId,
+      }),
+    ).resolves.toEqual({
+      kind: 'claimed',
+      artifacts: [{ artifactId: secondArtifactId, workspaceId }],
+    });
+    await completePreviewArtifactDeletion(workerPool, {
+      artifactId: secondArtifactId,
+      previewRunId: accepted.previewRunId,
+      workspaceId,
+    });
+    await expect(
+      finishPreviewCleanupDelivery(workerPool, {
+        delivery: successorDelivery,
+        previewRunId: accepted.previewRunId,
+        workspaceId,
+      }),
+    ).resolves.toEqual({ kind: 'completed' });
+
+    const removed = await scopedQuery<{
+      artifacts: string;
+      attempts: string;
+      links: string;
+      runs: string;
+    }>(
+      `select
+         (select count(*)::text from app.preview_runs
+           where workspace_id=$1 and id=$2) as runs,
+         (select count(*)::text from app.preview_attempts
+           where workspace_id=$1 and preview_run_id=$2) as attempts,
+         (select count(*)::text from app.artifact_links
+           where workspace_id=$1 and owner_id=$2) as links,
+         (select count(*)::text from app.artifacts
+           where workspace_id=$1 and id=any($3::uuid[])) as artifacts`,
+      [workspaceId, accepted.previewRunId, artifactIds],
+    );
+    expect(removed.rows[0]).toEqual({
+      artifacts: '0',
+      attempts: '0',
+      links: '0',
+      runs: '0',
+    });
+    await expect(
+      claimPreviewCleanupDelivery(workerPool, {
+        artifactLimit: 10,
+        delivery,
+        previewRunId: accepted.previewRunId,
+        workspaceId,
+      }),
+    ).resolves.toEqual({ kind: 'duplicate' });
   });
 
   it('claims a queued attempt with pinned identity and completes truthfully', async () => {

@@ -154,6 +154,17 @@ export {
   PreviewIdempotencyConflictError,
   PriorPreviewInputUnavailableError,
 } from './preview-execution.js';
+export {
+  claimPreviewCleanupDelivery,
+  completePreviewArtifactDeletion,
+  finishPreviewCleanupDelivery,
+  PreviewCleanupStateError,
+} from './preview-cleanup.js';
+export type {
+  PreviewCleanupArtifact,
+  PreviewCleanupClaimResult,
+  PreviewCleanupFinishResult,
+} from './preview-cleanup.js';
 export type {
   AcceptedPreviewRun,
   AcceptPreviewRunInput,

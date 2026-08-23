@@ -64,6 +64,15 @@ describe('versioned queue contracts', () => {
         },
       ],
       [
+        JOB_NAME.sweepExpiredPreviews,
+        {
+          schemaVersion: 1,
+          workspaceId: IDS.workspaceId,
+          previewRunId: IDS.previewRunId,
+          outboxEventId: IDS.outboxEventId,
+        },
+      ],
+      [
         JOB_NAME.reconcileWorkflowTriggers,
         {
           schemaVersion: 1,

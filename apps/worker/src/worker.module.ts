@@ -16,6 +16,7 @@ import type { TransportMetrics } from '@pertexo/observability/transport-metrics'
 import type { WorkerConfig } from './config/worker-config.js';
 import type { CoordinatorRuntime } from './execution/coordinator-runtime.js';
 import type { NodeAttemptRuntime } from './execution/node-attempt-runtime.js';
+import type { PreviewCleanupRuntime } from './execution/preview-cleanup-runtime.js';
 import type { PreviewReconciliationRuntime } from './execution/preview-reconciliation-runtime.js';
 import { DatabaseModule } from './platform/database/database.module.js';
 import { ObservabilityModule } from './platform/observability/observability.module.js';
@@ -27,6 +28,7 @@ export type WorkerModuleDependencies = Readonly<{
   coordinatorRuntime?: CoordinatorRuntime;
   nodeAttemptRuntime?: NodeAttemptRuntime;
   previewReconciliationRuntime?: PreviewReconciliationRuntime;
+  previewCleanupRuntime?: PreviewCleanupRuntime;
   database?: WorkspaceDatabase;
   dispatchConsumerCapabilities?: DispatchConsumerCapabilityRegistry;
   dispatcherDatabase?: OutboxDispatcherDatabase;
@@ -69,6 +71,9 @@ export class WorkerModule {
                 previewReconciliationRuntime:
                   dependencies.previewReconciliationRuntime,
               }),
+          ...(dependencies.previewCleanupRuntime === undefined
+            ? {}
+            : { previewCleanupRuntime: dependencies.previewCleanupRuntime }),
           ...(dependencies.dispatchConsumerCapabilities === undefined
             ? {}
             : {
