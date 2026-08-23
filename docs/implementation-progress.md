@@ -20,7 +20,7 @@ not complete a phase.
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
-| Phase 4 — first side-effecting integration slice | In progress | ADRs 007/016; managed connections, secure/streaming HTTP, worker JIT capabilities, integration-usage projection, exact rollout, canonical downstream output, provider telemetry, durable preview execution/retention, and atomic terminal audit/usage facts complete; activation remains gated pending terminal metrics, remaining failure proofs, and full regression evidence |
+| Phase 4 — first side-effecting integration slice | In progress | ADRs 007/016; managed connections, secure/streaming HTTP, worker JIT capabilities, integration-usage projection, exact rollout, canonical downstream output, provider telemetry, durable preview execution/retention, and atomic terminal audit/usage/metrics complete; activation remains gated pending remaining failure proofs and full regression evidence |
 | Phase 5 — orchestration slice | Not started | — |
 | Phase 6 — V1 providers and triggers | Not started | — |
 | Phase 7 — production operations | Not started | — |
@@ -1433,15 +1433,14 @@ Validate and test-execute preview vertical slice:
 - [x] Keep preview execution separate from workflow versions, production runs,
       checkpoints, trigger state/cursors, production SSE, and reusable
       production input. Audit and meter it through safe scoped facts.
-- [ ] Apply the production bounded-value/artifact, redaction, credential,
+- [x] Apply the production bounded-value/artifact, redaction, credential,
       timeout, retry, cancellation, duplicate-delivery, reconciliation, and
       `outcome_unknown` policies to preview execution (inline bounded values,
       duplicate delivery, mapped input, unsafe deadline truth, fenced reclaim,
       side-effect-aware reconciliation decisions, and automatic durable
       reconciliation delivery, artifact-backed outputs with inherited
-      retention, and authorized bounded deletion are proven; terminal
-      audit and usage facts are proven; terminal cardinality-safe runtime
-      metrics remain open).
+      retention, authorized bounded deletion, terminal audit/usage facts, and
+      terminal cardinality-safe runtime metrics are proven).
 - [ ] Prove authorization and cross-workspace denial, stale draft conflicts,
       validation purity, disclosure/acknowledgement, exact and conflicting
       request retries, duplicate jobs, every pre/post-dispatch crash boundary,
@@ -1817,7 +1816,24 @@ Current evidence:
   integration command could not provide valid evidence because the existing
   local `pertexo` database records a different checksum for immutable migration
   `0012_workflow_authoring.sql`; that potentially user-owned database was not
-  reset. Terminal runtime metrics and the remaining Phase 4 gates stay open.
+  reset. At that checkpoint, terminal runtime metrics and the remaining Phase 4
+  gates stayed open.
+- Commit `3802ec8` closes the terminal runtime-metrics gap without turning
+  OpenTelemetry into an authority. `pertexo.preview.terminal.count` increments
+  only after the database reports the first committed terminal transition and
+  classifies it by bounded outcome/source, side-effect class, provider-contact,
+  external-effect, dispatch, and connection-use booleans. Exact duplicate
+  execution claims do not increment it. Durable reconciliation emits the
+  separate `pertexo.preview.reconciliation.count` decision counter, including
+  bounded `duplicate`, `rescheduled`, `redelivered`, and terminal decisions;
+  only a committed reconciliation also emits a terminal count. No workspace,
+  workflow, run, node, user, URL, connection identifier, or arbitrary provider
+  value is a metric attribute. Metric failures are isolated after durable
+  commit and cannot fabricate a retry or change outcome truth. Production
+  execution and maintenance composition both receive the instruments. Root
+  `pnpm check` passes with 117 worker assertions, including direct committed,
+  duplicate, reconciliation, attribute-cardinality, and collector-failure
+  proofs. The remaining Phase 4 failure and full-regression gates stay open.
 - No Phase 4 registry release or publishable node capability is claimed
   complete yet. The managed connection API includes its SSRF-enforcing test
   endpoint and a staged generic HTTP executor candidate now exists, while
