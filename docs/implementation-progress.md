@@ -1,6 +1,6 @@
 # Backend Implementation Progress
 
-Last updated: 2026-08-22
+Last updated: 2026-08-23
 
 This file tracks delivery against
 [the authoritative backend plan](./workflow-platform-backend-plan.md). A phase
@@ -20,7 +20,7 @@ not complete a phase.
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
-| Phase 4 — first side-effecting integration slice | In progress | ADRs 007/016; managed connections, secure/streaming HTTP, worker JIT capabilities, integration-usage projection, exact rollout, canonical downstream output, provider telemetry, and durable preview API acceptance/status complete; activation remains gated pending remaining failure proofs, preview worker execution, and full regression evidence |
+| Phase 4 — first side-effecting integration slice | In progress | ADRs 007/016; managed connections, secure/streaming HTTP, worker JIT capabilities, integration-usage projection, exact rollout, canonical downstream output, provider telemetry, durable preview execution/retention, and atomic terminal audit/usage facts complete; activation remains gated pending terminal metrics, remaining failure proofs, and full regression evidence |
 | Phase 5 — orchestration slice | Not started | — |
 | Phase 6 — V1 providers and triggers | Not started | — |
 | Phase 7 — production operations | Not started | — |
@@ -1425,12 +1425,12 @@ Validate and test-execute preview vertical slice:
 - [x] Require explicit side-effect acknowledgement and request idempotency for
       `test_execute`; accept bounded manual input or one same-workspace,
       same-workflow, successful, unexpired prior-preview output reference.
-- [ ] Persist an immutable short-retained Preview run and preview attempt with
+- [x] Persist an immutable short-retained Preview run and preview attempt with
       pinned draft/release/node/executor identity, actor, trace context, input/
       output references, disclosure, dispatch/lease evidence, and truthful
       terminal state. Return `202` and execute only in the worker through an
       identifier-only outbox/queue job.
-- [ ] Keep preview execution separate from workflow versions, production runs,
+- [x] Keep preview execution separate from workflow versions, production runs,
       checkpoints, trigger state/cursors, production SSE, and reusable
       production input. Audit and meter it through safe scoped facts.
 - [ ] Apply the production bounded-value/artifact, redaction, credential,
@@ -1440,8 +1440,8 @@ Validate and test-execute preview vertical slice:
       side-effect-aware reconciliation decisions, and automatic durable
       reconciliation delivery, artifact-backed outputs with inherited
       retention, and authorized bounded deletion are proven; terminal
-      telemetry remains open — see Findings 8–13 in the audit findings
-      document).
+      audit and usage facts are proven; terminal cardinality-safe runtime
+      metrics remain open).
 - [ ] Prove authorization and cross-workspace denial, stale draft conflicts,
       validation purity, disclosure/acknowledgement, exact and conflicting
       request retries, duplicate jobs, every pre/post-dispatch crash boundary,
@@ -1796,6 +1796,28 @@ Current evidence:
   The disposable database is dropped afterward; PostgreSQL, Redis 8.2.8, and
   S3Mock 5.1.0 remain healthy. This verifies the repair branch but does not
   close the unchecked Phase 4 activation criteria above.
+- Commit `40c35bf` adds migration head
+  `0027_preview_terminal_facts.sql` and closes the durable terminal-facts
+  portion of ADR 016. Every first terminal completion—ordinary worker outcome,
+  expired-attempt reconciliation, or durable reconciliation delivery—appends
+  one safe `preview.execution_terminal` audit event and one idempotent
+  `preview_execution` usage charge in the same PostgreSQL transaction as the
+  attempt/run transition. Exact redelivery returns before either insert, and a
+  forced usage-key collision proves the transition plus its preceding audit
+  insert roll back together. The usage table is forced-RLS, append-only for
+  serving roles, tenant scoped, period indexed, and uniquely keyed per preview;
+  readiness verifies its schema, policies, worker audit/usage insert authority,
+  and withheld mutation grants. The migration backfills safe audit and usage
+  facts for previews already terminal at head `0026`, restoring FORCE RLS
+  before commit. Tests assert actor/trace correlation, pinned identity and
+  disclosure metadata, absence of input/output bodies, one fact across exact
+  redelivery, and `outcome_unknown` reconciliation facts. Root `pnpm check`
+  passes; 28 focused fresh-PostgreSQL scenarios pass across connection upgrade,
+  preview worker, and prior-head migration files. The complete shared-database
+  integration command could not provide valid evidence because the existing
+  local `pertexo` database records a different checksum for immutable migration
+  `0012_workflow_authoring.sql`; that potentially user-owned database was not
+  reset. Terminal runtime metrics and the remaining Phase 4 gates stay open.
 - No Phase 4 registry release or publishable node capability is claimed
   complete yet. The managed connection API includes its SSRF-enforcing test
   endpoint and a staged generic HTTP executor candidate now exists, while
