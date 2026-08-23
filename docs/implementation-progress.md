@@ -1779,8 +1779,13 @@ Current evidence:
   direct worker-role call against an expired queued preview returns false and
   preserves both run and artifact. Root `pnpm check`, 16 focused PostgreSQL
   scenarios, and four real PostgreSQL/Redis/BullMQ/S3Mock scenarios in 13.35
-  seconds pass at this correction. The exact corrected head still requires
-  independent re-review before merge.
+  seconds pass at this correction. Independent Spec and Standards reviews
+  against exact head `9ae51d51f8bbdc8726350e26ac2db534da3eae24`
+  report no blocker/high merge finding. Spec reports no finding at any
+  severity; Standards' one low note observes that the handler retry unit mocks
+  the finish seam, while the separate real-PostgreSQL test proves successor
+  creation and consumption. This artifact-retention checkpoint is merge-safe;
+  Phase 4 remains incomplete.
 - At corrected documentation head `d3f1397`, root `pnpm check` passes all
   format, ESLint, generated-contract, typecheck, unit, and production-build
   gates. The dependency-ordered fresh real-service matrix passes against

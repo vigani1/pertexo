@@ -381,8 +381,12 @@ plan.
   could stall without a durable successor and that the security-definer
   function did not itself enforce terminal state. Commit `72d5bd5` resolves
   both. Root `pnpm check`, 16 focused PostgreSQL scenarios, and four real
-  transport/object-store scenarios remain green; an exact-head re-review is
-  still required before merge.
+  transport/object-store scenarios remain green. Independent Spec and
+  Standards re-reviews against exact corrected head
+  `9ae51d51f8bbdc8726350e26ac2db534da3eae24` report no blocker/high merge
+  finding; Spec reports no finding at any severity, while Standards retains one
+  low coverage note that is already supported by the separate real-database
+  successor proof.
 
 ### Deviation and interpretation register
 
