@@ -1435,11 +1435,12 @@ Validate and test-execute preview vertical slice:
       production input. Audit and meter it through safe scoped facts.
 - [ ] Apply the production bounded-value/artifact, redaction, credential,
       timeout, retry, cancellation, duplicate-delivery, reconciliation, and
-      `outcome_unknown` policies to preview execution (bounded values,
-      timeout/deadline, duplicate delivery, reconciliation, and
-      `outcome_unknown` are proven; artifact-backed preview outputs and a
-      retention-deletion path remain blocked on the Phase 7 maintenance-role
-      grant migration — see finding 7 in the audit findings document).
+      `outcome_unknown` policies to preview execution (inline bounded values,
+      duplicate delivery, mapped input, unsafe deadline truth, fenced reclaim,
+      and side-effect-aware reconciliation decisions are proven; automatic
+      reconciliation delivery, artifact-backed outputs, terminal telemetry,
+      and authorized retention deletion remain open — see Findings 8–13 in the
+      audit findings document).
 - [ ] Prove authorization and cross-workspace denial, stale draft conflicts,
       validation purity, disclosure/acknowledgement, exact and conflicting
       request retries, duplicate jobs, every pre/post-dispatch crash boundary,
@@ -1581,14 +1582,15 @@ Current evidence:
   worker-side persistence seam beside acceptance. Deliveries bind to their
   durable outbox aggregate by recomputed canonical checksum; claims CAS the
   single attempt from queued to running under a monotonic fence token with
-  expired-lease reclaim (blocked once a dispatch marker exists); heartbeats
+  expired-lease reclaim; heartbeats
   extend only the owning lease and report both attempt and retention
   deadlines; completions reject stale fences as truthful duplicates while
   syncing run status/output/error in one transaction under the migration's
-  exact terminal-shape and output-truth constraints; reconciliation of an
-  expired attempt is idempotent and chooses `failed` before any dispatch
-  marker but `outcome_unknown` with bounded reconciliation evidence after
-  it; forged checksum reuse commits a tenant-scoped transport security fact
+  exact terminal-shape and output-truth constraints. The initial reconciliation
+  rule in this commit was incomplete; `5dfb5f0` corrects it so undispatched,
+  safe, and stable-key work is reclaimable while only unsafe possibly-
+  dispatched work becomes `outcome_unknown`. Forged checksum reuse commits a
+  tenant-scoped transport security fact
   before failing closed; cross-workspace claims are hidden by forced RLS.
   All mutations run through this branch's shared fail-closed transaction
   primitive. Six focused real-PostgreSQL assertions pass on a fresh
@@ -1597,7 +1599,7 @@ Current evidence:
   files, ten worker, seven API) with the disposable database dropped
   afterward. The handler/consumer composition, crash-boundary proofs, and
   retention cleanup remain open before preview execution can activate.
-- Commit `2c1418a` composes preview execution onto the shared BullMQ
+- Commit `2c1418a` initially composes preview execution onto the shared BullMQ
   attempts queue behind an explicit job-kind router. The deep handler
   claims through the durable seam, wraps raw executor payloads into the
   strict stored-value envelope — failing closed via a lossless canonical
@@ -1616,11 +1618,14 @@ Current evidence:
   `preview.executor_unavailable`. `execute-preview-attempt` joins the
   dispatcher capability allowlist, and its serving-role store composes
   only when that kind is enabled, closing its pool with the consumer.
-  Nine handler unit assertions pass with worker typecheck, ESLint,
-  Prettier, repository-wide `pnpm check`, and the fresh-database
-  integration matrix at 249 assertions. Real-transport delivery proofs,
-  pre/post-dispatch SIGKILL boundaries, prior-preview scope/expiry, safe
-  status reads, and retention cleanup remain open before activation.
+  The tests at that head passed, but the later fixed-head review found raw
+  input bypassing mappings, API/worker release-identity drift, false unsafe
+  timeout truth, missing preview-only readiness/JIT capability composition,
+  and startup cleanup gaps. Commit `dd0d665` corrects those defects and removes
+  the unsupported retention-sweep placeholder. Automatic reconciliation,
+  artifact-backed output, terminal audit/usage/metrics, pre/post-dispatch
+  SIGKILL boundaries, prior-preview HTTP evidence, and retention deletion
+  remain open before activation.
 - Commit `886cdb3` closes the real-transport delivery proof. The suite
   provisions its own disposable PostgreSQL database, migrates through the
   shipped CLI path, and activates this worker artifact's derived release
@@ -1641,7 +1646,28 @@ Current evidence:
   suites included) remain green. Remaining before activation: pre/post-
   dispatch SIGKILL crash boundaries through the composed handler,
   prior-preview scope/expiry e2e evidence, safe status reads over HTTP,
-  and the retention sweep job.
+  and the authorized retention lifecycle.
+- Commit `dd0d665` is the mandatory corrective successor to the initial
+  preview-composition checkpoint. API acceptance now pins the engine-composed
+  compatibility identity used by workers; preview execution validates its
+  persisted node snapshot and resolves `ValueSource` mappings through the same
+  production workflow-engine path; pre-expired work never invokes; unsafe
+  post-dispatch deadline ambiguity becomes `outcome_unknown`; heartbeat
+  authority loss commits no fabricated cancellation; and duplicate dispatch
+  markers fail closed. Nest composes a shared attempts consumer for preview-
+  only deployments, advertises readiness only for enabled jobs, supplies the
+  same production connection/artifact factories, and closes the preview store
+  on construction failure. The unsupported `sweep-expired-previews` contract
+  is removed until a real authorized consumer exists. Focused formatting,
+  ESLint, affected builds/typechecks, 57 database, 35 queue, 83 workflow-engine,
+  97 worker, and 219 API unit assertions pass.
+- Commit `5dfb5f0` corrects preview lease reconciliation to follow ADR 007 by
+  side-effect class. Expired redelivery reclaims undispatched work and
+  dispatched `safe` or `idempotent_with_key` work (preserving the stable key);
+  only an expired unsafe dispatch is terminally reconciled as
+  `outcome_unknown`. Six real-PostgreSQL preview-worker scenarios pass. The
+  durable automatic mechanism that schedules such reconciliation/redelivery
+  remains an activation blocker and is not delegated to BullMQ retry counts.
 - No Phase 4 registry release or publishable node capability is claimed
   complete yet. The managed connection API includes its SSRF-enforcing test
   endpoint and a staged generic HTTP executor candidate now exists, while

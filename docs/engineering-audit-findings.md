@@ -9,17 +9,6 @@ finding names concrete files, commands, or commits; open items state their
 recommended owner and trigger. This file does not change any phase checkpoint
 status in [the implementation progress tracker](./implementation-progress.md).
 
-## Finding 7 — Preview retention deletion has no authorized role (Open blocker, Phase 7)
-
-Evidence: migration 0022 grants the worker SELECT plus lifecycle UPDATE
-only and explicitly revokes DELETE on `preview_runs`/`preview_attempts`;
-forced RLS also blocks any cross-workspace owner sweep. A tenant-scoped
-sweep is therefore not landable without a reviewed maintenance-role grant
-migration. Resolution: the `sweep-expired-previews` job kind is held in
-the dispatcher contract (commit abe757f) exactly like
-`reconcile-workflow-triggers`; Phase 7 owns the grant migration plus the
-maintenance consumer.
-
 ## Summary
 
 | # | Finding | Severity | Status |
@@ -30,6 +19,13 @@ maintenance consumer.
 | 4 | Shared local database migration-history drift blocks some local suites | Medium | Open (environment) |
 | 5 | Rollout suite mutates durable release authority without self-provisioning | Medium | Open (constraint documented) |
 | 6 | Tracker assertion-count snapshots have drifted from the working tree | Low | Open (process) |
+| 7 | Preview sweep was advertised without a consumer or authorized deletion role | High | Fixed (`dd0d665`) |
+| 8 | Preview worker bypassed the production mapping resolver | Critical | Fixed (`dd0d665`) |
+| 9 | API and worker pinned different compatibility fingerprints | Critical | Fixed (`dd0d665`) |
+| 10 | Unsafe post-dispatch deadlines could be reported as definite timeout | Critical | Fixed (`dd0d665`) |
+| 11 | Production preview composition omitted readiness/capabilities and leaked on startup failure | High | Fixed (`dd0d665`) |
+| 12 | Lease loss could manufacture cancellation; reconciliation ignored side-effect class | Critical | Fixed (`dd0d665`, `5dfb5f0`) |
+| 13 | Artifact output, automatic reconciliation, terminal audit/usage/metrics, and retention deletion are incomplete | High | Open (activation blockers) |
 
 ## Finding 1 — Compatibility-rollout proof absent from CI (High)
 
@@ -178,7 +174,73 @@ already does, and regenerate all counts at each phase-completion review.
 Optionally add a short script that emits per-suite counts so regeneration is
 mechanical rather than manual transcription.
 
+## Finding 7 — Unsupported preview-sweep capability was advertised (Fixed)
+
+Evidence: migration 0022 grants the worker SELECT plus lifecycle UPDATE
+only and explicitly revokes DELETE on `preview_runs`/`preview_attempts`;
+forced RLS also blocks any cross-workspace owner sweep. A tenant-scoped
+sweep is therefore not landable without a reviewed maintenance-role grant
+migration. Commit `abe757f` nevertheless advertised `sweep-expired-previews`
+through queue contracts, routing, configuration, and metrics without any
+consumer. That made readiness/configuration describe a capability the worker
+could not perform. Commit `dd0d665` removes the unsupported contract. Preview
+retention deletion remains an open Phase 4 lifecycle requirement whose role,
+bounded cursor, artifact ordering, and consumer must be designed before it is
+advertised.
+
+## Findings 8–12 — Preview execution correctness review (Fixed)
+
+The fixed-head Spec and Standards review found that the initial preview worker
+checkpoint passed its local tests but did not satisfy the cross-package
+production contract:
+
+- `2c1418a` invoked the persisted executor with the raw preview input instead
+  of the graph node's `ValueSource` mappings. `dd0d665` extracts and reuses the
+  production mapping path, rejects isolated `node_output` sources, validates
+  the persisted executable snapshot, and changes the real-transport fixture to
+  prove a `run_input` mapping.
+- API acceptance persisted the browser-safe node-catalog fingerprint while the
+  worker resolves engine-composed compatibility releases. `dd0d665` makes API
+  acceptance persist that same composed epoch/fingerprint and regression-tests
+  the exact identity.
+- A retention/deadline observation after an unsafe dispatch could complete as
+  `timed_out`. `dd0d665` races the durable deadline, completes pre-dispatch
+  expiry without invoking, and records `outcome_unknown` after an unsafe
+  dispatch. It also rejects a duplicate dispatch marker.
+- The default NestJS composition created no preview-only shared consumer,
+  advertised no preview readiness, omitted production connection/artifact
+  factories, and could leak the preview store if consumer construction threw.
+  `dd0d665` corrects the provider/capability composition and lifecycle cleanup
+  with focused bootstrap and construction-failure regressions.
+- A heartbeat failure aborted execution but could let an abort-classifying
+  invoker persist `canceled`. `dd0d665` races lease-authority failure as an
+  infrastructure error and commits no terminal claim. The original
+  reconciler also marked every dispatched class unknown and undispatched work
+  failed. `5dfb5f0` permits expired redelivery to reclaim undispatched, `safe`,
+  and `idempotent_with_key` work while preserving the stable provider key;
+  only expired unsafe dispatched work reconciles to `outcome_unknown`.
+
+Verification at those checkpoints includes affected format/ESLint gates,
+database/queue/observability/workflow-engine/worker/API typechecks and unit
+suites, plus the six-scenario real-PostgreSQL preview-worker integration file.
+The final repository-wide and complete real-service fixed-head gates remain to
+be recorded below rather than inferred from these focused checks.
+
+## Finding 13 — Preview activation remains incomplete (Open)
+
+The corrected foundations are intentionally still gated. ADR 016 and the Phase
+4 checklist require production bounded artifact output, an automatic durable
+reconciliation delivery path, terminal audit and usage facts, preview metrics,
+retention deletion (including owned artifacts), crash-boundary proofs,
+prior-preview/status HTTP evidence, and the HTTP activation rollout. None is
+made complete by `dd0d665` or `5dfb5f0`. Production node-test route activation
+and the Phase 4 registry release must remain disabled until those requirements
+and the final independent fixed-head reviews pass.
+
 ## Verification record for this branch
+
+The original audit recorded the following checks through `ee76bad`; they are
+historical evidence and do not substitute for the final corrected-head gate:
 
 - `pnpm --filter @pertexo/database typecheck` — pass.
 - `pnpm --filter @pertexo/database test` — 57 unit assertions, pass.
@@ -191,6 +253,12 @@ mechanical rather than manual transcription.
 - Compatibility-rollout proof — 1 assertion on its own fresh disposable
   database, dropped afterward.
 - `pnpm lint` (repo-wide, restored gate) — clean.
+
+Corrections `dd0d665` and `5dfb5f0` pass affected formatting/ESLint,
+typechecks, builds, unit suites, and the focused six-scenario real-PostgreSQL
+preview-worker integration test. Root `pnpm check` and the complete sequential
+real-service matrix will be appended only after they run at the final
+corrected head.
 
 ## Session work log — branch `fix/audit-findings` (reviewer guide)
 
@@ -209,25 +277,32 @@ deliberately deferred against the authoritative plan.
 | `364bc1a` | This document | Findings 1–6 recorded with evidence. |
 | `ce02e52` + `81ff6c9` | Connection box closed | Concurrent-race proofs: exactly-one-winner same-name creates; CAS rotation from one expected pointer admits exactly one winner regardless of race order; losers leave zero orphaned secret versions. Closes the last unchecked connection-slice box. |
 | `bd2989b` + `0e75643` | ADR 007 box closed | Executor-boundary truth for rate-limit / timeout / canceled under the manifest-pinned `unsafe` class (policy layer already covered all three side-effect classes). No production code changed — tests only. |
-| `21a0b1d` | Preview seam | Worker-side persistence: checksum-bound delivery validation, fenced claims with expired-lease reclaim (blocked after dispatch marker), owner-only heartbeats, stale-fence duplicate truthfulness, dispatch-evidence reconciliation (`failed` before any marker vs `outcome_unknown` after), forged-checksum security facts, RLS isolation. Built on the new shared primitive. 6 real-Postgres assertions. |
-| `2c1418a` | Preview composition | Handler + platform invoker + queue router + dispatcher capability entry (`execute-preview-attempt`). Output envelope validation via strict-JSON structural walk plus lossless canonical roundtrip (the serializer alone silently drops function members — regression-proven). Retention deadline races execution so late results stay truthful. 9 unit assertions. See deviations D4–D7. |
+| `21a0b1d` | Initial preview seam | Added checksum-bound delivery validation, fenced claims, heartbeats, completion, and a first reconciliation seam. Its reconciliation semantics were incomplete by side-effect class and are corrected by `5dfb5f0`. |
+| `2c1418a` | Initial preview composition | Added the handler, invoker, queue router, and output validation. Review found mapping, release-identity, unsafe-deadline, production-composition, capability, and cleanup defects; do not review this commit without its corrective successor `dd0d665`. |
 | `f434f71`, `8683011` | Tracker pairs | Evidence-ledger updates in the repo's feat→docs rhythm. |
 | `886cdb3` + `cf26f87` | Real-transport proof | Acceptance → outbox → BullMQ → routed consumer → pinned `core.set` executor → truthful succeeded; atomic inbox receipt; exact redelivery is a byte-identical no-op. The suite activates this artifact's derived release through the full audited maintenance flow instead of trusting the migration bootstrap fingerprint. See deviation D8. |
-| `abe757f` + `4cce3cf` | Sweep contract held | `sweep-expired-previews` job kind added to queue contracts/routing/metrics/capability allowlist, disabled by default, no consumer — matching the held `reconcile-workflow-triggers` precedent. Finding 7 records why deletion could not be landed honestly (no serving role holds DELETE; forced RLS blocks cross-workspace sweeps). See deviation D9. |
+| `abe757f` + `4cce3cf` | Unsupported sweep placeholder | Added a job kind with no consumer or authorized serving role. This was not a valid capability and is removed by `dd0d665`; Finding 7 records the correction. |
+| `dd0d665` | Preview correctness repair | Reuses production input mapping, aligns API/worker release identity, fixes unsafe deadline truth and heartbeat lease-loss behavior, composes preview-only readiness plus JIT capabilities, closes startup failures, and removes the unsupported sweep contract. |
+| `5dfb5f0` | Reconciliation truth repair | Reclaims undispatched, safe, and stable-key expired deliveries while reserving `outcome_unknown` for unsafe possibly-dispatched work; automatic reconciliation delivery is still open. |
 
 ### Verification summary
 
-- Repository-wide `pnpm check` green at every committed checkpoint (format,
-  lint incl. restored heap-bound gate, generated-contract drift, typechecks,
-  unit suites, production builds).
-- Fresh-isolated-database integration matrix run repeatedly (final state:
+- The pre-correction checkpoints reported repository-wide `pnpm check` green
+  (format, lint, generated-contract drift, typechecks, unit suites, production
+  builds). The corrective commits have affected-package evidence; their final
+  root gate remains pending.
+- Fresh-isolated-database integration matrices were run repeatedly before the
+  corrective review (latest recorded state:
   artifact-store 2, database 230+, worker 10+, API 7 assertions) with the
   disposable database dropped and the shared development database untouched;
-  the known shared-DB `0012` checksum drift (Finding 4) is why local full
-  runs use the fresh-database procedure.
-- Focused suites added by this session: tenant-context hygiene 5, preview
-  seam 6, preview handler 9, preview real transport 1, connection
-  concurrency +2 (within the existing file).
+  the corrected-head matrix remains pending. The known shared-DB `0012`
+  checksum drift (Finding 4) is why local full runs use the fresh-database
+  procedure.
+- Focused suites added or extended by this session include tenant-context
+  hygiene 5, preview persistence/reconciliation 6, preview handler 13,
+  platform preview invoker 2, preview real transport 1, and connection
+  concurrency +2. Counts are fixed-head evidence and will be regenerated at
+  the final gate.
 
 ### Deviation and interpretation register
 
@@ -245,18 +320,18 @@ deliberately deferred against the authoritative plan.
 - **D4 — Preview output envelope.** Raw executor output is wrapped into the
   inline stored-value envelope inside the worker boundary; oversized or
   non-JSON outputs fail closed as `preview.output_invalid`. Artifact-backed
-  preview output streaming is deliberately NOT landed yet — it needs the
-  capability wiring called out in the remaining-work list, so the current
-  handler is honest inline-only rather than pretending full policy parity.
+  preview output streaming is NOT landed yet. Production capability factories
+  now reach the preview runtime, but the handler still needs an artifact-output
+  policy before ADR 016 parity can be claimed.
 - **D5 — Classification ownership.** For previews the injected invoker owns
-  ADR 007 outcome classification (single-shot execution): pre-dispatch
-  retryable failures complete as `failed`, possibly-dispatched ambiguity as
-  `outcome_unknown`, cancellation stays `canceled`, infrastructure faults
-  propagate for bounded BullMQ retries. The engine keeps retry ownership for
-  production attempts unchanged.
+  executor error classification. The persistence seam now distinguishes
+  reclaimable undispatched/safe/stable-key work from unsafe ambiguity, but an
+  automatic durable reconciliation delivery path is still missing. BullMQ
+  retries alone do not satisfy ADR 007 business-retry ownership.
 - **D6 — Deadline source.** The retention `expires_at` doubles as the
-  execution deadline, observed through heartbeats; there is no separate
-  preview timeout knob yet.
+  current bounded execution deadline and artifact lifetime. This is an interim
+  implementation constraint, not a completed timeout/retention design; a
+  separate pinned timeout policy may be required before activation.
 - **D7 — Identity conventions.** Preview runtime maps
   `attemptNumber = 1` and `invocationKey = preview:<nodeId>`; these are new
   conventions introduced by this branch and should be ratified in a follow-up
@@ -266,22 +341,26 @@ deliberately deferred against the authoritative plan.
   seeded predecessor. This uses only audited production seams but means the
   test database ends on the artifact's cohort release — safe because the
   database is disposable.
-- **D9 — Retention.** No deletion path was landed (Finding 7). The job kind
-  exists so enabling later requires configuration only. Nothing in the plan
-  required landing deletion in Phase 4; the tracker box stays unchecked with
-  the blocker cited.
-- **D10 — Contract additions.** `sweep-expired-previews` queue contract,
-  routing, metrics union entry, capability allowlist entry, and the
-  `delivery` parameter on `completePreviewAttempt` are additive contracts on
-  this branch's new surfaces only; no shipped API changed shape.
+- **D9 — Retention.** No deletion path was landed. The unsupported placeholder
+  job was removed because a capability must not be advertised before its
+  authorized role and consumer exist. ADR 016 and the Phase 4 tracker still
+  require the short-retained preview/artifact lifecycle before activation.
+- **D10 — Contract additions.** The `delivery` parameter on
+  `completePreviewAttempt` is retained because inbox completion must commit
+  atomically with the terminal outcome. The abandoned sweep queue additions
+  are not part of the resulting contract.
 
 ### Remaining before Phase 4 can be marked complete
 
-1. SIGKILL crash-boundary fixture through the composed handler
-   (pre/post-dispatch), mirroring the Phase 0E process-fixture style.
-2. Prior-preview scope/expiry end-to-end evidence over HTTP and safe status
-   reads through the real API stack.
-3. `http.request@1` activation assertion (additive rollout leg with JIT
-   connection/artifact capabilities exercised live).
-4. Fixed-head repository-wide regression matrix plus independent Spec and
-   Standards completion reviews, then the tracker flip.
+1. Add an automatic durable preview reconciliation delivery path and prove
+   pre/post-dispatch SIGKILL boundaries across all three side-effect classes.
+2. Add artifact-backed preview outputs with retention inheritance and an
+   authorized bounded deletion lifecycle for preview rows and owned artifacts.
+3. Persist terminal audit/usage facts and emit bounded preview metrics/traces.
+4. Prove prior-preview scope/expiry and safe status reads over the real HTTP
+   stack, including cancellation/timeout behavior.
+5. Prove `http.request@1` additive activation with live JIT connection and
+   artifact capabilities while retained releases continue executing exactly.
+6. Run the fixed-head repository-wide and complete real-service regression
+   matrix, then complete independent Spec and Standards reviews before any
+   Phase 4 completion or production activation claim.
