@@ -74,7 +74,6 @@ describe('pure node preview validation', () => {
     expect(result.issues).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          path: expect.stringMatching(/^\$\.config/u),
           code: 'node.config_invalid',
         }),
         expect.objectContaining({
@@ -91,6 +90,13 @@ describe('pure node preview validation', () => {
         }),
       ]),
     );
+    expect(
+      result.issues.some(
+        (issue) =>
+          issue.code === 'node.config_invalid' &&
+          issue.path.startsWith('$.config'),
+      ),
+    ).toBe(true);
     expect(result.issues.length).toBeLessThanOrEqual(100);
   });
 
