@@ -915,9 +915,11 @@ export async function claimPreviewDelivery(
           lease_expired: boolean | null;
           live_lease: boolean | null;
           run_status: string;
+          side_effect_class: string;
         }>(
           `select attempt.status as attempt_status,
                 attempt.dispatch_marked_at,
+                attempt.side_effect_class,
                 (attempt.lease_expires_at is not null
                    and attempt.lease_expires_at > clock_timestamp())
                   as live_lease,
@@ -955,7 +957,8 @@ export async function claimPreviewDelivery(
         }
         if (
           state.attempt_status === 'running' &&
-          state.dispatch_marked_at !== null
+          state.dispatch_marked_at !== null &&
+          state.side_effect_class === 'unsafe'
         )
           throw new PreviewAttemptStateError('expired_after_dispatch');
 
@@ -1272,7 +1275,7 @@ export async function completePreviewAttempt(
 }
 
 export type PreviewReconciliationOutcome = Readonly<{
-  status: typeof PREVIEW_STATUS.failed | typeof PREVIEW_STATUS.outcomeUnknown;
+  status: typeof PREVIEW_STATUS.outcomeUnknown;
 }>;
 
 /**
@@ -1337,9 +1340,11 @@ export async function reconcileExpiredPreviewAttempt(
         attempt_status: string;
         dispatch_marked_at: Date | null;
         expired_or_absent: boolean;
+        side_effect_class: string;
       }>(
         `select attempt.status as attempt_status,
                 attempt.dispatch_marked_at,
+                attempt.side_effect_class,
                 (attempt.lease_expires_at is null
                    or attempt.lease_expires_at <= clock_timestamp())
                   as expired_or_absent
@@ -1355,28 +1360,21 @@ export async function reconcileExpiredPreviewAttempt(
         throw new PreviewAttemptStateError('attempt_not_found');
       if (state.attempt_status === PREVIEW_STATUS.outcomeUnknown)
         return Object.freeze({ status: PREVIEW_STATUS.outcomeUnknown });
-      if (state.attempt_status === PREVIEW_STATUS.failed)
-        return Object.freeze({ status: PREVIEW_STATUS.failed });
       if (state.attempt_status !== 'running' || !state.expired_or_absent)
         throw new PreviewAttemptStateError('reconciliation_not_applicable');
-      // ADR 007 truth: after a committed dispatch marker the external effect
-      // may exist, so the only truthful terminal status is outcome_unknown.
-      // Before any marker the worker provably sent nothing, so the attempt
-      // failed without provider contact.
-      const status =
-        state.dispatch_marked_at === null
-          ? PREVIEW_STATUS.failed
-          : PREVIEW_STATUS.outcomeUnknown;
-      const reconciliationRef =
-        status === PREVIEW_STATUS.outcomeUnknown
-          ? {
-              schemaVersion: 1,
-              reason: 'lease_expired_after_dispatch',
-            }
-          : {
-              schemaVersion: 1,
-              reason: 'lease_expired_before_dispatch',
-            };
+      // Undispatched, safe, and stable-key work is reclaimable under ADR 007
+      // and must not be rewritten as a terminal failure. The original
+      // identifier-only delivery may claim it again after lease expiry.
+      if (
+        state.dispatch_marked_at === null ||
+        state.side_effect_class !== 'unsafe'
+      )
+        throw new PreviewAttemptStateError('reconciliation_reclaim_required');
+      const status = PREVIEW_STATUS.outcomeUnknown;
+      const reconciliationRef = {
+        schemaVersion: 1,
+        reason: 'lease_expired_after_unsafe_dispatch',
+      };
       const applied = await client.query<{ id: string }>(
         `update app.preview_attempts
          set status=$4::varchar,
@@ -1394,9 +1392,7 @@ export async function reconcileExpiredPreviewAttempt(
           scope.previewAttemptId,
           scope.previewRunId,
           status,
-          status === PREVIEW_STATUS.outcomeUnknown
-            ? 'preview.outcome_unknown'
-            : 'preview.worker_lost_before_dispatch',
+          'preview.outcome_unknown',
           JSON.stringify(reconciliationRef),
         ],
       );
@@ -1414,9 +1410,7 @@ export async function reconcileExpiredPreviewAttempt(
           scope.workspaceId,
           scope.previewRunId,
           status,
-          status === PREVIEW_STATUS.outcomeUnknown
-            ? 'preview.outcome_unknown'
-            : 'preview.worker_lost_before_dispatch',
+          'preview.outcome_unknown',
         ],
       );
       if (syncedRuns.rowCount !== 1)

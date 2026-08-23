@@ -482,7 +482,7 @@ describe('worker-side preview execution seam', () => {
     ).resolves.toBe('committed');
   });
 
-  it('reconciles an expired attempt truthfully by dispatch evidence', async () => {
+  it('reconciles expired attempts by dispatch evidence and side-effect class', async () => {
     const beforeDispatch = await claimFixture(
       await acceptFixture(),
       'worker-preview-g',
@@ -495,7 +495,14 @@ describe('worker-side preview execution seam', () => {
         previewRunId: beforeDispatch.fixture.previewRunId,
         workspaceId,
       }),
-    ).resolves.toEqual({ status: PREVIEW_STATUS.failed });
+    ).rejects.toMatchObject({ code: 'reconciliation_reclaim_required' });
+    const reclaimedBeforeDispatch = await claimFixture(
+      beforeDispatch.fixture,
+      'worker-preview-g2',
+    );
+    expect(reclaimedBeforeDispatch.lease.attemptFenceToken).toBe(
+      beforeDispatch.lease.attemptFenceToken + 1,
+    );
 
     const afterDispatch = await claimFixture(
       await acceptFixture(),
@@ -515,6 +522,62 @@ describe('worker-side preview execution seam', () => {
       }),
     ).resolves.toEqual({ status: PREVIEW_STATUS.outcomeUnknown });
 
+    const safeAfterDispatch = await claimFixture(
+      await acceptFixture({
+        mayCauseExternalSideEffect: false,
+        sideEffectClass: 'safe',
+      }),
+      'worker-preview-safe',
+      5,
+    );
+    await markPreviewDispatched(workerPool, {
+      lease: safeAfterDispatch.lease,
+      workerId: safeAfterDispatch.workerId,
+    });
+    await expireLease(safeAfterDispatch.fixture.previewAttemptId);
+    await expect(
+      reconcileExpiredPreviewAttempt(workerPool, {
+        previewAttemptId: safeAfterDispatch.fixture.previewAttemptId,
+        previewRunId: safeAfterDispatch.fixture.previewRunId,
+        workspaceId,
+      }),
+    ).rejects.toMatchObject({ code: 'reconciliation_reclaim_required' });
+    const reclaimedSafe = await claimFixture(
+      safeAfterDispatch.fixture,
+      'worker-preview-safe2',
+    );
+    expect(reclaimedSafe.lease.attemptFenceToken).toBe(
+      safeAfterDispatch.lease.attemptFenceToken + 1,
+    );
+
+    const idempotentAfterDispatch = await claimFixture(
+      await acceptFixture({
+        providerIdempotencyKey: `preview-key-${randomUUID()}`,
+        sideEffectClass: 'idempotent_with_key',
+      }),
+      'worker-preview-keyed',
+      5,
+    );
+    await markPreviewDispatched(workerPool, {
+      lease: idempotentAfterDispatch.lease,
+      workerId: idempotentAfterDispatch.workerId,
+    });
+    await expireLease(idempotentAfterDispatch.fixture.previewAttemptId);
+    await expect(
+      reconcileExpiredPreviewAttempt(workerPool, {
+        previewAttemptId: idempotentAfterDispatch.fixture.previewAttemptId,
+        previewRunId: idempotentAfterDispatch.fixture.previewRunId,
+        workspaceId,
+      }),
+    ).rejects.toMatchObject({ code: 'reconciliation_reclaim_required' });
+    const reclaimedIdempotent = await claimFixture(
+      idempotentAfterDispatch.fixture,
+      'worker-preview-keyed2',
+    );
+    expect(reclaimedIdempotent.lease.providerIdempotencyKey).toBe(
+      idempotentAfterDispatch.lease.providerIdempotencyKey,
+    );
+
     const runs = await scopedQuery<{
       id: string;
       status: string;
@@ -523,18 +586,9 @@ describe('worker-side preview execution seam', () => {
     }>(
       `select id,status,safe_error_code,output_ref from app.preview_runs
        where workspace_id=$1 and id=any($2::uuid[]) order by id`,
-      [
-        workspaceId,
-        [
-          beforeDispatch.fixture.previewRunId,
-          afterDispatch.fixture.previewRunId,
-        ],
-      ],
+      [workspaceId, [afterDispatch.fixture.previewRunId]],
     );
     const statusById = new Map(runs.rows.map((row) => [row.id, row.status]));
-    expect(statusById.get(beforeDispatch.fixture.previewRunId)).toBe(
-      PREVIEW_STATUS.failed,
-    );
     expect(statusById.get(afterDispatch.fixture.previewRunId)).toBe(
       PREVIEW_STATUS.outcomeUnknown,
     );
