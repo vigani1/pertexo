@@ -103,8 +103,9 @@ export function decideRetry(input: {
   const isRetryable =
     input.observation.kind === 'ambiguous' ||
     (input.observation.kind === 'executor_failure'
-      ? input.observation.recommendation === 'retry' ||
-        input.observation.recommendation === 'outcome_unknown'
+      ? (input.observation.recommendation === 'retry' ||
+          input.observation.recommendation === 'outcome_unknown') &&
+        input.policy.retryableErrorCodes.includes(errorCode)
       : input.policy.retryableErrorCodes.includes(errorCode));
   const nextAttemptNumber = input.currentAttemptNumber + 1;
   if (!isRetryable || nextAttemptNumber > input.policy.maximumAttempts) {

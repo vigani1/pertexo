@@ -304,6 +304,31 @@ describe('preview attempt handler', () => {
     expect(calls.completions[0]).toMatchObject(expected);
   });
 
+  it('upgrades an unsafe dispatched generic cancellation to outcome_unknown', async () => {
+    const lease = { ...leaseFixture(), sideEffectClass: 'unsafe' as const };
+    const { calls, store } = fakeStore({ lease });
+    const invoker: PreviewNodeInvoker = {
+      invoke: async ({ runtime }) => {
+        await runtime?.beforeDispatch();
+        return {
+          safeErrorCode: 'execution.canceled',
+          status: 'canceled',
+        };
+      },
+    };
+
+    await createPreviewAttemptHandler(deps(store, invoker)).handle(
+      deliveryFixture(),
+      context(),
+    );
+
+    expect(calls.dispatches).toBe(1);
+    expect(calls.completions[0]).toEqual({
+      safeErrorCode: 'preview.outcome_unknown',
+      status: 'outcome_unknown',
+    });
+  });
+
   it('propagates infrastructure failures for bounded queue retries', async () => {
     const { calls, store } = fakeStore();
     const invoker: PreviewNodeInvoker = {

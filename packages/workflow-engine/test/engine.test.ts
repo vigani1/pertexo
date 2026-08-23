@@ -1150,7 +1150,7 @@ describe('retry, wait, cancellation, and transition policy', () => {
     maximumAttempts: 3,
     baseDelayMs: 100,
     maximumDelayMs: 500,
-    retryableErrorCodes: ['rate_limited'],
+    retryableErrorCodes: ['rate_limited', 'rate_limit', 'network'],
   } as const;
 
   it('uses bounded deterministic backoff and stable provider identity', () => {
@@ -1236,6 +1236,15 @@ describe('retry, wait, cancellation, and transition policy', () => {
         observation: { ...input.observation, recommendation: 'failed' },
       }),
     ).toEqual({ kind: 'failed', reasonCode: 'rate_limit' });
+    expect(
+      decideRetry({
+        ...input,
+        observation: {
+          ...input.observation,
+          errorKind: 'authentication',
+        },
+      }),
+    ).toEqual({ kind: 'failed', reasonCode: 'authentication' });
   });
 
   it.each(['safe', 'idempotent_with_key'] as const)(

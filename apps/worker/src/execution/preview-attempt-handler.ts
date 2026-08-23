@@ -165,6 +165,16 @@ async function completeOutcome(
   delivery: { outboxEventId: string; payloadChecksum: string },
   dispatched: boolean,
 ): Promise<PreviewAttemptHandlerResult> {
+  if (
+    outcome.status === 'canceled' &&
+    lease.sideEffectClass === 'unsafe' &&
+    dispatched
+  ) {
+    outcome = Object.freeze({
+      safeErrorCode: 'preview.outcome_unknown',
+      status: 'outcome_unknown',
+    });
+  }
   if (outcome.status === 'succeeded') {
     // Executor payloads are raw JSON; the durable contract is the bounded
     // stored-value envelope. Inline wrapping only in this checkpoint —
