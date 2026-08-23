@@ -25,7 +25,7 @@ status in [the implementation progress tracker](./implementation-progress.md).
 | 10 | Unsafe post-dispatch deadlines could be reported as definite timeout | Critical | Fixed (`dd0d665`) |
 | 11 | Production preview composition omitted readiness/capabilities and leaked on startup failure | High | Fixed (`dd0d665`) |
 | 12 | Lease loss could manufacture cancellation; reconciliation ignored side-effect class | Critical | Fixed (`dd0d665`, `5dfb5f0`) |
-| 13 | Artifact output, terminal audit/usage/metrics, HTTP proofs, and retention deletion are incomplete | High | Open (activation blockers) |
+| 13 | Production crash-boundary proofs, artifact output, terminal audit/usage/metrics, HTTP proofs, and retention deletion are incomplete | High | Open (activation blockers) |
 | 14 | Cancellation during preview input mapping could be mislabeled as executor failure | High | Fixed (`d44ce6b`) |
 
 ## Finding 1 — Compatibility-rollout proof absent from CI (High)
@@ -233,8 +233,11 @@ The corrected foundations are intentionally still gated. ADR 016 and the Phase
 4 checklist require production bounded artifact output, terminal audit and
 usage facts, preview metrics, retention deletion (including owned artifacts),
 prior-preview/status HTTP evidence, and the HTTP activation rollout. Commits
-`b850f53` and `963648c` close automatic reconciliation delivery and its real
-process crash-boundary matrix but none of these remaining requirements.
+`b850f53` closes automatic reconciliation delivery. `963648c` proves that
+database-seam decisions and the real maintenance delivery survive process
+death, but its child fixture does not exercise the production handler,
+provider dispatch, or queue acknowledgement; the full process crash-boundary
+matrix and the requirements above remain open.
 Production node-test route activation and the Phase 4 registry release must
 remain disabled until those requirements and the final independent fixed-head
 reviews pass.
@@ -323,7 +326,7 @@ plan.
 | `5dfb5f0` | Reconciliation truth repair | Reclaims undispatched, safe, and stable-key expired deliveries while reserving `outcome_unknown` for unsafe possibly-dispatched work; automatic reconciliation delivery is still open. |
 | `d44ce6b` | Mapping-cancellation truth repair | Maps the workflow engine's pre-dispatch `attempt_aborted` decision to the canonical canceled preview outcome, proves the executor is never invoked, and makes the already-required durable preview store explicit in the composition type. |
 | `b850f53` | Automatic reconciliation delivery | Commits a fence-bound delayed maintenance outbox delivery with every preview claim; the PostgreSQL decision reschedules live leases, fences and redelivers reclaimable work, stops at the deadline, or records unsafe ambiguity. Exact duplicate receipts are no-ops; real PostgreSQL/Redis transport is proven. |
-| `963648c` | Preview SIGKILL matrix | Kills child workers at pre-dispatch, post-dispatch for all three side-effect classes, and post-outcome/pre-ack boundaries; the real outbox/BullMQ maintenance path proves fenced redelivery, stable-key preservation, unsafe ambiguity, and terminal duplicate truth. |
+| `963648c` | Preview process-death persistence | Kills child lease owners after direct production-database seam commits for claim, dispatch marker, and outcome states. The real outbox/BullMQ maintenance path proves fenced redelivery, stable-key preservation, unsafe ambiguity, and terminal duplicate truth after process death; production handler/provider/queue-ack injection remains open. |
 
 ### Verification summary
 
@@ -397,13 +400,16 @@ plan.
 
 ### Remaining before Phase 4 can be marked complete
 
-1. Add artifact-backed preview outputs with retention inheritance and an
+1. Prove the pre/post-dispatch and post-outcome/pre-ack SIGKILL boundaries
+   through the production handler, provider, and queue consumer for every
+   side-effect class required by ADR 007.
+2. Add artifact-backed preview outputs with retention inheritance and an
    authorized bounded deletion lifecycle for preview rows and owned artifacts.
-2. Persist terminal audit/usage facts and emit bounded preview metrics/traces.
-3. Prove prior-preview scope/expiry and safe status reads over the real HTTP
+3. Persist terminal audit/usage facts and emit bounded preview metrics/traces.
+4. Prove prior-preview scope/expiry and safe status reads over the real HTTP
    stack, including cancellation/timeout behavior.
-4. Prove `http.request@1` additive activation with live JIT connection and
+5. Prove `http.request@1` additive activation with live JIT connection and
    artifact capabilities while retained releases continue executing exactly.
-5. Run the fixed-head repository-wide and complete real-service regression
+6. Run the fixed-head repository-wide and complete real-service regression
    matrix, then complete independent Spec and Standards reviews before any
    Phase 4 completion or production activation claim.

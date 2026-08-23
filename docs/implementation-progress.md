@@ -1694,16 +1694,19 @@ Current evidence:
   PostgreSQL scenarios, and two fresh-PostgreSQL/Redis transport scenarios,
   including a committed unsafe dispatch marker followed by lease abandonment
   and automatic terminal reconciliation. Those semantic crash boundaries do
-  not substitute for the process-level SIGKILL matrix added by `963648c`.
-- Commit `963648c` proves the automatic path across real process termination.
-  Five child worker processes claim the exact durable delivery and are killed
-  with `SIGKILL` after claim-before-dispatch, after dispatch-before-outcome for
-  `safe`, `idempotent_with_key`, and `unsafe`, and after outcome-commit-before-
-  queue-ack. The PostgreSQL outbox then reaches the real BullMQ maintenance
-  consumer: pre-dispatch/safe/stable-key work is fenced and requeued, the
-  provider key remains byte-identical, unsafe possibly-dispatched work becomes
-  `outcome_unknown`, and the already committed failure remains unchanged.
-  All five reconciliation inbox receipts complete once. The fresh database is
+  not substitute for process-level injection through the production handler,
+  provider dispatch, and queue-acknowledgement path.
+- Commit `963648c` adds real process-death persistence evidence for the
+  automatic path. Five child processes commit a claim, dispatch marker, or
+  terminal outcome through the production PostgreSQL seam and are then killed
+  with `SIGKILL`. The PostgreSQL outbox reaches the real BullMQ maintenance
+  consumer: claim-only/safe/stable-key work is fenced and requeued, the
+  provider key remains byte-identical, unsafe marked-dispatched work becomes
+  `outcome_unknown`, and the already committed failure remains unchanged. All
+  five reconciliation inbox receipts complete once. Because the child fixture
+  invokes database seams directly, this does not prove production handler or
+  provider execution, nor the exact outcome-commit-before-queue-ack boundary;
+  that full process-level crash matrix remains open. The fresh database is
   migrated zero-to-`0022`, the three-scenario worker transport file passes in
   4.84 seconds and drops its database, and root `pnpm check` remains green.
 - At corrected documentation head `d3f1397`, root `pnpm check` passes all
