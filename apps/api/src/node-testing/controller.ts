@@ -62,7 +62,7 @@ export class NodeTestingController {
     }
   }
 
-  @Post('workflows/:workflowId/nodes/:nodeId/test')
+  @Post('workflows/:workflowId/draft/nodes/:nodeId/test')
   @HttpCode(200)
   @UseGuards(
     SessionAuthenticationGuard,

@@ -165,12 +165,12 @@ describe('public contracts package', () => {
   it('documents conditional idempotency and separate preview status reads', () => {
     expect(nodeTestingClientContract.schemaVersion).toBe('1.0.0');
     expect(Object.keys(nodeTestingOpenApiDocument.paths)).toEqual([
-      '/v1/workspaces/{workspaceId}/workflows/{workflowId}/nodes/{nodeId}/test',
+      '/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/nodes/{nodeId}/test',
       '/v1/workspaces/{workspaceId}/previews/{previewRunId}',
     ]);
     const operation =
       nodeTestingOpenApiDocument.paths[
-        '/v1/workspaces/{workspaceId}/workflows/{workflowId}/nodes/{nodeId}/test'
+        '/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/nodes/{nodeId}/test'
       ].post;
     expect(operation.parameters.map(({ name }) => name)).toEqual([
       'workspaceId',

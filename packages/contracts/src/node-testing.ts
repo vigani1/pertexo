@@ -74,38 +74,39 @@ export const nodeTestingOpenApiDocument = Object.freeze({
   openapi: '3.1.0',
   info: { title: 'Pertexo Node Testing API', version: '1.0.0' },
   paths: {
-    '/v1/workspaces/{workspaceId}/workflows/{workflowId}/nodes/{nodeId}/test': {
-      post: {
-        operationId: 'testWorkflowNode',
-        security: [{ cookieSession: [] }],
-        parameters: [
-          workspaceParameter,
-          workflowParameter,
-          nodeParameter,
-          csrfParameter,
-          conditionalIdempotencyParameter,
-        ],
-        requestBody: jsonRequest('NodeTestRequest'),
-        responses: {
-          '200': jsonResponse(
-            'Read-only node validation',
-            'NodeValidationResponse',
-          ),
-          '202': jsonResponse(
-            'Durable node test execution accepted',
-            'NodeTestExecuteAcceptedResponse',
-          ),
-          '400': responseReference('BadRequest'),
-          '401': responseReference('Unauthenticated'),
-          '403': responseReference('Forbidden'),
-          '404': responseReference('NotFound'),
-          '409': responseReference('Conflict'),
-          '422': responseReference('UnprocessableEntity'),
-          '428': responseReference('PreconditionRequired'),
-          '500': responseReference('Unexpected'),
+    '/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/nodes/{nodeId}/test':
+      {
+        post: {
+          operationId: 'testWorkflowNode',
+          security: [{ cookieSession: [] }],
+          parameters: [
+            workspaceParameter,
+            workflowParameter,
+            nodeParameter,
+            csrfParameter,
+            conditionalIdempotencyParameter,
+          ],
+          requestBody: jsonRequest('NodeTestRequest'),
+          responses: {
+            '200': jsonResponse(
+              'Read-only node validation',
+              'NodeValidationResponse',
+            ),
+            '202': jsonResponse(
+              'Durable node test execution accepted',
+              'NodeTestExecuteAcceptedResponse',
+            ),
+            '400': responseReference('BadRequest'),
+            '401': responseReference('Unauthenticated'),
+            '403': responseReference('Forbidden'),
+            '404': responseReference('NotFound'),
+            '409': responseReference('Conflict'),
+            '422': responseReference('UnprocessableEntity'),
+            '428': responseReference('PreconditionRequired'),
+            '500': responseReference('Unexpected'),
+          },
         },
       },
-    },
     '/v1/workspaces/{workspaceId}/previews/{previewRunId}': {
       get: {
         operationId: 'getPreviewRun',

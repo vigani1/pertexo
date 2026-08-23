@@ -395,7 +395,7 @@ describe('API bootstrap', () => {
 
     const testResponse = await application.inject({
       method: 'POST',
-      url: '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/workflows/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/nodes/cccccccc-cccc-4ccc-8ccc-cccccccccccc/test',
+      url: '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/workflows/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/draft/nodes/cccccccc-cccc-4ccc-8ccc-cccccccccccc/test',
       payload: { mode: 'validate' },
     });
     expect(testResponse.statusCode).toBe(401);

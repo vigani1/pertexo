@@ -5,7 +5,7 @@
     "version": "1.0.0"
   },
   "paths": {
-    "/v1/workspaces/{workspaceId}/workflows/{workflowId}/nodes/{nodeId}/test": {
+    "/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/nodes/{nodeId}/test": {
       "post": {
         "operationId": "testWorkflowNode",
         "security": [
