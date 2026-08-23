@@ -8,7 +8,8 @@ import {
   type CompatibilityReleaseExpectationSet,
 } from './compatibility-release.js';
 
-export const EXPECTED_MIGRATION_HEAD = '0025_preview_cleanup_idempotency.sql';
+export const EXPECTED_MIGRATION_HEAD =
+  '0026_preview_cleanup_terminal_guard.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{

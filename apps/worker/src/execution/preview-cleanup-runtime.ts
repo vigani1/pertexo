@@ -143,7 +143,13 @@ export function createPreviewCleanupHandler(
           workspaceId: artifact.workspaceId,
         });
         if (remaining !== null)
-          throw new PreviewCleanupStateError('artifact_delete_unconfirmed');
+          return store.finish({
+            artifactQuiescenceSeconds,
+            delivery: durableDelivery,
+            previewRunId: delivery.data.previewRunId,
+            signal: context.signal,
+            workspaceId: delivery.data.workspaceId,
+          });
         await store.completeArtifact({
           artifactId: artifact.artifactId,
           previewRunId: delivery.data.previewRunId,

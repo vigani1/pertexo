@@ -502,6 +502,16 @@ describe('worker-side preview execution seam', () => {
     if (cleanupRow === undefined)
       throw new Error('preview cleanup outbox missing');
     await ownerPool.query('select pg_sleep(0.25)');
+    const directCleanup = await withTenantScopedClient(
+      workerPool,
+      { workspaceId },
+      (client) =>
+        client.query<{ completed: boolean }>(
+          `select app.complete_preview_cleanup($1,$2) as completed`,
+          [workspaceId, accepted.previewRunId],
+        ),
+    );
+    expect(directCleanup.rows[0]).toEqual({ completed: false });
     await expect(
       claimPreviewCleanupDelivery(workerPool, {
         artifactLimit: 10,

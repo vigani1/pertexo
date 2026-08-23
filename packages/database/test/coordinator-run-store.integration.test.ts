@@ -515,7 +515,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0025_preview_cleanup_idempotency.sql',
+          migrationHead: '0026_preview_cleanup_terminal_guard.sql',
           role: 'pertexo_worker',
         });
       } finally {
@@ -541,7 +541,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0025_preview_cleanup_idempotency.sql',
+        migrationHead: '0026_preview_cleanup_terminal_guard.sql',
         role: 'pertexo_worker',
       });
       const catalog = await readinessPool.query<{
@@ -780,7 +780,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0025_preview_cleanup_idempotency.sql',
+        migrationHead: '0026_preview_cleanup_terminal_guard.sql',
       });
     } finally {
       await readinessPool.end();
@@ -913,7 +913,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         workerRuntimeRole: 'pertexo_worker',
       }),
     ).resolves.toMatchObject({
-      migrationHead: '0025_preview_cleanup_idempotency.sql',
+      migrationHead: '0026_preview_cleanup_terminal_guard.sql',
     });
     await readinessPool.end();
   });

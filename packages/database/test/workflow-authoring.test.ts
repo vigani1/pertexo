@@ -17,7 +17,7 @@ const integrationUsageMigrationUrl = new URL(
 describe('workflow authoring migration contract', () => {
   it('advances the reviewed migration head', () => {
     expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0025_preview_cleanup_idempotency.sql',
+      '0026_preview_cleanup_terminal_guard.sql',
     );
   });
 

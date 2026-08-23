@@ -108,9 +108,16 @@ describe('preview cleanup handler', () => {
     expect(finish).not.toHaveBeenCalled();
   });
 
-  it('leaves durable metadata open when object absence is not confirmed', async () => {
+  it('durably continues when absence is first unconfirmed and completes on retry', async () => {
     const artifactId = randomUUID();
     const completeArtifact = vi.fn();
+    const finish = vi
+      .fn()
+      .mockResolvedValueOnce({
+        kind: 'continued',
+        cleanupOutboxEventId: randomUUID(),
+      })
+      .mockResolvedValueOnce({ kind: 'completed' });
     const store: PreviewCleanupStore = {
       claim: () =>
         Promise.resolve({
@@ -118,22 +125,31 @@ describe('preview cleanup handler', () => {
           artifacts: [{ artifactId, workspaceId }],
         }),
       completeArtifact,
-      finish: vi.fn(),
+      finish,
     };
-    await expect(
-      createPreviewCleanupHandler(store, {
-        delete: () => Promise.resolve(),
-        head: () =>
-          Promise.resolve({
-            artifactId,
-            byteLength: 1,
-            mediaType: 'application/octet-stream',
-            sha256: 'a'.repeat(64),
-            workspaceId,
-          }),
-      }).handle(delivery(), context()),
-    ).rejects.toThrow('artifact_delete_unconfirmed');
+    const head = vi
+      .fn()
+      .mockResolvedValueOnce({
+        artifactId,
+        byteLength: 1,
+        mediaType: 'application/octet-stream',
+        sha256: 'a'.repeat(64),
+        workspaceId,
+      })
+      .mockResolvedValueOnce(null);
+    const handler = createPreviewCleanupHandler(store, {
+      delete: () => Promise.resolve(),
+      head,
+    });
+    await expect(handler.handle(delivery(), context())).resolves.toMatchObject({
+      kind: 'continued',
+    });
     expect(completeArtifact).not.toHaveBeenCalled();
+    await expect(handler.handle(delivery(), context())).resolves.toEqual({
+      kind: 'completed',
+    });
+    expect(completeArtifact).toHaveBeenCalledOnce();
+    expect(finish).toHaveBeenCalledTimes(2);
   });
 
   it.each([

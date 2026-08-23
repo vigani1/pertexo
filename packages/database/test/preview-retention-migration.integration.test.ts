@@ -155,6 +155,7 @@ describe('preview retention migration', () => {
     await expect(migrateDatabase(migrationConfig)).resolves.toEqual([
       '0024_preview_retention_cleanup.sql',
       '0025_preview_cleanup_idempotency.sql',
+      '0026_preview_cleanup_terminal_guard.sql',
     ]);
 
     const verification = new Pool({
