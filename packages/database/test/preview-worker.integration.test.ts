@@ -3,6 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import type { DatabaseError, PoolClient } from 'pg';
+import { v7 as uuidv7 } from 'uuid';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -181,12 +182,16 @@ function acceptanceInput(
     mayCauseExternalSideEffect: true,
     nodeId: 'node-1',
     operation: 'preview.execute',
+    operationKey: 'request',
+    providerKey: 'http',
+    requestId: 'preview-request-id',
     requestHash: createHash('sha256')
       .update(`preview-request-${String(fixtureSequence)}`)
       .digest('hex'),
     scope: `workflow:${workflowId}:node-1`,
     sideEffectClass: 'unsafe',
     traceparent: '00-' + 'e'.repeat(32) + '-' + 'f'.repeat(16) + '-01',
+    traceId: 'preview-trace-id',
     workflowId,
     ...overrides,
   };
@@ -386,10 +391,12 @@ async function previewTerminalFacts(previewRunId: string) {
   const [audit, usage] = await Promise.all([
     apiScopedQuery<{
       actor_user_id: string;
+      id: string;
       metadata: Record<string, unknown>;
+      request_id: string | null;
       trace_id: string | null;
     }>(
-      `select actor_user_id,trace_id,metadata
+      `select id,actor_user_id,request_id,trace_id,metadata
          from app.audit_events
         where workspace_id=$1 and action='preview.execution_terminal'
           and target_type='preview-run' and target_id=$2`,
@@ -397,11 +404,12 @@ async function previewTerminalFacts(previewRunId: string) {
     ),
     apiScopedQuery<{
       category: string;
+      id: string;
       idempotency_key: string;
       metadata: Record<string, unknown>;
       quantity: string;
     }>(
-      `select category,quantity::text,idempotency_key,metadata
+      `select id,category,quantity::text,idempotency_key,metadata
          from app.usage_events
         where workspace_id=$1 and resource_type='preview-run'
           and resource_id=$2`,
@@ -425,6 +433,58 @@ describe('worker-side preview execution seam', () => {
         workerRuntimeRole: 'pertexo_worker',
       }),
     ).resolves.toMatchObject({ migrationHead: EXPECTED_MIGRATION_HEAD });
+  });
+
+  it('rejects a same-named usage foreign key with incompatible semantics', async () => {
+    await withOwnerRole(async (client) => {
+      await client.query(
+        'alter table app.usage_events drop constraint usage_events_workspace_fk',
+      );
+      await client.query(
+        `alter table app.usage_events
+           add constraint usage_events_workspace_fk
+           foreign key (workspace_id) references app.workspaces (id)`,
+      );
+    });
+    try {
+      await expect(
+        checkDatabaseReadiness(apiPool, {
+          ownerRole: 'pertexo_owner',
+          workerRuntimeRole: 'pertexo_worker',
+        }),
+      ).rejects.toThrow(
+        'Preview terminal fact schema or grants are incompatible',
+      );
+    } finally {
+      await withOwnerRole(async (client) => {
+        await client.query(
+          'alter table app.usage_events drop constraint usage_events_workspace_fk',
+        );
+        await client.query(
+          `alter table app.usage_events
+             add constraint usage_events_workspace_fk
+             foreign key (workspace_id) references app.workspaces (id)
+             on delete restrict`,
+        );
+      });
+    }
+  });
+
+  it('rejects mutation of terminal correlation and classification pins', async () => {
+    const accepted = await acceptFixture();
+    await expect(
+      withOwnerRole(async (client) => {
+        await client.query("select set_config('app.workspace_id',$1,true)", [
+          workspaceId,
+        ]);
+        await client.query(
+          `update app.preview_runs
+              set request_id='forged-request',provider_key='forged'
+            where workspace_id=$1 and id=$2`,
+          [workspaceId, accepted.previewRunId],
+        );
+      }),
+    ).rejects.toSatisfy(expectPgCode('55000'));
   });
 
   it('binds preview artifacts to their owner and enforces inherited retention', async () => {
@@ -646,6 +706,7 @@ describe('worker-side preview execution seam', () => {
     expect(quarantined).toMatchObject({ kind: 'rescheduled' });
     if (quarantined.kind !== 'rescheduled')
       throw new Error('preview cleanup quarantine missing');
+    expect(quarantined.cleanupOutboxEventId.at(14)).toBe('7');
     const quarantineSuccessor = await scopedQuery<{
       payload_checksum: string;
     }>(
@@ -690,6 +751,7 @@ describe('worker-side preview execution seam', () => {
       continued.cleanupOutboxEventId === undefined
     )
       throw new Error('preview cleanup continuation missing');
+    expect(continued.cleanupOutboxEventId.at(14)).toBe('7');
     const successor = await scopedQuery<{ payload_checksum: string }>(
       `select payload_checksum from app.outbox_events
        where workspace_id=$1 and id=$2`,
@@ -788,6 +850,8 @@ describe('worker-side preview execution seam', () => {
       mayCauseExternalSideEffect: true,
       mayContactProvider: true,
       nodeId: 'node-1',
+      operationKey: 'request',
+      providerKey: 'http',
       sideEffectClass: 'unsafe',
       workspaceId,
       workflowId,
@@ -842,9 +906,16 @@ describe('worker-side preview execution seam', () => {
     expect(runState.rows[0]?.completed_at).not.toBeNull();
 
     const facts = await previewTerminalFacts(claimed.fixture.previewRunId);
+    const auditId = facts.audit[0]?.id;
+    const usageId = facts.usage[0]?.id;
+    const uuidV7Pattern =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
+    expect(auditId).toMatch(uuidV7Pattern);
+    expect(usageId).toMatch(uuidV7Pattern);
     expect(facts.audit).toEqual([
       {
         actor_user_id: actorUserId,
+        id: auditId,
         metadata: {
           schemaVersion: 1,
           status: PREVIEW_STATUS.succeeded,
@@ -854,17 +925,20 @@ describe('worker-side preview execution seam', () => {
           definitionVersion: 1,
           executorKey: 'http.request',
           executorVersion: 2,
+          dryRun: 'not_supported',
           sideEffectClass: 'unsafe',
           mayContactProvider: true,
           mayCauseExternalSideEffect: true,
           previewAttemptId: claimed.fixture.previewAttemptId,
         },
-        trace_id: 'e'.repeat(32),
+        request_id: 'preview-request-id',
+        trace_id: 'preview-trace-id',
       },
     ]);
     expect(facts.usage).toEqual([
       {
         category: 'preview_execution',
+        id: usageId,
         idempotency_key: `preview-terminal:${claimed.fixture.previewRunId}`,
         metadata: {
           schemaVersion: 1,
@@ -878,6 +952,23 @@ describe('worker-side preview execution seam', () => {
     ]);
     expect(JSON.stringify(facts)).not.toContain('hello');
     expect(JSON.stringify(facts)).not.toContain('done');
+
+    const otherWorkspaceFacts = await withTenantScopedClient(
+      apiPool,
+      { workspaceId: randomUUID() },
+      (client) =>
+        client.query<{ audit_count: string; usage_count: string }>(
+          `select
+             (select count(*)::text from app.audit_events
+               where target_id=$1) as audit_count,
+             (select count(*)::text from app.usage_events
+               where resource_id=$1) as usage_count`,
+          [claimed.fixture.previewRunId],
+        ),
+    );
+    expect(otherWorkspaceFacts.rows).toEqual([
+      { audit_count: '0', usage_count: '0' },
+    ]);
   });
 
   it('makes exact redelivery after a terminal outcome an inbox duplicate', async () => {
@@ -932,7 +1023,7 @@ describe('worker-side preview execution seam', () => {
            idempotency_key,metadata
          ) values ($1,$2,'preview_execution',1,'preview-run',$3,$4,'{}')`,
         [
-          randomUUID(),
+          uuidv7(),
           workspaceId,
           claimed.fixture.previewRunId,
           `preview-terminal:${claimed.fixture.previewRunId}`,
@@ -1334,7 +1425,7 @@ describe('worker-side preview execution seam', () => {
         previewRunId: claimed.fixture.previewRunId,
         workspaceId,
       }),
-    ).resolves.toEqual({
+    ).resolves.toMatchObject({
       kind: 'completed',
       status: PREVIEW_STATUS.outcomeUnknown,
     });
@@ -1389,7 +1480,7 @@ describe('worker-side preview execution seam', () => {
         previewRunId: claimed.fixture.previewRunId,
         workspaceId,
       }),
-    ).resolves.toEqual({
+    ).resolves.toMatchObject({
       kind: 'completed',
       status: PREVIEW_STATUS.timedOut,
     });

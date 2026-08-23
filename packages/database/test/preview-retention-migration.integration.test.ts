@@ -202,6 +202,7 @@ describe('preview retention migration', () => {
       '0025_preview_cleanup_idempotency.sql',
       '0026_preview_cleanup_terminal_guard.sql',
       '0027_preview_terminal_facts.sql',
+      '0028_preview_terminal_fact_corrections.sql',
     ]);
 
     const verification = new Pool({

@@ -20,6 +20,7 @@
     "@pertexo/workflow-model": "workspace:*",
     "drizzle-orm": "0.45.2",
     "pg": "8.23.0",
+    "uuid": "13.0.0",
     "zod": "4.4.3"
   },
   "devDependencies": {

@@ -28,6 +28,7 @@ export type PreparedNodePreview = Readonly<{
   disclosure: NodeSideEffectDisclosure;
   executableNode: Readonly<Record<string, JsonValue>>;
   executor: Readonly<{ key: string; version: number }>;
+  integration?: Readonly<{ providerKey: string; operationKey: string }>;
   issues: readonly NodeValidationIssue[];
   resolvedInput: JsonValue;
 }>;
@@ -208,6 +209,9 @@ export async function prepareNodeValidation(
       }) as Readonly<Record<string, JsonValue>>,
     ),
     executor: Object.freeze({ ...definition.manifest.executor }),
+    ...(definition.manifest.integration === undefined
+      ? {}
+      : { integration: Object.freeze({ ...definition.manifest.integration }) }),
     issues: Object.freeze(issues),
     resolvedInput,
   });

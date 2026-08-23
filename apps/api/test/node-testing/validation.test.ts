@@ -48,6 +48,7 @@ describe('pure node preview validation', () => {
     expect(result).toMatchObject({
       definition: { key: 'http.request', version: 1 },
       executor: { key: 'http.request', version: 1 },
+      integration: { providerKey: 'http', operationKey: 'request' },
       disclosure: {
         sideEffectClass: 'unsafe',
         mayContactProvider: true,

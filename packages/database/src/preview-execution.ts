@@ -1,7 +1,6 @@
-import { randomUUID } from 'node:crypto';
-
 import { and, eq, gt, sql } from 'drizzle-orm';
 import type { Pool, PoolClient } from 'pg';
+import { v7 as uuidv7 } from 'uuid';
 import { z } from 'zod';
 
 import { canonicalOutboxPayloadChecksum, insertOutboxEvent } from './outbox.js';
@@ -27,6 +26,7 @@ const compatibilityFingerprintSchema = z
   .string()
   .regex(/^node-compat:v1:sha256:[0-9a-f]{64}$/u);
 const identityKeySchema = z.string().regex(/^[a-z][a-z0-9]*(?:\.[a-z0-9]+)*$/u);
+const integrationKeySchema = z.string().regex(/^[a-z][a-z0-9._:-]*$/u);
 const traceparentSchema = z
   .string()
   .regex(/^00-[\da-f]{32}-[\da-f]{16}-[\da-f]{2}$/u)
@@ -83,6 +83,8 @@ const acceptPreviewRunInputSchema = z
     mayCauseExternalSideEffect: z.boolean(),
     nodeId: z.string().min(1).max(256),
     operation: z.literal('preview.execute'),
+    operationKey: integrationKeySchema.max(128).optional(),
+    providerKey: integrationKeySchema.max(64).optional(),
     providerIdempotencyKey: z.string().min(1).max(256).optional(),
     requestHash: sha256Schema,
     requestId: z.string().min(1).max(128).optional(),
@@ -102,6 +104,11 @@ const acceptPreviewRunInputSchema = z
       input.sideEffectClass !== 'idempotent_with_key' ||
       input.providerIdempotencyKey !== undefined,
     'idempotent execution requires a provider idempotency key',
+  )
+  .refine(
+    (input) =>
+      (input.providerKey === undefined) === (input.operationKey === undefined),
+    'provider and operation classification must be supplied together',
   );
 
 const resultRefSchema = z
@@ -397,11 +404,11 @@ export async function acceptPreviewRun(
     now,
   );
 
-  const idempotencyRecordId = randomUUID();
-  const previewRunId = randomUUID();
-  const previewAttemptId = randomUUID();
-  const outboxEventId = randomUUID();
-  const cleanupOutboxEventId = randomUUID();
+  const idempotencyRecordId = uuidv7();
+  const previewRunId = uuidv7();
+  const previewAttemptId = uuidv7();
+  const outboxEventId = uuidv7();
+  const cleanupOutboxEventId = uuidv7();
   const resultRef = { outboxEventId, previewAttemptId } as const;
 
   const claims = await transaction.db
@@ -451,6 +458,14 @@ export async function acceptPreviewRun(
       actorUserId: parsed.actorUserId,
       idempotencyKeyHash: parsed.keyHash,
       requestHash: parsed.requestHash,
+      requestId: parsed.requestId ?? null,
+      traceId:
+        parsed.traceId ??
+        (parsed.traceparent === undefined
+          ? null
+          : parsed.traceparent.slice(3, 35)),
+      providerKey: parsed.providerKey ?? null,
+      operationKey: parsed.operationKey ?? null,
       executableNodeJson: parsed.executableNode,
       inputRef: sql`${resolvedInput.stored}::jsonb`,
       priorPreviewRunId: resolvedInput.priorPreviewRunId,
@@ -514,7 +529,7 @@ export async function acceptPreviewRun(
     availableAt: parsed.expiresAt,
   });
   await transaction.db.insert(auditEvents).values({
-    id: randomUUID(),
+    id: uuidv7(),
     workspaceId: transaction.workspaceId,
     actorUserId: parsed.actorUserId,
     action: 'preview.execution_accepted',
@@ -527,7 +542,9 @@ export async function acceptPreviewRun(
       workflowId: parsed.workflowId,
       nodeId: parsed.nodeId,
       sideEffectClass: parsed.sideEffectClass,
+      mayContactProvider: parsed.mayContactProvider,
       mayCauseExternalSideEffect: parsed.mayCauseExternalSideEffect,
+      dryRun: parsed.dryRun,
       expiresAt: parsed.expiresAt.toISOString(),
     },
   });
@@ -635,7 +652,7 @@ async function insertPreviewOutboxDelivery(
         workspaceId: string;
       }>,
 ): Promise<Readonly<{ outboxEventId: string; payloadChecksum: string }>> {
-  const outboxEventId = randomUUID();
+  const outboxEventId = uuidv7();
   const payload =
     input.jobName === 'execute-preview-attempt'
       ? previewDeliveryPayloadSchema.parse({
@@ -716,8 +733,10 @@ export type PreviewAttemptLease = Readonly<{
   mayContactProvider: boolean;
   mayCauseExternalSideEffect: boolean;
   nodeId: string;
+  operationKey?: string;
   previewAttemptId: string;
   previewRunId: string;
+  providerKey?: string;
   providerIdempotencyKey?: string;
   sideEffectClass: 'safe' | 'idempotent_with_key' | 'unsafe';
   traceparent?: string;
@@ -938,7 +957,7 @@ async function auditPreviewDeliveryMismatch(
         `insert into app.transport_security_audit_facts (
            id,workspace_id,fact_type,consumer_name,message_id
          ) values ($1,$2,'inbox_checksum_mismatch',$3,$4)`,
-        [randomUUID(), workspaceId, consumerName, delivery.outboxEventId],
+        [uuidv7(), workspaceId, consumerName, delivery.outboxEventId],
       );
     },
     { signal },
@@ -970,6 +989,8 @@ async function loadPreviewLease(
       may_contact_provider: boolean;
       may_cause_external_side_effect: boolean;
       node_id: string;
+      operation_key: string | null;
+      provider_key: string | null;
       side_effect_class: string;
       traceparent: string | null;
       workflow_id: string;
@@ -978,7 +999,8 @@ async function loadPreviewLease(
     `select compatibility_release_epoch,compatibility_release_fingerprint,
             definition_key,definition_version,dry_run,executable_node_json,
             executor_key,executor_version,input_ref,may_contact_provider,
-            may_cause_external_side_effect,node_id,side_effect_class,
+             may_cause_external_side_effect,node_id,operation_key,provider_key,
+             side_effect_class,
             traceparent,workflow_id,expires_at as run_expires_at
      from app.preview_runs
      where workspace_id=$1 and id=$2`,
@@ -1024,8 +1046,10 @@ async function loadPreviewLease(
     mayContactProvider: run.may_contact_provider,
     mayCauseExternalSideEffect: run.may_cause_external_side_effect,
     nodeId: run.node_id,
+    ...(run.operation_key === null ? {} : { operationKey: run.operation_key }),
     previewAttemptId: input.previewAttemptId,
     previewRunId: input.previewRunId,
+    ...(run.provider_key === null ? {} : { providerKey: run.provider_key }),
     ...(attempt.provider_idempotency_key === null
       ? {}
       : { providerIdempotencyKey: attempt.provider_idempotency_key }),
@@ -1354,17 +1378,19 @@ async function appendPreviewTerminalFacts(
     definition_version: number;
     executor_key: string;
     executor_version: number;
+    dry_run: string;
     may_contact_provider: boolean;
     may_cause_external_side_effect: boolean;
     node_id: string;
+    request_id: string | null;
     side_effect_class: string;
-    traceparent: string | null;
+    trace_id: string | null;
     workflow_id: string;
   }>(
     `select actor_user_id,workflow_id,node_id,definition_key,
             definition_version,executor_key,executor_version,
             side_effect_class,may_contact_provider,
-            may_cause_external_side_effect,traceparent
+            may_cause_external_side_effect,dry_run,request_id,trace_id
        from app.preview_runs
       where workspace_id=$1 and id=$2`,
     [input.workspaceId, input.previewRunId],
@@ -1381,21 +1407,23 @@ async function appendPreviewTerminalFacts(
     definitionVersion: run.definition_version,
     executorKey: run.executor_key,
     executorVersion: run.executor_version,
+    dryRun: run.dry_run,
     sideEffectClass: run.side_effect_class,
     mayContactProvider: run.may_contact_provider,
     mayCauseExternalSideEffect: run.may_cause_external_side_effect,
   } as const;
   await client.query(
     `insert into app.audit_events (
-       id,workspace_id,actor_user_id,action,target_type,target_id,trace_id,
-       metadata
-     ) values ($1,$2,$3,'preview.execution_terminal','preview-run',$4,$5,$6::jsonb)`,
+       id,workspace_id,actor_user_id,action,target_type,target_id,request_id,
+       trace_id,metadata
+     ) values ($1,$2,$3,'preview.execution_terminal','preview-run',$4,$5,$6,$7::jsonb)`,
     [
-      randomUUID(),
+      uuidv7(),
       input.workspaceId,
       run.actor_user_id,
       input.previewRunId,
-      run.traceparent === null ? null : run.traceparent.slice(3, 35),
+      run.request_id,
+      run.trace_id,
       JSON.stringify({ ...metadata, previewAttemptId: input.previewAttemptId }),
     ],
   );
@@ -1405,7 +1433,7 @@ async function appendPreviewTerminalFacts(
        idempotency_key,metadata
      ) values ($1,$2,'preview_execution',1,'preview-run',$3,$4,$5::jsonb)`,
     [
-      randomUUID(),
+      uuidv7(),
       input.workspaceId,
       input.previewRunId,
       `preview-terminal:${input.previewRunId}`,
@@ -1574,8 +1602,15 @@ export type PreviewDeliveryReconciliationResult =
     }>
   | Readonly<{
       kind: 'completed';
+      mayContactProvider: boolean;
+      mayCauseExternalSideEffect: boolean;
+      operationKey?: string;
+      possiblyDispatched: boolean;
+      providerKey?: string;
+      sideEffectClass: 'safe' | 'idempotent_with_key' | 'unsafe';
       status:
         typeof PREVIEW_STATUS.outcomeUnknown | typeof PREVIEW_STATUS.timedOut;
+      usesConnection: boolean;
     }>;
 
 /**
@@ -1779,9 +1814,14 @@ export async function reconcilePreviewDelivery(
           fence_token: string;
           lease_live: boolean;
           lease_expires_at: Date | null;
+          may_contact_provider: boolean;
+          may_cause_external_side_effect: boolean;
+          operation_key: string | null;
+          provider_key: string | null;
           run_deadline_expired: boolean;
           run_status: string;
           side_effect_class: string;
+          uses_connection: boolean;
         }>(
           `select attempt.status as attempt_status,
                   attempt.dispatch_marked_at,
@@ -1789,8 +1829,18 @@ export async function reconcilePreviewDelivery(
                   attempt.lease_expires_at,
                   (attempt.lease_expires_at is not null and
                    attempt.lease_expires_at > clock_timestamp()) as lease_live,
-                  attempt.side_effect_class,
-                  run.status as run_status,
+                   attempt.side_effect_class,
+                   run.may_contact_provider,
+                   run.may_cause_external_side_effect,
+                   run.operation_key,
+                   run.provider_key,
+                   coalesce(
+                     jsonb_typeof(run.executable_node_json->'connectionRefs') = 'object'
+                     and run.executable_node_json->'connectionRefs' <> '{}'::jsonb,
+                     false
+                   )
+                     as uses_connection,
+                   run.status as run_status,
                   (run.expires_at <= clock_timestamp()) as run_deadline_expired
            from app.preview_attempts attempt
            join app.preview_runs run
@@ -1907,7 +1957,23 @@ export async function reconcilePreviewDelivery(
             workspaceId: scope.workspaceId,
           });
           await completeReceipt();
-          return Object.freeze({ kind: 'completed', status });
+          return Object.freeze({
+            kind: 'completed',
+            mayContactProvider: state.may_contact_provider,
+            mayCauseExternalSideEffect: state.may_cause_external_side_effect,
+            ...(state.operation_key === null
+              ? {}
+              : { operationKey: state.operation_key }),
+            possiblyDispatched: state.dispatch_marked_at !== null,
+            ...(state.provider_key === null
+              ? {}
+              : { providerKey: state.provider_key }),
+            sideEffectClass: z
+              .enum(['safe', 'idempotent_with_key', 'unsafe'])
+              .parse(state.side_effect_class),
+            status,
+            usesConnection: state.uses_connection,
+          });
         }
 
         // Fence the expired owner before making the replacement delivery

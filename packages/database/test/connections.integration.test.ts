@@ -233,6 +233,7 @@ describe('connection persistence', () => {
       '0025_preview_cleanup_idempotency.sql',
       '0026_preview_cleanup_terminal_guard.sql',
       '0027_preview_terminal_facts.sql',
+      '0028_preview_terminal_fact_corrections.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, upgradeDatabaseName),
@@ -245,7 +246,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0027_preview_terminal_facts.sql',
+        migrationHead: '0028_preview_terminal_fact_corrections.sql',
       });
     } finally {
       await pool.end();
@@ -1037,7 +1038,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0027_preview_terminal_facts.sql',
+        migrationHead: '0028_preview_terminal_fact_corrections.sql',
       });
       await expect(
         checkDatabaseReadiness(workerReadinessPool, {
@@ -1045,7 +1046,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0027_preview_terminal_facts.sql',
+        migrationHead: '0028_preview_terminal_fact_corrections.sql',
       });
     } finally {
       await Promise.all([apiReadinessPool.end(), workerReadinessPool.end()]);

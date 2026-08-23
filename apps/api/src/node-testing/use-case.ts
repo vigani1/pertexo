@@ -162,6 +162,12 @@ export class TestWorkflowNodeUseCase {
           .digest('hex'),
         requestHash,
         operation: 'preview.execute',
+        ...(prepared.integration === undefined
+          ? {}
+          : {
+              operationKey: prepared.integration.operationKey,
+              providerKey: prepared.integration.providerKey,
+            }),
         scope: `${input.actor.actorId}:${input.workflowId}`,
         ...(prepared.disclosure.sideEffectClass === 'idempotent_with_key'
           ? {

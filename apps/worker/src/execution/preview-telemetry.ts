@@ -9,8 +9,10 @@ export type PreviewTerminalStatus = Exclude<
 export type PreviewTerminalMeasurement = Readonly<{
   mayContactProvider?: boolean;
   mayCauseExternalSideEffect?: boolean;
+  operationKey?: string;
   outcome: PreviewTerminalStatus;
   possiblyDispatched?: boolean;
+  providerKey?: string;
   sideEffectClass?: 'safe' | 'idempotent_with_key' | 'unsafe';
   source: 'execution' | 'reconciliation';
   usesConnection?: boolean;
@@ -73,9 +75,15 @@ function terminalAttributes(
           may_cause_external_side_effect:
             measurement.mayCauseExternalSideEffect,
         }),
+    ...(measurement.operationKey === undefined
+      ? {}
+      : { operation_key: measurement.operationKey }),
     ...(measurement.possiblyDispatched === undefined
       ? {}
       : { possibly_dispatched: measurement.possiblyDispatched }),
+    ...(measurement.providerKey === undefined
+      ? {}
+      : { provider_key: measurement.providerKey }),
     ...(measurement.usesConnection === undefined
       ? {}
       : { uses_connection: measurement.usesConnection }),

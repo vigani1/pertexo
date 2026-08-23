@@ -95,8 +95,19 @@ export function createPreviewReconciliationHandler(
         });
         if (result.kind === 'completed')
           telemetry.recordTerminal({
+            mayContactProvider: result.mayContactProvider,
+            mayCauseExternalSideEffect: result.mayCauseExternalSideEffect,
+            ...(result.operationKey === undefined
+              ? {}
+              : { operationKey: result.operationKey }),
             outcome: result.status,
+            possiblyDispatched: result.possiblyDispatched,
+            ...(result.providerKey === undefined
+              ? {}
+              : { providerKey: result.providerKey }),
+            sideEffectClass: result.sideEffectClass,
             source: 'reconciliation',
+            usesConnection: result.usesConnection,
           });
       } catch {
         // Diagnostics cannot change a committed reconciliation decision.

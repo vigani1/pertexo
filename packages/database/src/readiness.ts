@@ -8,7 +8,8 @@ import {
   type CompatibilityReleaseExpectationSet,
 } from './compatibility-release.js';
 
-export const EXPECTED_MIGRATION_HEAD = '0027_preview_terminal_facts.sql';
+export const EXPECTED_MIGRATION_HEAD =
+  '0028_preview_terminal_fact_corrections.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -1007,11 +1008,128 @@ export async function checkDatabaseReadiness(
         (select count(*) = 9 from pg_attribute
          where attrelid = to_regclass('app.usage_events')
            and attnum > 0 and not attisdropped)
+        and not exists (
+          select 1
+          from (values
+            ('id', 'uuid'),
+            ('workspace_id', 'uuid'),
+            ('category', 'character varying(64)'),
+            ('quantity', 'bigint'),
+            ('resource_type', 'character varying(64)'),
+            ('resource_id', 'uuid'),
+            ('idempotency_key', 'character varying(128)'),
+            ('metadata', 'jsonb'),
+            ('occurred_at', 'timestamp with time zone')
+          ) expected(attname, type_name)
+          where not exists (
+            select 1 from pg_attribute attribute
+            where attribute.attrelid = to_regclass('app.usage_events')
+              and attribute.attname = expected.attname
+              and format_type(attribute.atttypid, attribute.atttypmod) = expected.type_name
+              and attribute.attnotnull
+              and not attribute.attisdropped
+          )
+        )
+        and exists (
+          select 1 from pg_attribute attribute
+          join pg_attrdef default_value
+            on default_value.adrelid = attribute.attrelid
+           and default_value.adnum = attribute.attnum
+          where attribute.attrelid = to_regclass('app.usage_events')
+            and attribute.attname = 'metadata'
+            and pg_get_expr(default_value.adbin, default_value.adrelid) = '''{}''::jsonb'
+        )
+        and exists (
+          select 1 from pg_attribute attribute
+          join pg_attrdef default_value
+            on default_value.adrelid = attribute.attrelid
+           and default_value.adnum = attribute.attnum
+          where attribute.attrelid = to_regclass('app.usage_events')
+            and attribute.attname = 'occurred_at'
+            and pg_get_expr(default_value.adbin, default_value.adrelid) = 'clock_timestamp()'
+        )
+        and not exists (
+          select 1
+          from (values
+            ('usage_events_pkey', 'p', true, 'PRIMARY KEY (id)'),
+            ('usage_events_workspace_fk', 'f', true, 'FOREIGN KEY (workspace_id) REFERENCES app.workspaces(id) ON DELETE RESTRICT'),
+            ('usage_events_category_format', 'c', true, 'CHECK (((category)::text ~ ''^[a-z][a-z0-9._:-]{0,63}$''::text))'),
+            ('usage_events_quantity_positive', 'c', true, 'CHECK ((quantity > 0))'),
+            ('usage_events_resource_type_format', 'c', true, 'CHECK (((resource_type)::text ~ ''^[a-z][a-z0-9._:-]{0,63}$''::text))'),
+            ('usage_events_idempotency_key_format', 'c', true, 'CHECK (((idempotency_key)::text ~ ''^[A-Za-z0-9._:-]{1,128}$''::text))'),
+            ('usage_events_metadata_bounded', 'c', true, 'CHECK ((octet_length((metadata)::text) <= 4096))'),
+            ('usage_events_workspace_idempotency_unique', 'u', true, 'UNIQUE (workspace_id, idempotency_key)'),
+            ('usage_events_preview_uuid_v7', 'c', false, 'CHECK ((((category)::text <> ''preview_execution''::text) OR (uuid_extract_version(id) = 7))) NOT VALID')
+          ) expected(conname, contype, convalidated, definition)
+          where not exists (
+            select 1 from pg_constraint constraint_record
+            where constraint_record.conrelid = to_regclass('app.usage_events')
+              and constraint_record.conname = expected.conname
+              and constraint_record.contype = expected.contype::char
+              and constraint_record.convalidated = expected.convalidated
+              and pg_get_constraintdef(constraint_record.oid) = expected.definition
+          )
+        )
+        and not exists (
+          select 1
+          from (values
+            ('usage_events_workspace_period_idx', 'CREATE INDEX usage_events_workspace_period_idx ON app.usage_events USING btree (workspace_id, occurred_at DESC, id)'),
+            ('usage_events_resource_idx', 'CREATE INDEX usage_events_resource_idx ON app.usage_events USING btree (workspace_id, resource_type, resource_id, id)')
+          ) expected(indexname, definition)
+          where not exists (
+            select 1 from pg_indexes index_record
+            where index_record.schemaname = 'app'
+              and index_record.tablename = 'usage_events'
+              and index_record.indexname = expected.indexname
+              and index_record.indexdef = expected.definition
+          )
+        )
+        and not exists (
+          select 1
+          from (values
+            ('request_id', 'character varying(128)'),
+            ('trace_id', 'character varying(128)'),
+            ('provider_key', 'character varying(64)'),
+            ('operation_key', 'character varying(128)')
+          ) expected(attname, type_name)
+          where not exists (
+            select 1 from pg_attribute attribute
+            where attribute.attrelid = to_regclass('app.preview_runs')
+              and attribute.attname = expected.attname
+              and format_type(attribute.atttypid, attribute.atttypmod) = expected.type_name
+              and not attribute.attnotnull
+              and not attribute.attisdropped
+          )
+        )
         and exists (
           select 1 from pg_constraint
-          where conrelid = to_regclass('app.usage_events')
-            and conname = 'usage_events_workspace_idempotency_unique'
-            and contype = 'u'
+          where conrelid = to_regclass('app.preview_runs')
+            and conname = 'preview_runs_integration_identity_consistent'
+            and contype = 'c'
+            and convalidated
+            and pg_get_constraintdef(oid) = 'CHECK ((((provider_key IS NULL) AND (operation_key IS NULL)) OR (((provider_key)::text ~ ''^[a-z][a-z0-9._:-]{0,63}$''::text) AND ((operation_key)::text ~ ''^[a-z][a-z0-9._:-]{0,127}$''::text))))'
+        )
+        and exists (
+          select 1 from pg_constraint
+          where conrelid = to_regclass('app.audit_events')
+            and conname = 'audit_events_preview_terminal_uuid_v7'
+            and contype = 'c'
+            and not convalidated
+            and pg_get_constraintdef(oid) = 'CHECK ((((action)::text <> ''preview.execution_terminal''::text) OR (uuid_extract_version(id) = 7))) NOT VALID'
+        )
+        and exists (
+          select 1 from pg_trigger
+          where tgrelid = to_regclass('app.preview_runs')
+            and tgname = 'preview_run_pins_immutable'
+            and not tgisinternal
+            and tgenabled = 'O'
+            and pg_get_triggerdef(oid) = 'CREATE TRIGGER preview_run_pins_immutable BEFORE UPDATE ON app.preview_runs FOR EACH ROW EXECUTE FUNCTION app.reject_preview_run_pin_change()'
+        )
+        and exists (
+          select 1 from pg_proc
+          where oid = to_regprocedure('app.reject_preview_run_pin_change()')
+            and prosrc like '%OLD.request_id%OLD.trace_id%OLD.provider_key%OLD.operation_key%'
+            and prosrc like '%NEW.request_id%NEW.trace_id%NEW.provider_key%NEW.operation_key%'
         )
         and exists (
           select 1 from pg_class protected

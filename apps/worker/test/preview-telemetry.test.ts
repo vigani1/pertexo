@@ -39,8 +39,10 @@ describe('preview telemetry', () => {
     telemetry.recordTerminal({
       mayContactProvider: true,
       mayCauseExternalSideEffect: true,
+      operationKey: 'request',
       outcome: 'outcome_unknown',
       possiblyDispatched: true,
+      providerKey: 'http',
       sideEffectClass: 'unsafe',
       source: 'execution',
       usesConnection: true,
@@ -55,8 +57,10 @@ describe('preview telemetry', () => {
         attributes: {
           may_contact_provider: true,
           may_cause_external_side_effect: true,
+          operation_key: 'request',
           outcome: 'outcome_unknown',
           possibly_dispatched: true,
+          provider_key: 'http',
           side_effect_class: 'unsafe',
           source: 'execution',
           uses_connection: true,

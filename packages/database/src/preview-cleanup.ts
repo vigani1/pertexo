@@ -1,6 +1,5 @@
-import { randomUUID } from 'node:crypto';
-
 import type { Pool, PoolClient } from 'pg';
+import { v7 as uuidv7 } from 'uuid';
 import { z } from 'zod';
 
 import { canonicalOutboxPayloadChecksum } from './outbox.js';
@@ -164,7 +163,7 @@ async function insertCleanupDelivery(
     workspaceId: string;
   }>,
 ): Promise<string> {
-  const outboxEventId = randomUUID();
+  const outboxEventId = uuidv7();
   const payload = cleanupPayloadSchema.parse({
     schemaVersion: 1,
     workspaceId: input.workspaceId,

@@ -73,19 +73,33 @@ describe('preview reconciliation handler', () => {
         {
           reconcile: vi.fn().mockResolvedValue({
             kind: 'completed',
+            mayContactProvider: true,
+            mayCauseExternalSideEffect: true,
+            operationKey: 'request',
+            possiblyDispatched: true,
+            providerKey: 'http',
+            sideEffectClass: 'unsafe',
             status: 'outcome_unknown',
+            usesConnection: true,
           }),
         },
         { recordReconciliation, recordTerminal },
       ).handle(selected, { signal: new AbortController().signal }),
-    ).resolves.toEqual({ kind: 'completed', status: 'outcome_unknown' });
+    ).resolves.toMatchObject({ kind: 'completed', status: 'outcome_unknown' });
     expect(recordReconciliation).toHaveBeenCalledWith({
       decision: 'completed',
       outcome: 'outcome_unknown',
     });
     expect(recordTerminal).toHaveBeenCalledWith({
+      mayContactProvider: true,
+      mayCauseExternalSideEffect: true,
+      operationKey: 'request',
       outcome: 'outcome_unknown',
+      possiblyDispatched: true,
+      providerKey: 'http',
+      sideEffectClass: 'unsafe',
       source: 'reconciliation',
+      usesConnection: true,
     });
   });
 

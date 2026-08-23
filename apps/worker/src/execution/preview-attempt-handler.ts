@@ -241,8 +241,14 @@ function committedTerminal(
       dependencies.telemetry?.recordTerminal({
         mayContactProvider: lease.mayContactProvider,
         mayCauseExternalSideEffect: lease.mayCauseExternalSideEffect,
+        ...(lease.operationKey === undefined
+          ? {}
+          : { operationKey: lease.operationKey }),
         outcome: status,
         possiblyDispatched: dispatched,
+        ...(lease.providerKey === undefined
+          ? {}
+          : { providerKey: lease.providerKey }),
         sideEffectClass: lease.sideEffectClass,
         source: 'execution',
         usesConnection:

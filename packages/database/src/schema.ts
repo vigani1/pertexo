@@ -222,19 +222,26 @@ export const usageEvents = appSchema.table(
     resourceType: varchar('resource_type', { length: 64 }).notNull(),
     resourceId: uuid('resource_id').notNull(),
     idempotencyKey: varchar('idempotency_key', { length: 128 }).notNull(),
-    metadata: jsonb('metadata').notNull(),
+    metadata: jsonb('metadata')
+      .default(sql`'{}'::jsonb`)
+      .notNull(),
     occurredAt: timestamp('occurred_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
       .notNull(),
   },
   (table) => [
+    foreignKey({
+      columns: [table.workspaceId],
+      foreignColumns: [workspaces.id],
+      name: 'usage_events_workspace_fk',
+    }).onDelete('restrict'),
     uniqueIndex('usage_events_workspace_idempotency_unique').on(
       table.workspaceId,
       table.idempotencyKey,
     ),
     index('usage_events_workspace_period_idx').on(
       table.workspaceId,
-      table.occurredAt,
+      table.occurredAt.desc(),
       table.id,
     ),
     index('usage_events_resource_idx').on(
@@ -750,6 +757,10 @@ export const previewRuns = appSchema.table(
       length: 64,
     }).notNull(),
     requestHash: varchar('request_hash', { length: 64 }).notNull(),
+    requestId: varchar('request_id', { length: 128 }),
+    traceId: varchar('trace_id', { length: 128 }),
+    providerKey: varchar('provider_key', { length: 64 }),
+    operationKey: varchar('operation_key', { length: 128 }),
     executableNodeJson: jsonb('executable_node_json').notNull(),
     inputRef: jsonb('input_ref').notNull(),
     priorPreviewRunId: uuid('prior_preview_run_id'),
