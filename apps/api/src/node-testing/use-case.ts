@@ -106,6 +106,9 @@ export class TestWorkflowNodeUseCase {
     if (!('disclosure' in prepared))
       throw new NodeTestInvalidError(prepared.issues);
 
+    if (Object.keys(prepared.executableNode.connectionRefs ?? {}).length > 0)
+      await this.authorize(input, 'connection:use');
+
     if (request.mode === 'validate')
       return nodeValidationResponseSchema.parse({
         mode: 'validate',
@@ -120,8 +123,6 @@ export class TestWorkflowNodeUseCase {
       throw new NodeTestIdempotencyRequiredError();
     if (prepared.issues.length > 0)
       throw new NodeTestInvalidError(prepared.issues);
-    if (Object.keys(prepared.executableNode.connectionRefs ?? {}).length > 0)
-      await this.authorize(input, 'connection:use');
 
     const acceptedAt = this.now();
     const executionRelease = composeExecutableCompatibilityRelease(

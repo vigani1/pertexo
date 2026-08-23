@@ -1866,6 +1866,16 @@ Current evidence:
   in 1.49 seconds, and the database is dropped afterward. The aggregate preview
   failure box remains open for direct use-case authorization denials and the
   full production-handler process-crash matrix.
+- The direct node-test authorization checkpoint closes the first of those two
+  gaps. `TestWorkflowNodeUseCase` now authorizes every referenced connection
+  independently before either `validate` or `test_execute` can return or accept
+  durable work, matching ADR 016 rather than allowing validation to bypass
+  `connection:use`. Tests prove missing `workflow:update` fails before draft
+  access and independently prove missing `connection:use` fails after bounded
+  validation but before preview acceptance in both modes. All 222 API unit
+  assertions, API typecheck/build, focused formatting, and ESLint pass. The
+  aggregate preview failure box remains open only for the composed production-
+  handler process-crash matrix.
 - No Phase 4 registry release or publishable node capability is claimed
   complete yet. The managed connection API includes its SSRF-enforcing test
   endpoint and a staged generic HTTP executor candidate now exists, while

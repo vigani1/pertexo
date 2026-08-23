@@ -156,7 +156,137 @@ describe('node test application use case', () => {
       },
     });
     expect(store.acceptPreview).not.toHaveBeenCalled();
-    expect(access.findAccess).toHaveBeenCalledTimes(1);
+    expect(access.findAccess).toHaveBeenCalledTimes(2);
+  });
+
+  it('denies validation when a referenced connection is not authorized', async () => {
+    const store = persistence();
+    const access = authorization();
+    access.findAccess
+      .mockResolvedValueOnce({
+        actorId,
+        workspaceId,
+        role: 'builder',
+        membershipStatus: 'active',
+        workspaceStatus: 'active',
+      })
+      .mockResolvedValueOnce({
+        actorId,
+        workspaceId,
+        role: 'viewer',
+        membershipStatus: 'active',
+        workspaceStatus: 'active',
+      });
+    const useCase = new TestWorkflowNodeUseCase(
+      store,
+      access,
+      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+    );
+
+    await expect(
+      useCase.execute({
+        ...requestInput(),
+        request: {
+          mode: 'validate',
+          expectedRevision: 3,
+          sampleInput: {
+            body: { encoding: 'utf8', value: 'hello' },
+          },
+        },
+      }),
+    ).rejects.toMatchObject({
+      name: 'AuthorizationError',
+      code: 'resource.not_found',
+    });
+    expect(access.findAccess).toHaveBeenCalledTimes(2);
+    expect(store.getDraft).toHaveBeenCalledOnce();
+    expect(store.acceptPreview).not.toHaveBeenCalled();
+  });
+
+  it('denies execution before reading a draft without workflow update authority', async () => {
+    const store = persistence();
+    const access = authorization();
+    access.findAccess.mockResolvedValue({
+      actorId,
+      workspaceId,
+      role: 'operator',
+      membershipStatus: 'active',
+      workspaceStatus: 'active',
+    });
+    const useCase = new TestWorkflowNodeUseCase(
+      store,
+      access,
+      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+    );
+
+    await expect(
+      useCase.execute({
+        ...requestInput(),
+        idempotencyKey: 'preview-denied-workflow-update',
+        request: {
+          mode: 'test_execute',
+          expectedRevision: 3,
+          acknowledgeSideEffects: true,
+          input: {
+            kind: 'manual',
+            value: { body: { encoding: 'utf8', value: 'hello' } },
+          },
+        },
+      }),
+    ).rejects.toMatchObject({
+      name: 'AuthorizationError',
+      code: 'resource.not_found',
+    });
+    expect(access.findAccess).toHaveBeenCalledOnce();
+    expect(store.getDraft).not.toHaveBeenCalled();
+    expect(store.acceptPreview).not.toHaveBeenCalled();
+  });
+
+  it('denies execution when a referenced connection is not authorized', async () => {
+    const store = persistence();
+    const access = authorization();
+    access.findAccess
+      .mockResolvedValueOnce({
+        actorId,
+        workspaceId,
+        role: 'builder',
+        membershipStatus: 'active',
+        workspaceStatus: 'active',
+      })
+      .mockResolvedValueOnce({
+        actorId,
+        workspaceId,
+        role: 'viewer',
+        membershipStatus: 'active',
+        workspaceStatus: 'active',
+      });
+    const useCase = new TestWorkflowNodeUseCase(
+      store,
+      access,
+      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+    );
+
+    await expect(
+      useCase.execute({
+        ...requestInput(),
+        idempotencyKey: 'preview-denied-connection-use',
+        request: {
+          mode: 'test_execute',
+          expectedRevision: 3,
+          acknowledgeSideEffects: true,
+          input: {
+            kind: 'manual',
+            value: { body: { encoding: 'utf8', value: 'hello' } },
+          },
+        },
+      }),
+    ).rejects.toMatchObject({
+      name: 'AuthorizationError',
+      code: 'resource.not_found',
+    });
+    expect(access.findAccess).toHaveBeenCalledTimes(2);
+    expect(store.getDraft).toHaveBeenCalledOnce();
+    expect(store.acceptPreview).not.toHaveBeenCalled();
   });
 
   it('requires idempotency before accepting acknowledged execution', async () => {
