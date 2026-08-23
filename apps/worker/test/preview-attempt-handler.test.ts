@@ -162,6 +162,31 @@ describe('preview attempt handler', () => {
     expect(stored.output.value).toEqual({ ok: true });
   });
 
+  it('passes the durable preview deadline to the artifact capability', async () => {
+    const lease = leaseFixture();
+    const { store } = fakeStore({ lease });
+    const artifactFactory = vi.fn(() => ({ write: vi.fn() }));
+    const invoker: PreviewNodeInvoker = {
+      invoke: ({ runtime }) => {
+        expect(runtime?.artifacts).toBeDefined();
+        return Promise.resolve({ output: { ok: true }, status: 'succeeded' });
+      },
+    };
+
+    await createPreviewAttemptHandler({
+      ...deps(store, invoker),
+      runtimeCapabilities: { artifacts: artifactFactory },
+    }).handle(deliveryFixture(), context());
+
+    expect(artifactFactory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        artifactRetentionDeadline: lease.expiresAt,
+        previewAttemptId,
+        previewRunId,
+      }),
+    );
+  });
+
   it('returns duplicates without invoking the executor', async () => {
     const { calls, store } = fakeStore({ claimKind: 'duplicate' });
     const invoke = vi.fn();

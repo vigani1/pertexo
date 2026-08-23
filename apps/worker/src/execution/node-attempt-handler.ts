@@ -63,6 +63,7 @@ export interface NodeAttemptHandler {
 }
 
 export type NodeAttemptCapabilityContext = Readonly<{
+  artifactRetentionDeadline?: Date;
   workspaceId: string;
   runId: string;
   nodeRunId: string;

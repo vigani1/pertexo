@@ -285,6 +285,7 @@ export function createPreviewAttemptHandler(
         );
 
       const capabilityContext = Object.freeze({
+        artifactRetentionDeadline: lease.expiresAt,
         attemptId: lease.previewAttemptId,
         attemptNumber: 1,
         invocationKey: `preview:${lease.nodeId}`,

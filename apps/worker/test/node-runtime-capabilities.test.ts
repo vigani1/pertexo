@@ -256,4 +256,53 @@ describe('worker node runtime capabilities', () => {
     expect(await readdir(spoolDirectory)).toEqual([]);
     await runtime.close();
   });
+
+  it('caps artifact retention at the owning preview deadline', async () => {
+    const createPending = vi.fn(() => Promise.resolve());
+    const now = new Date('2026-08-22T12:00:00.000Z');
+    const previewDeadline = new Date(now.getTime() + 10_000);
+    const runtime = await createWorkerNodeRuntimeCapabilities(
+      { database: databaseConfig, artifactRetentionMillis: 60_000 },
+      {
+        artifactPersistence: {
+          createPending,
+          finalize: vi.fn(() => Promise.resolve()),
+        },
+        artifactStore: {
+          put: async (request) => {
+            for await (const _chunk of request.body) void _chunk;
+            return {
+              artifactId: request.artifactId,
+              workspaceId: request.workspaceId,
+              byteLength: request.byteLength,
+              mediaType: request.mediaType,
+              sha256: request.sha256,
+            };
+          },
+        },
+        now: () => now,
+      },
+    );
+    const artifacts = runtime.factories.artifacts?.({
+      ...context,
+      artifactRetentionDeadline: previewDeadline,
+    });
+    if (artifacts === undefined) throw new Error('artifact capability missing');
+
+    await artifacts.write({
+      body: (async function* (): AsyncGenerator<Uint8Array> {
+        await Promise.resolve();
+        yield new Uint8Array([1]);
+      })(),
+      maxBytes: 1,
+      mediaType: 'application/octet-stream',
+      purpose: 'node-output',
+      signal: new AbortController().signal,
+    });
+
+    expect(createPending).toHaveBeenCalledWith(
+      expect.objectContaining({ expiresAt: previewDeadline }),
+    );
+    await runtime.close();
+  });
 });

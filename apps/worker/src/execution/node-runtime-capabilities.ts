@@ -223,7 +223,21 @@ function artifactFactory(
           const id = artifactId();
           const sha256 = digest.digest('hex');
           const storageKey = artifactStorageKey(context.workspaceId, id);
-          const expiresAt = new Date(now().getTime() + retentionMillis);
+          const createdAt = now();
+          const defaultExpiry = new Date(createdAt.getTime() + retentionMillis);
+          const retentionDeadline = context.artifactRetentionDeadline;
+          if (
+            retentionDeadline !== undefined &&
+            !Number.isFinite(retentionDeadline.getTime())
+          )
+            throw new TypeError('Artifact retention deadline is invalid');
+          const expiresAt =
+            retentionDeadline !== undefined &&
+            retentionDeadline.getTime() < defaultExpiry.getTime()
+              ? new Date(retentionDeadline.getTime())
+              : defaultExpiry;
+          if (expiresAt.getTime() <= createdAt.getTime())
+            throw new RangeError('Artifact retention deadline has expired');
           await persistence.createPending({
             artifactId: id,
             workspaceId: context.workspaceId,
