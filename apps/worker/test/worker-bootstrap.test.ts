@@ -19,8 +19,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createWorkerApplication } from '../src/app.js';
 import type { CoordinatorRuntime } from '../src/execution/coordinator-runtime.js';
 import type { NodeAttemptRuntime } from '../src/execution/node-attempt-runtime.js';
-import type { PreviewCleanupRuntime } from '../src/execution/preview-cleanup-runtime.js';
-import type { PreviewReconciliationRuntime } from '../src/execution/preview-reconciliation-runtime.js';
+import type { PreviewMaintenanceRuntime } from '../src/execution/preview-maintenance-runtime.js';
 import { NestWorkspaceDatabase } from '../src/platform/database/database.module.js';
 import { WorkerDrainState } from '../src/runtime/worker-drain-state.js';
 import { WorkerReadiness } from '../src/runtime/worker-readiness.js';
@@ -309,7 +308,7 @@ describe('worker application bootstrap', () => {
       isReady: vi.fn().mockReturnValue(true),
       waitUntilReady: vi.fn().mockResolvedValue(undefined),
     };
-    const previewReconciliationRuntime: PreviewReconciliationRuntime = {
+    const previewMaintenanceRuntime: PreviewMaintenanceRuntime = {
       consumer,
       close: vi.fn().mockResolvedValue(undefined),
     };
@@ -322,7 +321,7 @@ describe('worker application bootstrap', () => {
     };
     const app = await createWorkerApplication(enabledConfig, {
       ...selected,
-      previewReconciliationRuntime,
+      previewMaintenanceRuntime,
     });
 
     expect(consumer.waitUntilReady).toHaveBeenCalledOnce();
@@ -331,17 +330,17 @@ describe('worker application bootstrap', () => {
     } finally {
       await app.close();
     }
-    expect(previewReconciliationRuntime.close).toHaveBeenCalledOnce();
+    expect(previewMaintenanceRuntime.close).toHaveBeenCalledOnce();
   });
 
-  it('gates preview cleanup dispatch on its maintenance consumer', async () => {
+  it('routes reconciliation and cleanup through one maintenance consumer', async () => {
     const selected = dependencies();
     const consumer: QueueConsumer = {
       close: vi.fn().mockResolvedValue({ abortedJobs: 0, forced: false }),
       isReady: vi.fn().mockReturnValue(true),
       waitUntilReady: vi.fn().mockResolvedValue(undefined),
     };
-    const previewCleanupRuntime: PreviewCleanupRuntime = {
+    const previewMaintenanceRuntime: PreviewMaintenanceRuntime = {
       consumer,
       close: vi.fn().mockResolvedValue(undefined),
     };
@@ -349,21 +348,24 @@ describe('worker application bootstrap', () => {
       ...workerConfig,
       outboxDispatcher: {
         ...workerConfig.outboxDispatcher,
-        enabledJobNames: [JOB_NAME.sweepExpiredPreviews],
+        enabledJobNames: [
+          JOB_NAME.reconcilePreviewAttempt,
+          JOB_NAME.sweepExpiredPreviews,
+        ],
       },
     };
     const app = await createWorkerApplication(enabledConfig, {
       ...selected,
-      previewCleanupRuntime,
+      previewMaintenanceRuntime,
     });
 
-    expect(consumer.waitUntilReady).toHaveBeenCalledOnce();
+    expect(consumer.waitUntilReady).toHaveBeenCalledTimes(2);
     try {
       expect(consumer.isReady).toHaveBeenCalled();
     } finally {
       await app.close();
     }
-    expect(previewCleanupRuntime.close).toHaveBeenCalledOnce();
+    expect(previewMaintenanceRuntime.close).toHaveBeenCalledOnce();
   });
 
   it('fails startup and closes resources when database readiness fails', async () => {

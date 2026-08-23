@@ -14,6 +14,7 @@ import {
   acceptPreviewRun,
   canonicalOutboxPayloadChecksum,
   claimPreviewDelivery,
+  completePreviewAttempt,
   createCompatibilityReleaseMaintenance,
   createCompatibilityReleaseReadinessProbe,
   createOutboxDispatcherDatabase,
@@ -21,6 +22,7 @@ import {
   parseDatabaseConfig,
   parseWorkspaceId,
   markPreviewDispatched,
+  PREVIEW_STATUS,
   withTenantScopedClient,
   type AcceptPreviewRunInput,
 } from '@pertexo/database';
@@ -41,8 +43,7 @@ import {
   createDatabasePreviewAttemptRunStore,
   createPlatformPreviewNodeInvoker,
 } from '../src/execution/preview-attempt-runtime.js';
-import { createPreviewReconciliationRuntime } from '../src/execution/preview-reconciliation-runtime.js';
-import { createPreviewCleanupRuntime } from '../src/execution/preview-cleanup-runtime.js';
+import { createPreviewMaintenanceRuntime } from '../src/execution/preview-maintenance-runtime.js';
 import { createWorkerNodeRuntimeCapabilities } from '../src/execution/node-runtime-capabilities.js';
 
 const enabled = process.env.WORKER_TRANSPORT_INTEGRATION === 'true';
@@ -588,7 +589,41 @@ describeIntegration('preview execution real transport', () => {
         purpose: 'node-output',
         signal: new AbortController().signal,
       });
-      const cleanupRuntime = await createPreviewCleanupRuntime({
+      const executionPayload = {
+        schemaVersion: 1 as const,
+        workspaceId,
+        outboxEventId: accepted.outboxEventId,
+        previewRunId: accepted.previewRunId,
+        previewAttemptId: accepted.previewAttemptId,
+        traceparent,
+      };
+      const workerId = 'preview-cleanup-integration';
+      const claimed = await claimPreviewDelivery(workerPool, {
+        delivery: {
+          outboxEventId: accepted.outboxEventId,
+          payloadChecksum: canonicalOutboxPayloadChecksum(executionPayload),
+        },
+        leaseDurationSeconds: 30,
+        previewAttemptId: accepted.previewAttemptId,
+        previewRunId: accepted.previewRunId,
+        workerId,
+        workspaceId,
+      });
+      if (claimed.kind !== 'claimed')
+        throw new Error('preview cleanup terminal claim missing');
+      await completePreviewAttempt(workerPool, {
+        delivery: {
+          outboxEventId: accepted.outboxEventId,
+          payloadChecksum: canonicalOutboxPayloadChecksum(executionPayload),
+        },
+        lease: claimed.lease,
+        outcome: {
+          safeErrorCode: 'preview.cleanup_fixture',
+          status: PREVIEW_STATUS.failed,
+        },
+        workerId,
+      });
+      const cleanupRuntime = await createPreviewMaintenanceRuntime({
         artifactStore: artifactConfig,
         database: parseDatabaseConfig({
           connectionString: databaseUrl(workerUrl),
@@ -629,14 +664,38 @@ describeIntegration('preview execution real transport', () => {
         );
         await dispatcher.markPublished(event.id, event.leaseToken);
         await waitFor(
-          () =>
-            withTenantScopedClient(workerPool, { workspaceId }, (client) =>
-              client.query<{ count: string }>(
-                `select count(*)::text as count from app.preview_runs
+          async () => {
+            const due = await dispatcher.claimBatch({
+              enabledJobNames: [JOB_NAME.sweepExpiredPreviews],
+              leaseDurationMillis: 5_000,
+              leaseOwner: 'preview-cleanup-integration',
+              leaseToken: randomUUID(),
+              limit: 10,
+              maxAttempts: 3,
+            });
+            for (const successor of due.events) {
+              await producer.publish(
+                parseQueueJob({
+                  name: successor.jobName,
+                  data: successor.payload,
+                }),
+              );
+              await dispatcher.markPublished(
+                successor.id,
+                successor.leaseToken,
+              );
+            }
+            return withTenantScopedClient(
+              workerPool,
+              { workspaceId },
+              (client) =>
+                client.query<{ count: string }>(
+                  `select count(*)::text as count from app.preview_runs
                    where workspace_id=$1 and id=$2`,
-                [workspaceId, accepted.previewRunId],
-              ),
-            ).then((result) => result.rows[0]?.count ?? 'missing'),
+                  [workspaceId, accepted.previewRunId],
+                ),
+            ).then((result) => result.rows[0]?.count ?? 'missing');
+          },
           (count) => count === '0',
         );
         await expect(
@@ -793,7 +852,7 @@ describeIntegration('preview execution real transport', () => {
       workerId: crashWorkerId,
     });
 
-    const reconciliationRuntime = await createPreviewReconciliationRuntime({
+    const reconciliationRuntime = await createPreviewMaintenanceRuntime({
       database: parseDatabaseConfig({
         connectionString: databaseUrl(workerUrl),
       }),
@@ -951,7 +1010,7 @@ describeIntegration('preview execution real transport', () => {
       'preview.outcome_committed_before_process_exit',
     ]);
 
-    const reconciliationRuntime = await createPreviewReconciliationRuntime({
+    const reconciliationRuntime = await createPreviewMaintenanceRuntime({
       database: parseDatabaseConfig({
         connectionString: databaseUrl(workerUrl),
       }),

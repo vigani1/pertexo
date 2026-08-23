@@ -200,6 +200,7 @@ export async function claimPreviewCleanupDelivery(
   pool: Pool,
   input: Readonly<{
     artifactLimit: number;
+    artifactQuiescenceSeconds?: number;
     delivery: PreviewDelivery;
     previewRunId: string;
     signal?: AbortSignal;
@@ -209,6 +210,7 @@ export async function claimPreviewCleanupDelivery(
   const parsed = z
     .object({
       artifactLimit: z.number().int().min(1).max(100),
+      artifactQuiescenceSeconds: z.number().int().min(1).max(120).default(60),
       previewRunId: z.uuid(),
       workspaceId: z.uuid(),
     })
@@ -230,8 +232,9 @@ export async function claimPreviewCleanupDelivery(
       const run = await client.query<{
         due: boolean;
         expires_at: Date;
+        status: string;
       }>(
-        `select expires_at,expires_at <= clock_timestamp() as due
+        `select expires_at,status,expires_at <= clock_timestamp() as due
            from app.preview_runs
           where workspace_id=$1 and id=$2
           for update`,
@@ -245,6 +248,35 @@ export async function claimPreviewCleanupDelivery(
       if (!state.due) {
         const successor = await insertCleanupDelivery(client, {
           availableAt: state.expires_at,
+          previewRunId: parsed.previewRunId,
+          ...(payload.traceparent === undefined
+            ? {}
+            : { traceparent: payload.traceparent }),
+          workspaceId: parsed.workspaceId,
+        });
+        await completeReceipt(client, parsed.workspaceId, input.delivery);
+        return Object.freeze({
+          kind: 'rescheduled',
+          cleanupOutboxEventId: successor,
+        });
+      }
+      if (
+        ![
+          'succeeded',
+          'failed',
+          'canceled',
+          'timed_out',
+          'outcome_unknown',
+        ].includes(state.status)
+      ) {
+        const retry = await client.query<{ retry_at: Date }>(
+          `select clock_timestamp() + interval '1 minute' as retry_at`,
+        );
+        const retryAt = retry.rows[0]?.retry_at;
+        if (retryAt === undefined)
+          throw new PreviewCleanupStateError('database_clock_missing');
+        const successor = await insertCleanupDelivery(client, {
+          availableAt: retryAt,
           previewRunId: parsed.previewRunId,
           ...(payload.traceparent === undefined
             ? {}
@@ -282,8 +314,16 @@ export async function claimPreviewCleanupDelivery(
           cleanupOutboxEventId: successor,
         });
       }
-      const selected = await client.query<{ artifact_id: string }>(
-        `select link.artifact_id
+      const selected = await client.query<{
+        artifact_id: string;
+        eligible: boolean;
+        retry_at: Date;
+      }>(
+        `select link.artifact_id,
+                artifact.status='deleting'
+                and artifact.updated_at <= clock_timestamp()
+                  - make_interval(secs => $4) as eligible,
+                clock_timestamp() + make_interval(secs => $4) as retry_at
            from app.artifact_links link
            join app.artifacts artifact
              on artifact.workspace_id=link.workspace_id
@@ -295,17 +335,43 @@ export async function claimPreviewCleanupDelivery(
           order by link.artifact_id
           limit $3
           for update of artifact skip locked`,
-        [parsed.workspaceId, parsed.previewRunId, parsed.artifactLimit],
+        [
+          parsed.workspaceId,
+          parsed.previewRunId,
+          parsed.artifactLimit,
+          parsed.artifactQuiescenceSeconds,
+        ],
       );
-      const artifactIds = selected.rows.map((row) => row.artifact_id);
-      if (artifactIds.length > 0) {
+      const selectedIds = selected.rows.map((row) => row.artifact_id);
+      if (selectedIds.length > 0) {
         await client.query(
           `update app.artifacts
               set status='deleting',updated_at=clock_timestamp()
             where workspace_id=$1 and id=any($2::uuid[])
               and status in ('pending','available')`,
-          [parsed.workspaceId, artifactIds],
+          [parsed.workspaceId, selectedIds],
         );
+      }
+      const artifactIds = selected.rows
+        .filter((row) => row.eligible)
+        .map((row) => row.artifact_id);
+      if (selectedIds.length > 0 && artifactIds.length === 0) {
+        const retryAt = selected.rows[0]?.retry_at;
+        if (retryAt === undefined)
+          throw new PreviewCleanupStateError('database_clock_missing');
+        const successor = await insertCleanupDelivery(client, {
+          availableAt: retryAt,
+          previewRunId: parsed.previewRunId,
+          ...(payload.traceparent === undefined
+            ? {}
+            : { traceparent: payload.traceparent }),
+          workspaceId: parsed.workspaceId,
+        });
+        await completeReceipt(client, parsed.workspaceId, input.delivery);
+        return Object.freeze({
+          kind: 'rescheduled',
+          cleanupOutboxEventId: successor,
+        });
       }
       return Object.freeze({
         kind: 'claimed',
@@ -375,13 +441,18 @@ export async function finishPreviewCleanupDelivery(
   pool: Pool,
   input: Readonly<{
     delivery: PreviewDelivery;
+    artifactQuiescenceSeconds?: number;
     previewRunId: string;
     signal?: AbortSignal;
     workspaceId: string;
   }>,
 ): Promise<PreviewCleanupFinishResult> {
   const parsed = z
-    .object({ previewRunId: z.uuid(), workspaceId: z.uuid() })
+    .object({
+      artifactQuiescenceSeconds: z.number().int().min(1).max(120).default(60),
+      previewRunId: z.uuid(),
+      workspaceId: z.uuid(),
+    })
     .parse(input);
   return withTenantScopedClient(
     pool,
@@ -397,7 +468,10 @@ export async function finishPreviewCleanupDelivery(
         'completed'
       )
         return Object.freeze({ kind: 'completed' });
-      const unfinished = await client.query<{ present: boolean }>(
+      const unfinished = await client.query<{
+        present: boolean;
+        retry_at: Date | null;
+      }>(
         `select exists (
            select 1
              from app.artifact_links link
@@ -406,11 +480,29 @@ export async function finishPreviewCleanupDelivery(
               and artifact.id=link.artifact_id
             where link.workspace_id=$1 and link.owner_kind='preview_run'
               and link.owner_id=$2 and artifact.status <> 'deleted'
-         ) as present`,
-        [parsed.workspaceId, parsed.previewRunId],
+         ) as present,
+         (select greatest(
+                   clock_timestamp(),
+                   min(artifact.updated_at + make_interval(secs => $3))
+                 )
+            from app.artifact_links link
+            join app.artifacts artifact
+              on artifact.workspace_id=link.workspace_id
+             and artifact.id=link.artifact_id
+           where link.workspace_id=$1 and link.owner_kind='preview_run'
+             and link.owner_id=$2 and artifact.status='deleting'
+         ) as retry_at`,
+        [
+          parsed.workspaceId,
+          parsed.previewRunId,
+          parsed.artifactQuiescenceSeconds,
+        ],
       );
       if (unfinished.rows[0]?.present === true) {
         const successor = await insertCleanupDelivery(client, {
+          ...(unfinished.rows[0].retry_at === null
+            ? {}
+            : { availableAt: unfinished.rows[0].retry_at }),
           previewRunId: parsed.previewRunId,
           ...(payload.traceparent === undefined
             ? {}

@@ -16,8 +16,7 @@ import type { TransportMetrics } from '@pertexo/observability/transport-metrics'
 import type { WorkerConfig } from './config/worker-config.js';
 import type { CoordinatorRuntime } from './execution/coordinator-runtime.js';
 import type { NodeAttemptRuntime } from './execution/node-attempt-runtime.js';
-import type { PreviewCleanupRuntime } from './execution/preview-cleanup-runtime.js';
-import type { PreviewReconciliationRuntime } from './execution/preview-reconciliation-runtime.js';
+import type { PreviewMaintenanceRuntime } from './execution/preview-maintenance-runtime.js';
 import { DatabaseModule } from './platform/database/database.module.js';
 import { ObservabilityModule } from './platform/observability/observability.module.js';
 import { WorkerReadiness } from './runtime/worker-readiness.js';
@@ -27,8 +26,7 @@ import { TransportModule } from './transport/transport.module.js';
 export type WorkerModuleDependencies = Readonly<{
   coordinatorRuntime?: CoordinatorRuntime;
   nodeAttemptRuntime?: NodeAttemptRuntime;
-  previewReconciliationRuntime?: PreviewReconciliationRuntime;
-  previewCleanupRuntime?: PreviewCleanupRuntime;
+  previewMaintenanceRuntime?: PreviewMaintenanceRuntime;
   database?: WorkspaceDatabase;
   dispatchConsumerCapabilities?: DispatchConsumerCapabilityRegistry;
   dispatcherDatabase?: OutboxDispatcherDatabase;
@@ -65,15 +63,12 @@ export class WorkerModule {
           ...(dependencies.nodeAttemptRuntime === undefined
             ? {}
             : { nodeAttemptRuntime: dependencies.nodeAttemptRuntime }),
-          ...(dependencies.previewReconciliationRuntime === undefined
+          ...(dependencies.previewMaintenanceRuntime === undefined
             ? {}
             : {
-                previewReconciliationRuntime:
-                  dependencies.previewReconciliationRuntime,
+                previewMaintenanceRuntime:
+                  dependencies.previewMaintenanceRuntime,
               }),
-          ...(dependencies.previewCleanupRuntime === undefined
-            ? {}
-            : { previewCleanupRuntime: dependencies.previewCleanupRuntime }),
           ...(dependencies.dispatchConsumerCapabilities === undefined
             ? {}
             : {

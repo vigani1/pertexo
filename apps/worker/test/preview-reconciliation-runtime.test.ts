@@ -8,10 +8,10 @@ import { jobIdForOutboxEvent, JOB_NAME } from '@pertexo/queue';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
-  createPreviewReconciliationRuntime,
   createPreviewReconciliationHandler,
   type PreviewReconciliationStore,
 } from '../src/execution/preview-reconciliation-runtime.js';
+import { createPreviewMaintenanceRuntime } from '../src/execution/preview-maintenance-runtime.js';
 
 function delivery() {
   const data = {
@@ -76,7 +76,7 @@ describe('preview reconciliation handler', () => {
     const store = { close, reconcile: vi.fn() };
 
     await expect(
-      createPreviewReconciliationRuntime(
+      createPreviewMaintenanceRuntime(
         {
           database: parseDatabaseConfig({
             connectionString:
@@ -88,7 +88,7 @@ describe('preview reconciliation handler', () => {
           consumerFactory: () => {
             throw new Error('consumer construction failed');
           },
-          store,
+          reconciliationStore: store,
         },
       ),
     ).rejects.toThrow('consumer construction failed');
@@ -100,7 +100,7 @@ describe('preview reconciliation handler', () => {
       .fn()
       .mockResolvedValue({ abortedJobs: 0, forced: false });
     const storeClose = vi.fn().mockResolvedValue(undefined);
-    const runtime = await createPreviewReconciliationRuntime(
+    const runtime = await createPreviewMaintenanceRuntime(
       {
         database: parseDatabaseConfig({
           connectionString:
@@ -114,7 +114,7 @@ describe('preview reconciliation handler', () => {
           isReady: vi.fn().mockReturnValue(true),
           waitUntilReady: vi.fn().mockResolvedValue(undefined),
         }),
-        store: { close: storeClose, reconcile: vi.fn() },
+        reconciliationStore: { close: storeClose, reconcile: vi.fn() },
       },
     );
 

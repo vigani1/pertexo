@@ -32,13 +32,9 @@ import {
   createPlatformPreviewNodeInvoker,
 } from '../execution/preview-attempt-runtime.js';
 import {
-  createPreviewCleanupRuntime,
-  type PreviewCleanupRuntime,
-} from '../execution/preview-cleanup-runtime.js';
-import {
-  createPreviewReconciliationRuntime,
-  type PreviewReconciliationRuntime,
-} from '../execution/preview-reconciliation-runtime.js';
+  createPreviewMaintenanceRuntime,
+  type PreviewMaintenanceRuntime,
+} from '../execution/preview-maintenance-runtime.js';
 import { WorkerDrainState } from '../runtime/worker-drain-state.js';
 import {
   createDispatchConsumerCapabilityRegistry,
@@ -52,10 +48,9 @@ export const QUEUE_CONSUMER_OBSERVER = Symbol('QUEUE_CONSUMER_OBSERVER');
 export const TRANSPORT_METRICS = Symbol('TRANSPORT_METRICS');
 export const COORDINATOR_RUNTIME = Symbol('COORDINATOR_RUNTIME');
 export const NODE_ATTEMPT_RUNTIME = Symbol('NODE_ATTEMPT_RUNTIME');
-export const PREVIEW_RECONCILIATION_RUNTIME = Symbol(
-  'PREVIEW_RECONCILIATION_RUNTIME',
+export const PREVIEW_MAINTENANCE_RUNTIME = Symbol(
+  'PREVIEW_MAINTENANCE_RUNTIME',
 );
-export const PREVIEW_CLEANUP_RUNTIME = Symbol('PREVIEW_CLEANUP_RUNTIME');
 export const DISPATCH_CONSUMER_CAPABILITIES = Symbol(
   'DISPATCH_CONSUMER_CAPABILITIES',
 );
@@ -63,8 +58,7 @@ export const DISPATCH_CONSUMER_CAPABILITIES = Symbol(
 export type TransportModuleDependencies = Readonly<{
   coordinatorRuntime?: CoordinatorRuntime;
   nodeAttemptRuntime?: NodeAttemptRuntime;
-  previewReconciliationRuntime?: PreviewReconciliationRuntime;
-  previewCleanupRuntime?: PreviewCleanupRuntime;
+  previewMaintenanceRuntime?: PreviewMaintenanceRuntime;
   dispatchConsumerCapabilities?: DispatchConsumerCapabilityRegistry;
   dispatcherDatabase?: OutboxDispatcherDatabase;
   queueProducer?: QueueProducer;
@@ -82,11 +76,9 @@ class OutboxDispatcherLifecycle
     private readonly coordinatorRuntime: CoordinatorRuntime | undefined,
     @Inject(NODE_ATTEMPT_RUNTIME)
     private readonly nodeAttemptRuntime: NodeAttemptRuntime | undefined,
-    @Inject(PREVIEW_RECONCILIATION_RUNTIME)
-    private readonly previewReconciliationRuntime:
-      PreviewReconciliationRuntime | undefined,
-    @Inject(PREVIEW_CLEANUP_RUNTIME)
-    private readonly previewCleanupRuntime: PreviewCleanupRuntime | undefined,
+    @Inject(PREVIEW_MAINTENANCE_RUNTIME)
+    private readonly previewMaintenanceRuntime:
+      PreviewMaintenanceRuntime | undefined,
     private readonly drainState: WorkerDrainState,
   ) {}
 
@@ -103,71 +95,43 @@ class OutboxDispatcherLifecycle
       ...(this.nodeAttemptRuntime === undefined
         ? []
         : [this.nodeAttemptRuntime.close()]),
-      ...(this.previewReconciliationRuntime === undefined
+      ...(this.previewMaintenanceRuntime === undefined
         ? []
-        : [this.previewReconciliationRuntime.close()]),
-      ...(this.previewCleanupRuntime === undefined
-        ? []
-        : [this.previewCleanupRuntime.close()]),
+        : [this.previewMaintenanceRuntime.close()]),
     ]);
     const failure = results.find((result) => result.status === 'rejected');
     if (failure?.status === 'rejected') throw failure.reason;
   }
 }
 
-function previewCleanupRuntimeProvider(
+function previewMaintenanceRuntimeProvider(
   config: WorkerConfig,
   dependencies: TransportModuleDependencies,
 ): Provider {
   return {
-    provide: PREVIEW_CLEANUP_RUNTIME,
+    provide: PREVIEW_MAINTENANCE_RUNTIME,
     inject: [QUEUE_CONSUMER_OBSERVER],
     useFactory: async (
       observer: QueueConsumerObserver,
-    ): Promise<PreviewCleanupRuntime | undefined> => {
-      if (dependencies.previewCleanupRuntime !== undefined)
-        return dependencies.previewCleanupRuntime;
-      if (
-        dependencies.dispatchConsumerCapabilities !== undefined ||
-        !config.outboxDispatcher.enabledJobNames.includes(
-          JOB_NAME.sweepExpiredPreviews,
-        )
-      )
+    ): Promise<PreviewMaintenanceRuntime | undefined> => {
+      if (dependencies.previewMaintenanceRuntime !== undefined)
+        return dependencies.previewMaintenanceRuntime;
+      if (dependencies.dispatchConsumerCapabilities !== undefined)
         return undefined;
-      if (config.artifactStore === undefined)
+      const jobNames = config.outboxDispatcher.enabledJobNames;
+      const reconciliationEnabled = jobNames.includes(
+        JOB_NAME.reconcilePreviewAttempt,
+      );
+      const cleanupEnabled = jobNames.includes(JOB_NAME.sweepExpiredPreviews);
+      if (!reconciliationEnabled && !cleanupEnabled) return undefined;
+      if (cleanupEnabled && config.artifactStore === undefined)
         throw new TypeError(
           'Preview cleanup requires the artifact-store capability',
         );
-      return createPreviewCleanupRuntime({
-        artifactStore: config.artifactStore,
-        database: config.database,
-        observer,
-        redisUrl: config.redisUrl,
-      });
-    },
-  };
-}
-
-function previewReconciliationRuntimeProvider(
-  config: WorkerConfig,
-  dependencies: TransportModuleDependencies,
-): Provider {
-  return {
-    provide: PREVIEW_RECONCILIATION_RUNTIME,
-    inject: [QUEUE_CONSUMER_OBSERVER],
-    useFactory: async (
-      observer: QueueConsumerObserver,
-    ): Promise<PreviewReconciliationRuntime | undefined> => {
-      if (dependencies.previewReconciliationRuntime !== undefined)
-        return dependencies.previewReconciliationRuntime;
-      if (
-        dependencies.dispatchConsumerCapabilities !== undefined ||
-        !config.outboxDispatcher.enabledJobNames.includes(
-          JOB_NAME.reconcilePreviewAttempt,
-        )
-      )
-        return undefined;
-      return createPreviewReconciliationRuntime({
+      return createPreviewMaintenanceRuntime({
+        ...(cleanupEnabled && config.artifactStore !== undefined
+          ? { artifactStore: config.artifactStore }
+          : {}),
         database: config.database,
         observer,
         redisUrl: config.redisUrl,
@@ -330,14 +294,12 @@ function dispatchCapabilitiesProvider(
     inject: [
       COORDINATOR_RUNTIME,
       NODE_ATTEMPT_RUNTIME,
-      PREVIEW_RECONCILIATION_RUNTIME,
-      PREVIEW_CLEANUP_RUNTIME,
+      PREVIEW_MAINTENANCE_RUNTIME,
     ],
     useFactory: (
       runtime: CoordinatorRuntime | undefined,
       nodeAttemptRuntime: NodeAttemptRuntime | undefined,
-      previewReconciliationRuntime: PreviewReconciliationRuntime | undefined,
-      previewCleanupRuntime: PreviewCleanupRuntime | undefined,
+      previewMaintenanceRuntime: PreviewMaintenanceRuntime | undefined,
     ): DispatchConsumerCapabilityRegistry =>
       dependencies.dispatchConsumerCapabilities ??
       createDispatchConsumerCapabilityRegistry([
@@ -373,7 +335,7 @@ function dispatchCapabilitiesProvider(
                   ]
                 : []),
             ]),
-        ...(previewReconciliationRuntime === undefined ||
+        ...(previewMaintenanceRuntime === undefined ||
         !config.outboxDispatcher.enabledJobNames.includes(
           JOB_NAME.reconcilePreviewAttempt,
         )
@@ -381,10 +343,10 @@ function dispatchCapabilitiesProvider(
           : [
               {
                 jobName: JOB_NAME.reconcilePreviewAttempt,
-                consumer: previewReconciliationRuntime.consumer,
+                consumer: previewMaintenanceRuntime.consumer,
               } as const,
             ]),
-        ...(previewCleanupRuntime === undefined ||
+        ...(previewMaintenanceRuntime === undefined ||
         !config.outboxDispatcher.enabledJobNames.includes(
           JOB_NAME.sweepExpiredPreviews,
         )
@@ -392,7 +354,7 @@ function dispatchCapabilitiesProvider(
           : [
               {
                 jobName: JOB_NAME.sweepExpiredPreviews,
-                consumer: previewCleanupRuntime.consumer,
+                consumer: previewMaintenanceRuntime.consumer,
               } as const,
             ]),
       ]),
@@ -412,11 +374,7 @@ export class TransportModule {
       config,
       dependencies,
     );
-    const reconciliationRuntimeProvider = previewReconciliationRuntimeProvider(
-      config,
-      dependencies,
-    );
-    const cleanupRuntimeProvider = previewCleanupRuntimeProvider(
+    const maintenanceRuntimeProvider = previewMaintenanceRuntimeProvider(
       config,
       dependencies,
     );
@@ -444,8 +402,7 @@ export class TransportModule {
         observerProvider,
         runtimeProvider,
         attemptRuntimeProvider,
-        reconciliationRuntimeProvider,
-        cleanupRuntimeProvider,
+        maintenanceRuntimeProvider,
         capabilitiesProvider,
         provider,
         OutboxDispatcherLifecycle,

@@ -1,8 +1,4 @@
-import {
-  createArtifactStore,
-  type ArtifactStore,
-  type ArtifactStoreConfig,
-} from '@pertexo/artifact-store';
+import type { ArtifactStore } from '@pertexo/artifact-store';
 import {
   canonicalOutboxPayloadChecksum,
   claimPreviewCleanupDelivery,
@@ -14,16 +10,10 @@ import {
   PreviewCleanupStateError,
   PreviewDeliveryMismatchError,
 } from '@pertexo/database';
-import { createQueueTraceRunner } from '@pertexo/observability';
 import {
-  createQueueConsumer,
   InvalidQueueDeliveryError,
   jobIdForOutboxEvent,
-  JOB_NAME,
-  QUEUE_NAME,
   unrecoverableQueueError,
-  type QueueConsumer,
-  type QueueConsumerObserver,
   type QueueDelivery,
   type QueueHandlerContext,
 } from '@pertexo/queue';
@@ -38,6 +28,7 @@ export interface PreviewCleanupStore {
   claim(
     input: Readonly<{
       artifactLimit: number;
+      artifactQuiescenceSeconds?: number;
       delivery: Readonly<{
         outboxEventId: string;
         payloadChecksum: string;
@@ -57,6 +48,7 @@ export interface PreviewCleanupStore {
   ): Promise<void>;
   finish(
     input: Readonly<{
+      artifactQuiescenceSeconds?: number;
       delivery: Readonly<{
         outboxEventId: string;
         payloadChecksum: string;
@@ -76,11 +68,6 @@ export interface PreviewCleanupHandler {
     delivery: PreviewCleanupDelivery,
     context: QueueHandlerContext,
   ): Promise<PreviewCleanupHandlerResult>;
-}
-
-export interface PreviewCleanupRuntime {
-  readonly consumer: QueueConsumer;
-  close(): Promise<void>;
 }
 
 export function createDatabasePreviewCleanupStore(
@@ -103,8 +90,9 @@ export function createDatabasePreviewCleanupStore(
 
 export function createPreviewCleanupHandler(
   store: PreviewCleanupStore,
-  artifacts: Pick<ArtifactStore, 'delete'>,
+  artifacts: Pick<ArtifactStore, 'delete' | 'head'>,
   artifactLimit = 25,
+  artifactQuiescenceSeconds = 60,
 ): PreviewCleanupHandler {
   if (
     !Number.isSafeInteger(artifactLimit) ||
@@ -112,6 +100,12 @@ export function createPreviewCleanupHandler(
     artifactLimit > 100
   )
     throw new TypeError('Preview cleanup artifact limit is invalid');
+  if (
+    !Number.isSafeInteger(artifactQuiescenceSeconds) ||
+    artifactQuiescenceSeconds < 1 ||
+    artifactQuiescenceSeconds > 120
+  )
+    throw new TypeError('Preview cleanup quiescence is invalid');
   return Object.freeze({
     handle: async (
       delivery: PreviewCleanupDelivery,
@@ -130,6 +124,7 @@ export function createPreviewCleanupHandler(
       };
       const claimed = await store.claim({
         artifactLimit,
+        artifactQuiescenceSeconds,
         delivery: durableDelivery,
         previewRunId: delivery.data.previewRunId,
         signal: context.signal,
@@ -142,6 +137,13 @@ export function createPreviewCleanupHandler(
           signal: context.signal,
           workspaceId: artifact.workspaceId,
         });
+        const remaining = await artifacts.head({
+          artifactId: artifact.artifactId,
+          signal: context.signal,
+          workspaceId: artifact.workspaceId,
+        });
+        if (remaining !== null)
+          throw new PreviewCleanupStateError('artifact_delete_unconfirmed');
         await store.completeArtifact({
           artifactId: artifact.artifactId,
           previewRunId: delivery.data.previewRunId,
@@ -150,6 +152,7 @@ export function createPreviewCleanupHandler(
         });
       }
       return store.finish({
+        artifactQuiescenceSeconds,
         delivery: durableDelivery,
         previewRunId: delivery.data.previewRunId,
         signal: context.signal,
@@ -159,7 +162,7 @@ export function createPreviewCleanupHandler(
   });
 }
 
-function mapCleanupError(error: unknown): unknown {
+export function mapPreviewCleanupError(error: unknown): unknown {
   if (
     error instanceof PreviewDeliveryMismatchError ||
     error instanceof PreviewCleanupStateError
@@ -170,64 +173,4 @@ function mapCleanupError(error: unknown): unknown {
         : `Preview cleanup is not recoverable: ${error.code}`,
     );
   return error;
-}
-
-export async function createPreviewCleanupRuntime(
-  options: Readonly<{
-    artifactStore: ArtifactStoreConfig;
-    database: DatabaseConfig;
-    observer?: QueueConsumerObserver;
-    redisUrl: string;
-  }>,
-  dependencies: Readonly<{
-    artifactStore?: Pick<ArtifactStore, 'delete'> & { close?: () => void };
-    consumerFactory?: typeof createQueueConsumer;
-    store?: PreviewCleanupStore & { close?: () => Promise<void> };
-  }> = {},
-): Promise<PreviewCleanupRuntime> {
-  const store =
-    dependencies.store ?? createDatabasePreviewCleanupStore(options.database);
-  const artifacts =
-    dependencies.artifactStore ?? createArtifactStore(options.artifactStore);
-  const handler = createPreviewCleanupHandler(store, artifacts);
-  let consumer: QueueConsumer;
-  try {
-    consumer = (dependencies.consumerFactory ?? createQueueConsumer)({
-      queueName: QUEUE_NAME.maintenance,
-      redisUrl: options.redisUrl,
-      handler: async (delivery, context): Promise<void> => {
-        if (delivery.name !== JOB_NAME.sweepExpiredPreviews)
-          throw new InvalidQueueDeliveryError(
-            `Preview cleaner cannot handle ${delivery.name}`,
-          );
-        try {
-          await handler.handle(delivery, context);
-        } catch (error: unknown) {
-          throw mapCleanupError(error);
-        }
-      },
-      ...(options.observer === undefined ? {} : { observer: options.observer }),
-      traceRunner: createQueueTraceRunner(),
-    });
-  } catch (error: unknown) {
-    await store.close?.();
-    artifacts.close?.();
-    throw error;
-  }
-  let closePromise: Promise<void> | undefined;
-  return Object.freeze({
-    consumer,
-    close: (): Promise<void> => {
-      closePromise ??= (async (): Promise<void> => {
-        const results = await Promise.allSettled([
-          consumer.close(),
-          store.close?.(),
-          Promise.resolve(artifacts.close?.()),
-        ]);
-        const failure = results.find((result) => result.status === 'rejected');
-        if (failure?.status === 'rejected') throw failure.reason;
-      })();
-      return closePromise;
-    },
-  });
 }

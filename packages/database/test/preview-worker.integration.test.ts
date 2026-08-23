@@ -467,9 +467,81 @@ describe('worker-side preview execution seam', () => {
     expect(rolledBack.rows[0]).toEqual({ count: '0' });
   });
 
+  it('does not quarantine an artifact while its preview attempt is nonterminal', async () => {
+    const previewDeadline = new Date(Date.now() + 200);
+    const accepted = await acceptFixture({ expiresAt: previewDeadline });
+    const artifactId = randomUUID();
+    await withTenantScopedClient(workerPool, { workspaceId }, (client) =>
+      createPendingPreviewArtifact(
+        {
+          db: drizzle(client, { schema: databaseSchema }),
+          workspaceId: parseWorkspaceId(workspaceId),
+        },
+        {
+          artifactId,
+          byteLength: 3,
+          expiresAt: previewDeadline,
+          mediaType: 'application/octet-stream',
+          previewRunId: accepted.previewRunId,
+          purpose: 'node-output',
+          sha256: '7'.repeat(64),
+          storageKey: artifactStorageKey(workspaceId, artifactId),
+        },
+      ),
+    );
+    const cleanup = await scopedQuery<{
+      id: string;
+      payload_checksum: string;
+    }>(
+      `select id,payload_checksum from app.outbox_events
+       where workspace_id=$1 and aggregate_id=$2
+         and job_name='sweep-expired-previews'`,
+      [workspaceId, accepted.previewRunId],
+    );
+    const cleanupRow = cleanup.rows[0];
+    if (cleanupRow === undefined)
+      throw new Error('preview cleanup outbox missing');
+    await ownerPool.query('select pg_sleep(0.25)');
+    await expect(
+      claimPreviewCleanupDelivery(workerPool, {
+        artifactLimit: 10,
+        artifactQuiescenceSeconds: 1,
+        delivery: {
+          outboxEventId: cleanupRow.id,
+          payloadChecksum: cleanupRow.payload_checksum,
+        },
+        previewRunId: accepted.previewRunId,
+        workspaceId,
+      }),
+    ).resolves.toMatchObject({ kind: 'rescheduled' });
+    const state = await scopedQuery<{ status: string }>(
+      `select status from app.artifacts
+       where workspace_id=$1 and id=$2`,
+      [workspaceId, artifactId],
+    );
+    expect(state.rows[0]).toEqual({ status: 'pending' });
+  });
+
   it('deletes expired preview rows and owned artifact metadata through the authorized function', async () => {
     const previewDeadline = new Date(Date.now() + 250);
-    const accepted = await acceptFixture({ expiresAt: previewDeadline });
+    const reusableKeyHash = '9'.repeat(64);
+    const accepted = await acceptFixture({
+      expiresAt: previewDeadline,
+      keyHash: reusableKeyHash,
+    });
+    const claimedPreview = await claimFixture(
+      accepted,
+      'worker-preview-cleanup-terminal',
+    );
+    await completePreviewAttempt(workerPool, {
+      delivery: accepted.delivery,
+      lease: claimedPreview.lease,
+      outcome: {
+        safeErrorCode: 'preview.cleanup_fixture',
+        status: PREVIEW_STATUS.failed,
+      },
+      workerId: claimedPreview.workerId,
+    });
     const cleanup = await scopedQuery<{
       id: string;
       payload_checksum: string;
@@ -512,13 +584,39 @@ describe('worker-side preview execution seam', () => {
     if (firstArtifactId === undefined || secondArtifactId === undefined)
       throw new Error('preview cleanup artifact fixtures missing');
     await ownerPool.query('select pg_sleep(0.3)');
-    const delivery = {
+    const initialDelivery = {
       outboxEventId: cleanupRow.id,
       payloadChecksum: cleanupRow.payload_checksum,
+    };
+    const quarantined = await claimPreviewCleanupDelivery(workerPool, {
+      artifactLimit: 10,
+      artifactQuiescenceSeconds: 1,
+      delivery: initialDelivery,
+      previewRunId: accepted.previewRunId,
+      workspaceId,
+    });
+    expect(quarantined).toMatchObject({ kind: 'rescheduled' });
+    if (quarantined.kind !== 'rescheduled')
+      throw new Error('preview cleanup quarantine missing');
+    const quarantineSuccessor = await scopedQuery<{
+      payload_checksum: string;
+    }>(
+      `select payload_checksum from app.outbox_events
+       where workspace_id=$1 and id=$2`,
+      [workspaceId, quarantined.cleanupOutboxEventId],
+    );
+    const quarantineChecksum = quarantineSuccessor.rows[0]?.payload_checksum;
+    if (quarantineChecksum === undefined)
+      throw new Error('preview cleanup quarantine checksum missing');
+    await ownerPool.query('select pg_sleep(1.1)');
+    const delivery = {
+      outboxEventId: quarantined.cleanupOutboxEventId,
+      payloadChecksum: quarantineChecksum,
     };
     await expect(
       claimPreviewCleanupDelivery(workerPool, {
         artifactLimit: 1,
+        artifactQuiescenceSeconds: 1,
         delivery,
         previewRunId: accepted.previewRunId,
         workspaceId,
@@ -533,6 +631,7 @@ describe('worker-side preview execution seam', () => {
       workspaceId,
     });
     const continued = await finishPreviewCleanupDelivery(workerPool, {
+      artifactQuiescenceSeconds: 1,
       delivery,
       previewRunId: accepted.previewRunId,
       workspaceId,
@@ -558,6 +657,7 @@ describe('worker-side preview execution seam', () => {
     await expect(
       claimPreviewCleanupDelivery(workerPool, {
         artifactLimit: 1,
+        artifactQuiescenceSeconds: 1,
         delivery: successorDelivery,
         previewRunId: accepted.previewRunId,
         workspaceId,
@@ -573,6 +673,7 @@ describe('worker-side preview execution seam', () => {
     });
     await expect(
       finishPreviewCleanupDelivery(workerPool, {
+        artifactQuiescenceSeconds: 1,
         delivery: successorDelivery,
         previewRunId: accepted.previewRunId,
         workspaceId,
@@ -582,6 +683,7 @@ describe('worker-side preview execution seam', () => {
     const removed = await scopedQuery<{
       artifacts: string;
       attempts: string;
+      idempotency: string;
       links: string;
       runs: string;
     }>(
@@ -590,6 +692,8 @@ describe('worker-side preview execution seam', () => {
            where workspace_id=$1 and id=$2) as runs,
          (select count(*)::text from app.preview_attempts
            where workspace_id=$1 and preview_run_id=$2) as attempts,
+         (select count(*)::text from app.idempotency_records
+           where workspace_id=$1 and resource_id=$2) as idempotency,
          (select count(*)::text from app.artifact_links
            where workspace_id=$1 and owner_id=$2) as links,
          (select count(*)::text from app.artifacts
@@ -599,17 +703,26 @@ describe('worker-side preview execution seam', () => {
     expect(removed.rows[0]).toEqual({
       artifacts: '0',
       attempts: '0',
+      idempotency: '0',
       links: '0',
       runs: '0',
     });
     await expect(
       claimPreviewCleanupDelivery(workerPool, {
         artifactLimit: 10,
-        delivery,
+        artifactQuiescenceSeconds: 1,
+        delivery: initialDelivery,
         previewRunId: accepted.previewRunId,
         workspaceId,
       }),
     ).resolves.toEqual({ kind: 'duplicate' });
+    await expect(
+      acceptFixture({
+        expiresAt: new Date(Date.now() + 60 * 60 * 1_000),
+        keyHash: reusableKeyHash,
+        requestHash: '8'.repeat(64),
+      }),
+    ).resolves.toMatchObject({ duplicate: false });
   });
 
   it('claims a queued attempt with pinned identity and completes truthfully', async () => {

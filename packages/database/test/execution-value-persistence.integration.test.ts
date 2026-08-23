@@ -237,7 +237,7 @@ describe('execution value persistence migration', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0024_preview_retention_cleanup.sql',
+          migrationHead: '0025_preview_cleanup_idempotency.sql',
           role: expectedRole,
         });
       } finally {

@@ -6,16 +6,10 @@ import {
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,
 } from '@pertexo/database';
-import { createQueueTraceRunner } from '@pertexo/observability';
 import {
-  createQueueConsumer,
   InvalidQueueDeliveryError,
   jobIdForOutboxEvent,
-  JOB_NAME,
-  QUEUE_NAME,
   unrecoverableQueueError,
-  type QueueConsumer,
-  type QueueConsumerObserver,
   type QueueDelivery,
   type QueueHandlerContext,
 } from '@pertexo/queue';
@@ -47,11 +41,6 @@ export interface PreviewReconciliationHandler {
     delivery: PreviewReconciliationDelivery,
     context: QueueHandlerContext,
   ): Promise<PreviewDeliveryReconciliationResult>;
-}
-
-export interface PreviewReconciliationRuntime {
-  readonly consumer: QueueConsumer;
-  close(): Promise<void>;
 }
 
 export function createDatabasePreviewReconciliationStore(
@@ -98,7 +87,7 @@ export function createPreviewReconciliationHandler(
   });
 }
 
-function mapReconciliationError(error: unknown): unknown {
+export function mapPreviewReconciliationError(error: unknown): unknown {
   if (
     error instanceof PreviewDeliveryMismatchError ||
     error instanceof PreviewAttemptStateError
@@ -109,59 +98,4 @@ function mapReconciliationError(error: unknown): unknown {
         : `Preview reconciliation is not recoverable: ${error.code}`,
     );
   return error;
-}
-
-export async function createPreviewReconciliationRuntime(
-  options: Readonly<{
-    database: DatabaseConfig;
-    observer?: QueueConsumerObserver;
-    redisUrl: string;
-  }>,
-  dependencies: Readonly<{
-    consumerFactory?: typeof createQueueConsumer;
-    store?: PreviewReconciliationStore & { close?: () => Promise<void> };
-  }> = {},
-): Promise<PreviewReconciliationRuntime> {
-  const store =
-    dependencies.store ??
-    createDatabasePreviewReconciliationStore(options.database);
-  const handler = createPreviewReconciliationHandler(store);
-  let consumer: QueueConsumer;
-  try {
-    consumer = (dependencies.consumerFactory ?? createQueueConsumer)({
-      queueName: QUEUE_NAME.maintenance,
-      redisUrl: options.redisUrl,
-      handler: async (delivery, context): Promise<void> => {
-        if (delivery.name !== JOB_NAME.reconcilePreviewAttempt)
-          throw new InvalidQueueDeliveryError(
-            `Preview reconciler cannot handle ${delivery.name}`,
-          );
-        try {
-          await handler.handle(delivery, context);
-        } catch (error: unknown) {
-          throw mapReconciliationError(error);
-        }
-      },
-      ...(options.observer === undefined ? {} : { observer: options.observer }),
-      traceRunner: createQueueTraceRunner(),
-    });
-  } catch (error: unknown) {
-    await store.close?.();
-    throw error;
-  }
-  let closePromise: Promise<void> | undefined;
-  return Object.freeze({
-    consumer,
-    close: (): Promise<void> => {
-      closePromise ??= (async (): Promise<void> => {
-        const results = await Promise.allSettled([
-          consumer.close(),
-          store.close?.(),
-        ]);
-        const failure = results.find((result) => result.status === 'rejected');
-        if (failure?.status === 'rejected') throw failure.reason;
-      })();
-      return closePromise;
-    },
-  });
 }
