@@ -53,6 +53,17 @@ describe('versioned queue contracts', () => {
         },
       ],
       [
+        JOB_NAME.reconcilePreviewAttempt,
+        {
+          schemaVersion: 1,
+          workspaceId: IDS.workspaceId,
+          previewRunId: IDS.previewRunId,
+          previewAttemptId: IDS.previewAttemptId,
+          attemptFenceToken: 7,
+          outboxEventId: IDS.outboxEventId,
+        },
+      ],
+      [
         JOB_NAME.reconcileWorkflowTriggers,
         {
           schemaVersion: 1,
@@ -175,5 +186,21 @@ describe('versioned queue contracts', () => {
     expect(malformedId.success).toBe(false);
     expect(malformedTraceparent.success).toBe(false);
     expect(zeroTraceparent.success).toBe(false);
+  });
+
+  it('rejects an invalid preview reconciliation fence', () => {
+    const result = safeParseQueueJob({
+      name: JOB_NAME.reconcilePreviewAttempt,
+      data: {
+        schemaVersion: 1,
+        workspaceId: IDS.workspaceId,
+        previewRunId: IDS.previewRunId,
+        previewAttemptId: IDS.previewAttemptId,
+        attemptFenceToken: -1,
+        outboxEventId: IDS.outboxEventId,
+      },
+    });
+
+    expect(result.success).toBe(false);
   });
 });

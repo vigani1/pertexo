@@ -19,6 +19,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createWorkerApplication } from '../src/app.js';
 import type { CoordinatorRuntime } from '../src/execution/coordinator-runtime.js';
 import type { NodeAttemptRuntime } from '../src/execution/node-attempt-runtime.js';
+import type { PreviewReconciliationRuntime } from '../src/execution/preview-reconciliation-runtime.js';
 import { NestWorkspaceDatabase } from '../src/platform/database/database.module.js';
 import { WorkerDrainState } from '../src/runtime/worker-drain-state.js';
 import { WorkerReadiness } from '../src/runtime/worker-readiness.js';
@@ -298,6 +299,38 @@ describe('worker application bootstrap', () => {
       await app.close();
     }
     expect(nodeAttemptRuntime.close).toHaveBeenCalledOnce();
+  });
+
+  it('gates preview reconciliation dispatch on its maintenance consumer', async () => {
+    const selected = dependencies();
+    const consumer: QueueConsumer = {
+      close: vi.fn().mockResolvedValue({ abortedJobs: 0, forced: false }),
+      isReady: vi.fn().mockReturnValue(true),
+      waitUntilReady: vi.fn().mockResolvedValue(undefined),
+    };
+    const previewReconciliationRuntime: PreviewReconciliationRuntime = {
+      consumer,
+      close: vi.fn().mockResolvedValue(undefined),
+    };
+    const enabledConfig = {
+      ...workerConfig,
+      outboxDispatcher: {
+        ...workerConfig.outboxDispatcher,
+        enabledJobNames: [JOB_NAME.reconcilePreviewAttempt],
+      },
+    };
+    const app = await createWorkerApplication(enabledConfig, {
+      ...selected,
+      previewReconciliationRuntime,
+    });
+
+    expect(consumer.waitUntilReady).toHaveBeenCalledOnce();
+    try {
+      expect(consumer.isReady).toHaveBeenCalled();
+    } finally {
+      await app.close();
+    }
+    expect(previewReconciliationRuntime.close).toHaveBeenCalledOnce();
   });
 
   it('fails startup and closes resources when database readiness fails', async () => {

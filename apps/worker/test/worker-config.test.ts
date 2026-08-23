@@ -259,12 +259,14 @@ describe('parseWorkerConfig', () => {
       OUTBOX_DISPATCH_JOB_NAMES: [
         JOB_NAME.expireArtifacts,
         JOB_NAME.advanceWorkflowRun,
+        JOB_NAME.reconcilePreviewAttempt,
       ].join(','),
     });
 
     expect(config.outboxDispatcher.enabledJobNames).toEqual([
       JOB_NAME.expireArtifacts,
       JOB_NAME.advanceWorkflowRun,
+      JOB_NAME.reconcilePreviewAttempt,
     ]);
     expect(Object.isFrozen(config.outboxDispatcher.enabledJobNames)).toBe(true);
   });

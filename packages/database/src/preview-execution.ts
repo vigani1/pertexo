@@ -558,6 +558,7 @@ const TERMINAL_PREVIEW_STATUSES: ReadonlySet<string> = new Set([
 ]);
 
 const previewConsumerName = 'preview-attempt-worker';
+const previewReconcilerConsumerName = 'preview-attempt-reconciler';
 
 const safeErrorCodeSchema = z.string().regex(/^[a-z][a-z0-9._:-]{0,127}$/u);
 
@@ -572,10 +573,92 @@ const previewDeliveryPayloadSchema = z
   })
   .strict();
 
+const previewReconciliationPayloadSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    workspaceId: z.uuid(),
+    outboxEventId: z.uuid(),
+    previewRunId: z.uuid(),
+    previewAttemptId: z.uuid(),
+    attemptFenceToken: z.number().int().nonnegative(),
+    traceparent: traceparentSchema,
+  })
+  .strict();
+
 export type PreviewDelivery = Readonly<{
   outboxEventId: string;
   payloadChecksum: string;
 }>;
+
+type PreviewOutboxClient = Parameters<
+  Parameters<typeof withTenantScopedClient>[2]
+>[0];
+
+async function insertPreviewOutboxDelivery(
+  client: PreviewOutboxClient,
+  input:
+    | Readonly<{
+        availableAt?: Date;
+        jobName: 'execute-preview-attempt';
+        previewAttemptId: string;
+        previewRunId: string;
+        traceparent?: string;
+        workspaceId: string;
+      }>
+    | Readonly<{
+        attemptFenceToken: number;
+        availableAt: Date;
+        jobName: 'reconcile-preview-attempt';
+        previewAttemptId: string;
+        previewRunId: string;
+        traceparent?: string;
+        workspaceId: string;
+      }>,
+): Promise<Readonly<{ outboxEventId: string; payloadChecksum: string }>> {
+  const outboxEventId = randomUUID();
+  const payload =
+    input.jobName === 'execute-preview-attempt'
+      ? previewDeliveryPayloadSchema.parse({
+          schemaVersion: 1,
+          workspaceId: input.workspaceId,
+          outboxEventId,
+          previewRunId: input.previewRunId,
+          previewAttemptId: input.previewAttemptId,
+          ...(input.traceparent === undefined
+            ? {}
+            : { traceparent: input.traceparent }),
+        })
+      : previewReconciliationPayloadSchema.parse({
+          schemaVersion: 1,
+          workspaceId: input.workspaceId,
+          outboxEventId,
+          previewRunId: input.previewRunId,
+          previewAttemptId: input.previewAttemptId,
+          attemptFenceToken: input.attemptFenceToken,
+          ...(input.traceparent === undefined
+            ? {}
+            : { traceparent: input.traceparent }),
+        });
+  const payloadChecksum = canonicalOutboxPayloadChecksum(payload);
+  const inserted = await client.query(
+    `insert into app.outbox_events (
+       id,workspace_id,job_name,schema_version,aggregate_type,aggregate_id,
+       payload,payload_checksum,available_at
+     ) values ($1,$2,$3,1,'preview-run',$4,$5::jsonb,$6,$7)`,
+    [
+      outboxEventId,
+      input.workspaceId,
+      input.jobName,
+      input.previewRunId,
+      JSON.stringify(payload),
+      payloadChecksum,
+      input.availableAt ?? new Date(),
+    ],
+  );
+  if (inserted.rowCount !== 1)
+    throw new PreviewAttemptStateError('reconciliation_schedule_lost');
+  return Object.freeze({ outboxEventId, payloadChecksum });
+}
 
 export type PreviewTerminalOutcome =
   | Readonly<{
@@ -702,8 +785,61 @@ async function validatePreviewDelivery(
     throw new PreviewDeliveryMismatchError();
 }
 
+async function validatePreviewReconciliationDelivery(
+  client: PreviewOutboxClient,
+  input: Readonly<{
+    attemptFenceToken: number;
+    delivery: PreviewDelivery;
+    previewAttemptId: string;
+    previewRunId: string;
+    workspaceId: string;
+  }>,
+): Promise<z.output<typeof previewReconciliationPayloadSchema>> {
+  const result = await client.query<{
+    aggregate_id: string;
+    aggregate_type: string;
+    job_name: string;
+    payload: unknown;
+    payload_checksum: string;
+    schema_version: number;
+  }>(
+    `select aggregate_id,aggregate_type,job_name,payload,
+            payload_checksum,schema_version
+     from app.outbox_events
+     where workspace_id=$1 and id=$2`,
+    [input.workspaceId, input.delivery.outboxEventId],
+  );
+  const row = result.rows[0];
+  if (row === undefined)
+    throw new PreviewAttemptStateError('delivery_not_found');
+  let payload: z.output<typeof previewReconciliationPayloadSchema>;
+  let checksum: string;
+  try {
+    payload = previewReconciliationPayloadSchema.parse(row.payload);
+    checksum = canonicalOutboxPayloadChecksum(payload);
+  } catch {
+    throw new PreviewDeliveryMismatchError();
+  }
+  if (
+    row.aggregate_id !== input.previewRunId ||
+    row.aggregate_type !== 'preview-run' ||
+    row.job_name !== 'reconcile-preview-attempt' ||
+    row.schema_version !== 1 ||
+    row.payload_checksum !== input.delivery.payloadChecksum ||
+    checksum !== row.payload_checksum ||
+    payload.workspaceId !== input.workspaceId ||
+    payload.previewRunId !== input.previewRunId ||
+    payload.previewAttemptId !== input.previewAttemptId ||
+    payload.attemptFenceToken !== input.attemptFenceToken ||
+    payload.outboxEventId !== input.delivery.outboxEventId
+  )
+    throw new PreviewDeliveryMismatchError();
+  return payload;
+}
+
 async function completePreviewReceipt(
-  client: Parameters<Parameters<typeof withTenantScopedClient>[2]>[0],
+  client: PreviewOutboxClient,
+  consumerName: string,
   workspaceId: string,
   delivery: PreviewDelivery,
 ): Promise<void> {
@@ -712,7 +848,7 @@ async function completePreviewReceipt(
      where consumer_name=$1 and message_id=$2 and workspace_id=$3
        and payload_checksum=$4 and completed_at is null`,
     [
-      previewConsumerName,
+      consumerName,
       delivery.outboxEventId,
       workspaceId,
       delivery.payloadChecksum,
@@ -722,8 +858,51 @@ async function completePreviewReceipt(
     throw new PreviewAttemptStateError('receipt_completion_lost');
 }
 
+async function claimPreviewReceipt(
+  client: PreviewOutboxClient,
+  consumerName: string,
+  workspaceId: string,
+  delivery: PreviewDelivery,
+): Promise<'completed' | 'open'> {
+  const inserted = await client.query(
+    `insert into app.inbox_receipts (
+       consumer_name,message_id,workspace_id,payload_checksum
+     ) values ($1,$2,$3,$4)
+     on conflict (consumer_name,message_id) do nothing
+     returning message_id`,
+    [
+      consumerName,
+      delivery.outboxEventId,
+      workspaceId,
+      delivery.payloadChecksum,
+    ],
+  );
+  if (inserted.rowCount === 1) return 'open';
+  const existing = await client.query<{
+    completed_at: Date | null;
+    payload_checksum: string;
+    workspace_id: string;
+  }>(
+    `select workspace_id,payload_checksum,completed_at
+     from app.inbox_receipts
+     where consumer_name=$1 and message_id=$2
+     for update`,
+    [consumerName, delivery.outboxEventId],
+  );
+  const receipt = existing.rows[0];
+  if (receipt === undefined)
+    throw new PreviewAttemptStateError('receipt_missing');
+  if (
+    receipt.workspace_id !== workspaceId ||
+    receipt.payload_checksum !== delivery.payloadChecksum
+  )
+    throw new PreviewDeliveryMismatchError();
+  return receipt.completed_at === null ? 'open' : 'completed';
+}
+
 async function auditPreviewDeliveryMismatch(
   pool: Pool,
+  consumerName: string,
   workspaceId: string,
   delivery: PreviewDelivery,
   signal: AbortSignal,
@@ -736,12 +915,7 @@ async function auditPreviewDeliveryMismatch(
         `insert into app.transport_security_audit_facts (
            id,workspace_id,fact_type,consumer_name,message_id
          ) values ($1,$2,'inbox_checksum_mismatch',$3,$4)`,
-        [
-          randomUUID(),
-          workspaceId,
-          previewConsumerName,
-          delivery.outboxEventId,
-        ],
+        [randomUUID(), workspaceId, consumerName, delivery.outboxEventId],
       );
     },
     { signal },
@@ -875,39 +1049,18 @@ export async function claimPreviewDelivery(
           workspaceId: parsed.workspaceId,
         });
 
-        const receiptInserted = await client.query(
-          `insert into app.inbox_receipts (
-           consumer_name,message_id,workspace_id,payload_checksum
-         ) values ($1,$2,$3,$4)
-         on conflict (consumer_name,message_id) do nothing
-         returning message_id`,
-          [
+        // A prior claim may have crashed before completing business work;
+        // durable attempt state below decides whether redelivery may proceed.
+        // The receipt completes only together with a terminal outcome.
+        if (
+          (await claimPreviewReceipt(
+            client,
             previewConsumerName,
-            input.delivery.outboxEventId,
             parsed.workspaceId,
-            input.delivery.payloadChecksum,
-          ],
-        );
-        if (receiptInserted.rowCount === 0) {
-          // A prior claim crashed before completing business work; durable
-          // attempt state below decides whether redelivery may proceed. The
-          // receipt completes only together with a terminal outcome.
-          const existing = await client.query<{ completed_at: Date | null }>(
-            `select completed_at from app.inbox_receipts
-           where consumer_name=$1 and message_id=$2 and workspace_id=$3
-           for update`,
-            [
-              previewConsumerName,
-              input.delivery.outboxEventId,
-              parsed.workspaceId,
-            ],
-          );
-          const receipt = existing.rows[0];
-          if (receipt === undefined)
-            throw new PreviewAttemptStateError('receipt_missing');
-          if (receipt.completed_at !== null)
-            return Object.freeze({ kind: 'duplicate' });
-        }
+            input.delivery,
+          )) === 'completed'
+        )
+          return Object.freeze({ kind: 'duplicate' });
 
         const locked = await client.query<{
           attempt_status: string;
@@ -945,6 +1098,7 @@ export async function claimPreviewDelivery(
         if (TERMINAL_PREVIEW_STATUSES.has(state.attempt_status)) {
           await completePreviewReceipt(
             client,
+            previewConsumerName,
             parsed.workspaceId,
             input.delivery,
           );
@@ -1002,6 +1156,20 @@ export async function claimPreviewDelivery(
           previewRunId: parsed.previewRunId,
           workspaceId: parsed.workspaceId,
         });
+        // The lease and its reconciliation wake-up commit together. Redis is
+        // only delivery acceleration: an unpublished delayed outbox row
+        // remains authoritative through queue loss or worker termination.
+        await insertPreviewOutboxDelivery(client, {
+          attemptFenceToken: lease.attemptFenceToken,
+          availableAt: claimedRow.lease_expires_at,
+          jobName: 'reconcile-preview-attempt',
+          previewAttemptId: parsed.previewAttemptId,
+          previewRunId: parsed.previewRunId,
+          ...(lease.traceparent === undefined
+            ? {}
+            : { traceparent: lease.traceparent }),
+          workspaceId: parsed.workspaceId,
+        });
         return Object.freeze({ kind: 'claimed', lease });
       },
       optionsFor(input.signal),
@@ -1016,6 +1184,7 @@ export async function claimPreviewDelivery(
       // above rolled back with the failure.
       await auditPreviewDeliveryMismatch(
         pool,
+        previewConsumerName,
         parsed.workspaceId,
         input.delivery,
         input.signal ?? new AbortController().signal,
@@ -1264,10 +1433,15 @@ export async function completePreviewAttempt(
         throw new PreviewAttemptStateError('run_sync_lost');
       // The inbox receipt completes atomically with the truthful business
       // outcome, exactly like production attempt transitions.
-      await completePreviewReceipt(client, scope.workspaceId, {
-        outboxEventId: scope.delivery.outboxEventId,
-        payloadChecksum: scope.delivery.payloadChecksum,
-      });
+      await completePreviewReceipt(
+        client,
+        previewConsumerName,
+        scope.workspaceId,
+        {
+          outboxEventId: scope.delivery.outboxEventId,
+          payloadChecksum: scope.delivery.payloadChecksum,
+        },
+      );
       return Object.freeze({ kind: 'committed' });
     },
     optionsFor(input.signal),
@@ -1277,6 +1451,22 @@ export async function completePreviewAttempt(
 export type PreviewReconciliationOutcome = Readonly<{
   status: typeof PREVIEW_STATUS.outcomeUnknown;
 }>;
+
+export type PreviewDeliveryReconciliationResult =
+  | Readonly<{ kind: 'duplicate' }>
+  | Readonly<{
+      kind: 'rescheduled';
+      reconciliationOutboxEventId: string;
+    }>
+  | Readonly<{
+      executionOutboxEventId: string;
+      kind: 'redelivered';
+    }>
+  | Readonly<{
+      kind: 'completed';
+      status:
+        typeof PREVIEW_STATUS.outcomeUnknown | typeof PREVIEW_STATUS.timedOut;
+    }>;
 
 /**
  * Bounded stored-value contract check for executor outputs before a
@@ -1419,4 +1609,250 @@ export async function reconcileExpiredPreviewAttempt(
     },
     optionsFor(input.signal),
   );
+}
+
+/**
+ * Handles one durable reconciliation wake-up for a specific lease fence.
+ * Every non-duplicate decision, its successor outbox delivery, and its inbox
+ * receipt commit atomically so Redis/BullMQ never becomes the authority.
+ */
+export async function reconcilePreviewDelivery(
+  pool: Pool,
+  input: Readonly<{
+    attemptFenceToken: number;
+    delivery: PreviewDelivery;
+    previewAttemptId: string;
+    previewRunId: string;
+    signal?: AbortSignal;
+    workspaceId: string;
+  }>,
+): Promise<PreviewDeliveryReconciliationResult> {
+  const scope = z
+    .object({
+      attemptFenceToken: z.number().int().nonnegative(),
+      previewAttemptId: z.uuid(),
+      previewRunId: z.uuid(),
+      workspaceId: z.uuid(),
+    })
+    .parse(input);
+  try {
+    return await withTenantScopedClient(
+      pool,
+      { workspaceId: scope.workspaceId },
+      async (client): Promise<PreviewDeliveryReconciliationResult> => {
+        const payload = await validatePreviewReconciliationDelivery(client, {
+          attemptFenceToken: scope.attemptFenceToken,
+          delivery: input.delivery,
+          previewAttemptId: scope.previewAttemptId,
+          previewRunId: scope.previewRunId,
+          workspaceId: scope.workspaceId,
+        });
+        if (
+          (await claimPreviewReceipt(
+            client,
+            previewReconcilerConsumerName,
+            scope.workspaceId,
+            input.delivery,
+          )) === 'completed'
+        )
+          return Object.freeze({ kind: 'duplicate' });
+
+        const locked = await client.query<{
+          attempt_status: string;
+          dispatch_marked_at: Date | null;
+          fence_token: string;
+          lease_live: boolean;
+          lease_expires_at: Date | null;
+          run_deadline_expired: boolean;
+          run_status: string;
+          side_effect_class: string;
+        }>(
+          `select attempt.status as attempt_status,
+                  attempt.dispatch_marked_at,
+                  attempt.fence_token,
+                  attempt.lease_expires_at,
+                  (attempt.lease_expires_at is not null and
+                   attempt.lease_expires_at > clock_timestamp()) as lease_live,
+                  attempt.side_effect_class,
+                  run.status as run_status,
+                  (run.expires_at <= clock_timestamp()) as run_deadline_expired
+           from app.preview_attempts attempt
+           join app.preview_runs run
+             on run.workspace_id=attempt.workspace_id
+            and run.id=attempt.preview_run_id
+           where attempt.workspace_id=$1
+             and attempt.id=$2
+             and attempt.preview_run_id=$3
+           for update of attempt,run`,
+          [scope.workspaceId, scope.previewAttemptId, scope.previewRunId],
+        );
+        const state = locked.rows[0];
+        if (state === undefined)
+          throw new PreviewAttemptStateError('attempt_not_found');
+        if (!previewPairConsistent(state.attempt_status, state.run_status))
+          throw new PreviewAttemptStateError('run_attempt_divergence');
+
+        const completeReceipt = async (): Promise<void> =>
+          completePreviewReceipt(
+            client,
+            previewReconcilerConsumerName,
+            scope.workspaceId,
+            input.delivery,
+          );
+        if (
+          TERMINAL_PREVIEW_STATUSES.has(state.attempt_status) ||
+          state.attempt_status !== PREVIEW_STATUS.running ||
+          Number(state.fence_token) !== scope.attemptFenceToken
+        ) {
+          await completeReceipt();
+          return Object.freeze({ kind: 'duplicate' });
+        }
+
+        if (state.lease_live) {
+          if (state.lease_expires_at === null)
+            throw new PreviewAttemptStateError('lease_shape_invalid');
+          const successor = await insertPreviewOutboxDelivery(client, {
+            attemptFenceToken: scope.attemptFenceToken,
+            availableAt: state.lease_expires_at,
+            jobName: 'reconcile-preview-attempt',
+            previewAttemptId: scope.previewAttemptId,
+            previewRunId: scope.previewRunId,
+            ...(payload.traceparent === undefined
+              ? {}
+              : { traceparent: payload.traceparent }),
+            workspaceId: scope.workspaceId,
+          });
+          await completeReceipt();
+          return Object.freeze({
+            kind: 'rescheduled',
+            reconciliationOutboxEventId: successor.outboxEventId,
+          });
+        }
+
+        const unsafePossiblyDispatched =
+          state.dispatch_marked_at !== null &&
+          state.side_effect_class === 'unsafe';
+        const runDeadlineExpired = state.run_deadline_expired;
+        if (unsafePossiblyDispatched || runDeadlineExpired) {
+          const status = unsafePossiblyDispatched
+            ? PREVIEW_STATUS.outcomeUnknown
+            : PREVIEW_STATUS.timedOut;
+          const safeErrorCode = unsafePossiblyDispatched
+            ? 'preview.outcome_unknown'
+            : 'preview.deadline_exceeded';
+          const reason = unsafePossiblyDispatched
+            ? 'lease_expired_after_unsafe_dispatch'
+            : 'run_deadline_expired_before_reclaim';
+          const reconciliationRef = JSON.stringify({
+            schemaVersion: 1,
+            reason,
+            attemptFenceToken: scope.attemptFenceToken,
+          });
+          const attempt = await client.query(
+            `update app.preview_attempts
+             set status=$4,
+                 safe_error_code=$5,
+                 reconciliation_ref=$6::jsonb,
+                 completed_at=clock_timestamp(),
+                 lease_owner=null,
+                 lease_expires_at=null,
+                 fence_token=fence_token+1,
+                 updated_at=clock_timestamp()
+             where workspace_id=$1 and id=$2 and preview_run_id=$3
+               and status='running' and fence_token=$7`,
+            [
+              scope.workspaceId,
+              scope.previewAttemptId,
+              scope.previewRunId,
+              status,
+              safeErrorCode,
+              reconciliationRef,
+              scope.attemptFenceToken,
+            ],
+          );
+          if (attempt.rowCount !== 1)
+            throw new PreviewAttemptStateError('reconciliation_lost');
+          const run = await client.query(
+            `update app.preview_runs
+             set status=$3,
+                 safe_error_code=$4,
+                 completed_at=clock_timestamp(),
+                 updated_at=clock_timestamp()
+             where workspace_id=$1 and id=$2
+               and status in ('queued','running')`,
+            [scope.workspaceId, scope.previewRunId, status, safeErrorCode],
+          );
+          if (run.rowCount !== 1)
+            throw new PreviewAttemptStateError('run_sync_lost');
+          await completeReceipt();
+          return Object.freeze({ kind: 'completed', status });
+        }
+
+        // Fence the expired owner before making the replacement delivery
+        // visible. The stable provider key and prior dispatch marker remain
+        // pinned for safe/idempotent repetition under ADR 007.
+        const reclaimed = await client.query(
+          `update app.preview_attempts
+           set status='queued',
+               lease_owner=null,
+               lease_expires_at=null,
+               fence_token=fence_token+1,
+               reconciliation_ref=$4::jsonb,
+               updated_at=clock_timestamp()
+           where workspace_id=$1 and id=$2 and preview_run_id=$3
+             and status='running' and fence_token=$5`,
+          [
+            scope.workspaceId,
+            scope.previewAttemptId,
+            scope.previewRunId,
+            JSON.stringify({
+              schemaVersion: 1,
+              reason: 'lease_expired_redelivery',
+              attemptFenceToken: scope.attemptFenceToken,
+            }),
+            scope.attemptFenceToken,
+          ],
+        );
+        if (reclaimed.rowCount !== 1)
+          throw new PreviewAttemptStateError('reconciliation_lost');
+        const queuedRun = await client.query(
+          `update app.preview_runs
+           set status='queued',updated_at=clock_timestamp()
+           where workspace_id=$1 and id=$2 and status='running'`,
+          [scope.workspaceId, scope.previewRunId],
+        );
+        if (queuedRun.rowCount !== 1)
+          throw new PreviewAttemptStateError('run_sync_lost');
+        const execution = await insertPreviewOutboxDelivery(client, {
+          jobName: 'execute-preview-attempt',
+          previewAttemptId: scope.previewAttemptId,
+          previewRunId: scope.previewRunId,
+          ...(payload.traceparent === undefined
+            ? {}
+            : { traceparent: payload.traceparent }),
+          workspaceId: scope.workspaceId,
+        });
+        await completeReceipt();
+        return Object.freeze({
+          executionOutboxEventId: execution.outboxEventId,
+          kind: 'redelivered',
+        });
+      },
+      optionsFor(input.signal),
+    );
+  } catch (error: unknown) {
+    if (
+      error instanceof PreviewDeliveryMismatchError &&
+      !input.signal?.aborted
+    ) {
+      await auditPreviewDeliveryMismatch(
+        pool,
+        previewReconcilerConsumerName,
+        scope.workspaceId,
+        input.delivery,
+        input.signal ?? new AbortController().signal,
+      );
+    }
+    throw error;
+  }
 }

@@ -144,6 +144,7 @@ export {
   heartbeatPreviewLease,
   completePreviewAttempt,
   reconcileExpiredPreviewAttempt,
+  reconcilePreviewDelivery,
   PreviewAcceptanceCorruptError,
   PreviewAdmissionDeniedError,
   PreviewAttemptStateError,
@@ -163,6 +164,7 @@ export type {
   PreviewCompletionResult,
   PreviewHeartbeatResult,
   PreviewReconciliationOutcome,
+  PreviewDeliveryReconciliationResult,
 } from './preview-execution.js';
 export type {
   AcceptedWorkflowRun,

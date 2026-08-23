@@ -13,6 +13,7 @@ export const JOB_NAME = Object.freeze({
   advanceWorkflowRun: 'advance-workflow-run',
   executeNodeAttempt: 'execute-node-attempt',
   executePreviewAttempt: 'execute-preview-attempt',
+  reconcilePreviewAttempt: 'reconcile-preview-attempt',
   reconcileWorkflowTriggers: 'reconcile-workflow-triggers',
   expireArtifacts: 'expire-artifacts',
 } as const);
@@ -24,6 +25,7 @@ export const QUEUE_FOR_JOB = Object.freeze({
   [JOB_NAME.advanceWorkflowRun]: QUEUE_NAME.workflowCoordinator,
   [JOB_NAME.executeNodeAttempt]: QUEUE_NAME.nodeAttempts,
   [JOB_NAME.executePreviewAttempt]: QUEUE_NAME.nodeAttempts,
+  [JOB_NAME.reconcilePreviewAttempt]: QUEUE_NAME.maintenance,
   [JOB_NAME.reconcileWorkflowTriggers]: QUEUE_NAME.triggerLifecycle,
   [JOB_NAME.expireArtifacts]: QUEUE_NAME.maintenance,
 } as const satisfies Record<JobName, QueueName>);

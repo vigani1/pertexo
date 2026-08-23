@@ -15,6 +15,10 @@ const TRANSPORT_JOB_BY_NAME = Object.freeze({
     jobName: JOB_NAME.executePreviewAttempt,
     queueName: QUEUE_FOR_JOB[JOB_NAME.executePreviewAttempt],
   },
+  [JOB_NAME.reconcilePreviewAttempt]: {
+    jobName: JOB_NAME.reconcilePreviewAttempt,
+    queueName: QUEUE_FOR_JOB[JOB_NAME.reconcilePreviewAttempt],
+  },
   [JOB_NAME.reconcileWorkflowTriggers]: {
     jobName: JOB_NAME.reconcileWorkflowTriggers,
     queueName: QUEUE_FOR_JOB[JOB_NAME.reconcileWorkflowTriggers],

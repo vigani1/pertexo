@@ -12,6 +12,7 @@ import type { TransportMetrics } from '@pertexo/observability/transport-metrics'
 import type { WorkerConfig } from './config/worker-config.js';
 import type { CoordinatorRuntime } from './execution/coordinator-runtime.js';
 import type { NodeAttemptRuntime } from './execution/node-attempt-runtime.js';
+import type { PreviewReconciliationRuntime } from './execution/preview-reconciliation-runtime.js';
 import { WORKSPACE_DATABASE } from './platform/database/database.module.js';
 import { NestLoggerAdapter } from './platform/observability/observability.module.js';
 import { observeWorkspaceArtifactCapacity } from './runtime/artifact-metrics.js';
@@ -27,6 +28,7 @@ import { WorkerModule } from './worker.module.js';
 export type WorkerApplicationDependencies = Readonly<{
   coordinatorRuntime?: CoordinatorRuntime;
   nodeAttemptRuntime?: NodeAttemptRuntime;
+  previewReconciliationRuntime?: PreviewReconciliationRuntime;
   database?: WorkspaceDatabase;
   dispatchConsumerCapabilities?: DispatchConsumerCapabilityRegistry;
   dispatcherDatabase?: OutboxDispatcherDatabase;

@@ -15,6 +15,7 @@ import {
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,
   reconcileExpiredPreviewAttempt,
+  reconcilePreviewDelivery,
   type AcceptPreviewRunInput,
   type PreviewAttemptLease,
   type PreviewDelivery,
@@ -213,6 +214,56 @@ interface ClaimedFixture {
   fixture: AcceptedFixture;
   lease: PreviewAttemptLease;
   workerId: string;
+}
+
+interface ReconciliationFixture {
+  attemptFenceToken: number;
+  availableAt: Date;
+  delivery: PreviewDelivery;
+  outboxEventId: string;
+}
+
+async function reconciliationFixture(
+  claimed: ClaimedFixture,
+): Promise<ReconciliationFixture> {
+  const result = await scopedQuery<{
+    available_at: Date;
+    id: string;
+    payload: unknown;
+    payload_checksum: string;
+  }>(
+    `select id,payload,payload_checksum,available_at
+     from app.outbox_events
+     where workspace_id=$1 and aggregate_id=$2
+       and job_name='reconcile-preview-attempt'
+       and (payload->>'attemptFenceToken')::bigint=$3
+     order by created_at desc,id desc
+     limit 1`,
+    [
+      workspaceId,
+      claimed.fixture.previewRunId,
+      claimed.lease.attemptFenceToken,
+    ],
+  );
+  const row = result.rows[0];
+  if (
+    row === undefined ||
+    typeof row.payload !== 'object' ||
+    row.payload === null
+  )
+    throw new Error('preview reconciliation outbox missing');
+  const payload = row.payload as Record<string, unknown>;
+  if (payload.attemptFenceToken !== claimed.lease.attemptFenceToken)
+    throw new Error('preview reconciliation fence mismatch');
+  return {
+    attemptFenceToken: claimed.lease.attemptFenceToken,
+    availableAt: row.available_at,
+    delivery: {
+      outboxEventId: row.id,
+      payloadChecksum: row.payload_checksum,
+    },
+    outboxEventId: row.id,
+  };
 }
 
 async function claimFixture(
@@ -611,6 +662,252 @@ describe('worker-side preview execution seam', () => {
         workspaceId,
       }),
     ).resolves.toEqual({ status: PREVIEW_STATUS.outcomeUnknown });
+  });
+
+  it('durably schedules, reschedules, and deduplicates lease reconciliation', async () => {
+    const claimed = await claimFixture(
+      await acceptFixture({
+        mayCauseExternalSideEffect: false,
+        sideEffectClass: 'safe',
+      }),
+      'worker-preview-reconcile-live',
+      5,
+    );
+    const initial = await reconciliationFixture(claimed);
+    expect(initial.availableAt.getTime()).toBeGreaterThan(Date.now());
+
+    const heartbeat = await heartbeatPreviewLease(workerPool, {
+      lease: claimed.lease,
+      leaseDurationSeconds: 30,
+      workerId: claimed.workerId,
+    });
+    const rescheduled = await reconcilePreviewDelivery(workerPool, {
+      attemptFenceToken: initial.attemptFenceToken,
+      delivery: initial.delivery,
+      previewAttemptId: claimed.fixture.previewAttemptId,
+      previewRunId: claimed.fixture.previewRunId,
+      workspaceId,
+    });
+    expect(rescheduled).toMatchObject({ kind: 'rescheduled' });
+    const successorId =
+      rescheduled.kind === 'rescheduled'
+        ? rescheduled.reconciliationOutboxEventId
+        : undefined;
+    expect(successorId).toBeDefined();
+    const successor = await scopedQuery<{
+      available_at: Date;
+      job_name: string;
+    }>(
+      `select available_at,job_name from app.outbox_events
+       where workspace_id=$1 and id=$2`,
+      [workspaceId, successorId],
+    );
+    expect(successor.rows[0]).toMatchObject({
+      job_name: 'reconcile-preview-attempt',
+    });
+    expect(successor.rows[0]?.available_at.getTime()).toBe(
+      heartbeat.attemptLeaseExpiresAt.getTime(),
+    );
+
+    await expect(
+      reconcilePreviewDelivery(workerPool, {
+        attemptFenceToken: initial.attemptFenceToken,
+        delivery: initial.delivery,
+        previewAttemptId: claimed.fixture.previewAttemptId,
+        previewRunId: claimed.fixture.previewRunId,
+        workspaceId,
+      }),
+    ).resolves.toEqual({ kind: 'duplicate' });
+    const successorCount = await scopedQuery<{ count: string }>(
+      `select count(*)::text as count from app.outbox_events
+       where workspace_id=$1 and id=$2`,
+      [workspaceId, successorId],
+    );
+    expect(successorCount.rows[0]).toEqual({ count: '1' });
+  });
+
+  it('fences and redelivers expired reclaimable work through a new outbox event', async () => {
+    const claimed = await claimFixture(
+      await acceptFixture({
+        mayCauseExternalSideEffect: false,
+        sideEffectClass: 'safe',
+      }),
+      'worker-preview-reconcile-safe',
+      5,
+    );
+    const reconciliation = await reconciliationFixture(claimed);
+    await markPreviewDispatched(workerPool, {
+      lease: claimed.lease,
+      workerId: claimed.workerId,
+    });
+    await expireLease(claimed.fixture.previewAttemptId);
+
+    const redelivered = await reconcilePreviewDelivery(workerPool, {
+      attemptFenceToken: reconciliation.attemptFenceToken,
+      delivery: reconciliation.delivery,
+      previewAttemptId: claimed.fixture.previewAttemptId,
+      previewRunId: claimed.fixture.previewRunId,
+      workspaceId,
+    });
+    expect(redelivered).toMatchObject({ kind: 'redelivered' });
+    if (redelivered.kind !== 'redelivered')
+      throw new Error('expected execution redelivery');
+    const replacement = await scopedQuery<{
+      payload: Record<string, unknown>;
+      payload_checksum: string;
+    }>(
+      `select payload,payload_checksum from app.outbox_events
+       where workspace_id=$1 and id=$2 and job_name='execute-preview-attempt'`,
+      [workspaceId, redelivered.executionOutboxEventId],
+    );
+    const replacementRow = replacement.rows[0];
+    if (replacementRow === undefined)
+      throw new Error('replacement execution outbox missing');
+    await expect(
+      completePreviewAttempt(workerPool, {
+        delivery: claimed.fixture.delivery,
+        lease: claimed.lease,
+        outcome: {
+          output: { schemaVersion: 1, kind: 'inline', value: 'stale' },
+          status: PREVIEW_STATUS.succeeded,
+        },
+        workerId: claimed.workerId,
+      }),
+    ).rejects.toMatchObject({ code: 'completion_lost' });
+
+    const replacementClaim = await claimPreviewDelivery(workerPool, {
+      delivery: {
+        outboxEventId: redelivered.executionOutboxEventId,
+        payloadChecksum: replacementRow.payload_checksum,
+      },
+      leaseDurationSeconds: 30,
+      previewAttemptId: claimed.fixture.previewAttemptId,
+      previewRunId: claimed.fixture.previewRunId,
+      workerId: 'worker-preview-reconcile-safe-2',
+      workspaceId,
+    });
+    expect(replacementClaim.kind).toBe('claimed');
+    if (replacementClaim.kind === 'claimed') {
+      expect(replacementClaim.lease.attemptFenceToken).toBe(
+        claimed.lease.attemptFenceToken + 2,
+      );
+    }
+  });
+
+  it('records unsafe post-dispatch ambiguity from the durable wake-up', async () => {
+    const claimed = await claimFixture(
+      await acceptFixture(),
+      'worker-preview-reconcile-unsafe',
+      5,
+    );
+    const reconciliation = await reconciliationFixture(claimed);
+    await markPreviewDispatched(workerPool, {
+      lease: claimed.lease,
+      workerId: claimed.workerId,
+    });
+    await expireLease(claimed.fixture.previewAttemptId);
+
+    await expect(
+      reconcilePreviewDelivery(workerPool, {
+        attemptFenceToken: reconciliation.attemptFenceToken,
+        delivery: reconciliation.delivery,
+        previewAttemptId: claimed.fixture.previewAttemptId,
+        previewRunId: claimed.fixture.previewRunId,
+        workspaceId,
+      }),
+    ).resolves.toEqual({
+      kind: 'completed',
+      status: PREVIEW_STATUS.outcomeUnknown,
+    });
+    const state = await scopedQuery<{
+      fence_token: string;
+      reconciliation_ref: Record<string, unknown>;
+      status: string;
+    }>(
+      `select status,fence_token,reconciliation_ref
+       from app.preview_attempts where workspace_id=$1 and id=$2`,
+      [workspaceId, claimed.fixture.previewAttemptId],
+    );
+    expect(state.rows[0]).toMatchObject({
+      status: PREVIEW_STATUS.outcomeUnknown,
+      reconciliation_ref: {
+        reason: 'lease_expired_after_unsafe_dispatch',
+      },
+    });
+    expect(Number(state.rows[0]?.fence_token)).toBe(
+      claimed.lease.attemptFenceToken + 1,
+    );
+  });
+
+  it('times out expired undispatched work instead of redelivering past its deadline', async () => {
+    const claimed = await claimFixture(
+      await acceptFixture({
+        expiresAt: new Date(Date.now() + 250),
+        mayCauseExternalSideEffect: false,
+        sideEffectClass: 'safe',
+      }),
+      'worker-preview-reconcile-deadline',
+      5,
+    );
+    const reconciliation = await reconciliationFixture(claimed);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await expireLease(claimed.fixture.previewAttemptId);
+
+    await expect(
+      reconcilePreviewDelivery(workerPool, {
+        attemptFenceToken: reconciliation.attemptFenceToken,
+        delivery: reconciliation.delivery,
+        previewAttemptId: claimed.fixture.previewAttemptId,
+        previewRunId: claimed.fixture.previewRunId,
+        workspaceId,
+      }),
+    ).resolves.toEqual({
+      kind: 'completed',
+      status: PREVIEW_STATUS.timedOut,
+    });
+    const replacement = await scopedQuery<{ count: string }>(
+      `select count(*)::text as count from app.outbox_events
+       where workspace_id=$1 and aggregate_id=$2
+         and job_name='execute-preview-attempt' and id<>$3`,
+      [
+        workspaceId,
+        claimed.fixture.previewRunId,
+        claimed.fixture.outboxEventId,
+      ],
+    );
+    expect(replacement.rows[0]).toEqual({ count: '0' });
+  });
+
+  it('checksum-binds reconciliation deliveries and audits forged reuse', async () => {
+    const claimed = await claimFixture(
+      await acceptFixture({
+        mayCauseExternalSideEffect: false,
+        sideEffectClass: 'safe',
+      }),
+      'worker-preview-reconcile-security',
+      5,
+    );
+    const reconciliation = await reconciliationFixture(claimed);
+    await expect(
+      reconcilePreviewDelivery(workerPool, {
+        attemptFenceToken: reconciliation.attemptFenceToken,
+        delivery: {
+          ...reconciliation.delivery,
+          payloadChecksum: '0'.repeat(64),
+        },
+        previewAttemptId: claimed.fixture.previewAttemptId,
+        previewRunId: claimed.fixture.previewRunId,
+        workspaceId,
+      }),
+    ).rejects.toBeInstanceOf(PreviewDeliveryMismatchError);
+    const facts = await scopedQuery<{ count: string }>(
+      `select count(*)::text as count
+       from app.transport_security_audit_facts
+       where workspace_id=$1 and message_id=$2
+         and consumer_name='preview-attempt-reconciler'`,
+      [workspaceId, reconciliation.outboxEventId],
+    );
+    expect(facts.rows[0]).toEqual({ count: '1' });
   });
 
   it('hides cross-workspace claims under forced RLS', async () => {

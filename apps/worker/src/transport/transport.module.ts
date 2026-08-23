@@ -31,6 +31,10 @@ import {
   createDatabasePreviewAttemptRunStore,
   createPlatformPreviewNodeInvoker,
 } from '../execution/preview-attempt-runtime.js';
+import {
+  createPreviewReconciliationRuntime,
+  type PreviewReconciliationRuntime,
+} from '../execution/preview-reconciliation-runtime.js';
 import { WorkerDrainState } from '../runtime/worker-drain-state.js';
 import {
   createDispatchConsumerCapabilityRegistry,
@@ -44,6 +48,9 @@ export const QUEUE_CONSUMER_OBSERVER = Symbol('QUEUE_CONSUMER_OBSERVER');
 export const TRANSPORT_METRICS = Symbol('TRANSPORT_METRICS');
 export const COORDINATOR_RUNTIME = Symbol('COORDINATOR_RUNTIME');
 export const NODE_ATTEMPT_RUNTIME = Symbol('NODE_ATTEMPT_RUNTIME');
+export const PREVIEW_RECONCILIATION_RUNTIME = Symbol(
+  'PREVIEW_RECONCILIATION_RUNTIME',
+);
 export const DISPATCH_CONSUMER_CAPABILITIES = Symbol(
   'DISPATCH_CONSUMER_CAPABILITIES',
 );
@@ -51,6 +58,7 @@ export const DISPATCH_CONSUMER_CAPABILITIES = Symbol(
 export type TransportModuleDependencies = Readonly<{
   coordinatorRuntime?: CoordinatorRuntime;
   nodeAttemptRuntime?: NodeAttemptRuntime;
+  previewReconciliationRuntime?: PreviewReconciliationRuntime;
   dispatchConsumerCapabilities?: DispatchConsumerCapabilityRegistry;
   dispatcherDatabase?: OutboxDispatcherDatabase;
   queueProducer?: QueueProducer;
@@ -68,6 +76,9 @@ class OutboxDispatcherLifecycle
     private readonly coordinatorRuntime: CoordinatorRuntime | undefined,
     @Inject(NODE_ATTEMPT_RUNTIME)
     private readonly nodeAttemptRuntime: NodeAttemptRuntime | undefined,
+    @Inject(PREVIEW_RECONCILIATION_RUNTIME)
+    private readonly previewReconciliationRuntime:
+      PreviewReconciliationRuntime | undefined,
     private readonly drainState: WorkerDrainState,
   ) {}
 
@@ -84,10 +95,41 @@ class OutboxDispatcherLifecycle
       ...(this.nodeAttemptRuntime === undefined
         ? []
         : [this.nodeAttemptRuntime.close()]),
+      ...(this.previewReconciliationRuntime === undefined
+        ? []
+        : [this.previewReconciliationRuntime.close()]),
     ]);
     const failure = results.find((result) => result.status === 'rejected');
     if (failure?.status === 'rejected') throw failure.reason;
   }
+}
+
+function previewReconciliationRuntimeProvider(
+  config: WorkerConfig,
+  dependencies: TransportModuleDependencies,
+): Provider {
+  return {
+    provide: PREVIEW_RECONCILIATION_RUNTIME,
+    inject: [QUEUE_CONSUMER_OBSERVER],
+    useFactory: async (
+      observer: QueueConsumerObserver,
+    ): Promise<PreviewReconciliationRuntime | undefined> => {
+      if (dependencies.previewReconciliationRuntime !== undefined)
+        return dependencies.previewReconciliationRuntime;
+      if (
+        dependencies.dispatchConsumerCapabilities !== undefined ||
+        !config.outboxDispatcher.enabledJobNames.includes(
+          JOB_NAME.reconcilePreviewAttempt,
+        )
+      )
+        return undefined;
+      return createPreviewReconciliationRuntime({
+        database: config.database,
+        observer,
+        redisUrl: config.redisUrl,
+      });
+    },
+  };
 }
 
 function nodeAttemptRuntimeProvider(
@@ -241,10 +283,15 @@ function dispatchCapabilitiesProvider(
 ): Provider {
   return {
     provide: DISPATCH_CONSUMER_CAPABILITIES,
-    inject: [COORDINATOR_RUNTIME, NODE_ATTEMPT_RUNTIME],
+    inject: [
+      COORDINATOR_RUNTIME,
+      NODE_ATTEMPT_RUNTIME,
+      PREVIEW_RECONCILIATION_RUNTIME,
+    ],
     useFactory: (
       runtime: CoordinatorRuntime | undefined,
       nodeAttemptRuntime: NodeAttemptRuntime | undefined,
+      previewReconciliationRuntime: PreviewReconciliationRuntime | undefined,
     ): DispatchConsumerCapabilityRegistry =>
       dependencies.dispatchConsumerCapabilities ??
       createDispatchConsumerCapabilityRegistry([
@@ -280,6 +327,17 @@ function dispatchCapabilitiesProvider(
                   ]
                 : []),
             ]),
+        ...(previewReconciliationRuntime === undefined ||
+        !config.outboxDispatcher.enabledJobNames.includes(
+          JOB_NAME.reconcilePreviewAttempt,
+        )
+          ? []
+          : [
+              {
+                jobName: JOB_NAME.reconcilePreviewAttempt,
+                consumer: previewReconciliationRuntime.consumer,
+              } as const,
+            ]),
       ]),
   };
 }
@@ -294,6 +352,10 @@ export class TransportModule {
   ): DynamicModule {
     const runtimeProvider = coordinatorRuntimeProvider(config, dependencies);
     const attemptRuntimeProvider = nodeAttemptRuntimeProvider(
+      config,
+      dependencies,
+    );
+    const reconciliationRuntimeProvider = previewReconciliationRuntimeProvider(
       config,
       dependencies,
     );
@@ -321,6 +383,7 @@ export class TransportModule {
         observerProvider,
         runtimeProvider,
         attemptRuntimeProvider,
+        reconciliationRuntimeProvider,
         capabilitiesProvider,
         provider,
         OutboxDispatcherLifecycle,
