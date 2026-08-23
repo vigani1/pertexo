@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 
-import { CORE_REGISTRY_RELEASE } from '@pertexo/nodes-core';
+import { CORE_REGISTRY_RELEASE_SUCCESSOR } from '@pertexo/nodes-core';
 import { createCoreNodeRegistry } from '@pertexo/nodes-core/server';
 import {
   buildWorkflowExecutableV2,
@@ -51,7 +51,7 @@ describe('retained core workflow V2 compatibility', () => {
   it('verifies immutable graph, envelope, checksum, and every exact executor pair', async () => {
     const fixture = await retainedFixture();
     const release = composeExecutableCompatibilityRelease(
-      CORE_REGISTRY_RELEASE,
+      CORE_REGISTRY_RELEASE_SUCCESSOR,
     );
     const rebuilt = buildWorkflowExecutableV2({
       graph: fixture.graph,

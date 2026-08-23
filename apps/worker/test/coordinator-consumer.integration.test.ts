@@ -1,26 +1,39 @@
+import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 
 import {
   acceptWorkflowRun,
+  createCompatibilityReleaseMaintenance,
+  createCompatibilityReleaseReadinessProbe,
   createWorkspaceDatabase,
   parseDatabaseConfig,
 } from '@pertexo/database';
-import { CORE_REGISTRY_RELEASE } from '@pertexo/nodes-core';
 import {
-  buildWorkflowExecutableV2,
+  PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_HTTP_STAGED,
+} from '@pertexo/node-catalog';
+import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
+import { CORE_REGISTRY_RELEASE_SUCCESSOR } from '@pertexo/nodes-core';
+import {
   composeExecutableCompatibilityRelease,
   createCheckpoint,
+  describeExecutableCompatibilityRelease,
+  invocationKey,
 } from '@pertexo/workflow-engine';
 import { createQueueProducer, JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
 import { Queue } from 'bullmq';
 import { Pool } from 'pg';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { createCoordinatorRuntime } from '../src/execution/coordinator-runtime.js';
 import { createNodeAttemptRuntime } from '../src/execution/node-attempt-runtime.js';
 
 const enabled = process.env.WORKER_TRANSPORT_INTEGRATION === 'true';
 const describeIntegration = enabled ? describe : describe.skip;
+const adminUrl =
+  process.env.DATABASE_ADMIN_URL ??
+  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
 const migrationUrl =
   process.env.DATABASE_MIGRATION_URL ??
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
@@ -32,6 +45,14 @@ const workerUrl =
   'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
 const configuredRedisUrl =
   process.env.REDIS_URL ?? 'redis://:pertexo-local-redis@localhost:6379/0';
+const databaseName = `pertexo_test_retained_core_${randomUUID().replaceAll('-', '')}`;
+
+function databaseUrl(base: string): string {
+  const url = new URL(base);
+  url.pathname = `/${databaseName}`;
+  return url.toString();
+}
+
 const redisUrl = (() => {
   const parsed = new URL(configuredRedisUrl);
   parsed.pathname = '/12';
@@ -43,11 +64,60 @@ const workspaceId = randomUUID();
 const workflowId = randomUUID();
 const workflowVersionId = randomUUID();
 const engineVersion = 'phase3-engine-v1';
-const ownerPool = new Pool({ connectionString: migrationUrl, max: 1 });
-const workerPool = new Pool({ connectionString: workerUrl, max: 2 });
+const ownerPool = new Pool({
+  connectionString: databaseUrl(migrationUrl),
+  max: 1,
+});
+const workerPool = new Pool({
+  connectionString: databaseUrl(workerUrl),
+  max: 2,
+});
 const apiDatabase = createWorkspaceDatabase(
-  parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
+  parseDatabaseConfig({ connectionString: databaseUrl(apiUrl), max: 2 }),
 );
+
+async function createDatabase(): Promise<void> {
+  const pool = new Pool({ connectionString: adminUrl, max: 1 });
+  try {
+    await pool.query(`create database "${databaseName}" owner pertexo_owner`);
+    await pool.query(`revoke all on database "${databaseName}" from public`);
+    await pool.query(
+      `grant connect on database "${databaseName}" to pertexo_migration, pertexo_api, pertexo_worker, pertexo_dispatcher`,
+    );
+  } finally {
+    await pool.end();
+  }
+}
+
+async function migrateDatabase(): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn(
+      'pnpm',
+      ['--filter', '@pertexo/database', 'exec', 'tsx', 'src/migrate.ts'],
+      {
+        cwd: new URL('../../../', import.meta.url).pathname,
+        env: {
+          ...process.env,
+          DATABASE_MIGRATION_URL: databaseUrl(migrationUrl),
+        },
+        stdio: 'inherit',
+      },
+    );
+    child.once('exit', (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`retained core migration failed: ${String(code)}`));
+    });
+  });
+}
+
+async function dropDatabase(): Promise<void> {
+  const pool = new Pool({ connectionString: adminUrl, max: 1 });
+  try {
+    await pool.query(`drop database if exists "${databaseName}" with (force)`);
+  } finally {
+    await pool.end();
+  }
+}
 
 function redisConnection(): {
   db: number;
@@ -63,70 +133,6 @@ function redisConnection(): {
     ...(parsed.password === ''
       ? {}
       : { password: decodeURIComponent(parsed.password) }),
-  };
-}
-
-function graph() {
-  return {
-    schemaVersion: 1 as const,
-    settings: { maxRunDurationMs: 60_000 },
-    nodes: [
-      {
-        id: 'manual',
-        definition: { key: 'core.manual', version: 1 },
-        position: { x: 0, y: 0 },
-        configVersion: 1,
-        config: {},
-        inputMappings: {},
-        connectionRefs: {},
-      },
-      {
-        id: 'set',
-        definition: { key: 'core.set', version: 1 },
-        position: { x: 10, y: 0 },
-        configVersion: 1,
-        config: {},
-        inputMappings: {
-          literal: { kind: 'literal' as const, value: 1 },
-          fromRun: { kind: 'run_input' as const, path: '$.hello' },
-          fromNode: {
-            kind: 'node_output' as const,
-            nodeId: 'manual',
-            path: '$.hello',
-          },
-          expression: {
-            kind: 'expression' as const,
-            language: 'jsonata' as const,
-            expression: 'runInput.hello',
-            policyVersion: 1,
-          },
-        },
-        connectionRefs: {},
-      },
-      {
-        id: 'terminate',
-        definition: { key: 'core.terminate', version: 1 },
-        position: { x: 20, y: 0 },
-        configVersion: 1,
-        config: {},
-        inputMappings: {
-          result: { kind: 'node_output' as const, nodeId: 'set', path: '$' },
-        },
-        connectionRefs: {},
-      },
-    ],
-    edges: [
-      {
-        id: 'manual-set',
-        source: { nodeId: 'manual', port: 'out' },
-        target: { nodeId: 'set', port: 'in' },
-      },
-      {
-        id: 'set-terminate',
-        source: { nodeId: 'set', port: 'out' },
-        target: { nodeId: 'terminate', port: 'in' },
-      },
-    ],
   };
 }
 
@@ -192,9 +198,113 @@ async function waitFor<T>(
   return value;
 }
 
+async function activateRelease(
+  targetRelease: Parameters<typeof composeExecutableCompatibilityRelease>[0],
+): Promise<void> {
+  const target = describeExecutableCompatibilityRelease(
+    composeExecutableCompatibilityRelease(targetRelease),
+  );
+  const currentRows = await ownerQuery<{
+    catalog_json: unknown;
+    epoch: number;
+    fingerprint: string;
+  }>(
+    `select current.epoch,current.fingerprint,release.catalog_json
+     from app.node_compatibility_current current
+     join app.node_compatibility_releases release
+       on release.epoch=current.epoch and release.fingerprint=current.fingerprint`,
+  );
+  const current = currentRows[0];
+  if (current === undefined) throw new Error('compatibility pointer missing');
+  const predecessor = {
+    catalogJson:
+      typeof current.catalog_json === 'string'
+        ? current.catalog_json
+        : JSON.stringify(current.catalog_json),
+    epoch: current.epoch,
+    fingerprint: current.fingerprint,
+  };
+  const supported = [predecessor, target];
+  const maintenance = createCompatibilityReleaseMaintenance(
+    parseDatabaseConfig({
+      connectionString: databaseUrl(migrationUrl),
+      ownerRole: 'pertexo_owner',
+      workerRuntimeRole: 'pertexo_worker',
+    }),
+  );
+  const apiProbe = createCompatibilityReleaseReadinessProbe(
+    parseDatabaseConfig({ connectionString: databaseUrl(apiUrl), max: 1 }),
+    supported,
+  );
+  const workerProbe = createCompatibilityReleaseReadinessProbe(
+    parseDatabaseConfig({ connectionString: databaseUrl(workerUrl), max: 1 }),
+    supported,
+  );
+  const epoch = String(target.epoch);
+  const deploymentId = `retained-core-${epoch}-${randomUUID()}`;
+  const approvalId = randomUUID();
+  try {
+    await maintenance.prepare({
+      actorId: 'retained-core-integration',
+      actorKind: 'deployment',
+      expectedPredecessor: predecessor,
+      reason: 'Prepare retained core execution release',
+      target,
+    });
+    await Promise.all([
+      apiProbe.checkTarget(target),
+      workerProbe.checkTarget(target),
+    ]);
+    for (const roleKind of ['api', 'worker'] as const)
+      await maintenance.recordPreactivation({
+        artifactId: `retained-core-${roleKind}-${epoch}`,
+        checkId: randomUUID(),
+        deploymentId,
+        roleKind,
+        target,
+      });
+    await maintenance.approve({
+      actorId: 'retained-core-integration',
+      approvalId,
+      deploymentId,
+      reason: 'Approve retained core execution release',
+      requiredApiArtifacts: [`retained-core-api-${epoch}`],
+      requiredWorkerArtifacts: [`retained-core-worker-${epoch}`],
+      target,
+    });
+    await maintenance.activate({
+      activationId: randomUUID(),
+      actorId: 'retained-core-integration',
+      actorKind: 'deployment',
+      approvalId,
+      expectedPredecessor: predecessor,
+      reason: 'Activate retained core execution release',
+    });
+  } finally {
+    await Promise.allSettled([
+      maintenance.close(),
+      apiProbe.close(),
+      workerProbe.close(),
+    ]);
+  }
+}
+
 async function setupFixture(): Promise<void> {
-  const release = composeExecutableCompatibilityRelease(CORE_REGISTRY_RELEASE);
-  const executable = buildWorkflowExecutableV2({ graph: graph(), release });
+  await createDatabase();
+  await migrateDatabase();
+  await activateRelease(CORE_REGISTRY_RELEASE_SUCCESSOR);
+  await activateRelease(PLATFORM_REGISTRY_RELEASE_HTTP_STAGED);
+  await activateRelease(PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE);
+  const retained = JSON.parse(
+    await readFile(
+      new URL('./fixtures/retained-core-workflow-v2.json', import.meta.url),
+      'utf8',
+    ),
+  ) as {
+    checksum: string;
+    executable: { compatibilityReleaseEpoch: number };
+    graph: unknown;
+  };
   await ownerQuery(
     `insert into app.users (id, email, display_name, status)
        values ($1, $2, 'Coordinator proof', 'active')`,
@@ -220,10 +330,10 @@ async function setupFixture(): Promise<void> {
       workflowVersionId,
       workspaceId,
       workflowId,
-      JSON.stringify(graph()),
-      executable.checksum,
-      JSON.stringify(executable.envelope),
-      release.epoch,
+      JSON.stringify(retained.graph),
+      retained.checksum,
+      JSON.stringify(retained.executable),
+      retained.executable.compatibilityReleaseEpoch,
       actorId,
     ],
   );
@@ -264,6 +374,7 @@ async function cleanupFixture(): Promise<void> {
     await apiDatabase.close();
     await ownerPool.end();
     await workerPool.end();
+    await dropDatabase();
   }
 }
 
@@ -282,7 +393,7 @@ async function acceptRun(): Promise<
       initialCheckpoint,
       keyHash: createHash('sha256').update(randomUUID()).digest('hex'),
       operation: 'workflow.run.accept',
-      runInput: { hello: 'world' },
+      runInput: { name: 'Ada' },
       requestHash: createHash('sha256').update(randomUUID()).digest('hex'),
       scope: `coordinator:${workflowId}`,
       triggerType: 'manual',
@@ -354,14 +465,18 @@ async function waitForCoordinatorOutbox(
 }
 
 describeIntegration('Phase 3 coordinator consumer', () => {
-  beforeAll(setupFixture);
+  beforeAll(setupFixture, 60_000);
   afterAll(cleanupFixture);
 
   it('advances an accepted V2 run once across exact BullMQ redelivery', async () => {
     const accepted = await acceptRun();
     const runtime = await createCoordinatorRuntime({
-      database: parseDatabaseConfig({ connectionString: workerUrl, max: 4 }),
+      database: parseDatabaseConfig({
+        connectionString: databaseUrl(workerUrl),
+        max: 4,
+      }),
       maximumAdmissions: 1,
+      releaseCohort: 'http_activation',
       redisUrl,
     });
     const producer = createQueueProducer({ redisUrl });
@@ -487,21 +602,46 @@ describeIntegration('Phase 3 coordinator consumer', () => {
   it('executes Manual through Set/Map to Terminate across durable coordinator continuations', async () => {
     const accepted = await acceptRun();
     const database = parseDatabaseConfig({
-      connectionString: workerUrl,
+      connectionString: databaseUrl(workerUrl),
       max: 6,
     });
+    const connectionResolve = vi.fn(() =>
+      Promise.reject(new Error('core-only run must not resolve a connection')),
+    );
+    const artifactWrite = vi.fn(() =>
+      Promise.reject(new Error('core-only run must not write an artifact')),
+    );
+    const httpRequest = vi.fn(() =>
+      Promise.reject(
+        new Error('core-only run must not contact HTTP transport'),
+      ),
+    );
     const coordinator = await createCoordinatorRuntime({
       database,
       maximumAdmissions: 1,
+      releaseCohort: 'http_activation',
       redisUrl,
     });
-    const attempts = await createNodeAttemptRuntime({
-      database,
-      heartbeatIntervalMillis: 1_000,
-      leaseDurationSeconds: 10,
-      redisUrl,
-      workerId: `integration-${randomUUID()}`,
-    });
+    const attempts = await createNodeAttemptRuntime(
+      {
+        database,
+        heartbeatIntervalMillis: 1_000,
+        leaseDurationSeconds: 10,
+        releaseCohort: 'http_activation',
+        redisUrl,
+        workerId: `integration-${randomUUID()}`,
+      },
+      {
+        registry: createPlatformNodeRegistryForRelease(
+          PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+          { httpRequest: { httpClient: { executeStreaming: httpRequest } } },
+        ),
+        runtimeCapabilities: {
+          connections: () => ({ resolve: connectionResolve }),
+          artifacts: () => ({ write: artifactWrite }),
+        },
+      },
+    );
     const producer = createQueueProducer({ redisUrl });
     const attemptQueue = new Queue(QUEUE_NAME.nodeAttempts, {
       connection: redisConnection(),
@@ -632,9 +772,10 @@ describeIntegration('Phase 3 coordinator consumer', () => {
           workerQuery<{
             event_types: string[];
             revision: number;
+            scheduler_state: unknown;
             status: string;
           }>(
-            `select run.status,checkpoint.revision,
+            `select run.status,checkpoint.revision,checkpoint.scheduler_state,
                     array_agg(event.type order by event.sequence) event_types
              from app.workflow_runs run
              join app.run_checkpoints checkpoint
@@ -644,7 +785,7 @@ describeIntegration('Phase 3 coordinator consumer', () => {
                on event.workspace_id=run.workspace_id
               and event.workflow_run_id=run.id
              where run.workspace_id=$1 and run.id=$2
-             group by run.status,checkpoint.revision`,
+              group by run.status,checkpoint.revision,checkpoint.scheduler_state`,
             [workspaceId, accepted.runId],
           ),
         (rows) => rows[0]?.status === 'succeeded',
@@ -664,26 +805,129 @@ describeIntegration('Phase 3 coordinator consumer', () => {
         'node.succeeded',
         'run.succeeded',
       ]);
-      await expect(
-        workerQuery<{ output_ref: unknown }>(
-          `select output_ref from app.node_runs
-           where workspace_id=$1 and workflow_run_id=$2 and node_id='terminate'`,
-          [workspaceId, accepted.runId],
-        ),
-      ).resolves.toEqual([
+      expect(connectionResolve).not.toHaveBeenCalled();
+      expect(artifactWrite).not.toHaveBeenCalled();
+      expect(httpRequest).not.toHaveBeenCalled();
+      const nodeFacts = await workerQuery<{
+        attempt_id: string;
+        attempt_status: string;
+        node_id: string;
+        node_status: string;
+        output_ref: unknown;
+      }>(
+        `select node.node_id,node.status node_status,node.output_ref,
+                attempt.id attempt_id,attempt.status attempt_status
+         from app.node_runs node
+         join app.node_attempts attempt
+           on attempt.workspace_id=node.workspace_id
+          and attempt.id=node.current_attempt_id
+         where node.workspace_id=$1 and node.workflow_run_id=$2
+         order by case node.node_id when 'manual' then 1 when 'set' then 2 else 3 end`,
+        [workspaceId, accepted.runId],
+      );
+      expect(
+        nodeFacts.map((fact) => ({
+          attempt_status: fact.attempt_status,
+          node_id: fact.node_id,
+          node_status: fact.node_status,
+          output_ref: fact.output_ref,
+        })),
+      ).toEqual([
         {
+          attempt_status: 'succeeded',
+          node_id: 'manual',
+          node_status: 'succeeded',
+          output_ref: {
+            schemaVersion: 1,
+            kind: 'inline',
+            value: { name: 'Ada' },
+          },
+        },
+        {
+          attempt_status: 'succeeded',
+          node_id: 'set',
+          node_status: 'succeeded',
+          output_ref: {
+            schemaVersion: 1,
+            kind: 'inline',
+            value: {
+              fromRun: 'Ada',
+              literal: 1,
+            },
+          },
+        },
+        {
+          attempt_status: 'succeeded',
+          node_id: 'terminate',
+          node_status: 'succeeded',
           output_ref: {
             schemaVersion: 1,
             kind: 'inline',
             value: {
               result: {
-                expression: 'world',
-                fromNode: 'world',
-                fromRun: 'world',
+                fromRun: 'Ada',
                 literal: 1,
               },
             },
           },
+        },
+      ]);
+      for (const fact of nodeFacts)
+        expect(fact.attempt_id).toMatch(
+          /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u,
+        );
+      const invocationKeys = ['manual', 'set', 'terminate'].map((nodeId) =>
+        invocationKey({ workflowVersionId, nodeId }),
+      );
+      expect(terminal[0]?.scheduler_state).toEqual({
+        schemaVersion: 1,
+        engineVersion,
+        workflowVersionId,
+        revision: 4,
+        runStatus: 'succeeded',
+        nextEventSequence: 13,
+        readySet: [],
+        admittedInvocationKeys: invocationKeys,
+        invocations: nodeFacts.map((fact, index) => ({
+          invocationKey: invocationKeys[index],
+          nodeId: fact.node_id,
+          status: 'succeeded',
+          attemptNumber: 1,
+          output: { kind: 'inline', attemptId: fact.attempt_id },
+        })),
+        joins: [],
+        loops: [],
+        remainingIterationBudget: 0,
+        cancelRequested: false,
+        deadlineExpired: false,
+      });
+      const epoch2 = composeExecutableCompatibilityRelease(
+        CORE_REGISTRY_RELEASE_SUCCESSOR,
+      );
+      const epoch4 = composeExecutableCompatibilityRelease(
+        PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+      );
+      await expect(
+        workerQuery<{
+          current_epoch: number;
+          current_fingerprint: string;
+          executable_epoch: number;
+          executable_fingerprint: string;
+        }>(
+          `select current.epoch current_epoch,current.fingerprint current_fingerprint,
+                  version.compatibility_release_epoch executable_epoch,
+                  version.executable_json->>'compatibilityReleaseFingerprint' executable_fingerprint
+           from app.workflow_versions version
+           cross join app.node_compatibility_current current
+           where version.workspace_id=$1 and version.id=$2`,
+          [workspaceId, workflowVersionId],
+        ),
+      ).resolves.toEqual([
+        {
+          current_epoch: 4,
+          current_fingerprint: epoch4.fingerprint,
+          executable_epoch: 2,
+          executable_fingerprint: epoch2.fingerprint,
         },
       ]);
     } finally {
@@ -702,8 +946,12 @@ describeIntegration('Phase 3 coordinator consumer', () => {
       acceptRun(),
     ]);
     const runtime = await createCoordinatorRuntime({
-      database: parseDatabaseConfig({ connectionString: workerUrl, max: 4 }),
+      database: parseDatabaseConfig({
+        connectionString: databaseUrl(workerUrl),
+        max: 4,
+      }),
       maximumAdmissions: 1,
+      releaseCohort: 'http_activation',
       redisUrl,
     });
     const producer = createQueueProducer({ redisUrl });

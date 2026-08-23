@@ -126,11 +126,11 @@
       "cancellation": { "key": "engine.cancellation", "version": 1 }
     },
     "configMigrations": [],
-    "compatibilitySelectionFingerprint": "engine-select:v1:sha256:257bec5f5fd7d7a7c6585c625229dd2aa6dcacfe7cd18b004bdc8cd8235e53bf",
-    "compatibilityReleaseEpoch": 1,
-    "compatibilityReleaseFingerprint": "node-compat:v1:sha256:cf21b2e644563beb8b031481e9d5182b361b4ae2d4abd1d7d86d7b3fe0299f59"
+    "compatibilitySelectionFingerprint": "engine-select:v1:sha256:843d90ac42ac31f1913f543c3d4b8437d5e6678bdb4e0cc3bc3ae6695ec02a5b",
+    "compatibilityReleaseEpoch": 2,
+    "compatibilityReleaseFingerprint": "node-compat:v1:sha256:6a63018a6941ba446d00832c0f4d5fcd317cd979a0ee5f02607c21c1c2731cd8"
   },
-  "checksum": "wf:v2:sha256:41379300875e74902768205f533500fb1c6f50cdc91e649a119de02c990f2fe8",
+  "checksum": "wf:v2:sha256:8e3c8177d646fecc45c4176088f40c1ac095fd212776b743034131dbe0194f3c",
   "executions": [
     {
       "nodeId": "manual",

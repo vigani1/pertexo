@@ -20,7 +20,7 @@ not complete a phase.
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
-| Phase 4 — first side-effecting integration slice | In progress | ADRs 007/016; migration head `0028_preview_terminal_fact_corrections.sql`; managed connections, secure/streaming HTTP, worker JIT capabilities, integration-usage projection, exact rollout, canonical downstream output, provider telemetry, durable preview execution/retention, and corrected atomic terminal audit/usage/metrics complete; activation remains gated pending remaining failure proofs and full regression evidence |
+| Phase 4 — first side-effecting integration slice | In progress | ADRs 007/016; migration head `0029_provider_idempotency_key_invariants.sql`; managed connections, secure/streaming HTTP, worker JIT capabilities, integration-usage projection, exact rollout, canonical downstream output, provider telemetry, durable preview execution/retention, and corrected atomic terminal audit/usage/metrics complete; activation remains gated pending full regression evidence |
 | Phase 5 — orchestration slice | Not started | — |
 | Phase 6 — V1 providers and triggers | Not started | — |
 | Phase 7 — production operations | Not started | — |
@@ -2143,6 +2143,25 @@ Current evidence:
   database migrated zero-to-`0022`; the disposable database was removed. The
   remaining preview gates are worker dispatch/execution, output/artifact
   completion, duplicate/crash/timeout/ambiguity proofs, and retention cleanup.
+- The retained Phase 3 execution proof now runs in the worker integration suite
+  against a disposable PostgreSQL database migrated from zero through `0028`
+  and real Redis transport. It activates the exact epoch 1→2→3→4 sequence only
+  after API and worker readiness probes, preactivation records, and approval,
+  then loads the checked-in immutable epoch-2 executable/checksum fixture and
+  executes its Manual→Set/Map→Terminate workflow through
+  the production coordinator and node-attempt runtimes of the
+  `http_activation` artifact. The run reaches `succeeded` at checkpoint revision
+  4 with the complete terminal checkpoint, all three node/attempt statuses and
+  canonical outputs, and all 12 ordered run events asserted exactly. Persisted
+  release facts remain pinned to epoch 2 while the active pointer is epoch 4;
+  bounded connection and artifact factories satisfy activation capability
+  requirements, but their provider-facing methods receive zero calls; the
+  production epoch-4 registry's HTTP transport is also instrumented and receives
+  zero calls. The
+  focused real PostgreSQL/Redis suite passes all three coordinator scenarios and
+  drops its disposable database afterward. This closes only the retained-old-
+  version happy-path item; the broader Phase 4 rollout and regression gates stay
+  unchecked.
 
 ## Later phases
 
