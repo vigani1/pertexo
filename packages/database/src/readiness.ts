@@ -8,8 +8,7 @@ import {
   type CompatibilityReleaseExpectationSet,
 } from './compatibility-release.js';
 
-export const EXPECTED_MIGRATION_HEAD =
-  '0026_preview_cleanup_terminal_guard.sql';
+export const EXPECTED_MIGRATION_HEAD = '0027_preview_terminal_facts.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -46,6 +45,7 @@ interface ReadinessRow {
   phase4_connections_compatible: boolean;
   phase4_integration_usage_compatible: boolean;
   phase4_preview_artifacts_compatible: boolean;
+  phase4_preview_terminal_facts_compatible: boolean;
   execution_values_compatible: boolean;
   coordinator_run_store_compatible: boolean;
   postgres_major: number;
@@ -1004,6 +1004,83 @@ export async function checkDatabaseReadiness(
         and not has_table_privilege(current_user, 'app.artifact_links', 'TRIGGER')
       ) as phase4_preview_artifacts_compatible,
       (
+        (select count(*) = 9 from pg_attribute
+         where attrelid = to_regclass('app.usage_events')
+           and attnum > 0 and not attisdropped)
+        and exists (
+          select 1 from pg_constraint
+          where conrelid = to_regclass('app.usage_events')
+            and conname = 'usage_events_workspace_idempotency_unique'
+            and contype = 'u'
+        )
+        and exists (
+          select 1 from pg_class protected
+          where protected.oid = to_regclass('app.usage_events')
+            and protected.relrowsecurity
+            and protected.relforcerowsecurity
+            and pg_get_userbyid(protected.relowner) = $1
+        )
+        and exists (
+          select 1 from pg_policy policy
+          where policy.polrelid = to_regclass('app.usage_events')
+            and policy.polname = 'usage_events_workspace_select'
+            and policy.polcmd = 'r'
+            and cardinality(policy.polroles) = 3
+            and (select oid from pg_roles where rolname = $1) = any(policy.polroles)
+            and (select oid from pg_roles where rolname = $2) = any(policy.polroles)
+            and pg_get_expr(policy.polqual, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
+            and policy.polwithcheck is null
+        )
+        and exists (
+          select 1 from pg_policy policy
+          where policy.polrelid = to_regclass('app.usage_events')
+            and policy.polname = 'usage_events_workspace_insert'
+            and policy.polcmd = 'a'
+            and cardinality(policy.polroles) = 2
+            and (select oid from pg_roles where rolname = $1) = any(policy.polroles)
+            and (select oid from pg_roles where rolname = $2) = any(policy.polroles)
+            and policy.polqual is null
+            and pg_get_expr(policy.polwithcheck, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
+        )
+        and exists (
+          select 1 from pg_policy policy
+          where policy.polrelid = to_regclass('app.audit_events')
+            and policy.polname = 'audit_events_workspace_insert'
+            and policy.polcmd = 'a'
+            and (select oid from pg_roles where rolname = $2) = any(policy.polroles)
+            and pg_get_expr(policy.polwithcheck, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
+        )
+        and has_table_privilege($2, 'app.audit_events', 'INSERT')
+        and has_table_privilege($2, 'app.usage_events', 'SELECT')
+        and has_table_privilege($2, 'app.usage_events', 'INSERT')
+        and not has_table_privilege($2, 'app.usage_events', 'UPDATE')
+        and not has_table_privilege($2, 'app.usage_events', 'DELETE')
+        and not has_table_privilege($2, 'app.usage_events', 'TRUNCATE')
+        and not has_table_privilege($2, 'app.usage_events', 'REFERENCES')
+        and not has_table_privilege($2, 'app.usage_events', 'TRIGGER')
+        and case when current_user = $2 then
+          has_table_privilege(current_user, 'app.audit_events', 'INSERT')
+          and has_table_privilege(current_user, 'app.usage_events', 'SELECT')
+          and has_table_privilege(current_user, 'app.usage_events', 'INSERT')
+        when exists (
+          select 1 from pg_policy policy
+          where policy.polrelid = to_regclass('app.usage_events')
+            and policy.polname = 'usage_events_workspace_select'
+            and (select oid from pg_roles where rolname = current_user) = any(policy.polroles)
+        ) then
+          has_table_privilege(current_user, 'app.usage_events', 'SELECT')
+          and not has_table_privilege(current_user, 'app.usage_events', 'INSERT')
+        else
+          not has_table_privilege(current_user, 'app.usage_events', 'SELECT')
+          and not has_table_privilege(current_user, 'app.usage_events', 'INSERT')
+        end
+        and not has_table_privilege(current_user, 'app.usage_events', 'UPDATE')
+        and not has_table_privilege(current_user, 'app.usage_events', 'DELETE')
+        and not has_table_privilege(current_user, 'app.usage_events', 'TRUNCATE')
+        and not has_table_privilege(current_user, 'app.usage_events', 'REFERENCES')
+        and not has_table_privilege(current_user, 'app.usage_events', 'TRIGGER')
+      ) as phase4_preview_terminal_facts_compatible,
+      (
         select name
         from pertexo_internal.schema_migrations
         order by name desc
@@ -1098,6 +1175,9 @@ export async function checkDatabaseReadiness(
     throw new Error(
       'Preview artifact ownership schema or grants are incompatible',
     );
+  }
+  if (!row.phase4_preview_terminal_facts_compatible) {
+    throw new Error('Preview terminal fact schema or grants are incompatible');
   }
   const hasProtectedTableAccess =
     row.can_select || row.can_insert || row.can_update || row.can_delete;

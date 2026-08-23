@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { and, eq, gt, sql } from 'drizzle-orm';
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
 import { canonicalOutboxPayloadChecksum, insertOutboxEvent } from './outbox.js';
@@ -1339,6 +1339,87 @@ export type PreviewCompletionResult = Readonly<{
   kind: 'committed' | 'duplicate';
 }>;
 
+async function appendPreviewTerminalFacts(
+  client: PoolClient,
+  input: Readonly<{
+    previewAttemptId: string;
+    previewRunId: string;
+    status: Exclude<PreviewStatus, 'queued' | 'running'>;
+    workspaceId: string;
+  }>,
+): Promise<void> {
+  const result = await client.query<{
+    actor_user_id: string;
+    definition_key: string;
+    definition_version: number;
+    executor_key: string;
+    executor_version: number;
+    may_contact_provider: boolean;
+    may_cause_external_side_effect: boolean;
+    node_id: string;
+    side_effect_class: string;
+    traceparent: string | null;
+    workflow_id: string;
+  }>(
+    `select actor_user_id,workflow_id,node_id,definition_key,
+            definition_version,executor_key,executor_version,
+            side_effect_class,may_contact_provider,
+            may_cause_external_side_effect,traceparent
+       from app.preview_runs
+      where workspace_id=$1 and id=$2`,
+    [input.workspaceId, input.previewRunId],
+  );
+  const run = result.rows[0];
+  if (run === undefined)
+    throw new PreviewAttemptStateError('terminal_facts_run_missing');
+  const metadata = {
+    schemaVersion: 1,
+    status: input.status,
+    workflowId: run.workflow_id,
+    nodeId: run.node_id,
+    definitionKey: run.definition_key,
+    definitionVersion: run.definition_version,
+    executorKey: run.executor_key,
+    executorVersion: run.executor_version,
+    sideEffectClass: run.side_effect_class,
+    mayContactProvider: run.may_contact_provider,
+    mayCauseExternalSideEffect: run.may_cause_external_side_effect,
+  } as const;
+  await client.query(
+    `insert into app.audit_events (
+       id,workspace_id,actor_user_id,action,target_type,target_id,trace_id,
+       metadata
+     ) values ($1,$2,$3,'preview.execution_terminal','preview-run',$4,$5,$6::jsonb)`,
+    [
+      randomUUID(),
+      input.workspaceId,
+      run.actor_user_id,
+      input.previewRunId,
+      run.traceparent === null ? null : run.traceparent.slice(3, 35),
+      JSON.stringify({ ...metadata, previewAttemptId: input.previewAttemptId }),
+    ],
+  );
+  await client.query(
+    `insert into app.usage_events (
+       id,workspace_id,category,quantity,resource_type,resource_id,
+       idempotency_key,metadata
+     ) values ($1,$2,'preview_execution',1,'preview-run',$3,$4,$5::jsonb)`,
+    [
+      randomUUID(),
+      input.workspaceId,
+      input.previewRunId,
+      `preview-terminal:${input.previewRunId}`,
+      JSON.stringify({
+        schemaVersion: 1,
+        status: input.status,
+        definitionKey: run.definition_key,
+        executorKey: run.executor_key,
+        sideEffectClass: run.side_effect_class,
+      }),
+    ],
+  );
+}
+
 export async function completePreviewAttempt(
   pool: Pool,
   input: Readonly<{
@@ -1454,6 +1535,12 @@ export async function completePreviewAttempt(
       );
       if (syncedRuns.rowCount !== 1)
         throw new PreviewAttemptStateError('run_sync_lost');
+      await appendPreviewTerminalFacts(client, {
+        previewAttemptId: scope.previewAttemptId,
+        previewRunId: scope.previewRunId,
+        status: outcome.status,
+        workspaceId: scope.workspaceId,
+      });
       // The inbox receipt completes atomically with the truthful business
       // outcome, exactly like production attempt transitions.
       await completePreviewReceipt(
@@ -1628,6 +1715,12 @@ export async function reconcileExpiredPreviewAttempt(
       );
       if (syncedRuns.rowCount !== 1)
         throw new PreviewAttemptStateError('run_sync_lost');
+      await appendPreviewTerminalFacts(client, {
+        previewAttemptId: scope.previewAttemptId,
+        previewRunId: scope.previewRunId,
+        status,
+        workspaceId: scope.workspaceId,
+      });
       return Object.freeze({ status });
     },
     optionsFor(input.signal),
@@ -1807,6 +1900,12 @@ export async function reconcilePreviewDelivery(
           );
           if (run.rowCount !== 1)
             throw new PreviewAttemptStateError('run_sync_lost');
+          await appendPreviewTerminalFacts(client, {
+            previewAttemptId: scope.previewAttemptId,
+            previewRunId: scope.previewRunId,
+            status,
+            workspaceId: scope.workspaceId,
+          });
           await completeReceipt();
           return Object.freeze({ kind: 'completed', status });
         }

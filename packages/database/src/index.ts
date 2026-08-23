@@ -299,6 +299,7 @@ export {
   runEvents,
   sessions,
   transportSecurityAuditFacts,
+  usageEvents,
   users,
   workspaceMemberships,
   workspaces,

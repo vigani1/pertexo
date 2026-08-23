@@ -373,6 +373,44 @@ function scopedQuery<T extends Record<string, unknown>>(
   );
 }
 
+function apiScopedQuery<T extends Record<string, unknown>>(
+  sqlText: string,
+  params: unknown[] = [],
+) {
+  return withTenantScopedClient(apiPool, { workspaceId }, (client) =>
+    client.query<T>(sqlText, params),
+  );
+}
+
+async function previewTerminalFacts(previewRunId: string) {
+  const [audit, usage] = await Promise.all([
+    apiScopedQuery<{
+      actor_user_id: string;
+      metadata: Record<string, unknown>;
+      trace_id: string | null;
+    }>(
+      `select actor_user_id,trace_id,metadata
+         from app.audit_events
+        where workspace_id=$1 and action='preview.execution_terminal'
+          and target_type='preview-run' and target_id=$2`,
+      [workspaceId, previewRunId],
+    ),
+    apiScopedQuery<{
+      category: string;
+      idempotency_key: string;
+      metadata: Record<string, unknown>;
+      quantity: string;
+    }>(
+      `select category,quantity::text,idempotency_key,metadata
+         from app.usage_events
+        where workspace_id=$1 and resource_type='preview-run'
+          and resource_id=$2`,
+      [workspaceId, previewRunId],
+    ),
+  ]);
+  return { audit: audit.rows, usage: usage.rows } as const;
+}
+
 describe('worker-side preview execution seam', () => {
   it('reports the preview artifact ownership migration and least-privilege grants ready', async () => {
     await expect(
@@ -802,6 +840,44 @@ describe('worker-side preview execution seam', () => {
     });
     expect(runState.rows[0]?.output_ref).not.toBeNull();
     expect(runState.rows[0]?.completed_at).not.toBeNull();
+
+    const facts = await previewTerminalFacts(claimed.fixture.previewRunId);
+    expect(facts.audit).toEqual([
+      {
+        actor_user_id: actorUserId,
+        metadata: {
+          schemaVersion: 1,
+          status: PREVIEW_STATUS.succeeded,
+          workflowId,
+          nodeId: 'node-1',
+          definitionKey: 'http.request',
+          definitionVersion: 1,
+          executorKey: 'http.request',
+          executorVersion: 2,
+          sideEffectClass: 'unsafe',
+          mayContactProvider: true,
+          mayCauseExternalSideEffect: true,
+          previewAttemptId: claimed.fixture.previewAttemptId,
+        },
+        trace_id: 'e'.repeat(32),
+      },
+    ]);
+    expect(facts.usage).toEqual([
+      {
+        category: 'preview_execution',
+        idempotency_key: `preview-terminal:${claimed.fixture.previewRunId}`,
+        metadata: {
+          schemaVersion: 1,
+          status: PREVIEW_STATUS.succeeded,
+          definitionKey: 'http.request',
+          executorKey: 'http.request',
+          sideEffectClass: 'unsafe',
+        },
+        quantity: '1',
+      },
+    ]);
+    expect(JSON.stringify(facts)).not.toContain('hello');
+    expect(JSON.stringify(facts)).not.toContain('done');
   });
 
   it('makes exact redelivery after a terminal outcome an inbox duplicate', async () => {
@@ -839,6 +915,52 @@ describe('worker-side preview execution seam', () => {
       workerId: claimed.workerId,
     });
     expect(replayCompletion.kind).toBe('duplicate');
+    const facts = await previewTerminalFacts(fixture.previewRunId);
+    expect(facts.audit).toHaveLength(1);
+    expect(facts.usage).toHaveLength(1);
+  });
+
+  it('rolls the terminal transition back when its facts cannot commit', async () => {
+    const claimed = await claimFixture(
+      await acceptFixture(),
+      'worker-preview-terminal-fact-atomicity',
+    );
+    await withTenantScopedClient(workerPool, { workspaceId }, (client) =>
+      client.query(
+        `insert into app.usage_events (
+           id,workspace_id,category,quantity,resource_type,resource_id,
+           idempotency_key,metadata
+         ) values ($1,$2,'preview_execution',1,'preview-run',$3,$4,'{}')`,
+        [
+          randomUUID(),
+          workspaceId,
+          claimed.fixture.previewRunId,
+          `preview-terminal:${claimed.fixture.previewRunId}`,
+        ],
+      ),
+    );
+
+    await expect(
+      completePreviewAttempt(workerPool, {
+        delivery: claimed.fixture.delivery,
+        lease: claimed.lease,
+        outcome: {
+          safeErrorCode: 'preview.provider_rejected',
+          status: PREVIEW_STATUS.failed,
+        },
+        workerId: claimed.workerId,
+      }),
+    ).rejects.toSatisfy(expectPgCode('23505'));
+
+    const state = await scopedQuery<{ status: string }>(
+      `select status from app.preview_runs
+        where workspace_id=$1 and id=$2`,
+      [workspaceId, claimed.fixture.previewRunId],
+    );
+    expect(state.rows).toEqual([{ status: PREVIEW_STATUS.running }]);
+    const facts = await previewTerminalFacts(claimed.fixture.previewRunId);
+    expect(facts.audit).toHaveLength(0);
+    expect(facts.usage).toHaveLength(1);
   });
 
   it('rejects a forged checksum reuse of a valid outbox row with a security fact', async () => {
@@ -1234,6 +1356,15 @@ describe('worker-side preview execution seam', () => {
     expect(Number(state.rows[0]?.fence_token)).toBe(
       claimed.lease.attemptFenceToken + 1,
     );
+    const facts = await previewTerminalFacts(claimed.fixture.previewRunId);
+    expect(facts.audit).toHaveLength(1);
+    expect(facts.usage).toHaveLength(1);
+    expect(facts.audit[0]?.metadata).toMatchObject({
+      status: PREVIEW_STATUS.outcomeUnknown,
+    });
+    expect(facts.usage[0]?.metadata).toMatchObject({
+      status: PREVIEW_STATUS.outcomeUnknown,
+    });
   });
 
   it('times out expired undispatched work instead of redelivering past its deadline', async () => {

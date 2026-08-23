@@ -212,6 +212,40 @@ export const auditEvents = appSchema.table(
   ],
 );
 
+export const usageEvents = appSchema.table(
+  'usage_events',
+  {
+    id: uuid('id').primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    category: varchar('category', { length: 64 }).notNull(),
+    quantity: bigint('quantity', { mode: 'number' }).notNull(),
+    resourceType: varchar('resource_type', { length: 64 }).notNull(),
+    resourceId: uuid('resource_id').notNull(),
+    idempotencyKey: varchar('idempotency_key', { length: 128 }).notNull(),
+    metadata: jsonb('metadata').notNull(),
+    occurredAt: timestamp('occurred_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('usage_events_workspace_idempotency_unique').on(
+      table.workspaceId,
+      table.idempotencyKey,
+    ),
+    index('usage_events_workspace_period_idx').on(
+      table.workspaceId,
+      table.occurredAt,
+      table.id,
+    ),
+    index('usage_events_resource_idx').on(
+      table.workspaceId,
+      table.resourceType,
+      table.resourceId,
+      table.id,
+    ),
+  ],
+);
+
 export const connections = appSchema.table(
   'connections',
   {
@@ -1281,6 +1315,7 @@ export const databaseSchema = {
   runCheckpoints,
   runEvents,
   transportSecurityAuditFacts,
+  usageEvents,
   sessions,
   users,
   workspaceMemberships,

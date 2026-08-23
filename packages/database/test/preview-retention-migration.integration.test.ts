@@ -16,6 +16,9 @@ const adminUrl =
 const migrationBaseUrl =
   process.env.DATABASE_MIGRATION_URL ??
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
+const apiBaseUrl =
+  process.env.DATABASE_API_URL ??
+  'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
 const workerBaseUrl =
   process.env.DATABASE_WORKER_URL ??
   'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
@@ -89,6 +92,8 @@ describe('preview retention migration', () => {
     const workspaceId = randomUUID();
     const workflowId = randomUUID();
     const previewRunId = randomUUID();
+    const terminalPreviewRunId = randomUUID();
+    const terminalPreviewAttemptId = randomUUID();
     const expiresAt = new Date(Date.now() + 60 * 60 * 1_000);
     const traceparent = `00-${'a'.repeat(32)}-${'b'.repeat(16)}-01`;
     const owner = new Pool({
@@ -144,6 +149,46 @@ describe('preview retention migration', () => {
           expiresAt,
         ],
       );
+      await owner.query(
+        `insert into app.preview_runs (
+           id,workspace_id,workflow_id,draft_revision,draft_fingerprint,node_id,
+           definition_key,definition_version,executor_key,executor_version,
+           compatibility_release_epoch,compatibility_release_fingerprint,
+           actor_user_id,idempotency_key_hash,request_hash,executable_node_json,
+           input_ref,side_effect_class,may_contact_provider,
+           may_cause_external_side_effect,dry_run,status,safe_error_code,
+           traceparent,started_at,completed_at,expires_at
+         ) values (
+           $1,$2,$3,1,$4,'node-2','core.set',1,'core.set',1,$5,$6,$7,$8,$9,
+           '{"id":"node-2","type":"core.set"}'::jsonb,
+           '{"kind":"manual","value":null}'::jsonb,'safe',false,false,
+           'not_supported','failed','preview.upgrade_fixture',$10,
+           clock_timestamp(),clock_timestamp(),$11
+         )`,
+        [
+          terminalPreviewRunId,
+          workspaceId,
+          workflowId,
+          'f'.repeat(64),
+          PHASE3_COMPATIBILITY_EXPECTATION.epoch,
+          PHASE3_COMPATIBILITY_EXPECTATION.fingerprint,
+          actorUserId,
+          '1'.repeat(64),
+          '2'.repeat(64),
+          traceparent,
+          expiresAt,
+        ],
+      );
+      await owner.query(
+        `insert into app.preview_attempts (
+           id,workspace_id,preview_run_id,status,side_effect_class,
+           safe_error_code,started_at,completed_at
+         ) values (
+           $1,$2,$3,'failed','safe','preview.upgrade_fixture',
+           clock_timestamp(),clock_timestamp()
+         )`,
+        [terminalPreviewAttemptId, workspaceId, terminalPreviewRunId],
+      );
       await owner.query('commit');
     } catch (error: unknown) {
       await owner.query('rollback').catch(() => undefined);
@@ -156,6 +201,7 @@ describe('preview retention migration', () => {
       '0024_preview_retention_cleanup.sql',
       '0025_preview_cleanup_idempotency.sql',
       '0026_preview_cleanup_terminal_guard.sql',
+      '0027_preview_terminal_facts.sql',
     ]);
 
     const verification = new Pool({
@@ -200,6 +246,51 @@ describe('preview retention migration', () => {
       throw error;
     } finally {
       await verification.end();
+    }
+
+    const apiVerification = new Pool({
+      connectionString: databaseUrl(apiBaseUrl),
+      max: 1,
+    });
+    try {
+      await apiVerification.query('begin');
+      await apiVerification.query(
+        "select set_config('app.workspace_id',$1,true)",
+        [workspaceId],
+      );
+      const terminalFacts = await apiVerification.query<{
+        audit_count: string;
+        audit_status: string;
+        usage_count: string;
+        usage_status: string;
+      }>(
+        `select
+           (select count(*)::text from app.audit_events
+             where workspace_id=$1 and action='preview.execution_terminal'
+               and target_id=$2) as audit_count,
+           (select metadata->>'status' from app.audit_events
+             where workspace_id=$1 and action='preview.execution_terminal'
+               and target_id=$2) as audit_status,
+           (select count(*)::text from app.usage_events
+             where workspace_id=$1 and resource_id=$2) as usage_count,
+           (select metadata->>'status' from app.usage_events
+             where workspace_id=$1 and resource_id=$2) as usage_status`,
+        [workspaceId, terminalPreviewRunId],
+      );
+      expect(terminalFacts.rows).toEqual([
+        {
+          audit_count: '1',
+          audit_status: 'failed',
+          usage_count: '1',
+          usage_status: 'failed',
+        },
+      ]);
+      await apiVerification.query('commit');
+    } catch (error: unknown) {
+      await apiVerification.query('rollback').catch(() => undefined);
+      throw error;
+    } finally {
+      await apiVerification.end();
     }
   });
 });

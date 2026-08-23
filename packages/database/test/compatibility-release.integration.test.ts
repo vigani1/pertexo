@@ -197,7 +197,7 @@ describe('durable node compatibility release authority', () => {
           preactivationTarget: targetExpectation,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0026_preview_cleanup_terminal_guard.sql',
+        migrationHead: '0027_preview_terminal_facts.sql',
       });
 
       for (const [roleKind, artifactId] of [
@@ -320,7 +320,7 @@ describe('durable node compatibility release authority', () => {
           expectedCompatibilityReleases: rollingExpectations,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0026_preview_cleanup_terminal_guard.sql',
+        migrationHead: '0027_preview_terminal_facts.sql',
       });
       await expect(
         checkDatabaseReadiness(api, {
@@ -433,7 +433,7 @@ describe('durable node compatibility release authority', () => {
             expectedCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0026_preview_cleanup_terminal_guard.sql',
+          migrationHead: '0027_preview_terminal_facts.sql',
         });
         await expect(
           checkExpectedCompatibilityRelease(pool, {
@@ -461,7 +461,7 @@ describe('durable node compatibility release authority', () => {
           expectedCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0026_preview_cleanup_terminal_guard.sql',
+        migrationHead: '0027_preview_terminal_facts.sql',
       });
     } finally {
       await pool.end();

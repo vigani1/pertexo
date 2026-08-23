@@ -16,9 +16,7 @@ const integrationUsageMigrationUrl = new URL(
 
 describe('workflow authoring migration contract', () => {
   it('advances the reviewed migration head', () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0026_preview_cleanup_terminal_guard.sql',
-    );
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0027_preview_terminal_facts.sql');
   });
 
   it('emits the identifier-only trigger-reconciliation payload', () => {
