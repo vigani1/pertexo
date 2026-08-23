@@ -226,7 +226,7 @@ export const usageEvents = appSchema.table(
       .default(sql`'{}'::jsonb`)
       .notNull(),
     occurredAt: timestamp('occurred_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
+      .default(sql`clock_timestamp()`)
       .notNull(),
   },
   (table) => [
