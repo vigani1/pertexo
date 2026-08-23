@@ -85,8 +85,9 @@ export type NodeAttemptRuntimeOptions = Readonly<{
   database: DatabaseConfig;
   heartbeatIntervalMillis: number;
   leaseDurationSeconds: number;
-  releaseCohort?: PlatformReleaseCohort;
   observer?: QueueConsumerObserver;
+  preview?: PreviewAttemptRuntimeDependency;
+  releaseCohort?: PlatformReleaseCohort;
   redisUrl: string;
   workerId: string;
 }>;
@@ -236,12 +237,13 @@ export async function createNodeAttemptRuntime(
   const runtimeCapabilities =
     dependencies.runtimeCapabilities ?? capabilityRuntime?.factories;
   let previewClose: (() => Promise<void>) | undefined;
-  if (dependencies.preview !== undefined) {
-    const closable = dependencies.preview.runStore as unknown as {
+  if (options.preview !== undefined) {
+    const previewStore: PreviewAttemptRunStore = options.preview.runStore;
+    const closable = previewStore as unknown as {
       close?: () => Promise<void>;
     };
     if (typeof closable.close === 'function') {
-      const bound = closable.close.bind(dependencies.preview.runStore);
+      const bound = closable.close.bind(previewStore);
       previewClose = async (): Promise<void> => {
         await bound();
       };
@@ -265,22 +267,21 @@ export async function createNodeAttemptRuntime(
       redisUrl: options.redisUrl,
       handler: queueHandler(
         nodeHandler,
-        dependencies.preview === undefined
+        options.preview === undefined
           ? undefined
           : createPreviewAttemptHandler({
               heartbeatIntervalMillis:
-                dependencies.preview.heartbeatIntervalMillis ??
+                options.preview.heartbeatIntervalMillis ??
                 options.heartbeatIntervalMillis,
-              invoker: dependencies.preview.invoker,
+              invoker: options.preview.invoker,
               leaseDurationSeconds:
-                dependencies.preview.leaseDurationSeconds ??
+                options.preview.leaseDurationSeconds ??
                 options.leaseDurationSeconds,
-              runStore: dependencies.preview.runStore,
-              ...(dependencies.preview.runtimeCapabilities === undefined
+              runStore: options.preview.runStore,
+              ...(options.preview.runtimeCapabilities === undefined
                 ? {}
                 : {
-                    runtimeCapabilities:
-                      dependencies.preview.runtimeCapabilities,
+                    runtimeCapabilities: options.preview.runtimeCapabilities,
                   }),
               workerId: options.workerId,
             }),

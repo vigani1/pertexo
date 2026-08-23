@@ -10,6 +10,7 @@ import {
   platformExecutableRegistryHistory,
   type PlatformReleaseCohort,
 } from '@pertexo/node-catalog';
+import { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';
 import type { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
 import { unrecoverableQueueError } from '@pertexo/queue';
 import { Pool } from 'pg';
@@ -80,10 +81,11 @@ export function createDatabasePreviewAttemptRunStore(
         workerId,
       });
     },
-    complete: async ({ lease, outcome, signal, workerId }) => {
+    complete: async ({ delivery, lease, outcome, signal, workerId }) => {
       const scope = leasePickSchema.parse(lease);
       const parsedWorkspace = workspaceScopeSchema.parse(lease);
       return completePreviewAttempt(pool, {
+        delivery,
         lease: {
           attemptFenceToken: scope.attemptFenceToken,
           previewAttemptId: scope.previewAttemptId,
@@ -119,9 +121,15 @@ export function createPlatformPreviewNodeInvoker(
     releaseCohort: PlatformReleaseCohort;
   }>,
 ): PreviewNodeInvoker {
+  // The durable authority binds engine-composed release identities (node
+  // catalogs plus this artifact's engine runtime policies), so the supported
+  // set derives from exactly the same composition production uses.
   const supported = new Set(
     platformExecutableRegistryHistory(dependencies.releaseCohort).map(
-      (release) => releaseDescriptionKey(release.epoch, release.fingerprint),
+      (release) => {
+        const composed = composeExecutableCompatibilityRelease(release);
+        return releaseDescriptionKey(composed.epoch, composed.fingerprint);
+      },
     ),
   );
   const failedWith = (safeErrorCode: string): PreviewTerminalOutcome =>

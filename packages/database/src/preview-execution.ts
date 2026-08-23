@@ -1146,6 +1146,7 @@ export type PreviewCompletionResult = Readonly<{
 export async function completePreviewAttempt(
   pool: Pool,
   input: Readonly<{
+    delivery: PreviewDelivery;
     lease: Pick<
       PreviewAttemptLease,
       'attemptFenceToken' | 'previewAttemptId' | 'previewRunId' | 'workspaceId'
@@ -1158,12 +1159,20 @@ export async function completePreviewAttempt(
   const scope = z
     .object({
       attemptFenceToken: z.number().int().nonnegative(),
+      delivery: z.object({
+        outboxEventId: z.uuid(),
+        payloadChecksum: sha256Schema,
+      }),
       previewAttemptId: z.uuid(),
       previewRunId: z.uuid(),
       workerId: z.string().regex(/^[A-Za-z0-9._:-]{1,128}$/u),
       workspaceId: z.uuid(),
     })
-    .parse({ ...input.lease, workerId: input.workerId });
+    .parse({
+      ...input.lease,
+      delivery: input.delivery,
+      workerId: input.workerId,
+    });
   const outcome =
     input.outcome.status === PREVIEW_STATUS.succeeded
       ? ({
@@ -1249,6 +1258,12 @@ export async function completePreviewAttempt(
       );
       if (syncedRuns.rowCount !== 1)
         throw new PreviewAttemptStateError('run_sync_lost');
+      // The inbox receipt completes atomically with the truthful business
+      // outcome, exactly like production attempt transitions.
+      await completePreviewReceipt(client, scope.workspaceId, {
+        outboxEventId: scope.delivery.outboxEventId,
+        payloadChecksum: scope.delivery.payloadChecksum,
+      });
       return Object.freeze({ kind: 'committed' });
     },
     optionsFor(input.signal),

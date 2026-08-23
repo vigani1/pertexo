@@ -67,6 +67,7 @@ export interface PreviewAttemptRunStore {
   ): Promise<PreviewHeartbeatResult>;
   complete(
     input: Readonly<{
+      delivery: { outboxEventId: string; payloadChecksum: string };
       lease: Pick<
         PreviewAttemptLease,
         | 'attemptFenceToken'
@@ -149,6 +150,7 @@ async function completeOutcome(
   dependencies: PreviewAttemptHandlerDependencies,
   lease: PreviewAttemptLease,
   outcome: PreviewTerminalOutcome,
+  delivery: { outboxEventId: string; payloadChecksum: string },
 ): Promise<PreviewAttemptHandlerResult> {
   let completedOutcome = outcome;
   if (outcome.status === 'succeeded') {
@@ -164,6 +166,7 @@ async function completeOutcome(
     if (!isValidStoredExecutionOutput(stored)) {
       return committed(
         await dependencies.runStore.complete({
+          delivery,
           lease,
           outcome: {
             safeErrorCode: 'preview.output_invalid',
@@ -180,6 +183,7 @@ async function completeOutcome(
   }
   return committed(
     await dependencies.runStore.complete({
+      delivery,
       lease,
       outcome: completedOutcome,
       workerId: dependencies.workerId,
@@ -289,6 +293,10 @@ export function createPreviewAttemptHandler(
         },
       });
 
+      const claimDelivery = {
+        outboxEventId: delivery.data.outboxEventId,
+        payloadChecksum: canonicalOutboxPayloadChecksum(delivery.data),
+      };
       const executionAbort = new AbortController();
       const heartbeatStop = new AbortController();
       const heartbeatSignal = AbortSignal.any([
@@ -360,6 +368,7 @@ export function createPreviewAttemptHandler(
         if (raced === 'deadline')
           return committed(
             await dependencies.runStore.complete({
+              delivery: claimDelivery,
               lease,
               outcome: deadlineExceededOutcome(),
               workerId: dependencies.workerId,
@@ -368,7 +377,12 @@ export function createPreviewAttemptHandler(
         if (raced.kind === 'error') throw raced.error;
         // A result that resolved before the deadline remains truthful even
         // if the heartbeat observed expiry moments later.
-        return await completeOutcome(dependencies, lease, raced.outcome);
+        return await completeOutcome(
+          dependencies,
+          lease,
+          raced.outcome,
+          claimDelivery,
+        );
       } finally {
         heartbeatStop.abort();
         await heartbeatDone;

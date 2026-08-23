@@ -336,6 +336,7 @@ describe('worker-side preview execution seam', () => {
     expect(attemptState.rows[0]?.started_at).not.toBeNull();
 
     const completed = await completePreviewAttempt(workerPool, {
+      delivery: claimed.fixture.delivery,
       lease: claimed.lease,
       outcome: {
         output: {
@@ -371,6 +372,7 @@ describe('worker-side preview execution seam', () => {
     const fixture = await acceptFixture();
     const claimed = await claimFixture(fixture, 'worker-preview-b');
     const committed = await completePreviewAttempt(workerPool, {
+      delivery: claimed.fixture.delivery,
       lease: claimed.lease,
       outcome: {
         safeErrorCode: 'preview.provider_rejected',
@@ -392,6 +394,7 @@ describe('worker-side preview execution seam', () => {
 
     // Completing again is an idempotent duplicate, not a second effect.
     const replayCompletion = await completePreviewAttempt(workerPool, {
+      delivery: claimed.fixture.delivery,
       lease: claimed.lease,
       outcome: {
         safeErrorCode: 'preview.provider_rejected',
@@ -454,6 +457,7 @@ describe('worker-side preview execution seam', () => {
     ).rejects.toBeInstanceOf(PreviewAttemptStateError);
     await expect(
       completePreviewAttempt(workerPool, {
+        delivery: first.fixture.delivery,
         lease: first.lease,
         outcome: {
           output: { schemaVersion: 1, kind: 'inline', value: 'stale' },

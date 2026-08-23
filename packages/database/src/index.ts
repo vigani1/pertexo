@@ -294,8 +294,10 @@ export {
   workflows,
   workflowRuns,
 } from './schema.js';
+export { migrateDatabase, MIGRATIONS_DIRECTORY } from './migrations.js';
 export {
   parseWorkspaceId,
+  withTenantScopedClient,
   withWorkspaceTransaction,
   type WorkspaceTransactionOptions,
 } from './workspace.js';
