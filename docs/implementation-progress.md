@@ -1709,6 +1709,16 @@ Current evidence:
   that full process-level crash matrix remains open. The fresh database is
   migrated zero-to-`0022`, the three-scenario worker transport file passes in
   4.84 seconds and drops its database, and root `pnpm check` remains green.
+- Commit `b9b93fc` corrects immediate execution redelivery to use PostgreSQL
+  `clock_timestamp()` rather than a worker's wall clock. Its real-PostgreSQL
+  regression moves the JavaScript clock to 2099 and still observes the
+  replacement outbox row within five seconds of database time. The same commit
+  relabels the SIGKILL fixture around the process-exit state it actually
+  observes. Commit `c014502` corrects both evidence ledgers so the unproven
+  production handler/provider/queue-ack matrix remains open. At exact head
+  `c014502`, 11 focused PostgreSQL scenarios, three fresh PostgreSQL/Redis
+  transport scenarios, and repository-wide `pnpm check` pass. Independent
+  fixed-head Spec and Standards reviews report no blocker/high merge finding.
 - At corrected documentation head `d3f1397`, root `pnpm check` passes all
   format, ESLint, generated-contract, typecheck, unit, and production-build
   gates. The dependency-ordered fresh real-service matrix passes against

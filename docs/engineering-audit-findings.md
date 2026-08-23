@@ -327,12 +327,15 @@ plan.
 | `d44ce6b` | Mapping-cancellation truth repair | Maps the workflow engine's pre-dispatch `attempt_aborted` decision to the canonical canceled preview outcome, proves the executor is never invoked, and makes the already-required durable preview store explicit in the composition type. |
 | `b850f53` | Automatic reconciliation delivery | Commits a fence-bound delayed maintenance outbox delivery with every preview claim; the PostgreSQL decision reschedules live leases, fences and redelivers reclaimable work, stops at the deadline, or records unsafe ambiguity. Exact duplicate receipts are no-ops; real PostgreSQL/Redis transport is proven. |
 | `963648c` | Preview process-death persistence | Kills child lease owners after direct production-database seam commits for claim, dispatch marker, and outcome states. The real outbox/BullMQ maintenance path proves fenced redelivery, stable-key preservation, unsafe ambiguity, and terminal duplicate truth after process death; production handler/provider/queue-ack injection remains open. |
+| `b9b93fc` + `c014502` | Reconciliation review correction | Makes immediate replacement delivery database-timed with a process-clock-skew regression, narrows the SIGKILL labels to direct database-seam process-exit evidence, and explicitly restores the unproven production handler/provider/queue-ack matrix to the open Phase 4 gates. |
 
 ### Verification summary
 
-- The corrected documentation head `d3f1397` passes repository-wide
+- The corrected preview-reconciliation head `c014502` passes repository-wide
   `pnpm check` (format, lint, generated-contract drift, typechecks, unit suites,
-  production builds).
+  production builds), 11 focused real-PostgreSQL scenarios, and three fresh
+  PostgreSQL/Redis transport scenarios. Independent exact-head Standards and
+  Spec reviews report no blocker/high merge finding.
 - Fresh-isolated-database integration matrices were run repeatedly before the
   corrective review (latest recorded state:
   artifact-store 2, database 230+, worker 10+, API 7 assertions) with the
