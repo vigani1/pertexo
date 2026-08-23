@@ -4,6 +4,7 @@ import {
   DISPATCH_AWARE_EXECUTOR_ABI_VERSION,
   type NodeExecutionInvocation,
   type NodeExecutorRegistration,
+  NodeExecutorFailure,
 } from '@pertexo/node-sdk/server';
 import { z } from 'zod';
 
@@ -105,14 +106,20 @@ const resolvedCredentialSchema = z
   })
   .strict();
 
-export class HttpRequestExecutorError extends Error {
+export class HttpRequestExecutorError extends NodeExecutorFailure {
   public override readonly name = 'HttpRequestExecutorError';
 
   public constructor(
     public readonly decision: HttpOutcomeDecision,
-    public readonly possiblyDispatched: boolean,
+    possiblyDispatched: boolean,
   ) {
-    super(`HTTP Request execution failed: ${decision.kind}`);
+    if (decision.kind === 'succeeded')
+      throw new TypeError('Successful HTTP outcome');
+    super({
+      kind: decision.kind,
+      errorKind: decision.errorKind,
+      possiblyDispatched,
+    });
   }
 }
 

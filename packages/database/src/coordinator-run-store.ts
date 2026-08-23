@@ -76,6 +76,7 @@ const engineEventSchema = z
     nodeId: z.string().min(1).max(128).optional(),
     attemptNumber: z.number().int().nonnegative().optional(),
     reasonCode: z.string().min(1).max(128).optional(),
+    dueAt: z.iso.datetime().optional(),
   })
   .strict();
 const transitionPlanSchema = z
@@ -877,7 +878,9 @@ async function validateLoadedCheckpointPhysicalState(
   for (const observation of observations) {
     const value = record(observation);
     if (
-      (value.kind === 'wait' || value.kind === 'outcome') &&
+      (value.kind === 'wait' ||
+        value.kind === 'outcome' ||
+        value.kind === 'attempt_failure') &&
       typeof value.invocationKey === 'string'
     )
       freshSemanticFacts.set(value.invocationKey, value);
@@ -914,7 +917,11 @@ async function validateLoadedCheckpointPhysicalState(
         (row.node_status === 'running' && row.attempt_status === 'running');
       const physicalAheadWithFact =
         freshFact?.attemptNumber === invocation.attemptNumber &&
-        (freshFact.kind === 'wait' || freshFact.kind === 'outcome');
+        (freshFact.kind === 'wait' ||
+          freshFact.kind === 'outcome' ||
+          (freshFact.kind === 'attempt_failure' &&
+            row.node_status === 'running' &&
+            row.attempt_status === 'failed'));
       if (!physicalInFlight && !physicalAheadWithFact)
         throw new CoordinatorRunStateCorruptError();
     } else if (invocation.status === 'waiting') {
@@ -1074,7 +1081,10 @@ function validateTransitionPlan(
         : invocation?.attemptNumber;
     if (
       invocation?.nodeId !== event.nodeId ||
-      event.attemptNumber !== expectedEventAttemptNumber
+      event.attemptNumber !== expectedEventAttemptNumber ||
+      (event.name === 'node.retry_scheduled') !== (event.dueAt !== undefined) ||
+      (event.name === 'node.retry_scheduled' &&
+        event.dueAt !== invocation.resumeAt)
     )
       throw new CoordinatorPlanInvalidError();
   }
@@ -1290,6 +1300,25 @@ function validateStatusTransitions(
       previous.status === 'running' &&
       (next.status === 'waiting' || terminalStatus(terminalEvent) !== undefined)
     ) {
+      const pending = persistedByInvocation.get(next.invocationKey);
+      if (pending?.kind === 'attempt_failure') {
+        const expectedEvent =
+          next.status === 'waiting' ? 'node.retry_scheduled' : terminalEvent;
+        expectedNodeEvents.add(`${next.invocationKey}:${expectedEvent}`);
+        if (
+          !plannedNodeEvents.has(`${next.invocationKey}:${expectedEvent}`) ||
+          next.attemptNumber !== previous.attemptNumber ||
+          (next.status === 'waiting' &&
+            (next.resumeAt === undefined ||
+              plan.events.find(
+                (event) =>
+                  event.invocationKey === next.invocationKey &&
+                  event.name === expectedEvent,
+              )?.dueAt !== next.resumeAt))
+        )
+          throw new CoordinatorPlanInvalidError();
+        continue;
+      }
       const sourceNames =
         next.status === 'waiting'
           ? ['node.waiting', 'node.retry_scheduled']
@@ -1675,6 +1704,62 @@ export function createCoordinatorRunStore(
             throw new CoordinatorRunStateCorruptError();
           validatePersistedFactBatch(events);
           const observations = events.map(mapEvent);
+          const pendingFailures = await client.query<{
+            attempt_id: string;
+            attempt_number: number;
+            completed_at: Date;
+            executor_error_kind: string;
+            executor_failure_kind: string;
+            executor_possibly_dispatched: boolean;
+            invocation_key: string;
+            safe_error_code: string;
+          }>(
+            `select attempt.id attempt_id,attempt.attempt_number,
+                    attempt.completed_at,attempt.executor_failure_kind,
+                    attempt.executor_error_kind,
+                    attempt.executor_possibly_dispatched,
+                    attempt.safe_error_code,node.invocation_key
+             from app.node_attempts attempt
+             join app.node_runs node
+               on node.workspace_id=attempt.workspace_id
+              and node.id=attempt.node_run_id
+             where attempt.workspace_id=$1 and node.workflow_run_id=$2
+               and node.current_attempt_id=attempt.id
+               and node.current_attempt_number=attempt.attempt_number
+               and node.status='running' and attempt.status='failed'
+               and attempt.retry_decision='pending'
+             order by node.invocation_key,attempt.id`,
+            [workspaceId, runId],
+          );
+          for (const failure of pendingFailures.rows) {
+            if (
+              !['failed', 'canceled', 'retry', 'outcome_unknown'].includes(
+                failure.executor_failure_kind,
+              ) ||
+              ![
+                'authentication',
+                'canceled',
+                'configuration',
+                'internal',
+                'network',
+                'provider',
+                'rate_limit',
+                'timeout',
+              ].includes(failure.executor_error_kind)
+            )
+              throw new CoordinatorRunStateCorruptError();
+            observations.push({
+              kind: 'attempt_failure',
+              occurredAt: failure.completed_at.toISOString(),
+              invocationKey: failure.invocation_key,
+              attemptId: failure.attempt_id,
+              attemptNumber: failure.attempt_number,
+              failureKind: failure.executor_failure_kind,
+              errorKind: failure.executor_error_kind,
+              possiblyDispatched: failure.executor_possibly_dispatched,
+              safeErrorCode: failure.safe_error_code,
+            });
+          }
           const checkpointInvocations = new Map(
             checkpoint.invocations.map((invocation) => [
               invocation.invocationKey,
@@ -1960,15 +2045,51 @@ export function createCoordinatorRunStore(
             if (persistedFacts.length !== expectedPersistedFactCount)
               return Object.freeze({ kind: 'stale', revision: row.revision });
             validatePersistedFactBatch(persistedFacts);
-            validateStatusTransitions(
-              currentCheckpoint,
-              plan,
-              persistedFacts.map((fact) => ({
+            const pendingFailures = await client.query<{
+              attempt_id: string;
+              attempt_number: number;
+              executor_error_kind: string;
+              executor_failure_kind: string;
+              executor_possibly_dispatched: boolean;
+              invocation_key: string;
+              safe_error_code: string;
+            }>(
+              `select attempt.id attempt_id,attempt.attempt_number,
+                      attempt.executor_failure_kind,attempt.executor_error_kind,
+                      attempt.executor_possibly_dispatched,attempt.safe_error_code,
+                      node.invocation_key
+               from app.node_attempts attempt
+               join app.node_runs node
+                 on node.workspace_id=attempt.workspace_id
+                and node.id=attempt.node_run_id
+               where attempt.workspace_id=$1 and node.workflow_run_id=$2
+                 and node.current_attempt_id=attempt.id
+                 and node.status='running' and attempt.status='failed'
+                 and attempt.retry_decision='pending'
+               order by node.invocation_key,attempt.id
+               for update of node,attempt`,
+              [workspaceId, runId],
+            );
+            validateStatusTransitions(currentCheckpoint, plan, [
+              ...persistedFacts.map((fact) => ({
                 invocationKey: fact.invocation_key,
                 observation: record(mapEvent(fact)),
                 type: fact.type,
               })),
-            );
+              ...pendingFailures.rows.map((failure) => ({
+                invocationKey: failure.invocation_key,
+                type: 'attempt_failure',
+                observation: record({
+                  kind: 'attempt_failure',
+                  attemptId: failure.attempt_id,
+                  attemptNumber: failure.attempt_number,
+                  failureKind: failure.executor_failure_kind,
+                  errorKind: failure.executor_error_kind,
+                  possiblyDispatched: failure.executor_possibly_dispatched,
+                  safeErrorCode: failure.safe_error_code,
+                }),
+              })),
+            ]);
             if (
               (currentCheckpoint.cancelRequested &&
                 row.cancel_requested_at === null) ||
@@ -2027,6 +2148,64 @@ export function createCoordinatorRunStore(
               string,
               { nodeRunId: string; attemptId?: string; attemptNumber?: number }
             >();
+            for (const failure of pendingFailures.rows) {
+              const event = plan.events.find(
+                (candidate) =>
+                  candidate.invocationKey === failure.invocation_key &&
+                  [
+                    'node.retry_scheduled',
+                    'node.failed',
+                    'node.canceled',
+                    'node.timed_out',
+                    'node.outcome_unknown',
+                  ].includes(candidate.name),
+              );
+              const invocation = invocations.get(failure.invocation_key);
+              if (event === undefined || invocation === undefined)
+                throw new CoordinatorPlanInvalidError();
+              const decision =
+                event.name === 'node.retry_scheduled'
+                  ? 'retry'
+                  : event.name.slice('node.'.length);
+              if (
+                ![
+                  'retry',
+                  'failed',
+                  'canceled',
+                  'timed_out',
+                  'outcome_unknown',
+                ].includes(decision)
+              )
+                throw new CoordinatorPlanInvalidError();
+              const finalized = await client.query(
+                `update app.node_attempts set retry_decision=$3,updated_at=clock_timestamp()
+                 where workspace_id=$1 and id=$2 and retry_decision='pending'`,
+                [workspaceId, failure.attempt_id, decision],
+              );
+              if (finalized.rowCount !== 1)
+                throw new CoordinatorRunStateCorruptError();
+              const nodeStatus = decision === 'retry' ? 'waiting' : decision;
+              const updated = await client.query(
+                `update app.node_runs
+                 set status=$4::varchar,retry_due_at=$5,
+                     completed_at=case when $4::varchar='waiting' then null else clock_timestamp() end,
+                     safe_error_code=$6,updated_at=clock_timestamp()
+                 where workspace_id=$1 and workflow_run_id=$2
+                   and invocation_key=$3 and current_attempt_id=$7
+                   and status='running'`,
+                [
+                  workspaceId,
+                  runId,
+                  failure.invocation_key,
+                  nodeStatus,
+                  decision === 'retry' ? event.dueAt : null,
+                  failure.safe_error_code,
+                  failure.attempt_id,
+                ],
+              );
+              if (updated.rowCount !== 1)
+                throw new CoordinatorRunStateCorruptError();
+            }
             for (const admission of plan.nodeRunAdmissions) {
               const invocation = invocations.get(admission.invocationKey);
               if (invocation === undefined)
@@ -2226,6 +2405,7 @@ export function createCoordinatorRunStore(
                 ...(event.reasonCode === undefined
                   ? {}
                   : { reasonCode: event.reasonCode }),
+                ...(event.dueAt === undefined ? {} : { dueAt: event.dueAt }),
                 ...(ids === undefined ? {} : { nodeRunId: ids.nodeRunId }),
                 ...(ids?.attemptId !== undefined &&
                 ids.attemptNumber === event.attemptNumber
@@ -2248,7 +2428,10 @@ export function createCoordinatorRunStore(
               const terminalNodeStatus = terminalStatus(event.name);
               if (
                 terminalNodeStatus !== undefined &&
-                event.invocationKey !== undefined
+                event.invocationKey !== undefined &&
+                !pendingFailures.rows.some(
+                  (failure) => failure.invocation_key === event.invocationKey,
+                )
               ) {
                 const updatedNode = await client.query(
                   `update app.node_runs

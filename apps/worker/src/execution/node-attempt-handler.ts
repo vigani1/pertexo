@@ -23,6 +23,7 @@ import type {
   NodeConnectionRuntime,
   NodeExecutionRuntime,
 } from '@pertexo/node-sdk/server';
+import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 
 type AttemptDelivery = Extract<
   QueueDelivery,
@@ -103,28 +104,6 @@ export class NodeAttemptHandlerStateError extends Error {
 
 function abortError(): DOMException {
   return new DOMException('The operation was aborted', 'AbortError');
-}
-
-function providerOutcomeUnknown(error: unknown): error is Error &
-  Readonly<{
-    decision: Readonly<{
-      kind: 'outcome_unknown';
-      errorKind: 'network' | 'provider' | 'timeout';
-    }>;
-    possiblyDispatched: true;
-  }> {
-  if (!(error instanceof Error)) return false;
-  const candidate = error as {
-    decision?: { kind?: unknown; errorKind?: unknown };
-    possiblyDispatched?: unknown;
-  };
-  return (
-    candidate.decision?.kind === 'outcome_unknown' &&
-    ['network', 'provider', 'timeout'].includes(
-      String(candidate.decision.errorKind),
-    ) &&
-    candidate.possiblyDispatched === true
-  );
 }
 
 function waitForHeartbeat(
@@ -422,12 +401,15 @@ export function createNodeAttemptHandler(
           throw heartbeatFailure instanceof Error
             ? heartbeatFailure
             : new Error('Node attempt heartbeat failed');
-        if (providerOutcomeUnknown(error)) {
+        if (error instanceof NodeExecutorFailure) {
           const completed = await dependencies.runStore.complete({
             lease: claimed.lease,
             outcome: {
-              status: 'outcome_unknown',
-              safeErrorCode: `execution.${error.decision.errorKind}_outcome_unknown`,
+              status: 'executor_failure',
+              failureKind: error.kind,
+              errorKind: error.errorKind,
+              possiblyDispatched: error.possiblyDispatched,
+              safeErrorCode: `execution.${error.errorKind}`,
             },
             ...(delivery.data.traceparent === undefined
               ? {}

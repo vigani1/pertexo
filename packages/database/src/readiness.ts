@@ -8,8 +8,7 @@ import {
   type CompatibilityReleaseExpectationSet,
 } from './compatibility-release.js';
 
-export const EXPECTED_MIGRATION_HEAD =
-  '0029_provider_idempotency_key_invariants.sql';
+export const EXPECTED_MIGRATION_HEAD = '0030_coordinator_retry_decisions.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -641,6 +640,20 @@ export async function checkDatabaseReadiness(
       ) as execution_values_compatible,
       (
         has_table_privilege($2, 'app.workflow_runs', 'SELECT')
+        and not exists (
+          select 1 from (values
+            ('node_attempts_executor_failure_complete'),
+            ('node_attempts_executor_failure_kind_valid'),
+            ('node_attempts_executor_error_kind_valid'),
+            ('node_attempts_retry_decision_valid'),
+            ('node_attempts_executor_failure_only_failed')
+          ) expected(constraint_name)
+          where not exists (
+            select 1 from pg_constraint constraint_record
+            where constraint_record.conrelid=to_regclass('app.node_attempts')
+              and constraint_record.conname=expected.constraint_name
+          )
+        )
         and (
           select pg_get_expr(constraint_record.conbin, constraint_record.conrelid)
           from pg_constraint constraint_record
@@ -660,6 +673,10 @@ export async function checkDatabaseReadiness(
         and has_table_privilege($2, 'app.transport_security_audit_facts', 'INSERT')
         and has_table_privilege($2, 'app.node_runs', 'INSERT')
         and has_table_privilege($2, 'app.node_attempts', 'INSERT')
+        and has_column_privilege($2, 'app.node_attempts', 'executor_failure_kind', 'UPDATE')
+        and has_column_privilege($2, 'app.node_attempts', 'executor_error_kind', 'UPDATE')
+        and has_column_privilege($2, 'app.node_attempts', 'executor_possibly_dispatched', 'UPDATE')
+        and has_column_privilege($2, 'app.node_attempts', 'retry_decision', 'UPDATE')
         and has_table_privilege($2, 'app.run_events', 'INSERT')
         and has_table_privilege($2, 'app.outbox_events', 'INSERT')
         and not has_table_privilege($2, 'app.workflow_runs', 'INSERT')
@@ -711,9 +728,11 @@ export async function checkDatabaseReadiness(
               ))
               or (privilege.table_name='node_attempts' and privilege.column_name in (
                 'status','lease_owner','lease_expires_at','fence_token',
-                'dispatch_marked_at','output_ref','safe_error_code','error_summary',
-                'reconciliation_ref','updated_at','started_at','completed_at'
-              ))
+                 'dispatch_marked_at','output_ref','safe_error_code','error_summary',
+                 'reconciliation_ref','updated_at','started_at','completed_at',
+                 'executor_failure_kind','executor_error_kind',
+                 'executor_possibly_dispatched','retry_decision'
+               ))
             )
         )
         and exists (

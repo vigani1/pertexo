@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { PreviewAttemptLease } from '@pertexo/database';
 import { HttpRequestExecutorError } from '@pertexo/integrations/server';
 import { platformServingRegistryRelease } from '@pertexo/node-catalog';
+import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 import { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -163,6 +164,37 @@ describe('platform preview node invoker', () => {
       sideEffectClass: 'unsafe' as const,
     };
 
+    await expect(
+      invoker.invoke({ lease, signal: new AbortController().signal }),
+    ).resolves.toEqual({
+      safeErrorCode: 'preview.outcome_unknown',
+      status: 'outcome_unknown',
+    });
+  });
+
+  it('maps a generic unsafe possibly-dispatched cancellation to outcome_unknown', async () => {
+    const execute = vi.fn().mockRejectedValue(
+      new NodeExecutorFailure({
+        kind: 'canceled',
+        errorKind: 'canceled',
+        possiblyDispatched: true,
+      }),
+    );
+    const invoker = createPlatformPreviewNodeInvoker({
+      registry: { execute } as never,
+      releaseCohort: 'core',
+    });
+    const lease = {
+      ...leaseFixture({
+        config: {},
+        configVersion: 1,
+        connectionRefs: {},
+        definition: { key: 'core.set', version: 1 },
+        id: 'node-1',
+        inputMappings: {},
+      }),
+      sideEffectClass: 'unsafe' as const,
+    };
     await expect(
       invoker.invoke({ lease, signal: new AbortController().signal }),
     ).resolves.toEqual({

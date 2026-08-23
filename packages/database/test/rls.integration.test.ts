@@ -427,7 +427,7 @@ describe.each([
 describe('database readiness', () => {
   it('verifies migration, PostgreSQL, ownership, RLS, and runtime role compatibility', async () => {
     await expect(database.checkReadiness()).resolves.toEqual({
-      migrationHead: '0029_provider_idempotency_key_invariants.sql',
+      migrationHead: '0030_coordinator_retry_decisions.sql',
       postgresMajor: 18,
       role: 'pertexo_api',
     });

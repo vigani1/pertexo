@@ -1195,6 +1195,68 @@ describe('retry, wait, cancellation, and transition policy', () => {
     });
   });
 
+  it('applies adapter recommendations, attempt bounds, and deterministic jitter', () => {
+    const input = {
+      sideEffectClass: 'safe' as const,
+      currentAttemptNumber: 1,
+      policy,
+      observation: {
+        kind: 'executor_failure' as const,
+        recommendation: 'retry' as const,
+        errorKind: 'rate_limit' as const,
+        possiblyDispatched: true,
+      },
+      jitterIdentity: 'run/invocation/1/engine.retry@1',
+    };
+    const first = decideRetry(input);
+    expect(first).toEqual(decideRetry(input));
+    expect(first).toMatchObject({ kind: 'retry', attemptNumber: 2 });
+    if (first.kind !== 'retry') throw new Error('expected retry');
+    expect(first.delayMs).toBeGreaterThanOrEqual(75);
+    expect(first.delayMs).toBeLessThan(125);
+    for (let index = 0; index < 100; index += 1) {
+      const capped = decideRetry({
+        ...input,
+        currentAttemptNumber: 2,
+        policy: { ...policy, baseDelayMs: 500, maximumDelayMs: 500 },
+        jitterIdentity: `bounded-jitter-${String(index)}`,
+      });
+      if (capped.kind !== 'retry') throw new Error('expected bounded retry');
+      expect(capped.delayMs).toBeLessThanOrEqual(500);
+    }
+    expect(
+      decideRetry({
+        ...input,
+        currentAttemptNumber: 3,
+      }),
+    ).toEqual({ kind: 'failed', reasonCode: 'rate_limit' });
+    expect(
+      decideRetry({
+        ...input,
+        observation: { ...input.observation, recommendation: 'failed' },
+      }),
+    ).toEqual({ kind: 'failed', reasonCode: 'rate_limit' });
+  });
+
+  it.each(['safe', 'idempotent_with_key'] as const)(
+    'retries possibly-dispatched ambiguity for %s work',
+    (sideEffectClass) => {
+      expect(
+        decideRetry({
+          sideEffectClass,
+          currentAttemptNumber: 1,
+          policy,
+          observation: {
+            kind: 'executor_failure',
+            recommendation: 'outcome_unknown',
+            errorKind: 'network',
+            possiblyDispatched: true,
+          },
+        }),
+      ).toMatchObject({ kind: 'retry', attemptNumber: 2 });
+    },
+  );
+
   it('models a durable wait as a released slot', () => {
     expect(
       planDurableWait({

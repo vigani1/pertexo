@@ -34,7 +34,7 @@ describe('node compatibility release persistence', () => {
     );
 
     expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0029_provider_idempotency_key_invariants.sql',
+      '0030_coordinator_retry_decisions.sql',
     );
     expect(migration).toContain('CREATE TABLE app.node_compatibility_releases');
     expect(migration).toContain('CREATE TABLE app.node_compatibility_current');

@@ -129,6 +129,7 @@ export interface EngineEventPlan {
   readonly nodeId?: string;
   readonly attemptNumber?: number;
   readonly reasonCode?: string;
+  readonly dueAt?: string;
 }
 
 export interface AttemptAdmissionPlan {

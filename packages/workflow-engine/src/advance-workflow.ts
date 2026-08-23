@@ -48,11 +48,13 @@ export type WorkflowObservation =
       >;
       readonly output?: OutputReference;
       readonly reasonCode?: string;
+      readonly coordinatorDerived?: boolean;
     }
   | {
       readonly kind: 'wait';
       readonly invocationKey: string;
       readonly resumeAt: string;
+      readonly coordinatorDerived?: boolean;
     }
   | { readonly kind: 'resume'; readonly invocationKey: string }
   | { readonly kind: 'cancel_requested' }
@@ -166,7 +168,12 @@ export function advanceWorkflowFromSchedulerState(
   if (
     consumedObservationCount < 0 ||
     (externalFactsArePersisted &&
-      consumedObservationCount !== (input.observations ?? []).length)
+      consumedObservationCount !==
+        (input.observations ?? []).filter(
+          (observation) =>
+            !('coordinatorDerived' in observation) ||
+            !observation.coordinatorDerived,
+        ).length)
   )
     throw new WorkflowEngineError(
       'observation_invalid',
@@ -390,8 +397,18 @@ export function advanceWorkflowFromSchedulerState(
         status: 'waiting',
         resumeAt: observation.resumeAt,
       });
-      if (!externalFactsArePersisted)
-        eventDrafts.push(event('node.waiting', input.occurredAt, existing));
+      if (!externalFactsArePersisted || observation.coordinatorDerived)
+        eventDrafts.push(
+          event(
+            observation.coordinatorDerived
+              ? 'node.retry_scheduled'
+              : 'node.waiting',
+            input.occurredAt,
+            existing,
+            undefined,
+            observation.resumeAt,
+          ),
+        );
       continue;
     }
     if (observation.kind === 'resume') {
@@ -433,7 +450,7 @@ export function advanceWorkflowFromSchedulerState(
         `missing event mapping for ${observation.status}`,
       );
     }
-    if (!externalFactsArePersisted)
+    if (!externalFactsArePersisted || observation.coordinatorDerived)
       eventDrafts.push(
         event(eventName, input.occurredAt, completed, observation.reasonCode),
       );
@@ -1014,6 +1031,7 @@ function event(
   occurredAt: string,
   invocation?: InvocationState,
   reasonCode?: string,
+  dueAt?: string,
 ): Omit<EngineEventPlan, 'sequence'> {
   return {
     schemaVersion: 1,
@@ -1027,5 +1045,6 @@ function event(
           attemptNumber: invocation.attemptNumber,
         }),
     ...(reasonCode === undefined ? {} : { reasonCode }),
+    ...(dueAt === undefined ? {} : { dueAt }),
   };
 }

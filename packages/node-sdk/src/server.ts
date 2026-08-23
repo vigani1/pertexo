@@ -37,6 +37,51 @@ const SUPPORTED_EXECUTOR_ABI_VERSIONS = new Set<number>([
 
 export type NodeExecutionKind = 'succeeded' | 'terminal_success';
 
+export type NodeExecutorErrorKind =
+  | 'authentication'
+  | 'canceled'
+  | 'configuration'
+  | 'internal'
+  | 'network'
+  | 'provider'
+  | 'rate_limit'
+  | 'timeout';
+export type NodeExecutorFailureOutcome = Readonly<{
+  kind: 'failed' | 'canceled' | 'retry' | 'outcome_unknown';
+  errorKind: NodeExecutorErrorKind;
+  possiblyDispatched: boolean;
+}>;
+const nodeExecutorFailureSchema = z
+  .object({
+    kind: z.enum(['failed', 'canceled', 'retry', 'outcome_unknown']),
+    errorKind: z.enum([
+      'authentication',
+      'canceled',
+      'configuration',
+      'internal',
+      'network',
+      'provider',
+      'rate_limit',
+      'timeout',
+    ]),
+    possiblyDispatched: z.boolean(),
+  })
+  .strict();
+export class NodeExecutorFailure extends Error {
+  public override readonly name: string = 'NodeExecutorFailure';
+  public readonly kind: NodeExecutorFailureOutcome['kind'];
+  public readonly errorKind: NodeExecutorErrorKind;
+  public readonly possiblyDispatched: boolean;
+  public constructor(outcome: unknown) {
+    const parsed = nodeExecutorFailureSchema.safeParse(outcome);
+    if (!parsed.success) throw new TypeError('Invalid node executor failure');
+    super(`Node executor failed: ${parsed.data.kind}`);
+    this.kind = parsed.data.kind;
+    this.errorKind = parsed.data.errorKind;
+    this.possiblyDispatched = parsed.data.possiblyDispatched;
+  }
+}
+
 export interface NodeExecutionInvocation<Config, Input> {
   readonly config: Config;
   readonly input: Input;

@@ -825,6 +825,137 @@ describe('Phase 3 production operations', () => {
     );
   });
 
+  it('resolves typed attempt failure into one coordinator retry transition', async () => {
+    const executable = buildWorkflowExecutableV2({
+      graph: graph(),
+      release: composeExecutableCompatibilityRelease(nodeRelease()),
+    });
+    const started = await advanceWorkflow({
+      runId: 'retry-run',
+      executable,
+      workflowVersionId: 'version-1',
+      checkpoint: createCheckpoint({
+        engineVersion: 'engine-v1',
+        workflowVersionId: 'version-1',
+        iterationBudget: 0,
+      }),
+      occurredAt: '2026-08-20T10:00:00.000Z',
+      maximumAdmissions: 1,
+      observations: [],
+      signal: new AbortController().signal,
+    });
+    const attempt = started.attempts[0];
+    if (attempt === undefined) throw new Error('attempt was not admitted');
+
+    const retried = await advanceWorkflow({
+      runId: 'retry-run',
+      executable,
+      workflowVersionId: 'version-1',
+      checkpoint: started.checkpoint,
+      occurredAt: '2026-08-20T10:01:00.000Z',
+      maximumAdmissions: 1,
+      observations: [
+        {
+          kind: 'attempt_failure',
+          occurredAt: '2026-08-20T10:00:30.000Z',
+          invocationKey: attempt.invocationKey,
+          attemptId: '00000000-0000-4000-8000-000000000099',
+          attemptNumber: attempt.attemptNumber,
+          failureKind: 'retry',
+          errorKind: 'rate_limit',
+          possiblyDispatched: false,
+          safeErrorCode: 'execution.rate_limit',
+        },
+      ],
+      signal: new AbortController().signal,
+    });
+
+    const scheduled = retried.events.find(
+      ({ name }) => name === 'node.retry_scheduled',
+    );
+    expect(scheduled?.dueAt).toBe('2026-08-20T10:00:30.897Z');
+    expect(retried.attempts).toEqual([]);
+    expect(retried.checkpoint.invocations[0]).toMatchObject({
+      status: 'waiting',
+      resumeAt: scheduled?.dueAt,
+      attemptNumber: 1,
+    });
+  });
+
+  it('preserves a definite executor cancellation as canceled', async () => {
+    const executable = buildWorkflowExecutableV2({
+      graph: graph(),
+      release: composeExecutableCompatibilityRelease(nodeRelease()),
+    });
+    const started = await advanceWorkflow({
+      runId: 'canceled-attempt-run',
+      executable,
+      workflowVersionId: 'version-1',
+      checkpoint: createCheckpoint({
+        engineVersion: 'engine-v1',
+        workflowVersionId: 'version-1',
+        iterationBudget: 0,
+      }),
+      occurredAt: '2026-08-20T10:00:00.000Z',
+      maximumAdmissions: 1,
+      observations: [],
+      signal: new AbortController().signal,
+    });
+    const attempt = started.attempts[0];
+    if (attempt === undefined) throw new Error('attempt was not admitted');
+
+    const canceled = await advanceWorkflow({
+      runId: 'canceled-attempt-run',
+      executable,
+      workflowVersionId: 'version-1',
+      checkpoint: started.checkpoint,
+      occurredAt: '2026-08-20T10:01:00.000Z',
+      maximumAdmissions: 1,
+      observations: [
+        {
+          kind: 'attempt_failure',
+          occurredAt: '2026-08-20T10:00:30.000Z',
+          invocationKey: attempt.invocationKey,
+          attemptId: '00000000-0000-4000-8000-000000000098',
+          attemptNumber: attempt.attemptNumber,
+          failureKind: 'canceled',
+          errorKind: 'canceled',
+          possiblyDispatched: false,
+          safeErrorCode: 'execution.canceled',
+        },
+      ],
+      signal: new AbortController().signal,
+    });
+
+    expect(canceled.events.map(({ name }) => name)).toContain('node.canceled');
+    expect(canceled.checkpoint.invocations[0]).toMatchObject({
+      status: 'canceled',
+    });
+  });
+
+  it('rejects an untyped attempt failure observation', async () => {
+    const executable = buildWorkflowExecutableV2({
+      graph: graph(),
+      release: composeExecutableCompatibilityRelease(nodeRelease()),
+    });
+    await expect(
+      advanceWorkflow({
+        runId: 'invalid-retry-run',
+        executable,
+        workflowVersionId: 'version-1',
+        checkpoint: createCheckpoint({
+          engineVersion: 'engine-v1',
+          workflowVersionId: 'version-1',
+          iterationBudget: 0,
+        }),
+        occurredAt: '2026-08-20T10:00:00.000Z',
+        maximumAdmissions: 1,
+        observations: [{ kind: 'attempt_failure' }],
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toMatchObject({ code: 'observation_invalid' });
+  });
+
   it('consumes contiguous persisted facts without re-emitting their semantic events', async () => {
     const release = composeExecutableCompatibilityRelease(nodeRelease());
     const executable = buildWorkflowExecutableV2({ graph: graph(), release });
@@ -1694,13 +1825,12 @@ describe('Phase 3 production operations', () => {
       }),
     ).rejects.toMatchObject({ code: 'attempt_aborted' });
 
-    const unknownOutcome = Object.assign(
-      new Error('bounded executor outcome'),
-      {
-        decision: { kind: 'outcome_unknown', errorKind: 'provider' },
-        possiblyDispatched: true,
-      },
-    );
+    const { NodeExecutorFailure } = await import('@pertexo/node-sdk/server');
+    const unknownOutcome = new NodeExecutorFailure({
+      kind: 'outcome_unknown',
+      errorKind: 'provider',
+      possiblyDispatched: true,
+    });
     await expect(
       executeNodeAttempt({
         runId: 'run-1',
@@ -1719,6 +1849,30 @@ describe('Phase 3 production operations', () => {
         signal: new AbortController().signal,
       }),
     ).rejects.toBe(unknownOutcome);
+
+    const retry = new NodeExecutorFailure({
+      kind: 'retry',
+      errorKind: 'rate_limit',
+      possiblyDispatched: false,
+    });
+    await expect(
+      executeNodeAttempt({
+        runId: 'run-1',
+        nodeRunId: 'node-run-1',
+        attemptId: 'attempt-retry',
+        executable,
+        workflowVersionId: 'version-1',
+        invocationKey: invocationKey({
+          workflowVersionId: 'version-1',
+          nodeId: 'set',
+        }),
+        nodeId: 'set',
+        runInput: { name: 'Ada', count: 2 },
+        completedNodeOutputs: { manual: { base: 3 } },
+        registry: { execute: () => Promise.reject(retry) },
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toBe(retry);
 
     await expect(
       executeNodeAttempt({

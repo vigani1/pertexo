@@ -1,5 +1,6 @@
 import {
   NodeExecutionAbortedError,
+  NodeExecutorFailure,
   type JsonValue as NodeJsonValue,
   type NodeExecutionRequest,
   type NodeExecutionResult,
@@ -26,7 +27,11 @@ import {
 import { parseCheckpoint } from './checkpoint.js';
 import type { SchedulerState } from './graph-scheduler.js';
 import { compareOrdinal } from './ordering.js';
-import { providerIdempotencyKey } from './retries.js';
+import {
+  decideRetry,
+  providerIdempotencyKey,
+  resolveRetryPolicy,
+} from './retries.js';
 import { invocationKey as createInvocationKey } from './scheduling.js';
 import type { OutputReference, WorkflowTransitionPlan } from './types.js';
 
@@ -116,10 +121,31 @@ export type DueAtObservation = Readonly<{
   readonly invocationKey: string;
 }>;
 
+export type AttemptFailureObservation = Readonly<{
+  readonly kind: 'attempt_failure';
+  readonly occurredAt: string;
+  readonly invocationKey: string;
+  readonly attemptId: string;
+  readonly attemptNumber: number;
+  readonly failureKind: 'failed' | 'canceled' | 'retry' | 'outcome_unknown';
+  readonly errorKind:
+    | 'authentication'
+    | 'canceled'
+    | 'configuration'
+    | 'internal'
+    | 'network'
+    | 'provider'
+    | 'rate_limit'
+    | 'timeout';
+  readonly possiblyDispatched: boolean;
+  readonly safeErrorCode: string;
+}>;
+
 type ParsedPersistedObservations = Readonly<{
   observations: readonly WorkflowObservation[];
   deadlineExpiration?: DeadlineExpiredObservation;
   dueResumptions: readonly DueAtObservation[];
+  attemptFailures: readonly AttemptFailureObservation[];
   cursor: Readonly<{
     expectedNextEventSequence: number;
     consumedThroughEventSequence: number;
@@ -251,15 +277,63 @@ function parseObservations(
     operationError('observation_invalid', 'observations must be an array');
   const items = normalized as readonly JsonValue[];
   const parsed: (
-    PersistedWorkflowObservation | DeadlineExpiredObservation | DueAtObservation
+    | PersistedWorkflowObservation
+    | DeadlineExpiredObservation
+    | DueAtObservation
+    | AttemptFailureObservation
   )[] = items.map(
     (
       item,
     ):
       | PersistedWorkflowObservation
       | DeadlineExpiredObservation
-      | DueAtObservation => {
+      | DueAtObservation
+      | AttemptFailureObservation => {
       const observation = record(item, 'observation_invalid', 'observation');
+      if (observation.kind === 'attempt_failure') {
+        exactKeys(observation, [
+          'kind',
+          'occurredAt',
+          'invocationKey',
+          'attemptId',
+          'attemptNumber',
+          'failureKind',
+          'errorKind',
+          'possiblyDispatched',
+          'safeErrorCode',
+        ]);
+        if (
+          !isCanonicalTimestamp(observation.occurredAt) ||
+          typeof observation.invocationKey !== 'string' ||
+          typeof observation.attemptId !== 'string' ||
+          !uuidPattern.test(observation.attemptId) ||
+          typeof observation.attemptNumber !== 'number' ||
+          !Number.isSafeInteger(observation.attemptNumber) ||
+          observation.attemptNumber <= 0 ||
+          typeof observation.failureKind !== 'string' ||
+          !['failed', 'canceled', 'retry', 'outcome_unknown'].includes(
+            observation.failureKind,
+          ) ||
+          typeof observation.errorKind !== 'string' ||
+          ![
+            'authentication',
+            'canceled',
+            'configuration',
+            'internal',
+            'network',
+            'provider',
+            'rate_limit',
+            'timeout',
+          ].includes(observation.errorKind) ||
+          typeof observation.possiblyDispatched !== 'boolean' ||
+          typeof observation.safeErrorCode !== 'string' ||
+          !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u.test(
+            observation.safeErrorCode,
+          )
+        )
+          operationError('observation_invalid', 'attempt failure is invalid');
+        return observation as AttemptFailureObservation;
+      }
       if (observation.kind === 'deadline_expired') {
         exactKeys(observation, ['kind', 'occurredAt']);
         if (!isCanonicalTimestamp(observation.occurredAt))
@@ -462,8 +536,21 @@ function parseObservations(
   );
   let deadlineExpiration: DeadlineExpiredObservation | undefined;
   const dueResumptions: DueAtObservation[] = [];
+  const attemptFailures: AttemptFailureObservation[] = [];
   const sequenced: PersistedWorkflowObservation[] = [];
   for (const observation of parsed) {
+    if (observation.kind === 'attempt_failure') {
+      if (
+        attemptFailures.some(
+          (failure) =>
+            failure.invocationKey === observation.invocationKey ||
+            failure.attemptId === observation.attemptId,
+        )
+      )
+        operationError('observation_invalid', 'attempt failures conflict');
+      attemptFailures.push(observation);
+      continue;
+    }
     if (observation.kind === 'due_at') {
       const previous = dueResumptions.find(
         ({ invocationKey }) => invocationKey === observation.invocationKey,
@@ -576,6 +663,7 @@ function parseObservations(
         checkpoint.nextEventSequence + fresh.length - 1,
     },
     dueResumptions,
+    attemptFailures,
     ...(deadlineExpiration === undefined ? {} : { deadlineExpiration }),
   };
 }
@@ -679,10 +767,96 @@ export async function advanceWorkflow(
     input.observations,
     checkpoint,
   );
+  const controlCanceled =
+    checkpoint.cancelRequested ||
+    persistedObservations.observations.some(
+      (observation) => observation.kind === 'cancel_requested',
+    );
+  const controlDeadline =
+    checkpoint.deadlineExpired ||
+    persistedObservations.deadlineExpiration !== undefined;
+  const retryPolicyReference = input.executable.envelope.runtimePolicies.retry;
+  let retryPolicy: ReturnType<typeof resolveRetryPolicy>;
+  try {
+    retryPolicy = resolveRetryPolicy(retryPolicyReference);
+  } catch {
+    operationError('workflow_identity_invalid', 'retry policy is unsupported');
+  }
+  const resolvedFailures: WorkflowObservation[] =
+    persistedObservations.attemptFailures.map((failure) => {
+      const invocation = checkpoint.invocations.find(
+        (candidate) => candidate.invocationKey === failure.invocationKey,
+      );
+      const node = input.executable.envelope.graph.nodes.find(
+        (candidate) => candidate.id === invocation?.nodeId,
+      );
+      if (
+        invocation?.status !== 'running' ||
+        invocation.attemptNumber !== failure.attemptNumber ||
+        node === undefined
+      )
+        operationError('observation_invalid', 'attempt failure is stale');
+      const unsafeUnknown =
+        node.sideEffectClass === 'unsafe' &&
+        failure.possiblyDispatched &&
+        failure.failureKind !== 'failed';
+      if (controlCanceled || controlDeadline) {
+        return {
+          kind: 'outcome',
+          invocationKey: failure.invocationKey,
+          status: unsafeUnknown
+            ? 'outcome_unknown'
+            : controlCanceled
+              ? 'canceled'
+              : 'timed_out',
+          reasonCode: failure.safeErrorCode,
+          coordinatorDerived: true,
+        };
+      }
+      if (failure.failureKind === 'canceled') {
+        return {
+          kind: 'outcome',
+          invocationKey: failure.invocationKey,
+          status: unsafeUnknown ? 'outcome_unknown' : 'canceled',
+          reasonCode: failure.safeErrorCode,
+          coordinatorDerived: true,
+        };
+      }
+      const decision = decideRetry({
+        sideEffectClass: node.sideEffectClass,
+        currentAttemptNumber: failure.attemptNumber,
+        policy: retryPolicy,
+        observation: {
+          kind: 'executor_failure',
+          recommendation: failure.failureKind,
+          errorKind: failure.errorKind,
+          possiblyDispatched: failure.possiblyDispatched,
+        },
+        jitterIdentity: `${input.runId}\u0000${failure.invocationKey}\u0000${String(failure.attemptNumber)}\u0000${retryPolicyReference.key}@${String(retryPolicyReference.version)}`,
+      });
+      if (decision.kind === 'retry') {
+        return {
+          kind: 'wait',
+          invocationKey: failure.invocationKey,
+          resumeAt: new Date(
+            Date.parse(failure.occurredAt) + decision.delayMs,
+          ).toISOString(),
+          coordinatorDerived: true,
+        };
+      }
+      return {
+        kind: 'outcome',
+        invocationKey: failure.invocationKey,
+        status:
+          decision.kind === 'outcome_unknown' ? 'outcome_unknown' : 'failed',
+        reasonCode: failure.safeErrorCode,
+        coordinatorDerived: true,
+      };
+    });
   const plan = advanceWorkflowFromSchedulerState({
     checkpoint,
     schedulerState: schedulerState(input.executable),
-    observations: persistedObservations.observations,
+    observations: [...persistedObservations.observations, ...resolvedFailures],
     ...(persistedObservations.deadlineExpiration === undefined
       ? {}
       : {
@@ -947,13 +1121,7 @@ export async function executeNodeAttempt(
   } catch (error) {
     if (input.signal.aborted || isAbortError(error))
       operationError('attempt_aborted', 'node attempt was aborted');
-    if (
-      error instanceof Error &&
-      (error as { decision?: { kind?: unknown } }).decision?.kind ===
-        'outcome_unknown' &&
-      (error as { possiblyDispatched?: unknown }).possiblyDispatched === true
-    )
-      throw error;
+    if (error instanceof NodeExecutorFailure) throw error;
     operationError('attempt_invalid', 'node execution failed');
   }
   return {

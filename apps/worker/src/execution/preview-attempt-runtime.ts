@@ -16,6 +16,7 @@ import {
 } from '@pertexo/workflow-engine';
 import type { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
 import { unrecoverableQueueError } from '@pertexo/queue';
+import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 import { Pool } from 'pg';
 import { z } from 'zod';
 
@@ -233,7 +234,7 @@ export function createPlatformPreviewNodeInvoker(
           error.code === 'attempt_aborted'
         )
           return canceledWith();
-        return classifyExecutorFailure(error, {
+        return classifyExecutorFailure(error, lease.sideEffectClass, {
           canceledWith,
           failedWith,
           unknownWith,
@@ -245,48 +246,38 @@ export function createPlatformPreviewNodeInvoker(
 }
 
 /**
- * Executor adapters expose ADR 007 decisions on their error surface
- * (`decision.kind` plus `possiblyDispatched`). A preview runs exactly one
- * attempt: a pre-dispatch retryable failure is simply failed, while only a
- * possibly-dispatched effect can become outcome_unknown.
+ * A preview runs exactly one attempt: a pre-dispatch retryable failure is
+ * simply failed, while an unsafe possibly-dispatched effect is unknown.
  */
 function classifyExecutorFailure(
   error: unknown,
+  sideEffectClass: 'safe' | 'idempotent_with_key' | 'unsafe',
   outcomes: Readonly<{
     canceledWith: () => PreviewInvocationOutcome;
     failedWith: (safeErrorCode: string) => PreviewInvocationOutcome;
     unknownWith: () => PreviewInvocationOutcome;
   }>,
 ): PreviewInvocationOutcome {
-  const decision = (
-    error as { decision?: { errorKind?: string; kind?: string } }
-  ).decision;
-  if (typeof decision?.kind === 'string') {
-    const dispatched =
-      (error as { possiblyDispatched?: boolean }).possiblyDispatched === true;
-    switch (decision.kind) {
+  if (error instanceof NodeExecutorFailure) {
+    const unsafePossibleDispatch =
+      error.possiblyDispatched && sideEffectClass === 'unsafe';
+    switch (error.kind) {
       case 'canceled':
-        return outcomes.canceledWith();
+        return unsafePossibleDispatch
+          ? outcomes.unknownWith()
+          : outcomes.canceledWith();
       case 'outcome_unknown':
         return outcomes.unknownWith();
       case 'retry':
-        return dispatched
+        return unsafePossibleDispatch
           ? outcomes.unknownWith()
-          : outcomes.failedWith(`preview.${safeKind(decision.errorKind)}`);
+          : outcomes.failedWith(`preview.${error.errorKind}`);
       case 'failed':
-        return outcomes.failedWith(`preview.${safeKind(decision.errorKind)}`);
-      default:
-        break;
+        return outcomes.failedWith(`preview.${error.errorKind}`);
     }
   }
   if (isAbortError(error)) return outcomes.canceledWith();
   return outcomes.failedWith('preview.executor_failed');
-}
-
-function safeKind(errorKind: string | undefined): string {
-  return typeof errorKind === 'string' && /^[a-z_]{1,64}$/u.test(errorKind)
-    ? errorKind
-    : 'provider';
 }
 
 function isAbortError(error: unknown): boolean {

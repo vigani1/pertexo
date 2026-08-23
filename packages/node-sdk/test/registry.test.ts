@@ -28,6 +28,7 @@ import {
   NodeExecutionAbortedError,
   NodeDispatchEvidenceError,
   NodeExecutionRuntimeRequiredError,
+  NodeExecutorFailure,
   NodeInputValidationError,
   NodeOutputValidationError,
   NodeRegistryCompatibilityError,
@@ -104,6 +105,25 @@ function release(): ReturnType<typeof createRegistryRelease> {
 }
 
 describe('node-sdk registry release contracts', () => {
+  it('rejects malformed and unbounded executor failure kinds', () => {
+    expect(
+      () =>
+        new NodeExecutorFailure({
+          kind: 'failed',
+          errorKind: 'x'.repeat(65),
+          possiblyDispatched: false,
+        }),
+    ).toThrow(new TypeError('Invalid node executor failure'));
+    expect(
+      () =>
+        new NodeExecutorFailure({
+          kind: 'failed',
+          errorKind: 'Provider Secret',
+          possiblyDispatched: false,
+        }),
+    ).toThrow(new TypeError('Invalid node executor failure'));
+  });
+
   it('enforces monotonic definition and executor lifecycle successors', () => {
     expect(DEFINITION_LIFECYCLE_TRANSITIONS).toEqual({
       active: ['deprecated', 'migration_required'],

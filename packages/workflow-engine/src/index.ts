@@ -7,6 +7,7 @@ export {
 } from './operations.js';
 export type {
   AdvanceWorkflowInput,
+  AttemptFailureObservation,
   DeadlineExpiredObservation,
   DueAtObservation,
   ExecuteNodeAttemptInput,
@@ -52,7 +53,12 @@ export {
   settleJoin,
 } from './scheduling.js';
 export type { JoinDecision, LoopAdmission } from './scheduling.js';
-export { decideRetry, providerIdempotencyKey } from './retries.js';
+export {
+  decideRetry,
+  ENGINE_RETRY_POLICY_V1,
+  providerIdempotencyKey,
+  resolveRetryPolicy,
+} from './retries.js';
 export type {
   AttemptObservation,
   RetryDecision,

@@ -703,6 +703,10 @@ export const nodeAttempts = appSchema.table(
     outputRef: jsonb('output_ref'),
     safeErrorCode: varchar('safe_error_code', { length: 128 }),
     errorSummary: varchar('error_summary', { length: 2048 }),
+    executorFailureKind: varchar('executor_failure_kind', { length: 32 }),
+    executorErrorKind: varchar('executor_error_kind', { length: 32 }),
+    executorPossiblyDispatched: boolean('executor_possibly_dispatched'),
+    retryDecision: varchar('retry_decision', { length: 32 }),
     reconciliationRef: jsonb('reconciliation_ref'),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()

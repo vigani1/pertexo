@@ -5,6 +5,8 @@ import type {
   PublishedWorkflowV2Projection,
 } from '@pertexo/database';
 import { JOB_NAME, type QueueDelivery } from '@pertexo/queue';
+import { HttpRequestExecutorError } from '@pertexo/integrations/server';
+import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 import {
   type NodeExecutionRegistry,
   WorkflowEngineError,
@@ -466,11 +468,9 @@ describe('NodeAttemptHandler', () => {
         prepare: vi.fn().mockReturnValue({
           upstreamNodeIds: [],
           execute: vi.fn().mockRejectedValue(
-            Object.assign(new Error('bounded provider ambiguity'), {
-              decision: {
-                kind: 'outcome_unknown',
-                errorKind: 'provider',
-              },
+            new NodeExecutorFailure({
+              kind: 'outcome_unknown',
+              errorKind: 'provider',
               possiblyDispatched: true,
             }),
           ),
@@ -490,8 +490,77 @@ describe('NodeAttemptHandler', () => {
     expect(complete).toHaveBeenCalledWith(
       expect.objectContaining({
         outcome: {
-          status: 'outcome_unknown',
-          safeErrorCode: 'execution.provider_outcome_unknown',
+          status: 'executor_failure',
+          failureKind: 'outcome_unknown',
+          errorKind: 'provider',
+          possiblyDispatched: true,
+          safeErrorCode: 'execution.provider',
+        },
+      }),
+    );
+  });
+
+  it('persists a pre-dispatch HTTP retry for the coordinator without scheduling', async () => {
+    const attemptLease = lease();
+    const complete = vi
+      .fn<NodeAttemptRunStore['complete']>()
+      .mockResolvedValue({ kind: 'committed', outboxEventId: WORKFLOW_ID });
+    const store = {
+      claimDelivery: vi
+        .fn()
+        .mockResolvedValue({ kind: 'claimed', lease: attemptLease }),
+      close: vi.fn().mockResolvedValue(undefined),
+      complete,
+      heartbeat: vi.fn(),
+      loadInputs: vi.fn().mockResolvedValue({
+        abortRequested: false,
+        completedNodeOutputs: {},
+        runInput: null,
+      }),
+      markDispatched: vi.fn(),
+    } satisfies NodeAttemptRunStore;
+    const handler = createNodeAttemptHandler({
+      engine: {
+        prepare: vi.fn().mockReturnValue({
+          upstreamNodeIds: [],
+          execute: vi.fn().mockRejectedValue(
+            new HttpRequestExecutorError(
+              {
+                kind: 'retry',
+                errorKind: 'rate_limit',
+                reuseProviderKey: false,
+              },
+              false,
+            ),
+          ),
+        }),
+      },
+      heartbeatIntervalMillis: 1_000,
+      leaseDurationSeconds: 30,
+      reader: {
+        close: vi.fn().mockResolvedValue(undefined),
+        readForExecution: vi.fn().mockResolvedValue({
+          kind: 'v2_projection',
+          workflowVersion: projection(),
+        }),
+      },
+      registry: { execute: vi.fn() },
+      runStore: store,
+      workerId: 'worker-1',
+    });
+
+    await expect(
+      handler.handle(delivery(), { signal: new AbortController().signal }),
+    ).resolves.toEqual({ kind: 'committed' });
+    expect(complete).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lease: attemptLease,
+        outcome: {
+          status: 'executor_failure',
+          failureKind: 'retry',
+          errorKind: 'rate_limit',
+          possiblyDispatched: false,
+          safeErrorCode: 'execution.rate_limit',
         },
       }),
     );

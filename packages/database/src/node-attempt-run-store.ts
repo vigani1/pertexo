@@ -118,6 +118,22 @@ const heartbeatSchema = ownedLeaseSchema
 const safeErrorCodeSchema = z
   .string()
   .regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u);
+const executorFailureKindSchema = z.enum([
+  'failed',
+  'canceled',
+  'retry',
+  'outcome_unknown',
+]);
+const executorErrorKindSchema = z.enum([
+  'authentication',
+  'canceled',
+  'configuration',
+  'internal',
+  'network',
+  'provider',
+  'rate_limit',
+  'timeout',
+]);
 const completionOutcomeSchema = z.discriminatedUnion('status', [
   z.object({ status: z.literal('succeeded'), output: z.unknown() }).strict(),
   z
@@ -125,6 +141,15 @@ const completionOutcomeSchema = z.discriminatedUnion('status', [
       status: z.enum(['failed', 'canceled', 'timed_out', 'outcome_unknown']),
       safeErrorCode: safeErrorCodeSchema,
       errorSummary: z.string().max(2048).optional(),
+    })
+    .strict(),
+  z
+    .object({
+      status: z.literal('executor_failure'),
+      failureKind: executorFailureKindSchema,
+      errorKind: executorErrorKindSchema,
+      possiblyDispatched: z.boolean(),
+      safeErrorCode: safeErrorCodeSchema,
     })
     .strict(),
 ]);
@@ -154,6 +179,13 @@ export type NodeAttemptCompletion =
       status: 'failed' | 'canceled' | 'timed_out' | 'outcome_unknown';
       safeErrorCode: string;
       errorSummary?: string;
+    }>
+  | Readonly<{
+      status: 'executor_failure';
+      failureKind: z.output<typeof executorFailureKindSchema>;
+      errorKind: z.output<typeof executorErrorKindSchema>;
+      possiblyDispatched: boolean;
+      safeErrorCode: string;
     }>;
 
 export type CompleteNodeAttemptResult =
@@ -1033,6 +1065,9 @@ export function createNodeAttemptRunStore(
             const locked = await client.query<{
               attempt_status: string;
               error_summary: string | null;
+              executor_error_kind: string | null;
+              executor_failure_kind: string | null;
+              executor_possibly_dispatched: boolean | null;
               fence_token: string;
               lease_valid: boolean;
               lease_expires_at: Date | null;
@@ -1040,12 +1075,16 @@ export function createNodeAttemptRunStore(
               node_status: string;
               output_ref: unknown;
               safe_error_code: string | null;
+              retry_decision: string | null;
             }>(
               `select attempt.status attempt_status,attempt.fence_token,
                       attempt.lease_owner,attempt.lease_expires_at,
                       (attempt.lease_expires_at > clock_timestamp()) lease_valid,
                       attempt.output_ref,attempt.safe_error_code,
-                      attempt.error_summary,node.status node_status
+                       attempt.error_summary,attempt.executor_failure_kind,
+                       attempt.executor_error_kind,
+                       attempt.executor_possibly_dispatched,
+                       attempt.retry_decision,node.status node_status
                from app.node_attempts attempt
                join app.node_runs node
                  on node.workspace_id=attempt.workspace_id
@@ -1068,12 +1107,19 @@ export function createNodeAttemptRunStore(
             );
             const row = locked.rows[0];
             if (row === undefined) throw new NodeAttemptStateCorruptError();
+            const executorOutcome =
+              input.outcome.status === 'executor_failure'
+                ? input.outcome
+                : undefined;
+            const durableStatus =
+              executorOutcome !== undefined ? 'failed' : input.outcome.status;
             const safeErrorCode =
               input.outcome.status === 'succeeded'
                 ? null
                 : input.outcome.safeErrorCode;
             const errorSummary =
-              input.outcome.status === 'succeeded'
+              input.outcome.status === 'succeeded' ||
+              input.outcome.status === 'executor_failure'
                 ? null
                 : (input.outcome.errorSummary ?? null);
             if (
@@ -1090,11 +1136,18 @@ export function createNodeAttemptRunStore(
                   ? null
                   : serializeStoredExecutionValueV1(row.output_ref);
               if (
-                row.attempt_status !== input.outcome.status ||
-                row.node_status !== input.outcome.status ||
+                row.attempt_status !== durableStatus ||
+                (executorOutcome === undefined &&
+                  row.node_status !== durableStatus) ||
                 persistedOutput !== serializedOutput ||
                 row.safe_error_code !== safeErrorCode ||
-                row.error_summary !== errorSummary
+                row.error_summary !== errorSummary ||
+                (executorOutcome !== undefined &&
+                  (row.executor_failure_kind !== executorOutcome.failureKind ||
+                    row.executor_error_kind !== executorOutcome.errorKind ||
+                    row.executor_possibly_dispatched !==
+                      executorOutcome.possiblyDispatched ||
+                    row.retry_decision === null))
               )
                 throw new NodeAttemptStateCorruptError();
               if (receiptRow.completed_at === null)
@@ -1121,19 +1174,59 @@ export function createNodeAttemptRunStore(
 
             await client.query(
               `update app.node_attempts
-               set status=$3,lease_owner=null,lease_expires_at=null,
-                   output_ref=$4::jsonb,safe_error_code=$5,error_summary=$6,
-                   completed_at=clock_timestamp(),updated_at=clock_timestamp()
-               where workspace_id=$1 and id=$2`,
+                set status=$3,lease_owner=null,lease_expires_at=null,
+                    output_ref=$4::jsonb,safe_error_code=$5,error_summary=$6,
+                    executor_failure_kind=$7,executor_error_kind=$8,
+                    executor_possibly_dispatched=$9,retry_decision=$10,
+                    completed_at=clock_timestamp(),updated_at=clock_timestamp()
+                where workspace_id=$1 and id=$2`,
               [
                 input.lease.workspaceId,
                 input.lease.attemptId,
-                input.outcome.status,
+                durableStatus,
                 serializedOutput,
                 safeErrorCode,
                 errorSummary,
+                executorOutcome?.failureKind ?? null,
+                executorOutcome?.errorKind ?? null,
+                executorOutcome?.possiblyDispatched ?? null,
+                executorOutcome === undefined ? null : 'pending',
               ],
             );
+            if (executorOutcome !== undefined) {
+              const outboxEventId = randomUUID();
+              const payload = {
+                schemaVersion: 1,
+                workspaceId: input.lease.workspaceId,
+                runId: input.lease.runId,
+                outboxEventId,
+                ...(input.traceparent === undefined
+                  ? {}
+                  : { traceparent: input.traceparent }),
+              } as const;
+              await client.query(
+                `insert into app.outbox_events (
+                   id,workspace_id,job_name,schema_version,aggregate_type,
+                   aggregate_id,payload,payload_checksum
+                 ) values ($1,$2,'advance-workflow-run',1,'workflow-run',$3,$4::jsonb,$5)`,
+                [
+                  outboxEventId,
+                  input.lease.workspaceId,
+                  input.lease.runId,
+                  serializeStoredExecutionJsonValue(payload),
+                  canonicalOutboxPayloadChecksum(payload),
+                ],
+              );
+              await completeReceipt(
+                client,
+                input.lease.workspaceId,
+                input.lease.delivery,
+              );
+              return Object.freeze({
+                kind: 'committed' as const,
+                outboxEventId,
+              });
+            }
             const node = await client.query(
               `update app.node_runs
                set status=$3,output_ref=$4::jsonb,safe_error_code=$5,
@@ -1142,7 +1235,7 @@ export function createNodeAttemptRunStore(
               [
                 input.lease.workspaceId,
                 input.lease.nodeRunId,
-                input.outcome.status,
+                durableStatus,
                 serializedOutput,
                 safeErrorCode,
                 input.lease.attemptId,
