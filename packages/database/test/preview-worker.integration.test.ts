@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
-import type { PoolClient } from 'pg';
+import type { DatabaseError, PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -20,8 +20,16 @@ import {
   type PreviewAttemptLease,
   type PreviewDelivery,
 } from '../src/preview-execution.js';
+import {
+  artifactStorageKey,
+  createPendingPreviewArtifact,
+} from '../src/artifacts.js';
 import { canonicalOutboxPayloadChecksum } from '../src/outbox.js';
 import { migrateDatabase } from '../src/migrations.js';
+import {
+  checkDatabaseReadiness,
+  EXPECTED_MIGRATION_HEAD,
+} from '../src/readiness.js';
 import { PHASE3_COMPATIBILITY_EXPECTATION } from './phase3-compatibility-fixture.js';
 import { databaseSchema } from '../src/schema.js';
 import { parseWorkspaceId, withTenantScopedClient } from '../src/workspace.js';
@@ -61,6 +69,17 @@ const ownerPool = new Pool({
   connectionString: databaseUrl(migrationBaseUrl),
   max: 1,
 });
+
+function expectPgCode(code: string): (error: unknown) => boolean {
+  return (error: unknown): boolean => {
+    let current: unknown = error;
+    while (current instanceof Error) {
+      if ((current as DatabaseError).code === code) return true;
+      current = current.cause;
+    }
+    return false;
+  };
+}
 
 async function withOwnerRole<T>(
   work: (client: PoolClient) => Promise<T>,
@@ -350,6 +369,99 @@ function scopedQuery<T extends Record<string, unknown>>(
 }
 
 describe('worker-side preview execution seam', () => {
+  it('reports the preview artifact ownership migration and least-privilege grants ready', async () => {
+    await expect(
+      checkDatabaseReadiness(apiPool, {
+        ownerRole: 'pertexo_owner',
+        workerRuntimeRole: 'pertexo_worker',
+      }),
+    ).resolves.toMatchObject({ migrationHead: EXPECTED_MIGRATION_HEAD });
+    await expect(
+      checkDatabaseReadiness(workerPool, {
+        ownerRole: 'pertexo_owner',
+        workerRuntimeRole: 'pertexo_worker',
+      }),
+    ).resolves.toMatchObject({ migrationHead: EXPECTED_MIGRATION_HEAD });
+  });
+
+  it('binds preview artifacts to their owner and enforces inherited retention', async () => {
+    const previewDeadline = new Date(Date.now() + 15 * 60_000);
+    const accepted = await acceptFixture({ expiresAt: previewDeadline });
+    const artifactId = randomUUID();
+    await withTenantScopedClient(workerPool, { workspaceId }, (client) =>
+      createPendingPreviewArtifact(
+        {
+          db: drizzle(client, { schema: databaseSchema }),
+          workspaceId: parseWorkspaceId(workspaceId),
+        },
+        {
+          artifactId,
+          byteLength: 3,
+          expiresAt: previewDeadline,
+          mediaType: 'application/octet-stream',
+          previewRunId: accepted.previewRunId,
+          purpose: 'node-output',
+          sha256: 'a'.repeat(64),
+          storageKey: artifactStorageKey(workspaceId, artifactId),
+        },
+      ),
+    );
+    const linked = await scopedQuery<{
+      artifact_expires_at: Date;
+      owner_id: string;
+      owner_kind: string;
+      preview_expires_at: Date;
+    }>(
+      `select artifact.expires_at as artifact_expires_at,
+              link.owner_id,link.owner_kind,
+              preview.expires_at as preview_expires_at
+       from app.artifact_links link
+       join app.artifacts artifact
+         on artifact.workspace_id=link.workspace_id
+        and artifact.id=link.artifact_id
+       join app.preview_runs preview
+         on preview.workspace_id=link.workspace_id
+        and preview.id=link.owner_id
+       where link.workspace_id=$1 and link.artifact_id=$2`,
+      [workspaceId, artifactId],
+    );
+    expect(linked.rows[0]).toMatchObject({
+      owner_id: accepted.previewRunId,
+      owner_kind: 'preview_run',
+    });
+    expect(linked.rows[0]?.artifact_expires_at.getTime()).toBe(
+      linked.rows[0]?.preview_expires_at.getTime(),
+    );
+
+    const overRetainedArtifactId = randomUUID();
+    await expect(
+      withTenantScopedClient(workerPool, { workspaceId }, (client) =>
+        createPendingPreviewArtifact(
+          {
+            db: drizzle(client, { schema: databaseSchema }),
+            workspaceId: parseWorkspaceId(workspaceId),
+          },
+          {
+            artifactId: overRetainedArtifactId,
+            byteLength: 3,
+            expiresAt: new Date(previewDeadline.getTime() + 1),
+            mediaType: 'application/octet-stream',
+            previewRunId: accepted.previewRunId,
+            purpose: 'node-output',
+            sha256: 'b'.repeat(64),
+            storageKey: artifactStorageKey(workspaceId, overRetainedArtifactId),
+          },
+        ),
+      ),
+    ).rejects.toSatisfy(expectPgCode('23514'));
+    const rolledBack = await scopedQuery<{ count: string }>(
+      `select count(*)::text as count from app.artifacts
+       where workspace_id=$1 and id=$2`,
+      [workspaceId, overRetainedArtifactId],
+    );
+    expect(rolledBack.rows[0]).toEqual({ count: '0' });
+  });
+
   it('claims a queued attempt with pinned identity and completes truthfully', async () => {
     const claimed = await claimFixture(
       await acceptFixture(),

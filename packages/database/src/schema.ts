@@ -355,6 +355,10 @@ export const artifacts = appSchema.table(
       .notNull(),
   },
   (table) => [
+    uniqueIndex('artifacts_workspace_identity_unique').on(
+      table.workspaceId,
+      table.id,
+    ),
     uniqueIndex('artifacts_storage_key_idx').on(table.storageKey),
     index('artifacts_workspace_status_idx').on(
       table.workspaceId,
@@ -811,6 +815,46 @@ export const previewAttempts = appSchema.table(
     index('preview_attempts_claim_idx')
       .on(table.status, table.leaseExpiresAt, table.id)
       .where(sql`${table.status} in ('queued', 'running')`),
+  ],
+);
+
+export const artifactLinks = appSchema.table(
+  'artifact_links',
+  {
+    workspaceId: uuid('workspace_id').notNull(),
+    artifactId: uuid('artifact_id').notNull(),
+    ownerKind: varchar('owner_kind', { length: 32 }).notNull(),
+    ownerId: uuid('owner_id').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [
+        table.workspaceId,
+        table.artifactId,
+        table.ownerKind,
+        table.ownerId,
+      ],
+      name: 'artifact_links_identity_unique',
+    }),
+    foreignKey({
+      columns: [table.workspaceId, table.artifactId],
+      foreignColumns: [artifacts.workspaceId, artifacts.id],
+      name: 'artifact_links_artifact_fk',
+    }).onDelete('restrict'),
+    foreignKey({
+      columns: [table.workspaceId, table.ownerId],
+      foreignColumns: [previewRuns.workspaceId, previewRuns.id],
+      name: 'artifact_links_preview_run_fk',
+    }).onDelete('restrict'),
+    index('artifact_links_owner_idx').on(
+      table.workspaceId,
+      table.ownerKind,
+      table.ownerId,
+      table.artifactId,
+    ),
   ],
 );
 

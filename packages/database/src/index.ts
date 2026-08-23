@@ -70,6 +70,7 @@ export {
   claimDueUnfinalizedArtifacts,
   completeArtifactRemoval,
   createPendingArtifact,
+  createPendingPreviewArtifact,
   finalizeArtifactUpload,
   readArtifactCapacity,
 } from './artifacts.js';
@@ -81,6 +82,7 @@ export type {
   ClaimDueUnfinalizedArtifactsInput,
   CompleteArtifactRemovalInput,
   CreatePendingArtifactInput,
+  CreatePendingPreviewArtifactInput,
   FinalizeArtifactInput,
 } from './artifacts.js';
 export { createWorkspaceDatabase } from './database.js';

@@ -515,7 +515,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0022_preview_execution.sql',
+          migrationHead: '0023_preview_artifact_ownership.sql',
           role: 'pertexo_worker',
         });
       } finally {
@@ -541,7 +541,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0022_preview_execution.sql',
+        migrationHead: '0023_preview_artifact_ownership.sql',
         role: 'pertexo_worker',
       });
       const catalog = await readinessPool.query<{
@@ -780,7 +780,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0022_preview_execution.sql',
+        migrationHead: '0023_preview_artifact_ownership.sql',
       });
     } finally {
       await readinessPool.end();
@@ -913,7 +913,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         workerRuntimeRole: 'pertexo_worker',
       }),
     ).resolves.toMatchObject({
-      migrationHead: '0022_preview_execution.sql',
+      migrationHead: '0023_preview_artifact_ownership.sql',
     });
     await readinessPool.end();
   });

@@ -1,7 +1,7 @@
 import { and, asc, eq, lte, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
-import { artifacts } from './schema.js';
+import { artifactLinks, artifacts } from './schema.js';
 import type { WorkspaceTransaction } from './workspace.js';
 
 export const ARTIFACT_STATUS = {
@@ -44,6 +44,9 @@ const pendingArtifactSchema = metadataSchema.extend({
     .max(64)
     .regex(/^[a-z][a-z0-9-]{0,63}$/u),
 });
+const pendingPreviewArtifactSchema = pendingArtifactSchema.extend({
+  previewRunId: z.uuid(),
+});
 const finalizeArtifactSchema = metadataSchema.extend({ workspaceId: z.uuid() });
 const claimInputSchema = z.object({
   limit: z.number().int().min(1).max(100),
@@ -52,6 +55,9 @@ const claimOneInputSchema = z.object({ artifactId: z.uuid() });
 const removalInputSchema = z.object({ artifactId: z.uuid() });
 
 export type CreatePendingArtifactInput = z.input<typeof pendingArtifactSchema>;
+export type CreatePendingPreviewArtifactInput = z.input<
+  typeof pendingPreviewArtifactSchema
+>;
 export type FinalizeArtifactInput = z.input<typeof finalizeArtifactSchema>;
 export type ClaimDueUnfinalizedArtifactsInput = z.input<
   typeof claimInputSchema
@@ -175,6 +181,26 @@ export async function createPendingArtifact(
   if (artifact === undefined) {
     throw new Error('Pending artifact insert returned no row');
   }
+  return artifact;
+}
+
+/**
+ * Creates preview artifact metadata and its immutable owner link in the same
+ * tenant transaction. PostgreSQL independently enforces that the artifact
+ * expiry cannot exceed the owning preview's retention deadline.
+ */
+export async function createPendingPreviewArtifact(
+  transaction: WorkspaceTransaction,
+  input: CreatePendingPreviewArtifactInput,
+): Promise<ArtifactRecord> {
+  const parsed = pendingPreviewArtifactSchema.parse(input);
+  const artifact = await createPendingArtifact(transaction, parsed);
+  await transaction.db.insert(artifactLinks).values({
+    artifactId: artifact.id,
+    ownerId: parsed.previewRunId,
+    ownerKind: 'preview_run',
+    workspaceId: transaction.workspaceId,
+  });
   return artifact;
 }
 

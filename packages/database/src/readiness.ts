@@ -8,7 +8,7 @@ import {
   type CompatibilityReleaseExpectationSet,
 } from './compatibility-release.js';
 
-export const EXPECTED_MIGRATION_HEAD = '0022_preview_execution.sql';
+export const EXPECTED_MIGRATION_HEAD = '0023_preview_artifact_ownership.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -44,6 +44,7 @@ interface ReadinessRow {
   phase3_schema_compatible: boolean;
   phase4_connections_compatible: boolean;
   phase4_integration_usage_compatible: boolean;
+  phase4_preview_artifacts_compatible: boolean;
   execution_values_compatible: boolean;
   coordinator_run_store_compatible: boolean;
   postgres_major: number;
@@ -929,6 +930,63 @@ export async function checkDatabaseReadiness(
         and not has_table_privilege(current_user, 'app.workflow_integration_usage', 'TRIGGER')
       ) as phase4_integration_usage_compatible,
       (
+        (select count(*) = 5 from pg_attribute
+         where attrelid = to_regclass('app.artifact_links')
+           and attnum > 0 and not attisdropped)
+        and exists (
+          select 1 from pg_constraint
+          where conrelid = to_regclass('app.artifact_links')
+            and conname = 'artifact_links_identity_unique'
+            and contype = 'p'
+        )
+        and exists (
+          select 1 from pg_constraint
+          where conrelid = to_regclass('app.artifact_links')
+            and conname = 'artifact_links_artifact_fk'
+            and contype = 'f'
+        )
+        and exists (
+          select 1 from pg_constraint
+          where conrelid = to_regclass('app.artifact_links')
+            and conname = 'artifact_links_preview_run_fk'
+            and contype = 'f'
+        )
+        and exists (
+          select 1 from pg_trigger
+          where tgrelid = to_regclass('app.artifact_links')
+            and tgname = 'artifact_link_preview_retention'
+            and not tgisinternal
+        )
+        and exists (
+          select 1 from pg_class protected
+          where protected.oid = to_regclass('app.artifact_links')
+            and protected.relrowsecurity
+            and protected.relforcerowsecurity
+            and pg_get_userbyid(protected.relowner) = $1
+        )
+        and exists (
+          select 1 from pg_policy policy
+          where policy.polrelid = to_regclass('app.artifact_links')
+            and policy.polname = 'artifact_links_workspace_scope'
+            and policy.polcmd = '*'
+            and cardinality(policy.polroles) = 3
+            and (select oid from pg_roles where rolname = current_user) = any(policy.polroles)
+            and pg_get_expr(policy.polqual, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
+            and pg_get_expr(policy.polwithcheck, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
+        )
+        and has_table_privilege(current_user, 'app.artifact_links', 'SELECT')
+        and case when current_user = $2 then
+          has_table_privilege(current_user, 'app.artifact_links', 'INSERT')
+        else
+          not has_table_privilege(current_user, 'app.artifact_links', 'INSERT')
+        end
+        and not has_table_privilege(current_user, 'app.artifact_links', 'UPDATE')
+        and not has_table_privilege(current_user, 'app.artifact_links', 'DELETE')
+        and not has_table_privilege(current_user, 'app.artifact_links', 'TRUNCATE')
+        and not has_table_privilege(current_user, 'app.artifact_links', 'REFERENCES')
+        and not has_table_privilege(current_user, 'app.artifact_links', 'TRIGGER')
+      ) as phase4_preview_artifacts_compatible,
+      (
         select name
         from pertexo_internal.schema_migrations
         order by name desc
@@ -1017,6 +1075,11 @@ export async function checkDatabaseReadiness(
   if (!row.phase4_integration_usage_compatible) {
     throw new Error(
       'Workflow integration usage schema or grants are incompatible',
+    );
+  }
+  if (!row.phase4_preview_artifacts_compatible) {
+    throw new Error(
+      'Preview artifact ownership schema or grants are incompatible',
     );
   }
   const hasProtectedTableAccess =

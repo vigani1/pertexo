@@ -15,6 +15,7 @@ import {
   ConnectionUnavailableError,
   createConnectionDatabase,
   createPendingArtifact,
+  createPendingPreviewArtifact,
   createWorkspaceDatabase,
   finalizeArtifactUpload,
   type ConnectionDatabase,
@@ -71,6 +72,7 @@ type ArtifactDescriptor = Readonly<{
   mediaType: string;
   sha256: string;
   storageKey: string;
+  previewRunId?: string;
 }>;
 
 export interface WorkerArtifactPersistence {
@@ -247,6 +249,9 @@ function artifactFactory(
             storageKey,
             expiresAt,
             purpose: input.purpose,
+            ...(context.previewRunId === undefined
+              ? {}
+              : { previewRunId: context.previewRunId }),
             signal: input.signal,
           });
           const uploaded = await store.put({
@@ -298,15 +303,26 @@ function artifactPersistence(
       await database.withWorkspace(
         input.workspaceId,
         (transaction) =>
-          createPendingArtifact(transaction, {
-            artifactId: input.artifactId,
-            byteLength: input.byteLength,
-            mediaType: input.mediaType,
-            sha256: input.sha256,
-            storageKey: input.storageKey,
-            expiresAt: input.expiresAt,
-            purpose: input.purpose,
-          }),
+          input.previewRunId === undefined
+            ? createPendingArtifact(transaction, {
+                artifactId: input.artifactId,
+                byteLength: input.byteLength,
+                mediaType: input.mediaType,
+                sha256: input.sha256,
+                storageKey: input.storageKey,
+                expiresAt: input.expiresAt,
+                purpose: input.purpose,
+              })
+            : createPendingPreviewArtifact(transaction, {
+                artifactId: input.artifactId,
+                byteLength: input.byteLength,
+                mediaType: input.mediaType,
+                sha256: input.sha256,
+                storageKey: input.storageKey,
+                expiresAt: input.expiresAt,
+                purpose: input.purpose,
+                previewRunId: input.previewRunId,
+              }),
         { signal: input.signal },
       );
     },
