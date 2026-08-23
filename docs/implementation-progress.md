@@ -2193,6 +2193,14 @@ Current evidence:
   The disposable gate and all test-prefixed databases left by aborted attempts
   were removed. The user-owned shared `pertexo` database was not reset because
   it retains the previously documented historical `0012` checksum mismatch.
+- Independent fixed-head reviews of `67474b3...abb6ef3` returned NO-GO. The
+  Spec review found that production API composition omitted preview persistence
+  and release dependencies, so node-test routes were not registered. The
+  Standards review found that unsafe possibly dispatched cancellation/timeout
+  could become a definite control outcome, preview HTTP cancellation shared the
+  same defect, and provider-confirmed HTTP success could be replaced by an
+  artifact-persistence failure. The review gates remain open while those
+  findings receive regression fixes and a new fixed-head review.
 
 ## Phase 5 — Orchestration slice
 
