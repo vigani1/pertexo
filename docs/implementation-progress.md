@@ -1410,7 +1410,7 @@ Generic HTTP Request vertical slice:
 - [x] Add `workflow_integration_usage` as a transactionally rebuilt projection
       of the immutable published graph and prove provider/operation/connection
       impact and revocation queries without making it a second graph authority.
-- [ ] Keep `http.request@1` absent from placement/publication/admission until
+- [x] Keep `http.request@1` absent from placement/publication/admission until
       its connection, security, execution, artifact, telemetry, compatibility,
       and failure gates all pass; then prove additive old/new API-worker rollout
       and retained Phase 3 execution with no latest-version fallback.
@@ -1449,19 +1449,19 @@ Validate and test-execute preview vertical slice:
 
 Phase-wide verification and evidence gates:
 
-- [ ] Exercise every new contract's success, rejection, unknown-key, version,
+- [x] Exercise every new contract's success, rejection, unknown-key, version,
       and generated-artifact drift behavior; retain compile-time registry and
       server-only package-boundary proofs.
-- [ ] Prove authorization, tenant scope, use-case transactions, real adapters,
+- [x] Prove authorization, tenant scope, use-case transactions, real adapters,
       stable problems/safe logs, traces/metrics/audit/usage effects,
       idempotency/retry/timeout/cancellation, API/job documentation, and unit,
       real integration, happy-path, failure, crash, and security behavior for
       each released connection/node/preview capability.
-- [ ] Re-run all Phase 0D/0E and Phase 3 compatibility/recovery fixtures after
+- [x] Re-run all Phase 0D/0E and Phase 3 compatibility/recovery fixtures after
       the side-effecting registry release, including Redis loss, PostgreSQL
       loss, SSE reconstruction, duplicate delivery, cancellation, process
       termination/drain, and retained-old-version execution.
-- [ ] Run root `pnpm check`, clean zero-to-head and prior-head migration paths,
+- [x] Run root `pnpm check`, clean zero-to-head and prior-head migration paths,
       and the complete real-service integration matrix sequentially. Record
       exact commands, versions, assertion counts, timings, migration head,
       cleanup, and post-test dependency health.
@@ -2157,11 +2157,42 @@ Current evidence:
   bounded connection and artifact factories satisfy activation capability
   requirements, but their provider-facing methods receive zero calls; the
   production epoch-4 registry's HTTP transport is also instrumented and receives
-  zero calls. The
-  focused real PostgreSQL/Redis suite passes all three coordinator scenarios and
-  drops its disposable database afterward. This closes only the retained-old-
-  version happy-path item; the broader Phase 4 rollout and regression gates stay
-  unchecked.
+  zero calls. The focused real PostgreSQL/Redis suite passes all three
+  coordinator scenarios and
+  drops its disposable database afterward. This closes the retained-old-version
+  happy-path item; the fixed-head rollout and regression evidence follows.
+- Fixed implementation head `abb6ef32d7c70021cefdf79c06ef13ede64a30a4`
+  passes the Phase 4 completion matrix with Node.js 24.15.0, pnpm 11.22.0,
+  PostgreSQL 18.6, Redis 8.2.8, BullMQ 6.1.2, and S3Mock 5.1.0. Root
+  `/usr/bin/time -p pnpm check` passes formatting, ESLint, generated-contract
+  drift, all workspace typechecks and unit suites (including 222 API and 117
+  worker assertions), and all production builds in 40.91 seconds. A dedicated
+  disposable database migrates zero-to-head through
+  `0029_provider_idempotency_key_invariants.sql`; the supported prior-head
+  connection and preview-retention upgrade suites pass 12 assertions.
+- With the documented CI service environment, sequential package commands use
+  `vitest run --config vitest.integration.config.ts --no-file-parallelism`.
+  Artifact-store passes 2 assertions in 0.225 seconds, database passes 245
+  across 17 files in 21.17 seconds, worker passes 16 across five files in 85.88
+  seconds, and API passes 7 active assertions in 7.13 seconds. The separate
+  `PHASE0E_EXECUTION_INTEGRATION=true pnpm --filter @pertexo/worker test:phase0e`
+  passes five crash/restart/cancellation assertions in 41.53 seconds;
+  `API_SSE_RESILIENCE_INTEGRATION=true pnpm --filter @pertexo/api
+  test:sse-resilience` passes Redis-loss reconstruction in 7.31 seconds;
+  `WORKER_TRANSPORT_RESILIENCE=true pnpm --filter @pertexo/worker
+  test:resilience` passes sequential Redis/PostgreSQL loss and drain in 16.45
+  seconds; and `API_COMPATIBILITY_ROLLOUT_INTEGRATION=true pnpm --filter
+  @pertexo/api test:compatibility-rollout` passes the additive cohort assertion
+  in 1.30 seconds.
+- The matrix exposed a real role-awareness defect in preview-artifact readiness:
+  dispatcher readiness incorrectly required membership and privileges on the
+  API/worker artifact policy. Commit `abb6ef3` corrects the catalog check; its
+  targeted 17-assertion regression and the complete 245-assertion sequential
+  database matrix pass. After the recovery injections, PostgreSQL reports
+  ready, Redis returns `PONG`, and all three Compose dependencies report healthy.
+  The disposable gate and all test-prefixed databases left by aborted attempts
+  were removed. The user-owned shared `pertexo` database was not reset because
+  it retains the previously documented historical `0012` checksum mismatch.
 
 ## Later phases
 
