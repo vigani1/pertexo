@@ -235,13 +235,15 @@ prior-preview/status HTTP evidence, and the HTTP activation rollout. Commits
 `9d1fc7d`, `685ff8e`, and `d71564e` close bounded artifact-backed preview
 output, database-enforced ownership/retention inheritance, and authorized
 bounded/resumable deletion through the real maintenance transport and object
-store only with the mandatory `37a867f` review correction: one maintenance
+store only with the mandatory `37a867f` and `72d5bd5` review corrections: one maintenance
 consumer now routes both job kinds, cleanup waits for a terminal preview and a
 database-persisted upload-quiescence interval, object absence is confirmed
-before metadata removal, artifact-store readiness gates startup, and expired
-preview idempotency is retired. Commit `a3a03d8`, extended at `37a867f`,
+before metadata removal, a still-visible object durably schedules another pass,
+artifact-store readiness gates startup, the privileged database boundary
+independently requires terminal state, and expired preview idempotency is
+retired. Commit `a3a03d8`, extended at `37a867f` and `72d5bd5`,
 separately proves checksum-valid cleanup backfill on a real `0023` through
-`0025` migration. Commit `b850f53` closes automatic
+`0026` migration. Commit `b850f53` closes automatic
 reconciliation delivery. `963648c` proves that
 database-seam decisions and the real maintenance delivery survive process
 death, but its child fixture does not exercise the production handler,
@@ -342,6 +344,7 @@ plan.
 | `d71564e` | Durable preview cleanup | Schedules cleanup at acceptance, claims owned artifacts in bounded resumable batches, deletes object bytes before metadata, and finishes expired preview removal only through a tenant-checked security-definer function. Real maintenance transport and S3Mock are exercised. |
 | `a3a03d8` | Retention upgrade proof | Migrates a retained preview from exact prior head `0023` to `0024` and proves the backfilled cleanup payload, application-canonical checksum, trace context, and database-timed availability. |
 | `37a867f` | Maintenance review correction | Replaces competing same-queue consumers with one typed maintenance router; quarantines terminal artifacts beyond the bounded store-request uncertainty window; confirms object absence before metadata deletion; gates startup on bucket readiness; and retires expired preview idempotency in migration `0025`. |
+| `72d5bd5` | Cleanup recovery review correction | Turns a still-visible post-delete object into a durable continuation rather than an unrecoverable queue failure, and migration `0026` prevents direct worker-role invocation from deleting a nonterminal preview. |
 
 ### Verification summary
 
@@ -374,6 +377,12 @@ plan.
   reviews correctly blocked merge because separate consumers competed for the
   maintenance queue and cleanup could race an ambiguous upload; those findings
   are resolved in code and must be re-reviewed at the final immutable head.
+- The second Standards review found that failed object-absence confirmation
+  could stall without a durable successor and that the security-definer
+  function did not itself enforce terminal state. Commit `72d5bd5` resolves
+  both. Root `pnpm check`, 16 focused PostgreSQL scenarios, and four real
+  transport/object-store scenarios remain green; an exact-head re-review is
+  still required before merge.
 
 ### Deviation and interpretation register
 

@@ -1767,6 +1767,20 @@ Current evidence:
   fresh-PostgreSQL scenarios, and four real
   PostgreSQL/Redis/BullMQ/S3Mock transport scenarios in 13.36 seconds. Phase 4
   remains open for the independently listed crash, telemetry, and HTTP gates.
+- The next Standards review correctly kept merge blocked: a `HEAD` that still
+  observed bytes after deletion was classified as unrecoverable, and the
+  privileged final-delete function trusted the adapter's terminal guard.
+  Commit `72d5bd5` makes absence-confirmation failure call the durable finish
+  seam, which leaves metadata open, completes the current inbox receipt, and
+  schedules a successor cleanup delivery. Its two-attempt regression observes
+  the object first, then confirms absence and completes metadata on retry.
+  Migration `0026_preview_cleanup_terminal_guard.sql` independently locks and
+  validates terminal preview state inside the security-definer boundary; a
+  direct worker-role call against an expired queued preview returns false and
+  preserves both run and artifact. Root `pnpm check`, 16 focused PostgreSQL
+  scenarios, and four real PostgreSQL/Redis/BullMQ/S3Mock scenarios in 13.35
+  seconds pass at this correction. The exact corrected head still requires
+  independent re-review before merge.
 - At corrected documentation head `d3f1397`, root `pnpm check` passes all
   format, ESLint, generated-contract, typecheck, unit, and production-build
   gates. The dependency-ordered fresh real-service matrix passes against
