@@ -4,6 +4,7 @@ import { metrics, trace } from '@opentelemetry/api';
 import {
   platformExecutableRegistryHistory,
   platformRegistryReleaseSupport,
+  platformServingRegistryRelease,
   type PlatformReleaseCohort,
 } from '@pertexo/node-catalog';
 import {
@@ -227,8 +228,9 @@ export function createApiWorkflowRuntime(
   redisUrl: string,
   overrides: ApiWorkflowRuntimeOverrides = {},
 ): ApiWorkflowRuntime {
+  const releaseCohort = overrides.releaseCohort ?? 'core';
   const { readinessSupport, variants, definitionCatalog } =
-    coreWorkflowCompatibility(overrides.releaseCohort);
+    coreWorkflowCompatibility(releaseCohort);
   const database =
     overrides.database ??
     createWorkflowAuthoringDatabase(
@@ -277,8 +279,10 @@ export function createApiWorkflowRuntime(
   return Object.freeze({
     dependencies: Object.freeze({
       persistence: database,
+      nodeTestingPersistence: database,
       authorization: identityRuntime.dependencies.authorization,
       definitionCatalog,
+      nodeTestingRelease: platformServingRegistryRelease(releaseCohort),
       telemetry,
     }),
     runDependencies: Object.freeze({

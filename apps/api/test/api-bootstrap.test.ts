@@ -1,4 +1,7 @@
-import type { WorkspaceDatabase } from '@pertexo/database';
+import type {
+  WorkflowAuthoringDatabase,
+  WorkspaceDatabase,
+} from '@pertexo/database';
 import type {
   StructuredLogger,
   TelemetryLifecycle,
@@ -7,6 +10,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createApiApplication } from '../src/app.js';
 import type { IdentityWorkspaceDependencies } from '../src/identity-workspace/index.js';
+import {
+  GetPreviewRunUseCase,
+  TestWorkflowNodeUseCase,
+} from '../src/node-testing/use-case.js';
 import { ApiDrainState } from '../src/platform/health/drain-state.js';
 import type { ApiIdentityRuntime } from '../src/platform/identity/identity-runtime.module.js';
 import type { ApiWorkflowRuntime } from '../src/platform/workflow/workflow-runtime.module.js';
@@ -144,6 +151,23 @@ function workflowRuntime(
     },
     close,
   });
+}
+
+function workflowAuthoringDatabase(
+  close = vi.fn().mockResolvedValue(undefined),
+): WorkflowAuthoringDatabase {
+  return {
+    acceptPreview: () => Promise.reject(new Error('not used')),
+    readPreview: () => Promise.resolve(null),
+    createWorkflow: () => Promise.reject(new Error('not used')),
+    listWorkflows: () => Promise.resolve({ items: [] }),
+    getDraft: () => Promise.resolve(null),
+    getVersion: () => Promise.resolve(null),
+    listVersions: () => Promise.resolve({ items: [] }),
+    saveDraft: () => Promise.reject(new Error('not used')),
+    publishWorkflow: () => Promise.reject(new Error('not used')),
+    close,
+  };
 }
 
 describe('API bootstrap', () => {
@@ -336,6 +360,51 @@ describe('API bootstrap', () => {
     application = undefined;
     expect(identityClose).toHaveBeenCalledOnce();
     expect(workflowClose).toHaveBeenCalledOnce();
+  });
+
+  it('registers node-testing routes and providers with the production workflow runtime', async () => {
+    const selectedIdentityRuntime = identityRuntime();
+    application = await createApiApplication(config, {
+      ...dependencies(),
+      identityRuntime: selectedIdentityRuntime,
+      workflowOverrides: {
+        database: workflowAuthoringDatabase(),
+        runPersistence: {
+          start: () => Promise.reject(new Error('not used')),
+          get: () => Promise.resolve(undefined),
+          cancel: () => Promise.reject(new Error('not used')),
+        },
+        runStreamer: {
+          stream: () => ({
+            async *[Symbol.asyncIterator]() {
+              await Promise.resolve();
+              yield { id: 1, event: 'run.queued', data: '{}' };
+            },
+          }),
+        },
+      },
+    });
+    await application.init();
+
+    expect(application.get(TestWorkflowNodeUseCase)).toBeInstanceOf(
+      TestWorkflowNodeUseCase,
+    );
+    expect(application.get(GetPreviewRunUseCase)).toBeInstanceOf(
+      GetPreviewRunUseCase,
+    );
+
+    const testResponse = await application.inject({
+      method: 'POST',
+      url: '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/workflows/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/nodes/cccccccc-cccc-4ccc-8ccc-cccccccccccc/test',
+      payload: { mode: 'validate' },
+    });
+    expect(testResponse.statusCode).toBe(401);
+
+    const previewResponse = await application.inject({
+      method: 'GET',
+      url: '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/previews/dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+    });
+    expect(previewResponse.statusCode).toBe(401);
   });
 
   it('closes an injected identity runtime when database readiness fails', async () => {
