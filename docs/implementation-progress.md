@@ -1594,6 +1594,30 @@ Current evidence:
   files, ten worker, seven API) with the disposable database dropped
   afterward. The handler/consumer composition, crash-boundary proofs, and
   retention cleanup remain open before preview execution can activate.
+- Commit `2c1418a` composes preview execution onto the shared BullMQ
+  attempts queue behind an explicit job-kind router. The deep handler
+  claims through the durable seam, wraps raw executor payloads into the
+  strict stored-value envelope — failing closed via a lossless canonical
+  roundtrip plus structural JSON walk that rejects functions, symbols,
+  bigints, class instances, and host objects without silent truncation —
+  heartbeats the retention deadline and races it against execution so a
+  result resolved before expiry stays truthful while an expired run
+  completes `preview.deadline_exceeded`, and maps executor decision errors
+  through ADR 007 truth: pre-dispatch retryable failures complete as
+  `failed` with stable error-kind codes, possibly-dispatched ambiguity
+  becomes `outcome_unknown`, cancellation remains `canceled`, and
+  infrastructure faults propagate for bounded queue retries without
+  fabricating provider truth. The platform invoker resolves only the exact
+  pinned epoch/fingerprint from this artifact's compatibility history with
+  no latest-version fallback; unsupported identities fail closed as
+  `preview.executor_unavailable`. `execute-preview-attempt` joins the
+  dispatcher capability allowlist, and its serving-role store composes
+  only when that kind is enabled, closing its pool with the consumer.
+  Nine handler unit assertions pass with worker typecheck, ESLint,
+  Prettier, repository-wide `pnpm check`, and the fresh-database
+  integration matrix at 249 assertions. Real-transport delivery proofs,
+  pre/post-dispatch SIGKILL boundaries, prior-preview scope/expiry, safe
+  status reads, and retention cleanup remain open before activation.
 - No Phase 4 registry release or publishable node capability is claimed
   complete yet. The managed connection API includes its SSRF-enforcing test
   endpoint and a staged generic HTTP executor candidate now exists, while
