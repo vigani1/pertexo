@@ -23,6 +23,10 @@ const TRANSPORT_JOB_BY_NAME = Object.freeze({
     jobName: JOB_NAME.expireArtifacts,
     queueName: QUEUE_FOR_JOB[JOB_NAME.expireArtifacts],
   },
+  [JOB_NAME.sweepExpiredPreviews]: {
+    jobName: JOB_NAME.sweepExpiredPreviews,
+    queueName: QUEUE_FOR_JOB[JOB_NAME.sweepExpiredPreviews],
+  },
 } as const satisfies Record<JobName, TransportJob>);
 
 export function transportJobForName(jobName: JobName): TransportJob {

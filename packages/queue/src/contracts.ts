@@ -67,6 +67,17 @@ export const ExpireArtifactsJobSchema = z
   })
   .strict();
 
+/**
+ * Identifier-less maintenance tick. The durable sweep cursor lives in
+ * PostgreSQL; the job only asks the maintenance consumer to run one bounded
+ * resumable batch.
+ */
+export const SweepExpiredPreviewsJobSchema = z
+  .object({
+    ...commonJobShape,
+  })
+  .strict();
+
 export type AdvanceWorkflowRunJob = z.infer<typeof AdvanceWorkflowRunJobSchema>;
 export type ExecuteNodeAttemptJob = z.infer<typeof ExecuteNodeAttemptJobSchema>;
 export type ExecutePreviewAttemptJob = z.infer<
@@ -76,6 +87,9 @@ export type ReconcileWorkflowTriggersJob = z.infer<
   typeof ReconcileWorkflowTriggersJobSchema
 >;
 export type ExpireArtifactsJob = z.infer<typeof ExpireArtifactsJobSchema>;
+export type SweepExpiredPreviewsJob = z.infer<
+  typeof SweepExpiredPreviewsJobSchema
+>;
 
 export interface QueueJobDataByName {
   [JOB_NAME.advanceWorkflowRun]: AdvanceWorkflowRunJob;
@@ -83,6 +97,7 @@ export interface QueueJobDataByName {
   [JOB_NAME.executePreviewAttempt]: ExecutePreviewAttemptJob;
   [JOB_NAME.reconcileWorkflowTriggers]: ReconcileWorkflowTriggersJob;
   [JOB_NAME.expireArtifacts]: ExpireArtifactsJob;
+  [JOB_NAME.sweepExpiredPreviews]: SweepExpiredPreviewsJob;
 }
 
 export type QueueJob = {
@@ -112,6 +127,10 @@ export const QUEUE_JOB_REGISTRY = Object.freeze({
   [JOB_NAME.expireArtifacts]: {
     queueName: QUEUE_FOR_JOB[JOB_NAME.expireArtifacts],
     schema: ExpireArtifactsJobSchema,
+  },
+  [JOB_NAME.sweepExpiredPreviews]: {
+    queueName: QUEUE_FOR_JOB[JOB_NAME.sweepExpiredPreviews],
+    schema: SweepExpiredPreviewsJobSchema,
   },
 } as const);
 
