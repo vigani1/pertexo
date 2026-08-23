@@ -1222,33 +1222,27 @@ describeIntegration('Phase 3 coordinator consumer', () => {
     await new Promise<void>((resolve) =>
       setTimeout(resolve, Math.max(0, Date.parse(dueAt) - Date.now() + 25)),
     );
-    const restartedScanner = createDueNodeWakeupScanner(
-      runtimeOptions.database,
-    );
-    try {
-      await expect(restartedScanner.claimDueWakeups(10)).resolves.toBe(2);
-    } finally {
-      await restartedScanner.close();
-    }
-    await expect(
-      workerQuery<{ attempts: string; wakeups: string }>(
-        `select
-           (select count(*)::text from app.node_attempts attempt
-             join app.node_runs node on node.workspace_id=attempt.workspace_id
-              and node.id=attempt.node_run_id
-             where node.workflow_run_id=$1) attempts,
-           (select count(*)::text from app.outbox_events
-             where aggregate_id=$1 and job_name='advance-workflow-run') wakeups`,
-        [runId],
-      ),
-    ).resolves.toEqual([{ attempts: '2', wakeups: '2' }]);
-
-    const unavailableRedis = new URL(redisUrl);
-    unavailableRedis.port = '1';
     const afterClaim = await createCoordinatorRuntime(runtimeOptions, {
       engine: retryEngine,
     });
     await afterClaim.consumer.waitUntilReady(5_000);
+    await waitFor(
+      () =>
+        workerQuery<{ attempts: string; wakeups: string }>(
+          `select
+             (select count(*)::text from app.node_attempts attempt
+               join app.node_runs node on node.workspace_id=attempt.workspace_id
+                and node.id=attempt.node_run_id
+               where node.workflow_run_id=$1) attempts,
+             (select count(*)::text from app.outbox_events
+               where aggregate_id=$1 and job_name='advance-workflow-run') wakeups`,
+          [runId],
+        ),
+      (rows) => rows[0]?.attempts === '2' && rows[0].wakeups === '2',
+    );
+
+    const unavailableRedis = new URL(redisUrl);
+    unavailableRedis.port = '1';
     const redisError = vi
       .spyOn(console, 'error')
       .mockImplementation(() => undefined);
