@@ -1399,7 +1399,7 @@ Generic HTTP Request vertical slice:
       before dispatch; graph JSON, executable envelopes, jobs, checkpoints,
       events, outputs, logs, traces, metrics, and public problems retain only
       opaque connection IDs and redacted metadata.
-- [ ] Commit ADR 007 dispatch evidence before network I/O. Exercise `safe`,
+- [x] Commit ADR 007 dispatch evidence before network I/O. Exercise `safe`,
       `idempotent_with_key`, and `unsafe` policy explicitly; reuse the stable
       provider key on every permitted retry; expose adapter retry hints without
       hidden SDK retries; classify definite, retryable, rate-limited, timeout,
@@ -1559,6 +1559,21 @@ Current evidence:
   KMS failures, bounded material sizes, issued-key zeroization, and exact AWS
   KMS encryption-context binding. Database typecheck, scoped ESLint, and
   Prettier pass; the suite ran twice to shake race-order flakiness.
+- Commit `bd2989b` closes the ADR 007 dispatch-evidence box for the staged
+  HTTP slice. The executor keeps its manifest-pinned `unsafe` identity, and
+  the complete outcome vocabulary is now exercised at both the policy layer
+  (`http-outcome-policy.test.ts`: all three side-effect classes, stable
+  provider-key reuse exactly when permitted, closed error taxonomy) and the
+  executor boundary (`http-request.test.ts`): post-dispatch 429 is a definite
+  rate-limited failure with zeroized body bytes; ambiguous post-dispatch
+  timeout becomes `outcome_unknown`; pre-dispatch timeout is a truthful
+  bounded retry with no dispatch marker committed; cancellation after the
+  durable marker propagates the transport's own dispatch truth as `canceled`
+  rather than a provider or unknown disguise. Combined with the earlier
+  worker ordering proof (executor start -> durable dispatch marker ->
+  provider I/O), every enumerated transport outcome now has executable
+  evidence before activation. Integrations suite passes 78 assertions;
+  focused typecheck, ESLint, and Prettier pass.
 - No Phase 4 registry release or publishable node capability is claimed
   complete yet. The managed connection API includes its SSRF-enforcing test
   endpoint and a staged generic HTTP executor candidate now exists, while
