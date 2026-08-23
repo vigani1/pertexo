@@ -19,27 +19,75 @@ export type WorkspaceTransactionOptions = Readonly<{
   signal?: AbortSignal;
 }>;
 
+export type TenantTransactionScope = Readonly<{
+  workspaceId: string;
+  actorId?: string;
+}>;
+
 export function parseWorkspaceId(value: string): WorkspaceId {
   return workspaceIdSchema.parse(value) as WorkspaceId;
 }
 
 async function assertNoWorkspaceContext(client: PoolClient): Promise<void> {
-  const result = await client.query<{ workspace_id: string | null }>(
-    "select current_setting('app.workspace_id', true) as workspace_id",
+  const result = await client.query<{
+    workspace_id: string | null;
+    actor_id: string | null;
+  }>(
+    "select current_setting('app.workspace_id', true) as workspace_id, current_setting('app.actor_id', true) as actor_id",
   );
-  const value = result.rows[0]?.workspace_id;
-  if (value !== undefined && value !== null && value !== '') {
+  const row = result.rows[0];
+  if (
+    row?.workspace_id !== undefined &&
+    row.workspace_id !== null &&
+    row.workspace_id !== ''
+  ) {
     throw new Error('Pooled PostgreSQL client retained workspace context');
+  }
+  if (
+    row?.actor_id !== undefined &&
+    row.actor_id !== null &&
+    row.actor_id !== ''
+  ) {
+    throw new Error('Pooled PostgreSQL client retained actor context');
   }
 }
 
-export async function withWorkspaceTransaction<T>(
+async function verifyTenantContext(
+  client: PoolClient,
+  scope: TenantTransactionScope,
+): Promise<void> {
+  const result = await client.query<{
+    workspace_id: string | null;
+    actor_id: string | null;
+  }>(
+    "select current_setting('app.workspace_id', true) as workspace_id, current_setting('app.actor_id', true) as actor_id",
+  );
+  const row = result.rows[0];
+  if (row?.workspace_id !== scope.workspaceId) {
+    throw new Error('PostgreSQL tenant context verification failed');
+  }
+  if (scope.actorId !== undefined && row.actor_id !== scope.actorId) {
+    throw new Error('PostgreSQL tenant context verification failed');
+  }
+}
+
+/**
+ * Runs one workspace-scoped transaction on a single checked-out pool client
+ * with fail-closed hygiene: absent-context proof before use, read-back
+ * verification of every configured setting, wire-level cancellation through
+ * the abort signal, and client destruction whenever transaction rollback or
+ * context cleanup fails so a contaminated client can never be reused.
+ */
+export async function withTenantScopedClient<T>(
   pool: Pool,
-  workspaceIdInput: string,
-  operation: (transaction: WorkspaceTransaction) => Promise<T>,
+  scopeInput: TenantTransactionScope,
+  operation: (client: PoolClient) => Promise<T>,
   options: WorkspaceTransactionOptions = {},
 ): Promise<T> {
-  const workspaceId = parseWorkspaceId(workspaceIdInput);
+  const scope: TenantTransactionScope = {
+    ...scopeInput,
+    workspaceId: parseWorkspaceId(scopeInput.workspaceId),
+  };
   const abortError = new Error('Workspace transaction aborted');
   abortError.name = 'AbortError';
   if (options.signal?.aborted) throw abortError;
@@ -72,19 +120,19 @@ export async function withWorkspaceTransaction<T>(
     await assertNoWorkspaceContext(client);
     await client.query('begin');
     transactionOpen = true;
-    await client.query("select set_config('app.workspace_id', $1, true)", [
-      workspaceId,
-    ]);
-
-    const contextResult = await client.query<{ workspace_id: string }>(
-      "select current_setting('app.workspace_id', true) as workspace_id",
-    );
-    if (contextResult.rows[0]?.workspace_id !== workspaceId) {
-      throw new Error('PostgreSQL workspace context verification failed');
+    if (scope.actorId === undefined) {
+      await client.query("select set_config('app.workspace_id', $1, true)", [
+        scope.workspaceId,
+      ]);
+    } else {
+      await client.query(
+        "select set_config('app.workspace_id', $1, true), set_config('app.actor_id', $2, true)",
+        [scope.workspaceId, scope.actorId],
+      );
     }
+    await verifyTenantContext(client, scope);
 
-    const db = drizzle(client, { schema: databaseSchema });
-    const result = await operation(Object.freeze({ db, workspaceId }));
+    const result = await operation(client);
     await client.query('commit');
     transactionOpen = false;
     await assertNoWorkspaceContext(client);
@@ -102,7 +150,7 @@ export async function withWorkspaceTransaction<T>(
         if (options.signal?.aborted) throw abortError;
         throw new AggregateError(
           [error, rollbackError],
-          'Workspace transaction rollback failed',
+          'Tenant-scoped transaction rollback failed',
         );
       }
     }
@@ -116,11 +164,29 @@ export async function withWorkspaceTransaction<T>(
       if (options.signal?.aborted) throw abortError;
       throw new AggregateError(
         [error, cleanupError],
-        'Workspace context cleanup failed',
+        'Tenant context cleanup failed',
       );
     }
     throw error;
   } finally {
     options.signal?.removeEventListener('abort', releaseForAbort);
   }
+}
+
+export async function withWorkspaceTransaction<T>(
+  pool: Pool,
+  workspaceIdInput: string,
+  operation: (transaction: WorkspaceTransaction) => Promise<T>,
+  options: WorkspaceTransactionOptions = {},
+): Promise<T> {
+  const workspaceId = parseWorkspaceId(workspaceIdInput);
+  return withTenantScopedClient(
+    pool,
+    { workspaceId },
+    async (client) => {
+      const db = drizzle(client, { schema: databaseSchema });
+      return operation(Object.freeze({ db, workspaceId }));
+    },
+    options,
+  );
 }

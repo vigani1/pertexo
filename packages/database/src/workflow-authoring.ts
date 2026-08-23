@@ -34,7 +34,10 @@ import {
   type AcceptPreviewRunInput,
   type PreviewRunRecord,
 } from './preview-execution.js';
-import { withWorkspaceTransaction } from './workspace.js';
+import {
+  withTenantScopedClient,
+  withWorkspaceTransaction,
+} from './workspace.js';
 
 const uuidSchema = z.uuid();
 const retainedChecksumSchema = z.string().regex(/^wf:v1:sha256:[0-9a-f]{64}$/u);
@@ -467,24 +470,14 @@ async function withAuthorTransaction<T>(
   actorIdInput: string,
   operation: (client: PoolClient) => Promise<T>,
 ): Promise<T> {
-  const workspaceId = uuidSchema.parse(workspaceIdInput);
-  const actorId = uuidSchema.parse(actorIdInput);
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    await client.query(
-      "select set_config('app.workspace_id', $1, true), set_config('app.actor_id', $2, true)",
-      [workspaceId, actorId],
-    );
-    const result = await operation(client);
-    await client.query('commit');
-    return result;
-  } catch (error: unknown) {
-    await client.query('rollback').catch(() => undefined);
-    throw error;
-  } finally {
-    client.release();
-  }
+  return withTenantScopedClient(
+    pool,
+    {
+      workspaceId: uuidSchema.parse(workspaceIdInput),
+      actorId: uuidSchema.parse(actorIdInput),
+    },
+    operation,
+  );
 }
 
 async function requireWorkspaceAuthor(

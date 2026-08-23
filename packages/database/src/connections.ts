@@ -5,6 +5,7 @@ import type { DatabaseError, PoolClient } from 'pg';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from './config.js';
+import { withTenantScopedClient } from './workspace.js';
 
 const uuidSchema = z.uuid();
 const digestSchema = z.string().regex(/^[0-9a-f]{64}$/u);
@@ -384,26 +385,13 @@ async function withConnectionTransaction<T>(
   operation: (client: PoolClient, workspaceId: string) => Promise<T>,
 ): Promise<T> {
   const workspaceId = uuidSchema.parse(workspaceIdInput);
-  const parsedActorId =
-    actorId === undefined ? undefined : identifierSchema.parse(actorId);
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    await client.query(
-      actorId === undefined
-        ? "select set_config('app.workspace_id', $1, true)"
-        : "select set_config('app.workspace_id', $1, true), set_config('app.actor_id', $2, true)",
-      actorId === undefined ? [workspaceId] : [workspaceId, parsedActorId],
-    );
-    const result = await operation(client, workspaceId);
-    await client.query('commit');
-    return result;
-  } catch (error: unknown) {
-    await client.query('rollback').catch(() => undefined);
-    throw error;
-  } finally {
-    client.release();
-  }
+  return withTenantScopedClient(
+    pool,
+    actorId === undefined
+      ? { workspaceId }
+      : { workspaceId, actorId: identifierSchema.parse(actorId) },
+    (client) => operation(client, workspaceId),
+  );
 }
 
 async function requireConnectionManager(
