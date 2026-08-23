@@ -2214,8 +2214,9 @@ Authority and entry gate:
       bounded loops, canonical invocation scopes, and arbitrary-cycle rejection.
 - [x] Reuse ADRs 005–007 and 010 for PostgreSQL authority, coordinator/attempt
       separation, cancellation/retry truth, and exact executor compatibility.
-- [ ] Record a new ADR before implementation only if a slice requires a decision
-      not already fixed by those accepted ADRs or the authoritative plan.
+- [x] Record ADR 017 before Condition implementation to fix the node contract,
+      authoritative port selection, branch reachability/scope, checkpoint V2,
+      and pre-Merge reconvergence rejection not specified by ADR 008.
 
 Incremental publishable slices, in required order:
 
