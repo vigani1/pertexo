@@ -139,10 +139,17 @@ export {
 export {
   acceptPreviewRun,
   readPreviewRun,
+  claimPreviewDelivery,
+  markPreviewDispatched,
+  heartbeatPreviewLease,
+  completePreviewAttempt,
+  reconcileExpiredPreviewAttempt,
   PREVIEW_RETENTION_MAX_MS,
   PREVIEW_STATUS,
   PreviewAcceptanceCorruptError,
   PreviewAdmissionDeniedError,
+  PreviewAttemptStateError,
+  PreviewDeliveryMismatchError,
   PreviewIdempotencyConflictError,
   PriorPreviewInputUnavailableError,
 } from './preview-execution.js';
@@ -151,6 +158,13 @@ export type {
   AcceptPreviewRunInput,
   PreviewStatus,
   PreviewRunRecord,
+  PreviewDelivery,
+  PreviewAttemptLease,
+  PreviewClaimResult,
+  PreviewTerminalOutcome,
+  PreviewCompletionResult,
+  PreviewHeartbeatResult,
+  PreviewReconciliationOutcome,
 } from './preview-execution.js';
 export type {
   AcceptedWorkflowRun,
