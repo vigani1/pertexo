@@ -20,7 +20,7 @@ not complete a phase.
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
-| Phase 4 — first side-effecting integration slice | In progress | ADRs 007/016; migration head `0029_provider_idempotency_key_invariants.sql`; regression matrix complete at `abb6ef3`; final review corrections remain for production preview-route composition and truthful unsafe post-dispatch cancellation/persistence outcomes |
+| Phase 4 — first side-effecting integration slice | In progress | ADRs 007/016; migration head `0030_coordinator_retry_decisions.sql`; production preview composition and terminal-truth review corrections complete through `7f16f9a`; final fixed-head Spec/Standards review pending |
 | Phase 5 — orchestration slice | Not started | — |
 | Phase 6 — V1 providers and triggers | Not started | — |
 | Phase 7 — production operations | Not started | — |
@@ -2217,6 +2217,25 @@ Current evidence:
   those post-response failures are now ambiguous and unsafe HTTP execution
   preserves `outcome_unknown`. The focused secure HTTP and HTTP Request suites
   pass 65 assertions, with integrations typecheck and scoped lint green.
+- Commit `7f16f9a` replaces ad hoc executor-error shapes with the finite
+  server-only `NodeExecutorFailure` taxonomy and keeps adapter retry output as
+  evidence rather than a decision. Migration
+  `0030_coordinator_retry_decisions.sql` stores a complete pending executor
+  failure tuple on the terminal attempt while the node remains nonterminal. The
+  coordinator resolves the pinned `engine.retry@1` maximum-attempt/error policy,
+  deterministic bounded jitter, and exact PostgreSQL due time, then atomically
+  commits `node.retry_scheduled` or a truthful terminal result. The worker never
+  sleeps, calculates backoff, or treats BullMQ delivery as a business retry.
+- Failing-first tests covered typed retry propagation, generic unsafe preview
+  cancellation, malformed taxonomy values, pending attempt persistence,
+  deterministic/capped jitter, definite cancellation, and coordinator retry
+  commit. Focused suites pass 24 Node SDK, 80 integrations, 90 engine, 59
+  database unit, 125 worker, and 31 coordinator PostgreSQL assertions. Root
+  `pnpm check` passes. A complete sequential database matrix against disposable
+  `pertexo_gate_0030` passes all 246 assertions across 17 files, including
+  zero-to-head migration, readiness, RLS, and due admission; the gate database
+  was removed afterward. The user-owned shared `pertexo` database remains
+  untouched with its documented historical `0012` checksum mismatch.
 
 ## Phase 5 — Orchestration slice
 
