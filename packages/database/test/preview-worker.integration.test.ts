@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import type { PoolClient } from 'pg';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {
   acceptPreviewRun,
@@ -742,27 +742,39 @@ describe('worker-side preview execution seam', () => {
     });
     await expireLease(claimed.fixture.previewAttemptId);
 
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2099-01-01T00:00:00.000Z'));
     const redelivered = await reconcilePreviewDelivery(workerPool, {
       attemptFenceToken: reconciliation.attemptFenceToken,
       delivery: reconciliation.delivery,
       previewAttemptId: claimed.fixture.previewAttemptId,
       previewRunId: claimed.fixture.previewRunId,
       workspaceId,
-    });
+    }).finally(() => vi.useRealTimers());
     expect(redelivered).toMatchObject({ kind: 'redelivered' });
     if (redelivered.kind !== 'redelivered')
       throw new Error('expected execution redelivery');
     const replacement = await scopedQuery<{
+      available_at: Date;
+      database_now: Date;
       payload: Record<string, unknown>;
       payload_checksum: string;
     }>(
-      `select payload,payload_checksum from app.outbox_events
+      `select payload,payload_checksum,available_at,
+              clock_timestamp() as database_now
+       from app.outbox_events
        where workspace_id=$1 and id=$2 and job_name='execute-preview-attempt'`,
       [workspaceId, redelivered.executionOutboxEventId],
     );
     const replacementRow = replacement.rows[0];
     if (replacementRow === undefined)
       throw new Error('replacement execution outbox missing');
+    expect(
+      Math.abs(
+        replacementRow.available_at.getTime() -
+          replacementRow.database_now.getTime(),
+      ),
+    ).toBeLessThan(5_000);
     await expect(
       completePreviewAttempt(workerPool, {
         delivery: claimed.fixture.delivery,

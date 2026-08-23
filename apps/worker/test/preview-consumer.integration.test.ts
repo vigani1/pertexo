@@ -736,7 +736,7 @@ describeIntegration('preview execution real transport', () => {
     }
   });
 
-  it('recovers truthful preview state across real SIGKILL boundaries', async () => {
+  it('preserves durable reconciliation decisions after lease-owner SIGKILL', async () => {
     const cases = [
       {
         complete: false,
@@ -827,11 +827,11 @@ describeIntegration('preview execution real transport', () => {
     );
     expect(signals).toEqual(cases.map(() => 'SIGKILL'));
     expect(fixtures.map(({ evidence }) => evidence.injectionPoint)).toEqual([
-      'preview.claim_committed_before_dispatch',
-      'preview.dispatch_committed_before_outcome',
-      'preview.dispatch_committed_before_outcome',
-      'preview.dispatch_committed_before_outcome',
-      'preview.outcome_committed_before_queue_ack',
+      'preview.claim_committed_before_process_exit',
+      'preview.dispatch_marker_committed_before_process_exit',
+      'preview.dispatch_marker_committed_before_process_exit',
+      'preview.dispatch_marker_committed_before_process_exit',
+      'preview.outcome_committed_before_process_exit',
     ]);
 
     const reconciliationRuntime = await createPreviewReconciliationRuntime({

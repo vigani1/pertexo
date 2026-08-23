@@ -49,10 +49,10 @@ try {
     attemptFenceToken: claimed.lease.attemptFenceToken,
     injectionPoint:
       input.complete === true
-        ? 'preview.outcome_committed_before_queue_ack'
+        ? 'preview.outcome_committed_before_process_exit'
         : input.markDispatched === true
-          ? 'preview.dispatch_committed_before_outcome'
-          : 'preview.claim_committed_before_dispatch',
+          ? 'preview.dispatch_marker_committed_before_process_exit'
+          : 'preview.claim_committed_before_process_exit',
     pid: process.pid,
     providerIdempotencyKey: claimed.lease.providerIdempotencyKey ?? null,
   });

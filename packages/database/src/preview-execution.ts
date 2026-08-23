@@ -644,7 +644,10 @@ async function insertPreviewOutboxDelivery(
     `insert into app.outbox_events (
        id,workspace_id,job_name,schema_version,aggregate_type,aggregate_id,
        payload,payload_checksum,available_at
-     ) values ($1,$2,$3,1,'preview-run',$4,$5::jsonb,$6,$7)`,
+     ) values (
+       $1,$2,$3,1,'preview-run',$4,$5::jsonb,$6,
+       coalesce($7::timestamptz,clock_timestamp())
+     )`,
     [
       outboxEventId,
       input.workspaceId,
@@ -652,7 +655,7 @@ async function insertPreviewOutboxDelivery(
       input.previewRunId,
       JSON.stringify(payload),
       payloadChecksum,
-      input.availableAt ?? new Date(),
+      input.availableAt ?? null,
     ],
   );
   if (inserted.rowCount !== 1)
