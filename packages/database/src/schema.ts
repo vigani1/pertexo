@@ -194,7 +194,7 @@ export const auditEvents = appSchema.table(
     traceId: varchar('trace_id', { length: 128 }),
     metadata: jsonb('metadata').notNull(),
     occurredAt: timestamp('occurred_at', { withTimezone: true, mode: 'date' })
-      .defaultNow()
+      .default(sql`clock_timestamp()`)
       .notNull(),
   },
   (table) => [

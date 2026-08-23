@@ -487,6 +487,43 @@ describe('worker-side preview execution seam', () => {
     ).rejects.toSatisfy(expectPgCode('55000'));
   });
 
+  it('rejects a no-op replacement for the immutable-pin trigger function', async () => {
+    const originalDefinition = await withOwnerRole(async (client) => {
+      const definition = await client.query<{ definition: string }>(
+        `select pg_get_functiondef(
+           to_regprocedure('app.reject_preview_run_pin_change()')
+         ) as definition`,
+      );
+      await client.query(`
+        create or replace function app.reject_preview_run_pin_change()
+        returns trigger
+        language plpgsql
+        set search_path = pg_catalog, pg_temp
+        as $function$
+        begin
+          return new;
+        end;
+        $function$
+      `);
+      const stored = definition.rows[0]?.definition;
+      if (stored === undefined)
+        throw new Error('immutable preview pin function is missing');
+      return stored;
+    });
+    try {
+      await expect(
+        checkDatabaseReadiness(apiPool, {
+          ownerRole: 'pertexo_owner',
+          workerRuntimeRole: 'pertexo_worker',
+        }),
+      ).rejects.toThrow(
+        'Preview terminal fact schema or grants are incompatible',
+      );
+    } finally {
+      await withOwnerRole((client) => client.query(originalDefinition));
+    }
+  });
+
   it('binds preview artifacts to their owner and enforces inherited retention', async () => {
     const previewDeadline = new Date(Date.now() + 15 * 60_000);
     const accepted = await acceptFixture({ expiresAt: previewDeadline });

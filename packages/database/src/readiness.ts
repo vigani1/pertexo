@@ -1128,8 +1128,11 @@ export async function checkDatabaseReadiness(
         and exists (
           select 1 from pg_proc
           where oid = to_regprocedure('app.reject_preview_run_pin_change()')
-            and prosrc like '%OLD.request_id%OLD.trace_id%OLD.provider_key%OLD.operation_key%'
-            and prosrc like '%NEW.request_id%NEW.trace_id%NEW.provider_key%NEW.operation_key%'
+            and md5(prosrc) = 'fd27005cfd2f52a46881a99549bf609c'
+            and pg_get_userbyid(proowner) = $1
+            and prolang = (select oid from pg_language where lanname = 'plpgsql')
+            and proconfig = array['search_path=pg_catalog, pg_temp']::text[]
+            and not prosecdef
         )
         and exists (
           select 1 from pg_class protected
