@@ -1618,6 +1618,27 @@ Current evidence:
   integration matrix at 249 assertions. Real-transport delivery proofs,
   pre/post-dispatch SIGKILL boundaries, prior-preview scope/expiry, safe
   status reads, and retention cleanup remain open before activation.
+- Commit `886cdb3` closes the real-transport delivery proof. The suite
+  provisions its own disposable PostgreSQL database, migrates through the
+  shipped CLI path, and activates this worker artifact's derived release
+  through the audited maintenance seam — prepare, API/worker target
+  probes, named preactivation cohort, approval, and activation against
+  the seeded predecessor — instead of trusting the migration bootstrap
+  fingerprint. An accepted preview then flows acceptance -> outbox ->
+  BullMQ (deterministic `outbox-<id>` job) -> routed consumer -> platform
+  invoker -> pinned core.set executor, completing succeeded with the
+  canonical stored-value envelope. The inbox receipt completes atomically
+  inside the business transaction; a safe node truthfully records no
+  dispatch marker; an exact redelivery leaves fence, outcome, and receipt
+  byte-for-byte untouched. Seam completions now require the delivery
+  identity so receipt completion cannot be skipped. Focused verification:
+  nine handler unit assertions, six real-PostgreSQL seam assertions, one
+  real-transport assertion; repository-wide `pnpm check` and the
+  fresh-database matrix (250 database-side assertions across the new
+  suites included) remain green. Remaining before activation: pre/post-
+  dispatch SIGKILL crash boundaries through the composed handler,
+  prior-preview scope/expiry e2e evidence, safe status reads over HTTP,
+  and the retention sweep job.
 - No Phase 4 registry release or publishable node capability is claimed
   complete yet. The managed connection API includes its SSRF-enforcing test
   endpoint and a staged generic HTTP executor candidate now exists, while
