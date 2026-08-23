@@ -385,8 +385,7 @@ describe('http.request@1 server executor', () => {
     });
     expect(predispatchTimeout.beforeDispatch).not.toHaveBeenCalled();
 
-    // Cancellation stays cancellation and is never disguised as a provider
-    // or unknown outcome.
+    // Once dispatched, cancellation cannot disprove an unsafe provider effect.
     await expect(
       createHttpRequestExecutorRegistration({
         httpClient: streamingHttpClient(async (request) => {
@@ -399,7 +398,7 @@ describe('http.request@1 server executor', () => {
         }),
       }).execute(invocation(runtime().value)),
     ).rejects.toMatchObject({
-      decision: { kind: 'canceled', errorKind: 'canceled' },
+      decision: { kind: 'outcome_unknown', errorKind: 'provider' },
       possiblyDispatched: true,
     });
   });
@@ -499,7 +498,7 @@ describe('http.request@1 server executor', () => {
       }).execute(invocation(artifactState.value)),
     ).rejects.toEqual(
       new HttpRequestExecutorError(
-        { kind: 'failed', errorKind: 'internal' },
+        { kind: 'outcome_unknown', errorKind: 'provider' },
         true,
       ),
     );

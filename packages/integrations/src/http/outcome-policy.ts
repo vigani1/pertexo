@@ -60,7 +60,9 @@ export function classifySecureHttpError(
   if (!validPolicy(sideEffectClass, providerKeyPresent))
     return failed('configuration');
   if (error.code === SECURE_HTTP_ERROR_CODE.canceled)
-    return Object.freeze({ kind: 'canceled', errorKind: 'canceled' });
+    return sideEffectClass === 'unsafe' && error.possiblyDispatched
+      ? Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' })
+      : Object.freeze({ kind: 'canceled', errorKind: 'canceled' });
   const errorKind = secureErrorKind(error);
   if (error.classification === 'ambiguous')
     return retryOrUnknown(

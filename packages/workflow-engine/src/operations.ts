@@ -947,6 +947,13 @@ export async function executeNodeAttempt(
   } catch (error) {
     if (input.signal.aborted || isAbortError(error))
       operationError('attempt_aborted', 'node attempt was aborted');
+    if (
+      error instanceof Error &&
+      (error as { decision?: { kind?: unknown } }).decision?.kind ===
+        'outcome_unknown' &&
+      (error as { possiblyDispatched?: unknown }).possiblyDispatched === true
+    )
+      throw error;
     operationError('attempt_invalid', 'node execution failed');
   }
   return {

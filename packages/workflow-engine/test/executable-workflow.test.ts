@@ -1694,6 +1694,32 @@ describe('Phase 3 production operations', () => {
       }),
     ).rejects.toMatchObject({ code: 'attempt_aborted' });
 
+    const unknownOutcome = Object.assign(
+      new Error('bounded executor outcome'),
+      {
+        decision: { kind: 'outcome_unknown', errorKind: 'provider' },
+        possiblyDispatched: true,
+      },
+    );
+    await expect(
+      executeNodeAttempt({
+        runId: 'run-1',
+        nodeRunId: 'node-run-1',
+        attemptId: 'attempt-unknown',
+        executable,
+        workflowVersionId: 'version-1',
+        invocationKey: invocationKey({
+          workflowVersionId: 'version-1',
+          nodeId: 'set',
+        }),
+        nodeId: 'set',
+        runInput: { name: 'Ada', count: 2 },
+        completedNodeOutputs: { manual: { base: 3 } },
+        registry: { execute: () => Promise.reject(unknownOutcome) },
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toBe(unknownOutcome);
+
     await expect(
       executeNodeAttempt({
         runId: 'run-1',

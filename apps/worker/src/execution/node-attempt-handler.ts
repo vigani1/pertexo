@@ -105,6 +105,28 @@ function abortError(): DOMException {
   return new DOMException('The operation was aborted', 'AbortError');
 }
 
+function providerOutcomeUnknown(error: unknown): error is Error &
+  Readonly<{
+    decision: Readonly<{
+      kind: 'outcome_unknown';
+      errorKind: 'network' | 'provider' | 'timeout';
+    }>;
+    possiblyDispatched: true;
+  }> {
+  if (!(error instanceof Error)) return false;
+  const candidate = error as {
+    decision?: { kind?: unknown; errorKind?: unknown };
+    possiblyDispatched?: unknown;
+  };
+  return (
+    candidate.decision?.kind === 'outcome_unknown' &&
+    ['network', 'provider', 'timeout'].includes(
+      String(candidate.decision.errorKind),
+    ) &&
+    candidate.possiblyDispatched === true
+  );
+}
+
 function waitForHeartbeat(
   milliseconds: number,
   signal: AbortSignal,
@@ -132,13 +154,16 @@ async function completeControlOutcome(
   reason: 'canceled' | 'timed_out',
   delivery: AttemptDelivery,
   signal: AbortSignal,
+  dispatched: boolean,
 ): Promise<NodeAttemptHandlerResult> {
+  const outcomeUnknown = lease.sideEffectClass === 'unsafe' && dispatched;
   const completed = await dependencies.runStore.complete({
     lease,
     outcome: {
-      status: reason,
-      safeErrorCode:
-        reason === 'canceled'
+      status: outcomeUnknown ? 'outcome_unknown' : reason,
+      safeErrorCode: outcomeUnknown
+        ? 'execution.outcome_unknown'
+        : reason === 'canceled'
           ? 'execution.canceled'
           : 'execution.deadline_exceeded',
     },
@@ -239,6 +264,7 @@ export function createNodeAttemptHandler(
           inputs.abortReason,
           delivery,
           context.signal,
+          false,
         );
       }
       const executionAbort = new AbortController();
@@ -390,11 +416,30 @@ export function createNodeAttemptHandler(
             durableAbortReason,
             delivery,
             context.signal,
+            dispatched,
           );
         if (heartbeatFailure !== undefined)
           throw heartbeatFailure instanceof Error
             ? heartbeatFailure
             : new Error('Node attempt heartbeat failed');
+        if (providerOutcomeUnknown(error)) {
+          const completed = await dependencies.runStore.complete({
+            lease: claimed.lease,
+            outcome: {
+              status: 'outcome_unknown',
+              safeErrorCode: `execution.${error.decision.errorKind}_outcome_unknown`,
+            },
+            ...(delivery.data.traceparent === undefined
+              ? {}
+              : { traceparent: delivery.data.traceparent }),
+            signal: context.signal,
+          });
+          return await completionResult(
+            dependencies,
+            claimed.lease,
+            completed.kind,
+          );
+        }
         if (
           error instanceof WorkflowEngineError &&
           error.code === 'attempt_invalid'

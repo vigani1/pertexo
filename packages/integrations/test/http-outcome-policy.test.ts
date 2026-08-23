@@ -63,6 +63,13 @@ describe('ADR 007 HTTP outcome policy', () => {
         false,
       ),
     ).toEqual({ kind: 'outcome_unknown', errorKind: 'timeout' });
+    expect(
+      classifySecureHttpError(
+        new SecureHttpError('canceled', 'definite_failure', true),
+        'unsafe',
+        false,
+      ),
+    ).toEqual({ kind: 'outcome_unknown', errorKind: 'provider' });
   });
 
   it('does not retry definite unsafe failures or accept a missing provider key', () => {

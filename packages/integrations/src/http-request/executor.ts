@@ -339,7 +339,7 @@ async function writeArtifact(
 ) {
   if (artifacts === undefined)
     throw new HttpRequestExecutorError(
-      Object.freeze({ kind: 'failed', errorKind: 'internal' }),
+      Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' }),
       true,
     );
   let reference;
@@ -353,7 +353,7 @@ async function writeArtifact(
     });
   } catch {
     throw new HttpRequestExecutorError(
-      Object.freeze({ kind: 'failed', errorKind: 'internal' }),
+      Object.freeze({ kind: 'outcome_unknown', errorKind: 'provider' }),
       true,
     );
   }
