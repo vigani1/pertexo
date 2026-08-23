@@ -143,6 +143,7 @@ export interface NodeRunAdmissionPlan {
   readonly invocationKey: string;
   readonly nodeId: string;
   readonly sideEffectClass: SideEffectClass;
+  readonly providerIdempotencyKey?: string;
 }
 
 export interface WorkflowTransitionPlan {

@@ -9,7 +9,7 @@ import {
 } from './compatibility-release.js';
 
 export const EXPECTED_MIGRATION_HEAD =
-  '0028_preview_terminal_fact_corrections.sql';
+  '0029_provider_idempotency_key_invariants.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{

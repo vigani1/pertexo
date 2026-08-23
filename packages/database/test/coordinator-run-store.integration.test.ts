@@ -515,7 +515,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0028_preview_terminal_fact_corrections.sql',
+          migrationHead: '0029_provider_idempotency_key_invariants.sql',
           role: 'pertexo_worker',
         });
       } finally {
@@ -541,7 +541,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0028_preview_terminal_fact_corrections.sql',
+        migrationHead: '0029_provider_idempotency_key_invariants.sql',
         role: 'pertexo_worker',
       });
       const catalog = await readinessPool.query<{
@@ -780,7 +780,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0028_preview_terminal_fact_corrections.sql',
+        migrationHead: '0029_provider_idempotency_key_invariants.sql',
       });
     } finally {
       await readinessPool.end();
@@ -811,6 +811,59 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         signal: new AbortController().signal,
       }),
     ).resolves.toEqual({ kind: 'unsupported_checkpoint' });
+  });
+
+  it('rejects provider keys outside idempotent-with-key node and attempt rows', async () => {
+    const runId = await insertRun({});
+    const nodeRunId = randomUUID();
+    await asRuntime(workerBaseUrl, workspaceA, (client) =>
+      client.query(
+        `insert into app.node_runs (
+           id,workspace_id,workflow_run_id,node_id,invocation_key,
+           branch_context,status,side_effect_class
+         ) values ($1,$2,$3,'constraint-node',$4,'{}'::jsonb,'ready','safe')`,
+        [nodeRunId, workspaceA, runId, `${versionA}|constraint-node|b:|i:`],
+      ),
+    );
+    for (const [sideEffectClass, providerKey, suffix] of [
+      ['safe', 'invalid', 'safe'],
+      ['idempotent_with_key', null, 'idempotent'],
+    ] as const)
+      await expect(
+        asRuntime(workerBaseUrl, workspaceA, (client) =>
+          client.query(
+            `insert into app.node_runs (
+               id,workspace_id,workflow_run_id,node_id,invocation_key,
+               branch_context,status,side_effect_class,provider_idempotency_key
+             ) values ($1,$2,$3,$4,$5,'{}'::jsonb,'ready',$6,$7)`,
+            [
+              randomUUID(),
+              workspaceA,
+              runId,
+              `invalid-${suffix}`,
+              `${versionA}|invalid-${suffix}|b:|i:`,
+              sideEffectClass,
+              providerKey,
+            ],
+          ),
+        ),
+      ).rejects.toMatchObject({ code: '23514' });
+    for (const [sideEffectClass, providerKey] of [
+      ['safe', 'invalid'],
+      ['idempotent_with_key', null],
+    ] as const) {
+      await expect(
+        asRuntime(workerBaseUrl, workspaceA, (client) =>
+          client.query(
+            `insert into app.node_attempts (
+               id,workspace_id,node_run_id,attempt_number,status,
+               side_effect_class,provider_idempotency_key
+             ) values ($1,$2,$3,1,'ready',$4,$5)`,
+            [randomUUID(), workspaceA, nodeRunId, sideEffectClass, providerKey],
+          ),
+        ),
+      ).rejects.toMatchObject({ code: '23514' });
+    }
   });
 
   it('preserves legacy invocation keys and admits only canonical engine identities', async () => {
@@ -913,7 +966,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         workerRuntimeRole: 'pertexo_worker',
       }),
     ).resolves.toMatchObject({
-      migrationHead: '0028_preview_terminal_fact_corrections.sql',
+      migrationHead: '0029_provider_idempotency_key_invariants.sql',
     });
     await readinessPool.end();
   });

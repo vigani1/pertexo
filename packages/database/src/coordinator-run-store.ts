@@ -39,13 +39,13 @@ const nodeRunAdmissionSchema = z
   .object({
     invocationKey: z.string().min(1).max(256),
     nodeId: z.string().min(1).max(128),
+    providerIdempotencyKey: z.string().min(1).max(256).optional(),
     sideEffectClass: sideEffectClassSchema,
   })
   .strict();
 const attemptAdmissionSchema = nodeRunAdmissionSchema
   .extend({
     attemptNumber: z.number().int().positive(),
-    providerIdempotencyKey: z.string().min(1).max(256).optional(),
   })
   .strict();
 const engineEventSchema = z
@@ -1024,15 +1024,17 @@ function validateTransitionPlan(
     const materialized = nodeAdmissions.get(attempt.invocationKey);
     if (
       attemptKeys.has(attempt.invocationKey) ||
-      attempt.sideEffectClass !== 'safe' ||
-      attempt.providerIdempotencyKey !== undefined ||
+      (attempt.sideEffectClass === 'idempotent_with_key') !==
+        (attempt.providerIdempotencyKey !== undefined) ||
       invocation?.nodeId !== attempt.nodeId ||
       invocation.status !== 'running' ||
       invocation.attemptNumber !== attempt.attemptNumber ||
       !plan.checkpoint.admittedInvocationKeys.includes(attempt.invocationKey) ||
       (materialized !== undefined &&
         (materialized.nodeId !== attempt.nodeId ||
-          materialized.sideEffectClass !== attempt.sideEffectClass))
+          materialized.sideEffectClass !== attempt.sideEffectClass ||
+          materialized.providerIdempotencyKey !==
+            attempt.providerIdempotencyKey))
     )
       throw new CoordinatorPlanInvalidError();
     attemptKeys.add(attempt.invocationKey);
@@ -1040,7 +1042,8 @@ function validateTransitionPlan(
   for (const admission of plan.nodeRunAdmissions) {
     const invocation = invocations.get(admission.invocationKey);
     if (
-      admission.sideEffectClass !== 'safe' ||
+      (admission.sideEffectClass === 'idempotent_with_key') !==
+        (admission.providerIdempotencyKey !== undefined) ||
       invocation?.nodeId !== admission.nodeId ||
       (invocation.status !== 'ready' &&
         invocation.status !== 'running' &&
@@ -2037,13 +2040,13 @@ export function createCoordinatorRunStore(
                 attempt === undefined ? undefined : randomUUID();
               await client.query(
                 `insert into app.node_runs (
-                 id, workspace_id, workflow_run_id, node_id, invocation_key,
-                 branch_context, status, side_effect_class,
-                 current_attempt_id, current_attempt_number, completed_at
-               ) values (
-                 $1,$2,$3,$4,$5,'{}'::jsonb,$6::varchar,'safe',$7,$8,
-                 case when $6::varchar = 'skipped' then clock_timestamp() else null end
-               )`,
+                  id, workspace_id, workflow_run_id, node_id, invocation_key,
+                  branch_context, status, side_effect_class, provider_idempotency_key,
+                  current_attempt_id, current_attempt_number, completed_at
+                ) values (
+                  $1,$2,$3,$4,$5,'{}'::jsonb,$6::varchar,$7,$8,$9,$10,
+                  case when $6::varchar = 'skipped' then clock_timestamp() else null end
+                )`,
                 [
                   nodeRunId,
                   workspaceId,
@@ -2051,6 +2054,8 @@ export function createCoordinatorRunStore(
                   admission.nodeId,
                   admission.invocationKey,
                   invocation.status === 'skipped' ? 'skipped' : 'ready',
+                  admission.sideEffectClass,
+                  admission.providerIdempotencyKey ?? null,
                   attemptId ?? null,
                   attempt?.attemptNumber ?? null,
                 ],
@@ -2069,11 +2074,13 @@ export function createCoordinatorRunStore(
                 const existing = await client.query<{
                   id: string;
                   current_attempt_number: number | null;
+                  provider_idempotency_key: string | null;
                   side_effect_class: string;
                   status: string;
                   is_due: boolean;
                 }>(
-                  `select id, current_attempt_number, side_effect_class, status,
+                  `select id, current_attempt_number, side_effect_class,
+                        provider_idempotency_key, status,
                         coalesce(retry_due_at, resume_at) is not null
                           and coalesce(retry_due_at, resume_at) <= clock_timestamp()
                           as is_due
@@ -2095,7 +2102,9 @@ export function createCoordinatorRunStore(
                   node.is_due &&
                   node.current_attempt_number === attempt.attemptNumber - 1;
                 if (
-                  node?.side_effect_class !== 'safe' ||
+                  node?.side_effect_class !== attempt.sideEffectClass ||
+                  node.provider_idempotency_key !==
+                    (attempt.providerIdempotencyKey ?? null) ||
                   (!isFirstReadyAttempt && !isDueAttempt)
                 )
                   throw new CoordinatorPlanInvalidError();
@@ -2123,14 +2132,16 @@ export function createCoordinatorRunStore(
                 throw new CoordinatorPlanInvalidError();
               await client.query(
                 `insert into app.node_attempts (
-                 id, workspace_id, node_run_id, attempt_number, status,
-                 side_effect_class, provider_idempotency_key
-               ) values ($1,$2,$3,$4,'ready','safe',null)`,
+                  id, workspace_id, node_run_id, attempt_number, status,
+                  side_effect_class, provider_idempotency_key
+                ) values ($1,$2,$3,$4,'ready',$5,$6)`,
                 [
                   ids.attemptId,
                   workspaceId,
                   ids.nodeRunId,
                   attempt.attemptNumber,
+                  attempt.sideEffectClass,
+                  attempt.providerIdempotencyKey ?? null,
                 ],
               );
               const outboxEventId = randomUUID();

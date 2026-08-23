@@ -23,6 +23,7 @@ import {
   executeNodeAttempt,
   invocationKey,
   parseWorkflowExecutableV2,
+  providerIdempotencyKey,
   resolveSingleNodePreviewInput,
   verifyWorkflowExecutableV2,
   WORKFLOW_EXECUTABLE_LIMITS_V2,
@@ -772,10 +773,56 @@ describe('Phase 3 production operations', () => {
       ],
       signal: new AbortController().signal,
     });
-    expect(completedManual.attempts[0]).toMatchObject({
+    const setAttempt = completedManual.attempts[0];
+    if (setAttempt === undefined) throw new Error('set was not admitted');
+    const expectedProviderKey = providerIdempotencyKey({
+      invocationKey: setAttempt.invocationKey,
+      namespace: 'pertexo.node-attempt',
+      operationIdentity: 'core.set@1',
+      runId: 'run-1',
+    });
+    expect(setAttempt).toMatchObject({
       nodeId: 'set',
+      providerIdempotencyKey: expectedProviderKey,
       sideEffectClass: 'idempotent_with_key',
     });
+    expect(
+      completedManual.nodeRunAdmissions.find(({ nodeId }) => nodeId === 'set'),
+    ).toMatchObject({ providerIdempotencyKey: expectedProviderKey });
+  });
+
+  it('assigns the same provider key before capacity admission', async () => {
+    const executable = buildWorkflowExecutableV2({
+      graph: graph(),
+      release: composeExecutableCompatibilityRelease(
+        nodeRelease({ manualRetryClass: 'idempotent-with-key' }),
+      ),
+    });
+    const input = {
+      runId: 'capacity-run',
+      executable,
+      workflowVersionId: 'version-1',
+      occurredAt: '2026-08-20T10:00:00.000Z',
+      observations: [],
+      signal: new AbortController().signal,
+    } as const;
+    const materialized = await advanceWorkflow({
+      ...input,
+      checkpoint: createCheckpoint({
+        engineVersion: 'engine-v1',
+        workflowVersionId: 'version-1',
+        iterationBudget: 0,
+      }),
+      maximumAdmissions: 0,
+    });
+    const admitted = await advanceWorkflow({
+      ...input,
+      checkpoint: materialized.checkpoint,
+      maximumAdmissions: 1,
+    });
+    expect(materialized.nodeRunAdmissions[0]?.providerIdempotencyKey).toBe(
+      admitted.attempts[0]?.providerIdempotencyKey,
+    );
   });
 
   it('consumes contiguous persisted facts without re-emitting their semantic events', async () => {
@@ -1006,7 +1053,9 @@ describe('Phase 3 production operations', () => {
   });
 
   it('consumes persisted waits with attempt fencing and resumes due work as engine-owned readiness', async () => {
-    const release = composeExecutableCompatibilityRelease(nodeRelease());
+    const release = composeExecutableCompatibilityRelease(
+      nodeRelease({ manualRetryClass: 'idempotent-with-key' }),
+    );
     const executable = buildWorkflowExecutableV2({ graph: graph(), release });
     const started = await advanceWorkflow({
       runId: 'run-1',
@@ -1116,6 +1165,7 @@ describe('Phase 3 production operations', () => {
       expect.objectContaining({
         invocationKey: manual.invocationKey,
         attemptNumber: manual.attemptNumber + 1,
+        providerIdempotencyKey: manual.providerIdempotencyKey,
       }),
     ]);
     const duplicate = await advanceWorkflow({

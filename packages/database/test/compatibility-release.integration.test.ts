@@ -197,7 +197,7 @@ describe('durable node compatibility release authority', () => {
           preactivationTarget: targetExpectation,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0028_preview_terminal_fact_corrections.sql',
+        migrationHead: '0029_provider_idempotency_key_invariants.sql',
       });
 
       for (const [roleKind, artifactId] of [
@@ -320,7 +320,7 @@ describe('durable node compatibility release authority', () => {
           expectedCompatibilityReleases: rollingExpectations,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0028_preview_terminal_fact_corrections.sql',
+        migrationHead: '0029_provider_idempotency_key_invariants.sql',
       });
       await expect(
         checkDatabaseReadiness(api, {
@@ -433,7 +433,7 @@ describe('durable node compatibility release authority', () => {
             expectedCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0028_preview_terminal_fact_corrections.sql',
+          migrationHead: '0029_provider_idempotency_key_invariants.sql',
         });
         await expect(
           checkExpectedCompatibilityRelease(pool, {
@@ -461,7 +461,7 @@ describe('durable node compatibility release authority', () => {
           expectedCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0028_preview_terminal_fact_corrections.sql',
+        migrationHead: '0029_provider_idempotency_key_invariants.sql',
       });
     } finally {
       await pool.end();

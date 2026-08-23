@@ -26,6 +26,7 @@ import {
 import { parseCheckpoint } from './checkpoint.js';
 import type { SchedulerState } from './graph-scheduler.js';
 import { compareOrdinal } from './ordering.js';
+import { providerIdempotencyKey } from './retries.js';
 import { invocationKey as createInvocationKey } from './scheduling.js';
 import type { OutputReference, WorkflowTransitionPlan } from './types.js';
 
@@ -695,7 +696,38 @@ export async function advanceWorkflow(
     maximumAdmissions: input.maximumAdmissions,
   });
   assertNotAborted(input.signal);
-  return plan;
+  const providerKey = (
+    nodeId: string,
+    invocationKey: string,
+  ): string | undefined => {
+    const node = input.executable.envelope.graph.nodes.find(
+      (candidate) => candidate.id === nodeId,
+    );
+    if (node?.sideEffectClass !== 'idempotent_with_key') return undefined;
+    return providerIdempotencyKey({
+      invocationKey,
+      namespace: 'pertexo.node-attempt',
+      operationIdentity: `${node.definition.key}@${String(node.definition.version)}`,
+      runId: input.runId,
+    });
+  };
+  return Object.freeze({
+    ...plan,
+    attempts: plan.attempts.map((attempt) => {
+      const key = providerKey(attempt.nodeId, attempt.invocationKey);
+      return Object.freeze({
+        ...attempt,
+        ...(key === undefined ? {} : { providerIdempotencyKey: key }),
+      });
+    }),
+    nodeRunAdmissions: plan.nodeRunAdmissions.map((admission) => {
+      const key = providerKey(admission.nodeId, admission.invocationKey);
+      return Object.freeze({
+        ...admission,
+        ...(key === undefined ? {} : { providerIdempotencyKey: key }),
+      });
+    }),
+  });
 }
 
 export interface NodeExecutionRegistry {
