@@ -25,7 +25,7 @@ status in [the implementation progress tracker](./implementation-progress.md).
 | 10 | Unsafe post-dispatch deadlines could be reported as definite timeout | Critical | Fixed (`dd0d665`) |
 | 11 | Production preview composition omitted readiness/capabilities and leaked on startup failure | High | Fixed (`dd0d665`) |
 | 12 | Lease loss could manufacture cancellation; reconciliation ignored side-effect class | Critical | Fixed (`dd0d665`, `5dfb5f0`) |
-| 13 | Artifact output, automatic reconciliation, terminal audit/usage/metrics, and retention deletion are incomplete | High | Open (activation blockers) |
+| 13 | Artifact output, terminal audit/usage/metrics, process crash proofs, and retention deletion are incomplete | High | Open (activation blockers) |
 | 14 | Cancellation during preview input mapping could be mislabeled as executor failure | High | Fixed (`d44ce6b`) |
 
 ## Finding 1 — Compatibility-rollout proof absent from CI (High)
@@ -230,13 +230,14 @@ recorded below rather than inferred from these focused checks.
 ## Finding 13 — Preview activation remains incomplete (Open)
 
 The corrected foundations are intentionally still gated. ADR 016 and the Phase
-4 checklist require production bounded artifact output, an automatic durable
-reconciliation delivery path, terminal audit and usage facts, preview metrics,
-retention deletion (including owned artifacts), crash-boundary proofs,
-prior-preview/status HTTP evidence, and the HTTP activation rollout. None is
-made complete by `dd0d665` or `5dfb5f0`. Production node-test route activation
-and the Phase 4 registry release must remain disabled until those requirements
-and the final independent fixed-head reviews pass.
+4 checklist require production bounded artifact output, terminal audit and
+usage facts, preview metrics, retention deletion (including owned artifacts),
+process crash-boundary proofs, prior-preview/status HTTP evidence, and the HTTP
+activation rollout. Commit `b850f53` closes the automatic durable
+reconciliation-delivery gap but none of these remaining requirements.
+Production node-test route activation and the Phase 4 registry release must
+remain disabled until those requirements and the final independent fixed-head
+reviews pass.
 
 ## Finding 14 — Mapping cancellation lost its canonical outcome (Fixed)
 
@@ -291,7 +292,9 @@ preview-worker integration test. At corrected documentation head `d3f1397`:
 At fixed implementation head `d44ce6b`, root `pnpm check` passes again after
 the mapping-cancellation repair, including all 98 worker assertions. The Spec
 and Standards fixed-head re-reviews report zero blocker/high merge findings.
-The open Phase 4 activation gates in Finding 13 remain unchanged.
+At that head, the open Phase 4 activation gates in Finding 13 remained
+unchanged; the later `b850f53` checkpoint closes only automatic reconciliation
+delivery.
 
 ## Session work log — branch `fix/audit-findings` (reviewer guide)
 
@@ -319,6 +322,7 @@ plan.
 | `dd0d665` | Preview correctness repair | Reuses production input mapping, aligns API/worker release identity, fixes unsafe deadline truth and heartbeat lease-loss behavior, composes preview-only readiness plus JIT capabilities, closes startup failures, and removes the unsupported sweep contract. |
 | `5dfb5f0` | Reconciliation truth repair | Reclaims undispatched, safe, and stable-key expired deliveries while reserving `outcome_unknown` for unsafe possibly-dispatched work; automatic reconciliation delivery is still open. |
 | `d44ce6b` | Mapping-cancellation truth repair | Maps the workflow engine's pre-dispatch `attempt_aborted` decision to the canonical canceled preview outcome, proves the executor is never invoked, and makes the already-required durable preview store explicit in the composition type. |
+| `b850f53` | Automatic reconciliation delivery | Commits a fence-bound delayed maintenance outbox delivery with every preview claim; the PostgreSQL decision reschedules live leases, fences and redelivers reclaimable work, stops at the deadline, or records unsafe ambiguity. Exact duplicate receipts are no-ops; real PostgreSQL/Redis transport is proven. |
 
 ### Verification summary
 
@@ -364,9 +368,10 @@ plan.
   policy before ADR 016 parity can be claimed.
 - **D5 — Classification ownership.** For previews the injected invoker owns
   executor error classification. The persistence seam now distinguishes
-  reclaimable undispatched/safe/stable-key work from unsafe ambiguity, but an
-  automatic durable reconciliation delivery path is still missing. BullMQ
-  retries alone do not satisfy ADR 007 business-retry ownership.
+  reclaimable undispatched/safe/stable-key work from unsafe ambiguity. Commit
+  `b850f53` adds the automatic durable delivery path: PostgreSQL atomically
+  schedules and decides fence-bound maintenance wake-ups, while BullMQ retries
+  remain transport recovery rather than business-retry authority.
 - **D6 — Deadline source.** The retention `expires_at` doubles as the
   current bounded execution deadline and artifact lifetime. This is an interim
   implementation constraint, not a completed timeout/retention design; a
@@ -391,8 +396,8 @@ plan.
 
 ### Remaining before Phase 4 can be marked complete
 
-1. Add an automatic durable preview reconciliation delivery path and prove
-   pre/post-dispatch SIGKILL boundaries across all three side-effect classes.
+1. Prove pre/post-dispatch SIGKILL boundaries across all three side-effect
+   classes through the automatically delivered reconciliation path.
 2. Add artifact-backed preview outputs with retention inheritance and an
    authorized bounded deletion lifecycle for preview rows and owned artifacts.
 3. Persist terminal audit/usage facts and emit bounded preview metrics/traces.

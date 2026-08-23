@@ -1437,10 +1437,10 @@ Validate and test-execute preview vertical slice:
       timeout, retry, cancellation, duplicate-delivery, reconciliation, and
       `outcome_unknown` policies to preview execution (inline bounded values,
       duplicate delivery, mapped input, unsafe deadline truth, fenced reclaim,
-      and side-effect-aware reconciliation decisions are proven; automatic
-      reconciliation delivery, artifact-backed outputs, terminal telemetry,
-      and authorized retention deletion remain open — see Findings 8–13 in the
-      audit findings document).
+      side-effect-aware reconciliation decisions, and automatic durable
+      reconciliation delivery are proven; artifact-backed outputs, terminal
+      telemetry, and authorized retention deletion remain open — see Findings
+      8–13 in the audit findings document).
 - [ ] Prove authorization and cross-workspace denial, stale draft conflicts,
       validation purity, disclosure/acknowledgement, exact and conflicting
       request retries, duplicate jobs, every pre/post-dispatch crash boundary,
@@ -1679,6 +1679,22 @@ Current evidence:
   reviews against exact head `d44ce6bcf5a705cfa89d8dae1fbf97724c099edb`
   report no blocker/high merge finding; they retain the explicitly unchecked
   Phase 4 activation gates.
+- Commit `b850f53` adds the automatic durable preview-reconciliation path
+  required by ADR 007. Every successful claim atomically creates a delayed,
+  fence-bound `reconcile-preview-attempt` outbox delivery on the maintenance
+  queue. The deep PostgreSQL module validates the checksum-bound delivery and
+  inbox receipt, reschedules while the database lease is live, fences an
+  expired owner before atomically redelivering undispatched/safe/stable-key
+  work, stops redelivery after the run deadline, and records
+  `outcome_unknown` for unsafe possibly-dispatched work. PostgreSQL clocks,
+  lease state, and outbox rows remain authoritative; Redis/BullMQ only deliver.
+  Exact duplicate wake-ups are no-ops and startup/readiness/shutdown compose
+  the maintenance consumer explicitly. Verification passes root `pnpm check`
+  (queue 36, observability 32, worker 103 unit assertions), 11 focused fresh-
+  PostgreSQL scenarios, and two fresh-PostgreSQL/Redis transport scenarios,
+  including a committed unsafe dispatch marker followed by lease abandonment
+  and automatic terminal reconciliation. Those semantic crash boundaries do
+  not substitute for the still-open process-level SIGKILL matrix.
 - At corrected documentation head `d3f1397`, root `pnpm check` passes all
   format, ESLint, generated-contract, typecheck, unit, and production-build
   gates. The dependency-ordered fresh real-service matrix passes against
