@@ -1574,6 +1574,26 @@ Current evidence:
   provider I/O), every enumerated transport outcome now has executable
   evidence before activation. Integrations suite passes 78 assertions;
   focused typecheck, ESLint, and Prettier pass.
+- Commit `21a0b1d` opens the preview execution checkpoint with the
+  worker-side persistence seam beside acceptance. Deliveries bind to their
+  durable outbox aggregate by recomputed canonical checksum; claims CAS the
+  single attempt from queued to running under a monotonic fence token with
+  expired-lease reclaim (blocked once a dispatch marker exists); heartbeats
+  extend only the owning lease and report both attempt and retention
+  deadlines; completions reject stale fences as truthful duplicates while
+  syncing run status/output/error in one transaction under the migration's
+  exact terminal-shape and output-truth constraints; reconciliation of an
+  expired attempt is idempotent and chooses `failed` before any dispatch
+  marker but `outcome_unknown` with bounded reconciliation evidence after
+  it; forged checksum reuse commits a tenant-scoped transport security fact
+  before failing closed; cross-workspace claims are hidden by forced RLS.
+  All mutations run through this branch's shared fail-closed transaction
+  primitive. Six focused real-PostgreSQL assertions pass on a fresh
+  disposable database, and the repository-wide fresh-database integration
+  matrix passes 249 assertions (two object-store, 230 database across 16
+  files, ten worker, seven API) with the disposable database dropped
+  afterward. The handler/consumer composition, crash-boundary proofs, and
+  retention cleanup remain open before preview execution can activate.
 - No Phase 4 registry release or publishable node capability is claimed
   complete yet. The managed connection API includes its SSRF-enforcing test
   endpoint and a staged generic HTTP executor candidate now exists, while
