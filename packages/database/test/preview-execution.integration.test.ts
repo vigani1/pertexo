@@ -37,6 +37,7 @@ const workspaceB = randomUUID();
 const actorId = randomUUID();
 const workflowA = randomUUID();
 const workflowB = randomUUID();
+const workflowC = randomUUID();
 let releaseEpoch = 0;
 let releaseFingerprint = '';
 const keyHash = digest('preview-key');
@@ -161,10 +162,7 @@ async function resetFixture(): Promise<void> {
         actorId,
       ],
     );
-    for (const [workspaceId, workflowId, workflowName] of [
-      [workspaceA, workflowA, 'Workflow A'],
-      [workspaceB, workflowB, 'Workflow B'],
-    ] as const) {
+    for (const workspaceId of [workspaceA, workspaceB]) {
       await client.query("select set_config('app.workspace_id', $1, true)", [
         workspaceId,
       ]);
@@ -174,6 +172,15 @@ async function resetFixture(): Promise<void> {
          values ($1, $2, 'builder', 'active')`,
         [workspaceId, actorId],
       );
+    }
+    for (const [workspaceId, workflowId, workflowName] of [
+      [workspaceA, workflowA, 'Workflow A'],
+      [workspaceA, workflowC, 'Workflow C'],
+      [workspaceB, workflowB, 'Workflow B'],
+    ] as const) {
+      await client.query("select set_config('app.workspace_id', $1, true)", [
+        workspaceId,
+      ]);
       await client.query(
         `insert into app.workflows
        (id, workspace_id, name, created_by)
@@ -252,7 +259,10 @@ describe('durable preview acceptance', () => {
       expect(await db.select({ count: count() }).from(auditEvents)).toEqual([
         { count: 1 },
       ]);
-      const jobs = await db.select().from(outboxEvents);
+      const jobs = await db
+        .select()
+        .from(outboxEvents)
+        .where(eq(outboxEvents.jobName, 'execute-preview-attempt'));
       expect(jobs).toHaveLength(1);
       expect(jobs[0]).toMatchObject({
         id: accepted.outboxEventId,
@@ -392,6 +402,104 @@ describe('durable preview acceptance', () => {
             keyHash: digest('cross-key'),
             requestHash: digest('cross-request'),
             scope: `workflow:${workflowB}`,
+          }),
+        ),
+      ),
+    ).rejects.toBeInstanceOf(PriorPreviewInputUnavailableError);
+
+    await expect(
+      apiDatabase.withWorkspace(workspaceA, (transaction) =>
+        acceptPreviewRun(
+          transaction,
+          input({
+            workflowId: workflowC,
+            input: { kind: 'prior_preview', previewRunId: first.previewRunId },
+            keyHash: digest('different-workflow-key'),
+            requestHash: digest('different-workflow-request'),
+            scope: `workflow:${workflowC}`,
+          }),
+        ),
+      ),
+    ).rejects.toBeInstanceOf(PriorPreviewInputUnavailableError);
+
+    const failed = await apiDatabase.withWorkspace(workspaceA, (transaction) =>
+      acceptPreviewRun(
+        transaction,
+        input({
+          keyHash: digest('failed-source-key'),
+          requestHash: digest('failed-source-request'),
+        }),
+      ),
+    );
+    await ownerWorkspaceQuery(
+      workspaceA,
+      `update app.preview_attempts
+          set status = 'failed', started_at = now(), completed_at = now(),
+              safe_error_code = 'preview.fixture_failed'
+        where id = $1`,
+      [failed.previewAttemptId],
+    );
+    await ownerWorkspaceQuery(
+      workspaceA,
+      `update app.preview_runs
+          set status = 'failed', started_at = now(), completed_at = now(),
+              safe_error_code = 'preview.fixture_failed'
+        where id = $1`,
+      [failed.previewRunId],
+    );
+    await expect(
+      apiDatabase.withWorkspace(workspaceA, (transaction) =>
+        acceptPreviewRun(
+          transaction,
+          input({
+            input: { kind: 'prior_preview', previewRunId: failed.previewRunId },
+            keyHash: digest('failed-consumer-key'),
+            requestHash: digest('failed-consumer-request'),
+          }),
+        ),
+      ),
+    ).rejects.toBeInstanceOf(PriorPreviewInputUnavailableError);
+
+    const expiring = await apiDatabase.withWorkspace(
+      workspaceA,
+      (transaction) =>
+        acceptPreviewRun(
+          transaction,
+          input({
+            expiresAt: new Date(Date.now() + 1_000),
+            keyHash: digest('expiring-source-key'),
+            requestHash: digest('expiring-source-request'),
+          }),
+        ),
+    );
+    await ownerWorkspaceQuery(
+      workspaceA,
+      `update app.preview_attempts
+          set status = 'succeeded', started_at = now(), completed_at = now(),
+              output_ref = '{"schemaVersion":1,"kind":"inline","value":{"expired":true}}'
+        where id = $1`,
+      [expiring.previewAttemptId],
+    );
+    await ownerWorkspaceQuery(
+      workspaceA,
+      `update app.preview_runs
+          set status = 'succeeded', started_at = now(), completed_at = now(),
+              output_ref = '{"schemaVersion":1,"kind":"inline","value":{"expired":true}}'
+        where id = $1`,
+      [expiring.previewRunId],
+    );
+    await new Promise((resolve) => setTimeout(resolve, 1_100));
+    await expect(
+      apiDatabase.withWorkspace(workspaceA, (transaction) =>
+        acceptPreviewRun(
+          transaction,
+          input({
+            input: {
+              kind: 'prior_preview',
+              previewRunId: expiring.previewRunId,
+            },
+            keyHash: digest('expired-consumer-key'),
+            requestHash: digest('expired-consumer-request'),
           }),
         ),
       ),

@@ -1855,6 +1855,17 @@ Current evidence:
   prior-head migration. Independent final Spec and Standards reviews of exact
   head `ce31443` report no blocker, high, or medium finding. Phase 4 remains
   open for the already listed failure and full-regression gates.
+- The next preview failure audit found the prior-preview input requirement only
+  partially evidenced. The real PostgreSQL acceptance fixture now proves that
+  only a successful, still-unexpired source from the same workspace and exact
+  workflow can be copied: cross-workspace, same-workspace/different-workflow,
+  failed, and expired sources all return the stable unavailable outcome. The
+  fixture also scopes its identifier-only outbox assertion to the execution job
+  now that acceptance independently schedules retention cleanup. All eight
+  scenarios pass on a disposable PostgreSQL 18 database migrated zero-to-head
+  in 1.49 seconds, and the database is dropped afterward. The aggregate preview
+  failure box remains open for direct use-case authorization denials and the
+  full production-handler process-crash matrix.
 - No Phase 4 registry release or publishable node capability is claimed
   complete yet. The managed connection API includes its SSRF-enforcing test
   endpoint and a staged generic HTTP executor candidate now exists, while
