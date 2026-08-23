@@ -325,6 +325,85 @@ describe('http.request@1 server executor', () => {
     expect(definiteState.secret.every((byte) => byte === 0)).toBe(true);
   });
 
+  it('classifies rate-limited, timed, and canceled dispatches truthfully under the pinned unsafe class', async () => {
+    // A post-dispatch 429 is a definite failure for unsafe work and must
+    // never enter automatic retry.
+    const rateLimitedState = runtime();
+    const rateBody = encoder.encode('limited');
+    await expect(
+      createHttpRequestExecutorRegistration({
+        httpClient: streamingHttpClient(async (request) => {
+          await request.beforeDispatch();
+          return response(rateBody, 429);
+        }),
+      }).execute(invocation(rateLimitedState.value)),
+    ).rejects.toMatchObject({
+      decision: { kind: 'failed', errorKind: 'rate_limit' },
+      possiblyDispatched: true,
+    });
+    expect(rateBody.every((byte) => byte === 0)).toBe(true);
+
+    // A timeout that may have reached the provider is outcome_unknown.
+    await expect(
+      createHttpRequestExecutorRegistration({
+        httpClient: streamingHttpClient(async (request) => {
+          await request.beforeDispatch();
+          throw new SecureHttpError(
+            SECURE_HTTP_ERROR_CODE.timedOut,
+            'ambiguous',
+            true,
+          );
+        }),
+      }).execute(invocation(runtime().value)),
+    ).rejects.toMatchObject({
+      decision: { kind: 'outcome_unknown', errorKind: 'timeout' },
+      possiblyDispatched: true,
+    });
+
+    // A pre-dispatch timeout sent nothing, so a bounded engine retry is
+    // truthful even for unsafe work.
+    const predispatchTimeout = runtime();
+    await expect(
+      createHttpRequestExecutorRegistration({
+        httpClient: streamingHttpClient(() =>
+          Promise.reject(
+            new SecureHttpError(
+              SECURE_HTTP_ERROR_CODE.timedOut,
+              'definite_failure',
+              false,
+            ),
+          ),
+        ),
+      }).execute(invocation(predispatchTimeout.value)),
+    ).rejects.toMatchObject({
+      decision: {
+        kind: 'retry',
+        errorKind: 'timeout',
+        reuseProviderKey: false,
+      },
+      possiblyDispatched: false,
+    });
+    expect(predispatchTimeout.beforeDispatch).not.toHaveBeenCalled();
+
+    // Cancellation stays cancellation and is never disguised as a provider
+    // or unknown outcome.
+    await expect(
+      createHttpRequestExecutorRegistration({
+        httpClient: streamingHttpClient(async (request) => {
+          await request.beforeDispatch();
+          throw new SecureHttpError(
+            SECURE_HTTP_ERROR_CODE.canceled,
+            'ambiguous',
+            true,
+          );
+        }),
+      }).execute(invocation(runtime().value)),
+    ).rejects.toMatchObject({
+      decision: { kind: 'canceled', errorKind: 'canceled' },
+      possiblyDispatched: true,
+    });
+  });
+
   it('fails closed on missing runtime, insecure credential transport, collisions, and invalid bodies', async () => {
     const dispatch =
       vi.fn<(request: SecureHttpRequest) => Promise<SecureHttpResponse>>();
