@@ -2201,6 +2201,16 @@ Current evidence:
   same defect, and provider-confirmed HTTP success could be replaced by an
   artifact-persistence failure. The review gates remain open while those
   findings receive regression fixes and a new fixed-head review.
+- The corrected fixed implementation head `fc7e028` received independent Spec
+  GO: production composition registers both node-test modes and preview status,
+  and the reviewed terminal corrections satisfy the Phase 4 contract. The
+  independent Standards review remained NO-GO: typed executor retries were
+  collapsed into `attempt_invalid`, post-response inline stream failures could
+  replace provider-confirmed truth with definite failure, preview classification
+  trusted a provider adapter's cancellation decision without applying unsafe
+  lease context, and executor ambiguity still crossed packages through an
+  unowned structural convention. The fixed-head review gate remains open until
+  those findings are regression-tested and Standards is rerun.
 
 ## Phase 5 — Orchestration slice
 
