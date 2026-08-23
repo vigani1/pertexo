@@ -1438,9 +1438,10 @@ Validate and test-execute preview vertical slice:
       `outcome_unknown` policies to preview execution (inline bounded values,
       duplicate delivery, mapped input, unsafe deadline truth, fenced reclaim,
       side-effect-aware reconciliation decisions, and automatic durable
-      reconciliation delivery are proven; artifact-backed outputs, terminal
-      telemetry, and authorized retention deletion remain open — see Findings
-      8–13 in the audit findings document).
+      reconciliation delivery, artifact-backed outputs with inherited
+      retention, and authorized bounded deletion are proven; terminal
+      telemetry remains open — see Findings 8–13 in the audit findings
+      document).
 - [ ] Prove authorization and cross-workspace denial, stale draft conflicts,
       validation purity, disclosure/acknowledgement, exact and conflicting
       request retries, duplicate jobs, every pre/post-dispatch crash boundary,
@@ -1622,10 +1623,12 @@ Current evidence:
   input bypassing mappings, API/worker release-identity drift, false unsafe
   timeout truth, missing preview-only readiness/JIT capability composition,
   and startup cleanup gaps. Commit `dd0d665` corrects those defects and removes
-  the unsupported retention-sweep placeholder. Automatic reconciliation,
-  artifact-backed output, terminal audit/usage/metrics, pre/post-dispatch
-  SIGKILL boundaries, prior-preview HTTP evidence, and retention deletion
-  remain open before activation.
+  the unsupported retention-sweep placeholder. At that historical checkpoint,
+  automatic reconciliation, artifact-backed output, terminal
+  audit/usage/metrics, pre/post-dispatch SIGKILL boundaries, prior-preview HTTP
+  evidence, and retention deletion remained open before activation; the later
+  reconciliation and artifact-retention checkpoints below close only those
+  named portions.
 - Commit `886cdb3` closes the real-transport delivery proof. The suite
   provisions its own disposable PostgreSQL database, migrates through the
   shipped CLI path, and activates this worker artifact's derived release
@@ -1719,6 +1722,32 @@ Current evidence:
   `c014502`, 11 focused PostgreSQL scenarios, three fresh PostgreSQL/Redis
   transport scenarios, and repository-wide `pnpm check` pass. Independent
   fixed-head Spec and Standards reviews report no blocker/high merge finding.
+- Commit `9d1fc7d` passes the immutable preview retention deadline into the
+  node-attempt artifact capability. Preview artifacts are capped at that
+  deadline, and an already-expired owner is rejected before persistence.
+  Commit `685ff8e` adds forced-RLS `artifact_links`, composite ownership
+  constraints, and a PostgreSQL trigger that prevents an artifact from
+  outliving its preview. Pending artifact metadata and its ownership link are
+  created atomically; serving roles receive no arbitrary link deletion grant.
+- Commit `d71564e` adds the durable `sweep-expired-previews` lifecycle only
+  after its full capability exists. Acceptance schedules a delayed cleanup
+  outbox row at the preview deadline. The worker validates the checksum-bound
+  delivery, claims owned artifacts in configurable batches, resumes `deleting`
+  rows after failure, removes object bytes before marking metadata deleted,
+  emits continuation deliveries while work remains, and calls the narrow
+  tenant-checked security-definer function only when final deletion is safe.
+  A real PostgreSQL/Redis/BullMQ/S3Mock scenario creates an artifact through
+  the production preview capability and proves both object and metadata
+  cleanup. The focused fresh-PostgreSQL preview suite passes 14 scenarios, the
+  real transport file passes four, all 112 worker unit assertions pass, and
+  repository-wide `pnpm check` is green at that implementation checkpoint.
+- Commit `a3a03d8` proves the migration path that fresh-schema tests cannot:
+  it creates a retained preview on exact migration head `0023`, applies only
+  `0024_preview_retention_cleanup.sql`, and verifies the backfilled payload,
+  trace context, application-canonical checksum, and exact expiry-timed
+  availability through the worker's forced-RLS view. This closes the focused
+  prior-head backfill risk without claiming the broader Phase 4 migration or
+  activation gates complete.
 - At corrected documentation head `d3f1397`, root `pnpm check` passes all
   format, ESLint, generated-contract, typecheck, unit, and production-build
   gates. The dependency-ordered fresh real-service matrix passes against

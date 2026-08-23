@@ -25,7 +25,7 @@ status in [the implementation progress tracker](./implementation-progress.md).
 | 10 | Unsafe post-dispatch deadlines could be reported as definite timeout | Critical | Fixed (`dd0d665`) |
 | 11 | Production preview composition omitted readiness/capabilities and leaked on startup failure | High | Fixed (`dd0d665`) |
 | 12 | Lease loss could manufacture cancellation; reconciliation ignored side-effect class | Critical | Fixed (`dd0d665`, `5dfb5f0`) |
-| 13 | Production crash-boundary proofs, artifact output, terminal audit/usage/metrics, HTTP proofs, and retention deletion are incomplete | High | Open (activation blockers) |
+| 13 | Production crash-boundary proofs, terminal audit/usage/metrics, and HTTP proofs are incomplete | High | Open (activation blockers) |
 | 14 | Cancellation during preview input mapping could be mislabeled as executor failure | High | Fixed (`d44ce6b`) |
 
 ## Finding 1 — Compatibility-rollout proof absent from CI (High)
@@ -184,10 +184,10 @@ sweep is therefore not landable without a reviewed maintenance-role grant
 migration. Commit `abe757f` nevertheless advertised `sweep-expired-previews`
 through queue contracts, routing, configuration, and metrics without any
 consumer. That made readiness/configuration describe a capability the worker
-could not perform. Commit `dd0d665` removes the unsupported contract. Preview
-retention deletion remains an open Phase 4 lifecycle requirement whose role,
-bounded cursor, artifact ordering, and consumer must be designed before it is
-advertised.
+could not perform. Commit `dd0d665` removes the unsupported contract. The later
+`d71564e` checkpoint restores that capability only after landing its authorized
+function, bounded/resumable artifact ordering, durable consumer, and real
+PostgreSQL/Redis/BullMQ/object-store proof.
 
 ## Findings 8–12 — Preview execution correctness review (Fixed)
 
@@ -230,14 +230,18 @@ recorded below rather than inferred from these focused checks.
 ## Finding 13 — Preview activation remains incomplete (Open)
 
 The corrected foundations are intentionally still gated. ADR 016 and the Phase
-4 checklist require production bounded artifact output, terminal audit and
-usage facts, preview metrics, retention deletion (including owned artifacts),
+4 checklist require terminal audit and usage facts, preview metrics,
 prior-preview/status HTTP evidence, and the HTTP activation rollout. Commits
-`b850f53` closes automatic reconciliation delivery. `963648c` proves that
+`9d1fc7d`, `685ff8e`, and `d71564e` close bounded artifact-backed preview
+output, database-enforced ownership/retention inheritance, and authorized
+bounded/resumable deletion through the real maintenance transport and object
+store. Commit `a3a03d8` separately proves checksum-valid cleanup backfill on a
+real `0023` to `0024` migration. Commit `b850f53` closes automatic
+reconciliation delivery. `963648c` proves that
 database-seam decisions and the real maintenance delivery survive process
 death, but its child fixture does not exercise the production handler,
 provider dispatch, or queue acknowledgement; the full process crash-boundary
-matrix and the requirements above remain open.
+matrix and the remaining requirements above remain open.
 Production node-test route activation and the Phase 4 registry release must
 remain disabled until those requirements and the final independent fixed-head
 reviews pass.
@@ -328,6 +332,10 @@ plan.
 | `b850f53` | Automatic reconciliation delivery | Commits a fence-bound delayed maintenance outbox delivery with every preview claim; the PostgreSQL decision reschedules live leases, fences and redelivers reclaimable work, stops at the deadline, or records unsafe ambiguity. Exact duplicate receipts are no-ops; real PostgreSQL/Redis transport is proven. |
 | `963648c` | Preview process-death persistence | Kills child lease owners after direct production-database seam commits for claim, dispatch marker, and outcome states. The real outbox/BullMQ maintenance path proves fenced redelivery, stable-key preservation, unsafe ambiguity, and terminal duplicate truth after process death; production handler/provider/queue-ack injection remains open. |
 | `b9b93fc` + `c014502` | Reconciliation review correction | Makes immediate replacement delivery database-timed with a process-clock-skew regression, narrows the SIGKILL labels to direct database-seam process-exit evidence, and explicitly restores the unproven production handler/provider/queue-ack matrix to the open Phase 4 gates. |
+| `9d1fc7d` | Preview artifact retention cap | Passes the durable preview deadline through the node-attempt capability context, caps every preview artifact at that owner deadline, and rejects already-expired ownership. |
+| `685ff8e` | Preview artifact ownership | Adds forced-RLS artifact links, composite ownership constraints, a database retention trigger, and atomic pending-artifact/link creation without granting serving roles arbitrary deletion. |
+| `d71564e` | Durable preview cleanup | Schedules cleanup at acceptance, claims owned artifacts in bounded resumable batches, deletes object bytes before metadata, and finishes expired preview removal only through a tenant-checked security-definer function. Real maintenance transport and S3Mock are exercised. |
+| `a3a03d8` | Retention upgrade proof | Migrates a retained preview from exact prior head `0023` to `0024` and proves the backfilled cleanup payload, application-canonical checksum, trace context, and database-timed availability. |
 
 ### Verification summary
 
@@ -368,11 +376,11 @@ plan.
 - **D3 — Tooling.** Lint heap bound and the restored-gate fix are
   infrastructure changes with no runtime surface.
 - **D4 — Preview output envelope.** Raw executor output is wrapped into the
-  inline stored-value envelope inside the worker boundary; oversized or
-  non-JSON outputs fail closed as `preview.output_invalid`. Artifact-backed
-  preview output streaming is NOT landed yet. Production capability factories
-  now reach the preview runtime, but the handler still needs an artifact-output
-  policy before ADR 016 parity can be claimed.
+  bounded stored-value envelope inside the worker boundary; oversized or
+  non-JSON outputs fail closed as `preview.output_invalid`. Commits `9d1fc7d`
+  and `685ff8e` add artifact-backed output with a database-enforced preview
+  owner and inherited deadline. Commit `d71564e` proves those bytes and their
+  metadata are removed in the authorized retention lifecycle.
 - **D5 — Classification ownership.** For previews the injected invoker owns
   executor error classification. The persistence seam now distinguishes
   reclaimable undispatched/safe/stable-key work from unsafe ambiguity. Commit
@@ -392,27 +400,27 @@ plan.
   seeded predecessor. This uses only audited production seams but means the
   test database ends on the artifact's cohort release — safe because the
   database is disposable.
-- **D9 — Retention.** No deletion path was landed. The unsupported placeholder
-  job was removed because a capability must not be advertised before its
-  authorized role and consumer exist. ADR 016 and the Phase 4 tracker still
-  require the short-retained preview/artifact lifecycle before activation.
+- **D9 — Retention.** The unsupported placeholder job was removed because a
+  capability must not be advertised before its authorized role and consumer
+  exist. Commit `d71564e` later lands that complete narrow capability: durable
+  scheduling, bounded/resumable artifact cleanup, object-before-metadata
+  ordering, and tenant-checked final preview deletion.
 - **D10 — Contract additions.** The `delivery` parameter on
   `completePreviewAttempt` is retained because inbox completion must commit
-  atomically with the terminal outcome. The abandoned sweep queue additions
-  are not part of the resulting contract.
+  atomically with the terminal outcome. The original sweep queue additions
+  were removed with their unsupported consumer claim; `d71564e` reintroduces
+  the contract with the complete authorized implementation.
 
 ### Remaining before Phase 4 can be marked complete
 
 1. Prove the pre/post-dispatch and post-outcome/pre-ack SIGKILL boundaries
    through the production handler, provider, and queue consumer for every
    side-effect class required by ADR 007.
-2. Add artifact-backed preview outputs with retention inheritance and an
-   authorized bounded deletion lifecycle for preview rows and owned artifacts.
-3. Persist terminal audit/usage facts and emit bounded preview metrics/traces.
-4. Prove prior-preview scope/expiry and safe status reads over the real HTTP
+2. Persist terminal audit/usage facts and emit bounded preview metrics/traces.
+3. Prove prior-preview scope/expiry and safe status reads over the real HTTP
    stack, including cancellation/timeout behavior.
-5. Prove `http.request@1` additive activation with live JIT connection and
+4. Prove `http.request@1` additive activation with live JIT connection and
    artifact capabilities while retained releases continue executing exactly.
-6. Run the fixed-head repository-wide and complete real-service regression
+5. Run the fixed-head repository-wide and complete real-service regression
    matrix, then complete independent Spec and Standards reviews before any
    Phase 4 completion or production activation claim.
