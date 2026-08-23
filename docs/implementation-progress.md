@@ -1373,7 +1373,7 @@ Connection and secret vertical slice:
       compatibility, and `connection:use` immediately before decryption.
 - [x] Record safe connection and credential-access audit facts, connection
       health events, traces, bounded metrics, and stable redacted failures.
-- [ ] Prove exact/conflicting request retries, transaction rollback, concurrent
+- [x] Prove exact/conflicting request retries, transaction rollback, concurrent
       name/current-version changes, revocation races, cross-workspace isolation,
       ciphertext swapping/context failure, KMS failure, and serving-role grants
       against real PostgreSQL plus the production encryption adapter contract.
@@ -1536,9 +1536,29 @@ Current evidence:
   artifact drift, 56 database unit assertions, seven fresh PostgreSQL 18
   connection assertions, and five production encryption-adapter assertions;
   all affected packages typecheck/build and every changed source/test path
-  passes ESLint. The full repository lint command exceeded Node's default 4 GiB
-  heap during this checkpoint, so it is not used as evidence for Phase 4
-  completion.
+   passes ESLint. The full repository lint command exceeded Node's default 4 GiB
+   heap during this checkpoint, so it is not used as evidence for Phase 4
+   completion. Commit `1b8af29` on `fix/audit-findings` later gave the root
+   lint script an explicit bounded heap, restoring the repository-wide gate.
+- Commit `ce02e52` closes the remaining connection-slice failure-proof box
+  with real concurrency on fresh disposable PostgreSQL databases. Eleven
+  focused assertions now prove: simultaneous same-name creations admit
+  exactly one winner, reject the loser with the stable conflict problem, and
+  leave exactly one immutable secret version; simultaneous rotations from one
+  expected current pointer admit exactly one CAS winner, fail the loser with
+  `ConnectionSecretVersionConflictError`, advance the pointer once, and never
+  persist the losing version regardless of race order. Earlier checkpoints in
+  this slice already proved exact/conflicting retries, create/rotate replay,
+  rollback without partial rows, stale-pointer conflict, revoke-before-
+  resolve, rotate-during-test stale-completion isolation, cross-workspace
+  hiding, forced-RLS/grant catalogs, history-mutation denial, and readiness.
+  The production encryption adapter contract is covered by
+  `packages/integrations/test/envelope-encryption.test.ts`: authenticated
+  workspace/connection/secret-version context round trip, tampered-ciphertext
+  and swapped-workspace rejection, one safe collapsed error without cause for
+  KMS failures, bounded material sizes, issued-key zeroization, and exact AWS
+  KMS encryption-context binding. Database typecheck, scoped ESLint, and
+  Prettier pass; the suite ran twice to shake race-order flakiness.
 - No Phase 4 registry release or publishable node capability is claimed
   complete yet. The managed connection API includes its SSRF-enforcing test
   endpoint and a staged generic HTTP executor candidate now exists, while
