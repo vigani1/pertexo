@@ -27,6 +27,7 @@ const workerLogLevels = [
 export const SUPPORTED_DISPATCH_CAPABILITIES = Object.freeze([
   JOB_NAME.advanceWorkflowRun,
   JOB_NAME.executeNodeAttempt,
+  JOB_NAME.executePreviewAttempt,
   JOB_NAME.expireArtifacts,
 ] as const satisfies readonly JobName[]);
 

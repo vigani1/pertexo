@@ -1259,6 +1259,42 @@ export type PreviewReconciliationOutcome = Readonly<{
   status: typeof PREVIEW_STATUS.failed | typeof PREVIEW_STATUS.outcomeUnknown;
 }>;
 
+/**
+ * Bounded stored-value contract check for executor outputs before a
+ * succeeded completion is attempted.
+ */
+function isStrictJsonValue(value: unknown, depth: number): boolean {
+  if (depth > 64) return false;
+  if (value === null || typeof value === 'string' || typeof value === 'boolean')
+    return true;
+  if (typeof value === 'number') return Number.isFinite(value);
+  if (Array.isArray(value))
+    return value.every((member) => isStrictJsonValue(member, depth + 1));
+  if (
+    typeof value === 'object' &&
+    Object.getPrototypeOf(value) === Object.prototype
+  )
+    return Object.entries(value).every(
+      ([key, member]) => key.length > 0 && isStrictJsonValue(member, depth + 1),
+    );
+  // Functions, symbols, bigints, class instances, and host objects are all
+  // outside the stored-value contract.
+  return false;
+}
+
+export function isValidStoredExecutionOutput(value: unknown): boolean {
+  if (!isStrictJsonValue(value, 0)) return false;
+  try {
+    // Serialization alone can silently drop hostile members; a lossless
+    // canonical roundtrip additionally proves byte-stable truth.
+    const serialized = serializeStoredExecutionValueV1(value);
+    const reparsed = parseStoredExecutionValueV1(serialized);
+    return serializeStoredExecutionValueV1(reparsed) === serialized;
+  } catch {
+    return false;
+  }
+}
+
 export async function reconcileExpiredPreviewAttempt(
   pool: Pool,
   input: Readonly<{

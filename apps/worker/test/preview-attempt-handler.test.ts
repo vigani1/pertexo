@@ -1,0 +1,270 @@
+import { randomUUID } from 'node:crypto';
+
+import { jobIdForOutboxEvent } from '@pertexo/queue';
+import type {
+  PreviewAttemptLease,
+  PreviewTerminalOutcome,
+} from '@pertexo/database';
+import { describe, expect, it, vi } from 'vitest';
+
+import {
+  createPreviewAttemptHandler,
+  type PreviewAttemptHandlerDependencies,
+  type PreviewAttemptRunStore,
+  type PreviewNodeInvoker,
+} from '../src/execution/preview-attempt-handler.js';
+
+const workspaceId = randomUUID();
+const outboxEventId = randomUUID();
+const previewRunId = randomUUID();
+const previewAttemptId = randomUUID();
+
+function leaseFixture(): PreviewAttemptLease {
+  return {
+    attemptFenceToken: 1,
+    compatibilityReleaseEpoch: 1,
+    compatibilityReleaseFingerprint: 'node-compat:v1:sha256:' + 'a'.repeat(64),
+    definitionKey: 'core.set',
+    definitionVersion: 1,
+    dryRun: 'not_supported',
+    executableNode: Object.freeze({
+      config: { value: 1 },
+      id: 'node-1',
+    }),
+    executorKey: 'core.set',
+    executorVersion: 1,
+    expiresAt: new Date(Date.now() + 60 * 60 * 1_000),
+    input: { kind: 'inline', schemaVersion: 1, value: { n: 1 } },
+    mayCauseExternalSideEffect: false,
+    mayContactProvider: true,
+    nodeId: 'node-1',
+    previewAttemptId,
+    previewRunId,
+    sideEffectClass: 'safe',
+    workflowId: randomUUID(),
+    workspaceId,
+  } as unknown as PreviewAttemptLease;
+}
+
+function deliveryFixture(): Parameters<
+  ReturnType<typeof createPreviewAttemptHandler>['handle']
+>[0] {
+  return {
+    data: {
+      outboxEventId,
+      previewAttemptId,
+      previewRunId,
+      schemaVersion: 1,
+      traceparent: '00-' + 'a'.repeat(32) + '-' + 'b'.repeat(16) + '-01',
+      workspaceId,
+    },
+    name: 'execute-preview-attempt' as const,
+    transport: { jobId: jobIdForOutboxEvent(outboxEventId) },
+  } as never;
+}
+
+function context(): { signal: AbortSignal } {
+  return { signal: new AbortController().signal };
+}
+
+interface StoreCalls {
+  claims: number;
+  completions: PreviewTerminalOutcome[];
+  dispatches: number;
+}
+
+function fakeStore(
+  overrides: Partial<{
+    beat: { runExpiresAt: Date };
+    claimKind: 'duplicate';
+  }> = {},
+): { calls: StoreCalls; store: PreviewAttemptRunStore } {
+  const calls: StoreCalls = {
+    claims: 0,
+    completions: [],
+    dispatches: 0,
+  };
+  const store: PreviewAttemptRunStore = {
+    claim: () => {
+      calls.claims += 1;
+      if (overrides.claimKind === 'duplicate')
+        return Promise.resolve({ kind: 'duplicate' });
+      return Promise.resolve({
+        kind: 'claimed',
+        lease: leaseFixture(),
+      });
+    },
+    complete: ({ outcome }) => {
+      calls.completions.push(outcome);
+      return Promise.resolve({ kind: 'committed' });
+    },
+    heartbeat: () => {
+      const beat = overrides.beat ?? {
+        runExpiresAt: new Date(Date.now() + 60 * 60 * 1_000),
+      };
+      return Promise.resolve({
+        attemptLeaseExpiresAt: new Date(Date.now() + 30 * 1_000),
+        runExpiresAt: beat.runExpiresAt,
+      });
+    },
+    markDispatched: () => {
+      calls.dispatches += 1;
+      return Promise.resolve('committed');
+    },
+  };
+  return { calls, store };
+}
+
+function succeededInvoker(output: unknown): {
+  invoker: PreviewNodeInvoker;
+  invoke: ReturnType<typeof vi.fn>;
+} {
+  const invoke = vi.fn(
+    () =>
+      Promise.resolve({
+        output,
+        status: 'succeeded',
+      }) as unknown as Promise<PreviewTerminalOutcome>,
+  );
+  return { invoke, invoker: { invoke } };
+}
+
+function deps(
+  store: PreviewAttemptRunStore,
+  invoker: PreviewNodeInvoker,
+): PreviewAttemptHandlerDependencies {
+  return {
+    heartbeatIntervalMillis: 10,
+    invoker,
+    leaseDurationSeconds: 30,
+    runStore: store,
+    workerId: 'worker-preview-test',
+  };
+}
+
+describe('preview attempt handler', () => {
+  it('wraps raw executor output into the stored envelope and commits truthfully', async () => {
+    const { calls, store } = fakeStore();
+    const { invoker } = succeededInvoker({ ok: true });
+    const result = await createPreviewAttemptHandler(
+      deps(store, invoker),
+    ).handle(deliveryFixture(), context());
+    expect(result).toEqual({ kind: 'committed' });
+    expect(calls.claims).toBe(1);
+    expect(calls.completions[0]?.status).toBe('succeeded');
+    const stored = calls.completions[0] as unknown as {
+      output: { value: { ok: boolean } };
+    };
+    expect(stored.output.value).toEqual({ ok: true });
+  });
+
+  it('returns duplicates without invoking the executor', async () => {
+    const { calls, store } = fakeStore({ claimKind: 'duplicate' });
+    const invoke = vi.fn();
+    const result = await createPreviewAttemptHandler(
+      deps(store, { invoke }),
+    ).handle(deliveryFixture(), context());
+    expect(result).toEqual({ kind: 'duplicate' });
+    expect(invoke).not.toHaveBeenCalled();
+    expect(calls.completions).toHaveLength(0);
+  });
+
+  it('rejects a transport identity mismatch before any durable work', async () => {
+    const { calls, store } = fakeStore();
+    const forged = deliveryFixture() as { transport: { jobId: string } };
+    forged.transport.jobId = jobIdForOutboxEvent(randomUUID());
+    await expect(
+      createPreviewAttemptHandler(
+        deps(store, succeededInvoker({}).invoker),
+      ).handle(forged as never, context()),
+    ).rejects.toMatchObject({ code: 'transport_identity_mismatch' });
+    expect(calls.claims).toBe(0);
+  });
+
+  it.each([
+    [
+      'failed pre-dispatch retryable network truth',
+      { safeErrorCode: 'preview.network', status: 'failed' },
+    ],
+    [
+      'post-dispatch ambiguity becomes outcome_unknown',
+      {
+        safeErrorCode: 'preview.outcome_unknown',
+        status: 'outcome_unknown',
+      },
+    ],
+    [
+      'cancellation stays cancellation',
+      { safeErrorCode: 'execution.canceled', status: 'canceled' },
+    ],
+  ])('%s', async (_label, expected) => {
+    const { calls, store } = fakeStore();
+    // The invoker owns ADR 007 classification; these mirror the platform
+    // invoker's mapping of executor decision errors.
+    const invoker: PreviewNodeInvoker = {
+      invoke: () =>
+        Promise.resolve(expected as unknown as PreviewTerminalOutcome),
+    };
+    await createPreviewAttemptHandler(deps(store, invoker)).handle(
+      deliveryFixture(),
+      context(),
+    );
+    expect(calls.completions[0]).toMatchObject(expected);
+  });
+
+  it('propagates infrastructure failures for bounded queue retries', async () => {
+    const { calls, store } = fakeStore();
+    const invoker: PreviewNodeInvoker = {
+      invoke: () => Promise.reject(new Error('redis connection lost')),
+    };
+    await expect(
+      createPreviewAttemptHandler(deps(store, invoker)).handle(
+        deliveryFixture(),
+        context(),
+      ),
+    ).rejects.toThrow('redis connection lost');
+    expect(calls.completions).toHaveLength(0);
+  });
+
+  it('fails invalid executor outputs without partial success', async () => {
+    const { calls, store } = fakeStore();
+    // A function member can never satisfy the strict stored-value contract.
+    const { invoker } = succeededInvoker({
+      broken: (): number => 1,
+    });
+    await createPreviewAttemptHandler(deps(store, invoker)).handle(
+      deliveryFixture(),
+      context(),
+    );
+    expect(calls.completions[0]).toMatchObject({
+      safeErrorCode: 'preview.output_invalid',
+      status: 'failed',
+    });
+  });
+
+  it('completes timed_out when the durable retention deadline passes', async () => {
+    const { calls, store } = fakeStore({
+      beat: { runExpiresAt: new Date(Date.now() - 1) },
+    });
+    const invoker: PreviewNodeInvoker = {
+      invoke: ({ signal }) =>
+        new Promise<PreviewTerminalOutcome>((_resolve, reject) => {
+          signal.addEventListener(
+            'abort',
+            () => {
+              reject(new DOMException('aborted', 'AbortError'));
+            },
+            { once: true },
+          );
+        }),
+    };
+    const result = await createPreviewAttemptHandler(
+      deps(store, invoker),
+    ).handle(deliveryFixture(), context());
+    expect(result).toEqual({ kind: 'committed' });
+    expect(calls.completions[0]).toMatchObject({
+      safeErrorCode: 'preview.deadline_exceeded',
+      status: 'timed_out',
+    });
+  });
+});

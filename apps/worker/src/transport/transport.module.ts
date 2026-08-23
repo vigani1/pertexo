@@ -25,6 +25,12 @@ import {
   createNodeAttemptRuntime,
   type NodeAttemptRuntime,
 } from '../execution/node-attempt-runtime.js';
+import {
+  createDatabasePreviewAttemptRunStore,
+  createPlatformPreviewNodeInvoker,
+} from '../execution/preview-attempt-runtime.js';
+import type { PreviewNodeInvoker } from '../execution/preview-attempt-runtime.js';
+import type { PreviewAttemptRunStore } from '../execution/preview-attempt-handler.js';
 import { WorkerDrainState } from '../runtime/worker-drain-state.js';
 import {
   createDispatchConsumerCapabilityRegistry,
@@ -32,6 +38,8 @@ import {
 } from './dispatch-consumer-capabilities.js';
 import { OutboxDispatcher } from './outbox-dispatcher.js';
 import { createQueueMetricsObserver } from './transport-metrics-adapter.js';
+import { platformServingRegistryRelease } from '@pertexo/node-catalog';
+import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
 
 export const OUTBOX_DISPATCHER = Symbol('OUTBOX_DISPATCHER');
 export const QUEUE_CONSUMER_OBSERVER = Symbol('QUEUE_CONSUMER_OBSERVER');
@@ -45,6 +53,10 @@ export const DISPATCH_CONSUMER_CAPABILITIES = Symbol(
 export type TransportModuleDependencies = Readonly<{
   coordinatorRuntime?: CoordinatorRuntime;
   nodeAttemptRuntime?: NodeAttemptRuntime;
+  previewRuntimeDependencies?: {
+    invoker: PreviewNodeInvoker;
+    runStore: PreviewAttemptRunStore;
+  };
   dispatchConsumerCapabilities?: DispatchConsumerCapabilityRegistry;
   dispatcherDatabase?: OutboxDispatcherDatabase;
   queueProducer?: QueueProducer;
@@ -96,30 +108,103 @@ function nodeAttemptRuntimeProvider(
     ): Promise<NodeAttemptRuntime | undefined> => {
       if (dependencies.nodeAttemptRuntime !== undefined)
         return dependencies.nodeAttemptRuntime;
-      if (
-        dependencies.dispatchConsumerCapabilities !== undefined ||
-        !config.outboxDispatcher.enabledJobNames.includes(
-          JOB_NAME.executeNodeAttempt,
-        )
-      )
-        return undefined;
-      return createNodeAttemptRuntime({
-        ...(config.artifactStore === undefined
-          ? {}
-          : { artifactStore: config.artifactStore }),
-        ...(config.connectionEncryption === undefined
-          ? {}
-          : { connectionEncryption: config.connectionEncryption }),
-        database: config.database,
-        heartbeatIntervalMillis: config.nodeAttempt.heartbeatIntervalMillis,
-        leaseDurationSeconds: config.nodeAttempt.leaseDurationSeconds,
-        observer,
-        releaseCohort: config.nodeCompatibilityCohort,
-        redisUrl: config.redisUrl,
-        workerId: config.nodeAttempt.workerId,
-      });
+      const enabledJobNames = config.outboxDispatcher.enabledJobNames;
+      const previewEnabled = enabledJobNames.includes(
+        JOB_NAME.executePreviewAttempt,
+      );
+      // An injected capability registry (tests) or fully injected preview
+      // dependency set owns its own composition; only the default path
+      // builds the durable preview store here.
+      let previewRunStore:
+        ReturnType<typeof createDatabasePreviewAttemptRunStore> | undefined;
+      try {
+        if (
+          previewEnabled &&
+          dependencies.dispatchConsumerCapabilities === undefined &&
+          dependencies.previewRuntimeDependencies === undefined
+        ) {
+          previewRunStore = createDatabasePreviewAttemptRunStore(
+            config.database,
+          );
+        }
+        if (previewEnabled && previewRunStore === undefined)
+          throw new Error(
+            'Preview dispatch enabled without a durable preview store',
+          );
+        return await composeNodeAttemptRuntime(
+          config,
+          dependencies,
+          observer,
+          previewEnabled && previewRunStore !== undefined
+            ? { runStore: previewRunStore }
+            : undefined,
+        );
+      } catch (error: unknown) {
+        await previewRunStore?.close();
+        throw error;
+      }
     },
   };
+}
+
+async function composeNodeAttemptRuntime(
+  config: WorkerConfig,
+  dependencies: TransportModuleDependencies,
+  observer: QueueConsumerObserver,
+  preview:
+    | Readonly<{
+        runStore?: ReturnType<typeof createDatabasePreviewAttemptRunStore>;
+      }>
+    | undefined,
+): Promise<NodeAttemptRuntime | undefined> {
+  if (
+    dependencies.dispatchConsumerCapabilities !== undefined ||
+    !config.outboxDispatcher.enabledJobNames.includes(
+      JOB_NAME.executeNodeAttempt,
+    )
+  )
+    return undefined;
+  const injectedPreview = dependencies.previewRuntimeDependencies;
+  return createNodeAttemptRuntime({
+    ...(config.artifactStore === undefined
+      ? {}
+      : { artifactStore: config.artifactStore }),
+    ...(config.connectionEncryption === undefined
+      ? {}
+      : { connectionEncryption: config.connectionEncryption }),
+    database: config.database,
+    heartbeatIntervalMillis: config.nodeAttempt.heartbeatIntervalMillis,
+    leaseDurationSeconds: config.nodeAttempt.leaseDurationSeconds,
+    observer,
+    ...(preview === undefined && injectedPreview === undefined
+      ? {}
+      : {
+          preview: {
+            invoker:
+              injectedPreview?.invoker ??
+              createPlatformPreviewNodeInvoker({
+                releaseCohort: config.nodeCompatibilityCohort,
+                registry: createPlatformNodeRegistryForRelease(
+                  platformServingRegistryRelease(
+                    config.nodeCompatibilityCohort,
+                  ),
+                ),
+              }),
+            runStore:
+              injectedPreview?.runStore ??
+              (() => {
+                if (preview?.runStore === undefined)
+                  throw new Error(
+                    'Preview dispatch enabled without a durable store',
+                  );
+                return preview.runStore;
+              })(),
+          },
+        }),
+    releaseCohort: config.nodeCompatibilityCohort,
+    redisUrl: config.redisUrl,
+    workerId: config.nodeAttempt.workerId,
+  });
 }
 
 function dispatcherProvider(

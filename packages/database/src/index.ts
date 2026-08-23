@@ -144,8 +144,6 @@ export {
   heartbeatPreviewLease,
   completePreviewAttempt,
   reconcileExpiredPreviewAttempt,
-  PREVIEW_RETENTION_MAX_MS,
-  PREVIEW_STATUS,
   PreviewAcceptanceCorruptError,
   PreviewAdmissionDeniedError,
   PreviewAttemptStateError,
@@ -259,6 +257,15 @@ export {
   insertOutboxEvent,
   outboxChecksumSchema,
 } from './outbox.js';
+export {
+  parseStoredExecutionValueV1,
+  serializeStoredExecutionValueV1,
+} from './stored-execution-value.js';
+export {
+  isValidStoredExecutionOutput,
+  PREVIEW_RETENTION_MAX_MS,
+  PREVIEW_STATUS,
+} from './preview-execution.js';
 export type { InsertedOutboxEvent, OutboxEventInput } from './outbox.js';
 export {
   artifacts,

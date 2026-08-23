@@ -47,14 +47,37 @@ import {
   NodeAttemptHandlerStateError,
 } from './node-attempt-handler.js';
 import {
+  createPreviewAttemptHandler,
+  type PreviewAttemptRunStore,
+  type PreviewNodeInvoker,
+  type PreviewRuntimeCapabilityFactories,
+} from './preview-attempt-handler.js';
+import {
   createWorkerNodeRuntimeCapabilities,
   type WorkerNodeRuntimeCapabilities,
 } from './node-runtime-capabilities.js';
+import {
+  mapPreviewHandlerError,
+  type PreviewAttemptHandler,
+} from './preview-attempt-runtime.js';
 
 export interface NodeAttemptRuntime {
   readonly consumer: QueueConsumer;
   close(): Promise<void>;
 }
+
+/**
+ * Preview execution rides the same BullMQ queue as production attempts; the
+ * consumer routes by durable job kind so neither capability can steal the
+ * other's deliveries.
+ */
+export type PreviewAttemptRuntimeDependency = Readonly<{
+  heartbeatIntervalMillis?: number;
+  invoker: PreviewNodeInvoker;
+  leaseDurationSeconds?: number;
+  runStore: PreviewAttemptRunStore;
+  runtimeCapabilities?: PreviewRuntimeCapabilityFactories;
+}>;
 
 export type NodeAttemptRuntimeOptions = Readonly<{
   artifactStore?: ArtifactStoreConfig;
@@ -72,19 +95,37 @@ export type NodeAttemptRuntimeDependencies = Readonly<{
   consumerFactory?: typeof createQueueConsumer;
   engine?: NodeAttemptExecutionEngine;
   notifications?: RunEventNotificationPublisher;
+  preview?: PreviewAttemptRuntimeDependency;
   reader?: PublishedWorkflowReader;
   registry?: NodeExecutionRegistry;
   runStore?: NodeAttemptRunStore;
   runtimeCapabilities?: NodeAttemptRuntimeCapabilityFactories;
 }>;
 
-function queueHandler(handler: NodeAttemptHandler): QueueJobHandler {
+function queueHandler(
+  handler: NodeAttemptHandler,
+  previewHandler: PreviewAttemptHandler | undefined,
+): QueueJobHandler {
   return async (delivery, context): Promise<void> => {
-    if (delivery.name !== JOB_NAME.executeNodeAttempt)
+    if (
+      delivery.name !== JOB_NAME.executeNodeAttempt &&
+      delivery.name !== JOB_NAME.executePreviewAttempt
+    )
       throw new InvalidQueueDeliveryError(
         `Node-attempt consumer cannot handle ${delivery.name}`,
       );
     try {
+      if (
+        previewHandler !== undefined &&
+        delivery.name === JOB_NAME.executePreviewAttempt
+      ) {
+        await previewHandler.handle(delivery, context);
+        return;
+      }
+      if (delivery.name !== JOB_NAME.executeNodeAttempt)
+        throw new InvalidQueueDeliveryError(
+          `Node-attempt consumer cannot handle ${delivery.name}`,
+        );
       await handler.handle(delivery, context);
     } catch (error: unknown) {
       if (
@@ -97,7 +138,7 @@ function queueHandler(handler: NodeAttemptHandler): QueueJobHandler {
             ? `Node-attempt delivery is not recoverable: ${error.code}`
             : 'Node-attempt delivery failed durable state verification',
         );
-      throw error;
+      throw mapPreviewHandlerError(error);
     }
   };
 }
@@ -194,7 +235,19 @@ export async function createNodeAttemptRuntime(
   }
   const runtimeCapabilities =
     dependencies.runtimeCapabilities ?? capabilityRuntime?.factories;
-  const handler = createNodeAttemptHandler({
+  let previewClose: (() => Promise<void>) | undefined;
+  if (dependencies.preview !== undefined) {
+    const closable = dependencies.preview.runStore as unknown as {
+      close?: () => Promise<void>;
+    };
+    if (typeof closable.close === 'function') {
+      const bound = closable.close.bind(dependencies.preview.runStore);
+      previewClose = async (): Promise<void> => {
+        await bound();
+      };
+    }
+  }
+  const nodeHandler = createNodeAttemptHandler({
     engine,
     heartbeatIntervalMillis: options.heartbeatIntervalMillis,
     leaseDurationSeconds: options.leaseDurationSeconds,
@@ -210,7 +263,28 @@ export async function createNodeAttemptRuntime(
     consumer = (dependencies.consumerFactory ?? createQueueConsumer)({
       queueName: QUEUE_NAME.nodeAttempts,
       redisUrl: options.redisUrl,
-      handler: queueHandler(handler),
+      handler: queueHandler(
+        nodeHandler,
+        dependencies.preview === undefined
+          ? undefined
+          : createPreviewAttemptHandler({
+              heartbeatIntervalMillis:
+                dependencies.preview.heartbeatIntervalMillis ??
+                options.heartbeatIntervalMillis,
+              invoker: dependencies.preview.invoker,
+              leaseDurationSeconds:
+                dependencies.preview.leaseDurationSeconds ??
+                options.leaseDurationSeconds,
+              runStore: dependencies.preview.runStore,
+              ...(dependencies.preview.runtimeCapabilities === undefined
+                ? {}
+                : {
+                    runtimeCapabilities:
+                      dependencies.preview.runtimeCapabilities,
+                  }),
+              workerId: options.workerId,
+            }),
+      ),
       ...(options.observer === undefined ? {} : { observer: options.observer }),
       traceRunner: createQueueTraceRunner(),
     });
@@ -234,6 +308,7 @@ export async function createNodeAttemptRuntime(
           reader.close(),
           runStore.close(),
           capabilityRuntime?.close(),
+          previewClose?.(),
         ]);
         const failure = results.find((result) => result.status === 'rejected');
         if (failure?.status === 'rejected') throw failure.reason;
