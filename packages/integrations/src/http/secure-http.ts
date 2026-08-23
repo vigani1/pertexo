@@ -300,7 +300,7 @@ export class SecureHttpClient {
           ),
           executionSignal,
           true,
-          false,
+          true,
         );
         return Object.freeze({
           status: response.status,
@@ -726,10 +726,10 @@ function mapResponseStreamError(
   error: unknown,
   signal: AbortSignal | undefined,
 ): SecureHttpError {
-  if (signal?.aborted === true) return abortFailure(signal, true, false);
+  if (signal?.aborted === true) return abortFailure(signal, true, true);
   if (isTimeoutError(error))
-    return failure(SECURE_HTTP_ERROR_CODE.timedOut, true, false, error);
-  return failure(SECURE_HTTP_ERROR_CODE.networkFailed, true, false, error);
+    return failure(SECURE_HTTP_ERROR_CODE.timedOut, true, true, error);
+  return failure(SECURE_HTTP_ERROR_CODE.networkFailed, true, true, error);
 }
 
 function isTimeoutError(error: unknown): boolean {

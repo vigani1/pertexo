@@ -27,6 +27,7 @@ import {
   type SecureHttpBodyConsumer,
   type SecureHttpResponse,
   type SecureHttpRequest,
+  type SecureHttpTransportResponse,
 } from '../src/server.js';
 
 const workspaceId = '11111111-1111-4111-8111-111111111111';
@@ -324,6 +325,57 @@ describe('http.request@1 server executor', () => {
     expect(definiteState.beforeDispatch).not.toHaveBeenCalled();
     expect(definiteState.secret.every((byte) => byte === 0)).toBe(true);
   });
+
+  it.each([
+    {
+      failure: 'timeout after provider-confirmed success',
+      timeoutMillis: 5,
+      stream: {
+        [Symbol.asyncIterator]: () => ({
+          next: () => new Promise<IteratorResult<Uint8Array>>(() => undefined),
+        }),
+      },
+      decision: { kind: 'outcome_unknown', errorKind: 'timeout' },
+    },
+    {
+      failure: 'network stream failure after provider-confirmed success',
+      timeoutMillis: 10_000,
+      stream: {
+        [Symbol.asyncIterator]: () => ({
+          next: () =>
+            Promise.reject<IteratorResult<Uint8Array>>(
+              new Error('response stream failed'),
+            ),
+        }),
+      },
+      decision: { kind: 'outcome_unknown', errorKind: 'network' },
+    },
+  ])(
+    'keeps unsafe inline response $failure',
+    async ({ timeoutMillis, stream, decision }) => {
+      const providerResponse: SecureHttpTransportResponse = {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+        body: stream,
+        close: vi.fn(),
+      };
+      const httpClient = new SecureHttpClient(
+        {
+          resolve: () => Promise.resolve([{ address: '8.8.8.8', family: 4 }]),
+        },
+        { dispatch: () => Promise.resolve(providerResponse) },
+      );
+
+      await expect(
+        createHttpRequestExecutorRegistration({ httpClient }).execute(
+          invocation(runtime().value, {
+            config: config({ timeoutMillis }),
+          }),
+        ),
+      ).rejects.toMatchObject({ decision, possiblyDispatched: true });
+      expect(providerResponse.close).toHaveBeenCalledOnce();
+    },
+  );
 
   it('classifies rate-limited, timed, and canceled dispatches truthfully under the pinned unsafe class', async () => {
     // A post-dispatch 429 is a definite failure for unsafe work and must

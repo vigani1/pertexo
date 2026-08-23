@@ -532,7 +532,7 @@ describe('secure HTTP client', () => {
     expect(invalid.close).toHaveBeenCalledOnce();
   });
 
-  it('treats timeout after response headers as a definite bounded-output failure', async () => {
+  it('keeps body timeout and network failure ambiguous after provider-confirmed success', async () => {
     const resolver = new FakeResolver({
       'api.example.test': [{ address: '8.8.8.8', family: 4 }],
     });
@@ -555,11 +555,36 @@ describe('secure HTTP client', () => {
       ).execute(request({ timeoutMillis: 5 })),
       {
         code: SECURE_HTTP_ERROR_CODE.timedOut,
-        classification: 'definite_failure',
+        classification: 'ambiguous',
         possiblyDispatched: true,
       },
     );
     expect(close).toHaveBeenCalledOnce();
+
+    const streamFailure = new Error('response stream failed');
+    const failedClose = vi.fn();
+    const failedResponse: SecureHttpTransportResponse = {
+      status: 200,
+      headers: {},
+      body: {
+        [Symbol.asyncIterator]: () => ({
+          next: () => Promise.reject(streamFailure),
+        }),
+      },
+      close: failedClose,
+    };
+    await expectSecureFailure(
+      new SecureHttpClient(
+        resolver,
+        new FakeTransport(() => Promise.resolve(failedResponse)),
+      ).execute(request()),
+      {
+        code: SECURE_HTTP_ERROR_CODE.networkFailed,
+        classification: 'ambiguous',
+        possiblyDispatched: true,
+      },
+    );
+    expect(failedClose).toHaveBeenCalledOnce();
   });
 
   it('classifies marker, DNS, transport, cancellation, and total timeout failures safely', async () => {
