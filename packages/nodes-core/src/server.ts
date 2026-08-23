@@ -12,6 +12,13 @@ import {
   type NodeRegistry,
 } from '@pertexo/node-sdk/server';
 
+import { coreConditionExecutor } from './condition/executor.js';
+import {
+  CORE_CONDITION_CONFIG_SCHEMA,
+  CORE_CONDITION_INPUT_SCHEMA,
+  CORE_CONDITION_MANIFEST,
+  CORE_CONDITION_OUTPUT_SCHEMA,
+} from './condition/index.js';
 import { coreManualExecutor } from './manual/executor.js';
 import {
   CORE_MANUAL_CONFIG_SCHEMA,
@@ -38,6 +45,12 @@ import {
 export const CORE_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistration[] =
   Object.freeze([
     Object.freeze({
+      manifest: CORE_CONDITION_MANIFEST,
+      configSchema: CORE_CONDITION_CONFIG_SCHEMA,
+      inputSchema: CORE_CONDITION_INPUT_SCHEMA,
+      outputSchema: CORE_CONDITION_OUTPUT_SCHEMA,
+    }),
+    Object.freeze({
       manifest: CORE_MANUAL_MANIFEST,
       configSchema: CORE_MANUAL_CONFIG_SCHEMA,
       inputSchema: CORE_MANUAL_INPUT_SCHEMA,
@@ -58,6 +71,7 @@ export const CORE_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistra
   ]);
 
 export const CORE_NODE_EXECUTOR_REGISTRATIONS = Object.freeze([
+  coreConditionExecutor,
   coreManualExecutor,
   coreSetExecutor,
   coreTerminateExecutor,

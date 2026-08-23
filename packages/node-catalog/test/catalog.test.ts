@@ -12,11 +12,18 @@ import type {
 } from '@pertexo/integrations/server';
 import { createRegistryReleaseSuccessor } from '@pertexo/node-sdk';
 import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
-import { CORE_SET_DEFINITION, CORE_SET_EXECUTOR } from '@pertexo/nodes-core';
+import {
+  CORE_CONDITION_DEFINITION,
+  CORE_CONDITION_EXECUTOR,
+  CORE_SET_DEFINITION,
+  CORE_SET_EXECUTOR,
+} from '@pertexo/nodes-core';
 
 import {
   PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_HTTP_STAGED,
+  PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_CONDITION_STAGED,
   PLATFORM_REGISTRY_RELEASE_HISTORY,
   PLATFORM_HTTP_ACTIVATION_RELEASE_SUPPORT,
   PLATFORM_HTTP_STAGING_RELEASE_SUPPORT,
@@ -31,6 +38,65 @@ import {
 } from '../src/server.js';
 
 describe('platform node compatibility catalog', () => {
+  it('resolves and executes Condition only in its exact additive release', async () => {
+    const definition = resolvePlatformNodeDefinitionForRelease(
+      PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
+      CORE_CONDITION_DEFINITION,
+    );
+    expect(definition.manifest).toMatchObject({
+      definition: { key: 'core.condition', version: 1 },
+      executor: { key: 'core.condition', version: 1 },
+      family: 'logic',
+      ports: { inputs: ['in'], outputs: ['true', 'false'] },
+      resourceClass: 'cpu',
+      retryClass: 'safe',
+    });
+    expect(definition.configSchema.safeParse({}).success).toBe(true);
+    expect(definition.configSchema.safeParse({ extra: true }).success).toBe(
+      false,
+    );
+    expect(definition.inputSchema.safeParse({ condition: true }).success).toBe(
+      true,
+    );
+    expect(definition.inputSchema.safeParse({ condition: 1 }).success).toBe(
+      false,
+    );
+
+    const registry = createPlatformNodeRegistryForRelease(
+      PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
+    );
+    await expect(
+      registry.execute({
+        config: {},
+        definition: CORE_CONDITION_DEFINITION,
+        executor: CORE_CONDITION_EXECUTOR,
+        input: { condition: true },
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({
+      kind: 'succeeded',
+      output: { selectedPort: 'true' },
+    });
+    await expect(
+      registry.execute({
+        config: {},
+        definition: CORE_CONDITION_DEFINITION,
+        executor: CORE_CONDITION_EXECUTOR,
+        input: { condition: false },
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({
+      kind: 'succeeded',
+      output: { selectedPort: 'false' },
+    });
+    expect(() =>
+      resolvePlatformNodeDefinitionForRelease(
+        PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+        CORE_CONDITION_DEFINITION,
+      ),
+    ).toThrow(/not implemented/u);
+  });
+
   it('resolves exact definition schemas without constructing or calling an executor', () => {
     const resolved = resolvePlatformNodeDefinitionForRelease(
       PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
@@ -55,9 +121,9 @@ describe('platform node compatibility catalog', () => {
       ),
     ).toThrow(/not implemented/u);
   });
-  it('ships the retained core overlap, staged HTTP introduction, and active successor in order', () => {
+  it('retains every additive release in canonical order', () => {
     expect(PLATFORM_REGISTRY_RELEASE_HISTORY.map(({ epoch }) => epoch)).toEqual(
-      [1, 2, 3, 4],
+      [1, 2, 3, 4, 5, 6],
     );
     expect(PLATFORM_REGISTRY_RELEASE_SUPPORT.map(({ epoch }) => epoch)).toEqual(
       [1, 2],
@@ -100,6 +166,16 @@ describe('platform node compatibility catalog', () => {
       ),
     ).toMatchObject({ lifecycle: 'active', abiVersion: 2 });
     expect(
+      PLATFORM_REGISTRY_RELEASE_CONDITION_STAGED.executors.find(
+        ({ executor }) => executor.key === CORE_CONDITION_EXECUTOR.key,
+      ),
+    ).toMatchObject({ lifecycle: 'staged', abiVersion: 1 });
+    expect(
+      PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE.executors.find(
+        ({ executor }) => executor.key === CORE_CONDITION_EXECUTOR.key,
+      ),
+    ).toMatchObject({ lifecycle: 'active', abiVersion: 1 });
+    expect(
       PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE.definitions.map(
         ({ definition }) => definition,
       ),
@@ -110,7 +186,7 @@ describe('platform node compatibility catalog', () => {
       new Set(
         PLATFORM_REGISTRY_RELEASE_HISTORY.map(({ fingerprint }) => fingerprint),
       ).size,
-    ).toBe(4);
+    ).toBe(6);
   });
 
   it('builds one exact active server registry with retained core and dispatch-aware HTTP', async () => {
