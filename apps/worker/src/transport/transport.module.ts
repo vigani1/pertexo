@@ -142,7 +142,7 @@ async function composeNodeAttemptRuntime(
   observer: QueueConsumerObserver,
   preview:
     | Readonly<{
-        runStore?: ReturnType<typeof createDatabasePreviewAttemptRunStore>;
+        runStore: ReturnType<typeof createDatabasePreviewAttemptRunStore>;
       }>
     | undefined,
 ): Promise<NodeAttemptRuntime | undefined> {
@@ -167,13 +167,7 @@ async function composeNodeAttemptRuntime(
                 platformServingRegistryRelease(config.nodeCompatibilityCohort),
               ),
             }),
-            runStore: (() => {
-              if (preview.runStore === undefined)
-                throw new Error(
-                  'Preview dispatch enabled without a durable store',
-                );
-              return preview.runStore;
-            })(),
+            runStore: preview.runStore,
           },
         }),
     releaseCohort: config.nodeCompatibilityCohort,

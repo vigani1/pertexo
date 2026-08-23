@@ -106,4 +106,32 @@ describe('platform preview node invoker', () => {
     });
     expect(execute).not.toHaveBeenCalled();
   });
+
+  it('preserves cancellation while resolving preview input mappings', async () => {
+    const execute = vi.fn();
+    const invoker = createPlatformPreviewNodeInvoker({
+      registry: { execute } as never,
+      releaseCohort: 'core',
+    });
+    const lease = leaseFixture({
+      config: {},
+      configVersion: 1,
+      connectionRefs: {},
+      definition: { key: 'core.set', version: 1 },
+      id: 'node-1',
+      inputMappings: {
+        name: { kind: 'run_input', path: '$.name' },
+      },
+    });
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      invoker.invoke({ lease, signal: controller.signal }),
+    ).resolves.toEqual({
+      safeErrorCode: 'execution.canceled',
+      status: 'canceled',
+    });
+    expect(execute).not.toHaveBeenCalled();
+  });
 });

@@ -228,6 +228,11 @@ export function createPlatformPreviewNodeInvoker(
           error.code === 'attempt_invalid'
         )
           return failedWith('preview.input_invalid');
+        if (
+          error instanceof WorkflowEngineError &&
+          error.code === 'attempt_aborted'
+        )
+          return canceledWith();
         return classifyExecutorFailure(error, {
           canceledWith,
           failedWith,
