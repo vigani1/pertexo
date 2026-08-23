@@ -1,6 +1,6 @@
 # Backend Implementation Progress
 
-Last updated: 2026-08-23
+Last updated: 2026-08-24
 
 This file tracks delivery against
 [the authoritative backend plan](./workflow-platform-backend-plan.md). A phase
@@ -20,7 +20,7 @@ not complete a phase.
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
-| Phase 4 — first side-effecting integration slice | In progress | ADRs 007/016; migration head `0030_coordinator_retry_decisions.sql`; production preview composition and terminal-truth review corrections complete through `7f16f9a`; final fixed-head Spec/Standards review pending |
+| Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 5 — orchestration slice | Not started | — |
 | Phase 6 — V1 providers and triggers | Not started | — |
 | Phase 7 — production operations | Not started | — |
@@ -1330,7 +1330,7 @@ Current evidence:
 
 ## Phase 4 — First side-effecting integration slice
 
-Status: **In progress**
+Status: **Complete**
 
 Phase 4 must ship the first complete side-effecting vertical slice: create and
 use one encrypted generic-HTTP connection, publish and execute the generic HTTP
@@ -1465,9 +1465,9 @@ Phase-wide verification and evidence gates:
       and the complete real-service integration matrix sequentially. Record
       exact commands, versions, assertion counts, timings, migration head,
       cleanup, and post-test dependency health.
-- [ ] Complete independent Spec and Standards reviews against one fixed Phase 4
+- [x] Complete independent Spec and Standards reviews against one fixed Phase 4
       implementation commit and resolve every blocker/high finding.
-- [ ] Mark Phase 4 complete only after every box above has direct evidence and
+- [x] Mark Phase 4 complete only after every box above has direct evidence and
       the coherent implementation/evidence commits are pushed.
 
 Explicit exclusions for Phase 4:
@@ -2252,8 +2252,42 @@ Current evidence:
   preview cancellation becomes `outcome_unknown`; and the generated contract,
   controller, and production route test use
   `/workflows/:workflowId/draft/nodes/:nodeId/test`. The focused engine, worker,
-  contracts, and API suites and typechecks pass. The final Phase 4 gate remains
-  open only for production due-work wake-up and another fixed-head review.
+  contracts, and API suites and typechecks pass.
+- Commit `f9eb63b` adds migration `0031_due_node_wakeups.sql`, a bounded
+  least-privilege PostgreSQL due-node claim function, canonical identifier-only
+  coordinator outbox emission, exact wake-marker lifecycle, readiness checks,
+  and the production worker scanner loop. PostgreSQL remains authoritative for
+  retry due times; neither worker sleeps nor BullMQ delayed jobs own business
+  retry timing.
+- Commits `e15be0c` and `cfcfd27` add the real liveness proof requested by the
+  fixed-head reviews. Two retrying nodes admit no attempt before due; a restarted
+  production `CoordinatorRuntime` polls PostgreSQL and creates two wake-up
+  outbox rows without unrelated traffic; the real dispatcher fails both while
+  Redis is unavailable, releases them durably, then publishes both after
+  recovery through BullMQ; the coordinator admits exactly one next attempt per
+  node with the original provider idempotency keys and no duplicate durable
+  state. The same database suite migrates an exact populated `0030` head by
+  applying only `0031`, then verifies readiness, function ownership,
+  `SECURITY DEFINER`, and narrow worker grants.
+- Commit `28ae56b` attaches the workflow-authoring lock-race expectations before
+  releasing their intentional PostgreSQL locks, preserving the assertions while
+  removing a fast-CI unhandled-rejection race. The affected disposable
+  PostgreSQL suite passes all 17 assertions.
+- Final local verification across the closure commits: root `pnpm check` passes;
+  the hardened disposable PostgreSQL matrix passed all 247 assertions before
+  the immediate-prior-head case was added; focused coordinator wake-up
+  integration passes 4 assertions;
+  immediate-head coordinator database integration passes 33 assertions; and
+  the full artifact/database/worker/API real-service matrix passes. Disposable
+  gate databases were removed, while the shared `pertexo` database and its
+  documented historical `0012` checksum mismatch remained untouched.
+- GitHub Actions run `32672429505` passed at exact head `28ae56b` in 9m24s,
+  including 248 database, 17 worker, 7 API, and 2 artifact-store real-service
+  assertions, clean-runner quality gates, Phase 0E recovery, SSE Redis-loss
+  recovery, sequential service-loss resilience, and additive compatibility
+  rollout. Independent Spec and Standards reviews of
+  exact range `67474b3...28ae56b` returned GO with no blocker, high, or medium
+  findings. Phase 4 is complete.
 
 ## Phase 5 — Orchestration slice
 
@@ -2261,7 +2295,7 @@ Status: **Not started**
 
 Authority and entry gate:
 
-- [ ] Complete Phase 4 and preserve its fixed-head Spec/Standards GO before any
+- [x] Complete Phase 4 and preserve its fixed-head Spec/Standards GO before any
       Phase 5 implementation commit.
 - [x] Use accepted ADR 008 for structured branches, deterministic joins,
       bounded loops, canonical invocation scopes, and arbitrary-cycle rejection.
