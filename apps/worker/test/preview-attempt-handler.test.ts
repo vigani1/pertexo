@@ -150,9 +150,11 @@ describe('preview attempt handler', () => {
   it('wraps raw executor output into the stored envelope and commits truthfully', async () => {
     const { calls, store } = fakeStore();
     const { invoker } = succeededInvoker({ ok: true });
-    const result = await createPreviewAttemptHandler(
-      deps(store, invoker),
-    ).handle(deliveryFixture(), context());
+    const recordTerminal = vi.fn();
+    const result = await createPreviewAttemptHandler({
+      ...deps(store, invoker),
+      telemetry: { recordReconciliation: vi.fn(), recordTerminal },
+    }).handle(deliveryFixture(), context());
     expect(result).toEqual({ kind: 'committed' });
     expect(calls.claims).toBe(1);
     expect(calls.completions[0]?.status).toBe('succeeded');
@@ -160,6 +162,15 @@ describe('preview attempt handler', () => {
       output: { value: { ok: boolean } };
     };
     expect(stored.output.value).toEqual({ ok: true });
+    expect(recordTerminal).toHaveBeenCalledWith({
+      mayContactProvider: true,
+      mayCauseExternalSideEffect: false,
+      outcome: 'succeeded',
+      possiblyDispatched: false,
+      sideEffectClass: 'safe',
+      source: 'execution',
+      usesConnection: false,
+    });
   });
 
   it('passes the durable preview deadline to the artifact capability', async () => {
@@ -236,12 +247,15 @@ describe('preview attempt handler', () => {
   it('returns duplicates without invoking the executor', async () => {
     const { calls, store } = fakeStore({ claimKind: 'duplicate' });
     const invoke = vi.fn();
-    const result = await createPreviewAttemptHandler(
-      deps(store, { invoke }),
-    ).handle(deliveryFixture(), context());
+    const recordTerminal = vi.fn();
+    const result = await createPreviewAttemptHandler({
+      ...deps(store, { invoke }),
+      telemetry: { recordReconciliation: vi.fn(), recordTerminal },
+    }).handle(deliveryFixture(), context());
     expect(result).toEqual({ kind: 'duplicate' });
     expect(invoke).not.toHaveBeenCalled();
     expect(calls.completions).toHaveLength(0);
+    expect(recordTerminal).not.toHaveBeenCalled();
   });
 
   it('rejects a transport identity mismatch before any durable work', async () => {

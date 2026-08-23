@@ -40,6 +40,10 @@ import {
 } from './node-attempt-engine.js';
 import { createProductionHttpProviderTelemetry } from './http-provider-telemetry.js';
 import {
+  createProductionPreviewTelemetry,
+  type PreviewTelemetry,
+} from './preview-telemetry.js';
+import {
   createNodeAttemptHandler,
   type NodeAttemptExecutionEngine,
   type NodeAttemptHandler,
@@ -100,6 +104,7 @@ export type NodeAttemptRuntimeDependencies = Readonly<{
   registry?: NodeExecutionRegistry;
   runStore?: NodeAttemptRunStore;
   runtimeCapabilities?: NodeAttemptRuntimeCapabilityFactories;
+  previewTelemetry?: PreviewTelemetry;
 }>;
 
 function queueHandler(
@@ -277,6 +282,9 @@ export async function createNodeAttemptRuntime(
                 options.preview.leaseDurationSeconds ??
                 options.leaseDurationSeconds,
               runStore: options.preview.runStore,
+              telemetry:
+                dependencies.previewTelemetry ??
+                createProductionPreviewTelemetry(),
               ...(options.preview.runtimeCapabilities === undefined
                 ? runtimeCapabilities === undefined
                   ? {}

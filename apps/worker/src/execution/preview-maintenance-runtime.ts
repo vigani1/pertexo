@@ -26,6 +26,7 @@ import {
   mapPreviewReconciliationError,
   type PreviewReconciliationStore,
 } from './preview-reconciliation-runtime.js';
+import type { PreviewTelemetry } from './preview-telemetry.js';
 
 export interface PreviewMaintenanceRuntime {
   readonly consumer: QueueConsumer;
@@ -49,6 +50,7 @@ export async function createPreviewMaintenanceRuntime(
     reconciliationStore?: PreviewReconciliationStore & {
       close?: () => Promise<void>;
     };
+    previewTelemetry?: PreviewTelemetry;
   }> = {},
 ): Promise<PreviewMaintenanceRuntime> {
   const reconciliationStore =
@@ -82,8 +84,10 @@ export async function createPreviewMaintenanceRuntime(
           120,
           Math.ceil(options.artifactStore.requestTimeoutMs / 1_000) + 1,
         );
-  const reconciliation =
-    createPreviewReconciliationHandler(reconciliationStore);
+  const reconciliation = createPreviewReconciliationHandler(
+    reconciliationStore,
+    dependencies.previewTelemetry,
+  );
   const cleanup =
     cleanupStore === undefined || artifacts === undefined
       ? undefined

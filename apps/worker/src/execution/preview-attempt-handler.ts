@@ -20,6 +20,10 @@ import type {
   NodeAttemptCapabilityContext,
   NodeAttemptRuntimeCapabilityFactories,
 } from './node-attempt-handler.js';
+import type {
+  PreviewTelemetry,
+  PreviewTerminalStatus,
+} from './preview-telemetry.js';
 
 type PreviewQueueDelivery = Extract<
   QueueDelivery,
@@ -128,6 +132,7 @@ export interface PreviewAttemptHandlerDependencies {
   leaseDurationSeconds: number;
   runStore: PreviewAttemptRunStore;
   runtimeCapabilities?: PreviewRuntimeCapabilityFactories;
+  telemetry?: PreviewTelemetry;
   workerId: string;
 }
 
@@ -158,6 +163,7 @@ async function completeOutcome(
   lease: PreviewAttemptLease,
   outcome: PreviewInvocationOutcome,
   delivery: { outboxEventId: string; payloadChecksum: string },
+  dispatched: boolean,
 ): Promise<PreviewAttemptHandlerResult> {
   if (outcome.status === 'succeeded') {
     // Executor payloads are raw JSON; the durable contract is the bounded
@@ -170,7 +176,11 @@ async function completeOutcome(
       value: outcome.output,
     } as unknown;
     if (!isValidStoredExecutionOutput(stored)) {
-      return committed(
+      return committedTerminal(
+        dependencies,
+        lease,
+        'failed',
+        dispatched,
         await dependencies.runStore.complete({
           delivery,
           lease,
@@ -182,7 +192,11 @@ async function completeOutcome(
         }),
       );
     }
-    return committed(
+    return committedTerminal(
+      dependencies,
+      lease,
+      'succeeded',
+      dispatched,
       await dependencies.runStore.complete({
         delivery,
         lease,
@@ -194,7 +208,11 @@ async function completeOutcome(
       }),
     );
   }
-  return committed(
+  return committedTerminal(
+    dependencies,
+    lease,
+    outcome.status,
+    dispatched,
     await dependencies.runStore.complete({
       delivery,
       lease,
@@ -208,6 +226,35 @@ function committed(
   result: PreviewCompletionResult,
 ): PreviewAttemptHandlerResult {
   return Object.freeze({ kind: result.kind });
+}
+
+function committedTerminal(
+  dependencies: PreviewAttemptHandlerDependencies,
+  lease: PreviewAttemptLease,
+  status: PreviewTerminalStatus,
+  dispatched: boolean,
+  result: PreviewCompletionResult,
+): PreviewAttemptHandlerResult {
+  if (result.kind === 'committed') {
+    const connectionRefs = lease.executableNode.connectionRefs;
+    try {
+      dependencies.telemetry?.recordTerminal({
+        mayContactProvider: lease.mayContactProvider,
+        mayCauseExternalSideEffect: lease.mayCauseExternalSideEffect,
+        outcome: status,
+        possiblyDispatched: dispatched,
+        sideEffectClass: lease.sideEffectClass,
+        source: 'execution',
+        usesConnection:
+          typeof connectionRefs === 'object' &&
+          connectionRefs !== null &&
+          Object.keys(connectionRefs).length > 0,
+      });
+    } catch {
+      // Diagnostics cannot change a committed terminal transition.
+    }
+  }
+  return committed(result);
 }
 
 function waitForHeartbeat(
@@ -275,7 +322,11 @@ export function createPreviewAttemptHandler(
         payloadChecksum: canonicalOutboxPayloadChecksum(delivery.data),
       };
       if (Date.now() >= lease.expiresAt.getTime())
-        return committed(
+        return committedTerminal(
+          dependencies,
+          lease,
+          deadlineExceededOutcome(lease, false).status,
+          false,
           await dependencies.runStore.complete({
             delivery: claimDelivery,
             lease,
@@ -418,7 +469,11 @@ export function createPreviewAttemptHandler(
           leaseFailure,
         ]);
         if (raced === 'deadline')
-          return committed(
+          return committedTerminal(
+            dependencies,
+            lease,
+            deadlineExceededOutcome(lease, dispatched).status,
+            dispatched,
             await dependencies.runStore.complete({
               delivery: claimDelivery,
               lease,
@@ -435,6 +490,7 @@ export function createPreviewAttemptHandler(
           lease,
           raced.outcome,
           claimDelivery,
+          dispatched,
         );
       } finally {
         clearTimeout(deadlineTimer);

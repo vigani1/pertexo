@@ -14,6 +14,10 @@ import {
   type QueueHandlerContext,
 } from '@pertexo/queue';
 import { Pool } from 'pg';
+import {
+  createProductionPreviewTelemetry,
+  type PreviewTelemetry,
+} from './preview-telemetry.js';
 
 type PreviewReconciliationDelivery = Extract<
   QueueDelivery,
@@ -59,6 +63,7 @@ export function createDatabasePreviewReconciliationStore(
 
 export function createPreviewReconciliationHandler(
   store: PreviewReconciliationStore,
+  telemetry: PreviewTelemetry = createProductionPreviewTelemetry(),
 ): PreviewReconciliationHandler {
   return Object.freeze({
     handle: async (
@@ -72,7 +77,7 @@ export function createPreviewReconciliationHandler(
         throw new InvalidQueueDeliveryError(
           'Preview reconciliation transport identity is invalid',
         );
-      return store.reconcile({
+      const result = await store.reconcile({
         attemptFenceToken: delivery.data.attemptFenceToken,
         delivery: {
           outboxEventId: delivery.data.outboxEventId,
@@ -83,6 +88,20 @@ export function createPreviewReconciliationHandler(
         signal: context.signal,
         workspaceId: delivery.data.workspaceId,
       });
+      try {
+        telemetry.recordReconciliation({
+          decision: result.kind,
+          ...(result.kind === 'completed' ? { outcome: result.status } : {}),
+        });
+        if (result.kind === 'completed')
+          telemetry.recordTerminal({
+            outcome: result.status,
+            source: 'reconciliation',
+          });
+      } catch {
+        // Diagnostics cannot change a committed reconciliation decision.
+      }
+      return result;
     },
   });
 }

@@ -35,12 +35,17 @@ function delivery() {
 describe('preview reconciliation handler', () => {
   it('forwards one identifier-only, checksum-bound reconciliation decision', async () => {
     const reconcile = vi.fn().mockResolvedValue({ kind: 'redelivered' });
+    const recordReconciliation = vi.fn();
+    const recordTerminal = vi.fn();
     const store: PreviewReconciliationStore = { reconcile };
     const selected = delivery();
     const signal = new AbortController().signal;
 
     await expect(
-      createPreviewReconciliationHandler(store).handle(selected, { signal }),
+      createPreviewReconciliationHandler(store, {
+        recordReconciliation,
+        recordTerminal,
+      }).handle(selected, { signal }),
     ).resolves.toEqual({ kind: 'redelivered' });
     expect(reconcile).toHaveBeenCalledWith({
       attemptFenceToken: selected.data.attemptFenceToken,
@@ -52,6 +57,35 @@ describe('preview reconciliation handler', () => {
       previewRunId: selected.data.previewRunId,
       signal,
       workspaceId: selected.data.workspaceId,
+    });
+    expect(recordReconciliation).toHaveBeenCalledWith({
+      decision: 'redelivered',
+    });
+    expect(recordTerminal).not.toHaveBeenCalled();
+  });
+
+  it('records a terminal reconciliation only after its durable completion', async () => {
+    const recordReconciliation = vi.fn();
+    const recordTerminal = vi.fn();
+    const selected = delivery();
+    await expect(
+      createPreviewReconciliationHandler(
+        {
+          reconcile: vi.fn().mockResolvedValue({
+            kind: 'completed',
+            status: 'outcome_unknown',
+          }),
+        },
+        { recordReconciliation, recordTerminal },
+      ).handle(selected, { signal: new AbortController().signal }),
+    ).resolves.toEqual({ kind: 'completed', status: 'outcome_unknown' });
+    expect(recordReconciliation).toHaveBeenCalledWith({
+      decision: 'completed',
+      outcome: 'outcome_unknown',
+    });
+    expect(recordTerminal).toHaveBeenCalledWith({
+      outcome: 'outcome_unknown',
+      source: 'reconciliation',
     });
   });
 
