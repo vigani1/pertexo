@@ -191,3 +191,97 @@ mechanical rather than manual transcription.
 - Compatibility-rollout proof — 1 assertion on its own fresh disposable
   database, dropped afterward.
 - `pnpm lint` (repo-wide, restored gate) — clean.
+
+## Session work log — branch `fix/audit-findings` (reviewer guide)
+
+Everything below happened on this branch only; `main` was never touched.
+Commits are listed in order with the reasoning a reviewer needs, followed by
+an explicit register of every place this session interpreted, extended, or
+deliberately deferred against the authoritative plan.
+
+### Commit index
+
+| Commits | Checkpoint | What a reviewer should look at |
+| --- | --- | --- |
+| `d8b5472` | CI gap fix | Adds the compatibility-rollout proof as the **last** integration step (it advances the singleton release pointer; ephemeral CI container makes that safe). Verified locally on a disposable database. |
+| `4c8d492` | Pool hygiene | Extracts one fail-closed `withTenantScopedClient` primitive into `workspace.ts`; connections + authoring adapters delegate to it (their private helpers had no pre/post context assertions, no read-back verification, no destroy-on-leak). New 5-test real-Postgres suite `tenant-context-hygiene.integration.test.ts`. See deviation D1/D2. |
+| `1b8af29` | Lint gate | Root lint got `NODE_OPTIONS=--max-old-space-size=8192` (typed ESLint OOM'd at Node's default heap — tracker line 1539 recorded the symptom). Restoring the gate surfaced and fixed one latent violation in `apps/api/test/node-testing/validation.test.ts`. See deviation D3. |
+| `364bc1a` | This document | Findings 1–6 recorded with evidence. |
+| `ce02e52` + `81ff6c9` | Connection box closed | Concurrent-race proofs: exactly-one-winner same-name creates; CAS rotation from one expected pointer admits exactly one winner regardless of race order; losers leave zero orphaned secret versions. Closes the last unchecked connection-slice box. |
+| `bd2989b` + `0e75643` | ADR 007 box closed | Executor-boundary truth for rate-limit / timeout / canceled under the manifest-pinned `unsafe` class (policy layer already covered all three side-effect classes). No production code changed — tests only. |
+| `21a0b1d` | Preview seam | Worker-side persistence: checksum-bound delivery validation, fenced claims with expired-lease reclaim (blocked after dispatch marker), owner-only heartbeats, stale-fence duplicate truthfulness, dispatch-evidence reconciliation (`failed` before any marker vs `outcome_unknown` after), forged-checksum security facts, RLS isolation. Built on the new shared primitive. 6 real-Postgres assertions. |
+| `2c1418a` | Preview composition | Handler + platform invoker + queue router + dispatcher capability entry (`execute-preview-attempt`). Output envelope validation via strict-JSON structural walk plus lossless canonical roundtrip (the serializer alone silently drops function members — regression-proven). Retention deadline races execution so late results stay truthful. 9 unit assertions. See deviations D4–D7. |
+| `f434f71`, `8683011` | Tracker pairs | Evidence-ledger updates in the repo's feat→docs rhythm. |
+| `886cdb3` + `cf26f87` | Real-transport proof | Acceptance → outbox → BullMQ → routed consumer → pinned `core.set` executor → truthful succeeded; atomic inbox receipt; exact redelivery is a byte-identical no-op. The suite activates this artifact's derived release through the full audited maintenance flow instead of trusting the migration bootstrap fingerprint. See deviation D8. |
+| `abe757f` + `4cce3cf` | Sweep contract held | `sweep-expired-previews` job kind added to queue contracts/routing/metrics/capability allowlist, disabled by default, no consumer — matching the held `reconcile-workflow-triggers` precedent. Finding 7 records why deletion could not be landed honestly (no serving role holds DELETE; forced RLS blocks cross-workspace sweeps). See deviation D9. |
+
+### Verification summary
+
+- Repository-wide `pnpm check` green at every committed checkpoint (format,
+  lint incl. restored heap-bound gate, generated-contract drift, typechecks,
+  unit suites, production builds).
+- Fresh-isolated-database integration matrix run repeatedly (final state:
+  artifact-store 2, database 230+, worker 10+, API 7 assertions) with the
+  disposable database dropped and the shared development database untouched;
+  the known shared-DB `0012` checksum drift (Finding 4) is why local full
+  runs use the fresh-database procedure.
+- Focused suites added by this session: tenant-context hygiene 5, preview
+  seam 6, preview handler 9, preview real transport 1, connection
+  concurrency +2 (within the existing file).
+
+### Deviation and interpretation register
+
+- **D1 — Shared transaction primitive.** The plan permits shared extraction
+  only with "two real callers with the same semantics"; three adapters now
+  qualify (workspace drizzle path, connections, authoring), and the preview
+  seam became the fourth consumer. Behavior of the public drizzle path is
+  preserved and asserted.
+- **D2 — AbortSignal on the workspace path.** `withWorkspaceTransaction`
+  gained optional cancellation through `PoolClient.release(error)` — the run
+  stores already used this seam privately; unifying it is fail-closed
+  hardening, not an interface addition for hypothetical reuse.
+- **D3 — Tooling.** Lint heap bound and the restored-gate fix are
+  infrastructure changes with no runtime surface.
+- **D4 — Preview output envelope.** Raw executor output is wrapped into the
+  inline stored-value envelope inside the worker boundary; oversized or
+  non-JSON outputs fail closed as `preview.output_invalid`. Artifact-backed
+  preview output streaming is deliberately NOT landed yet — it needs the
+  capability wiring called out in the remaining-work list, so the current
+  handler is honest inline-only rather than pretending full policy parity.
+- **D5 — Classification ownership.** For previews the injected invoker owns
+  ADR 007 outcome classification (single-shot execution): pre-dispatch
+  retryable failures complete as `failed`, possibly-dispatched ambiguity as
+  `outcome_unknown`, cancellation stays `canceled`, infrastructure faults
+  propagate for bounded BullMQ retries. The engine keeps retry ownership for
+  production attempts unchanged.
+- **D6 — Deadline source.** The retention `expires_at` doubles as the
+  execution deadline, observed through heartbeats; there is no separate
+  preview timeout knob yet.
+- **D7 — Identity conventions.** Preview runtime maps
+  `attemptNumber = 1` and `invocationKey = preview:<nodeId>`; these are new
+  conventions introduced by this branch and should be ratified in a follow-up
+  ADR note if adopted.
+- **D8 — In-test activation.** The transport proof performs a real
+  maintenance prepare/probe/preactivate/approve/activate cycle against the
+  seeded predecessor. This uses only audited production seams but means the
+  test database ends on the artifact's cohort release — safe because the
+  database is disposable.
+- **D9 — Retention.** No deletion path was landed (Finding 7). The job kind
+  exists so enabling later requires configuration only. Nothing in the plan
+  required landing deletion in Phase 4; the tracker box stays unchecked with
+  the blocker cited.
+- **D10 — Contract additions.** `sweep-expired-previews` queue contract,
+  routing, metrics union entry, capability allowlist entry, and the
+  `delivery` parameter on `completePreviewAttempt` are additive contracts on
+  this branch's new surfaces only; no shipped API changed shape.
+
+### Remaining before Phase 4 can be marked complete
+
+1. SIGKILL crash-boundary fixture through the composed handler
+   (pre/post-dispatch), mirroring the Phase 0E process-fixture style.
+2. Prior-preview scope/expiry end-to-end evidence over HTTP and safe status
+   reads through the real API stack.
+3. `http.request@1` activation assertion (additive rollout leg with JIT
+   connection/artifact capabilities exercised live).
+4. Fixed-head repository-wide regression matrix plus independent Spec and
+   Standards completion reviews, then the tracker flip.
