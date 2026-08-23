@@ -1741,6 +1741,10 @@ Current evidence:
   cleanup. The focused fresh-PostgreSQL preview suite passes 14 scenarios, the
   real transport file passes four, all 112 worker unit assertions pass, and
   repository-wide `pnpm check` is green at that implementation checkpoint.
+  The first fixed-head review nevertheless found that this implementation used
+  competing consumers on one maintenance queue and could delete a `pending`
+  artifact while its upload remained ambiguous; `37a867f` is the mandatory
+  correction below, so `d71564e` is not valid in isolation.
 - Commit `a3a03d8` proves the migration path that fresh-schema tests cannot:
   it creates a retained preview on exact migration head `0023`, applies only
   `0024_preview_retention_cleanup.sql`, and verifies the backfilled payload,
@@ -1748,6 +1752,21 @@ Current evidence:
   availability through the worker's forced-RLS view. This closes the focused
   prior-head backfill risk without claiming the broader Phase 4 migration or
   activation gates complete.
+- Commit `37a867f` resolves both high findings from the first artifact-
+  retention reviews. Production now owns exactly one maintenance consumer that
+  routes reconciliation and cleanup, so valid jobs cannot be stolen and
+  rejected by competing BullMQ workers. Cleanup refuses nonterminal previews,
+  durably moves artifacts into `deleting`, waits longer than the configured
+  artifact-store request timeout, then requires both deletion and a confirming
+  `HEAD` miss before metadata can become `deleted`; the preview owner remains
+  until that sequence finishes. Bucket readiness is checked before the
+  consumer starts. Migration `0025_preview_cleanup_idempotency.sql` retires the
+  expired preview acceptance record with its run, allowing the key to be used
+  safely after retention. The prior-head proof now applies `0024` and `0025`.
+  Verification passes root `pnpm check` with 114 worker assertions, 16 focused
+  fresh-PostgreSQL scenarios, and four real
+  PostgreSQL/Redis/BullMQ/S3Mock transport scenarios in 13.36 seconds. Phase 4
+  remains open for the independently listed crash, telemetry, and HTTP gates.
 - At corrected documentation head `d3f1397`, root `pnpm check` passes all
   format, ESLint, generated-contract, typecheck, unit, and production-build
   gates. The dependency-ordered fresh real-service matrix passes against
