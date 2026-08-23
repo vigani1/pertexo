@@ -268,6 +268,38 @@ describe('worker application bootstrap', () => {
     expect(nodeAttemptRuntime.close).toHaveBeenCalledOnce();
   });
 
+  it('gates preview dispatch on the shared attempts consumer', async () => {
+    const selected = dependencies();
+    const consumer: QueueConsumer = {
+      close: vi.fn().mockResolvedValue({ abortedJobs: 0, forced: false }),
+      isReady: vi.fn().mockReturnValue(true),
+      waitUntilReady: vi.fn().mockResolvedValue(undefined),
+    };
+    const nodeAttemptRuntime: NodeAttemptRuntime = {
+      consumer,
+      close: vi.fn().mockResolvedValue(undefined),
+    };
+    const enabledConfig = {
+      ...workerConfig,
+      outboxDispatcher: {
+        ...workerConfig.outboxDispatcher,
+        enabledJobNames: [JOB_NAME.executePreviewAttempt],
+      },
+    };
+    const app = await createWorkerApplication(enabledConfig, {
+      ...selected,
+      nodeAttemptRuntime,
+    });
+
+    expect(consumer.waitUntilReady).toHaveBeenCalledOnce();
+    try {
+      expect(consumer.isReady).toHaveBeenCalled();
+    } finally {
+      await app.close();
+    }
+    expect(nodeAttemptRuntime.close).toHaveBeenCalledOnce();
+  });
+
   it('fails startup and closes resources when database readiness fails', async () => {
     const close = vi.fn().mockResolvedValue(undefined);
     const unavailableDatabase: WorkspaceDatabase = {

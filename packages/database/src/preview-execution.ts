@@ -17,6 +17,7 @@ import {
 import {
   parseStoredExecutionValueV1,
   serializeStoredExecutionValueV1,
+  type StoredExecutionValueV1,
 } from './stored-execution-value.js';
 import { withTenantScopedClient } from './workspace.js';
 import type { WorkspaceTransaction } from './workspace.js';
@@ -1297,7 +1298,9 @@ function isStrictJsonValue(value: unknown, depth: number): boolean {
   return false;
 }
 
-export function isValidStoredExecutionOutput(value: unknown): boolean {
+export function isValidStoredExecutionOutput(
+  value: unknown,
+): value is StoredExecutionValueV1 {
   if (!isStrictJsonValue(value, 0)) return false;
   try {
     // Serialization alone can silently drop hostile members; a lossless

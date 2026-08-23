@@ -10,6 +10,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   createPreviewAttemptHandler,
   type PreviewAttemptHandlerDependencies,
+  type PreviewInvocationOutcome,
   type PreviewAttemptRunStore,
   type PreviewNodeInvoker,
 } from '../src/execution/preview-attempt-handler.js';
@@ -77,6 +78,8 @@ function fakeStore(
   overrides: Partial<{
     beat: { runExpiresAt: Date };
     claimKind: 'duplicate';
+    heartbeatError: Error;
+    lease: PreviewAttemptLease;
   }> = {},
 ): { calls: StoreCalls; store: PreviewAttemptRunStore } {
   const calls: StoreCalls = {
@@ -91,7 +94,7 @@ function fakeStore(
         return Promise.resolve({ kind: 'duplicate' });
       return Promise.resolve({
         kind: 'claimed',
-        lease: leaseFixture(),
+        lease: overrides.lease ?? leaseFixture(),
       });
     },
     complete: ({ outcome }) => {
@@ -99,6 +102,8 @@ function fakeStore(
       return Promise.resolve({ kind: 'committed' });
     },
     heartbeat: () => {
+      if (overrides.heartbeatError !== undefined)
+        return Promise.reject(overrides.heartbeatError);
       const beat = overrides.beat ?? {
         runExpiresAt: new Date(Date.now() + 60 * 60 * 1_000),
       };
@@ -119,12 +124,11 @@ function succeededInvoker(output: unknown): {
   invoker: PreviewNodeInvoker;
   invoke: ReturnType<typeof vi.fn>;
 } {
-  const invoke = vi.fn(
-    () =>
-      Promise.resolve({
-        output,
-        status: 'succeeded',
-      }) as unknown as Promise<PreviewTerminalOutcome>,
+  const invoke = vi.fn(() =>
+    Promise.resolve({
+      output,
+      status: 'succeeded' as const,
+    }),
   );
   return { invoke, invoker: { invoke } };
 }
@@ -202,8 +206,7 @@ describe('preview attempt handler', () => {
     // The invoker owns ADR 007 classification; these mirror the platform
     // invoker's mapping of executor decision errors.
     const invoker: PreviewNodeInvoker = {
-      invoke: () =>
-        Promise.resolve(expected as unknown as PreviewTerminalOutcome),
+      invoke: () => Promise.resolve(expected as PreviewInvocationOutcome),
     };
     await createPreviewAttemptHandler(deps(store, invoker)).handle(
       deliveryFixture(),
@@ -248,7 +251,7 @@ describe('preview attempt handler', () => {
     });
     const invoker: PreviewNodeInvoker = {
       invoke: ({ signal }) =>
-        new Promise<PreviewTerminalOutcome>((_resolve, reject) => {
+        new Promise<PreviewInvocationOutcome>((_resolve, reject) => {
           signal.addEventListener(
             'abort',
             () => {
@@ -266,5 +269,101 @@ describe('preview attempt handler', () => {
       safeErrorCode: 'preview.deadline_exceeded',
       status: 'timed_out',
     });
+  });
+
+  it('does not invoke work after the durable deadline already expired', async () => {
+    const { calls, store } = fakeStore({
+      lease: {
+        ...leaseFixture(),
+        expiresAt: new Date(Date.now() - 1),
+      },
+    });
+    const invoke = vi.fn();
+    await createPreviewAttemptHandler(deps(store, { invoke })).handle(
+      deliveryFixture(),
+      context(),
+    );
+    expect(invoke).not.toHaveBeenCalled();
+    expect(calls.completions[0]).toMatchObject({
+      safeErrorCode: 'preview.deadline_exceeded',
+      status: 'timed_out',
+    });
+  });
+
+  it('records unknown when an unsafe dispatch crosses its deadline', async () => {
+    const { calls, store } = fakeStore({
+      lease: {
+        ...leaseFixture(),
+        expiresAt: new Date(Date.now() + 40),
+        mayCauseExternalSideEffect: true,
+        sideEffectClass: 'unsafe',
+      },
+    });
+    const invoker: PreviewNodeInvoker = {
+      invoke: async ({ runtime, signal }) => {
+        await runtime?.beforeDispatch();
+        return new Promise<PreviewInvocationOutcome>((_resolve, reject) => {
+          signal.addEventListener(
+            'abort',
+            () => {
+              reject(new DOMException('aborted', 'AbortError'));
+            },
+            { once: true },
+          );
+        });
+      },
+    };
+    await createPreviewAttemptHandler(deps(store, invoker)).handle(
+      deliveryFixture(),
+      context(),
+    );
+    expect(calls.dispatches).toBe(1);
+    expect(calls.completions[0]).toMatchObject({
+      safeErrorCode: 'preview.outcome_unknown',
+      status: 'outcome_unknown',
+    });
+  });
+
+  it('does not manufacture cancellation after heartbeat authority fails', async () => {
+    const heartbeatError = new Error('database heartbeat failed');
+    const { calls, store } = fakeStore({ heartbeatError });
+    const invoker: PreviewNodeInvoker = {
+      invoke: ({ signal }) =>
+        new Promise<PreviewInvocationOutcome>((_resolve, reject) => {
+          signal.addEventListener(
+            'abort',
+            () => {
+              reject(new DOMException('aborted', 'AbortError'));
+            },
+            { once: true },
+          );
+        }),
+    };
+    await expect(
+      createPreviewAttemptHandler(deps(store, invoker)).handle(
+        deliveryFixture(),
+        context(),
+      ),
+    ).rejects.toBe(heartbeatError);
+    expect(calls.completions).toHaveLength(0);
+  });
+
+  it('rejects duplicate dispatch markers before a second external call', async () => {
+    const { calls, store } = fakeStore();
+    const invoker: PreviewNodeInvoker = {
+      invoke: async ({ runtime }) => {
+        await runtime?.beforeDispatch();
+        await runtime?.beforeDispatch();
+        return { output: {}, status: 'succeeded' };
+      },
+    };
+    await expect(
+      createPreviewAttemptHandler(deps(store, invoker)).handle(
+        deliveryFixture(),
+        context(),
+      ),
+    ).rejects.toMatchObject({ code: 'duplicate_dispatch' });
+    expect(calls.dispatches).toBe(1);
+    expect(calls.completions).toHaveLength(0);
   });
 });

@@ -6,6 +6,7 @@ import {
   type NodeExecutionRuntime,
 } from '@pertexo/node-sdk/server';
 import type { JsonValue } from '@pertexo/workflow-model/canonical-json';
+import { parseWorkflowGraphDraft } from '@pertexo/workflow-model/graph';
 import {
   resolveValueSource,
   type ValueResolution,
@@ -20,6 +21,7 @@ import {
   assertAuthenticExecutableIdentity,
   normalizeBoundedEngineJson,
   type CompiledWorkflowExecutableV2,
+  type WorkflowExecutableNodeV2,
 } from './executable-workflow.js';
 import { parseCheckpoint } from './checkpoint.js';
 import type { SchedulerState } from './graph-scheduler.js';
@@ -742,6 +744,100 @@ function isAbortError(error: unknown): boolean {
   );
 }
 
+async function resolveMappedNodeInput(
+  node: Pick<WorkflowExecutableNodeV2, 'definition' | 'inputMappings'>,
+  runInput: JsonValue,
+  completedOutputs: Readonly<Record<string, JsonValue>>,
+  directUpstream: ReadonlySet<string>,
+  signal: AbortSignal,
+): Promise<JsonValue> {
+  if (node.definition.key === 'core.manual' && node.definition.version === 1)
+    return runInput;
+  const mapped: Record<string, JsonValue> = {};
+  for (const key of Object.keys(node.inputMappings).sort()) {
+    assertNotAborted(signal);
+    const source = node.inputMappings[key];
+    if (source === undefined) continue;
+    if (
+      source.kind === 'node_output' &&
+      (!directUpstream.has(source.nodeId) ||
+        !Object.hasOwn(completedOutputs, source.nodeId))
+    )
+      operationError(
+        'attempt_invalid',
+        'mapping upstream output is incomplete',
+      );
+    let resolution: ValueResolution;
+    try {
+      resolution = await resolveValueSource(
+        source,
+        { runInput, nodeOutputs: completedOutputs },
+        undefined,
+        signal,
+      );
+    } catch (error) {
+      if (signal.aborted || isAbortError(error))
+        operationError('attempt_aborted', 'node attempt was aborted');
+      operationError('attempt_invalid', 'mapping failed');
+    }
+    if (
+      resolution.kind === 'error' &&
+      (resolution.expression?.code === 'canceled' || signal.aborted)
+    )
+      operationError('attempt_aborted', 'node attempt was aborted');
+    if (resolution.kind === 'error')
+      operationError('attempt_invalid', 'mapping resolution failed');
+    if (resolution.kind === 'value') mapped[key] = resolution.value;
+  }
+  try {
+    return normalizeBoundedEngineJson(mapped);
+  } catch {
+    operationError('attempt_invalid', 'mapped input exceeds runtime limits');
+  }
+}
+
+/** Resolve one isolated preview node through the production ValueSource path. */
+export async function resolveSingleNodePreviewInput(
+  input: Readonly<{
+    node: unknown;
+    runInput: unknown;
+    signal: AbortSignal;
+  }>,
+): Promise<JsonValue> {
+  let node: Pick<WorkflowExecutableNodeV2, 'definition' | 'inputMappings'>;
+  let runInput: JsonValue;
+  try {
+    runInput = normalizeBoundedEngineJson(input.runInput);
+    const rawNode = record(
+      normalizeBoundedEngineJson(input.node),
+      'attempt_invalid',
+      'preview node',
+    );
+    const parsedNode = parseWorkflowGraphDraft({
+      edges: [],
+      nodes: [{ ...rawNode, position: { x: 0, y: 0 } }],
+      schemaVersion: 1,
+      settings: {},
+    }).nodes[0];
+    if (parsedNode === undefined)
+      operationError('attempt_invalid', 'preview node is missing');
+    node = parsedNode;
+  } catch (error) {
+    if (error instanceof WorkflowEngineError) throw error;
+    operationError(
+      'attempt_invalid',
+      error instanceof Error ? error.message : 'preview input is invalid',
+    );
+  }
+  return resolveMappedNodeInput(
+    node,
+    runInput,
+    Object.freeze({}),
+    new Set(),
+    input.signal,
+  );
+}
+
 export async function executeNodeAttempt(
   input: ExecuteNodeAttemptInput,
 ): Promise<NodeAttemptOutcome> {
@@ -797,52 +893,13 @@ export async function executeNodeAttempt(
       'attempt_invalid',
       'completed output is not direct upstream',
     );
-  let resolvedInput: JsonValue;
-  if (node.definition.key === 'core.manual' && node.definition.version === 1)
-    resolvedInput = runInput;
-  else {
-    const mapped: Record<string, JsonValue> = {};
-    for (const key of Object.keys(node.inputMappings).sort()) {
-      assertNotAborted(input.signal);
-      const source = node.inputMappings[key];
-      if (source === undefined) continue;
-      if (
-        source.kind === 'node_output' &&
-        (!directUpstream.has(source.nodeId) ||
-          !Object.hasOwn(completedOutputs, source.nodeId))
-      )
-        operationError(
-          'attempt_invalid',
-          'mapping upstream output is incomplete',
-        );
-      let resolution: ValueResolution;
-      try {
-        resolution = await resolveValueSource(
-          source,
-          { runInput, nodeOutputs: completedOutputs },
-          undefined,
-          input.signal,
-        );
-      } catch (error) {
-        if (input.signal.aborted || isAbortError(error))
-          operationError('attempt_aborted', 'node attempt was aborted');
-        operationError('attempt_invalid', 'mapping failed');
-      }
-      if (
-        resolution.kind === 'error' &&
-        (resolution.expression?.code === 'canceled' || input.signal.aborted)
-      )
-        operationError('attempt_aborted', 'node attempt was aborted');
-      if (resolution.kind === 'error')
-        operationError('attempt_invalid', 'mapping resolution failed');
-      if (resolution.kind === 'value') mapped[key] = resolution.value;
-    }
-    try {
-      resolvedInput = normalizeBoundedEngineJson(mapped);
-    } catch {
-      operationError('attempt_invalid', 'mapped input exceeds runtime limits');
-    }
-  }
+  const resolvedInput = await resolveMappedNodeInput(
+    node,
+    runInput,
+    completedOutputs,
+    directUpstream,
+    input.signal,
+  );
   assertNotAborted(input.signal);
   let result: NodeExecutionResult;
   try {

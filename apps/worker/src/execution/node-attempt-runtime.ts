@@ -96,7 +96,6 @@ export type NodeAttemptRuntimeDependencies = Readonly<{
   consumerFactory?: typeof createQueueConsumer;
   engine?: NodeAttemptExecutionEngine;
   notifications?: RunEventNotificationPublisher;
-  preview?: PreviewAttemptRuntimeDependency;
   reader?: PublishedWorkflowReader;
   registry?: NodeExecutionRegistry;
   runStore?: NodeAttemptRunStore;
@@ -279,7 +278,9 @@ export async function createNodeAttemptRuntime(
                 options.leaseDurationSeconds,
               runStore: options.preview.runStore,
               ...(options.preview.runtimeCapabilities === undefined
-                ? {}
+                ? runtimeCapabilities === undefined
+                  ? {}
+                  : { runtimeCapabilities }
                 : {
                     runtimeCapabilities: options.preview.runtimeCapabilities,
                   }),
@@ -295,6 +296,7 @@ export async function createNodeAttemptRuntime(
       reader.close(),
       runStore.close(),
       capabilityRuntime?.close(),
+      previewClose?.(),
     ]);
     throw error;
   }

@@ -287,7 +287,9 @@ function acceptanceInput(traceparent: string): AcceptPreviewRunInput {
       configVersion: 1,
       definition: { key: 'core.set', version: 1 },
       id: 'node-1',
-      inputMappings: {},
+      inputMappings: {
+        hello: { kind: 'run_input', path: '$.hello' },
+      },
       connectionRefs: {},
     },
     executorKey: 'core.set',

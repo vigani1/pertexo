@@ -7,11 +7,7 @@ import {
   type QueueDelivery,
   type QueueHandlerContext,
 } from '@pertexo/queue';
-import type {
-  NodeArtifactRuntime,
-  NodeConnectionRuntime,
-  NodeExecutionRuntime,
-} from '@pertexo/node-sdk/server';
+import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
 import type {
   PreviewAttemptLease,
   PreviewClaimResult,
@@ -20,8 +16,12 @@ import type {
   PreviewTerminalOutcome,
   PreviewDelivery,
 } from '@pertexo/database';
+import type {
+  NodeAttemptCapabilityContext,
+  NodeAttemptRuntimeCapabilityFactories,
+} from './node-attempt-handler.js';
 
-type PreviewDelivery_ = Extract<
+type PreviewQueueDelivery = Extract<
   QueueDelivery,
   { readonly name: 'execute-preview-attempt' }
 >;
@@ -95,8 +95,12 @@ export interface PreviewNodeInvoker {
       runtime?: NodeExecutionRuntime;
       signal: AbortSignal;
     }>,
-  ): Promise<PreviewTerminalOutcome>;
+  ): Promise<PreviewInvocationOutcome>;
 }
+
+export type PreviewInvocationOutcome =
+  | Readonly<{ output: unknown; status: 'succeeded' }>
+  | Exclude<PreviewTerminalOutcome, { readonly status: 'succeeded' }>;
 
 export type PreviewAttemptHandlerResult = Readonly<{
   kind: 'duplicate' | 'committed';
@@ -104,24 +108,19 @@ export type PreviewAttemptHandlerResult = Readonly<{
 
 export interface PreviewAttemptHandler {
   handle(
-    delivery: PreviewDelivery_,
+    delivery: PreviewQueueDelivery,
     context: QueueHandlerContext,
   ): Promise<PreviewAttemptHandlerResult>;
 }
 
-export type PreviewCapabilityContext = Readonly<{
-  attemptId: string;
-  nodeId: string;
-  previewAttemptId: string;
-  previewRunId: string;
-  workerId: string;
-  workspaceId: string;
-}>;
+export type PreviewCapabilityContext = NodeAttemptCapabilityContext &
+  Readonly<{
+    previewAttemptId: string;
+    previewRunId: string;
+  }>;
 
-export type PreviewRuntimeCapabilityFactories = Readonly<{
-  artifacts?: (context: PreviewCapabilityContext) => NodeArtifactRuntime;
-  connections?: (context: PreviewCapabilityContext) => NodeConnectionRuntime;
-}>;
+export type PreviewRuntimeCapabilityFactories =
+  NodeAttemptRuntimeCapabilityFactories;
 
 export interface PreviewAttemptHandlerDependencies {
   heartbeatIntervalMillis: number;
@@ -139,20 +138,27 @@ export class PreviewAttemptStateError extends Error {
   }
 }
 
-function deadlineExceededOutcome(): PreviewTerminalOutcome {
-  return Object.freeze({
-    safeErrorCode: 'preview.deadline_exceeded',
-    status: 'timed_out',
-  });
+function deadlineExceededOutcome(
+  lease: PreviewAttemptLease,
+  dispatched: boolean,
+): PreviewTerminalOutcome {
+  return lease.sideEffectClass === 'unsafe' && dispatched
+    ? Object.freeze({
+        safeErrorCode: 'preview.outcome_unknown',
+        status: 'outcome_unknown',
+      })
+    : Object.freeze({
+        safeErrorCode: 'preview.deadline_exceeded',
+        status: 'timed_out',
+      });
 }
 
 async function completeOutcome(
   dependencies: PreviewAttemptHandlerDependencies,
   lease: PreviewAttemptLease,
-  outcome: PreviewTerminalOutcome,
+  outcome: PreviewInvocationOutcome,
   delivery: { outboxEventId: string; payloadChecksum: string },
 ): Promise<PreviewAttemptHandlerResult> {
-  let completedOutcome = outcome;
   if (outcome.status === 'succeeded') {
     // Executor payloads are raw JSON; the durable contract is the bounded
     // stored-value envelope. Inline wrapping only in this checkpoint —
@@ -176,16 +182,23 @@ async function completeOutcome(
         }),
       );
     }
-    completedOutcome = {
-      output: stored,
-      status: 'succeeded',
-    } as PreviewTerminalOutcome;
+    return committed(
+      await dependencies.runStore.complete({
+        delivery,
+        lease,
+        outcome: {
+          output: stored,
+          status: 'succeeded',
+        },
+        workerId: dependencies.workerId,
+      }),
+    );
   }
   return committed(
     await dependencies.runStore.complete({
       delivery,
       lease,
-      outcome: completedOutcome,
+      outcome,
       workerId: dependencies.workerId,
     }),
   );
@@ -232,7 +245,7 @@ export function createPreviewAttemptHandler(
     );
   return Object.freeze({
     handle: async (
-      delivery: PreviewDelivery_,
+      delivery: PreviewQueueDelivery,
       context: QueueHandlerContext,
     ): Promise<PreviewAttemptHandlerResult> => {
       if (
@@ -257,12 +270,29 @@ export function createPreviewAttemptHandler(
       if (claimed.kind === 'duplicate')
         return Object.freeze({ kind: 'duplicate' });
       const lease = claimed.lease;
+      const claimDelivery = {
+        outboxEventId: delivery.data.outboxEventId,
+        payloadChecksum: canonicalOutboxPayloadChecksum(delivery.data),
+      };
+      if (Date.now() >= lease.expiresAt.getTime())
+        return committed(
+          await dependencies.runStore.complete({
+            delivery: claimDelivery,
+            lease,
+            outcome: deadlineExceededOutcome(lease, false),
+            workerId: dependencies.workerId,
+          }),
+        );
 
       const capabilityContext = Object.freeze({
         attemptId: lease.previewAttemptId,
+        attemptNumber: 1,
+        invocationKey: `preview:${lease.nodeId}`,
         nodeId: lease.nodeId,
+        nodeRunId: lease.previewRunId,
         previewAttemptId: lease.previewAttemptId,
         previewRunId: lease.previewRunId,
+        runId: lease.previewRunId,
         workerId: dependencies.workerId,
         workspaceId: lease.workspaceId,
       });
@@ -270,6 +300,7 @@ export function createPreviewAttemptHandler(
         dependencies.runtimeCapabilities?.connections?.(capabilityContext);
       const artifacts =
         dependencies.runtimeCapabilities?.artifacts?.(capabilityContext);
+      let dispatched = false;
       const runtime: NodeExecutionRuntime = Object.freeze({
         workspaceId: lease.workspaceId,
         runId: lease.previewRunId,
@@ -285,18 +316,17 @@ export function createPreviewAttemptHandler(
         ...(connections === undefined ? {} : { connections }),
         ...(artifacts === undefined ? {} : { artifacts }),
         beforeDispatch: async (): Promise<void> => {
+          if (dispatched)
+            throw new PreviewAttemptStateError('duplicate_dispatch');
           await dependencies.runStore.markDispatched({
             lease,
             signal: context.signal,
             workerId: dependencies.workerId,
           });
+          dispatched = true;
         },
       });
 
-      const claimDelivery = {
-        outboxEventId: delivery.data.outboxEventId,
-        payloadChecksum: canonicalOutboxPayloadChecksum(delivery.data),
-      };
       const executionAbort = new AbortController();
       const heartbeatStop = new AbortController();
       const heartbeatSignal = AbortSignal.any([
@@ -313,10 +343,28 @@ export function createPreviewAttemptHandler(
           resolve('deadline');
         };
       });
+      const deadlineTimer = setTimeout(
+        () => {
+          executionAbort.abort();
+          notifyDeadline?.();
+        },
+        Math.max(0, lease.expiresAt.getTime() - Date.now()),
+      );
       type HeartbeatEnd = 'stopped' | 'lease_lost';
       let endHeartbeat: ((end: HeartbeatEnd) => void) | undefined;
       const heartbeatDone = new Promise<HeartbeatEnd>((resolve) => {
         endHeartbeat = resolve;
+      });
+      let notifyLeaseFailure: ((error: unknown) => void) | undefined;
+      const leaseFailure = new Promise<
+        Readonly<{
+          error: unknown;
+          kind: 'lease_failure';
+        }>
+      >((resolve) => {
+        notifyLeaseFailure = (error: unknown): void => {
+          resolve({ error, kind: 'lease_failure' });
+        };
       });
       void (async (): Promise<void> => {
         while (!heartbeatSignal.aborted) {
@@ -332,10 +380,11 @@ export function createPreviewAttemptHandler(
               signal: heartbeatSignal,
               workerId: dependencies.workerId,
             });
-          } catch {
+          } catch (error: unknown) {
             // A lost lease cannot be repaired mid-flight; the durable
             // reconciliation path owns the truthful terminal state.
             executionAbort.abort();
+            notifyLeaseFailure?.(error);
             endHeartbeat?.('lease_lost');
             return;
           }
@@ -352,7 +401,8 @@ export function createPreviewAttemptHandler(
       try {
         type RaceOutcome =
           | { error: unknown; kind: 'error' }
-          | { kind: 'outcome'; outcome: PreviewTerminalOutcome };
+          | { kind: 'outcome'; outcome: PreviewInvocationOutcome }
+          | { error: unknown; kind: 'lease_failure' };
         const raced = await Promise.race<RaceOutcome | 'deadline'>([
           dependencies.invoker
             .invoke({ lease, runtime, signal: executionSignal })
@@ -364,17 +414,19 @@ export function createPreviewAttemptHandler(
               (error: unknown): RaceOutcome => ({ error, kind: 'error' }),
             ),
           deadlineHit,
+          leaseFailure,
         ]);
         if (raced === 'deadline')
           return committed(
             await dependencies.runStore.complete({
               delivery: claimDelivery,
               lease,
-              outcome: deadlineExceededOutcome(),
+              outcome: deadlineExceededOutcome(lease, dispatched),
               workerId: dependencies.workerId,
             }),
           );
-        if (raced.kind === 'error') throw raced.error;
+        if (raced.kind === 'error' || raced.kind === 'lease_failure')
+          throw raced.error;
         // A result that resolved before the deadline remains truthful even
         // if the heartbeat observed expiry moments later.
         return await completeOutcome(
@@ -384,6 +436,7 @@ export function createPreviewAttemptHandler(
           claimDelivery,
         );
       } finally {
+        clearTimeout(deadlineTimer);
         heartbeatStop.abort();
         await heartbeatDone;
       }

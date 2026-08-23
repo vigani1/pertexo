@@ -15,6 +15,7 @@ import {
 } from '@pertexo/database';
 import type { RegistryRelease } from '@pertexo/node-sdk';
 import { canonicalJson } from '@pertexo/workflow-model/canonical-json';
+import { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';
 import { z } from 'zod';
 
 import { authorizeWorkspace } from '../workspaces/index.js';
@@ -123,6 +124,9 @@ export class TestWorkflowNodeUseCase {
       await this.authorize(input, 'connection:use');
 
     const acceptedAt = this.now();
+    const executionRelease = composeExecutableCompatibilityRelease(
+      this.release,
+    );
     const requestHash = digest({
       domain: 'pertexo.preview.execute-request',
       schemaVersion: 1,
@@ -144,8 +148,8 @@ export class TestWorkflowNodeUseCase {
         definitionVersion: prepared.definition.version,
         executorKey: prepared.executor.key,
         executorVersion: prepared.executor.version,
-        compatibilityReleaseEpoch: this.release.epoch,
-        compatibilityReleaseFingerprint: this.release.fingerprint,
+        compatibilityReleaseEpoch: executionRelease.epoch,
+        compatibilityReleaseFingerprint: executionRelease.fingerprint,
         executableNode: canonicalExecutableNode(prepared.executableNode),
         input: request.input,
         sideEffectClass: prepared.disclosure.sideEffectClass,

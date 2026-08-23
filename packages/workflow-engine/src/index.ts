@@ -1,6 +1,10 @@
 import './server-only.js';
 
-export { advanceWorkflow, executeNodeAttempt } from './operations.js';
+export {
+  advanceWorkflow,
+  executeNodeAttempt,
+  resolveSingleNodePreviewInput,
+} from './operations.js';
 export type {
   AdvanceWorkflowInput,
   DeadlineExpiredObservation,

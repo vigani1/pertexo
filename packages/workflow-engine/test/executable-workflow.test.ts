@@ -23,6 +23,7 @@ import {
   executeNodeAttempt,
   invocationKey,
   parseWorkflowExecutableV2,
+  resolveSingleNodePreviewInput,
   verifyWorkflowExecutableV2,
   WORKFLOW_EXECUTABLE_LIMITS_V2,
 } from '../src/index.js';
@@ -1688,6 +1689,54 @@ describe('Phase 3 production operations', () => {
       code: 'attempt_invalid',
       message: 'node execution failed',
     });
+  });
+
+  it('resolves isolated preview inputs through the production mapping path', async () => {
+    await expect(
+      resolveSingleNodePreviewInput({
+        node: {
+          config: {},
+          configVersion: 1,
+          connectionRefs: {},
+          definition: { key: 'core.set', version: 1 },
+          id: 'preview-node',
+          inputMappings: {
+            expression: {
+              expression: 'runInput.count * 2',
+              kind: 'expression',
+              language: 'jsonata',
+              policyVersion: 1,
+            },
+            fromRun: { kind: 'run_input', path: '$.name' },
+            literal: { kind: 'literal', value: true },
+            missing: { kind: 'run_input', path: '$.absent' },
+          },
+        },
+        runInput: { count: 4, name: 'Ada' },
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({ expression: 8, fromRun: 'Ada', literal: true });
+
+    await expect(
+      resolveSingleNodePreviewInput({
+        node: {
+          config: {},
+          configVersion: 1,
+          connectionRefs: {},
+          definition: { key: 'core.set', version: 1 },
+          id: 'preview-node',
+          inputMappings: {
+            upstream: {
+              kind: 'node_output',
+              nodeId: 'another-node',
+              path: '$.value',
+            },
+          },
+        },
+        runInput: {},
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toMatchObject({ code: 'attempt_invalid' });
   });
 
   it('classifies aggregate mapped-input overflow as an invalid attempt', async () => {

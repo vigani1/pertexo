@@ -3,14 +3,17 @@ import {
   completePreviewAttempt,
   heartbeatPreviewLease,
   markPreviewDispatched,
-  type PreviewTerminalOutcome,
 } from '@pertexo/database';
 import type { DatabaseConfig } from '@pertexo/database';
 import {
   platformExecutableRegistryHistory,
   type PlatformReleaseCohort,
 } from '@pertexo/node-catalog';
-import { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';
+import {
+  composeExecutableCompatibilityRelease,
+  resolveSingleNodePreviewInput,
+  WorkflowEngineError,
+} from '@pertexo/workflow-engine';
 import type { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
 import { unrecoverableQueueError } from '@pertexo/queue';
 import { Pool } from 'pg';
@@ -18,6 +21,7 @@ import { z } from 'zod';
 
 import {
   createPreviewAttemptHandler,
+  type PreviewInvocationOutcome,
   type PreviewAttemptRunStore,
   type PreviewNodeInvoker,
 } from './preview-attempt-handler.js';
@@ -40,6 +44,19 @@ const leasePickSchema = z.object({
 const workspaceScopeSchema = z.object({
   workspaceId: z.uuid(),
 });
+
+const previewExecutableNodeSchema = z
+  .object({
+    config: z.record(z.string(), z.json()),
+    configVersion: z.number().int().positive(),
+    connectionRefs: z.record(z.string(), z.string().min(1)),
+    definition: z
+      .object({ key: z.string().min(1), version: z.number().int().positive() })
+      .strict(),
+    id: z.string().min(1).max(256),
+    inputMappings: z.record(z.string(), z.json()),
+  })
+  .strict();
 
 /**
  * Durable store adapter over the preview execution seam. Every call opens
@@ -132,22 +149,22 @@ export function createPlatformPreviewNodeInvoker(
       },
     ),
   );
-  const failedWith = (safeErrorCode: string): PreviewTerminalOutcome =>
+  const failedWith = (safeErrorCode: string): PreviewInvocationOutcome =>
     Object.freeze({
       safeErrorCode,
       status: 'failed',
     });
-  const unknownWith = (): PreviewTerminalOutcome =>
+  const unknownWith = (): PreviewInvocationOutcome =>
     Object.freeze({
       safeErrorCode: 'preview.outcome_unknown',
       status: 'outcome_unknown',
     });
-  const succeededWith = (output: unknown): PreviewTerminalOutcome =>
+  const succeededWith = (output: unknown): PreviewInvocationOutcome =>
     Object.freeze({
       output,
       status: 'succeeded',
-    }) as PreviewTerminalOutcome;
-  const canceledWith = (): PreviewTerminalOutcome =>
+    });
+  const canceledWith = (): PreviewInvocationOutcome =>
     Object.freeze({
       safeErrorCode: 'execution.canceled',
       status: 'canceled',
@@ -157,7 +174,7 @@ export function createPlatformPreviewNodeInvoker(
       lease,
       runtime,
       signal,
-    }): Promise<PreviewTerminalOutcome> => {
+    }): Promise<PreviewInvocationOutcome> => {
       if (
         !supported.has(
           releaseDescriptionKey(
@@ -169,11 +186,22 @@ export function createPlatformPreviewNodeInvoker(
         return failedWith('preview.executor_unavailable');
       if (lease.input.kind !== 'inline')
         return failedWith('preview.input_artifact_unsupported');
-      const node = lease.executableNode as Record<string, unknown>;
       try {
+        const node = previewExecutableNodeSchema.parse(lease.executableNode);
+        if (
+          node.id !== lease.nodeId ||
+          node.definition.key !== lease.definitionKey ||
+          node.definition.version !== lease.definitionVersion
+        )
+          return failedWith('preview.executable_invalid');
+        const resolvedInput = await resolveSingleNodePreviewInput({
+          node,
+          runInput: lease.input.value,
+          signal,
+        });
         const result = await dependencies.registry.execute({
-          config: node.config ?? null,
-          connectionRefs: (node.connectionRefs ?? {}) as Record<string, string>,
+          config: node.config,
+          connectionRefs: node.connectionRefs,
           definition: {
             key: lease.definitionKey,
             version: lease.definitionVersion,
@@ -185,7 +213,7 @@ export function createPlatformPreviewNodeInvoker(
           // The acceptance boundary already canonicalized this inline value
           // through the stored-value codec; hand the payload straight to the
           // pinned executor.
-          input: lease.input.value,
+          input: resolvedInput,
           ...(runtime === undefined ? {} : { runtime }),
           signal,
         });
@@ -193,6 +221,13 @@ export function createPlatformPreviewNodeInvoker(
         void result.kind;
         return succeededWith(result.output);
       } catch (error: unknown) {
+        if (error instanceof z.ZodError)
+          return failedWith('preview.executable_invalid');
+        if (
+          error instanceof WorkflowEngineError &&
+          error.code === 'attempt_invalid'
+        )
+          return failedWith('preview.input_invalid');
         return classifyExecutorFailure(error, {
           canceledWith,
           failedWith,
@@ -213,11 +248,11 @@ export function createPlatformPreviewNodeInvoker(
 function classifyExecutorFailure(
   error: unknown,
   outcomes: Readonly<{
-    canceledWith: () => PreviewTerminalOutcome;
-    failedWith: (safeErrorCode: string) => PreviewTerminalOutcome;
-    unknownWith: () => PreviewTerminalOutcome;
+    canceledWith: () => PreviewInvocationOutcome;
+    failedWith: (safeErrorCode: string) => PreviewInvocationOutcome;
+    unknownWith: () => PreviewInvocationOutcome;
   }>,
-): PreviewTerminalOutcome {
+): PreviewInvocationOutcome {
   const decision = (
     error as { decision?: { errorKind?: string; kind?: string } }
   ).decision;

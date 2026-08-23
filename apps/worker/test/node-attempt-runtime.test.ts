@@ -7,12 +7,14 @@ import {
   QUEUE_NAME,
   type QueueConsumer,
   type QueueConsumerOptions,
+  type RunEventNotificationPublisher,
 } from '@pertexo/queue';
 import { describe, expect, it, vi } from 'vitest';
 
 /* eslint-disable @typescript-eslint/unbound-method -- assertions target injected seam fakes */
 
 import { createNodeAttemptRuntime } from '../src/execution/node-attempt-runtime.js';
+import type { PreviewAttemptRunStore } from '../src/execution/preview-attempt-handler.js';
 
 const WORKSPACE_ID = '11111111-1111-4111-8111-111111111111';
 const RUN_ID = '22222222-2222-4222-8222-222222222222';
@@ -125,5 +127,78 @@ describe('node-attempt runtime', () => {
     expect(consumer.close).toHaveBeenCalledOnce();
     expect(reader.close).toHaveBeenCalledOnce();
     expect(runStore.close).toHaveBeenCalledOnce();
+  });
+
+  it('closes the preview store when consumer construction fails', async () => {
+    const startupError = new Error('consumer construction failed');
+    const closePreview = vi.fn().mockResolvedValue(undefined);
+    const previewStore: PreviewAttemptRunStore & {
+      close(): Promise<void>;
+    } = {
+      claim: vi.fn(),
+      close: closePreview,
+      complete: vi.fn(),
+      heartbeat: vi.fn(),
+      markDispatched: vi.fn(),
+    };
+    const closeRunStore = vi.fn().mockResolvedValue(undefined);
+    const runStore: NodeAttemptRunStore = {
+      claimDelivery: vi.fn(),
+      close: closeRunStore,
+      complete: vi.fn(),
+      heartbeat: vi.fn(),
+      loadInputs: vi.fn(),
+      markDispatched: vi.fn(),
+    };
+    const closeReader = vi.fn().mockResolvedValue(undefined);
+    const reader: PublishedWorkflowReader = {
+      close: closeReader,
+      readForExecution: vi.fn(),
+    };
+    const closeNotifications = vi.fn().mockResolvedValue(undefined);
+    const notifications: RunEventNotificationPublisher = {
+      close: closeNotifications,
+      publish: vi.fn(),
+      resync: vi.fn(),
+    };
+
+    await expect(
+      createNodeAttemptRuntime(
+        {
+          database: {
+            connectionString:
+              'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+            connectionTimeoutMillis: 5_000,
+            idleTimeoutMillis: 30_000,
+            max: 5,
+            ownerRole: 'pertexo_owner',
+            workerRuntimeRole: 'pertexo_worker',
+          },
+          heartbeatIntervalMillis: 10_000,
+          leaseDurationSeconds: 30,
+          preview: {
+            invoker: { invoke: vi.fn() },
+            runStore: previewStore,
+          },
+          redisUrl: 'redis://localhost:6379/0',
+          workerId: 'worker-1',
+        },
+        {
+          consumerFactory: () => {
+            throw startupError;
+          },
+          engine: { prepare: vi.fn() },
+          notifications,
+          reader,
+          registry: { execute: vi.fn() },
+          runStore,
+        },
+      ),
+    ).rejects.toBe(startupError);
+
+    expect(closePreview).toHaveBeenCalledOnce();
+    expect(closeRunStore).toHaveBeenCalledOnce();
+    expect(closeReader).toHaveBeenCalledOnce();
+    expect(closeNotifications).toHaveBeenCalledOnce();
   });
 });
