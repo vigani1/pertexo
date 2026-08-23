@@ -21,7 +21,7 @@ not complete a phase.
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
-| Phase 5 — orchestration slice | Not started | — |
+| Phase 5 — orchestration slice | In progress | ADRs 008/017; Condition contract/executor foundation in `5b7ca81`; staged/active history only, with no serving cohort or publication claim pending checkpoint V2 and branch-reachability proofs |
 | Phase 6 — V1 providers and triggers | Not started | — |
 | Phase 7 — production operations | Not started | — |
 
@@ -2291,7 +2291,7 @@ Current evidence:
 
 ## Phase 5 — Orchestration slice
 
-Status: **Not started**
+Status: **In progress**
 
 Authority and entry gate:
 
@@ -2304,6 +2304,18 @@ Authority and entry gate:
 - [x] Record ADR 017 before Condition implementation to fix the node contract,
       authoritative port selection, branch reachability/scope, checkpoint V2,
       and pre-Merge reconvergence rejection not specified by ADR 008.
+
+Current evidence:
+
+- Commit `5b7ca81` begins Condition through the public node-definition and exact
+  release-execution seams. `core.condition@1` has strict `{}` config,
+  `{ condition: boolean }` input, `{ selectedPort: "true" | "false" }` output,
+  `logic` family, `cpu` resource class, `safe` retry class, and exact `in`,
+  `true`, and `false` ports. The executor performs no expression evaluation or
+  coercion. Additive staged/active releases are retained in compatibility
+  history, but no serving cohort includes them, so Condition is not yet
+  placeable, publishable, or admitted. Node catalog tests pass 7 assertions;
+  nodes-core and node-catalog build/typecheck plus scoped ESLint pass.
 
 Incremental publishable slices, in required order:
 
