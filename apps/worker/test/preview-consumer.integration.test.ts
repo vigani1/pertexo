@@ -37,6 +37,7 @@ import {
   createExecutableCompatibilityReleaseHistory,
 } from '@pertexo/workflow-engine';
 import { Queue } from 'bullmq';
+import { Redis } from 'ioredis';
 
 import { createNodeAttemptRuntime } from '../src/execution/node-attempt-runtime.js';
 import {
@@ -112,8 +113,46 @@ async function withOwner<T>(
   }
 }
 
+async function clearNodeAttemptQueue(): Promise<void> {
+  const parsed = new URL(redisUrl);
+  const queue = new Queue('node-attempts', {
+    connection: {
+      db: Number(parsed.pathname.slice(1)),
+      host: parsed.hostname,
+      port: Number(parsed.port || 6379),
+      ...(parsed.password === ''
+        ? {}
+        : { password: decodeURIComponent(parsed.password) }),
+    },
+  });
+  try {
+    await queue.obliterate({ force: true });
+  } finally {
+    await queue.close();
+  }
+}
+
 async function seedIdentity(): Promise<void> {
   await withOwner(async (client) => {
+    await client.query(`
+      create table app.preview_process_provider_effects (
+        workspace_id uuid not null references app.workspaces(id) on delete cascade,
+        effect_key varchar(200) not null,
+        invocation_count integer not null check (invocation_count > 0),
+        primary key (workspace_id,effect_key)
+      );
+      alter table app.preview_process_provider_effects enable row level security;
+      alter table app.preview_process_provider_effects force row level security;
+      create policy preview_process_provider_effects_workspace
+        on app.preview_process_provider_effects
+        using (workspace_id::text =
+          nullif(current_setting('app.workspace_id', true), ''))
+        with check (workspace_id::text =
+          nullif(current_setting('app.workspace_id', true), ''));
+      revoke all on app.preview_process_provider_effects from public;
+      grant select,insert,update on app.preview_process_provider_effects
+        to pertexo_worker;
+    `);
     await client.query(
       `insert into app.users (id, email, display_name, status)
        values ($1, $2, $3, 'active')`,
@@ -348,8 +387,11 @@ interface AcceptedDelivery {
   };
 }
 
-async function acceptDelivery(traceparent: string): Promise<AcceptedDelivery> {
-  const input = acceptanceInput(traceparent);
+async function acceptDelivery(
+  traceparent: string,
+  overrides: Partial<AcceptPreviewRunInput> = {},
+): Promise<AcceptedDelivery> {
+  const input = acceptanceInput(traceparent, overrides);
   const accepted = await withTenantAccept(input);
   return {
     accepted,
@@ -396,6 +438,13 @@ async function waitFor<T>(
 
 interface PreviewCrashChild {
   readonly evidence: Promise<Record<string, unknown>>;
+  readonly exited: Promise<{
+    code: number | null;
+    signal: NodeJS.Signals | null;
+  }>;
+  next(
+    predicate?: (value: Record<string, unknown>) => boolean,
+  ): Promise<Record<string, unknown>>;
   kill(): Promise<NodeJS.Signals | null>;
 }
 
@@ -407,6 +456,8 @@ function spawnPreviewCrashChild(
   const child = spawn(
     process.execPath,
     [
+      '--import',
+      'tsx',
       new URL('./preview-reconciliation-process-fixture.mjs', import.meta.url)
         .pathname,
     ],
@@ -432,30 +483,52 @@ function spawnPreviewCrashChild(
       resolve({ code, signal });
     });
   });
-  const evidence = new Promise<Record<string, unknown>>((resolve, reject) => {
-    let buffer = '';
-    const timeout = setTimeout(() => {
-      reject(new Error(`preview crash child evidence timeout: ${stderr}`));
-    }, 15_000);
-    child.stdout.setEncoding('utf8');
-    child.stdout.on('data', (chunk: string) => {
-      buffer += chunk;
-      const newline = buffer.indexOf('\n');
-      if (newline === -1) return;
-      clearTimeout(timeout);
-      resolve(JSON.parse(buffer.slice(0, newline)) as Record<string, unknown>);
-    });
-    void exited.then(({ code, signal }) => {
-      clearTimeout(timeout);
-      reject(
-        new Error(
-          `preview crash child exited before evidence: code=${String(code)} signal=${String(signal)} stderr=${stderr}`,
-        ),
+  const messages: Record<string, unknown>[] = [];
+  const waiters: {
+    predicate: (value: Record<string, unknown>) => boolean;
+    resolve: (value: Record<string, unknown>) => void;
+  }[] = [];
+  let buffer = '';
+  child.stdout.setEncoding('utf8');
+  child.stdout.on('data', (chunk: string) => {
+    buffer += chunk;
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
+    for (const line of lines) {
+      if (line.trim() === '') continue;
+      const message = JSON.parse(line) as Record<string, unknown>;
+      const waiterIndex = waiters.findIndex(({ predicate }) =>
+        predicate(message),
       );
-    });
+      if (waiterIndex === -1) messages.push(message);
+      else waiters.splice(waiterIndex, 1)[0]?.resolve(message);
+    }
   });
+  const next = async (
+    predicate: (value: Record<string, unknown>) => boolean = () => true,
+  ): Promise<Record<string, unknown>> => {
+    const existingIndex = messages.findIndex(predicate);
+    if (existingIndex !== -1) return messages.splice(existingIndex, 1)[0] ?? {};
+    return Promise.race([
+      new Promise<Record<string, unknown>>((resolve) => {
+        waiters.push({ predicate, resolve });
+      }),
+      exited.then(({ code, signal }) => {
+        throw new Error(
+          `preview crash child exited before evidence: code=${String(code)} signal=${String(signal)} stderr=${stderr}`,
+        );
+      }),
+      new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error(`preview crash child evidence timeout: ${stderr}`));
+        }, 15_000);
+      }),
+    ]);
+  };
   const selected: PreviewCrashChild = {
-    evidence,
+    evidence: next(),
+    exited,
+    next,
     kill: async (): Promise<NodeJS.Signals | null> => {
       child.kill('SIGKILL');
       return (await exited).signal;
@@ -469,8 +542,12 @@ function spawnPreviewCrashChild(
 function previewState(previewRunId: string) {
   return withTenantScopedWorker((client) =>
     client.query<{
+      attempt_status: string;
       attempt_fence: string | number;
       dispatch_marked_at: Date | null;
+      inbox_completed_count: string;
+      inbox_count: string;
+      lease_expired: boolean;
       output_ref: unknown;
       run_status: string;
       safe_error_code: string | null;
@@ -478,8 +555,34 @@ function previewState(previewRunId: string) {
       `select run.status as run_status,
               run.output_ref,
               run.safe_error_code,
+              attempt.status as attempt_status,
               attempt.fence_token::text as attempt_fence,
-              attempt.dispatch_marked_at
+              attempt.dispatch_marked_at,
+              (attempt.lease_expires_at is null
+                or attempt.lease_expires_at <= clock_timestamp())
+                as lease_expired,
+              (select count(*)::text from app.inbox_receipts receipt
+                where receipt.workspace_id=run.workspace_id
+                  and receipt.consumer_name='preview-attempt-worker'
+                  and receipt.message_id=(
+                    select event.id from app.outbox_events event
+                     where event.workspace_id=run.workspace_id
+                       and event.aggregate_id=run.id
+                       and event.job_name='execute-preview-attempt'
+                     order by event.created_at,event.id
+                     limit 1)) as inbox_count,
+              (select count(receipt.completed_at)::text
+                 from app.inbox_receipts receipt
+                where receipt.workspace_id=run.workspace_id
+                  and receipt.consumer_name='preview-attempt-worker'
+                  and receipt.message_id=(
+                    select event.id from app.outbox_events event
+                     where event.workspace_id=run.workspace_id
+                       and event.aggregate_id=run.id
+                       and event.job_name='execute-preview-attempt'
+                     order by event.created_at,event.id
+                     limit 1))
+                as inbox_completed_count
        from app.preview_runs run
        join app.preview_attempts attempt
          on attempt.workspace_id = run.workspace_id
@@ -488,6 +591,35 @@ function previewState(previewRunId: string) {
       [workspaceId, previewRunId],
     ),
   ).then((result) => result.rows[0]);
+}
+
+function previewTerminalFacts(previewRunId: string) {
+  return withTenantScopedClient(apiPool, { workspaceId }, (client) =>
+    client.query<{ audit_count: string; usage_count: string }>(
+      `select
+         (select count(*)::text from app.audit_events audit
+           where audit.workspace_id=$1
+             and audit.action='preview.execution_terminal'
+             and audit.target_type='preview-run'
+             and audit.target_id=$2) as audit_count,
+         (select count(*)::text from app.usage_events usage
+           where usage.workspace_id=$1
+             and usage.category='preview_execution'
+             and usage.resource_type='preview-run'
+             and usage.resource_id=$2) as usage_count`,
+      [workspaceId, previewRunId],
+    ),
+  ).then((result) => result.rows[0]);
+}
+
+function providerEffectCount(effectKey: string): Promise<number> {
+  return withTenantScopedWorker((client) =>
+    client.query<{ invocation_count: number }>(
+      `select invocation_count from app.preview_process_provider_effects
+       where workspace_id=$1 and effect_key=$2`,
+      [workspaceId, effectKey],
+    ),
+  ).then((result) => result.rows[0]?.invocation_count ?? 0);
 }
 
 function withTenantScopedWorker<T>(
@@ -533,12 +665,14 @@ beforeAll(async () => {
   });
   await seedIdentity();
   await activateArtifactRelease();
+  await clearNodeAttemptQueue();
 }, 60_000);
 
 afterAll(async () => {
   await Promise.allSettled(
     [...activeCrashChildren].map(async (child) => child.kill()),
   );
+  await clearNodeAttemptQueue().catch(() => undefined);
   await Promise.allSettled([apiPool.end(), workerPool.end(), ownerPool.end()]);
   const admin = new Pool({ connectionString: adminUrl, max: 1 });
   try {
@@ -911,6 +1045,329 @@ describeIntegration('preview execution real transport', () => {
       ]);
     }
   });
+
+  it('preserves the four preview dispatch and acknowledgement crash boundaries', async () => {
+    const cases = [
+      {
+        expectedBarrier: 'preview.before_dispatch_marker_commit',
+        expectedDispatch: false,
+        expectedProviderCount: 0,
+        expectedReconciledStatus: 'queued',
+        mode: 'before-dispatch-commit',
+      },
+      {
+        expectedBarrier: 'preview.dispatch_marker_committed_before_provider',
+        expectedDispatch: true,
+        expectedProviderCount: 0,
+        expectedReconciledStatus: 'outcome_unknown',
+        mode: 'after-dispatch-before-provider',
+      },
+      {
+        expectedBarrier: 'preview.provider_completed_before_outcome_commit',
+        expectedDispatch: true,
+        expectedProviderCount: 1,
+        expectedReconciledStatus: 'outcome_unknown',
+        mode: 'after-provider-before-outcome',
+      },
+      {
+        expectedBarrier: 'preview.outcome_committed_before_queue_ack',
+        expectedDispatch: true,
+        expectedProviderCount: 1,
+        expectedReconciledStatus: 'succeeded',
+        mode: 'after-outcome-before-ack',
+      },
+    ] as const;
+    const fixtures: {
+      delivery: AcceptedDelivery;
+      effectKey: string;
+      jobId: string;
+      selected: (typeof cases)[number];
+    }[] = [];
+    const producer = createQueueProducer({ redisUrl });
+    const lockRedis = new Redis(redisUrl);
+    const queue = new Queue('node-attempts', {
+      connection: (() => {
+        const parsed = new URL(redisUrl);
+        return {
+          db: Number(parsed.pathname.slice(1)),
+          host: parsed.hostname,
+          port: Number(parsed.port || 6379),
+          ...(parsed.password === ''
+            ? {}
+            : { password: decodeURIComponent(parsed.password) }),
+        };
+      })(),
+    });
+    await producer.waitUntilReady(5_000);
+
+    try {
+      for (const [index, selected] of cases.entries()) {
+        const delivery = await acceptDelivery(validTraceparent(index + 40), {
+          mayContactProvider: true,
+          mayCauseExternalSideEffect: true,
+          sideEffectClass: 'unsafe',
+        });
+        const effectKey = `preview-process-${selected.mode}-${randomUUID()}`;
+        const child = spawnPreviewCrashChild({
+          leaseDurationSeconds: 1,
+          mode: selected.mode,
+          providerEffectKey: effectKey,
+          redisUrl,
+          workerId: `preview-process-${String(index)}-${randomUUID().slice(0, 8)}`,
+          workerUrl: databaseUrl(workerUrl),
+          workspaceId,
+        });
+        await expect(child.evidence).resolves.toMatchObject({
+          injectionPoint: 'preview.consumer_ready',
+        });
+        const job = await producer.publish({
+          data: delivery.job.data,
+          name: delivery.job.name,
+        });
+        const evidence = await child.next(
+          (message) => message.injectionPoint === selected.expectedBarrier,
+        );
+        expect(evidence.injectionPoint).toBe(selected.expectedBarrier);
+        await expect(queue.getJob(job.jobId)).resolves.not.toBeUndefined();
+        await expect(
+          queue.getJob(job.jobId).then((published) => published?.getState()),
+        ).resolves.toBe('active');
+
+        const atBarrier = await previewState(delivery.accepted.previewRunId);
+        expect(atBarrier).toMatchObject({
+          attempt_fence: '1',
+          attempt_status:
+            selected.mode === 'after-outcome-before-ack'
+              ? 'succeeded'
+              : 'running',
+          inbox_completed_count:
+            selected.mode === 'after-outcome-before-ack' ? '1' : '0',
+          inbox_count: '1',
+          run_status:
+            selected.mode === 'after-outcome-before-ack'
+              ? 'succeeded'
+              : 'running',
+        });
+        expect(
+          await previewTerminalFacts(delivery.accepted.previewRunId),
+        ).toEqual({
+          audit_count: selected.mode === 'after-outcome-before-ack' ? '1' : '0',
+          usage_count: selected.mode === 'after-outcome-before-ack' ? '1' : '0',
+        });
+        expect(atBarrier?.dispatch_marked_at === null).toBe(
+          !selected.expectedDispatch,
+        );
+        expect(await providerEffectCount(effectKey)).toBe(
+          selected.expectedProviderCount,
+        );
+        if (selected.mode === 'after-outcome-before-ack') {
+          expect(JSON.parse(String(atBarrier?.output_ref))).toMatchObject({
+            value: { executed: true, providerEffectKey: effectKey },
+          });
+        } else {
+          expect(atBarrier?.output_ref).toBeNull();
+        }
+        expect(await child.kill()).toBe('SIGKILL');
+        fixtures.push({ delivery, effectKey, jobId: job.jobId, selected });
+      }
+
+      const dispatcher = createOutboxDispatcherDatabase(
+        parseDatabaseConfig({
+          connectionString: databaseUrl(dispatcherUrl),
+          ownerRole: 'pertexo_owner',
+        }),
+      );
+      const reconciliationRuntime = await createPreviewMaintenanceRuntime({
+        database: parseDatabaseConfig({
+          connectionString: databaseUrl(workerUrl),
+        }),
+        redisUrl,
+      });
+      try {
+        await reconciliationRuntime.consumer.waitUntilReady(5_000);
+        await dispatcher.checkReadiness();
+        const reconcilable = fixtures.slice(0, 3);
+        await waitFor(
+          () =>
+            Promise.all(
+              reconcilable.map(({ delivery }) =>
+                previewState(delivery.accepted.previewRunId),
+              ),
+            ),
+          (states) => states.every((state) => state?.lease_expired === true),
+        );
+        const targetRunIds = new Set(
+          reconcilable.map(({ delivery }) => delivery.accepted.previewRunId),
+        );
+        const selectedEvents = new Map<
+          string,
+          Awaited<ReturnType<typeof dispatcher.claimBatch>>['events'][number]
+        >();
+        const events = await waitFor(
+          async () => {
+            const batch = await dispatcher.claimBatch({
+              enabledJobNames: [JOB_NAME.reconcilePreviewAttempt],
+              leaseDurationMillis: 5_000,
+              leaseOwner: 'preview-process-crash-matrix',
+              leaseToken: randomUUID(),
+              limit: 20,
+              maxAttempts: 3,
+            });
+            for (const event of batch.events) {
+              if (targetRunIds.has(event.aggregateId))
+                selectedEvents.set(event.id, event);
+            }
+            return [...selectedEvents.values()];
+          },
+          (value) => value.length === reconcilable.length,
+        );
+        await Promise.all(
+          events.map(async (event) => {
+            const job = parseQueueJob({
+              name: event.jobName,
+              data: event.payload,
+            });
+            if (job.name !== JOB_NAME.reconcilePreviewAttempt)
+              throw new Error('claimed preview reconciliation job mismatch');
+            await producer.publish(job);
+            await dispatcher.markPublished(event.id, event.leaseToken);
+          }),
+        );
+
+        const reconciled = await waitFor(
+          () =>
+            Promise.all(
+              reconcilable.map(({ delivery }) =>
+                previewState(delivery.accepted.previewRunId),
+              ),
+            ),
+          (states) =>
+            states.every(
+              (state, index) =>
+                state?.run_status ===
+                reconcilable[index]?.selected.expectedReconciledStatus,
+            ),
+        );
+        expect(reconciled.map((state) => state?.run_status)).toEqual([
+          'queued',
+          'outcome_unknown',
+          'outcome_unknown',
+        ]);
+        expect(reconciled.map((state) => state?.attempt_fence)).toEqual([
+          '2',
+          '2',
+          '2',
+        ]);
+        expect(
+          await Promise.all(
+            reconcilable.map(({ delivery }) =>
+              previewTerminalFacts(delivery.accepted.previewRunId),
+            ),
+          ),
+        ).toEqual([
+          { audit_count: '0', usage_count: '0' },
+          { audit_count: '1', usage_count: '1' },
+          { audit_count: '1', usage_count: '1' },
+        ]);
+        expect(reconciled.map((state) => state?.inbox_count)).toEqual([
+          '1',
+          '1',
+          '1',
+        ]);
+        expect(
+          await Promise.all(
+            reconcilable.map(({ effectKey }) => providerEffectCount(effectKey)),
+          ),
+        ).toEqual([0, 0, 1]);
+        const reconciliationReceipts = await withTenantScopedWorker((client) =>
+          client.query<{ completed: string; count: string }>(
+            `select count(*)::text as count,
+                    count(completed_at)::text as completed
+               from app.inbox_receipts
+              where consumer_name='preview-attempt-reconciler'
+                and message_id=any($1::uuid[])`,
+            [events.map((event) => event.id)],
+          ),
+        );
+        expect(reconciliationReceipts.rows[0]).toEqual({
+          completed: String(reconcilable.length),
+          count: String(reconcilable.length),
+        });
+
+        for (const fixture of reconcilable) {
+          const crashedJob = await queue.getJob(fixture.jobId);
+          if (crashedJob === undefined)
+            throw new Error('crashed preview job is missing');
+          await lockRedis.del(`${queue.toKey(fixture.jobId)}:lock`);
+          await crashedJob.remove();
+        }
+
+        const terminal = fixtures[3];
+        if (terminal === undefined) throw new Error('terminal fixture missing');
+        const beforeRedelivery = await previewState(
+          terminal.delivery.accepted.previewRunId,
+        );
+        const beforeFacts = await previewTerminalFacts(
+          terminal.delivery.accepted.previewRunId,
+        );
+        await lockRedis.del(`${queue.toKey(terminal.jobId)}:lock`);
+        await lockRedis.sadd(queue.toKey('stalled'), terminal.jobId);
+        const redeliveryStore = createDatabasePreviewAttemptRunStore(
+          parseDatabaseConfig({ connectionString: databaseUrl(workerUrl) }),
+        );
+        const redeliveryRuntime = await createNodeAttemptRuntime({
+          database: parseDatabaseConfig({
+            connectionString: databaseUrl(workerUrl),
+          }),
+          heartbeatIntervalMillis: 200,
+          leaseDurationSeconds: 10,
+          preview: {
+            invoker: {
+              invoke: () => {
+                throw new Error('terminal preview redelivery invoked provider');
+              },
+            },
+            runStore: redeliveryStore,
+          },
+          redisUrl,
+          releaseCohort: 'core',
+          workerId: `preview-redelivery-${randomUUID().slice(0, 8)}`,
+        });
+        try {
+          await redeliveryRuntime.consumer.waitUntilReady(5_000);
+          await waitFor(
+            () =>
+              queue
+                .getJob(terminal.jobId)
+                .then((job) => job?.getState() ?? 'missing'),
+            (state) => state === 'completed',
+            75_000,
+          );
+        } finally {
+          await redeliveryRuntime.close();
+        }
+        expect(await providerEffectCount(terminal.effectKey)).toBe(1);
+        await expect(
+          previewState(terminal.delivery.accepted.previewRunId),
+        ).resolves.toEqual(beforeRedelivery);
+        await expect(
+          previewTerminalFacts(terminal.delivery.accepted.previewRunId),
+        ).resolves.toEqual(beforeFacts);
+      } finally {
+        await Promise.allSettled([
+          reconciliationRuntime.close(),
+          dispatcher.close(),
+        ]);
+      }
+    } finally {
+      await Promise.allSettled([
+        producer.close(),
+        queue.close(),
+        lockRedis.quit(),
+      ]);
+      lockRedis.disconnect();
+    }
+  }, 90_000);
 
   it('preserves durable reconciliation decisions after lease-owner SIGKILL', async () => {
     const cases = [

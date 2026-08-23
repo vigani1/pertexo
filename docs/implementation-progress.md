@@ -1441,7 +1441,7 @@ Validate and test-execute preview vertical slice:
       reconciliation delivery, artifact-backed outputs with inherited
       retention, authorized bounded deletion, terminal audit/usage facts, and
       terminal cardinality-safe runtime metrics are proven).
-- [ ] Prove authorization and cross-workspace denial, stale draft conflicts,
+- [x] Prove authorization and cross-workspace denial, stale draft conflicts,
       validation purity, disclosure/acknowledgement, exact and conflicting
       request retries, duplicate jobs, every pre/post-dispatch crash boundary,
       timeout/cancel, ambiguous unsafe outcomes, prior-preview scope/expiry,
@@ -1876,6 +1876,22 @@ Current evidence:
   assertions, API typecheck/build, focused formatting, and ESLint pass. The
   aggregate preview failure box remains open only for the composed production-
   handler process-crash matrix.
+- The composed process-crash checkpoint closes the remaining preview failure
+  matrix. Four child workers execute through the production node-attempt
+  BullMQ consumer and stop at the exact ADR 007 boundaries before dispatch-
+  marker commit, after marker commit before provider effect, after provider
+  effect before outcome commit, and after outcome commit before queue
+  acknowledgement. Parent assertions observe each real job as active, preserve
+  independently committed provider-effect cardinality, and prove marker,
+  output, inbox, audit, usage, and fence truth. A production maintenance
+  consumer reclaims undispatched work and resolves unsafe marked work to
+  `outcome_unknown`; a fresh production attempt consumer then performs real
+  BullMQ stalled redelivery of the committed terminal job without invoking the
+  provider or changing terminal facts. Queue cleanup prevents killed jobs from
+  leaking between runs. The fresh zero-to-head PostgreSQL/Redis suite passes
+  four enabled scenarios with one artifact-store scenario intentionally skipped
+  in 69.11 seconds; worker typecheck, focused ESLint, and formatting pass, and
+  independent review reports no medium-or-higher finding.
 - No Phase 4 registry release or publishable node capability is claimed
   complete yet. The managed connection API includes its SSRF-enforcing test
   endpoint and a staged generic HTTP executor candidate now exists, while
