@@ -988,15 +988,25 @@ export async function checkDatabaseReadiness(
             and policy.polname = 'artifact_links_workspace_scope'
             and policy.polcmd = '*'
             and cardinality(policy.polroles) = 3
-            and (select oid from pg_roles where rolname = current_user) = any(policy.polroles)
+            and (select oid from pg_roles where rolname = $1) = any(policy.polroles)
+            and (select oid from pg_roles where rolname = $2) = any(policy.polroles)
             and pg_get_expr(policy.polqual, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
             and pg_get_expr(policy.polwithcheck, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
         )
-        and has_table_privilege(current_user, 'app.artifact_links', 'SELECT')
-        and case when current_user = $2 then
-          has_table_privilege(current_user, 'app.artifact_links', 'INSERT')
+        and case when exists (
+          select 1 from pg_policy policy
+          where policy.polrelid = to_regclass('app.artifact_links')
+            and (select oid from pg_roles where rolname = current_user) = any(policy.polroles)
+        ) then
+          has_table_privilege(current_user, 'app.artifact_links', 'SELECT')
+          and case when current_user = $2 then
+            has_table_privilege(current_user, 'app.artifact_links', 'INSERT')
+          else
+            not has_table_privilege(current_user, 'app.artifact_links', 'INSERT')
+          end
         else
-          not has_table_privilege(current_user, 'app.artifact_links', 'INSERT')
+          not has_table_privilege(current_user, 'app.artifact_links', 'SELECT')
+          and not has_table_privilege(current_user, 'app.artifact_links', 'INSERT')
         end
         and not has_table_privilege(current_user, 'app.artifact_links', 'UPDATE')
         and not has_table_privilege(current_user, 'app.artifact_links', 'DELETE')
