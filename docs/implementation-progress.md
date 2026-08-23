@@ -20,7 +20,7 @@ not complete a phase.
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
-| Phase 4 — first side-effecting integration slice | In progress | ADRs 007/016; migration head `0029_provider_idempotency_key_invariants.sql`; managed connections, secure/streaming HTTP, worker JIT capabilities, integration-usage projection, exact rollout, canonical downstream output, provider telemetry, durable preview execution/retention, and corrected atomic terminal audit/usage/metrics complete; activation remains gated pending full regression evidence |
+| Phase 4 — first side-effecting integration slice | In progress | ADRs 007/016; migration head `0029_provider_idempotency_key_invariants.sql`; regression matrix complete at `abb6ef3`; final review corrections remain for production preview-route composition and truthful unsafe post-dispatch cancellation/persistence outcomes |
 | Phase 5 — orchestration slice | Not started | — |
 | Phase 6 — V1 providers and triggers | Not started | — |
 | Phase 7 — production operations | Not started | — |
@@ -2194,10 +2194,85 @@ Current evidence:
   were removed. The user-owned shared `pertexo` database was not reset because
   it retains the previously documented historical `0012` checksum mismatch.
 
+## Phase 5 — Orchestration slice
+
+Status: **Not started**
+
+Authority and entry gate:
+
+- [ ] Complete Phase 4 and preserve its fixed-head Spec/Standards GO before any
+      Phase 5 implementation commit.
+- [x] Use accepted ADR 008 for structured branches, deterministic joins,
+      bounded loops, canonical invocation scopes, and arbitrary-cycle rejection.
+- [x] Reuse ADRs 005–007 and 010 for PostgreSQL authority, coordinator/attempt
+      separation, cancellation/retry truth, and exact executor compatibility.
+- [ ] Record a new ADR before implementation only if a slice requires a decision
+      not already fixed by those accepted ADRs or the authoritative plan.
+
+Incremental publishable slices, in required order:
+
+- [ ] Condition: versioned schemas and executor; exactly one deterministic
+      branch selected and every unreachable branch explicitly skipped.
+- [ ] Switch: bounded ordered cases plus default behavior; canonical branch IDs
+      and selection independent of canvas or object-key order.
+- [ ] Bounded Parallel: declared branches become ready concurrently while the
+      pinned run/workspace limit bounds admissions and cancellation stops new
+      branches.
+- [ ] Merge: explicit `all`, `any`, and bounded `count(n)` policies settle only
+      from the complete persisted branch ledger; selected branches use canonical
+      branch-ID order and unsatisfied joins fail terminally.
+- [ ] Bounded For Each: one isolated structured DAG body, collection evaluated
+      once from canonical input, stable zero-based ordinals, pinned maximum
+      iterations/concurrency, run-wide 1,000-iteration budget, and no truncation.
+- [ ] Wait: PostgreSQL owns `resumeAt`, checkpoint revision, and due-work lease;
+      no sleeping worker or BullMQ timer is authoritative, and duplicate due
+      delivery resumes one logical invocation no earlier than its deadline.
+- [ ] Failure notification: versioned bounded input/output and safe failure
+      context, with no secret/provider body leakage or alternate scheduler state
+      authority.
+
+Every slice must pass before the next begins:
+
+- [ ] Add canonical vocabulary, browser-safe Zod contracts, manifest, executor,
+      compatibility release, generated artifacts, and server-only boundaries.
+- [ ] Keep the definition absent from placement/publication/admission until its
+      complete slice passes; prove unknown key/version and generated drift
+      rejection plus exact retained-version execution without latest fallback.
+- [ ] Prove graph validation, tenant/authorization scope where applicable,
+      transaction boundaries, stable safe errors/logs, cardinality-safe
+      telemetry/audit/usage effects, timeout/retry/cancellation, and bounded
+      inputs/outputs/checkpoints.
+- [ ] Prove happy path, quota rejection, duplicate coordinator and attempt jobs,
+      crash on both sides of checkpoint commit, Redis loss, PostgreSQL loss,
+      process drain, and fresh-worker reconstruction from immutable version plus
+      checkpoint only.
+- [ ] For branch/join slices, prove explicit arrived/skipped/missing/failed/
+      canceled dispositions, output keys by source node/port, completion-order
+      independence, and no duplicate join scheduling.
+- [ ] For For Each, prove exact and over-limit collections, nested worst-case
+      expansion, iteration-budget exhaustion before admission, bounded
+      concurrency, stable scoped invocation keys, duplicate outcomes, and
+      cancellation between batches.
+- [ ] For Wait, prove long suspension consumes no worker slot, due-work recovery
+      after Redis/worker restart, no early resume, duplicate delivery, and
+      durable cancellation/deadline behavior.
+
+Phase-wide completion gates:
+
+- [ ] Run root `pnpm check`, zero-to-head and supported prior-head migrations,
+      the complete real-service matrix sequentially, and all applicable Phase
+      0D/0E plus Phase 3/4 recovery and retained-release fixtures.
+- [ ] Record exact versions, commands, assertion counts, timings, cleanup, and
+      post-test dependency health.
+- [ ] Resolve every blocker/high finding from independent Spec and Standards
+      reviews against one fixed Phase 5 implementation commit.
+- [ ] Mark Phase 5 complete only after every box above has direct evidence and
+      all coherent implementation/evidence commits are pushed.
+
 ## Later phases
 
 Use the delivery plan and vertical-slice completion rule as the checklist for
-Phases 5–7. Expand the relevant phase here before implementation begins; do not
+Phases 6–7. Expand the relevant phase here before implementation begins; do not
 mark a phase complete from a high-level summary alone.
 
 ## Update protocol
