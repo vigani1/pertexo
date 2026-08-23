@@ -385,6 +385,78 @@ async function waitFor<T>(
   }
 }
 
+interface PreviewCrashChild {
+  readonly evidence: Promise<Record<string, unknown>>;
+  kill(): Promise<NodeJS.Signals | null>;
+}
+
+const activeCrashChildren = new Set<PreviewCrashChild>();
+
+function spawnPreviewCrashChild(
+  input: Record<string, unknown>,
+): PreviewCrashChild {
+  const child = spawn(
+    process.execPath,
+    [
+      new URL('./preview-reconciliation-process-fixture.mjs', import.meta.url)
+        .pathname,
+    ],
+    {
+      cwd: new URL('../../../', import.meta.url).pathname,
+      env: {
+        ...process.env,
+        PREVIEW_RECONCILIATION_CHILD_INPUT: JSON.stringify(input),
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    },
+  );
+  let stderr = '';
+  child.stderr.setEncoding('utf8');
+  child.stderr.on('data', (chunk: string) => {
+    stderr += chunk;
+  });
+  const exited = new Promise<{
+    code: number | null;
+    signal: NodeJS.Signals | null;
+  }>((resolve) => {
+    child.once('exit', (code, signal) => {
+      resolve({ code, signal });
+    });
+  });
+  const evidence = new Promise<Record<string, unknown>>((resolve, reject) => {
+    let buffer = '';
+    const timeout = setTimeout(() => {
+      reject(new Error(`preview crash child evidence timeout: ${stderr}`));
+    }, 15_000);
+    child.stdout.setEncoding('utf8');
+    child.stdout.on('data', (chunk: string) => {
+      buffer += chunk;
+      const newline = buffer.indexOf('\n');
+      if (newline === -1) return;
+      clearTimeout(timeout);
+      resolve(JSON.parse(buffer.slice(0, newline)) as Record<string, unknown>);
+    });
+    void exited.then(({ code, signal }) => {
+      clearTimeout(timeout);
+      reject(
+        new Error(
+          `preview crash child exited before evidence: code=${String(code)} signal=${String(signal)} stderr=${stderr}`,
+        ),
+      );
+    });
+  });
+  const selected: PreviewCrashChild = {
+    evidence,
+    kill: async (): Promise<NodeJS.Signals | null> => {
+      child.kill('SIGKILL');
+      return (await exited).signal;
+    },
+  };
+  activeCrashChildren.add(selected);
+  void exited.then(() => activeCrashChildren.delete(selected));
+  return selected;
+}
+
 function previewState(previewRunId: string) {
   return withTenantScopedWorker((client) =>
     client.query<{
@@ -455,6 +527,9 @@ beforeAll(async () => {
 }, 60_000);
 
 afterAll(async () => {
+  await Promise.allSettled(
+    [...activeCrashChildren].map(async (child) => child.kill()),
+  );
   await Promise.allSettled([apiPool.end(), workerPool.end(), ownerPool.end()]);
   const admin = new Pool({ connectionString: adminUrl, max: 1 });
   try {
@@ -652,6 +727,210 @@ describeIntegration('preview execution real transport', () => {
       expect(Number(state?.attempt_fence)).toBe(
         claimed.lease.attemptFenceToken + 1,
       );
+    } finally {
+      await Promise.allSettled([
+        reconciliationRuntime.close(),
+        dispatcher.close(),
+        producer.close(),
+      ]);
+    }
+  });
+
+  it('recovers truthful preview state across real SIGKILL boundaries', async () => {
+    const cases = [
+      {
+        complete: false,
+        expectedStatus: 'queued',
+        markDispatched: false,
+        overrides: {
+          mayContactProvider: true,
+          mayCauseExternalSideEffect: true,
+          sideEffectClass: 'unsafe' as const,
+        },
+      },
+      {
+        complete: false,
+        expectedStatus: 'queued',
+        markDispatched: true,
+        overrides: {
+          mayContactProvider: true,
+          mayCauseExternalSideEffect: false,
+          sideEffectClass: 'safe' as const,
+        },
+      },
+      {
+        complete: false,
+        expectedStatus: 'queued',
+        markDispatched: true,
+        overrides: {
+          mayContactProvider: true,
+          mayCauseExternalSideEffect: true,
+          providerIdempotencyKey: `preview-sigkill-${randomUUID()}`,
+          sideEffectClass: 'idempotent_with_key' as const,
+        },
+      },
+      {
+        complete: false,
+        expectedStatus: 'outcome_unknown',
+        markDispatched: true,
+        overrides: {
+          mayContactProvider: true,
+          mayCauseExternalSideEffect: true,
+          sideEffectClass: 'unsafe' as const,
+        },
+      },
+      {
+        complete: true,
+        expectedStatus: 'failed',
+        markDispatched: false,
+        overrides: {
+          mayCauseExternalSideEffect: false,
+          sideEffectClass: 'safe' as const,
+        },
+      },
+    ] as const;
+    const fixtures = await Promise.all(
+      cases.map(async (selected, index) => {
+        const traceparent = validTraceparent(index + 10);
+        const accepted = await withTenantAccept(
+          acceptanceInput(traceparent, selected.overrides),
+        );
+        const payload = {
+          schemaVersion: 1 as const,
+          workspaceId,
+          outboxEventId: accepted.outboxEventId,
+          previewRunId: accepted.previewRunId,
+          previewAttemptId: accepted.previewAttemptId,
+          traceparent,
+        };
+        const workerId = `preview-sigkill-${String(index)}-${randomUUID().slice(0, 8)}`;
+        const child = spawnPreviewCrashChild({
+          complete: selected.complete,
+          delivery: {
+            outboxEventId: accepted.outboxEventId,
+            payloadChecksum: canonicalOutboxPayloadChecksum(payload),
+          },
+          leaseDurationSeconds: 1,
+          markDispatched: selected.markDispatched,
+          previewAttemptId: accepted.previewAttemptId,
+          previewRunId: accepted.previewRunId,
+          workerId,
+          workerUrl: databaseUrl(workerUrl),
+          workspaceId,
+        });
+        const evidence = await child.evidence;
+        return { accepted, child, evidence, selected };
+      }),
+    );
+    const signals = await Promise.all(
+      fixtures.map(async ({ child }) => child.kill()),
+    );
+    expect(signals).toEqual(cases.map(() => 'SIGKILL'));
+    expect(fixtures.map(({ evidence }) => evidence.injectionPoint)).toEqual([
+      'preview.claim_committed_before_dispatch',
+      'preview.dispatch_committed_before_outcome',
+      'preview.dispatch_committed_before_outcome',
+      'preview.dispatch_committed_before_outcome',
+      'preview.outcome_committed_before_queue_ack',
+    ]);
+
+    const reconciliationRuntime = await createPreviewReconciliationRuntime({
+      database: parseDatabaseConfig({
+        connectionString: databaseUrl(workerUrl),
+      }),
+      redisUrl,
+    });
+    const dispatcher = createOutboxDispatcherDatabase(
+      parseDatabaseConfig({
+        connectionString: databaseUrl(dispatcherUrl),
+        ownerRole: 'pertexo_owner',
+      }),
+    );
+    const producer = createQueueProducer({ redisUrl });
+    try {
+      await Promise.all([
+        reconciliationRuntime.consumer.waitUntilReady(5_000),
+        dispatcher.checkReadiness(),
+        producer.waitUntilReady(5_000),
+      ]);
+      const targetRunIds = new Set(
+        fixtures.map(({ accepted }) => accepted.previewRunId),
+      );
+      const claimedEvents = new Map<
+        string,
+        Awaited<ReturnType<typeof dispatcher.claimBatch>>['events'][number]
+      >();
+      const events = await waitFor(
+        async () => {
+          const batch = await dispatcher.claimBatch({
+            enabledJobNames: [JOB_NAME.reconcilePreviewAttempt],
+            leaseDurationMillis: 5_000,
+            leaseOwner: 'preview-sigkill-integration',
+            leaseToken: randomUUID(),
+            limit: 20,
+            maxAttempts: 3,
+          });
+          for (const event of batch.events) {
+            if (targetRunIds.has(event.aggregateId))
+              claimedEvents.set(event.id, event);
+          }
+          return [...claimedEvents.values()];
+        },
+        (value) => value.length === cases.length,
+      );
+      await Promise.all(
+        events.map(async (event) => {
+          await producer.publish(
+            parseQueueJob({ name: event.jobName, data: event.payload }),
+          );
+          await dispatcher.markPublished(event.id, event.leaseToken);
+        }),
+      );
+      const states = await waitFor(
+        () =>
+          Promise.all(
+            fixtures.map(({ accepted }) => previewState(accepted.previewRunId)),
+          ),
+        (values) =>
+          values.every(
+            (value, index) =>
+              value?.run_status === cases[index]?.expectedStatus,
+          ),
+      );
+      expect(states.map((state) => state?.run_status)).toEqual(
+        cases.map(({ expectedStatus }) => expectedStatus),
+      );
+      expect(states.map((state) => Number(state?.attempt_fence))).toEqual([
+        2, 2, 2, 2, 1,
+      ]);
+      const keyed = fixtures[2];
+      expect(keyed?.evidence.providerIdempotencyKey).toBe(
+        cases[2].overrides.providerIdempotencyKey,
+      );
+      const pinnedKey = await withTenantScopedWorker((client) =>
+        client.query<{ provider_idempotency_key: string | null }>(
+          `select provider_idempotency_key from app.preview_attempts
+           where workspace_id=$1 and id=$2`,
+          [workspaceId, keyed?.accepted.previewAttemptId],
+        ),
+      );
+      expect(pinnedKey.rows[0]?.provider_idempotency_key).toBe(
+        cases[2].overrides.providerIdempotencyKey,
+      );
+      const receipts = await withTenantScopedWorker((client) =>
+        client.query<{ completed: string; count: string }>(
+          `select count(*)::text as count,
+                  count(completed_at)::text as completed
+           from app.inbox_receipts
+           where consumer_name='preview-attempt-reconciler'
+             and message_id=any($1::uuid[])`,
+          [events.map((event) => event.id)],
+        ),
+      );
+      expect(receipts.rows[0]).toEqual({
+        completed: String(cases.length),
+        count: String(cases.length),
+      });
     } finally {
       await Promise.allSettled([
         reconciliationRuntime.close(),
