@@ -1435,8 +1435,11 @@ Validate and test-execute preview vertical slice:
       production input. Audit and meter it through safe scoped facts.
 - [ ] Apply the production bounded-value/artifact, redaction, credential,
       timeout, retry, cancellation, duplicate-delivery, reconciliation, and
-      `outcome_unknown` policies to preview execution, with preview artifacts
-      expiring no later than the preview.
+      `outcome_unknown` policies to preview execution (bounded values,
+      timeout/deadline, duplicate delivery, reconciliation, and
+      `outcome_unknown` are proven; artifact-backed preview outputs and a
+      retention-deletion path remain blocked on the Phase 7 maintenance-role
+      grant migration — see finding 7 in the audit findings document).
 - [ ] Prove authorization and cross-workspace denial, stale draft conflicts,
       validation purity, disclosure/acknowledgement, exact and conflicting
       request retries, duplicate jobs, every pre/post-dispatch crash boundary,

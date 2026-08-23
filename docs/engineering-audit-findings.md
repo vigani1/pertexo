@@ -9,6 +9,17 @@ finding names concrete files, commands, or commits; open items state their
 recommended owner and trigger. This file does not change any phase checkpoint
 status in [the implementation progress tracker](./implementation-progress.md).
 
+## Finding 7 — Preview retention deletion has no authorized role (Open blocker, Phase 7)
+
+Evidence: migration 0022 grants the worker SELECT plus lifecycle UPDATE
+only and explicitly revokes DELETE on `preview_runs`/`preview_attempts`;
+forced RLS also blocks any cross-workspace owner sweep. A tenant-scoped
+sweep is therefore not landable without a reviewed maintenance-role grant
+migration. Resolution: the `sweep-expired-previews` job kind is held in
+the dispatcher contract (commit abe757f) exactly like
+`reconcile-workflow-triggers`; Phase 7 owns the grant migration plus the
+maintenance consumer.
+
 ## Summary
 
 | # | Finding | Severity | Status |
