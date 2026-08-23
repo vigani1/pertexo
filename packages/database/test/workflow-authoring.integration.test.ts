@@ -1460,10 +1460,13 @@ describe('workflow authoring persistence', () => {
         workflowId: saveFirstDraft.workflowId,
         workspaceId,
       });
+      const publishExpectation = expect(publish).rejects.toMatchObject({
+        currentRevision: 2,
+      });
       await yieldToPostgres();
       releaseSave.resolve();
       await expect(save).resolves.toMatchObject({ revision: 2 });
-      await expect(publish).rejects.toMatchObject({ currentRevision: 2 });
+      await publishExpectation;
     } finally {
       await saveFirstDatabase.close();
     }
@@ -1514,12 +1517,15 @@ describe('workflow authoring persistence', () => {
         workflowId: publishFirstDraft.workflowId,
         workspaceId,
       });
+      const saveExpectation = expect(save).resolves.toMatchObject({
+        revision: 2,
+      });
       await yieldToPostgres();
       releasePublish.resolve();
       await expect(publish).resolves.toMatchObject({
         version: { graphJson: emptyGraph },
       });
-      await expect(save).resolves.toMatchObject({ revision: 2 });
+      await saveExpectation;
     } finally {
       await publishFirstDatabase.close();
     }
