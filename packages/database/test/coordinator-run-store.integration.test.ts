@@ -33,6 +33,7 @@ const apiBaseUrl =
   'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
 const databaseName = `pertexo_test_0016_run_store_${randomUUID().replaceAll('-', '')}`;
 const zeroDatabaseName = `pertexo_test_0016_zero_${randomUUID().replaceAll('-', '')}`;
+const priorHeadDatabaseName = `pertexo_test_0030_upgrade_${randomUUID().replaceAll('-', '')}`;
 
 const actorId = randomUUID();
 const workspaceA = randomUUID();
@@ -176,6 +177,28 @@ async function migrateThrough0015(): Promise<void> {
       ),
     );
     await migrateDatabase(migrationConfig, directory);
+  } finally {
+    await rm(directory, { force: true, recursive: true });
+  }
+}
+
+async function migrateThrough0030(
+  config: typeof migrationConfig,
+): Promise<void> {
+  const directory = await mkdtemp(path.join(tmpdir(), 'pertexo-0030-'));
+  try {
+    const names = (await readdir(MIGRATIONS_DIRECTORY)).filter(
+      (name) => /^\d{4}_.+\.sql$/u.test(name) && name < '0031_',
+    );
+    await Promise.all(
+      names.map((name) =>
+        copyFile(
+          path.join(MIGRATIONS_DIRECTORY, name),
+          path.join(directory, name),
+        ),
+      ),
+    );
+    await migrateDatabase(config, directory);
   } finally {
     await rm(directory, { force: true, recursive: true });
   }
@@ -655,6 +678,123 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
     } finally {
       await admin.query(
         `drop database if exists "${zeroDatabaseName}" with (force)`,
+      );
+      await admin.end();
+    }
+  }, 60_000);
+
+  it('upgrades the immediate 0030 head to 0031 with compatible readiness and wakeup authority', async () => {
+    const admin = new Pool({ connectionString: adminBaseUrl, max: 1 });
+    const priorConfig = {
+      ...migrationConfig,
+      connectionString: namedDatabaseUrl(
+        migrationBaseUrl,
+        priorHeadDatabaseName,
+      ),
+    };
+    try {
+      await admin.query(
+        `drop database if exists "${priorHeadDatabaseName}" with (force)`,
+      );
+      await admin.query(
+        `create database "${priorHeadDatabaseName}" owner pertexo_owner`,
+      );
+      await admin.query(
+        `revoke all on database "${priorHeadDatabaseName}" from public`,
+      );
+      await admin.query(
+        `grant connect on database "${priorHeadDatabaseName}" to pertexo_migration, pertexo_api, pertexo_worker, pertexo_dispatcher`,
+      );
+      await migrateThrough0030(priorConfig);
+      const migrationPool = new Pool({
+        connectionString: namedDatabaseUrl(
+          workerBaseUrl,
+          priorHeadDatabaseName,
+        ),
+        max: 1,
+      });
+      try {
+        await expect(
+          migrationPool.query<{ name: string }>(
+            `select name from pertexo_internal.schema_migrations
+             order by name desc limit 1`,
+          ),
+        ).resolves.toMatchObject({
+          rows: [{ name: '0030_coordinator_retry_decisions.sql' }],
+        });
+      } finally {
+        await migrationPool.end();
+      }
+
+      await expect(migrateDatabase(priorConfig)).resolves.toEqual([
+        '0031_due_node_wakeups.sql',
+      ]);
+      const workerPool = new Pool({
+        connectionString: namedDatabaseUrl(
+          workerBaseUrl,
+          priorHeadDatabaseName,
+        ),
+        max: 1,
+      });
+      try {
+        await expect(
+          checkDatabaseReadiness(workerPool, {
+            ownerRole: 'pertexo_owner',
+            workerRuntimeRole: 'pertexo_worker',
+          }),
+        ).resolves.toMatchObject({
+          migrationHead: '0031_due_node_wakeups.sql',
+          role: 'pertexo_worker',
+        });
+        await expect(
+          workerPool.query<{ claimed: number }>(
+            'select app.claim_due_node_run_wakeups(10)::integer claimed',
+          ),
+        ).resolves.toMatchObject({ rows: [{ claimed: 0 }] });
+        await expect(
+          workerPool.query<{
+            column_present: boolean;
+            execute_granted: boolean;
+            function_owner: string;
+            function_security_definer: boolean;
+            update_granted: boolean;
+          }>(
+            `select
+               exists (
+                 select 1 from pg_attribute
+                 where attrelid='app.node_runs'::regclass
+                   and attname='due_wakeup_at' and not attisdropped
+               ) column_present,
+               has_function_privilege(
+                 'pertexo_worker',
+                 'app.claim_due_node_run_wakeups(integer)',
+                 'EXECUTE'
+               ) execute_granted,
+               has_column_privilege(
+                 'pertexo_worker','app.node_runs','due_wakeup_at','UPDATE'
+               ) update_granted,
+               pg_get_userbyid(proowner) function_owner,
+               prosecdef function_security_definer
+             from pg_proc
+             where oid='app.claim_due_node_run_wakeups(integer)'::regprocedure`,
+          ),
+        ).resolves.toMatchObject({
+          rows: [
+            {
+              column_present: true,
+              execute_granted: true,
+              function_owner: 'pertexo_owner',
+              function_security_definer: true,
+              update_granted: true,
+            },
+          ],
+        });
+      } finally {
+        await workerPool.end();
+      }
+    } finally {
+      await admin.query(
+        `drop database if exists "${priorHeadDatabaseName}" with (force)`,
       );
       await admin.end();
     }
