@@ -20,7 +20,7 @@ not complete a phase.
 | Phase 1 — identity/workspace vertical slice | Complete | ADR 004; migration head `0011_workspace_creation_idempotency.sql`; 347 unit and 133 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
-| Phase 4 — first side-effecting integration slice | In progress | ADRs 007/016; managed connections, secure/streaming HTTP, worker JIT capabilities, integration-usage projection, exact rollout, canonical downstream output, provider telemetry, durable preview execution/retention, and atomic terminal audit/usage/metrics complete; activation remains gated pending remaining failure proofs and full regression evidence |
+| Phase 4 — first side-effecting integration slice | In progress | ADRs 007/016; migration head `0028_preview_terminal_fact_corrections.sql`; managed connections, secure/streaming HTTP, worker JIT capabilities, integration-usage projection, exact rollout, canonical downstream output, provider telemetry, durable preview execution/retention, and corrected atomic terminal audit/usage/metrics complete; activation remains gated pending remaining failure proofs and full regression evidence |
 | Phase 5 — orchestration slice | Not started | — |
 | Phase 6 — V1 providers and triggers | Not started | — |
 | Phase 7 — production operations | Not started | — |
@@ -1834,6 +1834,27 @@ Current evidence:
   `pnpm check` passes with 117 worker assertions, including direct committed,
   duplicate, reconciliation, attribute-cardinality, and collector-failure
   proofs. The remaining Phase 4 failure and full-regression gates stay open.
+- Commits `29ad6c8`, `eb038d1`, and `ce31443` resolve the fixed-head terminal-
+  facts and metrics review findings without rewriting migration `0027` or its
+  immutable historical facts. Additive head
+  `0028_preview_terminal_fact_corrections.sql` pins request/trace and bounded
+  provider/operation identity, backfills available acceptance correlation,
+  extends the immutable-pin trigger, and enforces UUIDv7 for new preview audit
+  and usage facts while preview acceptance, reconciliation, and cleanup now
+  generate application UUIDv7 identities. Terminal audit metadata includes the
+  complete dry-run/side-effect disclosure; execution and reconciliation metrics
+  include bounded provider/operation classification. Readiness now attests the
+  exact usage columns, defaults, constraints, indexes, policies, grants, new
+  preview columns, UUID checks, trigger, and complete trigger-function body and
+  catalog configuration. Tests prove same-name FK drift and a no-op trigger
+  replacement fail readiness, pin mutation fails, and terminal facts are
+  invisible under another workspace context. Root `pnpm check` passes at
+  `eb038d1`; the final timestamp-default correction at `ce31443` separately
+  passes database formatting, ESLint, typecheck, 57 unit assertions, and build.
+  Twenty focused fresh-PostgreSQL scenarios pass across preview execution and
+  prior-head migration. Independent final Spec and Standards reviews of exact
+  head `ce31443` report no blocker, high, or medium finding. Phase 4 remains
+  open for the already listed failure and full-regression gates.
 - No Phase 4 registry release or publishable node capability is claimed
   complete yet. The managed connection API includes its SSRF-enforcing test
   endpoint and a staged generic HTTP executor candidate now exists, while
