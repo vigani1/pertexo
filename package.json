@@ -10,7 +10,7 @@
   },
   "scripts": {
     "build": "pnpm --recursive --if-present build",
-    "check": "pnpm format:check && pnpm lint && pnpm contracts:check && pnpm typecheck && pnpm test && pnpm build",
+    "check": "pnpm format:check && pnpm build && pnpm lint && pnpm contracts:check && pnpm typecheck && pnpm test",
     "contracts:check": "pnpm --filter @pertexo/contracts contracts:check",
     "contracts:generate": "pnpm --filter @pertexo/contracts contracts:generate",
     "dev:api": "pnpm --filter @pertexo/api dev",
