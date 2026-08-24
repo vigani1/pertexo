@@ -15,6 +15,8 @@ import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
 import {
   CORE_CONDITION_DEFINITION,
   CORE_CONDITION_EXECUTOR,
+  CORE_MERGE_DEFINITION,
+  CORE_MERGE_EXECUTOR,
   CORE_PARALLEL_DEFINITION,
   CORE_PARALLEL_EXECUTOR,
   CORE_SET_DEFINITION,
@@ -29,6 +31,8 @@ import {
   PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_CONDITION_STAGED,
   PLATFORM_REGISTRY_RELEASE_HISTORY,
+  PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_MERGE_STAGED,
   PLATFORM_REGISTRY_RELEASE_PARALLEL_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_PARALLEL_STAGED,
   PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
@@ -51,6 +55,28 @@ import {
 } from '../src/server.js';
 
 describe('platform node compatibility catalog', () => {
+  it('executes a settled Merge ledger only in its additive release', async () => {
+    const registry = createPlatformNodeRegistryForRelease(
+      PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
+    );
+    const input = {
+      ledger: {
+        'branch-01': { disposition: 'arrived' },
+        'branch-02': { disposition: 'skipped' },
+      },
+      selectedBranchIds: ['branch-01'],
+    };
+    await expect(
+      registry.execute({
+        config: { parallelNodeId: 'parallel', policy: { kind: 'any' } },
+        definition: CORE_MERGE_DEFINITION,
+        executor: CORE_MERGE_EXECUTOR,
+        input,
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({ kind: 'succeeded', output: input });
+  });
+
   it('executes bounded Parallel declaration only in its additive release', async () => {
     const registry = createPlatformNodeRegistryForRelease(
       PLATFORM_REGISTRY_RELEASE_PARALLEL_ACTIVE,
@@ -199,7 +225,7 @@ describe('platform node compatibility catalog', () => {
   });
   it('retains every additive release in canonical order', () => {
     expect(PLATFORM_REGISTRY_RELEASE_HISTORY.map(({ epoch }) => epoch)).toEqual(
-      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
     );
     expect(PLATFORM_REGISTRY_RELEASE_SUPPORT.map(({ epoch }) => epoch)).toEqual(
       [1, 2],
@@ -322,6 +348,16 @@ describe('platform node compatibility catalog', () => {
       ),
     ).toMatchObject({ lifecycle: 'active', abiVersion: 1 });
     expect(
+      PLATFORM_REGISTRY_RELEASE_MERGE_STAGED.executors.find(
+        ({ executor }) => executor.key === CORE_MERGE_EXECUTOR.key,
+      ),
+    ).toMatchObject({ lifecycle: 'staged', abiVersion: 1 });
+    expect(
+      PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE.executors.find(
+        ({ executor }) => executor.key === CORE_MERGE_EXECUTOR.key,
+      ),
+    ).toMatchObject({ lifecycle: 'active', abiVersion: 1 });
+    expect(
       PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE.definitions.map(
         ({ definition }) => definition,
       ),
@@ -332,7 +368,7 @@ describe('platform node compatibility catalog', () => {
       new Set(
         PLATFORM_REGISTRY_RELEASE_HISTORY.map(({ fingerprint }) => fingerprint),
       ).size,
-    ).toBe(10);
+    ).toBe(12);
   });
 
   it('builds one exact active server registry with retained core and dispatch-aware HTTP', async () => {

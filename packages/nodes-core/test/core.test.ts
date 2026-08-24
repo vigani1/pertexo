@@ -6,6 +6,10 @@ import {
   CORE_DEFINITION_MANIFESTS,
   CORE_MANUAL_DEFINITION,
   CORE_MANUAL_EXECUTOR,
+  CORE_MERGE_CONFIG_SCHEMA,
+  CORE_MERGE_DEFINITION,
+  CORE_MERGE_EXECUTOR,
+  CORE_MERGE_MANIFEST,
   CORE_PARALLEL_CONFIG_SCHEMA,
   CORE_PARALLEL_DEFINITION,
   CORE_PARALLEL_EXECUTOR,
@@ -320,6 +324,26 @@ describe('core node execution', () => {
       definition: CORE_PARALLEL_DEFINITION,
       executor: CORE_PARALLEL_EXECUTOR,
       ports: { inputs: ['in'] },
+    });
+  });
+
+  it('defines explicit Merge pairing and bounded join policies', () => {
+    expect(
+      CORE_MERGE_CONFIG_SCHEMA.safeParse({
+        parallelNodeId: 'parallel',
+        policy: { kind: 'count', count: 2 },
+      }).success,
+    ).toBe(true);
+    expect(
+      CORE_MERGE_CONFIG_SCHEMA.safeParse({
+        parallelNodeId: 'parallel',
+        policy: { kind: 'count', count: 0 },
+      }).success,
+    ).toBe(false);
+    expect(CORE_MERGE_MANIFEST).toMatchObject({
+      definition: CORE_MERGE_DEFINITION,
+      executor: CORE_MERGE_EXECUTOR,
+      ports: { outputs: ['out'] },
     });
   });
 });

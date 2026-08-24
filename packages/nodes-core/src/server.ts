@@ -26,6 +26,13 @@ import {
   CORE_MANUAL_MANIFEST,
   CORE_MANUAL_OUTPUT_SCHEMA,
 } from './manual/index.js';
+import { coreMergeExecutor } from './merge/executor.js';
+import {
+  CORE_MERGE_CONFIG_SCHEMA,
+  CORE_MERGE_INPUT_SCHEMA,
+  CORE_MERGE_MANIFEST,
+  CORE_MERGE_OUTPUT_SCHEMA,
+} from './merge/index.js';
 import { coreParallelExecutor } from './parallel/executor.js';
 import {
   CORE_PARALLEL_CONFIG_SCHEMA,
@@ -58,6 +65,12 @@ import {
 
 export const CORE_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistration[] =
   Object.freeze([
+    Object.freeze({
+      manifest: CORE_MERGE_MANIFEST,
+      configSchema: CORE_MERGE_CONFIG_SCHEMA,
+      inputSchema: CORE_MERGE_INPUT_SCHEMA,
+      outputSchema: CORE_MERGE_OUTPUT_SCHEMA,
+    }),
     Object.freeze({
       manifest: CORE_PARALLEL_MANIFEST,
       configSchema: CORE_PARALLEL_CONFIG_SCHEMA,
@@ -99,6 +112,7 @@ export const CORE_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistra
 export const CORE_NODE_EXECUTOR_REGISTRATIONS = Object.freeze([
   coreConditionExecutor,
   coreManualExecutor,
+  coreMergeExecutor,
   coreParallelExecutor,
   coreSetExecutor,
   coreSwitchExecutor,
