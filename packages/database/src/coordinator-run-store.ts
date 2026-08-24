@@ -1306,7 +1306,9 @@ function validateTransitionDelta(
         );
         if (
           root === undefined ||
-          !['ready', 'running', 'waiting'].includes(root.status)
+          !['ready', 'running', 'waiting', 'succeeded', 'skipped'].includes(
+            root.status,
+          )
         )
           throw new CoordinatorPlanInvalidError();
       }

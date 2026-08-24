@@ -3,6 +3,19 @@ import { describe, expect, it } from 'vitest';
 import { parseApiConfig } from '../src/platform/config/api-config.js';
 
 describe('parseApiConfig', () => {
+  it.each(['for_each_staging', 'for_each_activation'] as const)(
+    'accepts the %s compatibility cohort',
+    (cohort) => {
+      expect(
+        parseApiConfig({
+          DATABASE_API_URL:
+            'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+          NODE_COMPATIBILITY_COHORT: cohort,
+        }).nodeCompatibilityCohort,
+      ).toBe(cohort);
+    },
+  );
+
   it('uses safe development defaults when optional values are absent', () => {
     const config = parseApiConfig({
       DATABASE_API_URL:

@@ -21,7 +21,7 @@ not complete a phase.
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
-| Phase 5 — orchestration slice | In progress | ADRs 008/017/018/019/020; Condition, Switch, bounded Parallel, and Merge vertical slices complete through `67ba800`; bounded For Each publication validation, recursive executable pinning, pure engine scheduling, database persistence, and production body-attempt input reconstruction are implemented, while BullMQ/fresh-worker recovery and serving rollout remain |
+| Phase 5 — orchestration slice | In progress | ADRs 008/017/018/019/020; Condition, Switch, bounded Parallel, Merge, and bounded For Each vertical slices are complete; Wait and failure notification plus phase-wide gates remain |
 | Phase 6 — V1 providers and triggers | Not started | — |
 | Phase 7 — production operations | Not started | — |
 
@@ -2508,6 +2508,32 @@ Current evidence:
   already recorded checksum mismatch for untouched migration 0012. No For Each
   serving cohort is activated; BullMQ process recovery, later-batch and
   cancellation recovery, Redis-loss reconstruction, and rollout remain.
+- The bounded For Each completion checkpoint adds a production
+  PostgreSQL/BullMQ fixture with one declaration, a two-node body and canonical
+  sink, three exact ordinal scopes, `maxConcurrency: 2`, and one outer
+  successor. Separate success and cancellation runs prove exact scoped map/sink
+  outputs, the unchanged declaration output consumed by the successor, whole-
+  collection budget `1000 -> 997`, cursor `2 -> 3`, no synthetic iteration
+  attempts, and no ordinal-2 node run after cancellation between batches. The
+  fixture replays the declaration attempt and reservation coordinator delivery,
+  terminates and starts genuinely fresh worker child processes, and obliterates
+  both BullMQ queues after the declaration outcome, after reservation before
+  acknowledgement, after first-batch sink outcomes, and after the next-batch
+  checkpoint. PostgreSQL reconstructs the exact active/terminal ordinals and
+  admits no duplicate work. This proof exposed and fixes a production CAS
+  validator defect that rejected a succeeded body root while its iteration sink
+  remained active. Epochs 13 and 14 are now selectable additive For Each
+  staging/activation cohorts: staging serves epoch 12, activation serves epoch
+  14, and activation retains executable history through all fourteen releases.
+  Existing pure engine/model proofs cover exact and over-limit collections,
+  worst-case nested expansion, budget exhaustion before admission, completion-
+  order independence, nested nearest-scope progression, timeout/retry/failure,
+  and cancellation reconciliation. Generated contracts have no drift. Final
+  verification passes root `pnpm check` (including 56 workflow-
+  model, 114 workflow-engine, 66 database, 11 node-catalog, 145 worker, and 227
+  API unit assertions) and the complete eight-assertion disposable PostgreSQL/
+  BullMQ coordinator recovery file; its For Each child-process assertion takes
+  8.2s.
 - ADRs 021 and 022 fix the remaining Phase 5 semantics before implementation:
   Wait preserves semantic resume versus retry identity and adds an independent
   PostgreSQL deadline wake source; failure notification is an atomic bounded
@@ -2525,7 +2551,7 @@ Incremental publishable slices, in required order:
 - [x] Merge: explicit `all`, `any`, and bounded `count(n)` policies settle only
       from the complete persisted branch ledger; selected branches use canonical
       branch-ID order and unsatisfied joins fail terminally.
-- [ ] Bounded For Each: one isolated structured DAG body, collection evaluated
+- [x] Bounded For Each: one isolated structured DAG body, collection evaluated
       once from canonical input, stable zero-based ordinals, pinned maximum
       iterations/concurrency, run-wide 1,000-iteration budget, and no truncation.
 - [ ] Wait: PostgreSQL owns `resumeAt`, checkpoint revision, and due-work lease;

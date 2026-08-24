@@ -334,6 +334,16 @@ export const PLATFORM_MERGE_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
   PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
 ]);
 
+export const PLATFORM_FOR_EACH_STAGING_RELEASE_SUPPORT = Object.freeze([
+  PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_FOR_EACH_STAGED,
+]);
+
+export const PLATFORM_FOR_EACH_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
+  PLATFORM_REGISTRY_RELEASE_FOR_EACH_STAGED,
+  PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
+]);
+
 export const PLATFORM_RELEASE_COHORTS = Object.freeze([
   'core',
   'http_staging',
@@ -346,6 +356,8 @@ export const PLATFORM_RELEASE_COHORTS = Object.freeze([
   'parallel_activation',
   'merge_staging',
   'merge_activation',
+  'for_each_staging',
+  'for_each_activation',
 ] as const);
 export type PlatformReleaseCohort = (typeof PLATFORM_RELEASE_COHORTS)[number];
 
@@ -373,6 +385,10 @@ export function platformRegistryReleaseSupport(cohort: PlatformReleaseCohort) {
       return PLATFORM_MERGE_STAGING_RELEASE_SUPPORT;
     case 'merge_activation':
       return PLATFORM_MERGE_ACTIVATION_RELEASE_SUPPORT;
+    case 'for_each_staging':
+      return PLATFORM_FOR_EACH_STAGING_RELEASE_SUPPORT;
+    case 'for_each_activation':
+      return PLATFORM_FOR_EACH_ACTIVATION_RELEASE_SUPPORT;
   }
 }
 
@@ -414,6 +430,10 @@ export function platformServingRegistryRelease(cohort: PlatformReleaseCohort) {
       return PLATFORM_REGISTRY_RELEASE_PARALLEL_ACTIVE;
     case 'merge_activation':
       return PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE;
+    case 'for_each_staging':
+      return PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE;
+    case 'for_each_activation':
+      return PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE;
   }
 }
 

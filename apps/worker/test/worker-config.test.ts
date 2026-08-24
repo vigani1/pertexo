@@ -172,6 +172,8 @@ describe('parseWorkerConfig', () => {
     'condition_activation',
     'switch_activation',
     'merge_activation',
+    'for_each_staging',
+    'for_each_activation',
   ] as const)(
     'fails closed when a %s execution worker lacks required HTTP capabilities',
     (nodeCompatibilityCohort) => {
