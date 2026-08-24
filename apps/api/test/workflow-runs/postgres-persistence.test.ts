@@ -7,11 +7,14 @@ import {
   composeExecutableCompatibilityRelease,
   describeExecutableCompatibilityRelease,
   parseCheckpoint,
+  createExecutableCompatibilityReleaseHistory,
 } from '@pertexo/workflow-engine';
+import { PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE } from '@pertexo/node-catalog';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
   PHASE3_API_ENGINE_VERSION,
+  createInitialWorkflowCheckpoint,
   createPostgresWorkflowRunPersistence,
 } from '../../src/workflow-runs/postgres-persistence.js';
 import {
@@ -84,6 +87,88 @@ function run() {
 }
 
 describe('PostgreSQL workflow run persistence adapter', () => {
+  it('initializes checkpoint V2 for a verified Condition executable', () => {
+    const release = composeExecutableCompatibilityRelease(
+      PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
+    );
+    const compiled = buildWorkflowExecutableV2({
+      release,
+      graph: {
+        schemaVersion: 1,
+        settings: { maxRunDurationMs: 60_000 },
+        nodes: [
+          {
+            id: 'manual',
+            definition: { key: 'core.manual', version: 1 },
+            position: { x: 0, y: 0 },
+            configVersion: 1,
+            config: {},
+            inputMappings: {},
+            connectionRefs: {},
+          },
+          {
+            id: 'condition',
+            definition: { key: 'core.condition', version: 1 },
+            position: { x: 10, y: 0 },
+            configVersion: 1,
+            config: {},
+            inputMappings: {
+              condition: { kind: 'literal', value: true },
+            },
+            connectionRefs: {},
+          },
+          {
+            id: 'terminate',
+            definition: { key: 'core.terminate', version: 1 },
+            position: { x: 20, y: 0 },
+            configVersion: 1,
+            config: {},
+            inputMappings: {
+              result: {
+                kind: 'node_output',
+                nodeId: 'condition',
+                path: '$',
+              },
+            },
+            connectionRefs: {},
+          },
+        ],
+        edges: [
+          {
+            id: 'manual-condition',
+            source: { nodeId: 'manual', port: 'out' },
+            target: { nodeId: 'condition', port: 'in' },
+          },
+          {
+            id: 'condition-terminate',
+            source: { nodeId: 'condition', port: 'true' },
+            target: { nodeId: 'terminate', port: 'in' },
+          },
+        ],
+      },
+    });
+    const checkpoint = createInitialWorkflowCheckpoint(
+      {
+        id: workflowVersionId,
+        workspaceId,
+        workflowId,
+        versionNumber: 1,
+        schemaVersion: 1,
+        checksum: compiled.checksum,
+        executableSchemaVersion: 2,
+        executableJson: compiled.envelope,
+        compatibilityReleaseEpoch: release.epoch,
+      },
+      createExecutableCompatibilityReleaseHistory([release]),
+      describeExecutableCompatibilityRelease(release),
+    );
+
+    expect(parseCheckpoint(checkpoint.checkpoint)).toMatchObject({
+      schemaVersion: 2,
+      branchSelections: [],
+    });
+  });
+
   it('verifies the exact V2 release and creates the initial event-bound checkpoint', async () => {
     const compiled = executable();
     const targetCompiled = executable(CORE_REGISTRY_RELEASE_SUCCESSOR);
@@ -119,6 +204,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
         );
         expect(initial.engineVersion).toBe(PHASE3_API_ENGINE_VERSION);
         expect(parseCheckpoint(initial.checkpoint)).toMatchObject({
+          schemaVersion: 1,
           workflowVersionId,
           engineVersion: PHASE3_API_ENGINE_VERSION,
           revision: 0,

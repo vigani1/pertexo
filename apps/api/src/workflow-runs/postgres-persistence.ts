@@ -18,6 +18,7 @@ import {
   WorkflowEngineError,
   composeExecutableCompatibilityRelease,
   createCheckpoint,
+  createCheckpointV2,
   createExecutableCompatibilityReleaseHistory,
   createExecutableCompatibilityReleaseSupport,
   type ExecutableCompatibilityReleaseSupport,
@@ -72,7 +73,7 @@ export function createPostgresWorkflowRunPersistence(
         const result = await database.start({
           ...input,
           checkpointFactory: (projection, currentCompatibilityRelease) =>
-            initialCheckpoint(
+            createInitialWorkflowCheckpoint(
               projection,
               releaseSupport,
               currentCompatibilityRelease,
@@ -133,7 +134,7 @@ async function publishHint(
   }
 }
 
-function initialCheckpoint(
+export function createInitialWorkflowCheckpoint(
   projection: PublishedWorkflowV2Projection,
   releaseSupport: ExecutableCompatibilityReleaseSupport,
   currentCompatibilityRelease: CompatibilityReleaseExpectation,
@@ -165,7 +166,12 @@ function initialCheckpoint(
       throw new WorkflowRunNotExecutableError();
     return Object.freeze({
       engineVersion: PHASE3_API_ENGINE_VERSION,
-      checkpoint: createCheckpoint({
+      checkpoint: (executable.envelope.graph.nodes.some(
+        ({ definition }) =>
+          definition.key === 'core.condition' && definition.version === 1,
+      )
+        ? createCheckpointV2
+        : createCheckpoint)({
         engineVersion: PHASE3_API_ENGINE_VERSION,
         workflowVersionId: projection.id,
         iterationBudget: PHASE3_API_ITERATION_BUDGET,
