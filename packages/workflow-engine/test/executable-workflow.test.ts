@@ -39,6 +39,7 @@ function manifest(
     | 'core.condition'
     | 'core.manual'
     | 'core.set'
+    | 'core.switch'
     | 'core.terminate'
     | 'test.unrelated',
   policies: readonly PolicyReference[] = [boundedPolicy],
@@ -51,7 +52,7 @@ function manifest(
         ? 'trigger'
         : key === 'core.terminate'
           ? 'output'
-          : key === 'core.condition'
+          : key === 'core.condition' || key === 'core.switch'
             ? 'logic'
             : 'transform',
     configVersion: 1,
@@ -65,7 +66,27 @@ function manifest(
           ? []
           : key === 'core.condition'
             ? ['true', 'false']
-            : ['out'],
+            : key === 'core.switch'
+              ? [
+                  'case-01',
+                  'case-02',
+                  'case-03',
+                  'case-04',
+                  'case-05',
+                  'case-06',
+                  'case-07',
+                  'case-08',
+                  'case-09',
+                  'case-10',
+                  'case-11',
+                  'case-12',
+                  'case-13',
+                  'case-14',
+                  'case-15',
+                  'case-16',
+                  'default',
+                ]
+              : ['out'],
     },
     credentialRequirements: [],
     connectionRequirements: [],
@@ -88,6 +109,7 @@ function nodeRelease(input?: {
   readonly manualRetryClass?: NodeManifest['retryClass'];
   readonly setRetryClass?: NodeManifest['retryClass'];
   readonly condition?: boolean;
+  readonly switch?: boolean;
 }): RegistryRelease {
   const definitions = [
     manifest('core.manual'),
@@ -97,6 +119,7 @@ function nodeRelease(input?: {
     ),
     manifest('core.terminate'),
     ...(input?.condition ? [manifest('core.condition')] : []),
+    ...(input?.switch ? [manifest('core.switch')] : []),
     ...(input?.unrelated ? [manifest('test.unrelated')] : []),
   ];
   const manual = definitions.find(
@@ -151,6 +174,43 @@ function conditionGraph(sourcePort: string) {
       {
         id: 'condition-terminate',
         source: { nodeId: 'condition', port: sourcePort },
+        target: { nodeId: 'terminate', port: 'in' },
+      },
+    ],
+  };
+}
+
+function switchGraph(sourcePort: string) {
+  const base = graph();
+  return {
+    ...base,
+    nodes: [
+      base.nodes[0],
+      {
+        ...base.nodes[1],
+        id: 'switch',
+        definition: { key: 'core.switch', version: 1 },
+        config: {
+          cases: [
+            { id: 'case-02', equals: 'selected' },
+            { id: 'case-01', equals: 'other' },
+          ],
+        },
+        inputMappings: {
+          value: { kind: 'literal' as const, value: 'selected' },
+        },
+      },
+      base.nodes[2],
+    ],
+    edges: [
+      {
+        id: 'manual-switch',
+        source: { nodeId: 'manual', port: 'out' },
+        target: { nodeId: 'switch', port: 'in' },
+      },
+      {
+        id: 'switch-terminate',
+        source: { nodeId: 'switch', port: sourcePort },
         target: { nodeId: 'terminate', port: 'in' },
       },
     ],
@@ -241,6 +301,36 @@ describe('workflow executable V2 identity', () => {
             {
               id: 'condition-false-terminate',
               source: { nodeId: 'condition', port: 'false' },
+              target: { nodeId: 'terminate', port: 'in' },
+            },
+          ],
+        },
+        release,
+      }),
+    ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
+  });
+
+  it('rejects Switch edges through unconfigured cases and pre-Merge reconvergence', () => {
+    const release = composeExecutableCompatibilityRelease(
+      nodeRelease({ switch: true }),
+    );
+    expect(() =>
+      buildWorkflowExecutableV2({
+        graph: switchGraph('case-03'),
+        release,
+      }),
+    ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
+
+    const reconverging = switchGraph('case-02');
+    expect(() =>
+      buildWorkflowExecutableV2({
+        graph: {
+          ...reconverging,
+          edges: [
+            ...reconverging.edges,
+            {
+              id: 'switch-default-terminate',
+              source: { nodeId: 'switch', port: 'default' },
               target: { nodeId: 'terminate', port: 'in' },
             },
           ],
@@ -976,6 +1066,119 @@ describe('Phase 3 production operations', () => {
         expect.objectContaining({ nodeId: 'terminate', status: 'running' }),
         expect.objectContaining({
           nodeId: 'false-terminate',
+          status: 'skipped',
+        }),
+      ]),
+    );
+    expect(plan.attempts.map(({ nodeId }) => nodeId)).toEqual(['terminate']);
+  });
+
+  it('derives a Switch selection only from its persisted inline output', async () => {
+    const workflowVersionId = 'version-switch';
+    const release = composeExecutableCompatibilityRelease(
+      nodeRelease({ switch: true }),
+    );
+    const selected = switchGraph('case-02');
+    const executable = buildWorkflowExecutableV2({
+      graph: {
+        ...selected,
+        nodes: [
+          ...selected.nodes,
+          { ...selected.nodes[2], id: 'case-01-terminate' },
+          { ...selected.nodes[2], id: 'default-terminate' },
+        ],
+        edges: [
+          ...selected.edges,
+          {
+            id: 'switch-case-01-terminate',
+            source: { nodeId: 'switch', port: 'case-01' },
+            target: { nodeId: 'case-01-terminate', port: 'in' },
+          },
+          {
+            id: 'switch-default-terminate',
+            source: { nodeId: 'switch', port: 'default' },
+            target: { nodeId: 'default-terminate', port: 'in' },
+          },
+        ],
+      },
+      release,
+    });
+    const manualKey = invocationKey({ workflowVersionId, nodeId: 'manual' });
+    const switchKey = invocationKey({ workflowVersionId, nodeId: 'switch' });
+    const attemptId = '00000000-0000-4000-8000-000000000103';
+    const checkpoint = {
+      ...createCheckpointV2({
+        engineVersion: 'engine-v2',
+        workflowVersionId,
+        iterationBudget: 0,
+      }),
+      runStatus: 'running',
+      admittedInvocationKeys: [manualKey, switchKey],
+      invocations: [
+        {
+          invocationKey: manualKey,
+          nodeId: 'manual',
+          status: 'succeeded',
+          attemptNumber: 1,
+        },
+        {
+          invocationKey: switchKey,
+          nodeId: 'switch',
+          status: 'running',
+          attemptNumber: 1,
+        },
+      ],
+    } as const;
+
+    const plan = await advanceWorkflow({
+      runId: 'run-switch',
+      executable,
+      workflowVersionId,
+      checkpoint,
+      observations: [
+        {
+          sequence: 2,
+          occurredAt: '2026-08-24T00:00:00.000Z',
+          attemptId,
+          attemptNumber: 1,
+          kind: 'outcome',
+          invocationKey: switchKey,
+          status: 'succeeded',
+          output: { kind: 'inline', attemptId },
+        },
+      ],
+      completedOutputs: [
+        {
+          sequence: 2,
+          attemptId,
+          invocationKey: switchKey,
+          value: { selectedPort: 'case-02' },
+        },
+      ],
+      occurredAt: '2026-08-24T00:00:01.000Z',
+      maximumAdmissions: 1,
+      signal: new AbortController().signal,
+    });
+
+    expect(plan.checkpoint).toMatchObject({
+      schemaVersion: 2,
+      branchSelections: [
+        {
+          invocationKey: switchKey,
+          nodeId: 'switch',
+          selectedOutputPort: 'case-02',
+        },
+      ],
+    });
+    expect(plan.checkpoint.invocations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ nodeId: 'terminate', status: 'running' }),
+        expect.objectContaining({
+          nodeId: 'case-01-terminate',
+          status: 'skipped',
+        }),
+        expect.objectContaining({
+          nodeId: 'default-terminate',
           status: 'skipped',
         }),
       ]),

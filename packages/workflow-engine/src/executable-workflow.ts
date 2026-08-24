@@ -413,12 +413,45 @@ function assertGraphPorts(
       fail('workflow edge references an unavailable node');
     if (!source.ports.outputs.includes(edge.source.port))
       fail('workflow edge source port is unavailable');
+    const sourceNode = graph.nodes.find(({ id }) => id === edge.source.nodeId);
+    if (
+      sourceNode?.definition.key === 'core.switch' &&
+      sourceNode.definition.version === 1 &&
+      !configuredBranchPorts(sourceNode).includes(edge.source.port)
+    )
+      fail('workflow edge source port is not configured');
     if (!target.ports.inputs.includes(edge.target.port))
       fail('workflow edge target port is unavailable');
   }
 }
 
-function assertConditionBranchesDoNotReconverge(graph: WorkflowGraph): void {
+function configuredBranchPorts(
+  node: WorkflowGraph['nodes'][number],
+): readonly string[] {
+  if (node.definition.key === 'core.condition' && node.definition.version === 1)
+    return ['false', 'true'];
+  if (node.definition.key !== 'core.switch' || node.definition.version !== 1)
+    return [];
+  if (
+    typeof node.config !== 'object' ||
+    node.config === null ||
+    Array.isArray(node.config)
+  )
+    return ['default'];
+  const cases = Reflect.get(node.config, 'cases') as unknown;
+  if (!Array.isArray(cases)) return ['default'];
+  return [
+    ...cases.flatMap((item) => {
+      if (typeof item !== 'object' || item === null || Array.isArray(item))
+        return [];
+      const id = Reflect.get(item, 'id') as unknown;
+      return typeof id === 'string' ? [id] : [];
+    }),
+    'default',
+  ];
+}
+
+function assertBranchesDoNotReconverge(graph: WorkflowGraph): void {
   const adjacency = new Map<string, string[]>();
   for (const node of graph.nodes) adjacency.set(node.id, []);
   for (const edge of graph.edges)
@@ -437,21 +470,26 @@ function assertConditionBranchesDoNotReconverge(graph: WorkflowGraph): void {
   };
 
   for (const node of graph.nodes) {
-    if (
-      node.definition.key !== 'core.condition' ||
-      node.definition.version !== 1
-    )
-      continue;
-    const branchRoots = (port: 'true' | 'false'): string[] =>
+    const ports = configuredBranchPorts(node);
+    if (ports.length === 0) continue;
+    const branchRoots = (port: string): string[] =>
       graph.edges
         .filter(
           (edge) => edge.source.nodeId === node.id && edge.source.port === port,
         )
         .map((edge) => edge.target.nodeId);
-    const trueDescendants = descendants(branchRoots('true'));
-    const falseDescendants = descendants(branchRoots('false'));
-    if ([...trueDescendants].some((nodeId) => falseDescendants.has(nodeId)))
-      fail('Condition branches cannot reconverge before Merge is available');
+    const reachedByPort = ports.map((port) => descendants(branchRoots(port)));
+    for (let left = 0; left < reachedByPort.length; left += 1)
+      for (let right = left + 1; right < reachedByPort.length; right += 1) {
+        const leftReached = reachedByPort[left];
+        const rightReached = reachedByPort[right];
+        if (
+          leftReached !== undefined &&
+          rightReached !== undefined &&
+          [...leftReached].some((nodeId) => rightReached.has(nodeId))
+        )
+          fail('branches cannot reconverge before Merge is available');
+      }
   }
 }
 
@@ -482,7 +520,7 @@ function buildBoundary(input: {
     definitions: release.definitions.map(({ definition }) => definition),
   });
   assertGraphPorts(graph, release);
-  assertConditionBranchesDoNotReconverge(graph);
+  assertBranchesDoNotReconverge(graph);
   const nodes = [...graph.nodes]
     .sort((left, right) => compareOrdinal(left.id, right.id))
     .map((node) => executableNode(node, release));

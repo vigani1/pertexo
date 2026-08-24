@@ -651,6 +651,102 @@ describe('AdvanceWorkflow operation', () => {
     ]);
   });
 
+  it('derives one selected Switch branch and skips every configured alternative', () => {
+    const switchKey = invocationKey({
+      workflowVersionId: 'version-switch',
+      nodeId: 'switch',
+    });
+
+    expect(
+      deriveReadyNodes({
+        graph: {
+          deriveReadiness: true,
+          nodes: [
+            {
+              id: 'switch',
+              definition: { key: 'core.switch', version: 1 },
+              config: {
+                cases: [
+                  { id: 'case-02', equals: 'first' },
+                  { id: 'case-01', equals: 'second' },
+                ],
+              },
+              sideEffectClass: 'safe',
+            },
+            { id: 'selected', sideEffectClass: 'safe' },
+            { id: 'unselected', sideEffectClass: 'safe' },
+            { id: 'default', sideEffectClass: 'safe' },
+          ],
+          edges: [
+            {
+              source: { nodeId: 'switch', port: 'case-02' },
+              target: { nodeId: 'selected', port: 'in' },
+            },
+            {
+              source: { nodeId: 'switch', port: 'case-01' },
+              target: { nodeId: 'unselected', port: 'in' },
+            },
+            {
+              source: { nodeId: 'switch', port: 'default' },
+              target: { nodeId: 'default', port: 'in' },
+            },
+          ],
+        },
+        workflowVersionId: 'version-switch',
+        invocations: [
+          {
+            invocationKey: switchKey,
+            nodeId: 'switch',
+            status: 'succeeded',
+            attemptNumber: 1,
+            output: {
+              kind: 'inline',
+              attemptId: '00000000-0000-4000-8000-000000000102',
+            },
+          },
+        ],
+        branchSelections: [
+          {
+            invocationKey: switchKey,
+            nodeId: 'switch',
+            selectedOutputPort: 'case-02',
+          },
+        ],
+      }),
+    ).toEqual([
+      {
+        invocationKey: invocationKey({
+          workflowVersionId: 'version-switch',
+          nodeId: 'default',
+          branchPath: ['switch:default'],
+        }),
+        nodeId: 'default',
+        disposition: 'skipped',
+        branchPath: [{ nodeId: 'switch', outputPort: 'default' }],
+      },
+      {
+        invocationKey: invocationKey({
+          workflowVersionId: 'version-switch',
+          nodeId: 'selected',
+          branchPath: ['switch:case-02'],
+        }),
+        nodeId: 'selected',
+        disposition: 'ready',
+        branchPath: [{ nodeId: 'switch', outputPort: 'case-02' }],
+      },
+      {
+        invocationKey: invocationKey({
+          workflowVersionId: 'version-switch',
+          nodeId: 'unselected',
+          branchPath: ['switch:case-01'],
+        }),
+        nodeId: 'unselected',
+        disposition: 'skipped',
+        branchPath: [{ nodeId: 'switch', outputPort: 'case-01' }],
+      },
+    ]);
+  });
+
   it('rejects branch selections outside the pinned Condition contract', () => {
     const conditionKey = invocationKey({
       workflowVersionId: 'version-2',

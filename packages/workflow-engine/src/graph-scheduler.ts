@@ -14,6 +14,7 @@ export interface SchedulerState {
   readonly nodes: readonly {
     readonly id: string;
     readonly definition?: { readonly key: string; readonly version: number };
+    readonly config?: unknown;
     readonly disabled?: boolean;
     readonly sideEffectClass: SideEffectClass;
   }[];
@@ -21,6 +22,43 @@ export interface SchedulerState {
     readonly source: { readonly nodeId: string; readonly port: string };
     readonly target: { readonly nodeId: string; readonly port: string };
   }[];
+}
+
+export function configuredBranchOutputPorts(
+  node: Readonly<{
+    definition?: Readonly<{ key: string; version: number }>;
+    config?: unknown;
+  }>,
+): readonly string[] | undefined {
+  if (
+    node.definition?.key === 'core.condition' &&
+    node.definition.version === 1
+  )
+    return ['false', 'true'];
+  if (node.definition?.key !== 'core.switch' || node.definition.version !== 1)
+    return undefined;
+  if (
+    typeof node.config !== 'object' ||
+    node.config === null ||
+    Array.isArray(node.config)
+  )
+    return undefined;
+  const cases = Reflect.get(node.config, 'cases') as unknown;
+  if (!Array.isArray(cases)) return undefined;
+  const ports = cases.map((item): unknown =>
+    typeof item === 'object' && item !== null && !Array.isArray(item)
+      ? Reflect.get(item, 'id')
+      : undefined,
+  );
+  if (
+    ports.some(
+      (port) =>
+        typeof port !== 'string' || !/^case-(?:0[1-9]|1[0-6])$/u.test(port),
+    ) ||
+    new Set(ports).size !== ports.length
+  )
+    return undefined;
+  return [...(ports as string[]), 'default'];
 }
 
 export interface ReadyNodeDecision {
@@ -61,18 +99,18 @@ export function deriveReadyNodes(input: {
   for (const selection of input.branchSelections ?? []) {
     const node = nodeById.get(selection.nodeId);
     const invocation = invocationByKey.get(selection.invocationKey);
+    const outputPorts =
+      node === undefined ? undefined : configuredBranchOutputPorts(node);
     if (
-      node?.definition?.key !== 'core.condition' ||
-      node.definition.version !== 1 ||
+      outputPorts === undefined ||
       invocation?.nodeId !== selection.nodeId ||
       invocation.status !== 'succeeded' ||
       invocation.output === undefined ||
-      (selection.selectedOutputPort !== 'true' &&
-        selection.selectedOutputPort !== 'false')
+      !outputPorts.includes(selection.selectedOutputPort)
     )
       throw new WorkflowEngineError(
         'checkpoint_invalid',
-        'branch selection disagrees with the pinned Condition contract',
+        'branch selection disagrees with the pinned node contract',
       );
   }
   const invocationByNode = new Map<string, InvocationState>();
@@ -98,19 +136,18 @@ export function deriveReadyNodes(input: {
   const blocked = new Set<string>();
   const skipped = new Set<string>();
   const branchPathByNode = new Map<string, readonly BranchScopePart[]>();
-  for (const condition of input.graph.nodes.filter(
-    ({ definition }) =>
-      definition?.key === 'core.condition' && definition.version === 1,
+  for (const branchNode of input.graph.nodes.filter(
+    (node) => configuredBranchOutputPorts(node) !== undefined,
   )) {
-    const invocation = invocationByNode.get(condition.id);
+    const invocation = invocationByNode.get(branchNode.id);
     if (invocation?.status !== 'succeeded') continue;
     const selection = input.branchSelections?.find(
       (candidate) =>
         candidate.invocationKey === invocation.invocationKey &&
-        candidate.nodeId === condition.id,
+        candidate.nodeId === branchNode.id,
     );
     const outgoing = input.graph.edges.filter(
-      (edge) => edge.source.nodeId === condition.id,
+      (edge) => edge.source.nodeId === branchNode.id,
     );
     if (selection === undefined) {
       for (const nodeId of descendants(
@@ -120,10 +157,10 @@ export function deriveReadyNodes(input: {
         blocked.add(nodeId);
       continue;
     }
-    for (const port of ['false', 'true'] as const) {
+    for (const port of configuredBranchOutputPorts(branchNode) ?? []) {
       const branchPath = [
         ...(invocation.branchPath ?? []),
-        { nodeId: condition.id, outputPort: port },
+        { nodeId: branchNode.id, outputPort: port },
       ];
       const branchDescendants = descendants(
         outgoing

@@ -25,7 +25,10 @@ import {
   type WorkflowExecutableNodeV2,
 } from './executable-workflow.js';
 import { parseCheckpoint } from './checkpoint.js';
-import type { SchedulerState } from './graph-scheduler.js';
+import {
+  configuredBranchOutputPorts,
+  type SchedulerState,
+} from './graph-scheduler.js';
 import { compareOrdinal } from './ordering.js';
 import {
   decideRetry,
@@ -684,7 +687,7 @@ export interface AdvanceWorkflowInput {
   readonly signal: AbortSignal;
 }
 
-function conditionSelectionObservations(
+function branchSelectionObservations(
   value: unknown,
   persistedValue: unknown,
   checkpoint: ReturnType<typeof parseCheckpoint>,
@@ -749,22 +752,23 @@ function conditionSelectionObservations(
     const node = executable.envelope.graph.nodes.find(
       ({ id }) => id === invocation?.nodeId,
     );
-    if (
-      node?.definition.key !== 'core.condition' ||
-      node.definition.version !== 1
-    )
-      return [];
+    if (node === undefined) return [];
+    const outputPorts = configuredBranchOutputPorts(node);
+    if (outputPorts === undefined) return [];
     const completedValue = material.value;
     if (completedValue === undefined)
-      operationError('observation_invalid', 'Condition output is missing');
+      operationError('observation_invalid', 'branch output is missing');
     const output = record(
       completedValue,
       'observation_invalid',
-      'Condition output',
+      'branch output',
     );
     exactKeys(output, ['selectedPort']);
-    if (output.selectedPort !== 'true' && output.selectedPort !== 'false')
-      operationError('observation_invalid', 'Condition output is invalid');
+    if (
+      typeof output.selectedPort !== 'string' ||
+      !outputPorts.includes(output.selectedPort)
+    )
+      operationError('observation_invalid', 'branch output is invalid');
     return [
       {
         kind: 'branch_selected',
@@ -795,11 +799,13 @@ function schedulerState(
       ({
         id,
         definition,
+        config,
         disabled,
         sideEffectClass: pinnedSideEffectClass,
       }) => ({
         id,
         definition,
+        config,
         disabled,
         sideEffectClass: pinnedSideEffectClass,
       }),
@@ -831,11 +837,9 @@ function assertCheckpointMatchesExecutable(
       !nodeIds.has(invocation.nodeId) ||
       branchPath.some(({ nodeId, outputPort }) => {
         const node = nodesById.get(nodeId);
-        return (
-          node?.definition.key !== 'core.condition' ||
-          node.definition.version !== 1 ||
-          (outputPort !== 'true' && outputPort !== 'false')
-        );
+        const outputPorts =
+          node === undefined ? undefined : configuredBranchOutputPorts(node);
+        return outputPorts === undefined || !outputPorts.includes(outputPort);
       }) ||
       invocation.invocationKey !==
         createInvocationKey({
@@ -886,7 +890,7 @@ export async function advanceWorkflow(
     input.observations,
     checkpoint,
   );
-  const branchSelections = conditionSelectionObservations(
+  const branchSelections = branchSelectionObservations(
     input.completedOutputs,
     input.observations,
     checkpoint,

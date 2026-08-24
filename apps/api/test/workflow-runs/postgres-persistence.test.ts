@@ -9,7 +9,10 @@ import {
   parseCheckpoint,
   createExecutableCompatibilityReleaseHistory,
 } from '@pertexo/workflow-engine';
-import { PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE } from '@pertexo/node-catalog';
+import {
+  PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
+} from '@pertexo/node-catalog';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -142,6 +145,80 @@ describe('PostgreSQL workflow run persistence adapter', () => {
           {
             id: 'condition-terminate',
             source: { nodeId: 'condition', port: 'true' },
+            target: { nodeId: 'terminate', port: 'in' },
+          },
+        ],
+      },
+    });
+    const checkpoint = createInitialWorkflowCheckpoint(
+      {
+        id: workflowVersionId,
+        workspaceId,
+        workflowId,
+        versionNumber: 1,
+        schemaVersion: 1,
+        checksum: compiled.checksum,
+        executableSchemaVersion: 2,
+        executableJson: compiled.envelope,
+        compatibilityReleaseEpoch: release.epoch,
+      },
+      createExecutableCompatibilityReleaseHistory([release]),
+      describeExecutableCompatibilityRelease(release),
+    );
+
+    expect(parseCheckpoint(checkpoint.checkpoint)).toMatchObject({
+      schemaVersion: 2,
+      branchSelections: [],
+    });
+  });
+
+  it('initializes checkpoint V2 for a verified Switch executable', () => {
+    const release = composeExecutableCompatibilityRelease(
+      PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
+    );
+    const compiled = buildWorkflowExecutableV2({
+      release,
+      graph: {
+        schemaVersion: 1,
+        settings: { maxRunDurationMs: 60_000 },
+        nodes: [
+          {
+            id: 'manual',
+            definition: { key: 'core.manual', version: 1 },
+            position: { x: 0, y: 0 },
+            configVersion: 1,
+            config: {},
+            inputMappings: {},
+            connectionRefs: {},
+          },
+          {
+            id: 'switch',
+            definition: { key: 'core.switch', version: 1 },
+            position: { x: 10, y: 0 },
+            configVersion: 1,
+            config: { cases: [{ id: 'case-01', equals: true }] },
+            inputMappings: { value: { kind: 'literal', value: true } },
+            connectionRefs: {},
+          },
+          {
+            id: 'terminate',
+            definition: { key: 'core.terminate', version: 1 },
+            position: { x: 20, y: 0 },
+            configVersion: 1,
+            config: {},
+            inputMappings: {},
+            connectionRefs: {},
+          },
+        ],
+        edges: [
+          {
+            id: 'manual-switch',
+            source: { nodeId: 'manual', port: 'out' },
+            target: { nodeId: 'switch', port: 'in' },
+          },
+          {
+            id: 'switch-terminate',
+            source: { nodeId: 'switch', port: 'case-01' },
             target: { nodeId: 'terminate', port: 'in' },
           },
         ],

@@ -168,7 +168,9 @@ export function createInitialWorkflowCheckpoint(
       engineVersion: PHASE3_API_ENGINE_VERSION,
       checkpoint: (executable.envelope.graph.nodes.some(
         ({ definition }) =>
-          definition.key === 'core.condition' && definition.version === 1,
+          (definition.key === 'core.condition' ||
+            definition.key === 'core.switch') &&
+          definition.version === 1,
       )
         ? createCheckpointV2
         : createCheckpoint)({
