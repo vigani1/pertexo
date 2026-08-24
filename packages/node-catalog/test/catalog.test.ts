@@ -41,6 +41,10 @@ import {
   PLATFORM_CONDITION_STAGING_RELEASE_SUPPORT,
   PLATFORM_HTTP_ACTIVATION_RELEASE_SUPPORT,
   PLATFORM_HTTP_STAGING_RELEASE_SUPPORT,
+  PLATFORM_MERGE_ACTIVATION_RELEASE_SUPPORT,
+  PLATFORM_MERGE_STAGING_RELEASE_SUPPORT,
+  PLATFORM_PARALLEL_ACTIVATION_RELEASE_SUPPORT,
+  PLATFORM_PARALLEL_STAGING_RELEASE_SUPPORT,
   PLATFORM_SWITCH_ACTIVATION_RELEASE_SUPPORT,
   PLATFORM_SWITCH_STAGING_RELEASE_SUPPORT,
   PLATFORM_REGISTRY_RELEASE_SUPPORT,
@@ -248,6 +252,18 @@ describe('platform node compatibility catalog', () => {
     expect(
       PLATFORM_SWITCH_ACTIVATION_RELEASE_SUPPORT.map(({ epoch }) => epoch),
     ).toEqual([7, 8]);
+    expect(
+      PLATFORM_PARALLEL_STAGING_RELEASE_SUPPORT.map(({ epoch }) => epoch),
+    ).toEqual([8, 9]);
+    expect(
+      PLATFORM_PARALLEL_ACTIVATION_RELEASE_SUPPORT.map(({ epoch }) => epoch),
+    ).toEqual([9, 10]);
+    expect(
+      PLATFORM_MERGE_STAGING_RELEASE_SUPPORT.map(({ epoch }) => epoch),
+    ).toEqual([10, 11]);
+    expect(
+      PLATFORM_MERGE_ACTIVATION_RELEASE_SUPPORT.map(({ epoch }) => epoch),
+    ).toEqual([11, 12]);
     expect(platformRegistryReleaseSupport('core')).toBe(
       PLATFORM_REGISTRY_RELEASE_SUPPORT,
     );
@@ -269,6 +285,18 @@ describe('platform node compatibility catalog', () => {
     expect(platformRegistryReleaseSupport('switch_activation')).toBe(
       PLATFORM_SWITCH_ACTIVATION_RELEASE_SUPPORT,
     );
+    expect(platformRegistryReleaseSupport('parallel_staging')).toBe(
+      PLATFORM_PARALLEL_STAGING_RELEASE_SUPPORT,
+    );
+    expect(platformRegistryReleaseSupport('parallel_activation')).toBe(
+      PLATFORM_PARALLEL_ACTIVATION_RELEASE_SUPPORT,
+    );
+    expect(platformRegistryReleaseSupport('merge_staging')).toBe(
+      PLATFORM_MERGE_STAGING_RELEASE_SUPPORT,
+    );
+    expect(platformRegistryReleaseSupport('merge_activation')).toBe(
+      PLATFORM_MERGE_ACTIVATION_RELEASE_SUPPORT,
+    );
     expect(platformServingRegistryRelease('http_staging').epoch).toBe(2);
     expect(platformServingRegistryRelease('http_activation').epoch).toBe(4);
     expect(platformServingRegistryRelease('condition_staging').epoch).toBe(4);
@@ -277,6 +305,12 @@ describe('platform node compatibility catalog', () => {
     );
     expect(platformServingRegistryRelease('switch_staging').epoch).toBe(6);
     expect(platformServingRegistryRelease('switch_activation').epoch).toBe(8);
+    expect(platformServingRegistryRelease('parallel_staging').epoch).toBe(8);
+    expect(platformServingRegistryRelease('parallel_activation').epoch).toBe(
+      10,
+    );
+    expect(platformServingRegistryRelease('merge_staging').epoch).toBe(10);
+    expect(platformServingRegistryRelease('merge_activation').epoch).toBe(12);
     expect(platformServingReleaseRequiresHttpCapabilities('core')).toBe(false);
     expect(
       platformServingReleaseRequiresHttpCapabilities('condition_staging'),
@@ -307,6 +341,11 @@ describe('platform node compatibility catalog', () => {
         ({ epoch }) => epoch,
       ),
     ).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(
+      platformExecutableRegistryHistory('merge_activation').map(
+        ({ epoch }) => epoch,
+      ),
+    ).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
     expect(
       PLATFORM_REGISTRY_RELEASE_HTTP_STAGED.executors.find(
         ({ executor }) => executor.key === HTTP_REQUEST_EXECUTOR.key,

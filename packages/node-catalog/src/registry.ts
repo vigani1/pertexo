@@ -271,6 +271,26 @@ export const PLATFORM_SWITCH_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
   PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
 ]);
 
+export const PLATFORM_PARALLEL_STAGING_RELEASE_SUPPORT = Object.freeze([
+  PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_PARALLEL_STAGED,
+]);
+
+export const PLATFORM_PARALLEL_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
+  PLATFORM_REGISTRY_RELEASE_PARALLEL_STAGED,
+  PLATFORM_REGISTRY_RELEASE_PARALLEL_ACTIVE,
+]);
+
+export const PLATFORM_MERGE_STAGING_RELEASE_SUPPORT = Object.freeze([
+  PLATFORM_REGISTRY_RELEASE_PARALLEL_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_MERGE_STAGED,
+]);
+
+export const PLATFORM_MERGE_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
+  PLATFORM_REGISTRY_RELEASE_MERGE_STAGED,
+  PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
+]);
+
 export const PLATFORM_RELEASE_COHORTS = Object.freeze([
   'core',
   'http_staging',
@@ -279,6 +299,10 @@ export const PLATFORM_RELEASE_COHORTS = Object.freeze([
   'condition_activation',
   'switch_staging',
   'switch_activation',
+  'parallel_staging',
+  'parallel_activation',
+  'merge_staging',
+  'merge_activation',
 ] as const);
 export type PlatformReleaseCohort = (typeof PLATFORM_RELEASE_COHORTS)[number];
 
@@ -298,6 +322,14 @@ export function platformRegistryReleaseSupport(cohort: PlatformReleaseCohort) {
       return PLATFORM_SWITCH_STAGING_RELEASE_SUPPORT;
     case 'switch_activation':
       return PLATFORM_SWITCH_ACTIVATION_RELEASE_SUPPORT;
+    case 'parallel_staging':
+      return PLATFORM_PARALLEL_STAGING_RELEASE_SUPPORT;
+    case 'parallel_activation':
+      return PLATFORM_PARALLEL_ACTIVATION_RELEASE_SUPPORT;
+    case 'merge_staging':
+      return PLATFORM_MERGE_STAGING_RELEASE_SUPPORT;
+    case 'merge_activation':
+      return PLATFORM_MERGE_ACTIVATION_RELEASE_SUPPORT;
   }
 }
 
@@ -331,6 +363,14 @@ export function platformServingRegistryRelease(cohort: PlatformReleaseCohort) {
       return PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE;
     case 'switch_activation':
       return PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE;
+    case 'parallel_staging':
+      return PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE;
+    case 'parallel_activation':
+      return PLATFORM_REGISTRY_RELEASE_PARALLEL_ACTIVE;
+    case 'merge_staging':
+      return PLATFORM_REGISTRY_RELEASE_PARALLEL_ACTIVE;
+    case 'merge_activation':
+      return PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE;
   }
 }
 

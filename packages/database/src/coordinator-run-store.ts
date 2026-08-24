@@ -1089,7 +1089,8 @@ function validateTransitionPlan(
       (admission.sideEffectClass === 'idempotent_with_key') !==
         (admission.providerIdempotencyKey !== undefined) ||
       invocation?.nodeId !== admission.nodeId ||
-      (invocation.status !== 'ready' &&
+      (invocation.status !== 'pending' &&
+        invocation.status !== 'ready' &&
         invocation.status !== 'running' &&
         invocation.status !== 'skipped')
     )
@@ -1200,6 +1201,7 @@ function validateTransitionDelta(
       previous === undefined ? 1 : previous.attemptNumber + 1;
     if (
       (previous !== undefined &&
+        previous.status !== 'pending' &&
         previous.status !== 'ready' &&
         previous.status !== 'waiting') ||
       next.attemptNumber !== expectedAttemptNumber
@@ -1288,6 +1290,11 @@ function validateStatusTransitions(
   for (const next of plan.checkpoint.invocations) {
     const previous = currentInvocations.get(next.invocationKey);
     if (previous === undefined) {
+      if (
+        next.status === 'pending' &&
+        plan.checkpoint.joins.some(({ joinId }) => joinId === next.nodeId)
+      )
+        continue;
       const eventName =
         next.status === 'skipped' ? 'node.skipped' : 'node.ready';
       expectedNodeEvents.add(`${next.invocationKey}:${eventName}`);
@@ -1314,6 +1321,19 @@ function validateStatusTransitions(
         next.resumeAt !== undefined ||
         serializeStoredExecutionJsonValue(next.output ?? null) !==
           serializeStoredExecutionJsonValue(previous.output ?? null)
+      )
+        throw new CoordinatorPlanInvalidError();
+      continue;
+    }
+    if (
+      previous.status === 'pending' &&
+      next.status === 'running' &&
+      plan.checkpoint.joins.some(({ joinId }) => joinId === next.nodeId)
+    ) {
+      expectedNodeEvents.add(`${next.invocationKey}:node.ready`);
+      if (
+        !plannedNodeEvents.has(`${next.invocationKey}:node.ready`) ||
+        next.attemptNumber !== previous.attemptNumber + 1
       )
         throw new CoordinatorPlanInvalidError();
       continue;
@@ -2279,7 +2299,11 @@ export function createCoordinatorRunStore(
                       ? { branchPath: invocation.branchPath }
                       : {},
                   ),
-                  invocation.status === 'skipped' ? 'skipped' : 'ready',
+                  invocation.status === 'pending'
+                    ? 'pending'
+                    : invocation.status === 'skipped'
+                      ? 'skipped'
+                      : 'ready',
                   admission.sideEffectClass,
                   admission.providerIdempotencyKey ?? null,
                   attemptId ?? null,
@@ -2318,7 +2342,7 @@ export function createCoordinatorRunStore(
                 );
                 const node = existing.rows[0];
                 const isFirstReadyAttempt =
-                  node?.status === 'ready' &&
+                  (node?.status === 'ready' || node?.status === 'pending') &&
                   (node.current_attempt_number === null
                     ? attempt.attemptNumber === 1
                     : node.current_attempt_number ===

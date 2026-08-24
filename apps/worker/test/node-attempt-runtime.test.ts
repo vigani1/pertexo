@@ -27,6 +27,7 @@ describe('node-attempt runtime', () => {
     'http_activation',
     'condition_activation',
     'switch_activation',
+    'merge_activation',
   ] as const)(
     'fails before adapter creation when %s HTTP capabilities are absent',
     async (releaseCohort) => {
