@@ -48,6 +48,11 @@ export interface BranchScopePart {
   readonly outputPort: string;
 }
 
+export interface IterationScopePart {
+  readonly loopNodeId: string;
+  readonly ordinal: number;
+}
+
 export interface InvocationState {
   readonly invocationKey: string;
   readonly nodeId: string;
@@ -56,6 +61,7 @@ export interface InvocationState {
   readonly resumeAt?: string;
   readonly output?: OutputReference;
   readonly branchPath?: readonly BranchScopePart[];
+  readonly iterationPath?: readonly IterationScopePart[];
 }
 
 export interface BranchLedgerEntry {
@@ -70,7 +76,10 @@ export type JoinPolicy =
   | { readonly kind: 'count'; readonly count: number };
 
 export interface JoinState {
+  readonly joinInvocationKey?: string;
   readonly joinId: string;
+  readonly branchPath?: readonly BranchScopePart[];
+  readonly iterationPath?: readonly IterationScopePart[];
   readonly policy: JoinPolicy;
   readonly ledger: readonly BranchLedgerEntry[];
   readonly selectedBranchIds?: readonly string[];
@@ -79,7 +88,12 @@ export interface JoinState {
 }
 
 export interface LoopState {
+  readonly controlInvocationKey: string;
   readonly loopId: string;
+  readonly branchPath: readonly BranchScopePart[];
+  readonly iterationPath: readonly IterationScopePart[];
+  readonly bodyRootNodeIds: readonly string[];
+  readonly bodySinkNodeId: string;
   readonly collection: OutputReference;
   readonly collectionChecksum: string;
   readonly collectionSize: number;
@@ -88,6 +102,10 @@ export interface LoopState {
   readonly nextOrdinal: number;
   readonly activeOrdinals: readonly number[];
   readonly terminalOrdinals: readonly number[];
+  readonly terminalStatus?: Extract<
+    NodeStatus,
+    'failed' | 'canceled' | 'timed_out' | 'outcome_unknown'
+  >;
 }
 
 export interface WorkflowCheckpointV1 {
@@ -119,6 +137,7 @@ export interface WorkflowCheckpointV2 extends Omit<
 > {
   readonly schemaVersion: 2;
   readonly branchSelections: readonly BranchSelection[];
+  readonly initialIterationBudget?: number;
 }
 
 export type WorkflowCheckpoint = WorkflowCheckpointV1 | WorkflowCheckpointV2;
@@ -160,6 +179,8 @@ export interface AttemptAdmissionPlan {
   readonly attemptNumber: number;
   readonly sideEffectClass: SideEffectClass;
   readonly providerIdempotencyKey?: string;
+  readonly branchPath?: readonly BranchScopePart[];
+  readonly iterationPath?: readonly IterationScopePart[];
 }
 
 export interface NodeRunAdmissionPlan {
@@ -167,6 +188,8 @@ export interface NodeRunAdmissionPlan {
   readonly nodeId: string;
   readonly sideEffectClass: SideEffectClass;
   readonly providerIdempotencyKey?: string;
+  readonly branchPath?: readonly BranchScopePart[];
+  readonly iterationPath?: readonly IterationScopePart[];
 }
 
 export interface WorkflowTransitionPlan {

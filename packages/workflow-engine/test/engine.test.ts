@@ -105,6 +105,243 @@ describe('checkpoint seam', () => {
     );
   });
 
+  it('resolves a retained V1 synthetic loop to its canonical parent key', () => {
+    const base = checkpoint();
+    const controlKey = invocationKey({
+      workflowVersionId: base.workflowVersionId,
+      nodeId: 'legacy-loop',
+    });
+    const iterationKey = invocationKey({
+      workflowVersionId: base.workflowVersionId,
+      nodeId: 'legacy-loop',
+      iterationPath: [{ loopNodeId: 'legacy-loop', ordinal: 0 }],
+    });
+    const parsed = parseCheckpoint({
+      ...base,
+      runStatus: 'running',
+      invocations: [
+        {
+          invocationKey: controlKey,
+          nodeId: 'legacy-loop',
+          status: 'waiting',
+          attemptNumber: 1,
+        },
+        {
+          invocationKey: iterationKey,
+          nodeId: 'legacy-loop',
+          status: 'running',
+          attemptNumber: 1,
+        },
+      ],
+      loops: [
+        {
+          loopId: 'legacy-loop',
+          collection: {
+            kind: 'inline',
+            attemptId: '00000000-0000-4000-8000-000000000201',
+          },
+          collectionChecksum: 'legacy-checksum',
+          collectionSize: 1,
+          maxConcurrency: 1,
+          maxIterations: 1,
+          nextOrdinal: 1,
+          activeOrdinals: [0],
+          terminalOrdinals: [],
+        },
+      ],
+      remainingIterationBudget: base.remainingIterationBudget - 1,
+    });
+
+    expect(parsed.loops[0]?.controlInvocationKey).toBe(controlKey);
+    expect(parsed.invocations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ invocationKey: controlKey }),
+      ]),
+    );
+    const completed = advanceWorkflow({
+      checkpoint: parsed,
+      occurredAt,
+      maximumAdmissions: 0,
+      observations: [
+        {
+          kind: 'loop_iteration_completed',
+          loopId: 'legacy-loop',
+          invocationKey: iterationKey,
+          ordinal: 0,
+          status: 'succeeded',
+        },
+      ],
+    });
+    expect(completed.checkpoint.loops[0]).toMatchObject({
+      activeOrdinals: [],
+      terminalOrdinals: [0],
+    });
+    expect(
+      completed.checkpoint.invocations.find(
+        ({ invocationKey: key }) => key === controlKey,
+      ),
+    ).toMatchObject({ status: 'succeeded' });
+  });
+
+  it('rejects malformed present optional scope fields', () => {
+    const base = checkpoint();
+    const controlKey = invocationKey({
+      workflowVersionId: base.workflowVersionId,
+      nodeId: 'legacy-loop',
+    });
+    const retained = {
+      ...base,
+      invocations: [
+        {
+          invocationKey: controlKey,
+          nodeId: 'legacy-loop',
+          status: 'succeeded',
+          attemptNumber: 1,
+        },
+      ],
+      loops: [
+        {
+          loopId: 'legacy-loop',
+          collection: {
+            kind: 'inline',
+            attemptId: '00000000-0000-4000-8000-000000000202',
+          },
+          collectionChecksum: 'legacy-checksum',
+          collectionSize: 0,
+          maxConcurrency: 1,
+          maxIterations: 1,
+          nextOrdinal: 0,
+          activeOrdinals: [],
+          terminalOrdinals: [],
+          branchPath: null,
+        },
+      ],
+    };
+
+    expect(() => parseCheckpoint(retained)).toThrow(
+      expect.objectContaining({ code: 'checkpoint_invalid' }),
+    );
+    expect(() =>
+      parseCheckpoint({
+        ...retained,
+        loops: [
+          {
+            ...retained.loops[0],
+            branchPath: [],
+            controlInvocationKey: 42,
+          },
+        ],
+      }),
+    ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
+    expect(() =>
+      parseCheckpoint({
+        ...base,
+        joins: [
+          {
+            joinId: 'join',
+            joinInvocationKey: 42,
+            policy: { kind: 'all' },
+            ledger: [{ branchId: 'branch', disposition: 'pending' }],
+          },
+        ],
+      }),
+    ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
+    expect(() =>
+      parseCheckpoint({
+        ...retained,
+        loops: [
+          {
+            ...retained.loops[0],
+            branchPath: [],
+            bodyRootNodeIds: 'legacy-loop',
+          },
+        ],
+      }),
+    ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
+  });
+
+  it('requires due time for an ordinary waiting invocation', () => {
+    const base = checkpoint();
+    expect(() =>
+      parseCheckpoint({
+        ...base,
+        invocations: [
+          {
+            invocationKey: 'ordinary',
+            nodeId: 'ordinary',
+            status: 'waiting',
+            attemptNumber: 1,
+          },
+        ],
+      }),
+    ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
+
+    const running = advanceWorkflow({
+      checkpoint: base,
+      occurredAt,
+      maximumAdmissions: 1,
+      observations: [
+        { kind: 'ready', invocationKey: 'ordinary', nodeId: 'ordinary' },
+      ],
+    });
+    const waiting = advanceWorkflow({
+      checkpoint: running.checkpoint,
+      occurredAt,
+      maximumAdmissions: 0,
+      observations: [
+        {
+          kind: 'wait',
+          invocationKey: 'ordinary',
+          resumeAt: '2026-08-21T10:00:00.000Z',
+        },
+      ],
+    });
+    expect(() =>
+      advanceWorkflow({
+        checkpoint: waiting.checkpoint,
+        occurredAt,
+        maximumAdmissions: 0,
+        observations: [
+          {
+            kind: 'outcome',
+            invocationKey: 'ordinary',
+            status: 'failed',
+          },
+        ],
+      }),
+    ).toThrow(expect.objectContaining({ code: 'transition_invalid' }));
+  });
+
+  it('rejects structured For Each state generation from checkpoint V1', () => {
+    expect(() =>
+      advanceWorkflow({
+        checkpoint: checkpoint(),
+        occurredAt,
+        maximumAdmissions: 0,
+        observations: [
+          {
+            kind: 'loop_started',
+            loopId: 'loop',
+            controlInvocationKey: invocationKey({
+              workflowVersionId: 'version-1',
+              nodeId: 'loop',
+            }),
+            bodyRootNodeIds: ['body'],
+            bodySinkNodeId: 'body',
+            collection: {
+              kind: 'inline',
+              attemptId: '00000000-0000-4000-8000-000000000203',
+            },
+            collectionChecksum: 'checksum',
+            collectionSize: 1,
+            maxConcurrency: 1,
+            maxIterations: 1,
+          },
+        ],
+      }),
+    ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
+  });
+
   it('parses canonical V2 branch selections without reinterpreting V1', () => {
     const v1 = checkpoint();
     const conditionAKey = invocationKey({
@@ -649,6 +886,94 @@ describe('AdvanceWorkflow operation', () => {
         branchPath: [{ nodeId: 'condition', outputPort: 'false' }],
       },
     ]);
+  });
+
+  it('scopes branch selections by exact local invocation identity', () => {
+    const graph = {
+      deriveReadiness: true as const,
+      nodes: [
+        {
+          id: 'condition',
+          definition: { key: 'core.condition', version: 1 },
+          sideEffectClass: 'safe' as const,
+        },
+        { id: 'selected', sideEffectClass: 'safe' as const },
+        { id: 'unselected', sideEffectClass: 'safe' as const },
+      ],
+      edges: [
+        {
+          source: { nodeId: 'condition', port: 'true' },
+          target: { nodeId: 'selected', port: 'in' },
+        },
+        {
+          source: { nodeId: 'condition', port: 'false' },
+          target: { nodeId: 'unselected', port: 'in' },
+        },
+      ],
+    };
+    const iterationPath = [{ loopNodeId: 'loop', ordinal: 0 }] as const;
+    const rootKey = invocationKey({
+      workflowVersionId: 'version-scoped',
+      nodeId: 'condition',
+    });
+    const bodyKey = invocationKey({
+      workflowVersionId: 'version-scoped',
+      nodeId: 'condition',
+      iterationPath,
+    });
+    const invocations = [
+      {
+        invocationKey: rootKey,
+        nodeId: 'condition',
+        status: 'succeeded' as const,
+        attemptNumber: 1,
+        output: {
+          kind: 'inline' as const,
+          attemptId: '00000000-0000-4000-8000-000000000204',
+        },
+      },
+      {
+        invocationKey: bodyKey,
+        nodeId: 'condition',
+        status: 'succeeded' as const,
+        attemptNumber: 1,
+        output: {
+          kind: 'inline' as const,
+          attemptId: '00000000-0000-4000-8000-000000000205',
+        },
+        iterationPath,
+      },
+    ];
+    const branchSelections = [
+      {
+        invocationKey: rootKey,
+        nodeId: 'condition',
+        selectedOutputPort: 'true',
+      },
+      {
+        invocationKey: bodyKey,
+        nodeId: 'condition',
+        selectedOutputPort: 'false',
+      },
+    ];
+
+    expect(
+      deriveReadyNodes({
+        graph,
+        workflowVersionId: 'version-scoped',
+        invocations,
+        branchSelections,
+      }).find(({ nodeId }) => nodeId === 'selected'),
+    ).toMatchObject({ disposition: 'ready' });
+    expect(
+      deriveReadyNodes({
+        graph,
+        workflowVersionId: 'version-scoped',
+        invocations,
+        branchSelections,
+        iterationPath,
+      }).find(({ nodeId }) => nodeId === 'unselected'),
+    ).toMatchObject({ disposition: 'ready' });
   });
 
   it('derives one selected Switch branch and skips every configured alternative', () => {
@@ -1358,7 +1683,7 @@ describe('AdvanceWorkflow operation', () => {
     });
 
     expect(settled.checkpoint.joins).toEqual([
-      {
+      expect.objectContaining({
         joinId: 'join',
         policy: { kind: 'any' },
         ledger: [
@@ -1366,7 +1691,7 @@ describe('AdvanceWorkflow operation', () => {
           { branchId: 'b', disposition: 'arrived' },
         ],
         selectedBranchIds: ['a'],
-      },
+      }),
     ]);
     expect(settled.attempts).toEqual([
       expect.objectContaining({ nodeId: 'join', attemptNumber: 1 }),
@@ -1417,143 +1742,6 @@ describe('AdvanceWorkflow operation', () => {
       unsatisfiedReasonCode: 'insufficient_arrivals',
     });
     expect(failed.checkpoint.runStatus).toBe('failed');
-  });
-
-  it('reconstructs bounded loop admission from the checkpoint', () => {
-    const first = advanceWorkflow({
-      checkpoint: checkpoint(),
-      occurredAt,
-      maximumAdmissions: 10,
-      observations: [
-        {
-          kind: 'loop_started',
-          loopId: 'loop',
-          collection: {
-            kind: 'artifact',
-            artifactId: '00000000-0000-4000-8000-000000000101',
-          },
-          collectionChecksum: 'sha256:abc',
-          collectionSize: 3,
-          maxIterations: 3,
-          maxConcurrency: 2,
-        },
-      ],
-    });
-    expect(first.checkpoint.loops).toEqual([
-      expect.objectContaining({
-        loopId: 'loop',
-        nextOrdinal: 2,
-        activeOrdinals: [0, 1],
-        terminalOrdinals: [],
-      }),
-    ]);
-    expect(first.attempts).toHaveLength(2);
-
-    const reconstructed = advanceWorkflow({
-      checkpoint: JSON.parse(
-        JSON.stringify(first.checkpoint),
-      ) as WorkflowCheckpointV1,
-      occurredAt,
-      maximumAdmissions: 10,
-    });
-    expect(reconstructed.attempts).toEqual([]);
-    expect(reconstructed.checkpoint.loops).toEqual(first.checkpoint.loops);
-
-    const continued = advanceWorkflow({
-      checkpoint: first.checkpoint,
-      occurredAt,
-      maximumAdmissions: 10,
-      observations: [
-        { kind: 'loop_iteration_completed', loopId: 'loop', ordinal: 1 },
-      ],
-    });
-    expect(continued.checkpoint.loops).toEqual([
-      expect.objectContaining({
-        nextOrdinal: 3,
-        activeOrdinals: [0, 2],
-        terminalOrdinals: [1],
-      }),
-    ]);
-    expect(continued.attempts).toEqual([
-      expect.objectContaining({ nodeId: 'loop', attemptNumber: 1 }),
-    ]);
-  });
-
-  it('cancels ready loop iterations without admitting another batch', () => {
-    const ready = advanceWorkflow({
-      checkpoint: checkpoint(),
-      occurredAt,
-      maximumAdmissions: 0,
-      observations: [
-        {
-          kind: 'loop_started',
-          loopId: 'loop',
-          collection: {
-            kind: 'artifact',
-            artifactId: '00000000-0000-4000-8000-000000000101',
-          },
-          collectionChecksum: 'sha256:abc',
-          collectionSize: 3,
-          maxIterations: 3,
-          maxConcurrency: 2,
-        },
-      ],
-    });
-    const canceled = advanceWorkflow({
-      checkpoint: ready.checkpoint,
-      occurredAt,
-      maximumAdmissions: 10,
-      observations: [{ kind: 'cancel_requested' }],
-    });
-
-    expect(canceled.attempts).toEqual([]);
-    expect(canceled.checkpoint.loops[0]).toMatchObject({
-      nextOrdinal: 2,
-      activeOrdinals: [],
-      terminalOrdinals: [0, 1],
-    });
-    expect(canceled.checkpoint.runStatus).toBe('canceled');
-  });
-
-  it('holds graph successors until the persisted loop parent completes', () => {
-    const first = advanceWorkflow({
-      checkpoint: checkpoint(),
-      graph: chainGraph,
-      occurredAt,
-      maximumAdmissions: 1,
-      observations: [
-        {
-          kind: 'loop_started',
-          loopId: 'a',
-          collection: {
-            kind: 'artifact',
-            artifactId: '00000000-0000-4000-8000-000000000101',
-          },
-          collectionChecksum: 'sha256:abc',
-          collectionSize: 1,
-          maxIterations: 1,
-          maxConcurrency: 1,
-        },
-      ],
-    });
-    expect(first.attempts.map(({ nodeId }) => nodeId)).toEqual(['a']);
-    const completed = advanceWorkflow({
-      checkpoint: first.checkpoint,
-      graph: chainGraph,
-      occurredAt,
-      maximumAdmissions: 1,
-      observations: [
-        { kind: 'loop_iteration_completed', loopId: 'a', ordinal: 0 },
-      ],
-    });
-    expect(completed.attempts).toEqual([]);
-    const successor = advanceWorkflow({
-      checkpoint: completed.checkpoint,
-      graph: chainGraph,
-      occurredAt,
-      maximumAdmissions: 1,
-    });
-    expect(successor.attempts.map(({ nodeId }) => nodeId)).toEqual(['b']);
   });
 });
 

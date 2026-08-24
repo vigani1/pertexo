@@ -21,7 +21,7 @@ not complete a phase.
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
-| Phase 5 — orchestration slice | In progress | ADRs 008/017/018/019/020; Condition, Switch, bounded Parallel, and Merge vertical slices complete through `67ba800`; bounded For Each publication validation and recursive executable pinning are implemented, while scheduling, persistence, recovery, and serving rollout remain |
+| Phase 5 — orchestration slice | In progress | ADRs 008/017/018/019/020; Condition, Switch, bounded Parallel, and Merge vertical slices complete through `67ba800`; bounded For Each publication validation, recursive executable pinning, and the pure engine scheduling checkpoint are implemented, while persistence, recovery, and serving rollout remain |
 | Phase 6 — V1 providers and triggers | Not started | — |
 | Phase 7 — production operations | Not started | — |
 
@@ -2434,6 +2434,39 @@ Current evidence:
   `pnpm contracts:check` reports no public artifact drift. For Each remains
   absent from serving cohorts, confirmed by the 11-assertion node-catalog suite,
   pending scheduling, persistence, and recovery.
+- The pure workflow-engine checkpoint replaces the obsolete synthetic
+  per-ordinal control attempt with recursively scheduled structured-body node
+  invocations. Checkpoint V2 retains exact control, branch, and ordered
+  iteration scope; declarations are derived only from matching persisted
+  succeeded output material, accept exact inline or artifact references, reserve
+  the complete canonical collection before root admission, and fail with
+  `loop_limit_exceeded` without partial admission. Exact duplicate declarations
+  are inert while conflicts fail closed. Checkpoint V2 now audits remaining
+  budget against the initial entitlement and reserved collection sizes, and
+  verifies every persisted loop's pinned bounds, roots, sink, and scoped control
+  identity against the executable. Empty collections complete immediately,
+  non-empty collections hold the control in `waiting`, body dependencies use
+  exact scoped upstream invocation descriptors, and attempt execution derives
+  nearest `structured_input` item/ordinal only from checksum-verified bounded
+  collection material. Body retries, final failures, explicit skips, recursive
+  provider keys, canonical concurrent ordinals, completion-order independence,
+  cancellation between batches, and nested nearest scope are covered at public
+  engine seams. Branch selections are isolated by exact local graph and scoped
+  invocation identity. Deadline and cancellation reconcile every active
+  ordinal into parser-valid replayable terminal state; the first body terminal
+  cause remains authoritative while later ordinals reconcile idempotently.
+  Structured state generation rejects checkpoint V1, while retained synthetic
+  V1 loops parse and advance through their canonical parent key. Invocation
+  iteration scopes are checked against executable ancestry and admitted loop
+  ordinals, malformed optional scope fields fail closed, and only declared loop
+  controls may wait without a due time. A standalone nested-loop progression
+  covers inner declaration/body completion through outer sink/control
+  completion. Scoped Merge state uses exact invocation keys where a body
+  contains branch/join orchestration. The workflow-engine suite passes 114
+  assertions; workflow-model remains green at 56 assertions. This is pure
+  engine evidence only: database/worker persistence, crash recovery, Redis-loss
+  reconstruction, cancellation recovery, and serving rollout remain pending,
+  so the bounded For Each completion box remains open.
 - ADRs 021 and 022 fix the remaining Phase 5 semantics before implementation:
   Wait preserves semantic resume versus retry identity and adds an independent
   PostgreSQL deadline wake source; failure notification is an atomic bounded

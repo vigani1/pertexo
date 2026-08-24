@@ -17,10 +17,12 @@ import {
 import { assertNodeTransition, assertRunTransition } from './transitions.js';
 import type {
   AttemptAdmissionPlan,
+  BranchScopePart,
   BranchLedgerEntry,
   EngineEventName,
   EngineEventPlan,
   InvocationState,
+  IterationScopePart,
   JoinPolicy,
   JoinState,
   LoopState,
@@ -37,6 +39,8 @@ export type WorkflowObservation =
       readonly kind: 'ready';
       readonly invocationKey: string;
       readonly nodeId: string;
+      readonly branchPath?: readonly BranchScopePart[];
+      readonly iterationPath?: readonly IterationScopePart[];
     }
   | {
       readonly kind: 'outcome';
@@ -73,6 +77,9 @@ export type WorkflowObservation =
   | {
       readonly kind: 'join_declared';
       readonly joinId: string;
+      readonly joinInvocationKey?: string;
+      readonly branchPath?: readonly BranchScopePart[];
+      readonly iterationPath?: readonly IterationScopePart[];
       readonly policy: JoinPolicy;
       readonly branchIds: readonly string[];
       readonly coordinatorDerived?: true;
@@ -80,12 +87,19 @@ export type WorkflowObservation =
   | {
       readonly kind: 'branch_disposition';
       readonly joinId: string;
+      readonly joinInvocationKey?: string;
       readonly branch: BranchLedgerEntry;
       readonly coordinatorDerived?: true;
     }
   | {
       readonly kind: 'loop_started';
       readonly loopId: string;
+      readonly controlInvocationKey?: string;
+      readonly branchPath?: readonly BranchScopePart[];
+      readonly iterationPath?: readonly IterationScopePart[];
+      readonly bodyRootNodeIds?: readonly string[];
+      readonly bodySinkNodeId?: string;
+      readonly coordinatorDerived?: true;
       readonly collection: OutputReference;
       readonly collectionChecksum: string;
       readonly collectionSize: number;
@@ -95,13 +109,21 @@ export type WorkflowObservation =
   | {
       readonly kind: 'loop_iteration_completed';
       readonly loopId: string;
+      readonly controlInvocationKey?: string;
+      readonly invocationKey?: string;
       readonly ordinal: number;
       readonly status?: Extract<
         NodeStatus,
-        'succeeded' | 'failed' | 'canceled' | 'timed_out' | 'outcome_unknown'
+        | 'succeeded'
+        | 'skipped'
+        | 'failed'
+        | 'canceled'
+        | 'timed_out'
+        | 'outcome_unknown'
       >;
       readonly output?: OutputReference;
       readonly reasonCode?: string;
+      readonly coordinatorDerived?: true;
     };
 
 export interface AdvanceWorkflowFromSchedulerStateInput {
@@ -154,10 +176,19 @@ export function advanceWorkflowFromSchedulerState(
     ]),
   );
   const joins = new Map(
-    current.joins.map((join) => [join.joinId, join] as const),
+    current.joins.map(
+      (join) =>
+        [
+          join.joinInvocationKey === undefined ||
+          join.joinInvocationKey === join.joinId
+            ? rootInvocationKey(current.workflowVersionId, join.joinId)
+            : join.joinInvocationKey,
+          join,
+        ] as const,
+    ),
   );
   const loops = new Map(
-    current.loops.map((loop) => [loop.loopId, loop] as const),
+    current.loops.map((loop) => [loop.controlInvocationKey, loop] as const),
   );
   const branchSelections =
     current.schemaVersion === 2 ? [...current.branchSelections] : [];
@@ -260,8 +291,11 @@ export function advanceWorkflowFromSchedulerState(
       continue;
     if (observation.kind === 'join_declared') {
       if (cancelRequested) continue;
-      const declared = declaredJoin(observation);
-      const existingJoin = joins.get(observation.joinId);
+      const joinInvocationKey =
+        observation.joinInvocationKey ??
+        rootInvocationKey(current.workflowVersionId, observation.joinId);
+      const declared = declaredJoin({ ...observation, joinInvocationKey });
+      const existingJoin = joins.get(joinInvocationKey);
       if (existingJoin !== undefined) {
         if (!sameJoinDeclaration(existingJoin, declared))
           throw new WorkflowEngineError(
@@ -270,33 +304,49 @@ export function advanceWorkflowFromSchedulerState(
           );
         continue;
       }
-      joins.set(declared.joinId, declared);
-      const joinKey = rootInvocationKey(
-        current.workflowVersionId,
-        observation.joinId,
-      );
+      joins.set(joinInvocationKey, declared);
+      const joinKey =
+        observation.joinInvocationKey ??
+        rootInvocationKey(current.workflowVersionId, observation.joinId);
       if (!invocations.has(joinKey)) {
         invocations.set(joinKey, {
           invocationKey: joinKey,
           nodeId: observation.joinId,
           status: 'pending',
           attemptNumber: 0,
+          ...(observation.branchPath === undefined
+            ? {}
+            : { branchPath: observation.branchPath }),
+          ...(observation.iterationPath === undefined
+            ? {}
+            : { iterationPath: observation.iterationPath }),
         });
         nodeRunAdmissionKeys.add(joinKey);
       }
       continue;
     }
     if (observation.kind === 'branch_disposition') {
-      const join = joins.get(observation.joinId);
+      const join =
+        observation.joinInvocationKey === undefined
+          ? [...joins.values()].find(
+              ({ joinId }) => joinId === observation.joinId,
+            )
+          : joins.get(observation.joinInvocationKey);
       if (join === undefined)
         throw new WorkflowEngineError(
           'join_invalid',
           `join ${observation.joinId} is not declared`,
         );
-      joins.set(observation.joinId, {
-        ...join,
-        ledger: recordBranchDisposition(join.ledger, observation.branch),
-      });
+      joins.set(
+        join.joinInvocationKey === undefined ||
+          join.joinInvocationKey === join.joinId
+          ? rootInvocationKey(current.workflowVersionId, join.joinId)
+          : join.joinInvocationKey,
+        {
+          ...join,
+          ledger: recordBranchDisposition(join.ledger, observation.branch),
+        },
+      );
       continue;
     }
     if (observation.kind === 'branch_selected') {
@@ -346,12 +396,31 @@ export function advanceWorkflowFromSchedulerState(
     }
     if (observation.kind === 'loop_started') {
       if (cancelRequested) continue;
-      const declared = createLoopState({
-        ...observation,
-        remainingIterationBudget,
-      });
-      const existingLoop = loops.get(observation.loopId);
+      if (
+        current.schemaVersion === 1 &&
+        (observation.controlInvocationKey !== undefined ||
+          observation.branchPath !== undefined ||
+          observation.iterationPath !== undefined ||
+          observation.bodyRootNodeIds !== undefined ||
+          observation.bodySinkNodeId !== undefined)
+      )
+        throw new WorkflowEngineError(
+          'checkpoint_invalid',
+          'structured For Each requires checkpoint V2',
+        );
+      const controlInvocationKey =
+        observation.controlInvocationKey ??
+        rootInvocationKey(current.workflowVersionId, observation.loopId);
+      const existingLoop = loops.get(controlInvocationKey);
       if (existingLoop !== undefined) {
+        const declared = createLoopState({
+          ...observation,
+          controlInvocationKey,
+          remainingIterationBudget: Math.max(
+            remainingIterationBudget,
+            observation.collectionSize,
+          ),
+        });
         if (!sameLoopDeclaration(existingLoop, declared))
           throw new WorkflowEngineError(
             'loop_state_invalid',
@@ -359,11 +428,35 @@ export function advanceWorkflowFromSchedulerState(
           );
         continue;
       }
-      loops.set(declared.loopId, declared);
-      const loopKey = rootInvocationKey(
-        current.workflowVersionId,
-        observation.loopId,
-      );
+      const loopKey = controlInvocationKey;
+      let declared: LoopState;
+      try {
+        declared = createLoopState({
+          ...observation,
+          controlInvocationKey,
+          remainingIterationBudget,
+        });
+      } catch (error) {
+        if (
+          !(error instanceof WorkflowEngineError) ||
+          error.code !== 'loop_limit_exceeded'
+        )
+          throw error;
+        const control = invocations.get(loopKey);
+        if (control?.status !== 'running')
+          throw new WorkflowEngineError(
+            'loop_state_invalid',
+            'For Each control is not running',
+          );
+        const failed = { ...control, status: 'failed' as const };
+        invocations.set(loopKey, failed);
+        eventDrafts.push(
+          event('node.failed', input.occurredAt, failed, 'loop_limit_exceeded'),
+        );
+        continue;
+      }
+      loops.set(declared.controlInvocationKey, declared);
+      remainingIterationBudget -= declared.collectionSize;
       if (!invocations.has(loopKey)) {
         invocations.set(loopKey, {
           invocationKey: loopKey,
@@ -372,26 +465,53 @@ export function advanceWorkflowFromSchedulerState(
           attemptNumber: 0,
         });
         nodeRunAdmissionKeys.add(loopKey);
+      } else {
+        const control = invocations.get(loopKey);
+        if (control?.status !== 'running')
+          throw new WorkflowEngineError(
+            'loop_state_invalid',
+            'For Each control is not running',
+          );
+        assertNodeTransition(control.status, 'waiting');
+        invocations.set(loopKey, {
+          ...control,
+          status: 'waiting',
+          output: observation.collection,
+        });
       }
       continue;
     }
     if (observation.kind === 'loop_iteration_completed') {
-      const loop = loops.get(observation.loopId);
+      const loop =
+        observation.controlInvocationKey === undefined
+          ? [...loops.values()].find(
+              ({ loopId }) => loopId === observation.loopId,
+            )
+          : loops.get(observation.controlInvocationKey);
       if (loop === undefined)
         throw new WorkflowEngineError(
           'loop_state_invalid',
           `loop ${observation.loopId} is not declared`,
         );
-      const iterationKey = loopInvocationKey(
-        current.workflowVersionId,
-        loop.loopId,
-        observation.ordinal,
-      );
+      const iterationPath = [
+        ...loop.iterationPath,
+        { loopNodeId: loop.loopId, ordinal: observation.ordinal },
+      ];
+      const iterationKey =
+        observation.invocationKey ??
+        createInvocationKey({
+          workflowVersionId: current.workflowVersionId,
+          nodeId: loop.bodySinkNodeId,
+          branchPath: loop.branchPath.map(
+            ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
+          ),
+          iterationPath,
+        });
       const iteration = invocations.get(iterationKey);
       if (iteration === undefined)
         throw new WorkflowEngineError(
           'loop_state_invalid',
-          `loop iteration ${iterationKey} has no invocation`,
+          `loop sink ${iterationKey} has no invocation`,
         );
       const status = observation.status ?? 'succeeded';
       if (loop.terminalOrdinals.includes(observation.ordinal)) {
@@ -403,7 +523,10 @@ export function advanceWorkflowFromSchedulerState(
         assertNodeTransition(iteration.status, status);
         continue;
       }
-      assertNodeTransition(iteration.status, status);
+      if (!isTerminalNodeStatus(iteration.status))
+        assertNodeTransition(iteration.status, status);
+      else if (iteration.status !== status)
+        assertNodeTransition(iteration.status, status);
       const completedInvocation: InvocationState = {
         ...iteration,
         status,
@@ -412,7 +535,39 @@ export function advanceWorkflowFromSchedulerState(
           : { output: observation.output }),
       };
       invocations.set(iterationKey, completedInvocation);
-      loops.set(loop.loopId, completeLoopIteration(loop, observation.ordinal));
+      const completedLoop = completeLoopIteration(loop, observation.ordinal);
+      loops.set(
+        loop.controlInvocationKey,
+        status === 'succeeded' || status === 'skipped'
+          ? completedLoop
+          : {
+              ...completedLoop,
+              terminalStatus: loop.terminalStatus ?? status,
+            },
+      );
+      if (
+        status !== 'succeeded' &&
+        status !== 'skipped' &&
+        loop.terminalStatus === undefined
+      ) {
+        const control = invocations.get(loop.controlInvocationKey);
+        if (control === undefined || isTerminalNodeStatus(control.status))
+          throw new WorkflowEngineError(
+            'loop_state_invalid',
+            'For Each control cannot accept its first terminal cause',
+          );
+        assertNodeTransition(control.status, status);
+        const stopped = { ...control, status };
+        invocations.set(control.invocationKey, stopped);
+        eventDrafts.push(
+          event(
+            nodeEventName[status] ?? 'node.failed',
+            input.occurredAt,
+            stopped,
+            observation.reasonCode,
+          ),
+        );
+      }
       const eventName = nodeEventName[status];
       if (eventName === undefined)
         throw new WorkflowEngineError(
@@ -438,6 +593,12 @@ export function advanceWorkflowFromSchedulerState(
         nodeId: observation.nodeId,
         status: 'ready',
         attemptNumber: 0,
+        ...(observation.branchPath === undefined
+          ? {}
+          : { branchPath: observation.branchPath }),
+        ...(observation.iterationPath === undefined
+          ? {}
+          : { iterationPath: observation.iterationPath }),
       };
       invocations.set(observation.invocationKey, ready);
       nodeRunAdmissionKeys.add(observation.invocationKey);
@@ -494,6 +655,11 @@ export function advanceWorkflowFromSchedulerState(
       assertNodeTransition(existing.status, observation.status);
       continue;
     }
+    if (existing.status === 'waiting' && existing.resumeAt !== undefined)
+      throw new WorkflowEngineError(
+        'transition_invalid',
+        'ordinary waiting invocation must resume before terminal settlement',
+      );
     assertNodeTransition(existing.status, observation.status);
     const completed: InvocationState = {
       ...existing,
@@ -550,6 +716,56 @@ export function advanceWorkflowFromSchedulerState(
     }
   }
 
+  if (graph?.deriveReadiness === true && !cancelRequested && !deadlineExpired) {
+    for (const loop of loops.values()) {
+      const body = graph.structuredBodies?.find(
+        ({ loopNodeId }) => loopNodeId === loop.loopId,
+      );
+      if (body === undefined && isSyntheticLegacyLoop(loop)) continue;
+      if (body === undefined)
+        throw new WorkflowEngineError(
+          'checkpoint_invalid',
+          `structured body for ${loop.loopId} is missing`,
+        );
+      for (const ordinal of loop.activeOrdinals) {
+        const iterationPath = [
+          ...loop.iterationPath,
+          { loopNodeId: loop.loopId, ordinal },
+        ];
+        for (const decision of deriveReadyNodes({
+          graph: {
+            deriveReadiness: true,
+            nodes: body.nodes,
+            edges: body.edges,
+          },
+          workflowVersionId: current.workflowVersionId,
+          invocations: [...invocations.values()],
+          ...(current.schemaVersion === 2 ? { branchSelections } : {}),
+          branchPath: loop.branchPath,
+          iterationPath,
+        })) {
+          const invocation: InvocationState = {
+            invocationKey: decision.invocationKey,
+            nodeId: decision.nodeId,
+            status: decision.disposition,
+            attemptNumber: 0,
+            branchPath: decision.branchPath ?? loop.branchPath,
+            iterationPath,
+          };
+          invocations.set(invocation.invocationKey, invocation);
+          nodeRunAdmissionKeys.add(invocation.invocationKey);
+          eventDrafts.push(
+            event(
+              decision.disposition === 'ready' ? 'node.ready' : 'node.skipped',
+              input.occurredAt,
+              invocation,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   for (const join of [...joins.values()].sort((left, right) =>
     compareOrdinal(left.joinId, right.joinId),
   )) {
@@ -560,7 +776,11 @@ export function advanceWorkflowFromSchedulerState(
       continue;
     const decision = settleJoin(join);
     if (decision.kind === 'waiting') continue;
-    const joinKey = rootInvocationKey(current.workflowVersionId, join.joinId);
+    const joinKey =
+      join.joinInvocationKey === undefined ||
+      join.joinInvocationKey === join.joinId
+        ? rootInvocationKey(current.workflowVersionId, join.joinId)
+        : join.joinInvocationKey;
     const invocation = invocations.get(joinKey);
     if (invocation === undefined)
       throw new WorkflowEngineError(
@@ -568,7 +788,7 @@ export function advanceWorkflowFromSchedulerState(
         `join ${join.joinId} has no invocation`,
       );
     if (decision.kind === 'satisfied') {
-      joins.set(join.joinId, {
+      joins.set(joinKey, {
         ...join,
         ledger: decision.ledger,
         selectedBranchIds: decision.selectedBranchIds,
@@ -581,7 +801,7 @@ export function advanceWorkflowFromSchedulerState(
       }
       continue;
     }
-    joins.set(join.joinId, {
+    joins.set(joinKey, {
       ...join,
       ledger: decision.ledger,
       unsatisfiedReasonCode: decision.reasonCode,
@@ -603,57 +823,76 @@ export function advanceWorkflowFromSchedulerState(
 
   if (!cancelRequested && !deadlineExpired) {
     for (const loop of [...loops.values()].sort((left, right) =>
-      compareOrdinal(left.loopId, right.loopId),
+      compareOrdinal(left.controlInvocationKey, right.controlInvocationKey),
     )) {
       assertLoopInvocations(current.workflowVersionId, loop, invocations);
+      if (loop.terminalStatus !== undefined) continue;
       const admission = admitLoopIterations(loop, remainingIterationBudget);
       remainingIterationBudget = admission.remainingIterationBudget;
-      loops.set(loop.loopId, admission.loop);
+      loops.set(loop.controlInvocationKey, admission.loop);
       for (const ordinal of admission.admittedOrdinals) {
-        const iterationKey = loopInvocationKey(
-          current.workflowVersionId,
-          loop.loopId,
-          ordinal,
-        );
-        if (invocations.has(iterationKey))
-          throw new WorkflowEngineError(
-            'loop_state_invalid',
-            `loop iteration ${iterationKey} was admitted twice`,
+        const iterationPath = [
+          ...loop.iterationPath,
+          { loopNodeId: loop.loopId, ordinal },
+        ];
+        for (const nodeId of loop.bodyRootNodeIds) {
+          const legacy = isSyntheticLegacyLoop(loop);
+          const iterationKey = createInvocationKey({
+            workflowVersionId: current.workflowVersionId,
+            nodeId,
+            branchPath: loop.branchPath.map(
+              ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
+            ),
+            iterationPath,
+          });
+          if (invocations.has(iterationKey))
+            throw new WorkflowEngineError(
+              'loop_state_invalid',
+              `loop body root ${iterationKey} was admitted twice`,
+            );
+          const ready: InvocationState = {
+            invocationKey: iterationKey,
+            nodeId,
+            status: schedulerNodeDisabled(graph, nodeId) ? 'skipped' : 'ready',
+            attemptNumber: 0,
+            ...(legacy ? {} : { branchPath: loop.branchPath, iterationPath }),
+          };
+          invocations.set(iterationKey, ready);
+          nodeRunAdmissionKeys.add(iterationKey);
+          eventDrafts.push(
+            event(
+              ready.status === 'skipped' ? 'node.skipped' : 'node.ready',
+              input.occurredAt,
+              ready,
+            ),
           );
-        const ready: InvocationState = {
-          invocationKey: iterationKey,
-          nodeId: loop.loopId,
-          status: 'ready',
-          attemptNumber: 0,
-        };
-        invocations.set(iterationKey, ready);
-        nodeRunAdmissionKeys.add(iterationKey);
-        eventDrafts.push(event('node.ready', input.occurredAt, ready));
+        }
       }
       const updated = admission.loop;
       if (
         updated.nextOrdinal === updated.collectionSize &&
         updated.activeOrdinals.length === 0
       ) {
-        const loopKey = rootInvocationKey(
-          current.workflowVersionId,
-          updated.loopId,
-        );
+        const loopKey = updated.controlInvocationKey;
         const parent = invocations.get(loopKey);
         if (parent === undefined)
           throw new WorkflowEngineError(
             'checkpoint_invalid',
             `loop ${updated.loopId} has no parent invocation`,
           );
-        if (parent.status === 'pending') {
-          assertNodeTransition(parent.status, 'ready');
+        if (parent.status === 'waiting') {
+          assertNodeTransition(parent.status, 'succeeded');
+          const succeeded = { ...parent, status: 'succeeded' as const };
+          invocations.set(loopKey, succeeded);
+          eventDrafts.push(
+            event('node.succeeded', input.occurredAt, succeeded),
+          );
+        } else if (parent.status === 'pending') {
           const ready = { ...parent, status: 'ready' as const };
-          eventDrafts.push(event('node.ready', input.occurredAt, ready));
-          assertNodeTransition(ready.status, 'running');
           const running = { ...ready, status: 'running' as const };
-          assertNodeTransition(running.status, 'succeeded');
           const succeeded = { ...running, status: 'succeeded' as const };
           invocations.set(loopKey, succeeded);
+          eventDrafts.push(event('node.ready', input.occurredAt, ready));
           eventDrafts.push(
             event('node.succeeded', input.occurredAt, succeeded),
           );
@@ -662,37 +901,90 @@ export function advanceWorkflowFromSchedulerState(
     }
   }
 
-  if (deadlineExpired) {
-    const timeoutOccurredAt = deadlineOccurredAt ?? input.occurredAt;
-    for (const loop of loops.values()) {
-      let updated = loop;
-      for (const ordinal of loop.activeOrdinals) {
-        const iterationKey = loopInvocationKey(
-          current.workflowVersionId,
-          loop.loopId,
-          ordinal,
+  const controlStopStatus = cancelRequested
+    ? ('canceled' as const)
+    : deadlineExpired
+      ? ('timed_out' as const)
+      : undefined;
+  if (controlStopStatus !== undefined) {
+    const stoppedAt =
+      controlStopStatus === 'timed_out'
+        ? (deadlineOccurredAt ?? input.occurredAt)
+        : input.occurredAt;
+    for (const initialLoop of [...loops.values()].sort((left, right) =>
+      compareOrdinal(left.controlInvocationKey, right.controlInvocationKey),
+    )) {
+      if (isSyntheticLegacyLoop(initialLoop)) continue;
+      let loop = initialLoop;
+      for (const ordinal of initialLoop.activeOrdinals) {
+        const iterationPath = [
+          ...initialLoop.iterationPath,
+          { loopNodeId: initialLoop.loopId, ordinal },
+        ];
+        let iterationFound = false;
+        for (const invocation of invocations.values()) {
+          if (
+            JSON.stringify(invocation.iterationPath ?? []) !==
+            JSON.stringify(iterationPath)
+          )
+            continue;
+          iterationFound = true;
+          if (isTerminalNodeStatus(invocation.status)) continue;
+          const { resumeAt: _, ...withoutResumeAt } = invocation;
+          void _;
+          const stopped = { ...withoutResumeAt, status: controlStopStatus };
+          invocations.set(invocation.invocationKey, stopped);
+          eventDrafts.push(
+            event(
+              controlStopStatus === 'timed_out'
+                ? 'node.timed_out'
+                : 'node.canceled',
+              stoppedAt,
+              stopped,
+            ),
+          );
+        }
+        if (!iterationFound)
+          throw new WorkflowEngineError(
+            'loop_state_invalid',
+            `active For Each ordinal ${String(ordinal)} has no body invocation`,
+          );
+        loop = completeLoopIteration(loop, ordinal);
+      }
+      if (loop.activeOrdinals.length > 0)
+        throw new WorkflowEngineError(
+          'loop_state_invalid',
+          'active For Each ordinals could not be reconciled',
         );
-        const iteration = invocations.get(iterationKey);
-        if (iteration?.status !== 'ready' && iteration?.status !== 'waiting')
-          continue;
-        const stoppedStatus =
-          iteration.status === 'waiting'
-            ? ('timed_out' as const)
-            : ('canceled' as const);
-        assertNodeTransition(iteration.status, stoppedStatus);
-        const stopped = { ...iteration, status: stoppedStatus };
-        invocations.set(iterationKey, stopped);
+      loop = {
+        ...loop,
+        terminalStatus: loop.terminalStatus ?? controlStopStatus,
+      };
+      loops.set(loop.controlInvocationKey, loop);
+      const control = invocations.get(loop.controlInvocationKey);
+      if (control !== undefined && !isTerminalNodeStatus(control.status)) {
+        const terminalStatus = loop.terminalStatus ?? controlStopStatus;
+        const { resumeAt: _, ...withoutResumeAt } = control;
+        void _;
+        const stopped = { ...withoutResumeAt, status: terminalStatus };
+        invocations.set(control.invocationKey, stopped);
         eventDrafts.push(
           event(
-            stoppedStatus === 'timed_out' ? 'node.timed_out' : 'node.canceled',
-            timeoutOccurredAt,
+            stopped.status === 'timed_out'
+              ? 'node.timed_out'
+              : stopped.status === 'canceled'
+                ? 'node.canceled'
+                : (nodeEventName[stopped.status] ?? 'node.failed'),
+            stoppedAt,
             stopped,
           ),
         );
-        updated = completeLoopIteration(updated, ordinal);
       }
-      loops.set(loop.loopId, updated);
     }
+  }
+
+  if (deadlineExpired) {
+    const timeoutOccurredAt = deadlineOccurredAt ?? input.occurredAt;
     for (const invocation of invocations.values()) {
       if (
         invocation.status !== 'pending' &&
@@ -720,34 +1012,6 @@ export function advanceWorkflowFromSchedulerState(
   }
 
   if (cancelRequested) {
-    for (const loop of loops.values()) {
-      let updated = loop;
-      for (const ordinal of loop.activeOrdinals) {
-        const iterationKey = loopInvocationKey(
-          current.workflowVersionId,
-          loop.loopId,
-          ordinal,
-        );
-        const iteration = invocations.get(iterationKey);
-        if (iteration?.status !== 'ready' && iteration?.status !== 'waiting')
-          continue;
-        assertNodeTransition(iteration.status, 'canceled');
-        const { resumeAt: _, ...withoutResumeAt } = iteration;
-        void _;
-        const canceled = { ...withoutResumeAt, status: 'canceled' as const };
-        invocations.set(iterationKey, canceled);
-        eventDrafts.push(event('node.canceled', input.occurredAt, canceled));
-        updated = completeLoopIteration(updated, ordinal);
-      }
-      loops.set(loop.loopId, updated);
-    }
-    const activeLoopParents = new Set(
-      [...loops.values()]
-        .filter(({ activeOrdinals }) => activeOrdinals.length > 0)
-        .map(({ loopId }) =>
-          rootInvocationKey(current.workflowVersionId, loopId),
-        ),
-    );
     for (const invocation of invocations.values()) {
       if (
         invocation.status !== 'pending' &&
@@ -755,7 +1019,6 @@ export function advanceWorkflowFromSchedulerState(
         invocation.status !== 'waiting'
       )
         continue;
-      if (activeLoopParents.has(invocation.invocationKey)) continue;
       assertNodeTransition(invocation.status, 'canceled');
       const { resumeAt: _, ...withoutResumeAt } = invocation;
       void _;
@@ -801,6 +1064,12 @@ export function advanceWorkflowFromSchedulerState(
       nodeId: running.nodeId,
       attemptNumber: running.attemptNumber,
       sideEffectClass: schedulerNodeSideEffectClass(graph, running.nodeId),
+      ...(running.branchPath === undefined
+        ? {}
+        : { branchPath: running.branchPath }),
+      ...(running.iterationPath === undefined
+        ? {}
+        : { iterationPath: running.iterationPath }),
     });
   }
 
@@ -879,6 +1148,12 @@ export function advanceWorkflowFromSchedulerState(
         invocationKey,
         nodeId: invocation.nodeId,
         sideEffectClass: schedulerNodeSideEffectClass(graph, invocation.nodeId),
+        ...(invocation.branchPath === undefined
+          ? {}
+          : { branchPath: invocation.branchPath }),
+        ...(invocation.iterationPath === undefined
+          ? {}
+          : { iterationPath: invocation.iterationPath }),
       };
     });
   return {
@@ -1018,9 +1293,9 @@ function observationKey(observation: WorkflowObservation): string {
     case 'branch_selected':
       return `2:branch:${observation.invocationKey}:${observation.nodeId}`;
     case 'loop_started':
-      return `1:loop:${observation.loopId}`;
+      return `1:loop:${observation.controlInvocationKey ?? observation.loopId}`;
     case 'loop_iteration_completed':
-      return `2:loop:${observation.loopId}:${String(observation.ordinal).padStart(16, '0')}`;
+      return `2:loop:${observation.controlInvocationKey ?? observation.loopId}:${String(observation.ordinal).padStart(16, '0')}`;
     default:
       return `3:invocation:${observation.invocationKey}`;
   }
@@ -1052,7 +1327,10 @@ function declaredJoin(
       'count join exceeds declared branches',
     );
   return {
+    joinInvocationKey: observation.joinInvocationKey ?? observation.joinId,
     joinId: observation.joinId,
+    branchPath: observation.branchPath ?? [],
+    iterationPath: observation.iterationPath ?? [],
     policy: observation.policy,
     ledger: branchIds.map((branchId) => ({
       branchId,
@@ -1096,7 +1374,10 @@ function schedulerNodeSideEffectClass(
       'checkpoint_invalid',
       'scheduler state is required for attempt admission',
     );
-  const node = schedulerState.nodes.find(({ id }) => id === nodeId);
+  const node = [
+    ...schedulerState.nodes,
+    ...(schedulerState.structuredBodies?.flatMap(({ nodes }) => nodes) ?? []),
+  ].find(({ id }) => id === nodeId);
   if (node === undefined)
     throw new WorkflowEngineError(
       'checkpoint_invalid',
@@ -1105,16 +1386,25 @@ function schedulerNodeSideEffectClass(
   return node.sideEffectClass;
 }
 
-function loopInvocationKey(
-  workflowVersionId: string,
-  loopId: string,
-  ordinal: number,
-): string {
-  return createInvocationKey({
-    workflowVersionId,
-    nodeId: loopId,
-    iterationPath: [{ loopNodeId: loopId, ordinal }],
-  });
+function schedulerNodeDisabled(
+  schedulerState: SchedulerState | undefined,
+  nodeId: string,
+): boolean {
+  if (schedulerState === undefined) return false;
+  return (
+    [
+      ...schedulerState.nodes,
+      ...(schedulerState.structuredBodies?.flatMap(({ nodes }) => nodes) ?? []),
+    ].find(({ id }) => id === nodeId)?.disabled === true
+  );
+}
+
+function isSyntheticLegacyLoop(loop: LoopState): boolean {
+  return (
+    loop.bodyRootNodeIds.length === 1 &&
+    loop.bodyRootNodeIds[0] === loop.loopId &&
+    loop.bodySinkNodeId === loop.loopId
+  );
 }
 
 function assertLoopInvocations(
@@ -1123,22 +1413,44 @@ function assertLoopInvocations(
   invocations: ReadonlyMap<string, InvocationState>,
 ): void {
   for (const ordinal of loop.activeOrdinals) {
-    const invocation = invocations.get(
-      loopInvocationKey(workflowVersionId, loop.loopId, ordinal),
+    const iterationPath = [
+      ...loop.iterationPath,
+      { loopNodeId: loop.loopId, ordinal },
+    ];
+    const invocation = [...invocations.values()].find(
+      (candidate) =>
+        JSON.stringify(candidate.iterationPath ?? []) ===
+        JSON.stringify(iterationPath),
     );
-    if (
-      invocation === undefined ||
-      !['ready', 'running', 'waiting'].includes(invocation.status)
-    )
+    if (invocation === undefined)
       throw new WorkflowEngineError(
         'checkpoint_invalid',
         `active loop iteration ${loop.loopId}:${String(ordinal)} is inconsistent`,
       );
   }
   for (const ordinal of loop.terminalOrdinals) {
-    const invocation = invocations.get(
-      loopInvocationKey(workflowVersionId, loop.loopId, ordinal),
-    );
+    const iterationPath = [
+      ...loop.iterationPath,
+      { loopNodeId: loop.loopId, ordinal },
+    ];
+    const invocation =
+      loop.terminalStatus === undefined
+        ? invocations.get(
+            createInvocationKey({
+              workflowVersionId,
+              nodeId: loop.bodySinkNodeId,
+              branchPath: loop.branchPath.map(
+                ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
+              ),
+              iterationPath,
+            }),
+          )
+        : [...invocations.values()].find(
+            (candidate) =>
+              JSON.stringify(candidate.iterationPath ?? []) ===
+                JSON.stringify(iterationPath) &&
+              isTerminalNodeStatus(candidate.status),
+          );
     if (invocation === undefined || !isTerminalNodeStatus(invocation.status))
       throw new WorkflowEngineError(
         'checkpoint_invalid',

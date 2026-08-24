@@ -5,6 +5,7 @@ import type {
   BranchScopePart,
   BranchSelection,
   InvocationState,
+  IterationScopePart,
 } from './types.js';
 import type { SideEffectClass } from './types.js';
 
@@ -21,6 +22,11 @@ export interface SchedulerState {
   readonly edges: readonly {
     readonly source: { readonly nodeId: string; readonly port: string };
     readonly target: { readonly nodeId: string; readonly port: string };
+  }[];
+  readonly structuredBodies?: readonly {
+    readonly loopNodeId: string;
+    readonly nodes: SchedulerState['nodes'];
+    readonly edges: SchedulerState['edges'];
   }[];
 }
 
@@ -126,6 +132,7 @@ export interface ReadyNodeDecision {
   readonly nodeId: string;
   readonly disposition: 'ready' | 'skipped';
   readonly branchPath?: readonly BranchScopePart[];
+  readonly iterationPath?: readonly IterationScopePart[];
 }
 
 function descendants(
@@ -150,6 +157,8 @@ export function deriveReadyNodes(input: {
   readonly workflowVersionId: string;
   readonly invocations: readonly InvocationState[];
   readonly branchSelections?: readonly BranchSelection[];
+  readonly branchPath?: readonly BranchScopePart[];
+  readonly iterationPath?: readonly IterationScopePart[];
 }): readonly ReadyNodeDecision[] {
   const nodeById = new Map(input.graph.nodes.map((node) => [node.id, node]));
   const invocationByKey = new Map(
@@ -158,7 +167,25 @@ export function deriveReadyNodes(input: {
       invocation,
     ]),
   );
-  for (const selection of input.branchSelections ?? []) {
+  const localSelections = (input.branchSelections ?? []).filter((selection) => {
+    if (!nodeById.has(selection.nodeId)) return false;
+    const invocation = invocationByKey.get(selection.invocationKey);
+    return (
+      invocation !== undefined &&
+      JSON.stringify(invocation.iterationPath ?? []) ===
+        JSON.stringify(input.iterationPath ?? []) &&
+      (invocation.branchPath?.length ?? 0) ===
+        (input.branchPath?.length ?? 0) &&
+      (input.branchPath ?? []).every((part, index) => {
+        const candidate = invocation.branchPath?.[index];
+        return (
+          candidate?.nodeId === part.nodeId &&
+          candidate.outputPort === part.outputPort
+        );
+      })
+    );
+  });
+  for (const selection of localSelections) {
     const node = nodeById.get(selection.nodeId);
     const invocation = invocationByKey.get(selection.invocationKey);
     const outputPorts =
@@ -176,13 +203,28 @@ export function deriveReadyNodes(input: {
       );
   }
   const invocationByNode = new Map<string, InvocationState>();
-  for (const invocation of input.invocations) {
+  for (const invocation of input.invocations.filter(
+    (candidate) =>
+      JSON.stringify(candidate.iterationPath ?? []) ===
+        JSON.stringify(input.iterationPath ?? []) &&
+      (input.branchPath ?? []).every(
+        (part, index) =>
+          candidate.branchPath?.[index]?.nodeId === part.nodeId &&
+          candidate.branchPath[index].outputPort === part.outputPort,
+      ),
+  )) {
     const existing = invocationByNode.get(invocation.nodeId);
     const isRoot =
       invocation.invocationKey ===
       invocationKey({
         workflowVersionId: input.workflowVersionId,
         nodeId: invocation.nodeId,
+        branchPath: (invocation.branchPath ?? []).map(
+          ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
+        ),
+        ...(invocation.iterationPath === undefined
+          ? {}
+          : { iterationPath: invocation.iterationPath }),
       });
     if (existing === undefined || isRoot)
       invocationByNode.set(invocation.nodeId, invocation);
@@ -211,7 +253,7 @@ export function deriveReadyNodes(input: {
   )) {
     const invocation = invocationByNode.get(branchNode.id);
     if (invocation?.status !== 'succeeded') continue;
-    const selection = input.branchSelections?.find(
+    const selection = localSelections.find(
       (candidate) =>
         candidate.invocationKey === invocation.invocationKey &&
         candidate.nodeId === branchNode.id,
@@ -286,7 +328,7 @@ export function deriveReadyNodes(input: {
       });
     })
     .map((node) => {
-      const branchPath = branchPathByNode.get(node.id);
+      const branchPath = branchPathByNode.get(node.id) ?? input.branchPath;
       return {
         invocationKey: invocationKey({
           workflowVersionId: input.workflowVersionId,
@@ -298,11 +340,17 @@ export function deriveReadyNodes(input: {
                   ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
                 ),
               }),
+          ...(input.iterationPath === undefined
+            ? {}
+            : { iterationPath: input.iterationPath }),
         }),
         nodeId: node.id,
         disposition:
           skipped.has(node.id) || node.disabled === true ? 'skipped' : 'ready',
         ...(branchPath === undefined ? {} : { branchPath }),
+        ...(input.iterationPath === undefined
+          ? {}
+          : { iterationPath: input.iterationPath }),
       } as const;
     });
 }

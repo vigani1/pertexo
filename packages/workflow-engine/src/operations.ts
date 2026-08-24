@@ -6,7 +6,10 @@ import {
   type NodeExecutionResult,
   type NodeExecutionRuntime,
 } from '@pertexo/node-sdk/server';
-import type { JsonValue } from '@pertexo/workflow-model/canonical-json';
+import {
+  canonicalJson,
+  type JsonValue,
+} from '@pertexo/workflow-model/canonical-json';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model/graph';
 import {
   resolveValueSource,
@@ -23,6 +26,7 @@ import {
   normalizeBoundedEngineJson,
   type CompiledWorkflowExecutableV2,
   type WorkflowExecutableNodeV2,
+  type WorkflowExecutableGraphV2,
 } from './executable-workflow.js';
 import { parseCheckpoint } from './checkpoint.js';
 import {
@@ -40,6 +44,7 @@ import {
 import { invocationKey as createInvocationKey } from './scheduling.js';
 import type {
   BranchScopePart,
+  IterationScopePart,
   JoinPolicy,
   OutputReference,
   WorkflowTransitionPlan,
@@ -66,7 +71,7 @@ function record(
 }
 
 function isJsonRecord(
-  value: JsonValue,
+  value: unknown,
 ): value is Readonly<Record<string, JsonValue>> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -75,13 +80,14 @@ function exactKeys(
   value: Readonly<Record<string, JsonValue>>,
   required: readonly string[],
   optional: readonly string[] = [],
+  code: 'observation_invalid' | 'attempt_invalid' = 'observation_invalid',
 ): void {
   const allowed = new Set([...required, ...optional]);
   if (
     !required.every((key) => Object.hasOwn(value, key)) ||
     !Object.keys(value).every((key) => allowed.has(key))
   )
-    operationError('observation_invalid', 'observation fields are invalid');
+    operationError(code, 'observation fields are invalid');
 }
 
 type OutcomeObservation = Extract<
@@ -256,9 +262,17 @@ function staleFactMatchesCheckpoint(
   const invocation = checkpoint.invocations.find(
     ({ invocationKey }) => invocationKey === observation.invocationKey,
   );
+  const declaredLoop = checkpoint.loops.find(
+    ({ controlInvocationKey }) =>
+      controlInvocationKey === observation.invocationKey,
+  );
   return (
     invocation?.attemptNumber === observation.attemptNumber &&
-    invocation.status === observation.status &&
+    (invocation.status === observation.status ||
+      (observation.status === 'succeeded' &&
+        declaredLoop !== undefined &&
+        (invocation.status === 'waiting' ||
+          invocation.status === 'succeeded'))) &&
     invocation.output?.kind === observation.output?.kind &&
     (invocation.output?.kind === 'inline' &&
     observation.output?.kind === 'inline'
@@ -690,6 +704,23 @@ export interface AdvanceWorkflowInput {
   readonly signal: AbortSignal;
 }
 
+function completedOutputReference(
+  outcome: Readonly<Record<string, JsonValue>>,
+  attemptId: string,
+): OutputReference | undefined {
+  const output = outcome.output;
+  if (!isJsonRecord(output)) return undefined;
+  if (output.kind === 'inline' && output.attemptId === attemptId)
+    return { kind: 'inline', attemptId };
+  if (
+    output.kind === 'artifact' &&
+    typeof output.artifactId === 'string' &&
+    uuidPattern.test(output.artifactId)
+  )
+    return { kind: 'artifact', artifactId: output.artifactId };
+  return undefined;
+}
+
 function branchSelectionObservations(
   value: unknown,
   persistedValue: unknown,
@@ -709,7 +740,7 @@ function branchSelectionObservations(
     operationError('observation_invalid', 'completed outputs must be an array');
   const completedItems = normalized as readonly JsonValue[];
   const persistedItems = persisted as readonly JsonValue[];
-  const seen = new Set<string>();
+  const seen = new Map<string, string>();
   return completedItems.flatMap((item): WorkflowObservation[] => {
     const material = record(item, 'observation_invalid', 'completed output');
     exactKeys(material, ['sequence', 'attemptId', 'invocationKey', 'value']);
@@ -725,23 +756,25 @@ function branchSelectionObservations(
         'observation_invalid',
         'completed output identity is invalid',
       );
+    const attemptId = material.attemptId;
     const identity = `${String(material.sequence)}\u0000${material.attemptId}`;
-    if (seen.has(identity))
-      operationError('observation_invalid', 'completed output is duplicated');
-    seen.add(identity);
+    const canonicalMaterial = canonicalJson(material);
+    const previous = seen.get(identity);
+    if (previous !== undefined) {
+      if (previous !== canonicalMaterial)
+        operationError('observation_invalid', 'completed output conflicts');
+      return [];
+    }
+    seen.set(identity, canonicalMaterial);
     const correspondingOutcome = persistedItems.some((candidate) => {
       if (!isJsonRecord(candidate)) return false;
-      const output = candidate.output;
       return (
         candidate.kind === 'outcome' &&
         candidate.sequence === material.sequence &&
         candidate.attemptId === material.attemptId &&
         candidate.invocationKey === material.invocationKey &&
         candidate.status === 'succeeded' &&
-        output !== undefined &&
-        isJsonRecord(output) &&
-        output.kind === 'inline' &&
-        output.attemptId === material.attemptId
+        completedOutputReference(candidate, attemptId) !== undefined
       );
     });
     if (!correspondingOutcome)
@@ -752,7 +785,7 @@ function branchSelectionObservations(
     const invocation = checkpoint.invocations.find(
       ({ invocationKey }) => invocationKey === material.invocationKey,
     );
-    const node = executable.envelope.graph.nodes.find(
+    const node = executableNodes(executable.envelope.graph).find(
       ({ id }) => id === invocation?.nodeId,
     );
     if (node === undefined) return [];
@@ -804,6 +837,227 @@ function branchSelectionObservations(
   });
 }
 
+function forEachCoordinatorObservations(
+  value: unknown,
+  persistedValue: unknown,
+  checkpoint: ReturnType<typeof parseCheckpoint>,
+  executable: CompiledWorkflowExecutableV2,
+  derivedObservations: readonly WorkflowObservation[] = [],
+): Readonly<{
+  observations: readonly WorkflowObservation[];
+  declarationInvocationKeys: ReadonlySet<string>;
+}> {
+  let completed: JsonValue;
+  let persisted: JsonValue;
+  try {
+    completed = normalizeBoundedEngineJson(value ?? []);
+    persisted = normalizeBoundedEngineJson(persistedValue ?? []);
+  } catch {
+    operationError('observation_invalid', 'completed outputs are invalid');
+  }
+  if (!Array.isArray(completed) || !Array.isArray(persisted))
+    operationError('observation_invalid', 'completed outputs must be an array');
+  const completedItems = completed as readonly JsonValue[];
+  const persistedItems = persisted as readonly JsonValue[];
+  const nodes = new Map(
+    executableNodes(executable.envelope.graph).map((node) => [node.id, node]),
+  );
+  const declarations = new Set<string>();
+  const declarationMaterials = new Map<string, string>();
+  const observations: WorkflowObservation[] = [];
+  const terminalOutcomes = new Map<
+    string,
+    | 'succeeded'
+    | 'skipped'
+    | 'failed'
+    | 'canceled'
+    | 'timed_out'
+    | 'outcome_unknown'
+  >();
+  for (const candidate of persistedItems) {
+    if (
+      isJsonRecord(candidate) &&
+      candidate.kind === 'outcome' &&
+      typeof candidate.invocationKey === 'string' &&
+      typeof candidate.status === 'string' &&
+      [
+        'succeeded',
+        'failed',
+        'canceled',
+        'timed_out',
+        'outcome_unknown',
+      ].includes(candidate.status)
+    )
+      terminalOutcomes.set(
+        candidate.invocationKey,
+        candidate.status as
+          'succeeded' | 'failed' | 'canceled' | 'timed_out' | 'outcome_unknown',
+      );
+  }
+  for (const candidate of derivedObservations) {
+    if (candidate.kind === 'outcome' && candidate.status !== 'skipped')
+      terminalOutcomes.set(candidate.invocationKey, candidate.status);
+  }
+  for (const item of completedItems) {
+    const material = record(item, 'observation_invalid', 'completed output');
+    exactKeys(material, ['sequence', 'attemptId', 'invocationKey', 'value']);
+    if (
+      typeof material.sequence !== 'number' ||
+      !Number.isSafeInteger(material.sequence) ||
+      typeof material.attemptId !== 'string' ||
+      !uuidPattern.test(material.attemptId) ||
+      typeof material.invocationKey !== 'string'
+    )
+      operationError(
+        'observation_invalid',
+        'completed output identity is invalid',
+      );
+    const outcome = persistedItems.find(
+      (candidate) =>
+        isJsonRecord(candidate) &&
+        candidate.kind === 'outcome' &&
+        candidate.sequence === material.sequence &&
+        candidate.attemptId === material.attemptId &&
+        candidate.invocationKey === material.invocationKey &&
+        candidate.status === 'succeeded',
+    );
+    if (!isJsonRecord(outcome))
+      operationError(
+        'observation_invalid',
+        'completed output has no matching persisted outcome',
+      );
+    const invocation = checkpoint.invocations.find(
+      ({ invocationKey }) => invocationKey === material.invocationKey,
+    );
+    const node = nodes.get(invocation?.nodeId ?? '');
+    if (
+      invocation === undefined ||
+      node?.definition.key !== 'core.foreach' ||
+      node.definition.version !== 1 ||
+      node.structured?.kind !== 'for_each'
+    )
+      continue;
+    const canonicalMaterial = canonicalJson(material);
+    const previousMaterial = declarationMaterials.get(invocation.invocationKey);
+    if (previousMaterial !== undefined) {
+      if (previousMaterial !== canonicalMaterial)
+        operationError(
+          'observation_invalid',
+          'For Each declaration output conflicts',
+        );
+      continue;
+    }
+    declarationMaterials.set(invocation.invocationKey, canonicalMaterial);
+    if (material.value === undefined)
+      operationError('observation_invalid', 'For Each output is missing');
+    const output = record(
+      material.value,
+      'observation_invalid',
+      'For Each output',
+    );
+    exactKeys(output, ['items', 'iterationCount']);
+    if (
+      !Array.isArray(output.items) ||
+      typeof output.iterationCount !== 'number' ||
+      !Number.isSafeInteger(output.iterationCount) ||
+      output.iterationCount !== output.items.length
+    )
+      operationError('observation_invalid', 'For Each output is invalid');
+    const body = node.structured.body;
+    const targets = new Set(body.edges.map(({ target }) => target.nodeId));
+    const sources = new Set(body.edges.map(({ source }) => source.nodeId));
+    const roots = body.nodes
+      .map(({ id }) => id)
+      .filter((id) => !targets.has(id))
+      .sort(compareOrdinal);
+    const sinks = body.nodes
+      .map(({ id }) => id)
+      .filter((id) => !sources.has(id));
+    const outputReference = completedOutputReference(
+      outcome,
+      material.attemptId,
+    );
+    if (outputReference === undefined)
+      operationError(
+        'observation_invalid',
+        'For Each output reference is invalid',
+      );
+    declarations.add(invocation.invocationKey);
+    observations.push({
+      kind: 'loop_started',
+      loopId: node.id,
+      controlInvocationKey: invocation.invocationKey,
+      branchPath: invocation.branchPath ?? [],
+      iterationPath: invocation.iterationPath ?? [],
+      bodyRootNodeIds: roots,
+      bodySinkNodeId: sinks[0] ?? '',
+      collection: outputReference,
+      collectionChecksum: createHash('sha256')
+        .update(canonicalJson(output.items))
+        .digest('hex'),
+      collectionSize: output.items.length,
+      maxIterations: node.structured.maxIterations,
+      maxConcurrency: node.structured.maxConcurrency,
+      coordinatorDerived: true,
+    });
+  }
+  for (const loop of checkpoint.loops) {
+    for (const ordinal of loop.activeOrdinals) {
+      const iterationPath = [
+        ...loop.iterationPath,
+        { loopNodeId: loop.loopId, ordinal },
+      ];
+      const sinkKey = createInvocationKey({
+        workflowVersionId: checkpoint.workflowVersionId,
+        nodeId: loop.bodySinkNodeId,
+        branchPath: loop.branchPath.map(
+          ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
+        ),
+        iterationPath,
+      });
+      const failedInvocation = checkpoint.invocations.find(
+        (invocation) =>
+          JSON.stringify(invocation.iterationPath ?? []) ===
+            JSON.stringify(iterationPath) &&
+          ['failed', 'canceled', 'timed_out', 'outcome_unknown'].includes(
+            terminalOutcomes.get(invocation.invocationKey) ?? '',
+          ),
+      );
+      const terminalInvocationKey = failedInvocation?.invocationKey ?? sinkKey;
+      const checkpointSink = checkpoint.invocations.find(
+        ({ invocationKey }) => invocationKey === sinkKey,
+      );
+      const terminalStatus =
+        terminalOutcomes.get(terminalInvocationKey) ??
+        (checkpointSink?.status === 'skipped' ? 'skipped' : undefined);
+      if (terminalStatus === undefined) continue;
+      observations.push({
+        kind: 'loop_iteration_completed',
+        loopId: loop.loopId,
+        controlInvocationKey: loop.controlInvocationKey,
+        ...(failedInvocation === undefined
+          ? {}
+          : { invocationKey: failedInvocation.invocationKey }),
+        ordinal,
+        status: terminalStatus,
+        coordinatorDerived: true,
+      });
+    }
+  }
+  observations.sort((left, right) => {
+    const leftKey =
+      left.kind === 'loop_started' || left.kind === 'loop_iteration_completed'
+        ? `${left.controlInvocationKey ?? left.loopId}:${left.kind === 'loop_started' ? '0' : '1'}:${left.kind === 'loop_iteration_completed' ? String(left.ordinal).padStart(16, '0') : ''}`
+        : '';
+    const rightKey =
+      right.kind === 'loop_started' || right.kind === 'loop_iteration_completed'
+        ? `${right.controlInvocationKey ?? right.loopId}:${right.kind === 'loop_started' ? '0' : '1'}:${right.kind === 'loop_iteration_completed' ? String(right.ordinal).padStart(16, '0') : ''}`
+        : '';
+    return compareOrdinal(leftKey, rightKey);
+  });
+  return { observations, declarationInvocationKeys: declarations };
+}
+
 function assertIdentity(
   value: string,
   label: string,
@@ -816,9 +1070,9 @@ function assertIdentity(
 function schedulerState(
   executable: CompiledWorkflowExecutableV2,
 ): SchedulerState {
-  return {
+  const projectGraph = (graph: WorkflowExecutableGraphV2): SchedulerState => ({
     deriveReadiness: true,
-    nodes: executable.envelope.graph.nodes.map(
+    nodes: graph.nodes.map(
       ({
         id,
         definition,
@@ -833,26 +1087,56 @@ function schedulerState(
         sideEffectClass: pinnedSideEffectClass,
       }),
     ),
-    edges: executable.envelope.graph.edges.map(({ source, target }) => ({
+    edges: graph.edges.map(({ source, target }) => ({
       source: { nodeId: source.nodeId, port: source.port },
       target: { nodeId: target.nodeId, port: target.port },
     })),
-  };
+    structuredBodies: graph.nodes.flatMap((node) =>
+      node.structured === undefined
+        ? []
+        : [
+            {
+              loopNodeId: node.id,
+              ...projectGraph(node.structured.body),
+            },
+            ...(projectGraph(node.structured.body).structuredBodies ?? []),
+          ],
+    ),
+  });
+  return projectGraph(executable.envelope.graph);
+}
+
+function executableNodes(
+  graph: WorkflowExecutableGraphV2,
+): readonly WorkflowExecutableNodeV2[] {
+  return graph.nodes.flatMap((node) => [
+    node,
+    ...(node.structured === undefined
+      ? []
+      : executableNodes(node.structured.body)),
+  ]);
+}
+
+function executableEdges(
+  graph: WorkflowExecutableGraphV2,
+): readonly WorkflowExecutableGraphV2['edges'][number][] {
+  return [
+    ...graph.edges,
+    ...graph.nodes.flatMap((node) =>
+      node.structured === undefined
+        ? []
+        : executableEdges(node.structured.body),
+    ),
+  ];
 }
 
 function assertCheckpointMatchesExecutable(
   checkpoint: ReturnType<typeof parseCheckpoint>,
   executable: CompiledWorkflowExecutableV2,
 ): void {
-  if (checkpoint.loops.length !== 0)
-    operationError(
-      'workflow_identity_invalid',
-      'checkpoint contains unsupported coordinator state',
-    );
-  const nodeIds = new Set(executable.envelope.graph.nodes.map(({ id }) => id));
-  const nodesById = new Map(
-    executable.envelope.graph.nodes.map((node) => [node.id, node]),
-  );
+  const allNodes = executableNodes(executable.envelope.graph);
+  const nodeIds = new Set(allNodes.map(({ id }) => id));
+  const nodesById = new Map(allNodes.map((node) => [node.id, node]));
   for (const join of checkpoint.joins) {
     const merge = nodesById.get(join.joinId);
     if (
@@ -888,12 +1172,43 @@ function assertCheckpointMatchesExecutable(
         'workflow_identity_invalid',
         'checkpoint join disagrees with its paired Parallel',
       );
+    const expectedJoinKey = createInvocationKey({
+      workflowVersionId: checkpoint.workflowVersionId,
+      nodeId: join.joinId,
+      branchPath: (join.branchPath ?? []).map(
+        ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
+      ),
+      ...(join.iterationPath === undefined
+        ? {}
+        : { iterationPath: join.iterationPath }),
+    });
+    if (
+      join.joinInvocationKey !== expectedJoinKey &&
+      !(
+        join.joinInvocationKey === join.joinId &&
+        (join.branchPath?.length ?? 0) === 0 &&
+        (join.iterationPath?.length ?? 0) === 0
+      )
+    )
+      operationError(
+        'workflow_identity_invalid',
+        'checkpoint join scope is invalid',
+      );
   }
   const invocationKeys = new Set<string>();
   for (const invocation of checkpoint.invocations) {
     const branchPath = invocation.branchPath ?? [];
+    const ancestors = structuredAncestors(
+      executable.envelope.graph,
+      invocation.nodeId,
+    );
     if (
       !nodeIds.has(invocation.nodeId) ||
+      ancestors?.length !== (invocation.iterationPath?.length ?? 0) ||
+      ancestors.some(
+        (loopNodeId, index) =>
+          invocation.iterationPath?.[index]?.loopNodeId !== loopNodeId,
+      ) ||
       branchPath.some(({ nodeId, outputPort }) => {
         const node = nodesById.get(nodeId);
         const outputPorts =
@@ -907,12 +1222,40 @@ function assertCheckpointMatchesExecutable(
           branchPath: branchPath.map(
             ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
           ),
+          ...(invocation.iterationPath === undefined
+            ? {}
+            : { iterationPath: invocation.iterationPath }),
         })
     )
       operationError(
         'workflow_identity_invalid',
         'checkpoint invocation does not belong to the executable graph',
       );
+    for (const [index, scope] of (invocation.iterationPath ?? []).entries()) {
+      const enclosingPath = invocation.iterationPath?.slice(0, index) ?? [];
+      const declaredLoop = checkpoint.loops.find(
+        (loop) =>
+          loop.loopId === scope.loopNodeId &&
+          JSON.stringify(loop.iterationPath) ===
+            JSON.stringify(enclosingPath) &&
+          loop.branchPath.every((part, branchIndex) => {
+            const invocationPart = branchPath[branchIndex];
+            return (
+              invocationPart?.nodeId === part.nodeId &&
+              invocationPart.outputPort === part.outputPort
+            );
+          }),
+      );
+      if (
+        declaredLoop === undefined ||
+        (!declaredLoop.activeOrdinals.includes(scope.ordinal) &&
+          !declaredLoop.terminalOrdinals.includes(scope.ordinal))
+      )
+        operationError(
+          'workflow_identity_invalid',
+          'checkpoint invocation iteration scope is not active in its declared loop',
+        );
+    }
     invocationKeys.add(invocation.invocationKey);
   }
   if (
@@ -924,6 +1267,46 @@ function assertCheckpointMatchesExecutable(
       'workflow_identity_invalid',
       'checkpoint admission does not belong to an executable invocation',
     );
+  for (const loop of checkpoint.loops) {
+    const node = nodesById.get(loop.loopId);
+    if (
+      node?.definition.key !== 'core.foreach' ||
+      node.definition.version !== 1 ||
+      node.structured?.kind !== 'for_each' ||
+      loop.controlInvocationKey !==
+        createInvocationKey({
+          workflowVersionId: checkpoint.workflowVersionId,
+          nodeId: loop.loopId,
+          branchPath: loop.branchPath.map(
+            ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
+          ),
+          iterationPath: loop.iterationPath,
+        })
+    )
+      operationError(
+        'workflow_identity_invalid',
+        'checkpoint loop does not belong to its scoped For Each control',
+      );
+    const body = node.structured.body;
+    const targets = new Set(body.edges.map(({ target }) => target.nodeId));
+    const sources = new Set(body.edges.map(({ source }) => source.nodeId));
+    const expectedRoots = body.nodes
+      .map(({ id }) => id)
+      .filter((id) => !targets.has(id))
+      .sort(compareOrdinal);
+    const expectedSink = body.nodes.find(({ id }) => !sources.has(id))?.id;
+    if (
+      loop.maxIterations !== node.structured.maxIterations ||
+      loop.maxConcurrency !== node.structured.maxConcurrency ||
+      loop.bodyRootNodeIds.length !== expectedRoots.length ||
+      loop.bodyRootNodeIds.some((id, index) => id !== expectedRoots[index]) ||
+      loop.bodySinkNodeId !== expectedSink
+    )
+      operationError(
+        'workflow_identity_invalid',
+        'checkpoint loop topology or bounds disagree with the executable',
+      );
+  }
 }
 
 function mergeCoordinatorObservations(
@@ -950,9 +1333,10 @@ function mergeCoordinatorObservations(
     });
   }
   const nodes = new Map(
-    executable.envelope.graph.nodes.map((node) => [node.id, node]),
+    executableNodes(executable.envelope.graph).map((node) => [node.id, node]),
   );
-  return executable.envelope.graph.nodes
+  const edges = executableEdges(executable.envelope.graph);
+  return [...nodes.values()]
     .filter(
       ({ definition }) =>
         definition.key === 'core.merge' && definition.version === 1,
@@ -976,69 +1360,97 @@ function mergeCoordinatorObservations(
           : configuredParallelOutputPorts(parallel);
       if (branchIds === undefined)
         operationError('workflow_identity_invalid', 'Merge pairing is invalid');
-      const parallelInvocation = [...projected.values()].find(
+      const parallelInvocations = [...projected.values()].filter(
         (invocation) =>
           invocation.nodeId === parallelNodeId &&
           invocation.status === 'succeeded',
       );
-      if (parallelInvocation === undefined) return [];
-      const declared: WorkflowObservation = {
-        kind: 'join_declared',
-        joinId: merge.id,
-        policy: policy as JoinPolicy,
-        branchIds,
-        coordinatorDerived: true,
-      };
-      const dispositions = branchIds.flatMap(
-        (branchId): WorkflowObservation[] => {
-          const scoped = [...projected.values()].filter((invocation) =>
-            invocation.branchPath?.some(
-              (part) =>
-                part.nodeId === parallelNodeId && part.outputPort === branchId,
+      return parallelInvocations.flatMap(
+        (parallelInvocation): WorkflowObservation[] => {
+          const joinInvocationKey = createInvocationKey({
+            workflowVersionId: checkpoint.workflowVersionId,
+            nodeId: merge.id,
+            branchPath: (parallelInvocation.branchPath ?? []).map(
+              ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
             ),
-          );
-          if (
-            scoped.length === 0 ||
-            scoped.some(({ status }) =>
-              ['pending', 'ready', 'running', 'waiting'].includes(status),
-            )
-          )
-            return [];
-          const mergeSourceNodeId = executable.envelope.graph.edges.find(
-            ({ target }) =>
-              target.nodeId === merge.id && target.port === branchId,
-          )?.source.nodeId;
-          const source = scoped.find(
-            ({ nodeId }) => nodeId === mergeSourceNodeId,
-          );
-          const statuses = new Set(scoped.map(({ status }) => status));
-          const disposition =
-            statuses.has('failed') ||
-            statuses.has('timed_out') ||
-            statuses.has('outcome_unknown')
-              ? 'failed'
-              : statuses.has('canceled')
-                ? 'canceled'
-                : statuses.size === 1 && statuses.has('skipped')
-                  ? 'skipped'
-                  : 'arrived';
-          return [
-            {
-              kind: 'branch_disposition',
-              joinId: merge.id,
-              coordinatorDerived: true,
-              branch: {
-                branchId,
-                disposition,
-                ...(disposition === 'arrived' && source?.output !== undefined
-                  ? { output: source.output }
-                  : {}),
-              },
+            ...(parallelInvocation.iterationPath === undefined
+              ? {}
+              : { iterationPath: parallelInvocation.iterationPath }),
+          });
+          const declared: WorkflowObservation = {
+            kind: 'join_declared',
+            joinId: merge.id,
+            joinInvocationKey,
+            branchPath: parallelInvocation.branchPath ?? [],
+            iterationPath: parallelInvocation.iterationPath ?? [],
+            policy: policy as JoinPolicy,
+            branchIds,
+            coordinatorDerived: true,
+          };
+          const dispositions = branchIds.flatMap(
+            (branchId): WorkflowObservation[] => {
+              const expectedBranchPath = [
+                ...(parallelInvocation.branchPath ?? []),
+                { nodeId: parallelNodeId, outputPort: branchId },
+              ];
+              const scoped = [...projected.values()].filter(
+                (invocation) =>
+                  JSON.stringify(invocation.iterationPath ?? []) ===
+                    JSON.stringify(parallelInvocation.iterationPath ?? []) &&
+                  expectedBranchPath.every((part, index) => {
+                    const candidatePart = invocation.branchPath?.[index];
+                    return (
+                      candidatePart?.nodeId === part.nodeId &&
+                      candidatePart.outputPort === part.outputPort
+                    );
+                  }),
+              );
+              if (
+                scoped.length === 0 ||
+                scoped.some(({ status }) =>
+                  ['pending', 'ready', 'running', 'waiting'].includes(status),
+                )
+              )
+                return [];
+              const mergeSourceNodeId = edges.find(
+                ({ target }) =>
+                  target.nodeId === merge.id && target.port === branchId,
+              )?.source.nodeId;
+              const source = scoped.find(
+                ({ nodeId }) => nodeId === mergeSourceNodeId,
+              );
+              const statuses = new Set(scoped.map(({ status }) => status));
+              const disposition =
+                statuses.has('failed') ||
+                statuses.has('timed_out') ||
+                statuses.has('outcome_unknown')
+                  ? 'failed'
+                  : statuses.has('canceled')
+                    ? 'canceled'
+                    : statuses.size === 1 && statuses.has('skipped')
+                      ? 'skipped'
+                      : 'arrived';
+              return [
+                {
+                  kind: 'branch_disposition',
+                  joinId: merge.id,
+                  joinInvocationKey,
+                  coordinatorDerived: true,
+                  branch: {
+                    branchId,
+                    disposition,
+                    ...(disposition === 'arrived' &&
+                    source?.output !== undefined
+                      ? { output: source.output }
+                      : {}),
+                  },
+                },
+              ];
             },
-          ];
+          );
+          return [declared, ...dispositions];
         },
       );
-      return [declared, ...dispositions];
     });
 }
 
@@ -1091,7 +1503,7 @@ export async function advanceWorkflow(
       const invocation = checkpoint.invocations.find(
         (candidate) => candidate.invocationKey === failure.invocationKey,
       );
-      const node = input.executable.envelope.graph.nodes.find(
+      const node = executableNodes(input.executable.envelope.graph).find(
         (candidate) => candidate.id === invocation?.nodeId,
       );
       if (
@@ -1157,18 +1569,33 @@ export async function advanceWorkflow(
         coordinatorDerived: true,
       };
     });
+  const forEach = forEachCoordinatorObservations(
+    input.completedOutputs,
+    input.observations,
+    checkpoint,
+    input.executable,
+    resolvedFailures,
+  );
+  const executionObservations = persistedObservations.observations.map(
+    (observation): WorkflowObservation =>
+      observation.kind === 'outcome' &&
+      forEach.declarationInvocationKeys.has(observation.invocationKey)
+        ? { kind: 'cursor_only' }
+        : observation,
+  );
   const coordinatorObservations = mergeCoordinatorObservations(
     input.executable,
     checkpoint,
-    [...persistedObservations.observations, ...resolvedFailures],
+    [...executionObservations, ...resolvedFailures],
   );
   const plan = advanceWorkflowFromSchedulerState({
     checkpoint,
     schedulerState: schedulerState(input.executable),
     observations: [
-      ...persistedObservations.observations,
+      ...executionObservations,
       ...branchSelections,
       ...resolvedFailures,
+      ...forEach.observations,
       ...coordinatorObservations,
     ],
     ...(persistedObservations.deadlineExpiration === undefined
@@ -1188,7 +1615,7 @@ export async function advanceWorkflow(
     nodeId: string,
     invocationKey: string,
   ): string | undefined => {
-    const node = input.executable.envelope.graph.nodes.find(
+    const node = executableNodes(input.executable.envelope.graph).find(
       (candidate) => candidate.id === nodeId,
     );
     if (node?.sideEffectClass !== 'idempotent_with_key') return undefined;
@@ -1236,6 +1663,14 @@ export interface ExecuteNodeAttemptInput {
   readonly invocationKey: string;
   readonly nodeId: string;
   readonly branchPath?: readonly BranchScopePart[];
+  readonly iterationPath?: readonly IterationScopePart[];
+  readonly structuredCollection?: Readonly<{
+    readonly loopNodeId: string;
+    readonly ordinal: number;
+    readonly collection: unknown;
+    readonly collectionSize: number;
+    readonly declaredCollectionChecksum: string;
+  }>;
   readonly runInput: unknown;
   readonly completedNodeOutputs: unknown;
   readonly coordinatorInput?: unknown;
@@ -1272,6 +1707,7 @@ async function resolveMappedNodeInput(
   completedOutputs: Readonly<Record<string, JsonValue>>,
   directUpstream: ReadonlySet<string>,
   signal: AbortSignal,
+  structuredInputs?: Readonly<Record<string, JsonValue>>,
 ): Promise<JsonValue> {
   if (node.definition.key === 'core.manual' && node.definition.version === 1)
     return runInput;
@@ -1293,7 +1729,11 @@ async function resolveMappedNodeInput(
     try {
       resolution = await resolveValueSource(
         source,
-        { runInput, nodeOutputs: completedOutputs },
+        {
+          runInput,
+          nodeOutputs: completedOutputs,
+          ...(structuredInputs === undefined ? {} : { structuredInputs }),
+        },
         undefined,
         signal,
       );
@@ -1357,7 +1797,38 @@ export async function resolveSingleNodePreviewInput(
     Object.freeze({}),
     new Set(),
     input.signal,
+    undefined,
   );
+}
+
+function graphContainingNode(
+  graph: WorkflowExecutableGraphV2,
+  nodeId: string,
+): WorkflowExecutableGraphV2 | undefined {
+  if (graph.nodes.some(({ id }) => id === nodeId)) return graph;
+  for (const node of graph.nodes) {
+    if (node.structured === undefined) continue;
+    const found = graphContainingNode(node.structured.body, nodeId);
+    if (found !== undefined) return found;
+  }
+  return undefined;
+}
+
+function structuredAncestors(
+  graph: WorkflowExecutableGraphV2,
+  nodeId: string,
+  ancestors: readonly string[] = [],
+): readonly string[] | undefined {
+  if (graph.nodes.some(({ id }) => id === nodeId)) return ancestors;
+  for (const node of graph.nodes) {
+    if (node.structured === undefined) continue;
+    const found = structuredAncestors(node.structured.body, nodeId, [
+      ...ancestors,
+      node.id,
+    ]);
+    if (found !== undefined) return found;
+  }
+  return undefined;
 }
 
 export async function executeNodeAttempt(
@@ -1384,16 +1855,26 @@ export async function executeNodeAttempt(
       error instanceof Error ? error.message : 'attempt input is invalid',
     );
   }
-  const completedOutputs = record(
-    completed,
-    'attempt_invalid',
-    'completed outputs',
-  );
-  const node = input.executable.envelope.graph.nodes.find(
+  const node = executableNodes(input.executable.envelope.graph).find(
     ({ id }) => id === input.nodeId,
   );
   if (node === undefined || node.disabled)
     operationError('attempt_invalid', 'node is not executable');
+  const ancestors = structuredAncestors(
+    input.executable.envelope.graph,
+    node.id,
+  );
+  if (
+    ancestors?.length !== (input.iterationPath?.length ?? 0) ||
+    ancestors.some(
+      (loopNodeId, index) =>
+        input.iterationPath?.[index]?.loopNodeId !== loopNodeId,
+    )
+  )
+    operationError(
+      'attempt_invalid',
+      'node invocation structured scope does not match the executable',
+    );
   if (
     input.invocationKey !==
     createInvocationKey({
@@ -1406,22 +1887,125 @@ export async function executeNodeAttempt(
               ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
             ),
           }),
+      ...(input.iterationPath === undefined
+        ? {}
+        : { iterationPath: input.iterationPath }),
     })
   )
     operationError(
       'attempt_invalid',
       'node invocation identity does not match',
     );
+  const containingGraph = graphContainingNode(
+    input.executable.envelope.graph,
+    node.id,
+  );
+  if (containingGraph === undefined)
+    operationError('attempt_invalid', 'node graph is missing');
   const directUpstream = new Set(
-    input.executable.envelope.graph.edges
+    containingGraph.edges
       .filter(({ target }) => target.nodeId === node.id)
       .map(({ source }) => source.nodeId),
   );
-  if (Object.keys(completedOutputs).some((key) => !directUpstream.has(key)))
-    operationError(
-      'attempt_invalid',
-      'completed output is not direct upstream',
-    );
+  const completedOutputs: Record<string, JsonValue> = {};
+  if (Array.isArray(completed)) {
+    for (const candidate of completed as readonly JsonValue[]) {
+      const descriptor = record(
+        candidate,
+        'attempt_invalid',
+        'completed output',
+      );
+      exactKeys(
+        descriptor,
+        ['invocationKey', 'nodeId', 'value'],
+        [],
+        'attempt_invalid',
+      );
+      if (
+        typeof descriptor.nodeId !== 'string' ||
+        typeof descriptor.invocationKey !== 'string' ||
+        !directUpstream.has(descriptor.nodeId) ||
+        descriptor.invocationKey !==
+          createInvocationKey({
+            workflowVersionId: input.workflowVersionId,
+            nodeId: descriptor.nodeId,
+            branchPath: (input.branchPath ?? []).map(
+              ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
+            ),
+            ...(input.iterationPath === undefined
+              ? {}
+              : { iterationPath: input.iterationPath }),
+          })
+      )
+        operationError(
+          'attempt_invalid',
+          'completed output invocation is not exact upstream',
+        );
+      if (descriptor.value === undefined)
+        operationError('attempt_invalid', 'completed output value is missing');
+      completedOutputs[descriptor.nodeId] = descriptor.value;
+    }
+  } else {
+    if ((input.iterationPath?.length ?? 0) > 0)
+      operationError(
+        'attempt_invalid',
+        'scoped completed outputs require invocation descriptors',
+      );
+    const legacy = record(completed, 'attempt_invalid', 'completed outputs');
+    for (const [nodeId, value] of Object.entries(legacy)) {
+      if (!directUpstream.has(nodeId))
+        operationError(
+          'attempt_invalid',
+          'completed output is not direct upstream',
+        );
+      completedOutputs[nodeId] = value;
+    }
+  }
+  let structuredInputs: Readonly<Record<string, JsonValue>> | undefined;
+  if (input.iterationPath !== undefined) {
+    const nearest = input.iterationPath.at(-1);
+    const proof = input.structuredCollection;
+    if (proof === undefined || nearest === undefined)
+      operationError(
+        'attempt_invalid',
+        'structured collection proof is missing',
+      );
+    let collection: JsonValue;
+    try {
+      collection = normalizeBoundedEngineJson(proof.collection);
+    } catch {
+      operationError('attempt_invalid', 'structured collection is invalid');
+    }
+    if (!Array.isArray(collection))
+      operationError(
+        'attempt_invalid',
+        'structured collection must be an array',
+      );
+    const items = collection as readonly JsonValue[];
+    if (
+      proof.loopNodeId !== nearest.loopNodeId ||
+      !Number.isSafeInteger(proof.ordinal) ||
+      proof.ordinal !== nearest.ordinal ||
+      !Number.isSafeInteger(proof.collectionSize) ||
+      proof.collectionSize !== items.length ||
+      nearest.ordinal < 0 ||
+      nearest.ordinal >= items.length ||
+      typeof proof.declaredCollectionChecksum !== 'string' ||
+      createHash('sha256').update(canonicalJson(items)).digest('hex') !==
+        proof.declaredCollectionChecksum
+    )
+      operationError(
+        'attempt_invalid',
+        'structured collection proof is invalid',
+      );
+    const item: JsonValue | undefined = items[nearest.ordinal];
+    if (item === undefined)
+      operationError(
+        'attempt_invalid',
+        'structured collection item is missing',
+      );
+    structuredInputs = { item, ordinal: nearest.ordinal };
+  }
   const resolvedInput = await resolveMappedNodeInput(
     node.definition.key === 'core.merge' && node.definition.version === 1
       ? { ...node, inputMappings: {} }
@@ -1430,6 +2014,7 @@ export async function executeNodeAttempt(
     completedOutputs,
     directUpstream,
     input.signal,
+    structuredInputs,
   );
   let executionInput = resolvedInput;
   if (node.definition.key === 'core.merge' && node.definition.version === 1) {
@@ -1469,3 +2054,4 @@ export async function executeNodeAttempt(
     output: result.output,
   };
 }
+import { createHash } from 'node:crypto';

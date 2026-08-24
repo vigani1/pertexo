@@ -316,9 +316,7 @@ function parseInvocation(value: unknown): InvocationState {
     );
   }
   assertCheckpoint(
-    value.status === 'waiting'
-      ? value.resumeAt !== undefined
-      : value.resumeAt === undefined,
+    value.resumeAt === undefined || value.status === 'waiting',
     'resumeAt must exist only for a waiting invocation',
   );
   const output =
@@ -345,9 +343,13 @@ function parseV2Invocations(
     assertExactKeys(
       item,
       ['invocationKey', 'nodeId', 'status', 'attemptNumber'],
-      ['resumeAt', 'output', 'branchPath'],
+      ['resumeAt', 'output', 'branchPath', 'iterationPath'],
     );
-    const { branchPath: rawBranchPath, ...base } = item;
+    const {
+      branchPath: rawBranchPath,
+      iterationPath: rawIterationPath,
+      ...base
+    } = item;
     const invocation = parseInvocation(base);
     assertCheckpoint(
       rawBranchPath === undefined || Array.isArray(rawBranchPath),
@@ -367,11 +369,31 @@ function parseV2Invocations(
       return { nodeId: part.nodeId, outputPort: part.outputPort };
     });
     assertCheckpoint(
+      rawIterationPath === undefined || Array.isArray(rawIterationPath),
+      'invocation iterationPath must be an array',
+    );
+    const iterationPath = (rawIterationPath ?? []).map((part) => {
+      assertCheckpoint(
+        isRecord(part),
+        'iteration scope part must be an object',
+      );
+      assertExactKeys(part, ['loopNodeId', 'ordinal']);
+      assertCheckpoint(
+        typeof part.loopNodeId === 'string' && part.loopNodeId.length > 0,
+        'iteration scope loopNodeId is required',
+      );
+      assertCheckpoint(
+        isInteger(part.ordinal) && part.ordinal >= 0,
+        'iteration scope ordinal is invalid',
+      );
+      return { loopNodeId: part.loopNodeId, ordinal: part.ordinal };
+    });
+    assertCheckpoint(
       new Set(branchPath.map(({ nodeId }) => nodeId)).size ===
         branchPath.length,
       'branch scope node IDs must be unique',
     );
-    if (rawBranchPath !== undefined)
+    if (rawBranchPath !== undefined || rawIterationPath !== undefined)
       assertCheckpoint(
         invocation.invocationKey ===
           invocationKey({
@@ -380,12 +402,13 @@ function parseV2Invocations(
             branchPath: branchPath.map(
               ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
             ),
+            iterationPath,
           }),
         'invocation key disagrees with branch scope',
       );
-    return rawBranchPath === undefined
+    return rawBranchPath === undefined && rawIterationPath === undefined
       ? invocation
-      : { ...invocation, branchPath };
+      : { ...invocation, branchPath, iterationPath };
   });
 }
 
@@ -431,12 +454,64 @@ function parseJoin(value: unknown): JoinState {
   assertExactKeys(
     value,
     ['joinId', 'policy', 'ledger'],
-    ['selectedBranchIds', 'unsatisfiedReasonCode'],
+    [
+      'selectedBranchIds',
+      'unsatisfiedReasonCode',
+      'joinInvocationKey',
+      'branchPath',
+      'iterationPath',
+    ],
   );
   assertCheckpoint(
     typeof value.joinId === 'string' && value.joinId.length > 0,
     'joinId is required',
   );
+  assertCheckpoint(
+    value.joinInvocationKey === undefined ||
+      (typeof value.joinInvocationKey === 'string' &&
+        value.joinInvocationKey.length > 0),
+    'join invocation key is invalid',
+  );
+  const joinInvocationKey = value.joinInvocationKey ?? value.joinId;
+  assertCheckpoint(
+    value.branchPath === undefined || Array.isArray(value.branchPath),
+    'join branch scope must be an array',
+  );
+  const branchPath = Array.isArray(value.branchPath)
+    ? value.branchPath.map((part) => {
+        assertCheckpoint(isRecord(part), 'join branch scope must be an object');
+        assertExactKeys(part, ['nodeId', 'outputPort']);
+        assertCheckpoint(
+          typeof part.nodeId === 'string' &&
+            part.nodeId.length > 0 &&
+            typeof part.outputPort === 'string' &&
+            part.outputPort.length > 0,
+          'join branch scope is invalid',
+        );
+        return { nodeId: part.nodeId, outputPort: part.outputPort };
+      })
+    : [];
+  assertCheckpoint(
+    value.iterationPath === undefined || Array.isArray(value.iterationPath),
+    'join iteration scope must be an array',
+  );
+  const iterationPath = Array.isArray(value.iterationPath)
+    ? value.iterationPath.map((part) => {
+        assertCheckpoint(
+          isRecord(part),
+          'join iteration scope must be an object',
+        );
+        assertExactKeys(part, ['loopNodeId', 'ordinal']);
+        assertCheckpoint(
+          typeof part.loopNodeId === 'string' &&
+            part.loopNodeId.length > 0 &&
+            isInteger(part.ordinal) &&
+            part.ordinal >= 0,
+          'join iteration scope is invalid',
+        );
+        return { loopNodeId: part.loopNodeId, ordinal: part.ordinal };
+      })
+    : [];
   assertCheckpoint(isRecord(value.policy), 'join policy is required');
   assertExactKeys(
     value.policy,
@@ -565,7 +640,10 @@ function parseJoin(value: unknown): JoinState {
     );
   }
   return {
+    joinInvocationKey,
     joinId: value.joinId,
+    branchPath,
+    iterationPath,
     policy,
     ledger,
     ...(selectedBranchIds === undefined ? {} : { selectedBranchIds }),
@@ -573,24 +651,125 @@ function parseJoin(value: unknown): JoinState {
   };
 }
 
-function parseLoop(value: unknown): LoopState {
+function parseLoop(value: unknown, workflowVersionId: string): LoopState {
   assertCheckpoint(isRecord(value), 'loop must be an object');
-  assertExactKeys(value, [
-    'loopId',
-    'collection',
-    'collectionChecksum',
-    'collectionSize',
-    'maxConcurrency',
-    'maxIterations',
-    'nextOrdinal',
-    'activeOrdinals',
-    'terminalOrdinals',
-  ]);
+  assertExactKeys(
+    value,
+    [
+      'loopId',
+      'collection',
+      'collectionChecksum',
+      'collectionSize',
+      'maxConcurrency',
+      'maxIterations',
+      'nextOrdinal',
+      'activeOrdinals',
+      'terminalOrdinals',
+    ],
+    [
+      'controlInvocationKey',
+      'branchPath',
+      'iterationPath',
+      'bodyRootNodeIds',
+      'bodySinkNodeId',
+      'terminalStatus',
+    ],
+  );
   assertCheckpoint(
     typeof value.loopId === 'string' && value.loopId.length > 0,
     'loopId is required',
   );
   const collection = parseOutputReference(value.collection, 'loop collection');
+  assertCheckpoint(
+    value.controlInvocationKey === undefined ||
+      (typeof value.controlInvocationKey === 'string' &&
+        value.controlInvocationKey.length > 0),
+    'loop control key is invalid',
+  );
+  const controlInvocationKey =
+    value.controlInvocationKey ??
+    invocationKey({ workflowVersionId, nodeId: value.loopId });
+  assertCheckpoint(
+    controlInvocationKey.length > 0,
+    'loop control key is required',
+  );
+  assertCheckpoint(
+    value.branchPath === undefined || Array.isArray(value.branchPath),
+    'loop branch scope must be an array',
+  );
+  const branchPath = Array.isArray(value.branchPath)
+    ? value.branchPath.map((part) => {
+        assertCheckpoint(isRecord(part), 'loop branch scope must be an object');
+        assertExactKeys(part, ['nodeId', 'outputPort']);
+        assertCheckpoint(
+          typeof part.nodeId === 'string' &&
+            part.nodeId.length > 0 &&
+            typeof part.outputPort === 'string' &&
+            part.outputPort.length > 0,
+          'loop branch scope is invalid',
+        );
+        return { nodeId: part.nodeId, outputPort: part.outputPort };
+      })
+    : [];
+  assertCheckpoint(
+    value.iterationPath === undefined || Array.isArray(value.iterationPath),
+    'loop iteration scope must be an array',
+  );
+  const iterationPath = Array.isArray(value.iterationPath)
+    ? value.iterationPath.map((part) => {
+        assertCheckpoint(
+          isRecord(part),
+          'loop iteration scope must be an object',
+        );
+        assertExactKeys(part, ['loopNodeId', 'ordinal']);
+        assertCheckpoint(
+          typeof part.loopNodeId === 'string' &&
+            part.loopNodeId.length > 0 &&
+            isInteger(part.ordinal) &&
+            part.ordinal >= 0,
+          'loop iteration scope is invalid',
+        );
+        return { loopNodeId: part.loopNodeId, ordinal: part.ordinal };
+      })
+    : [];
+  assertCheckpoint(
+    value.bodyRootNodeIds === undefined || Array.isArray(value.bodyRootNodeIds),
+    'loop body roots must be an array',
+  );
+  const bodyRootNodeIds = Array.isArray(value.bodyRootNodeIds)
+    ? sortedUnique(
+        value.bodyRootNodeIds.filter(
+          (item): item is string => typeof item === 'string',
+        ),
+        'loop body roots',
+      )
+    : [value.loopId];
+  const rawBodyRootCount = Array.isArray(value.bodyRootNodeIds)
+    ? value.bodyRootNodeIds.length
+    : undefined;
+  assertCheckpoint(
+    bodyRootNodeIds.length > 0 &&
+      (rawBodyRootCount === undefined ||
+        bodyRootNodeIds.length === rawBodyRootCount),
+    'loop body roots are invalid',
+  );
+  assertCheckpoint(
+    value.bodySinkNodeId === undefined ||
+      (typeof value.bodySinkNodeId === 'string' &&
+        value.bodySinkNodeId.length > 0),
+    'loop body sink is invalid',
+  );
+  const bodySinkNodeId = value.bodySinkNodeId ?? value.loopId;
+  assertCheckpoint(bodySinkNodeId.length > 0, 'loop body sink is invalid');
+  const terminalStatus = value.terminalStatus;
+  assertCheckpoint(
+    terminalStatus === undefined ||
+      terminalStatus === 'failed' ||
+      terminalStatus === 'canceled' ||
+      terminalStatus === 'timed_out' ||
+      terminalStatus === 'outcome_unknown',
+    'loop terminal status is invalid',
+  );
   assertCheckpoint(
     typeof value.collectionChecksum === 'string' &&
       value.collectionChecksum.length > 0,
@@ -674,7 +853,13 @@ function parseLoop(value: unknown): LoopState {
     'loop cursor has an unrecorded ordinal',
   );
   return {
+    controlInvocationKey,
     loopId: value.loopId,
+    branchPath,
+    iterationPath,
+    bodyRootNodeIds,
+    bodySinkNodeId,
+    ...(terminalStatus === undefined ? {} : { terminalStatus }),
     collection,
     collectionChecksum: value.collectionChecksum,
     collectionSize,
@@ -776,15 +961,20 @@ function parseCheckpointV1Boundary(value: unknown): WorkflowCheckpointV1 {
     .map(parseJoin)
     .sort((left, right) => compareOrdinal(left.joinId, right.joinId));
   assertCheckpoint(
-    new Set(joins.map(({ joinId }) => joinId)).size === joins.length,
-    'join IDs must be unique',
+    new Set(joins.map(({ joinInvocationKey }) => joinInvocationKey)).size ===
+      joins.length,
+    'join invocation keys must be unique',
   );
+  const workflowVersionId = value.workflowVersionId;
   const loops = value.loops
-    .map(parseLoop)
-    .sort((left, right) => compareOrdinal(left.loopId, right.loopId));
+    .map((loop) => parseLoop(loop, workflowVersionId))
+    .sort((left, right) =>
+      compareOrdinal(left.controlInvocationKey, right.controlInvocationKey),
+    );
   assertCheckpoint(
-    new Set(loops.map(({ loopId }) => loopId)).size === loops.length,
-    'loop IDs must be unique',
+    new Set(loops.map(({ controlInvocationKey }) => controlInvocationKey))
+      .size === loops.length,
+    'loop control invocation keys must be unique',
   );
   assertCheckpoint(
     joins.every(({ joinId }) => !loops.some(({ loopId }) => loopId === joinId)),
@@ -812,10 +1002,16 @@ function parseCheckpointV1Boundary(value: unknown): WorkflowCheckpointV1 {
   );
   for (const join of joins) {
     const joinInvocation = invocationByKey.get(
-      invocationKey({
-        workflowVersionId: value.workflowVersionId,
-        nodeId: join.joinId,
-      }),
+      join.joinInvocationKey === join.joinId
+        ? invocationKey({
+            workflowVersionId: value.workflowVersionId,
+            nodeId: join.joinId,
+          })
+        : (join.joinInvocationKey ??
+            invocationKey({
+              workflowVersionId: value.workflowVersionId,
+              nodeId: join.joinId,
+            })),
     );
     assertCheckpoint(
       joinInvocation !== undefined,
@@ -841,32 +1037,41 @@ function parseCheckpointV1Boundary(value: unknown): WorkflowCheckpointV1 {
       );
   }
   for (const loop of loops) {
-    const parent = invocationByKey.get(
-      invocationKey({
-        workflowVersionId: value.workflowVersionId,
-        nodeId: loop.loopId,
-      }),
-    );
+    const parent = invocationByKey.get(loop.controlInvocationKey);
     assertCheckpoint(parent !== undefined, 'loop parent invocation is missing');
     const loopComplete =
       loop.nextOrdinal === loop.collectionSize &&
       loop.activeOrdinals.length === 0;
     assertCheckpoint(
-      loopComplete
-        ? parent.status === 'succeeded' ||
+      loop.terminalStatus !== undefined
+        ? parent.status === loop.terminalStatus
+        : loopComplete
+          ? parent.status === 'succeeded' ||
             (value.cancelRequested && parent.status === 'canceled') ||
-            (value.deadlineExpired === true && parent.status === 'canceled')
-        : parent.status === 'pending' ||
+            (value.deadlineExpired === true && parent.status === 'timed_out')
+          : parent.status === 'pending' ||
+            parent.status === 'waiting' ||
             (value.cancelRequested && parent.status === 'canceled') ||
-            (value.deadlineExpired === true && parent.status === 'canceled'),
+            (value.deadlineExpired === true && parent.status === 'timed_out'),
       'loop parent invocation is inconsistent',
     );
+    const syntheticLegacyLoop =
+      loop.bodyRootNodeIds.length === 1 &&
+      loop.bodyRootNodeIds[0] === loop.loopId &&
+      loop.bodySinkNodeId === loop.loopId;
+    if (!syntheticLegacyLoop) continue;
     for (const ordinal of loop.activeOrdinals) {
       const iteration = invocationByKey.get(
         invocationKey({
           workflowVersionId: value.workflowVersionId,
           nodeId: loop.loopId,
-          iterationPath: [{ loopNodeId: loop.loopId, ordinal }],
+          branchPath: loop.branchPath.map(
+            ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
+          ),
+          iterationPath: [
+            ...loop.iterationPath,
+            { loopNodeId: loop.loopId, ordinal },
+          ],
         }),
       );
       assertCheckpoint(
@@ -880,13 +1085,20 @@ function parseCheckpointV1Boundary(value: unknown): WorkflowCheckpointV1 {
         invocationKey({
           workflowVersionId: value.workflowVersionId,
           nodeId: loop.loopId,
-          iterationPath: [{ loopNodeId: loop.loopId, ordinal }],
+          branchPath: loop.branchPath.map(
+            ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
+          ),
+          iterationPath: [
+            ...loop.iterationPath,
+            { loopNodeId: loop.loopId, ordinal },
+          ],
         }),
       );
       assertCheckpoint(
         iteration !== undefined &&
           [
             'succeeded',
+            'skipped',
             'failed',
             'canceled',
             'timed_out',
@@ -896,6 +1108,18 @@ function parseCheckpointV1Boundary(value: unknown): WorkflowCheckpointV1 {
       );
     }
   }
+  const loopControlKeys = new Set(
+    loops.map(({ controlInvocationKey }) => controlInvocationKey),
+  );
+  assertCheckpoint(
+    invocations.every(
+      ({ invocationKey: key, status, resumeAt }) =>
+        status !== 'waiting' ||
+        resumeAt !== undefined ||
+        loopControlKeys.has(key),
+    ),
+    'ordinary waiting invocation requires resumeAt',
+  );
 
   return {
     schemaVersion: 1,
@@ -996,9 +1220,9 @@ function parseCheckpointV2Boundary(value: unknown): WorkflowCheckpointV2 {
       'cancelRequested',
       'branchSelections',
     ],
-    ['deadlineExpired'],
+    ['deadlineExpired', 'initialIterationBudget'],
   );
-  const { branchSelections, ...shared } = value;
+  const { branchSelections, initialIterationBudget, ...shared } = value;
   assertCheckpoint(
     typeof value.workflowVersionId === 'string',
     'workflowVersionId is required',
@@ -1009,17 +1233,40 @@ function parseCheckpointV2Boundary(value: unknown): WorkflowCheckpointV2 {
   );
   const checkpoint = parseCheckpointV1Boundary({
     ...shared,
-    invocations: invocations.map(({ branchPath: _, ...invocation }) => {
-      void _;
-      return invocation;
-    }),
+    invocations: invocations.map(
+      ({ branchPath: _, iterationPath: __, ...invocation }) => {
+        void _;
+        void __;
+        return invocation;
+      },
+    ),
     schemaVersion: 1,
   });
+  assertCheckpoint(
+    initialIterationBudget === undefined ||
+      (isInteger(initialIterationBudget) && initialIterationBudget >= 0),
+    'initialIterationBudget is invalid',
+  );
+  assertCheckpoint(
+    checkpoint.loops.length === 0 || initialIterationBudget !== undefined,
+    'loop checkpoint requires initialIterationBudget',
+  );
+  if (initialIterationBudget !== undefined)
+    assertCheckpoint(
+      checkpoint.remainingIterationBudget +
+        checkpoint.loops.reduce(
+          (total, loop) => total + loop.collectionSize,
+          0,
+        ) ===
+        initialIterationBudget,
+      'iteration budget accounting is inconsistent',
+    );
   return {
     ...checkpoint,
     schemaVersion: 2,
     invocations,
     branchSelections: parseBranchSelections(branchSelections, invocations),
+    ...(initialIterationBudget === undefined ? {} : { initialIterationBudget }),
   };
 }
 
@@ -1062,6 +1309,7 @@ export function createCheckpointV2(input: {
     ...createCheckpoint(input),
     schemaVersion: 2,
     branchSelections: [],
+    initialIterationBudget: input.iterationBudget,
   };
 }
 

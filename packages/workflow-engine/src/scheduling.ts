@@ -1,7 +1,9 @@
 import { WorkflowEngineError } from './errors.js';
 import { compareOrdinal } from './ordering.js';
 import type {
+  BranchScopePart,
   BranchLedgerEntry,
+  IterationScopePart,
   JoinPolicy,
   JoinState,
   LoopState,
@@ -130,7 +132,12 @@ export interface LoopAdmission {
 }
 
 export function createLoopState(input: {
+  readonly controlInvocationKey?: string;
   readonly loopId: string;
+  readonly branchPath?: readonly BranchScopePart[];
+  readonly iterationPath?: readonly IterationScopePart[];
+  readonly bodyRootNodeIds?: readonly string[];
+  readonly bodySinkNodeId?: string;
   readonly collection: OutputReference;
   readonly collectionChecksum: string;
   readonly collectionSize: number;
@@ -163,7 +170,12 @@ export function createLoopState(input: {
     );
   }
   return {
+    controlInvocationKey: input.controlInvocationKey ?? input.loopId,
     loopId: input.loopId,
+    branchPath: input.branchPath ?? [],
+    iterationPath: input.iterationPath ?? [],
+    bodyRootNodeIds: input.bodyRootNodeIds ?? [input.loopId],
+    bodySinkNodeId: input.bodySinkNodeId ?? input.loopId,
     collection: input.collection,
     collectionChecksum: input.collectionChecksum,
     collectionSize: input.collectionSize,
@@ -192,11 +204,7 @@ export function admitLoopIterations(
     );
   }
   const capacity = Math.max(0, loop.maxConcurrency - active.length);
-  const available = Math.min(
-    capacity,
-    loop.collectionSize - loop.nextOrdinal,
-    remainingIterationBudget,
-  );
+  const available = Math.min(capacity, loop.collectionSize - loop.nextOrdinal);
   const admittedOrdinals = Array.from(
     { length: available },
     (_, offset) => loop.nextOrdinal + offset,
@@ -209,8 +217,7 @@ export function admitLoopIterations(
       nextOrdinal: loop.nextOrdinal + admittedOrdinals.length,
     },
     admittedOrdinals,
-    remainingIterationBudget:
-      remainingIterationBudget - admittedOrdinals.length,
+    remainingIterationBudget,
   };
 }
 
