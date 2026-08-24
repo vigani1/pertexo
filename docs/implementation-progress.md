@@ -21,7 +21,7 @@ not complete a phase.
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
-| Phase 5 — orchestration slice | In progress | ADRs 008/017; Condition contract/executor, topology, checkpoint V2 initialization, branch scheduling/execution, database CAS, authoritative output handoff, and physical scope validation through `bbc687f`; no serving cohort pending the failure/recovery matrix |
+| Phase 5 — orchestration slice | In progress | ADRs 008/017; Condition vertical slice complete through `a38f549` with checkpoint V2, scoped execution, fresh-worker/Redis-loss recovery, and staged/active rollout; Switch is next |
 | Phase 6 — V1 providers and triggers | Not started | — |
 | Phase 7 — production operations | Not started | — |
 
@@ -2352,12 +2352,22 @@ Current evidence:
   fails closed, and engine/worker tests cover the handoff. Commit `bbc687f`
   initializes checkpoint V2 only for verified executables containing
   `core.condition@1`; retained root-only workflows continue to initialize V1.
-  Condition remains incomplete pending duplicate/crash/Redis-loss/fresh-worker,
-  cancellation, and rollout proofs.
+  Condition remained unavailable pending its recovery and rollout proof.
+- Commit `f31a70d` fixes claim-time scope reconstruction for both root `{}` and
+  branch-scoped physical contexts; exact-head CI run `32738501737` passes.
+  Commit `a38f549` adds bounded Condition staging/activation cohorts and a real
+  disposable-PostgreSQL/BullMQ process proof: duplicate Condition attempts are
+  inert, Redis queue state is destroyed after the durable result, fresh workers
+  reconstruct the selected port from PostgreSQL, one scoped branch executes,
+  the other is explicitly skipped without an attempt, duplicate coordinator
+  delivery is inert, and checkpoint V2 reaches terminal success. Root
+  `pnpm check`, the five-test coordinator consumer integration file, and exact-
+  head CI run `32739500260` pass, including Phase 0E crash recovery, Redis and
+  service-loss recovery, and additive rollout gates.
 
 Incremental publishable slices, in required order:
 
-- [ ] Condition: versioned schemas and executor; exactly one deterministic
+- [x] Condition: versioned schemas and executor; exactly one deterministic
       branch selected and every unreachable branch explicitly skipped.
 - [ ] Switch: bounded ordered cases plus default behavior; canonical branch IDs
       and selection independent of canvas or object-key order.
