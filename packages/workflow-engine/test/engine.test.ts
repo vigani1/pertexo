@@ -7,6 +7,7 @@ import {
   assertRunTransition,
   completeLoopIteration,
   createCheckpoint,
+  createCheckpointV2,
   createLoopState,
   decideCancellation,
   decideRetry,
@@ -99,9 +100,119 @@ describe('checkpoint seam', () => {
   });
 
   it('fails closed for an unsupported checkpoint version', () => {
-    expect(() => parseCheckpoint({ schemaVersion: 2 })).toThrow(
+    expect(() => parseCheckpoint({ schemaVersion: 3 })).toThrow(
       expect.objectContaining({ code: 'checkpoint_unsupported' }),
     );
+  });
+
+  it('parses canonical V2 branch selections without reinterpreting V1', () => {
+    const v1 = checkpoint();
+    const parsed = parseCheckpoint({
+      ...v1,
+      schemaVersion: 2,
+      invocations: [
+        {
+          invocationKey: 'condition-z',
+          nodeId: 'condition-z',
+          status: 'succeeded',
+          attemptNumber: 1,
+          output: {
+            kind: 'inline',
+            attemptId: '00000000-0000-4000-8000-000000000102',
+          },
+        },
+        {
+          invocationKey: 'condition-a',
+          nodeId: 'condition-a',
+          status: 'succeeded',
+          attemptNumber: 1,
+          output: {
+            kind: 'inline',
+            attemptId: '00000000-0000-4000-8000-000000000101',
+          },
+        },
+      ],
+      branchSelections: [
+        {
+          invocationKey: 'condition-z',
+          nodeId: 'condition-z',
+          selectedOutputPort: 'false',
+        },
+        {
+          invocationKey: 'condition-a',
+          nodeId: 'condition-a',
+          selectedOutputPort: 'true',
+        },
+      ],
+    });
+
+    expect(parsed).toMatchObject({
+      schemaVersion: 2,
+      branchSelections: [
+        {
+          invocationKey: 'condition-a',
+          nodeId: 'condition-a',
+          selectedOutputPort: 'true',
+        },
+        {
+          invocationKey: 'condition-z',
+          nodeId: 'condition-z',
+          selectedOutputPort: 'false',
+        },
+      ],
+    });
+    expect(parseCheckpoint(v1)).toEqual(v1);
+    expect(parseCheckpoint(v1)).not.toHaveProperty('branchSelections');
+    expect(
+      createCheckpointV2({
+        engineVersion: 'engine-v2',
+        workflowVersionId: 'version-2',
+        iterationBudget: 1_000,
+      }),
+    ).toMatchObject({ schemaVersion: 2, branchSelections: [] });
+  });
+
+  it('deduplicates identical V2 selections and rejects conflicts or non-success', () => {
+    const selection = {
+      invocationKey: 'condition',
+      nodeId: 'condition',
+      selectedOutputPort: 'true',
+    } as const;
+    const base = {
+      ...checkpoint(),
+      schemaVersion: 2,
+      invocations: [
+        {
+          invocationKey: 'condition',
+          nodeId: 'condition',
+          status: 'succeeded',
+          attemptNumber: 1,
+          output: {
+            kind: 'inline',
+            attemptId: '00000000-0000-4000-8000-000000000101',
+          },
+        },
+      ],
+      branchSelections: [selection, selection],
+    } as const;
+
+    const parsed = parseCheckpoint(base);
+    expect(parsed).toMatchObject({ branchSelections: [selection] });
+    expect(() =>
+      parseCheckpoint({
+        ...base,
+        branchSelections: [
+          selection,
+          { ...selection, selectedOutputPort: 'false' },
+        ],
+      }),
+    ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
+    expect(() =>
+      parseCheckpoint({
+        ...base,
+        invocations: [{ ...base.invocations[0], status: 'running' }],
+      }),
+    ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
   });
 
   it('canonicalizes collections and reconstructs ready work without transport state', () => {

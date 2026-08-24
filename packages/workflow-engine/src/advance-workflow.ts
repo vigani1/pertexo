@@ -23,7 +23,7 @@ import type {
   NodeRunAdmissionPlan,
   NodeStatus,
   OutputReference,
-  WorkflowCheckpointV1,
+  WorkflowCheckpoint,
   WorkflowTransitionPlan,
 } from './types.js';
 
@@ -92,7 +92,7 @@ export type WorkflowObservation =
     };
 
 export interface AdvanceWorkflowFromSchedulerStateInput {
-  readonly checkpoint: WorkflowCheckpointV1;
+  readonly checkpoint: WorkflowCheckpoint;
   readonly schedulerState?: SchedulerState;
   readonly observations?: readonly WorkflowObservation[];
   readonly occurredAt: string;
@@ -853,7 +853,7 @@ function deriveTerminalRunStatus(input: {
   readonly invocations: readonly InvocationState[];
 }):
   | Extract<
-      WorkflowCheckpointV1['runStatus'],
+      WorkflowCheckpoint['runStatus'],
       'succeeded' | 'failed' | 'canceled' | 'timed_out' | 'outcome_unknown'
     >
   | undefined {

@@ -7,11 +7,14 @@ import {
   NODE_STATUSES,
   RUN_STATUSES,
   type BranchLedgerEntry,
+  type BranchSelection,
   type InvocationState,
   type JoinState,
   type LoopState,
   type OutputReference,
+  type WorkflowCheckpoint,
   type WorkflowCheckpointV1,
+  type WorkflowCheckpointV2,
 } from './types.js';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -629,7 +632,7 @@ function parseLoop(value: unknown): LoopState {
   };
 }
 
-function parseCheckpointBoundary(value: unknown): WorkflowCheckpointV1 {
+function parseCheckpointV1Boundary(value: unknown): WorkflowCheckpointV1 {
   assertBoundedCheckpointJson(value);
   if (isRecord(value) && value.schemaVersion !== 1) {
     throw new WorkflowEngineError(
@@ -861,9 +864,112 @@ function parseCheckpointBoundary(value: unknown): WorkflowCheckpointV1 {
   };
 }
 
-export function parseCheckpoint(value: unknown): WorkflowCheckpointV1 {
+function parseBranchSelections(
+  value: unknown,
+  invocations: readonly InvocationState[],
+): readonly BranchSelection[] {
+  assertCheckpoint(Array.isArray(value), 'branchSelections must be an array');
+  const invocationByKey = new Map(
+    invocations.map((invocation) => [invocation.invocationKey, invocation]),
+  );
+  const selections = new Map<string, BranchSelection>();
+  for (const selection of value) {
+    assertCheckpoint(isRecord(selection), 'branch selection must be an object');
+    assertExactKeys(selection, [
+      'invocationKey',
+      'nodeId',
+      'selectedOutputPort',
+    ]);
+    assertCheckpoint(
+      typeof selection.invocationKey === 'string' &&
+        selection.invocationKey.length > 0,
+      'branch selection invocationKey is required',
+    );
+    assertCheckpoint(
+      typeof selection.nodeId === 'string' && selection.nodeId.length > 0,
+      'branch selection nodeId is required',
+    );
+    assertCheckpoint(
+      typeof selection.selectedOutputPort === 'string' &&
+        selection.selectedOutputPort.length > 0,
+      'branch selection output port is required',
+    );
+    const invocation = invocationByKey.get(selection.invocationKey);
+    assertCheckpoint(
+      invocation?.nodeId === selection.nodeId &&
+        invocation.status === 'succeeded' &&
+        invocation.output !== undefined,
+      'branch selection requires a succeeded output-bearing invocation',
+    );
+    const key = `${selection.invocationKey}\u0000${selection.nodeId}`;
+    const existing = selections.get(key);
+    assertCheckpoint(
+      existing === undefined ||
+        existing.selectedOutputPort === selection.selectedOutputPort,
+      'branch selection conflicts with an existing selection',
+    );
+    selections.set(key, {
+      invocationKey: selection.invocationKey,
+      nodeId: selection.nodeId,
+      selectedOutputPort: selection.selectedOutputPort,
+    });
+  }
+  return [...selections.values()].sort(
+    (left, right) =>
+      compareOrdinal(left.invocationKey, right.invocationKey) ||
+      compareOrdinal(left.nodeId, right.nodeId),
+  );
+}
+
+function parseCheckpointV2Boundary(value: unknown): WorkflowCheckpointV2 {
+  assertBoundedCheckpointJson(value);
+  assertCheckpoint(isRecord(value), 'checkpoint must be an object');
+  assertExactKeys(
+    value,
+    [
+      'schemaVersion',
+      'engineVersion',
+      'workflowVersionId',
+      'revision',
+      'runStatus',
+      'nextEventSequence',
+      'readySet',
+      'admittedInvocationKeys',
+      'invocations',
+      'joins',
+      'loops',
+      'remainingIterationBudget',
+      'cancelRequested',
+      'branchSelections',
+    ],
+    ['deadlineExpired'],
+  );
+  const { branchSelections, ...shared } = value;
+  const checkpoint = parseCheckpointV1Boundary({
+    ...shared,
+    schemaVersion: 1,
+  });
+  return {
+    ...checkpoint,
+    schemaVersion: 2,
+    branchSelections: parseBranchSelections(
+      branchSelections,
+      checkpoint.invocations,
+    ),
+  };
+}
+
+export function parseCheckpoint(value: unknown): WorkflowCheckpoint {
   try {
-    return parseCheckpointBoundary(value);
+    assertBoundedCheckpointJson(value);
+    if (isRecord(value) && value.schemaVersion === 1)
+      return parseCheckpointV1Boundary(value);
+    if (isRecord(value) && value.schemaVersion === 2)
+      return parseCheckpointV2Boundary(value);
+    throw new WorkflowEngineError(
+      'checkpoint_unsupported',
+      `Unsupported checkpoint schema version: ${String(isRecord(value) ? value.schemaVersion : undefined)}`,
+    );
   } catch (error) {
     if (error instanceof WorkflowEngineError) throw error;
     throw new WorkflowEngineError(
@@ -874,12 +980,25 @@ export function parseCheckpoint(value: unknown): WorkflowCheckpointV1 {
 }
 
 export function reconstructReadySet(
-  checkpoint: WorkflowCheckpointV1,
+  checkpoint: WorkflowCheckpoint,
 ): readonly string[] {
   return checkpoint.invocations
     .filter(({ status }) => status === 'ready')
     .map(({ invocationKey }) => invocationKey)
     .sort();
+}
+
+export function createCheckpointV2(input: {
+  readonly engineVersion: string;
+  readonly workflowVersionId: string;
+  readonly iterationBudget: number;
+  readonly nextEventSequence?: number;
+}): WorkflowCheckpointV2 {
+  return {
+    ...createCheckpoint(input),
+    schemaVersion: 2,
+    branchSelections: [],
+  };
 }
 
 export function createCheckpoint(input: {
