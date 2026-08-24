@@ -3815,6 +3815,51 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         deliveries: 0,
       },
     ]);
+    const selectedAttempt = await asRuntime(
+      workerBaseUrl,
+      workspaceA,
+      (client) =>
+        client.query<{
+          attempt_id: string;
+          node_run_id: string;
+          outbox_id: string;
+          payload_checksum: string;
+        }>(
+          `select attempt.id attempt_id,node.id node_run_id,
+                  event.id outbox_id,event.payload_checksum
+             from app.node_runs node
+             join app.node_attempts attempt on attempt.node_run_id=node.id
+             join app.outbox_events event on event.aggregate_id=attempt.id
+            where node.workspace_id=$1 and node.workflow_run_id=$2
+              and node.invocation_key=$3
+              and event.job_name='execute-node-attempt'`,
+          [workspaceA, runId, selectedKey],
+        ),
+    );
+    const selectedDelivery = selectedAttempt.rows[0];
+    if (selectedDelivery === undefined)
+      throw new Error('branch-scoped fixture attempt missing');
+    await expect(
+      nodeAttemptStore.claimDelivery({
+        workspaceId: workspaceA,
+        runId,
+        nodeRunId: selectedDelivery.node_run_id,
+        attemptId: selectedDelivery.attempt_id,
+        delivery: {
+          outboxEventId: selectedDelivery.outbox_id,
+          payloadChecksum: selectedDelivery.payload_checksum,
+        },
+        leaseDurationSeconds: 30,
+        workerId: 'attempt-worker-branch',
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toMatchObject({
+      kind: 'claimed',
+      lease: {
+        invocationKey: selectedKey,
+        branchPath: [{ nodeId: 'condition', outputPort: 'true' }],
+      },
+    });
     await expect(
       store.loadAdvanceState({
         workspaceId: workspaceA,

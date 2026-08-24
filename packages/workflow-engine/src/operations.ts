@@ -33,7 +33,11 @@ import {
   resolveRetryPolicy,
 } from './retries.js';
 import { invocationKey as createInvocationKey } from './scheduling.js';
-import type { OutputReference, WorkflowTransitionPlan } from './types.js';
+import type {
+  BranchScopePart,
+  OutputReference,
+  WorkflowTransitionPlan,
+} from './types.js';
 
 function operationError(
   code:
@@ -1046,6 +1050,7 @@ export interface ExecuteNodeAttemptInput {
   readonly workflowVersionId: string;
   readonly invocationKey: string;
   readonly nodeId: string;
+  readonly branchPath?: readonly BranchScopePart[];
   readonly runInput: unknown;
   readonly completedNodeOutputs: unknown;
   readonly registry: NodeExecutionRegistry;
@@ -1208,6 +1213,13 @@ export async function executeNodeAttempt(
     createInvocationKey({
       workflowVersionId: input.workflowVersionId,
       nodeId: node.id,
+      ...(input.branchPath === undefined
+        ? {}
+        : {
+            branchPath: input.branchPath.map(
+              ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
+            ),
+          }),
     })
   )
     operationError(

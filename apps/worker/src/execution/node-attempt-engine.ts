@@ -119,6 +119,9 @@ function prepareNode(
         workflowVersionId: lease.workflowVersionId,
         invocationKey: lease.invocationKey,
         nodeId: lease.nodeId,
+        ...(lease.branchPath === undefined
+          ? {}
+          : { branchPath: lease.branchPath }),
         runInput: input.runInput,
         completedNodeOutputs: input.completedNodeOutputs,
         registry: input.registry,

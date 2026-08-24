@@ -57,6 +57,24 @@ const consumerName = 'node-attempt-worker';
 const nodeIdSchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u);
 const invocationKeySchema = z.string().min(1).max(256);
 const sideEffectClassSchema = z.enum(['safe', 'idempotent_with_key', 'unsafe']);
+const branchScopePartSchema = z
+  .object({
+    nodeId: nodeIdSchema,
+    outputPort: nodeIdSchema,
+  })
+  .strict();
+const branchContextSchema = z
+  .object({
+    branchPath: z.array(branchScopePartSchema).min(1).max(1_000),
+  })
+  .strict()
+  .superRefine(({ branchPath }, context) => {
+    if (new Set(branchPath.map(({ nodeId }) => nodeId)).size !== branchPath.length)
+      context.addIssue({
+        code: 'custom',
+        message: 'branch path contains a repeated node',
+      });
+  });
 
 export type NodeAttemptDelivery = Readonly<z.output<typeof deliverySchema>>;
 
@@ -69,6 +87,7 @@ export type NodeAttemptLease = Readonly<{
   attemptNumber: number;
   invocationKey: string;
   nodeId: string;
+  branchPath?: readonly Readonly<{ nodeId: string; outputPort: string }>[];
   sideEffectClass: 'safe' | 'idempotent_with_key' | 'unsafe';
   providerIdempotencyKey?: string;
   workerId: string;
@@ -87,6 +106,7 @@ const nodeAttemptLeaseSchema = z
     attemptNumber: z.number().int().positive(),
     invocationKey: invocationKeySchema,
     nodeId: nodeIdSchema,
+    branchPath: z.array(branchScopePartSchema).min(1).max(1_000).optional(),
     sideEffectClass: sideEffectClassSchema,
     providerIdempotencyKey: z.string().min(1).max(256).optional(),
     workerId: workerIdSchema,
@@ -599,7 +619,8 @@ export function createNodeAttemptRunStore(
               attempt_number: number;
               attempt_status: string;
               dispatch_marked_at: Date | null;
-              fence_token: string;
+               fence_token: string;
+              branch_context: unknown;
               invocation_key: string;
               lease_valid: boolean;
               lease_expires_at: Date | null;
@@ -613,7 +634,7 @@ export function createNodeAttemptRunStore(
                       attempt.dispatch_marked_at,attempt.fence_token,
                       attempt.lease_expires_at,
                       (attempt.lease_expires_at > clock_timestamp()) lease_valid,
-                      node.invocation_key,node.node_id,
+                       node.invocation_key,node.node_id,node.branch_context,
                       node.status as node_status,attempt.side_effect_class,
                       attempt.provider_idempotency_key
                from app.node_attempts attempt
@@ -661,6 +682,12 @@ export function createNodeAttemptRunStore(
               row.side_effect_class !== 'unsafe'
             )
               throw new NodeAttemptStateCorruptError();
+            const branchContext =
+              row.branch_context === null
+                ? undefined
+                : branchContextSchema.safeParse(row.branch_context);
+            if (branchContext !== undefined && !branchContext.success)
+              throw new NodeAttemptStateCorruptError();
 
             const claimed = await client.query<{
               fence_token: string;
@@ -697,6 +724,9 @@ export function createNodeAttemptRunStore(
               attemptId: input.attemptId,
               invocationKey: row.invocation_key,
               nodeId: row.node_id,
+              ...(branchContext === undefined
+                ? {}
+                : { branchPath: branchContext.data.branchPath }),
               attemptNumber: row.attempt_number,
             });
             const lease: NodeAttemptLease = Object.freeze({

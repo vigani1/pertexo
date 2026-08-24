@@ -127,6 +127,29 @@ describe('node attempt execution engine', () => {
     });
   });
 
+  it('passes durable branch scope into canonical attempt identity verification', async () => {
+    const { release, projection, lease } = fixture('manual');
+    const scopedLease: NodeAttemptLease = {
+      ...lease,
+      invocationKey: `${VERSION_ID}|manual|b:condition%3Atrue|i:`,
+      branchPath: [{ nodeId: 'condition', outputPort: 'true' }],
+    };
+    const engine = createNodeAttemptExecutionEngine({
+      admissionRelease: release,
+      currentRelease: release,
+    });
+
+    await expect(
+      engine.prepare({ projection, lease: scopedLease }).execute({
+        runInput: { hello: 'world' },
+        completedNodeOutputs: {},
+        abortRequested: false,
+        registry: createCoreNodeRegistry(),
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toMatchObject({ invocationKey: scopedLease.invocationKey });
+  });
+
   it('derives the exact direct-upstream set and rejects a changed side-effect pin', () => {
     const { release, projection, lease } = fixture('terminate');
     const engine = createNodeAttemptExecutionEngine({

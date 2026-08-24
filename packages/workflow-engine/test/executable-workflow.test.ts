@@ -2001,6 +2001,29 @@ describe('Phase 3 production operations', () => {
     await expect(
       executeNodeAttempt({
         runId: 'run-1',
+        nodeRunId: 'node-run-branch',
+        attemptId: 'attempt-branch',
+        executable,
+        workflowVersionId: 'version-1',
+        invocationKey: invocationKey({
+          workflowVersionId: 'version-1',
+          nodeId: 'set',
+          branchPath: ['condition:true'],
+        }),
+        nodeId: 'set',
+        branchPath: [{ nodeId: 'condition', outputPort: 'true' }],
+        runInput: { name: 'Ada', count: 2 },
+        completedNodeOutputs: { manual: { base: 3 } },
+        registry,
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toMatchObject({
+      invocationKey: 'version-1|set|b:condition%3Atrue|i:',
+      kind: 'succeeded',
+    });
+    await expect(
+      executeNodeAttempt({
+        runId: 'run-1',
         nodeRunId: 'node-run-1',
         attemptId: 'attempt-1',
         executable,
