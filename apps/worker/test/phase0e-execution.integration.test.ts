@@ -23,7 +23,10 @@ import {
   QUEUE_NAME,
 } from '@pertexo/queue';
 import * as engine from '@pertexo/workflow-engine/testing';
-import type { WorkflowCheckpointV1 } from '@pertexo/workflow-engine/testing';
+import type {
+  WorkflowCheckpoint,
+  WorkflowCheckpointV1,
+} from '@pertexo/workflow-engine/testing';
 import * as model from '@pertexo/workflow-model';
 import { sql } from 'drizzle-orm';
 import { Pool } from 'pg';
@@ -94,6 +97,14 @@ type SchedulerState = Parameters<
 
 function asSchedulerState(checkpoint: EngineCheckpoint): SchedulerState {
   return checkpoint as unknown as SchedulerState;
+}
+
+function asRetainedV1Checkpoint(
+  checkpoint: WorkflowCheckpoint,
+): EngineCheckpoint {
+  if (checkpoint.schemaVersion !== 1)
+    throw new Error('Phase 0E retained fixture requires checkpoint V1');
+  return checkpoint;
 }
 
 const apiDatabase = createWorkspaceDatabase(
@@ -521,6 +532,7 @@ async function startRun(
         })
       : null;
   const invocationKey = safeInvocationKey(plannedAttempt.invocationKey);
+  const nextCheckpoint = asRetainedV1Checkpoint(plan.checkpoint);
   await workerDatabase.withWorkspace(WORKSPACE_ID, (transaction) =>
     commitCoordinatorTransition(transaction, {
       admissions: [
@@ -542,13 +554,13 @@ async function startRun(
       nextRunStatus: 'running',
       resumeAt: null,
       runId,
-      schedulerState: asSchedulerState(plan.checkpoint),
+      schedulerState: asSchedulerState(nextCheckpoint),
       traceparent: TRACEPARENT,
     }),
   );
   return {
     attemptId,
-    checkpoint: plan.checkpoint,
+    checkpoint: nextCheckpoint,
     engineInvocationKey: plannedAttempt.invocationKey,
     nodeRunId,
     providerIdempotencyKey,
@@ -1500,7 +1512,9 @@ describeIntegration('Phase 0E real execution recovery fixture', () => {
         nextRunStatus: 'running',
         resumeAt: null,
         runId: persistenceRunId,
-        schedulerState: asSchedulerState(firstAdvance.checkpoint),
+        schedulerState: asSchedulerState(
+          asRetainedV1Checkpoint(firstAdvance.checkpoint),
+        ),
         traceparent: TRACEPARENT,
       }),
     );
