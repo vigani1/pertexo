@@ -335,6 +335,60 @@ function parseInvocation(value: unknown): InvocationState {
   };
 }
 
+function parseV2Invocations(
+  value: unknown,
+  workflowVersionId: string,
+): readonly InvocationState[] {
+  assertCheckpoint(Array.isArray(value), 'invocations must be an array');
+  return value.map((item) => {
+    assertCheckpoint(isRecord(item), 'invocation must be an object');
+    assertExactKeys(
+      item,
+      ['invocationKey', 'nodeId', 'status', 'attemptNumber'],
+      ['resumeAt', 'output', 'branchPath'],
+    );
+    const { branchPath: rawBranchPath, ...base } = item;
+    const invocation = parseInvocation(base);
+    assertCheckpoint(
+      rawBranchPath === undefined || Array.isArray(rawBranchPath),
+      'invocation branchPath must be an array',
+    );
+    const branchPath = (rawBranchPath ?? []).map((part) => {
+      assertCheckpoint(isRecord(part), 'branch scope part must be an object');
+      assertExactKeys(part, ['nodeId', 'outputPort']);
+      assertCheckpoint(
+        typeof part.nodeId === 'string' && part.nodeId.length > 0,
+        'branch scope nodeId is required',
+      );
+      assertCheckpoint(
+        typeof part.outputPort === 'string' && part.outputPort.length > 0,
+        'branch scope outputPort is required',
+      );
+      return { nodeId: part.nodeId, outputPort: part.outputPort };
+    });
+    assertCheckpoint(
+      new Set(branchPath.map(({ nodeId }) => nodeId)).size ===
+        branchPath.length,
+      'branch scope node IDs must be unique',
+    );
+    if (rawBranchPath !== undefined)
+      assertCheckpoint(
+        invocation.invocationKey ===
+          invocationKey({
+            workflowVersionId,
+            nodeId: invocation.nodeId,
+            branchPath: branchPath.map(
+              ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
+            ),
+          }),
+        'invocation key disagrees with branch scope',
+      );
+    return rawBranchPath === undefined
+      ? invocation
+      : { ...invocation, branchPath };
+  });
+}
+
 function parseLedger(value: unknown): readonly BranchLedgerEntry[] {
   assertCheckpoint(Array.isArray(value), 'join ledger must be an array');
   const allowed: readonly BranchLedgerEntry['disposition'][] = [
@@ -945,17 +999,27 @@ function parseCheckpointV2Boundary(value: unknown): WorkflowCheckpointV2 {
     ['deadlineExpired'],
   );
   const { branchSelections, ...shared } = value;
+  assertCheckpoint(
+    typeof value.workflowVersionId === 'string',
+    'workflowVersionId is required',
+  );
+  const invocations = parseV2Invocations(
+    value.invocations,
+    value.workflowVersionId,
+  );
   const checkpoint = parseCheckpointV1Boundary({
     ...shared,
+    invocations: invocations.map(({ branchPath: _, ...invocation }) => {
+      void _;
+      return invocation;
+    }),
     schemaVersion: 1,
   });
   return {
     ...checkpoint,
     schemaVersion: 2,
-    branchSelections: parseBranchSelections(
-      branchSelections,
-      checkpoint.invocations,
-    ),
+    invocations,
+    branchSelections: parseBranchSelections(branchSelections, invocations),
   };
 }
 

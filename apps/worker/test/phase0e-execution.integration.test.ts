@@ -444,10 +444,22 @@ function schedulerGraph(): engine.SchedulerGraph {
       { id: 'join', sideEffectClass: 'safe' },
     ],
     edges: [
-      { source: { nodeId: 'root' }, target: { nodeId: 'branch-a' } },
-      { source: { nodeId: 'root' }, target: { nodeId: 'branch-b' } },
-      { source: { nodeId: 'branch-a' }, target: { nodeId: 'join' } },
-      { source: { nodeId: 'branch-b' }, target: { nodeId: 'join' } },
+      {
+        source: { nodeId: 'root', port: 'out' },
+        target: { nodeId: 'branch-a', port: 'in' },
+      },
+      {
+        source: { nodeId: 'root', port: 'out' },
+        target: { nodeId: 'branch-b', port: 'in' },
+      },
+      {
+        source: { nodeId: 'branch-a', port: 'out' },
+        target: { nodeId: 'join', port: 'a' },
+      },
+      {
+        source: { nodeId: 'branch-b', port: 'out' },
+        target: { nodeId: 'join', port: 'b' },
+      },
     ],
   };
 }

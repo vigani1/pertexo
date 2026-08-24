@@ -43,6 +43,11 @@ export type OutputReference =
   | Readonly<{ readonly kind: 'inline'; readonly attemptId: string }>
   | Readonly<{ readonly kind: 'artifact'; readonly artifactId: string }>;
 
+export interface BranchScopePart {
+  readonly nodeId: string;
+  readonly outputPort: string;
+}
+
 export interface InvocationState {
   readonly invocationKey: string;
   readonly nodeId: string;
@@ -50,6 +55,7 @@ export interface InvocationState {
   readonly attemptNumber: number;
   readonly resumeAt?: string;
   readonly output?: OutputReference;
+  readonly branchPath?: readonly BranchScopePart[];
 }
 
 export interface BranchLedgerEntry {

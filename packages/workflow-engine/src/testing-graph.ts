@@ -19,14 +19,14 @@ export function parseSchedulerGraph(value: unknown): SchedulerGraph {
       );
     return {
       deriveReadiness: true,
-      nodes: graph.nodes.map(({ id, disabled }) =>
+      nodes: graph.nodes.map(({ id, definition, disabled }) =>
         disabled === undefined
-          ? { id, sideEffectClass: 'safe' }
-          : { id, disabled, sideEffectClass: 'safe' },
+          ? { id, definition, sideEffectClass: 'safe' }
+          : { id, definition, disabled, sideEffectClass: 'safe' },
       ),
       edges: graph.edges.map(({ source, target }) => ({
-        source: { nodeId: source.nodeId },
-        target: { nodeId: target.nodeId },
+        source: { nodeId: source.nodeId, port: source.port },
+        target: { nodeId: target.nodeId, port: target.port },
       })),
     };
   } catch (error) {

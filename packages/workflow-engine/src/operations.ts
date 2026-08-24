@@ -694,15 +694,21 @@ function schedulerState(
   return {
     deriveReadiness: true,
     nodes: executable.envelope.graph.nodes.map(
-      ({ id, disabled, sideEffectClass: pinnedSideEffectClass }) => ({
+      ({
         id,
+        definition,
+        disabled,
+        sideEffectClass: pinnedSideEffectClass,
+      }) => ({
+        id,
+        definition,
         disabled,
         sideEffectClass: pinnedSideEffectClass,
       }),
     ),
     edges: executable.envelope.graph.edges.map(({ source, target }) => ({
-      source: { nodeId: source.nodeId },
-      target: { nodeId: target.nodeId },
+      source: { nodeId: source.nodeId, port: source.port },
+      target: { nodeId: target.nodeId, port: target.port },
     })),
   };
 }

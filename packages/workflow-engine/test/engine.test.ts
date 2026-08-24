@@ -107,12 +107,20 @@ describe('checkpoint seam', () => {
 
   it('parses canonical V2 branch selections without reinterpreting V1', () => {
     const v1 = checkpoint();
+    const conditionAKey = invocationKey({
+      workflowVersionId: v1.workflowVersionId,
+      nodeId: 'condition-a',
+    });
+    const conditionZKey = invocationKey({
+      workflowVersionId: v1.workflowVersionId,
+      nodeId: 'condition-z',
+    });
     const parsed = parseCheckpoint({
       ...v1,
       schemaVersion: 2,
       invocations: [
         {
-          invocationKey: 'condition-z',
+          invocationKey: conditionZKey,
           nodeId: 'condition-z',
           status: 'succeeded',
           attemptNumber: 1,
@@ -122,7 +130,7 @@ describe('checkpoint seam', () => {
           },
         },
         {
-          invocationKey: 'condition-a',
+          invocationKey: conditionAKey,
           nodeId: 'condition-a',
           status: 'succeeded',
           attemptNumber: 1,
@@ -134,12 +142,12 @@ describe('checkpoint seam', () => {
       ],
       branchSelections: [
         {
-          invocationKey: 'condition-z',
+          invocationKey: conditionZKey,
           nodeId: 'condition-z',
           selectedOutputPort: 'false',
         },
         {
-          invocationKey: 'condition-a',
+          invocationKey: conditionAKey,
           nodeId: 'condition-a',
           selectedOutputPort: 'true',
         },
@@ -150,17 +158,20 @@ describe('checkpoint seam', () => {
       schemaVersion: 2,
       branchSelections: [
         {
-          invocationKey: 'condition-a',
+          invocationKey: conditionAKey,
           nodeId: 'condition-a',
           selectedOutputPort: 'true',
         },
         {
-          invocationKey: 'condition-z',
+          invocationKey: conditionZKey,
           nodeId: 'condition-z',
           selectedOutputPort: 'false',
         },
       ],
     });
+    expect(parsed.invocations).not.toContainEqual(
+      expect.objectContaining({ branchPath: [] }),
+    );
     expect(parseCheckpoint(v1)).toEqual(v1);
     expect(parseCheckpoint(v1)).not.toHaveProperty('branchSelections');
     expect(
@@ -173,8 +184,12 @@ describe('checkpoint seam', () => {
   });
 
   it('deduplicates identical V2 selections and rejects conflicts or non-success', () => {
+    const conditionKey = invocationKey({
+      workflowVersionId: checkpoint().workflowVersionId,
+      nodeId: 'condition',
+    });
     const selection = {
-      invocationKey: 'condition',
+      invocationKey: conditionKey,
       nodeId: 'condition',
       selectedOutputPort: 'true',
     } as const;
@@ -183,7 +198,7 @@ describe('checkpoint seam', () => {
       schemaVersion: 2,
       invocations: [
         {
-          invocationKey: 'condition',
+          invocationKey: conditionKey,
           nodeId: 'condition',
           status: 'succeeded',
           attemptNumber: 1,
@@ -517,6 +532,15 @@ describe('checkpoint seam', () => {
 });
 
 describe('AdvanceWorkflow operation', () => {
+  it('retains edge ports in the scheduler projection', () => {
+    expect(parseSchedulerGraph(chainGraph).edges).toEqual([
+      {
+        source: { nodeId: 'a', port: 'output' },
+        target: { nodeId: 'b', port: 'input' },
+      },
+    ]);
+  });
+
   it('rejects attempt admission without explicit scheduler state', () => {
     expect(() =>
       advanceWorkflowForTesting({
@@ -550,6 +574,216 @@ describe('AdvanceWorkflow operation', () => {
         invocations: [],
       }).map(({ nodeId }) => nodeId),
     ).toEqual(['Z', 'a']);
+  });
+
+  it('derives selected Condition readiness and explicit non-selected skips', () => {
+    const conditionKey = invocationKey({
+      workflowVersionId: 'version-2',
+      nodeId: 'condition',
+    });
+
+    expect(
+      deriveReadyNodes({
+        graph: {
+          deriveReadiness: true,
+          nodes: [
+            {
+              id: 'condition',
+              definition: { key: 'core.condition', version: 1 },
+              sideEffectClass: 'safe',
+            },
+            { id: 'selected', sideEffectClass: 'safe' },
+            { id: 'unselected', sideEffectClass: 'safe' },
+          ],
+          edges: [
+            {
+              source: { nodeId: 'condition', port: 'true' },
+              target: { nodeId: 'selected', port: 'in' },
+            },
+            {
+              source: { nodeId: 'condition', port: 'false' },
+              target: { nodeId: 'unselected', port: 'in' },
+            },
+          ],
+        },
+        workflowVersionId: 'version-2',
+        invocations: [
+          {
+            invocationKey: conditionKey,
+            nodeId: 'condition',
+            status: 'succeeded',
+            attemptNumber: 1,
+            output: {
+              kind: 'inline',
+              attemptId: '00000000-0000-4000-8000-000000000101',
+            },
+          },
+        ],
+        branchSelections: [
+          {
+            invocationKey: conditionKey,
+            nodeId: 'condition',
+            selectedOutputPort: 'true',
+          },
+        ],
+      }),
+    ).toEqual([
+      {
+        invocationKey: invocationKey({
+          workflowVersionId: 'version-2',
+          nodeId: 'selected',
+          branchPath: ['condition:true'],
+        }),
+        nodeId: 'selected',
+        disposition: 'ready',
+        branchPath: [{ nodeId: 'condition', outputPort: 'true' }],
+      },
+      {
+        invocationKey: invocationKey({
+          workflowVersionId: 'version-2',
+          nodeId: 'unselected',
+          branchPath: ['condition:false'],
+        }),
+        nodeId: 'unselected',
+        disposition: 'skipped',
+        branchPath: [{ nodeId: 'condition', outputPort: 'false' }],
+      },
+    ]);
+  });
+
+  it('rejects branch selections outside the pinned Condition contract', () => {
+    const conditionKey = invocationKey({
+      workflowVersionId: 'version-2',
+      nodeId: 'condition',
+    });
+    expect(() =>
+      deriveReadyNodes({
+        graph: {
+          deriveReadiness: true,
+          nodes: [
+            {
+              id: 'condition',
+              definition: { key: 'core.set', version: 1 },
+              sideEffectClass: 'safe',
+            },
+          ],
+          edges: [],
+        },
+        workflowVersionId: 'version-2',
+        invocations: [
+          {
+            invocationKey: conditionKey,
+            nodeId: 'condition',
+            status: 'succeeded',
+            attemptNumber: 1,
+            output: {
+              kind: 'inline',
+              attemptId: '00000000-0000-4000-8000-000000000101',
+            },
+          },
+        ],
+        branchSelections: [
+          {
+            invocationKey: conditionKey,
+            nodeId: 'condition',
+            selectedOutputPort: 'true',
+          },
+        ],
+      }),
+    ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
+  });
+
+  it('persists selected and skipped Condition branches in checkpoint V2', () => {
+    const conditionKey = invocationKey({
+      workflowVersionId: 'version-2',
+      nodeId: 'condition',
+    });
+    const plan = advanceWorkflowForTesting({
+      checkpoint: {
+        ...createCheckpointV2({
+          engineVersion: 'engine-v2',
+          workflowVersionId: 'version-2',
+          iterationBudget: 1_000,
+        }),
+        revision: 1,
+        runStatus: 'running',
+        admittedInvocationKeys: [conditionKey],
+        invocations: [
+          {
+            invocationKey: conditionKey,
+            nodeId: 'condition',
+            status: 'succeeded',
+            attemptNumber: 1,
+            output: {
+              kind: 'inline',
+              attemptId: '00000000-0000-4000-8000-000000000101',
+            },
+          },
+        ],
+        branchSelections: [],
+      },
+      schedulerState: {
+        deriveReadiness: true,
+        nodes: [
+          {
+            id: 'condition',
+            definition: { key: 'core.condition', version: 1 },
+            sideEffectClass: 'safe',
+          },
+          { id: 'selected', sideEffectClass: 'safe' },
+          { id: 'unselected', sideEffectClass: 'safe' },
+        ],
+        edges: [
+          {
+            source: { nodeId: 'condition', port: 'true' },
+            target: { nodeId: 'selected', port: 'in' },
+          },
+          {
+            source: { nodeId: 'condition', port: 'false' },
+            target: { nodeId: 'unselected', port: 'in' },
+          },
+        ],
+      },
+      occurredAt,
+      maximumAdmissions: 2,
+      observations: [
+        {
+          kind: 'branch_selected',
+          invocationKey: conditionKey,
+          nodeId: 'condition',
+          selectedOutputPort: 'true',
+        },
+      ],
+    });
+
+    expect(plan.checkpoint).toMatchObject({
+      schemaVersion: 2,
+      branchSelections: [
+        {
+          invocationKey: conditionKey,
+          nodeId: 'condition',
+          selectedOutputPort: 'true',
+        },
+      ],
+      invocations: [
+        { nodeId: 'condition', status: 'succeeded' },
+        {
+          nodeId: 'selected',
+          status: 'running',
+          branchPath: [{ nodeId: 'condition', outputPort: 'true' }],
+        },
+        {
+          nodeId: 'unselected',
+          status: 'skipped',
+          branchPath: [{ nodeId: 'condition', outputPort: 'false' }],
+        },
+      ],
+    });
+    expect(plan.nodeRunAdmissions.map(({ nodeId }) => nodeId)).toEqual([
+      'selected',
+      'unselected',
+    ]);
+    expect(plan.attempts.map(({ nodeId }) => nodeId)).toEqual(['selected']);
   });
 
   it('fails closed on malformed scheduler graph input', () => {

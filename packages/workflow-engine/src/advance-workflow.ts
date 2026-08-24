@@ -60,6 +60,12 @@ export type WorkflowObservation =
   | { readonly kind: 'cancel_requested' }
   | { readonly kind: 'deadline_expired'; readonly occurredAt?: string }
   | {
+      readonly kind: 'branch_selected';
+      readonly invocationKey: string;
+      readonly nodeId: string;
+      readonly selectedOutputPort: string;
+    }
+  | {
       readonly kind: 'join_declared';
       readonly joinId: string;
       readonly policy: JoinPolicy;
@@ -146,6 +152,8 @@ export function advanceWorkflowFromSchedulerState(
   const loops = new Map(
     current.loops.map((loop) => [loop.loopId, loop] as const),
   );
+  const branchSelections =
+    current.schemaVersion === 2 ? [...current.branchSelections] : [];
   let remainingIterationBudget = current.remainingIterationBudget;
   const eventDrafts: Omit<EngineEventPlan, 'sequence'>[] = [];
   const nodeRunAdmissionKeys = new Set<string>();
@@ -282,6 +290,51 @@ export function advanceWorkflowFromSchedulerState(
         ...join,
         ledger: recordBranchDisposition(join.ledger, observation.branch),
       });
+      continue;
+    }
+    if (observation.kind === 'branch_selected') {
+      if (cancelRequested) continue;
+      if (current.schemaVersion !== 2)
+        throw new WorkflowEngineError(
+          'checkpoint_invalid',
+          'branch selection requires checkpoint V2',
+        );
+      const invocation = invocations.get(observation.invocationKey);
+      if (
+        invocation?.nodeId !== observation.nodeId ||
+        invocation.status !== 'succeeded' ||
+        invocation.output === undefined
+      )
+        throw new WorkflowEngineError(
+          'checkpoint_invalid',
+          'branch selection requires a succeeded output-bearing invocation',
+        );
+      const existingSelection = branchSelections.find(
+        (selection) =>
+          selection.invocationKey === observation.invocationKey &&
+          selection.nodeId === observation.nodeId,
+      );
+      if (existingSelection !== undefined) {
+        if (
+          existingSelection.selectedOutputPort !==
+          observation.selectedOutputPort
+        )
+          throw new WorkflowEngineError(
+            'checkpoint_invalid',
+            'branch selection conflicts with the persisted selection',
+          );
+        continue;
+      }
+      branchSelections.push({
+        invocationKey: observation.invocationKey,
+        nodeId: observation.nodeId,
+        selectedOutputPort: observation.selectedOutputPort,
+      });
+      branchSelections.sort(
+        (left, right) =>
+          compareOrdinal(left.invocationKey, right.invocationKey) ||
+          compareOrdinal(left.nodeId, right.nodeId),
+      );
       continue;
     }
     if (observation.kind === 'loop_started') {
@@ -466,6 +519,7 @@ export function advanceWorkflowFromSchedulerState(
       graph,
       workflowVersionId: current.workflowVersionId,
       invocations: [...invocations.values()],
+      ...(current.schemaVersion === 2 ? { branchSelections } : {}),
     })) {
       if (coordinatorNodeIds.has(decision.nodeId)) continue;
       const invocation: InvocationState = {
@@ -473,6 +527,9 @@ export function advanceWorkflowFromSchedulerState(
         nodeId: decision.nodeId,
         status: decision.disposition,
         attemptNumber: 0,
+        ...(decision.branchPath === undefined
+          ? {}
+          : { branchPath: decision.branchPath }),
       };
       invocations.set(invocation.invocationKey, invocation);
       nodeRunAdmissionKeys.add(invocation.invocationKey);
@@ -795,6 +852,7 @@ export function advanceWorkflowFromSchedulerState(
       ...current,
       invocations: finalInvocations,
     }),
+    ...(current.schemaVersion === 2 ? { branchSelections } : {}),
   });
   const nodeRunAdmissions: NodeRunAdmissionPlan[] = [...nodeRunAdmissionKeys]
     .sort(compareOrdinal)
@@ -896,6 +954,8 @@ function observationKey(observation: WorkflowObservation): string {
       return `1:join:${observation.joinId}`;
     case 'branch_disposition':
       return `2:join:${observation.joinId}:${observation.branch.branchId}`;
+    case 'branch_selected':
+      return `2:branch:${observation.invocationKey}:${observation.nodeId}`;
     case 'loop_started':
       return `1:loop:${observation.loopId}`;
     case 'loop_iteration_completed':
