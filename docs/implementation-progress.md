@@ -2615,6 +2615,13 @@ Current evidence:
   required independent fixed-head Spec and Standards reviews. The tracker cannot
   truthfully satisfy its evidence-commit completion gate until both reviews issue
   GO against that exact head.
+- The first fixed-head Standards review of `974f764` found one blocking clock-
+  authority defect: notification retry scheduling and eligibility used the
+  worker clock. A disposable-PostgreSQL regression skewed `Date.now()` to 2099
+  and first reproduced a retry roughly 72 years late; the delivery store now
+  computes `next_delivery_at` and checks whether it is due with
+  `clock_timestamp()`. The same proof verifies a skewed worker cannot claim the
+  retry early. Fixed-head Spec and Standards re-review remain required.
 
 Incremental publishable slices, in required order:
 

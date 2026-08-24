@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { Pool } from 'pg';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { FailureNotificationContextV1Schema } from '@pertexo/workflow-model/failure-notification';
 
 import {
@@ -724,21 +724,71 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         });
         if (claimed.kind !== 'ready')
           throw new Error('retry was not claimable');
-        await expect(
-          deliveryStore.completeDelivery({
-            workspaceId: workspaceA,
-            intentId: first.intent_id,
-            attemptNumber: claimed.attemptNumber,
-            maxAttempts: 3,
-            retryDelaySeconds: 0,
-            result: {
-              schemaVersion: 1,
-              kind: 'retry',
-              safeErrorCode: 'provider.unavailable',
-              possiblyDispatched: false,
-            },
-          }),
-        ).resolves.toBe('completed');
+        const workerClock =
+          attempt === 2
+            ? vi
+                .spyOn(Date, 'now')
+                .mockReturnValue(Date.parse('2099-01-01T00:00:00.000Z'))
+            : undefined;
+        try {
+          await expect(
+            deliveryStore.completeDelivery({
+              workspaceId: workspaceA,
+              intentId: first.intent_id,
+              attemptNumber: claimed.attemptNumber,
+              maxAttempts: 3,
+              retryDelaySeconds: attempt === 2 ? 30 : 0,
+              result: {
+                schemaVersion: 1,
+                kind: 'retry',
+                safeErrorCode: 'provider.unavailable',
+                possiblyDispatched: false,
+              },
+            }),
+          ).resolves.toBe('completed');
+          if (attempt === 2) {
+            const scheduled = await asRuntime(
+              workerBaseUrl,
+              workspaceA,
+              (client) =>
+                client.query<{
+                  due_in_seconds: number;
+                  id: string;
+                  payload_checksum: string;
+                }>(
+                  `select extract(epoch from intent.next_delivery_at-clock_timestamp())::float8 due_in_seconds,
+                          outbox.id,outbox.payload_checksum
+                   from app.run_failure_notification_intents intent
+                   join app.outbox_events outbox on outbox.aggregate_id=intent.id
+                   where intent.id=$1 order by outbox.created_at desc,outbox.id desc limit 1`,
+                  [first.intent_id],
+                ),
+            );
+            const retry = scheduled.rows[0];
+            expect(retry?.due_in_seconds).toBeGreaterThan(25);
+            expect(retry?.due_in_seconds).toBeLessThanOrEqual(30);
+            if (retry === undefined) throw new Error('retry schedule missing');
+            await expect(
+              deliveryStore.claimDelivery({
+                ...claimInput,
+                delivery: {
+                  outboxEventId: retry.id,
+                  payloadChecksum: retry.payload_checksum,
+                },
+              }),
+            ).resolves.toEqual({ kind: 'busy' });
+            await asRuntime(workerBaseUrl, workspaceA, (client) =>
+              client.query(
+                `update app.run_failure_notification_intents
+                 set next_delivery_at=clock_timestamp()-interval '1 second'
+                 where id=$1`,
+                [first.intent_id],
+              ),
+            );
+          }
+        } finally {
+          workerClock?.mockRestore();
+        }
       }
       const terminal = await asRuntime(workerBaseUrl, workspaceA, (client) =>
         client.query<{

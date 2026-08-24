@@ -217,11 +217,13 @@ export function createFailureNotificationStore(
           destination_id: string;
           recovery_at: Date | null;
           next_delivery_at: Date | null;
+          retry_due: boolean;
           side_effect_class: 'safe' | 'idempotent_with_key' | 'unsafe';
           status: string;
         }>(
           `select context,context_checksum,delivery_attempts,destination_id,
-                  destination_config_version,side_effect_class,status,recovery_at,next_delivery_at
+                  destination_config_version,side_effect_class,status,recovery_at,next_delivery_at,
+                  (next_delivery_at is not null and next_delivery_at<=clock_timestamp()) retry_due
            from app.run_failure_notification_intents
            where workspace_id=$1 and id=$2 for update`,
           [workspaceId, intentId],
@@ -237,8 +239,7 @@ export function createFailureNotificationStore(
           return Object.freeze({ kind: 'busy' as const });
         if (
           row.status === 'retry' &&
-          (row.next_delivery_at === null ||
-            row.next_delivery_at.getTime() > Date.now())
+          (row.next_delivery_at === null || !row.retry_due)
         )
           return Object.freeze({ kind: 'busy' as const });
         if (row.delivery_attempts >= raw.maxAttempts) {
@@ -339,21 +340,26 @@ export function createFailureNotificationStore(
           raw.attemptNumber < raw.maxAttempts &&
           (result.kind === 'retry' || result.kind === 'outcome_unknown');
         if (mayRetry) {
-          const due = new Date(Date.now() + raw.retryDelaySeconds * 1_000);
-          await client.query(
+          const scheduled = await client.query<{ next_delivery_at: Date }>(
             `update app.run_failure_notification_intents
              set status='retry',dispatch_marked_at=null,recovery_at=null,
-                 next_delivery_at=$3,safe_error_code=$4,
-                 possibly_dispatched=$5,updated_at=clock_timestamp()
-             where workspace_id=$1 and id=$2`,
+                  next_delivery_at=clock_timestamp()+make_interval(secs=>$3),
+                  safe_error_code=$4,possibly_dispatched=$5,updated_at=clock_timestamp()
+             where workspace_id=$1 and id=$2
+             returning next_delivery_at`,
             [
               workspaceId,
               intentId,
-              due,
+              raw.retryDelaySeconds,
               result.safeErrorCode ?? null,
               result.possiblyDispatched,
             ],
           );
+          const due = scheduled.rows[0]?.next_delivery_at;
+          if (due === undefined)
+            throw new FailureNotificationStateError(
+              'Retry schedule was not persisted',
+            );
           await insertDeliveryOutbox(client, {
             workspaceId,
             intentId,
