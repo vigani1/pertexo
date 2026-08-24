@@ -2356,6 +2356,7 @@ Status values are `proposed`, `accepted`, `superseded`, or `rejected`.
 | 017 | Condition branch selection, reachability, and checkpoint compatibility            | Condition node           |
 | 018 | Switch ordered cases, scalar matching, and stable branch ports                    | Switch node              |
 | 019 | Bounded Parallel fan-out, Merge pairing, and deterministic join settlement       | Parallel and Merge nodes |
+| 020 | Bounded For Each iteration, structured input, and scoped-body recovery            | For Each node            |
 
 Deferred features receive new ADRs when promoted. Do not pre-author detailed
 ADRs for custom code, approvals, forms, nested workflows, synchronous webhooks,

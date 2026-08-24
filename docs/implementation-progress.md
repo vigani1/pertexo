@@ -2310,6 +2310,9 @@ Authority and entry gate:
 - [x] Record ADR 019 before Parallel/Merge implementation to fix bounded fan-out,
       structured pairing, complete-ledger settlement, admission limits, and
       canonical Merge scope.
+- [x] Record ADR 020 before For Each implementation to fix the node/body
+      contract, explicit structured input, full-budget reservation, nested
+      invocation scope, result handling, and recovery semantics.
 
 Current evidence:
 
@@ -2399,6 +2402,11 @@ Current evidence:
   the seven-test coordinator consumer integration file, and exact-head CI run
   `32745784487` pass all quality, real-integration, crash, Redis-loss,
   sequential service-loss, and additive rollout gates.
+- ADR 020 fixes the bounded `core.for_each@1` and isolated body contracts before
+  implementation: explicit nearest-iteration input, immutable nested scope,
+  whole-collection budget reservation before any body admission, bounded active
+  iteration concurrency, no implicit result aggregation, and
+  PostgreSQL-authoritative cursor recovery.
 
 Incremental publishable slices, in required order:
 
