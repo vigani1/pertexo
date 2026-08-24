@@ -620,11 +620,20 @@ describe('workflow executable identity V1', () => {
   });
 
   it('includes every structured execution field and nested executable content', () => {
+    const structuredChecksum = (input: unknown): string =>
+      computeWorkflowExecutableChecksum(input, {
+        ...TEST_DEFINITION_CATALOG_V1,
+        definitions: [
+          ...TEST_DEFINITION_CATALOG_V1.definitions,
+          { key: 'core.foreach', version: 1 },
+        ],
+      });
     const structuredGraph = {
       ...EMPTY_WORKFLOW_GRAPH_V1,
       nodes: [
         {
           ...node('loop'),
+          definition: { key: 'core.foreach', version: 1 },
           structured: {
             kind: 'for_each' as const,
             maxIterations: 2,
@@ -632,7 +641,7 @@ describe('workflow executable identity V1', () => {
             body: {
               ...EMPTY_WORKFLOW_GRAPH_V1,
               nodes: [node('inner')],
-              inputPorts: ['item'],
+              inputPorts: ['item', 'ordinal'],
               outputPorts: ['result'],
             },
           },
@@ -640,18 +649,10 @@ describe('workflow executable identity V1', () => {
       ],
     };
     const loop = first(structuredGraph.nodes);
-    const checksum = workflowExecutableChecksum(structuredGraph);
+    const checksum = structuredChecksum(structuredGraph);
     const changedStructures = [
       { ...loop.structured, maxIterations: 3 },
       { ...loop.structured, maxConcurrency: 2 },
-      {
-        ...loop.structured,
-        body: { ...loop.structured.body, inputPorts: ['changed'] },
-      },
-      {
-        ...loop.structured,
-        body: { ...loop.structured.body, outputPorts: ['changed'] },
-      },
       {
         ...loop.structured,
         body: {
@@ -662,7 +663,7 @@ describe('workflow executable identity V1', () => {
     ];
     for (const structured of changedStructures) {
       expect(
-        workflowExecutableChecksum({
+        structuredChecksum({
           ...structuredGraph,
           nodes: [{ ...loop, structured }],
         }),

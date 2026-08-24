@@ -39,6 +39,7 @@ export interface WorkflowGraphLimits {
   readonly graphBytes: number;
   readonly maxLoopIterations: number;
   readonly maxLoopConcurrency: number;
+  readonly maxTotalLoopIterations: number;
   readonly maxExpandedInvocations: number;
   readonly structuredDepth: number;
   readonly jsonValueDepth: number;
@@ -46,6 +47,7 @@ export interface WorkflowGraphLimits {
 }
 export const WORKFLOW_GRAPH_LIMITS: WorkflowGraphLimits = Object.freeze({
   ...WORKFLOW_GRAPH_CONTRACT_LIMITS,
+  maxTotalLoopIterations: 1_000,
   maxExpandedInvocations: 1_000,
   structuredDepth: 32,
   jsonValueDepth: 64,
@@ -408,6 +410,7 @@ export type GraphIssueCode =
   | 'dangling_edge'
   | 'cycle'
   | 'invalid_loop_limit'
+  | 'loop_iteration_limit'
   | 'invalid_structured_body'
   | 'expansion_limit'
   | 'graph_limit'
@@ -423,11 +426,13 @@ export type GraphValidationResult =
       readonly ok: true;
       readonly issues: readonly [];
       readonly expandedInvocations: number;
+      readonly worstCaseLoopIterations: number;
     }
   | {
       readonly ok: false;
       readonly issues: readonly GraphValidationIssue[];
       readonly expandedInvocations: number;
+      readonly worstCaseLoopIterations: number;
     };
 
 function isForEachStructure(value: unknown): value is ForEachStructure {
@@ -445,6 +450,17 @@ export function validateWorkflowGraph(
   const limits = { ...WORKFLOW_GRAPH_LIMITS, ...overrides };
   const issues: GraphValidationIssue[] = [];
   const globalNodeIds = new Set<string>();
+  const allNodeIds = new Set<string>();
+  const pendingGraphs: WorkflowGraph[] = [graph];
+  while (pendingGraphs.length > 0) {
+    const current = pendingGraphs.pop();
+    if (current === undefined) continue;
+    for (const node of current.nodes) {
+      allNodeIds.add(node.id);
+      if (node.structured !== undefined)
+        pendingGraphs.push(node.structured.body);
+    }
+  }
   const aggregate = { nodes: 0, edges: 0 };
   const issue = (code: GraphIssueCode, path: string, message: string): void => {
     issues.push({ code, path, message });
@@ -453,7 +469,7 @@ export function validateWorkflowGraph(
     current: WorkflowGraph,
     path: string,
     structuredInputPorts?: ReadonlySet<string>,
-  ): number => {
+  ): { readonly expanded: number; readonly iterations: number } => {
     if (current.schemaVersion !== 1)
       issue(
         'invalid_graph',
@@ -475,9 +491,11 @@ export function validateWorkflowGraph(
         );
       localIds.add(currentNode.id);
       globalNodeIds.add(currentNode.id);
+    }
+    for (const currentNode of current.nodes) {
       for (const [mappingKey, source] of Object.entries(
         currentNode.inputMappings,
-      ))
+      )) {
         if (
           source.kind === 'structured_input' &&
           !structuredInputPorts?.has(source.port)
@@ -487,6 +505,17 @@ export function validateWorkflowGraph(
             `${path}.nodes.${currentNode.id}.inputMappings.${mappingKey}`,
             'structured input must reference a port on the nearest body',
           );
+        if (
+          source.kind === 'node_output' &&
+          !localIds.has(source.nodeId) &&
+          allNodeIds.has(source.nodeId)
+        )
+          issue(
+            'invalid_structured_body',
+            `${path}.nodes.${currentNode.id}.inputMappings.${mappingKey}`,
+            'node output mappings cannot cross a structured-body seam',
+          );
+      }
     }
     const adjacency = new Map<string, string[]>();
     for (const id of localIds) adjacency.set(id, []);
@@ -524,8 +553,18 @@ export function validateWorkflowGraph(
     };
     for (const id of [...localIds].sort()) visit(id);
     let expansion = 0;
+    let iterations = 0;
     for (const currentNode of current.nodes) {
       expansion += 1;
+      const ownsForEach =
+        currentNode.definition.key === 'core.foreach' &&
+        currentNode.definition.version === 1;
+      if (ownsForEach !== (currentNode.structured !== undefined))
+        issue(
+          'invalid_structured_body',
+          `${path}.nodes.${currentNode.id}.structured`,
+          'core.foreach@1 must own exactly one For Each body and no other definition may own one',
+        );
       if (!currentNode.structured) continue;
       const structured: unknown = currentNode.structured;
       if (!isForEachStructure(structured)) {
@@ -552,28 +591,86 @@ export function validateWorkflowGraph(
           'For Each limits must be positive, bounded, and concurrency cannot exceed iterations',
         );
       if (
-        new Set(loop.body.inputPorts).size !== loop.body.inputPorts.length ||
-        new Set(loop.body.outputPorts).size !== loop.body.outputPorts.length
+        canonicalJson(loop.body.inputPorts) !==
+          canonicalJson(['item', 'ordinal']) ||
+        canonicalJson(loop.body.outputPorts) !== canonicalJson(['result'])
       )
         issue(
           'invalid_structured_body',
           `${path}.nodes.${currentNode.id}.structured.body`,
-          'structured ports must be unique',
+          'For Each body ports must be exactly item, ordinal, and result',
         );
-      const bodyExpansion = validate(
+      if (loop.body.nodes.length === 0)
+        issue(
+          'invalid_structured_body',
+          `${path}.nodes.${currentNode.id}.structured.body.nodes`,
+          'For Each body must not be empty',
+        );
+      const bodyIds = new Set(loop.body.nodes.map(({ id }) => id));
+      const incoming = new Map([...bodyIds].map((id) => [id, 0]));
+      const outgoing = new Map([...bodyIds].map((id) => [id, [] as string[]]));
+      for (const edge of loop.body.edges) {
+        if (
+          !bodyIds.has(edge.source.nodeId) ||
+          !bodyIds.has(edge.target.nodeId)
+        )
+          continue;
+        incoming.set(
+          edge.target.nodeId,
+          (incoming.get(edge.target.nodeId) ?? 0) + 1,
+        );
+        outgoing.get(edge.source.nodeId)?.push(edge.target.nodeId);
+      }
+      const roots = [...bodyIds].filter((id) => incoming.get(id) === 0);
+      const sinks = [...bodyIds].filter((id) => outgoing.get(id)?.length === 0);
+      const reachable = new Set<string>();
+      const pending = [...roots];
+      while (pending.length > 0) {
+        const id = pending.pop();
+        if (id === undefined || reachable.has(id)) continue;
+        reachable.add(id);
+        pending.push(...(outgoing.get(id) ?? []));
+      }
+      const reverse = new Map([...bodyIds].map((id) => [id, [] as string[]]));
+      for (const [source, targets] of outgoing)
+        for (const target of targets) reverse.get(target)?.push(source);
+      const reachesSink = new Set<string>();
+      const reversePending = sinks.length === 1 ? [...sinks] : [];
+      while (reversePending.length > 0) {
+        const id = reversePending.pop();
+        if (id === undefined || reachesSink.has(id)) continue;
+        reachesSink.add(id);
+        reversePending.push(...(reverse.get(id) ?? []));
+      }
+      if (
+        sinks.length !== 1 ||
+        reachable.size !== bodyIds.size ||
+        reachesSink.size !== bodyIds.size
+      )
+        issue(
+          'invalid_structured_body',
+          `${path}.nodes.${currentNode.id}.structured.body`,
+          'For Each body requires one sink with every node root-reachable and sink-reachable',
+        );
+      const body = validate(
         loop.body,
         `${path}.nodes.${currentNode.id}.structured.body`,
         new Set(loop.body.inputPorts),
       );
-      expansion += Math.max(0, loop.maxIterations) * bodyExpansion;
+      const maxIterations = Math.max(0, loop.maxIterations);
+      expansion += maxIterations * body.expanded;
+      iterations += maxIterations * (1 + body.iterations);
     }
-    return expansion;
+    return { expanded: expansion, iterations };
   };
   let expandedInvocations = 0;
+  let worstCaseLoopIterations = 0;
   try {
     if (inspectJsonValue(graph).bytes > limits.graphBytes)
       issue('graph_limit', '$', 'canonical graph bytes exceed the limit');
-    expandedInvocations = validate(graph, '$');
+    const totals = validate(graph, '$');
+    expandedInvocations = totals.expanded;
+    worstCaseLoopIterations = totals.iterations;
   } catch (error) {
     issue(
       'invalid_graph',
@@ -587,9 +684,20 @@ export function validateWorkflowGraph(
       '$',
       `worst-case expansion ${String(expandedInvocations)} exceeds ${String(limits.maxExpandedInvocations)}`,
     );
+  if (worstCaseLoopIterations > limits.maxTotalLoopIterations)
+    issue(
+      'loop_iteration_limit',
+      '$',
+      `worst-case loop iterations ${String(worstCaseLoopIterations)} exceeds ${String(limits.maxTotalLoopIterations)}`,
+    );
   return issues.length === 0
-    ? { ok: true, issues: [], expandedInvocations }
-    : { ok: false, issues, expandedInvocations };
+    ? {
+        ok: true,
+        issues: [],
+        expandedInvocations,
+        worstCaseLoopIterations,
+      }
+    : { ok: false, issues, expandedInvocations, worstCaseLoopIterations };
 }
 
 export interface WorkflowDefinitionCatalogV1 {

@@ -21,7 +21,7 @@ not complete a phase.
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
-| Phase 5 — orchestration slice | In progress | ADRs 008/017/018/019; Condition, Switch, bounded Parallel, and Merge vertical slices complete through `67ba800` with checkpoint V2, scoped execution, fresh-worker/Redis-loss recovery, complete-ledger settlement, and staged/active rollout; bounded For Each is next |
+| Phase 5 — orchestration slice | In progress | ADRs 008/017/018/019/020; Condition, Switch, bounded Parallel, and Merge vertical slices complete through `67ba800`; bounded For Each publication validation and recursive executable pinning are implemented, while scheduling, persistence, recovery, and serving rollout remain |
 | Phase 6 — V1 providers and triggers | Not started | — |
 | Phase 7 — production operations | Not started | — |
 
@@ -2421,9 +2421,19 @@ Current evidence:
 - Commit `f46dc17` adds the explicit `structured_input` graph value source,
   validates it against the nearest body boundary, and resolves item/ordinal
   material through the shared mapping seam without redefining outer
-  `run_input`. Workflow-model passes 53 assertions. For Each remains incomplete
-  pending recursive executable pinning, production loop scheduling and
-  persistence, recovery proof, and staged/active serving rollout.
+  `run_input`. Workflow-model passed 53 assertions at that checkpoint.
+- The current For Each checkpoint strengthens publication validation so only
+  `core.foreach@1` owns a non-empty isolated body with exact `item`/`ordinal`
+  inputs, `result` output, one reachable sink, and no seam-crossing output
+  mapping. It independently caps worst-case total iterations and expanded body
+  invocations across nested products. Executable V2 now recursively pins,
+  canonically orders, checksums, parses, and verifies every body node and applies
+  port/branch validation at each depth; compatibility selection includes
+  body-only definitions. Workflow-model passes 56 assertions, workflow-engine
+  passes 109 assertions, both package builds/typechecks pass, and
+  `pnpm contracts:check` reports no public artifact drift. For Each remains
+  absent from serving cohorts, confirmed by the 11-assertion node-catalog suite,
+  pending scheduling, persistence, and recovery.
 - ADRs 021 and 022 fix the remaining Phase 5 semantics before implementation:
   Wait preserves semantic resume versus retry identity and adds an independent
   PostgreSQL deadline wake source; failure notification is an atomic bounded

@@ -37,6 +37,7 @@ const schema = { type: 'object', additionalProperties: true } as const;
 function manifest(
   key:
     | 'core.condition'
+    | 'core.foreach'
     | 'core.manual'
     | 'core.merge'
     | 'core.parallel'
@@ -56,6 +57,7 @@ function manifest(
           ? 'output'
           : key === 'core.condition' ||
               key === 'core.switch' ||
+              key === 'core.foreach' ||
               key === 'core.parallel' ||
               key === 'core.merge'
             ? 'logic'
@@ -158,6 +160,7 @@ function nodeRelease(input?: {
   readonly switch?: boolean;
   readonly parallel?: boolean;
   readonly merge?: boolean;
+  readonly forEach?: boolean;
 }): RegistryRelease {
   const definitions = [
     manifest('core.manual'),
@@ -170,6 +173,7 @@ function nodeRelease(input?: {
     ...(input?.switch ? [manifest('core.switch')] : []),
     ...(input?.parallel ? [manifest('core.parallel')] : []),
     ...(input?.merge ? [manifest('core.merge')] : []),
+    ...(input?.forEach ? [manifest('core.foreach')] : []),
     ...(input?.unrelated ? [manifest('test.unrelated')] : []),
   ];
   const manual = definitions.find(
@@ -418,6 +422,81 @@ function graph(reverse = false) {
   return {
     schemaVersion: 1,
     settings: { maxRunDurationMs: 60_000 },
+    nodes: reverse ? [...nodes].reverse() : nodes,
+    edges: reverse ? [...edges].reverse() : edges,
+  };
+}
+
+function forEachGraph(reverse = false) {
+  const base = graph();
+  const bodyNodes = [
+    {
+      ...base.nodes[1],
+      id: 'body-first',
+      inputMappings: {
+        value: {
+          kind: 'structured_input' as const,
+          port: 'item',
+          path: '$',
+        },
+      },
+    },
+    {
+      ...base.nodes[1],
+      id: 'body-sink',
+      inputMappings: {
+        value: {
+          kind: 'node_output' as const,
+          nodeId: 'body-first',
+          path: '$',
+        },
+      },
+    },
+  ];
+  const bodyEdges = [
+    {
+      id: 'body-edge',
+      source: { nodeId: 'body-first', port: 'out' },
+      target: { nodeId: 'body-sink', port: 'in' },
+    },
+  ];
+  const loop = {
+    ...base.nodes[1],
+    id: 'loop',
+    definition: { key: 'core.foreach', version: 1 },
+    inputMappings: {
+      items: { kind: 'literal' as const, value: [1, 2] },
+    },
+    structured: {
+      kind: 'for_each' as const,
+      maxIterations: 2,
+      maxConcurrency: 1,
+      body: {
+        schemaVersion: 1 as const,
+        settings: {},
+        nodes: reverse ? [...bodyNodes].reverse() : bodyNodes,
+        edges: reverse ? [...bodyEdges].reverse() : bodyEdges,
+        inputPorts: ['item', 'ordinal'],
+        outputPorts: ['result'],
+      },
+    },
+  };
+  const nodes = [base.nodes[0], loop, base.nodes[2]];
+  const edges = [
+    {
+      id: 'manual-loop',
+      source: { nodeId: 'manual', port: 'out' },
+      target: { nodeId: 'loop', port: 'in' },
+    },
+    {
+      id: 'loop-terminate',
+      source: { nodeId: 'loop', port: 'out' },
+      target: { nodeId: 'terminate', port: 'in' },
+    },
+  ];
+  return {
+    schemaVersion: 1 as const,
+    settings: base.settings,
     nodes: reverse ? [...nodes].reverse() : nodes,
     edges: reverse ? [...edges].reverse() : edges,
   };
@@ -890,34 +969,75 @@ describe('workflow executable V2 identity', () => {
     ).toMatch(/^wf:v2:sha256:[a-f0-9]{64}$/u);
   });
 
-  it('rejects structured nodes and unpinned expression policy versions', () => {
-    const release = composeExecutableCompatibilityRelease(nodeRelease());
-    const structured = structuredClone(graph()) as Record<string, unknown>;
-    const nodes = structured.nodes;
-    if (
-      !Array.isArray(nodes) ||
-      typeof nodes[1] !== 'object' ||
-      nodes[1] === null
-    )
-      throw new Error('fixture set node missing');
-    Object.assign(nodes[1], {
-      structured: {
-        kind: 'for_each',
-        maxIterations: 1,
-        maxConcurrency: 1,
-        body: {
-          schemaVersion: 1,
-          settings: {},
-          nodes: [],
-          edges: [],
-          inputPorts: [],
-          outputPorts: [],
-        },
-      },
+  it('recursively pins, orders, checksums, parses, and verifies For Each bodies', () => {
+    const release = composeExecutableCompatibilityRelease(
+      nodeRelease({ forEach: true }),
+    );
+    const compiled = buildWorkflowExecutableV2({
+      graph: forEachGraph(true),
+      release,
+    });
+    const loop = compiled.envelope.graph.nodes.find(({ id }) => id === 'loop');
+
+    expect(loop?.structured?.body.nodes.map(({ id }) => id)).toEqual([
+      'body-first',
+      'body-sink',
+    ]);
+    expect(
+      loop?.structured?.body.nodes.every(
+        ({ executor }) => executor.version === 1,
+      ),
+    ).toBe(true);
+    expect(compiled.checksum).toBe(
+      buildWorkflowExecutableV2({ graph: forEachGraph(), release }).checksum,
+    );
+    expect(
+      verifyWorkflowExecutableV2({ ...compiled, admissionRelease: release }),
+    ).toEqual(compiled);
+
+    const mutated = structuredClone(compiled.envelope);
+    const mutatedLoop = mutated.graph.nodes.find(({ id }) => id === 'loop');
+    if (mutatedLoop?.structured === undefined)
+      throw new Error('fixture For Each body missing');
+    Object.assign(mutatedLoop.structured.body.nodes[0]?.executor ?? {}, {
+      version: 2,
     });
     expect(() =>
-      buildWorkflowExecutableV2({ graph: structured, release }),
+      parseWorkflowExecutableV2({
+        envelope: mutated,
+        admissionRelease: release,
+      }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
+  });
+
+  it('applies port validation recursively and selects body-only definitions', () => {
+    const release = composeExecutableCompatibilityRelease(
+      nodeRelease({ forEach: true }),
+    );
+    const changed = composeExecutableCompatibilityRelease(
+      nodeRelease({ epoch: 2, forEach: true, mutateSet: true }),
+    );
+    expect(
+      buildWorkflowExecutableV2({ graph: forEachGraph(), release: changed })
+        .checksum,
+    ).not.toBe(
+      buildWorkflowExecutableV2({ graph: forEachGraph(), release }).checksum,
+    );
+
+    const invalid = structuredClone(forEachGraph());
+    const loop = invalid.nodes.find(({ id }) => id === 'loop');
+    if (loop === undefined || !('structured' in loop))
+      throw new Error('fixture For Each body missing');
+    Object.assign(loop.structured.body.edges[0]?.source ?? {}, {
+      port: 'missing',
+    });
+    expect(() =>
+      buildWorkflowExecutableV2({ graph: invalid, release }),
+    ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
+  });
+
+  it('rejects unpinned expression policy versions', () => {
+    const release = composeExecutableCompatibilityRelease(nodeRelease());
     const expression = structuredClone(graph());
     Object.assign(expression.nodes[1], {
       inputMappings: {

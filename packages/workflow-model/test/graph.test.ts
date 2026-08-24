@@ -14,6 +14,20 @@ const node = (id: string) => ({
   inputMappings: {},
   connectionRefs: {},
 });
+const forEachNode = (id: string, bodyNodes = [node(`${id}-body`)]) => ({
+  ...node(id),
+  definition: { key: 'core.foreach', version: 1 },
+  structured: {
+    kind: 'for_each' as const,
+    maxIterations: 10,
+    maxConcurrency: 2,
+    body: {
+      ...graph(bodyNodes),
+      inputPorts: ['item', 'ordinal'],
+      outputPorts: ['result'],
+    },
+  },
+});
 const graph = (
   nodes: WorkflowGraph['nodes'],
   edges: WorkflowGraph['edges'] = [],
@@ -74,19 +88,7 @@ describe('workflow graph validation', () => {
     ).toBe(true);
   });
   it('validates structured For Each bodies and bounded nested expansion', () => {
-    const loop = {
-      ...node('loop'),
-      structured: {
-        kind: 'for_each' as const,
-        maxIterations: 10,
-        maxConcurrency: 2,
-        body: {
-          ...graph([node('inner')]),
-          inputPorts: ['item'],
-          outputPorts: ['result'],
-        },
-      },
-    };
+    const loop = forEachNode('loop', [node('inner')]);
     expect(
       validateWorkflowGraph(graph([loop]), { maxExpandedInvocations: 11 }).ok,
     ).toBe(true);
@@ -103,7 +105,7 @@ describe('workflow graph validation', () => {
         ...loop.structured,
         body: {
           ...graph([{ ...loop, id: 'nested' }]),
-          inputPorts: ['item'],
+          inputPorts: ['item', 'ordinal'],
           outputPorts: ['result'],
         },
       },
@@ -132,6 +134,88 @@ describe('workflow graph validation', () => {
       ).issues.some((issue) => issue.code === 'invalid_structured_body'),
     ).toBe(true);
   });
+  it('requires core.foreach@1 ownership, exact ports, and a nonempty single-sink body', () => {
+    const loop = forEachNode('loop');
+    const invalid = [
+      { ...node('owner'), structured: loop.structured },
+      (() => {
+        const missing = { ...loop };
+        delete (missing as { structured?: unknown }).structured;
+        return missing;
+      })(),
+      {
+        ...loop,
+        structured: {
+          ...loop.structured,
+          body: { ...loop.structured.body, inputPorts: ['item'] },
+        },
+      },
+      {
+        ...loop,
+        structured: {
+          ...loop.structured,
+          body: { ...loop.structured.body, outputPorts: ['other'] },
+        },
+      },
+      {
+        ...loop,
+        structured: {
+          ...loop.structured,
+          body: { ...loop.structured.body, nodes: [] },
+        },
+      },
+      forEachNode('two-sinks', [node('left'), node('right')]),
+    ];
+
+    for (const candidate of invalid)
+      expect(validateWorkflowGraph(graph([candidate])).issues).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ code: 'invalid_structured_body' }),
+        ]),
+      );
+  });
+  it('rejects node-output mappings that cross either side of a body seam', () => {
+    const loop = forEachNode('loop', [
+      {
+        ...node('inner'),
+        inputMappings: {
+          value: { kind: 'node_output' as const, nodeId: 'outer', path: '$' },
+        },
+      },
+    ]);
+    const outer = {
+      ...node('outer'),
+      inputMappings: {
+        value: {
+          kind: 'node_output' as const,
+          nodeId: 'inner',
+          path: '$',
+        },
+      },
+    };
+
+    expect(validateWorkflowGraph(graph([outer, loop])).issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'invalid_structured_body' }),
+        expect.objectContaining({ code: 'invalid_structured_body' }),
+      ]),
+    );
+  });
+  it('caps worst-case loop iterations separately from expanded invocations', () => {
+    const nested = forEachNode('outer', [forEachNode('inner')]);
+    const result = validateWorkflowGraph(graph([nested]), {
+      maxExpandedInvocations: 1_000,
+      maxTotalLoopIterations: 109,
+    });
+
+    expect(result.expandedInvocations).toBe(111);
+    expect(result.worstCaseLoopIterations).toBe(110);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'loop_iteration_limit' }),
+      ]),
+    );
+  });
   it('scopes structured input to the nearest declared body port', () => {
     const mapped = {
       ...node('inner'),
@@ -141,6 +225,7 @@ describe('workflow graph validation', () => {
     };
     const loop = {
       ...node('loop'),
+      definition: { key: 'core.foreach', version: 1 },
       structured: {
         kind: 'for_each' as const,
         maxIterations: 2,

@@ -62,16 +62,31 @@ export interface WorkflowExecutableNodeV2 {
   readonly executor: ExecutorIdentity;
   readonly executorAbi: number;
   readonly policyReferences: readonly PolicyReference[];
+  readonly structured?: WorkflowExecutableForEachV2 | undefined;
+}
+
+export interface WorkflowExecutableGraphV2 {
+  readonly settings: WorkflowGraph['settings'];
+  readonly nodes: readonly WorkflowExecutableNodeV2[];
+  readonly edges: readonly WorkflowEdge[];
+}
+
+export interface WorkflowExecutableStructuredBodyV2 extends WorkflowExecutableGraphV2 {
+  readonly inputPorts: readonly string[];
+  readonly outputPorts: readonly string[];
+}
+
+export interface WorkflowExecutableForEachV2 {
+  readonly kind: 'for_each';
+  readonly maxIterations: number;
+  readonly maxConcurrency: number;
+  readonly body: WorkflowExecutableStructuredBodyV2;
 }
 
 export interface WorkflowExecutableV2 {
   readonly schemaVersion: 2;
   readonly sourceGraphSchemaVersion: 1;
-  readonly graph: {
-    readonly settings: WorkflowGraph['settings'];
-    readonly nodes: readonly WorkflowExecutableNodeV2[];
-    readonly edges: readonly WorkflowEdge[];
-  };
+  readonly graph: WorkflowExecutableGraphV2;
   readonly runtimePolicies: ExecutableRuntimePoliciesV1;
   readonly configMigrations: readonly [];
   readonly compatibilitySelectionFingerprint: string;
@@ -309,6 +324,17 @@ function uniqueDefinitions(
   return [...unique.values()].sort(compareIdentity);
 }
 
+function allExecutableNodes(
+  graph: WorkflowExecutableGraphV2,
+): readonly WorkflowExecutableNodeV2[] {
+  return graph.nodes.flatMap((node) => [
+    node,
+    ...(node.structured === undefined
+      ? []
+      : allExecutableNodes(node.structured.body)),
+  ]);
+}
+
 function selectionFingerprint(
   release: RegistryRelease,
   nodes: readonly Pick<WorkflowExecutableNodeV2, 'definition'>[],
@@ -354,8 +380,6 @@ function executableNode(
   node: WorkflowNode,
   release: RegistryRelease,
 ): WorkflowExecutableNodeV2 {
-  if (node.structured !== undefined)
-    fail('structured nodes are not executable in Phase 3');
   const definition = definitionManifest(release, node.definition);
   const executor = executorManifest(release, definition.executor);
   if (
@@ -375,7 +399,7 @@ function executableNode(
   )
     fail('node executor ABI is incompatible');
   assertExpressionPolicies(node, definition.policyReferences);
-  return {
+  const executable: WorkflowExecutableNodeV2 = {
     id: node.id,
     definition: definition.definition,
     configVersion: node.configVersion,
@@ -387,6 +411,20 @@ function executableNode(
     executor: definition.executor,
     executorAbi: executor.abiVersion,
     policyReferences: [...definition.policyReferences].sort(compareIdentity),
+  };
+  if (node.structured === undefined) return executable;
+  return {
+    ...executable,
+    structured: {
+      kind: 'for_each',
+      maxIterations: node.structured.maxIterations,
+      maxConcurrency: node.structured.maxConcurrency,
+      body: {
+        ...compileExecutableGraph(node.structured.body, release),
+        inputPorts: node.structured.body.inputPorts,
+        outputPorts: node.structured.body.outputPorts,
+      },
+    },
   };
 }
 
@@ -613,6 +651,21 @@ function assertExpressionPolicies(
       fail('expression policy is not pinned by the node definition');
 }
 
+function compileExecutableGraph(
+  graph: WorkflowGraph,
+  release: RegistryRelease,
+): WorkflowExecutableGraphV2 {
+  assertGraphPorts(graph, release);
+  assertBranchesDoNotReconverge(graph);
+  return {
+    settings: graph.settings,
+    nodes: [...graph.nodes]
+      .sort((left, right) => compareOrdinal(left.id, right.id))
+      .map((node) => executableNode(node, release)),
+    edges: canonicalEdges(graph),
+  };
+}
+
 function buildBoundary(input: {
   readonly graph: unknown;
   readonly release: unknown;
@@ -623,24 +676,16 @@ function buildBoundary(input: {
     schemaVersion: 1,
     definitions: release.definitions.map(({ definition }) => definition),
   });
-  assertGraphPorts(graph, release);
-  assertBranchesDoNotReconverge(graph);
-  const nodes = [...graph.nodes]
-    .sort((left, right) => compareOrdinal(left.id, right.id))
-    .map((node) => executableNode(node, release));
+  const executableGraph = compileExecutableGraph(graph, release);
   const envelope: WorkflowExecutableV2 = {
     schemaVersion: 2,
     sourceGraphSchemaVersion: 1,
-    graph: {
-      settings: graph.settings,
-      nodes,
-      edges: canonicalEdges(graph),
-    },
+    graph: executableGraph,
     runtimePolicies: PHASE3_RUNTIME_POLICIES_V1,
     configMigrations: [],
     compatibilitySelectionFingerprint: selectionFingerprint(
       release,
-      nodes,
+      allExecutableNodes(executableGraph),
       PHASE3_RUNTIME_POLICIES_V1,
     ),
     compatibilityReleaseEpoch: release.epoch,
@@ -954,8 +999,71 @@ function immutableExecutorBehavior(
   };
 }
 
-function authoringNode(raw: Record<string, unknown>): unknown {
-  return {
+interface RawExecutableNodeV2 {
+  readonly raw: Record<string, unknown>;
+  readonly structured?: {
+    readonly raw: Record<string, unknown>;
+    readonly body: RawExecutableGraphV2;
+  };
+}
+
+interface RawExecutableGraphV2 {
+  readonly raw: Record<string, unknown>;
+  readonly nodes: readonly RawExecutableNodeV2[];
+  readonly body: boolean;
+}
+
+function readRawExecutableGraph(
+  value: unknown,
+  body: boolean,
+): RawExecutableGraphV2 {
+  const raw = record(
+    value,
+    body ? 'executable structured body' : 'executable graph',
+  );
+  exactKeys(
+    raw,
+    body
+      ? ['settings', 'nodes', 'edges', 'inputPorts', 'outputPorts']
+      : ['settings', 'nodes', 'edges'],
+  );
+  if (!Array.isArray(raw.nodes)) fail('executable nodes must be an array');
+  const nodes = raw.nodes.map((value, index): RawExecutableNodeV2 => {
+    const node = record(value, `executable node ${String(index)}`);
+    exactKeys(
+      node,
+      [
+        'id',
+        'definition',
+        'configVersion',
+        'config',
+        'inputMappings',
+        'connectionRefs',
+        'disabled',
+        'sideEffectClass',
+        'executor',
+        'executorAbi',
+        'policyReferences',
+      ],
+      ['structured'],
+    );
+    if (node.structured === undefined) return { raw: node };
+    const structured = record(node.structured, 'executable For Each structure');
+    exactKeys(structured, ['kind', 'maxIterations', 'maxConcurrency', 'body']);
+    return {
+      raw: node,
+      structured: {
+        raw: structured,
+        body: readRawExecutableGraph(structured.body, true),
+      },
+    };
+  });
+  return { raw, nodes, body };
+}
+
+function authoringNode(node: RawExecutableNodeV2): unknown {
+  const raw = node.raw;
+  const authoring: Record<string, unknown> = {
     id: raw.id,
     definition: raw.definition,
     position: { x: 0, y: 0 },
@@ -964,6 +1072,30 @@ function authoringNode(raw: Record<string, unknown>): unknown {
     inputMappings: raw.inputMappings,
     connectionRefs: raw.connectionRefs,
     disabled: raw.disabled,
+  };
+  if (node.structured !== undefined) {
+    authoring.structured = {
+      kind: node.structured.raw.kind,
+      maxIterations: node.structured.raw.maxIterations,
+      maxConcurrency: node.structured.raw.maxConcurrency,
+      body: authoringGraph(node.structured.body),
+    };
+  }
+  return authoring;
+}
+
+function authoringGraph(tree: RawExecutableGraphV2): unknown {
+  return {
+    schemaVersion: 1,
+    settings: tree.raw.settings,
+    nodes: tree.nodes.map(authoringNode),
+    edges: tree.raw.edges,
+    ...(tree.body
+      ? {
+          inputPorts: tree.raw.inputPorts,
+          outputPorts: tree.raw.outputPorts,
+        }
+      : {}),
   };
 }
 
@@ -1035,6 +1167,64 @@ function validatePin(
   };
 }
 
+function validateExecutableGraph(
+  tree: RawExecutableGraphV2,
+  graph: WorkflowGraph,
+  admission: RegistryRelease,
+  current: RegistryRelease,
+  alreadyAdmitted: boolean,
+): WorkflowExecutableGraphV2 {
+  assertGraphPorts(graph, admission);
+  assertBranchesDoNotReconverge(graph);
+  const parsedById = new Map(graph.nodes.map((node) => [node.id, node]));
+  const nodes = tree.nodes.map((rawNode) => {
+    if (typeof rawNode.raw.id !== 'string') fail('node ID is invalid');
+    const node = parsedById.get(rawNode.raw.id);
+    if (node === undefined) fail('node is absent from parsed graph');
+    const executable = validatePin(
+      rawNode.raw,
+      node,
+      admission,
+      current,
+      alreadyAdmitted,
+    );
+    if (rawNode.structured === undefined && node.structured === undefined)
+      return executable;
+    if (rawNode.structured === undefined || node.structured === undefined)
+      fail('For Each executable structure does not match its graph');
+    const body = validateExecutableGraph(
+      rawNode.structured.body,
+      node.structured.body,
+      admission,
+      current,
+      alreadyAdmitted,
+    );
+    return {
+      ...executable,
+      structured: {
+        kind: 'for_each' as const,
+        maxIterations: node.structured.maxIterations,
+        maxConcurrency: node.structured.maxConcurrency,
+        body: {
+          ...body,
+          inputPorts: node.structured.body.inputPorts,
+          outputPorts: node.structured.body.outputPorts,
+        },
+      },
+    };
+  });
+  const sortedNodes = [...nodes].sort((left, right) =>
+    compareOrdinal(left.id, right.id),
+  );
+  const sortedEdges = canonicalEdges(graph);
+  if (
+    canonicalJson(nodes) !== canonicalJson(sortedNodes) ||
+    canonicalJson(graph.edges) !== canonicalJson(sortedEdges)
+  )
+    fail('executable graph is not canonically ordered');
+  return { settings: graph.settings, nodes, edges: sortedEdges };
+}
+
 function parseBoundary(input: {
   readonly envelope: unknown;
   readonly admissionRelease: unknown;
@@ -1087,57 +1277,21 @@ function parseBoundary(input: {
     envelope.configMigrations.length
   )
     fail('Phase 3 config migrations must be empty');
-  const rawGraph = record(envelope.graph, 'executable graph');
-  exactKeys(rawGraph, ['settings', 'nodes', 'edges']);
-  if (!Array.isArray(rawGraph.nodes)) fail('executable nodes must be an array');
-  const rawNodes = rawGraph.nodes.map((value, index) => {
-    const node = record(value, `executable node ${String(index)}`);
-    exactKeys(node, [
-      'id',
-      'definition',
-      'configVersion',
-      'config',
-      'inputMappings',
-      'connectionRefs',
-      'disabled',
-      'sideEffectClass',
-      'executor',
-      'executorAbi',
-      'policyReferences',
-    ]);
-    return node;
+  const rawGraph = readRawExecutableGraph(envelope.graph, false);
+  const graph = parseWorkflowGraphForPublish(authoringGraph(rawGraph), {
+    schemaVersion: 1,
+    definitions: admission.definitions.map(({ definition }) => definition),
   });
-  const graph = parseWorkflowGraphForPublish(
-    {
-      schemaVersion: 1,
-      settings: rawGraph.settings,
-      nodes: rawNodes.map(authoringNode),
-      edges: rawGraph.edges,
-    },
-    {
-      schemaVersion: 1,
-      definitions: admission.definitions.map(({ definition }) => definition),
-    },
+  const executableGraph = validateExecutableGraph(
+    rawGraph,
+    graph,
+    admission,
+    current,
+    alreadyAdmitted,
   );
-  const parsedById = new Map(graph.nodes.map((node) => [node.id, node]));
-  const nodes = rawNodes.map((raw) => {
-    if (typeof raw.id !== 'string') fail('node ID is invalid');
-    const node = parsedById.get(raw.id);
-    if (node === undefined) fail('node is absent from parsed graph');
-    return validatePin(raw, node, admission, current, alreadyAdmitted);
-  });
-  const sortedNodes = [...nodes].sort((left, right) =>
-    compareOrdinal(left.id, right.id),
-  );
-  const sortedEdges = canonicalEdges(graph);
-  if (
-    canonicalJson(nodes) !== canonicalJson(sortedNodes) ||
-    canonicalJson(graph.edges) !== canonicalJson(sortedEdges)
-  )
-    fail('executable graph is not canonically ordered');
   const expectedSelection = selectionFingerprint(
     admission,
-    nodes,
+    allExecutableNodes(executableGraph),
     runtimePolicies,
   );
   if (envelope.compatibilitySelectionFingerprint !== expectedSelection)
@@ -1145,7 +1299,7 @@ function parseBoundary(input: {
   return {
     schemaVersion: 2,
     sourceGraphSchemaVersion: 1,
-    graph: { settings: graph.settings, nodes, edges: sortedEdges },
+    graph: executableGraph,
     runtimePolicies,
     configMigrations: [],
     compatibilitySelectionFingerprint: expectedSelection,
