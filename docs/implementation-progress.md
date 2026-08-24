@@ -21,7 +21,7 @@ not complete a phase.
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
-| Phase 5 — orchestration slice | In progress | ADRs 008/017/018; Condition and Switch vertical slices complete through `998d230` with checkpoint V2, scoped execution, fresh-worker/Redis-loss recovery, and staged/active rollout; bounded Parallel is next |
+| Phase 5 — orchestration slice | In progress | ADRs 008/017/018/019; Condition, Switch, bounded Parallel, and Merge vertical slices complete through `67ba800` with checkpoint V2, scoped execution, fresh-worker/Redis-loss recovery, complete-ledger settlement, and staged/active rollout; bounded For Each is next |
 | Phase 6 — V1 providers and triggers | Not started | — |
 | Phase 7 — production operations | Not started | — |
 
@@ -2381,6 +2381,24 @@ Current evidence:
   six-test coordinator consumer integration file, and exact-head CI run
   `32741684377` pass all quality, real-integration, crash, Redis-loss,
   sequential service-loss, and additive rollout gates.
+- ADR 019 and commits `58fcc62`, `d729e01`, `116ad3d`, and `33d60af` add the
+  bounded `core.parallel@1` and `core.merge@1` contracts, publication-time
+  one-to-one topology pairing, stable branch scopes, per-Parallel admission
+  limits, complete persisted join ledgers, canonical settlement, and
+  checkpoint-derived Merge input. Parallel traversal stops at its paired Merge,
+  the Merge invocation removes the branch scope, and production checkpoint and
+  node-run stores accept the bounded pending join state without creating an
+  attempt before settlement.
+- Commit `67ba800` adds Parallel and Merge staging/activation serving cohorts
+  only after their paired recovery fixture passes. The disposable
+  PostgreSQL/BullMQ proof runs `maxConcurrency: 1`, confirms exactly one branch
+  attempt is admitted while both scoped branches remain durable, replays the
+  Parallel delivery, destroys both Redis queues, starts fresh workers, settles
+  the complete canonical ledger, executes Merge from checkpoint-owned input,
+  and reaches terminal success with exactly six attempts. Root `pnpm check`,
+  the seven-test coordinator consumer integration file, and exact-head CI run
+  `32745784487` pass all quality, real-integration, crash, Redis-loss,
+  sequential service-loss, and additive rollout gates.
 
 Incremental publishable slices, in required order:
 
@@ -2388,10 +2406,10 @@ Incremental publishable slices, in required order:
       branch selected and every unreachable branch explicitly skipped.
 - [x] Switch: bounded ordered cases plus default behavior; canonical branch IDs
       and selection independent of canvas or object-key order.
-- [ ] Bounded Parallel: declared branches become ready concurrently while the
+- [x] Bounded Parallel: declared branches become ready concurrently while the
       pinned run/workspace limit bounds admissions and cancellation stops new
       branches.
-- [ ] Merge: explicit `all`, `any`, and bounded `count(n)` policies settle only
+- [x] Merge: explicit `all`, `any`, and bounded `count(n)` policies settle only
       from the complete persisted branch ledger; selected branches use canonical
       branch-ID order and unsatisfied joins fail terminally.
 - [ ] Bounded For Each: one isolated structured DAG body, collection evaluated
