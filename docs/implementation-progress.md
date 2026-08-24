@@ -2304,6 +2304,9 @@ Authority and entry gate:
 - [x] Record ADR 017 before Condition implementation to fix the node contract,
       authoritative port selection, branch reachability/scope, checkpoint V2,
       and pre-Merge reconvergence rejection not specified by ADR 008.
+- [x] Record ADR 018 before Switch implementation to fix bounded scalar
+      matching, ordered first-match behavior, stable case ports, and reuse of
+      the authoritative checkpoint V2 branch-selection path.
 
 Current evidence:
 

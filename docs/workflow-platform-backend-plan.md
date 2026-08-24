@@ -2354,6 +2354,7 @@ Status values are `proposed`, `accepted`, `superseded`, or `rejected`.
 | 015 | Initial SLO, RPO/RTO, hosting region, and recovery strategy                      | production launch        |
 | 016 | Node preview/testing semantics and side-effect disclosure                        | node test API            |
 | 017 | Condition branch selection, reachability, and checkpoint compatibility            | Condition node           |
+| 018 | Switch ordered cases, scalar matching, and stable branch ports                    | Switch node              |
 
 Deferred features receive new ADRs when promoted. Do not pre-author detailed
 ADRs for custom code, approvals, forms, nested workflows, synchronous webhooks,
