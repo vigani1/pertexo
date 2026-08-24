@@ -9,6 +9,7 @@ export {
   connectionTestResponseSchema,
   httpHeadersCredentialSchema,
   slackBotTokenCredentialSchema,
+  resendApiKeyCredentialSchema,
   type ConnectionResponse,
   type ParsedConnectionCreateRequest,
   type ParsedConnectionRotateSecretRequest,

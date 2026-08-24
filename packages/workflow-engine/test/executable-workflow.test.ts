@@ -3362,6 +3362,116 @@ describe('Phase 3 production operations', () => {
     });
   });
 
+  it('settles possibly-dispatched idempotent cancellation as outcome_unknown', async () => {
+    const executable = buildWorkflowExecutableV2({
+      graph: graph(),
+      release: composeExecutableCompatibilityRelease(
+        nodeRelease({ manualRetryClass: 'idempotent-with-key' }),
+      ),
+    });
+    const started = await advanceWorkflow({
+      runId: 'idempotent-canceled-attempt-run',
+      executable,
+      workflowVersionId: 'version-1',
+      checkpoint: createCheckpoint({
+        engineVersion: 'engine-v1',
+        workflowVersionId: 'version-1',
+        iterationBudget: 0,
+      }),
+      occurredAt: '2026-08-20T10:00:00.000Z',
+      maximumAdmissions: 1,
+      observations: [],
+      signal: new AbortController().signal,
+    });
+    const attempt = started.attempts[0];
+    if (attempt === undefined) throw new Error('attempt was not admitted');
+
+    const settled = await advanceWorkflow({
+      runId: 'idempotent-canceled-attempt-run',
+      executable,
+      workflowVersionId: 'version-1',
+      checkpoint: started.checkpoint,
+      occurredAt: '2026-08-20T10:01:00.000Z',
+      maximumAdmissions: 1,
+      observations: [
+        {
+          kind: 'attempt_failure',
+          occurredAt: '2026-08-20T10:00:30.000Z',
+          invocationKey: attempt.invocationKey,
+          attemptId: '00000000-0000-4000-8000-000000000097',
+          attemptNumber: attempt.attemptNumber,
+          failureKind: 'canceled',
+          errorKind: 'canceled',
+          possiblyDispatched: true,
+          safeErrorCode: 'execution.canceled',
+        },
+      ],
+      signal: new AbortController().signal,
+    });
+
+    expect(settled.events.map(({ name }) => name)).toContain(
+      'node.outcome_unknown',
+    );
+    expect(settled.checkpoint.invocations[0]).toMatchObject({
+      status: 'outcome_unknown',
+    });
+  });
+
+  it('preserves an explicit executor outcome_unknown through coordination', async () => {
+    const executable = buildWorkflowExecutableV2({
+      graph: graph(),
+      release: composeExecutableCompatibilityRelease(
+        nodeRelease({ manualRetryClass: 'idempotent-with-key' }),
+      ),
+    });
+    const started = await advanceWorkflow({
+      runId: 'unknown-attempt-run',
+      executable,
+      workflowVersionId: 'version-1',
+      checkpoint: createCheckpoint({
+        engineVersion: 'engine-v1',
+        workflowVersionId: 'version-1',
+        iterationBudget: 0,
+      }),
+      occurredAt: '2026-08-20T10:00:00.000Z',
+      maximumAdmissions: 1,
+      observations: [],
+      signal: new AbortController().signal,
+    });
+    const attempt = started.attempts[0];
+    if (attempt === undefined) throw new Error('attempt was not admitted');
+
+    const settled = await advanceWorkflow({
+      runId: 'unknown-attempt-run',
+      executable,
+      workflowVersionId: 'version-1',
+      checkpoint: started.checkpoint,
+      occurredAt: '2026-08-20T10:01:00.000Z',
+      maximumAdmissions: 1,
+      observations: [
+        {
+          kind: 'attempt_failure',
+          occurredAt: '2026-08-20T10:00:30.000Z',
+          invocationKey: attempt.invocationKey,
+          attemptId: '00000000-0000-4000-8000-000000000096',
+          attemptNumber: attempt.attemptNumber,
+          failureKind: 'outcome_unknown',
+          errorKind: 'authentication',
+          possiblyDispatched: true,
+          safeErrorCode: 'execution.outcome_unknown',
+        },
+      ],
+      signal: new AbortController().signal,
+    });
+
+    expect(settled.events.map(({ name }) => name)).toContain(
+      'node.outcome_unknown',
+    );
+    expect(settled.checkpoint.invocations[0]).toMatchObject({
+      status: 'outcome_unknown',
+    });
+  });
+
   it('rejects an untyped attempt failure observation', async () => {
     const executable = buildWorkflowExecutableV2({
       graph: graph(),

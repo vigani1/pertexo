@@ -1,5 +1,7 @@
 import {
   canonicalOutboxPayloadChecksum,
+  NodeAttemptConnectionFenceError,
+  NodeAttemptDispatchBindingMismatchError,
   NodeAttemptOutputInvalidError,
   type NodeAttemptInputs,
   type NodeAttemptLease,
@@ -23,7 +25,10 @@ import type {
   NodeConnectionRuntime,
   NodeExecutionRuntime,
 } from '@pertexo/node-sdk/server';
-import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
+import {
+  NodeDispatchEvidenceError,
+  NodeExecutorFailure,
+} from '@pertexo/node-sdk/server';
 
 type AttemptDelivery = Extract<
   QueueDelivery,
@@ -139,7 +144,7 @@ async function completeControlOutcome(
   signal: AbortSignal,
   dispatched: boolean,
 ): Promise<NodeAttemptHandlerResult> {
-  const outcomeUnknown = lease.sideEffectClass === 'unsafe' && dispatched;
+  const outcomeUnknown = lease.sideEffectClass !== 'safe' && dispatched;
   const completed = await dependencies.runStore.complete({
     lease,
     outcome: {
@@ -333,15 +338,45 @@ export function createNodeAttemptHandler(
           : {
               providerIdempotencyKey: claimed.lease.providerIdempotencyKey,
             }),
+        ...(claimed.lease.providerDispatchBinding === undefined
+          ? {}
+          : {
+              providerDispatchBinding: claimed.lease.providerDispatchBinding,
+            }),
+        ...(claimed.lease.providerDispatchUnresolved === undefined
+          ? {}
+          : { providerDispatchUnresolved: true as const }),
         ...(connections === undefined ? {} : { connections }),
         ...(artifacts === undefined ? {} : { artifacts }),
-        beforeDispatch: async (): Promise<void> => {
+        beforeDispatch: async (
+          input?: Parameters<NodeExecutionRuntime['beforeDispatch']>[0],
+        ): Promise<void> => {
           if (dispatched)
             throw new NodeAttemptHandlerStateError('duplicate_dispatch');
-          await dependencies.runStore.markDispatched({
-            lease: claimed.lease,
-            signal: executionSignal,
-          });
+          try {
+            await dependencies.runStore.markDispatched({
+              lease: claimed.lease,
+              ...(input?.connectionFence === undefined
+                ? {}
+                : { connectionFence: input.connectionFence }),
+              ...(input?.providerDispatchBinding === undefined
+                ? {}
+                : {
+                    providerDispatchBinding: input.providerDispatchBinding,
+                  }),
+              signal: executionSignal,
+            });
+          } catch (error: unknown) {
+            if (error instanceof NodeAttemptConnectionFenceError)
+              throw new NodeDispatchEvidenceError(
+                'provider_connection_fence_failed',
+              );
+            if (error instanceof NodeAttemptDispatchBindingMismatchError)
+              throw new NodeDispatchEvidenceError(
+                'provider_dispatch_binding_mismatch',
+              );
+            throw error;
+          }
           dispatched = true;
         },
       });

@@ -1,6 +1,6 @@
 # Backend Implementation Progress
 
-Last updated: 2026-08-24
+Last updated: 2026-08-25
 
 This file tracks delivery against
 [the authoritative backend plan](./workflow-platform-backend-plan.md). A phase
@@ -22,7 +22,7 @@ not complete a phase.
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 5 — orchestration slice | Complete | ADRs 008/017/018/019/020/021/022; implementation through `9d7e071`; migration head `0034_run_failure_notifications.sql`; 862 unit assertions and complete real-service/recovery matrix; independent fixed-head Spec and Standards completion GO |
-| Phase 6 — V1 providers and triggers | In progress | ADR 023; Slack `slack.send_message@1` ABI 2 is active at retained epoch 18 after staged epoch 17 proof; email, destinations, Webhook, and Schedule remain |
+| Phase 6 — V1 providers and triggers | In progress | ADRs 023–024; Slack `slack.send_message@1` and email `email.send_notification@1` ABI 2 are active at retained epochs 18 and 20 after staged epochs 17 and 19; destinations, Webhook, and Schedule remain |
 | Phase 7 — production operations | Not started | — |
 
 The `0A`–`0E` checkpoints are implementation-sized subdivisions of the plan's
@@ -2710,7 +2710,7 @@ Authority and sequencing:
 - [x] Complete Slack `send_message` as one staged then active provider slice.
 - [x] Accept ADR 024 for the Resend-backed email action's published contract,
       credential form, disclosure-gated test, and bounded idempotency window.
-- [ ] Complete email `send_notification` as one staged then active provider
+- [x] Complete email `send_notification` as one staged then active provider
       slice.
 - [ ] Add versioned Slack and email destinations behind ADR 022 without changing
       terminal run truth or introducing notification nodes.
@@ -2743,20 +2743,21 @@ Slack `send_message` completion gates:
 
 Email `send_notification` completion gates:
 
-- [ ] Add browser-safe strict config/input/output contracts, manifest identity,
+- [x] Add browser-safe strict config/input/output contracts, manifest identity,
       server-only Resend executor, stable safe errors, telemetry, and redaction.
-- [ ] Extend connection contracts and persistence with workspace-scoped
+- [x] Extend connection contracts and persistence with workspace-scoped
       `email`/`resend_api_key` creation, rotation, revocation, current-version
       fencing, audit, and disclosure-gated test-recipient delivery.
-- [ ] Prove fixed-origin bounded requests, stable identical idempotency keys and
-      payloads, disabled redirects and hidden retries, response/error bounds,
-      definite refusal, 429/concurrent retry, and ambiguous transport retry.
-- [ ] Prove offline validation and disclosure-gated real preview execution with
+- [x] Prove fixed-origin bounded requests, stable identical idempotency keys and
+      payloads, durable provider-dispatch binding across attempts, disabled
+      redirects and hidden retries, response/error bounds, definite refusal,
+      429/concurrent retry, and ambiguous transport retry.
+- [x] Prove offline validation and disclosure-gated real preview execution with
       no production run, checkpoint, usage, or trigger-state mutation.
-- [ ] Prove production attempt execution, duplicate delivery, crash boundaries,
+- [x] Prove production attempt execution, duplicate delivery, crash boundaries,
       Redis loss, PostgreSQL failure, drain, credential rotation/revocation, and
       safe observability with a controllable Resend double and real services.
-- [ ] Add staged and active compatibility releases only after every preceding
+- [x] Add staged and active compatibility releases only after every preceding
       email gate passes; retain all older releases and verify API/worker overlap.
 
 Phase-wide completion gates:
@@ -2820,8 +2821,90 @@ Current evidence:
   sending-only domain-restricted API keys, a documented test recipient, UUID
   responses, bounded 256-character idempotency keys, identical-response replay,
   and 24-hour idempotency retention. ADR 024 limits automatic retries to the
-  much shorter accepted engine V1 retry horizon. No email manifest or executor
-  is serving yet.
+  much shorter accepted engine V1 retry horizon.
+- The strict browser-safe email contract permits one normalized ASCII mailbox,
+  bounded subject and plain text, one `resend_api_key` connection, and no HTML,
+  attachments, extra recipients, dynamic sender, or arbitrary endpoint. The
+  server-only client issues only `POST https://api.resend.com/emails`, disables
+  redirects and hidden retries, caps responses at 65,536 bytes, clears request
+  and response bytes, and preserves the stable engine idempotency key. Twenty-four
+  focused integration-package assertions cover exact request bytes, credential
+  fencing and zeroing, cancellation, 429 and concurrent-request retry, ambiguous
+  transport retry, and definite 400/401/403/422 and invalid-key refusal. They
+  also prove identical binding/key/payload replay after a post-dispatch crash,
+  fail-closed secret-version mismatch before provider bytes, first-attempt
+  rotation/revocation refusal, historical ambiguity after prior dispatch, and
+  bounded binding-mismatch identity across the real Secure HTTP boundary while
+  generic dispatch-marker infrastructure failure remains retryable. Historical
+  ambiguity is a separate derived runtime fact rather than an inference from the
+  persisted identity binding: repeated definite 429 retries remain retryable and
+  never become falsely unknown.
+- Public connection contracts now admit only the `email`/`resend_api_key`
+  pairing and require an explicit side-effect disclosure for testing. The test
+  path sends a fixed bounded message only to `delivered@resend.dev` through the
+  production client, derives its provider key from both connection ID and
+  command key, and persists only bounded safe health state. Dispatched claims
+  survive abandonment and age and cannot be reclaimed; callers must use a new
+  command key for a deliberate new send. Migration
+  `0036_resend_api_key_connections.sql` extends the existing auth-type
+  constraint and adds bounded format-constrained non-secret dispatch bindings
+  to logical node runs and preview attempts with narrow worker update grants.
+  Fourteen focused real PostgreSQL assertions prove clean creation, encrypted
+  rotation, revocation, current-version fencing, audit, fail-closed stale
+  dispatched claims, the supported `0020` upgrade, and the exact
+  `0035`-to-`0036` prior-head path on disposable databases.
+- Retained releases 19/20 stage then activate email without removing any older
+  release. Catalog tests prove staged non-serving and active execution cohorts,
+  all 20 unique fingerprints, and API/worker overlap. The additive rollout proof
+  preactivated both roles for every retained transition through epoch 20 and
+  passed in 2.78 seconds.
+- The production node-attempt fixture executes HTTP, Slack, then email through
+  real PostgreSQL, Redis, BullMQ, encrypted just-in-time credential access, and
+  the artifact boundary. Its direct recovery path commits an ambiguous first
+  dispatch, lets the coordinator and due-wakeup scanner admit attempt two, and
+  proves exact provider-key, payload, and persisted-binding reuse before success.
+  A second email path rotates the credential after its ambiguous first dispatch;
+  attempt two then records explicit `outcome_unknown` without dispatch evidence
+  or provider bytes, and the coordinator preserves that terminal truth. The same
+  fixture proves inert exact redelivery, bounded output, drain, and absence of
+  both API keys, sender, recipient, subject, and text from durable and queue
+  surfaces. The direct production-preview invoker also executes the active email
+  cohort with the same binding and current-version fence. Focused production and
+  preview PostgreSQL transitions prove historical binding hydration, first bind,
+  same-binding replay, rotated-binding rejection, and atomic active/current
+  connection fencing under rotation and revocation immediately before dispatch.
+  The marker transaction also uses a narrowly executable provider-neutral fence
+  function to join and lock the workspace and connection in workspace-first
+  order; suspended workspaces fail before binding or marker persistence without
+  granting the worker workspace-update authority.
+- Post-dispatch cancellation and deadline classification now treats every
+  non-safe attempt, including `idempotent_with_key`, as `outcome_unknown` when
+  dispatch may have occurred and control prevents retry/reconciliation. Safe
+  cancellation remains canceled, and pre-dispatch failures retain their
+  definite classification.
+- Verification on 2026-08-25: `pnpm check` passes formatting, builds, lint,
+  generated-contract drift, typechecks, and 916 unit assertions; focused
+  integration-package tests pass 116 assertions.
+  A fresh disposable PostgreSQL 18 database migrated all 37 revisions from zero
+  through `0036`; the complete sequential real-service matrix passed 257
+  database, 22 worker, seven API, and two artifact-store assertions. The focused
+  exact-prior-head connection suite passed 14 assertions, and the additive
+  rollout passed one assertion. All test-created databases were dropped; the
+  dedicated gate database is removed after final verification. PostgreSQL,
+  Redis, and the artifact store remained healthy. Phase 6 remains in progress
+  because failure-notification destinations, Webhook, and Schedule are not
+  implemented.
+- Blocker-fix verification on 2026-08-25: focused production/preview/connection
+  PostgreSQL suites passed 72 assertions, including the exact prior-head
+  migration, worker grants, binding hydration, and connection-marker races.
+  Focused worker tests passed 41 assertions, the workflow-engine regression file
+  passed 51 assertions, and the flagged real worker recovery path passed one
+  assertion on a fresh 37-migration database in 7.04 seconds, including durable
+  `pending` to `retry` coordination after a definite 429 and a successful second
+  claim without false ambiguity. The production and preview PostgreSQL marker
+  tests additionally prove suspended-workspace refusal, unchanged binding/marker
+  state, active-workspace success, and unresolved-state hydration without adding
+  a persisted secret or ambiguity column. No commit or push was made.
 
 ## Later Phases
 

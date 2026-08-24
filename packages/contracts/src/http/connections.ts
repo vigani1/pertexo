@@ -2,10 +2,11 @@ import { z } from 'zod';
 
 export const connectionIdentifierSchema = z.uuid();
 export const connectionSecretVersionIdentifierSchema = z.uuid();
-export const connectionProviderKeySchema = z.enum(['http', 'slack']);
+export const connectionProviderKeySchema = z.enum(['http', 'slack', 'email']);
 export const connectionAuthTypeSchema = z.enum([
   'http_headers',
   'slack_bot_token',
+  'resend_api_key',
 ]);
 export const connectionStatusSchema = z.enum([
   'active',
@@ -40,6 +41,19 @@ const prohibitedConnectionHeaders = new Set([
   'transfer-encoding',
   'upgrade',
 ]);
+const unsafeMailboxCharacters = [
+  '(',
+  ')',
+  ',',
+  ':',
+  ';',
+  '<',
+  '>',
+  '[',
+  ']',
+  '"',
+  '\\',
+] as const;
 
 function utf8ByteLength(value: string): number {
   let bytes = 0;
@@ -127,9 +141,52 @@ export const slackBotTokenCredentialSchema = z
   .strict()
   .readonly();
 
+const emailMailboxSchema = z
+  .string()
+  .min(3)
+  .max(254)
+  .refine((value) => /^[\x21-\x7e]+$/u.test(value))
+  .refine((value) => {
+    if (unsafeMailboxCharacters.some((character) => value.includes(character)))
+      return false;
+    const at = value.indexOf('@');
+    if (at < 1 || at !== value.lastIndexOf('@')) return false;
+    const local = value.slice(0, at);
+    const labels = value.slice(at + 1).split('.');
+    return (
+      local.length <= 64 &&
+      /^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*$/u.test(
+        local,
+      ) &&
+      labels.length >= 2 &&
+      labels.every((label) =>
+        /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/u.test(label),
+      )
+    );
+  })
+  .overwrite((value) => {
+    const at = value.indexOf('@');
+    return `${value.slice(0, at)}@${value.slice(at + 1).toLowerCase()}`;
+  });
+
+export const resendApiKeyCredentialSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    type: z.literal('resend_api_key'),
+    apiKey: z
+      .string()
+      .min(8)
+      .max(512)
+      .regex(/^re_[A-Za-z0-9_-]+$/u),
+    fromEmail: emailMailboxSchema,
+  })
+  .strict()
+  .readonly();
+
 export const connectionCredentialSchema = z.discriminatedUnion('type', [
   httpHeadersCredentialSchema,
   slackBotTokenCredentialSchema,
+  resendApiKeyCredentialSchema,
 ]);
 
 export const connectionCreateRequestSchema = z.discriminatedUnion(
@@ -140,6 +197,14 @@ export const connectionCreateRequestSchema = z.discriminatedUnion(
         providerKey: z.literal('http'),
         name: connectionNameSchema,
         credential: httpHeadersCredentialSchema,
+      })
+      .strict()
+      .readonly(),
+    z
+      .object({
+        providerKey: z.literal('email'),
+        name: connectionNameSchema,
+        credential: resendApiKeyCredentialSchema,
       })
       .strict()
       .readonly(),
@@ -185,9 +250,18 @@ const slackConnectionTestRequestSchema = z
   .strict()
   .readonly();
 
+const emailConnectionTestRequestSchema = z
+  .object({
+    providerKey: z.literal('email'),
+    sideEffectDisclosureAccepted: z.literal(true),
+  })
+  .strict()
+  .readonly();
+
 export const connectionTestRequestSchema = z.union([
   httpConnectionTestRequestSchema,
   slackConnectionTestRequestSchema,
+  emailConnectionTestRequestSchema,
 ]);
 
 export const connectionResponseSchema = z

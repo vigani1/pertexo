@@ -62,6 +62,8 @@ const safeResponseHeaders = new Set([
 
 export const SECURE_HTTP_ERROR_CODE = Object.freeze({
   canceled: 'canceled',
+  connectionFenceFailed: 'connection_fence_failed',
+  dispatchBindingMismatch: 'dispatch_binding_mismatch',
   dispatchEvidenceFailed: 'dispatch_evidence_failed',
   dnsFailed: 'dns_failed',
   invalidRequest: 'invalid_request',

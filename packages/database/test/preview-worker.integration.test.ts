@@ -106,6 +106,18 @@ async function withOwnerRole<T>(
   }
 }
 
+async function withAdmin<T>(work: (client: Pool) => Promise<T>): Promise<T> {
+  const client = new Pool({
+    connectionString: databaseUrl(adminUrl),
+    max: 1,
+  });
+  try {
+    return await work(client);
+  } finally {
+    await client.end();
+  }
+}
+
 async function insertIdentity(): Promise<void> {
   return withOwnerRole(async (client) => {
     await client.query(
@@ -1161,12 +1173,136 @@ describe('worker-side preview execution seam', () => {
     });
     expect(beat.attemptLeaseExpiresAt.getTime()).toBeGreaterThan(Date.now());
     expect(beat.runExpiresAt.getTime()).toBeGreaterThan(Date.now());
+    const connectionId = randomUUID();
+    const secretVersionId = randomUUID();
+    const nextSecretVersionId = randomUUID();
+    await withOwnerRole(async (client) => {
+      await client.query("select set_config('app.workspace_id',$1,true)", [
+        workspaceId,
+      ]);
+      await client.query(
+        `insert into app.connections (
+           id,workspace_id,provider_key,name,auth_type,status,
+           current_secret_version_id,created_by
+         ) values ($1,$2,'email',$3,'resend_api_key','active',$4,$5)`,
+        [
+          connectionId,
+          workspaceId,
+          `Preview fence ${connectionId}`,
+          secretVersionId,
+          actorUserId,
+        ],
+      );
+      await client.query(
+        `insert into app.connection_secret_versions (
+           id,workspace_id,connection_id,schema_version,kms_key_reference,
+           encrypted_data_key,ciphertext,nonce,auth_tag,created_by
+         ) values ($1,$2,$3,1,'kms','a','a',$4,$5,$6)`,
+        [
+          secretVersionId,
+          workspaceId,
+          connectionId,
+          'a'.repeat(16),
+          'a'.repeat(22),
+          actorUserId,
+        ],
+      );
+    });
+    const connectionFence = {
+      connectionId,
+      expectedProviderKey: 'email',
+      expectedAuthType: 'resend_api_key',
+      secretVersionId,
+    } as const;
+    await withAdmin((client) =>
+      client.query(`update app.workspaces set status='suspended' where id=$1`, [
+        workspaceId,
+      ]),
+    );
     await expect(
       markPreviewDispatched(workerPool, {
         lease: second.lease,
+        connectionFence,
+        providerDispatchBinding: 'email:v1:sha256:' + 'c'.repeat(64),
+        workerId: second.workerId,
+      }),
+    ).rejects.toMatchObject({ code: 'connection_fence_failed' });
+    await withAdmin((client) =>
+      client.query(`update app.workspaces set status='active' where id=$1`, [
+        workspaceId,
+      ]),
+    );
+    await expect(
+      withAdmin(async (client) => {
+        const evidence = await client.query<{
+          dispatch_marked_at: Date | null;
+          provider_dispatch_binding: string | null;
+        }>(
+          `select dispatch_marked_at,provider_dispatch_binding
+           from app.preview_attempts where workspace_id=$1 and id=$2`,
+          [workspaceId, second.lease.previewAttemptId],
+        );
+        return evidence.rows[0];
+      }),
+    ).resolves.toEqual({
+      dispatch_marked_at: null,
+      provider_dispatch_binding: null,
+    });
+    await expect(
+      markPreviewDispatched(workerPool, {
+        lease: second.lease,
+        connectionFence,
+        providerDispatchBinding: 'email:v1:sha256:' + 'c'.repeat(64),
         workerId: second.workerId,
       }),
     ).resolves.toBe('committed');
+    await expect(
+      markPreviewDispatched(workerPool, {
+        lease: second.lease,
+        connectionFence,
+        providerDispatchBinding: 'email:v1:sha256:' + 'c'.repeat(64),
+        workerId: second.workerId,
+      }),
+    ).resolves.toBe('committed');
+    await expect(
+      markPreviewDispatched(workerPool, {
+        lease: second.lease,
+        providerDispatchBinding: 'email:v1:sha256:' + 'd'.repeat(64),
+        workerId: second.workerId,
+      }),
+    ).rejects.toMatchObject({ code: 'dispatch_binding_mismatch' });
+    await withOwnerRole(async (client) => {
+      await client.query("select set_config('app.workspace_id',$1,true)", [
+        workspaceId,
+      ]);
+      await client.query(
+        `insert into app.connection_secret_versions (
+           id,workspace_id,connection_id,schema_version,kms_key_reference,
+           encrypted_data_key,ciphertext,nonce,auth_tag,created_by
+         ) values ($1,$2,$3,1,'kms','b','b',$4,$5,$6)`,
+        [
+          nextSecretVersionId,
+          workspaceId,
+          connectionId,
+          'b'.repeat(16),
+          'b'.repeat(22),
+          actorUserId,
+        ],
+      );
+      await client.query(
+        `update app.connections set current_secret_version_id=$3
+         where workspace_id=$1 and id=$2`,
+        [workspaceId, connectionId, nextSecretVersionId],
+      );
+    });
+    await expect(
+      markPreviewDispatched(workerPool, {
+        lease: second.lease,
+        connectionFence,
+        providerDispatchBinding: 'email:v1:sha256:' + 'c'.repeat(64),
+        workerId: second.workerId,
+      }),
+    ).rejects.toMatchObject({ code: 'connection_fence_failed' });
   });
 
   it('reconciles expired attempts by dispatch evidence and side-effect class', async () => {
@@ -1245,8 +1381,13 @@ describe('worker-side preview execution seam', () => {
       'worker-preview-keyed',
       5,
     );
+    const providerDispatchBinding = 'email:v1:sha256:' + 'e'.repeat(64);
+    expect(
+      idempotentAfterDispatch.lease.providerDispatchUnresolved,
+    ).toBeUndefined();
     await markPreviewDispatched(workerPool, {
       lease: idempotentAfterDispatch.lease,
+      providerDispatchBinding,
       workerId: idempotentAfterDispatch.workerId,
     });
     await expireLease(idempotentAfterDispatch.fixture.previewAttemptId);
@@ -1264,6 +1405,10 @@ describe('worker-side preview execution seam', () => {
     expect(reclaimedIdempotent.lease.providerIdempotencyKey).toBe(
       idempotentAfterDispatch.lease.providerIdempotencyKey,
     );
+    expect(reclaimedIdempotent.lease.providerDispatchBinding).toBe(
+      providerDispatchBinding,
+    );
+    expect(reclaimedIdempotent.lease.providerDispatchUnresolved).toBe(true);
 
     const runs = await scopedQuery<{
       id: string;

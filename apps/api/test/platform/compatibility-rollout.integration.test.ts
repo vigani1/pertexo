@@ -696,6 +696,8 @@ describe.runIf(enabled)('additive compatibility release rollout', () => {
         'wait_activation',
         'slack_staging',
         'slack_activation',
+        'email_staging',
+        'email_activation',
       ];
       for (const cohort of remainingCohorts) {
         const rollout = createExecutableCompatibilityReleaseSupport(

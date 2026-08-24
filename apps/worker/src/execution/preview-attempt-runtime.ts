@@ -264,17 +264,17 @@ function classifyExecutorFailure(
   }>,
 ): PreviewInvocationOutcome {
   if (error instanceof NodeExecutorFailure) {
-    const unsafePossibleDispatch =
-      error.possiblyDispatched && sideEffectClass === 'unsafe';
+    const nonSafePossibleDispatch =
+      error.possiblyDispatched && sideEffectClass !== 'safe';
     switch (error.kind) {
       case 'canceled':
-        return unsafePossibleDispatch
+        return nonSafePossibleDispatch
           ? outcomes.unknownWith()
           : outcomes.canceledWith();
       case 'outcome_unknown':
         return outcomes.unknownWith();
       case 'retry':
-        return unsafePossibleDispatch
+        return nonSafePossibleDispatch
           ? outcomes.unknownWith()
           : outcomes.failedWith(`preview.${error.errorKind}`);
       case 'failed':

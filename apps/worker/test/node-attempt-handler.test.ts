@@ -218,6 +218,7 @@ describe('NodeAttemptHandler', () => {
       ...lease(),
       sideEffectClass: 'idempotent_with_key' as const,
       providerIdempotencyKey: 'provider-attempt-key',
+      providerDispatchUnresolved: true as const,
     };
     const order: string[] = [];
     const markDispatched = vi
@@ -285,9 +286,18 @@ describe('NodeAttemptHandler', () => {
           attemptNumber: 1,
           sideEffectClass: 'idempotent_with_key',
           providerIdempotencyKey: 'provider-attempt-key',
+          providerDispatchUnresolved: true,
           connections,
         });
-        await request.runtime?.beforeDispatch();
+        await request.runtime?.beforeDispatch({
+          connectionFence: {
+            connectionId: '11111111-1111-4111-8111-111111111111',
+            expectedProviderKey: 'email',
+            expectedAuthType: 'resend_api_key',
+            secretVersionId: '22222222-2222-4222-8222-222222222222',
+          },
+          providerDispatchBinding: 'email:v1:sha256:' + 'a'.repeat(64),
+        });
         order.push('provider-io');
         return { kind: 'succeeded', output: { status: 204 } };
       },
@@ -313,6 +323,17 @@ describe('NodeAttemptHandler', () => {
     ).resolves.toEqual({ kind: 'committed' });
     expect(order).toEqual(['executor-start', 'dispatch-marker', 'provider-io']);
     expect(markDispatched).toHaveBeenCalledOnce();
+    expect(markDispatched).toHaveBeenCalledWith(
+      expect.objectContaining({
+        connectionFence: {
+          connectionId: '11111111-1111-4111-8111-111111111111',
+          expectedProviderKey: 'email',
+          expectedAuthType: 'resend_api_key',
+          secretVersionId: '22222222-2222-4222-8222-222222222222',
+        },
+        providerDispatchBinding: 'email:v1:sha256:' + 'a'.repeat(64),
+      }),
+    );
     expect(complete).toHaveBeenCalledWith(
       expect.objectContaining({
         outcome: { status: 'succeeded', output: { status: 204 } },
@@ -574,10 +595,16 @@ describe('NodeAttemptHandler', () => {
     ['timed_out', 'unsafe', 'outcome_unknown', 'execution.outcome_unknown'],
     ['canceled', 'safe', 'canceled', 'execution.canceled'],
     [
+      'canceled',
+      'idempotent_with_key',
+      'outcome_unknown',
+      'execution.outcome_unknown',
+    ],
+    [
       'timed_out',
       'idempotent_with_key',
-      'timed_out',
-      'execution.deadline_exceeded',
+      'outcome_unknown',
+      'execution.outcome_unknown',
     ],
   ] as const)(
     'classifies post-dispatch durable %s for %s work as %s',

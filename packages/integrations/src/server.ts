@@ -47,6 +47,16 @@ export {
 } from './http/outcome-policy.js';
 export { createSlackClient, SLACK_API_ENDPOINTS } from './slack/client.js';
 export type { SlackApiResult, SlackClient } from './slack/client.js';
+export { createResendClient, RESEND_API_ENDPOINT } from './email/client.js';
+export type { ResendApiResult, ResendClient } from './email/client.js';
+export {
+  createEmailSendNotificationExecutorRegistration,
+  EmailSendNotificationExecutorError,
+} from './email/executor.js';
+export type {
+  EmailSendNotificationExecutorDependencies,
+  EmailSendNotificationExecutorTelemetry,
+} from './email/executor.js';
 export {
   createSlackSendMessageExecutorRegistration,
   SlackSendMessageExecutorError,

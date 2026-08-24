@@ -1558,15 +1558,13 @@ export async function advanceWorkflow(
         node === undefined
       )
         operationError('observation_invalid', 'attempt failure is stale');
-      const unsafeUnknown =
-        node.sideEffectClass === 'unsafe' &&
-        failure.possiblyDispatched &&
-        failure.failureKind !== 'failed';
+      const nonSafeUnknown =
+        node.sideEffectClass !== 'safe' && failure.possiblyDispatched;
       if (controlCanceled || controlDeadline) {
         return {
           kind: 'outcome',
           invocationKey: failure.invocationKey,
-          status: unsafeUnknown
+          status: nonSafeUnknown
             ? 'outcome_unknown'
             : controlCanceled
               ? 'canceled'
@@ -1575,11 +1573,20 @@ export async function advanceWorkflow(
           coordinatorDerived: true,
         };
       }
+      if (failure.failureKind === 'outcome_unknown') {
+        return {
+          kind: 'outcome',
+          invocationKey: failure.invocationKey,
+          status: 'outcome_unknown',
+          reasonCode: failure.safeErrorCode,
+          coordinatorDerived: true,
+        };
+      }
       if (failure.failureKind === 'canceled') {
         return {
           kind: 'outcome',
           invocationKey: failure.invocationKey,
-          status: unsafeUnknown ? 'outcome_unknown' : 'canceled',
+          status: nonSafeUnknown ? 'outcome_unknown' : 'canceled',
           reasonCode: failure.safeErrorCode,
           coordinatorDerived: true,
         };

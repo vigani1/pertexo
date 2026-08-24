@@ -10,6 +10,7 @@ import {
   createAwsConnectionEnvelopeEncryption,
   createNodeSecureHttpClient,
   createSlackClient,
+  createResendClient,
   type AwsConnectionEnvelopeEncryptionRuntime,
 } from '@pertexo/integrations/server';
 
@@ -20,6 +21,7 @@ import {
   type ConnectionSecretEncryptionPort,
   type ConnectionHttpClient,
   type ConnectionSlackClient,
+  type ConnectionEmailClient,
   type ConnectionTelemetry,
 } from '../../connections/index.js';
 import type { ApiIdentityRuntime } from '../identity/identity-runtime.module.js';
@@ -36,6 +38,7 @@ export type ApiConnectionRuntimeOverrides = Readonly<{
   telemetry?: ConnectionTelemetry;
   httpClient?: ConnectionHttpClient;
   slackClient?: ConnectionSlackClient;
+  emailClient?: ConnectionEmailClient;
 }>;
 
 export function createApiConnectionRuntime(
@@ -69,6 +72,7 @@ export function createApiConnectionRuntime(
       encryption,
       httpClient,
       slackClient: overrides.slackClient ?? createSlackClient(httpClient),
+      emailClient: overrides.emailClient ?? createResendClient(httpClient),
       telemetry,
     }),
     close: (): Promise<void> => {

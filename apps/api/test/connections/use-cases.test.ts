@@ -9,6 +9,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type {
   ConnectionCommandPersistence,
   ConnectionHttpClient,
+  ConnectionEmailClient,
   ConnectionSlackClient,
   ConnectionTestPersistence,
 } from '../../src/connections/ports.js';
@@ -463,6 +464,112 @@ describe('connection application use cases', () => {
     expect(authTest).toHaveBeenCalledOnce();
     expect(plaintext.every((byte) => byte === 0)).toBe(true);
   });
+
+  it('tests Resend only after disclosure with one fixed message and stable provider key', async () => {
+    const emailRecord = record({
+      providerKey: 'email',
+      authType: 'resend_api_key',
+      name: 'Transactional email',
+    });
+    const store = testPersistence({
+      resolveConnectionTestSecret: vi.fn(() =>
+        Promise.resolve({ connection: emailRecord, secretVersionId, sealed }),
+      ),
+      completeConnectionTest: vi.fn<
+        ConnectionTestPersistence['completeConnectionTest']
+      >((input) =>
+        Promise.resolve({ connection: emailRecord, outcome: input.outcome }),
+      ),
+    });
+    const plaintext = new TextEncoder().encode(
+      JSON.stringify({
+        schemaVersion: 1,
+        type: 'resend_api_key',
+        apiKey: 're_123456789_secret',
+        fromEmail: 'Sender@Example.COM',
+      }),
+    );
+    const sendNotification = vi.fn<ConnectionEmailClient['sendNotification']>(
+      async (input) => {
+        expect(input).toMatchObject({
+          apiKey: 're_123456789_secret',
+          fromEmail: 'Sender@example.com',
+          toEmail: 'delivered@resend.dev',
+          subject: 'Pertexo Resend connection test',
+          text: 'This message verifies a Pertexo Resend sending connection.',
+          timeoutMillis: 15_000,
+        });
+        expect(input.idempotencyKey).toBe(
+          'pertexo-connection-test-v1-36c369e31f137800ce05532683713337647e2ee5f72338fcb09f7fab95e1f5e6',
+        );
+        await input.beforeDispatch();
+        return {
+          kind: 'succeeded',
+          emailId: '49b9a1e5-3f0c-4e68-882d-fbc91c0d4ec2',
+        };
+      },
+    );
+    const useCase = new TestConnectionUseCase(
+      store,
+      authorization(),
+      { seal: vi.fn(), open: vi.fn(() => Promise.resolve(plaintext)) },
+      { execute: vi.fn() },
+      undefined,
+      undefined,
+      { sendNotification },
+    );
+    const command = {
+      actor,
+      routeWorkspaceId: workspaceId,
+      connectionId,
+      idempotencyKey: 'test-email-stable',
+    };
+
+    await expect(
+      useCase.execute({
+        ...command,
+        request: {
+          providerKey: 'email',
+          sideEffectDisclosureAccepted: true,
+        },
+      }),
+    ).resolves.toMatchObject({ outcome: { ok: true, httpStatus: 200 } });
+    expect(sendNotification).toHaveBeenCalledOnce();
+    expect(store.markConnectionTestDispatched).toHaveBeenCalledOnce();
+    expect(plaintext.every((byte) => byte === 0)).toBe(true);
+  });
+
+  it.each([
+    { providerKey: 'email' },
+    { providerKey: 'email', sideEffectDisclosureAccepted: false },
+  ])(
+    'rejects email test disclosure %j before claim, secret open, or dispatch',
+    async (request) => {
+      const store = testPersistence();
+      const open = vi.fn();
+      const sendNotification = vi.fn();
+      await expect(
+        new TestConnectionUseCase(
+          store,
+          authorization(),
+          { seal: vi.fn(), open },
+          { execute: vi.fn() },
+          undefined,
+          undefined,
+          { sendNotification },
+        ).execute({
+          actor,
+          routeWorkspaceId: workspaceId,
+          connectionId,
+          idempotencyKey: 'test-email-disclosure',
+          request,
+        }),
+      ).rejects.toBeDefined();
+      expect(store.startConnectionTest).not.toHaveBeenCalled();
+      expect(open).not.toHaveBeenCalled();
+      expect(sendNotification).not.toHaveBeenCalled();
+    },
+  );
 
   it('denies a viewer before claiming or decrypting a connection test', async () => {
     const store = testPersistence();

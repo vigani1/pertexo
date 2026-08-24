@@ -655,6 +655,9 @@ export const nodeRuns = appSchema.table(
     providerIdempotencyKey: varchar('provider_idempotency_key', {
       length: 256,
     }),
+    providerDispatchBinding: varchar('provider_dispatch_binding', {
+      length: 128,
+    }),
     inputRef: jsonb('input_ref'),
     outputRef: jsonb('output_ref'),
     currentAttemptId: uuid('current_attempt_id'),
@@ -852,6 +855,9 @@ export const previewAttempts = appSchema.table(
     sideEffectClass: varchar('side_effect_class', { length: 32 }).notNull(),
     providerIdempotencyKey: varchar('provider_idempotency_key', {
       length: 256,
+    }),
+    providerDispatchBinding: varchar('provider_dispatch_binding', {
+      length: 128,
     }),
     leaseOwner: varchar('lease_owner', { length: 128 }),
     leaseExpiresAt: timestamp('lease_expires_at', {

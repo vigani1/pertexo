@@ -150,9 +150,21 @@ export interface NodeExecutionRuntime {
   readonly invocationKey: string;
   readonly sideEffectClass: NodeSideEffectClass;
   readonly providerIdempotencyKey?: string;
+  readonly providerDispatchBinding?: string;
+  readonly providerDispatchUnresolved?: true;
   readonly connections?: NodeConnectionRuntime;
   readonly artifacts?: NodeArtifactRuntime;
-  beforeDispatch(): Promise<void>;
+  beforeDispatch(
+    input?: Readonly<{
+      connectionFence?: Readonly<{
+        connectionId: string;
+        expectedProviderKey: string;
+        expectedAuthType: string;
+        secretVersionId: string;
+      }>;
+      providerDispatchBinding?: string;
+    }>,
+  ): Promise<void>;
 }
 
 export type NodeExecutionHandler<Config, Input, Output> = (
@@ -252,7 +264,9 @@ export type NodeErrorCode =
   | 'invalid_json'
   | 'runtime_required'
   | 'dispatch_evidence_missing'
-  | 'duplicate_dispatch';
+  | 'duplicate_dispatch'
+  | 'provider_connection_fence_failed'
+  | 'provider_dispatch_binding_mismatch';
 
 export class NodeSdkError extends Error {
   constructor(
@@ -341,7 +355,13 @@ export class NodeExecutionRuntimeRequiredError extends NodeSdkError {
 }
 
 export class NodeDispatchEvidenceError extends NodeSdkError {
-  constructor(code: 'dispatch_evidence_missing' | 'duplicate_dispatch') {
+  constructor(
+    code:
+      | 'dispatch_evidence_missing'
+      | 'duplicate_dispatch'
+      | 'provider_connection_fence_failed'
+      | 'provider_dispatch_binding_mismatch',
+  ) {
     super(code, `node provider dispatch evidence failed: ${code}`);
     this.name = 'NodeDispatchEvidenceError';
   }
@@ -873,10 +893,12 @@ export function createNodeRegistry(options: NodeRegistryOptions): NodeRegistry {
         ? undefined
         : Object.freeze({
             ...request.runtime,
-            beforeDispatch: async (): Promise<void> => {
+            beforeDispatch: async (
+              input?: Parameters<NodeExecutionRuntime['beforeDispatch']>[0],
+            ): Promise<void> => {
               if (dispatchCount !== 0)
                 throw new NodeDispatchEvidenceError('duplicate_dispatch');
-              await request.runtime?.beforeDispatch();
+              await request.runtime?.beforeDispatch(input);
               dispatchCount += 1;
             },
           });

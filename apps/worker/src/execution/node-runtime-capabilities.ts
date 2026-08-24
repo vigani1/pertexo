@@ -146,7 +146,8 @@ function connectionFactory(
         assertNotAborted(input.signal);
         if (
           input.expectedAuthType !== CONNECTION_AUTH_TYPE.httpHeaders &&
-          input.expectedAuthType !== CONNECTION_AUTH_TYPE.slackBotToken
+          input.expectedAuthType !== CONNECTION_AUTH_TYPE.slackBotToken &&
+          input.expectedAuthType !== CONNECTION_AUTH_TYPE.resendApiKey
         )
           throw new ConnectionUnavailableError(
             'Connection auth type is not supported',

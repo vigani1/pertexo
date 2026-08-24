@@ -68,6 +68,7 @@ export type ConnectionStatus =
 export const CONNECTION_AUTH_TYPE = {
   httpHeaders: 'http_headers',
   slackBotToken: 'slack_bot_token',
+  resendApiKey: 'resend_api_key',
 } as const;
 export type ConnectionAuthType =
   (typeof CONNECTION_AUTH_TYPE)[keyof typeof CONNECTION_AUTH_TYPE];
@@ -1355,6 +1356,14 @@ export function createConnectionDatabase(
             });
           const ownsClaim = inserted.rowCount === 1;
           if (!ownsClaim) {
+            if (
+              current.status === 'in_progress' &&
+              connectionTestClaimSchema.parse(current.result_ref).state ===
+                'dispatched'
+            )
+              throw new ConnectionTestInProgressError(
+                'Connection test has durable dispatch evidence',
+              );
             if (current.status !== 'failed' && !current.stale)
               throw new ConnectionTestInProgressError(
                 'Connection test is already in progress',
@@ -1700,9 +1709,10 @@ export function createConnectionDatabase(
                  result_ref = '{"schemaVersion":1,"state":"failed"}'::jsonb,
                  updated_at = transaction_timestamp()
              where workspace_id = $1 and operation = 'connection.test'
-               and scope = $2 and key_hash = $3 and request_hash = $4
-               and status = 'in_progress'
-               and result_ref->>'dispatchToken' = $5`,
+                and scope = $2 and key_hash = $3 and request_hash = $4
+                and status = 'in_progress'
+                and result_ref->>'dispatchToken' = $5
+                and result_ref->>'state' = 'claimed'`,
             [workspaceId, scope, digest, requestHash, dispatchToken],
           );
         },

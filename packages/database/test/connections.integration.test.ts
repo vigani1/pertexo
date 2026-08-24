@@ -37,6 +37,7 @@ const workerBaseUrl =
   'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
 const databaseName = `pertexo_test_connections_${randomUUID().replaceAll('-', '')}`;
 const upgradeDatabaseName = `pertexo_test_connections_upgrade_${randomUUID().replaceAll('-', '')}`;
+const priorDatabaseName = `pertexo_test_connections_prior_${randomUUID().replaceAll('-', '')}`;
 const workspaceA = randomUUID();
 const workspaceB = randomUUID();
 const ownerA = randomUUID();
@@ -46,6 +47,7 @@ let api: ConnectionDatabase;
 let worker: ConnectionDatabase;
 let closeResources = (): Promise<void> => Promise.resolve();
 let upgradeApplied: readonly string[] = [];
+let priorApplied: readonly string[] = [];
 
 function databaseUrl(base: string, name = databaseName): string {
   const url = new URL(base);
@@ -97,11 +99,11 @@ function migrationConfig(name = databaseName) {
   } as const;
 }
 
-async function migrateThrough0020(name: string): Promise<void> {
-  const directory = await mkdtemp(path.join(tmpdir(), 'pertexo-0020-'));
+async function migrateBefore(name: string, boundary: string): Promise<void> {
+  const directory = await mkdtemp(path.join(tmpdir(), 'pertexo-prior-'));
   try {
     const migrations = (await readdir(MIGRATIONS_DIRECTORY)).filter(
-      (migration) => /^\d{4}_.+\.sql$/u.test(migration) && migration < '0021_',
+      (migration) => /^\d{4}_.+\.sql$/u.test(migration) && migration < boundary,
     );
     await Promise.all(
       migrations.map((migration) =>
@@ -197,10 +199,13 @@ beforeAll(async () => {
   await Promise.all([
     createDatabase(databaseName),
     createDatabase(upgradeDatabaseName),
+    createDatabase(priorDatabaseName),
   ]);
   await migrateDatabase(migrationConfig());
-  await migrateThrough0020(upgradeDatabaseName);
+  await migrateBefore(upgradeDatabaseName, '0021_');
   upgradeApplied = await migrateDatabase(migrationConfig(upgradeDatabaseName));
+  await migrateBefore(priorDatabaseName, '0036_');
+  priorApplied = await migrateDatabase(migrationConfig(priorDatabaseName));
   await seedWorkspaces();
   api = createConnectionDatabase(
     parseDatabaseConfig({ connectionString: databaseUrl(apiBaseUrl), max: 4 }),
@@ -221,10 +226,77 @@ afterAll(async () => {
   await Promise.all([
     dropDatabase(databaseName),
     dropDatabase(upgradeDatabaseName),
+    dropDatabase(priorDatabaseName),
   ]);
 });
 
 describe('connection persistence', () => {
+  it('upgrades the exact prior head through the Resend auth-type migration', async () => {
+    expect(priorApplied).toEqual(['0036_resend_api_key_connections.sql']);
+    const pool = new Pool({
+      connectionString: databaseUrl(apiBaseUrl, priorDatabaseName),
+      max: 1,
+    });
+    try {
+      await expect(
+        checkDatabaseReadiness(pool, {
+          ownerRole: 'pertexo_owner',
+          workerRuntimeRole: 'pertexo_worker',
+        }),
+      ).resolves.toMatchObject({
+        migrationHead: '0036_resend_api_key_connections.sql',
+      });
+      const bindingSurface = await pool.query<{
+        node_column: boolean;
+        node_constraint: boolean;
+        node_worker_update: boolean;
+        preview_column: boolean;
+        preview_constraint: boolean;
+        preview_worker_update: boolean;
+      }>(
+        `select
+           exists (
+             select 1 from information_schema.columns
+             where table_schema='app' and table_name='node_runs'
+               and column_name='provider_dispatch_binding'
+               and data_type='character varying' and character_maximum_length=128
+           ) node_column,
+           exists (
+             select 1 from pg_constraint
+             where conrelid='app.node_runs'::regclass
+               and conname='node_runs_provider_dispatch_binding_format'
+           ) node_constraint,
+           has_column_privilege(
+             'pertexo_worker','app.node_runs','provider_dispatch_binding','UPDATE'
+           ) node_worker_update,
+           exists (
+             select 1 from information_schema.columns
+             where table_schema='app' and table_name='preview_attempts'
+               and column_name='provider_dispatch_binding'
+               and data_type='character varying' and character_maximum_length=128
+           ) preview_column,
+           exists (
+             select 1 from pg_constraint
+             where conrelid='app.preview_attempts'::regclass
+               and conname='preview_attempts_provider_dispatch_binding_format'
+           ) preview_constraint,
+           has_column_privilege(
+             'pertexo_worker','app.preview_attempts','provider_dispatch_binding','UPDATE'
+           ) preview_worker_update`,
+      );
+      expect(bindingSurface.rows[0]).toEqual({
+        node_column: true,
+        node_constraint: true,
+        node_worker_update: true,
+        preview_column: true,
+        preview_constraint: true,
+        preview_worker_update: true,
+      });
+    } finally {
+      await pool.end();
+    }
+  });
+
   it('upgrades the supported pre-phase-4 head through all later migrations', async () => {
     expect(upgradeApplied).toEqual([
       '0021_workflow_integration_usage.sql',
@@ -242,6 +314,7 @@ describe('connection persistence', () => {
       '0033_durable_wait.sql',
       '0034_run_failure_notifications.sql',
       '0035_slack_bot_token_connections.sql',
+      '0036_resend_api_key_connections.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, upgradeDatabaseName),
@@ -254,7 +327,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0035_slack_bot_token_connections.sql',
+        migrationHead: '0036_resend_api_key_connections.sql',
       });
     } finally {
       await pool.end();
@@ -410,6 +483,71 @@ describe('connection persistence', () => {
       'connection.secret_rotated',
       'connection.revoked',
     ]);
+  });
+
+  it('creates, resolves, fences, rotates, and revokes a Resend sending connection', async () => {
+    const input = createInput({
+      providerKey: 'email',
+      authType: CONNECTION_AUTH_TYPE.resendApiKey,
+      name: `Email ${randomUUID().slice(0, 8)}`,
+    });
+    const created = await api.createConnection(input);
+    expect(created).toMatchObject({
+      providerKey: 'email',
+      authType: 'resend_api_key',
+      status: 'active',
+    });
+    await worker.resolveConnectionSecret({
+      workspaceId: workspaceA,
+      connectionId: created.id,
+      expectedProviderKey: 'email',
+      workerId: 'email-worker',
+      purpose: 'email.send_notification.execute',
+    });
+    await worker.assertConnectionSecretCurrent({
+      workspaceId: workspaceA,
+      connectionId: created.id,
+      expectedProviderKey: 'email',
+      expectedAuthType: CONNECTION_AUTH_TYPE.resendApiKey,
+      secretVersionId: input.secretVersionId,
+    });
+    const nextVersion = randomUUID();
+    await api.rotateConnectionSecret({
+      workspaceId: workspaceA,
+      actorId: ownerA,
+      connectionId: created.id,
+      expectedCurrentSecretVersionId: input.secretVersionId,
+      expectedAuthType: CONNECTION_AUTH_TYPE.resendApiKey,
+      secretVersionId: nextVersion,
+      sealed: sealed(10),
+      idempotencyKey: `rotate-email-${created.id}`,
+      requestHash: createHash('sha256')
+        .update(`rotate-email:${created.id}`)
+        .digest('hex'),
+    });
+    await expect(
+      worker.assertConnectionSecretCurrent({
+        workspaceId: workspaceA,
+        connectionId: created.id,
+        expectedProviderKey: 'email',
+        expectedAuthType: CONNECTION_AUTH_TYPE.resendApiKey,
+        secretVersionId: input.secretVersionId,
+      }),
+    ).rejects.toBeInstanceOf(ConnectionUnavailableError);
+    await api.revokeConnection({
+      workspaceId: workspaceA,
+      actorId: ownerA,
+      connectionId: created.id,
+    });
+    await expect(
+      worker.resolveConnectionSecret({
+        workspaceId: workspaceA,
+        connectionId: created.id,
+        expectedProviderKey: 'email',
+        workerId: 'email-worker',
+        purpose: 'email.send_notification.execute',
+      }),
+    ).rejects.toBeInstanceOf(ConnectionUnavailableError);
   });
 
   it('rejects conflicting idempotency and active provider/name reuse without partial rows', async () => {
@@ -945,6 +1083,44 @@ describe('connection persistence', () => {
       dispatchToken: rotatedToken,
       secretVersionId: rotatedAfterDispatch.secretVersionId,
     });
+    await api.abandonConnectionTest({
+      workspaceId: workspaceA,
+      actorId: ownerA,
+      connectionId: rotatedAfterDispatch.connectionId,
+      idempotencyKey: rotatedKey,
+      requestHash,
+      dispatchToken: rotatedToken,
+    });
+    const owner = new Pool({ connectionString: databaseUrl(migrationBaseUrl) });
+    try {
+      await owner.query('begin');
+      await owner.query('set local role pertexo_owner');
+      await owner.query("select set_config('app.workspace_id',$1,true)", [
+        workspaceA,
+      ]);
+      await owner.query(
+        `update app.idempotency_records
+         set updated_at=clock_timestamp()-interval '25 hours'
+         where workspace_id=$1 and operation='connection.test'
+           and resource_id=$2 and result_ref->>'state'='dispatched'`,
+        [workspaceA, rotatedAfterDispatch.connectionId],
+      );
+      await owner.query('commit');
+    } finally {
+      await owner.query('rollback').catch(() => undefined);
+      await owner.end();
+    }
+    await expect(
+      api.startConnectionTest({
+        workspaceId: workspaceA,
+        actorId: ownerA,
+        connectionId: rotatedAfterDispatch.connectionId,
+        expectedProviderKey: 'http',
+        idempotencyKey: rotatedKey,
+        requestHash,
+        dispatchToken: randomUUID(),
+      }),
+    ).rejects.toBeInstanceOf(ConnectionTestInProgressError);
     const newSecretVersionId = randomUUID();
     await api.rotateConnectionSecret({
       workspaceId: workspaceA,
@@ -1138,7 +1314,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0035_slack_bot_token_connections.sql',
+        migrationHead: '0036_resend_api_key_connections.sql',
       });
       await expect(
         checkDatabaseReadiness(workerReadinessPool, {
@@ -1146,7 +1322,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0035_slack_bot_token_connections.sql',
+        migrationHead: '0036_resend_api_key_connections.sql',
       });
     } finally {
       await Promise.all([apiReadinessPool.end(), workerReadinessPool.end()]);

@@ -3,6 +3,7 @@ import './server-only.js';
 import {
   HTTP_REQUEST_DEFINITION_REGISTRATION,
   SLACK_SEND_MESSAGE_DEFINITION_REGISTRATION,
+  EMAIL_SEND_NOTIFICATION_DEFINITION_REGISTRATION,
 } from '@pertexo/integrations';
 import {
   createHttpRequestExecutorRegistration,
@@ -13,6 +14,10 @@ import {
   createSlackSendMessageExecutorRegistration,
   type SlackSendMessageExecutorDependencies,
   type SlackSendMessageExecutorTelemetry,
+  createEmailSendNotificationExecutorRegistration,
+  createResendClient,
+  type EmailSendNotificationExecutorDependencies,
+  type EmailSendNotificationExecutorTelemetry,
 } from '@pertexo/integrations/server';
 import {
   definitionIdentitySchema,
@@ -50,6 +55,8 @@ export type PlatformNodeRegistryDependencies = Readonly<{
   httpRequestTelemetry?: HttpRequestExecutorTelemetry;
   slackSendMessage?: SlackSendMessageExecutorDependencies;
   slackSendMessageTelemetry?: SlackSendMessageExecutorTelemetry;
+  emailSendNotification?: EmailSendNotificationExecutorDependencies;
+  emailSendNotificationTelemetry?: EmailSendNotificationExecutorTelemetry;
 }>;
 
 export type PlatformNodeDefinition = NodeDefinitionRegistration;
@@ -83,6 +90,7 @@ export function resolvePlatformNodeDefinitionForRelease(
     ...CORE_NODE_DEFINITION_REGISTRATIONS,
     HTTP_REQUEST_DEFINITION_REGISTRATION,
     SLACK_SEND_MESSAGE_DEFINITION_REGISTRATION,
+    EMAIL_SEND_NOTIFICATION_DEFINITION_REGISTRATION,
   ].find(
     (candidate) =>
       candidate.manifest.definition.key === definition.key &&
@@ -103,6 +111,7 @@ export function createPlatformNodeRegistryForRelease(
     ...CORE_NODE_DEFINITION_REGISTRATIONS,
     HTTP_REQUEST_DEFINITION_REGISTRATION,
     SLACK_SEND_MESSAGE_DEFINITION_REGISTRATION,
+    EMAIL_SEND_NOTIFICATION_DEFINITION_REGISTRATION,
   ];
   const definitionsByIdentity = new Map(
     definitionRegistrations.map((registration) => [
@@ -143,10 +152,23 @@ export function createPlatformNodeRegistryForRelease(
     },
     'active',
   );
+  const emailDependencies = dependencies.emailSendNotification ?? {
+    client: createResendClient(createNodeSecureHttpClient()),
+  };
+  const emailExecutor = createEmailSendNotificationExecutorRegistration(
+    {
+      ...emailDependencies,
+      ...(dependencies.emailSendNotificationTelemetry === undefined
+        ? {}
+        : { telemetry: dependencies.emailSendNotificationTelemetry }),
+    },
+    'active',
+  );
   const executorRegistrations: readonly NodeExecutorRegistration[] = [
     ...CORE_NODE_EXECUTOR_REGISTRATIONS,
     httpExecutor,
     slackExecutor,
+    emailExecutor,
   ];
   const executorsByIdentity = new Map(
     executorRegistrations.map((registration) => [

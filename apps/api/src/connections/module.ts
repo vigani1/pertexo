@@ -95,6 +95,7 @@ export class ConnectionsModule {
           dependencies.httpClient,
           telemetry,
           dependencies.slackClient,
+          dependencies.emailClient,
         ),
       },
     ];

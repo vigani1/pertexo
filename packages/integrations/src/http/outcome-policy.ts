@@ -158,6 +158,8 @@ function secureErrorKind(error: SecureHttpError): HttpExecutionErrorKind {
       return 'timeout';
     case SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed:
       return 'internal';
+    case SECURE_HTTP_ERROR_CODE.connectionFenceFailed:
+    case SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch:
     case SECURE_HTTP_ERROR_CODE.invalidRequest:
     case SECURE_HTTP_ERROR_CODE.redirectRejected:
     case SECURE_HTTP_ERROR_CODE.responseEncodingRejected:

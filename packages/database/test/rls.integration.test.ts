@@ -427,7 +427,7 @@ describe.each([
 describe('database readiness', () => {
   it('verifies migration, PostgreSQL, ownership, RLS, and runtime role compatibility', async () => {
     await expect(database.checkReadiness()).resolves.toEqual({
-      migrationHead: '0035_slack_bot_token_connections.sql',
+      migrationHead: '0036_resend_api_key_connections.sql',
       postgresMajor: 18,
       role: 'pertexo_api',
     });

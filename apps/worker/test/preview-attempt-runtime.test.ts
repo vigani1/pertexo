@@ -1,14 +1,18 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 import type { PreviewAttemptLease } from '@pertexo/database';
 import {
   SLACK_BOT_TOKEN_CONNECTION_SLOT,
   SLACK_SEND_MESSAGE_DEFINITION,
   SLACK_SEND_MESSAGE_EXECUTOR,
+  EMAIL_SEND_NOTIFICATION_DEFINITION,
+  EMAIL_SEND_NOTIFICATION_EXECUTOR,
+  RESEND_API_KEY_CONNECTION_SLOT,
 } from '@pertexo/integrations';
 import { HttpRequestExecutorError } from '@pertexo/integrations/server';
 import {
   PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE,
   platformServingRegistryRelease,
 } from '@pertexo/node-catalog';
 import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
@@ -52,6 +56,116 @@ function leaseFixture(
 }
 
 describe('platform preview node invoker', () => {
+  it('executes the active idempotent email action through the production preview path', async () => {
+    const connectionId = randomUUID();
+    const secretVersionId = randomUUID();
+    const secret = new TextEncoder().encode(
+      JSON.stringify({
+        schemaVersion: 1,
+        type: 'resend_api_key',
+        apiKey: 're_123456789_secret',
+        fromEmail: 'sender@example.com',
+      }),
+    );
+    const beforeDispatch = vi.fn(
+      (input?: Readonly<{ providerDispatchBinding?: string }>) => {
+        void input;
+        return Promise.resolve();
+      },
+    );
+    const sendNotification = vi.fn(
+      async (input: { beforeDispatch(): Promise<void> }) => {
+        await input.beforeDispatch();
+        return {
+          kind: 'succeeded' as const,
+          emailId: '49b9a1e5-3f0c-4e68-882d-fbc91c0d4ec2',
+        };
+      },
+    );
+    const release = composeExecutableCompatibilityRelease(
+      PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE,
+    );
+    const lease = {
+      ...leaseFixture({
+        config: { timeoutMillis: 5_000 },
+        configVersion: 1,
+        connectionRefs: { [RESEND_API_KEY_CONNECTION_SLOT]: connectionId },
+        definition: EMAIL_SEND_NOTIFICATION_DEFINITION,
+        id: 'node-1',
+        inputMappings: {
+          toEmail: { kind: 'literal' as const, value: 'recipient@example.com' },
+          subject: { kind: 'literal' as const, value: 'Preview' },
+          text: { kind: 'literal' as const, value: 'Preview body' },
+        },
+      }),
+      compatibilityReleaseEpoch: release.epoch,
+      compatibilityReleaseFingerprint: release.fingerprint,
+      definitionKey: EMAIL_SEND_NOTIFICATION_DEFINITION.key,
+      dryRun: 'not_supported' as const,
+      executorKey: EMAIL_SEND_NOTIFICATION_EXECUTOR.key,
+      mayCauseExternalSideEffect: true,
+      mayContactProvider: true,
+      sideEffectClass: 'idempotent_with_key' as const,
+    };
+    const invoker = createPlatformPreviewNodeInvoker({
+      registry: createPlatformNodeRegistryForRelease(
+        PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE,
+        {
+          emailSendNotification: { client: { sendNotification } },
+        },
+      ),
+      releaseCohort: 'email_activation',
+    });
+    await expect(
+      invoker.invoke({
+        lease,
+        runtime: {
+          workspaceId: lease.workspaceId,
+          runId: lease.previewRunId,
+          nodeRunId: lease.previewAttemptId,
+          attemptId: lease.previewAttemptId,
+          attemptNumber: 1,
+          nodeId: lease.nodeId,
+          invocationKey: lease.nodeId,
+          sideEffectClass: 'idempotent_with_key',
+          providerIdempotencyKey: 'stable-preview-resend-key',
+          beforeDispatch,
+          connections: {
+            resolve: () =>
+              Promise.resolve({
+                connectionId,
+                providerKey: 'email',
+                authType: 'resend_api_key',
+                secretVersionId,
+                secret,
+              }),
+            assertCurrent: () => Promise.resolve(),
+          },
+        },
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({
+      output: { emailId: '49b9a1e5-3f0c-4e68-882d-fbc91c0d4ec2' },
+      status: 'succeeded',
+    });
+    expect(sendNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        idempotencyKey: 'stable-preview-resend-key',
+      }),
+    );
+    expect(beforeDispatch).toHaveBeenCalledOnce();
+    expect(beforeDispatch).toHaveBeenCalledWith({
+      connectionFence: {
+        connectionId,
+        expectedAuthType: 'resend_api_key',
+        expectedProviderKey: 'email',
+        secretVersionId,
+      },
+      providerDispatchBinding: `email:v1:sha256:${createHash('sha256')
+        .update(`email\0${connectionId}\0${secretVersionId}`)
+        .digest('hex')}`,
+    });
+  });
   it('executes the active Slack action through the production preview path', async () => {
     const connectionId = randomUUID();
     const secret = new TextEncoder().encode(
@@ -327,6 +441,39 @@ describe('platform preview node invoker', () => {
       }),
       sideEffectClass: 'unsafe' as const,
     };
+    await expect(
+      invoker.invoke({ lease, signal: new AbortController().signal }),
+    ).resolves.toEqual({
+      safeErrorCode: 'preview.outcome_unknown',
+      status: 'outcome_unknown',
+    });
+  });
+
+  it('maps idempotent possibly-dispatched cancellation to outcome_unknown', async () => {
+    const execute = vi.fn().mockRejectedValue(
+      new NodeExecutorFailure({
+        kind: 'canceled',
+        errorKind: 'canceled',
+        possiblyDispatched: true,
+      }),
+    );
+    const invoker = createPlatformPreviewNodeInvoker({
+      registry: { execute } as never,
+      releaseCohort: 'core',
+    });
+    const lease = {
+      ...leaseFixture({
+        config: {},
+        configVersion: 1,
+        connectionRefs: {},
+        definition: { key: 'core.set', version: 1 },
+        id: 'node-1',
+        inputMappings: {},
+      }),
+      providerIdempotencyKey: 'stable-provider-key',
+      sideEffectClass: 'idempotent_with_key' as const,
+    };
+
     await expect(
       invoker.invoke({ lease, signal: new AbortController().signal }),
     ).resolves.toEqual({

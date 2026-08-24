@@ -71,6 +71,8 @@ function context(): { signal: AbortSignal } {
 }
 
 interface StoreCalls {
+  bindings: (string | undefined)[];
+  connectionFences: unknown[];
   claims: number;
   completions: PreviewTerminalOutcome[];
   dispatches: number;
@@ -85,6 +87,8 @@ function fakeStore(
   }> = {},
 ): { calls: StoreCalls; store: PreviewAttemptRunStore } {
   const calls: StoreCalls = {
+    bindings: [],
+    connectionFences: [],
     claims: 0,
     completions: [],
     dispatches: 0,
@@ -114,7 +118,9 @@ function fakeStore(
         runExpiresAt: beat.runExpiresAt,
       });
     },
-    markDispatched: () => {
+    markDispatched: ({ connectionFence, providerDispatchBinding }) => {
+      calls.bindings.push(providerDispatchBinding);
+      calls.connectionFences.push(connectionFence);
       calls.dispatches += 1;
       return Promise.resolve('committed');
     },
@@ -304,16 +310,55 @@ describe('preview attempt handler', () => {
     expect(calls.completions[0]).toMatchObject(expected);
   });
 
-  it('upgrades an unsafe dispatched generic cancellation to outcome_unknown', async () => {
-    const lease = { ...leaseFixture(), sideEffectClass: 'unsafe' as const };
-    const { calls, store } = fakeStore({ lease });
+  it.each(['unsafe', 'idempotent_with_key'] as const)(
+    'upgrades a dispatched %s cancellation to outcome_unknown',
+    async (sideEffectClass) => {
+      const lease = {
+        ...leaseFixture(),
+        sideEffectClass,
+        ...(sideEffectClass === 'idempotent_with_key'
+          ? { providerIdempotencyKey: 'stable-provider-key' }
+          : {}),
+      };
+      const { calls, store } = fakeStore({ lease });
+      const invoker: PreviewNodeInvoker = {
+        invoke: async ({ runtime }) => {
+          await runtime?.beforeDispatch();
+          return {
+            safeErrorCode: 'execution.canceled',
+            status: 'canceled',
+          };
+        },
+      };
+
+      await createPreviewAttemptHandler(deps(store, invoker)).handle(
+        deliveryFixture(),
+        context(),
+      );
+
+      expect(calls.dispatches).toBe(1);
+      expect(calls.completions[0]).toEqual({
+        safeErrorCode: 'preview.outcome_unknown',
+        status: 'outcome_unknown',
+      });
+    },
+  );
+
+  it('passes an executor-controlled provider binding to durable preview dispatch', async () => {
+    const { calls, store } = fakeStore();
+    const binding = 'email:v1:sha256:' + 'b'.repeat(64);
     const invoker: PreviewNodeInvoker = {
       invoke: async ({ runtime }) => {
-        await runtime?.beforeDispatch();
-        return {
-          safeErrorCode: 'execution.canceled',
-          status: 'canceled',
-        };
+        await runtime?.beforeDispatch({
+          connectionFence: {
+            connectionId: '11111111-1111-4111-8111-111111111111',
+            expectedProviderKey: 'email',
+            expectedAuthType: 'resend_api_key',
+            secretVersionId: '22222222-2222-4222-8222-222222222222',
+          },
+          providerDispatchBinding: binding,
+        });
+        return { output: {}, status: 'succeeded' };
       },
     };
 
@@ -322,11 +367,15 @@ describe('preview attempt handler', () => {
       context(),
     );
 
-    expect(calls.dispatches).toBe(1);
-    expect(calls.completions[0]).toEqual({
-      safeErrorCode: 'preview.outcome_unknown',
-      status: 'outcome_unknown',
-    });
+    expect(calls.bindings).toEqual([binding]);
+    expect(calls.connectionFences).toEqual([
+      {
+        connectionId: '11111111-1111-4111-8111-111111111111',
+        expectedProviderKey: 'email',
+        expectedAuthType: 'resend_api_key',
+        secretVersionId: '22222222-2222-4222-8222-222222222222',
+      },
+    ]);
   });
 
   it('propagates infrastructure failures for bounded queue retries', async () => {

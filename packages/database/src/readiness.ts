@@ -8,7 +8,7 @@ import {
   type CompatibilityReleaseExpectationSet,
 } from './compatibility-release.js';
 
-export const EXPECTED_MIGRATION_HEAD = '0035_slack_bot_token_connections.sql';
+export const EXPECTED_MIGRATION_HEAD = '0036_resend_api_key_connections.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -668,6 +668,16 @@ export async function checkDatabaseReadiness(
           where constraint_record.conrelid = to_regclass('app.node_runs')
             and constraint_record.conname = 'node_runs_invocation_key_format'
         ) = $invocation_constraint$(((invocation_key)::text ~ '^[A-Za-z0-9][A-Za-z0-9._:/#-]{0,255}$'::text) OR ((invocation_key)::text ~ '^([A-Za-z0-9_.!~*()''-]|%[0-9A-F]{2})+\\|([A-Za-z0-9_.!~*()''-]|%[0-9A-F]{2})+\\|b:([A-Za-z0-9_.!~*()''-]|%[0-9A-F]{2})*\\|i:([A-Za-z0-9_.!~*()''-]|%[0-9A-F]{2})*$'::text))$invocation_constraint$
+        and exists (
+          select 1 from pg_constraint
+          where conrelid=to_regclass('app.node_runs')
+            and conname='node_runs_provider_dispatch_binding_format'
+        )
+        and exists (
+          select 1 from pg_constraint
+          where conrelid=to_regclass('app.preview_attempts')
+            and conname='preview_attempts_provider_dispatch_binding_format'
+        )
         and has_table_privilege($2, 'app.run_checkpoints', 'SELECT')
         and has_table_privilege($2, 'app.run_events', 'SELECT')
         and has_table_privilege($2, 'app.node_runs', 'SELECT')
@@ -681,6 +691,13 @@ export async function checkDatabaseReadiness(
         and has_table_privilege($2, 'app.transport_security_audit_facts', 'INSERT')
         and has_table_privilege($2, 'app.node_runs', 'INSERT')
         and has_table_privilege($2, 'app.node_attempts', 'INSERT')
+        and has_column_privilege($2, 'app.node_runs', 'provider_dispatch_binding', 'UPDATE')
+        and has_column_privilege($2, 'app.preview_attempts', 'provider_dispatch_binding', 'UPDATE')
+        and has_function_privilege(
+          $2,
+          'app.connection_dispatch_fence_current(uuid,uuid,text,text,uuid)',
+          'EXECUTE'
+        )
         and has_column_privilege($2, 'app.node_attempts', 'executor_failure_kind', 'UPDATE')
         and has_column_privilege($2, 'app.node_attempts', 'executor_error_kind', 'UPDATE')
         and has_column_privilege($2, 'app.node_attempts', 'executor_possibly_dispatched', 'UPDATE')
@@ -733,7 +750,8 @@ export async function checkDatabaseReadiness(
               or (privilege.table_name='node_runs' and privilege.column_name in (
                 'status','output_ref','current_attempt_id','current_attempt_number',
                  'resume_at','retry_due_at','safe_error_code','updated_at',
-                  'started_at','completed_at','due_wakeup_at','control_kind','wait_kind'
+                  'started_at','completed_at','due_wakeup_at','control_kind','wait_kind',
+                  'provider_dispatch_binding'
               ))
               or (privilege.table_name='node_attempts' and privilege.column_name in (
                 'status','lease_owner','lease_expires_at','fence_token',
@@ -850,7 +868,7 @@ export async function checkDatabaseReadiness(
           select 1 from pg_constraint
           where conrelid = to_regclass('app.connections')
             and conname = 'connections_auth_type_valid'
-            and pg_get_constraintdef(oid) = 'CHECK (((auth_type)::text = ANY ((ARRAY[''http_headers''::character varying, ''slack_bot_token''::character varying])::text[])))'
+            and pg_get_constraintdef(oid) = 'CHECK (((auth_type)::text = ANY ((ARRAY[''http_headers''::character varying, ''slack_bot_token''::character varying, ''resend_api_key''::character varying])::text[])))'
         )
         and exists (
           select 1 from pg_trigger

@@ -726,6 +726,7 @@ type EventRow = Readonly<{
   attempt_number: number | null;
   attempt_status: string | null;
   attempt_output_ref: unknown;
+  executor_failure_kind: string | null;
   node_output_ref: unknown;
   invocation_key: string | null;
   node_run_id: string | null;
@@ -733,6 +734,7 @@ type EventRow = Readonly<{
   node_status: string | null;
   resume_at: Date | null;
   retry_due_at: Date | null;
+  retry_decision: string | null;
   wait_kind: 'node_wait' | 'retry_backoff' | null;
 }>;
 
@@ -773,6 +775,7 @@ async function readPersistedFacts(
               attempt.id as attempt_id, attempt.attempt_number,
               attempt.status as attempt_status,
               attempt.output_ref as attempt_output_ref,
+              attempt.executor_failure_kind,attempt.retry_decision,
               node.id as node_run_id, node.invocation_key,
               node.current_attempt_id, node.status as node_status,
               node.output_ref as node_output_ref,
@@ -858,7 +861,11 @@ function validatePersistedFactBatch(rows: readonly EventRow[]): void {
     if (row === undefined) throw new CoordinatorRunStateCorruptError();
     if (
       (row.type !== 'node.started' && row.type !== 'node.progress') ||
-      (row.attempt_status === 'running' && row.node_status === 'running')
+      (row.attempt_status === 'running' && row.node_status === 'running') ||
+      (row.attempt_status === 'failed' &&
+        row.node_status === 'running' &&
+        row.executor_failure_kind !== null &&
+        row.retry_decision === 'pending')
     ) {
       if (row.attempt_id !== null) {
         const types =
@@ -899,6 +906,10 @@ function mapEvent(row: EventRow): unknown {
   if (row.type === 'node.started' || row.type === 'node.progress') {
     const physicalStatusIsCoherent =
       row.attempt_status === row.node_status ||
+      (row.attempt_status === 'failed' &&
+        row.node_status === 'running' &&
+        row.executor_failure_kind !== null &&
+        row.retry_decision === 'pending') ||
       (row.node_status === 'waiting' &&
         (row.attempt_status === 'succeeded' ||
           row.attempt_status === 'failed'));

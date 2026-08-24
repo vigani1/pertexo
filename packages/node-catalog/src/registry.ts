@@ -4,6 +4,8 @@ import {
   HTTP_REQUEST_VALUE_POLICY,
   SLACK_SEND_MESSAGE_MANIFEST,
   SLACK_SEND_MESSAGE_POLICY,
+  EMAIL_SEND_NOTIFICATION_MANIFEST,
+  EMAIL_SEND_NOTIFICATION_POLICY,
 } from '@pertexo/integrations';
 import { createRegistryReleaseSuccessor } from '@pertexo/node-sdk';
 import {
@@ -345,6 +347,51 @@ export const PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE =
     policies: PLATFORM_REGISTRY_RELEASE_SLACK_STAGED.policies,
   });
 
+const emailExecutorAbi = EMAIL_SEND_NOTIFICATION_MANIFEST.executorAbi;
+if (emailExecutorAbi === undefined)
+  throw new Error('Email send-notification manifest must pin its executor ABI');
+
+export const PLATFORM_REGISTRY_RELEASE_EMAIL_STAGED =
+  createRegistryReleaseSuccessor({
+    previous: PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE,
+    epoch: 19,
+    definitions: [
+      ...PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE.definitions,
+      EMAIL_SEND_NOTIFICATION_MANIFEST,
+    ],
+    executors: [
+      ...PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE.executors,
+      {
+        executor: EMAIL_SEND_NOTIFICATION_MANIFEST.executor,
+        abiVersion: emailExecutorAbi,
+        definitions: [EMAIL_SEND_NOTIFICATION_MANIFEST.definition],
+        lifecycle: 'staged',
+        policyReferences: EMAIL_SEND_NOTIFICATION_MANIFEST.policyReferences,
+      },
+    ],
+    policies: [
+      ...PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE.policies,
+      EMAIL_SEND_NOTIFICATION_POLICY,
+    ],
+  });
+
+export const PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE =
+  createRegistryReleaseSuccessor({
+    previous: PLATFORM_REGISTRY_RELEASE_EMAIL_STAGED,
+    epoch: 20,
+    definitions: PLATFORM_REGISTRY_RELEASE_EMAIL_STAGED.definitions,
+    executors: PLATFORM_REGISTRY_RELEASE_EMAIL_STAGED.executors.map(
+      (executor) =>
+        executor.executor.key ===
+          EMAIL_SEND_NOTIFICATION_MANIFEST.executor.key &&
+        executor.executor.version ===
+          EMAIL_SEND_NOTIFICATION_MANIFEST.executor.version
+          ? { ...executor, lifecycle: 'active' as const }
+          : executor,
+    ),
+    policies: PLATFORM_REGISTRY_RELEASE_EMAIL_STAGED.policies,
+  });
+
 /** Complete audit/test history; never pass this to one serving artifact. */
 export const PLATFORM_REGISTRY_RELEASE_HISTORY = Object.freeze([
   ...CORE_REGISTRY_RELEASE_SUPPORT,
@@ -364,6 +411,8 @@ export const PLATFORM_REGISTRY_RELEASE_HISTORY = Object.freeze([
   PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_SLACK_STAGED,
   PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_EMAIL_STAGED,
+  PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE,
 ]);
 
 /** Backward-compatible default cohort until deployment selects a Phase 4 cohort. */
@@ -451,6 +500,14 @@ export const PLATFORM_SLACK_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
   PLATFORM_REGISTRY_RELEASE_SLACK_STAGED,
   PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE,
 ]);
+export const PLATFORM_EMAIL_STAGING_RELEASE_SUPPORT = Object.freeze([
+  PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_EMAIL_STAGED,
+]);
+export const PLATFORM_EMAIL_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
+  PLATFORM_REGISTRY_RELEASE_EMAIL_STAGED,
+  PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE,
+]);
 
 export const PLATFORM_RELEASE_COHORTS = Object.freeze([
   'core',
@@ -470,6 +527,8 @@ export const PLATFORM_RELEASE_COHORTS = Object.freeze([
   'wait_activation',
   'slack_staging',
   'slack_activation',
+  'email_staging',
+  'email_activation',
 ] as const);
 export type PlatformReleaseCohort = (typeof PLATFORM_RELEASE_COHORTS)[number];
 
@@ -509,6 +568,10 @@ export function platformRegistryReleaseSupport(cohort: PlatformReleaseCohort) {
       return PLATFORM_SLACK_STAGING_RELEASE_SUPPORT;
     case 'slack_activation':
       return PLATFORM_SLACK_ACTIVATION_RELEASE_SUPPORT;
+    case 'email_staging':
+      return PLATFORM_EMAIL_STAGING_RELEASE_SUPPORT;
+    case 'email_activation':
+      return PLATFORM_EMAIL_ACTIVATION_RELEASE_SUPPORT;
   }
 }
 
@@ -562,6 +625,10 @@ export function platformServingRegistryRelease(cohort: PlatformReleaseCohort) {
       return PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE;
     case 'slack_activation':
       return PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE;
+    case 'email_staging':
+      return PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE;
+    case 'email_activation':
+      return PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE;
   }
 }
 

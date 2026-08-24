@@ -90,6 +90,19 @@ const branchContextSchema = z
 
 export type NodeAttemptDelivery = Readonly<z.output<typeof deliverySchema>>;
 
+const providerDispatchBindingSchema = z
+  .string()
+  .max(128)
+  .regex(/^[a-z][a-z0-9._-]{0,31}:v[1-9][0-9]{0,2}:sha256:[0-9a-f]{64}$/u);
+const connectionDispatchFenceSchema = z
+  .object({
+    connectionId: z.uuid(),
+    expectedProviderKey: z.string().regex(/^[a-z][a-z0-9._-]{0,63}$/u),
+    expectedAuthType: z.string().regex(/^[a-z][a-z0-9._-]{0,63}$/u),
+    secretVersionId: z.uuid(),
+  })
+  .strict();
+
 export type NodeAttemptLease = Readonly<{
   workspaceId: string;
   runId: string;
@@ -107,6 +120,8 @@ export type NodeAttemptLease = Readonly<{
   }>[];
   sideEffectClass: 'safe' | 'idempotent_with_key' | 'unsafe';
   providerIdempotencyKey?: string;
+  providerDispatchBinding?: string;
+  providerDispatchUnresolved?: true;
   workerId: string;
   fenceToken: number;
   leaseExpiresAt: Date;
@@ -132,6 +147,8 @@ const nodeAttemptLeaseSchema = z
       .optional(),
     sideEffectClass: sideEffectClassSchema,
     providerIdempotencyKey: z.string().min(1).max(256).optional(),
+    providerDispatchBinding: providerDispatchBindingSchema.optional(),
+    providerDispatchUnresolved: z.literal(true).optional(),
     workerId: workerIdSchema,
     fenceToken: z.number().int().positive(),
     leaseExpiresAt: z.date(),
@@ -164,6 +181,12 @@ const ownedLeaseSchema = z
   .object({
     lease: nodeAttemptLeaseSchema,
     signal: z.custom<AbortSignal>((value) => value instanceof AbortSignal),
+  })
+  .strict();
+const dispatchSchema = ownedLeaseSchema
+  .extend({
+    connectionFence: connectionDispatchFenceSchema.optional(),
+    providerDispatchBinding: providerDispatchBindingSchema.optional(),
   })
   .strict();
 const heartbeatSchema = ownedLeaseSchema
@@ -280,6 +303,8 @@ export interface NodeAttemptRunStore {
   markDispatched(
     input: Readonly<{
       lease: NodeAttemptLease;
+      connectionFence?: z.output<typeof connectionDispatchFenceSchema>;
+      providerDispatchBinding?: string;
       signal: AbortSignal;
     }>,
   ): Promise<Readonly<{ dispatchedAt: Date }>>;
@@ -318,6 +343,20 @@ export class NodeAttemptReconciliationRequiredError extends Error {
   public override readonly name = 'NodeAttemptReconciliationRequiredError';
   public constructor() {
     super('Node attempt requires lease reconciliation before execution');
+  }
+}
+
+export class NodeAttemptDispatchBindingMismatchError extends Error {
+  public override readonly name = 'NodeAttemptDispatchBindingMismatchError';
+  public constructor() {
+    super('Node attempt provider dispatch binding does not match');
+  }
+}
+
+export class NodeAttemptConnectionFenceError extends Error {
+  public override readonly name = 'NodeAttemptConnectionFenceError';
+  public constructor() {
+    super('Node attempt connection fence does not match current active state');
   }
 }
 
@@ -702,6 +741,8 @@ export function createNodeAttemptRunStore(
               node_id: string;
               node_status: string;
               provider_idempotency_key: string | null;
+              provider_dispatch_binding: string | null;
+              provider_dispatch_unresolved: boolean;
               side_effect_class: string;
             }>(
               `select attempt.attempt_number,attempt.admission_kind,
@@ -711,7 +752,16 @@ export function createNodeAttemptRunStore(
                       (attempt.lease_expires_at > clock_timestamp()) lease_valid,
                        node.invocation_key,node.node_id,node.branch_context,
                       node.status as node_status,attempt.side_effect_class,
-                      attempt.provider_idempotency_key
+                       attempt.provider_idempotency_key,
+                       node.provider_dispatch_binding,
+                       (attempt.dispatch_marked_at is not null or exists (
+                         select 1 from app.node_attempts prior
+                         where prior.workspace_id=attempt.workspace_id
+                           and prior.node_run_id=attempt.node_run_id
+                           and prior.attempt_number < attempt.attempt_number
+                           and prior.executor_possibly_dispatched is true
+                           and prior.retry_decision='retry'
+                       )) provider_dispatch_unresolved
                from app.node_attempts attempt
                join app.node_runs node
                  on node.workspace_id=attempt.workspace_id
@@ -823,6 +873,12 @@ export function createNodeAttemptRunStore(
               ...(row.provider_idempotency_key === null
                 ? {}
                 : { providerIdempotencyKey: row.provider_idempotency_key }),
+              ...(row.provider_dispatch_binding === null
+                ? {}
+                : { providerDispatchBinding: row.provider_dispatch_binding }),
+              ...(row.provider_dispatch_unresolved
+                ? { providerDispatchUnresolved: true as const }
+                : {}),
               workerId: input.workerId,
               fenceToken: Number(claim.fence_token),
               leaseExpiresAt: new Date(claim.lease_expires_at),
@@ -1172,9 +1228,9 @@ export function createNodeAttemptRunStore(
       inputValue: Parameters<NodeAttemptRunStore['markDispatched']>[0],
     ): Promise<Readonly<{ dispatchedAt: Date }>> => {
       assertNotAborted(inputValue.signal);
-      let input: z.output<typeof ownedLeaseSchema>;
+      let input: z.output<typeof dispatchSchema>;
       try {
-        input = ownedLeaseSchema.parse(inputValue);
+        input = dispatchSchema.parse(inputValue);
       } catch {
         throw new NodeAttemptStateCorruptError();
       }
@@ -1183,6 +1239,70 @@ export function createNodeAttemptRunStore(
         input.lease.workspaceId,
         input.signal,
         async (client) => {
+          if (input.connectionFence !== undefined) {
+            const fencedConnection = await client.query<{
+              fence_current: boolean;
+            }>(
+              `select app.connection_dispatch_fence_current(
+                 $1,$2,$3,$4,$5
+               ) fence_current`,
+              [
+                input.lease.workspaceId,
+                input.connectionFence.connectionId,
+                input.connectionFence.expectedProviderKey,
+                input.connectionFence.expectedAuthType,
+                input.connectionFence.secretVersionId,
+              ],
+            );
+            if (fencedConnection.rows[0]?.fence_current !== true)
+              throw new NodeAttemptConnectionFenceError();
+          }
+          const lockedNode = await client.query<{
+            provider_dispatch_binding: string | null;
+          }>(
+            `select node.provider_dispatch_binding
+             from app.node_runs node
+             join app.workflow_runs run
+               on run.workspace_id=node.workspace_id
+              and run.id=node.workflow_run_id
+             where node.workspace_id=$1 and node.id=$2
+               and node.workflow_run_id=$3 and node.node_id=$4
+               and node.invocation_key=$5 and node.current_attempt_id=$6
+               and run.workflow_version_id=$7
+             for update of node`,
+            [
+              input.lease.workspaceId,
+              input.lease.nodeRunId,
+              input.lease.runId,
+              input.lease.nodeId,
+              input.lease.invocationKey,
+              input.lease.attemptId,
+              input.lease.workflowVersionId,
+            ],
+          );
+          const existingBinding = lockedNode.rows[0]?.provider_dispatch_binding;
+          if (existingBinding === undefined)
+            throw new NodeAttemptReconciliationRequiredError();
+          if (
+            input.providerDispatchBinding !== undefined &&
+            existingBinding !== null &&
+            existingBinding !== input.providerDispatchBinding
+          )
+            throw new NodeAttemptDispatchBindingMismatchError();
+          if (
+            input.providerDispatchBinding !== undefined &&
+            existingBinding === null
+          )
+            await client.query(
+              `update app.node_runs
+               set provider_dispatch_binding=$3,updated_at=clock_timestamp()
+               where workspace_id=$1 and id=$2`,
+              [
+                input.lease.workspaceId,
+                input.lease.nodeRunId,
+                input.providerDispatchBinding,
+              ],
+            );
           const result = await client.query<{ dispatch_marked_at: Date }>(
             `update app.node_attempts attempt
              set dispatch_marked_at=coalesce(dispatch_marked_at,clock_timestamp()),

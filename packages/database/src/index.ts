@@ -372,8 +372,10 @@ export type {
 } from './workspace.js';
 export {
   createNodeAttemptRunStore,
+  NodeAttemptConnectionFenceError,
   NodeAttemptControlActiveError,
   NodeAttemptDeliveryMismatchError,
+  NodeAttemptDispatchBindingMismatchError,
   NodeAttemptOutputInvalidError,
   NodeAttemptReconciliationRequiredError,
   NodeAttemptStateCorruptError,

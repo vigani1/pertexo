@@ -6,6 +6,9 @@ import {
   SLACK_BOT_TOKEN_CONNECTION_SLOT,
   SLACK_SEND_MESSAGE_DEFINITION,
   SLACK_SEND_MESSAGE_EXECUTOR,
+  EMAIL_SEND_NOTIFICATION_DEFINITION,
+  EMAIL_SEND_NOTIFICATION_EXECUTOR,
+  RESEND_API_KEY_CONNECTION_SLOT,
 } from '@pertexo/integrations';
 import type {
   HttpRequestExecutorDependencies,
@@ -50,6 +53,10 @@ import {
   PLATFORM_REGISTRY_RELEASE_WAIT_STAGED,
   PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_SLACK_STAGED,
+  PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_EMAIL_STAGED,
+  PLATFORM_EMAIL_ACTIVATION_RELEASE_SUPPORT,
+  PLATFORM_EMAIL_STAGING_RELEASE_SUPPORT,
   PLATFORM_CONDITION_ACTIVATION_RELEASE_SUPPORT,
   PLATFORM_CONDITION_STAGING_RELEASE_SUPPORT,
   PLATFORM_FOR_EACH_ACTIVATION_RELEASE_SUPPORT,
@@ -76,6 +83,78 @@ import {
 } from '../src/server.js';
 
 describe('platform node compatibility catalog', () => {
+  it('retains staged and active email releases with no staging admission', async () => {
+    expect(PLATFORM_REGISTRY_RELEASE_EMAIL_STAGED.epoch).toBe(19);
+    expect(PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE.epoch).toBe(20);
+    expect(
+      PLATFORM_EMAIL_STAGING_RELEASE_SUPPORT.map(({ epoch }) => epoch),
+    ).toEqual([18, 19]);
+    expect(
+      PLATFORM_EMAIL_ACTIVATION_RELEASE_SUPPORT.map(({ epoch }) => epoch),
+    ).toEqual([19, 20]);
+    expect(platformServingRegistryRelease('email_staging').epoch).toBe(18);
+    expect(platformServingRegistryRelease('email_activation').epoch).toBe(20);
+    const sendNotification = vi.fn(
+      async (input: { beforeDispatch(): Promise<void> }) => {
+        await input.beforeDispatch();
+        return {
+          kind: 'succeeded' as const,
+          emailId: '49b9a1e5-3f0c-4e68-882d-fbc91c0d4ec2',
+        };
+      },
+    );
+    const secret = new TextEncoder().encode(
+      JSON.stringify({
+        schemaVersion: 1,
+        type: 'resend_api_key',
+        apiKey: 're_123456789_secret',
+        fromEmail: 'sender@example.com',
+      }),
+    );
+    const registry = createPlatformNodeRegistryForRelease(
+      PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE,
+      { emailSendNotification: { client: { sendNotification } } },
+    );
+    await expect(
+      registry.execute({
+        config: { timeoutMillis: 10_000 },
+        definition: EMAIL_SEND_NOTIFICATION_DEFINITION,
+        executor: EMAIL_SEND_NOTIFICATION_EXECUTOR,
+        input: { toEmail: 'to@example.com', subject: 'Subject', text: 'Text' },
+        connectionRefs: {
+          [RESEND_API_KEY_CONNECTION_SLOT]:
+            '22222222-2222-4222-8222-222222222222',
+        },
+        runtime: {
+          workspaceId: '11111111-1111-4111-8111-111111111111',
+          runId: '33333333-3333-4333-8333-333333333333',
+          nodeRunId: '44444444-4444-4444-8444-444444444444',
+          attemptId: '55555555-5555-4555-8555-555555555555',
+          attemptNumber: 1,
+          nodeId: 'email',
+          invocationKey: 'email',
+          sideEffectClass: 'idempotent_with_key',
+          providerIdempotencyKey: 'stable-resend-key',
+          beforeDispatch: () => Promise.resolve(),
+          connections: {
+            resolve: () =>
+              Promise.resolve({
+                connectionId: '22222222-2222-4222-8222-222222222222',
+                providerKey: 'email',
+                authType: 'resend_api_key',
+                secretVersionId: '66666666-6666-4666-8666-666666666666',
+                secret,
+              }),
+            assertCurrent: () => Promise.resolve(),
+          },
+        },
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({
+      kind: 'succeeded',
+      output: { emailId: '49b9a1e5-3f0c-4e68-882d-fbc91c0d4ec2' },
+    });
+  });
   it('retains staged and active Slack releases with no staging admission', async () => {
     expect(PLATFORM_REGISTRY_RELEASE_SLACK_STAGED.epoch).toBe(17);
     expect(PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE.epoch).toBe(18);
@@ -373,7 +452,7 @@ describe('platform node compatibility catalog', () => {
   });
   it('retains every additive release in canonical order', () => {
     expect(PLATFORM_REGISTRY_RELEASE_HISTORY.map(({ epoch }) => epoch)).toEqual(
-      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18],
+      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
     );
     expect(PLATFORM_REGISTRY_RELEASE_SUPPORT.map(({ epoch }) => epoch)).toEqual(
       [1, 2],
@@ -572,7 +651,7 @@ describe('platform node compatibility catalog', () => {
       new Set(
         PLATFORM_REGISTRY_RELEASE_HISTORY.map(({ fingerprint }) => fingerprint),
       ).size,
-    ).toBe(18);
+    ).toBe(20);
   });
 
   it('builds one exact active server registry with retained core and dispatch-aware HTTP', async () => {

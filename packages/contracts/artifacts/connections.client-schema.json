@@ -167,6 +167,59 @@
           "properties": {
             "providerKey": {
               "type": "string",
+              "const": "email"
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "credential": {
+              "readOnly": true,
+              "type": "object",
+              "properties": {
+                "schemaVersion": {
+                  "type": "number",
+                  "const": 1
+                },
+                "type": {
+                  "type": "string",
+                  "const": "resend_api_key"
+                },
+                "apiKey": {
+                  "type": "string",
+                  "minLength": 8,
+                  "maxLength": 512,
+                  "pattern": "^re_[A-Za-z0-9_-]+$"
+                },
+                "fromEmail": {
+                  "type": "string",
+                  "minLength": 3,
+                  "maxLength": 254
+                }
+              },
+              "required": [
+                "schemaVersion",
+                "type",
+                "apiKey",
+                "fromEmail"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "providerKey",
+            "name",
+            "credential"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "readOnly": true,
+          "type": "object",
+          "properties": {
+            "providerKey": {
+              "type": "string",
               "const": "slack"
             },
             "name": {
@@ -229,7 +282,8 @@
           "type": "string",
           "enum": [
             "http",
-            "slack"
+            "slack",
+            "email"
           ]
         },
         "name": {
@@ -241,7 +295,8 @@
           "type": "string",
           "enum": [
             "http_headers",
-            "slack_bot_token"
+            "slack_bot_token",
+            "resend_api_key"
           ]
         },
         "status": {
@@ -401,6 +456,38 @@
                 "botToken"
               ],
               "additionalProperties": false
+            },
+            {
+              "readOnly": true,
+              "type": "object",
+              "properties": {
+                "schemaVersion": {
+                  "type": "number",
+                  "const": 1
+                },
+                "type": {
+                  "type": "string",
+                  "const": "resend_api_key"
+                },
+                "apiKey": {
+                  "type": "string",
+                  "minLength": 8,
+                  "maxLength": 512,
+                  "pattern": "^re_[A-Za-z0-9_-]+$"
+                },
+                "fromEmail": {
+                  "type": "string",
+                  "minLength": 3,
+                  "maxLength": 254
+                }
+              },
+              "required": [
+                "schemaVersion",
+                "type",
+                "apiKey",
+                "fromEmail"
+              ],
+              "additionalProperties": false
             }
           ]
         }
@@ -442,6 +529,25 @@
             "providerKey"
           ],
           "additionalProperties": false
+        },
+        {
+          "readOnly": true,
+          "type": "object",
+          "properties": {
+            "providerKey": {
+              "type": "string",
+              "const": "email"
+            },
+            "sideEffectDisclosureAccepted": {
+              "type": "boolean",
+              "const": true
+            }
+          },
+          "required": [
+            "providerKey",
+            "sideEffectDisclosureAccepted"
+          ],
+          "additionalProperties": false
         }
       ]
     },
@@ -468,7 +574,8 @@
               "type": "string",
               "enum": [
                 "http",
-                "slack"
+                "slack",
+                "email"
               ]
             },
             "name": {
@@ -480,7 +587,8 @@
               "type": "string",
               "enum": [
                 "http_headers",
-                "slack_bot_token"
+                "slack_bot_token",
+                "resend_api_key"
               ]
             },
             "status": {

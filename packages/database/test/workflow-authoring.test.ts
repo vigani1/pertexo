@@ -16,9 +16,7 @@ const integrationUsageMigrationUrl = new URL(
 
 describe('workflow authoring migration contract', () => {
   it('advances the reviewed migration head', () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0035_slack_bot_token_connections.sql',
-    );
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0036_resend_api_key_connections.sql');
   });
 
   it('emits the identifier-only trigger-reconciliation payload', () => {

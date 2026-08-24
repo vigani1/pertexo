@@ -8,6 +8,7 @@ import {
   type QueueHandlerContext,
 } from '@pertexo/queue';
 import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
+import { NodeDispatchEvidenceError } from '@pertexo/node-sdk/server';
 import type {
   PreviewAttemptLease,
   PreviewClaimResult,
@@ -51,6 +52,13 @@ export interface PreviewAttemptRunStore {
         | 'previewRunId'
         | 'workspaceId'
       >;
+      connectionFence?: Readonly<{
+        connectionId: string;
+        expectedProviderKey: string;
+        expectedAuthType: string;
+        secretVersionId: string;
+      }>;
+      providerDispatchBinding?: string;
       signal?: AbortSignal;
       workerId: string;
     }>,
@@ -147,7 +155,7 @@ function deadlineExceededOutcome(
   lease: PreviewAttemptLease,
   dispatched: boolean,
 ): PreviewTerminalOutcome {
-  return lease.sideEffectClass === 'unsafe' && dispatched
+  return lease.sideEffectClass !== 'safe' && dispatched
     ? Object.freeze({
         safeErrorCode: 'preview.outcome_unknown',
         status: 'outcome_unknown',
@@ -167,7 +175,7 @@ async function completeOutcome(
 ): Promise<PreviewAttemptHandlerResult> {
   if (
     outcome.status === 'canceled' &&
-    lease.sideEffectClass === 'unsafe' &&
+    lease.sideEffectClass !== 'safe' &&
     dispatched
   ) {
     outcome = Object.freeze({
@@ -381,16 +389,52 @@ export function createPreviewAttemptHandler(
         ...(lease.providerIdempotencyKey === undefined
           ? {}
           : { providerIdempotencyKey: lease.providerIdempotencyKey }),
+        ...(lease.providerDispatchBinding === undefined
+          ? {}
+          : { providerDispatchBinding: lease.providerDispatchBinding }),
+        ...(lease.providerDispatchUnresolved === undefined
+          ? {}
+          : { providerDispatchUnresolved: true as const }),
         ...(connections === undefined ? {} : { connections }),
         ...(artifacts === undefined ? {} : { artifacts }),
-        beforeDispatch: async (): Promise<void> => {
+        beforeDispatch: async (
+          input?: Parameters<NodeExecutionRuntime['beforeDispatch']>[0],
+        ): Promise<void> => {
           if (dispatched)
             throw new PreviewAttemptStateError('duplicate_dispatch');
-          await dependencies.runStore.markDispatched({
-            lease,
-            signal: context.signal,
-            workerId: dependencies.workerId,
-          });
+          try {
+            await dependencies.runStore.markDispatched({
+              lease,
+              ...(input?.connectionFence === undefined
+                ? {}
+                : { connectionFence: input.connectionFence }),
+              ...(input?.providerDispatchBinding === undefined
+                ? {}
+                : {
+                    providerDispatchBinding: input.providerDispatchBinding,
+                  }),
+              signal: context.signal,
+              workerId: dependencies.workerId,
+            });
+          } catch (error: unknown) {
+            if (
+              error instanceof Error &&
+              'code' in error &&
+              error.code === 'connection_fence_failed'
+            )
+              throw new NodeDispatchEvidenceError(
+                'provider_connection_fence_failed',
+              );
+            if (
+              error instanceof Error &&
+              'code' in error &&
+              error.code === 'dispatch_binding_mismatch'
+            )
+              throw new NodeDispatchEvidenceError(
+                'provider_dispatch_binding_mismatch',
+              );
+            throw error;
+          }
           dispatched = true;
         },
       });

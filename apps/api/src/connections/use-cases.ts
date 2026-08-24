@@ -16,6 +16,7 @@ import type { ActorContext } from '../workspaces/index.js';
 import type {
   ConnectionCommandPersistence,
   ConnectionHttpClient,
+  ConnectionEmailClient,
   ConnectionSlackClient,
   ConnectionTestPersistence,
   ConnectionSecretEncryptionPort,
@@ -33,6 +34,7 @@ import {
   connectionTestResponseSchema,
   httpHeadersCredentialSchema,
   slackBotTokenCredentialSchema,
+  resendApiKeyCredentialSchema,
   type ConnectionResponse,
   type ConnectionTestResponse,
 } from './types.js';
@@ -214,6 +216,7 @@ export class TestConnectionUseCase {
     private readonly httpClient: ConnectionHttpClient,
     private readonly telemetry: ConnectionTelemetry = NOOP_CONNECTION_TELEMETRY,
     private readonly slackClient?: ConnectionSlackClient,
+    private readonly emailClient?: ConnectionEmailClient,
   ) {}
 
   public execute(
@@ -222,7 +225,8 @@ export class TestConnectionUseCase {
     return this.telemetry.measure(CONNECTION_OPERATION.test, async () => {
       await authorize(input, this.authorization, 'connection:use');
       const request = connectionTestRequestSchema.parse(input.request);
-      const expectedProviderKey = 'url' in request ? 'http' : 'slack';
+      const expectedProviderKey =
+        'url' in request ? 'http' : request.providerKey;
       const requestHash = hashRequest({
         connectionId: input.connectionId,
         ...request,
@@ -260,6 +264,37 @@ export class TestConnectionUseCase {
         });
         const credential = decodeCredential(plaintext);
         try {
+          if (expectedProviderKey === 'email') {
+            if (
+              credential.type !== 'resend_api_key' ||
+              this.emailClient === undefined
+            )
+              throw new ConnectionSecretEncryptionError();
+            const result = await this.emailClient.sendNotification({
+              apiKey: credential.apiKey,
+              fromEmail: credential.fromEmail,
+              toEmail: 'delivered@resend.dev',
+              subject: 'Pertexo Resend connection test',
+              text: 'This message verifies a Pertexo Resend sending connection.',
+              idempotencyKey: connectionTestProviderKey(
+                input.connectionId,
+                input.idempotencyKey,
+              ),
+              timeoutMillis: 15_000,
+              beforeDispatch: () =>
+                this.persistence.markConnectionTestDispatched({
+                  ...common,
+                  secretVersionId: resolved.secretVersionId,
+                }),
+            });
+            return toTestResponse(
+              await this.persistence.completeConnectionTest({
+                ...common,
+                secretVersionId: resolved.secretVersionId,
+                outcome: resendTestOutcome(result),
+              }),
+            );
+          }
           if (expectedProviderKey === 'slack') {
             if (
               credential.type !== 'slack_bot_token' ||
@@ -357,12 +392,13 @@ function decodeCredential(plaintext: Uint8Array) {
       plaintext,
     );
     const value: unknown = JSON.parse(serialized);
-    return value !== null &&
-      typeof value === 'object' &&
-      'type' in value &&
-      value.type === 'slack_bot_token'
-      ? slackBotTokenCredentialSchema.parse(value)
-      : httpHeadersCredentialSchema.parse(value);
+    if (value !== null && typeof value === 'object' && 'type' in value) {
+      if (value.type === 'slack_bot_token')
+        return slackBotTokenCredentialSchema.parse(value);
+      if (value.type === 'resend_api_key')
+        return resendApiKeyCredentialSchema.parse(value);
+    }
+    return httpHeadersCredentialSchema.parse(value);
   } catch {
     throw new ConnectionSecretEncryptionError();
   }
@@ -410,6 +446,33 @@ function slackTestOutcome(
   throw new TypeError('Unsupported Slack connection-test outcome');
 }
 
+function resendTestOutcome(
+  result: Awaited<ReturnType<ConnectionEmailClient['sendNotification']>>,
+): ConnectionTestOutcome {
+  switch (result.kind) {
+    case 'succeeded':
+      return Object.freeze({ ok: true, httpStatus: 200 });
+    case 'rate_limited':
+      return Object.freeze({
+        ok: false,
+        httpStatus: 429,
+        errorCode: 'connection.provider_rate_limited',
+        reauthorizationRequired: false,
+      });
+    case 'http_failure':
+      return responseOutcome(result.status);
+    case 'invalid_response':
+      return Object.freeze({
+        ok: false,
+        httpStatus: null,
+        errorCode: 'connection.provider_invalid_response',
+        reauthorizationRequired: false,
+      });
+    case 'rejected':
+      return responseOutcome(result.status);
+  }
+}
+
 function responseOutcome(status: number): ConnectionTestOutcome {
   if (status >= 200 && status <= 299)
     return Object.freeze({ ok: true, httpStatus: status });
@@ -449,6 +512,15 @@ function encodeCredential(value: unknown): Uint8Array {
 
 function hashRequest(value: unknown): string {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');
+}
+
+function connectionTestProviderKey(
+  connectionId: string,
+  idempotencyKey: string,
+): string {
+  return `pertexo-connection-test-v1-${createHash('sha256')
+    .update(`${connectionId}\0${idempotencyKey}`)
+    .digest('hex')}`;
 }
 
 function toResponse(record: ConnectionRecord): ConnectionResponse {
