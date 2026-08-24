@@ -21,7 +21,7 @@ not complete a phase.
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
-| Phase 5 — orchestration slice | In progress | ADRs 008/017; Condition vertical slice complete through `a38f549` with checkpoint V2, scoped execution, fresh-worker/Redis-loss recovery, and staged/active rollout; Switch is next |
+| Phase 5 — orchestration slice | In progress | ADRs 008/017/018; Condition and Switch vertical slices complete through `998d230` with checkpoint V2, scoped execution, fresh-worker/Redis-loss recovery, and staged/active rollout; bounded Parallel is next |
 | Phase 6 — V1 providers and triggers | Not started | — |
 | Phase 7 — production operations | Not started | — |
 
@@ -2307,6 +2307,9 @@ Authority and entry gate:
 - [x] Record ADR 018 before Switch implementation to fix bounded scalar
       matching, ordered first-match behavior, stable case ports, and reuse of
       the authoritative checkpoint V2 branch-selection path.
+- [x] Record ADR 019 before Parallel/Merge implementation to fix bounded fan-out,
+      structured pairing, complete-ledger settlement, admission limits, and
+      canonical Merge scope.
 
 Current evidence:
 
@@ -2367,12 +2370,23 @@ Current evidence:
   `pnpm check`, the five-test coordinator consumer integration file, and exact-
   head CI run `32739500260` pass, including Phase 0E crash recovery, Redis and
   service-loss recovery, and additive rollout gates.
+- ADR 018 and commits `ace190a`, `483f617`, and `998d230` add the bounded
+  `core.switch@1` contract, ordered scalar first-match/default execution,
+  configured stable case-port publication validation, generalized durable
+  branch selection, checkpoint V2 initialization, and staged/active release
+  cohorts. The disposable PostgreSQL/BullMQ matrix runs Condition and Switch
+  through duplicate attempt/coordinator delivery, queue destruction,
+  fresh-worker recovery, selected scoped execution, explicit unselected skip,
+  retained old-release execution, and terminal success. Root `pnpm check`, the
+  six-test coordinator consumer integration file, and exact-head CI run
+  `32741684377` pass all quality, real-integration, crash, Redis-loss,
+  sequential service-loss, and additive rollout gates.
 
 Incremental publishable slices, in required order:
 
 - [x] Condition: versioned schemas and executor; exactly one deterministic
       branch selected and every unreachable branch explicitly skipped.
-- [ ] Switch: bounded ordered cases plus default behavior; canonical branch IDs
+- [x] Switch: bounded ordered cases plus default behavior; canonical branch IDs
       and selection independent of canvas or object-key order.
 - [ ] Bounded Parallel: declared branches become ready concurrently while the
       pinned run/workspace limit bounds admissions and cancellation stops new
