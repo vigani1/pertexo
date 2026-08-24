@@ -21,7 +21,7 @@ not complete a phase.
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
-| Phase 5 — orchestration slice | In progress | ADRs 008/017/018/019/020/021/022; all seven implementation slices, including durable failure notification, and the local phase-wide verification matrix pass; fixed-head Spec/Standards review and final evidence remain |
+| Phase 5 — orchestration slice | Complete | ADRs 008/017/018/019/020/021/022; implementation through `9d7e071`; migration head `0034_run_failure_notifications.sql`; 862 unit assertions and complete real-service/recovery matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 6 — V1 providers and triggers | Not started | — |
 | Phase 7 — production operations | Not started | — |
 
@@ -2291,7 +2291,7 @@ Current evidence:
 
 ## Phase 5 — Orchestration slice
 
-Status: **In progress**
+Status: **Complete**
 
 Authority and entry gate:
 
@@ -2611,24 +2611,29 @@ Current evidence:
   key, with a focused unit regression, while structured loops retain strict scope
   validation. PostgreSQL and Redis recovered healthy, Redis returned `PONG`,
   resilience DB 15 was empty, and all three Compose dependencies were healthy.
-- Phase 5 remains in progress pending one fixed implementation commit and the
-  required independent fixed-head Spec and Standards reviews. The tracker cannot
-  truthfully satisfy its evidence-commit completion gate until both reviews issue
-  GO against that exact head.
+- Independent Spec and Standards re-reviews of the full Phase 5 range
+  `28ae56b...9d7e071` both issue GO against the same pushed immutable head. The
+  Spec review confirms all Phase 5 plan requirements and ADRs 017-022, including
+  the corrected direct Parallel-to-Merge publication and explicit `missing`
+  ledger behavior. The Standards review confirms PostgreSQL-authoritative
+  notification retry timing and no remaining documented-standard blocker.
+  Nonblocking review notes are the pre-existing structured-port derivation
+  duplication, the broad `audit` helper name, and unrelated README/mailmap/CI
+  additions in the reviewed range; none changes Phase 5 runtime correctness.
 - The first fixed-head Standards review of `974f764` found one blocking clock-
   authority defect: notification retry scheduling and eligibility used the
   worker clock. A disposable-PostgreSQL regression skewed `Date.now()` to 2099
   and first reproduced a retry roughly 72 years late; the delivery store now
   computes `next_delivery_at` and checks whether it is due with
   `clock_timestamp()`. The same proof verifies a skewed worker cannot claim the
-  retry early. Fixed-head Spec and Standards re-review remain required.
+  retry early. The fixed-head Standards re-review at `9d7e071` issues GO.
 - The first fixed-head Spec review of `974f764` found that publication rejected
   valid direct Parallel-to-Merge paths and production could not derive the
   corresponding explicit `missing` ledger disposition. Red-green executable
   proofs now accept each direct matching branch, persist canonical `missing`
   entries for those graph-declared empty paths, settle the complete ledger, and
   admit Merge without weakening fail-closed handling for absent non-empty branch
-  work. Fixed-head re-review remains required.
+  work. The fixed-head Spec re-review at `9d7e071` issues GO.
 
 Incremental publishable slices, in required order:
 
@@ -2689,9 +2694,9 @@ Phase-wide completion gates:
       0D/0E plus Phase 3/4 recovery and retained-release fixtures.
 - [x] Record exact versions, commands, assertion counts, timings, cleanup, and
       post-test dependency health.
-- [ ] Resolve every blocker/high finding from independent Spec and Standards
+- [x] Resolve every blocker/high finding from independent Spec and Standards
       reviews against one fixed Phase 5 implementation commit.
-- [ ] Mark Phase 5 complete only after every box above has direct evidence and
+- [x] Mark Phase 5 complete only after every box above has direct evidence and
       all coherent implementation/evidence commits are pushed.
 
 ## Later phases
