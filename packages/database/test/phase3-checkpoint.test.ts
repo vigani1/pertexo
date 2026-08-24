@@ -133,4 +133,39 @@ describe('persisted coordinator checkpoint codec', () => {
       expect.objectContaining({ name: 'Phase3CheckpointInvalidError' }),
     );
   });
+
+  it('accepts a bounded settled Merge ledger in checkpoint V2', () => {
+    expect(
+      parsePersistedPhase3Checkpoint({
+        ...checkpointV1(),
+        schemaVersion: 2,
+        branchSelections: [],
+        joins: [
+          {
+            joinId: 'merge',
+            policy: { kind: 'all' },
+            ledger: [
+              {
+                branchId: 'branch-01',
+                disposition: 'arrived',
+                output: {
+                  kind: 'inline',
+                  attemptId: '00000000-0000-4000-8000-000000000202',
+                },
+              },
+              { branchId: 'branch-02', disposition: 'skipped' },
+            ],
+            selectedBranchIds: ['branch-01'],
+          },
+        ],
+      }),
+    ).toMatchObject({
+      joins: [
+        {
+          joinId: 'merge',
+          selectedBranchIds: ['branch-01'],
+        },
+      ],
+    });
+  });
 });

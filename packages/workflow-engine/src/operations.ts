@@ -40,6 +40,7 @@ import {
 import { invocationKey as createInvocationKey } from './scheduling.js';
 import type {
   BranchScopePart,
+  JoinPolicy,
   OutputReference,
   WorkflowTransitionPlan,
 } from './types.js';
@@ -843,7 +844,7 @@ function assertCheckpointMatchesExecutable(
   checkpoint: ReturnType<typeof parseCheckpoint>,
   executable: CompiledWorkflowExecutableV2,
 ): void {
-  if (checkpoint.joins.length !== 0 || checkpoint.loops.length !== 0)
+  if (checkpoint.loops.length !== 0)
     operationError(
       'workflow_identity_invalid',
       'checkpoint contains unsupported coordinator state',
@@ -852,6 +853,42 @@ function assertCheckpointMatchesExecutable(
   const nodesById = new Map(
     executable.envelope.graph.nodes.map((node) => [node.id, node]),
   );
+  for (const join of checkpoint.joins) {
+    const merge = nodesById.get(join.joinId);
+    if (
+      merge?.definition.key !== 'core.merge' ||
+      merge.definition.version !== 1
+    )
+      operationError(
+        'workflow_identity_invalid',
+        'checkpoint join does not belong to a Merge node',
+      );
+    const parallelNodeId = Reflect.get(
+      merge.config,
+      'parallelNodeId',
+    ) as unknown;
+    const parallel =
+      typeof parallelNodeId === 'string'
+        ? nodesById.get(parallelNodeId)
+        : undefined;
+    const branchIds =
+      parallel === undefined
+        ? undefined
+        : configuredParallelOutputPorts(parallel);
+    if (branchIds === undefined)
+      operationError(
+        'workflow_identity_invalid',
+        'checkpoint join disagrees with its paired Parallel',
+      );
+    if (
+      join.ledger.length !== branchIds.length ||
+      join.ledger.some(({ branchId }) => !branchIds.includes(branchId))
+    )
+      operationError(
+        'workflow_identity_invalid',
+        'checkpoint join disagrees with its paired Parallel',
+      );
+  }
   const invocationKeys = new Set<string>();
   for (const invocation of checkpoint.invocations) {
     const branchPath = invocation.branchPath ?? [];
@@ -887,6 +924,122 @@ function assertCheckpointMatchesExecutable(
       'workflow_identity_invalid',
       'checkpoint admission does not belong to an executable invocation',
     );
+}
+
+function mergeCoordinatorObservations(
+  executable: CompiledWorkflowExecutableV2,
+  checkpoint: ReturnType<typeof parseCheckpoint>,
+  observations: readonly WorkflowObservation[],
+): readonly WorkflowObservation[] {
+  const projected = new Map(
+    checkpoint.invocations.map((invocation) => [
+      invocation.invocationKey,
+      invocation,
+    ]),
+  );
+  for (const observation of observations) {
+    if (observation.kind !== 'outcome') continue;
+    const invocation = projected.get(observation.invocationKey);
+    if (invocation === undefined) continue;
+    projected.set(observation.invocationKey, {
+      ...invocation,
+      status: observation.status,
+      ...(observation.output === undefined
+        ? {}
+        : { output: observation.output }),
+    });
+  }
+  const nodes = new Map(
+    executable.envelope.graph.nodes.map((node) => [node.id, node]),
+  );
+  return executable.envelope.graph.nodes
+    .filter(
+      ({ definition }) =>
+        definition.key === 'core.merge' && definition.version === 1,
+    )
+    .flatMap((merge): WorkflowObservation[] => {
+      const parallelNodeId = Reflect.get(
+        merge.config,
+        'parallelNodeId',
+      ) as unknown;
+      const policy = Reflect.get(merge.config, 'policy') as unknown;
+      if (
+        typeof parallelNodeId !== 'string' ||
+        typeof policy !== 'object' ||
+        policy === null
+      )
+        operationError('workflow_identity_invalid', 'Merge config is invalid');
+      const parallel = nodes.get(parallelNodeId);
+      const branchIds =
+        parallel === undefined
+          ? undefined
+          : configuredParallelOutputPorts(parallel);
+      if (branchIds === undefined)
+        operationError('workflow_identity_invalid', 'Merge pairing is invalid');
+      const parallelInvocation = [...projected.values()].find(
+        (invocation) =>
+          invocation.nodeId === parallelNodeId &&
+          invocation.status === 'succeeded',
+      );
+      if (parallelInvocation === undefined) return [];
+      const declared: WorkflowObservation = {
+        kind: 'join_declared',
+        joinId: merge.id,
+        policy: policy as JoinPolicy,
+        branchIds,
+        coordinatorDerived: true,
+      };
+      const dispositions = branchIds.flatMap(
+        (branchId): WorkflowObservation[] => {
+          const scoped = [...projected.values()].filter((invocation) =>
+            invocation.branchPath?.some(
+              (part) =>
+                part.nodeId === parallelNodeId && part.outputPort === branchId,
+            ),
+          );
+          if (
+            scoped.length === 0 ||
+            scoped.some(({ status }) =>
+              ['pending', 'ready', 'running', 'waiting'].includes(status),
+            )
+          )
+            return [];
+          const mergeSourceNodeId = executable.envelope.graph.edges.find(
+            ({ target }) =>
+              target.nodeId === merge.id && target.port === branchId,
+          )?.source.nodeId;
+          const source = scoped.find(
+            ({ nodeId }) => nodeId === mergeSourceNodeId,
+          );
+          const statuses = new Set(scoped.map(({ status }) => status));
+          const disposition =
+            statuses.has('failed') ||
+            statuses.has('timed_out') ||
+            statuses.has('outcome_unknown')
+              ? 'failed'
+              : statuses.has('canceled')
+                ? 'canceled'
+                : statuses.size === 1 && statuses.has('skipped')
+                  ? 'skipped'
+                  : 'arrived';
+          return [
+            {
+              kind: 'branch_disposition',
+              joinId: merge.id,
+              coordinatorDerived: true,
+              branch: {
+                branchId,
+                disposition,
+                ...(disposition === 'arrived' && source?.output !== undefined
+                  ? { output: source.output }
+                  : {}),
+              },
+            },
+          ];
+        },
+      );
+      return [declared, ...dispositions];
+    });
 }
 
 export async function advanceWorkflow(
@@ -1004,6 +1157,11 @@ export async function advanceWorkflow(
         coordinatorDerived: true,
       };
     });
+  const coordinatorObservations = mergeCoordinatorObservations(
+    input.executable,
+    checkpoint,
+    [...persistedObservations.observations, ...resolvedFailures],
+  );
   const plan = advanceWorkflowFromSchedulerState({
     checkpoint,
     schedulerState: schedulerState(input.executable),
@@ -1011,6 +1169,7 @@ export async function advanceWorkflow(
       ...persistedObservations.observations,
       ...branchSelections,
       ...resolvedFailures,
+      ...coordinatorObservations,
     ],
     ...(persistedObservations.deadlineExpiration === undefined
       ? {}
@@ -1079,6 +1238,7 @@ export interface ExecuteNodeAttemptInput {
   readonly branchPath?: readonly BranchScopePart[];
   readonly runInput: unknown;
   readonly completedNodeOutputs: unknown;
+  readonly coordinatorInput?: unknown;
   readonly registry: NodeExecutionRegistry;
   readonly signal: AbortSignal;
   readonly runtime?: NodeExecutionRuntime;
@@ -1263,12 +1423,24 @@ export async function executeNodeAttempt(
       'completed output is not direct upstream',
     );
   const resolvedInput = await resolveMappedNodeInput(
-    node,
+    node.definition.key === 'core.merge' && node.definition.version === 1
+      ? { ...node, inputMappings: {} }
+      : node,
     runInput,
     completedOutputs,
     directUpstream,
     input.signal,
   );
+  let executionInput = resolvedInput;
+  if (node.definition.key === 'core.merge' && node.definition.version === 1) {
+    if (input.coordinatorInput === undefined)
+      operationError('attempt_invalid', 'settled Merge input is missing');
+    try {
+      executionInput = normalizeBoundedEngineJson(input.coordinatorInput);
+    } catch {
+      operationError('attempt_invalid', 'settled Merge input is invalid');
+    }
+  }
   assertNotAborted(input.signal);
   let result: NodeExecutionResult;
   try {
@@ -1276,7 +1448,7 @@ export async function executeNodeAttempt(
       definition: node.definition,
       executor: node.executor,
       config: node.config,
-      input: resolvedInput,
+      input: executionInput,
       connectionRefs: node.connectionRefs,
       signal: input.signal,
       ...(input.runtime === undefined ? {} : { runtime: input.runtime }),

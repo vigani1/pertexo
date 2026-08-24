@@ -131,12 +131,14 @@ export interface ReadyNodeDecision {
 function descendants(
   roots: readonly string[],
   adjacency: ReadonlyMap<string, readonly string[]>,
+  boundaries: ReadonlySet<string> = new Set(),
 ): ReadonlySet<string> {
   const reached = new Set<string>();
   const pending = [...roots];
   while (pending.length > 0) {
     const nodeId = pending.pop();
     if (nodeId === undefined || reached.has(nodeId)) continue;
+    if (boundaries.has(nodeId)) continue;
     reached.add(nodeId);
     pending.push(...(adjacency.get(nodeId) ?? []));
   }
@@ -193,6 +195,14 @@ export function deriveReadyNodes(input: {
     predecessors.get(edge.target.nodeId)?.push(edge.source.nodeId);
     adjacency.get(edge.source.nodeId)?.push(edge.target.nodeId);
   }
+  const mergeNodeIds = new Set(
+    input.graph.nodes
+      .filter(
+        ({ definition }) =>
+          definition?.key === 'core.merge' && definition.version === 1,
+      )
+      .map(({ id }) => id),
+  );
   const blocked = new Set<string>();
   const skipped = new Set<string>();
   const branchPathByNode = new Map<string, readonly BranchScopePart[]>();
@@ -213,6 +223,7 @@ export function deriveReadyNodes(input: {
       for (const nodeId of descendants(
         outgoing.map(({ target }) => target.nodeId),
         adjacency,
+        mergeNodeIds,
       ))
         blocked.add(nodeId);
       continue;
@@ -227,6 +238,7 @@ export function deriveReadyNodes(input: {
           .filter((edge) => edge.source.port === port)
           .map(({ target }) => target.nodeId),
         adjacency,
+        mergeNodeIds,
       );
       for (const nodeId of branchDescendants) {
         const existing = branchPathByNode.get(nodeId);
@@ -254,6 +266,7 @@ export function deriveReadyNodes(input: {
           .filter((edge) => edge.source.port === port)
           .map(({ target }) => target.nodeId),
         adjacency,
+        mergeNodeIds,
       )) {
         const existing = branchPathByNode.get(nodeId);
         if (existing === undefined || branchPath.length > existing.length)

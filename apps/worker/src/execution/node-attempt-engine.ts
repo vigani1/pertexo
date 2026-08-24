@@ -90,13 +90,15 @@ function prepareNode(
       'Node attempt side-effect class does not match its pin',
     );
   const upstreamNodeIds = Object.freeze(
-    [
-      ...new Set(
-        executable.envelope.graph.edges
-          .filter(({ target }) => target.nodeId === node.id)
-          .map(({ source }) => source.nodeId),
-      ),
-    ].sort(ordinal),
+    node.definition.key === 'core.merge' && node.definition.version === 1
+      ? []
+      : [
+          ...new Set(
+            executable.envelope.graph.edges
+              .filter(({ target }) => target.nodeId === node.id)
+              .map(({ source }) => source.nodeId),
+          ),
+        ].sort(ordinal),
   );
   return Object.freeze({
     upstreamNodeIds,
@@ -124,6 +126,9 @@ function prepareNode(
           : { branchPath: lease.branchPath }),
         runInput: input.runInput,
         completedNodeOutputs: input.completedNodeOutputs,
+        ...(input.coordinatorInput === undefined
+          ? {}
+          : { coordinatorInput: input.coordinatorInput }),
         registry: input.registry,
         ...(input.runtime === undefined ? {} : { runtime: input.runtime }),
         signal: input.signal,

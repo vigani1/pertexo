@@ -4,6 +4,7 @@ import { Pool, type PoolClient } from 'pg';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from './config.js';
+import { parsePersistedPhase3Checkpoint } from './phase3-checkpoint.js';
 import { canonicalOutboxPayloadChecksum } from './outbox.js';
 import {
   parseStoredExecutionValueV1,
@@ -191,6 +192,7 @@ export type NodeAttemptClaimResult =
 export type NodeAttemptInputs = Readonly<{
   runInput: unknown;
   completedNodeOutputs: Readonly<Record<string, unknown>>;
+  coordinatorInput?: unknown;
   abortRequested: boolean;
   abortReason?: 'canceled' | 'timed_out';
   deadlineAt?: Date;
@@ -789,8 +791,9 @@ export function createNodeAttemptRunStore(
             abort_requested: boolean;
             deadline_at: Date | null;
             input_ref: unknown;
+            scheduler_state: unknown;
           }>(
-            `select run.input_ref,run.deadline_at,
+            `select run.input_ref,run.deadline_at,checkpoint.scheduler_state,
                     (run.cancel_requested_at is not null or
                      (run.deadline_at is not null and
                       run.deadline_at <= clock_timestamp())) as abort_requested,
@@ -806,7 +809,10 @@ export function createNodeAttemptRunStore(
               and node.workflow_run_id=run.id
              join app.node_attempts attempt
                on attempt.workspace_id=node.workspace_id
-              and attempt.node_run_id=node.id
+               and attempt.node_run_id=node.id
+             join app.run_checkpoints checkpoint
+               on checkpoint.workspace_id=run.workspace_id
+              and checkpoint.workflow_run_id=run.id
              where run.workspace_id=$1 and run.id=$2
                and run.workflow_version_id=$3 and node.id=$4
                and node.node_id=$5 and node.invocation_key=$6
@@ -881,9 +887,31 @@ export function createNodeAttemptRunStore(
               completedNodeOutputs[output.node_id] = stored.value;
             }
           }
+          const checkpoint = parsePersistedPhase3Checkpoint(
+            row.scheduler_state,
+          );
+          const join = checkpoint.joins.find(
+            ({ joinId }) => joinId === input.lease.nodeId,
+          );
+          const coordinatorInput =
+            join?.selectedBranchIds === undefined
+              ? undefined
+              : {
+                  ledger: Object.fromEntries(
+                    join.ledger.map(({ branchId, disposition, output }) => [
+                      branchId,
+                      {
+                        disposition,
+                        ...(output === undefined ? {} : { output }),
+                      },
+                    ]),
+                  ),
+                  selectedBranchIds: join.selectedBranchIds,
+                };
           return Object.freeze({
             runInput,
             completedNodeOutputs: Object.freeze(completedNodeOutputs),
+            ...(coordinatorInput === undefined ? {} : { coordinatorInput }),
             abortRequested: row.abort_requested,
             ...(row.abort_reason === null
               ? {}

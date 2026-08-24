@@ -474,17 +474,37 @@ function assertBranchesDoNotReconverge(graph: WorkflowGraph): void {
   for (const edge of graph.edges)
     adjacency.get(edge.source.nodeId)?.push(edge.target.nodeId);
 
-  const descendants = (roots: readonly string[]): Set<string> => {
+  const descendants = (
+    roots: readonly string[],
+    boundaries: ReadonlySet<string> = new Set(),
+  ): Set<string> => {
     const reached = new Set<string>();
     const pending = [...roots];
     while (pending.length > 0) {
       const nodeId = pending.pop();
       if (nodeId === undefined || reached.has(nodeId)) continue;
+      if (boundaries.has(nodeId)) continue;
       reached.add(nodeId);
       pending.push(...(adjacency.get(nodeId) ?? []));
     }
     return reached;
   };
+
+  for (const merge of graph.nodes.filter(
+    ({ definition }) =>
+      definition.key === 'core.merge' && definition.version === 1,
+  )) {
+    const parallelNodeId = Reflect.get(
+      merge.config,
+      'parallelNodeId',
+    ) as unknown;
+    const parallel = graph.nodes.find(({ id }) => id === parallelNodeId);
+    if (
+      parallel?.definition.key !== 'core.parallel' ||
+      parallel.definition.version !== 1
+    )
+      fail('Merge must reference a pinned Parallel node');
+  }
 
   for (const node of graph.nodes) {
     const ports = configuredStructuredOutputPorts(node);
@@ -500,13 +520,69 @@ function assertBranchesDoNotReconverge(graph: WorkflowGraph): void {
       )
     )
       fail('every Parallel branch must have an outgoing edge');
+    const pairedMerges =
+      node.definition.key === 'core.parallel'
+        ? graph.nodes.filter(
+            (candidate) =>
+              candidate.definition.key === 'core.merge' &&
+              candidate.definition.version === 1 &&
+              Reflect.get(candidate.config, 'parallelNodeId') === node.id,
+          )
+        : [];
+    if (node.definition.key === 'core.parallel' && pairedMerges.length !== 1)
+      fail('Parallel requires exactly one paired Merge');
+    const pairedMerge = pairedMerges[0];
+    if (pairedMerge !== undefined) {
+      const incoming = graph.edges.filter(
+        ({ target }) => target.nodeId === pairedMerge.id,
+      );
+      if (
+        incoming.length !== ports.length ||
+        ports.some(
+          (port) =>
+            incoming.filter(({ target }) => target.port === port).length !== 1,
+        ) ||
+        incoming.some(({ target }) => !ports.includes(target.port))
+      )
+        fail(
+          'paired Merge inputs must match every Parallel branch exactly once',
+        );
+      const policy = Reflect.get(pairedMerge.config, 'policy') as unknown;
+      if (
+        typeof policy === 'object' &&
+        policy !== null &&
+        Reflect.get(policy, 'kind') === 'count' &&
+        (typeof Reflect.get(policy, 'count') !== 'number' ||
+          (Reflect.get(policy, 'count') as number) > ports.length)
+      )
+        fail('Merge count policy exceeds paired Parallel branches');
+    }
     const branchRoots = (port: string): string[] =>
       graph.edges
         .filter(
           (edge) => edge.source.nodeId === node.id && edge.source.port === port,
         )
         .map((edge) => edge.target.nodeId);
-    const reachedByPort = ports.map((port) => descendants(branchRoots(port)));
+    const boundaries = new Set(
+      pairedMerge === undefined ? [] : [pairedMerge.id],
+    );
+    const reachedByPort = ports.map((port) =>
+      descendants(branchRoots(port), boundaries),
+    );
+    if (
+      pairedMerge !== undefined &&
+      ports.some((port, index) => {
+        const incoming = graph.edges.find(
+          ({ target }) =>
+            target.nodeId === pairedMerge.id && target.port === port,
+        );
+        return (
+          incoming === undefined ||
+          !reachedByPort[index]?.has(incoming.source.nodeId)
+        );
+      })
+    )
+      fail('each Parallel branch must reach its matching Merge input');
     for (let left = 0; left < reachedByPort.length; left += 1)
       for (let right = left + 1; right < reachedByPort.length; right += 1) {
         const leftReached = reachedByPort[left];

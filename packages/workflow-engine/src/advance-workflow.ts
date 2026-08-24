@@ -75,11 +75,13 @@ export type WorkflowObservation =
       readonly joinId: string;
       readonly policy: JoinPolicy;
       readonly branchIds: readonly string[];
+      readonly coordinatorDerived?: true;
     }
   | {
       readonly kind: 'branch_disposition';
       readonly joinId: string;
       readonly branch: BranchLedgerEntry;
+      readonly coordinatorDerived?: true;
     }
   | {
       readonly kind: 'loop_started';

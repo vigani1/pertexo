@@ -65,6 +65,38 @@ const branchSelectionSchema = z
     selectedOutputPort: z.string().min(1).max(128),
   })
   .strict();
+const branchLedgerEntrySchema = z
+  .object({
+    branchId: z.string().min(1).max(128),
+    disposition: z.enum([
+      'pending',
+      'arrived',
+      'skipped',
+      'missing',
+      'failed',
+      'canceled',
+    ]),
+    output: outputReferenceSchema.optional(),
+  })
+  .strict();
+const joinPolicySchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('all') }).strict(),
+  z.object({ kind: z.literal('any') }).strict(),
+  z
+    .object({ kind: z.literal('count'), count: z.number().int().positive() })
+    .strict(),
+]);
+const joinSchema = z
+  .object({
+    joinId: z.string().min(1).max(128),
+    policy: joinPolicySchema,
+    ledger: z.array(branchLedgerEntrySchema).min(1).max(16),
+    selectedBranchIds: z.array(z.string().min(1).max(128)).max(16).optional(),
+    unsatisfiedReasonCode: z
+      .enum(['branch_failed', 'branch_canceled', 'insufficient_arrivals'])
+      .optional(),
+  })
+  .strict();
 const checkpointShape = {
   engineVersion: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/u),
   workflowVersionId: canonicalUuidSchema,
@@ -82,7 +114,7 @@ const checkpointShape = {
   nextEventSequence: z.number().int().positive(),
   readySet: z.array(z.string().min(1).max(256)).max(10_000),
   admittedInvocationKeys: z.array(z.string().min(1).max(256)).max(10_000),
-  joins: z.array(z.never()).max(0),
+  joins: z.array(joinSchema).max(1_000),
   loops: z.array(z.never()).max(0),
   remainingIterationBudget: z.number().int().nonnegative(),
   cancelRequested: z.boolean(),
@@ -239,6 +271,8 @@ export function parseInitialPhase3Checkpoint(
     checkpoint.readySet.length !== 0 ||
     checkpoint.admittedInvocationKeys.length !== 0 ||
     checkpoint.invocations.length !== 0 ||
+    checkpoint.joins.length !== 0 ||
+    checkpoint.loops.length !== 0 ||
     checkpoint.remainingIterationBudget < 0 ||
     checkpoint.cancelRequested ||
     checkpoint.deadlineExpired

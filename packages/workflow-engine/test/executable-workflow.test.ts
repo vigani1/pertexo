@@ -38,6 +38,7 @@ function manifest(
   key:
     | 'core.condition'
     | 'core.manual'
+    | 'core.merge'
     | 'core.parallel'
     | 'core.set'
     | 'core.switch'
@@ -55,7 +56,8 @@ function manifest(
           ? 'output'
           : key === 'core.condition' ||
               key === 'core.switch' ||
-              key === 'core.parallel'
+              key === 'core.parallel' ||
+              key === 'core.merge'
             ? 'logic'
             : 'transform',
     configVersion: 1,
@@ -63,7 +65,29 @@ function manifest(
     inputSchema: schema,
     outputSchema: schema,
     ports: {
-      inputs: key === 'core.manual' ? [] : ['in'],
+      inputs:
+        key === 'core.manual'
+          ? []
+          : key === 'core.merge'
+            ? [
+                'branch-01',
+                'branch-02',
+                'branch-03',
+                'branch-04',
+                'branch-05',
+                'branch-06',
+                'branch-07',
+                'branch-08',
+                'branch-09',
+                'branch-10',
+                'branch-11',
+                'branch-12',
+                'branch-13',
+                'branch-14',
+                'branch-15',
+                'branch-16',
+              ]
+            : ['in'],
       outputs:
         key === 'core.terminate'
           ? []
@@ -133,6 +157,7 @@ function nodeRelease(input?: {
   readonly condition?: boolean;
   readonly switch?: boolean;
   readonly parallel?: boolean;
+  readonly merge?: boolean;
 }): RegistryRelease {
   const definitions = [
     manifest('core.manual'),
@@ -144,6 +169,7 @@ function nodeRelease(input?: {
     ...(input?.condition ? [manifest('core.condition')] : []),
     ...(input?.switch ? [manifest('core.switch')] : []),
     ...(input?.parallel ? [manifest('core.parallel')] : []),
+    ...(input?.merge ? [manifest('core.merge')] : []),
     ...(input?.unrelated ? [manifest('test.unrelated')] : []),
   ];
   const manual = definitions.find(
@@ -275,6 +301,68 @@ function parallelGraph(secondPort = 'branch-02') {
         id: 'parallel-right',
         source: { nodeId: 'parallel', port: secondPort },
         target: { nodeId: 'right', port: 'in' },
+      },
+    ],
+  };
+}
+
+function pairedParallelGraph() {
+  const base = graph();
+  return {
+    ...base,
+    nodes: [
+      base.nodes[0],
+      {
+        ...base.nodes[1],
+        id: 'parallel',
+        definition: { key: 'core.parallel', version: 1 },
+        config: {
+          branches: [{ id: 'branch-02' }, { id: 'branch-01' }],
+          maxConcurrency: 1,
+        },
+        inputMappings: {},
+      },
+      { ...base.nodes[1], id: 'left' },
+      { ...base.nodes[1], id: 'right' },
+      {
+        ...base.nodes[1],
+        id: 'merge',
+        definition: { key: 'core.merge', version: 1 },
+        config: { parallelNodeId: 'parallel', policy: { kind: 'all' } },
+        inputMappings: {},
+      },
+      base.nodes[2],
+    ],
+    edges: [
+      {
+        id: 'manual-parallel',
+        source: { nodeId: 'manual', port: 'out' },
+        target: { nodeId: 'parallel', port: 'in' },
+      },
+      {
+        id: 'parallel-left',
+        source: { nodeId: 'parallel', port: 'branch-01' },
+        target: { nodeId: 'left', port: 'in' },
+      },
+      {
+        id: 'parallel-right',
+        source: { nodeId: 'parallel', port: 'branch-02' },
+        target: { nodeId: 'right', port: 'in' },
+      },
+      {
+        id: 'left-merge',
+        source: { nodeId: 'left', port: 'out' },
+        target: { nodeId: 'merge', port: 'branch-01' },
+      },
+      {
+        id: 'right-merge',
+        source: { nodeId: 'right', port: 'out' },
+        target: { nodeId: 'merge', port: 'branch-02' },
+      },
+      {
+        id: 'merge-terminate',
+        source: { nodeId: 'merge', port: 'out' },
+        target: { nodeId: 'terminate', port: 'in' },
       },
     ],
   };
@@ -796,7 +884,7 @@ describe('workflow executable V2 identity', () => {
           target: { nodeId: 'terminate', port: 'in' },
         },
       ],
-    };
+    } as const;
     expect(
       buildWorkflowExecutableV2({ graph: repeated, release }).checksum,
     ).toMatch(/^wf:v2:sha256:[a-f0-9]{64}$/u);
@@ -1288,10 +1376,10 @@ describe('Phase 3 production operations', () => {
   it('fans out Parallel only from its exact persisted declaration output', async () => {
     const workflowVersionId = 'version-parallel';
     const release = composeExecutableCompatibilityRelease(
-      nodeRelease({ parallel: true }),
+      nodeRelease({ parallel: true, merge: true }),
     );
     const executable = buildWorkflowExecutableV2({
-      graph: parallelGraph(),
+      graph: pairedParallelGraph(),
       release,
     });
     const manualKey = invocationKey({ workflowVersionId, nodeId: 'manual' });
@@ -1354,12 +1442,128 @@ describe('Phase 3 production operations', () => {
       signal: new AbortController().signal,
     });
     expect(plan.attempts).toHaveLength(1);
+    expect(plan.checkpoint.joins).toEqual([
+      {
+        joinId: 'merge',
+        policy: { kind: 'all' },
+        ledger: [
+          { branchId: 'branch-01', disposition: 'pending' },
+          { branchId: 'branch-02', disposition: 'pending' },
+        ],
+      },
+    ]);
     expect(plan.checkpoint.invocations).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ nodeId: 'left', status: 'running' }),
         expect.objectContaining({ nodeId: 'right', status: 'ready' }),
       ]),
     );
+    const left = plan.checkpoint.invocations.find(
+      ({ nodeId }) => nodeId === 'left',
+    );
+    if (left === undefined) throw new Error('left branch invocation missing');
+    const leftAttemptId = '00000000-0000-4000-8000-000000000107';
+    const afterLeft = await advanceWorkflow({
+      runId: 'run-parallel',
+      executable,
+      workflowVersionId,
+      checkpoint: plan.checkpoint,
+      observations: [
+        {
+          sequence: plan.checkpoint.nextEventSequence,
+          occurredAt: '2026-08-24T00:00:02.000Z',
+          attemptId: leftAttemptId,
+          attemptNumber: 1,
+          kind: 'outcome',
+          invocationKey: left.invocationKey,
+          status: 'succeeded',
+          output: { kind: 'inline', attemptId: leftAttemptId },
+        },
+      ],
+      occurredAt: '2026-08-24T00:00:03.000Z',
+      maximumAdmissions: 10,
+      signal: new AbortController().signal,
+    });
+    expect(afterLeft.checkpoint.joins[0]?.ledger).toEqual([
+      {
+        branchId: 'branch-01',
+        disposition: 'arrived',
+        output: { kind: 'inline', attemptId: leftAttemptId },
+      },
+      { branchId: 'branch-02', disposition: 'pending' },
+    ]);
+    expect(afterLeft.attempts.map(({ nodeId }) => nodeId)).toEqual(['right']);
+    const right = afterLeft.checkpoint.invocations.find(
+      ({ nodeId }) => nodeId === 'right',
+    );
+    if (right === undefined) throw new Error('right branch invocation missing');
+    const rightAttemptId = '00000000-0000-4000-8000-000000000108';
+    const settled = await advanceWorkflow({
+      runId: 'run-parallel',
+      executable,
+      workflowVersionId,
+      checkpoint: afterLeft.checkpoint,
+      observations: [
+        {
+          sequence: afterLeft.checkpoint.nextEventSequence,
+          occurredAt: '2026-08-24T00:00:04.000Z',
+          attemptId: rightAttemptId,
+          attemptNumber: 1,
+          kind: 'outcome',
+          invocationKey: right.invocationKey,
+          status: 'succeeded',
+          output: { kind: 'inline', attemptId: rightAttemptId },
+        },
+      ],
+      occurredAt: '2026-08-24T00:00:05.000Z',
+      maximumAdmissions: 10,
+      signal: new AbortController().signal,
+    });
+    expect(settled.checkpoint.joins[0]).toMatchObject({
+      selectedBranchIds: ['branch-01', 'branch-02'],
+    });
+    expect(settled.attempts.map(({ nodeId }) => nodeId)).toEqual(['merge']);
+    const mergeAttempt = settled.attempts[0];
+    if (mergeAttempt === undefined) throw new Error('Merge attempt missing');
+    const coordinatorInput = {
+      ledger: {
+        'branch-01': {
+          disposition: 'arrived',
+          output: { kind: 'inline', attemptId: leftAttemptId },
+        },
+        'branch-02': {
+          disposition: 'arrived',
+          output: { kind: 'inline', attemptId: rightAttemptId },
+        },
+      },
+      selectedBranchIds: ['branch-01', 'branch-02'],
+    } as const;
+    let receivedMergeInput: unknown;
+    await expect(
+      executeNodeAttempt({
+        runId: 'run-parallel',
+        nodeRunId: 'node-run-merge',
+        attemptId: 'attempt-merge',
+        executable,
+        workflowVersionId,
+        invocationKey: mergeAttempt.invocationKey,
+        nodeId: 'merge',
+        runInput: {},
+        completedNodeOutputs: {},
+        coordinatorInput,
+        registry: {
+          execute: (request) => {
+            receivedMergeInput = request.input;
+            return Promise.resolve({
+              kind: 'succeeded',
+              output: coordinatorInput,
+            });
+          },
+        },
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toMatchObject({ kind: 'succeeded', output: coordinatorInput });
+    expect(receivedMergeInput).toEqual(coordinatorInput);
     await expect(
       advanceWorkflow({
         runId: 'run-parallel',
