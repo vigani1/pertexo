@@ -132,6 +132,50 @@ describe('workflow graph validation', () => {
       ).issues.some((issue) => issue.code === 'invalid_structured_body'),
     ).toBe(true);
   });
+  it('scopes structured input to the nearest declared body port', () => {
+    const mapped = {
+      ...node('inner'),
+      inputMappings: {
+        value: { kind: 'structured_input' as const, port: 'item', path: '$' },
+      },
+    };
+    const loop = {
+      ...node('loop'),
+      structured: {
+        kind: 'for_each' as const,
+        maxIterations: 2,
+        maxConcurrency: 1,
+        body: {
+          ...graph([mapped]),
+          inputPorts: ['item', 'ordinal'],
+          outputPorts: ['result'],
+        },
+      },
+    };
+    expect(validateWorkflowGraph(graph([loop])).ok).toBe(true);
+    expect(validateWorkflowGraph(graph([mapped])).issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'invalid_structured_body' }),
+      ]),
+    );
+    expect(
+      validateWorkflowGraph(
+        graph([
+          {
+            ...loop,
+            structured: {
+              ...loop.structured,
+              body: { ...loop.structured.body, inputPorts: ['ordinal'] },
+            },
+          },
+        ]),
+      ).issues,
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'invalid_structured_body' }),
+      ]),
+    );
+  });
   it('requires the exact published graph and structured schema versions', () => {
     expect(
       validateWorkflowGraph({ ...graph([]), schemaVersion: 2 }).issues,

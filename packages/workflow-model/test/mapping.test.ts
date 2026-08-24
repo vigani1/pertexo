@@ -14,10 +14,11 @@ describe('value sources', () => {
       expect.objectContaining({ kind: 'error', code: 'invalid_path' }),
     );
   });
-  it('resolves literal, run input, node output, and expression through one seam', async () => {
+  it('resolves literal, run, node, and structured input through one seam', async () => {
     const context = {
       runInput: { name: 'Ada' },
       nodeOutputs: { prior: { count: 2 } },
+      structuredInputs: { item: { name: 'Grace' }, ordinal: 4 },
     };
     expect(
       await resolveValueSource({ kind: 'literal', value: 3 }, context),
@@ -34,6 +35,24 @@ describe('value sources', () => {
     expect(
       await resolveValueSource(
         { kind: 'node_output', nodeId: 'absent', path: '$' },
+        context,
+      ),
+    ).toEqual({ kind: 'missing' });
+    expect(
+      await resolveValueSource(
+        { kind: 'structured_input', port: 'item', path: '$.name' },
+        context,
+      ),
+    ).toEqual({ kind: 'value', value: 'Grace' });
+    expect(
+      await resolveValueSource(
+        { kind: 'structured_input', port: 'ordinal', path: '$' },
+        context,
+      ),
+    ).toEqual({ kind: 'value', value: 4 });
+    expect(
+      await resolveValueSource(
+        { kind: 'structured_input', port: 'absent', path: '$' },
         context,
       ),
     ).toEqual({ kind: 'missing' });

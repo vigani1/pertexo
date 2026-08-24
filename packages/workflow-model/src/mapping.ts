@@ -16,6 +16,9 @@ export type ValueResolution =
       readonly message: string;
       readonly expression?: Extract<ExpressionResult, { kind: 'error' }>;
     };
+export interface ValueResolutionContext extends ExpressionContextV1 {
+  readonly structuredInputs?: Readonly<Record<string, JsonValue>>;
+}
 type Segment = string | number;
 function parsePath(path: string): Segment[] | undefined {
   if (path === '$') return [];
@@ -83,7 +86,7 @@ export function resolveJsonPath(
 const sharedEvaluator = new JsonataEvaluator();
 export async function resolveValueSource(
   source: ValueSource,
-  context: ExpressionContextV1,
+  context: ValueResolutionContext,
   evaluator: JsonataEvaluator = sharedEvaluator,
   signal?: AbortSignal,
 ): Promise<ValueResolution> {
@@ -96,6 +99,12 @@ export async function resolveValueSource(
     return output === undefined
       ? { kind: 'missing' }
       : resolveJsonPath(output, source.path);
+  }
+  if (source.kind === 'structured_input') {
+    const input = context.structuredInputs?.[source.port];
+    return input === undefined
+      ? { kind: 'missing' }
+      : resolveJsonPath(input, source.path);
   }
   const request = {
     expression: source.expression,

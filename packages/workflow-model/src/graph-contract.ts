@@ -21,6 +21,11 @@ export type ValueSource =
       readonly language: 'jsonata';
       readonly expression: string;
       readonly policyVersion: number;
+    }
+  | {
+      readonly kind: 'structured_input';
+      readonly port: string;
+      readonly path: string;
     };
 export interface WorkflowEdge {
   readonly id: string;
@@ -90,6 +95,13 @@ const valueSourceSchema = z.discriminatedUnion('kind', [
       language: z.literal('jsonata'),
       expression: z.string(),
       policyVersion: positiveVersionSchema,
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal('structured_input'),
+      port: identifierSchema,
+      path: z.string(),
     })
     .strict(),
 ]);

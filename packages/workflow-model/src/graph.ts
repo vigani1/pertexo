@@ -449,7 +449,11 @@ export function validateWorkflowGraph(
   const issue = (code: GraphIssueCode, path: string, message: string): void => {
     issues.push({ code, path, message });
   };
-  const validate = (current: WorkflowGraph, path: string): number => {
+  const validate = (
+    current: WorkflowGraph,
+    path: string,
+    structuredInputPorts?: ReadonlySet<string>,
+  ): number => {
     if (current.schemaVersion !== 1)
       issue(
         'invalid_graph',
@@ -471,6 +475,18 @@ export function validateWorkflowGraph(
         );
       localIds.add(currentNode.id);
       globalNodeIds.add(currentNode.id);
+      for (const [mappingKey, source] of Object.entries(
+        currentNode.inputMappings,
+      ))
+        if (
+          source.kind === 'structured_input' &&
+          !structuredInputPorts?.has(source.port)
+        )
+          issue(
+            'invalid_structured_body',
+            `${path}.nodes.${currentNode.id}.inputMappings.${mappingKey}`,
+            'structured input must reference a port on the nearest body',
+          );
     }
     const adjacency = new Map<string, string[]>();
     for (const id of localIds) adjacency.set(id, []);
@@ -547,6 +563,7 @@ export function validateWorkflowGraph(
       const bodyExpansion = validate(
         loop.body,
         `${path}.nodes.${currentNode.id}.structured.body`,
+        new Set(loop.body.inputPorts),
       );
       expansion += Math.max(0, loop.maxIterations) * bodyExpansion;
     }
