@@ -26,6 +26,13 @@ import {
   CORE_MANUAL_MANIFEST,
   CORE_MANUAL_OUTPUT_SCHEMA,
 } from './manual/index.js';
+import { coreParallelExecutor } from './parallel/executor.js';
+import {
+  CORE_PARALLEL_CONFIG_SCHEMA,
+  CORE_PARALLEL_INPUT_SCHEMA,
+  CORE_PARALLEL_MANIFEST,
+  CORE_PARALLEL_OUTPUT_SCHEMA,
+} from './parallel/index.js';
 import { CORE_REGISTRY_RELEASE } from './registry.js';
 import { coreSetExecutor } from './set/executor.js';
 import {
@@ -51,6 +58,12 @@ import {
 
 export const CORE_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistration[] =
   Object.freeze([
+    Object.freeze({
+      manifest: CORE_PARALLEL_MANIFEST,
+      configSchema: CORE_PARALLEL_CONFIG_SCHEMA,
+      inputSchema: CORE_PARALLEL_INPUT_SCHEMA,
+      outputSchema: CORE_PARALLEL_OUTPUT_SCHEMA,
+    }),
     Object.freeze({
       manifest: CORE_SWITCH_MANIFEST,
       configSchema: CORE_SWITCH_CONFIG_SCHEMA,
@@ -86,6 +99,7 @@ export const CORE_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistra
 export const CORE_NODE_EXECUTOR_REGISTRATIONS = Object.freeze([
   coreConditionExecutor,
   coreManualExecutor,
+  coreParallelExecutor,
   coreSetExecutor,
   coreSwitchExecutor,
   coreTerminateExecutor,

@@ -15,6 +15,8 @@ import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
 import {
   CORE_CONDITION_DEFINITION,
   CORE_CONDITION_EXECUTOR,
+  CORE_PARALLEL_DEFINITION,
+  CORE_PARALLEL_EXECUTOR,
   CORE_SET_DEFINITION,
   CORE_SET_EXECUTOR,
   CORE_SWITCH_DEFINITION,
@@ -27,6 +29,8 @@ import {
   PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_CONDITION_STAGED,
   PLATFORM_REGISTRY_RELEASE_HISTORY,
+  PLATFORM_REGISTRY_RELEASE_PARALLEL_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_PARALLEL_STAGED,
   PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_SWITCH_STAGED,
   PLATFORM_CONDITION_ACTIVATION_RELEASE_SUPPORT,
@@ -47,6 +51,27 @@ import {
 } from '../src/server.js';
 
 describe('platform node compatibility catalog', () => {
+  it('executes bounded Parallel declaration only in its additive release', async () => {
+    const registry = createPlatformNodeRegistryForRelease(
+      PLATFORM_REGISTRY_RELEASE_PARALLEL_ACTIVE,
+    );
+    await expect(
+      registry.execute({
+        config: {
+          branches: [{ id: 'branch-02' }, { id: 'branch-01' }],
+          maxConcurrency: 1,
+        },
+        definition: CORE_PARALLEL_DEFINITION,
+        executor: CORE_PARALLEL_EXECUTOR,
+        input: {},
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({
+      kind: 'succeeded',
+      output: { branchIds: ['branch-02', 'branch-01'] },
+    });
+  });
+
   it('executes ordered Switch cases only in its exact additive release', async () => {
     const registry = createPlatformNodeRegistryForRelease(
       PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
@@ -174,7 +199,7 @@ describe('platform node compatibility catalog', () => {
   });
   it('retains every additive release in canonical order', () => {
     expect(PLATFORM_REGISTRY_RELEASE_HISTORY.map(({ epoch }) => epoch)).toEqual(
-      [1, 2, 3, 4, 5, 6, 7, 8],
+      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
     );
     expect(PLATFORM_REGISTRY_RELEASE_SUPPORT.map(({ epoch }) => epoch)).toEqual(
       [1, 2],
@@ -287,6 +312,16 @@ describe('platform node compatibility catalog', () => {
       ),
     ).toMatchObject({ lifecycle: 'active', abiVersion: 1 });
     expect(
+      PLATFORM_REGISTRY_RELEASE_PARALLEL_STAGED.executors.find(
+        ({ executor }) => executor.key === CORE_PARALLEL_EXECUTOR.key,
+      ),
+    ).toMatchObject({ lifecycle: 'staged', abiVersion: 1 });
+    expect(
+      PLATFORM_REGISTRY_RELEASE_PARALLEL_ACTIVE.executors.find(
+        ({ executor }) => executor.key === CORE_PARALLEL_EXECUTOR.key,
+      ),
+    ).toMatchObject({ lifecycle: 'active', abiVersion: 1 });
+    expect(
       PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE.definitions.map(
         ({ definition }) => definition,
       ),
@@ -297,7 +332,7 @@ describe('platform node compatibility catalog', () => {
       new Set(
         PLATFORM_REGISTRY_RELEASE_HISTORY.map(({ fingerprint }) => fingerprint),
       ).size,
-    ).toBe(8);
+    ).toBe(10);
   });
 
   it('builds one exact active server registry with retained core and dispatch-aware HTTP', async () => {

@@ -6,6 +6,10 @@ import {
   CORE_DEFINITION_MANIFESTS,
   CORE_MANUAL_DEFINITION,
   CORE_MANUAL_EXECUTOR,
+  CORE_PARALLEL_CONFIG_SCHEMA,
+  CORE_PARALLEL_DEFINITION,
+  CORE_PARALLEL_EXECUTOR,
+  CORE_PARALLEL_MANIFEST,
   CORE_REGISTRY_RELEASE,
   CORE_SET_DEFINITION,
   CORE_SET_EXECUTOR,
@@ -290,6 +294,32 @@ describe('core node execution', () => {
           'default',
         ],
       },
+    });
+  });
+
+  it('defines bounded Parallel branches and pinned concurrency', () => {
+    expect(
+      CORE_PARALLEL_CONFIG_SCHEMA.safeParse({
+        branches: [{ id: 'branch-02' }, { id: 'branch-01' }],
+        maxConcurrency: 2,
+      }).success,
+    ).toBe(true);
+    expect(
+      CORE_PARALLEL_CONFIG_SCHEMA.safeParse({
+        branches: [{ id: 'branch-01' }, { id: 'branch-01' }],
+        maxConcurrency: 2,
+      }).success,
+    ).toBe(false);
+    expect(
+      CORE_PARALLEL_CONFIG_SCHEMA.safeParse({
+        branches: [{ id: 'branch-01' }, { id: 'branch-02' }],
+        maxConcurrency: 3,
+      }).success,
+    ).toBe(false);
+    expect(CORE_PARALLEL_MANIFEST).toMatchObject({
+      definition: CORE_PARALLEL_DEFINITION,
+      executor: CORE_PARALLEL_EXECUTOR,
+      ports: { inputs: ['in'] },
     });
   });
 });
