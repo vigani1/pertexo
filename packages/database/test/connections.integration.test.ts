@@ -238,6 +238,7 @@ describe('connection persistence', () => {
       '0029_provider_idempotency_key_invariants.sql',
       '0030_coordinator_retry_decisions.sql',
       '0031_due_node_wakeups.sql',
+      '0032_for_each_barriers.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, upgradeDatabaseName),
@@ -250,7 +251,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0031_due_node_wakeups.sql',
+        migrationHead: '0032_for_each_barriers.sql',
       });
     } finally {
       await pool.end();
@@ -1042,7 +1043,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0031_due_node_wakeups.sql',
+        migrationHead: '0032_for_each_barriers.sql',
       });
       await expect(
         checkDatabaseReadiness(workerReadinessPool, {
@@ -1050,7 +1051,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0031_due_node_wakeups.sql',
+        migrationHead: '0032_for_each_barriers.sql',
       });
     } finally {
       await Promise.all([apiReadinessPool.end(), workerReadinessPool.end()]);

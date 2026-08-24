@@ -16,7 +16,7 @@ const integrationUsageMigrationUrl = new URL(
 
 describe('workflow authoring migration contract', () => {
   it('advances the reviewed migration head', () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0031_due_node_wakeups.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0032_for_each_barriers.sql');
   });
 
   it('emits the identifier-only trigger-reconciliation payload', () => {

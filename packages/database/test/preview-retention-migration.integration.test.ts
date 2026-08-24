@@ -207,6 +207,7 @@ describe('preview retention migration', () => {
       '0029_provider_idempotency_key_invariants.sql',
       '0030_coordinator_retry_decisions.sql',
       '0031_due_node_wakeups.sql',
+      '0032_for_each_barriers.sql',
     ]);
 
     const verification = new Pool({

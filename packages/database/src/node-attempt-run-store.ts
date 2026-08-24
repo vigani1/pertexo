@@ -64,9 +64,16 @@ const branchScopePartSchema = z
     outputPort: nodeIdSchema,
   })
   .strict();
+const iterationScopePartSchema = z
+  .object({
+    loopNodeId: nodeIdSchema,
+    ordinal: z.number().int().nonnegative(),
+  })
+  .strict();
 const branchContextSchema = z
   .object({
-    branchPath: z.array(branchScopePartSchema).min(1).max(1_000).optional(),
+    branchPath: z.array(branchScopePartSchema).max(1_000).optional(),
+    iterationPath: z.array(iterationScopePartSchema).max(1_000).optional(),
   })
   .strict()
   .superRefine(({ branchPath }, context) => {
@@ -92,6 +99,10 @@ export type NodeAttemptLease = Readonly<{
   invocationKey: string;
   nodeId: string;
   branchPath?: readonly Readonly<{ nodeId: string; outputPort: string }>[];
+  iterationPath?: readonly Readonly<{
+    loopNodeId: string;
+    ordinal: number;
+  }>[];
   sideEffectClass: 'safe' | 'idempotent_with_key' | 'unsafe';
   providerIdempotencyKey?: string;
   workerId: string;
@@ -743,6 +754,9 @@ export function createNodeAttemptRunStore(
               ...(branchContext?.data.branchPath === undefined
                 ? {}
                 : { branchPath: branchContext.data.branchPath }),
+              ...(branchContext?.data.iterationPath === undefined
+                ? {}
+                : { iterationPath: branchContext.data.iterationPath }),
               sideEffectClass: row.side_effect_class,
               ...(row.provider_idempotency_key === null
                 ? {}

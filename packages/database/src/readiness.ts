@@ -8,7 +8,7 @@ import {
   type CompatibilityReleaseExpectationSet,
 } from './compatibility-release.js';
 
-export const EXPECTED_MIGRATION_HEAD = '0031_due_node_wakeups.sql';
+export const EXPECTED_MIGRATION_HEAD = '0032_for_each_barriers.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -726,7 +726,7 @@ export async function checkDatabaseReadiness(
               or (privilege.table_name='node_runs' and privilege.column_name in (
                 'status','output_ref','current_attempt_id','current_attempt_number',
                  'resume_at','retry_due_at','safe_error_code','updated_at',
-                 'started_at','completed_at','due_wakeup_at'
+                 'started_at','completed_at','due_wakeup_at','control_kind'
               ))
               or (privilege.table_name='node_attempts' and privilege.column_name in (
                 'status','lease_owner','lease_expires_at','fence_token',
@@ -792,6 +792,7 @@ export async function checkDatabaseReadiness(
             ('node_runs', 'resume_at'),
              ('node_runs', 'retry_due_at'),
              ('node_runs', 'due_wakeup_at'),
+             ('node_runs', 'control_kind'),
             ('node_runs', 'completed_at'),
             ('node_runs', 'safe_error_code'),
             ('node_runs', 'updated_at')

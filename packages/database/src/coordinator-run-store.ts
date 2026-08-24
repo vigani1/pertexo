@@ -35,12 +35,26 @@ const maximumCanonicalPersistedFactBytes =
 // roughly 32 MiB even when PostgreSQL expands otherwise-valid numbers.
 const maximumPersistedFactRowsPerFetch = 64;
 const sideEffectClassSchema = z.enum(['safe', 'idempotent_with_key', 'unsafe']);
+const branchScopePartSchema = z
+  .object({
+    nodeId: z.string().min(1).max(128),
+    outputPort: z.string().min(1).max(128),
+  })
+  .strict();
+const iterationScopePartSchema = z
+  .object({
+    loopNodeId: z.string().min(1).max(128),
+    ordinal: z.number().int().nonnegative(),
+  })
+  .strict();
 const nodeRunAdmissionSchema = z
   .object({
     invocationKey: z.string().min(1).max(256),
     nodeId: z.string().min(1).max(128),
     providerIdempotencyKey: z.string().min(1).max(256).optional(),
     sideEffectClass: sideEffectClassSchema,
+    branchPath: z.array(branchScopePartSchema).max(1_000).optional(),
+    iterationPath: z.array(iterationScopePartSchema).max(1_000).optional(),
   })
   .strict();
 const attemptAdmissionSchema = nodeRunAdmissionSchema
@@ -572,6 +586,7 @@ type PhysicalInvocationRow = Readonly<{
   current_attempt_number: number | null;
   invocation_key: string;
   branch_context: unknown;
+  control_kind: string | null;
   node_id: string;
   node_output_ref: unknown;
   node_status: string;
@@ -816,11 +831,22 @@ function completedInlineOutput(row: EventRow): readonly unknown[] {
   } catch {
     throw new CoordinatorRunStateCorruptError();
   }
+  const value = stored.kind === 'inline' ? stored.value : undefined;
+  const isRecord =
+    typeof value === 'object' && value !== null && !Array.isArray(value);
+  const outputRecord = isRecord
+    ? (value as Readonly<Record<string, unknown>>)
+    : undefined;
+  const isForEachOutput =
+    outputRecord !== undefined &&
+    Object.keys(outputRecord).length === 2 &&
+    Array.isArray(outputRecord.items) &&
+    outputRecord.items.length <= 1_000 &&
+    Number.isSafeInteger(outputRecord.iterationCount) &&
+    outputRecord.iterationCount === outputRecord.items.length;
   return stored.kind === 'inline' &&
-    typeof stored.value === 'object' &&
-    stored.value !== null &&
-    !Array.isArray(stored.value) &&
-    Object.hasOwn(stored.value, 'selectedPort')
+    isRecord &&
+    (Object.hasOwn(outputRecord ?? {}, 'selectedPort') || isForEachOutput)
     ? [
         {
           sequence: row.sequence,
@@ -877,6 +903,7 @@ async function validateLoadedCheckpointPhysicalState(
 ): Promise<void> {
   const result = await client.query<PhysicalInvocationRow>(
     `select node.invocation_key, node.node_id, node.branch_context,
+             node.control_kind,
             node.status as node_status,
             node.current_attempt_id, node.current_attempt_number,
             node.resume_at, node.retry_due_at,
@@ -918,10 +945,15 @@ async function validateLoadedCheckpointPhysicalState(
   const artifactIds = new Set<string>();
   for (const invocation of checkpoint.invocations) {
     const row = rows.get(invocation.invocationKey);
-    const expectedBranchContext =
-      'branchPath' in invocation && invocation.branchPath !== undefined
+    const expectedBranchContext = {
+      ...('branchPath' in invocation && invocation.branchPath !== undefined
         ? { branchPath: invocation.branchPath }
-        : {};
+        : {}),
+      ...('iterationPath' in invocation &&
+      invocation.iterationPath !== undefined
+        ? { iterationPath: invocation.iterationPath }
+        : {}),
+    };
     if (
       row?.node_id !== invocation.nodeId ||
       serializeStoredExecutionJsonValue(row.branch_context) !==
@@ -963,12 +995,21 @@ async function validateLoadedCheckpointPhysicalState(
         throw new CoordinatorRunStateCorruptError();
     } else if (invocation.status === 'waiting') {
       const dueAt = row.retry_due_at ?? row.resume_at;
+      const isLoopBarrier = checkpoint.loops.some(
+        ({ controlInvocationKey }) =>
+          controlInvocationKey === invocation.invocationKey,
+      );
       if (
         row.node_status !== 'waiting' ||
+        (isLoopBarrier
+          ? row.control_kind !== 'for_each_barrier'
+          : row.control_kind !== null) ||
         (row.attempt_status !== 'succeeded' &&
           row.attempt_status !== 'failed') ||
-        invocation.resumeAt === undefined ||
-        dueAt?.toISOString() !== invocation.resumeAt
+        (isLoopBarrier
+          ? invocation.resumeAt !== undefined || dueAt !== null
+          : invocation.resumeAt === undefined ||
+            dueAt?.toISOString() !== invocation.resumeAt)
       )
         throw new CoordinatorRunStateCorruptError();
     } else if (invocation.status === 'ready') {
@@ -1078,7 +1119,12 @@ function validateTransitionPlan(
         (materialized.nodeId !== attempt.nodeId ||
           materialized.sideEffectClass !== attempt.sideEffectClass ||
           materialized.providerIdempotencyKey !==
-            attempt.providerIdempotencyKey))
+            attempt.providerIdempotencyKey ||
+          serializeStoredExecutionJsonValue(materialized.branchPath ?? []) !==
+            serializeStoredExecutionJsonValue(attempt.branchPath ?? []) ||
+          serializeStoredExecutionJsonValue(
+            materialized.iterationPath ?? [],
+          ) !== serializeStoredExecutionJsonValue(attempt.iterationPath ?? [])))
     )
       throw new CoordinatorPlanInvalidError();
     attemptKeys.add(attempt.invocationKey);
@@ -1089,6 +1135,12 @@ function validateTransitionPlan(
       (admission.sideEffectClass === 'idempotent_with_key') !==
         (admission.providerIdempotencyKey !== undefined) ||
       invocation?.nodeId !== admission.nodeId ||
+      serializeStoredExecutionJsonValue(
+        invocationScope(invocation, 'branchPath'),
+      ) !== serializeStoredExecutionJsonValue(admission.branchPath ?? []) ||
+      serializeStoredExecutionJsonValue(
+        invocationScope(invocation, 'iterationPath'),
+      ) !== serializeStoredExecutionJsonValue(admission.iterationPath ?? []) ||
       (invocation.status !== 'pending' &&
         invocation.status !== 'ready' &&
         invocation.status !== 'running' &&
@@ -1154,6 +1206,20 @@ function sameKeys(
   return left.size === right.size && [...left].every((key) => right.has(key));
 }
 
+function invocationScope(
+  invocation: PersistedPhase3Checkpoint['invocations'][number] | undefined,
+  field: 'branchPath' | 'iterationPath',
+): readonly unknown[] {
+  if (invocation === undefined || !(field in invocation)) return [];
+  return (
+    (
+      invocation as Readonly<
+        Record<'branchPath' | 'iterationPath', readonly unknown[] | undefined>
+      >
+    )[field] ?? []
+  );
+}
+
 function validateTransitionDelta(
   current: PersistedPhase3Checkpoint,
   plan: ParsedTransitionPlan,
@@ -1162,10 +1228,25 @@ function validateTransitionDelta(
     ...current.admittedInvocationKeys,
     ...plan.attempts.map(({ invocationKey }) => invocationKey),
   ]);
+  const currentLoops = new Map(
+    current.loops.map((loop) => [loop.controlInvocationKey, loop]),
+  );
+  const declaredLoops = plan.checkpoint.loops.filter(
+    (loop) => !currentLoops.has(loop.controlInvocationKey),
+  );
+  const reservedIterations = declaredLoops.reduce(
+    (total, loop) => total + loop.collectionSize,
+    0,
+  );
   if (
     plan.checkpoint.engineVersion !== current.engineVersion ||
     plan.checkpoint.remainingIterationBudget !==
-      current.remainingIterationBudget ||
+      current.remainingIterationBudget - reservedIterations ||
+    ('initialIterationBudget' in current &&
+      current.initialIterationBudget !== undefined &&
+      (!('initialIterationBudget' in plan.checkpoint) ||
+        plan.checkpoint.initialIterationBudget !==
+          current.initialIterationBudget)) ||
     !sameKeys(
       expectedAdmittedKeys,
       new Set(plan.checkpoint.admittedInvocationKeys),
@@ -1178,12 +1259,59 @@ function validateTransitionDelta(
       invocation,
     ]),
   );
+  for (const nextLoop of plan.checkpoint.loops) {
+    const previous = currentLoops.get(nextLoop.controlInvocationKey);
+    if (previous === undefined) continue;
+    const immutable = (loop: typeof nextLoop): unknown => ({
+      controlInvocationKey: loop.controlInvocationKey,
+      loopId: loop.loopId,
+      branchPath: loop.branchPath,
+      iterationPath: loop.iterationPath,
+      bodyRootNodeIds: loop.bodyRootNodeIds,
+      bodySinkNodeId: loop.bodySinkNodeId,
+      collection: loop.collection,
+      collectionChecksum: loop.collectionChecksum,
+      collectionSize: loop.collectionSize,
+      maxConcurrency: loop.maxConcurrency,
+      maxIterations: loop.maxIterations,
+    });
+    if (
+      serializeStoredExecutionJsonValue(immutable(previous)) !==
+      serializeStoredExecutionJsonValue(immutable(nextLoop))
+    )
+      throw new CoordinatorPlanInvalidError();
+  }
   const nextInvocations = new Map(
     plan.checkpoint.invocations.map((invocation) => [
       invocation.invocationKey,
       invocation,
     ]),
   );
+  for (const loop of plan.checkpoint.loops) {
+    for (const ordinal of loop.activeOrdinals) {
+      const iterationPath = [
+        ...loop.iterationPath,
+        { loopNodeId: loop.loopId, ordinal },
+      ];
+      for (const rootNodeId of loop.bodyRootNodeIds) {
+        const root = [...nextInvocations.values()].find(
+          (invocation) =>
+            invocation.nodeId === rootNodeId &&
+            serializeStoredExecutionJsonValue(
+              invocationScope(invocation, 'branchPath'),
+            ) === serializeStoredExecutionJsonValue(loop.branchPath) &&
+            serializeStoredExecutionJsonValue(
+              invocationScope(invocation, 'iterationPath'),
+            ) === serializeStoredExecutionJsonValue(iterationPath),
+        );
+        if (
+          root === undefined ||
+          !['ready', 'running', 'waiting'].includes(root.status)
+        )
+          throw new CoordinatorPlanInvalidError();
+      }
+    }
+  }
   const expectedNodeRunAdmissions = new Set(
     [...nextInvocations.keys()].filter((key) => !currentInvocations.has(key)),
   );
@@ -1277,7 +1405,18 @@ function validateStatusTransitions(
         throw new CoordinatorPlanInvalidError();
     } else if (kind === 'outcome') {
       if (next === undefined) throw new CoordinatorPlanInvalidError();
-      if (next.status !== fact.observation.status)
+      const declaredLoopBarrier =
+        next.status === 'waiting' &&
+        next.resumeAt === undefined &&
+        fact.observation.status === 'succeeded' &&
+        plan.checkpoint.loops.some(
+          ({ controlInvocationKey }) =>
+            controlInvocationKey === next.invocationKey &&
+            !current.loops.some(
+              (loop) => loop.controlInvocationKey === controlInvocationKey,
+            ),
+        );
+      if (next.status !== fact.observation.status && !declaredLoopBarrier)
         throw new CoordinatorPlanInvalidError();
       if (
         next.attemptNumber !== fact.observation.attemptNumber ||
@@ -1381,6 +1520,24 @@ function validateStatusTransitions(
           ? ['node.waiting', 'node.retry_scheduled']
           : [terminalEvent];
       const observation = persistedByInvocation.get(next.invocationKey);
+      const declaredLoopBarrier = plan.checkpoint.loops.some(
+        ({ controlInvocationKey }) =>
+          controlInvocationKey === next.invocationKey &&
+          !current.loops.some(
+            (loop) => loop.controlInvocationKey === controlInvocationKey,
+          ),
+      );
+      if (
+        declaredLoopBarrier &&
+        next.status === 'waiting' &&
+        next.resumeAt === undefined &&
+        observation?.kind === 'outcome' &&
+        observation.status === 'succeeded' &&
+        next.attemptNumber === previous.attemptNumber &&
+        serializeStoredExecutionJsonValue(next.output ?? null) ===
+          serializeStoredExecutionJsonValue(observation.output ?? null)
+      )
+        continue;
       if (
         sourceNames.some((name) =>
           persistedNodeFacts.has(`${next.invocationKey}:${name}`),
@@ -1459,11 +1616,12 @@ async function validateCheckpointOutputOwnership(
     attempt_id: string | null;
     attempt_output_ref: unknown;
     attempt_status: string | null;
+    control_kind: string | null;
     invocation_key: string;
     node_output_ref: unknown;
     node_status: string;
   }>(
-    `select node.invocation_key, node.status as node_status,
+    `select node.invocation_key, node.status as node_status,node.control_kind,
             node.output_ref as node_output_ref,
             attempt.id as attempt_id, attempt.status as attempt_status,
             attempt.output_ref as attempt_output_ref
@@ -1480,11 +1638,20 @@ async function validateCheckpointOutputOwnership(
   const artifacts = new Set<string>();
   for (const invocation of expected) {
     const row = physical.get(invocation.invocationKey);
+    const isLoopControl = checkpoint.loops.some(
+      ({ controlInvocationKey }) =>
+        controlInvocationKey === invocation.invocationKey,
+    );
+    const physicalLoopStatus =
+      isLoopControl && row?.control_kind === 'for_each_barrier'
+        ? 'waiting'
+        : 'succeeded';
     if (
       row?.attempt_id === undefined ||
       row.attempt_id === null ||
-      row.node_status !== invocation.status ||
-      row.attempt_status !== invocation.status
+      row.node_status !==
+        (isLoopControl ? physicalLoopStatus : invocation.status) ||
+      row.attempt_status !== (isLoopControl ? 'succeeded' : invocation.status)
     )
       throw new CoordinatorRunStateCorruptError();
     let nodeValue;
@@ -1523,6 +1690,37 @@ async function validateCheckpointOutputOwnership(
     [workspaceId, [...artifacts]],
   );
   if (available.rows.length !== artifacts.size)
+    throw new CoordinatorRunStateCorruptError();
+}
+
+async function persistLoopBarrierTransitions(
+  client: PoolClient,
+  workspaceId: string,
+  runId: string,
+  current: PersistedPhase3Checkpoint,
+  next: PersistedPhase3Checkpoint,
+): Promise<void> {
+  const currentLoops = new Set(
+    current.loops.map(({ controlInvocationKey }) => controlInvocationKey),
+  );
+  const barriers = next.loops.filter(
+    ({ controlInvocationKey }) => !currentLoops.has(controlInvocationKey),
+  );
+  if (barriers.length === 0) return;
+  const updated = await client.query(
+    `update app.node_runs
+     set status='waiting', control_kind='for_each_barrier', completed_at=null,
+         resume_at=null, retry_due_at=null, due_wakeup_at=null,
+         updated_at=clock_timestamp()
+     where workspace_id=$1 and workflow_run_id=$2
+       and invocation_key=any($3::varchar[]) and status='succeeded'`,
+    [
+      workspaceId,
+      runId,
+      barriers.map(({ controlInvocationKey }) => controlInvocationKey),
+    ],
+  );
+  if (updated.rowCount !== barriers.length)
     throw new CoordinatorRunStateCorruptError();
 }
 
@@ -2180,6 +2378,13 @@ export function createCoordinatorRunStore(
               runId,
               plan.checkpoint,
             );
+            await persistLoopBarrierTransitions(
+              client,
+              workspaceId,
+              runId,
+              currentCheckpoint,
+              plan.checkpoint,
+            );
             await persistDueReadyTransitions(
               client,
               workspaceId,
@@ -2293,12 +2498,16 @@ export function createCoordinatorRunStore(
                   runId,
                   admission.nodeId,
                   admission.invocationKey,
-                  serializeStoredExecutionJsonValue(
-                    'branchPath' in invocation &&
-                      invocation.branchPath !== undefined
+                  serializeStoredExecutionJsonValue({
+                    ...('branchPath' in invocation &&
+                    invocation.branchPath !== undefined
                       ? { branchPath: invocation.branchPath }
-                      : {},
-                  ),
+                      : {}),
+                    ...('iterationPath' in invocation &&
+                    invocation.iterationPath !== undefined
+                      ? { iterationPath: invocation.iterationPath }
+                      : {}),
+                  }),
                   invocation.status === 'pending'
                     ? 'pending'
                     : invocation.status === 'skipped'
@@ -2506,9 +2715,9 @@ export function createCoordinatorRunStore(
               ) {
                 const updatedNode = await client.query(
                   `update app.node_runs
-                 set status=$1, completed_at=clock_timestamp(),
-                      safe_error_code=$2, resume_at=null, retry_due_at=null,
-                      due_wakeup_at=null,
+                  set status=$1, completed_at=clock_timestamp(),
+                       safe_error_code=$2, resume_at=null, retry_due_at=null,
+                       due_wakeup_at=null, control_kind=null,
                      updated_at=clock_timestamp()
                  where workspace_id=$3 and workflow_run_id=$4
                    and invocation_key=$5

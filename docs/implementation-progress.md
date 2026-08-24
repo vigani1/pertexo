@@ -21,7 +21,7 @@ not complete a phase.
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
-| Phase 5 — orchestration slice | In progress | ADRs 008/017/018/019/020; Condition, Switch, bounded Parallel, and Merge vertical slices complete through `67ba800`; bounded For Each publication validation, recursive executable pinning, and the pure engine scheduling checkpoint are implemented, while persistence, recovery, and serving rollout remain |
+| Phase 5 — orchestration slice | In progress | ADRs 008/017/018/019/020; Condition, Switch, bounded Parallel, and Merge vertical slices complete through `67ba800`; bounded For Each publication validation, recursive executable pinning, pure engine scheduling, and the database persistence checkpoint are implemented, while worker recovery and serving rollout remain |
 | Phase 6 — V1 providers and triggers | Not started | — |
 | Phase 7 — production operations | Not started | — |
 
@@ -2467,6 +2467,24 @@ Current evidence:
   engine evidence only: database/worker persistence, crash recovery, Redis-loss
   reconstruction, cancellation recovery, and serving rollout remain pending,
   so the bounded For Each completion box remains open.
+- The database-only For Each persistence checkpoint adds migration 0032's
+  explicit `for_each_barrier` discriminator, permitting an undated waiting row
+  only for that control while preserving timed wait constraints and excluding
+  barriers from the due scanner. The Phase 3 checkpoint V2 codec now accepts
+  exact branch and iteration scope, scoped joins, bounded loop state, and
+  initial-budget accounting while retaining V1 and loop-free V2. Coordinator
+  CAS validates whole-collection reservation, immutable loop ownership and body
+  root facts, persists/reloads branch plus iteration context, forwards bounded
+  declaration output candidates, and makes duplicate declaration commits
+  inert. A disposable-PostgreSQL proof covers the first loop CAS, undated
+  barrier storage, due-scan exclusion, fresh-store reload, duplicate replay,
+  and physical context tamper rejection. Worker/BullMQ recovery, later-batch
+  and cancellation recovery, and serving rollout remain pending, so bounded For
+  Each remains incomplete and absent from serving cohorts. The database unit
+  suite passes 66 assertions, the focused disposable coordinator suite passes
+  35 assertions, database build/typecheck and root typecheck pass, and the full
+  database integration command's reusable local-database suites remain blocked
+  by a pre-existing recorded checksum mismatch for untouched migration 0012.
 - ADRs 021 and 022 fix the remaining Phase 5 semantics before implementation:
   Wait preserves semantic resume versus retry identity and adds an independent
   PostgreSQL deadline wake source; failure notification is an atomic bounded
