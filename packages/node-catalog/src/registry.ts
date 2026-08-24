@@ -8,6 +8,7 @@ import {
   CORE_CONDITION_MANIFEST,
   CORE_REGISTRY_RELEASE_SUPPORT,
   CORE_REGISTRY_RELEASE_SUCCESSOR,
+  CORE_SWITCH_MANIFEST,
 } from '@pertexo/nodes-core';
 
 const httpExecutorAbi = HTTP_REQUEST_MANIFEST.executorAbi;
@@ -94,6 +95,46 @@ export const PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE =
     policies: PLATFORM_REGISTRY_RELEASE_CONDITION_STAGED.policies,
   });
 
+const switchExecutorAbi = CORE_SWITCH_MANIFEST.executorAbi;
+if (switchExecutorAbi === undefined)
+  throw new Error('Switch manifest must pin its executor ABI');
+
+export const PLATFORM_REGISTRY_RELEASE_SWITCH_STAGED =
+  createRegistryReleaseSuccessor({
+    previous: PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
+    epoch: PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE.epoch + 1,
+    definitions: [
+      ...PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE.definitions,
+      CORE_SWITCH_MANIFEST,
+    ],
+    executors: [
+      ...PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE.executors,
+      {
+        executor: CORE_SWITCH_MANIFEST.executor,
+        abiVersion: switchExecutorAbi,
+        definitions: [CORE_SWITCH_MANIFEST.definition],
+        lifecycle: 'staged',
+        policyReferences: CORE_SWITCH_MANIFEST.policyReferences,
+      },
+    ],
+    policies: PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE.policies,
+  });
+
+export const PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE =
+  createRegistryReleaseSuccessor({
+    previous: PLATFORM_REGISTRY_RELEASE_SWITCH_STAGED,
+    epoch: PLATFORM_REGISTRY_RELEASE_SWITCH_STAGED.epoch + 1,
+    definitions: PLATFORM_REGISTRY_RELEASE_SWITCH_STAGED.definitions,
+    executors: PLATFORM_REGISTRY_RELEASE_SWITCH_STAGED.executors.map(
+      (executor) =>
+        executor.executor.key === CORE_SWITCH_MANIFEST.executor.key &&
+        executor.executor.version === CORE_SWITCH_MANIFEST.executor.version
+          ? { ...executor, lifecycle: 'active' as const }
+          : executor,
+    ),
+    policies: PLATFORM_REGISTRY_RELEASE_SWITCH_STAGED.policies,
+  });
+
 /** Complete audit/test history; never pass this to one serving artifact. */
 export const PLATFORM_REGISTRY_RELEASE_HISTORY = Object.freeze([
   ...CORE_REGISTRY_RELEASE_SUPPORT,
@@ -101,6 +142,8 @@ export const PLATFORM_REGISTRY_RELEASE_HISTORY = Object.freeze([
   PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_CONDITION_STAGED,
   PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_SWITCH_STAGED,
+  PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
 ]);
 
 /** Backward-compatible default cohort until deployment selects a Phase 4 cohort. */

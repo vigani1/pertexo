@@ -17,6 +17,8 @@ import {
   CORE_CONDITION_EXECUTOR,
   CORE_SET_DEFINITION,
   CORE_SET_EXECUTOR,
+  CORE_SWITCH_DEFINITION,
+  CORE_SWITCH_EXECUTOR,
 } from '@pertexo/nodes-core';
 
 import {
@@ -25,6 +27,8 @@ import {
   PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_CONDITION_STAGED,
   PLATFORM_REGISTRY_RELEASE_HISTORY,
+  PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_SWITCH_STAGED,
   PLATFORM_CONDITION_ACTIVATION_RELEASE_SUPPORT,
   PLATFORM_CONDITION_STAGING_RELEASE_SUPPORT,
   PLATFORM_HTTP_ACTIVATION_RELEASE_SUPPORT,
@@ -41,6 +45,48 @@ import {
 } from '../src/server.js';
 
 describe('platform node compatibility catalog', () => {
+  it('executes ordered Switch cases only in its exact additive release', async () => {
+    const registry = createPlatformNodeRegistryForRelease(
+      PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
+    );
+    const config = {
+      cases: [
+        { id: 'case-02', equals: 'same' },
+        { id: 'case-01', equals: 'same' },
+      ],
+    };
+    await expect(
+      registry.execute({
+        config,
+        definition: CORE_SWITCH_DEFINITION,
+        executor: CORE_SWITCH_EXECUTOR,
+        input: { value: 'same' },
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({
+      kind: 'succeeded',
+      output: { selectedPort: 'case-02' },
+    });
+    await expect(
+      registry.execute({
+        config,
+        definition: CORE_SWITCH_DEFINITION,
+        executor: CORE_SWITCH_EXECUTOR,
+        input: { value: 'missing' },
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({
+      kind: 'succeeded',
+      output: { selectedPort: 'default' },
+    });
+    expect(() =>
+      resolvePlatformNodeDefinitionForRelease(
+        PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
+        CORE_SWITCH_DEFINITION,
+      ),
+    ).toThrow(/not implemented/u);
+  });
+
   it('resolves and executes Condition only in its exact additive release', async () => {
     const definition = resolvePlatformNodeDefinitionForRelease(
       PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
@@ -126,7 +172,7 @@ describe('platform node compatibility catalog', () => {
   });
   it('retains every additive release in canonical order', () => {
     expect(PLATFORM_REGISTRY_RELEASE_HISTORY.map(({ epoch }) => epoch)).toEqual(
-      [1, 2, 3, 4, 5, 6],
+      [1, 2, 3, 4, 5, 6, 7, 8],
     );
     expect(PLATFORM_REGISTRY_RELEASE_SUPPORT.map(({ epoch }) => epoch)).toEqual(
       [1, 2],
@@ -207,6 +253,16 @@ describe('platform node compatibility catalog', () => {
       ),
     ).toMatchObject({ lifecycle: 'active', abiVersion: 1 });
     expect(
+      PLATFORM_REGISTRY_RELEASE_SWITCH_STAGED.executors.find(
+        ({ executor }) => executor.key === CORE_SWITCH_EXECUTOR.key,
+      ),
+    ).toMatchObject({ lifecycle: 'staged', abiVersion: 1 });
+    expect(
+      PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE.executors.find(
+        ({ executor }) => executor.key === CORE_SWITCH_EXECUTOR.key,
+      ),
+    ).toMatchObject({ lifecycle: 'active', abiVersion: 1 });
+    expect(
       PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE.definitions.map(
         ({ definition }) => definition,
       ),
@@ -217,7 +273,7 @@ describe('platform node compatibility catalog', () => {
       new Set(
         PLATFORM_REGISTRY_RELEASE_HISTORY.map(({ fingerprint }) => fingerprint),
       ).size,
-    ).toBe(6);
+    ).toBe(8);
   });
 
   it('builds one exact active server registry with retained core and dispatch-aware HTTP', async () => {

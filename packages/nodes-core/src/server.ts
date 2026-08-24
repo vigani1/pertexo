@@ -41,9 +41,22 @@ import {
   CORE_TERMINATE_MANIFEST,
   CORE_TERMINATE_OUTPUT_SCHEMA,
 } from './terminate/index.js';
+import { coreSwitchExecutor } from './switch/executor.js';
+import {
+  CORE_SWITCH_CONFIG_SCHEMA,
+  CORE_SWITCH_INPUT_SCHEMA,
+  CORE_SWITCH_MANIFEST,
+  CORE_SWITCH_OUTPUT_SCHEMA,
+} from './switch/index.js';
 
 export const CORE_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistration[] =
   Object.freeze([
+    Object.freeze({
+      manifest: CORE_SWITCH_MANIFEST,
+      configSchema: CORE_SWITCH_CONFIG_SCHEMA,
+      inputSchema: CORE_SWITCH_INPUT_SCHEMA,
+      outputSchema: CORE_SWITCH_OUTPUT_SCHEMA,
+    }),
     Object.freeze({
       manifest: CORE_CONDITION_MANIFEST,
       configSchema: CORE_CONDITION_CONFIG_SCHEMA,
@@ -74,6 +87,7 @@ export const CORE_NODE_EXECUTOR_REGISTRATIONS = Object.freeze([
   coreConditionExecutor,
   coreManualExecutor,
   coreSetExecutor,
+  coreSwitchExecutor,
   coreTerminateExecutor,
 ] as const);
 

@@ -10,6 +10,10 @@ import {
   CORE_SET_DEFINITION,
   CORE_SET_EXECUTOR,
   CORE_SET_INPUT_SCHEMA,
+  CORE_SWITCH_CONFIG_SCHEMA,
+  CORE_SWITCH_DEFINITION,
+  CORE_SWITCH_EXECUTOR,
+  CORE_SWITCH_MANIFEST,
   CORE_TERMINATE_DEFINITION,
   CORE_TERMINATE_EXECUTOR,
 } from '../src/index.js';
@@ -242,5 +246,50 @@ describe('core node execution', () => {
       await expect(
         registry.execute({ ...fixture, config: {}, signal }),
       ).resolves.toEqual(fixture.expected);
+  });
+
+  it('defines strict bounded Switch cases with stable output ports', () => {
+    const config = {
+      cases: [
+        { id: 'case-02', equals: 'same' },
+        { id: 'case-01', equals: 'same' },
+      ],
+    } as const;
+
+    expect(CORE_SWITCH_CONFIG_SCHEMA.safeParse(config).success).toBe(true);
+    expect(
+      CORE_SWITCH_CONFIG_SCHEMA.safeParse({
+        cases: [
+          { id: 'case-01', equals: true },
+          { id: 'case-01', equals: false },
+        ],
+      }).success,
+    ).toBe(false);
+    expect(CORE_SWITCH_MANIFEST).toMatchObject({
+      definition: CORE_SWITCH_DEFINITION,
+      executor: CORE_SWITCH_EXECUTOR,
+      ports: {
+        inputs: ['in'],
+        outputs: [
+          'case-01',
+          'case-02',
+          'case-03',
+          'case-04',
+          'case-05',
+          'case-06',
+          'case-07',
+          'case-08',
+          'case-09',
+          'case-10',
+          'case-11',
+          'case-12',
+          'case-13',
+          'case-14',
+          'case-15',
+          'case-16',
+          'default',
+        ],
+      },
+    });
   });
 });
