@@ -616,7 +616,8 @@ function assertBranchesDoNotReconverge(graph: WorkflowGraph): void {
         );
         return (
           incoming === undefined ||
-          !reachedByPort[index]?.has(incoming.source.nodeId)
+          (incoming.source.nodeId !== node.id &&
+            !reachedByPort[index]?.has(incoming.source.nodeId))
         );
       })
     )

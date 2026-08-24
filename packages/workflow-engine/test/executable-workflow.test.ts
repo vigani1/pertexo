@@ -372,6 +372,28 @@ function pairedParallelGraph() {
   };
 }
 
+function directPairedParallelGraph() {
+  const paired = pairedParallelGraph();
+  return {
+    ...paired,
+    nodes: paired.nodes.filter(({ id }) => id !== 'left' && id !== 'right'),
+    edges: [
+      paired.edges[0],
+      {
+        id: 'parallel-merge-01',
+        source: { nodeId: 'parallel', port: 'branch-01' },
+        target: { nodeId: 'merge', port: 'branch-01' },
+      },
+      {
+        id: 'parallel-merge-02',
+        source: { nodeId: 'parallel', port: 'branch-02' },
+        target: { nodeId: 'merge', port: 'branch-02' },
+      },
+      paired.edges[5],
+    ],
+  };
+}
+
 function graph(reverse = false) {
   const nodes = [
     {
@@ -647,6 +669,18 @@ describe('workflow executable V2 identity', () => {
         release,
       }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
+  });
+
+  it('accepts direct Parallel branches into their paired Merge inputs', () => {
+    const release = composeExecutableCompatibilityRelease(
+      nodeRelease({ parallel: true, merge: true }),
+    );
+    expect(() =>
+      buildWorkflowExecutableV2({
+        graph: directPairedParallelGraph(),
+        release,
+      }),
+    ).not.toThrow();
   });
 
   it('describes the exact durable compatibility authority for a deployment artifact', () => {
@@ -3040,6 +3074,83 @@ describe('Phase 3 production operations', () => {
         signal: new AbortController().signal,
       }),
     ).rejects.toMatchObject({ code: 'observation_invalid' });
+  });
+
+  it('settles direct Parallel-to-Merge branches as explicitly missing', async () => {
+    const workflowVersionId = 'version-direct-parallel';
+    const release = composeExecutableCompatibilityRelease(
+      nodeRelease({ parallel: true, merge: true }),
+    );
+    const executable = buildWorkflowExecutableV2({
+      graph: directPairedParallelGraph(),
+      release,
+    });
+    const manualKey = invocationKey({ workflowVersionId, nodeId: 'manual' });
+    const parallelKey = invocationKey({
+      workflowVersionId,
+      nodeId: 'parallel',
+    });
+    const attemptId = '00000000-0000-4000-8000-000000000109';
+    const checkpoint = {
+      ...createCheckpointV2({
+        engineVersion: 'engine-v2',
+        workflowVersionId,
+        iterationBudget: 0,
+      }),
+      runStatus: 'running',
+      admittedInvocationKeys: [manualKey, parallelKey],
+      invocations: [
+        {
+          invocationKey: manualKey,
+          nodeId: 'manual',
+          status: 'succeeded',
+          attemptNumber: 1,
+        },
+        {
+          invocationKey: parallelKey,
+          nodeId: 'parallel',
+          status: 'running',
+          attemptNumber: 1,
+        },
+      ],
+    } as const;
+
+    const plan = await advanceWorkflow({
+      runId: 'run-direct-parallel',
+      executable,
+      workflowVersionId,
+      checkpoint,
+      observations: [
+        {
+          sequence: 2,
+          occurredAt: '2026-08-24T00:00:00.000Z',
+          attemptId,
+          attemptNumber: 1,
+          kind: 'outcome',
+          invocationKey: parallelKey,
+          status: 'succeeded',
+          output: { kind: 'inline', attemptId },
+        },
+      ],
+      completedOutputs: [
+        {
+          sequence: 2,
+          attemptId,
+          invocationKey: parallelKey,
+          value: { branchIds: ['branch-02', 'branch-01'] },
+        },
+      ],
+      occurredAt: '2026-08-24T00:00:01.000Z',
+      maximumAdmissions: 10,
+      signal: new AbortController().signal,
+    });
+
+    expect(plan.checkpoint.joins[0]?.ledger).toEqual([
+      { branchId: 'branch-01', disposition: 'missing' },
+      { branchId: 'branch-02', disposition: 'missing' },
+    ]);
+    expect(plan.checkpoint.joins[0]?.selectedBranchIds).toEqual([]);
+    expect(plan.attempts.map(({ nodeId }) => nodeId)).toEqual(['merge']);
   });
 
   it('carries exact pinned side-effect classes into attempt admissions', async () => {

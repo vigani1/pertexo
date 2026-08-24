@@ -1429,6 +1429,10 @@ function mergeCoordinatorObservations(
                 ...(parallelInvocation.branchPath ?? []),
                 { nodeId: parallelNodeId, outputPort: branchId },
               ];
+              const mergeSourceNodeId = edges.find(
+                ({ target }) =>
+                  target.nodeId === merge.id && target.port === branchId,
+              )?.source.nodeId;
               const scoped = [...projected.values()].filter(
                 (invocation) =>
                   JSON.stringify(invocation.iterationPath ?? []) ===
@@ -1441,6 +1445,16 @@ function mergeCoordinatorObservations(
                     );
                   }),
               );
+              if (scoped.length === 0 && mergeSourceNodeId === parallelNodeId)
+                return [
+                  {
+                    kind: 'branch_disposition',
+                    joinId: merge.id,
+                    joinInvocationKey,
+                    coordinatorDerived: true,
+                    branch: { branchId, disposition: 'missing' },
+                  },
+                ];
               if (
                 scoped.length === 0 ||
                 scoped.some(({ status }) =>
@@ -1448,10 +1462,6 @@ function mergeCoordinatorObservations(
                 )
               )
                 return [];
-              const mergeSourceNodeId = edges.find(
-                ({ target }) =>
-                  target.nodeId === merge.id && target.port === branchId,
-              )?.source.nodeId;
               const source = scoped.find(
                 ({ nodeId }) => nodeId === mergeSourceNodeId,
               );

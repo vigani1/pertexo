@@ -2594,7 +2594,7 @@ Current evidence:
   count. Provider-specific Slack/email adapters remain correctly deferred to
   Phase 6.
 - Final local verification on Node 24, pnpm 11.22.0, PostgreSQL 18.6, Redis
-  8.2.8, BullMQ 6.1.2, and S3Mock 5.1.0 passes root `pnpm check` with 860 unit
+  8.2.8, BullMQ 6.1.2, and S3Mock 5.1.0 passes root `pnpm check` with 862 unit
   assertions. The enabled sequential real-service matrix passes 2 artifact-store,
   254 database, 22 worker, and 7 API assertions; database execution includes
   zero-state and supported prior-head upgrades through `0034`. The notification
@@ -2622,6 +2622,13 @@ Current evidence:
   computes `next_delivery_at` and checks whether it is due with
   `clock_timestamp()`. The same proof verifies a skewed worker cannot claim the
   retry early. Fixed-head Spec and Standards re-review remain required.
+- The first fixed-head Spec review of `974f764` found that publication rejected
+  valid direct Parallel-to-Merge paths and production could not derive the
+  corresponding explicit `missing` ledger disposition. Red-green executable
+  proofs now accept each direct matching branch, persist canonical `missing`
+  entries for those graph-declared empty paths, settle the complete ledger, and
+  admit Merge without weakening fail-closed handling for absent non-empty branch
+  work. Fixed-head re-review remains required.
 
 Incremental publishable slices, in required order:
 
