@@ -21,7 +21,7 @@ not complete a phase.
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
-| Phase 5 — orchestration slice | In progress | ADRs 008/017; Condition contract/executor, topology, checkpoint V2, branch scheduling, database CAS, authoritative output handoff, and physical scope validation through `3ad8654`; no serving cohort pending V2 run initialization and failure/recovery matrix |
+| Phase 5 — orchestration slice | In progress | ADRs 008/017; Condition contract/executor, topology, checkpoint V2 initialization, branch scheduling/execution, database CAS, authoritative output handoff, and physical scope validation through `bbc687f`; no serving cohort pending the failure/recovery matrix |
 | Phase 6 — V1 providers and triggers | Not started | — |
 | Phase 7 — production operations | Not started | — |
 
@@ -2346,6 +2346,14 @@ Current evidence:
   against its checkpoint V2 invocation scope. Its disposable-PostgreSQL proof
   reloads selected/skipped branch rows successfully, then confirms scope
   corruption fails closed.
+- Commit `ad6e52e` carries the persisted branch path into the attempt lease and
+  verifies the exact scoped invocation identity before executor dispatch. Root
+  attempts retain their existing identity, malformed physical branch context
+  fails closed, and engine/worker tests cover the handoff. Commit `bbc687f`
+  initializes checkpoint V2 only for verified executables containing
+  `core.condition@1`; retained root-only workflows continue to initialize V1.
+  Condition remains incomplete pending duplicate/crash/Redis-loss/fresh-worker,
+  cancellation, and rollout proofs.
 
 Incremental publishable slices, in required order:
 
