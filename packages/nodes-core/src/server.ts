@@ -19,6 +19,13 @@ import {
   CORE_CONDITION_MANIFEST,
   CORE_CONDITION_OUTPUT_SCHEMA,
 } from './condition/index.js';
+import { coreForEachExecutor } from './for-each/executor.js';
+import {
+  CORE_FOR_EACH_CONFIG_SCHEMA,
+  CORE_FOR_EACH_INPUT_SCHEMA,
+  CORE_FOR_EACH_MANIFEST,
+  CORE_FOR_EACH_OUTPUT_SCHEMA,
+} from './for-each/index.js';
 import { coreManualExecutor } from './manual/executor.js';
 import {
   CORE_MANUAL_CONFIG_SCHEMA,
@@ -66,6 +73,12 @@ import {
 export const CORE_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistration[] =
   Object.freeze([
     Object.freeze({
+      manifest: CORE_FOR_EACH_MANIFEST,
+      configSchema: CORE_FOR_EACH_CONFIG_SCHEMA,
+      inputSchema: CORE_FOR_EACH_INPUT_SCHEMA,
+      outputSchema: CORE_FOR_EACH_OUTPUT_SCHEMA,
+    }),
+    Object.freeze({
       manifest: CORE_MERGE_MANIFEST,
       configSchema: CORE_MERGE_CONFIG_SCHEMA,
       inputSchema: CORE_MERGE_INPUT_SCHEMA,
@@ -111,6 +124,7 @@ export const CORE_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistra
 
 export const CORE_NODE_EXECUTOR_REGISTRATIONS = Object.freeze([
   coreConditionExecutor,
+  coreForEachExecutor,
   coreManualExecutor,
   coreMergeExecutor,
   coreParallelExecutor,

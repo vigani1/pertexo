@@ -15,7 +15,7 @@ duplicate outcomes, cancellation between batches, and fresh-worker recovery.
 
 ### Node and body contract
 
-`core.for_each@1` is a `logic`, `cpu`, `safe` node under executor ABI 1. It has
+`core.foreach@1` is a `logic`, `cpu`, `safe` node under executor ABI 1. It has
 one `in` port and one `out` port, strict `{}` config, strict input
 `{ items: JsonValue[] }`, and strict output
 `{ items: JsonValue[], iterationCount: integer }`. The executor performs no

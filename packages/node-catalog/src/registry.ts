@@ -6,6 +6,7 @@ import {
 import { createRegistryReleaseSuccessor } from '@pertexo/node-sdk';
 import {
   CORE_CONDITION_MANIFEST,
+  CORE_FOR_EACH_MANIFEST,
   CORE_MERGE_MANIFEST,
   CORE_PARALLEL_MANIFEST,
   CORE_REGISTRY_RELEASE_SUPPORT,
@@ -217,6 +218,46 @@ export const PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE =
     policies: PLATFORM_REGISTRY_RELEASE_MERGE_STAGED.policies,
   });
 
+const forEachExecutorAbi = CORE_FOR_EACH_MANIFEST.executorAbi;
+if (forEachExecutorAbi === undefined)
+  throw new Error('For Each manifest must pin its executor ABI');
+
+export const PLATFORM_REGISTRY_RELEASE_FOR_EACH_STAGED =
+  createRegistryReleaseSuccessor({
+    previous: PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
+    epoch: PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE.epoch + 1,
+    definitions: [
+      ...PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE.definitions,
+      CORE_FOR_EACH_MANIFEST,
+    ],
+    executors: [
+      ...PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE.executors,
+      {
+        executor: CORE_FOR_EACH_MANIFEST.executor,
+        abiVersion: forEachExecutorAbi,
+        definitions: [CORE_FOR_EACH_MANIFEST.definition],
+        lifecycle: 'staged',
+        policyReferences: CORE_FOR_EACH_MANIFEST.policyReferences,
+      },
+    ],
+    policies: PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE.policies,
+  });
+
+export const PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE =
+  createRegistryReleaseSuccessor({
+    previous: PLATFORM_REGISTRY_RELEASE_FOR_EACH_STAGED,
+    epoch: PLATFORM_REGISTRY_RELEASE_FOR_EACH_STAGED.epoch + 1,
+    definitions: PLATFORM_REGISTRY_RELEASE_FOR_EACH_STAGED.definitions,
+    executors: PLATFORM_REGISTRY_RELEASE_FOR_EACH_STAGED.executors.map(
+      (executor) =>
+        executor.executor.key === CORE_FOR_EACH_MANIFEST.executor.key &&
+        executor.executor.version === CORE_FOR_EACH_MANIFEST.executor.version
+          ? { ...executor, lifecycle: 'active' as const }
+          : executor,
+    ),
+    policies: PLATFORM_REGISTRY_RELEASE_FOR_EACH_STAGED.policies,
+  });
+
 /** Complete audit/test history; never pass this to one serving artifact. */
 export const PLATFORM_REGISTRY_RELEASE_HISTORY = Object.freeze([
   ...CORE_REGISTRY_RELEASE_SUPPORT,
@@ -230,6 +271,8 @@ export const PLATFORM_REGISTRY_RELEASE_HISTORY = Object.freeze([
   PLATFORM_REGISTRY_RELEASE_PARALLEL_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_MERGE_STAGED,
   PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_FOR_EACH_STAGED,
+  PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
 ]);
 
 /** Backward-compatible default cohort until deployment selects a Phase 4 cohort. */

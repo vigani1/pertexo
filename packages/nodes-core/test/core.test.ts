@@ -4,6 +4,11 @@ import { createRegistryReleaseSuccessor } from '@pertexo/node-sdk';
 import {
   CORE_BOUNDED_JSON_POLICY,
   CORE_DEFINITION_MANIFESTS,
+  CORE_FOR_EACH_CONFIG_SCHEMA,
+  CORE_FOR_EACH_DEFINITION,
+  CORE_FOR_EACH_EXECUTOR,
+  CORE_FOR_EACH_INPUT_SCHEMA,
+  CORE_FOR_EACH_MANIFEST,
   CORE_MANUAL_DEFINITION,
   CORE_MANUAL_EXECUTOR,
   CORE_MERGE_CONFIG_SCHEMA,
@@ -344,6 +349,34 @@ describe('core node execution', () => {
       definition: CORE_MERGE_DEFINITION,
       executor: CORE_MERGE_EXECUTOR,
       ports: { outputs: ['out'] },
+    });
+  });
+
+  it('defines a strict bounded For Each declaration contract', () => {
+    expect(
+      CORE_FOR_EACH_INPUT_SCHEMA.parse({
+        items: [{ id: 'first' }, null, 3],
+      }),
+    ).toEqual({ items: [{ id: 'first' }, null, 3] });
+    expect(
+      CORE_FOR_EACH_INPUT_SCHEMA.safeParse({ items: [], extra: true }).success,
+    ).toBe(false);
+    expect(
+      CORE_FOR_EACH_INPUT_SCHEMA.safeParse({
+        items: Array.from({ length: 1_001 }, () => null),
+      }).success,
+    ).toBe(false);
+    expect(CORE_FOR_EACH_CONFIG_SCHEMA.safeParse({}).success).toBe(true);
+    expect(
+      CORE_FOR_EACH_CONFIG_SCHEMA.safeParse({ maxIterations: 3 }).success,
+    ).toBe(false);
+    expect(CORE_FOR_EACH_MANIFEST).toMatchObject({
+      definition: CORE_FOR_EACH_DEFINITION,
+      executor: CORE_FOR_EACH_EXECUTOR,
+      family: 'logic',
+      ports: { inputs: ['in'], outputs: ['out'] },
+      retryClass: 'safe',
+      resourceClass: 'cpu',
     });
   });
 });

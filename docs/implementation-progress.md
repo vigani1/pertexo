@@ -2402,7 +2402,7 @@ Current evidence:
   the seven-test coordinator consumer integration file, and exact-head CI run
   `32745784487` pass all quality, real-integration, crash, Redis-loss,
   sequential service-loss, and additive rollout gates.
-- ADR 020 fixes the bounded `core.for_each@1` and isolated body contracts before
+- ADR 020 fixes the bounded `core.foreach@1` and isolated body contracts before
   implementation: explicit nearest-iteration input, immutable nested scope,
   whole-collection budget reservation before any body admission, bounded active
   iteration concurrency, no implicit result aggregation, and

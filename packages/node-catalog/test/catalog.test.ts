@@ -15,6 +15,8 @@ import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
 import {
   CORE_CONDITION_DEFINITION,
   CORE_CONDITION_EXECUTOR,
+  CORE_FOR_EACH_DEFINITION,
+  CORE_FOR_EACH_EXECUTOR,
   CORE_MERGE_DEFINITION,
   CORE_MERGE_EXECUTOR,
   CORE_PARALLEL_DEFINITION,
@@ -31,6 +33,8 @@ import {
   PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_CONDITION_STAGED,
   PLATFORM_REGISTRY_RELEASE_HISTORY,
+  PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_FOR_EACH_STAGED,
   PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_MERGE_STAGED,
   PLATFORM_REGISTRY_RELEASE_PARALLEL_ACTIVE,
@@ -59,6 +63,32 @@ import {
 } from '../src/server.js';
 
 describe('platform node compatibility catalog', () => {
+  it('executes bounded For Each declaration only in its additive release', async () => {
+    const registry = createPlatformNodeRegistryForRelease(
+      PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
+    );
+    const items = [{ id: 'first' }, null, 3];
+    await expect(
+      registry.execute({
+        config: {},
+        definition: CORE_FOR_EACH_DEFINITION,
+        executor: CORE_FOR_EACH_EXECUTOR,
+        input: { items },
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({
+      kind: 'succeeded',
+      output: { items, iterationCount: 3 },
+    });
+    expect(PLATFORM_REGISTRY_RELEASE_FOR_EACH_STAGED.epoch).toBe(13);
+    expect(PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE.epoch).toBe(14);
+    expect(
+      platformRegistryReleaseSupport('merge_activation').map(
+        ({ epoch }) => epoch,
+      ),
+    ).toEqual([11, 12]);
+  });
+
   it('executes a settled Merge ledger only in its additive release', async () => {
     const registry = createPlatformNodeRegistryForRelease(
       PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
@@ -229,7 +259,7 @@ describe('platform node compatibility catalog', () => {
   });
   it('retains every additive release in canonical order', () => {
     expect(PLATFORM_REGISTRY_RELEASE_HISTORY.map(({ epoch }) => epoch)).toEqual(
-      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
     );
     expect(PLATFORM_REGISTRY_RELEASE_SUPPORT.map(({ epoch }) => epoch)).toEqual(
       [1, 2],
@@ -407,7 +437,7 @@ describe('platform node compatibility catalog', () => {
       new Set(
         PLATFORM_REGISTRY_RELEASE_HISTORY.map(({ fingerprint }) => fingerprint),
       ).size,
-    ).toBe(12);
+    ).toBe(14);
   });
 
   it('builds one exact active server registry with retained core and dispatch-aware HTTP', async () => {
