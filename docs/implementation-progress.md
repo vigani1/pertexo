@@ -2708,8 +2708,10 @@ Authority and sequencing:
 - [x] Accept ADR 023 before fixing the Slack action's published identity,
       credential form, bounds, and ambiguous-dispatch behavior.
 - [x] Complete Slack `send_message` as one staged then active provider slice.
-- [ ] Accept a focused email-provider ADR, then complete one email-notification
-      action as a staged then active provider slice.
+- [x] Accept ADR 024 for the Resend-backed email action's published contract,
+      credential form, disclosure-gated test, and bounded idempotency window.
+- [ ] Complete email `send_notification` as one staged then active provider
+      slice.
 - [ ] Add versioned Slack and email destinations behind ADR 022 without changing
       terminal run truth or introducing notification nodes.
 - [ ] Accept ADR 012 before enabling any production trigger reconciliation or
@@ -2738,6 +2740,24 @@ Slack `send_message` completion gates:
       safe observability with a controllable Slack double and real infrastructure.
 - [x] Add staged and active compatibility releases only after every preceding
       Slack gate passes; retain all older releases and verify API/worker overlap.
+
+Email `send_notification` completion gates:
+
+- [ ] Add browser-safe strict config/input/output contracts, manifest identity,
+      server-only Resend executor, stable safe errors, telemetry, and redaction.
+- [ ] Extend connection contracts and persistence with workspace-scoped
+      `email`/`resend_api_key` creation, rotation, revocation, current-version
+      fencing, audit, and disclosure-gated test-recipient delivery.
+- [ ] Prove fixed-origin bounded requests, stable identical idempotency keys and
+      payloads, disabled redirects and hidden retries, response/error bounds,
+      definite refusal, 429/concurrent retry, and ambiguous transport retry.
+- [ ] Prove offline validation and disclosure-gated real preview execution with
+      no production run, checkpoint, usage, or trigger-state mutation.
+- [ ] Prove production attempt execution, duplicate delivery, crash boundaries,
+      Redis loss, PostgreSQL failure, drain, credential rotation/revocation, and
+      safe observability with a controllable Resend double and real services.
+- [ ] Add staged and active compatibility releases only after every preceding
+      email gate passes; retain all older releases and verify API/worker overlap.
 
 Phase-wide completion gates:
 
@@ -2796,6 +2816,12 @@ Current evidence:
   assertions. A reused-database worker rerun initially claimed four stale outbox
   rows in one transport assertion; that five-assertion file passed after the
   stale rows were consumed, while all other 17 worker assertions were green.
+- Official Resend documentation confirms fixed `POST /emails` JSON delivery,
+  sending-only domain-restricted API keys, a documented test recipient, UUID
+  responses, bounded 256-character idempotency keys, identical-response replay,
+  and 24-hour idempotency retention. ADR 024 limits automatic retries to the
+  much shorter accepted engine V1 retry horizon. No email manifest or executor
+  is serving yet.
 
 ## Later Phases
 
