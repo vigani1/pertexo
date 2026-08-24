@@ -65,11 +65,12 @@ const branchScopePartSchema = z
   .strict();
 const branchContextSchema = z
   .object({
-    branchPath: z.array(branchScopePartSchema).min(1).max(1_000),
+    branchPath: z.array(branchScopePartSchema).min(1).max(1_000).optional(),
   })
   .strict()
   .superRefine(({ branchPath }, context) => {
     if (
+      branchPath !== undefined &&
       new Set(branchPath.map(({ nodeId }) => nodeId)).size !== branchPath.length
     )
       context.addIssue({
@@ -726,9 +727,6 @@ export function createNodeAttemptRunStore(
               attemptId: input.attemptId,
               invocationKey: row.invocation_key,
               nodeId: row.node_id,
-              ...(branchContext === undefined
-                ? {}
-                : { branchPath: branchContext.data.branchPath }),
               attemptNumber: row.attempt_number,
             });
             const lease: NodeAttemptLease = Object.freeze({
@@ -740,6 +738,9 @@ export function createNodeAttemptRunStore(
               attemptNumber: row.attempt_number,
               invocationKey: row.invocation_key,
               nodeId: row.node_id,
+              ...(branchContext?.data.branchPath === undefined
+                ? {}
+                : { branchPath: branchContext.data.branchPath }),
               sideEffectClass: row.side_effect_class,
               ...(row.provider_idempotency_key === null
                 ? {}
