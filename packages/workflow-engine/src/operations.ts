@@ -723,14 +723,29 @@ function assertCheckpointMatchesExecutable(
       'checkpoint contains unsupported coordinator state',
     );
   const nodeIds = new Set(executable.envelope.graph.nodes.map(({ id }) => id));
+  const nodesById = new Map(
+    executable.envelope.graph.nodes.map((node) => [node.id, node]),
+  );
   const invocationKeys = new Set<string>();
   for (const invocation of checkpoint.invocations) {
+    const branchPath = invocation.branchPath ?? [];
     if (
       !nodeIds.has(invocation.nodeId) ||
+      branchPath.some(({ nodeId, outputPort }) => {
+        const node = nodesById.get(nodeId);
+        return (
+          node?.definition.key !== 'core.condition' ||
+          node.definition.version !== 1 ||
+          (outputPort !== 'true' && outputPort !== 'false')
+        );
+      }) ||
       invocation.invocationKey !==
         createInvocationKey({
           workflowVersionId: checkpoint.workflowVersionId,
           nodeId: invocation.nodeId,
+          branchPath: branchPath.map(
+            ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
+          ),
         })
     )
       operationError(
