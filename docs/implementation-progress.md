@@ -2712,6 +2712,8 @@ Authority and sequencing:
       credential form, disclosure-gated test, and bounded idempotency window.
 - [x] Complete email `send_notification` as one staged then active provider
       slice.
+- [x] Accept ADR 025 for immutable Slack/email failure-notification
+      destinations, workflow policy, connection fencing, and delivery outcomes.
 - [ ] Add versioned Slack and email destinations behind ADR 022 without changing
       terminal run truth or introducing notification nodes.
 - [ ] Accept ADR 012 before enabling any production trigger reconciliation or
@@ -2759,6 +2761,24 @@ Email `send_notification` completion gates:
       safe observability with a controllable Resend double and real services.
 - [x] Add staged and active compatibility releases only after every preceding
       email gate passes; retain all older releases and verify API/worker overlap.
+
+Failure-notification destination completion gates:
+
+- [ ] Add workspace-scoped destination identities, immutable Slack/email config
+      versions, optimistic updates, disable behavior, RLS, audit, and strict API
+      contracts without exposing provider or secret material.
+- [ ] Add one workflow policy reference outside graph topology and atomically pin
+      its exact active destination version and side-effect class into every new
+      manual, webhook, and schedule run.
+- [ ] Compose provider-neutral delivery over the proven Slack and Resend clients,
+      deterministic ADR 022 safe messages, exact connection/config fencing,
+      bounded provider references, and fail-closed readiness.
+- [ ] Prove Slack definite retry versus unsafe ambiguity, Resend identical-key
+      recovery, changed credentials, policy/config changes after run acceptance,
+      duplicate delivery, crashes, PostgreSQL/Redis loss, drain, and no recursive
+      notification or terminal-run mutation.
+- [ ] Activate destination production and recovery consumers only after the full
+      real-service matrix passes with both providers and retained run truth.
 
 Phase-wide completion gates:
 
