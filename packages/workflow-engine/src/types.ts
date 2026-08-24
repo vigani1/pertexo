@@ -36,6 +36,8 @@ export const ATTEMPT_STATUSES = [
 ] as const;
 export type AttemptStatus = (typeof ATTEMPT_STATUSES)[number];
 export type SideEffectClass = 'safe' | 'idempotent_with_key' | 'unsafe';
+export type WaitKind = 'node_wait' | 'retry_backoff';
+export type AdmissionKind = 'execute' | 'retry' | 'wait_resume';
 export type BranchDisposition =
   'pending' | 'arrived' | 'skipped' | 'missing' | 'failed' | 'canceled';
 
@@ -59,6 +61,7 @@ export interface InvocationState {
   readonly status: NodeStatus;
   readonly attemptNumber: number;
   readonly resumeAt?: string;
+  readonly waitKind?: WaitKind;
   readonly output?: OutputReference;
   readonly branchPath?: readonly BranchScopePart[];
   readonly iterationPath?: readonly IterationScopePart[];
@@ -177,6 +180,7 @@ export interface AttemptAdmissionPlan {
   readonly invocationKey: string;
   readonly nodeId: string;
   readonly attemptNumber: number;
+  readonly admissionKind: AdmissionKind;
   readonly sideEffectClass: SideEffectClass;
   readonly providerIdempotencyKey?: string;
   readonly branchPath?: readonly BranchScopePart[];

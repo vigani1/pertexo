@@ -12,6 +12,7 @@ import {
   CORE_REGISTRY_RELEASE_SUPPORT,
   CORE_REGISTRY_RELEASE_SUCCESSOR,
   CORE_SWITCH_MANIFEST,
+  CORE_WAIT_MANIFEST,
 } from '@pertexo/nodes-core';
 
 const httpExecutorAbi = HTTP_REQUEST_MANIFEST.executorAbi;
@@ -258,6 +259,46 @@ export const PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE =
     policies: PLATFORM_REGISTRY_RELEASE_FOR_EACH_STAGED.policies,
   });
 
+const waitExecutorAbi = CORE_WAIT_MANIFEST.executorAbi;
+if (waitExecutorAbi === undefined)
+  throw new Error('Wait manifest must pin its executor ABI');
+
+export const PLATFORM_REGISTRY_RELEASE_WAIT_STAGED =
+  createRegistryReleaseSuccessor({
+    previous: PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
+    epoch: 15,
+    definitions: [
+      ...PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE.definitions,
+      CORE_WAIT_MANIFEST,
+    ],
+    executors: [
+      ...PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE.executors,
+      {
+        executor: CORE_WAIT_MANIFEST.executor,
+        abiVersion: waitExecutorAbi,
+        definitions: [CORE_WAIT_MANIFEST.definition],
+        lifecycle: 'staged',
+        policyReferences: CORE_WAIT_MANIFEST.policyReferences,
+      },
+    ],
+    policies: PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE.policies,
+  });
+
+export const PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE =
+  createRegistryReleaseSuccessor({
+    previous: PLATFORM_REGISTRY_RELEASE_WAIT_STAGED,
+    epoch: 16,
+    definitions: PLATFORM_REGISTRY_RELEASE_WAIT_STAGED.definitions,
+    executors: PLATFORM_REGISTRY_RELEASE_WAIT_STAGED.executors.map(
+      (executor) =>
+        executor.executor.key === CORE_WAIT_MANIFEST.executor.key &&
+        executor.executor.version === CORE_WAIT_MANIFEST.executor.version
+          ? { ...executor, lifecycle: 'active' as const }
+          : executor,
+    ),
+    policies: PLATFORM_REGISTRY_RELEASE_WAIT_STAGED.policies,
+  });
+
 /** Complete audit/test history; never pass this to one serving artifact. */
 export const PLATFORM_REGISTRY_RELEASE_HISTORY = Object.freeze([
   ...CORE_REGISTRY_RELEASE_SUPPORT,
@@ -273,6 +314,8 @@ export const PLATFORM_REGISTRY_RELEASE_HISTORY = Object.freeze([
   PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_FOR_EACH_STAGED,
   PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_WAIT_STAGED,
+  PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE,
 ]);
 
 /** Backward-compatible default cohort until deployment selects a Phase 4 cohort. */
@@ -344,6 +387,15 @@ export const PLATFORM_FOR_EACH_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
   PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
 ]);
 
+export const PLATFORM_WAIT_STAGING_RELEASE_SUPPORT = Object.freeze([
+  PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_WAIT_STAGED,
+]);
+export const PLATFORM_WAIT_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
+  PLATFORM_REGISTRY_RELEASE_WAIT_STAGED,
+  PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE,
+]);
+
 export const PLATFORM_RELEASE_COHORTS = Object.freeze([
   'core',
   'http_staging',
@@ -358,6 +410,8 @@ export const PLATFORM_RELEASE_COHORTS = Object.freeze([
   'merge_activation',
   'for_each_staging',
   'for_each_activation',
+  'wait_staging',
+  'wait_activation',
 ] as const);
 export type PlatformReleaseCohort = (typeof PLATFORM_RELEASE_COHORTS)[number];
 
@@ -389,6 +443,10 @@ export function platformRegistryReleaseSupport(cohort: PlatformReleaseCohort) {
       return PLATFORM_FOR_EACH_STAGING_RELEASE_SUPPORT;
     case 'for_each_activation':
       return PLATFORM_FOR_EACH_ACTIVATION_RELEASE_SUPPORT;
+    case 'wait_staging':
+      return PLATFORM_WAIT_STAGING_RELEASE_SUPPORT;
+    case 'wait_activation':
+      return PLATFORM_WAIT_ACTIVATION_RELEASE_SUPPORT;
   }
 }
 
@@ -434,6 +492,10 @@ export function platformServingRegistryRelease(cohort: PlatformReleaseCohort) {
       return PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE;
     case 'for_each_activation':
       return PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE;
+    case 'wait_staging':
+      return PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE;
+    case 'wait_activation':
+      return PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE;
   }
 }
 

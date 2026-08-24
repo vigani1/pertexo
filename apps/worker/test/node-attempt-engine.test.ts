@@ -212,6 +212,7 @@ function fixture(nodeId: 'manual' | 'terminate') {
     nodeRunId: NODE_RUN_ID,
     attemptId: ATTEMPT_ID,
     attemptNumber: 1,
+    admissionKind: 'execute',
     invocationKey: `${VERSION_ID}|${nodeId}|b:|i:`,
     nodeId,
     sideEffectClass: 'safe',

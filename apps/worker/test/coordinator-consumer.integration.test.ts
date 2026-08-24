@@ -2595,7 +2595,7 @@ describeIntegration('Phase 3 coordinator consumer', () => {
     }
   }, 60_000);
 
-  it('wakes multiple due retries through SQL, outbox dispatch, BullMQ, and the coordinator exactly once', async () => {
+  it('recovers due retry and Wait work through SQL, Redis outage, BullMQ, and fresh coordination', async () => {
     const coordinatorQueue = new Queue(QUEUE_NAME.workflowCoordinator, {
       connection: redisConnection(),
     });
@@ -2643,6 +2643,18 @@ describeIntegration('Phase 3 coordinator consumer', () => {
         status: 'waiting' as const,
         attemptNumber: 1,
         resumeAt: dueAt,
+        waitKind:
+          nodeId === 'manual'
+            ? ('retry_backoff' as const)
+            : ('node_wait' as const),
+        ...(nodeId === 'set'
+          ? {
+              output: {
+                kind: 'inline' as const,
+                attemptId: firstAttemptIds[1] as string,
+              },
+            }
+          : {}),
       })),
       joins: [],
       loops: [],
@@ -2684,39 +2696,72 @@ describeIntegration('Phase 3 coordinator consumer', () => {
       );
       await seedClient.query('set constraints all deferred');
       for (const [index, nodeId] of nodeIds.entries()) {
-        await seedClient.query(
-          `insert into app.node_runs (
-           id,workspace_id,workflow_run_id,node_id,invocation_key,branch_context,
-           status,side_effect_class,provider_idempotency_key,current_attempt_id,
-           current_attempt_number,retry_due_at
-         ) values ($1,$2,$3,$4,$5,'{}','waiting','idempotent_with_key',$6,$7,1,$8)`,
-          [
-            nodeRunIds[index],
-            workspaceId,
-            runId,
-            nodeId,
-            invocationKeys[index],
-            providerKeys[index],
-            firstAttemptIds[index],
-            dueAt,
-          ],
-        );
-        await seedClient.query(
-          `insert into app.node_attempts (
-           id,workspace_id,node_run_id,attempt_number,status,side_effect_class,
-           provider_idempotency_key,safe_error_code,executor_failure_kind,
-           executor_error_kind,executor_possibly_dispatched,retry_decision,
-           completed_at
-         ) values ($1,$2,$3,1,'failed','idempotent_with_key',$4,
-                   'execution.rate_limit','retry','rate_limit',false,'retry',
-                   clock_timestamp())`,
-          [
-            firstAttemptIds[index],
-            workspaceId,
-            nodeRunIds[index],
-            providerKeys[index],
-          ],
-        );
+        if (nodeId === 'manual') {
+          await seedClient.query(
+            `insert into app.node_runs (
+              id,workspace_id,workflow_run_id,node_id,invocation_key,branch_context,
+              status,side_effect_class,provider_idempotency_key,current_attempt_id,
+              current_attempt_number,retry_due_at,wait_kind
+            ) values ($1,$2,$3,$4,$5,'{}','waiting','idempotent_with_key',$6,$7,1,$8,
+                      'retry_backoff')`,
+            [
+              nodeRunIds[index],
+              workspaceId,
+              runId,
+              nodeId,
+              invocationKeys[index],
+              providerKeys[index],
+              firstAttemptIds[index],
+              dueAt,
+            ],
+          );
+          await seedClient.query(
+            `insert into app.node_attempts (
+              id,workspace_id,node_run_id,attempt_number,status,side_effect_class,
+              provider_idempotency_key,safe_error_code,executor_failure_kind,
+              executor_error_kind,executor_possibly_dispatched,retry_decision,
+              completed_at
+            ) values ($1,$2,$3,1,'failed','idempotent_with_key',$4,
+                      'execution.rate_limit','retry','rate_limit',false,'retry',
+                      clock_timestamp())`,
+            [
+              firstAttemptIds[index],
+              workspaceId,
+              nodeRunIds[index],
+              providerKeys[index],
+            ],
+          );
+        } else {
+          const output = JSON.stringify({
+            schemaVersion: 1,
+            kind: 'inline',
+            value: { preserved: true },
+          });
+          await seedClient.query(
+            `insert into app.node_runs (
+              id,workspace_id,workflow_run_id,node_id,invocation_key,branch_context,
+              status,side_effect_class,current_attempt_id,current_attempt_number,
+              resume_at,wait_kind,output_ref
+            ) values ($1,$2,$3,$4,$5,'{}','waiting','safe',$6,1,$7,'node_wait',$8::jsonb)`,
+            [
+              nodeRunIds[index],
+              workspaceId,
+              runId,
+              nodeId,
+              invocationKeys[index],
+              firstAttemptIds[index],
+              dueAt,
+              output,
+            ],
+          );
+          await seedClient.query(
+            `insert into app.node_attempts (
+              id,workspace_id,node_run_id,attempt_number,status,side_effect_class,
+              output_ref,completed_at
+            ) values ($1,$2,$3,1,'succeeded','safe',$4::jsonb,clock_timestamp())`,
+            [firstAttemptIds[index], workspaceId, nodeRunIds[index], output],
+          );
+        }
       }
       await seedClient.query('commit');
     } catch (error: unknown) {
@@ -2735,10 +2780,15 @@ describeIntegration('Phase 3 coordinator consumer', () => {
             revision: current.revision,
           });
         const invocations = current.invocations.map((invocation) => {
-          const { resumeAt: _, ...withoutResumeAt } = invocation;
-          void _;
+          const {
+            resumeAt: _resumeAt,
+            waitKind: _waitKind,
+            ...active
+          } = invocation;
+          void _resumeAt;
+          void _waitKind;
           return {
-            ...withoutResumeAt,
+            ...active,
             status: 'running' as const,
             attemptNumber: 2,
           };
@@ -2770,8 +2820,19 @@ describeIntegration('Phase 3 coordinator consumer', () => {
               invocationKey: invocationKey({ workflowVersionId, nodeId }),
               nodeId,
               attemptNumber: 2,
-              sideEffectClass: 'idempotent_with_key' as const,
-              providerIdempotencyKey: `due-wakeup-provider-key:${runId}:${nodeId}`,
+              admissionKind:
+                nodeId === 'manual'
+                  ? ('retry' as const)
+                  : ('wait_resume' as const),
+              sideEffectClass:
+                nodeId === 'manual'
+                  ? ('idempotent_with_key' as const)
+                  : ('safe' as const),
+              ...(nodeId === 'manual'
+                ? {
+                    providerIdempotencyKey: `due-wakeup-provider-key:${runId}:${nodeId}`,
+                  }
+                : {}),
             })),
           },
         });
@@ -2895,7 +2956,7 @@ describeIntegration('Phase 3 coordinator consumer', () => {
             attempt_count: string;
             attempt_outboxes: string;
             event_count: string;
-            provider_keys: string[];
+            provider_keys: (string | null)[];
             retry_events: string;
           }>(
             `select
@@ -2924,12 +2985,7 @@ describeIntegration('Phase 3 coordinator consumer', () => {
         attempt_count: '4',
         attempt_outboxes: '2',
         event_count: '3',
-        provider_keys: [
-          providerKeys[0],
-          providerKeys[0],
-          providerKeys[1],
-          providerKeys[1],
-        ],
+        provider_keys: [providerKeys[0], providerKeys[0], null, null],
         retry_events: '0',
       });
       await new Promise<void>((resolve) => setTimeout(resolve, 100));

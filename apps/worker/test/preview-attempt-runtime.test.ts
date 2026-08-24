@@ -43,6 +43,34 @@ function leaseFixture(
 }
 
 describe('platform preview node invoker', () => {
+  it('rejects Wait with a stable suspension-not-supported outcome', async () => {
+    const execute = vi.fn();
+    const invoker = createPlatformPreviewNodeInvoker({
+      registry: { execute } as never,
+      releaseCohort: 'core',
+    });
+    const lease = {
+      ...leaseFixture({
+        config: { durationSeconds: 60 },
+        configVersion: 1,
+        connectionRefs: {},
+        definition: { key: 'core.wait', version: 1 },
+        id: 'node-1',
+        inputMappings: {},
+      }),
+      definitionKey: 'core.wait',
+      executorKey: 'core.wait',
+    };
+
+    await expect(
+      invoker.invoke({ lease, signal: new AbortController().signal }),
+    ).resolves.toEqual({
+      safeErrorCode: 'preview.suspension_not_supported',
+      status: 'failed',
+    });
+    expect(execute).not.toHaveBeenCalled();
+  });
+
   it('resolves mappings through the production resolver before execution', async () => {
     const execute = vi.fn((request: { input: unknown }) =>
       Promise.resolve({ kind: 'succeeded' as const, output: request.input }),

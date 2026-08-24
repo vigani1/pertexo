@@ -32,6 +32,7 @@ const invocationShape = {
   ]),
   attemptNumber: z.number().int().nonnegative(),
   resumeAt: z.iso.datetime().optional(),
+  waitKind: z.enum(['node_wait', 'retry_backoff']).optional(),
   output: outputReferenceSchema.optional(),
 } as const;
 const invocationSchemaV1 = z.object(invocationShape).strict();

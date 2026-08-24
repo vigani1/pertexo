@@ -1,11 +1,13 @@
 import {
   CoordinatorDeliveryMismatchError,
   createDueNodeWakeupScanner,
+  createDeadlineWakeupScanner,
   createCoordinatorRunStore,
   createPublishedWorkflowReader,
   type CoordinatorRunStore,
   type DatabaseConfig,
   type DueNodeWakeupScanner,
+  type DeadlineWakeupScanner,
   type PublishedWorkflowReader,
 } from '@pertexo/database';
 import {
@@ -60,6 +62,7 @@ export type CoordinatorRuntimeDependencies = Readonly<{
   consumerFactory?: typeof createQueueConsumer;
   engine?: CoordinatorAdvanceEngine;
   dueWakeupScanner?: DueNodeWakeupScanner;
+  deadlineWakeupScanner?: DeadlineWakeupScanner;
   notifications?: RunEventNotificationPublisher;
   reader?: PublishedWorkflowReader;
   runStore?: CoordinatorRunStore;
@@ -175,6 +178,9 @@ export async function createCoordinatorRuntime(
   const dueWakeupScanner =
     dependencies.dueWakeupScanner ??
     createDueNodeWakeupScanner(options.database);
+  const deadlineWakeupScanner =
+    dependencies.deadlineWakeupScanner ??
+    createDeadlineWakeupScanner(options.database);
   const handler = createCoordinatorHandler({
     clock: dependencies.clock ?? systemClock(),
     engine,
@@ -196,6 +202,7 @@ export async function createCoordinatorRuntime(
     await Promise.allSettled([
       notifications.close(),
       dueWakeupScanner.close(),
+      deadlineWakeupScanner.close(),
       reader.close(),
       runStore.close(),
     ]);
@@ -206,6 +213,7 @@ export async function createCoordinatorRuntime(
     while (!scannerAbort.signal.aborted) {
       try {
         await dueWakeupScanner.claimDueWakeups(dueWakeupBatchSize);
+        await deadlineWakeupScanner.claimDueWakeups(dueWakeupBatchSize);
       } catch {
         // A transient database outage must not terminate the coordinator process.
       }
@@ -223,6 +231,7 @@ export async function createCoordinatorRuntime(
         const scannerDrainResult = await Promise.allSettled([scannerLoop]);
         const scannerCloseResult = await Promise.allSettled([
           dueWakeupScanner.close(),
+          deadlineWakeupScanner.close(),
         ]);
         const adapterResults = await Promise.allSettled([
           notifications.close(),

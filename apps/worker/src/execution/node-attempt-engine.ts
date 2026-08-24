@@ -285,6 +285,13 @@ function prepareNode(
           }),
   );
   return Object.freeze({
+    ...(node.definition.key === 'core.wait' && node.definition.version === 1
+      ? {
+          suspensionDurationSeconds: Number(
+            Reflect.get(node.config, 'durationSeconds'),
+          ),
+        }
+      : {}),
     upstreamNodeOutputs,
     execute: async (
       input: Readonly<

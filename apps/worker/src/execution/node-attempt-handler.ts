@@ -31,6 +31,7 @@ type AttemptDelivery = Extract<
 >;
 
 export interface PreparedNodeAttempt {
+  readonly suspensionDurationSeconds?: number;
   readonly upstreamNodeOutputs: readonly Readonly<{
     nodeId: string;
     invocationKey: string;
@@ -249,6 +250,19 @@ export function createNodeAttemptHandler(
           false,
         );
       }
+      if (claimed.lease.admissionKind === 'wait_resume') {
+        if (inputs.resumeOutput === undefined)
+          throw new NodeAttemptHandlerStateError('wait_resume_output_missing');
+        const completed = await dependencies.runStore.complete({
+          lease: claimed.lease,
+          outcome: { status: 'succeeded', output: inputs.resumeOutput },
+          ...(delivery.data.traceparent === undefined
+            ? {}
+            : { traceparent: delivery.data.traceparent }),
+          signal: context.signal,
+        });
+        return completionResult(dependencies, claimed.lease, completed.kind);
+      }
       const executionAbort = new AbortController();
       const heartbeatStop = new AbortController();
       const heartbeatSignal = AbortSignal.any([
@@ -360,7 +374,14 @@ export function createNodeAttemptHandler(
         try {
           const completed = await dependencies.runStore.complete({
             lease: claimed.lease,
-            outcome: { status: 'succeeded', output: outcome.output },
+            outcome:
+              prepared.suspensionDurationSeconds === undefined
+                ? { status: 'succeeded', output: outcome.output }
+                : {
+                    status: 'suspended',
+                    output: outcome.output,
+                    durationSeconds: prepared.suspensionDurationSeconds,
+                  },
             ...(delivery.data.traceparent === undefined
               ? {}
               : { traceparent: delivery.data.traceparent }),

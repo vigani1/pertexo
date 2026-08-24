@@ -8,3 +8,4 @@ export * from './policies.js';
 export * from './registry.js';
 export * from './set/index.js';
 export * from './terminate/index.js';
+export * from './wait/index.js';

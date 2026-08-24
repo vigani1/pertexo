@@ -29,6 +29,10 @@ import {
   CORE_SWITCH_MANIFEST,
   CORE_TERMINATE_DEFINITION,
   CORE_TERMINATE_EXECUTOR,
+  CORE_WAIT_CONFIG_SCHEMA,
+  CORE_WAIT_DEFINITION,
+  CORE_WAIT_EXECUTOR,
+  CORE_WAIT_MANIFEST,
 } from '../src/index.js';
 import {
   createCoreNodeRegistry,
@@ -377,6 +381,34 @@ describe('core node execution', () => {
       ports: { inputs: ['in'], outputs: ['out'] },
       retryClass: 'safe',
       resourceClass: 'cpu',
+    });
+  });
+
+  it('defines the bounded suspension contract for Wait', () => {
+    expect(
+      CORE_WAIT_CONFIG_SCHEMA.safeParse({ durationSeconds: 1 }).success,
+    ).toBe(true);
+    expect(
+      CORE_WAIT_CONFIG_SCHEMA.safeParse({ durationSeconds: 2_592_000 }).success,
+    ).toBe(true);
+    expect(
+      CORE_WAIT_CONFIG_SCHEMA.safeParse({ durationSeconds: 0 }).success,
+    ).toBe(false);
+    expect(
+      CORE_WAIT_CONFIG_SCHEMA.safeParse({ durationSeconds: 2_592_001 }).success,
+    ).toBe(false);
+    expect(
+      CORE_WAIT_CONFIG_SCHEMA.safeParse({ durationSeconds: 1, extra: true })
+        .success,
+    ).toBe(false);
+    expect(CORE_WAIT_MANIFEST).toMatchObject({
+      definition: CORE_WAIT_DEFINITION,
+      executor: CORE_WAIT_EXECUTOR,
+      family: 'logic',
+      ports: { inputs: ['in'], outputs: ['out'] },
+      retryClass: 'safe',
+      resourceClass: 'cpu',
+      capabilities: ['suspends_run'],
     });
   });
 });

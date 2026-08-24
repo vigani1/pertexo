@@ -21,7 +21,7 @@ not complete a phase.
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
-| Phase 5 — orchestration slice | In progress | ADRs 008/017/018/019/020; Condition, Switch, bounded Parallel, Merge, and bounded For Each vertical slices are complete; Wait and failure notification plus phase-wide gates remain |
+| Phase 5 — orchestration slice | In progress | ADRs 008/017/018/019/020/021/022; Condition, Switch, bounded Parallel, Merge, bounded For Each, and Wait vertical slices are complete; failure notification plus phase-wide gates remain |
 | Phase 6 — V1 providers and triggers | Not started | — |
 | Phase 7 — production operations | Not started | — |
 
@@ -2538,6 +2538,30 @@ Current evidence:
   Wait preserves semantic resume versus retry identity and adds an independent
   PostgreSQL deadline wake source; failure notification is an atomic bounded
   execution-domain intent whose delivery can never alter terminal run truth.
+- The Wait completion checkpoint adds strict `core.wait@1` duration
+  validation from 1 through 2,592,000 seconds, bounded pass-through execution,
+  `suspends_run`, stable preview rejection, and retained staged/active epochs 15
+  and 16 while leaving the default serving cohort unchanged. Migration 0033
+  persists explicit `node_wait`/`retry_backoff` and
+  `execute`/`retry`/`wait_resume` identity, enforces exclusive timing columns,
+  and adds an independently claimed PostgreSQL deadline wakeup marker and
+  transactional coordinator outbox. The production attempt store computes the
+  resume timestamp from database time in the same completion transaction,
+  releases the attempt lease, preserves output, and rejects a suspension racing
+  committed cancellation/deadline control. A due semantic wait creates one
+  immutable resume attempt that loads the preserved output without invoking or
+  rearming Wait. Disposable PostgreSQL proves atomic suspension, no early wake,
+  duplicate completion, exact two-attempt resume, independent concurrent
+  deadline wakeup, readiness and zero/prior-head migration. Root `pnpm check`
+  passes, as do all 253 database integration assertions on a clean PostgreSQL
+  18 database and the focused real SQL/outbox/BullMQ due-retry assertion after
+  explicit delay-kind fixture migration. The real recovery assertion now mixes
+  one retry and one semantic Wait, stops the pre-due coordinator, starts fresh
+  coordination after the deadline, fails publication through unavailable Redis,
+  retries the durable outboxes through BullMQ, and admits exactly one `retry`
+  and one `wait_resume` attempt with no duplicate scan result. Existing worker
+  drain and PostgreSQL fail-closed gates remain green. Wait is complete; Phase 5
+  remains in progress for failure notification and phase-wide fixed-head review.
 
 Incremental publishable slices, in required order:
 
@@ -2554,7 +2578,7 @@ Incremental publishable slices, in required order:
 - [x] Bounded For Each: one isolated structured DAG body, collection evaluated
       once from canonical input, stable zero-based ordinals, pinned maximum
       iterations/concurrency, run-wide 1,000-iteration budget, and no truncation.
-- [ ] Wait: PostgreSQL owns `resumeAt`, checkpoint revision, and due-work lease;
+- [x] Wait: PostgreSQL owns `resumeAt`, checkpoint revision, and due-work lease;
       no sleeping worker or BullMQ timer is authoritative, and duplicate due
       delivery resumes one logical invocation no earlier than its deadline.
 - [ ] Failure notification: versioned bounded input/output and safe failure
@@ -2583,7 +2607,7 @@ Every slice must pass before the next begins:
       expansion, iteration-budget exhaustion before admission, bounded
       concurrency, stable scoped invocation keys, duplicate outcomes, and
       cancellation between batches.
-- [ ] For Wait, prove long suspension consumes no worker slot, due-work recovery
+- [x] For Wait, prove long suspension consumes no worker slot, due-work recovery
       after Redis/worker restart, no early resume, duplicate delivery, and
       durable cancellation/deadline behavior.
 

@@ -122,6 +122,8 @@ export type PersistedWorkflowObservation = Readonly<
         readonly attemptId: string;
         readonly attemptNumber: number;
         readonly resumeAt: string;
+        readonly waitKind: 'node_wait' | 'retry_backoff';
+        readonly output?: OutputReference;
       }
   )
 >;
@@ -218,7 +220,12 @@ function samePersistedFact(
       left.invocationKey === right.invocationKey &&
       left.attemptId === right.attemptId &&
       left.attemptNumber === right.attemptNumber &&
-      left.resumeAt === right.resumeAt
+      left.resumeAt === right.resumeAt &&
+      left.waitKind === right.waitKind &&
+      left.output?.kind === right.output?.kind &&
+      (left.output?.kind === 'inline' && right.output?.kind === 'inline'
+        ? left.output.attemptId === right.output.attemptId
+        : left.output === undefined && right.output === undefined)
     );
   if (right.kind !== 'outcome') return false;
   return (
@@ -256,7 +263,8 @@ function staleFactMatchesCheckpoint(
     return (
       invocation?.status === 'waiting' &&
       invocation.attemptNumber === observation.attemptNumber &&
-      invocation.resumeAt === observation.resumeAt
+      invocation.resumeAt === observation.resumeAt &&
+      invocation.waitKind === observation.waitKind
     );
   }
   const invocation = checkpoint.invocations.find(
@@ -437,16 +445,21 @@ function parseObservations(
         };
       }
       if (observation.kind === 'wait') {
-        exactKeys(observation, [
-          'kind',
-          'eventName',
-          'sequence',
-          'occurredAt',
-          'invocationKey',
-          'attemptId',
-          'attemptNumber',
-          'resumeAt',
-        ]);
+        exactKeys(
+          observation,
+          [
+            'kind',
+            'eventName',
+            'sequence',
+            'occurredAt',
+            'invocationKey',
+            'attemptId',
+            'attemptNumber',
+            'resumeAt',
+            'waitKind',
+          ],
+          ['output'],
+        );
         if (
           (observation.eventName !== 'node.waiting' &&
             observation.eventName !== 'node.retry_scheduled') ||
@@ -458,7 +471,17 @@ function parseObservations(
           typeof observation.attemptNumber !== 'number' ||
           !Number.isSafeInteger(observation.attemptNumber) ||
           observation.attemptNumber <= 0 ||
-          !isCanonicalTimestamp(observation.resumeAt)
+          !isCanonicalTimestamp(observation.resumeAt) ||
+          (observation.waitKind !== 'node_wait' &&
+            observation.waitKind !== 'retry_backoff') ||
+          (observation.waitKind === 'node_wait' &&
+            (typeof observation.output !== 'object' ||
+              observation.output === null ||
+              Reflect.get(observation.output, 'kind') !== 'inline' ||
+              Reflect.get(observation.output, 'attemptId') !==
+                observation.attemptId)) ||
+          (observation.waitKind === 'retry_backoff' &&
+            observation.output !== undefined)
         )
           operationError('observation_invalid', 'wait observation is invalid');
         return {
@@ -470,6 +493,15 @@ function parseObservations(
           attemptId: observation.attemptId,
           attemptNumber: observation.attemptNumber,
           resumeAt: observation.resumeAt,
+          waitKind: observation.waitKind,
+          ...(observation.output === undefined
+            ? {}
+            : {
+                output: {
+                  kind: 'inline' as const,
+                  attemptId: observation.attemptId,
+                },
+              }),
         };
       }
       if (observation.kind !== 'outcome')
@@ -667,6 +699,10 @@ function parseObservations(
           kind: observation.kind,
           invocationKey: observation.invocationKey,
           resumeAt: observation.resumeAt,
+          waitKind: observation.waitKind,
+          ...(observation.output === undefined
+            ? {}
+            : { output: observation.output }),
         };
       }
       return {
@@ -1557,6 +1593,7 @@ export async function advanceWorkflow(
           resumeAt: new Date(
             Date.parse(failure.occurredAt) + decision.delayMs,
           ).toISOString(),
+          waitKind: 'retry_backoff',
           coordinatorDerived: true,
         };
       }

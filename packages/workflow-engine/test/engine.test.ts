@@ -291,6 +291,7 @@ describe('checkpoint seam', () => {
       observations: [
         {
           kind: 'wait',
+          waitKind: 'node_wait',
           invocationKey: 'ordinary',
           resumeAt: '2026-08-21T10:00:00.000Z',
         },
@@ -1526,6 +1527,7 @@ describe('AdvanceWorkflow operation', () => {
       observations: [
         {
           kind: 'wait',
+          waitKind: 'node_wait',
           invocationKey: 'wait',
           resumeAt: '2026-08-21T10:00:00.000Z',
         },
@@ -1542,6 +1544,7 @@ describe('AdvanceWorkflow operation', () => {
     expect(resumed.checkpoint.runStatus).toBe('running');
     expect(resumed.attempts).toEqual([
       {
+        admissionKind: 'wait_resume',
         invocationKey: 'wait',
         nodeId: 'wait',
         attemptNumber: 2,
@@ -1648,6 +1651,7 @@ describe('AdvanceWorkflow operation', () => {
         { kind: 'outcome', invocationKey: 'done', status: 'succeeded' },
         {
           kind: 'wait',
+          waitKind: 'node_wait',
           invocationKey: 'wait',
           resumeAt: '2026-08-21T10:00:00.000Z',
         },

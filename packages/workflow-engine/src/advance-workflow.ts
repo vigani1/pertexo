@@ -62,6 +62,8 @@ export type WorkflowObservation =
       readonly kind: 'wait';
       readonly invocationKey: string;
       readonly resumeAt: string;
+      readonly waitKind: 'node_wait' | 'retry_backoff';
+      readonly output?: OutputReference;
       readonly coordinatorDerived?: boolean;
     }
   | { readonly kind: 'resume'; readonly invocationKey: string }
@@ -617,6 +619,10 @@ export function advanceWorkflowFromSchedulerState(
         ...existing,
         status: 'waiting',
         resumeAt: observation.resumeAt,
+        waitKind: observation.waitKind,
+        ...(observation.output === undefined
+          ? {}
+          : { output: observation.output }),
       });
       if (!externalFactsArePersisted || observation.coordinatorDerived)
         eventDrafts.push(
@@ -930,9 +936,14 @@ export function advanceWorkflowFromSchedulerState(
             continue;
           iterationFound = true;
           if (isTerminalNodeStatus(invocation.status)) continue;
-          const { resumeAt: _, ...withoutResumeAt } = invocation;
-          void _;
-          const stopped = { ...withoutResumeAt, status: controlStopStatus };
+          const {
+            resumeAt: _resumeAt,
+            waitKind: _waitKind,
+            ...active
+          } = invocation;
+          void _resumeAt;
+          void _waitKind;
+          const stopped = { ...active, status: controlStopStatus };
           invocations.set(invocation.invocationKey, stopped);
           eventDrafts.push(
             event(
@@ -964,9 +975,10 @@ export function advanceWorkflowFromSchedulerState(
       const control = invocations.get(loop.controlInvocationKey);
       if (control !== undefined && !isTerminalNodeStatus(control.status)) {
         const terminalStatus = loop.terminalStatus ?? controlStopStatus;
-        const { resumeAt: _, ...withoutResumeAt } = control;
-        void _;
-        const stopped = { ...withoutResumeAt, status: terminalStatus };
+        const { resumeAt: _resumeAt, waitKind: _waitKind, ...active } = control;
+        void _resumeAt;
+        void _waitKind;
+        const stopped = { ...active, status: terminalStatus };
         invocations.set(control.invocationKey, stopped);
         eventDrafts.push(
           event(
@@ -997,9 +1009,14 @@ export function advanceWorkflowFromSchedulerState(
           ? ('timed_out' as const)
           : ('canceled' as const);
       assertNodeTransition(invocation.status, stoppedStatus);
-      const { resumeAt: _, ...withoutResumeAt } = invocation;
-      void _;
-      const stopped = { ...withoutResumeAt, status: stoppedStatus };
+      const {
+        resumeAt: _resumeAt,
+        waitKind: _waitKind,
+        ...active
+      } = invocation;
+      void _resumeAt;
+      void _waitKind;
+      const stopped = { ...active, status: stoppedStatus };
       invocations.set(invocation.invocationKey, stopped);
       eventDrafts.push(
         event(
@@ -1020,9 +1037,14 @@ export function advanceWorkflowFromSchedulerState(
       )
         continue;
       assertNodeTransition(invocation.status, 'canceled');
-      const { resumeAt: _, ...withoutResumeAt } = invocation;
-      void _;
-      const canceled = { ...withoutResumeAt, status: 'canceled' as const };
+      const {
+        resumeAt: _resumeAt,
+        waitKind: _waitKind,
+        ...active
+      } = invocation;
+      void _resumeAt;
+      void _waitKind;
+      const canceled = { ...active, status: 'canceled' as const };
       invocations.set(invocation.invocationKey, canceled);
       eventDrafts.push(event('node.canceled', input.occurredAt, canceled));
     }
@@ -1053,8 +1075,16 @@ export function advanceWorkflowFromSchedulerState(
       );
     }
     assertNodeTransition(invocation.status, 'running');
+    const admissionKind =
+      invocation.waitKind === 'node_wait'
+        ? ('wait_resume' as const)
+        : invocation.waitKind === 'retry_backoff'
+          ? ('retry' as const)
+          : ('execute' as const);
+    const { waitKind: _waitKind, ...withoutWaitKind } = invocation;
+    void _waitKind;
     const running = {
-      ...invocation,
+      ...withoutWaitKind,
       status: 'running' as const,
       attemptNumber: invocation.attemptNumber + 1,
     };
@@ -1063,6 +1093,7 @@ export function advanceWorkflowFromSchedulerState(
       invocationKey: key,
       nodeId: running.nodeId,
       attemptNumber: running.attemptNumber,
+      admissionKind,
       sideEffectClass: schedulerNodeSideEffectClass(graph, running.nodeId),
       ...(running.branchPath === undefined
         ? {}

@@ -530,6 +530,10 @@ export const workflowRuns = appSchema.table(
     triggerType: varchar('trigger_type', { length: 32 }).notNull(),
     status: varchar('status', { length: 32 }).notNull(),
     deadlineAt: timestamp('deadline_at', { withTimezone: true, mode: 'date' }),
+    deadlineWakeupAt: timestamp('deadline_wakeup_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
     cancelRequestedAt: timestamp('cancel_requested_at', {
       withTimezone: true,
       mode: 'date',
@@ -651,6 +655,7 @@ export const nodeRuns = appSchema.table(
       withTimezone: true,
       mode: 'date',
     }),
+    waitKind: varchar('wait_kind', { length: 32 }),
     safeErrorCode: varchar('safe_error_code', { length: 128 }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
@@ -711,6 +716,7 @@ export const nodeAttempts = appSchema.table(
     executorErrorKind: varchar('executor_error_kind', { length: 32 }),
     executorPossiblyDispatched: boolean('executor_possibly_dispatched'),
     retryDecision: varchar('retry_decision', { length: 32 }),
+    admissionKind: varchar('admission_kind', { length: 32 }).notNull(),
     reconciliationRef: jsonb('reconciliation_ref'),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()

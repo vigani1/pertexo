@@ -8,7 +8,7 @@ import {
   type CompatibilityReleaseExpectationSet,
 } from './compatibility-release.js';
 
-export const EXPECTED_MIGRATION_HEAD = '0032_for_each_barriers.sql';
+export const EXPECTED_MIGRATION_HEAD = '0033_durable_wait.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -48,6 +48,7 @@ interface ReadinessRow {
   phase4_preview_terminal_facts_compatible: boolean;
   execution_values_compatible: boolean;
   coordinator_run_store_compatible: boolean;
+  durable_wait_compatible: boolean;
   due_node_wakeups_compatible: boolean;
   postgres_major: number;
   relforcerowsecurity: boolean;
@@ -536,7 +537,7 @@ export async function checkDatabaseReadiness(
             and attname = 'input_ref' and atttypid = 'jsonb'::regtype
             and not attnotnull and not attisdropped
         )
-        and (select count(*) = 17 from pg_attribute where attrelid = to_regclass('app.workflow_runs') and attnum > 0 and not attisdropped)
+        and (select count(*) = 18 from pg_attribute where attrelid = to_regclass('app.workflow_runs') and attnum > 0 and not attisdropped)
         and exists (
           select 1 from pg_attribute where attrelid = to_regclass('app.run_checkpoints')
             and attname = 'workflow_version_id' and atttypid = 'uuid'::regtype
@@ -590,7 +591,11 @@ export async function checkDatabaseReadiness(
             ('node_attempts', 'node_attempts_workspace_scope')
           ) expected(table_name, policy_name)
           where (select count(*) from pg_policy where polrelid = to_regclass('app.' || expected.table_name)) <>
-                case when expected.table_name = 'node_runs' then 3 else 1 end
+                case
+                  when expected.table_name = 'node_runs' then 3
+                  when expected.table_name = 'workflow_runs' then 3
+                  else 1
+                end
             or not exists (
               select 1 from pg_policy policy
               where policy.polrelid = to_regclass('app.' || expected.table_name)
@@ -716,7 +721,8 @@ export async function checkDatabaseReadiness(
             )
             and not (
               (privilege.table_name='workflow_runs' and privilege.column_name in (
-                'status','started_at','completed_at','output_ref','error_summary','updated_at'
+                'status','started_at','completed_at','output_ref','error_summary','updated_at',
+                'deadline_wakeup_at'
               ))
               or (privilege.table_name='run_checkpoints' and privilege.column_name in (
                 'revision','engine_version','scheduler_state','resume_at',
@@ -726,7 +732,7 @@ export async function checkDatabaseReadiness(
               or (privilege.table_name='node_runs' and privilege.column_name in (
                 'status','output_ref','current_attempt_id','current_attempt_number',
                  'resume_at','retry_due_at','safe_error_code','updated_at',
-                 'started_at','completed_at','due_wakeup_at','control_kind'
+                  'started_at','completed_at','due_wakeup_at','control_kind','wait_kind'
               ))
               or (privilege.table_name='node_attempts' and privilege.column_name in (
                 'status','lease_owner','lease_expires_at','fence_token',
@@ -779,6 +785,7 @@ export async function checkDatabaseReadiness(
             ('workflow_runs', 'started_at'),
             ('workflow_runs', 'completed_at'),
             ('workflow_runs', 'updated_at'),
+            ('workflow_runs', 'deadline_wakeup_at'),
             ('run_checkpoints', 'engine_version'),
             ('run_checkpoints', 'scheduler_state'),
             ('run_checkpoints', 'last_transition_fingerprint'),
@@ -793,6 +800,7 @@ export async function checkDatabaseReadiness(
              ('node_runs', 'retry_due_at'),
              ('node_runs', 'due_wakeup_at'),
              ('node_runs', 'control_kind'),
+             ('node_runs', 'wait_kind'),
             ('node_runs', 'completed_at'),
             ('node_runs', 'safe_error_code'),
             ('node_runs', 'updated_at')
@@ -1286,6 +1294,75 @@ export async function checkDatabaseReadiness(
         )
       ) as due_node_wakeups_compatible,
       (
+        exists (
+          select 1 from pg_attribute
+          where attrelid='app.node_runs'::regclass
+            and attname='wait_kind' and not attisdropped
+        )
+        and exists (
+          select 1 from pg_attribute attribute
+          join pg_attrdef default_record
+            on default_record.adrelid=attribute.attrelid
+           and default_record.adnum=attribute.attnum
+          where attribute.attrelid='app.node_attempts'::regclass
+            and attribute.attname='admission_kind'
+            and attribute.attnotnull and not attribute.attisdropped
+            and pg_get_expr(default_record.adbin, default_record.adrelid) =
+              '''execute''::character varying'
+        )
+        and exists (
+          select 1 from pg_attribute
+          where attrelid='app.workflow_runs'::regclass
+            and attname='deadline_wakeup_at' and not attisdropped
+        )
+        and not exists (
+          select 1 from (values
+            ('node_runs', 'node_runs_wait_kind_valid'),
+            ('node_runs', 'node_runs_wait_state_valid'),
+            ('node_attempts', 'node_attempts_admission_kind_valid'),
+            ('workflow_runs', 'workflow_runs_deadline_wakeup_consistent')
+          ) expected(table_name, constraint_name)
+          where not exists (
+            select 1 from pg_constraint
+            where conrelid=to_regclass('app.' || expected.table_name)
+              and conname=expected.constraint_name
+          )
+        )
+        and exists (
+          select 1 from pg_proc
+          where oid=to_regprocedure('app.claim_due_workflow_run_deadlines(integer)')
+            and prosecdef
+            and pg_get_userbyid(proowner)=$1
+            and proconfig=array['search_path=pg_catalog, pg_temp']::text[]
+        )
+        and has_function_privilege($2, 'app.claim_due_workflow_run_deadlines(integer)', 'EXECUTE')
+        and has_column_privilege($2, 'app.node_runs', 'wait_kind', 'UPDATE')
+        and has_column_privilege($2, 'app.workflow_runs', 'deadline_wakeup_at', 'UPDATE')
+        and not exists (
+          select 1 from pg_proc function_record,
+            lateral aclexplode(coalesce(
+              function_record.proacl,
+              acldefault('f', function_record.proowner)
+            )) privilege
+          where function_record.oid=to_regprocedure('app.claim_due_workflow_run_deadlines(integer)')
+            and privilege.privilege_type='EXECUTE'
+            and privilege.grantee not in (
+              (select oid from pg_roles where rolname=$1),
+              (select oid from pg_roles where rolname=$2)
+            )
+        )
+        and exists (
+          select 1 from pg_policy
+          where polrelid='app.workflow_runs'::regclass
+            and polname='workflow_runs_deadline_wakeup_owner_select'
+        )
+        and exists (
+          select 1 from pg_policy
+          where polrelid='app.workflow_runs'::regclass
+            and polname='workflow_runs_deadline_wakeup_owner_update'
+        )
+      ) as durable_wait_compatible,
+      (
         select name
         from pertexo_internal.schema_migrations
         order by name desc
@@ -1370,6 +1447,9 @@ export async function checkDatabaseReadiness(
   }
   if (!row.due_node_wakeups_compatible) {
     throw new Error('Due node wakeup authority is incompatible');
+  }
+  if (!row.durable_wait_compatible) {
+    throw new Error('Durable Wait authority is incompatible');
   }
   if (!row.phase4_connections_compatible) {
     throw new Error('Connection persistence schema or grants are incompatible');

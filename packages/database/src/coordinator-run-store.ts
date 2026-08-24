@@ -60,6 +60,9 @@ const nodeRunAdmissionSchema = z
 const attemptAdmissionSchema = nodeRunAdmissionSchema
   .extend({
     attemptNumber: z.number().int().positive(),
+    admissionKind: z
+      .enum(['execute', 'retry', 'wait_resume'])
+      .default('execute'),
   })
   .strict();
 const engineEventSchema = z
@@ -575,6 +578,7 @@ type EventRow = Readonly<{
   node_status: string | null;
   resume_at: Date | null;
   retry_due_at: Date | null;
+  wait_kind: 'node_wait' | 'retry_backoff' | null;
 }>;
 
 type PhysicalInvocationRow = Readonly<{
@@ -592,6 +596,7 @@ type PhysicalInvocationRow = Readonly<{
   node_status: string;
   resume_at: Date | null;
   retry_due_at: Date | null;
+  wait_kind: 'node_wait' | 'retry_backoff' | null;
 }>;
 
 async function readPersistedFacts(
@@ -616,7 +621,7 @@ async function readPersistedFacts(
               node.id as node_run_id, node.invocation_key,
               node.current_attempt_id, node.status as node_status,
               node.output_ref as node_output_ref,
-              node.resume_at, node.retry_due_at
+               node.resume_at, node.retry_due_at, node.wait_kind
        from app.run_events event
        left join app.node_attempts attempt
          on attempt.workspace_id=event.workspace_id
@@ -782,6 +787,10 @@ function mapEvent(row: EventRow): unknown {
       sequence: row.sequence,
       occurredAt,
       resumeAt,
+      waitKind: row.type === 'node.waiting' ? 'node_wait' : 'retry_backoff',
+      ...(row.type !== 'node.waiting' || row.attempt_id === null
+        ? {}
+        : { output: { kind: 'inline' as const, attemptId: row.attempt_id } }),
       ...attemptFact(row, payload),
     };
   }
@@ -906,7 +915,7 @@ async function validateLoadedCheckpointPhysicalState(
              node.control_kind,
             node.status as node_status,
             node.current_attempt_id, node.current_attempt_number,
-            node.resume_at, node.retry_due_at,
+             node.resume_at, node.retry_due_at, node.wait_kind,
             node.output_ref as node_output_ref,
             attempt.id as attempt_id, attempt.attempt_number,
             attempt.status as attempt_status,
@@ -1009,7 +1018,8 @@ async function validateLoadedCheckpointPhysicalState(
         (isLoopBarrier
           ? invocation.resumeAt !== undefined || dueAt !== null
           : invocation.resumeAt === undefined ||
-            dueAt?.toISOString() !== invocation.resumeAt)
+            dueAt?.toISOString() !== invocation.resumeAt) ||
+        (!isLoopBarrier && row.wait_kind !== invocation.waitKind)
       )
         throw new CoordinatorRunStateCorruptError();
     } else if (invocation.status === 'ready') {
@@ -1174,7 +1184,10 @@ function validateTransitionPlan(
       event.attemptNumber !== expectedEventAttemptNumber ||
       (event.name === 'node.retry_scheduled') !== (event.dueAt !== undefined) ||
       (event.name === 'node.retry_scheduled' &&
-        event.dueAt !== invocation.resumeAt)
+        event.dueAt !== invocation.resumeAt) ||
+      (event.name === 'node.waiting' && invocation.waitKind !== 'node_wait') ||
+      (event.name === 'node.retry_scheduled' &&
+        invocation.waitKind !== 'retry_backoff')
     )
       throw new CoordinatorPlanInvalidError();
   }
@@ -1609,6 +1622,7 @@ async function validateCheckpointOutputOwnership(
   workspaceId: string,
   runId: string,
   checkpoint: PersistedPhase3Checkpoint,
+  waitResumeKeys: ReadonlySet<string>,
 ): Promise<void> {
   const expected = checkpoint.invocations.filter(
     (invocation) => invocation.output !== undefined,
@@ -1648,12 +1662,27 @@ async function validateCheckpointOutputOwnership(
       isLoopControl && row?.control_kind === 'for_each_barrier'
         ? 'waiting'
         : 'succeeded';
+    const isSuspendedNodeWait =
+      invocation.status === 'waiting' && invocation.waitKind === 'node_wait';
+    const isWaitResume =
+      invocation.status === 'running' &&
+      invocation.waitKind === undefined &&
+      waitResumeKeys.has(invocation.invocationKey);
+    const expectedNodeStatus =
+      isSuspendedNodeWait || isWaitResume
+        ? 'waiting'
+        : isLoopControl
+          ? physicalLoopStatus
+          : invocation.status;
+    const expectedAttemptStatus =
+      isSuspendedNodeWait || isWaitResume || isLoopControl
+        ? 'succeeded'
+        : invocation.status;
     if (
       row?.attempt_id === undefined ||
       row.attempt_id === null ||
-      row.node_status !==
-        (isLoopControl ? physicalLoopStatus : invocation.status) ||
-      row.attempt_status !== (isLoopControl ? 'succeeded' : invocation.status)
+      row.node_status !== expectedNodeStatus ||
+      row.attempt_status !== expectedAttemptStatus
     )
       throw new CoordinatorRunStateCorruptError();
     let nodeValue;
@@ -1773,6 +1802,7 @@ async function persistDueReadyTransitions(
   const updated = await client.query(
     `update app.node_runs
      set status='ready', resume_at=null, retry_due_at=null, due_wakeup_at=null,
+         wait_kind=null,
          updated_at=clock_timestamp()
      where workspace_id=$1 and workflow_run_id=$2
        and invocation_key=any($3::varchar[]) and status='waiting'`,
@@ -2379,6 +2409,13 @@ export function createCoordinatorRunStore(
               workspaceId,
               runId,
               plan.checkpoint,
+              new Set(
+                plan.attempts
+                  .filter(
+                    ({ admissionKind }) => admissionKind === 'wait_resume',
+                  )
+                  .map(({ invocationKey }) => invocationKey),
+              ),
             );
             await persistLoopBarrierTransitions(
               client,
@@ -2455,7 +2492,9 @@ export function createCoordinatorRunStore(
               const nodeStatus = decision === 'retry' ? 'waiting' : decision;
               const updated = await client.query(
                 `update app.node_runs
-                 set status=$4::varchar,retry_due_at=$5,due_wakeup_at=null,
+                 set status=$4::varchar,retry_due_at=$5,resume_at=null,
+                     wait_kind=case when $4::varchar='waiting' then 'retry_backoff' else null end,
+                     due_wakeup_at=null,
                      completed_at=case when $4::varchar='waiting' then null else clock_timestamp() end,
                      safe_error_code=$6,updated_at=clock_timestamp()
                  where workspace_id=$1 and workflow_run_id=$2
@@ -2578,8 +2617,9 @@ export function createCoordinatorRunStore(
                 await client.query(
                   `update app.node_runs
                  set status='ready', current_attempt_id=$1,
-                     current_attempt_number=$2, resume_at=null,
-                      retry_due_at=null, due_wakeup_at=null, updated_at=clock_timestamp()
+                      current_attempt_number=$2, resume_at=null,
+                       retry_due_at=null, due_wakeup_at=null, wait_kind=null,
+                       updated_at=clock_timestamp()
                  where workspace_id=$3 and id=$4`,
                   [
                     ids.attemptId,
@@ -2593,9 +2633,9 @@ export function createCoordinatorRunStore(
                 throw new CoordinatorPlanInvalidError();
               await client.query(
                 `insert into app.node_attempts (
-                  id, workspace_id, node_run_id, attempt_number, status,
-                  side_effect_class, provider_idempotency_key
-                ) values ($1,$2,$3,$4,'ready',$5,$6)`,
+                   id, workspace_id, node_run_id, attempt_number, status,
+                   side_effect_class, provider_idempotency_key, admission_kind
+                 ) values ($1,$2,$3,$4,'ready',$5,$6,$7)`,
                 [
                   ids.attemptId,
                   workspaceId,
@@ -2603,6 +2643,7 @@ export function createCoordinatorRunStore(
                   attempt.attemptNumber,
                   attempt.sideEffectClass,
                   attempt.providerIdempotencyKey ?? null,
+                  attempt.admissionKind,
                 ],
               );
               const outboxEventId = randomUUID();
@@ -2718,8 +2759,8 @@ export function createCoordinatorRunStore(
                 const updatedNode = await client.query(
                   `update app.node_runs
                   set status=$1, completed_at=clock_timestamp(),
-                       safe_error_code=$2, resume_at=null, retry_due_at=null,
-                       due_wakeup_at=null, control_kind=null,
+                        safe_error_code=$2, resume_at=null, retry_due_at=null,
+                        due_wakeup_at=null, control_kind=null, wait_kind=null,
                      updated_at=clock_timestamp()
                  where workspace_id=$3 and workflow_run_id=$4
                    and invocation_key=$5

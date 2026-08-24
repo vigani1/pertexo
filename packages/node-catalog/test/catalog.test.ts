@@ -25,6 +25,8 @@ import {
   CORE_SET_EXECUTOR,
   CORE_SWITCH_DEFINITION,
   CORE_SWITCH_EXECUTOR,
+  CORE_WAIT_DEFINITION,
+  CORE_WAIT_EXECUTOR,
 } from '@pertexo/nodes-core';
 
 import {
@@ -41,6 +43,8 @@ import {
   PLATFORM_REGISTRY_RELEASE_PARALLEL_STAGED,
   PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_SWITCH_STAGED,
+  PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_WAIT_STAGED,
   PLATFORM_CONDITION_ACTIVATION_RELEASE_SUPPORT,
   PLATFORM_CONDITION_STAGING_RELEASE_SUPPORT,
   PLATFORM_FOR_EACH_ACTIVATION_RELEASE_SUPPORT,
@@ -65,6 +69,22 @@ import {
 } from '../src/server.js';
 
 describe('platform node compatibility catalog', () => {
+  it('retains staged and active Wait releases with no staging admission', async () => {
+    expect(PLATFORM_REGISTRY_RELEASE_WAIT_STAGED.epoch).toBe(15);
+    expect(PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE.epoch).toBe(16);
+    expect(platformServingRegistryRelease('wait_staging').epoch).toBe(14);
+    await expect(
+      createPlatformNodeRegistryForRelease(
+        PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE,
+      ).execute({
+        config: { durationSeconds: 2_592_000 },
+        definition: CORE_WAIT_DEFINITION,
+        executor: CORE_WAIT_EXECUTOR,
+        input: { preserved: true },
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({ kind: 'succeeded', output: { preserved: true } });
+  });
   it('executes bounded For Each declaration only in its additive release', async () => {
     const registry = createPlatformNodeRegistryForRelease(
       PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
@@ -261,7 +281,7 @@ describe('platform node compatibility catalog', () => {
   });
   it('retains every additive release in canonical order', () => {
     expect(PLATFORM_REGISTRY_RELEASE_HISTORY.map(({ epoch }) => epoch)).toEqual(
-      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
     );
     expect(PLATFORM_REGISTRY_RELEASE_SUPPORT.map(({ epoch }) => epoch)).toEqual(
       [1, 2],
@@ -460,7 +480,7 @@ describe('platform node compatibility catalog', () => {
       new Set(
         PLATFORM_REGISTRY_RELEASE_HISTORY.map(({ fingerprint }) => fingerprint),
       ).size,
-    ).toBe(14);
+    ).toBe(16);
   });
 
   it('builds one exact active server registry with retained core and dispatch-aware HTTP', async () => {

@@ -69,9 +69,22 @@ import {
   CORE_SWITCH_MANIFEST,
   CORE_SWITCH_OUTPUT_SCHEMA,
 } from './switch/index.js';
+import { coreWaitExecutor } from './wait/executor.js';
+import {
+  CORE_WAIT_CONFIG_SCHEMA,
+  CORE_WAIT_INPUT_SCHEMA,
+  CORE_WAIT_MANIFEST,
+  CORE_WAIT_OUTPUT_SCHEMA,
+} from './wait/index.js';
 
 export const CORE_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistration[] =
   Object.freeze([
+    Object.freeze({
+      manifest: CORE_WAIT_MANIFEST,
+      configSchema: CORE_WAIT_CONFIG_SCHEMA,
+      inputSchema: CORE_WAIT_INPUT_SCHEMA,
+      outputSchema: CORE_WAIT_OUTPUT_SCHEMA,
+    }),
     Object.freeze({
       manifest: CORE_FOR_EACH_MANIFEST,
       configSchema: CORE_FOR_EACH_CONFIG_SCHEMA,
@@ -131,6 +144,7 @@ export const CORE_NODE_EXECUTOR_REGISTRATIONS = Object.freeze([
   coreSetExecutor,
   coreSwitchExecutor,
   coreTerminateExecutor,
+  coreWaitExecutor,
 ] as const);
 
 function identityToken(identity: Readonly<{ key: string; version: number }>) {

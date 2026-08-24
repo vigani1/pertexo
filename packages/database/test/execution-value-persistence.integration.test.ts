@@ -238,7 +238,7 @@ describe('execution value persistence migration', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0032_for_each_barriers.sql',
+          migrationHead: '0033_durable_wait.sql',
           role: expectedRole,
         });
       } finally {

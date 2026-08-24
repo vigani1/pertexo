@@ -293,7 +293,7 @@ function parseInvocation(value: unknown): InvocationState {
   assertExactKeys(
     value,
     ['invocationKey', 'nodeId', 'status', 'attemptNumber'],
-    ['resumeAt', 'output'],
+    ['resumeAt', 'waitKind', 'output'],
   );
   assertCheckpoint(
     typeof value.invocationKey === 'string' && value.invocationKey.length > 0,
@@ -319,6 +319,12 @@ function parseInvocation(value: unknown): InvocationState {
     value.resumeAt === undefined || value.status === 'waiting',
     'resumeAt must exist only for a waiting invocation',
   );
+  assertCheckpoint(
+    value.waitKind === undefined ||
+      ((value.status === 'waiting' || value.status === 'ready') &&
+        (value.waitKind === 'node_wait' || value.waitKind === 'retry_backoff')),
+    'waitKind must identify delayed work only',
+  );
   const output =
     value.output === undefined
       ? undefined
@@ -329,6 +335,7 @@ function parseInvocation(value: unknown): InvocationState {
     status: value.status,
     attemptNumber: value.attemptNumber,
     ...(value.resumeAt === undefined ? {} : { resumeAt: value.resumeAt }),
+    ...(value.waitKind === undefined ? {} : { waitKind: value.waitKind }),
     ...(output === undefined ? {} : { output }),
   };
 }
@@ -343,7 +350,7 @@ function parseV2Invocations(
     assertExactKeys(
       item,
       ['invocationKey', 'nodeId', 'status', 'attemptNumber'],
-      ['resumeAt', 'output', 'branchPath', 'iterationPath'],
+      ['resumeAt', 'waitKind', 'output', 'branchPath', 'iterationPath'],
     );
     const {
       branchPath: rawBranchPath,
@@ -1113,9 +1120,9 @@ function parseCheckpointV1Boundary(value: unknown): WorkflowCheckpointV1 {
   );
   assertCheckpoint(
     invocations.every(
-      ({ invocationKey: key, status, resumeAt }) =>
+      ({ invocationKey: key, status, resumeAt, waitKind }) =>
         status !== 'waiting' ||
-        resumeAt !== undefined ||
+        (resumeAt !== undefined && waitKind !== undefined) ||
         loopControlKeys.has(key),
     ),
     'ordinary waiting invocation requires resumeAt',

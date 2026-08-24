@@ -208,6 +208,7 @@ describe('preview retention migration', () => {
       '0030_coordinator_retry_decisions.sql',
       '0031_due_node_wakeups.sql',
       '0032_for_each_barriers.sql',
+      '0033_durable_wait.sql',
     ]);
 
     const verification = new Pool({

@@ -3531,6 +3531,7 @@ describe('Phase 3 production operations', () => {
       attemptId: '00000000-0000-4000-8000-000000000041',
       attemptNumber: manual.attemptNumber,
       resumeAt: '2026-08-20T10:05:00.000Z',
+      waitKind: 'retry_backoff',
     } as const;
     const input = {
       runId: 'run-1',
@@ -3572,10 +3573,15 @@ describe('Phase 3 production operations', () => {
     const pending = {
       ...waiting.checkpoint,
       invocations: waiting.checkpoint.invocations.map((invocation) => {
-        const { resumeAt: _, ...withoutResumeAt } = invocation;
-        void _;
+        const {
+          resumeAt: _resumeAt,
+          waitKind: _waitKind,
+          ...active
+        } = invocation;
+        void _resumeAt;
+        void _waitKind;
         return invocation.invocationKey === manual.invocationKey
-          ? { ...withoutResumeAt, status: 'pending' as const }
+          ? { ...active, status: 'pending' as const }
           : invocation;
       }),
     };
@@ -3585,10 +3591,15 @@ describe('Phase 3 production operations', () => {
     const terminal = {
       ...waiting.checkpoint,
       invocations: waiting.checkpoint.invocations.map((invocation) => {
-        const { resumeAt: _, ...withoutResumeAt } = invocation;
-        void _;
+        const {
+          resumeAt: _resumeAt,
+          waitKind: _waitKind,
+          ...active
+        } = invocation;
+        void _resumeAt;
+        void _waitKind;
         return invocation.invocationKey === manual.invocationKey
-          ? { ...withoutResumeAt, status: 'succeeded' as const }
+          ? { ...active, status: 'succeeded' as const }
           : invocation;
       }),
     };
@@ -3654,6 +3665,7 @@ describe('Phase 3 production operations', () => {
       Object.assign(invocation, {
         status: 'waiting',
         resumeAt: '2026-08-20T10:05:00.000Z',
+        waitKind: 'retry_backoff',
       });
     const dues = waiting.invocations
       .filter(({ status }) => status === 'waiting')
@@ -3837,6 +3849,7 @@ describe('Phase 3 production operations', () => {
     Object.assign(invocation, {
       status: 'waiting',
       resumeAt: '2026-08-21T10:00:00.000Z',
+      waitKind: 'node_wait',
     });
 
     const expired = await advanceWorkflow({

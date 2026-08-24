@@ -195,6 +195,11 @@ export function createPlatformPreviewNodeInvoker(
           node.definition.version !== lease.definitionVersion
         )
           return failedWith('preview.executable_invalid');
+        if (
+          node.definition.key === 'core.wait' &&
+          node.definition.version === 1
+        )
+          return failedWith('preview.suspension_not_supported');
         const resolvedInput = await resolveSingleNodePreviewInput({
           node,
           runInput: lease.input.value,
