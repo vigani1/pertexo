@@ -3814,6 +3814,27 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         deliveries: 0,
       },
     ]);
+    await expect(
+      store.loadAdvanceState({
+        workspaceId: workspaceA,
+        runId,
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toMatchObject({ kind: 'ready' });
+    await asOwner(workspaceA, (client) =>
+      client.query(
+        `update app.node_runs set branch_context='{}'::jsonb
+         where workspace_id=$1 and workflow_run_id=$2 and invocation_key=$3`,
+        [workspaceA, runId, skippedKey],
+      ),
+    );
+    await expect(
+      store.loadAdvanceState({
+        workspaceId: workspaceA,
+        runId,
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toBeInstanceOf(CoordinatorRunStateCorruptError);
   });
 
   it('claims one transport-bound ready attempt with a durable fence', async () => {

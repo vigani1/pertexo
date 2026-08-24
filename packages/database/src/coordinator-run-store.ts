@@ -571,6 +571,7 @@ type PhysicalInvocationRow = Readonly<{
   current_attempt_id: string | null;
   current_attempt_number: number | null;
   invocation_key: string;
+  branch_context: unknown;
   node_id: string;
   node_output_ref: unknown;
   node_status: string;
@@ -875,7 +876,8 @@ async function validateLoadedCheckpointPhysicalState(
   observations: readonly unknown[],
 ): Promise<void> {
   const result = await client.query<PhysicalInvocationRow>(
-    `select node.invocation_key, node.node_id, node.status as node_status,
+    `select node.invocation_key, node.node_id, node.branch_context,
+            node.status as node_status,
             node.current_attempt_id, node.current_attempt_number,
             node.resume_at, node.retry_due_at,
             node.output_ref as node_output_ref,
@@ -916,7 +918,15 @@ async function validateLoadedCheckpointPhysicalState(
   const artifactIds = new Set<string>();
   for (const invocation of checkpoint.invocations) {
     const row = rows.get(invocation.invocationKey);
-    if (row?.node_id !== invocation.nodeId)
+    const expectedBranchContext =
+      'branchPath' in invocation && invocation.branchPath !== undefined
+        ? { branchPath: invocation.branchPath }
+        : {};
+    if (
+      row?.node_id !== invocation.nodeId ||
+      serializeStoredExecutionJsonValue(row.branch_context) !==
+        serializeStoredExecutionJsonValue(expectedBranchContext)
+    )
       throw new CoordinatorRunStateCorruptError();
     if (invocation.attemptNumber === 0) {
       if (
