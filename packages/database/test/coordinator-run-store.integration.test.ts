@@ -18,6 +18,7 @@ import {
   parseDatabaseConfig,
 } from '../src/index.js';
 import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../src/migrations.js';
+import { dropDisconnectedDatabase } from './support/disposable-database.js';
 
 const adminBaseUrl =
   process.env.DATABASE_ADMIN_URL ??
@@ -136,7 +137,7 @@ async function dropDatabase(): Promise<void> {
   await Promise.all([store.close(), nodeAttemptStore.close()]);
   const admin = new Pool({ connectionString: adminBaseUrl, max: 1 });
   try {
-    await admin.query(`drop database if exists "${databaseName}" with (force)`);
+    await dropDisconnectedDatabase(admin, databaseName);
   } finally {
     await admin.end();
   }
@@ -676,9 +677,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         await readinessPool.end();
       }
     } finally {
-      await admin.query(
-        `drop database if exists "${zeroDatabaseName}" with (force)`,
-      );
+      await dropDisconnectedDatabase(admin, zeroDatabaseName);
       await admin.end();
     }
   }, 60_000);
@@ -793,9 +792,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         await workerPool.end();
       }
     } finally {
-      await admin.query(
-        `drop database if exists "${priorHeadDatabaseName}" with (force)`,
-      );
+      await dropDisconnectedDatabase(admin, priorHeadDatabaseName);
       await admin.end();
     }
   }, 60_000);

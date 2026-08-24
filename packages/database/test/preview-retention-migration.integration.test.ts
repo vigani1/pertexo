@@ -7,6 +7,7 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../src/migrations.js';
+import { dropDisconnectedDatabase } from './support/disposable-database.js';
 import { canonicalOutboxPayloadChecksum } from '../src/outbox.js';
 import { PHASE3_COMPATIBILITY_EXPECTATION } from './phase3-compatibility-fixture.js';
 
@@ -55,7 +56,7 @@ async function createDatabase(): Promise<void> {
 async function dropDatabase(): Promise<void> {
   const admin = new Pool({ connectionString: adminUrl, max: 1 });
   try {
-    await admin.query(`drop database if exists "${databaseName}" with (force)`);
+    await dropDisconnectedDatabase(admin, databaseName);
   } finally {
     await admin.end();
   }

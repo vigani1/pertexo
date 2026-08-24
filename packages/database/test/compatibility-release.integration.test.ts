@@ -15,6 +15,7 @@ import {
 import { createCompatibilityReleaseMaintenance } from '../src/compatibility-release-maintenance.js';
 import { parseDatabaseConfig } from '../src/config.js';
 import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../src/migrations.js';
+import { dropDisconnectedDatabase } from './support/disposable-database.js';
 import {
   checkDatabasePreactivationReadiness,
   checkDatabaseReadiness,
@@ -92,7 +93,7 @@ async function createDatabase(name: string): Promise<void> {
 async function dropDatabase(name: string): Promise<void> {
   const admin = new Pool({ connectionString: adminUrl, max: 1 });
   try {
-    await admin.query(`drop database if exists "${name}" with (force)`);
+    await dropDisconnectedDatabase(admin, name);
   } finally {
     await admin.end();
   }

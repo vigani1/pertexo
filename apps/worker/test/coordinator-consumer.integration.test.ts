@@ -35,6 +35,7 @@ import { createNodeAttemptRuntime } from '../src/execution/node-attempt-runtime.
 import { WorkerDrainState } from '../src/runtime/worker-drain-state.js';
 import { createDispatchConsumerCapabilityRegistry } from '../src/transport/dispatch-consumer-capabilities.js';
 import { OutboxDispatcher } from '../src/transport/outbox-dispatcher.js';
+import { dropDisconnectedDatabase } from './support/disposable-database.js';
 
 const enabled = process.env.WORKER_TRANSPORT_INTEGRATION === 'true';
 const describeIntegration = enabled ? describe : describe.skip;
@@ -123,7 +124,7 @@ async function migrateDatabase(): Promise<void> {
 async function dropDatabase(): Promise<void> {
   const pool = new Pool({ connectionString: adminUrl, max: 1 });
   try {
-    await pool.query(`drop database if exists "${databaseName}" with (force)`);
+    await dropDisconnectedDatabase(pool, databaseName);
   } finally {
     await pool.end();
   }

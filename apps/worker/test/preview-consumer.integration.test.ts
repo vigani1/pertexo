@@ -10,6 +10,8 @@ import { Pool } from 'pg';
 import type { PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { dropDisconnectedDatabase } from './support/disposable-database.js';
+
 import {
   acceptPreviewRun,
   canonicalOutboxPayloadChecksum,
@@ -676,7 +678,7 @@ afterAll(async () => {
   await Promise.allSettled([apiPool.end(), workerPool.end(), ownerPool.end()]);
   const admin = new Pool({ connectionString: adminUrl, max: 1 });
   try {
-    await admin.query(`drop database if exists "${databaseName}" with (force)`);
+    await dropDisconnectedDatabase(admin, databaseName);
   } finally {
     await admin.end();
   }

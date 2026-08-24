@@ -39,6 +39,8 @@ import { Queue } from 'bullmq';
 import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { dropDisconnectedDatabase } from './support/disposable-database.js';
+
 import { createCoordinatorRuntime } from '../src/execution/coordinator-runtime.js';
 import { createProductionHttpProviderTelemetry } from '../src/execution/http-provider-telemetry.js';
 import { createNodeAttemptRuntime } from '../src/execution/node-attempt-runtime.js';
@@ -514,7 +516,7 @@ afterAll(async () => {
   ]);
   const admin = new Pool({ connectionString: adminUrl, max: 1 });
   try {
-    await admin.query(`drop database if exists "${databaseName}" with (force)`);
+    await dropDisconnectedDatabase(admin, databaseName);
   } finally {
     await admin.end();
   }
