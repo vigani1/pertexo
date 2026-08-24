@@ -22,7 +22,7 @@ not complete a phase.
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 5 — orchestration slice | Complete | ADRs 008/017/018/019/020/021/022; implementation through `9d7e071`; migration head `0034_run_failure_notifications.sql`; 862 unit assertions and complete real-service/recovery matrix; independent fixed-head Spec and Standards completion GO |
-| Phase 6 — V1 providers and triggers | Not started | — |
+| Phase 6 — V1 providers and triggers | In progress | ADR 023 accepted; Slack send-message is the first thin vertical slice and remains outside serving cohorts pending implementation and proof |
 | Phase 7 — production operations | Not started | — |
 
 The `0A`–`0E` checkpoints are implementation-sized subdivisions of the plan's
@@ -2699,7 +2699,66 @@ Phase-wide completion gates:
 - [x] Mark Phase 5 complete only after every box above has direct evidence and
       all coherent implementation/evidence commits are pushed.
 
-## Later phases
+## Phase 6 — V1 Providers And Triggers
+
+Status: **In progress**
+
+Authority and sequencing:
+
+- [x] Accept ADR 023 before fixing the Slack action's published identity,
+      credential form, bounds, and ambiguous-dispatch behavior.
+- [ ] Complete Slack `send_message` as one staged then active provider slice.
+- [ ] Accept a focused email-provider ADR, then complete one email-notification
+      action as a staged then active provider slice.
+- [ ] Add versioned Slack and email destinations behind ADR 022 without changing
+      terminal run truth or introducing notification nodes.
+- [ ] Accept ADR 012 before enabling any production trigger reconciliation or
+      acceptance path.
+- [ ] Accept ADR 013 before retaining webhook delivery payloads or history.
+- [ ] Accept a focused webhook signature/replay ADR, then complete webhook
+      reconciliation, raw-byte verification, deduplication, and run acceptance.
+- [ ] Accept ADR 014 before implementing Schedule, then prove timezone, DST,
+      misfire, PostgreSQL authority, and recovery behavior.
+- [ ] Keep polling deferred unless launch validation explicitly promotes it.
+
+Slack `send_message` completion gates:
+
+- [ ] Add browser-safe strict config/input/output contracts, manifest identity,
+      server-only executor, stable safe errors, telemetry, and redaction.
+- [ ] Extend connection contracts and persistence with workspace-scoped
+      `slack`/`slack_bot_token` creation, rotation, revocation, current-version
+      fencing, audit, and bounded real `auth.test` behavior.
+- [ ] Prove exact Slack request/response bounds, disabled redirects and hidden
+      retries, 429 handling, timeout/cancellation, definite failure, and unsafe
+      `outcome_unknown` classification after possible dispatch.
+- [ ] Prove offline validation and disclosure-gated real preview execution with
+      no production run, checkpoint, usage, or trigger-state mutation.
+- [ ] Prove production attempt execution, duplicate delivery, crash boundaries,
+      Redis loss, PostgreSQL failure, drain, credential rotation/revocation, and
+      safe observability with a controllable Slack double and real infrastructure.
+- [ ] Add staged and active compatibility releases only after every preceding
+      Slack gate passes; retain all older releases and verify API/worker overlap.
+
+Phase-wide completion gates:
+
+- [ ] Complete Slack, email, failure-notification destinations, Webhook, and
+      Schedule in that order; do not add polling.
+- [ ] Run root checks, provider contracts, zero/prior-head migrations, complete
+      real-service matrices, retained recovery fixtures, and additive rollout.
+- [ ] Record exact versions, commands, assertion counts, timings, cleanup, and
+      post-test dependency health.
+- [ ] Resolve every blocker/high finding from independent fixed-head Spec and
+      Standards reviews and push all coherent implementation/evidence commits.
+
+Current evidence:
+
+- Official Slack documentation confirms `chat.postMessage` uses bot-token
+  `chat:write`, channel-like IDs, JSON, a recommended 4,000-character text limit,
+  special message rate limits, and HTTP 429 `Retry-After`. ADR 023 deliberately
+  excludes the broader Slack surface and does not claim undocumented provider
+  idempotency. No Slack manifest or executor is serving yet.
+
+## Later Phases
 
 Use the delivery plan and vertical-slice completion rule as the checklist for
 Phases 6–7. Expand the relevant phase here before implementation begins; do not
