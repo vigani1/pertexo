@@ -69,7 +69,9 @@ const branchContextSchema = z
   })
   .strict()
   .superRefine(({ branchPath }, context) => {
-    if (new Set(branchPath.map(({ nodeId }) => nodeId)).size !== branchPath.length)
+    if (
+      new Set(branchPath.map(({ nodeId }) => nodeId)).size !== branchPath.length
+    )
       context.addIssue({
         code: 'custom',
         message: 'branch path contains a repeated node',
@@ -619,7 +621,7 @@ export function createNodeAttemptRunStore(
               attempt_number: number;
               attempt_status: string;
               dispatch_marked_at: Date | null;
-               fence_token: string;
+              fence_token: string;
               branch_context: unknown;
               invocation_key: string;
               lease_valid: boolean;
