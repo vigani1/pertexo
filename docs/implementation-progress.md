@@ -2313,6 +2313,12 @@ Authority and entry gate:
 - [x] Record ADR 020 before For Each implementation to fix the node/body
       contract, explicit structured input, full-budget reservation, nested
       invocation scope, result handling, and recovery semantics.
+- [x] Record ADR 021 before Wait implementation to fix its bounded relative
+      duration, database clock, delay/admission identity, immutable resume
+      attempt, deadline wakeup, preview behavior, and recovery semantics.
+- [x] Record ADR 022 before failure-notification implementation to keep terminal
+      run truth separate from bounded channel-neutral delivery intent and to
+      prohibit secret/provider-body leakage and recursive notification.
 
 Current evidence:
 
@@ -2418,6 +2424,10 @@ Current evidence:
   `run_input`. Workflow-model passes 53 assertions. For Each remains incomplete
   pending recursive executable pinning, production loop scheduling and
   persistence, recovery proof, and staged/active serving rollout.
+- ADRs 021 and 022 fix the remaining Phase 5 semantics before implementation:
+  Wait preserves semantic resume versus retry identity and adds an independent
+  PostgreSQL deadline wake source; failure notification is an atomic bounded
+  execution-domain intent whose delivery can never alter terminal run truth.
 
 Incremental publishable slices, in required order:
 
