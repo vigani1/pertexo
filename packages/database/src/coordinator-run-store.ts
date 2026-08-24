@@ -2223,8 +2223,8 @@ export function createCoordinatorRunStore(
                   branch_context, status, side_effect_class, provider_idempotency_key,
                   current_attempt_id, current_attempt_number, completed_at
                 ) values (
-                  $1,$2,$3,$4,$5,'{}'::jsonb,$6::varchar,$7,$8,$9,$10,
-                  case when $6::varchar = 'skipped' then clock_timestamp() else null end
+                  $1,$2,$3,$4,$5,$6::jsonb,$7::varchar,$8,$9,$10,$11,
+                  case when $7::varchar = 'skipped' then clock_timestamp() else null end
                 )`,
                 [
                   nodeRunId,
@@ -2232,6 +2232,12 @@ export function createCoordinatorRunStore(
                   runId,
                   admission.nodeId,
                   admission.invocationKey,
+                  serializeStoredExecutionJsonValue(
+                    'branchPath' in invocation &&
+                      invocation.branchPath !== undefined
+                      ? { branchPath: invocation.branchPath }
+                      : {},
+                  ),
                   invocation.status === 'skipped' ? 'skipped' : 'ready',
                   admission.sideEffectClass,
                   admission.providerIdempotencyKey ?? null,
