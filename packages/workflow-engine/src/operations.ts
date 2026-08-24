@@ -674,9 +674,103 @@ export interface AdvanceWorkflowInput {
   readonly workflowVersionId: string;
   readonly checkpoint: unknown;
   readonly observations?: unknown;
+  readonly completedOutputs?: unknown;
   readonly occurredAt: string;
   readonly maximumAdmissions: number;
   readonly signal: AbortSignal;
+}
+
+function conditionSelectionObservations(
+  value: unknown,
+  persistedValue: unknown,
+  checkpoint: ReturnType<typeof parseCheckpoint>,
+  executable: CompiledWorkflowExecutableV2,
+): readonly WorkflowObservation[] {
+  if (value === undefined) return [];
+  let normalized: JsonValue;
+  let persisted: JsonValue;
+  try {
+    normalized = normalizeBoundedEngineJson(value);
+    persisted = normalizeBoundedEngineJson(persistedValue ?? []);
+  } catch {
+    operationError('observation_invalid', 'completed outputs are invalid');
+  }
+  if (!Array.isArray(normalized) || !Array.isArray(persisted))
+    operationError('observation_invalid', 'completed outputs must be an array');
+  const completedItems = normalized as readonly JsonValue[];
+  const persistedItems = persisted as readonly JsonValue[];
+  const seen = new Set<string>();
+  return completedItems.flatMap((item): WorkflowObservation[] => {
+    const material = record(item, 'observation_invalid', 'completed output');
+    exactKeys(material, ['sequence', 'attemptId', 'invocationKey', 'value']);
+    if (
+      typeof material.sequence !== 'number' ||
+      !Number.isSafeInteger(material.sequence) ||
+      material.sequence < 1 ||
+      typeof material.attemptId !== 'string' ||
+      !uuidPattern.test(material.attemptId) ||
+      typeof material.invocationKey !== 'string'
+    )
+      operationError(
+        'observation_invalid',
+        'completed output identity is invalid',
+      );
+    const identity = `${String(material.sequence)}\u0000${material.attemptId}`;
+    if (seen.has(identity))
+      operationError('observation_invalid', 'completed output is duplicated');
+    seen.add(identity);
+    const correspondingOutcome = persistedItems.some((candidate) => {
+      if (!isJsonRecord(candidate)) return false;
+      const output = candidate.output;
+      return (
+        candidate.kind === 'outcome' &&
+        candidate.sequence === material.sequence &&
+        candidate.attemptId === material.attemptId &&
+        candidate.invocationKey === material.invocationKey &&
+        candidate.status === 'succeeded' &&
+        output !== undefined &&
+        isJsonRecord(output) &&
+        output.kind === 'inline' &&
+        output.attemptId === material.attemptId
+      );
+    });
+    if (!correspondingOutcome)
+      operationError(
+        'observation_invalid',
+        'completed output has no matching persisted outcome',
+      );
+    const invocation = checkpoint.invocations.find(
+      ({ invocationKey }) => invocationKey === material.invocationKey,
+    );
+    const node = executable.envelope.graph.nodes.find(
+      ({ id }) => id === invocation?.nodeId,
+    );
+    if (
+      node?.definition.key !== 'core.condition' ||
+      node.definition.version !== 1
+    )
+      return [];
+    const completedValue = material.value;
+    if (completedValue === undefined)
+      operationError('observation_invalid', 'Condition output is missing');
+    const output = record(
+      completedValue,
+      'observation_invalid',
+      'Condition output',
+    );
+    exactKeys(output, ['selectedPort']);
+    if (output.selectedPort !== 'true' && output.selectedPort !== 'false')
+      operationError('observation_invalid', 'Condition output is invalid');
+    return [
+      {
+        kind: 'branch_selected',
+        invocationKey: material.invocationKey,
+        nodeId: node.id,
+        selectedOutputPort: output.selectedPort,
+        coordinatorDerived: true,
+      },
+    ];
+  });
 }
 
 function assertIdentity(
@@ -788,6 +882,12 @@ export async function advanceWorkflow(
     input.observations,
     checkpoint,
   );
+  const branchSelections = conditionSelectionObservations(
+    input.completedOutputs,
+    input.observations,
+    checkpoint,
+    input.executable,
+  );
   const controlCanceled =
     checkpoint.cancelRequested ||
     persistedObservations.observations.some(
@@ -877,7 +977,11 @@ export async function advanceWorkflow(
   const plan = advanceWorkflowFromSchedulerState({
     checkpoint,
     schedulerState: schedulerState(input.executable),
-    observations: [...persistedObservations.observations, ...resolvedFailures],
+    observations: [
+      ...persistedObservations.observations,
+      ...branchSelections,
+      ...resolvedFailures,
+    ],
     ...(persistedObservations.deadlineExpiration === undefined
       ? {}
       : {

@@ -110,6 +110,7 @@ export type LoadAdvanceStateResult =
         workflowVersionId: string;
         checkpoint: unknown;
         observations: readonly unknown[];
+        completedOutputs?: readonly unknown[];
       }>;
     }>;
 
@@ -802,6 +803,32 @@ function mapEvent(row: EventRow): unknown {
       ? { reasonCode: payload.safeErrorCode }
       : {}),
   };
+}
+
+function completedInlineOutput(row: EventRow): readonly unknown[] {
+  if (row.type !== 'node.succeeded' || row.attempt_output_ref === null)
+    return [];
+  const identity = attemptFact(row);
+  let stored;
+  try {
+    stored = parseStoredExecutionValueV1(row.attempt_output_ref);
+  } catch {
+    throw new CoordinatorRunStateCorruptError();
+  }
+  return stored.kind === 'inline' &&
+    typeof stored.value === 'object' &&
+    stored.value !== null &&
+    !Array.isArray(stored.value) &&
+    Object.hasOwn(stored.value, 'selectedPort')
+    ? [
+        {
+          sequence: row.sequence,
+          attemptId: identity.attemptId,
+          invocationKey: identity.invocationKey,
+          value: stored.value,
+        },
+      ]
+    : [];
 }
 
 function parsedPhysicalOutput(
@@ -1704,6 +1731,7 @@ export function createCoordinatorRunStore(
             throw new CoordinatorRunStateCorruptError();
           validatePersistedFactBatch(events);
           const observations = events.map(mapEvent);
+          const completedOutputs = events.flatMap(completedInlineOutput);
           const pendingFailures = await client.query<{
             attempt_id: string;
             attempt_number: number;
@@ -1885,6 +1913,9 @@ export function createCoordinatorRunStore(
               workflowVersionId: row.workflow_version_id,
               checkpoint,
               observations: Object.freeze(observations.map(Object.freeze)),
+              completedOutputs: Object.freeze(
+                completedOutputs.map(Object.freeze),
+              ),
             }),
           });
         },

@@ -64,6 +64,7 @@ export type WorkflowObservation =
       readonly invocationKey: string;
       readonly nodeId: string;
       readonly selectedOutputPort: string;
+      readonly coordinatorDerived?: true;
     }
   | {
       readonly kind: 'join_declared';

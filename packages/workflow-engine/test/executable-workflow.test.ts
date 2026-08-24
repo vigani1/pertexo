@@ -877,6 +877,112 @@ describe('Phase 3 production operations', () => {
     ).resolves.toMatchObject({ checkpoint: { schemaVersion: 2 } });
   });
 
+  it('derives a Condition selection only from its persisted inline output', async () => {
+    const workflowVersionId = 'version-condition';
+    const release = composeExecutableCompatibilityRelease(
+      nodeRelease({ condition: true }),
+    );
+    const condition = conditionGraph('true');
+    const executable = buildWorkflowExecutableV2({
+      graph: {
+        ...condition,
+        nodes: [
+          ...condition.nodes,
+          { ...condition.nodes[2], id: 'false-terminate' },
+        ],
+        edges: [
+          ...condition.edges,
+          {
+            id: 'condition-false-terminate',
+            source: { nodeId: 'condition', port: 'false' },
+            target: { nodeId: 'false-terminate', port: 'in' },
+          },
+        ],
+      },
+      release,
+    });
+    const manualKey = invocationKey({ workflowVersionId, nodeId: 'manual' });
+    const conditionKey = invocationKey({
+      workflowVersionId,
+      nodeId: 'condition',
+    });
+    const attemptId = '00000000-0000-4000-8000-000000000102';
+    const checkpoint = {
+      ...createCheckpointV2({
+        engineVersion: 'engine-v2',
+        workflowVersionId,
+        iterationBudget: 0,
+      }),
+      runStatus: 'running',
+      admittedInvocationKeys: [conditionKey, manualKey],
+      invocations: [
+        {
+          invocationKey: manualKey,
+          nodeId: 'manual',
+          status: 'succeeded',
+          attemptNumber: 1,
+        },
+        {
+          invocationKey: conditionKey,
+          nodeId: 'condition',
+          status: 'running',
+          attemptNumber: 1,
+        },
+      ],
+    } as const;
+
+    const plan = await advanceWorkflow({
+      runId: 'run-condition',
+      executable,
+      workflowVersionId,
+      checkpoint,
+      observations: [
+        {
+          sequence: 2,
+          occurredAt: '2026-08-24T00:00:00.000Z',
+          attemptId,
+          attemptNumber: 1,
+          kind: 'outcome',
+          invocationKey: conditionKey,
+          status: 'succeeded',
+          output: { kind: 'inline', attemptId },
+        },
+      ],
+      completedOutputs: [
+        {
+          sequence: 2,
+          attemptId,
+          invocationKey: conditionKey,
+          value: { selectedPort: 'true' },
+        },
+      ],
+      occurredAt: '2026-08-24T00:00:01.000Z',
+      maximumAdmissions: 1,
+      signal: new AbortController().signal,
+    });
+
+    expect(plan.checkpoint).toMatchObject({
+      schemaVersion: 2,
+      branchSelections: [
+        {
+          invocationKey: conditionKey,
+          nodeId: 'condition',
+          selectedOutputPort: 'true',
+        },
+      ],
+    });
+    expect(plan.checkpoint.invocations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ nodeId: 'terminate', status: 'running' }),
+        expect.objectContaining({
+          nodeId: 'false-terminate',
+          status: 'skipped',
+        }),
+      ]),
+    );
+    expect(plan.attempts.map(({ nodeId }) => nodeId)).toEqual(['terminate']);
+  });
+
   it('carries exact pinned side-effect classes into attempt admissions', async () => {
     const release = composeExecutableCompatibilityRelease(
       nodeRelease({

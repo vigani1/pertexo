@@ -76,6 +76,7 @@ export function createCoordinatorAdvanceEngine(
         executable: verifyProjection(input.projection, options),
         checkpoint: input.checkpoint,
         observations: input.observations,
+        completedOutputs: input.completedOutputs,
         occurredAt: input.occurredAt,
         maximumAdmissions: input.maximumAdmissions,
         signal: input.signal,

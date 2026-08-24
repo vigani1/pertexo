@@ -25,6 +25,7 @@ export interface CoordinatorAdvanceEngine {
       projection: PublishedWorkflowV2Projection;
       checkpoint: unknown;
       observations: readonly unknown[];
+      completedOutputs?: readonly unknown[];
       occurredAt: string;
       maximumAdmissions: number;
       signal: AbortSignal;
@@ -128,6 +129,9 @@ export function createCoordinatorHandler(
         projection: published.workflowVersion,
         checkpoint: loaded.state.checkpoint,
         observations: loaded.state.observations,
+        ...(loaded.state.completedOutputs === undefined
+          ? {}
+          : { completedOutputs: loaded.state.completedOutputs }),
         occurredAt: dependencies.clock.now(),
         maximumAdmissions: dependencies.maximumAdmissions,
         signal: context.signal,

@@ -1361,7 +1361,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           JSON.stringify({
             schemaVersion: 1,
             kind: 'inline',
-            value: { ok: true },
+            value: { selectedPort: 'true' },
           }),
         ],
       );
@@ -1376,7 +1376,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           JSON.stringify({
             schemaVersion: 1,
             kind: 'inline',
-            value: { ok: true },
+            value: { selectedPort: 'true' },
           }),
         ],
       );
@@ -1420,6 +1420,14 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         status: 'succeeded',
         output: { kind: 'inline', attemptId },
       }),
+    ]);
+    expect(loaded.state.completedOutputs).toEqual([
+      {
+        sequence: 3,
+        invocationKey,
+        attemptId,
+        value: { selectedPort: 'true' },
+      },
     ]);
   });
 
