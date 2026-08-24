@@ -10,6 +10,7 @@ import {
 import {
   platformExecutableRegistryHistory,
   platformRegistryReleaseSupport,
+  platformServingReleaseRequiresHttpCapabilities,
   platformServingRegistryRelease,
   type PlatformReleaseCohort,
 } from '@pertexo/node-catalog';
@@ -164,7 +165,7 @@ export async function createNodeAttemptRuntime(
     throw new TypeError('Node-attempt runtime options are invalid');
   const releaseCohort = options.releaseCohort ?? 'core';
   if (
-    releaseCohort === 'http_activation' &&
+    platformServingReleaseRequiresHttpCapabilities(releaseCohort) &&
     !(
       (options.connectionEncryption !== undefined &&
         options.artifactStore !== undefined) ||

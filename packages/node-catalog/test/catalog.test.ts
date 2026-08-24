@@ -25,11 +25,14 @@ import {
   PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_CONDITION_STAGED,
   PLATFORM_REGISTRY_RELEASE_HISTORY,
+  PLATFORM_CONDITION_ACTIVATION_RELEASE_SUPPORT,
+  PLATFORM_CONDITION_STAGING_RELEASE_SUPPORT,
   PLATFORM_HTTP_ACTIVATION_RELEASE_SUPPORT,
   PLATFORM_HTTP_STAGING_RELEASE_SUPPORT,
   PLATFORM_REGISTRY_RELEASE_SUPPORT,
   platformExecutableRegistryHistory,
   platformRegistryReleaseSupport,
+  platformServingReleaseRequiresHttpCapabilities,
   platformServingRegistryRelease,
 } from '../src/registry.js';
 import {
@@ -134,6 +137,12 @@ describe('platform node compatibility catalog', () => {
     expect(
       PLATFORM_HTTP_ACTIVATION_RELEASE_SUPPORT.map(({ epoch }) => epoch),
     ).toEqual([3, 4]);
+    expect(
+      PLATFORM_CONDITION_STAGING_RELEASE_SUPPORT.map(({ epoch }) => epoch),
+    ).toEqual([4, 5]);
+    expect(
+      PLATFORM_CONDITION_ACTIVATION_RELEASE_SUPPORT.map(({ epoch }) => epoch),
+    ).toEqual([5, 6]);
     expect(platformRegistryReleaseSupport('core')).toBe(
       PLATFORM_REGISTRY_RELEASE_SUPPORT,
     );
@@ -143,8 +152,25 @@ describe('platform node compatibility catalog', () => {
     expect(platformRegistryReleaseSupport('http_activation')).toBe(
       PLATFORM_HTTP_ACTIVATION_RELEASE_SUPPORT,
     );
+    expect(platformRegistryReleaseSupport('condition_staging')).toBe(
+      PLATFORM_CONDITION_STAGING_RELEASE_SUPPORT,
+    );
+    expect(platformRegistryReleaseSupport('condition_activation')).toBe(
+      PLATFORM_CONDITION_ACTIVATION_RELEASE_SUPPORT,
+    );
     expect(platformServingRegistryRelease('http_staging').epoch).toBe(2);
     expect(platformServingRegistryRelease('http_activation').epoch).toBe(4);
+    expect(platformServingRegistryRelease('condition_staging').epoch).toBe(4);
+    expect(platformServingRegistryRelease('condition_activation').epoch).toBe(
+      6,
+    );
+    expect(platformServingReleaseRequiresHttpCapabilities('core')).toBe(false);
+    expect(
+      platformServingReleaseRequiresHttpCapabilities('condition_staging'),
+    ).toBe(true);
+    expect(
+      platformServingReleaseRequiresHttpCapabilities('condition_activation'),
+    ).toBe(true);
     expect(
       platformExecutableRegistryHistory('http_staging').map(
         ({ epoch }) => epoch,
@@ -155,6 +181,11 @@ describe('platform node compatibility catalog', () => {
         ({ epoch }) => epoch,
       ),
     ).toEqual([1, 2, 3, 4]);
+    expect(
+      platformExecutableRegistryHistory('condition_activation').map(
+        ({ epoch }) => epoch,
+      ),
+    ).toEqual([1, 2, 3, 4, 5, 6]);
     expect(
       PLATFORM_REGISTRY_RELEASE_HTTP_STAGED.executors.find(
         ({ executor }) => executor.key === HTTP_REQUEST_EXECUTOR.key,

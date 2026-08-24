@@ -4,7 +4,10 @@ import {
   type ArtifactStoreConfig,
 } from '@pertexo/artifact-store';
 import type { AwsConnectionEnvelopeEncryptionConfig } from '@pertexo/integrations/server';
-import { PLATFORM_RELEASE_COHORTS } from '@pertexo/node-catalog';
+import {
+  PLATFORM_RELEASE_COHORTS,
+  platformServingReleaseRequiresHttpCapabilities,
+} from '@pertexo/node-catalog';
 import { parseObservabilityConfig } from '@pertexo/observability/config';
 import { JOB_NAME, type JobName } from '@pertexo/queue';
 
@@ -373,7 +376,9 @@ export function parseWorkerConfig(
     const connectionEncryption = connectionEncryptionConfig(raw, deployed);
     const artifactStore = artifactStoreConfig(raw, deployed);
     if (
-      result.data.nodeCompatibilityCohort === 'http_activation' &&
+      platformServingReleaseRequiresHttpCapabilities(
+        result.data.nodeCompatibilityCohort,
+      ) &&
       result.data.outboxDispatcher.enabledJobNames.includes(
         JOB_NAME.executeNodeAttempt,
       ) &&

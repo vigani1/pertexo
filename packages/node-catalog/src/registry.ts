@@ -118,10 +118,24 @@ export const PLATFORM_HTTP_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
   PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
 ]);
 
+/** Condition staging artifact: active HTTP predecessor plus staged Condition. */
+export const PLATFORM_CONDITION_STAGING_RELEASE_SUPPORT = Object.freeze([
+  PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_CONDITION_STAGED,
+]);
+
+/** Condition activation artifact: staged predecessor plus active Condition. */
+export const PLATFORM_CONDITION_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
+  PLATFORM_REGISTRY_RELEASE_CONDITION_STAGED,
+  PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
+]);
+
 export const PLATFORM_RELEASE_COHORTS = Object.freeze([
   'core',
   'http_staging',
   'http_activation',
+  'condition_staging',
+  'condition_activation',
 ] as const);
 export type PlatformReleaseCohort = (typeof PLATFORM_RELEASE_COHORTS)[number];
 
@@ -133,6 +147,10 @@ export function platformRegistryReleaseSupport(cohort: PlatformReleaseCohort) {
       return PLATFORM_HTTP_STAGING_RELEASE_SUPPORT;
     case 'http_activation':
       return PLATFORM_HTTP_ACTIVATION_RELEASE_SUPPORT;
+    case 'condition_staging':
+      return PLATFORM_CONDITION_STAGING_RELEASE_SUPPORT;
+    case 'condition_activation':
+      return PLATFORM_CONDITION_ACTIVATION_RELEASE_SUPPORT;
   }
 }
 
@@ -158,5 +176,20 @@ export function platformServingRegistryRelease(cohort: PlatformReleaseCohort) {
       return CORE_REGISTRY_RELEASE_SUCCESSOR;
     case 'http_activation':
       return PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE;
+    case 'condition_staging':
+      return PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE;
+    case 'condition_activation':
+      return PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE;
   }
+}
+
+export function platformServingReleaseRequiresHttpCapabilities(
+  cohort: PlatformReleaseCohort,
+): boolean {
+  return platformServingRegistryRelease(cohort).executors.some(
+    ({ executor, lifecycle }) =>
+      executor.key === HTTP_REQUEST_MANIFEST.executor.key &&
+      executor.version === HTTP_REQUEST_MANIFEST.executor.version &&
+      lifecycle === 'active',
+  );
 }

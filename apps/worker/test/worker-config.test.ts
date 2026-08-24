@@ -167,30 +167,33 @@ describe('parseWorkerConfig', () => {
     expect(Object.isFrozen(config.artifactStore)).toBe(true);
   });
 
-  it('fails closed when an HTTP activation execution worker lacks required capabilities', () => {
-    let thrown: unknown;
-    try {
-      parseWorkerConfig({
-        DATABASE_DISPATCHER_URL:
-          'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
-        DATABASE_WORKER_URL:
-          'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
-        REDIS_URL: 'redis://:secret@localhost:6379/0',
-        NODE_COMPATIBILITY_COHORT: 'http_activation',
-        OUTBOX_DISPATCH_JOB_NAMES: JOB_NAME.executeNodeAttempt,
-      });
-    } catch (error: unknown) {
-      thrown = error;
-    }
+  it.each(['http_activation', 'condition_activation'] as const)(
+    'fails closed when a %s execution worker lacks required HTTP capabilities',
+    (nodeCompatibilityCohort) => {
+      let thrown: unknown;
+      try {
+        parseWorkerConfig({
+          DATABASE_DISPATCHER_URL:
+            'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
+          DATABASE_WORKER_URL:
+            'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+          REDIS_URL: 'redis://:secret@localhost:6379/0',
+          NODE_COMPATIBILITY_COHORT: nodeCompatibilityCohort,
+          OUTBOX_DISPATCH_JOB_NAMES: JOB_NAME.executeNodeAttempt,
+        });
+      } catch (error: unknown) {
+        thrown = error;
+      }
 
-    expect(thrown).toBeInstanceOf(Error);
-    expect((thrown as Error).message).toBe('Invalid worker configuration');
-    expect((thrown as Error).cause).toEqual(
-      new Error(
-        'HTTP activation workers require connection encryption and artifact storage',
-      ),
-    );
-  });
+      expect(thrown).toBeInstanceOf(Error);
+      expect((thrown as Error).message).toBe('Invalid worker configuration');
+      expect((thrown as Error).cause).toEqual(
+        new Error(
+          'HTTP activation workers require connection encryption and artifact storage',
+        ),
+      );
+    },
+  );
 
   it.each([
     { CONNECTION_KMS_KEY_REFERENCE: 'alias/incomplete' },
