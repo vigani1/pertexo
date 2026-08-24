@@ -13,6 +13,7 @@ const IDS = {
   workflowId: '55555555-5555-4555-8555-555555555555',
   publishedVersionId: '66666666-6666-4666-8666-666666666666',
   artifactId: '77777777-7777-4777-8777-777777777777',
+  notificationIntentId: '12121212-1212-4212-8212-121212121212',
   outboxEventId: '88888888-8888-4888-8888-888888888888',
 } as const;
 
@@ -21,6 +22,15 @@ const TRACEPARENT = '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01';
 describe('versioned queue contracts', () => {
   it('parses every supported identifier-only job', () => {
     const jobs: readonly [string, unknown][] = [
+      [
+        JOB_NAME.deliverRunFailureNotification,
+        {
+          schemaVersion: 1,
+          workspaceId: IDS.workspaceId,
+          notificationIntentId: IDS.notificationIntentId,
+          outboxEventId: IDS.outboxEventId,
+        },
+      ],
       [
         JOB_NAME.advanceWorkflowRun,
         {

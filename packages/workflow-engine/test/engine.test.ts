@@ -158,8 +158,18 @@ describe('checkpoint seam', () => {
         expect.objectContaining({ invocationKey: controlKey }),
       ]),
     );
-    const completed = advanceWorkflow({
+    const recovered = advanceWorkflow({
       checkpoint: parsed,
+      occurredAt,
+      maximumAdmissions: 0,
+      observations: [],
+    });
+    expect(recovered.checkpoint.loops[0]).toMatchObject({
+      activeOrdinals: [0],
+      terminalOrdinals: [],
+    });
+    const completed = advanceWorkflow({
+      checkpoint: recovered.checkpoint,
       occurredAt,
       maximumAdmissions: 0,
       observations: [

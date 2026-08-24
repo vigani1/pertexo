@@ -35,6 +35,7 @@ import {
   createPreviewMaintenanceRuntime,
   type PreviewMaintenanceRuntime,
 } from '../execution/preview-maintenance-runtime.js';
+import type { FailureNotificationDeliveryCapability } from '../execution/failure-notification-handler.js';
 import { WorkerDrainState } from '../runtime/worker-drain-state.js';
 import {
   createDispatchConsumerCapabilityRegistry,
@@ -63,6 +64,7 @@ export type TransportModuleDependencies = Readonly<{
   dispatcherDatabase?: OutboxDispatcherDatabase;
   queueProducer?: QueueProducer;
   transportMetrics?: TransportMetrics;
+  failureNotificationDelivery?: FailureNotificationDeliveryCapability;
 }>;
 
 @Injectable()
@@ -123,7 +125,18 @@ function previewMaintenanceRuntimeProvider(
         JOB_NAME.reconcilePreviewAttempt,
       );
       const cleanupEnabled = jobNames.includes(JOB_NAME.sweepExpiredPreviews);
-      if (!reconciliationEnabled && !cleanupEnabled) return undefined;
+      const notificationEnabled = jobNames.includes(
+        JOB_NAME.deliverRunFailureNotification,
+      );
+      if (!reconciliationEnabled && !cleanupEnabled && !notificationEnabled)
+        return undefined;
+      if (
+        notificationEnabled &&
+        dependencies.failureNotificationDelivery === undefined
+      )
+        throw new TypeError(
+          'Failure notification dispatch requires a composed delivery capability',
+        );
       if (cleanupEnabled && config.artifactStore === undefined)
         throw new TypeError(
           'Preview cleanup requires the artifact-store capability',
@@ -135,6 +148,12 @@ function previewMaintenanceRuntimeProvider(
         database: config.database,
         observer,
         redisUrl: config.redisUrl,
+        ...(dependencies.failureNotificationDelivery === undefined
+          ? {}
+          : {
+              failureNotificationDelivery:
+                dependencies.failureNotificationDelivery,
+            }),
       });
     },
   };
@@ -346,6 +365,17 @@ function dispatchCapabilitiesProvider(
           : [
               {
                 jobName: JOB_NAME.reconcilePreviewAttempt,
+                consumer: previewMaintenanceRuntime.consumer,
+              } as const,
+            ]),
+        ...(previewMaintenanceRuntime === undefined ||
+        !config.outboxDispatcher.enabledJobNames.includes(
+          JOB_NAME.deliverRunFailureNotification,
+        )
+          ? []
+          : [
+              {
+                jobName: JOB_NAME.deliverRunFailureNotification,
                 consumer: previewMaintenanceRuntime.consumer,
               } as const,
             ]),

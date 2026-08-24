@@ -35,7 +35,8 @@ describe('workflow-model package contract', () => {
     ).not.toMatch(/(?:from|import) ['"](?:node:|@pertexo\/contracts)/u);
 
     for (const [name, value] of Object.entries(json.exports)) {
-      if (name === './graph-contract') continue;
+      if (name === './graph-contract' || name === './failure-notification')
+        continue;
       if (value.node === undefined)
         throw new Error(`server export ${name} is missing its node target`);
       expect(value.default).toBe(value.node);

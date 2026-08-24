@@ -17,6 +17,7 @@ export const JOB_NAME = Object.freeze({
   sweepExpiredPreviews: 'sweep-expired-previews',
   reconcileWorkflowTriggers: 'reconcile-workflow-triggers',
   expireArtifacts: 'expire-artifacts',
+  deliverRunFailureNotification: 'deliver-run-failure-notification',
 } as const);
 
 export type JobName = (typeof JOB_NAME)[keyof typeof JOB_NAME];
@@ -30,4 +31,5 @@ export const QUEUE_FOR_JOB = Object.freeze({
   [JOB_NAME.sweepExpiredPreviews]: QUEUE_NAME.maintenance,
   [JOB_NAME.reconcileWorkflowTriggers]: QUEUE_NAME.triggerLifecycle,
   [JOB_NAME.expireArtifacts]: QUEUE_NAME.maintenance,
+  [JOB_NAME.deliverRunFailureNotification]: QUEUE_NAME.maintenance,
 } as const satisfies Record<JobName, QueueName>);

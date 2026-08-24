@@ -21,7 +21,7 @@ not complete a phase.
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
-| Phase 5 — orchestration slice | In progress | ADRs 008/017/018/019/020/021/022; Condition, Switch, bounded Parallel, Merge, bounded For Each, and Wait vertical slices are complete; failure notification plus phase-wide gates remain |
+| Phase 5 — orchestration slice | In progress | ADRs 008/017/018/019/020/021/022; all seven implementation slices, including durable failure notification, and the local phase-wide verification matrix pass; fixed-head Spec/Standards review and final evidence remain |
 | Phase 6 — V1 providers and triggers | Not started | — |
 | Phase 7 — production operations | Not started | — |
 
@@ -2561,7 +2561,60 @@ Current evidence:
   retries the durable outboxes through BullMQ, and admits exactly one `retry`
   and one `wait_resume` attempt with no duplicate scan result. Existing worker
   drain and PostgreSQL fail-closed gates remain green. Wait is complete; Phase 5
-  remains in progress for failure notification and phase-wide fixed-head review.
+  remained in progress for failure notification and phase-wide fixed-head review.
+- The failure-notification completion checkpoint implements ADR 022 as an
+  execution capability, never a workflow node or catalog release. Browser-safe
+  workflow-model contracts enforce one strict V1 policy, a deterministic safe
+  context capped at 4,096 UTF-8 bytes, and bounded channel-neutral delivery
+  results. The queue contract carries only workspace, intent, outbox, schema,
+  and optional trace identifiers. Migration `0034_run_failure_notifications.sql`
+  pins the immutable destination policy on accepted runs, adds forced-RLS intent
+  and append-only audit relations, least-privilege grants, lifecycle constraints,
+  recovery indexes, and a bounded due-recovery function. Readiness now requires
+  this exact migration head and compatible notification schema/grants.
+- The production coordinator creates the intent, safe context checksum,
+  `intent_created` audit fact, and identifier-only outbox in the same CAS
+  transaction that commits `failed`, `timed_out`, or `outcome_unknown` run truth.
+  Deterministic run/event/policy identity makes duplicate coordinator work inert;
+  success and explicit cancellation create no intent. The database delivery
+  store verifies authoritative outbox and context checksums under workspace RLS,
+  claims with a pre-call dispatch marker, keeps a stable provider idempotency
+  key, schedules bounded safe/idempotent retries, dead-letters exhaustion, and
+  classifies unsafe crash ambiguity as `outcome_unknown` without changing run,
+  checkpoint, invocation, or event truth.
+- The readiness-gated maintenance consumer injects the provider-neutral delivery
+  capability and runs PostgreSQL recovery only when that capability is enabled.
+  Unit proofs cover safe-payload rejection, delivered and duplicate-terminal
+  behavior, timeout ambiguity, coordinator deduplication, RLS isolation, retry
+  exhaustion, dead-letter audit, and unchanged terminal run truth. The disposable
+  PostgreSQL/BullMQ recovery assertion marks dispatch, simulates a worker crash,
+  starts a fresh maintenance runtime, reconstructs a retry outbox from PostgreSQL,
+  performs exactly one provider call with the stable key, makes exact queue
+  redelivery inert, and preserves run status, checkpoint revision, and event
+  count. Provider-specific Slack/email adapters remain correctly deferred to
+  Phase 6.
+- Final local verification on Node 24, pnpm 11.22.0, PostgreSQL 18.6, Redis
+  8.2.8, BullMQ 6.1.2, and S3Mock 5.1.0 passes root `pnpm check` with 860 unit
+  assertions. The enabled sequential real-service matrix passes 2 artifact-store,
+  254 database, 22 worker, and 7 API assertions; database execution includes
+  zero-state and supported prior-head upgrades through `0034`. The notification
+  PostgreSQL vertical slice is part of the 39-assertion coordinator store file;
+  the worker PostgreSQL/Redis/BullMQ file passes 9 assertions in 13.126 seconds,
+  and the complete worker integration matrix passes in 77.69 seconds.
+- Retained gates pass five Phase 0E process/recovery assertions in 41.602 seconds,
+  one SSE Redis-loss assertion in 6.975 seconds, one sequential Redis/PostgreSQL/
+  drain assertion in 16.024 seconds, and one additive compatibility rollout
+  assertion in 714 ms. The Phase 0E gate exposed a retained V1 synthetic-loop
+  recovery regression: legacy iteration invocations intentionally omit explicit
+  scope while the strengthened invariant searched only explicit `iterationPath`.
+  The engine now verifies those retained invocations by their canonical scoped
+  key, with a focused unit regression, while structured loops retain strict scope
+  validation. PostgreSQL and Redis recovered healthy, Redis returned `PONG`,
+  resilience DB 15 was empty, and all three Compose dependencies were healthy.
+- Phase 5 remains in progress pending one fixed implementation commit and the
+  required independent fixed-head Spec and Standards reviews. The tracker cannot
+  truthfully satisfy its evidence-commit completion gate until both reviews issue
+  GO against that exact head.
 
 Incremental publishable slices, in required order:
 
@@ -2581,29 +2634,33 @@ Incremental publishable slices, in required order:
 - [x] Wait: PostgreSQL owns `resumeAt`, checkpoint revision, and due-work lease;
       no sleeping worker or BullMQ timer is authoritative, and duplicate due
       delivery resumes one logical invocation no earlier than its deadline.
-- [ ] Failure notification: versioned bounded input/output and safe failure
+- [x] Failure notification: versioned bounded input/output and safe failure
       context, with no secret/provider body leakage or alternate scheduler state
       authority.
 
 Every slice must pass before the next begins:
 
-- [ ] Add canonical vocabulary, browser-safe Zod contracts, manifest, executor,
-      compatibility release, generated artifacts, and server-only boundaries.
-- [ ] Keep the definition absent from placement/publication/admission until its
-      complete slice passes; prove unknown key/version and generated drift
-      rejection plus exact retained-version execution without latest fallback.
-- [ ] Prove graph validation, tenant/authorization scope where applicable,
+- [x] Add canonical vocabulary, browser-safe Zod contracts, manifest, executor,
+      compatibility release, generated artifacts, and server-only boundaries for
+      node slices; apply ADR 022's capability contracts and server-only delivery
+      boundary without inventing a notification node, manifest, or release.
+- [x] Keep node definitions absent from placement/publication/admission until
+      their complete slices pass; ADR 022 permanently keeps notification outside
+      graph placement, publication, admission, and node compatibility releases.
+- [x] Prove graph validation, tenant/authorization scope where applicable,
       transaction boundaries, stable safe errors/logs, cardinality-safe
       telemetry/audit/usage effects, timeout/retry/cancellation, and bounded
       inputs/outputs/checkpoints.
-- [ ] Prove happy path, quota rejection, duplicate coordinator and attempt jobs,
+- [x] Prove happy path, quota rejection, duplicate coordinator and attempt jobs,
       crash on both sides of checkpoint commit, Redis loss, PostgreSQL loss,
       process drain, and fresh-worker reconstruction from immutable version plus
-      checkpoint only.
-- [ ] For branch/join slices, prove explicit arrived/skipped/missing/failed/
+      checkpoint only where applicable; notification substitutes duplicate
+      delivery, dispatch-marker crash recovery, and immutable intent/context
+      reconstruction because it has no node attempt, graph version, or quota.
+- [x] For branch/join slices, prove explicit arrived/skipped/missing/failed/
       canceled dispositions, output keys by source node/port, completion-order
       independence, and no duplicate join scheduling.
-- [ ] For For Each, prove exact and over-limit collections, nested worst-case
+- [x] For For Each, prove exact and over-limit collections, nested worst-case
       expansion, iteration-budget exhaustion before admission, bounded
       concurrency, stable scoped invocation keys, duplicate outcomes, and
       cancellation between batches.
@@ -2613,10 +2670,10 @@ Every slice must pass before the next begins:
 
 Phase-wide completion gates:
 
-- [ ] Run root `pnpm check`, zero-to-head and supported prior-head migrations,
+- [x] Run root `pnpm check`, zero-to-head and supported prior-head migrations,
       the complete real-service matrix sequentially, and all applicable Phase
       0D/0E plus Phase 3/4 recovery and retained-release fixtures.
-- [ ] Record exact versions, commands, assertion counts, timings, cleanup, and
+- [x] Record exact versions, commands, assertion counts, timings, cleanup, and
       post-test dependency health.
 - [ ] Resolve every blocker/high finding from independent Spec and Standards
       reviews against one fixed Phase 5 implementation commit.

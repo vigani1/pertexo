@@ -6,6 +6,15 @@ export {
 export type { DatabaseConfig, MigrationConfig } from './config.js';
 export { createDueNodeWakeupScanner } from './due-node-wakeup-scanner.js';
 export type { DueNodeWakeupScanner } from './due-node-wakeup-scanner.js';
+export {
+  createFailureNotificationStore,
+  FailureNotificationStateError,
+} from './failure-notifications.js';
+export type {
+  FailureNotificationClaimResult,
+  FailureNotificationDelivery,
+  FailureNotificationStore,
+} from './failure-notifications.js';
 export { createDeadlineWakeupScanner } from './deadline-wakeup-scanner.js';
 export type { DeadlineWakeupScanner } from './deadline-wakeup-scanner.js';
 export {

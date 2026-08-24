@@ -198,7 +198,7 @@ describe('durable node compatibility release authority', () => {
           preactivationTarget: targetExpectation,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0033_durable_wait.sql',
+        migrationHead: '0034_run_failure_notifications.sql',
       });
 
       for (const [roleKind, artifactId] of [
@@ -321,7 +321,7 @@ describe('durable node compatibility release authority', () => {
           expectedCompatibilityReleases: rollingExpectations,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0033_durable_wait.sql',
+        migrationHead: '0034_run_failure_notifications.sql',
       });
       await expect(
         checkDatabaseReadiness(api, {
@@ -434,7 +434,7 @@ describe('durable node compatibility release authority', () => {
             expectedCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0033_durable_wait.sql',
+          migrationHead: '0034_run_failure_notifications.sql',
         });
         await expect(
           checkExpectedCompatibilityRelease(pool, {
@@ -462,7 +462,7 @@ describe('durable node compatibility release authority', () => {
           expectedCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0033_durable_wait.sql',
+        migrationHead: '0034_run_failure_notifications.sql',
       });
     } finally {
       await pool.end();

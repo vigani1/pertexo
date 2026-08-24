@@ -23,6 +23,10 @@
       "types": "./dist/graph-contract.d.ts",
       "default": "./dist/graph-contract.js"
     },
+    "./failure-notification": {
+      "types": "./dist/failure-notification.d.ts",
+      "default": "./dist/failure-notification.js"
+    },
     "./mapping": {
       "types": "./dist/mapping.d.ts",
       "node": "./dist/mapping.js",

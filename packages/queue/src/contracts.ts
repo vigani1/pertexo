@@ -83,6 +83,13 @@ export const ExpireArtifactsJobSchema = z
   })
   .strict();
 
+export const DeliverRunFailureNotificationJobSchema = z
+  .object({
+    ...commonJobShape,
+    notificationIntentId: z.uuid(),
+  })
+  .strict();
+
 export type AdvanceWorkflowRunJob = z.infer<typeof AdvanceWorkflowRunJobSchema>;
 export type ExecuteNodeAttemptJob = z.infer<typeof ExecuteNodeAttemptJobSchema>;
 export type ExecutePreviewAttemptJob = z.infer<
@@ -98,6 +105,9 @@ export type ReconcileWorkflowTriggersJob = z.infer<
   typeof ReconcileWorkflowTriggersJobSchema
 >;
 export type ExpireArtifactsJob = z.infer<typeof ExpireArtifactsJobSchema>;
+export type DeliverRunFailureNotificationJob = z.infer<
+  typeof DeliverRunFailureNotificationJobSchema
+>;
 
 export interface QueueJobDataByName {
   [JOB_NAME.advanceWorkflowRun]: AdvanceWorkflowRunJob;
@@ -107,6 +117,7 @@ export interface QueueJobDataByName {
   [JOB_NAME.sweepExpiredPreviews]: SweepExpiredPreviewsJob;
   [JOB_NAME.reconcileWorkflowTriggers]: ReconcileWorkflowTriggersJob;
   [JOB_NAME.expireArtifacts]: ExpireArtifactsJob;
+  [JOB_NAME.deliverRunFailureNotification]: DeliverRunFailureNotificationJob;
 }
 
 export type QueueJob = {
@@ -144,6 +155,10 @@ export const QUEUE_JOB_REGISTRY = Object.freeze({
   [JOB_NAME.expireArtifacts]: {
     queueName: QUEUE_FOR_JOB[JOB_NAME.expireArtifacts],
     schema: ExpireArtifactsJobSchema,
+  },
+  [JOB_NAME.deliverRunFailureNotification]: {
+    queueName: QUEUE_FOR_JOB[JOB_NAME.deliverRunFailureNotification],
+    schema: DeliverRunFailureNotificationJobSchema,
   },
 } as const);
 

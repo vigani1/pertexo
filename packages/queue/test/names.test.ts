@@ -27,6 +27,7 @@ describe('queue names', () => {
       sweepExpiredPreviews: 'sweep-expired-previews',
       reconcileWorkflowTriggers: 'reconcile-workflow-triggers',
       expireArtifacts: 'expire-artifacts',
+      deliverRunFailureNotification: 'deliver-run-failure-notification',
     });
     expect(QUEUE_FOR_JOB).toEqual({
       [JOB_NAME.advanceWorkflowRun]: QUEUE_NAME.workflowCoordinator,
@@ -36,6 +37,7 @@ describe('queue names', () => {
       [JOB_NAME.sweepExpiredPreviews]: QUEUE_NAME.maintenance,
       [JOB_NAME.reconcileWorkflowTriggers]: QUEUE_NAME.triggerLifecycle,
       [JOB_NAME.expireArtifacts]: QUEUE_NAME.maintenance,
+      [JOB_NAME.deliverRunFailureNotification]: QUEUE_NAME.maintenance,
     });
   });
 

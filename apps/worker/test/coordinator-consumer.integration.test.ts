@@ -4,9 +4,11 @@ import { readFile } from 'node:fs/promises';
 
 import {
   acceptWorkflowRun,
+  canonicalOutboxPayloadChecksum,
   createCompatibilityReleaseMaintenance,
   createCompatibilityReleaseReadinessProbe,
   createDueNodeWakeupScanner,
+  createFailureNotificationStore,
   createOutboxDispatcherDatabase,
   createWorkspaceDatabase,
   parseDatabaseConfig,
@@ -45,6 +47,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createCoordinatorRuntime } from '../src/execution/coordinator-runtime.js';
 import type { CoordinatorAdvanceEngine } from '../src/execution/coordinator-handler.js';
 import { createNodeAttemptRuntime } from '../src/execution/node-attempt-runtime.js';
+import { createPreviewMaintenanceRuntime } from '../src/execution/preview-maintenance-runtime.js';
 import { WorkerDrainState } from '../src/runtime/worker-drain-state.js';
 import { createDispatchConsumerCapabilityRegistry } from '../src/transport/dispatch-consumer-capabilities.js';
 import { OutboxDispatcher } from '../src/transport/outbox-dispatcher.js';
@@ -1106,6 +1109,37 @@ function createCoordinatorDispatcher(
   );
 }
 
+function createFailureNotificationDispatcher(
+  consumer: Awaited<
+    ReturnType<typeof createPreviewMaintenanceRuntime>
+  >['consumer'],
+): OutboxDispatcher {
+  return new OutboxDispatcher(
+    createOutboxDispatcherDatabase(
+      parseDatabaseConfig({
+        connectionString: databaseUrl(dispatcherUrl),
+        max: 2,
+      }),
+    ),
+    createQueueProducer({ redisUrl }),
+    new WorkerDrainState(),
+    {
+      batchSize: 10,
+      enabledJobNames: [JOB_NAME.deliverRunFailureNotification],
+      leaseDurationMillis: 1_000,
+      leaseOwner: `failure-notification-${randomUUID()}`,
+      maxAttempts: 3,
+      operationTimeoutMillis: 2_000,
+      pollIntervalMillis: 25,
+      retryDelayMillis: 25,
+    },
+    undefined,
+    createDispatchConsumerCapabilityRegistry([
+      { jobName: JOB_NAME.deliverRunFailureNotification, consumer },
+    ]),
+  );
+}
+
 describeIntegration('Phase 3 coordinator consumer', () => {
   beforeAll(setupFixture, 60_000);
   afterAll(cleanupFixture);
@@ -1238,6 +1272,234 @@ describeIntegration('Phase 3 coordinator consumer', () => {
         runtime.close(),
         queue.close(),
       ]);
+    }
+  });
+
+  it('recovers failure notification dispatch through PostgreSQL and BullMQ without changing run truth', async () => {
+    const accepted = await acceptRun();
+    const intentId = randomUUID();
+    const destinationId = randomUUID();
+    const initialOutboxEventId = randomUUID();
+    const context = {
+      schemaVersion: 1 as const,
+      runId: accepted.runId,
+      workflowId,
+      workflowVersionId,
+      terminalEventSequence: 2,
+      terminalStatus: 'failed' as const,
+      triggerType: 'manual' as const,
+      startedAt: '2026-08-24T10:00:00.000Z',
+      completedAt: '2026-08-24T10:01:00.000Z',
+      primaryFailure: {
+        nodeId: 'set',
+        invocationKey: 'set',
+        nodeStatus: 'failed' as const,
+        attemptNumber: 1,
+        safeErrorCode: 'provider.unavailable',
+      },
+      totalFailureCount: 1,
+    };
+    const initialPayload = {
+      schemaVersion: 1 as const,
+      workspaceId,
+      notificationIntentId: intentId,
+      outboxEventId: initialOutboxEventId,
+    };
+    const fixturePool = new Pool({
+      connectionString: databaseUrl(adminUrl),
+      max: 1,
+    });
+    try {
+      await fixturePool.query(
+        `with terminal_run as (
+         update app.workflow_runs
+          set status='failed',completed_at=clock_timestamp(),
+              failure_notification_policy_version=1,
+              failure_notification_destination_id=$2,
+              failure_notification_destination_config_version=3,
+              failure_notification_side_effect_class='idempotent_with_key'
+        where workspace_id=$1 and id=$3
+        returning workspace_id,id
+       ), terminal_event as (
+         insert into app.run_events
+           (workspace_id,workflow_run_id,sequence,type,payload)
+         select workspace_id,id,2,'run.failed','{"schemaVersion":1}'::jsonb
+           from terminal_run
+         returning workspace_id,workflow_run_id
+       ), intent as (
+         insert into app.run_failure_notification_intents (
+           id,workspace_id,workflow_run_id,terminal_event_sequence,policy_version,
+           destination_id,destination_config_version,side_effect_class,
+           context,context_checksum
+         ) select $4,workspace_id,workflow_run_id,2,1,$2,3,
+                  'idempotent_with_key',$5::jsonb,$6
+             from terminal_event
+         returning id,workspace_id
+       ), audit as (
+         insert into app.run_failure_notification_audit_facts (
+           id,workspace_id,notification_intent_id,fact_type,attempt_number,
+           possibly_dispatched
+         ) select gen_random_uuid(),workspace_id,id,'intent_created',0,false
+             from intent
+       )
+       insert into app.outbox_events (
+         id,workspace_id,job_name,schema_version,aggregate_type,aggregate_id,
+         payload,payload_checksum
+       ) select $7,workspace_id,'deliver-run-failure-notification',1,
+                'run-failure-notification',id,$8::jsonb,$9
+           from intent`,
+        [
+          workspaceId,
+          destinationId,
+          accepted.runId,
+          intentId,
+          JSON.stringify(context),
+          canonicalOutboxPayloadChecksum(context),
+          initialOutboxEventId,
+          JSON.stringify(initialPayload),
+          canonicalOutboxPayloadChecksum(initialPayload),
+        ],
+      );
+    } finally {
+      await fixturePool.end();
+    }
+    const initialTruth = await workerQuery<{
+      event_count: string;
+      revision: number;
+      run_status: string;
+    }>(
+      `select run.status run_status,checkpoint.revision,
+              (select count(*)::text from app.run_events event
+                where event.workflow_run_id=run.id) event_count
+         from app.workflow_runs run
+         join app.run_checkpoints checkpoint on checkpoint.workflow_run_id=run.id
+        where run.workspace_id=$1 and run.id=$2`,
+      [workspaceId, accepted.runId],
+    );
+    const store = createFailureNotificationStore(
+      parseDatabaseConfig({
+        connectionString: databaseUrl(workerUrl),
+        max: 2,
+      }),
+    );
+    try {
+      await expect(
+        store.claimDelivery({
+          workspaceId,
+          intentId,
+          delivery: {
+            outboxEventId: initialOutboxEventId,
+            payloadChecksum: canonicalOutboxPayloadChecksum(initialPayload),
+          },
+          recoverySeconds: 1,
+          maxAttempts: 3,
+        }),
+      ).resolves.toMatchObject({ kind: 'ready', attemptNumber: 1 });
+      await workerQuery(
+        `update app.run_failure_notification_intents
+            set recovery_at=clock_timestamp()-interval '1 second'
+          where workspace_id=$1 and id=$2`,
+        [workspaceId, intentId],
+      );
+    } finally {
+      await store.close();
+    }
+
+    const deliveries: string[] = [];
+    const runtime = await createPreviewMaintenanceRuntime({
+      database: parseDatabaseConfig({
+        connectionString: databaseUrl(workerUrl),
+        max: 4,
+      }),
+      redisUrl,
+      failureNotificationDelivery: {
+        deliver: (input) => {
+          deliveries.push(input.idempotencyKey);
+          return Promise.resolve({
+            schemaVersion: 1,
+            kind: 'delivered',
+            possiblyDispatched: true,
+            providerReference: 'opaque-proof-ref',
+          });
+        },
+      },
+    });
+    const dispatcher = createFailureNotificationDispatcher(runtime.consumer);
+    const producer = createQueueProducer({ redisUrl });
+    const queue = new Queue(QUEUE_NAME.maintenance, {
+      connection: redisConnection(),
+    });
+    try {
+      await Promise.all([
+        runtime.consumer.waitUntilReady(5_000),
+        dispatcher.checkReadiness(),
+        producer.waitUntilReady(5_000),
+      ]);
+      const recovered = await waitFor(
+        () =>
+          workerQuery<{
+            id: string;
+            payload: typeof initialPayload;
+          }>(
+            `select id,payload from app.outbox_events
+              where workspace_id=$1 and aggregate_id=$2
+                and job_name='deliver-run-failure-notification'
+                and id<>$3 order by created_at,id`,
+            [workspaceId, intentId, initialOutboxEventId],
+          ),
+        (rows) => rows.length === 1,
+      );
+      await expect(dispatcher.dispatchOnce()).resolves.toMatchObject({
+        claimed: 2,
+        published: 2,
+      });
+      await waitFor(
+        () =>
+          workerQuery<{ status: string }>(
+            `select status from app.run_failure_notification_intents
+              where workspace_id=$1 and id=$2`,
+            [workspaceId, intentId],
+          ),
+        (rows) => rows[0]?.status === 'delivered',
+      );
+      expect(deliveries).toEqual([`failure-notification:v1:${intentId}`]);
+
+      const retry = recovered[0];
+      if (retry === undefined) throw new Error('notification recovery missing');
+      const completedJob = await queue.getJob(`outbox-${retry.id}`);
+      await completedJob?.remove();
+      await producer.publish({
+        name: JOB_NAME.deliverRunFailureNotification,
+        data: retry.payload,
+      });
+      await waitFor(
+        async () => (await queue.getJob(`outbox-${retry.id}`))?.getState(),
+        (state) => state === 'completed',
+      );
+      expect(deliveries).toHaveLength(1);
+      await expect(
+        workerQuery<{
+          event_count: string;
+          revision: number;
+          run_status: string;
+        }>(
+          `select run.status run_status,checkpoint.revision,
+                  (select count(*)::text from app.run_events event
+                    where event.workflow_run_id=run.id) event_count
+             from app.workflow_runs run
+             join app.run_checkpoints checkpoint on checkpoint.workflow_run_id=run.id
+            where run.workspace_id=$1 and run.id=$2`,
+          [workspaceId, accepted.runId],
+        ),
+      ).resolves.toEqual(initialTruth);
+    } finally {
+      await Promise.allSettled([
+        dispatcher.close(),
+        runtime.close(),
+        producer.close(),
+      ]);
+      await queue.obliterate({ force: true }).catch(() => undefined);
+      await queue.close();
     }
   });
 

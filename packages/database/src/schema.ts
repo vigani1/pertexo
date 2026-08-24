@@ -528,6 +528,19 @@ export const workflowRuns = appSchema.table(
     workflowId: uuid('workflow_id').notNull(),
     workflowVersionId: uuid('workflow_version_id').notNull(),
     triggerType: varchar('trigger_type', { length: 32 }).notNull(),
+    failureNotificationPolicyVersion: smallint(
+      'failure_notification_policy_version',
+    ),
+    failureNotificationDestinationId: uuid(
+      'failure_notification_destination_id',
+    ),
+    failureNotificationDestinationConfigVersion: integer(
+      'failure_notification_destination_config_version',
+    ),
+    failureNotificationSideEffectClass: varchar(
+      'failure_notification_side_effect_class',
+      { length: 32 },
+    ),
     status: varchar('status', { length: 32 }).notNull(),
     deadlineAt: timestamp('deadline_at', { withTimezone: true, mode: 'date' }),
     deadlineWakeupAt: timestamp('deadline_wakeup_at', {

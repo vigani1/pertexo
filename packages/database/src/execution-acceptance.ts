@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 
 import { and, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
+import { FailureNotificationPolicyV1Schema } from '@pertexo/workflow-model/failure-notification';
 
 import { canonicalOutboxPayloadChecksum, insertOutboxEvent } from './outbox.js';
 import {
@@ -37,6 +38,7 @@ const acceptWorkflowRunInputSchema = z
     scope: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u),
     traceparent: traceparentSchema,
     triggerType: z.enum(['api', 'manual', 'replay', 'schedule', 'webhook']),
+    failureNotificationPolicy: FailureNotificationPolicyV1Schema.optional(),
     workflowId: z.uuid(),
     workflowVersionId: z.uuid(),
   })
@@ -302,6 +304,18 @@ export async function acceptWorkflowRun(
       inputRef:
         storedRunInputJson === null ? null : sql`${storedRunInputJson}::jsonb`,
       triggerType: parsed.triggerType,
+      ...(parsed.failureNotificationPolicy === undefined
+        ? {}
+        : {
+            failureNotificationPolicyVersion:
+              parsed.failureNotificationPolicy.policyVersion,
+            failureNotificationDestinationId:
+              parsed.failureNotificationPolicy.destinationId,
+            failureNotificationDestinationConfigVersion:
+              parsed.failureNotificationPolicy.destinationConfigVersion,
+            failureNotificationSideEffectClass:
+              parsed.failureNotificationPolicy.sideEffectClass,
+          }),
       ...(parsed.deadlineAt === undefined
         ? {}
         : { deadlineAt: parsed.deadlineAt }),

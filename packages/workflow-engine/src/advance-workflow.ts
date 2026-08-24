@@ -1448,11 +1448,22 @@ function assertLoopInvocations(
       ...loop.iterationPath,
       { loopNodeId: loop.loopId, ordinal },
     ];
-    const invocation = [...invocations.values()].find(
-      (candidate) =>
-        JSON.stringify(candidate.iterationPath ?? []) ===
-        JSON.stringify(iterationPath),
-    );
+    const invocation = isSyntheticLegacyLoop(loop)
+      ? invocations.get(
+          createInvocationKey({
+            workflowVersionId,
+            nodeId: loop.loopId,
+            branchPath: loop.branchPath.map(
+              ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
+            ),
+            iterationPath,
+          }),
+        )
+      : [...invocations.values()].find(
+          (candidate) =>
+            JSON.stringify(candidate.iterationPath ?? []) ===
+            JSON.stringify(iterationPath),
+        );
     if (invocation === undefined)
       throw new WorkflowEngineError(
         'checkpoint_invalid',

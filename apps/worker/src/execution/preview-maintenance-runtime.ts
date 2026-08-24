@@ -3,7 +3,11 @@ import {
   type ArtifactStore,
   type ArtifactStoreConfig,
 } from '@pertexo/artifact-store';
-import type { DatabaseConfig } from '@pertexo/database';
+import {
+  createFailureNotificationStore,
+  type DatabaseConfig,
+  type FailureNotificationStore,
+} from '@pertexo/database';
 import { createQueueTraceRunner } from '@pertexo/observability';
 import {
   createQueueConsumer,
@@ -27,6 +31,10 @@ import {
   type PreviewReconciliationStore,
 } from './preview-reconciliation-runtime.js';
 import type { PreviewTelemetry } from './preview-telemetry.js';
+import {
+  createFailureNotificationHandler,
+  type FailureNotificationDeliveryCapability,
+} from './failure-notification-handler.js';
 
 export interface PreviewMaintenanceRuntime {
   readonly consumer: QueueConsumer;
@@ -39,6 +47,7 @@ export async function createPreviewMaintenanceRuntime(
     database: DatabaseConfig;
     observer?: QueueConsumerObserver;
     redisUrl: string;
+    failureNotificationDelivery?: FailureNotificationDeliveryCapability;
   }>,
   dependencies: Readonly<{
     artifactStore?: Pick<
@@ -51,11 +60,28 @@ export async function createPreviewMaintenanceRuntime(
       close?: () => Promise<void>;
     };
     previewTelemetry?: PreviewTelemetry;
+    failureNotificationStore?: FailureNotificationStore;
   }> = {},
 ): Promise<PreviewMaintenanceRuntime> {
   const reconciliationStore =
     dependencies.reconciliationStore ??
     createDatabasePreviewReconciliationStore(options.database);
+  const failureNotificationStore =
+    options.failureNotificationDelivery === undefined
+      ? undefined
+      : (dependencies.failureNotificationStore ??
+        createFailureNotificationStore(options.database));
+  const failureNotification =
+    options.failureNotificationDelivery === undefined ||
+    failureNotificationStore === undefined
+      ? undefined
+      : createFailureNotificationHandler({
+          store: failureNotificationStore,
+          delivery: options.failureNotificationDelivery,
+          timeoutMillis: 30_000,
+          maxAttempts: 3,
+          retryDelaySeconds: 30,
+        });
   const hasInjectedCleanupStore = dependencies.cleanupStore !== undefined;
   const hasInjectedArtifactStore = dependencies.artifactStore !== undefined;
   if (
@@ -124,6 +150,14 @@ export async function createPreviewMaintenanceRuntime(
           }
           return;
         }
+        if (delivery.name === JOB_NAME.deliverRunFailureNotification) {
+          if (failureNotification === undefined)
+            throw new InvalidQueueDeliveryError(
+              'Failure notification delivery is not enabled',
+            );
+          await failureNotification.handle(delivery, context);
+          return;
+        }
         throw new InvalidQueueDeliveryError(
           `Preview maintenance cannot handle ${delivery.name}`,
         );
@@ -134,6 +168,7 @@ export async function createPreviewMaintenanceRuntime(
   } catch (error: unknown) {
     await Promise.allSettled([
       reconciliationStore.close?.(),
+      failureNotificationStore?.close(),
       cleanupStore?.close?.(),
       Promise.resolve(artifacts?.close?.()),
     ]);
@@ -141,13 +176,37 @@ export async function createPreviewMaintenanceRuntime(
   }
 
   let closePromise: Promise<void> | undefined;
+  const recoveryAbort = new AbortController();
+  const recoveryLoop = (async (): Promise<void> => {
+    while (!recoveryAbort.signal.aborted) {
+      try {
+        await failureNotificationStore?.recoverDue(25);
+      } catch {
+        // PostgreSQL authority is retried; dependency readiness remains fail closed.
+      }
+      await new Promise<void>((resolve) => {
+        const timeout = setTimeout(resolve, 1_000);
+        recoveryAbort.signal.addEventListener(
+          'abort',
+          () => {
+            clearTimeout(timeout);
+            resolve();
+          },
+          { once: true },
+        );
+      });
+    }
+  })();
   return Object.freeze({
     consumer,
     close: (): Promise<void> => {
       closePromise ??= (async (): Promise<void> => {
+        recoveryAbort.abort();
         const results = await Promise.allSettled([
           consumer.close(),
+          recoveryLoop,
           reconciliationStore.close?.(),
+          failureNotificationStore?.close(),
           cleanupStore?.close?.(),
           Promise.resolve(artifacts?.close?.()),
         ]);

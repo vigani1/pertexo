@@ -209,6 +209,7 @@ describe('preview retention migration', () => {
       '0031_due_node_wakeups.sql',
       '0032_for_each_barriers.sql',
       '0033_durable_wait.sql',
+      '0034_run_failure_notifications.sql',
     ]);
 
     const verification = new Pool({

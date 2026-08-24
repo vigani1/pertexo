@@ -5,6 +5,7 @@ import path from 'node:path';
 
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { FailureNotificationContextV1Schema } from '@pertexo/workflow-model/failure-notification';
 
 import {
   canonicalOutboxPayloadChecksum,
@@ -12,6 +13,7 @@ import {
   CoordinatorRunStateCorruptError,
   checkDatabaseReadiness,
   createCoordinatorRunStore,
+  createFailureNotificationStore,
   createDeadlineWakeupScanner,
   createDueNodeWakeupScanner,
   createNodeAttemptRunStore,
@@ -378,6 +380,11 @@ async function insertRun(input: {
   status?: string;
   deadlineAt?: string;
   inputRef?: unknown;
+  failureNotificationPolicy?: Readonly<{
+    destinationId: string;
+    destinationConfigVersion: number;
+    sideEffectClass: string;
+  }>;
 }): Promise<string> {
   const workspaceId = input.workspaceId ?? workspaceA;
   const runId = randomUUID();
@@ -386,8 +393,11 @@ async function insertRun(input: {
     await client.query(
       `insert into app.workflow_runs (
          id,workspace_id,workflow_id,workflow_version_id,trigger_type,status,
-         deadline_at,input_ref
-       ) values ($1,$2,$3,$4,'manual',$5,$6,$7::jsonb)`,
+          deadline_at,input_ref,failure_notification_policy_version,
+          failure_notification_destination_id,
+          failure_notification_destination_config_version,
+          failure_notification_side_effect_class
+        ) values ($1,$2,$3,$4,'manual',$5,$6,$7::jsonb,$8,$9,$10,$11)`,
       [
         runId,
         workspaceId,
@@ -396,6 +406,10 @@ async function insertRun(input: {
         input.status ?? 'queued',
         input.deadlineAt ?? null,
         input.inputRef === undefined ? null : JSON.stringify(input.inputRef),
+        input.failureNotificationPolicy === undefined ? null : 1,
+        input.failureNotificationPolicy?.destinationId ?? null,
+        input.failureNotificationPolicy?.destinationConfigVersion ?? null,
+        input.failureNotificationPolicy?.sideEffectClass ?? null,
       ],
     );
     await client.query(
@@ -511,6 +525,289 @@ beforeAll(async () => {
 afterAll(dropDatabase);
 
 describe('CoordinatorRunStore on disposable PostgreSQL', () => {
+  it('atomically creates one safe failure notification intent and excludes cancellation', async () => {
+    const invocationKey = 'failure/primary';
+    const runId = await insertRun({
+      status: 'running',
+      schedulerState: checkpoint({
+        runStatus: 'running',
+        invocations: [
+          {
+            invocationKey,
+            nodeId: 'primary',
+            status: 'running',
+            attemptNumber: 1,
+          },
+        ],
+      }),
+      failureNotificationPolicy: {
+        destinationId: randomUUID(),
+        destinationConfigVersion: 4,
+        sideEffectClass: 'idempotent_with_key',
+      },
+    });
+    const nodeRunId = randomUUID();
+    const attemptId = randomUUID();
+    await asRuntime(workerBaseUrl, workspaceA, async (client) => {
+      await client.query(
+        `insert into app.node_runs (
+           id,workspace_id,workflow_run_id,node_id,invocation_key,branch_context,
+           status,side_effect_class,current_attempt_id,current_attempt_number
+         ) values ($1,$2,$3,'primary',$4,'{}','running','safe',$5,1)`,
+        [nodeRunId, workspaceA, runId, invocationKey, attemptId],
+      );
+      await client.query(
+        `insert into app.node_attempts (
+           id,workspace_id,node_run_id,attempt_number,status,side_effect_class,
+           safe_error_code,executor_failure_kind,executor_error_kind,
+           executor_possibly_dispatched,retry_decision
+         ) values ($1,$2,$3,1,'failed','safe','provider.unavailable',
+           'failed','provider',false,'pending')`,
+        [attemptId, workspaceA, nodeRunId],
+      );
+    });
+    const plan = {
+      expectedRevision: 0,
+      expectedNextEventSequence: 2,
+      consumedThroughEventSequence: 1,
+      checkpoint: checkpoint({
+        revision: 1,
+        runStatus: 'failed',
+        nextEventSequence: 4,
+        invocations: [
+          {
+            invocationKey,
+            nodeId: 'primary',
+            status: 'failed',
+            attemptNumber: 1,
+          },
+        ],
+      }),
+      events: [
+        {
+          schemaVersion: 1 as const,
+          sequence: 2,
+          name: 'node.failed' as const,
+          occurredAt: '2026-08-24T10:01:00.000Z',
+          invocationKey,
+          nodeId: 'primary',
+          attemptNumber: 1,
+          reasonCode: 'provider.unavailable',
+        },
+        {
+          schemaVersion: 1 as const,
+          sequence: 3,
+          name: 'run.failed' as const,
+          occurredAt: '2026-08-24T10:01:00.000Z',
+        },
+      ],
+      nodeRunAdmissions: [],
+      attempts: [],
+    };
+    const input = {
+      workspaceId: workspaceA,
+      runId,
+      workflowVersionId: versionA,
+      signal: new AbortController().signal,
+      plan,
+    };
+    await expect(store.commitAdvancePlan(input)).resolves.toMatchObject({
+      kind: 'committed',
+    });
+    await expect(store.commitAdvancePlan(input)).resolves.toMatchObject({
+      kind: 'already_committed',
+    });
+    const proof = await asRuntime(workerBaseUrl, workspaceA, (client) =>
+      client.query<{
+        intent_count: number;
+        outbox_count: number;
+        context: Record<string, unknown>;
+      }>(
+        `select count(distinct intent.id)::int intent_count,
+                count(distinct outbox.id)::int outbox_count,
+                min(intent.context::text)::jsonb context
+         from app.run_failure_notification_intents intent
+         join app.outbox_events outbox on outbox.aggregate_id=intent.id
+         where intent.workspace_id=$1 and intent.workflow_run_id=$2`,
+        [workspaceA, runId],
+      ),
+    );
+    expect(proof.rows[0]).toMatchObject({ intent_count: 1, outbox_count: 1 });
+    const persistedContext = FailureNotificationContextV1Schema.parse(
+      proof.rows[0]?.context,
+    );
+    expect(persistedContext.terminalStatus).toBe('failed');
+    expect(persistedContext.primaryFailure).toMatchObject({
+      invocationKey,
+      safeErrorCode: 'provider.unavailable',
+    });
+    expect(JSON.stringify(proof.rows[0]?.context)).not.toMatch(
+      /errorSummary|secret|input|output|connection|actor/i,
+    );
+    const hidden = await asRuntime(workerBaseUrl, workspaceB, (client) =>
+      client.query(
+        `select id from app.run_failure_notification_intents where workflow_run_id=$1`,
+        [runId],
+      ),
+    );
+    expect(hidden.rowCount).toBe(0);
+
+    const deliveryStore = createFailureNotificationStore(
+      parseDatabaseConfig({
+        connectionString: databaseUrl(workerBaseUrl),
+        max: 4,
+        ownerRole: 'pertexo_owner',
+        workerRuntimeRole: 'pertexo_worker',
+      }),
+    );
+    try {
+      const identity = await asRuntime(workerBaseUrl, workspaceA, (client) =>
+        client.query<{
+          intent_id: string;
+          outbox_id: string;
+          payload_checksum: string;
+        }>(
+          `select intent.id intent_id,outbox.id outbox_id,outbox.payload_checksum
+           from app.run_failure_notification_intents intent
+           join app.outbox_events outbox on outbox.aggregate_id=intent.id
+           where intent.workflow_run_id=$1 order by outbox.created_at limit 1`,
+          [runId],
+        ),
+      );
+      const first = identity.rows[0];
+      if (first === undefined) throw new Error('notification fixture missing');
+      const claimInput = {
+        workspaceId: workspaceA,
+        intentId: first.intent_id,
+        delivery: {
+          outboxEventId: first.outbox_id,
+          payloadChecksum: first.payload_checksum,
+        },
+        recoverySeconds: 1,
+        maxAttempts: 3,
+      } as const;
+      const claims = await Promise.all([
+        deliveryStore.claimDelivery(claimInput),
+        deliveryStore.claimDelivery(claimInput),
+      ]);
+      expect(claims.map(({ kind }) => kind).sort()).toEqual(['busy', 'ready']);
+      const ready = claims.find(({ kind }) => kind === 'ready');
+      expect(ready?.kind).toBe('ready');
+      if (ready?.kind !== 'ready') throw new Error('delivery claim missing');
+      expect(ready.context.runId).toBe(runId);
+
+      await asRuntime(workerBaseUrl, workspaceA, (client) =>
+        client.query(
+          `update app.run_failure_notification_intents
+           set recovery_at=clock_timestamp()-interval '1 second'
+           where id=$1`,
+          [first.intent_id],
+        ),
+      );
+      await expect(deliveryStore.recoverDue(10)).resolves.toBe(1);
+      for (let attempt = 2; attempt <= 3; attempt += 1) {
+        const next = await asRuntime(workerBaseUrl, workspaceA, (client) =>
+          client.query<{ id: string; payload_checksum: string }>(
+            `select id,payload_checksum from app.outbox_events
+             where aggregate_id=$1 order by created_at desc,id desc limit 1`,
+            [first.intent_id],
+          ),
+        );
+        const outbox = next.rows[0];
+        if (outbox === undefined) throw new Error('retry outbox missing');
+        const claimed = await deliveryStore.claimDelivery({
+          ...claimInput,
+          delivery: {
+            outboxEventId: outbox.id,
+            payloadChecksum: outbox.payload_checksum,
+          },
+        });
+        if (claimed.kind !== 'ready')
+          throw new Error('retry was not claimable');
+        await expect(
+          deliveryStore.completeDelivery({
+            workspaceId: workspaceA,
+            intentId: first.intent_id,
+            attemptNumber: claimed.attemptNumber,
+            maxAttempts: 3,
+            retryDelaySeconds: 0,
+            result: {
+              schemaVersion: 1,
+              kind: 'retry',
+              safeErrorCode: 'provider.unavailable',
+              possiblyDispatched: false,
+            },
+          }),
+        ).resolves.toBe('completed');
+      }
+      const terminal = await asRuntime(workerBaseUrl, workspaceA, (client) =>
+        client.query<{
+          status: string;
+          run_status: string;
+          event_count: number;
+        }>(
+          `select intent.status,run.status run_status,
+                  (select count(*)::int from app.run_events event
+                    where event.workflow_run_id=run.id) event_count
+           from app.run_failure_notification_intents intent
+           join app.workflow_runs run on run.id=intent.workflow_run_id
+           where intent.id=$1`,
+          [first.intent_id],
+        ),
+      );
+      expect(terminal.rows[0]).toEqual({
+        status: 'dead_letter',
+        run_status: 'failed',
+        event_count: 3,
+      });
+
+      const unsafeId = randomUUID();
+      await asRuntime(workerBaseUrl, workspaceA, (client) =>
+        client.query(
+          `insert into app.run_failure_notification_intents (
+             id,workspace_id,workflow_run_id,terminal_event_sequence,policy_version,
+             destination_id,destination_config_version,side_effect_class,
+             context,context_checksum,status,delivery_attempts,dispatch_marked_at,recovery_at
+           ) select $1,workspace_id,workflow_run_id,terminal_event_sequence+1,policy_version,
+                    destination_id,destination_config_version,'unsafe',context,context_checksum,
+                    'dispatching',1,clock_timestamp()-interval '2 seconds',
+                    clock_timestamp()-interval '1 second'
+             from app.run_failure_notification_intents where id=$2`,
+          [unsafeId, first.intent_id],
+        ),
+      );
+      await expect(deliveryStore.recoverDue(10)).resolves.toBe(1);
+      const unsafe = await asRuntime(workerBaseUrl, workspaceA, (client) =>
+        client.query<{ status: string; safe_error_code: string }>(
+          `select status,safe_error_code from app.run_failure_notification_intents where id=$1`,
+          [unsafeId],
+        ),
+      );
+      expect(unsafe.rows[0]).toEqual({
+        status: 'outcome_unknown',
+        safe_error_code: 'delivery.recovery_ambiguous',
+      });
+    } finally {
+      await deliveryStore.close();
+    }
+
+    const canceledRun = await insertRun({
+      status: 'canceled',
+      schedulerState: checkpoint({ runStatus: 'canceled' }),
+      failureNotificationPolicy: {
+        destinationId: randomUUID(),
+        destinationConfigVersion: 1,
+        sideEffectClass: 'safe',
+      },
+    });
+    const excluded = await asRuntime(workerBaseUrl, workspaceA, (client) =>
+      client.query(
+        'select id from app.run_failure_notification_intents where workflow_run_id=$1',
+        [canceledRun],
+      ),
+    );
+    expect(excluded.rowCount).toBe(0);
+  });
   it('atomically persists and reloads a scoped For Each barrier and first body admission', async () => {
     const controlKey = `${versionA}|loop|b:|i:`;
     const bodyKey = `${versionA}|body|b:|i:loop%3A0`;
@@ -1242,7 +1539,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0033_durable_wait.sql',
+          migrationHead: '0034_run_failure_notifications.sql',
           role: 'pertexo_worker',
         });
       } finally {
@@ -1301,6 +1598,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         '0031_due_node_wakeups.sql',
         '0032_for_each_barriers.sql',
         '0033_durable_wait.sql',
+        '0034_run_failure_notifications.sql',
       ]);
       const workerPool = new Pool({
         connectionString: namedDatabaseUrl(
@@ -1316,7 +1614,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0033_durable_wait.sql',
+          migrationHead: '0034_run_failure_notifications.sql',
           role: 'pertexo_worker',
         });
         await expect(
@@ -1383,7 +1681,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0033_durable_wait.sql',
+        migrationHead: '0034_run_failure_notifications.sql',
         role: 'pertexo_worker',
       });
       const catalog = await readinessPool.query<{
@@ -1622,7 +1920,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0033_durable_wait.sql',
+        migrationHead: '0034_run_failure_notifications.sql',
       });
     } finally {
       await readinessPool.end();
@@ -1808,7 +2106,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         workerRuntimeRole: 'pertexo_worker',
       }),
     ).resolves.toMatchObject({
-      migrationHead: '0033_durable_wait.sql',
+      migrationHead: '0034_run_failure_notifications.sql',
     });
     await readinessPool.end();
   });

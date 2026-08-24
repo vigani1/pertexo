@@ -55,6 +55,10 @@ export type TransportJob =
   | {
       readonly jobName: 'reconcile-workflow-triggers';
       readonly queueName: 'trigger-lifecycle';
+    }
+  | {
+      readonly jobName: 'deliver-run-failure-notification';
+      readonly queueName: 'maintenance';
     };
 
 export type TransportPublishMeasurement = TransportJob &

@@ -1479,27 +1479,53 @@ describeIntegration('Phase 0E real execution recovery fixture', () => {
         occurredAt: '2026-08-20T00:01:00.000Z',
       }),
     ).toThrow(expect.objectContaining({ code: 'join_invalid' }));
-    expect(() =>
-      engine.advanceWorkflow({
-        checkpoint: initial,
-        maximumAdmissions: 10,
-        observations: [
+    const overLimitControlKey = engine.invocationKey({
+      workflowVersionId: WORKFLOW_VERSION_ID,
+      nodeId: 'loop-over-limit',
+    });
+    const overLimit = engine.advanceWorkflow({
+      checkpoint: {
+        ...initial,
+        runStatus: 'running',
+        invocations: [
           {
-            kind: 'loop_started',
-            loopId: 'loop-over-limit',
-            collection: {
-              kind: 'inline',
-              attemptId: '00000000-0000-4000-8000-000000000204',
-            },
-            collectionChecksum: 'b'.repeat(64),
-            collectionSize: 4,
-            maxConcurrency: 2,
-            maxIterations: 3,
+            invocationKey: overLimitControlKey,
+            nodeId: 'loop-over-limit',
+            status: 'running',
+            attemptNumber: 1,
           },
         ],
-        occurredAt: '2026-08-20T00:00:00.000Z',
+      },
+      maximumAdmissions: 10,
+      observations: [
+        {
+          kind: 'loop_started',
+          loopId: 'loop-over-limit',
+          collection: {
+            kind: 'inline',
+            attemptId: '00000000-0000-4000-8000-000000000204',
+          },
+          collectionChecksum: 'b'.repeat(64),
+          collectionSize: 4,
+          maxConcurrency: 2,
+          maxIterations: 3,
+        },
+      ],
+      occurredAt: '2026-08-20T00:00:00.000Z',
+    });
+    expect(overLimit.checkpoint.invocations).toContainEqual(
+      expect.objectContaining({
+        invocationKey: overLimitControlKey,
+        status: 'failed',
       }),
-    ).toThrow(expect.objectContaining({ code: 'loop_limit_exceeded' }));
+    );
+    expect(overLimit.events).toContainEqual(
+      expect.objectContaining({
+        invocationKey: overLimitControlKey,
+        name: 'node.failed',
+        reasonCode: 'loop_limit_exceeded',
+      }),
+    );
 
     const cyclicGraph = fixtureGraph();
     (cyclicGraph.edges as Record<string, unknown>[]).push({
