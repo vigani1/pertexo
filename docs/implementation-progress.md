@@ -21,7 +21,7 @@ not complete a phase.
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
-| Phase 5 — orchestration slice | In progress | ADRs 008/017; Condition contract/executor, topology, checkpoint V2, branch scheduling, database CAS, and authoritative output handoff through `7c4f871`; no serving cohort pending V2 run initialization and recovery proofs |
+| Phase 5 — orchestration slice | In progress | ADRs 008/017; Condition contract/executor, topology, checkpoint V2, branch scheduling, database CAS, authoritative output handoff, and physical scope validation through `3ad8654`; no serving cohort pending V2 run initialization and failure/recovery matrix |
 | Phase 6 — V1 providers and triggers | Not started | — |
 | Phase 7 — production operations | Not started | — |
 
@@ -2340,9 +2340,12 @@ Current evidence:
   and derives the selection without consuming another persisted event. Root
   `pnpm check`, 100 workflow-engine assertions, 131 worker assertions, and
   focused disposable-PostgreSQL loader/CAS proofs pass. Condition remains
-  incomplete pending checkpoint V2 initialization for new Condition runs,
-  physical branch-context recovery validation, and duplicate/crash/Redis-loss/
-  fresh-worker proofs.
+  incomplete pending checkpoint V2 initialization for new Condition runs and
+  duplicate/crash/Redis-loss/fresh-worker proofs.
+- Commit `3ad8654` verifies every recovered physical node-run branch context
+  against its checkpoint V2 invocation scope. Its disposable-PostgreSQL proof
+  reloads selected/skipped branch rows successfully, then confirms scope
+  corruption fails closed.
 
 Incremental publishable slices, in required order:
 
