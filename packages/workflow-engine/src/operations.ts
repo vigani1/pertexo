@@ -27,6 +27,8 @@ import {
 import { parseCheckpoint } from './checkpoint.js';
 import {
   configuredBranchOutputPorts,
+  configuredParallelOutputPorts,
+  configuredScopedOutputPorts,
   type SchedulerState,
 } from './graph-scheduler.js';
 import { compareOrdinal } from './ordering.js';
@@ -753,6 +755,26 @@ function branchSelectionObservations(
       ({ id }) => id === invocation?.nodeId,
     );
     if (node === undefined) return [];
+    const parallelPorts = configuredParallelOutputPorts(node);
+    if (parallelPorts !== undefined) {
+      if (material.value === undefined)
+        operationError('observation_invalid', 'Parallel output is missing');
+      const completedValue = record(
+        material.value,
+        'observation_invalid',
+        'Parallel output',
+      );
+      exactKeys(completedValue, ['branchIds']);
+      if (
+        !Array.isArray(completedValue.branchIds) ||
+        completedValue.branchIds.length !== parallelPorts.length ||
+        completedValue.branchIds.some(
+          (branchId, index) => branchId !== parallelPorts[index],
+        )
+      )
+        operationError('observation_invalid', 'Parallel output is invalid');
+      return [];
+    }
     const outputPorts = configuredBranchOutputPorts(node);
     if (outputPorts === undefined) return [];
     const completedValue = material.value;
@@ -838,7 +860,7 @@ function assertCheckpointMatchesExecutable(
       branchPath.some(({ nodeId, outputPort }) => {
         const node = nodesById.get(nodeId);
         const outputPorts =
-          node === undefined ? undefined : configuredBranchOutputPorts(node);
+          node === undefined ? undefined : configuredScopedOutputPorts(node);
         return !outputPorts?.includes(outputPort);
       }) ||
       invocation.invocationKey !==

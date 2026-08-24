@@ -747,6 +747,147 @@ describe('AdvanceWorkflow operation', () => {
     ]);
   });
 
+  it('makes every declared Parallel branch ready with stable scope', () => {
+    const parallelKey = invocationKey({
+      workflowVersionId: 'version-parallel',
+      nodeId: 'parallel',
+    });
+    expect(
+      deriveReadyNodes({
+        graph: {
+          deriveReadiness: true,
+          nodes: [
+            {
+              id: 'parallel',
+              definition: { key: 'core.parallel', version: 1 },
+              config: {
+                branches: [{ id: 'branch-02' }, { id: 'branch-01' }],
+                maxConcurrency: 1,
+              },
+              sideEffectClass: 'safe',
+            },
+            { id: 'left', sideEffectClass: 'safe' },
+            { id: 'right', sideEffectClass: 'safe' },
+          ],
+          edges: [
+            {
+              source: { nodeId: 'parallel', port: 'branch-02' },
+              target: { nodeId: 'left', port: 'in' },
+            },
+            {
+              source: { nodeId: 'parallel', port: 'branch-01' },
+              target: { nodeId: 'right', port: 'in' },
+            },
+          ],
+        },
+        workflowVersionId: 'version-parallel',
+        invocations: [
+          {
+            invocationKey: parallelKey,
+            nodeId: 'parallel',
+            status: 'succeeded',
+            attemptNumber: 1,
+            output: {
+              kind: 'inline',
+              attemptId: '00000000-0000-4000-8000-000000000104',
+            },
+          },
+        ],
+      }),
+    ).toEqual([
+      {
+        invocationKey: invocationKey({
+          workflowVersionId: 'version-parallel',
+          nodeId: 'left',
+          branchPath: ['parallel:branch-02'],
+        }),
+        nodeId: 'left',
+        disposition: 'ready',
+        branchPath: [{ nodeId: 'parallel', outputPort: 'branch-02' }],
+      },
+      {
+        invocationKey: invocationKey({
+          workflowVersionId: 'version-parallel',
+          nodeId: 'right',
+          branchPath: ['parallel:branch-01'],
+        }),
+        nodeId: 'right',
+        disposition: 'ready',
+        branchPath: [{ nodeId: 'parallel', outputPort: 'branch-01' }],
+      },
+    ]);
+  });
+
+  it('bounds Parallel attempt admissions below the run-wide admission cap', () => {
+    const branchKeys = ['branch-01', 'branch-02'].map((port) =>
+      invocationKey({
+        workflowVersionId: 'version-parallel',
+        nodeId: port,
+        branchPath: [`parallel:${port}`],
+      }),
+    );
+    const plan = advanceWorkflowForTesting({
+      checkpoint: {
+        ...createCheckpointV2({
+          engineVersion: 'engine-v2',
+          workflowVersionId: 'version-parallel',
+          iterationBudget: 0,
+        }),
+        runStatus: 'running',
+        readySet: branchKeys,
+        invocations: [
+          {
+            invocationKey: invocationKey({
+              workflowVersionId: 'version-parallel',
+              nodeId: 'parallel',
+            }),
+            nodeId: 'parallel',
+            status: 'succeeded' as const,
+            attemptNumber: 1,
+            output: {
+              kind: 'inline' as const,
+              attemptId: '00000000-0000-4000-8000-000000000105',
+            },
+          },
+          ...branchKeys.map((invocationKey, index) => ({
+            invocationKey,
+            nodeId: `branch-0${String(index + 1)}`,
+            status: 'ready' as const,
+            attemptNumber: 0,
+            branchPath: [
+              {
+                nodeId: 'parallel',
+                outputPort: `branch-0${String(index + 1)}`,
+              },
+            ],
+          })),
+        ],
+      },
+      schedulerState: {
+        deriveReadiness: true,
+        nodes: [
+          {
+            id: 'parallel',
+            definition: { key: 'core.parallel', version: 1 },
+            config: {
+              branches: [{ id: 'branch-01' }, { id: 'branch-02' }],
+              maxConcurrency: 1,
+            },
+            sideEffectClass: 'safe',
+          },
+          { id: 'branch-01', sideEffectClass: 'safe' },
+          { id: 'branch-02', sideEffectClass: 'safe' },
+        ],
+        edges: [],
+      },
+      occurredAt,
+      maximumAdmissions: 10,
+    });
+
+    expect(plan.attempts).toHaveLength(1);
+    expect(plan.checkpoint.readySet).toHaveLength(1);
+  });
+
   it('rejects branch selections outside the pinned Condition contract', () => {
     const conditionKey = invocationKey({
       workflowVersionId: 'version-2',

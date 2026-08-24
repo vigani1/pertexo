@@ -38,6 +38,7 @@ function manifest(
   key:
     | 'core.condition'
     | 'core.manual'
+    | 'core.parallel'
     | 'core.set'
     | 'core.switch'
     | 'core.terminate'
@@ -52,7 +53,9 @@ function manifest(
         ? 'trigger'
         : key === 'core.terminate'
           ? 'output'
-          : key === 'core.condition' || key === 'core.switch'
+          : key === 'core.condition' ||
+              key === 'core.switch' ||
+              key === 'core.parallel'
             ? 'logic'
             : 'transform',
     configVersion: 1,
@@ -86,7 +89,26 @@ function manifest(
                   'case-16',
                   'default',
                 ]
-              : ['out'],
+              : key === 'core.parallel'
+                ? [
+                    'branch-01',
+                    'branch-02',
+                    'branch-03',
+                    'branch-04',
+                    'branch-05',
+                    'branch-06',
+                    'branch-07',
+                    'branch-08',
+                    'branch-09',
+                    'branch-10',
+                    'branch-11',
+                    'branch-12',
+                    'branch-13',
+                    'branch-14',
+                    'branch-15',
+                    'branch-16',
+                  ]
+                : ['out'],
     },
     credentialRequirements: [],
     connectionRequirements: [],
@@ -110,6 +132,7 @@ function nodeRelease(input?: {
   readonly setRetryClass?: NodeManifest['retryClass'];
   readonly condition?: boolean;
   readonly switch?: boolean;
+  readonly parallel?: boolean;
 }): RegistryRelease {
   const definitions = [
     manifest('core.manual'),
@@ -120,6 +143,7 @@ function nodeRelease(input?: {
     manifest('core.terminate'),
     ...(input?.condition ? [manifest('core.condition')] : []),
     ...(input?.switch ? [manifest('core.switch')] : []),
+    ...(input?.parallel ? [manifest('core.parallel')] : []),
     ...(input?.unrelated ? [manifest('test.unrelated')] : []),
   ];
   const manual = definitions.find(
@@ -212,6 +236,45 @@ function switchGraph(sourcePort: string) {
         id: 'switch-terminate',
         source: { nodeId: 'switch', port: sourcePort },
         target: { nodeId: 'terminate', port: 'in' },
+      },
+    ],
+  };
+}
+
+function parallelGraph(secondPort = 'branch-02') {
+  const base = graph();
+  return {
+    ...base,
+    nodes: [
+      base.nodes[0],
+      {
+        ...base.nodes[1],
+        id: 'parallel',
+        definition: { key: 'core.parallel', version: 1 },
+        config: {
+          branches: [{ id: 'branch-02' }, { id: 'branch-01' }],
+          maxConcurrency: 1,
+        },
+        inputMappings: {},
+      },
+      { ...base.nodes[1], id: 'left' },
+      { ...base.nodes[2], id: 'right' },
+    ],
+    edges: [
+      {
+        id: 'manual-parallel',
+        source: { nodeId: 'manual', port: 'out' },
+        target: { nodeId: 'parallel', port: 'in' },
+      },
+      {
+        id: 'parallel-left',
+        source: { nodeId: 'parallel', port: 'branch-01' },
+        target: { nodeId: 'left', port: 'in' },
+      },
+      {
+        id: 'parallel-right',
+        source: { nodeId: 'parallel', port: secondPort },
+        target: { nodeId: 'right', port: 'in' },
       },
     ],
   };
@@ -332,6 +395,42 @@ describe('workflow executable V2 identity', () => {
               id: 'switch-default-terminate',
               source: { nodeId: 'switch', port: 'default' },
               target: { nodeId: 'terminate', port: 'in' },
+            },
+          ],
+        },
+        release,
+      }),
+    ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
+  });
+
+  it('requires every declared Parallel branch exactly once without pre-Merge reconvergence', () => {
+    const release = composeExecutableCompatibilityRelease(
+      nodeRelease({ parallel: true }),
+    );
+    expect(() =>
+      buildWorkflowExecutableV2({
+        graph: parallelGraph('branch-03'),
+        release,
+      }),
+    ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
+    const missing = parallelGraph();
+    expect(() =>
+      buildWorkflowExecutableV2({
+        graph: { ...missing, edges: missing.edges.slice(0, 2) },
+        release,
+      }),
+    ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
+    const reconverging = parallelGraph();
+    expect(() =>
+      buildWorkflowExecutableV2({
+        graph: {
+          ...reconverging,
+          edges: [
+            ...reconverging.edges,
+            {
+              id: 'left-right',
+              source: { nodeId: 'left', port: 'out' },
+              target: { nodeId: 'right', port: 'in' },
             },
           ],
         },
@@ -1184,6 +1283,98 @@ describe('Phase 3 production operations', () => {
       ]),
     );
     expect(plan.attempts.map(({ nodeId }) => nodeId)).toEqual(['terminate']);
+  });
+
+  it('fans out Parallel only from its exact persisted declaration output', async () => {
+    const workflowVersionId = 'version-parallel';
+    const release = composeExecutableCompatibilityRelease(
+      nodeRelease({ parallel: true }),
+    );
+    const executable = buildWorkflowExecutableV2({
+      graph: parallelGraph(),
+      release,
+    });
+    const manualKey = invocationKey({ workflowVersionId, nodeId: 'manual' });
+    const parallelKey = invocationKey({
+      workflowVersionId,
+      nodeId: 'parallel',
+    });
+    const attemptId = '00000000-0000-4000-8000-000000000106';
+    const checkpoint = {
+      ...createCheckpointV2({
+        engineVersion: 'engine-v2',
+        workflowVersionId,
+        iterationBudget: 0,
+      }),
+      runStatus: 'running',
+      admittedInvocationKeys: [manualKey, parallelKey],
+      invocations: [
+        {
+          invocationKey: manualKey,
+          nodeId: 'manual',
+          status: 'succeeded',
+          attemptNumber: 1,
+        },
+        {
+          invocationKey: parallelKey,
+          nodeId: 'parallel',
+          status: 'running',
+          attemptNumber: 1,
+        },
+      ],
+    } as const;
+    const observations = [
+      {
+        sequence: 2,
+        occurredAt: '2026-08-24T00:00:00.000Z',
+        attemptId,
+        attemptNumber: 1,
+        kind: 'outcome' as const,
+        invocationKey: parallelKey,
+        status: 'succeeded' as const,
+        output: { kind: 'inline' as const, attemptId },
+      },
+    ];
+    const completedOutput = {
+      sequence: 2,
+      attemptId,
+      invocationKey: parallelKey,
+      value: { branchIds: ['branch-02', 'branch-01'] },
+    };
+
+    const plan = await advanceWorkflow({
+      runId: 'run-parallel',
+      executable,
+      workflowVersionId,
+      checkpoint,
+      observations,
+      completedOutputs: [completedOutput],
+      occurredAt: '2026-08-24T00:00:01.000Z',
+      maximumAdmissions: 10,
+      signal: new AbortController().signal,
+    });
+    expect(plan.attempts).toHaveLength(1);
+    expect(plan.checkpoint.invocations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ nodeId: 'left', status: 'running' }),
+        expect.objectContaining({ nodeId: 'right', status: 'ready' }),
+      ]),
+    );
+    await expect(
+      advanceWorkflow({
+        runId: 'run-parallel',
+        executable,
+        workflowVersionId,
+        checkpoint,
+        observations,
+        completedOutputs: [
+          { ...completedOutput, value: { branchIds: ['branch-01'] } },
+        ],
+        occurredAt: '2026-08-24T00:00:01.000Z',
+        maximumAdmissions: 10,
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toMatchObject({ code: 'observation_invalid' });
   });
 
   it('carries exact pinned side-effect classes into attempt admissions', async () => {

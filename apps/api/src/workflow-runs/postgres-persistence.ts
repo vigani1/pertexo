@@ -169,7 +169,8 @@ export function createInitialWorkflowCheckpoint(
       checkpoint: (executable.envelope.graph.nodes.some(
         ({ definition }) =>
           (definition.key === 'core.condition' ||
-            definition.key === 'core.switch') &&
+            definition.key === 'core.switch' ||
+            definition.key === 'core.parallel') &&
           definition.version === 1,
       )
         ? createCheckpointV2

@@ -61,6 +61,66 @@ export function configuredBranchOutputPorts(
   return [...(ports as string[]), 'default'];
 }
 
+export function configuredParallelOutputPorts(
+  node: Readonly<{
+    definition?: Readonly<{ key: string; version: number }>;
+    config?: unknown;
+  }>,
+): readonly string[] | undefined {
+  if (
+    node.definition?.key !== 'core.parallel' ||
+    node.definition.version !== 1 ||
+    typeof node.config !== 'object' ||
+    node.config === null ||
+    Array.isArray(node.config)
+  )
+    return undefined;
+  const branches = Reflect.get(node.config, 'branches') as unknown;
+  if (!Array.isArray(branches)) return undefined;
+  const ports = branches.map((item): unknown =>
+    typeof item === 'object' && item !== null && !Array.isArray(item)
+      ? Reflect.get(item, 'id')
+      : undefined,
+  );
+  if (
+    ports.length < 2 ||
+    ports.some(
+      (port) =>
+        typeof port !== 'string' || !/^branch-(?:0[1-9]|1[0-6])$/u.test(port),
+    ) ||
+    new Set(ports).size !== ports.length
+  )
+    return undefined;
+  return ports as string[];
+}
+
+export function configuredParallelMaxConcurrency(
+  node: Parameters<typeof configuredParallelOutputPorts>[0],
+): number | undefined {
+  const ports = configuredParallelOutputPorts(node);
+  if (
+    ports === undefined ||
+    typeof node.config !== 'object' ||
+    node.config === null
+  )
+    return undefined;
+  const value = Reflect.get(node.config, 'maxConcurrency') as unknown;
+  return typeof value === 'number' &&
+    Number.isSafeInteger(value) &&
+    value >= 1 &&
+    value <= ports.length
+    ? value
+    : undefined;
+}
+
+export function configuredScopedOutputPorts(
+  node: Parameters<typeof configuredBranchOutputPorts>[0],
+): readonly string[] | undefined {
+  return (
+    configuredBranchOutputPorts(node) ?? configuredParallelOutputPorts(node)
+  );
+}
+
 export interface ReadyNodeDecision {
   readonly invocationKey: string;
   readonly nodeId: string;
@@ -173,6 +233,31 @@ export function deriveReadyNodes(input: {
         if (existing === undefined || branchPath.length > existing.length)
           branchPathByNode.set(nodeId, branchPath);
         if (port !== selection.selectedOutputPort) skipped.add(nodeId);
+      }
+    }
+  }
+  for (const parallel of input.graph.nodes.filter(
+    (node) => configuredParallelOutputPorts(node) !== undefined,
+  )) {
+    const invocation = invocationByNode.get(parallel.id);
+    if (invocation?.status !== 'succeeded') continue;
+    const outgoing = input.graph.edges.filter(
+      (edge) => edge.source.nodeId === parallel.id,
+    );
+    for (const port of configuredParallelOutputPorts(parallel) ?? []) {
+      const branchPath = [
+        ...(invocation.branchPath ?? []),
+        { nodeId: parallel.id, outputPort: port },
+      ];
+      for (const nodeId of descendants(
+        outgoing
+          .filter((edge) => edge.source.port === port)
+          .map(({ target }) => target.nodeId),
+        adjacency,
+      )) {
+        const existing = branchPathByNode.get(nodeId);
+        if (existing === undefined || branchPath.length > existing.length)
+          branchPathByNode.set(nodeId, branchPath);
       }
     }
   }

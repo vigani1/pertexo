@@ -415,9 +415,11 @@ function assertGraphPorts(
       fail('workflow edge source port is unavailable');
     const sourceNode = graph.nodes.find(({ id }) => id === edge.source.nodeId);
     if (
-      sourceNode?.definition.key === 'core.switch' &&
+      sourceNode !== undefined &&
+      (sourceNode.definition.key === 'core.switch' ||
+        sourceNode.definition.key === 'core.parallel') &&
       sourceNode.definition.version === 1 &&
-      !configuredBranchPorts(sourceNode).includes(edge.source.port)
+      !configuredStructuredOutputPorts(sourceNode).includes(edge.source.port)
     )
       fail('workflow edge source port is not configured');
     if (!target.ports.inputs.includes(edge.target.port))
@@ -445,6 +447,27 @@ function configuredBranchPorts(
   ];
 }
 
+function configuredParallelPorts(
+  node: WorkflowGraph['nodes'][number],
+): readonly string[] {
+  if (node.definition.key !== 'core.parallel' || node.definition.version !== 1)
+    return [];
+  const branches = Reflect.get(node.config, 'branches') as unknown;
+  if (!Array.isArray(branches)) return [];
+  return branches.flatMap((item) => {
+    if (typeof item !== 'object' || item === null || Array.isArray(item))
+      return [];
+    const id = Reflect.get(item, 'id') as unknown;
+    return typeof id === 'string' ? [id] : [];
+  });
+}
+
+function configuredStructuredOutputPorts(
+  node: WorkflowGraph['nodes'][number],
+): readonly string[] {
+  return [...configuredBranchPorts(node), ...configuredParallelPorts(node)];
+}
+
 function assertBranchesDoNotReconverge(graph: WorkflowGraph): void {
   const adjacency = new Map<string, string[]>();
   for (const node of graph.nodes) adjacency.set(node.id, []);
@@ -464,8 +487,19 @@ function assertBranchesDoNotReconverge(graph: WorkflowGraph): void {
   };
 
   for (const node of graph.nodes) {
-    const ports = configuredBranchPorts(node);
+    const ports = configuredStructuredOutputPorts(node);
     if (ports.length === 0) continue;
+    if (
+      node.definition.key === 'core.parallel' &&
+      ports.some(
+        (port) =>
+          !graph.edges.some(
+            (edge) =>
+              edge.source.nodeId === node.id && edge.source.port === port,
+          ),
+      )
+    )
+      fail('every Parallel branch must have an outgoing edge');
     const branchRoots = (port: string): string[] =>
       graph.edges
         .filter(
