@@ -21,7 +21,7 @@ not complete a phase.
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
-| Phase 5 — orchestration slice | In progress | ADRs 008/017; Condition contract/executor foundation in `5b7ca81`; staged/active history only, with no serving cohort or publication claim pending checkpoint V2 and branch-reachability proofs |
+| Phase 5 — orchestration slice | In progress | ADRs 008/017; Condition contract/executor, publication topology, checkpoint V2, and pure branch scheduling through `71f6858`; no serving cohort pending database CAS, worker integration, and recovery proofs |
 | Phase 6 — V1 providers and triggers | Not started | — |
 | Phase 7 — production operations | Not started | — |
 
@@ -2316,6 +2316,18 @@ Current evidence:
   history, but no serving cohort includes them, so Condition is not yet
   placeable, publishable, or admitted. Node catalog tests pass 7 assertions;
   nodes-core and node-catalog build/typecheck plus scoped ESLint pass.
+- Commit `ce5bfde` retains edge source/target ports during publication
+  validation and rejects invalid Condition ports plus true/false reconvergence
+  before Merge exists. Commit `a19df76` adds the bounded checkpoint V2 codec,
+  canonical immutable branch selections, and strict V1 preservation.
+- Commit `71f6858` retains ports and pinned definitions in scheduler
+  projections, validates selections against exact `core.condition@1`, appends
+  stable branch scope to invocation identity, derives selected readiness and
+  explicit non-selected skips, persists both dispositions in checkpoint V2,
+  and creates no attempt for skipped work. The workflow-engine suite passes 98
+  assertions and the worker test project typechecks. Database CAS,
+  authoritative output loading, worker integration, and recovery proofs remain
+  required before the Condition checklist or serving status can change.
 
 Incremental publishable slices, in required order:
 
