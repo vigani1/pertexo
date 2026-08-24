@@ -23,7 +23,11 @@ const ATTEMPT_ID = '44444444-4444-4444-8444-444444444444';
 const OUTBOX_EVENT_ID = '55555555-5555-4555-8555-555555555555';
 
 describe('node-attempt runtime', () => {
-  it.each(['http_activation', 'condition_activation'] as const)(
+  it.each([
+    'http_activation',
+    'condition_activation',
+    'switch_activation',
+  ] as const)(
     'fails before adapter creation when %s HTTP capabilities are absent',
     async (releaseCohort) => {
       const consumerFactory = vi.fn();

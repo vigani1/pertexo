@@ -16,6 +16,8 @@ import {
   PLATFORM_REGISTRY_RELEASE_CONDITION_STAGED,
   PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_HTTP_STAGED,
+  PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_SWITCH_STAGED,
 } from '@pertexo/node-catalog';
 import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
 import { CORE_REGISTRY_RELEASE_SUCCESSOR } from '@pertexo/nodes-core';
@@ -80,6 +82,8 @@ const workflowId = randomUUID();
 const workflowVersionId = randomUUID();
 const conditionWorkflowId = randomUUID();
 const conditionWorkflowVersionId = randomUUID();
+const switchWorkflowId = randomUUID();
+const switchWorkflowVersionId = randomUUID();
 const engineVersion = 'phase3-engine-v1';
 const ownerPool = new Pool({
   connectionString: databaseUrl(migrationUrl),
@@ -338,6 +342,8 @@ async function setupFixture(): Promise<void> {
   await activateRelease(PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE);
   await activateRelease(PLATFORM_REGISTRY_RELEASE_CONDITION_STAGED);
   await activateRelease(PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE);
+  await activateRelease(PLATFORM_REGISTRY_RELEASE_SWITCH_STAGED);
+  await activateRelease(PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE);
   const retained = JSON.parse(
     await readFile(
       new URL('./fixtures/retained-core-workflow-v2.json', import.meta.url),
@@ -377,6 +383,100 @@ async function setupFixture(): Promise<void> {
       retained.checksum,
       JSON.stringify(retained.executable),
       retained.executable.compatibilityReleaseEpoch,
+      actorId,
+    ],
+  );
+  const switchRelease = composeExecutableCompatibilityRelease(
+    PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
+  );
+  const switchGraph = {
+    schemaVersion: 1 as const,
+    settings: { maxRunDurationMs: 60_000 },
+    nodes: [
+      {
+        id: 'manual',
+        definition: { key: 'core.manual', version: 1 },
+        position: { x: 0, y: 0 },
+        configVersion: 1,
+        config: {},
+        inputMappings: {},
+        connectionRefs: {},
+      },
+      {
+        id: 'switch',
+        definition: { key: 'core.switch', version: 1 },
+        position: { x: 10, y: 0 },
+        configVersion: 1,
+        config: { cases: [{ id: 'case-01', equals: 'selected' }] },
+        inputMappings: {
+          value: { kind: 'literal' as const, value: 'selected' },
+        },
+        connectionRefs: {},
+      },
+      {
+        id: 'selected',
+        definition: { key: 'core.set', version: 1 },
+        position: { x: 20, y: -10 },
+        configVersion: 1,
+        config: {},
+        inputMappings: {
+          value: { kind: 'literal' as const, value: 'selected' },
+        },
+        connectionRefs: {},
+      },
+      {
+        id: 'unselected',
+        definition: { key: 'core.set', version: 1 },
+        position: { x: 20, y: 10 },
+        configVersion: 1,
+        config: {},
+        inputMappings: {
+          value: { kind: 'literal' as const, value: 'unselected' },
+        },
+        connectionRefs: {},
+      },
+    ],
+    edges: [
+      {
+        id: 'manual-switch',
+        source: { nodeId: 'manual', port: 'out' },
+        target: { nodeId: 'switch', port: 'in' },
+      },
+      {
+        id: 'switch-selected',
+        source: { nodeId: 'switch', port: 'case-01' },
+        target: { nodeId: 'selected', port: 'in' },
+      },
+      {
+        id: 'switch-unselected',
+        source: { nodeId: 'switch', port: 'default' },
+        target: { nodeId: 'unselected', port: 'in' },
+      },
+    ],
+  };
+  const switchExecutable = buildWorkflowExecutableV2({
+    graph: switchGraph,
+    release: switchRelease,
+  });
+  await ownerQuery(
+    `insert into app.workflows (id, workspace_id, name, created_by)
+       values ($1, $2, 'Switch recovery proof', $3)`,
+    [switchWorkflowId, workspaceId, actorId],
+  );
+  await ownerQuery(
+    `insert into app.workflow_versions (
+       id, workspace_id, workflow_id, version_number, schema_version,
+       graph_json, checksum, executable_schema_version, executable_json,
+       compatibility_release_epoch, published_by
+     ) values ($1, $2, $3, 1, 1, $4::jsonb, $5, 2, $6::jsonb, $7, $8)`,
+    [
+      switchWorkflowVersionId,
+      workspaceId,
+      switchWorkflowId,
+      JSON.stringify(switchGraph),
+      switchExecutable.checksum,
+      JSON.stringify(switchExecutable.envelope),
+      switchExecutable.envelope.compatibilityReleaseEpoch,
       actorId,
     ],
   );
@@ -562,6 +662,30 @@ async function acceptConditionRun(): Promise<
   );
 }
 
+async function acceptSwitchRun(): Promise<
+  Readonly<{ outboxEventId: string; runId: string }>
+> {
+  return apiDatabase.withWorkspace(workspaceId, (transaction) =>
+    acceptWorkflowRun(transaction, {
+      engineVersion,
+      initialCheckpoint: createCheckpointV2({
+        engineVersion,
+        workflowVersionId: switchWorkflowVersionId,
+        iterationBudget: 1_000,
+        nextEventSequence: 2,
+      }),
+      keyHash: createHash('sha256').update(randomUUID()).digest('hex'),
+      operation: 'workflow.run.accept',
+      runInput: {},
+      requestHash: createHash('sha256').update(randomUUID()).digest('hex'),
+      scope: `coordinator:${switchWorkflowId}`,
+      triggerType: 'manual',
+      workflowId: switchWorkflowId,
+      workflowVersionId: switchWorkflowVersionId,
+    }),
+  );
+}
+
 async function waitForAttemptOutbox(
   runId: string,
   excludedIds: readonly string[] = [],
@@ -665,7 +789,7 @@ describeIntegration('Phase 3 coordinator consumer', () => {
         max: 4,
       }),
       maximumAdmissions: 1,
-      releaseCohort: 'condition_activation',
+      releaseCohort: 'switch_activation',
       redisUrl,
     });
     const producer = createQueueProducer({ redisUrl });
@@ -808,7 +932,7 @@ describeIntegration('Phase 3 coordinator consumer', () => {
     const coordinator = await createCoordinatorRuntime({
       database,
       maximumAdmissions: 1,
-      releaseCohort: 'condition_activation',
+      releaseCohort: 'switch_activation',
       redisUrl,
     });
     const attempts = await createNodeAttemptRuntime(
@@ -816,13 +940,13 @@ describeIntegration('Phase 3 coordinator consumer', () => {
         database,
         heartbeatIntervalMillis: 1_000,
         leaseDurationSeconds: 10,
-        releaseCohort: 'condition_activation',
+        releaseCohort: 'switch_activation',
         redisUrl,
         workerId: `integration-${randomUUID()}`,
       },
       {
         registry: createPlatformNodeRegistryForRelease(
-          PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
+          PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
           { httpRequest: { httpClient: { executeStreaming: httpRequest } } },
         ),
         runtimeCapabilities: {
@@ -1093,8 +1217,8 @@ describeIntegration('Phase 3 coordinator consumer', () => {
       const epoch2 = composeExecutableCompatibilityRelease(
         CORE_REGISTRY_RELEASE_SUCCESSOR,
       );
-      const epoch6 = composeExecutableCompatibilityRelease(
-        PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
+      const epoch8 = composeExecutableCompatibilityRelease(
+        PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
       );
       await expect(
         workerQuery<{
@@ -1113,8 +1237,8 @@ describeIntegration('Phase 3 coordinator consumer', () => {
         ),
       ).resolves.toEqual([
         {
-          current_epoch: 6,
-          current_fingerprint: epoch6.fingerprint,
+          current_epoch: 8,
+          current_fingerprint: epoch8.fingerprint,
           executable_epoch: 2,
           executable_fingerprint: epoch2.fingerprint,
         },
@@ -1129,234 +1253,260 @@ describeIntegration('Phase 3 coordinator consumer', () => {
     }
   });
 
-  it('recovers a Condition selection after Redis loss on fresh workers without duplicate branch work', async () => {
-    const accepted = await acceptConditionRun();
-    const database = parseDatabaseConfig({
-      connectionString: databaseUrl(workerUrl),
-      max: 6,
-    });
-    const runtimeCapabilities = {
-      connections: () => ({
-        resolve: vi.fn(() => Promise.reject(new Error('not used'))),
-      }),
-      artifacts: () => ({
-        write: vi.fn(() => Promise.reject(new Error('not used'))),
-      }),
-    };
-    const startWorkers = async () => {
-      const coordinator = await createCoordinatorRuntime({
-        database,
-        maximumAdmissions: 2,
-        releaseCohort: 'condition_activation',
-        redisUrl,
+  it.each([
+    {
+      label: 'Condition',
+      acceptBranchRun: acceptConditionRun,
+      branchNodeId: 'condition',
+      selectedPort: 'true',
+      unselectedPort: 'false',
+    },
+    {
+      label: 'Switch',
+      acceptBranchRun: acceptSwitchRun,
+      branchNodeId: 'switch',
+      selectedPort: 'case-01',
+      unselectedPort: 'default',
+    },
+  ])(
+    'recovers a $label selection after Redis loss on fresh workers without duplicate branch work',
+    async ({
+      acceptBranchRun,
+      branchNodeId,
+      label,
+      selectedPort,
+      unselectedPort,
+    }) => {
+      const accepted = await acceptBranchRun();
+      const database = parseDatabaseConfig({
+        connectionString: databaseUrl(workerUrl),
+        max: 6,
       });
-      const attempts = await createNodeAttemptRuntime(
-        {
+      const runtimeCapabilities = {
+        connections: () => ({
+          resolve: vi.fn(() => Promise.reject(new Error('not used'))),
+        }),
+        artifacts: () => ({
+          write: vi.fn(() => Promise.reject(new Error('not used'))),
+        }),
+      };
+      const startWorkers = async () => {
+        const coordinator = await createCoordinatorRuntime({
           database,
-          heartbeatIntervalMillis: 1_000,
-          leaseDurationSeconds: 10,
-          releaseCohort: 'condition_activation',
+          maximumAdmissions: 2,
+          releaseCohort: 'switch_activation',
           redisUrl,
-          workerId: `condition-${randomUUID()}`,
-        },
-        {
-          registry: createPlatformNodeRegistryForRelease(
-            PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
-          ),
-          runtimeCapabilities,
-        },
-      );
-      await Promise.all([
-        coordinator.consumer.waitUntilReady(5_000),
-        attempts.consumer.waitUntilReady(5_000),
-      ]);
-      return { attempts, coordinator };
-    };
-    const producer = createQueueProducer({ redisUrl });
-    const coordinatorQueue = new Queue(QUEUE_NAME.workflowCoordinator, {
-      connection: redisConnection(),
-    });
-    const attemptQueue = new Queue(QUEUE_NAME.nodeAttempts, {
-      connection: redisConnection(),
-    });
-    let workers = await startWorkers();
-    const attemptOutboxes: string[] = [];
-    const coordinatorOutboxes = [accepted.outboxEventId];
-
-    const publishCoordinator = async (
-      outboxEventId: string,
-      expectedRevision: number,
-    ) => {
-      const published = await producer.publish({
-        name: JOB_NAME.advanceWorkflowRun,
-        data: {
-          schemaVersion: 1,
-          workspaceId,
-          runId: accepted.runId,
-          outboxEventId,
-        },
+        });
+        const attempts = await createNodeAttemptRuntime(
+          {
+            database,
+            heartbeatIntervalMillis: 1_000,
+            leaseDurationSeconds: 10,
+            releaseCohort: 'switch_activation',
+            redisUrl,
+            workerId: `${label.toLowerCase()}-${randomUUID()}`,
+          },
+          {
+            registry: createPlatformNodeRegistryForRelease(
+              PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
+            ),
+            runtimeCapabilities,
+          },
+        );
+        await Promise.all([
+          coordinator.consumer.waitUntilReady(5_000),
+          attempts.consumer.waitUntilReady(5_000),
+        ]);
+        return { attempts, coordinator };
+      };
+      const producer = createQueueProducer({ redisUrl });
+      const coordinatorQueue = new Queue(QUEUE_NAME.workflowCoordinator, {
+        connection: redisConnection(),
       });
-      const result = await waitFor(
-        async () => {
-          const [rows, job] = await Promise.all([
-            workerQuery<{ revision: number }>(
-              `select revision from app.run_checkpoints
+      const attemptQueue = new Queue(QUEUE_NAME.nodeAttempts, {
+        connection: redisConnection(),
+      });
+      let workers = await startWorkers();
+      const attemptOutboxes: string[] = [];
+      const coordinatorOutboxes = [accepted.outboxEventId];
+
+      const publishCoordinator = async (
+        outboxEventId: string,
+        expectedRevision: number,
+      ) => {
+        const published = await producer.publish({
+          name: JOB_NAME.advanceWorkflowRun,
+          data: {
+            schemaVersion: 1,
+            workspaceId,
+            runId: accepted.runId,
+            outboxEventId,
+          },
+        });
+        const result = await waitFor(
+          async () => {
+            const [rows, job] = await Promise.all([
+              workerQuery<{ revision: number }>(
+                `select revision from app.run_checkpoints
                where workspace_id=$1 and workflow_run_id=$2`,
-              [workspaceId, accepted.runId],
-            ),
-            coordinatorQueue.getJob(published.jobId),
-          ]);
-          return {
-            failedReason: job?.failedReason,
-            revision: rows[0]?.revision,
-            state: await job?.getState(),
-          };
-        },
-        ({ revision, state }) =>
-          revision === expectedRevision || state === 'failed',
-      );
-      if (result.revision !== expectedRevision)
-        throw new Error(
-          `Condition coordinator failed: ${result.failedReason ?? 'unknown'}`,
+                [workspaceId, accepted.runId],
+              ),
+              coordinatorQueue.getJob(published.jobId),
+            ]);
+            return {
+              failedReason: job?.failedReason,
+              revision: rows[0]?.revision,
+              state: await job?.getState(),
+            };
+          },
+          ({ revision, state }) =>
+            revision === expectedRevision || state === 'failed',
         );
-      return published.jobId;
-    };
-    const executeNext = async (expectedNodeId: string) => {
-      const attempt = await waitForAttemptOutbox(
-        accepted.runId,
-        attemptOutboxes,
-      );
-      attemptOutboxes.push(attempt.outboxEventId);
-      const published = await producer.publish({
-        name: JOB_NAME.executeNodeAttempt,
-        data: {
-          schemaVersion: 1,
-          workspaceId,
-          runId: accepted.runId,
-          nodeRunId: attempt.nodeRunId,
-          attemptId: attempt.attemptId,
-          outboxEventId: attempt.outboxEventId,
-        },
-      });
-      const result = await waitFor(
-        async () => {
-          const [rows, job] = await Promise.all([
-            workerQuery<{ node_id: string; status: string }>(
-              `select node_id,status from app.node_runs
+        if (result.revision !== expectedRevision)
+          throw new Error(
+            `${label} coordinator failed: ${result.failedReason ?? 'unknown'}`,
+          );
+        return published.jobId;
+      };
+      const executeNext = async (expectedNodeId: string) => {
+        const attempt = await waitForAttemptOutbox(
+          accepted.runId,
+          attemptOutboxes,
+        );
+        attemptOutboxes.push(attempt.outboxEventId);
+        const published = await producer.publish({
+          name: JOB_NAME.executeNodeAttempt,
+          data: {
+            schemaVersion: 1,
+            workspaceId,
+            runId: accepted.runId,
+            nodeRunId: attempt.nodeRunId,
+            attemptId: attempt.attemptId,
+            outboxEventId: attempt.outboxEventId,
+          },
+        });
+        const result = await waitFor(
+          async () => {
+            const [rows, job] = await Promise.all([
+              workerQuery<{ node_id: string; status: string }>(
+                `select node_id,status from app.node_runs
                where workspace_id=$1 and id=$2`,
-              [workspaceId, attempt.nodeRunId],
-            ),
-            attemptQueue.getJob(published.jobId),
-          ]);
-          return {
-            failedReason: job?.failedReason,
-            rows,
-            state: await job?.getState(),
-          };
-        },
-        ({ rows, state }) =>
-          (rows[0]?.node_id === expectedNodeId &&
-            rows[0].status === 'succeeded') ||
-          state === 'failed',
-      );
-      if (result.rows[0]?.status !== 'succeeded')
-        throw new Error(
-          `Condition attempt failed: ${result.failedReason ?? 'unknown'}`,
+                [workspaceId, attempt.nodeRunId],
+              ),
+              attemptQueue.getJob(published.jobId),
+            ]);
+            return {
+              failedReason: job?.failedReason,
+              rows,
+              state: await job?.getState(),
+            };
+          },
+          ({ rows, state }) =>
+            (rows[0]?.node_id === expectedNodeId &&
+              rows[0].status === 'succeeded') ||
+            state === 'failed',
         );
-      return { ...attempt, jobId: published.jobId };
-    };
+        if (result.rows[0]?.status !== 'succeeded')
+          throw new Error(
+            `${label} attempt failed: ${result.failedReason ?? 'unknown'}`,
+          );
+        return { ...attempt, jobId: published.jobId };
+      };
 
-    try {
-      await producer.waitUntilReady(5_000);
-      await publishCoordinator(accepted.outboxEventId, 1);
+      try {
+        await producer.waitUntilReady(5_000);
+        await publishCoordinator(accepted.outboxEventId, 1);
 
-      await executeNext('manual');
-      const manualContinuation = await waitForCoordinatorOutbox(
-        accepted.runId,
-        coordinatorOutboxes,
-      );
-      coordinatorOutboxes.push(manualContinuation);
-      await publishCoordinator(manualContinuation, 2);
+        await executeNext('manual');
+        const manualContinuation = await waitForCoordinatorOutbox(
+          accepted.runId,
+          coordinatorOutboxes,
+        );
+        coordinatorOutboxes.push(manualContinuation);
+        await publishCoordinator(manualContinuation, 2);
 
-      const conditionAttempt = await executeNext('condition');
-      const completedConditionJob = await waitFor(
-        () => attemptQueue.getJob(conditionAttempt.jobId),
-        (job) => job !== undefined,
-      );
-      if (completedConditionJob === undefined)
-        throw new Error('Condition attempt job disappeared');
-      await waitFor(
-        () => completedConditionJob.getState(),
-        (state) => state === 'completed',
-      );
-      await completedConditionJob.remove();
-      await producer.publish({
-        name: JOB_NAME.executeNodeAttempt,
-        data: {
-          schemaVersion: 1,
-          workspaceId,
-          runId: accepted.runId,
-          nodeRunId: conditionAttempt.nodeRunId,
-          attemptId: conditionAttempt.attemptId,
-          outboxEventId: conditionAttempt.outboxEventId,
-        },
-      });
-      const replayedConditionJob = await waitFor(
-        () => attemptQueue.getJob(conditionAttempt.jobId),
-        (job) => job !== undefined,
-      );
-      if (replayedConditionJob === undefined)
-        throw new Error('Condition attempt replay disappeared');
-      await waitFor(
-        () => replayedConditionJob.getState(),
-        (state) => state === 'completed',
-      );
+        const conditionAttempt = await executeNext(branchNodeId);
+        const completedConditionJob = await waitFor(
+          () => attemptQueue.getJob(conditionAttempt.jobId),
+          (job) => job !== undefined,
+        );
+        if (completedConditionJob === undefined)
+          throw new Error('Condition attempt job disappeared');
+        await waitFor(
+          () => completedConditionJob.getState(),
+          (state) => state === 'completed',
+        );
+        await completedConditionJob.remove();
+        await producer.publish({
+          name: JOB_NAME.executeNodeAttempt,
+          data: {
+            schemaVersion: 1,
+            workspaceId,
+            runId: accepted.runId,
+            nodeRunId: conditionAttempt.nodeRunId,
+            attemptId: conditionAttempt.attemptId,
+            outboxEventId: conditionAttempt.outboxEventId,
+          },
+        });
+        const replayedConditionJob = await waitFor(
+          () => attemptQueue.getJob(conditionAttempt.jobId),
+          (job) => job !== undefined,
+        );
+        if (replayedConditionJob === undefined)
+          throw new Error('Condition attempt replay disappeared');
+        await waitFor(
+          () => replayedConditionJob.getState(),
+          (state) => state === 'completed',
+        );
 
-      const conditionContinuation = await waitForCoordinatorOutbox(
-        accepted.runId,
-        coordinatorOutboxes,
-      );
-      coordinatorOutboxes.push(conditionContinuation);
-      await Promise.allSettled([
-        workers.attempts.close(),
-        workers.coordinator.close(),
-      ]);
-      await Promise.all([
-        coordinatorQueue.obliterate({ force: true }),
-        attemptQueue.obliterate({ force: true }),
-      ]);
-      workers = await startWorkers();
+        const conditionContinuation = await waitForCoordinatorOutbox(
+          accepted.runId,
+          coordinatorOutboxes,
+        );
+        coordinatorOutboxes.push(conditionContinuation);
+        await Promise.allSettled([
+          workers.attempts.close(),
+          workers.coordinator.close(),
+        ]);
+        await Promise.all([
+          coordinatorQueue.obliterate({ force: true }),
+          attemptQueue.obliterate({ force: true }),
+        ]);
+        workers = await startWorkers();
 
-      const conditionJobId = await publishCoordinator(conditionContinuation, 3);
-      const completedConditionCoordinator = await waitFor(
-        () => coordinatorQueue.getJob(conditionJobId),
-        (job) => job !== undefined,
-      );
-      if (completedConditionCoordinator === undefined)
-        throw new Error('Condition coordinator job disappeared');
-      await waitFor(
-        () => completedConditionCoordinator.getState(),
-        (state) => state === 'completed',
-      );
-      await completedConditionCoordinator.remove();
-      await publishCoordinator(conditionContinuation, 3);
+        const conditionJobId = await publishCoordinator(
+          conditionContinuation,
+          3,
+        );
+        const completedConditionCoordinator = await waitFor(
+          () => coordinatorQueue.getJob(conditionJobId),
+          (job) => job !== undefined,
+        );
+        if (completedConditionCoordinator === undefined)
+          throw new Error('Condition coordinator job disappeared');
+        await waitFor(
+          () => completedConditionCoordinator.getState(),
+          (state) => state === 'completed',
+        );
+        await completedConditionCoordinator.remove();
+        await publishCoordinator(conditionContinuation, 3);
 
-      await executeNext('selected');
-      const selectedContinuation = await waitForCoordinatorOutbox(
-        accepted.runId,
-        coordinatorOutboxes,
-      );
-      coordinatorOutboxes.push(selectedContinuation);
-      await publishCoordinator(selectedContinuation, 4);
+        await executeNext('selected');
+        const selectedContinuation = await waitForCoordinatorOutbox(
+          accepted.runId,
+          coordinatorOutboxes,
+        );
+        coordinatorOutboxes.push(selectedContinuation);
+        await publishCoordinator(selectedContinuation, 4);
 
-      const terminal = await workerQuery<{
-        attempts: string;
-        branch_context: unknown;
-        node_id: string;
-        scheduler_state: unknown;
-        status: string;
-      }>(
-        `select node.node_id,node.status,node.branch_context,
+        const terminal = await workerQuery<{
+          attempts: string;
+          branch_context: unknown;
+          node_id: string;
+          scheduler_state: unknown;
+          status: string;
+        }>(
+          `select node.node_id,node.status,node.branch_context,
                 checkpoint.scheduler_state,
                 (select count(*)::text from app.node_attempts attempt
                   join app.node_runs attempt_node on attempt_node.id=attempt.node_run_id
@@ -1366,53 +1516,65 @@ describeIntegration('Phase 3 coordinator consumer', () => {
              on checkpoint.workflow_run_id=node.workflow_run_id
           where node.workspace_id=$1 and node.workflow_run_id=$2
           order by node.node_id`,
-        [workspaceId, accepted.runId],
-      );
-      expect(
-        terminal.map(({ node_id, status, branch_context }) => ({
-          branch_context,
-          node_id,
-          status,
-        })),
-      ).toEqual([
-        { branch_context: {}, node_id: 'condition', status: 'succeeded' },
-        { branch_context: {}, node_id: 'manual', status: 'succeeded' },
-        {
-          branch_context: {
-            branchPath: [{ nodeId: 'condition', outputPort: 'true' }],
-          },
-          node_id: 'selected',
-          status: 'succeeded',
-        },
-        {
-          branch_context: {
-            branchPath: [{ nodeId: 'condition', outputPort: 'false' }],
-          },
-          node_id: 'unselected',
-          status: 'skipped',
-        },
-      ]);
-      expect(terminal[0]?.attempts).toBe('3');
-      expect(parseCheckpoint(terminal[0]?.scheduler_state)).toMatchObject({
-        schemaVersion: 2,
-        branchSelections: [
-          {
-            nodeId: 'condition',
-            selectedOutputPort: 'true',
-          },
-        ],
-        runStatus: 'succeeded',
-      });
-    } finally {
-      await Promise.allSettled([
-        workers.attempts.close(),
-        workers.coordinator.close(),
-        producer.close(),
-        coordinatorQueue.close(),
-        attemptQueue.close(),
-      ]);
-    }
-  }, 30_000);
+          [workspaceId, accepted.runId],
+        );
+        expect(
+          terminal.map(({ node_id, status, branch_context }) => ({
+            branch_context,
+            node_id,
+            status,
+          })),
+        ).toEqual(
+          [
+            {
+              branch_context: {},
+              node_id: branchNodeId,
+              status: 'succeeded',
+            },
+            { branch_context: {}, node_id: 'manual', status: 'succeeded' },
+            {
+              branch_context: {
+                branchPath: [
+                  { nodeId: branchNodeId, outputPort: selectedPort },
+                ],
+              },
+              node_id: 'selected',
+              status: 'succeeded',
+            },
+            {
+              branch_context: {
+                branchPath: [
+                  { nodeId: branchNodeId, outputPort: unselectedPort },
+                ],
+              },
+              node_id: 'unselected',
+              status: 'skipped',
+            },
+          ].sort((left, right) => left.node_id.localeCompare(right.node_id)),
+        );
+        expect(terminal[0]?.attempts).toBe('3');
+        expect(parseCheckpoint(terminal[0]?.scheduler_state)).toMatchObject({
+          schemaVersion: 2,
+          branchSelections: [
+            {
+              nodeId: branchNodeId,
+              selectedOutputPort: selectedPort,
+            },
+          ],
+          runStatus: 'succeeded',
+        });
+      } finally {
+        await Promise.allSettled([
+          workers.attempts.close(),
+          workers.coordinator.close(),
+          producer.close(),
+          coordinatorQueue.close(),
+          attemptQueue.close(),
+        ]);
+      }
+    },
+    30_000,
+  );
 
   it('wakes multiple due retries through SQL, outbox dispatch, BullMQ, and the coordinator exactly once', async () => {
     const coordinatorQueue = new Queue(QUEUE_NAME.workflowCoordinator, {
@@ -1604,7 +1766,7 @@ describeIntegration('Phase 3 coordinator consumer', () => {
       dueWakeupBatchSize: 10,
       dueWakeupPollIntervalMillis: 25,
       maximumAdmissions: 2,
-      releaseCohort: 'condition_activation' as const,
+      releaseCohort: 'switch_activation' as const,
       redisUrl,
     };
     const beforeDue = await createCoordinatorRuntime(runtimeOptions, {
@@ -1788,7 +1950,7 @@ describeIntegration('Phase 3 coordinator consumer', () => {
         max: 4,
       }),
       maximumAdmissions: 1,
-      releaseCohort: 'condition_activation',
+      releaseCohort: 'switch_activation',
       redisUrl,
     });
     const producer = createQueueProducer({ redisUrl });

@@ -27,7 +27,7 @@ export const CORE_SWITCH_SELECTED_PORT_SCHEMA = z.enum([
 export const CORE_SWITCH_SCALAR_SCHEMA = z.union([
   z.null(),
   z.boolean(),
-  z.number().finite(),
+  z.number(),
   z.string().max(1_024),
 ]);
 export const CORE_SWITCH_CONFIG_SCHEMA = z

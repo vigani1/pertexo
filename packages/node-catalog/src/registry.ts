@@ -173,12 +173,26 @@ export const PLATFORM_CONDITION_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
   PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
 ]);
 
+/** Switch staging artifact: active Condition predecessor plus staged Switch. */
+export const PLATFORM_SWITCH_STAGING_RELEASE_SUPPORT = Object.freeze([
+  PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_SWITCH_STAGED,
+]);
+
+/** Switch activation artifact: staged predecessor plus active Switch. */
+export const PLATFORM_SWITCH_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
+  PLATFORM_REGISTRY_RELEASE_SWITCH_STAGED,
+  PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
+]);
+
 export const PLATFORM_RELEASE_COHORTS = Object.freeze([
   'core',
   'http_staging',
   'http_activation',
   'condition_staging',
   'condition_activation',
+  'switch_staging',
+  'switch_activation',
 ] as const);
 export type PlatformReleaseCohort = (typeof PLATFORM_RELEASE_COHORTS)[number];
 
@@ -194,6 +208,10 @@ export function platformRegistryReleaseSupport(cohort: PlatformReleaseCohort) {
       return PLATFORM_CONDITION_STAGING_RELEASE_SUPPORT;
     case 'condition_activation':
       return PLATFORM_CONDITION_ACTIVATION_RELEASE_SUPPORT;
+    case 'switch_staging':
+      return PLATFORM_SWITCH_STAGING_RELEASE_SUPPORT;
+    case 'switch_activation':
+      return PLATFORM_SWITCH_ACTIVATION_RELEASE_SUPPORT;
   }
 }
 
@@ -223,6 +241,10 @@ export function platformServingRegistryRelease(cohort: PlatformReleaseCohort) {
       return PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE;
     case 'condition_activation':
       return PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE;
+    case 'switch_staging':
+      return PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE;
+    case 'switch_activation':
+      return PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE;
   }
 }
 

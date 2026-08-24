@@ -167,7 +167,11 @@ describe('parseWorkerConfig', () => {
     expect(Object.isFrozen(config.artifactStore)).toBe(true);
   });
 
-  it.each(['http_activation', 'condition_activation'] as const)(
+  it.each([
+    'http_activation',
+    'condition_activation',
+    'switch_activation',
+  ] as const)(
     'fails closed when a %s execution worker lacks required HTTP capabilities',
     (nodeCompatibilityCohort) => {
       let thrown: unknown;

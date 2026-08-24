@@ -432,12 +432,6 @@ function configuredBranchPorts(
     return ['false', 'true'];
   if (node.definition.key !== 'core.switch' || node.definition.version !== 1)
     return [];
-  if (
-    typeof node.config !== 'object' ||
-    node.config === null ||
-    Array.isArray(node.config)
-  )
-    return ['default'];
   const cases = Reflect.get(node.config, 'cases') as unknown;
   if (!Array.isArray(cases)) return ['default'];
   return [

@@ -839,7 +839,7 @@ function assertCheckpointMatchesExecutable(
         const node = nodesById.get(nodeId);
         const outputPorts =
           node === undefined ? undefined : configuredBranchOutputPorts(node);
-        return outputPorts === undefined || !outputPorts.includes(outputPort);
+        return !outputPorts?.includes(outputPort);
       }) ||
       invocation.invocationKey !==
         createInvocationKey({
