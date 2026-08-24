@@ -94,6 +94,7 @@ export class ConnectionsModule {
           dependencies.encryption,
           dependencies.httpClient,
           telemetry,
+          dependencies.slackClient,
         ),
       },
     ];

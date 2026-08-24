@@ -2,6 +2,8 @@ import {
   HTTP_REQUEST_MANIFEST,
   HTTP_REQUEST_NETWORK_POLICY,
   HTTP_REQUEST_VALUE_POLICY,
+  SLACK_SEND_MESSAGE_MANIFEST,
+  SLACK_SEND_MESSAGE_POLICY,
 } from '@pertexo/integrations';
 import { createRegistryReleaseSuccessor } from '@pertexo/node-sdk';
 import {
@@ -299,6 +301,50 @@ export const PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE =
     policies: PLATFORM_REGISTRY_RELEASE_WAIT_STAGED.policies,
   });
 
+const slackExecutorAbi = SLACK_SEND_MESSAGE_MANIFEST.executorAbi;
+if (slackExecutorAbi === undefined)
+  throw new Error('Slack send-message manifest must pin its executor ABI');
+
+export const PLATFORM_REGISTRY_RELEASE_SLACK_STAGED =
+  createRegistryReleaseSuccessor({
+    previous: PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE,
+    epoch: 17,
+    definitions: [
+      ...PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE.definitions,
+      SLACK_SEND_MESSAGE_MANIFEST,
+    ],
+    executors: [
+      ...PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE.executors,
+      {
+        executor: SLACK_SEND_MESSAGE_MANIFEST.executor,
+        abiVersion: slackExecutorAbi,
+        definitions: [SLACK_SEND_MESSAGE_MANIFEST.definition],
+        lifecycle: 'staged',
+        policyReferences: SLACK_SEND_MESSAGE_MANIFEST.policyReferences,
+      },
+    ],
+    policies: [
+      ...PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE.policies,
+      SLACK_SEND_MESSAGE_POLICY,
+    ],
+  });
+
+export const PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE =
+  createRegistryReleaseSuccessor({
+    previous: PLATFORM_REGISTRY_RELEASE_SLACK_STAGED,
+    epoch: 18,
+    definitions: PLATFORM_REGISTRY_RELEASE_SLACK_STAGED.definitions,
+    executors: PLATFORM_REGISTRY_RELEASE_SLACK_STAGED.executors.map(
+      (executor) =>
+        executor.executor.key === SLACK_SEND_MESSAGE_MANIFEST.executor.key &&
+        executor.executor.version ===
+          SLACK_SEND_MESSAGE_MANIFEST.executor.version
+          ? { ...executor, lifecycle: 'active' as const }
+          : executor,
+    ),
+    policies: PLATFORM_REGISTRY_RELEASE_SLACK_STAGED.policies,
+  });
+
 /** Complete audit/test history; never pass this to one serving artifact. */
 export const PLATFORM_REGISTRY_RELEASE_HISTORY = Object.freeze([
   ...CORE_REGISTRY_RELEASE_SUPPORT,
@@ -316,6 +362,8 @@ export const PLATFORM_REGISTRY_RELEASE_HISTORY = Object.freeze([
   PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_WAIT_STAGED,
   PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_SLACK_STAGED,
+  PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE,
 ]);
 
 /** Backward-compatible default cohort until deployment selects a Phase 4 cohort. */
@@ -395,6 +443,14 @@ export const PLATFORM_WAIT_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
   PLATFORM_REGISTRY_RELEASE_WAIT_STAGED,
   PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE,
 ]);
+export const PLATFORM_SLACK_STAGING_RELEASE_SUPPORT = Object.freeze([
+  PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_SLACK_STAGED,
+]);
+export const PLATFORM_SLACK_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
+  PLATFORM_REGISTRY_RELEASE_SLACK_STAGED,
+  PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE,
+]);
 
 export const PLATFORM_RELEASE_COHORTS = Object.freeze([
   'core',
@@ -412,6 +468,8 @@ export const PLATFORM_RELEASE_COHORTS = Object.freeze([
   'for_each_activation',
   'wait_staging',
   'wait_activation',
+  'slack_staging',
+  'slack_activation',
 ] as const);
 export type PlatformReleaseCohort = (typeof PLATFORM_RELEASE_COHORTS)[number];
 
@@ -447,6 +505,10 @@ export function platformRegistryReleaseSupport(cohort: PlatformReleaseCohort) {
       return PLATFORM_WAIT_STAGING_RELEASE_SUPPORT;
     case 'wait_activation':
       return PLATFORM_WAIT_ACTIVATION_RELEASE_SUPPORT;
+    case 'slack_staging':
+      return PLATFORM_SLACK_STAGING_RELEASE_SUPPORT;
+    case 'slack_activation':
+      return PLATFORM_SLACK_ACTIVATION_RELEASE_SUPPORT;
   }
 }
 
@@ -496,6 +558,10 @@ export function platformServingRegistryRelease(cohort: PlatformReleaseCohort) {
       return PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE;
     case 'wait_activation':
       return PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE;
+    case 'slack_staging':
+      return PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE;
+    case 'slack_activation':
+      return PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE;
   }
 }
 

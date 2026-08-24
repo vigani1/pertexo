@@ -455,59 +455,110 @@
       },
       "ConnectionCreateRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "readOnly": true,
-        "type": "object",
-        "properties": {
-          "providerKey": {
-            "type": "string",
-            "const": "http"
-          },
-          "name": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 128
-          },
-          "credential": {
+        "oneOf": [
+          {
             "readOnly": true,
             "type": "object",
             "properties": {
-              "schemaVersion": {
-                "type": "number",
-                "const": 1
-              },
-              "type": {
+              "providerKey": {
                 "type": "string",
-                "const": "http_headers"
+                "const": "http"
               },
-              "headers": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "credential": {
+                "readOnly": true,
                 "type": "object",
-                "propertyNames": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 128,
-                  "pattern": "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$"
+                "properties": {
+                  "schemaVersion": {
+                    "type": "number",
+                    "const": 1
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "http_headers"
+                  },
+                  "headers": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128,
+                      "pattern": "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$"
+                    },
+                    "additionalProperties": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 8192
+                    }
+                  }
                 },
-                "additionalProperties": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 8192
-                }
+                "required": [
+                  "schemaVersion",
+                  "type",
+                  "headers"
+                ],
+                "additionalProperties": false
               }
             },
             "required": [
-              "schemaVersion",
-              "type",
-              "headers"
+              "providerKey",
+              "name",
+              "credential"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "readOnly": true,
+            "type": "object",
+            "properties": {
+              "providerKey": {
+                "type": "string",
+                "const": "slack"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "credential": {
+                "readOnly": true,
+                "type": "object",
+                "properties": {
+                  "schemaVersion": {
+                    "type": "number",
+                    "const": 1
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "slack_bot_token"
+                  },
+                  "botToken": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 512,
+                    "pattern": "^xoxb-[A-Za-z0-9-]+$"
+                  }
+                },
+                "required": [
+                  "schemaVersion",
+                  "type",
+                  "botToken"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "providerKey",
+              "name",
+              "credential"
             ],
             "additionalProperties": false
           }
-        },
-        "required": [
-          "providerKey",
-          "name",
-          "credential"
-        ],
-        "additionalProperties": false
+        ]
       },
       "ConnectionResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -526,7 +577,10 @@
           },
           "providerKey": {
             "type": "string",
-            "const": "http"
+            "enum": [
+              "http",
+              "slack"
+            ]
           },
           "name": {
             "type": "string",
@@ -535,7 +589,10 @@
           },
           "authType": {
             "type": "string",
-            "const": "http_headers"
+            "enum": [
+              "http_headers",
+              "slack_bot_token"
+            ]
           },
           "status": {
             "type": "string",
@@ -634,38 +691,68 @@
             "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
           },
           "credential": {
-            "readOnly": true,
-            "type": "object",
-            "properties": {
-              "schemaVersion": {
-                "type": "number",
-                "const": 1
-              },
-              "type": {
-                "type": "string",
-                "const": "http_headers"
-              },
-              "headers": {
+            "oneOf": [
+              {
+                "readOnly": true,
                 "type": "object",
-                "propertyNames": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 128,
-                  "pattern": "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$"
+                "properties": {
+                  "schemaVersion": {
+                    "type": "number",
+                    "const": 1
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "http_headers"
+                  },
+                  "headers": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128,
+                      "pattern": "^[!#$%&'*+.^_`|~0-9A-Za-z-]+$"
+                    },
+                    "additionalProperties": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 8192
+                    }
+                  }
                 },
-                "additionalProperties": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 8192
-                }
+                "required": [
+                  "schemaVersion",
+                  "type",
+                  "headers"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "readOnly": true,
+                "type": "object",
+                "properties": {
+                  "schemaVersion": {
+                    "type": "number",
+                    "const": 1
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "slack_bot_token"
+                  },
+                  "botToken": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 512,
+                    "pattern": "^xoxb-[A-Za-z0-9-]+$"
+                  }
+                },
+                "required": [
+                  "schemaVersion",
+                  "type",
+                  "botToken"
+                ],
+                "additionalProperties": false
               }
-            },
-            "required": [
-              "schemaVersion",
-              "type",
-              "headers"
-            ],
-            "additionalProperties": false
+            ]
           }
         },
         "required": [
@@ -676,19 +763,37 @@
       },
       "ConnectionTestRequest": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "readOnly": true,
-        "type": "object",
-        "properties": {
-          "url": {
-            "type": "string",
-            "maxLength": 2048,
-            "format": "uri"
+        "anyOf": [
+          {
+            "readOnly": true,
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string",
+                "maxLength": 2048,
+                "format": "uri"
+              }
+            },
+            "required": [
+              "url"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "readOnly": true,
+            "type": "object",
+            "properties": {
+              "providerKey": {
+                "type": "string",
+                "const": "slack"
+              }
+            },
+            "required": [
+              "providerKey"
+            ],
+            "additionalProperties": false
           }
-        },
-        "required": [
-          "url"
-        ],
-        "additionalProperties": false
+        ]
       },
       "ConnectionTestResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -711,7 +816,10 @@
               },
               "providerKey": {
                 "type": "string",
-                "const": "http"
+                "enum": [
+                  "http",
+                  "slack"
+                ]
               },
               "name": {
                 "type": "string",
@@ -720,7 +828,10 @@
               },
               "authType": {
                 "type": "string",
-                "const": "http_headers"
+                "enum": [
+                  "http_headers",
+                  "slack_bot_token"
+                ]
               },
               "status": {
                 "type": "string",

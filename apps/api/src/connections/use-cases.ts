@@ -16,6 +16,7 @@ import type { ActorContext } from '../workspaces/index.js';
 import type {
   ConnectionCommandPersistence,
   ConnectionHttpClient,
+  ConnectionSlackClient,
   ConnectionTestPersistence,
   ConnectionSecretEncryptionPort,
 } from './ports.js';
@@ -31,6 +32,7 @@ import {
   connectionTestRequestSchema,
   connectionTestResponseSchema,
   httpHeadersCredentialSchema,
+  slackBotTokenCredentialSchema,
   type ConnectionResponse,
   type ConnectionTestResponse,
 } from './types.js';
@@ -162,6 +164,7 @@ export class RotateConnectionSecretUseCase {
             connectionId: input.connectionId,
             secretVersionId,
             expectedCurrentSecretVersionId: request.expectedSecretVersionId,
+            expectedAuthType: request.credential.type,
             sealed,
             idempotencyKey: input.idempotencyKey,
             requestHash,
@@ -210,6 +213,7 @@ export class TestConnectionUseCase {
     private readonly encryption: ConnectionSecretEncryptionPort,
     private readonly httpClient: ConnectionHttpClient,
     private readonly telemetry: ConnectionTelemetry = NOOP_CONNECTION_TELEMETRY,
+    private readonly slackClient?: ConnectionSlackClient,
   ) {}
 
   public execute(
@@ -218,9 +222,10 @@ export class TestConnectionUseCase {
     return this.telemetry.measure(CONNECTION_OPERATION.test, async () => {
       await authorize(input, this.authorization, 'connection:use');
       const request = connectionTestRequestSchema.parse(input.request);
+      const expectedProviderKey = 'url' in request ? 'http' : 'slack';
       const requestHash = hashRequest({
         connectionId: input.connectionId,
-        url: request.url,
+        ...request,
       });
       const dispatchToken = randomUUID();
       const common = Object.freeze({
@@ -237,7 +242,7 @@ export class TestConnectionUseCase {
       });
       const started = await this.persistence.startConnectionTest({
         ...common,
-        expectedProviderKey: 'http',
+        expectedProviderKey,
       });
       if (started.kind === 'replay') return toTestResponse(started.result);
 
@@ -246,7 +251,7 @@ export class TestConnectionUseCase {
         await authorize(input, this.authorization, 'connection:use');
         const resolved = await this.persistence.resolveConnectionTestSecret({
           ...common,
-          expectedProviderKey: 'http',
+          expectedProviderKey,
         });
         plaintext = await this.encryption.open(resolved.sealed, {
           workspaceId: input.routeWorkspaceId,
@@ -254,8 +259,34 @@ export class TestConnectionUseCase {
           secretVersionId: resolved.secretVersionId,
         });
         const credential = decodeCredential(plaintext);
-        const sensitiveValues = Object.values(credential.headers);
         try {
+          if (expectedProviderKey === 'slack') {
+            if (
+              credential.type !== 'slack_bot_token' ||
+              this.slackClient === undefined
+            )
+              throw new ConnectionSecretEncryptionError();
+            const result = await this.slackClient.authTest({
+              botToken: credential.botToken,
+              timeoutMillis: 15_000,
+              beforeDispatch: () =>
+                this.persistence.markConnectionTestDispatched({
+                  ...common,
+                  secretVersionId: resolved.secretVersionId,
+                }),
+            });
+            return toTestResponse(
+              await this.persistence.completeConnectionTest({
+                ...common,
+                secretVersionId: resolved.secretVersionId,
+                outcome: slackTestOutcome(result),
+              }),
+            );
+          }
+          if (credential.type !== 'http_headers')
+            throw new ConnectionSecretEncryptionError();
+          if (!('url' in request)) throw new ConnectionSecretEncryptionError();
+          const sensitiveValues = Object.values(credential.headers);
           const response = await this.httpClient.execute({
             url: request.url,
             method: 'GET',
@@ -325,10 +356,58 @@ function decodeCredential(plaintext: Uint8Array) {
     const serialized = new TextDecoder('utf-8', { fatal: true }).decode(
       plaintext,
     );
-    return httpHeadersCredentialSchema.parse(JSON.parse(serialized));
+    const value: unknown = JSON.parse(serialized);
+    return value !== null &&
+      typeof value === 'object' &&
+      'type' in value &&
+      value.type === 'slack_bot_token'
+      ? slackBotTokenCredentialSchema.parse(value)
+      : httpHeadersCredentialSchema.parse(value);
   } catch {
     throw new ConnectionSecretEncryptionError();
   }
+}
+
+function slackTestOutcome(
+  result: Awaited<ReturnType<ConnectionSlackClient['authTest']>>,
+): ConnectionTestOutcome {
+  switch (result.kind) {
+    case 'succeeded':
+      return Object.freeze({ ok: true, httpStatus: 200 });
+    case 'rate_limited':
+      return Object.freeze({
+        ok: false,
+        httpStatus: 429,
+        errorCode: 'connection.provider_rate_limited',
+        reauthorizationRequired: false,
+      });
+    case 'http_failure':
+      return responseOutcome(result.status);
+    case 'invalid_response':
+      return Object.freeze({
+        ok: false,
+        httpStatus: null,
+        errorCode: 'connection.provider_invalid_response',
+        reauthorizationRequired: false,
+      });
+    case 'rejected': {
+      const rejected = new Set([
+        'account_inactive',
+        'invalid_auth',
+        'not_authed',
+        'token_revoked',
+      ]);
+      return Object.freeze({
+        ok: false,
+        httpStatus: 200,
+        errorCode: rejected.has(result.error)
+          ? 'connection.credential_rejected'
+          : 'connection.provider_rejected',
+        reauthorizationRequired: rejected.has(result.error),
+      });
+    }
+  }
+  throw new TypeError('Unsupported Slack connection-test outcome');
 }
 
 function responseOutcome(status: number): ConnectionTestOutcome {

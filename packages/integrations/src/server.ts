@@ -45,6 +45,16 @@ export {
   classifySecureHttpResponse,
   HTTP_SIDE_EFFECT_CLASS,
 } from './http/outcome-policy.js';
+export { createSlackClient, SLACK_API_ENDPOINTS } from './slack/client.js';
+export type { SlackApiResult, SlackClient } from './slack/client.js';
+export {
+  createSlackSendMessageExecutorRegistration,
+  SlackSendMessageExecutorError,
+} from './slack/executor.js';
+export type {
+  SlackSendMessageExecutorDependencies,
+  SlackSendMessageExecutorTelemetry,
+} from './slack/executor.js';
 export {
   createHttpRequestExecutorRegistration,
   HttpRequestExecutorError,

@@ -9,6 +9,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type {
   ConnectionCommandPersistence,
   ConnectionHttpClient,
+  ConnectionSlackClient,
   ConnectionTestPersistence,
 } from '../../src/connections/ports.js';
 import {
@@ -405,6 +406,62 @@ describe('connection application use cases', () => {
     });
     expect(encryption.open).not.toHaveBeenCalled();
     expect(httpClient.execute).not.toHaveBeenCalled();
+  });
+
+  it('tests a Slack bot token only through one fixed auth.test client call', async () => {
+    const slackCredential = {
+      schemaVersion: 1,
+      type: 'slack_bot_token',
+      botToken: 'xoxb-123456789-deeply-secret',
+    } as const;
+    const slackRecord = record({
+      providerKey: 'slack',
+      authType: 'slack_bot_token',
+      name: 'Operations Slack',
+    });
+    const store = testPersistence({
+      resolveConnectionTestSecret: vi.fn(() =>
+        Promise.resolve({ connection: slackRecord, secretVersionId, sealed }),
+      ),
+      completeConnectionTest: vi.fn<
+        ConnectionTestPersistence['completeConnectionTest']
+      >((input) =>
+        Promise.resolve({ connection: slackRecord, outcome: input.outcome }),
+      ),
+    });
+    const plaintext = new TextEncoder().encode(JSON.stringify(slackCredential));
+    const authTest = vi.fn<ConnectionSlackClient['authTest']>(async (input) => {
+      expect(input.botToken).toBe(slackCredential.botToken);
+      expect(input.timeoutMillis).toBe(15_000);
+      await input.beforeDispatch();
+      return { kind: 'succeeded' };
+    });
+
+    const result = await new TestConnectionUseCase(
+      store,
+      authorization(),
+      { seal: vi.fn(), open: vi.fn(() => Promise.resolve(plaintext)) },
+      { execute: vi.fn() },
+      undefined,
+      { authTest },
+    ).execute({
+      actor,
+      routeWorkspaceId: workspaceId,
+      connectionId,
+      idempotencyKey: 'test-slack',
+      request: { providerKey: 'slack' },
+    });
+
+    expect(result.outcome).toEqual({
+      ok: true,
+      httpStatus: 200,
+      errorCode: null,
+    });
+    expect(store.startConnectionTest).toHaveBeenCalledWith(
+      expect.objectContaining({ expectedProviderKey: 'slack' }),
+    );
+    expect(authTest).toHaveBeenCalledOnce();
+    expect(plaintext.every((byte) => byte === 0)).toBe(true);
   });
 
   it('denies a viewer before claiming or decrypting a connection test', async () => {

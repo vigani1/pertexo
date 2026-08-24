@@ -896,7 +896,7 @@ function parseIdentity(value: unknown, label: string): DefinitionIdentity {
   exactKeys(identity, ['key', 'version']);
   if (
     typeof identity.key !== 'string' ||
-    !/^[a-z][a-z0-9]*(?:\.[a-z0-9]+)*$/u.test(identity.key) ||
+    !/^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*$/u.test(identity.key) ||
     typeof identity.version !== 'number' ||
     !Number.isSafeInteger(identity.version) ||
     identity.version < 1

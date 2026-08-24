@@ -241,6 +241,7 @@ describe('connection persistence', () => {
       '0032_for_each_barriers.sql',
       '0033_durable_wait.sql',
       '0034_run_failure_notifications.sql',
+      '0035_slack_bot_token_connections.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, upgradeDatabaseName),
@@ -253,7 +254,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0034_run_failure_notifications.sql',
+        migrationHead: '0035_slack_bot_token_connections.sql',
       });
     } finally {
       await pool.end();
@@ -317,6 +318,98 @@ describe('connection persistence', () => {
       client.release();
       await owner.end();
     }
+  });
+
+  it('creates, resolves, fences, rotates, audits, and revokes a Slack bot token connection', async () => {
+    const input = createInput({
+      providerKey: 'slack',
+      authType: CONNECTION_AUTH_TYPE.slackBotToken,
+      name: `Slack ${randomUUID().slice(0, 8)}`,
+    });
+    const created = await api.createConnection(input);
+    expect(created).toMatchObject({
+      providerKey: 'slack',
+      authType: 'slack_bot_token',
+      status: 'active',
+    });
+
+    const resolved = await worker.resolveConnectionSecret({
+      workspaceId: workspaceA,
+      connectionId: created.id,
+      expectedProviderKey: 'slack',
+      workerId: 'slack-worker',
+      purpose: 'slack.send_message.execute',
+    });
+    expect(resolved).toMatchObject({ secretVersionId: input.secretVersionId });
+    await worker.assertConnectionSecretCurrent({
+      workspaceId: workspaceA,
+      connectionId: created.id,
+      expectedProviderKey: 'slack',
+      expectedAuthType: CONNECTION_AUTH_TYPE.slackBotToken,
+      secretVersionId: input.secretVersionId,
+    });
+
+    const nextVersion = randomUUID();
+    const rotated = await api.rotateConnectionSecret({
+      workspaceId: workspaceA,
+      actorId: ownerA,
+      connectionId: created.id,
+      expectedCurrentSecretVersionId: input.secretVersionId,
+      expectedAuthType: CONNECTION_AUTH_TYPE.slackBotToken,
+      secretVersionId: nextVersion,
+      sealed: sealed(9),
+      idempotencyKey: `rotate-slack-${created.id}`,
+      requestHash: createHash('sha256')
+        .update(`rotate:${created.id}`)
+        .digest('hex'),
+    });
+    expect(rotated.currentSecretVersionId).toBe(nextVersion);
+    await expect(
+      worker.assertConnectionSecretCurrent({
+        workspaceId: workspaceA,
+        connectionId: created.id,
+        expectedProviderKey: 'slack',
+        expectedAuthType: CONNECTION_AUTH_TYPE.slackBotToken,
+        secretVersionId: input.secretVersionId,
+      }),
+    ).rejects.toBeInstanceOf(ConnectionUnavailableError);
+
+    await api.revokeConnection({
+      workspaceId: workspaceA,
+      actorId: ownerA,
+      connectionId: created.id,
+    });
+    await expect(
+      worker.resolveConnectionSecret({
+        workspaceId: workspaceA,
+        connectionId: created.id,
+        expectedProviderKey: 'slack',
+        workerId: 'slack-worker',
+        purpose: 'slack.send_message.execute',
+      }),
+    ).rejects.toBeInstanceOf(ConnectionUnavailableError);
+
+    const owner = new Pool({ connectionString: databaseUrl(migrationBaseUrl) });
+    const ownerClient = await owner.connect();
+    await ownerClient.query('begin');
+    await ownerClient.query('set local role pertexo_owner');
+    await ownerClient.query("select set_config('app.workspace_id', $1, true)", [
+      workspaceA,
+    ]);
+    const audit = await ownerClient.query<{ event_type: string }>(
+      `select event_type from app.connection_events
+       where workspace_id=$1 and connection_id=$2 order by created_at,id`,
+      [workspaceA, created.id],
+    );
+    await ownerClient.query('rollback');
+    ownerClient.release();
+    await owner.end();
+    expect(audit.rows.map(({ event_type }) => event_type)).toEqual([
+      'connection.created',
+      'connection.credential_accessed',
+      'connection.secret_rotated',
+      'connection.revoked',
+    ]);
   });
 
   it('rejects conflicting idempotency and active provider/name reuse without partial rows', async () => {
@@ -1045,7 +1138,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0034_run_failure_notifications.sql',
+        migrationHead: '0035_slack_bot_token_connections.sql',
       });
       await expect(
         checkDatabaseReadiness(workerReadinessPool, {
@@ -1053,7 +1146,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0034_run_failure_notifications.sql',
+        migrationHead: '0035_slack_bot_token_connections.sql',
       });
     } finally {
       await Promise.all([apiReadinessPool.end(), workerReadinessPool.end()]);

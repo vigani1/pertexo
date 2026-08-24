@@ -8,7 +8,7 @@ import {
   type CompatibilityReleaseExpectationSet,
 } from './compatibility-release.js';
 
-export const EXPECTED_MIGRATION_HEAD = '0034_run_failure_notifications.sql';
+export const EXPECTED_MIGRATION_HEAD = '0035_slack_bot_token_connections.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -845,6 +845,12 @@ export async function checkDatabaseReadiness(
           where conrelid = to_regclass('app.connections')
             and conname = 'connections_current_secret_same_connection_fk'
             and contype = 'f' and condeferrable and condeferred
+        )
+        and exists (
+          select 1 from pg_constraint
+          where conrelid = to_regclass('app.connections')
+            and conname = 'connections_auth_type_valid'
+            and pg_get_constraintdef(oid) = 'CHECK (((auth_type)::text = ANY ((ARRAY[''http_headers''::character varying, ''slack_bot_token''::character varying])::text[])))'
         )
         and exists (
           select 1 from pg_trigger

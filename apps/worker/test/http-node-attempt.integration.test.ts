@@ -22,11 +22,11 @@ import {
   type SecureHttpTransportRequest,
 } from '@pertexo/integrations/server';
 import {
-  PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
-  PLATFORM_REGISTRY_RELEASE_HTTP_STAGED,
+  PLATFORM_REGISTRY_RELEASE_HISTORY,
+  PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE,
 } from '@pertexo/node-catalog';
+import type { PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE } from '@pertexo/node-catalog';
 import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
-import { CORE_REGISTRY_RELEASE_SUCCESSOR } from '@pertexo/nodes-core';
 import { createQueueProducer, JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
 import {
   buildWorkflowExecutableV2,
@@ -77,10 +77,14 @@ const workflowId = randomUUID();
 const workflowVersionId = randomUUID();
 const connectionId = randomUUID();
 const secretVersionId = randomUUID();
+const slackConnectionId = randomUUID();
+const slackSecretVersionId = randomUUID();
 const plaintextSecret = `Bearer http-attempt-${randomUUID()}`;
+const slackBotToken = `xoxb-${randomUUID()}-secret`;
+const slackMessageText = `deployment-${randomUUID()}`;
 const responseBytes = 70_000;
 const activeRelease = composeExecutableCompatibilityRelease(
-  PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE,
 );
 
 function databaseUrl(base: string): string {
@@ -311,12 +315,29 @@ function graph() {
         inputMappings: {},
         connectionRefs: { http_headers: connectionId },
       },
+      {
+        id: 'slack',
+        definition: { key: 'slack.send_message', version: 1 },
+        position: { x: 20, y: 0 },
+        configVersion: 1,
+        config: { timeoutMillis: 5_000 },
+        inputMappings: {
+          channelId: { kind: 'literal' as const, value: 'C123ABC' },
+          text: { kind: 'literal' as const, value: slackMessageText },
+        },
+        connectionRefs: { slack_bot_token: slackConnectionId },
+      },
     ],
     edges: [
       {
         id: 'manual-http',
         source: { nodeId: 'manual', port: 'out' },
         target: { nodeId: 'http', port: 'in' },
+      },
+      {
+        id: 'http-slack',
+        source: { nodeId: 'http', port: 'out' },
+        target: { nodeId: 'slack', port: 'in' },
       },
     ],
   };
@@ -422,6 +443,30 @@ async function seedFixture(): Promise<ConnectionEnvelopeEncryption> {
     idempotencyKey: randomUUID(),
     requestHash: createHash('sha256').update(randomUUID()).digest('hex'),
   });
+  const slackSecret = new TextEncoder().encode(
+    JSON.stringify({
+      schemaVersion: 1,
+      type: 'slack_bot_token',
+      botToken: slackBotToken,
+    }),
+  );
+  const sealedSlackSecret = await encryption.seal(slackSecret, {
+    workspaceId,
+    connectionId: slackConnectionId,
+    secretVersionId: slackSecretVersionId,
+  });
+  await connections.createConnection({
+    workspaceId,
+    actorId,
+    connectionId: slackConnectionId,
+    secretVersionId: slackSecretVersionId,
+    providerKey: 'slack',
+    name: 'Slack attempt credential',
+    authType: 'slack_bot_token',
+    sealed: sealedSlackSecret,
+    idempotencyKey: randomUUID(),
+    requestHash: createHash('sha256').update(randomUUID()).digest('hex'),
+  });
   return encryption;
 }
 
@@ -502,9 +547,8 @@ beforeAll(async () => {
     await admin.end();
   }
   await migrateDatabase();
-  await activateRelease(CORE_REGISTRY_RELEASE_SUCCESSOR);
-  await activateRelease(PLATFORM_REGISTRY_RELEASE_HTTP_STAGED);
-  await activateRelease(PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE);
+  for (const release of PLATFORM_REGISTRY_RELEASE_HISTORY.slice(1))
+    await activateRelease(release);
 }, 60_000);
 
 afterAll(async () => {
@@ -529,6 +573,11 @@ describeIntegration('active HTTP node attempt', () => {
     const artifactConfig = parseArtifactStoreConfig(process.env);
     const artifactVerifier = createArtifactStore(artifactConfig);
     const transportRequests: SecureHttpTransportRequest[] = [];
+    const slackRequests: {
+      botToken: string;
+      channelId: string;
+      text: string;
+    }[] = [];
     const telemetry: {
       kind: 'count' | 'duration' | 'span';
       name: string;
@@ -591,13 +640,30 @@ describeIntegration('active HTTP node attempt', () => {
       },
     );
     const registry = createPlatformNodeRegistryForRelease(
-      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+      PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE,
       {
         httpRequest: { httpClient },
         httpRequestTelemetry: createProductionHttpProviderTelemetry({
           meter,
           tracer,
         }),
+        slackSendMessage: {
+          client: {
+            sendMessage: async (input) => {
+              await input.beforeDispatch();
+              slackRequests.push({
+                botToken: input.botToken,
+                channelId: input.channelId,
+                text: input.text,
+              });
+              return {
+                kind: 'succeeded',
+                channelId: input.channelId,
+                messageTs: '1724412345.000100',
+              };
+            },
+          },
+        },
       },
     );
     const capabilities = await createWorkerNodeRuntimeCapabilities(
@@ -617,7 +683,7 @@ describeIntegration('active HTTP node attempt', () => {
       }),
       maximumAdmissions: 1,
       redisUrl,
-      releaseCohort: 'http_activation',
+      releaseCohort: 'slack_activation',
     });
     const attempts = await createNodeAttemptRuntime(
       {
@@ -628,7 +694,7 @@ describeIntegration('active HTTP node attempt', () => {
         heartbeatIntervalMillis: 200,
         leaseDurationSeconds: 10,
         redisUrl,
-        releaseCohort: 'http_activation',
+        releaseCohort: 'slack_activation',
         workerId: `http-attempt-${randomUUID().slice(0, 8)}`,
       },
       { registry, runtimeCapabilities: capabilities.factories },
@@ -952,6 +1018,109 @@ describeIntegration('active HTTP node attempt', () => {
       );
       expect(auditAfterRedelivery.rows).toEqual(audit.rows);
 
+      const slackContinuation = await continuation(
+        accepted.runId,
+        coordinatorOutboxes,
+      );
+      coordinatorOutboxes.push(slackContinuation);
+      await producer.publish({
+        name: JOB_NAME.advanceWorkflowRun,
+        data: {
+          schemaVersion: 1,
+          workspaceId,
+          runId: accepted.runId,
+          outboxEventId: slackContinuation,
+        },
+      });
+      const slack = await attemptDelivery(accepted.runId, 'slack');
+      const slackDelivery = {
+        name: JOB_NAME.executeNodeAttempt,
+        data: {
+          schemaVersion: 1 as const,
+          workspaceId,
+          runId: accepted.runId,
+          nodeRunId: slack.node_run_id,
+          attemptId: slack.attempt_id,
+          outboxEventId: slack.outbox_id,
+        },
+      };
+      const slackJob = await producer.publish(slackDelivery);
+      const slackTerminal = await waitFor(
+        () =>
+          workerQuery<{
+            attempt_status: string;
+            dispatch_marked_at: Date | null;
+            executor_error_kind: string | null;
+            executor_failure_kind: string | null;
+            error_summary: string | null;
+            node_status: string;
+            output_ref: unknown;
+            safe_error_code: string | null;
+          }>(
+            `select attempt.status attempt_status,attempt.dispatch_marked_at,
+                    attempt.executor_error_kind,attempt.executor_failure_kind,
+                    attempt.error_summary,
+                    attempt.safe_error_code,node.status node_status,attempt.output_ref
+             from app.node_attempts attempt
+             join app.node_runs node
+               on node.workspace_id=attempt.workspace_id and node.id=attempt.node_run_id
+             where attempt.workspace_id=$1 and attempt.id=$2`,
+            [workspaceId, slack.attempt_id],
+          ),
+        (rows) => rows[0]?.attempt_status === 'succeeded',
+      );
+      expect(slackTerminal[0]).toMatchObject({
+        attempt_status: 'succeeded',
+        node_status: 'succeeded',
+        output_ref: {
+          kind: 'inline',
+          value: {
+            channelId: 'C123ABC',
+            messageTs: '1724412345.000100',
+          },
+        },
+      });
+      expect(slackTerminal[0]?.dispatch_marked_at).toBeInstanceOf(Date);
+      expect(slackRequests).toEqual([
+        {
+          botToken: slackBotToken,
+          channelId: 'C123ABC',
+          text: slackMessageText,
+        },
+      ]);
+      const slackAudit = await withOwner((client) =>
+        client.query<{ count: string }>(
+          `select count(*)::text count from app.connection_events
+           where workspace_id=$1 and connection_id=$2
+             and event_type='connection.credential_accessed'
+             and actor_kind='worker'`,
+          [workspaceId, slackConnectionId],
+        ),
+      );
+      expect(slackAudit.rows[0]?.count).toBe('1');
+      const completedSlackJob = await waitFor(
+        () => attemptQueue.getJob(slackJob.jobId),
+        (job) => job !== undefined,
+      );
+      if (completedSlackJob === undefined) throw new Error('Slack job missing');
+      await waitFor(
+        () => completedSlackJob.getState(),
+        (state) => state === 'completed',
+      );
+      await completedSlackJob.remove();
+      await producer.publish(slackDelivery);
+      const replayedSlackJob = await waitFor(
+        () => attemptQueue.getJob(slackJob.jobId),
+        (job) => job !== undefined,
+      );
+      if (replayedSlackJob === undefined)
+        throw new Error('redelivered Slack job missing');
+      await waitFor(
+        () => replayedSlackJob.getState(),
+        (state) => state === 'completed',
+      );
+      expect(slackRequests).toHaveLength(1);
+
       const durableSurface = await withOwner((client) =>
         client.query<{ surface: string }>(
           `select concat_ws(E'\n',
@@ -976,7 +1145,12 @@ describeIntegration('active HTTP node attempt', () => {
       );
       const queueSurface = JSON.stringify([delivery, replay.toJSON()]);
       expect(durableSurface.rows[0]?.surface).not.toContain(plaintextSecret);
+      expect(durableSurface.rows[0]?.surface).not.toContain(slackBotToken);
+      expect(durableSurface.rows[0]?.surface).not.toContain(slackMessageText);
       expect(queueSurface).not.toContain(plaintextSecret);
+      expect(
+        JSON.stringify([slackDelivery, replayedSlackJob.toJSON()]),
+      ).not.toContain(slackBotToken);
       expect(JSON.stringify(telemetry)).not.toContain(plaintextSecret);
     } finally {
       await Promise.allSettled([

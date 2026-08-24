@@ -2,8 +2,11 @@ import { z } from 'zod';
 
 export const connectionIdentifierSchema = z.uuid();
 export const connectionSecretVersionIdentifierSchema = z.uuid();
-export const connectionProviderKeySchema = z.literal('http');
-export const connectionAuthTypeSchema = z.literal('http_headers');
+export const connectionProviderKeySchema = z.enum(['http', 'slack']);
+export const connectionAuthTypeSchema = z.enum([
+  'http_headers',
+  'slack_bot_token',
+]);
 export const connectionStatusSchema = z.enum([
   'active',
   'reauthorization_required',
@@ -105,30 +108,61 @@ export const httpHeaderCredentialSchema = z
 export const httpHeadersCredentialSchema = z
   .object({
     schemaVersion: z.literal(1),
-    type: connectionAuthTypeSchema,
+    type: z.literal('http_headers'),
     headers: httpHeaderCredentialSchema,
   })
   .strict()
   .readonly();
 
-export const connectionCreateRequestSchema = z
+export const slackBotTokenCredentialSchema = z
   .object({
-    providerKey: connectionProviderKeySchema,
-    name: connectionNameSchema,
-    credential: httpHeadersCredentialSchema,
+    schemaVersion: z.literal(1),
+    type: z.literal('slack_bot_token'),
+    botToken: z
+      .string()
+      .min(10)
+      .max(512)
+      .regex(/^xoxb-[A-Za-z0-9-]+$/u),
   })
   .strict()
   .readonly();
+
+export const connectionCredentialSchema = z.discriminatedUnion('type', [
+  httpHeadersCredentialSchema,
+  slackBotTokenCredentialSchema,
+]);
+
+export const connectionCreateRequestSchema = z.discriminatedUnion(
+  'providerKey',
+  [
+    z
+      .object({
+        providerKey: z.literal('http'),
+        name: connectionNameSchema,
+        credential: httpHeadersCredentialSchema,
+      })
+      .strict()
+      .readonly(),
+    z
+      .object({
+        providerKey: z.literal('slack'),
+        name: connectionNameSchema,
+        credential: slackBotTokenCredentialSchema,
+      })
+      .strict()
+      .readonly(),
+  ],
+);
 
 export const connectionRotateSecretRequestSchema = z
   .object({
     expectedSecretVersionId: connectionSecretVersionIdentifierSchema,
-    credential: httpHeadersCredentialSchema,
+    credential: connectionCredentialSchema,
   })
   .strict()
   .readonly();
 
-export const connectionTestRequestSchema = z
+const httpConnectionTestRequestSchema = z
   .object({
     url: z
       .url()
@@ -145,6 +179,16 @@ export const connectionTestRequestSchema = z
   })
   .strict()
   .readonly();
+
+const slackConnectionTestRequestSchema = z
+  .object({ providerKey: z.literal('slack') })
+  .strict()
+  .readonly();
+
+export const connectionTestRequestSchema = z.union([
+  httpConnectionTestRequestSchema,
+  slackConnectionTestRequestSchema,
+]);
 
 export const connectionResponseSchema = z
   .object({

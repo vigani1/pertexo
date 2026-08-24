@@ -136,6 +136,86 @@ describe('worker node runtime capabilities', () => {
     await runtime.close();
   });
 
+  it('passes Slack bot-token identity through the shared JIT connection fence', async () => {
+    const resolveConnectionSecret = vi.fn(() =>
+      Promise.resolve({
+        connection: {
+          id: connectionId,
+          workspaceId,
+          providerKey: 'slack',
+          name: 'Slack',
+          authType: 'slack_bot_token' as const,
+          status: 'active' as const,
+          currentSecretVersionId: secretVersionId,
+          lastTestedAt: null,
+          lastHealthyAt: null,
+          lastErrorCode: null,
+          createdBy: '88888888-8888-4888-8888-888888888888',
+          createdAt: new Date('2026-08-24T00:00:00.000Z'),
+          updatedAt: new Date('2026-08-24T00:00:00.000Z'),
+        },
+        secretVersionId,
+        sealed: {
+          schemaVersion: 1 as const,
+          kmsKeyReference: 'alias/pertexo',
+          encryptedDataKey: 'YQ',
+          ciphertext: 'Yg',
+          nonce: 'YWFhYWFhYWFhYWFh',
+          tag: 'YWFhYWFhYWFhYWFhYWFhYQ',
+        },
+      }),
+    );
+    const assertConnectionSecretCurrent = vi.fn(() => Promise.resolve());
+    const runtime = await createWorkerNodeRuntimeCapabilities(
+      { database: databaseConfig },
+      {
+        connectionDatabase: {
+          resolveConnectionSecret,
+          assertConnectionSecretCurrent,
+        } satisfies Pick<
+          ConnectionDatabase,
+          'assertConnectionSecretCurrent' | 'resolveConnectionSecret'
+        >,
+        connectionEncryption: {
+          open: () => Promise.resolve(new TextEncoder().encode('slack-secret')),
+        },
+      },
+    );
+    const connections = runtime.factories.connections?.(context);
+    if (connections?.assertCurrent === undefined)
+      throw new Error('connection capability missing');
+    const signal = new AbortController().signal;
+
+    await connections.resolve({
+      connectionId,
+      expectedProviderKey: 'slack',
+      expectedAuthType: 'slack_bot_token',
+      purpose: 'slack.send_message.execute',
+      signal,
+    });
+    await connections.assertCurrent({
+      connectionId,
+      expectedProviderKey: 'slack',
+      expectedAuthType: 'slack_bot_token',
+      secretVersionId,
+      signal,
+    });
+
+    expect(resolveConnectionSecret).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expectedProviderKey: 'slack',
+        purpose: 'slack.send_message.execute',
+      }),
+    );
+    expect(assertConnectionSecretCurrent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expectedProviderKey: 'slack',
+        expectedAuthType: 'slack_bot_token',
+      }),
+    );
+    await runtime.close();
+  });
+
   it('spools a bounded stream, persists pending metadata before upload, finalizes after verification, and cleans up', async () => {
     const spoolDirectory = await mkdtemp(
       path.join(tmpdir(), 'pertexo-capability-test-'),

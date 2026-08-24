@@ -144,7 +144,10 @@ function connectionFactory(
         >[0],
       ): Promise<void> => {
         assertNotAborted(input.signal);
-        if (input.expectedAuthType !== CONNECTION_AUTH_TYPE.httpHeaders)
+        if (
+          input.expectedAuthType !== CONNECTION_AUTH_TYPE.httpHeaders &&
+          input.expectedAuthType !== CONNECTION_AUTH_TYPE.slackBotToken
+        )
           throw new ConnectionUnavailableError(
             'Connection auth type is not supported',
           );
@@ -152,7 +155,7 @@ function connectionFactory(
           workspaceId: context.workspaceId,
           connectionId: input.connectionId,
           expectedProviderKey: input.expectedProviderKey,
-          expectedAuthType: CONNECTION_AUTH_TYPE.httpHeaders,
+          expectedAuthType: input.expectedAuthType,
           secretVersionId: input.secretVersionId,
         });
         assertNotAborted(input.signal);

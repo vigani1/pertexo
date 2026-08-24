@@ -207,6 +207,9 @@ describe('public contracts package', () => {
         headers: { Authorization: 'Bearer opaque', 'X-API-Key': 'key' },
       },
     });
+    expect(parsed.providerKey).toBe('http');
+    if (parsed.credential.type !== 'http_headers')
+      throw new TypeError('HTTP connection credential was not preserved');
     expect(parsed.credential.headers).toEqual({
       authorization: 'Bearer opaque',
       'x-api-key': 'key',

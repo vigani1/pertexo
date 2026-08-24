@@ -25,7 +25,9 @@ const sha256Schema = z.string().regex(/^[0-9a-f]{64}$/u);
 const compatibilityFingerprintSchema = z
   .string()
   .regex(/^node-compat:v1:sha256:[0-9a-f]{64}$/u);
-const identityKeySchema = z.string().regex(/^[a-z][a-z0-9]*(?:\.[a-z0-9]+)*$/u);
+const identityKeySchema = z
+  .string()
+  .regex(/^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*$/u);
 const integrationKeySchema = z.string().regex(/^[a-z][a-z0-9._:-]*$/u);
 const traceparentSchema = z
   .string()

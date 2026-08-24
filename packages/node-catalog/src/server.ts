@@ -1,11 +1,18 @@
 import './server-only.js';
 
-import { HTTP_REQUEST_DEFINITION_REGISTRATION } from '@pertexo/integrations';
+import {
+  HTTP_REQUEST_DEFINITION_REGISTRATION,
+  SLACK_SEND_MESSAGE_DEFINITION_REGISTRATION,
+} from '@pertexo/integrations';
 import {
   createHttpRequestExecutorRegistration,
   createNodeSecureHttpClient,
   type HttpRequestExecutorDependencies,
   type HttpRequestExecutorTelemetry,
+  createSlackClient,
+  createSlackSendMessageExecutorRegistration,
+  type SlackSendMessageExecutorDependencies,
+  type SlackSendMessageExecutorTelemetry,
 } from '@pertexo/integrations/server';
 import {
   definitionIdentitySchema,
@@ -41,6 +48,8 @@ export type PlatformNodeRegistry = Readonly<{
 export type PlatformNodeRegistryDependencies = Readonly<{
   httpRequest?: HttpRequestExecutorDependencies;
   httpRequestTelemetry?: HttpRequestExecutorTelemetry;
+  slackSendMessage?: SlackSendMessageExecutorDependencies;
+  slackSendMessageTelemetry?: SlackSendMessageExecutorTelemetry;
 }>;
 
 export type PlatformNodeDefinition = NodeDefinitionRegistration;
@@ -73,6 +82,7 @@ export function resolvePlatformNodeDefinitionForRelease(
   const registration = [
     ...CORE_NODE_DEFINITION_REGISTRATIONS,
     HTTP_REQUEST_DEFINITION_REGISTRATION,
+    SLACK_SEND_MESSAGE_DEFINITION_REGISTRATION,
   ].find(
     (candidate) =>
       candidate.manifest.definition.key === definition.key &&
@@ -92,6 +102,7 @@ export function createPlatformNodeRegistryForRelease(
   const definitionRegistrations: readonly NodeDefinitionRegistration[] = [
     ...CORE_NODE_DEFINITION_REGISTRATIONS,
     HTTP_REQUEST_DEFINITION_REGISTRATION,
+    SLACK_SEND_MESSAGE_DEFINITION_REGISTRATION,
   ];
   const definitionsByIdentity = new Map(
     definitionRegistrations.map((registration) => [
@@ -120,9 +131,22 @@ export function createPlatformNodeRegistryForRelease(
     },
     'active',
   );
+  const slackDependencies = dependencies.slackSendMessage ?? {
+    client: createSlackClient(createNodeSecureHttpClient()),
+  };
+  const slackExecutor = createSlackSendMessageExecutorRegistration(
+    {
+      ...slackDependencies,
+      ...(dependencies.slackSendMessageTelemetry === undefined
+        ? {}
+        : { telemetry: dependencies.slackSendMessageTelemetry }),
+    },
+    'active',
+  );
   const executorRegistrations: readonly NodeExecutorRegistration[] = [
     ...CORE_NODE_EXECUTOR_REGISTRATIONS,
     httpExecutor,
+    slackExecutor,
   ];
   const executorsByIdentity = new Map(
     executorRegistrations.map((registration) => [

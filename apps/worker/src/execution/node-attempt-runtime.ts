@@ -40,6 +40,7 @@ import {
   type NodeAttemptExecutionEngineOptions,
 } from './node-attempt-engine.js';
 import { createProductionHttpProviderTelemetry } from './http-provider-telemetry.js';
+import { createProductionSlackProviderTelemetry } from './slack-provider-telemetry.js';
 import {
   createProductionPreviewTelemetry,
   type PreviewTelemetry,
@@ -199,6 +200,7 @@ export async function createNodeAttemptRuntime(
     dependencies.registry ??
     createPlatformNodeRegistryForRelease(latestNodeRelease, {
       httpRequestTelemetry: createProductionHttpProviderTelemetry(),
+      slackSendMessageTelemetry: createProductionSlackProviderTelemetry(),
     });
   const runStore =
     dependencies.runStore ?? createNodeAttemptRunStore(options.database);

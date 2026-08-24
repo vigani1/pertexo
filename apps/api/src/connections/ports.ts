@@ -3,6 +3,7 @@ import type {
   ConnectionSecretContext,
   SealedConnectionSecret,
   SecureHttpClient,
+  SlackClient,
 } from '@pertexo/integrations/server';
 
 import type { WorkspaceAuthorizationSource } from '../identity-workspace/ports.js';
@@ -41,11 +42,13 @@ export interface ConnectionSecretEncryptionPort {
 }
 
 export type ConnectionHttpClient = Pick<SecureHttpClient, 'execute'>;
+export type ConnectionSlackClient = Pick<SlackClient, 'authTest'>;
 
 export type ConnectionDependencies = Readonly<{
   persistence: ConnectionPersistence;
   authorization: WorkspaceAuthorizationSource;
   encryption: ConnectionSecretEncryptionPort;
   httpClient: ConnectionHttpClient;
+  slackClient?: ConnectionSlackClient;
   telemetry?: ConnectionTelemetry;
 }>;

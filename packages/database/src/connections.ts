@@ -67,6 +67,7 @@ export type ConnectionStatus =
 
 export const CONNECTION_AUTH_TYPE = {
   httpHeaders: 'http_headers',
+  slackBotToken: 'slack_bot_token',
 } as const;
 export type ConnectionAuthType =
   (typeof CONNECTION_AUTH_TYPE)[keyof typeof CONNECTION_AUTH_TYPE];
@@ -148,6 +149,7 @@ export type RotateConnectionSecretInput = RequestMetadata &
     connectionId: string;
     secretVersionId: string;
     expectedCurrentSecretVersionId: string;
+    expectedAuthType?: ConnectionAuthType;
     sealed: SealedConnectionSecretRecord;
     idempotencyKey: string;
     requestHash: string;
@@ -350,7 +352,7 @@ function mapConnection(
     workspaceId: uuidSchema.parse(row.workspace_id),
     providerKey: providerKeySchema.parse(row.provider_key),
     name: connectionNameSchema.parse(row.name),
-    authType: z.literal(CONNECTION_AUTH_TYPE.httpHeaders).parse(row.auth_type),
+    authType: z.enum(CONNECTION_AUTH_TYPE).parse(row.auth_type),
     status: z.enum(CONNECTION_STATUS).parse(row.status),
     currentSecretVersionId: uuidSchema.parse(row.current_secret_version_id),
     lastTestedAt:
@@ -481,7 +483,7 @@ const durableConnectionSnapshotSchema = z
     workspaceId: z.uuid(),
     providerKey: providerKeySchema,
     name: connectionNameSchema,
-    authType: z.literal(CONNECTION_AUTH_TYPE.httpHeaders),
+    authType: z.enum(CONNECTION_AUTH_TYPE),
     status: z.enum(CONNECTION_STATUS),
     currentSecretVersionId: z.uuid(),
     lastTestedAt: z.iso.datetime().nullable(),
@@ -600,9 +602,7 @@ export function createConnectionDatabase(
       const actorId = uuidSchema.parse(input.actorId);
       const providerKey = providerKeySchema.parse(input.providerKey);
       const name = connectionNameSchema.parse(input.name);
-      const authType = z
-        .literal(CONNECTION_AUTH_TYPE.httpHeaders)
-        .parse(input.authType);
+      const authType = z.enum(CONNECTION_AUTH_TYPE).parse(input.authType);
       const sealed = sealedSecretSchema.parse(input.sealed);
       const requestHash = digestSchema.parse(input.requestHash);
       const digest = keyDigest(input.idempotencyKey);
@@ -972,6 +972,13 @@ export function createConnectionDatabase(
             throw new ConnectionNotFoundError('Connection is not visible');
           if (connection.status === CONNECTION_STATUS.revoked)
             throw new ConnectionUnavailableError('Connection is revoked');
+          if (
+            connection.authType !==
+            (input.expectedAuthType ?? CONNECTION_AUTH_TYPE.httpHeaders)
+          )
+            throw new ConnectionUnavailableError(
+              'Connection authentication type cannot be changed by rotation',
+            );
           if (connection.currentSecretVersionId !== expected)
             throw new ConnectionSecretVersionConflictError(
               'Connection secret version does not match',
@@ -1175,7 +1182,7 @@ export function createConnectionDatabase(
         input.expectedProviderKey,
       );
       const expectedAuthType = z
-        .literal(CONNECTION_AUTH_TYPE.httpHeaders)
+        .enum(CONNECTION_AUTH_TYPE)
         .parse(input.expectedAuthType);
       const secretVersionId = uuidSchema.parse(input.secretVersionId);
       await withConnectionTransaction(

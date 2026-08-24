@@ -238,7 +238,7 @@ describe('execution value persistence migration', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0034_run_failure_notifications.sql',
+          migrationHead: '0035_slack_bot_token_connections.sql',
           role: expectedRole,
         });
       } finally {

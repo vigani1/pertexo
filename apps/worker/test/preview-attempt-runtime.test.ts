@@ -1,8 +1,17 @@
 import { randomUUID } from 'node:crypto';
 
 import type { PreviewAttemptLease } from '@pertexo/database';
+import {
+  SLACK_BOT_TOKEN_CONNECTION_SLOT,
+  SLACK_SEND_MESSAGE_DEFINITION,
+  SLACK_SEND_MESSAGE_EXECUTOR,
+} from '@pertexo/integrations';
 import { HttpRequestExecutorError } from '@pertexo/integrations/server';
-import { platformServingRegistryRelease } from '@pertexo/node-catalog';
+import {
+  PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE,
+  platformServingRegistryRelease,
+} from '@pertexo/node-catalog';
+import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 import { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';
 import { describe, expect, it, vi } from 'vitest';
@@ -43,6 +52,101 @@ function leaseFixture(
 }
 
 describe('platform preview node invoker', () => {
+  it('executes the active Slack action through the production preview path', async () => {
+    const connectionId = randomUUID();
+    const secret = new TextEncoder().encode(
+      JSON.stringify({
+        schemaVersion: 1,
+        type: 'slack_bot_token',
+        botToken: 'xoxb-123456789-secret',
+      }),
+    );
+    const beforeDispatch = vi.fn(() => Promise.resolve());
+    const assertCurrent = vi.fn(() => Promise.resolve());
+    const sendMessage = vi.fn(
+      async (input: { beforeDispatch(): Promise<void> }) => {
+        await input.beforeDispatch();
+        return {
+          kind: 'succeeded' as const,
+          channelId: 'C123ABC',
+          messageTs: '1724412345.000100',
+        };
+      },
+    );
+    const release = composeExecutableCompatibilityRelease(
+      PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE,
+    );
+    const lease = {
+      ...leaseFixture({
+        config: { timeoutMillis: 5_000 },
+        configVersion: 1,
+        connectionRefs: {
+          [SLACK_BOT_TOKEN_CONNECTION_SLOT]: connectionId,
+        },
+        definition: SLACK_SEND_MESSAGE_DEFINITION,
+        id: 'node-1',
+        inputMappings: {
+          channelId: { kind: 'literal' as const, value: 'C123ABC' },
+          text: { kind: 'literal' as const, value: 'preview deployment' },
+        },
+      }),
+      compatibilityReleaseEpoch: release.epoch,
+      compatibilityReleaseFingerprint: release.fingerprint,
+      definitionKey: SLACK_SEND_MESSAGE_DEFINITION.key,
+      dryRun: 'not_supported' as const,
+      executorKey: SLACK_SEND_MESSAGE_EXECUTOR.key,
+      mayCauseExternalSideEffect: true,
+      mayContactProvider: true,
+      sideEffectClass: 'unsafe' as const,
+    };
+    const invoker = createPlatformPreviewNodeInvoker({
+      registry: createPlatformNodeRegistryForRelease(
+        PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE,
+        { slackSendMessage: { client: { sendMessage } } },
+      ),
+      releaseCohort: 'slack_activation',
+    });
+
+    await expect(
+      invoker.invoke({
+        lease,
+        runtime: {
+          workspaceId: lease.workspaceId,
+          runId: lease.previewRunId,
+          nodeRunId: lease.previewAttemptId,
+          attemptId: lease.previewAttemptId,
+          attemptNumber: 1,
+          nodeId: lease.nodeId,
+          invocationKey: lease.nodeId,
+          sideEffectClass: 'unsafe',
+          beforeDispatch,
+          connections: {
+            resolve: () =>
+              Promise.resolve({
+                connectionId,
+                providerKey: 'slack',
+                authType: 'slack_bot_token',
+                secretVersionId: randomUUID(),
+                secret,
+              }),
+            assertCurrent,
+          },
+        },
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({
+      output: {
+        channelId: 'C123ABC',
+        messageTs: '1724412345.000100',
+      },
+      status: 'succeeded',
+    });
+    expect(sendMessage).toHaveBeenCalledOnce();
+    expect(assertCurrent).toHaveBeenCalledOnce();
+    expect(beforeDispatch).toHaveBeenCalledOnce();
+    expect(secret.every((byte) => byte === 0)).toBe(true);
+  });
+
   it('rejects Wait with a stable suspension-not-supported outcome', async () => {
     const execute = vi.fn();
     const invoker = createPlatformPreviewNodeInvoker({

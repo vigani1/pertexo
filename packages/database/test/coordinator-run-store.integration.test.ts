@@ -1589,7 +1589,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0034_run_failure_notifications.sql',
+          migrationHead: '0035_slack_bot_token_connections.sql',
           role: 'pertexo_worker',
         });
       } finally {
@@ -1649,6 +1649,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         '0032_for_each_barriers.sql',
         '0033_durable_wait.sql',
         '0034_run_failure_notifications.sql',
+        '0035_slack_bot_token_connections.sql',
       ]);
       const workerPool = new Pool({
         connectionString: namedDatabaseUrl(
@@ -1664,7 +1665,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0034_run_failure_notifications.sql',
+          migrationHead: '0035_slack_bot_token_connections.sql',
           role: 'pertexo_worker',
         });
         await expect(
@@ -1731,7 +1732,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0034_run_failure_notifications.sql',
+        migrationHead: '0035_slack_bot_token_connections.sql',
         role: 'pertexo_worker',
       });
       const catalog = await readinessPool.query<{
@@ -1970,7 +1971,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0034_run_failure_notifications.sql',
+        migrationHead: '0035_slack_bot_token_connections.sql',
       });
     } finally {
       await readinessPool.end();
@@ -2156,7 +2157,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         workerRuntimeRole: 'pertexo_worker',
       }),
     ).resolves.toMatchObject({
-      migrationHead: '0034_run_failure_notifications.sql',
+      migrationHead: '0035_slack_bot_token_connections.sql',
     });
     await readinessPool.end();
   });

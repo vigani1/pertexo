@@ -210,6 +210,7 @@ describe('preview retention migration', () => {
       '0032_for_each_barriers.sql',
       '0033_durable_wait.sql',
       '0034_run_failure_notifications.sql',
+      '0035_slack_bot_token_connections.sql',
     ]);
 
     const verification = new Pool({

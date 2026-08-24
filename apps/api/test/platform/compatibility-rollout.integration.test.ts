@@ -15,7 +15,10 @@ import {
   HTTP_REQUEST_CONNECTION_SLOT,
   HTTP_REQUEST_DEFINITION,
 } from '@pertexo/integrations';
-import { platformRegistryReleaseSupport } from '@pertexo/node-catalog';
+import {
+  platformRegistryReleaseSupport,
+  type PlatformReleaseCohort,
+} from '@pertexo/node-catalog';
 import { CORE_REGISTRY_RELEASE_SUPPORT } from '@pertexo/nodes-core';
 import {
   composeExecutableCompatibilityRelease,
@@ -677,6 +680,62 @@ describe.runIf(enabled)('additive compatibility release rollout', () => {
         replayed: false,
         run: { workflowVersionId: published.version.id },
       });
+
+      const remainingCohorts: readonly PlatformReleaseCohort[] = [
+        'condition_staging',
+        'condition_activation',
+        'switch_staging',
+        'switch_activation',
+        'parallel_staging',
+        'parallel_activation',
+        'merge_staging',
+        'merge_activation',
+        'for_each_staging',
+        'for_each_activation',
+        'wait_staging',
+        'wait_activation',
+        'slack_staging',
+        'slack_activation',
+      ];
+      for (const cohort of remainingCohorts) {
+        const rollout = createExecutableCompatibilityReleaseSupport(
+          platformRegistryReleaseSupport(cohort).map(
+            composeExecutableCompatibilityRelease,
+          ),
+        );
+        const [predecessor, target] = rollout.descriptions;
+        if (predecessor === undefined || target === undefined)
+          throw new Error(`Incomplete rollout support for ${cohort}`);
+        const cohortApiProbe = createCompatibilityReleaseReadinessProbe(
+          databaseConfig(apiUrl ?? ''),
+          rollout.descriptions,
+        );
+        const cohortWorkerProbe = createCompatibilityReleaseReadinessProbe(
+          databaseConfig(workerUrl ?? ''),
+          rollout.descriptions,
+        );
+        try {
+          await activatePreparedRelease(
+            maintenance,
+            cohortApiProbe,
+            cohortWorkerProbe,
+            predecessor,
+            target,
+            cohort,
+          );
+          await expect(cohortApiProbe.checkCurrent()).resolves.toMatchObject({
+            role: 'pertexo_api',
+          });
+          await expect(cohortWorkerProbe.checkCurrent()).resolves.toMatchObject(
+            { role: 'pertexo_worker' },
+          );
+        } finally {
+          await Promise.all([
+            cohortApiProbe.close(),
+            cohortWorkerProbe.close(),
+          ]);
+        }
+      }
     } finally {
       await Promise.all([
         maintenance.close(),

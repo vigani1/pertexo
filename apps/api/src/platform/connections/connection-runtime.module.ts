@@ -9,6 +9,7 @@ import {
 import {
   createAwsConnectionEnvelopeEncryption,
   createNodeSecureHttpClient,
+  createSlackClient,
   type AwsConnectionEnvelopeEncryptionRuntime,
 } from '@pertexo/integrations/server';
 
@@ -18,6 +19,7 @@ import {
   type ConnectionDependencies,
   type ConnectionSecretEncryptionPort,
   type ConnectionHttpClient,
+  type ConnectionSlackClient,
   type ConnectionTelemetry,
 } from '../../connections/index.js';
 import type { ApiIdentityRuntime } from '../identity/identity-runtime.module.js';
@@ -33,6 +35,7 @@ export type ApiConnectionRuntimeOverrides = Readonly<{
   encryption?: ConnectionSecretEncryptionPort;
   telemetry?: ConnectionTelemetry;
   httpClient?: ConnectionHttpClient;
+  slackClient?: ConnectionSlackClient;
 }>;
 
 export function createApiConnectionRuntime(
@@ -58,12 +61,14 @@ export function createApiConnectionRuntime(
     throw new Error('Connection encryption composition is incomplete');
   const telemetry = overrides.telemetry ?? productionTelemetry();
   let closePromise: Promise<void> | undefined;
+  const httpClient = overrides.httpClient ?? createNodeSecureHttpClient();
   return Object.freeze({
     dependencies: Object.freeze({
       persistence: database,
       authorization: identityRuntime.dependencies.authorization,
       encryption,
-      httpClient: overrides.httpClient ?? createNodeSecureHttpClient(),
+      httpClient,
+      slackClient: overrides.slackClient ?? createSlackClient(httpClient),
       telemetry,
     }),
     close: (): Promise<void> => {

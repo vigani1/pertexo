@@ -130,7 +130,7 @@ export interface RegistryReleaseInput {
 
 export const TERMINATES_RUN_CAPABILITY = 'terminates_run' as const;
 
-const identityKey = /^[a-z][a-z0-9]*(?:\.[a-z0-9]+)*$/u;
+const identityKey = /^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*$/u;
 const identitySchema = z
   .object({
     key: z.string().regex(identityKey),

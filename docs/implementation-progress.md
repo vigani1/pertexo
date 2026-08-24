@@ -22,7 +22,7 @@ not complete a phase.
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 5 — orchestration slice | Complete | ADRs 008/017/018/019/020/021/022; implementation through `9d7e071`; migration head `0034_run_failure_notifications.sql`; 862 unit assertions and complete real-service/recovery matrix; independent fixed-head Spec and Standards completion GO |
-| Phase 6 — V1 providers and triggers | In progress | ADR 023 accepted; Slack send-message is the first thin vertical slice and remains outside serving cohorts pending implementation and proof |
+| Phase 6 — V1 providers and triggers | In progress | ADR 023; Slack `slack.send_message@1` ABI 2 is active at retained epoch 18 after staged epoch 17 proof; email, destinations, Webhook, and Schedule remain |
 | Phase 7 — production operations | Not started | — |
 
 The `0A`–`0E` checkpoints are implementation-sized subdivisions of the plan's
@@ -2707,7 +2707,7 @@ Authority and sequencing:
 
 - [x] Accept ADR 023 before fixing the Slack action's published identity,
       credential form, bounds, and ambiguous-dispatch behavior.
-- [ ] Complete Slack `send_message` as one staged then active provider slice.
+- [x] Complete Slack `send_message` as one staged then active provider slice.
 - [ ] Accept a focused email-provider ADR, then complete one email-notification
       action as a staged then active provider slice.
 - [ ] Add versioned Slack and email destinations behind ADR 022 without changing
@@ -2723,20 +2723,20 @@ Authority and sequencing:
 
 Slack `send_message` completion gates:
 
-- [ ] Add browser-safe strict config/input/output contracts, manifest identity,
+- [x] Add browser-safe strict config/input/output contracts, manifest identity,
       server-only executor, stable safe errors, telemetry, and redaction.
-- [ ] Extend connection contracts and persistence with workspace-scoped
+- [x] Extend connection contracts and persistence with workspace-scoped
       `slack`/`slack_bot_token` creation, rotation, revocation, current-version
       fencing, audit, and bounded real `auth.test` behavior.
-- [ ] Prove exact Slack request/response bounds, disabled redirects and hidden
+- [x] Prove exact Slack request/response bounds, disabled redirects and hidden
       retries, 429 handling, timeout/cancellation, definite failure, and unsafe
       `outcome_unknown` classification after possible dispatch.
-- [ ] Prove offline validation and disclosure-gated real preview execution with
+- [x] Prove offline validation and disclosure-gated real preview execution with
       no production run, checkpoint, usage, or trigger-state mutation.
-- [ ] Prove production attempt execution, duplicate delivery, crash boundaries,
+- [x] Prove production attempt execution, duplicate delivery, crash boundaries,
       Redis loss, PostgreSQL failure, drain, credential rotation/revocation, and
       safe observability with a controllable Slack double and real infrastructure.
-- [ ] Add staged and active compatibility releases only after every preceding
+- [x] Add staged and active compatibility releases only after every preceding
       Slack gate passes; retain all older releases and verify API/worker overlap.
 
 Phase-wide completion gates:
@@ -2752,11 +2752,50 @@ Phase-wide completion gates:
 
 Current evidence:
 
-- Official Slack documentation confirms `chat.postMessage` uses bot-token
-  `chat:write`, channel-like IDs, JSON, a recommended 4,000-character text limit,
-  special message rate limits, and HTTP 429 `Retry-After`. ADR 023 deliberately
-  excludes the broader Slack surface and does not claim undocumented provider
-  idempotency. No Slack manifest or executor is serving yet.
+- ADR 023 fixes `slack.send_message@1` as an unsafe ABI 2 action with strict
+  browser-safe schemas, a single `slack_bot_token` slot, fixed
+  `chat.postMessage`/`auth.test` endpoints, no redirects or hidden retries, a
+  64-KiB response cap, bounded `Retry-After`, and no automatic replay after an
+  ambiguous dispatch. The server-only executor fences the current encrypted
+  secret version immediately before ADR 007 dispatch evidence and clears secret
+  bytes after use.
+- Migration `0035_slack_bot_token_connections.sql` extends the connection auth
+  constraint without weakening workspace RLS. Contract, API, and real PostgreSQL
+  tests prove creation, encrypted rotation, revocation, credential-access audit,
+  current-version fencing, and bounded real-client `auth.test` classification;
+  generated client/OpenAPI artifacts include the discriminated Slack request.
+- `packages/integrations/test/slack-send-message.test.ts` proves the exact JSON
+  request, inaccessible unfurls, fixed endpoint, one-call behavior, strict
+  channel/text/timestamp bounds, redaction-sensitive request metadata, 429,
+  authentication and channel failures, pre-dispatch retry, cancellation, and
+  post-dispatch `outcome_unknown`. It also distinguishes definite Slack refusal
+  and rate-limit responses (`possiblyDispatched: false`) from Slack's documented
+  ambiguous `internal_error` and unexpected 5xx responses, so the unsafe retry
+  policy cannot suppress a definite retry or replay an ambiguous send. Worker
+  telemetry tests allow only bounded provider, operation, outcome, error-class,
+  and dispatch attributes.
+- The production node-attempt real-service fixture activates retained releases
+  sequentially through Slack epoch 18, executes HTTP then Slack through real
+  PostgreSQL, BullMQ, Redis, encrypted JIT credential access, and the shared
+  artifact boundary, and proves dispatch marking, bounded persisted output, one
+  credential audit, inert exact redelivery, and absence of token/message text
+  from durable and queue surfaces. The direct production-preview invoker proof
+  executes the same active Slack executor and current-version fence; the retained
+  real preview matrix supplies disclosure, duplicate, crash-boundary, SIGKILL,
+  reconciliation, expiry, and no-production-mutation proofs.
+- Retained releases 17/18 stage then activate Slack. Catalog tests prove staged
+  non-serving epoch 16, `[16,17]` staging support, `[17,18]` activation support,
+  ABI 2 lifecycle transition, active execution, and all 18 unique fingerprints.
+  The real PostgreSQL additive rollout records and verifies both API and worker
+  preactivation for every transition through epoch 18.
+- Verification on 2026-08-24: root `pnpm check` passed 880 unit assertions;
+  zero-to-head migration applied all 36 migrations through `0035`;
+  the flagged real-service matrix passed 255 database, 22 worker, 7 API, and two
+  artifact-store assertions; focused Slack production attempt and compatibility
+  rollout each passed one assertion; focused worker unit tests pass 153
+  assertions. A reused-database worker rerun initially claimed four stale outbox
+  rows in one transport assertion; that five-assertion file passed after the
+  stale rows were consumed, while all other 17 worker assertions were green.
 
 ## Later Phases
 
