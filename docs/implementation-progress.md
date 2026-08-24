@@ -2407,6 +2407,17 @@ Current evidence:
   whole-collection budget reservation before any body admission, bounded active
   iteration concurrency, no implicit result aggregation, and
   PostgreSQL-authoritative cursor recovery.
+- Commit `7d12909` adds the strict bounded `core.foreach@1` declaration
+  schemas, unchanged-item/count executor, browser-safe manifest, exact server
+  registration, and additive staged/active epochs 13 and 14. The releases are
+  retained in compatibility history but intentionally absent from every serving
+  cohort. Nodes-core passes 18 assertions and node-catalog passes 11 assertions.
+- Commit `f46dc17` adds the explicit `structured_input` graph value source,
+  validates it against the nearest body boundary, and resolves item/ordinal
+  material through the shared mapping seam without redefining outer
+  `run_input`. Workflow-model passes 53 assertions. For Each remains incomplete
+  pending recursive executable pinning, production loop scheduling and
+  persistence, recovery proof, and staged/active serving rollout.
 
 Incremental publishable slices, in required order:
 
