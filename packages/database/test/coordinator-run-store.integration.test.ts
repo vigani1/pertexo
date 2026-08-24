@@ -1253,6 +1253,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         runId,
         workflowVersionId: versionA,
         checkpoint: checkpoint({}),
+        completedOutputs: [],
         observations: [],
       },
     });
