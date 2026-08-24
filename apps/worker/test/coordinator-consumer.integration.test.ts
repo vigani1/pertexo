@@ -1691,6 +1691,7 @@ describeIntegration('Phase 3 coordinator consumer', () => {
                 branchPath: [
                   { nodeId: branchNodeId, outputPort: selectedPort },
                 ],
+                iterationPath: [],
               },
               node_id: 'selected',
               status: 'succeeded',
@@ -1700,6 +1701,7 @@ describeIntegration('Phase 3 coordinator consumer', () => {
                 branchPath: [
                   { nodeId: branchNodeId, outputPort: unselectedPort },
                 ],
+                iterationPath: [],
               },
               node_id: 'unselected',
               status: 'skipped',

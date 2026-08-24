@@ -31,7 +31,10 @@ type AttemptDelivery = Extract<
 >;
 
 export interface PreparedNodeAttempt {
-  readonly upstreamNodeIds: readonly string[];
+  readonly upstreamNodeOutputs: readonly Readonly<{
+    nodeId: string;
+    invocationKey: string;
+  }>[];
   execute(
     input: Readonly<
       NodeAttemptInputs & {
@@ -231,7 +234,7 @@ export function createNodeAttemptHandler(
       });
       const inputs = await dependencies.runStore.loadInputs({
         lease: claimed.lease,
-        upstreamNodeIds: prepared.upstreamNodeIds,
+        upstreamNodeOutputs: prepared.upstreamNodeOutputs,
         signal: context.signal,
       });
       if (inputs.abortRequested) {

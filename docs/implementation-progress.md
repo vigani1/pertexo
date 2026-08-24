@@ -21,7 +21,7 @@ not complete a phase.
 | Phase 2 — workflow authoring vertical slice | Complete | ADRs 002/011; migration head `0012_workflow_authoring.sql`; 414 unit and 150 real-service assertions; generated contract drift gate; independent Spec and Standards completion GO |
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
-| Phase 5 — orchestration slice | In progress | ADRs 008/017/018/019/020; Condition, Switch, bounded Parallel, and Merge vertical slices complete through `67ba800`; bounded For Each publication validation, recursive executable pinning, pure engine scheduling, and the database persistence checkpoint are implemented, while worker recovery and serving rollout remain |
+| Phase 5 — orchestration slice | In progress | ADRs 008/017/018/019/020; Condition, Switch, bounded Parallel, and Merge vertical slices complete through `67ba800`; bounded For Each publication validation, recursive executable pinning, pure engine scheduling, database persistence, and production body-attempt input reconstruction are implemented, while BullMQ/fresh-worker recovery and serving rollout remain |
 | Phase 6 — V1 providers and triggers | Not started | — |
 | Phase 7 — production operations | Not started | — |
 
@@ -2485,6 +2485,29 @@ Current evidence:
   35 assertions, database build/typecheck and root typecheck pass, and the full
   database integration command's reusable local-database suites remain blocked
   by a pre-existing recorded checksum mismatch for untouched migration 0012.
+- The production For Each attempt-input checkpoint recursively resolves body
+  nodes from the verified executable, authenticates their branch and complete
+  iteration ancestry, and replaces unscoped upstream node IDs with exact
+  invocation descriptors. Attempt leases retain non-empty iteration paths;
+  PostgreSQL loads only exact succeeded invocation keys and rejects missing,
+  duplicate, changed-node, or cross-ordinal material. For scoped attempts it
+  reconstructs the nearest enclosing collection from checkpoint ownership and
+  the exact persisted declaration node/attempt output pair, verifies inline
+  reference ownership, strict `items`/`iterationCount`, collection size and
+  checksum, ordinal bounds, every active enclosing loop, and nested branch/
+  iteration scope, then passes the engine's structured collection proof.
+  Scoped Merge input now resolves only by exact `joinInvocationKey`. Focused
+  worker tests pass 141 assertions, database unit tests pass 66 assertions, and
+  the disposable real-PostgreSQL coordinator suite passes 36 assertions,
+  including same-body-node outputs at ordinals 0 and 1 that cannot cross-read
+  and fail-closed checksum, active-ordinal, and collection-reference drift.
+  The seven-assertion PostgreSQL/Redis/BullMQ coordinator recovery suite also
+  remains green for root execution, Condition, Switch, Parallel/Merge, due
+  retries, and replay auditing with exact predecessor scope descriptors.
+  The complete reusable-database integration command remains blocked by the
+  already recorded checksum mismatch for untouched migration 0012. No For Each
+  serving cohort is activated; BullMQ process recovery, later-batch and
+  cancellation recovery, Redis-loss reconstruction, and rollout remain.
 - ADRs 021 and 022 fix the remaining Phase 5 semantics before implementation:
   Wait preserves semantic resume versus retry identity and adds an independent
   PostgreSQL deadline wake source; failure notification is an atomic bounded

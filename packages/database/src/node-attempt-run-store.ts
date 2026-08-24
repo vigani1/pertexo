@@ -122,6 +122,11 @@ const nodeAttemptLeaseSchema = z
     invocationKey: invocationKeySchema,
     nodeId: nodeIdSchema,
     branchPath: z.array(branchScopePartSchema).min(1).max(1_000).optional(),
+    iterationPath: z
+      .array(iterationScopePartSchema)
+      .min(1)
+      .max(1_000)
+      .optional(),
     sideEffectClass: sideEffectClassSchema,
     providerIdempotencyKey: z.string().min(1).max(256).optional(),
     workerId: workerIdSchema,
@@ -134,10 +139,21 @@ const nodeAttemptLeaseSchema = z
 const loadInputsSchema = z
   .object({
     lease: nodeAttemptLeaseSchema,
-    upstreamNodeIds: z
-      .array(nodeIdSchema)
+    upstreamNodeOutputs: z
+      .array(
+        z
+          .object({
+            nodeId: nodeIdSchema,
+            invocationKey: invocationKeySchema,
+          })
+          .strict(),
+      )
       .max(100)
-      .refine((values) => new Set(values).size === values.length),
+      .refine(
+        (values) =>
+          new Set(values.map(({ invocationKey }) => invocationKey)).size ===
+          values.length,
+      ),
     signal: z.custom<AbortSignal>((value) => value instanceof AbortSignal),
   })
   .strict();
@@ -202,7 +218,14 @@ export type NodeAttemptClaimResult =
 
 export type NodeAttemptInputs = Readonly<{
   runInput: unknown;
-  completedNodeOutputs: Readonly<Record<string, unknown>>;
+  completedNodeOutputs: unknown;
+  structuredCollection?: Readonly<{
+    loopNodeId: string;
+    ordinal: number;
+    collection: unknown;
+    collectionSize: number;
+    declaredCollectionChecksum: string;
+  }>;
   coordinatorInput?: unknown;
   abortRequested: boolean;
   abortReason?: 'canceled' | 'timed_out';
@@ -235,7 +258,10 @@ export interface NodeAttemptRunStore {
   loadInputs(
     input: Readonly<{
       lease: NodeAttemptLease;
-      upstreamNodeIds: readonly string[];
+      upstreamNodeOutputs: readonly Readonly<{
+        nodeId: string;
+        invocationKey: string;
+      }>[];
       signal: AbortSignal;
     }>,
   ): Promise<NodeAttemptInputs>;
@@ -309,6 +335,26 @@ class DeliveryMismatch extends Error {}
 function assertNotAborted(signal: AbortSignal): void {
   if (signal.aborted)
     throw new DOMException('The operation was aborted', 'AbortError');
+}
+
+function scopedInvocationKey(
+  input: Readonly<{
+    workflowVersionId: string;
+    nodeId: string;
+    branchPath?: readonly Readonly<{ nodeId: string; outputPort: string }>[];
+    iterationPath?: readonly Readonly<{
+      loopNodeId: string;
+      ordinal: number;
+    }>[];
+  }>,
+): string {
+  const branches = (input.branchPath ?? [])
+    .map(({ nodeId, outputPort }) => `${nodeId}:${outputPort}`)
+    .join('/');
+  const iterations = (input.iterationPath ?? [])
+    .map(({ loopNodeId, ordinal }) => `${loopNodeId}:${String(ordinal)}`)
+    .join('/');
+  return `${encodeURIComponent(input.workflowVersionId)}|${encodeURIComponent(input.nodeId)}|b:${encodeURIComponent(branches)}|i:${encodeURIComponent(iterations)}`;
 }
 
 async function acquirePoolClient(
@@ -751,10 +797,12 @@ export function createNodeAttemptRunStore(
               attemptNumber: row.attempt_number,
               invocationKey: row.invocation_key,
               nodeId: row.node_id,
-              ...(branchContext?.data.branchPath === undefined
+              ...(branchContext?.data.branchPath === undefined ||
+              branchContext.data.branchPath.length === 0
                 ? {}
                 : { branchPath: branchContext.data.branchPath }),
-              ...(branchContext?.data.iterationPath === undefined
+              ...(branchContext?.data.iterationPath === undefined ||
+              branchContext.data.iterationPath.length === 0
                 ? {}
                 : { iterationPath: branchContext.data.iterationPath }),
               sideEffectClass: row.side_effect_class,
@@ -795,6 +843,28 @@ export function createNodeAttemptRunStore(
       } catch {
         throw new NodeAttemptStateCorruptError();
       }
+      if (
+        input.upstreamNodeOutputs.some(({ nodeId, invocationKey }) => {
+          const branchPath = input.lease.branchPath ?? [];
+          const nearestBranch = branchPath.at(-1);
+          const possibleBranchPaths = [branchPath];
+          if (nearestBranch?.nodeId === nodeId)
+            possibleBranchPaths.push(branchPath.slice(0, -1));
+          return !possibleBranchPaths.some(
+            (candidateBranchPath) =>
+              invocationKey ===
+              scopedInvocationKey({
+                workflowVersionId: input.lease.workflowVersionId,
+                nodeId,
+                branchPath: candidateBranchPath,
+                ...(input.lease.iterationPath === undefined
+                  ? {}
+                  : { iterationPath: input.lease.iterationPath }),
+              }),
+          );
+        })
+      )
+        throw new NodeAttemptStateCorruptError();
       return withWorkspaceReadClient(
         pool,
         input.lease.workspaceId,
@@ -859,53 +929,68 @@ export function createNodeAttemptRunStore(
             runInput = stored.value;
           }
 
-          const completedNodeOutputs: Record<string, unknown> = {};
-          if (input.upstreamNodeIds.length > 0) {
+          const completedNodeOutputs: {
+            invocationKey: string;
+            nodeId: string;
+            value: unknown;
+          }[] = [];
+          if (input.upstreamNodeOutputs.length > 0) {
             const outputs = await client.query<{
+              invocation_key: string;
               node_id: string;
               node_output_ref: unknown;
               attempt_output_ref: unknown;
             }>(
-              `select node.node_id,node.output_ref as node_output_ref,
+              `select node.invocation_key,node.node_id,
+                      node.output_ref as node_output_ref,
                       attempt.output_ref as attempt_output_ref
                from app.node_runs node
                join app.node_attempts attempt
                  on attempt.workspace_id=node.workspace_id
                 and attempt.id=node.current_attempt_id
-               where node.workspace_id=$1 and node.workflow_run_id=$2
-                 and node.node_id=any($3::varchar[])
-                 and node.status='succeeded' and attempt.status='succeeded'
-                 and attempt.node_run_id=node.id`,
+                where node.workspace_id=$1 and node.workflow_run_id=$2
+                  and node.invocation_key=any($3::varchar[])
+                  and node.status='succeeded' and attempt.status='succeeded'
+                  and attempt.node_run_id=node.id`,
               [
                 input.lease.workspaceId,
                 input.lease.runId,
-                input.upstreamNodeIds,
+                input.upstreamNodeOutputs.map(
+                  ({ invocationKey }) => invocationKey,
+                ),
               ],
             );
-            if (outputs.rows.length !== input.upstreamNodeIds.length)
+            if (outputs.rows.length !== input.upstreamNodeOutputs.length)
               throw new NodeAttemptStateCorruptError();
-            for (const output of outputs.rows) {
+            const outputsByInvocationKey = new Map(
+              outputs.rows.map((output) => [output.invocation_key, output]),
+            );
+            for (const expected of input.upstreamNodeOutputs) {
+              const output = outputsByInvocationKey.get(expected.invocationKey);
               if (
+                output?.node_id !== expected.nodeId ||
                 serializeStoredExecutionJsonValue(output.node_output_ref) !==
-                serializeStoredExecutionJsonValue(output.attempt_output_ref)
+                  serializeStoredExecutionJsonValue(output.attempt_output_ref)
               )
                 throw new NodeAttemptStateCorruptError();
               const stored = parseStoredExecutionValueV1(
                 output.attempt_output_ref,
               );
-              if (
-                stored.kind !== 'inline' ||
-                Object.hasOwn(completedNodeOutputs, output.node_id)
-              )
+              if (stored.kind !== 'inline')
                 throw new NodeAttemptStateCorruptError();
-              completedNodeOutputs[output.node_id] = stored.value;
+              completedNodeOutputs.push({
+                invocationKey: output.invocation_key,
+                nodeId: output.node_id,
+                value: stored.value,
+              });
             }
           }
           const checkpoint = parsePersistedPhase3Checkpoint(
             row.scheduler_state,
           );
           const join = checkpoint.joins.find(
-            ({ joinId }) => joinId === input.lease.nodeId,
+            ({ joinInvocationKey }) =>
+              joinInvocationKey === input.lease.invocationKey,
           );
           const coordinatorInput =
             join?.selectedBranchIds === undefined
@@ -922,10 +1007,123 @@ export function createNodeAttemptRunStore(
                   ),
                   selectedBranchIds: join.selectedBranchIds,
                 };
+          let structuredCollection:
+            NonNullable<NodeAttemptInputs['structuredCollection']> | undefined;
+          const iterationPath = input.lease.iterationPath ?? [];
+          if (iterationPath.length > 0) {
+            const branchPath = input.lease.branchPath ?? [];
+            const declaredLoops = iterationPath.map((scope, index) => {
+              const enclosingIterationPath = iterationPath.slice(0, index);
+              const matches = checkpoint.loops.filter(
+                (loop) =>
+                  loop.loopId === scope.loopNodeId &&
+                  serializeStoredExecutionJsonValue(loop.iterationPath) ===
+                    serializeStoredExecutionJsonValue(enclosingIterationPath) &&
+                  loop.branchPath.length <= branchPath.length &&
+                  loop.branchPath.every((part, branchIndex) => {
+                    const leasePart = branchPath[branchIndex];
+                    return (
+                      leasePart?.nodeId === part.nodeId &&
+                      leasePart.outputPort === part.outputPort
+                    );
+                  }) &&
+                  loop.activeOrdinals.includes(scope.ordinal),
+              );
+              if (matches.length !== 1)
+                throw new NodeAttemptStateCorruptError();
+              return matches[0];
+            });
+            const nearestScope = iterationPath.at(-1);
+            const nearestLoop = declaredLoops.at(-1);
+            if (nearestScope === undefined || nearestLoop === undefined)
+              throw new NodeAttemptStateCorruptError();
+            const declaration = await client.query<{
+              attempt_id: string;
+              attempt_output_ref: unknown;
+              node_output_ref: unknown;
+              node_id: string;
+            }>(
+              `select node.node_id,node.current_attempt_id as attempt_id,
+                      node.output_ref as node_output_ref,
+                      attempt.output_ref as attempt_output_ref
+               from app.node_runs node
+               join app.node_attempts attempt
+                 on attempt.workspace_id=node.workspace_id
+                and attempt.id=node.current_attempt_id
+                and attempt.node_run_id=node.id
+               where node.workspace_id=$1 and node.workflow_run_id=$2
+                 and node.invocation_key=$3
+                 and attempt.status='succeeded'`,
+              [
+                input.lease.workspaceId,
+                input.lease.runId,
+                nearestLoop.controlInvocationKey,
+              ],
+            );
+            const declarationRow = declaration.rows[0];
+            if (
+              declaration.rows.length !== 1 ||
+              declarationRow?.node_id !== nearestLoop.loopId ||
+              nearestLoop.collection.kind !== 'inline' ||
+              nearestLoop.collection.attemptId !== declarationRow.attempt_id ||
+              serializeStoredExecutionJsonValue(
+                declarationRow.node_output_ref,
+              ) !==
+                serializeStoredExecutionJsonValue(
+                  declarationRow.attempt_output_ref,
+                )
+            )
+              throw new NodeAttemptStateCorruptError();
+            const stored = parseStoredExecutionValueV1(
+              declarationRow.attempt_output_ref,
+            );
+            if (
+              stored.kind !== 'inline' ||
+              stored.value === null ||
+              Array.isArray(stored.value) ||
+              typeof stored.value !== 'object'
+            )
+              throw new NodeAttemptStateCorruptError();
+            const declarationOutput = stored.value as Readonly<
+              Record<string, unknown>
+            >;
+            const keys = Object.keys(declarationOutput).sort();
+            const items = declarationOutput.items;
+            const iterationCount = declarationOutput.iterationCount;
+            const collectionChecksum = Array.isArray(items)
+              ? createHash('sha256')
+                  .update(serializeStoredExecutionJsonValue(items))
+                  .digest('hex')
+              : undefined;
+            if (
+              keys.length !== 2 ||
+              keys[0] !== 'items' ||
+              keys[1] !== 'iterationCount' ||
+              !Array.isArray(items) ||
+              typeof iterationCount !== 'number' ||
+              !Number.isSafeInteger(iterationCount) ||
+              iterationCount !== items.length ||
+              nearestLoop.collectionSize !== items.length ||
+              nearestScope.ordinal < 0 ||
+              nearestScope.ordinal >= items.length ||
+              nearestLoop.collectionChecksum !== collectionChecksum
+            )
+              throw new NodeAttemptStateCorruptError();
+            structuredCollection = Object.freeze({
+              loopNodeId: nearestLoop.loopId,
+              ordinal: nearestScope.ordinal,
+              collection: items,
+              collectionSize: nearestLoop.collectionSize,
+              declaredCollectionChecksum: nearestLoop.collectionChecksum,
+            });
+          }
           return Object.freeze({
             runInput,
             completedNodeOutputs: Object.freeze(completedNodeOutputs),
             ...(coordinatorInput === undefined ? {} : { coordinatorInput }),
+            ...(structuredCollection === undefined
+              ? {}
+              : { structuredCollection }),
             abortRequested: row.abort_requested,
             ...(row.abort_reason === null
               ? {}

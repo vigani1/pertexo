@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { copyFile, mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -780,6 +780,302 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         signal: new AbortController().signal,
       }),
     ).rejects.toBeInstanceOf(CoordinatorRunStateCorruptError);
+  });
+
+  it('loads only exact ordinal-scoped body inputs and fails closed on loop proof drift', async () => {
+    const controlKey = `${versionA}|loop|b:|i:`;
+    const first0Key = `${versionA}|body-first|b:|i:loop%3A0`;
+    const first1Key = `${versionA}|body-first|b:|i:loop%3A1`;
+    const sink1Key = `${versionA}|body-sink|b:|i:loop%3A1`;
+    const declarationAttemptId = randomUUID();
+    const declarationNodeRunId = randomUUID();
+    const first0AttemptId = randomUUID();
+    const first0NodeRunId = randomUUID();
+    const first1AttemptId = randomUUID();
+    const first1NodeRunId = randomUUID();
+    const sinkAttemptId = randomUUID();
+    const sinkNodeRunId = randomUUID();
+    const items = ['ordinal-zero', 'ordinal-one'];
+    const collectionChecksum = createHash('sha256')
+      .update(JSON.stringify(items))
+      .digest('hex');
+    const declarationOutput = {
+      schemaVersion: 1,
+      kind: 'inline',
+      value: { items, iterationCount: 2 },
+    };
+    const inline = (value: unknown) => ({
+      schemaVersion: 1,
+      kind: 'inline',
+      value,
+    });
+    const schedulerState = {
+      schemaVersion: 2,
+      engineVersion: 'engine-v1',
+      workflowVersionId: versionA,
+      revision: 1,
+      runStatus: 'running',
+      nextEventSequence: 2,
+      readySet: [],
+      admittedInvocationKeys: [controlKey, first0Key, first1Key, sink1Key],
+      invocations: [
+        {
+          invocationKey: controlKey,
+          nodeId: 'loop',
+          status: 'waiting',
+          attemptNumber: 1,
+          output: { kind: 'inline', attemptId: declarationAttemptId },
+          branchPath: [],
+          iterationPath: [],
+        },
+        {
+          invocationKey: first0Key,
+          nodeId: 'body-first',
+          status: 'succeeded',
+          attemptNumber: 1,
+          output: { kind: 'inline', attemptId: first0AttemptId },
+          branchPath: [],
+          iterationPath: [{ loopNodeId: 'loop', ordinal: 0 }],
+        },
+        {
+          invocationKey: first1Key,
+          nodeId: 'body-first',
+          status: 'succeeded',
+          attemptNumber: 1,
+          output: { kind: 'inline', attemptId: first1AttemptId },
+          branchPath: [],
+          iterationPath: [{ loopNodeId: 'loop', ordinal: 1 }],
+        },
+        {
+          invocationKey: sink1Key,
+          nodeId: 'body-sink',
+          status: 'running',
+          attemptNumber: 1,
+          branchPath: [],
+          iterationPath: [{ loopNodeId: 'loop', ordinal: 1 }],
+        },
+      ],
+      joins: [],
+      loops: [
+        {
+          controlInvocationKey: controlKey,
+          loopId: 'loop',
+          branchPath: [],
+          iterationPath: [],
+          bodyRootNodeIds: ['body-first'],
+          bodySinkNodeId: 'body-sink',
+          collection: { kind: 'inline', attemptId: declarationAttemptId },
+          collectionChecksum,
+          collectionSize: 2,
+          maxConcurrency: 2,
+          maxIterations: 2,
+          nextOrdinal: 2,
+          activeOrdinals: [0, 1],
+          terminalOrdinals: [],
+        },
+      ],
+      remainingIterationBudget: 0,
+      initialIterationBudget: 2,
+      branchSelections: [],
+      cancelRequested: false,
+      deadlineExpired: false,
+    } as const;
+    const runId = await insertRun({
+      schedulerState,
+      status: 'running',
+    });
+    await asRuntime(workerBaseUrl, workspaceA, async (client) => {
+      for (const row of [
+        {
+          nodeRunId: declarationNodeRunId,
+          attemptId: declarationAttemptId,
+          nodeId: 'loop',
+          invocationKey: controlKey,
+          branchContext: { branchPath: [], iterationPath: [] },
+          nodeStatus: 'waiting',
+          attemptStatus: 'succeeded',
+          output: declarationOutput,
+          controlKind: 'for_each_barrier',
+        },
+        {
+          nodeRunId: first0NodeRunId,
+          attemptId: first0AttemptId,
+          nodeId: 'body-first',
+          invocationKey: first0Key,
+          branchContext: {
+            branchPath: [],
+            iterationPath: [{ loopNodeId: 'loop', ordinal: 0 }],
+          },
+          nodeStatus: 'succeeded',
+          attemptStatus: 'succeeded',
+          output: inline({ value: 'ordinal-zero' }),
+          controlKind: null,
+        },
+        {
+          nodeRunId: first1NodeRunId,
+          attemptId: first1AttemptId,
+          nodeId: 'body-first',
+          invocationKey: first1Key,
+          branchContext: {
+            branchPath: [],
+            iterationPath: [{ loopNodeId: 'loop', ordinal: 1 }],
+          },
+          nodeStatus: 'succeeded',
+          attemptStatus: 'succeeded',
+          output: inline({ value: 'ordinal-one' }),
+          controlKind: null,
+        },
+        {
+          nodeRunId: sinkNodeRunId,
+          attemptId: sinkAttemptId,
+          nodeId: 'body-sink',
+          invocationKey: sink1Key,
+          branchContext: {
+            branchPath: [],
+            iterationPath: [{ loopNodeId: 'loop', ordinal: 1 }],
+          },
+          nodeStatus: 'running',
+          attemptStatus: 'running',
+          output: null,
+          controlKind: null,
+        },
+      ]) {
+        await client.query(
+          `insert into app.node_runs (
+             id,workspace_id,workflow_run_id,node_id,invocation_key,
+             branch_context,status,control_kind,side_effect_class,
+             current_attempt_id,current_attempt_number,output_ref
+           ) values ($1,$2,$3,$4,$5,$6::jsonb,$7,$8,'safe',$9,1,$10::jsonb)`,
+          [
+            row.nodeRunId,
+            workspaceA,
+            runId,
+            row.nodeId,
+            row.invocationKey,
+            JSON.stringify(row.branchContext),
+            row.nodeStatus,
+            row.controlKind,
+            row.attemptId,
+            row.output === null ? null : JSON.stringify(row.output),
+          ],
+        );
+        await client.query(
+          `insert into app.node_attempts (
+             id,workspace_id,node_run_id,attempt_number,status,
+             side_effect_class,lease_owner,lease_expires_at,fence_token,output_ref
+           ) values ($1,$2,$3,1,$4::varchar,'safe',$5,
+                     case when $4::varchar='running' then clock_timestamp()+interval '1 hour' else null end,
+                     case when $4::varchar='running' then 1 else 0 end,$6::jsonb)`,
+          [
+            row.attemptId,
+            workspaceA,
+            row.nodeRunId,
+            row.attemptStatus,
+            row.attemptStatus === 'running' ? 'attempt-worker-loop' : null,
+            row.output === null ? null : JSON.stringify(row.output),
+          ],
+        );
+      }
+    });
+    const lease = {
+      workspaceId: workspaceA,
+      runId,
+      workflowVersionId: versionA,
+      nodeRunId: sinkNodeRunId,
+      attemptId: sinkAttemptId,
+      attemptNumber: 1,
+      invocationKey: sink1Key,
+      nodeId: 'body-sink',
+      iterationPath: [{ loopNodeId: 'loop', ordinal: 1 }],
+      sideEffectClass: 'safe' as const,
+      workerId: 'attempt-worker-loop',
+      fenceToken: 1,
+      leaseExpiresAt: new Date(Date.now() + 3_600_000),
+      delivery: {
+        outboxEventId: randomUUID(),
+        payloadChecksum: 'a'.repeat(64),
+      },
+    };
+    const load = (upstreamInvocationKey = first1Key) =>
+      nodeAttemptStore.loadInputs({
+        lease,
+        upstreamNodeOutputs: [
+          {
+            nodeId: 'body-first',
+            invocationKey: upstreamInvocationKey,
+          },
+        ],
+        signal: new AbortController().signal,
+      });
+
+    await expect(load()).resolves.toMatchObject({
+      completedNodeOutputs: [
+        {
+          nodeId: 'body-first',
+          invocationKey: first1Key,
+          value: { value: 'ordinal-one' },
+        },
+      ],
+      structuredCollection: {
+        loopNodeId: 'loop',
+        ordinal: 1,
+        collection: items,
+        collectionSize: 2,
+        declaredCollectionChecksum: collectionChecksum,
+      },
+    });
+    await expect(load(first0Key)).rejects.toBeInstanceOf(
+      NodeAttemptStateCorruptError,
+    );
+
+    const replaceCheckpoint = async (next: unknown): Promise<void> => {
+      const updated = await asRuntime(workerBaseUrl, workspaceA, (client) =>
+        client.query<{ scheduler_state: unknown }>(
+          `update app.run_checkpoints set scheduler_state=$2::jsonb
+           where workflow_run_id=$1 returning scheduler_state`,
+          [runId, JSON.stringify(next)],
+        ),
+      );
+      expect(updated.rowCount).toBe(1);
+      expect(updated.rows[0]?.scheduler_state).toEqual(next);
+    };
+    await replaceCheckpoint({
+      ...schedulerState,
+      loops: [
+        { ...schedulerState.loops[0], collectionChecksum: 'f'.repeat(64) },
+      ],
+    });
+    await expect(load()).rejects.toBeInstanceOf(NodeAttemptStateCorruptError);
+    await replaceCheckpoint({
+      ...schedulerState,
+      loops: [
+        {
+          ...schedulerState.loops[0],
+          activeOrdinals: [0],
+          terminalOrdinals: [1],
+        },
+      ],
+    });
+    await expect(load()).rejects.toBeInstanceOf(NodeAttemptStateCorruptError);
+    const wrongAttemptId = randomUUID();
+    await replaceCheckpoint({
+      ...schedulerState,
+      invocations: schedulerState.invocations.map((invocation) =>
+        invocation.invocationKey === controlKey
+          ? {
+              ...invocation,
+              output: { kind: 'inline', attemptId: wrongAttemptId },
+            }
+          : invocation,
+      ),
+      loops: [
+        {
+          ...schedulerState.loops[0],
+          collection: { kind: 'inline', attemptId: wrongAttemptId },
+        },
+      ],
+    });
+    await expect(load()).rejects.toBeInstanceOf(NodeAttemptStateCorruptError);
   });
 
   it('loads and atomically resolves pending executor failure evidence', async () => {
@@ -4283,12 +4579,12 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
     await expect(
       nodeAttemptStore.loadInputs({
         lease: claimed.lease,
-        upstreamNodeIds: [],
+        upstreamNodeOutputs: [],
         signal: new AbortController().signal,
       }),
     ).resolves.toEqual({
       abortRequested: false,
-      completedNodeOutputs: {},
+      completedNodeOutputs: [],
       runInput: { hello: 'world' },
     });
     const dispatched = await nodeAttemptStore.markDispatched({
@@ -4523,22 +4819,26 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
     await expect(
       nodeAttemptStore.loadInputs({
         lease: downstreamClaim.lease,
-        upstreamNodeIds: ['manual'],
+        upstreamNodeOutputs: [{ nodeId: 'manual', invocationKey }],
         signal: new AbortController().signal,
       }),
     ).resolves.toMatchObject({
-      completedNodeOutputs: {
-        manual: {
-          status: 200,
-          body: {
-            kind: 'artifact',
-            artifactId: persistedArtifactId,
-            byteLength: 70_000,
-            mediaType: 'application/octet-stream',
-            sha256: 'a'.repeat(64),
+      completedNodeOutputs: [
+        {
+          nodeId: 'manual',
+          invocationKey,
+          value: {
+            status: 200,
+            body: {
+              kind: 'artifact',
+              artifactId: persistedArtifactId,
+              byteLength: 70_000,
+              mediaType: 'application/octet-stream',
+              sha256: 'a'.repeat(64),
+            },
           },
         },
-      },
+      ],
     });
   });
 

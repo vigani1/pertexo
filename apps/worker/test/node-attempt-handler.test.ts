@@ -166,7 +166,7 @@ describe('NodeAttemptHandler', () => {
       },
     );
     const engine = {
-      prepare: vi.fn().mockReturnValue({ upstreamNodeIds: [], execute }),
+      prepare: vi.fn().mockReturnValue({ upstreamNodeOutputs: [], execute }),
     } satisfies NodeAttemptExecutionEngine;
     const registryExecute = vi
       .fn<NodeExecutionRegistry['execute']>()
@@ -293,7 +293,7 @@ describe('NodeAttemptHandler', () => {
     );
     const handler = createNodeAttemptHandler({
       engine: {
-        prepare: vi.fn().mockReturnValue({ upstreamNodeIds: [], execute }),
+        prepare: vi.fn().mockReturnValue({ upstreamNodeOutputs: [], execute }),
       },
       heartbeatIntervalMillis: 1_000,
       leaseDurationSeconds: 30,
@@ -354,7 +354,9 @@ describe('NodeAttemptHandler', () => {
       const execute = vi.fn();
       const handler = createNodeAttemptHandler({
         engine: {
-          prepare: vi.fn().mockReturnValue({ upstreamNodeIds: [], execute }),
+          prepare: vi
+            .fn()
+            .mockReturnValue({ upstreamNodeOutputs: [], execute }),
         },
         heartbeatIntervalMillis: 1_000,
         leaseDurationSeconds: 30,
@@ -407,7 +409,7 @@ describe('NodeAttemptHandler', () => {
     const handler = createNodeAttemptHandler({
       engine: {
         prepare: vi.fn().mockReturnValue({
-          upstreamNodeIds: [],
+          upstreamNodeOutputs: [],
           execute: vi
             .fn()
             .mockRejectedValue(
@@ -466,7 +468,7 @@ describe('NodeAttemptHandler', () => {
     const handler = createNodeAttemptHandler({
       engine: {
         prepare: vi.fn().mockReturnValue({
-          upstreamNodeIds: [],
+          upstreamNodeOutputs: [],
           execute: vi.fn().mockRejectedValue(
             new NodeExecutorFailure({
               kind: 'outcome_unknown',
@@ -522,7 +524,7 @@ describe('NodeAttemptHandler', () => {
     const handler = createNodeAttemptHandler({
       engine: {
         prepare: vi.fn().mockReturnValue({
-          upstreamNodeIds: [],
+          upstreamNodeOutputs: [],
           execute: vi.fn().mockRejectedValue(
             new HttpRequestExecutorError(
               {
@@ -649,7 +651,9 @@ describe('NodeAttemptHandler', () => {
       );
       const handler = createNodeAttemptHandler({
         engine: {
-          prepare: vi.fn().mockReturnValue({ upstreamNodeIds: [], execute }),
+          prepare: vi
+            .fn()
+            .mockReturnValue({ upstreamNodeOutputs: [], execute }),
         },
         heartbeatIntervalMillis: 10,
         leaseDurationSeconds: 1,

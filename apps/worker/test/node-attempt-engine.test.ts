@@ -12,9 +12,15 @@ import {
   createCoreNodeRegistryForRelease,
 } from '@pertexo/nodes-core/server';
 import {
+  PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
+} from '@pertexo/node-catalog';
+import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
+import {
   buildWorkflowExecutableV2,
   composeExecutableCompatibilityRelease,
   createExecutableCompatibilityReleaseSupport,
+  invocationKey,
 } from '@pertexo/workflow-engine';
 import { describe, expect, it } from 'vitest';
 
@@ -68,6 +74,123 @@ function graph() {
   };
 }
 
+function forEachGraph() {
+  const base = graph();
+  return {
+    ...base,
+    nodes: [
+      base.nodes[0],
+      {
+        ...base.nodes[1],
+        id: 'loop',
+        definition: { key: 'core.foreach', version: 1 },
+        inputMappings: {
+          items: { kind: 'literal' as const, value: ['first', 'second'] },
+        },
+        structured: {
+          kind: 'for_each' as const,
+          maxIterations: 2,
+          maxConcurrency: 1,
+          body: {
+            schemaVersion: 1 as const,
+            settings: {},
+            inputPorts: ['item', 'ordinal'],
+            outputPorts: ['result'],
+            nodes: [
+              {
+                ...base.nodes[1],
+                id: 'body-first',
+                definition: { key: 'core.set', version: 1 },
+                inputMappings: {
+                  value: {
+                    kind: 'structured_input' as const,
+                    port: 'item' as const,
+                    path: '$',
+                  },
+                },
+              },
+              {
+                ...base.nodes[1],
+                id: 'body-sink',
+                definition: { key: 'core.set', version: 1 },
+                inputMappings: {
+                  value: {
+                    kind: 'node_output' as const,
+                    nodeId: 'body-first',
+                    path: '$',
+                  },
+                },
+              },
+            ],
+            edges: [
+              {
+                id: 'body-edge',
+                source: { nodeId: 'body-first', port: 'out' },
+                target: { nodeId: 'body-sink', port: 'in' },
+              },
+            ],
+          },
+        },
+      },
+      base.nodes[1],
+    ],
+    edges: [
+      {
+        id: 'manual-loop',
+        source: { nodeId: 'manual', port: 'out' },
+        target: { nodeId: 'loop', port: 'in' },
+      },
+      {
+        id: 'loop-terminate',
+        source: { nodeId: 'loop', port: 'out' },
+        target: { nodeId: 'terminate', port: 'in' },
+      },
+    ],
+  };
+}
+
+function conditionGraph() {
+  const base = graph();
+  const branchNode = (id: string) => ({
+    ...base.nodes[1],
+    id,
+    definition: { key: 'core.set', version: 1 },
+    inputMappings: { value: { kind: 'literal' as const, value: id } },
+  });
+  return {
+    ...base,
+    nodes: [
+      base.nodes[0],
+      {
+        ...branchNode('condition'),
+        definition: { key: 'core.condition', version: 1 },
+        inputMappings: {
+          condition: { kind: 'literal' as const, value: true },
+        },
+      },
+      branchNode('selected'),
+      branchNode('unselected'),
+    ],
+    edges: [
+      {
+        id: 'manual-condition',
+        source: { nodeId: 'manual', port: 'out' },
+        target: { nodeId: 'condition', port: 'in' },
+      },
+      {
+        id: 'condition-selected',
+        source: { nodeId: 'condition', port: 'true' },
+        target: { nodeId: 'selected', port: 'in' },
+      },
+      {
+        id: 'condition-unselected',
+        source: { nodeId: 'condition', port: 'false' },
+        target: { nodeId: 'unselected', port: 'in' },
+      },
+    ],
+  };
+}
+
 function fixture(nodeId: 'manual' | 'terminate') {
   const release = composeExecutableCompatibilityRelease(CORE_REGISTRY_RELEASE);
   const executable = buildWorkflowExecutableV2({ graph: graph(), release });
@@ -109,7 +232,7 @@ describe('node attempt execution engine', () => {
     });
     const prepared = engine.prepare({ projection, lease });
 
-    expect(prepared.upstreamNodeIds).toEqual([]);
+    expect(prepared.upstreamNodeOutputs).toEqual([]);
     await expect(
       prepared.execute({
         runInput: { hello: 'world' },
@@ -127,7 +250,7 @@ describe('node attempt execution engine', () => {
     });
   });
 
-  it('passes durable branch scope into canonical attempt identity verification', async () => {
+  it('rejects a branch scope without executable ancestry', () => {
     const { release, projection, lease } = fixture('manual');
     const scopedLease: NodeAttemptLease = {
       ...lease,
@@ -139,15 +262,56 @@ describe('node attempt execution engine', () => {
       currentRelease: release,
     });
 
-    await expect(
-      engine.prepare({ projection, lease: scopedLease }).execute({
-        runInput: { hello: 'world' },
-        completedNodeOutputs: {},
-        abortRequested: false,
-        registry: createCoreNodeRegistry(),
-        signal: new AbortController().signal,
+    expect(() => engine.prepare({ projection, lease: scopedLease })).toThrow(
+      'branch scope',
+    );
+  });
+
+  it('uses the parent scope for the branch node that introduces a selected path', () => {
+    const release = composeExecutableCompatibilityRelease(
+      PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
+    );
+    const executable = buildWorkflowExecutableV2({
+      graph: conditionGraph(),
+      release,
+    });
+    const projection: PublishedWorkflowV2Projection = {
+      id: VERSION_ID,
+      workspaceId: WORKSPACE_ID,
+      workflowId: WORKFLOW_ID,
+      versionNumber: 1,
+      schemaVersion: 1,
+      checksum: executable.checksum,
+      executableSchemaVersion: 2,
+      executableJson: executable.envelope,
+      compatibilityReleaseEpoch: release.epoch,
+    };
+    const branchPath = [{ nodeId: 'condition', outputPort: 'true' }] as const;
+    const lease: NodeAttemptLease = {
+      ...fixture('manual').lease,
+      nodeId: 'selected',
+      branchPath,
+      invocationKey: invocationKey({
+        workflowVersionId: VERSION_ID,
+        nodeId: 'selected',
+        branchPath: ['condition:true'],
       }),
-    ).resolves.toMatchObject({ invocationKey: scopedLease.invocationKey });
+    };
+
+    expect(
+      createNodeAttemptExecutionEngine({
+        admissionRelease: release,
+        currentRelease: release,
+      }).prepare({ projection, lease }).upstreamNodeOutputs,
+    ).toEqual([
+      {
+        nodeId: 'condition',
+        invocationKey: invocationKey({
+          workflowVersionId: VERSION_ID,
+          nodeId: 'condition',
+        }),
+      },
+    ]);
   });
 
   it('derives the exact direct-upstream set and rejects a changed side-effect pin', () => {
@@ -157,8 +321,8 @@ describe('node attempt execution engine', () => {
       currentRelease: release,
     });
 
-    expect(engine.prepare({ projection, lease }).upstreamNodeIds).toEqual([
-      'manual',
+    expect(engine.prepare({ projection, lease }).upstreamNodeOutputs).toEqual([
+      { nodeId: 'manual', invocationKey: `${VERSION_ID}|manual|b:|i:` },
     ]);
     expect(() =>
       engine.prepare({
@@ -214,5 +378,114 @@ describe('node attempt execution engine', () => {
         signal: new AbortController().signal,
       }),
     ).resolves.toMatchObject({ kind: 'succeeded', output: { target: true } });
+  });
+
+  it('recursively prepares a For Each body node with exact ordinal-scoped upstream identity', async () => {
+    const release = composeExecutableCompatibilityRelease(
+      PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
+    );
+    const executable = buildWorkflowExecutableV2({
+      graph: forEachGraph(),
+      release,
+    });
+    const projection: PublishedWorkflowV2Projection = {
+      id: VERSION_ID,
+      workspaceId: WORKSPACE_ID,
+      workflowId: WORKFLOW_ID,
+      versionNumber: 1,
+      schemaVersion: 1,
+      checksum: executable.checksum,
+      executableSchemaVersion: 2,
+      executableJson: executable.envelope,
+      compatibilityReleaseEpoch: release.epoch,
+    };
+    const iterationPath = [{ loopNodeId: 'loop', ordinal: 1 }] as const;
+    const bodyInvocationKey = invocationKey({
+      workflowVersionId: VERSION_ID,
+      nodeId: 'body-sink',
+      iterationPath,
+    });
+    const upstreamInvocationKey = invocationKey({
+      workflowVersionId: VERSION_ID,
+      nodeId: 'body-first',
+      iterationPath,
+    });
+    const lease: NodeAttemptLease = {
+      ...fixture('manual').lease,
+      nodeId: 'body-sink',
+      invocationKey: bodyInvocationKey,
+      iterationPath,
+    };
+    const prepared = createNodeAttemptExecutionEngine({
+      admissionRelease: release,
+      currentRelease: release,
+    }).prepare({ projection, lease });
+
+    expect(prepared.upstreamNodeOutputs).toEqual([
+      { nodeId: 'body-first', invocationKey: upstreamInvocationKey },
+    ]);
+    await expect(
+      prepared.execute({
+        runInput: {},
+        completedNodeOutputs: [
+          {
+            nodeId: 'body-first',
+            invocationKey: upstreamInvocationKey,
+            value: { value: 'second' },
+          },
+        ],
+        structuredCollection: {
+          loopNodeId: 'loop',
+          ordinal: 1,
+          collection: ['first', 'second'],
+          collectionSize: 2,
+          declaredCollectionChecksum:
+            'f5ca319099f6b777b72517eb1fd6c40d5fd45f43acd86c0ce687aed7b8a7a0f9',
+        },
+        abortRequested: false,
+        registry: createPlatformNodeRegistryForRelease(
+          PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
+        ),
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toMatchObject({ nodeId: 'body-sink', kind: 'succeeded' });
+  });
+
+  it('rejects body preparation outside its exact iteration ancestry', () => {
+    const release = composeExecutableCompatibilityRelease(
+      PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
+    );
+    const executable = buildWorkflowExecutableV2({
+      graph: forEachGraph(),
+      release,
+    });
+    const projection: PublishedWorkflowV2Projection = {
+      id: VERSION_ID,
+      workspaceId: WORKSPACE_ID,
+      workflowId: WORKFLOW_ID,
+      versionNumber: 1,
+      schemaVersion: 1,
+      checksum: executable.checksum,
+      executableSchemaVersion: 2,
+      executableJson: executable.envelope,
+      compatibilityReleaseEpoch: release.epoch,
+    };
+
+    expect(() =>
+      createNodeAttemptExecutionEngine({
+        admissionRelease: release,
+        currentRelease: release,
+      }).prepare({
+        projection,
+        lease: {
+          ...fixture('manual').lease,
+          nodeId: 'body-first',
+          invocationKey: invocationKey({
+            workflowVersionId: VERSION_ID,
+            nodeId: 'body-first',
+          }),
+        },
+      }),
+    ).toThrow('structured scope');
   });
 });

@@ -1921,15 +1921,28 @@ export async function executeNodeAttempt(
         [],
         'attempt_invalid',
       );
+      const upstreamEdge = containingGraph.edges.find(
+        ({ source, target }) =>
+          source.nodeId === descriptor.nodeId && target.nodeId === node.id,
+      );
+      const branchPath = input.branchPath ?? [];
+      const nearestBranch = branchPath.at(-1);
+      const upstreamBranchPath =
+        upstreamEdge !== undefined &&
+        nearestBranch?.nodeId === descriptor.nodeId &&
+        nearestBranch?.outputPort === upstreamEdge.source.port
+          ? branchPath.slice(0, -1)
+          : branchPath;
       if (
         typeof descriptor.nodeId !== 'string' ||
         typeof descriptor.invocationKey !== 'string' ||
         !directUpstream.has(descriptor.nodeId) ||
+        upstreamEdge === undefined ||
         descriptor.invocationKey !==
           createInvocationKey({
             workflowVersionId: input.workflowVersionId,
             nodeId: descriptor.nodeId,
-            branchPath: (input.branchPath ?? []).map(
+            branchPath: upstreamBranchPath.map(
               ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
             ),
             ...(input.iterationPath === undefined
