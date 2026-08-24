@@ -597,6 +597,28 @@
                       "policyVersion"
                     ],
                     "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "structured_input"
+                      },
+                      "port": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "path": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "port",
+                      "path"
+                    ],
+                    "additionalProperties": false
                   }
                 ]
               }
@@ -1301,6 +1323,28 @@
                       "policyVersion"
                     ],
                     "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "structured_input"
+                      },
+                      "port": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "path": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "port",
+                      "path"
+                    ],
+                    "additionalProperties": false
                   }
                 ]
               }
@@ -1958,6 +2002,28 @@
                       "policyVersion"
                     ],
                     "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "structured_input"
+                      },
+                      "port": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "path": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "port",
+                      "path"
+                    ],
+                    "additionalProperties": false
                   }
                 ]
               }
@@ -2460,6 +2526,28 @@
                       "language",
                       "expression",
                       "policyVersion"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "structured_input"
+                      },
+                      "port": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "path": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "port",
+                      "path"
                     ],
                     "additionalProperties": false
                   }
@@ -2990,6 +3078,28 @@
                       "language",
                       "expression",
                       "policyVersion"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "structured_input"
+                      },
+                      "port": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "path": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "port",
+                      "path"
                     ],
                     "additionalProperties": false
                   }
