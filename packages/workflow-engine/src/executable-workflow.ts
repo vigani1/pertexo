@@ -396,6 +396,65 @@ function canonicalEdges(graph: WorkflowGraph): readonly WorkflowEdge[] {
   );
 }
 
+function assertGraphPorts(
+  graph: WorkflowGraph,
+  release: RegistryRelease,
+): void {
+  const manifests = new Map(
+    graph.nodes.map((node) => [
+      node.id,
+      definitionManifest(release, node.definition),
+    ]),
+  );
+  for (const edge of graph.edges) {
+    const source = manifests.get(edge.source.nodeId);
+    const target = manifests.get(edge.target.nodeId);
+    if (source === undefined || target === undefined)
+      fail('workflow edge references an unavailable node');
+    if (!source.ports.outputs.includes(edge.source.port))
+      fail('workflow edge source port is unavailable');
+    if (!target.ports.inputs.includes(edge.target.port))
+      fail('workflow edge target port is unavailable');
+  }
+}
+
+function assertConditionBranchesDoNotReconverge(graph: WorkflowGraph): void {
+  const adjacency = new Map<string, string[]>();
+  for (const node of graph.nodes) adjacency.set(node.id, []);
+  for (const edge of graph.edges)
+    adjacency.get(edge.source.nodeId)?.push(edge.target.nodeId);
+
+  const descendants = (roots: readonly string[]): Set<string> => {
+    const reached = new Set<string>();
+    const pending = [...roots];
+    while (pending.length > 0) {
+      const nodeId = pending.pop();
+      if (nodeId === undefined || reached.has(nodeId)) continue;
+      reached.add(nodeId);
+      pending.push(...(adjacency.get(nodeId) ?? []));
+    }
+    return reached;
+  };
+
+  for (const node of graph.nodes) {
+    if (
+      node.definition.key !== 'core.condition' ||
+      node.definition.version !== 1
+    )
+      continue;
+    const branchRoots = (port: 'true' | 'false'): string[] =>
+      graph.edges
+        .filter(
+          (edge) => edge.source.nodeId === node.id && edge.source.port === port,
+        )
+        .map((edge) => edge.target.nodeId);
+    const trueDescendants = descendants(branchRoots('true'));
+    const falseDescendants = descendants(branchRoots('false'));
+    if ([...trueDescendants].some((nodeId) => falseDescendants.has(nodeId)))
+      fail('Condition branches cannot reconverge before Merge is available');
+  }
+}
+
 function assertExpressionPolicies(
   node: Pick<WorkflowNode, 'inputMappings'>,
   policies: readonly PolicyReference[],
@@ -422,6 +481,8 @@ function buildBoundary(input: {
     schemaVersion: 1,
     definitions: release.definitions.map(({ definition }) => definition),
   });
+  assertGraphPorts(graph, release);
+  assertConditionBranchesDoNotReconverge(graph);
   const nodes = [...graph.nodes]
     .sort((left, right) => compareOrdinal(left.id, right.id))
     .map((node) => executableNode(node, release));

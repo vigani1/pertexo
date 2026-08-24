@@ -34,7 +34,12 @@ const jsonataPolicy = { key: 'jsonata.restricted', version: 1 } as const;
 const schema = { type: 'object', additionalProperties: true } as const;
 
 function manifest(
-  key: 'core.manual' | 'core.set' | 'core.terminate' | 'test.unrelated',
+  key:
+    | 'core.condition'
+    | 'core.manual'
+    | 'core.set'
+    | 'core.terminate'
+    | 'test.unrelated',
   policies: readonly PolicyReference[] = [boundedPolicy],
 ): NodeManifest {
   return {
@@ -45,14 +50,21 @@ function manifest(
         ? 'trigger'
         : key === 'core.terminate'
           ? 'output'
-          : 'transform',
+          : key === 'core.condition'
+            ? 'logic'
+            : 'transform',
     configVersion: 1,
     configSchema: schema,
     inputSchema: schema,
     outputSchema: schema,
     ports: {
       inputs: key === 'core.manual' ? [] : ['in'],
-      outputs: key === 'core.terminate' ? [] : ['out'],
+      outputs:
+        key === 'core.terminate'
+          ? []
+          : key === 'core.condition'
+            ? ['true', 'false']
+            : ['out'],
     },
     credentialRequirements: [],
     connectionRequirements: [],
@@ -74,6 +86,7 @@ function nodeRelease(input?: {
   readonly driftCapability?: boolean;
   readonly manualRetryClass?: NodeManifest['retryClass'];
   readonly setRetryClass?: NodeManifest['retryClass'];
+  readonly condition?: boolean;
 }): RegistryRelease {
   const definitions = [
     manifest('core.manual'),
@@ -82,6 +95,7 @@ function nodeRelease(input?: {
       input?.mutateSet ? [jsonataPolicy] : [boundedPolicy, jsonataPolicy],
     ),
     manifest('core.terminate'),
+    ...(input?.condition ? [manifest('core.condition')] : []),
     ...(input?.unrelated ? [manifest('test.unrelated')] : []),
   ];
   const manual = definitions.find(
@@ -109,6 +123,37 @@ function nodeRelease(input?: {
     })),
     policies: [boundedPolicy, jsonataPolicy],
   });
+}
+
+function conditionGraph(sourcePort: string) {
+  const base = graph();
+  return {
+    ...base,
+    nodes: [
+      base.nodes[0],
+      {
+        ...base.nodes[1],
+        id: 'condition',
+        definition: { key: 'core.condition', version: 1 },
+        inputMappings: {
+          condition: { kind: 'literal' as const, value: true },
+        },
+      },
+      base.nodes[2],
+    ],
+    edges: [
+      {
+        id: 'manual-condition',
+        source: { nodeId: 'manual', port: 'out' },
+        target: { nodeId: 'condition', port: 'in' },
+      },
+      {
+        id: 'condition-terminate',
+        source: { nodeId: 'condition', port: sourcePort },
+        target: { nodeId: 'terminate', port: 'in' },
+      },
+    ],
+  };
 }
 
 function graph(reverse = false) {
@@ -167,6 +212,43 @@ function graph(reverse = false) {
 }
 
 describe('workflow executable V2 identity', () => {
+  it('rejects a Condition edge through an undeclared output port', () => {
+    const release = composeExecutableCompatibilityRelease(
+      nodeRelease({ condition: true }),
+    );
+
+    expect(() =>
+      buildWorkflowExecutableV2({
+        graph: conditionGraph('out'),
+        release,
+      }),
+    ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
+  });
+
+  it('rejects Condition branches that reconverge before Merge exists', () => {
+    const release = composeExecutableCompatibilityRelease(
+      nodeRelease({ condition: true }),
+    );
+    const reconverging = conditionGraph('true');
+
+    expect(() =>
+      buildWorkflowExecutableV2({
+        graph: {
+          ...reconverging,
+          edges: [
+            ...reconverging.edges,
+            {
+              id: 'condition-false-terminate',
+              source: { nodeId: 'condition', port: 'false' },
+              target: { nodeId: 'terminate', port: 'in' },
+            },
+          ],
+        },
+        release,
+      }),
+    ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
+  });
+
   it('describes the exact durable compatibility authority for a deployment artifact', () => {
     const release = composeExecutableCompatibilityRelease(nodeRelease());
     const description = describeExecutableCompatibilityRelease(release);
