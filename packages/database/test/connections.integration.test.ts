@@ -550,7 +550,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0041_trigger_hardening.sql',
+        migrationHead: '0042_worker_run_admission_lock.sql',
       });
       const bindingSurface = await pool.query<{
         node_column: boolean;
@@ -767,7 +767,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0041_trigger_hardening.sql',
+        migrationHead: '0042_worker_run_admission_lock.sql',
       });
     } finally {
       await pool.end();
@@ -1754,7 +1754,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0041_trigger_hardening.sql',
+        migrationHead: '0042_worker_run_admission_lock.sql',
       });
       await expect(
         checkDatabaseReadiness(workerReadinessPool, {
@@ -1762,7 +1762,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0041_trigger_hardening.sql',
+        migrationHead: '0042_worker_run_admission_lock.sql',
       });
     } finally {
       await Promise.all([apiReadinessPool.end(), workerReadinessPool.end()]);

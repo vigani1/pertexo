@@ -8,10 +8,14 @@ const migrationUrl = new URL(
   '../migrations/0038_execution_admission.sql',
   import.meta.url,
 );
+const workerAdmissionMigrationUrl = new URL(
+  '../migrations/0042_worker_run_admission_lock.sql',
+  import.meta.url,
+);
 
 describe('execution admission migration contract', () => {
   it('owns immutable entitlement history, reconciled slots, and durable fairness', async () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0041_trigger_hardening.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0042_worker_run_admission_lock.sql');
     const migration = await readFile(migrationUrl, 'utf8');
 
     expect(migration).toContain(
@@ -32,5 +36,24 @@ describe('execution admission migration contract', () => {
     );
     expect(migration).toContain('recover_due_workflow_run_active_admissions');
     expect(migration).toContain("VALUES (NEW.id,1,'active',5,100");
+  });
+
+  it('gives worker acceptance a narrow workspace lifecycle lock', async () => {
+    const migration = await readFile(workerAdmissionMigrationUrl, 'utf8');
+
+    expect(migration).toContain('SECURITY DEFINER');
+    expect(migration).toContain('FOR SHARE');
+    expect(migration).toContain('RETURNS varchar');
+    expect(migration).toContain('lock_workflow_failure_notification_policy');
+    expect(migration).toContain(
+      'TO {{api_runtime_role}},{{worker_runtime_role}}',
+    );
+    expect(migration).toContain(
+      'GRANT UPDATE(status,result_ref,updated_at) ON app.idempotency_records',
+    );
+    expect(migration).not.toContain('GRANT UPDATE ON app.workspaces');
+    expect(migration).not.toContain(
+      'GRANT UPDATE ON app.failure_notification_destinations',
+    );
   });
 });

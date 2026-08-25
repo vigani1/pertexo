@@ -8,7 +8,7 @@ import {
   type CompatibilityReleaseExpectationSet,
 } from './compatibility-release.js';
 
-export const EXPECTED_MIGRATION_HEAD = '0041_trigger_hardening.sql';
+export const EXPECTED_MIGRATION_HEAD = '0042_worker_run_admission_lock.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -626,7 +626,7 @@ export async function checkDatabaseReadiness(
           where has_column_privilege($2, 'app.' || protected.table_name, protected.column_name, 'UPDATE')
         )
         and has_column_privilege($2, 'app.workflow_runs', 'input_ref', 'SELECT')
-        and not has_column_privilege($2, 'app.workflow_runs', 'input_ref', 'INSERT')
+        and has_column_privilege($2, 'app.workflow_runs', 'input_ref', 'INSERT')
         and not exists (
           select 1 from pg_policy policy, unnest(policy.polroles) runtime_role
           where policy.polrelid = to_regclass('app.workflow_runs')
@@ -707,8 +707,8 @@ export async function checkDatabaseReadiness(
         and has_column_privilege($2, 'app.node_attempts', 'retry_decision', 'UPDATE')
         and has_table_privilege($2, 'app.run_events', 'INSERT')
         and has_table_privilege($2, 'app.outbox_events', 'INSERT')
-        and not has_table_privilege($2, 'app.workflow_runs', 'INSERT')
-        and not has_table_privilege($2, 'app.run_checkpoints', 'INSERT')
+        and has_table_privilege($2, 'app.workflow_runs', 'INSERT')
+        and has_table_privilege($2, 'app.run_checkpoints', 'INSERT')
         and not has_table_privilege($2, 'app.run_events', 'UPDATE')
         and not has_table_privilege($2, 'app.outbox_events', 'UPDATE')
         and not has_table_privilege($2, 'app.inbox_receipts', 'UPDATE')

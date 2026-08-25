@@ -142,10 +142,7 @@ async function assertWorkspaceAcceptsNewRuns(
   transaction: WorkspaceTransaction,
 ): Promise<void> {
   const result = await transaction.db.execute<{ status: string }>(sql`
-    select status
-    from app.workspaces
-    where id = ${transaction.workspaceId}
-    for share
+    select app.lock_workspace_run_admission(${transaction.workspaceId}) status
   `);
 
   if (result.rows[0]?.status !== 'active') {
@@ -173,39 +170,14 @@ export async function resolveWorkflowFailureNotificationPolicy(
     destination_status: string;
     side_effect_class: 'idempotent_with_key' | 'unsafe';
     kind: 'email' | 'slack';
-    workspace_status: string;
   }>(sql`
-    select destination.id as destination_id,
-           destination.current_config_version,
-           destination.status as destination_status,
-           workspace.status as workspace_status,
-           version.kind,
-           version.side_effect_class,
-           case
-             when jsonb_typeof(version.config) = 'object'
-               and version.config ? 'connectionId'
-               and (version.config->>'connectionId') ~
-                 '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
-             then (version.config->>'connectionId')::uuid
-             else null
-           end as connection_id
-    from app.workflow_failure_notification_policies policy
-    join app.failure_notification_destinations destination
-      on destination.workspace_id = policy.workspace_id
-     and destination.id = policy.destination_id
-    join app.failure_notification_destination_versions version
-      on version.workspace_id = destination.workspace_id
-     and version.destination_id = destination.id
-     and version.version = destination.current_config_version
-    join app.workspaces workspace on workspace.id = policy.workspace_id
-    where policy.workspace_id = ${transaction.workspaceId}
-      and policy.workflow_id = ${workflowId}
-    for share of policy, destination, workspace
+    select * from app.lock_workflow_failure_notification_policy(
+      ${transaction.workspaceId},${workflowId}
+    )
   `);
   const destination = destinationResult.rows[0];
   if (
     destination?.connection_id == null ||
-    destination.workspace_status !== 'active' ||
     destination.destination_status !== 'enabled' ||
     (destination.kind === 'slack' &&
       destination.side_effect_class !== 'unsafe') ||

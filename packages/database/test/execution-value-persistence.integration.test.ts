@@ -251,7 +251,7 @@ describe('execution value persistence migration', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0041_trigger_hardening.sql',
+          migrationHead: '0042_worker_run_admission_lock.sql',
           role: expectedRole,
         });
       } finally {

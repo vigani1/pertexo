@@ -402,6 +402,21 @@ afterAll(async () => {
 });
 
 describe('atomic workflow run acceptance', () => {
+  it('accepts and replays a run under the worker role', async () => {
+    const first = await workerDatabase.withWorkspace(
+      workspaceA,
+      (transaction) => acceptWorkflowRun(transaction, acceptanceInput()),
+    );
+    const replay = await workerDatabase.withWorkspace(
+      workspaceA,
+      (transaction) => acceptWorkflowRun(transaction, acceptanceInput()),
+    );
+
+    expect(first.duplicate).toBe(false);
+    expect(replay).toEqual({ ...first, duplicate: true });
+    await expectAcceptanceRecordCounts(1);
+  });
+
   it('rejects malformed destination pins and inactive acceptance identities atomically', async () => {
     const valid = await createNotificationFixture();
     const unrelated = await createNotificationFixture();
