@@ -47,10 +47,10 @@ CREATE TABLE app.workflow_run_active_admissions (
   workflow_run_id uuid PRIMARY KEY,
   outbox_event_id uuid NOT NULL UNIQUE,
   recover_after timestamptz,
-  recovery_count integer NOT NULL DEFAULT 0,
+  recovery_count bigint NOT NULL DEFAULT 0,
   created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
   CONSTRAINT workflow_run_active_admissions_recovery_count_valid
-    CHECK (recovery_count BETWEEN 0 AND 1000),
+    CHECK (recovery_count >= 0),
   CONSTRAINT workflow_run_active_admissions_workspace_fk
     FOREIGN KEY (workspace_id) REFERENCES app.workspaces(id) ON DELETE RESTRICT,
   CONSTRAINT workflow_run_active_admissions_run_fk
@@ -498,6 +498,10 @@ RETURNS integer
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,app SET row_security=on AS $$
 DECLARE
   admission record;
+  canonical_payload text;
+  new_outbox_event_id uuid;
+  new_payload jsonb;
+  old_payload jsonb;
   prior_workspace text;
   recovered integer := 0;
 BEGIN
@@ -509,7 +513,6 @@ BEGIN
     SELECT active.workspace_id,active.workflow_run_id,active.outbox_event_id
       FROM app.workflow_run_active_admissions active
      WHERE active.recover_after<=clock_timestamp()
-       AND active.recovery_count<1000
      ORDER BY active.recover_after,active.outbox_event_id
      FOR UPDATE OF active SKIP LOCKED
      LIMIT p_limit
@@ -519,15 +522,34 @@ BEGIN
      WHERE workspace_id=admission.workspace_id
        AND id=admission.workflow_run_id AND status='queued';
     IF NOT FOUND THEN CONTINUE; END IF;
-    UPDATE app.outbox_events
-       SET published_at=null,available_at=clock_timestamp(),
-           last_error_code='publish.delivery_recovery',updated_at=clock_timestamp()
+    SELECT payload INTO old_payload FROM app.outbox_events
      WHERE workspace_id=admission.workspace_id
        AND id=admission.outbox_event_id
        AND published_at is not null AND failed_at is null;
     IF FOUND THEN
+      new_outbox_event_id := gen_random_uuid();
+      new_payload := old_payload ||
+        jsonb_build_object('outboxEventId',new_outbox_event_id);
+      canonical_payload := '{"outboxEventId":"' || new_outbox_event_id::text ||
+        '","runId":"' || admission.workflow_run_id::text ||
+        '","schemaVersion":1' ||
+        CASE WHEN old_payload ? 'traceparent'
+          THEN ',"traceparent":' ||
+               to_jsonb(old_payload->>'traceparent')::text
+          ELSE '' END ||
+        ',"workspaceId":"' || admission.workspace_id::text || '"}';
+      INSERT INTO app.outbox_events(
+        id,workspace_id,job_name,schema_version,aggregate_type,aggregate_id,
+        payload,payload_checksum,available_at,last_error_code
+      ) VALUES (
+        new_outbox_event_id,admission.workspace_id,'advance-workflow-run',1,
+        'workflow-run',admission.workflow_run_id,new_payload,
+        encode(sha256(convert_to(canonical_payload,'UTF8')),'hex'),
+        clock_timestamp(),'publish.delivery_recovery'
+      );
       UPDATE app.workflow_run_active_admissions
-         SET recover_after=null,recovery_count=recovery_count+1
+         SET outbox_event_id=new_outbox_event_id,recover_after=null,
+             recovery_count=recovery_count+1
        WHERE workflow_run_id=admission.workflow_run_id;
       recovered := recovered+1;
     END IF;

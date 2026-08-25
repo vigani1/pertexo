@@ -1415,7 +1415,11 @@ describe('atomic workflow run acceptance', () => {
       await owner.end();
     }
     const recovered = await claim();
-    expect(recovered.events[0]?.id).toBe(firstEventId);
+    expect(recovered.events[0]?.id).not.toBe(firstEventId);
+    expect(recovered.events[0]?.aggregateId).toBe(admittedRunIds[0]);
+    expect(recovered.events[0]?.payloadChecksum).toBe(
+      canonicalOutboxPayloadChecksum(recovered.events[0]?.payload),
+    );
     const recoveredEvent = recovered.events[0];
     if (recoveredEvent === undefined)
       throw new Error('Expected recovered coordinator delivery');
