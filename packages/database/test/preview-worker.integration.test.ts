@@ -366,6 +366,7 @@ beforeAll(async () => {
     apiRuntimeRole: 'pertexo_api',
     workerRuntimeRole: 'pertexo_worker',
     dispatcherRole: 'pertexo_dispatcher',
+    maintenanceRole: 'pertexo_maintenance',
   });
   await insertIdentity();
 }, 60_000);

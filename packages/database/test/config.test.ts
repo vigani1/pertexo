@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   parseDatabaseConfig,
+  parseMaintenanceDatabaseConfig,
   parseMigrationConfig,
   parseOutboxDispatcherConfig,
 } from '../src/config.js';
@@ -38,6 +39,7 @@ describe('database configuration', () => {
           'postgresql://pertexo_migration:secret@localhost:5432/pertexo',
         POSTGRES_API_RUNTIME_USER: 'api_role',
         POSTGRES_DISPATCHER_RUNTIME_USER: 'dispatcher_role',
+        POSTGRES_MAINTENANCE_USER: 'maintenance_role',
         POSTGRES_OWNER_USER: 'pertexo_owner',
         POSTGRES_WORKER_RUNTIME_USER: 'worker_role',
       }),
@@ -46,8 +48,26 @@ describe('database configuration', () => {
       connectionString:
         'postgresql://pertexo_migration:secret@localhost:5432/pertexo',
       dispatcherRole: 'dispatcher_role',
+      maintenanceRole: 'maintenance_role',
       ownerRole: 'pertexo_owner',
       workerRuntimeRole: 'worker_role',
+    });
+  });
+
+  it('parses a dedicated conservative maintenance pool', () => {
+    expect(
+      parseMaintenanceDatabaseConfig({
+        DATABASE_MAINTENANCE_URL:
+          'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
+      }),
+    ).toEqual({
+      connectionString:
+        'postgresql://pertexo_maintenance:secret@localhost:5432/pertexo',
+      connectionTimeoutMillis: 5_000,
+      idleTimeoutMillis: 30_000,
+      max: 2,
+      ownerRole: 'pertexo_owner',
+      workerRuntimeRole: 'pertexo_worker',
     });
   });
 

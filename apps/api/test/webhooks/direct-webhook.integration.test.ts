@@ -196,6 +196,7 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
       apiRuntimeRole: apiRole,
       workerRuntimeRole: workerRole,
       dispatcherRole,
+      maintenanceRole: 'pertexo_maintenance',
     });
     await activateWebhookRelease();
   }, 120_000);

@@ -23,7 +23,7 @@ not complete a phase.
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 5 — orchestration slice | Complete | ADRs 008/017/018/019/020/021/022; implementation through `9d7e071`; migration head `0034_run_failure_notifications.sql`; 862 unit assertions and complete real-service/recovery matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 6 — V1 providers and triggers | Complete | ADRs 012–014 and 023–026; implementation through `0f8a170`; migration head `0043_workflow_run_input_retention.sql`; 1,021 unit and 288 real-service assertions; complete retained recovery and additive-rollout gates; independent fixed-head Spec and Standards completion GO |
-| Phase 7 — production operations | Not started | — |
+| Phase 7 — production operations | In progress | ADR 013; dedicated maintenance database boundary implemented; retention control, purge, operator recovery, observability, load/failure exercises, restore drills, autoscaling, and ADR 015 remain open |
 
 The `0A`–`0E` checkpoints are implementation-sized subdivisions of the plan's
 single Phase 0. They do not alter the authoritative scope. Phase 0 is complete
@@ -3234,11 +3234,83 @@ Current evidence:
   unit assertions; focused disposable connection and coordinator suites pass all
   54 assertions in 13.29 seconds. `git diff --check` passes.
 
-## Later Phases
+## Phase 7 — Production Operations
 
-Use the delivery plan and vertical-slice completion rule as the checklist for
-Phases 6–7. Expand the relevant phase here before implementation begins; do not
-mark a phase complete from a high-level summary alone.
+Status: **In progress**
+
+Authority and production policy:
+
+- [x] Accept ADR 013 before destructive retention, workspace purge, legal-hold,
+      or backup-erasure implementation.
+- [ ] Accept ADR 015 before production launch, fixing the initial SLO, RPO/RTO,
+      hosting-region, backup, failover, and regional-recovery strategy.
+- [ ] Record operated legal authority, backup rotation, data minimization, and
+      production retention policy inputs without claiming legal certification.
+
+Retention, deletion, and legal hold:
+
+- [x] Wire the dedicated maintenance database credential and migration role
+      substitution without granting maintenance ownership or serving-role access.
+- [ ] Add the external append-only control ledger, ordered PostgreSQL projection,
+      exact high-water reconciliation, and restore-before-serve gate.
+- [ ] Add audited legal-hold placement/release and ensure active holds pause only
+      covered destructive work without reactivating tenant access.
+- [ ] Implement bounded, idempotent, resumable retention batches with durable
+      progress, lease fencing, dry-run support, and bounded telemetry.
+- [ ] Enforce 30-day detailed execution/input/artifact retention, 90-day run and
+      trigger-summary retention, seven-day preview retention, and 365-day
+      audit/security retention in dependency-safe order.
+- [ ] Rebuild workspace deletion/restore commands around the external ledger,
+      revoke access and triggers, cancel work, and preserve the 30-day recovery
+      window before purge.
+- [ ] Purge tenant rows, object bytes/metadata, secret versions, indexes, and
+      external subscriptions explicitly; persist retryable partial progress and
+      a non-sensitive completion tombstone.
+
+Operator recovery and observability:
+
+- [ ] Add authenticated, authorized, audited, reason-required operator commands
+      for outbox redispatch, expired-lease reconciliation, due-work resume,
+      unknown-outcome evidence, cancellation, replay, trigger reconciliation,
+      and retention/purge reruns; support dry-run where safe.
+- [ ] Complete cardinality-safe API, PostgreSQL, queue, worker, trigger, provider,
+      artifact, retention, purge, and control-ledger metrics.
+- [ ] Add dashboards and user-impact/backlog-age alerts for API, queues, workers,
+      triggers, PostgreSQL, Redis, object storage, and destructive maintenance.
+- [ ] Prove non-root production images, separate API/worker commands and health
+      checks, release-job migrations, read-only filesystems where possible, and
+      secret-manager-only deployed credentials.
+- [ ] Configure separate API and worker autoscaling against admitted load,
+      latency/saturation, oldest-job age, active slots, and resource safety.
+
+Release exercises and completion gates:
+
+- [ ] Run webhook bursts, large fan-out, long-wait, and noisy-tenant load tests
+      against the engineering envelope and prove fair admission under saturation.
+- [ ] Run Redis-loss, PostgreSQL-failover, provider-outage, worker-drain, and
+      object-storage failure exercises without contradictory durable truth.
+- [ ] Run backup/PITR and regional restore drills, reconcile the control ledger
+      before tenant traffic, and measure the five-minute RPO and 24-hour RTO.
+- [ ] Run root checks, dependency/security scans, zero/prior-head migrations,
+      complete real-service/recovery matrices, and production-build verification.
+- [ ] Resolve every blocker/high finding from independent fixed-head Spec and
+      Standards reviews and push every coherent implementation/evidence commit.
+
+Current evidence:
+
+- The first Phase 7 checkpoint exposes `DATABASE_MAINTENANCE_URL` through a
+  dedicated conservative pool parser, makes `POSTGRES_MAINTENANCE_USER` an
+  explicit required migration boundary, and renders `{{maintenance_role}}` for
+  reviewed migrations. The migration runner grants this role only visibility of
+  the migration ledger needed for compatibility checks; it does not grant
+  application-table access, ownership, or serving-role membership. Existing
+  migration fixtures now name the maintenance role explicitly. Database
+  production/test typechecking passes, all 81 database unit assertions pass, and
+  root project typechecking passes. A fresh PostgreSQL 18 database applied all
+  44 migrations through `0043`; the real maintenance login read all 44 migration
+  records while remaining `NOSUPERUSER`, `NOBYPASSRLS`, and unable to select
+  `app.workspaces`. The disposable database was dropped. No retained tenant data
+  is deleted by this checkpoint.
 
 ## Update protocol
 

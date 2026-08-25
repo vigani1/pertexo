@@ -24,6 +24,7 @@ function renderMigration(sql: string, config: MigrationConfig): string {
     .replaceAll('{{owner_role}}', quoteIdentifier(config.ownerRole))
     .replaceAll('{{api_runtime_role}}', quoteIdentifier(config.apiRuntimeRole))
     .replaceAll('{{dispatcher_role}}', quoteIdentifier(config.dispatcherRole))
+    .replaceAll('{{maintenance_role}}', quoteIdentifier(config.maintenanceRole))
     .replaceAll(
       '{{worker_runtime_role}}',
       quoteIdentifier(config.workerRuntimeRole),
@@ -87,10 +88,10 @@ export async function migrateDatabase(
     }
 
     await client.query(
-      `grant usage on schema pertexo_internal to ${quoteIdentifier(config.apiRuntimeRole)}, ${quoteIdentifier(config.workerRuntimeRole)}, ${quoteIdentifier(config.dispatcherRole)}`,
+      `grant usage on schema pertexo_internal to ${quoteIdentifier(config.apiRuntimeRole)}, ${quoteIdentifier(config.workerRuntimeRole)}, ${quoteIdentifier(config.dispatcherRole)}, ${quoteIdentifier(config.maintenanceRole)}`,
     );
     await client.query(
-      `grant select on pertexo_internal.schema_migrations to ${quoteIdentifier(config.apiRuntimeRole)}, ${quoteIdentifier(config.workerRuntimeRole)}, ${quoteIdentifier(config.dispatcherRole)}`,
+      `grant select on pertexo_internal.schema_migrations to ${quoteIdentifier(config.apiRuntimeRole)}, ${quoteIdentifier(config.workerRuntimeRole)}, ${quoteIdentifier(config.dispatcherRole)}, ${quoteIdentifier(config.maintenanceRole)}`,
     );
     await client.query('commit');
     return Object.freeze(applied);

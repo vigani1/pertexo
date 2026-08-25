@@ -45,6 +45,10 @@ const migrationEnvironmentSchema = z.object({
     .string()
     .regex(/^[a-z_][a-z0-9_]*$/u)
     .default('pertexo_dispatcher'),
+  POSTGRES_MAINTENANCE_USER: z
+    .string()
+    .regex(/^[a-z_][a-z0-9_]*$/u)
+    .default('pertexo_maintenance'),
   POSTGRES_WORKER_RUNTIME_USER: z
     .string()
     .regex(/^[a-z_][a-z0-9_]*$/u)
@@ -55,6 +59,7 @@ export type MigrationConfig = Readonly<{
   apiRuntimeRole: string;
   connectionString: string;
   dispatcherRole: string;
+  maintenanceRole: string;
   ownerRole: string;
   workerRuntimeRole: string;
 }>;
@@ -67,6 +72,7 @@ export function parseMigrationConfig(
     apiRuntimeRole: parsed.POSTGRES_API_RUNTIME_USER,
     connectionString: parsed.DATABASE_MIGRATION_URL,
     dispatcherRole: parsed.POSTGRES_DISPATCHER_RUNTIME_USER,
+    maintenanceRole: parsed.POSTGRES_MAINTENANCE_USER,
     ownerRole: parsed.POSTGRES_OWNER_USER,
     workerRuntimeRole: parsed.POSTGRES_WORKER_RUNTIME_USER,
   });
@@ -103,6 +109,52 @@ const dispatcherEnvironmentSchema = z.object({
     .regex(/^[a-z_][a-z0-9_]*$/u)
     .default('pertexo_worker'),
 });
+
+const maintenanceEnvironmentSchema = z.object({
+  DATABASE_MAINTENANCE_URL: z
+    .url()
+    .refine((value) => value.startsWith('postgresql://'), {
+      message: 'DATABASE_MAINTENANCE_URL must be a postgresql:// URL',
+    }),
+  DATABASE_CONNECTION_TIMEOUT_MILLIS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(5_000),
+  DATABASE_IDLE_TIMEOUT_MILLIS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(30_000),
+  DATABASE_MAINTENANCE_POOL_MAX: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(10)
+    .default(2),
+  POSTGRES_OWNER_USER: z
+    .string()
+    .regex(/^[a-z_][a-z0-9_]*$/u)
+    .default('pertexo_owner'),
+  POSTGRES_WORKER_RUNTIME_USER: z
+    .string()
+    .regex(/^[a-z_][a-z0-9_]*$/u)
+    .default('pertexo_worker'),
+});
+
+export function parseMaintenanceDatabaseConfig(
+  environment: Readonly<Record<string, string | undefined>> = process.env,
+): DatabaseConfig {
+  const parsed = maintenanceEnvironmentSchema.parse(environment);
+  return parseDatabaseConfig({
+    connectionString: parsed.DATABASE_MAINTENANCE_URL,
+    connectionTimeoutMillis: parsed.DATABASE_CONNECTION_TIMEOUT_MILLIS,
+    idleTimeoutMillis: parsed.DATABASE_IDLE_TIMEOUT_MILLIS,
+    max: parsed.DATABASE_MAINTENANCE_POOL_MAX,
+    ownerRole: parsed.POSTGRES_OWNER_USER,
+    workerRuntimeRole: parsed.POSTGRES_WORKER_RUNTIME_USER,
+  });
+}
 
 export function parseOutboxDispatcherConfig(
   environment: Readonly<Record<string, string | undefined>> = process.env,

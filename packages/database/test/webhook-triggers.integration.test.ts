@@ -75,6 +75,7 @@ const migrationConfig = {
   apiRuntimeRole: 'pertexo_api',
   workerRuntimeRole: 'pertexo_worker',
   dispatcherRole: 'pertexo_dispatcher',
+  maintenanceRole: 'pertexo_maintenance',
 } as const;
 const apiConfig = parseDatabaseConfig({
   connectionString: url(apiBaseUrl),

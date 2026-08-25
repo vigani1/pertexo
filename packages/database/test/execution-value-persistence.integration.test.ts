@@ -50,6 +50,7 @@ function migrationConfig(databaseName: string) {
     apiRuntimeRole: 'pertexo_api',
     connectionString: databaseUrl(migrationBaseUrl, databaseName),
     dispatcherRole: 'pertexo_dispatcher',
+    maintenanceRole: 'pertexo_maintenance',
     ownerRole: 'pertexo_owner',
     workerRuntimeRole: 'pertexo_worker',
   } as const;

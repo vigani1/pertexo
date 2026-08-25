@@ -79,6 +79,7 @@ beforeAll(async () => {
     apiRuntimeRole: 'pertexo_api',
     workerRuntimeRole: 'pertexo_worker',
     dispatcherRole: 'pertexo_dispatcher',
+    maintenanceRole: 'pertexo_maintenance',
   });
 }, 60_000);
 

@@ -69,6 +69,7 @@ const migrationConfig = {
   apiRuntimeRole: 'pertexo_api',
   connectionString: migrationUrl,
   dispatcherRole: 'pertexo_dispatcher',
+  maintenanceRole: 'pertexo_maintenance',
   ownerRole: 'pertexo_owner',
   workerRuntimeRole: 'pertexo_worker',
 } as const;

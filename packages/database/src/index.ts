@@ -50,6 +50,7 @@ export {
 } from './failure-notification-destinations.js';
 export {
   parseDatabaseConfig,
+  parseMaintenanceDatabaseConfig,
   parseMigrationConfig,
   parseOutboxDispatcherConfig,
 } from './config.js';
