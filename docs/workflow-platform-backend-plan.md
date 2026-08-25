@@ -2359,6 +2359,10 @@ Status values are `proposed`, `accepted`, `superseded`, or `rejected`.
 | 020 | Bounded For Each iteration, structured input, and scoped-body recovery            | For Each node            |
 | 021 | PostgreSQL-authoritative Wait, resume attempts, and deadline wakeups              | Wait node                |
 | 022 | Durable run failure notification intent, safe context, and delivery recovery      | failure notification     |
+| 023 | Slack send-message provider contract                                             | Slack action             |
+| 024 | Resend email-notification provider contract                                      | email action             |
+| 025 | Provider failure-notification destinations                                       | provider destinations    |
+| 026 | Generic webhook signature and replay contract                                    | Webhook trigger          |
 
 Deferred features receive new ADRs when promoted. Do not pre-author detailed
 ADRs for custom code, approvals, forms, nested workflows, synchronous webhooks,
