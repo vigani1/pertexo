@@ -117,6 +117,27 @@ export class WorkspaceRunAdmissionDeniedError extends Error {
   }
 }
 
+export class WorkspaceRunQuotaExceededError extends Error {
+  public override readonly name = 'WorkspaceRunQuotaExceededError';
+  public readonly retryAfterSeconds = 5;
+
+  public constructor() {
+    super('workspace.quota_exceeded');
+  }
+}
+
+function admissionError(error: unknown): never {
+  let current = error;
+  while (current instanceof Error) {
+    if ('code' in current && current.code === 'PTA02')
+      throw new WorkspaceRunQuotaExceededError();
+    if ('code' in current && current.code === 'PTA01')
+      throw new WorkspaceRunAdmissionDeniedError();
+    current = current.cause;
+  }
+  throw error;
+}
+
 async function assertWorkspaceAcceptsNewRuns(
   transaction: WorkspaceTransaction,
 ): Promise<void> {
@@ -411,36 +432,43 @@ export async function acceptWorkflowRun(
     return racedAcceptance;
   }
 
-  const insertedRuns = await transaction.db
-    .insert(workflowRuns)
-    .values({
-      id: runId,
-      workspaceId: transaction.workspaceId,
-      workflowId: parsed.workflowId,
-      workflowVersionId: parsed.workflowVersionId,
-      inputRef:
-        storedRunInputJson === null ? null : sql`${storedRunInputJson}::jsonb`,
-      triggerType: parsed.triggerType,
-      ...(failureNotificationPolicy === undefined
-        ? {}
-        : {
-            failureNotificationPolicyVersion:
-              failureNotificationPolicy.policyVersion,
-            failureNotificationDestinationId:
-              failureNotificationPolicy.destinationId,
-            failureNotificationDestinationConfigVersion:
-              failureNotificationPolicy.destinationConfigVersion,
-            failureNotificationSideEffectClass:
-              failureNotificationPolicy.sideEffectClass,
-            failureNotificationConnectionSecretVersionId:
-              failureNotificationPolicy.connectionSecretVersionId,
-          }),
-      ...(parsed.deadlineAt === undefined
-        ? {}
-        : { deadlineAt: parsed.deadlineAt }),
-      status: RUN_STATUS.queued,
-    })
-    .returning({ acceptedAt: workflowRuns.createdAt });
+  let insertedRuns;
+  try {
+    insertedRuns = await transaction.db
+      .insert(workflowRuns)
+      .values({
+        id: runId,
+        workspaceId: transaction.workspaceId,
+        workflowId: parsed.workflowId,
+        workflowVersionId: parsed.workflowVersionId,
+        inputRef:
+          storedRunInputJson === null
+            ? null
+            : sql`${storedRunInputJson}::jsonb`,
+        triggerType: parsed.triggerType,
+        ...(failureNotificationPolicy === undefined
+          ? {}
+          : {
+              failureNotificationPolicyVersion:
+                failureNotificationPolicy.policyVersion,
+              failureNotificationDestinationId:
+                failureNotificationPolicy.destinationId,
+              failureNotificationDestinationConfigVersion:
+                failureNotificationPolicy.destinationConfigVersion,
+              failureNotificationSideEffectClass:
+                failureNotificationPolicy.sideEffectClass,
+              failureNotificationConnectionSecretVersionId:
+                failureNotificationPolicy.connectionSecretVersionId,
+            }),
+        ...(parsed.deadlineAt === undefined
+          ? {}
+          : { deadlineAt: parsed.deadlineAt }),
+        status: RUN_STATUS.queued,
+      })
+      .returning({ acceptedAt: workflowRuns.createdAt });
+  } catch (error: unknown) {
+    admissionError(error);
+  }
   const insertedRun = insertedRuns[0];
   if (insertedRun === undefined) {
     throw new IdempotencyRecordCorruptError();

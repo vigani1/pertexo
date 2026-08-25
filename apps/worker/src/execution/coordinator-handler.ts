@@ -37,7 +37,7 @@ export interface CoordinatorAdvanceEngine {
 }
 
 export type CoordinatorHandlerResult = Readonly<{
-  kind: 'already_committed' | 'committed' | 'no_change' | 'stale';
+  kind: 'already_committed' | 'committed' | 'deferred' | 'no_change' | 'stale';
   revision: number;
 }>;
 

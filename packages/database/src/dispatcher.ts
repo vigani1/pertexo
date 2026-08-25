@@ -139,6 +139,7 @@ async function checkDispatcherReadiness(
     can_update_immutable: boolean;
     can_update_table: boolean;
     dispatch_index_compatible: boolean;
+    fair_cursor_compatible: boolean;
     migration_head: string | null;
     owner_member: boolean;
     policy_count: number;
@@ -193,6 +194,15 @@ async function checkDispatcherReadiness(
             and indexdef like '%failed_at IS NULL%'
         ) as dispatch_index_compatible,
         (
+          to_regclass('app.outbox_fair_dispatch_cursor') is not null
+          and has_table_privilege(current_user,'app.outbox_fair_dispatch_cursor','SELECT')
+          and has_column_privilege(current_user,'app.outbox_fair_dispatch_cursor','last_workspace_id','UPDATE')
+          and has_column_privilege(current_user,'app.outbox_fair_dispatch_cursor','updated_at','UPDATE')
+          and not has_column_privilege(current_user,'app.outbox_fair_dispatch_cursor','singleton','UPDATE')
+          and not has_table_privilege(current_user,'app.outbox_fair_dispatch_cursor','INSERT')
+          and not has_table_privilege(current_user,'app.outbox_fair_dispatch_cursor','DELETE')
+        ) as fair_cursor_compatible,
+        (
           select count(*)::integer
           from pg_policy policy
           where policy.polrelid = table_class.oid
@@ -228,6 +238,7 @@ async function checkDispatcherReadiness(
     row.can_insert ||
     row.can_delete ||
     !row.dispatch_index_compatible ||
+    !row.fair_cursor_compatible ||
     row.policy_count !== 2 ||
     row.rolsuper ||
     row.rolbypassrls ||
@@ -263,17 +274,51 @@ export function createOutboxDispatcherDatabase(
         await client.query('begin');
         const result = await client.query<ClaimQueryResult>(
           `
-            with candidates as materialized (
-              select id, publish_attempts
-              from app.outbox_events
-              where published_at is null
-                and failed_at is null
-                and job_name = any($5::varchar[])
-                and available_at <= clock_timestamp()
-                and (lease_expires_at is null or lease_expires_at <= clock_timestamp())
-              order by available_at, id
-              for update skip locked
+            with cursor_state as materialized (
+              select last_workspace_id
+              from app.outbox_fair_dispatch_cursor
+              where singleton
+              for update
+            ), workspace_round as materialized (
+              select eligible.workspace_id,
+                     row_number() over (order by
+                       case when cursor_state.last_workspace_id is null then 0
+                            when eligible.workspace_id > cursor_state.last_workspace_id then 0
+                            else 1 end,
+                       eligible.workspace_id) as round_ordinal
+              from (
+                select distinct workspace_id
+                from app.outbox_events
+                where published_at is null
+                  and failed_at is null
+                  and job_name = any($5::varchar[])
+                  and available_at <= clock_timestamp()
+                  and (lease_expires_at is null or lease_expires_at <= clock_timestamp())
+              ) eligible
+              cross join cursor_state
+              order by
+                case when cursor_state.last_workspace_id is null then 0
+                     when eligible.workspace_id > cursor_state.last_workspace_id then 0
+                     else 1 end,
+                eligible.workspace_id
               limit $1
+            ), candidates as materialized (
+              select picked.id,picked.publish_attempts,
+                     workspace_round.workspace_id,workspace_round.round_ordinal
+              from workspace_round
+              cross join lateral (
+                select id,publish_attempts
+                from app.outbox_events event
+                where event.workspace_id=workspace_round.workspace_id
+                  and published_at is null
+                  and failed_at is null
+                  and job_name = any($5::varchar[])
+                  and available_at <= clock_timestamp()
+                  and (lease_expires_at is null or lease_expires_at <= clock_timestamp())
+                order by available_at,id
+                for update skip locked
+                limit 1
+              ) picked
             ), exhausted as (
               update app.outbox_events event
               set
@@ -287,6 +332,15 @@ export function createOutboxDispatcherDatabase(
               where event.id = candidates.id
                 and candidates.publish_attempts >= $6
               returning event.id
+            ), cursor_updated as (
+              update app.outbox_fair_dispatch_cursor cursor
+              set last_workspace_id=(
+                    select workspace_id from candidates
+                    order by round_ordinal desc limit 1
+                  ),
+                  updated_at=clock_timestamp()
+              where cursor.singleton and exists(select 1 from candidates)
+              returning cursor.singleton
             )
             , leased as (
               update app.outbox_events event
@@ -306,7 +360,8 @@ export function createOutboxDispatcherDatabase(
                 jsonb_agg(to_jsonb(leased) order by leased.available_at, leased.id),
                 '[]'::jsonb
               ) as events,
-              (select count(*)::integer from exhausted) as exhausted_count
+              (select count(*)::integer from exhausted) as exhausted_count,
+              (select count(*) from cursor_updated) as cursor_update_count
             from leased
           `,
           [

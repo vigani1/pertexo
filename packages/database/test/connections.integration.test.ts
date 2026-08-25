@@ -533,9 +533,7 @@ describe('connection persistence', () => {
   });
 
   it('upgrades populated exact 0036 notification rows without fabricating destination config', async () => {
-    expect(priorApplied).toEqual([
-      '0037_failure_notification_destinations.sql',
-    ]);
+    expect(priorApplied).toEqual(['0038_execution_admission.sql']);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, priorDatabaseName),
       max: 1,
@@ -547,7 +545,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0037_failure_notification_destinations.sql',
+        migrationHead: '0038_execution_admission.sql',
       });
       const bindingSurface = await pool.query<{
         node_column: boolean;
@@ -748,7 +746,7 @@ describe('connection persistence', () => {
       '0034_run_failure_notifications.sql',
       '0035_slack_bot_token_connections.sql',
       '0036_resend_api_key_connections.sql',
-      '0037_failure_notification_destinations.sql',
+      '0038_execution_admission.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, upgradeDatabaseName),
@@ -761,7 +759,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0037_failure_notification_destinations.sql',
+        migrationHead: '0038_execution_admission.sql',
       });
     } finally {
       await pool.end();
@@ -1748,7 +1746,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0037_failure_notification_destinations.sql',
+        migrationHead: '0038_execution_admission.sql',
       });
       await expect(
         checkDatabaseReadiness(workerReadinessPool, {
@@ -1756,7 +1754,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0037_failure_notification_destinations.sql',
+        migrationHead: '0038_execution_admission.sql',
       });
     } finally {
       await Promise.all([apiReadinessPool.end(), workerReadinessPool.end()]);

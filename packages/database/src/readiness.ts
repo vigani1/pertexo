@@ -8,8 +8,7 @@ import {
   type CompatibilityReleaseExpectationSet,
 } from './compatibility-release.js';
 
-export const EXPECTED_MIGRATION_HEAD =
-  '0037_failure_notification_destinations.sql';
+export const EXPECTED_MIGRATION_HEAD = '0038_execution_admission.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -51,6 +50,7 @@ interface ReadinessRow {
   coordinator_run_store_compatible: boolean;
   durable_wait_compatible: boolean;
   failure_notification_compatible: boolean;
+  execution_admission_compatible: boolean;
   due_node_wakeups_compatible: boolean;
   postgres_major: number;
   relforcerowsecurity: boolean;
@@ -539,7 +539,7 @@ export async function checkDatabaseReadiness(
             and attname = 'input_ref' and atttypid = 'jsonb'::regtype
             and not attnotnull and not attisdropped
         )
-        and (select count(*) = 23 from pg_attribute where attrelid = to_regclass('app.workflow_runs') and attnum > 0 and not attisdropped)
+        and (select count(*) = 24 from pg_attribute where attrelid = to_regclass('app.workflow_runs') and attnum > 0 and not attisdropped)
         and exists (
           select 1 from pg_attribute where attrelid = to_regclass('app.run_checkpoints')
             and attname = 'workflow_version_id' and atttypid = 'uuid'::regtype
@@ -1454,6 +1454,30 @@ export async function checkDatabaseReadiness(
         and to_regprocedure('app.recover_due_run_failure_notifications(integer)') is null
       ) as failure_notification_compatible,
       (
+        to_regclass('app.workspace_execution_entitlement_versions') is not null
+        and to_regclass('app.workspace_execution_entitlements') is not null
+        and to_regclass('app.workspace_execution_admission_counters') is not null
+        and (select relrowsecurity and relforcerowsecurity from pg_class
+             where oid=to_regclass('app.workspace_execution_entitlement_versions'))
+        and (select relrowsecurity and relforcerowsecurity from pg_class
+             where oid=to_regclass('app.workspace_execution_entitlements'))
+        and (select relrowsecurity and relforcerowsecurity from pg_class
+             where oid=to_regclass('app.workspace_execution_admission_counters'))
+        and exists (select 1 from pg_trigger
+          where tgrelid=to_regclass('app.workspace_execution_entitlement_versions')
+            and tgname='workspace_execution_entitlement_versions_immutable' and not tgisinternal)
+        and exists (select 1 from pg_trigger
+          where tgrelid=to_regclass('app.workflow_runs')
+            and tgname='workflow_runs_execution_admission' and not tgisinternal)
+        and has_table_privilege(current_user,'app.workspace_execution_entitlements','SELECT')
+        and has_table_privilege(current_user,'app.workspace_execution_entitlement_versions','SELECT')
+        and has_table_privilege(current_user,'app.workspace_execution_admission_counters','SELECT')
+        and not has_table_privilege(current_user,'app.workspace_execution_entitlement_versions','INSERT')
+        and not has_table_privilege(current_user,'app.workspace_execution_entitlements','UPDATE')
+        and has_function_privilege(current_user,'app.reconcile_workspace_execution_admission(uuid)','EXECUTE')
+        and has_function_privilege($2,'app.workflow_run_active_capacity_available(uuid,integer)','EXECUTE')
+      ) as execution_admission_compatible,
+      (
         select name
         from pertexo_internal.schema_migrations
         order by name desc
@@ -1544,6 +1568,9 @@ export async function checkDatabaseReadiness(
   }
   if (!row.failure_notification_compatible) {
     throw new Error('Run failure notification persistence is incompatible');
+  }
+  if (!row.execution_admission_compatible) {
+    throw new Error('Execution admission persistence is incompatible');
   }
   if (!row.phase4_connections_compatible) {
     throw new Error('Connection persistence schema or grants are incompatible');

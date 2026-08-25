@@ -62,6 +62,7 @@ type NormalizedProblem = Readonly<{
     currentRevision: number;
     currentEtag: string;
   }>;
+  retryAfterSeconds?: number;
   cause?: unknown;
 }>;
 
@@ -160,6 +161,15 @@ function fromApplicationError(error: ApplicationError): NormalizedProblem {
     cause: error.cause,
     ...(issues === undefined ? {} : { errors: issues }),
   };
+  if (error.code === 'workspace.quota_exceeded') {
+    const retryAfterSeconds = error.details?.retryAfterSeconds;
+    return typeof retryAfterSeconds === 'number' &&
+      Number.isSafeInteger(retryAfterSeconds) &&
+      retryAfterSeconds >= 1 &&
+      retryAfterSeconds <= 300
+      ? { ...base, retryAfterSeconds }
+      : base;
+  }
   if (error.code !== 'workflow.revision_conflict') return base;
   const currentRevision = error.details?.currentRevision;
   const currentEtag = error.details?.currentEtag;
@@ -345,6 +355,13 @@ export class ProblemDetailsFilter implements ExceptionFilter {
         response,
         'etag',
         normalized.revisionConflict.currentEtag,
+      );
+    }
+    if (normalized.retryAfterSeconds !== undefined) {
+      setResponseHeader(
+        response,
+        'retry-after',
+        String(normalized.retryAfterSeconds),
       );
     }
 

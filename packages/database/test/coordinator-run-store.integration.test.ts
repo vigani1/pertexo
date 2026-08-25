@@ -370,6 +370,20 @@ async function seedIdentityAndExecutables(): Promise<void> {
           actorId,
         ],
       );
+      await client.query("select set_config('app.workspace_id',$1,true)", [
+        workspaceId,
+      ]);
+      await client.query(
+        `insert into app.workspace_execution_entitlement_versions (
+           workspace_id,version,status,active_run_limit,queued_run_limit,effective_at
+         ) values ($1,2,'active',10000,100000,'-infinity'::timestamptz)`,
+        [workspaceId],
+      );
+      await client.query(
+        `update app.workspace_execution_entitlements set current_version=2
+          where workspace_id=$1`,
+        [workspaceId],
+      );
       await client.query(
         `insert into app.workflows (id,workspace_id,name,created_by)
          values ($1,$2,$3,$4)`,
@@ -391,6 +405,9 @@ async function seedIdentityAndExecutables(): Promise<void> {
         ],
       );
     }
+    await client.query("select set_config('app.workspace_id',$1,true)", [
+      workspaceA,
+    ]);
     await client.query(
       `insert into app.connections (
          id,workspace_id,provider_key,name,auth_type,status,
@@ -607,6 +624,123 @@ beforeAll(async () => {
 afterAll(dropDatabase);
 
 describe('CoordinatorRunStore on disposable PostgreSQL', () => {
+  it('defers queued coordination durably until an active entitlement slot is free', async () => {
+    await asOwner(workspaceA, async (client) => {
+      await client.query(
+        `insert into app.workspace_execution_entitlement_versions (
+           workspace_id,version,status,active_run_limit,queued_run_limit,effective_at
+         ) values ($1,3,'active',5,100,'-infinity'::timestamptz)`,
+        [workspaceA],
+      );
+      await client.query(
+        `update app.workspace_execution_entitlements set current_version=3
+          where workspace_id=$1`,
+        [workspaceA],
+      );
+    });
+    const activeRunIds = await Promise.all(
+      Array.from({ length: 5 }, () => insertRun({ status: 'running' })),
+    );
+    const runId = await insertRun({});
+    await asOwner(workspaceA, (client) =>
+      client.query(
+        `update app.workspace_execution_entitlements set current_version=2
+          where workspace_id=$1`,
+        [workspaceA],
+      ),
+    );
+    const plan = {
+      expectedRevision: 0,
+      expectedNextEventSequence: 2,
+      consumedThroughEventSequence: 1,
+      checkpoint: checkpoint({
+        revision: 1,
+        runStatus: 'running',
+        nextEventSequence: 3,
+      }),
+      events: [
+        {
+          schemaVersion: 1 as const,
+          sequence: 2,
+          name: 'run.started' as const,
+          occurredAt: '2026-08-25T00:00:00.000Z',
+        },
+      ],
+      nodeRunAdmissions: [],
+      attempts: [],
+    };
+    const delivery = await testDelivery(workspaceA, runId, 0);
+    await expect(
+      rawStore.commitAdvancePlan({
+        workspaceId: workspaceA,
+        runId,
+        workflowVersionId: versionA,
+        delivery,
+        plan,
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({ kind: 'deferred', revision: 0 });
+
+    const deferred = await asRuntime(workerBaseUrl, workspaceA, (client) =>
+      client.query<{ id: string; payload_checksum: string }>(
+        `select id,payload_checksum from app.outbox_events
+          where workspace_id=$1 and aggregate_id=$2 and job_name='advance-workflow-run'
+            and id<>$3
+          order by created_at desc limit 1`,
+        [workspaceA, runId, delivery.outboxEventId],
+      ),
+    );
+    expect(deferred.rows).toHaveLength(1);
+    const retry = deferred.rows[0];
+    if (retry === undefined)
+      throw new Error('Deferred coordinator row missing');
+    await asRuntime(workerBaseUrl, workspaceA, (client) =>
+      client.query(
+        `update app.workflow_runs set status='succeeded',completed_at=clock_timestamp()
+          where workspace_id=$1 and id=$2`,
+        [workspaceA, activeRunIds[0]],
+      ),
+    );
+    await expect(
+      rawStore.commitAdvancePlan({
+        workspaceId: workspaceA,
+        runId,
+        workflowVersionId: versionA,
+        delivery: {
+          outboxEventId: retry.id,
+          payloadChecksum: retry.payload_checksum,
+        },
+        plan,
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toMatchObject({ kind: 'committed', revision: 1 });
+    const proof = await asRuntime(workerBaseUrl, workspaceA, (client) =>
+      client.query<{
+        active_runs: number;
+        actual_queued: number;
+        queued_runs: number;
+        run_status: string;
+      }>(
+        `select counter.active_runs,counter.queued_runs,run.status run_status,
+                (select count(*)::integer from app.workflow_runs queued
+                  where queued.workspace_id=counter.workspace_id
+                    and queued.status='queued') actual_queued
+           from app.workspace_execution_admission_counters counter
+           join app.workflow_runs run on run.workspace_id=counter.workspace_id
+          where counter.workspace_id=$1 and run.id=$2`,
+        [workspaceA, runId],
+      ),
+    );
+    expect(proof.rows).toEqual([
+      {
+        active_runs: 5,
+        actual_queued: 1,
+        queued_runs: 1,
+        run_status: 'running',
+      },
+    ]);
+  });
+
   it('atomically creates one safe failure notification intent and excludes cancellation', async () => {
     const invocationKey = 'failure/primary';
     const runId = await insertRun({
@@ -1876,7 +2010,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0037_failure_notification_destinations.sql',
+          migrationHead: '0038_execution_admission.sql',
           role: 'pertexo_worker',
         });
       } finally {
@@ -1939,6 +2073,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         '0035_slack_bot_token_connections.sql',
         '0036_resend_api_key_connections.sql',
         '0037_failure_notification_destinations.sql',
+        '0038_execution_admission.sql',
       ]);
       const workerPool = new Pool({
         connectionString: namedDatabaseUrl(
@@ -1954,7 +2089,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0037_failure_notification_destinations.sql',
+          migrationHead: '0038_execution_admission.sql',
           role: 'pertexo_worker',
         });
         await expect(
@@ -2021,7 +2156,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0037_failure_notification_destinations.sql',
+        migrationHead: '0038_execution_admission.sql',
         role: 'pertexo_worker',
       });
       const catalog = await readinessPool.query<{
@@ -2260,7 +2395,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0037_failure_notification_destinations.sql',
+        migrationHead: '0038_execution_admission.sql',
       });
     } finally {
       await readinessPool.end();
@@ -2446,7 +2581,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         workerRuntimeRole: 'pertexo_worker',
       }),
     ).resolves.toMatchObject({
-      migrationHead: '0037_failure_notification_destinations.sql',
+      migrationHead: '0038_execution_admission.sql',
     });
     await readinessPool.end();
   });

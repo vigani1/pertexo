@@ -544,6 +544,7 @@ export const workflowRuns = appSchema.table(
     failureNotificationConnectionSecretVersionId: uuid(
       'failure_notification_connection_secret_version_id',
     ),
+    executionEntitlementVersion: integer('execution_entitlement_version'),
     status: varchar('status', { length: 32 }).notNull(),
     deadlineAt: timestamp('deadline_at', { withTimezone: true, mode: 'date' }),
     deadlineWakeupAt: timestamp('deadline_wakeup_at', {

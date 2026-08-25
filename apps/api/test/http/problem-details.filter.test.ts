@@ -104,6 +104,31 @@ describe('RFC 9457 problem details filter', () => {
     });
   });
 
+  it('returns a bounded Retry-After header for workspace admission exhaustion', () => {
+    const contexts = new RequestContextStore();
+    const filter = new ProblemDetailsFilter(contexts);
+    const response = responseMock();
+
+    contexts.run('request-quota', () => {
+      filter.catch(
+        applicationError('workspace.quota_exceeded', {
+          safeDetail: 'The workspace queued-run limit has been reached.',
+          details: { retryAfterSeconds: 5 },
+        }),
+        hostFor({ url: '/v1/workflows/workflow-a/runs' }, response),
+      );
+    });
+
+    expect(response.status).toHaveBeenCalledWith(429);
+    expect(response.header).toHaveBeenCalledWith('retry-after', '5');
+    expect(response.body).toMatchObject({
+      type: 'urn:pertexo:problem:workspace.quota_exceeded',
+      status: 429,
+      code: 'workspace.quota_exceeded',
+    });
+    expect(apiProblemSchema.safeParse(response.body).success).toBe(true);
+  });
+
   it('renders identity provider outages as a fixed safe RFC 9457 503 problem', () => {
     const contexts = new RequestContextStore();
     const filter = new ProblemDetailsFilter(contexts);

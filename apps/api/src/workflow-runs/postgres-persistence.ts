@@ -1,6 +1,8 @@
 import {
   ExecutionStateConflictError,
   IdempotencyRequestConflictError,
+  WorkspaceRunQuotaExceededError,
+  WorkspaceRunAdmissionDeniedError,
   WorkflowRunNotExecutableError as DatabaseWorkflowRunNotExecutableError,
   WorkflowRunNotFoundError as DatabaseWorkflowRunNotFoundError,
   createWorkflowRunDatabase,
@@ -29,7 +31,9 @@ import {
   WorkflowRunIdempotencyConflictError,
   WorkflowRunNotCancelableError,
   WorkflowRunNotExecutableError,
+  throwWorkflowRunError,
 } from './errors.js';
+import { applicationError } from '../platform/http/index.js';
 import type {
   CancelWorkflowRunCommand,
   StartWorkflowRunCommand,
@@ -196,6 +200,19 @@ function mapPersistenceError(error: unknown): never {
     throw new WorkflowRunNotExecutableError();
   if (error instanceof IdempotencyRequestConflictError)
     throw new WorkflowRunIdempotencyConflictError();
+  if (error instanceof WorkspaceRunQuotaExceededError)
+    return throwWorkflowRunError(
+      applicationError('workspace.quota_exceeded', {
+        safeDetail: 'The workspace queued-run limit has been reached.',
+        details: { retryAfterSeconds: error.retryAfterSeconds },
+      }),
+    );
+  if (error instanceof WorkspaceRunAdmissionDeniedError)
+    return throwWorkflowRunError(
+      applicationError('workspace.conflict', {
+        safeDetail: 'The workspace is not accepting new runs.',
+      }),
+    );
   if (error instanceof ExecutionStateConflictError) {
     if (error.message === 'execution.run_not_found')
       throw new WorkflowRunNotFoundError();

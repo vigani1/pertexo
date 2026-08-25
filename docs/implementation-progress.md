@@ -22,7 +22,7 @@ not complete a phase.
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 5 — orchestration slice | Complete | ADRs 008/017/018/019/020/021/022; implementation through `9d7e071`; migration head `0034_run_failure_notifications.sql`; 862 unit assertions and complete real-service/recovery matrix; independent fixed-head Spec and Standards completion GO |
-| Phase 6 — V1 providers and triggers | In progress | ADRs 012–014 and 023–026; Slack `slack.send_message@1`, email `email.send_notification@1`, and ADR 025 Slack/email failure-notification destinations are active at migration head `0037`; Webhook and Schedule remain |
+| Phase 6 — V1 providers and triggers | In progress | ADRs 012–014 and 023–026; Slack `slack.send_message@1`, email `email.send_notification@1`, failure-notification destinations, and shared execution admission/fair dispatch are active at migration head `0038`; Webhook and Schedule remain |
 | Phase 7 — production operations | Not started | — |
 
 The `0A`–`0E` checkpoints are implementation-sized subdivisions of the plan's
@@ -2718,6 +2718,11 @@ Authority and sequencing:
       terminal run truth or introducing notification nodes.
 - [x] Accept ADR 012 before enabling any production trigger reconciliation or
       acceptance path.
+- [x] Add the ADR 012 execution-admission foundation: immutable versioned
+      workspace entitlements, a single effective projection, five-active/100-
+      queued defaults, PostgreSQL-authoritative reconciled counters, exact
+      replay-before-quota ordering, queued and active slot lifecycle enforcement,
+      and durable fair outbox rotation independent of BullMQ ordering.
 - [x] Accept ADR 013 before retaining webhook delivery payloads or history.
 - [x] Accept ADR 026 for generic webhook signature/replay semantics before
       implementing raw-byte verification and deduplication.
@@ -2803,6 +2808,31 @@ Current evidence:
   pins five-field local cron/interval, IANA timezone, deterministic DST and
   misfire behavior, and requires implementation to pin `cron-parser` 5.10.0
   directly before Schedule is exposed.
+- Migration `0038_execution_admission.sql` provisions existing and new
+  workspaces with immutable entitlement version 1 (five active, 100 queued), a
+  forced-RLS current projection, and reconciled queued/active counters. Run
+  insertion and coordinator status transitions serialize on workspace admission
+  state; waiting retains the active allowance, terminal queued/active state
+  releases it, stale or duplicate transitions cannot double-release it, and a
+  workspace-scoped counter repair function recomputes from authoritative runs.
+  Exact acceptance replay still resolves before current workspace or
+  entitlement checks. Quota exhaustion maps to stable
+  `workspace.quota_exceeded` RFC 9457 `429` with bounded `Retry-After: 5`.
+- The outbox dispatcher now performs a bounded `SKIP LOCKED` fairness round with
+  at most one due row per workspace and advances a PostgreSQL cursor in the same
+  claim transaction. A fresh dispatcher instance continues after the durable
+  cursor, while queue contracts and identifier-only BullMQ jobs remain
+  unchanged; preview admission and cleanup code are untouched.
+- Focused verification on 2026-08-25: a fresh PostgreSQL 18 database applied all
+  39 reviewed revisions from zero through `0038`; the exact prior-head path is
+  covered by the disposable coordinator matrix. Database unit tests pass 69
+  assertions. Disposable PostgreSQL suites pass 32 acceptance assertions
+  (including 101 concurrent requests with exactly 100 accepted), 40 coordinator
+  assertions, and 19 outbox/dispatcher assertions. The focused API problem and
+  persistence suites pass 14 assertions, and root `pnpm check` passes formatting,
+  builds, lint, contract drift, typechecks, and 954 unit assertions. Complete
+  Phase 6 trigger real-service/process recovery gates remain open; Phase 6 stays
+  in progress because Webhook and Schedule are unfinished.
 - ADR 023 fixes `slack.send_message@1` as an unsafe ABI 2 action with strict
   browser-safe schemas, a single `slack_bot_token` slot, fixed
   `chat.postMessage`/`auth.test` endpoints, no redirects or hidden retries, a

@@ -147,7 +147,10 @@ export type CommitAdvancePlanResult =
         attemptId: string;
       }>[];
     }>
-  | Readonly<{ kind: 'already_committed' | 'stale'; revision: number }>
+  | Readonly<{
+      kind: 'already_committed' | 'deferred' | 'stale';
+      revision: number;
+    }>
   | Readonly<{ kind: 'not_found' }>;
 
 export type CoordinatorAdvanceDelivery = Readonly<
@@ -438,6 +441,61 @@ async function completeCoordinatorReceipt(
     ],
   );
   if (completed.rowCount !== 1) throw new CoordinatorRunStateCorruptError();
+}
+
+async function deferCoordinatorForActiveCapacity(
+  client: PoolClient,
+  input: Readonly<{
+    workspaceId: string;
+    runId: string;
+    revision: number;
+    entitlementVersion: number;
+    delivery: CoordinatorAdvanceDelivery;
+    traceparent?: string;
+  }>,
+): Promise<CommitAdvancePlanResult | undefined> {
+  const capacity = await client.query<{ available: boolean }>(
+    `select app.workflow_run_active_capacity_available($1,$2) as available`,
+    [input.workspaceId, input.entitlementVersion],
+  );
+  const row = capacity.rows[0];
+  if (row === undefined) throw new CoordinatorRunStateCorruptError();
+  if (row.available) return undefined;
+
+  const receipt = await claimCoordinatorReceipt(
+    client,
+    input.workspaceId,
+    input.delivery,
+  );
+  if (receipt === 'duplicate')
+    return Object.freeze({ kind: 'deferred', revision: input.revision });
+
+  const outboxEventId = randomUUID();
+  const payload = {
+    schemaVersion: 1,
+    workspaceId: input.workspaceId,
+    outboxEventId,
+    runId: input.runId,
+    ...(input.traceparent === undefined
+      ? {}
+      : { traceparent: input.traceparent }),
+  } as const;
+  await client.query(
+    `insert into app.outbox_events (
+       id,workspace_id,job_name,schema_version,aggregate_type,aggregate_id,
+       payload,payload_checksum,available_at
+     ) values ($1,$2,'advance-workflow-run',1,'workflow-run',$3,$4::jsonb,$5,
+       clock_timestamp() + interval '5 seconds')`,
+    [
+      outboxEventId,
+      input.workspaceId,
+      input.runId,
+      serializeStoredExecutionJsonValue(payload),
+      canonicalOutboxPayloadChecksum(payload),
+    ],
+  );
+  await completeCoordinatorReceipt(client, input.workspaceId, input.delivery);
+  return Object.freeze({ kind: 'deferred', revision: input.revision });
 }
 
 async function auditCoordinatorDeliveryMismatch(
@@ -2418,6 +2476,7 @@ export function createCoordinatorRunStore(
               failure_notification_destination_id: string | null;
               failure_notification_destination_config_version: number | null;
               failure_notification_side_effect_class: string | null;
+              execution_entitlement_version: number;
             }>(
               `select checkpoint.revision, checkpoint.scheduler_state,
                     checkpoint.last_transition_fingerprint,
@@ -2427,7 +2486,8 @@ export function createCoordinatorRunStore(
                      run.failure_notification_policy_version,
                      run.failure_notification_destination_id,
                      run.failure_notification_destination_config_version,
-                     run.failure_notification_side_effect_class,
+                      run.failure_notification_side_effect_class,
+                      run.execution_entitlement_version,
                      run.deadline_at is not null
                       and run.deadline_at <= clock_timestamp() as deadline_expired
              from app.workflow_runs run
@@ -2595,6 +2655,21 @@ export function createCoordinatorRunStore(
               )
                 return Object.freeze({ kind: 'stale', revision: row.revision });
               throw new CoordinatorPlanInvalidError();
+            }
+            if (
+              row.status === 'queued' &&
+              (plan.checkpoint.runStatus === 'running' ||
+                plan.checkpoint.runStatus === 'waiting')
+            ) {
+              const deferred = await deferCoordinatorForActiveCapacity(client, {
+                workspaceId,
+                runId,
+                revision: row.revision,
+                entitlementVersion: row.execution_entitlement_version,
+                delivery,
+                ...(traceparent === undefined ? {} : { traceparent }),
+              });
+              if (deferred !== undefined) return deferred;
             }
             await validateCheckpointOutputOwnership(
               client,

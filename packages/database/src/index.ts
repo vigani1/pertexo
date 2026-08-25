@@ -159,6 +159,7 @@ export {
   RUN_STATUS,
   RUN_STATUS_VALUES,
   WorkspaceRunAdmissionDeniedError,
+  WorkspaceRunQuotaExceededError,
 } from './execution-acceptance.js';
 export {
   acceptPreviewRun,

@@ -238,7 +238,7 @@ describe('execution value persistence migration', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0037_failure_notification_destinations.sql',
+          migrationHead: '0038_execution_admission.sql',
           role: expectedRole,
         });
       } finally {
