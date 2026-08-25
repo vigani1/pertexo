@@ -22,11 +22,14 @@ export {
   createScheduleTriggerScanner,
   createScheduleTriggerDatabase,
   ScheduleClaimLostError,
+  ScheduleTriggerIdempotencyConflictError,
   ScheduleTriggerNotFoundError,
   type ScanDueSchedulesResult,
   type ScheduleCheckpointFactory,
   type ScheduleTriggerScanner,
   type ScheduleTriggerDatabase,
+  type ScheduleTriggerCommandResult,
+  type ScheduleTriggerRecord,
 } from './schedule-triggers.js';
 export {
   parseScheduleRecurrence,
