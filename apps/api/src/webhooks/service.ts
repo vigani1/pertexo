@@ -70,7 +70,7 @@ export class WebhookManagementService {
         triggerId: input.triggerId,
         idempotencyKey: input.idempotencyKey,
         requestHash: sha256(
-          `${operation}\0${input.workspaceId}\0${input.triggerId}`,
+          `${operation}\0${input.workspaceId}\0${input.triggerId}\0${endpointHash ?? ''}`,
         ),
       };
       const secret =
@@ -106,13 +106,15 @@ export class WebhookManagementService {
           throw new Error('Webhook secret rotation material is unavailable');
         trigger = await this.database.rotateSecret({
           ...base,
+          endpointKeyHash:
+            endpointHash ??
+            (() => {
+              throw new Error('Webhook endpoint authentication is unavailable');
+            })(),
           secret,
         });
       }
-      const resolved =
-        endpointHash === undefined
-          ? null
-          : await this.database.resolveVerification(endpointHash);
+      const resolved = await this.database.resolveVerification(endpointHash);
       const original =
         operation === 'rotateSecret'
           ? resolved?.currentSecret.id === secretVersionId

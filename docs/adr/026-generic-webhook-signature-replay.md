@@ -102,13 +102,23 @@ verification; all subsequent tenant writes run with explicit workspace context.
 
 The management routes are scoped below a workflow trigger collection. Provision
 and both rotation commands require `Idempotency-Key`, the existing session and
-CSRF controls, and workflow-update authorization. Secret rotation also requires
-the current endpoint key in its authenticated JSON request. The API uses that
-key only to resolve the post-command encrypted secret-version identity, allowing
+CSRF controls, and workflow-update authorization, including builders. Secret
+rotation also requires the current endpoint key in its authenticated JSON
+request. Its hash is bound into the idempotency request fingerprint, and
+PostgreSQL locks and authenticates the active endpoint by trigger and hash before
+inserting a secret version. The API also uses that key to resolve the
+post-command encrypted secret-version identity, allowing
 it to distinguish the original successful command from a completed replay
 without persisting or logging the plaintext endpoint key. A caller that has lost
 the endpoint key rotates the endpoint first. Normal trigger reads remain free of
 credentials and hashes.
+
+Before any KMS decrypt, PostgreSQL atomically consumes a durable, per-endpoint
+fixed-window ingress allowance. V1 permits 60 attempts per one-minute endpoint
+window and returns a `Retry-After` bounded to 1 through 60 seconds on denial.
+This ingress guard is independent of workspace run admission; denial persists no
+delivery, replay, run, event, or outbox facts and does not reveal whether an
+endpoint exists.
 
 Webhook trigger secrets use a dedicated envelope purpose and associated-data
 shape containing workspace, trigger, and secret-version identity. They may use

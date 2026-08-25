@@ -64,6 +64,22 @@ describe('webhook management service', () => {
     expect(JSON.stringify(database.rotateSecret.mock.calls)).not.toContain(
       endpointKey,
     );
+    const persisted = database.rotateSecret.mock.calls[0]?.[0] as
+      | { endpointKeyHash?: unknown }
+      | undefined;
+    expect(persisted?.endpointKeyHash).toEqual(
+      expect.stringMatching(/^[0-9a-f]{64}$/u),
+    );
+  });
+
+  it('binds secret rotation idempotency to the supplied endpoint key', async () => {
+    const { service, database } = setup(true);
+    await service.rotateSecret({ ...input, endpointKey: 'a'.repeat(43) });
+    await service.rotateSecret({ ...input, endpointKey: 'b'.repeat(43) });
+    const requests = database.rotateSecret.mock.calls.map(
+      ([request]) => (request as { requestHash: string }).requestHash,
+    );
+    expect(requests[0]).not.toBe(requests[1]);
   });
 
   it('maps management command idempotency conflicts to the stable public code', async () => {

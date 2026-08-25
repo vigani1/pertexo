@@ -3,6 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import {
   WebhookDeliveryIneligibleError,
   WebhookDeliveryReplayMismatchError,
+  WebhookIngressRateLimitExceededError,
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
   type WebhookCheckpointFactory,
@@ -105,6 +106,18 @@ async function acceptWebhook(
   if (verification === null || !/^\d{1,16}$/u.test(timestamp)) {
     authenticationFailed(reply, requestId);
     return;
+  }
+  try {
+    await dependencies.database.consumeIngressLimit?.(
+      verification.endpointKeyHash,
+    );
+  } catch (error) {
+    if (error instanceof WebhookIngressRateLimitExceededError) {
+      reply.header('retry-after', String(error.retryAfterSeconds));
+      problem(reply, 429, 'webhook.rate_limited', requestId);
+      return;
+    }
+    throw error;
   }
   const seconds = Number(timestamp);
   if (

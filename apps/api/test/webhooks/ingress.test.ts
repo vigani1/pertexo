@@ -6,12 +6,13 @@ import type {
 } from '@pertexo/database';
 import {
   WebhookDeliveryReplayMismatchError,
+  WebhookIngressRateLimitExceededError,
   WorkspaceRunQuotaExceededError,
 } from '@pertexo/database';
 import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { registerWebhookIngress } from '../../src/webhooks/ingress.js';
 
@@ -38,6 +39,10 @@ const verification: WebhookVerificationReference = {
 
 describe('generic webhook ingress', () => {
   const applications: FastifyInstance[] = [];
+  beforeEach(() => {
+    currentSecret.fill(4);
+    previousSecret.fill(5);
+  });
   afterEach(async () => {
     await Promise.all(
       applications.splice(0).map((application) => application.close()),
@@ -63,6 +68,19 @@ describe('generic webhook ingress', () => {
       headers: request(body, currentSecret).headers,
     });
     expect(changed.statusCode).toBe(401);
+  });
+
+  it('consumes the durable endpoint limit before opening a signing secret', async () => {
+    const { application, database, openSecret } = setup();
+    database.consumeIngressLimit.mockRejectedValueOnce(
+      new WebhookIngressRateLimitExceededError(17),
+    );
+    const response = await application.inject(request('{}', currentSecret));
+    expect(response.statusCode).toBe(429);
+    expect(response.headers['retry-after']).toBe('17');
+    expect(response.json<{ code: string }>().code).toBe('webhook.rate_limited');
+    expect(openSecret).not.toHaveBeenCalled();
+    expect(database.acceptVerifiedDelivery).not.toHaveBeenCalled();
   });
 
   it('authenticates valid signatures before reporting malformed JSON', async () => {
@@ -222,22 +240,24 @@ describe('generic webhook ingress', () => {
   ) {
     const database = {
       resolveVerification: vi.fn().mockResolvedValue(reference),
+      consumeIngressLimit: vi.fn().mockResolvedValue(undefined),
       acceptVerifiedDelivery: acceptanceError
         ? vi.fn().mockRejectedValue(acceptanceError)
         : vi.fn().mockResolvedValue(acceptance),
     };
-    const encryption = {
-      open: vi
-        .fn()
-        .mockImplementation((value: { id: string }) =>
-          Promise.resolve(
-            new Uint8Array(
-              value.id === verification.currentSecret.id
-                ? currentSecret
-                : previousSecret,
+    const openSecret = vi
+      .fn()
+      .mockImplementation(
+        (_value: unknown, context: { secretVersionId: string }) => {
+          return Promise.resolve(
+            new Uint8Array(32).fill(
+              context.secretVersionId === verification.currentSecret.id ? 4 : 5,
             ),
-          ),
-        ),
+          );
+        },
+      );
+    const encryption = {
+      open: openSecret,
     } as unknown as WebhookTriggerEnvelopeEncryption;
     const application = Fastify();
     applications.push(application);
@@ -246,7 +266,7 @@ describe('generic webhook ingress', () => {
       encryption,
       checkpointFactory: () => ({ engineVersion: 'test', checkpoint: {} }),
     });
-    return { application, database };
+    return { application, database, openSecret };
   }
 });
 
