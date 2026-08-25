@@ -22,13 +22,16 @@ state without generating credentials that no caller could recover. An
 authenticated, workspace-scoped, idempotent provision command generates an
 independent endpoint key and signing secret, persists only the endpoint-key
 hash and the encrypted secret, and returns both plaintext values exactly once
-in the completed command result. Exact command replay may return that same
-one-time result during the command's 24-hour idempotency window; normal trigger
-queries never return either value. Separate idempotent commands rotate the
-public endpoint key or signing secret. Endpoint-key rotation invalidates the
-old public address at commit. Secret rotation retains the previous encrypted
-version only for the five-minute overlap described below. Trigger disable or
-workflow archive invalidates ingress without deleting retained delivery facts.
+in the original command response. Because PostgreSQL cannot both retain only
+the endpoint-key hash and redisclose the key, exact command replay reports that
+provisioning already completed but returns no credentials. A caller that loses
+the original response uses the explicit rotation commands rather than retrying
+provisioning for secret recovery. Normal trigger queries never return either
+value. Separate idempotent commands rotate the public endpoint key or signing
+secret. Endpoint-key rotation invalidates the old public address at commit.
+Secret rotation retains the previous encrypted version only for the five-minute
+overlap described below. Trigger disable or workflow archive invalidates ingress
+without deleting retained delivery facts.
 
 The public management interface exposes bounded trigger identity, kind, status,
 health, and endpoint readiness. It does not expose endpoint-key hashes,
