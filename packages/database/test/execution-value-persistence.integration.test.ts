@@ -32,6 +32,7 @@ const cleanDatabaseName = `pertexo_test_0014_clean_${randomUUID().replaceAll('-'
 const upgradeDatabaseName = `pertexo_test_0014_upgrade_${randomUUID().replaceAll('-', '')}`;
 const databaseNames = [cleanDatabaseName, upgradeDatabaseName] as const;
 const workspaceId = randomUUID();
+const workspaceCreatorId = randomUUID();
 const otherWorkspaceId = randomUUID();
 const runId = randomUUID();
 const workflowVersionId = randomUUID();
@@ -158,6 +159,18 @@ beforeAll(async () => {
   }
   await migrateDatabase(migrationConfig(cleanDatabaseName));
   await migrateThrough0013(upgradeDatabaseName);
+  await withOwner(upgradeDatabaseName, async (pool) => {
+    await pool.query(
+      `insert into app.users(id,email,display_name)
+       values($1,$2,'Execution value fixture')`,
+      [workspaceCreatorId, `${workspaceCreatorId}@example.test`],
+    );
+    await pool.query(
+      `insert into app.workspaces(id,name,slug,created_by)
+       values($1,'Execution value fixture',$2,$3)`,
+      [workspaceId, `execution-value-${workspaceId}`, workspaceCreatorId],
+    );
+  });
   await withRuntime(
     apiBaseUrl,
     upgradeDatabaseName,

@@ -1507,12 +1507,21 @@ export async function checkDatabaseReadiness(
             and 'row_security=on'=any(admission_function.proconfig)
             and exists (select 1 from unnest(admission_function.proconfig) setting
                          where setting like 'search_path=pg_catalog%'))
-        and has_table_privilege(current_user,'app.workspace_execution_entitlements','SELECT')
-        and has_table_privilege(current_user,'app.workspace_execution_entitlement_versions','SELECT')
-        and has_table_privilege(current_user,'app.workspace_execution_admission_counters','SELECT')
+        and (
+          (
+            has_table_privilege(current_user,'app.workspace_execution_entitlements','SELECT')
+            and has_table_privilege(current_user,'app.workspace_execution_entitlement_versions','SELECT')
+            and has_table_privilege(current_user,'app.workspace_execution_admission_counters','SELECT')
+            and has_function_privilege(current_user,'app.reconcile_workspace_execution_admission(uuid)','EXECUTE')
+          ) or (
+            has_function_privilege(current_user,'app.reserve_workflow_run_active_admission(uuid,uuid,uuid)','EXECUTE')
+            and has_function_privilege(current_user,'app.workflow_run_active_admission_eligible(uuid,uuid,uuid)','EXECUTE')
+            and has_function_privilege(current_user,'app.arm_dispatcher_workflow_run_active_admission(uuid,uuid)','EXECUTE')
+            and has_function_privilege(current_user,'app.recover_due_workflow_run_active_admissions(integer)','EXECUTE')
+          )
+        )
         and not has_table_privilege(current_user,'app.workspace_execution_entitlement_versions','INSERT')
         and not has_table_privilege(current_user,'app.workspace_execution_entitlements','UPDATE')
-        and has_function_privilege(current_user,'app.reconcile_workspace_execution_admission(uuid)','EXECUTE')
         and has_function_privilege($2,'app.workflow_run_active_capacity_available(uuid,integer,uuid)','EXECUTE')
         and has_function_privilege($2,'app.release_workflow_run_active_admission(uuid,uuid)','EXECUTE')
       ) as execution_admission_compatible,
