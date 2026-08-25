@@ -2820,6 +2820,21 @@ Current evidence:
   queue payload leakage. The focused test completed in 343 ms (3.66 seconds
   including migration, release rollout, app startup, and cleanup), and dropped
   its disposable database.
+- The direct Schedule worker gate publishes a real `core.schedule@1` graph,
+  dispatches its transactional publication outbox through Redis/BullMQ, and
+  materially reconciles the schedule under the worker role before using the
+  production PostgreSQL scanner and checkpoint factory. It proves one unique
+  occurrence/run/event/checkpoint/outbox through duplicate reconciliation and
+  competing scans, PostgreSQL-seeded due identity, expired-lease recovery in a
+  fresh runtime, visible admission deferral without starving a second workspace,
+  recovery after capacity returns, and no post-drain claim. The gate exposed and
+  fixed worker Schedule acceptance privileges at migration head
+  `0042_worker_run_admission_lock.sql`; PostgreSQL retains lifecycle and failure-
+  notification locks behind narrow security-definer functions rather than
+  granting workspace or destination mutation. The focused test body completed
+  in 1,003 ms (3.55 seconds including migration, release rollout, Redis/BullMQ,
+  and cleanup), dropped its disposable database, and left isolated Redis DB 13
+  empty.
 - Migration `0038_execution_admission.sql` provisions existing and new
   workspaces with immutable entitlement version 1 (five active, 100 queued), a
   forced-RLS current projection, and reconciled queued/active counters. Run
