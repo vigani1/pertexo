@@ -81,6 +81,40 @@ describe('generic webhook ingress', () => {
     expect(database.acceptVerifiedDelivery).not.toHaveBeenCalled();
   });
 
+  it('collapses malformed signatures and stale timestamps into one authentication response', async () => {
+    const malformed = setup();
+    const base = request('{}', currentSecret);
+    const uppercase = await malformed.application.inject({
+      ...base,
+      headers: {
+        ...base.headers,
+        'x-pertexo-signature':
+          base.headers['x-pertexo-signature'].toUpperCase(),
+      },
+    });
+    const staleTimestamp = String(Number(timestamp) - 301);
+    const stale = await malformed.application.inject({
+      ...base,
+      headers: {
+        ...base.headers,
+        'x-pertexo-timestamp': staleTimestamp,
+        'x-pertexo-signature': `v1=${createHmac('sha256', currentSecret)
+          .update(staleTimestamp)
+          .update('.')
+          .update('{}')
+          .digest('hex')}`,
+      },
+    });
+    expect(uppercase.statusCode).toBe(401);
+    expect(stale.statusCode).toBe(401);
+    expect(uppercase.json<{ code: string }>().code).toBe(
+      'webhook.authentication_failed',
+    );
+    expect(stale.json<{ code: string }>().code).toBe(
+      'webhook.authentication_failed',
+    );
+  });
+
   it.each([
     [{ 'content-type': 'text/plain' }, 415, 'webhook.unsupported_media_type'],
     [
@@ -147,15 +181,34 @@ describe('generic webhook ingress', () => {
     expect(response.headers['retry-after']).toBe('5');
   });
 
-  function setup(reference = verification, acceptanceError?: Error) {
+  it('returns the original run reference for an exact completed replay', async () => {
+    const replay = setup(undefined, undefined, {
+      runId: '99999999-9999-4999-8999-999999999999',
+      replayed: true,
+    });
+    const response = await replay.application.inject(
+      request('{}', currentSecret),
+    );
+    expect(response.statusCode).toBe(202);
+    expect(response.json<{ runId: string; replayed: boolean }>()).toEqual({
+      runId: '99999999-9999-4999-8999-999999999999',
+      replayed: true,
+    });
+  });
+
+  function setup(
+    reference = verification,
+    acceptanceError?: Error,
+    acceptance = {
+      runId: '99999999-9999-4999-8999-999999999999',
+      replayed: false,
+    },
+  ) {
     const database = {
       resolveVerification: vi.fn().mockResolvedValue(reference),
       acceptVerifiedDelivery: acceptanceError
         ? vi.fn().mockRejectedValue(acceptanceError)
-        : vi.fn().mockResolvedValue({
-            runId: '99999999-9999-4999-8999-999999999999',
-            replayed: false,
-          }),
+        : vi.fn().mockResolvedValue(acceptance),
     };
     const encryption = {
       open: vi

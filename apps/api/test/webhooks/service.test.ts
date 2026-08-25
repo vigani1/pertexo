@@ -1,4 +1,7 @@
-import type { WebhookTriggerDatabase } from '@pertexo/database';
+import {
+  WebhookTriggerIdempotencyConflictError,
+  type WebhookTriggerDatabase,
+} from '@pertexo/database';
 import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -61,6 +64,16 @@ describe('webhook management service', () => {
     expect(JSON.stringify(database.rotateSecret.mock.calls)).not.toContain(
       endpointKey,
     );
+  });
+
+  it('maps management command idempotency conflicts to the stable public code', async () => {
+    const { service, database } = setup(true);
+    database.provision.mockRejectedValueOnce(
+      new WebhookTriggerIdempotencyConflictError(),
+    );
+    await expect(service.provision(input)).rejects.toMatchObject({
+      code: 'request.idempotency_conflict',
+    });
   });
 });
 
