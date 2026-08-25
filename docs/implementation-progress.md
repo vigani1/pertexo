@@ -2845,7 +2845,9 @@ Current evidence:
   for outbox and worker continuation. Independent fixed-head Spec and Standards
   re-reviews found no implementation blocker/high after these corrections.
 - Final verification on 2026-08-25: root `pnpm check` passes formatting, builds,
-  lint, generated-contract drift, typechecks, and 1,020 unit assertions;
+  lint, generated-contract drift, typechecks, and 1,021 unit assertions,
+  including real OpenTelemetry export proof that Webhook ingress continues a
+  remote parent and persists its child context;
   `pnpm audit --prod` reports no known vulnerabilities. A fresh PostgreSQL 18
   database applies all 44 migrations through `0043` and passes 288 assertions
   across 21 sequential integration files. The direct Webhook gate passes in
