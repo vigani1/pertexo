@@ -22,7 +22,7 @@ not complete a phase.
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 5 — orchestration slice | Complete | ADRs 008/017/018/019/020/021/022; implementation through `9d7e071`; migration head `0034_run_failure_notifications.sql`; 862 unit assertions and complete real-service/recovery matrix; independent fixed-head Spec and Standards completion GO |
-| Phase 6 — V1 providers and triggers | In progress | ADRs 012–014 and 023–026; Slack, email, failure-notification destinations, Webhook, Schedule, and shared admission/fair dispatch are implemented at migration head `0043`; final retained Phase 0E Redis child-process recovery verification remains open |
+| Phase 6 — V1 providers and triggers | Complete | ADRs 012–014 and 023–026; implementation through `0f8a170`; migration head `0043_workflow_run_input_retention.sql`; 1,021 unit and 288 real-service assertions; complete retained recovery and additive-rollout gates; independent fixed-head Spec and Standards completion GO |
 | Phase 7 — production operations | Not started | — |
 
 The `0A`–`0E` checkpoints are implementation-sized subdivisions of the plan's
@@ -2701,7 +2701,7 @@ Phase-wide completion gates:
 
 ## Phase 6 — V1 Providers And Triggers
 
-Status: **In progress**
+Status: **Complete**
 
 Authority and sequencing:
 
@@ -2792,9 +2792,9 @@ Phase-wide completion gates:
 
 - [x] Complete Slack, email, failure-notification destinations, Webhook, and
       Schedule in that order; do not add polling.
-- [ ] Run root checks, provider contracts, zero/prior-head migrations, complete
+- [x] Run root checks, provider contracts, zero/prior-head migrations, complete
       real-service matrices, retained recovery fixtures, and additive rollout.
-- [ ] Record exact versions, commands, assertion counts, timings, cleanup, and
+- [x] Record exact versions, commands, assertion counts, timings, cleanup, and
       post-test dependency health.
 - [x] Resolve every blocker/high finding from independent fixed-head Spec and
       Standards reviews and push all coherent implementation/evidence commits.
@@ -2853,12 +2853,20 @@ Current evidence:
   across 21 sequential integration files. The direct Webhook gate passes in
   3.75 seconds, the direct Schedule gate passes in 3.84 seconds, and additive
   compatibility rollout passes against a freshly migrated disposable database
-  in 4.20 seconds; each disposable database was dropped. The retained Phase 0E
-  fixture still passes three of five process-recovery cases but its two Redis-
-  backed cases time out before a Vitest-spawned BullMQ consumer reports ready;
-  direct fixture launch, direct trigger gates, and destructive transport recovery
-  remain green. Phase 6 therefore remains in progress rather than claiming the
-  phase-wide recovery gate complete.
+  in 4.20 seconds; each disposable database was dropped. Commit `0f8a170`
+  corrects the retained Phase 0E fixture to drain bounded ADR 012 fairness
+  rounds rather than assuming one dispatcher claim drains multiple rows from
+  the same workspace. Diagnostic evidence confirmed the child had reported and
+  the parent had consumed `{ ready: true }`; the first round had correctly
+  published only the older coordinator row, leaving the node-attempt row in
+  PostgreSQL for the next fair round. With production fairness and every
+  readiness/recovery assertion unchanged, all five process-recovery cases pass
+  in 41.979 seconds, including both Redis-backed cases. A fixed-head Spec review
+  and Standards review of `a87d204...0f8a170` report no findings. The final
+  fixed-head root `pnpm check` and `pnpm audit --prod` also pass, with 1,021 unit
+  assertions and no known production vulnerabilities. PostgreSQL 18, Redis
+  8.2.8, and the artifact store remained healthy after verification. This closes
+  the final Phase 6 completion gate.
 - Migration `0038_execution_admission.sql` provisions existing and new
   workspaces with immutable entitlement version 1 (five active, 100 queued), a
   forced-RLS current projection, and reconciled queued/active counters. Run
