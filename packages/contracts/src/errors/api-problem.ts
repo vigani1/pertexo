@@ -20,6 +20,12 @@ export const API_PROBLEM_CODES = [
   'connection.revoked',
   'provider.rate_limited',
   'provider.unavailable',
+  'webhook.authentication_failed',
+  'webhook.payload_too_large',
+  'webhook.unsupported_media_type',
+  'webhook.invalid_json',
+  'webhook.idempotency_conflict',
+  'webhook.rate_limited',
   'internal.unexpected',
 ] as const;
 

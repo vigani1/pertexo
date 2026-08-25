@@ -18,6 +18,7 @@ import {
   workflowRunsClientContract,
   workflowRunsOpenApiDocument,
 } from './workflow-runs.js';
+import { webhooksClientContract, webhooksOpenApiDocument } from './webhooks.js';
 
 export const CONTRACT_ARTIFACTS = Object.freeze([
   Object.freeze({
@@ -59,5 +60,13 @@ export const CONTRACT_ARTIFACTS = Object.freeze([
   Object.freeze({
     fileName: 'workflow-runs.openapi.json',
     content: `${JSON.stringify(workflowRunsOpenApiDocument, undefined, 2)}\n`,
+  }),
+  Object.freeze({
+    fileName: 'webhooks.client-schema.json',
+    content: `${JSON.stringify(webhooksClientContract, undefined, 2)}\n`,
+  }),
+  Object.freeze({
+    fileName: 'webhooks.openapi.json',
+    content: `${JSON.stringify(webhooksOpenApiDocument, undefined, 2)}\n`,
   }),
 ]);

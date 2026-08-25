@@ -22,6 +22,7 @@ describe('contracts package boundary', () => {
       './node-testing',
       './workflow-authoring',
       './workflow-runs',
+      './webhooks',
     ]);
 
     for (const source of [

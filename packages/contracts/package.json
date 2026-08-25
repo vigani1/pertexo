@@ -32,6 +32,10 @@
     "./workflow-runs": {
       "types": "./dist/workflow-runs.d.ts",
       "default": "./dist/workflow-runs.js"
+    },
+    "./webhooks": {
+      "types": "./dist/webhooks.d.ts",
+      "default": "./dist/webhooks.js"
     }
   },
   "scripts": {

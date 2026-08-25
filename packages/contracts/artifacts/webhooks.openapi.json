@@ -1,0 +1,278 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Pertexo Webhooks API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Published trigger health"
+          }
+        }
+      }
+    },
+    "/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers/{triggerId}/webhook/provision": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Webhook trigger command completed"
+          },
+          "400": {
+            "description": "request.invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "x-pertexo-code": "request.invalid",
+            "status": 400
+          },
+          "401": {
+            "description": "auth.unauthenticated",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "x-pertexo-code": "auth.unauthenticated",
+            "status": 401
+          },
+          "404": {
+            "description": "resource.not_found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "x-pertexo-code": "resource.not_found",
+            "status": 404
+          },
+          "409": {
+            "description": "request.idempotency_conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "x-pertexo-code": "request.idempotency_conflict",
+            "status": 409
+          }
+        }
+      }
+    },
+    "/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers/{triggerId}/webhook/rotate-endpoint": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Webhook trigger command completed"
+          },
+          "400": {
+            "description": "request.invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "x-pertexo-code": "request.invalid",
+            "status": 400
+          },
+          "401": {
+            "description": "auth.unauthenticated",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "x-pertexo-code": "auth.unauthenticated",
+            "status": 401
+          },
+          "404": {
+            "description": "resource.not_found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "x-pertexo-code": "resource.not_found",
+            "status": 404
+          },
+          "409": {
+            "description": "request.idempotency_conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "x-pertexo-code": "request.idempotency_conflict",
+            "status": 409
+          }
+        }
+      }
+    },
+    "/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers/{triggerId}/webhook/rotate-secret": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Webhook trigger command completed"
+          },
+          "400": {
+            "description": "request.invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "x-pertexo-code": "request.invalid",
+            "status": 400
+          },
+          "401": {
+            "description": "auth.unauthenticated",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "x-pertexo-code": "auth.unauthenticated",
+            "status": 401
+          },
+          "404": {
+            "description": "resource.not_found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "x-pertexo-code": "resource.not_found",
+            "status": 404
+          },
+          "409": {
+            "description": "request.idempotency_conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "x-pertexo-code": "request.idempotency_conflict",
+            "status": 409
+          }
+        }
+      }
+    },
+    "/hooks/{endpointKey}": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Workflow run accepted"
+          },
+          "400": {
+            "description": "webhook.invalid_json",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "x-pertexo-code": "webhook.invalid_json",
+            "status": 400
+          },
+          "401": {
+            "description": "webhook.authentication_failed",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "x-pertexo-code": "webhook.authentication_failed",
+            "status": 401
+          },
+          "409": {
+            "description": "webhook.idempotency_conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "x-pertexo-code": "webhook.idempotency_conflict",
+            "status": 409
+          },
+          "413": {
+            "description": "webhook.payload_too_large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "x-pertexo-code": "webhook.payload_too_large",
+            "status": 413
+          },
+          "415": {
+            "description": "webhook.unsupported_media_type",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "x-pertexo-code": "webhook.unsupported_media_type",
+            "status": 415
+          },
+          "429": {
+            "description": "webhook.rate_limited",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "x-pertexo-code": "webhook.rate_limited",
+            "status": 429
+          }
+        }
+      }
+    }
+  }
+}

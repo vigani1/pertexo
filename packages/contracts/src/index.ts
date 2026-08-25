@@ -33,3 +33,5 @@ export {
   workflowRunsOpenApiDocument,
 } from './workflow-runs.js';
 export * from './http/workflow-runs.js';
+export { webhooksClientContract, webhooksOpenApiDocument } from './webhooks.js';
+export * from './http/webhooks.js';
