@@ -12,7 +12,10 @@ import type { ApiConfig } from './platform/config/api-config.js';
 
 import { DatabaseModule } from './platform/database/database.module.js';
 import { LiveController } from './platform/health/live.controller.js';
-import { ReadyController } from './platform/health/ready.controller.js';
+import {
+  API_RUNTIME_READINESS,
+  ReadyController,
+} from './platform/health/ready.controller.js';
 import { ApiDrainState } from './platform/health/drain-state.js';
 import { HttpPlatformModule } from './platform/http/http.module.js';
 import type {
@@ -34,6 +37,8 @@ import {
 } from './platform/workflow/workflow-runtime.module.js';
 import type { ApiWebhookRuntime } from './platform/webhooks/webhook-runtime.module.js';
 import { WebhookModule } from './webhooks/module.js';
+import type { ApiScheduleRuntime } from './platform/schedules/schedule-runtime.module.js';
+import { ScheduleModule } from './schedules/module.js';
 
 export type ApiModuleDependencies = Readonly<{
   database?: WorkspaceDatabase;
@@ -41,6 +46,7 @@ export type ApiModuleDependencies = Readonly<{
   connectionRuntime?: ApiConnectionRuntime;
   workflowRuntime?: ApiWorkflowRuntime;
   webhookRuntime?: ApiWebhookRuntime;
+  scheduleRuntime?: ApiScheduleRuntime;
   logger: StructuredLogger;
   telemetry: TelemetryLifecycle;
 }>;
@@ -92,6 +98,7 @@ export class AppModule {
     const authorization =
       dependencies.identityRuntime?.dependencies.authorization;
     const webhookRuntime = dependencies.webhookRuntime;
+    const scheduleRuntime = dependencies.scheduleRuntime;
     const featureModules =
       identityModule === undefined
         ? []
@@ -121,6 +128,15 @@ export class AppModule {
                     identityModule,
                   ),
                 ]),
+            ...(scheduleRuntime === undefined || authorization === undefined
+              ? []
+              : [
+                  ScheduleModule.register(
+                    scheduleRuntime.service,
+                    authorization,
+                    identityModule,
+                  ),
+                ]),
           ];
 
     return {
@@ -144,6 +160,17 @@ export class AppModule {
                 provide: Symbol('WEBHOOK_RUNTIME_SHUTDOWN'),
                 useValue: {
                   onApplicationShutdown: () => webhookRuntime.close(),
+                },
+              },
+            ]),
+        ...(scheduleRuntime === undefined
+          ? []
+          : [
+              { provide: API_RUNTIME_READINESS, useValue: scheduleRuntime },
+              {
+                provide: Symbol('SCHEDULE_RUNTIME_SHUTDOWN'),
+                useValue: {
+                  onApplicationShutdown: () => scheduleRuntime.close(),
                 },
               },
             ]),

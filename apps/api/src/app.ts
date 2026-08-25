@@ -32,6 +32,10 @@ import {
   type ApiWebhookRuntime,
 } from './platform/webhooks/webhook-runtime.module.js';
 import { registerWebhookIngress } from './webhooks/ingress.js';
+import {
+  createApiScheduleRuntime,
+  type ApiScheduleRuntime,
+} from './platform/schedules/schedule-runtime.module.js';
 
 export type ApiApplicationDependencies = Readonly<{
   database?: WorkspaceDatabase;
@@ -42,6 +46,7 @@ export type ApiApplicationDependencies = Readonly<{
   workflowRuntime?: ApiWorkflowRuntime;
   workflowOverrides?: ApiWorkflowRuntimeOverrides;
   webhookRuntime?: ApiWebhookRuntime;
+  scheduleRuntime?: ApiScheduleRuntime;
   logger: StructuredLogger;
   telemetry: TelemetryLifecycle;
 }>;
@@ -92,6 +97,11 @@ export async function createApiApplication(
           config.database,
           config.nodeCompatibilityCohort,
         ));
+  const scheduleRuntime =
+    dependencies.scheduleRuntime ??
+    (identityRuntime === undefined || dependencies.database !== undefined
+      ? undefined
+      : createApiScheduleRuntime(config.database));
   let application: NestFastifyApplication;
   try {
     application = await NestFactory.create<NestFastifyApplication>(
@@ -101,6 +111,7 @@ export async function createApiApplication(
         ...(workflowRuntime === undefined ? {} : { workflowRuntime }),
         ...(connectionRuntime === undefined ? {} : { connectionRuntime }),
         ...(webhookRuntime === undefined ? {} : { webhookRuntime }),
+        ...(scheduleRuntime === undefined ? {} : { scheduleRuntime }),
       }),
       new FastifyAdapter(),
       { abortOnError: false, logger: nestLogger },
@@ -111,6 +122,7 @@ export async function createApiApplication(
       workflowRuntime?.close(),
       connectionRuntime?.close(),
       webhookRuntime?.close(),
+      scheduleRuntime?.close(),
     ]);
     throw error;
   }
@@ -129,6 +141,7 @@ export async function createApiApplication(
     await application
       .get<WorkspaceDatabase>(WORKSPACE_DATABASE)
       .checkReadiness();
+    await scheduleRuntime?.checkReadiness();
   } catch (error: unknown) {
     await application.close();
     throw error;

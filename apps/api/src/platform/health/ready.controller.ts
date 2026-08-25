@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Inject,
+  Optional,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import type { WorkspaceDatabase } from '@pertexo/database';
@@ -14,6 +15,10 @@ type ReadyResponse = Readonly<{
 }>;
 
 const READY_RESPONSE: ReadyResponse = Object.freeze({ status: 'ready' });
+export const API_RUNTIME_READINESS = Symbol('API_RUNTIME_READINESS');
+export interface ApiRuntimeReadiness {
+  checkReadiness(): Promise<void>;
+}
 
 @Controller('health')
 export class ReadyController {
@@ -21,6 +26,9 @@ export class ReadyController {
     @Inject(WORKSPACE_DATABASE)
     private readonly database: WorkspaceDatabase,
     private readonly drainState: ApiDrainState,
+    @Optional()
+    @Inject(API_RUNTIME_READINESS)
+    private readonly runtimeReadiness?: ApiRuntimeReadiness,
   ) {}
 
   @Get('ready')
@@ -30,7 +38,10 @@ export class ReadyController {
     }
 
     try {
-      await this.database.checkReadiness();
+      await Promise.all([
+        this.database.checkReadiness(),
+        this.runtimeReadiness?.checkReadiness(),
+      ]);
       return READY_RESPONSE;
     } catch {
       throw new ServiceUnavailableException({ status: 'not_ready' });

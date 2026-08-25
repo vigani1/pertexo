@@ -19,6 +19,8 @@ import type { ApiIdentityRuntime } from '../src/platform/identity/identity-runti
 import type { ApiWorkflowRuntime } from '../src/platform/workflow/workflow-runtime.module.js';
 import type { ApiWebhookRuntime } from '../src/platform/webhooks/webhook-runtime.module.js';
 import type { WebhookManagementService } from '../src/webhooks/service.js';
+import type { ApiScheduleRuntime } from '../src/platform/schedules/schedule-runtime.module.js';
+import { ScheduleManagementService } from '../src/schedules/service.js';
 
 const database: WorkspaceDatabase = {
   withWorkspace: async <T>(
@@ -81,6 +83,7 @@ function dependencies(
 
 function identityRuntime(
   close = vi.fn().mockResolvedValue(undefined),
+  authenticated = false,
 ): ApiIdentityRuntime {
   const identityDependencies: IdentityWorkspaceDependencies = {
     config: {
@@ -103,7 +106,18 @@ function identityRuntime(
     },
     persistence: {
       create: () => Promise.resolve(),
-      findByDigest: () => Promise.resolve(undefined),
+      findByDigest: () =>
+        Promise.resolve(
+          authenticated
+            ? {
+                sessionId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+                tokenDigest: 'a'.repeat(64),
+                userId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+                expiresAt: new Date(Date.now() + 60_000),
+                clientMetadata: {},
+              }
+            : undefined,
+        ),
       revokeByDigest: () => Promise.resolve(false),
       resolveOrCreateIdentity: () =>
         Promise.resolve({
@@ -113,7 +127,20 @@ function identityRuntime(
       requestWorkspaceDeletion: () => Promise.reject(new Error('not used')),
       restoreWorkspace: () => Promise.reject(new Error('not used')),
     },
-    authorization: { findAccess: () => Promise.resolve(undefined) },
+    authorization: {
+      findAccess: () =>
+        Promise.resolve(
+          authenticated
+            ? {
+                actorId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+                workspaceId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+                role: 'owner' as const,
+                membershipStatus: 'active' as const,
+                workspaceStatus: 'active' as const,
+              }
+            : undefined,
+        ),
+    },
   };
   return Object.freeze({ dependencies: identityDependencies, close });
 }
@@ -404,6 +431,107 @@ describe('API bootstrap', () => {
     await application.close();
     application = undefined;
     expect(webhookClose).toHaveBeenCalledOnce();
+  });
+
+  it('enforces session and CSRF on schedule routes and owns readiness and close', async () => {
+    const selectedIdentityRuntime = identityRuntime(
+      vi.fn().mockResolvedValue(undefined),
+      true,
+    );
+    const record = {
+      id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+      workflowId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      workflowVersionId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+      nodeId: 'schedule',
+      kind: 'schedule' as const,
+      status: 'active' as const,
+      healthStatus: 'healthy' as const,
+      lastErrorCode: null,
+      reconciledAt: null,
+      recurrence: { kind: 'interval' as const, intervalMinutes: 5 },
+      misfirePolicy: 'catch_up_once' as const,
+      nextFireAt: new Date('2026-08-25T12:05:00.000Z'),
+      lastFireAt: null,
+    };
+    const scheduleDatabase = {
+      list: vi.fn().mockResolvedValue([record]),
+      setEnabled: vi
+        .fn()
+        .mockResolvedValue({ trigger: record, replayed: false }),
+      checkReadiness: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+    };
+    const scheduleRuntime = {
+      service: new ScheduleManagementService(scheduleDatabase),
+      checkReadiness: scheduleDatabase.checkReadiness,
+      close: scheduleDatabase.close,
+    } as ApiScheduleRuntime;
+    application = await createApiApplication(config, {
+      ...dependencies(),
+      identityRuntime: selectedIdentityRuntime,
+      scheduleRuntime,
+    });
+    const base =
+      '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/workflows/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/triggers';
+    const unauthenticated = await application.inject({
+      method: 'GET',
+      url: `${base}/schedules`,
+    });
+    expect(unauthenticated.statusCode).toBe(401);
+
+    const cookie = `pertexo_session=${'s'.repeat(43)}`;
+    const hidden = await application.inject({
+      method: 'GET',
+      url: `${base.replace('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee')}/schedules`,
+      headers: { cookie },
+    });
+    expect(hidden.statusCode).toBe(404);
+
+    const listed = await application.inject({
+      method: 'GET',
+      url: `${base}/schedules`,
+      headers: { cookie },
+    });
+    expect(listed.statusCode).toBe(200);
+    expect(listed.json()).toMatchObject({ items: [{ kind: 'schedule' }] });
+
+    const missingCsrf = await application.inject({
+      method: 'POST',
+      url: `${base}/${record.id}/schedule/disable`,
+      headers: { cookie, 'idempotency-key': 'disable' },
+      payload: {},
+    });
+    expect(missingCsrf.statusCode).toBe(403);
+
+    const csrf = 'c'.repeat(32);
+    const missingKey = await application.inject({
+      method: 'POST',
+      url: `${base}/${record.id}/schedule/disable`,
+      headers: {
+        cookie: `${cookie}; pertexo_csrf=${csrf}`,
+        'x-csrf-token': csrf,
+      },
+      payload: {},
+    });
+    expect(missingKey.statusCode).toBe(428);
+
+    const disabled = await application.inject({
+      method: 'POST',
+      url: `${base}/${record.id}/schedule/disable`,
+      headers: {
+        cookie: `${cookie}; pertexo_csrf=${csrf}`,
+        'x-csrf-token': csrf,
+        'idempotency-key': 'disable',
+      },
+      payload: {},
+    });
+    expect(disabled.statusCode).toBe(200);
+    expect(scheduleDatabase.setEnabled).toHaveBeenCalledOnce();
+    expect(scheduleDatabase.checkReadiness).toHaveBeenCalled();
+
+    await application.close();
+    application = undefined;
+    expect(scheduleDatabase.close).toHaveBeenCalledOnce();
   });
 
   it('registers node-testing routes and providers with the production workflow runtime', async () => {
