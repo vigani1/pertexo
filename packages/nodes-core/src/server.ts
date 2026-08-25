@@ -48,6 +48,13 @@ import {
   CORE_PARALLEL_OUTPUT_SCHEMA,
 } from './parallel/index.js';
 import { CORE_REGISTRY_RELEASE } from './registry.js';
+import { coreScheduleExecutor } from './schedule/executor.js';
+import {
+  CORE_SCHEDULE_CONFIG_SCHEMA,
+  CORE_SCHEDULE_INPUT_SCHEMA,
+  CORE_SCHEDULE_MANIFEST,
+  CORE_SCHEDULE_OUTPUT_SCHEMA,
+} from './schedule/index.js';
 import { coreSetExecutor } from './set/executor.js';
 import {
   CORE_SET_CONFIG_SCHEMA,
@@ -76,9 +83,28 @@ import {
   CORE_WAIT_MANIFEST,
   CORE_WAIT_OUTPUT_SCHEMA,
 } from './wait/index.js';
+import { coreWebhookExecutor } from './webhook/executor.js';
+import {
+  CORE_WEBHOOK_CONFIG_SCHEMA,
+  CORE_WEBHOOK_INPUT_SCHEMA,
+  CORE_WEBHOOK_MANIFEST,
+  CORE_WEBHOOK_OUTPUT_SCHEMA,
+} from './webhook/index.js';
 
 export const CORE_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistration[] =
   Object.freeze([
+    Object.freeze({
+      manifest: CORE_SCHEDULE_MANIFEST,
+      configSchema: CORE_SCHEDULE_CONFIG_SCHEMA,
+      inputSchema: CORE_SCHEDULE_INPUT_SCHEMA,
+      outputSchema: CORE_SCHEDULE_OUTPUT_SCHEMA,
+    }),
+    Object.freeze({
+      manifest: CORE_WEBHOOK_MANIFEST,
+      configSchema: CORE_WEBHOOK_CONFIG_SCHEMA,
+      inputSchema: CORE_WEBHOOK_INPUT_SCHEMA,
+      outputSchema: CORE_WEBHOOK_OUTPUT_SCHEMA,
+    }),
     Object.freeze({
       manifest: CORE_WAIT_MANIFEST,
       configSchema: CORE_WAIT_CONFIG_SCHEMA,
@@ -141,10 +167,12 @@ export const CORE_NODE_EXECUTOR_REGISTRATIONS = Object.freeze([
   coreManualExecutor,
   coreMergeExecutor,
   coreParallelExecutor,
+  coreScheduleExecutor,
   coreSetExecutor,
   coreSwitchExecutor,
   coreTerminateExecutor,
   coreWaitExecutor,
+  coreWebhookExecutor,
 ] as const);
 
 function identityToken(identity: Readonly<{ key: string; version: number }>) {

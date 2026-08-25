@@ -15,8 +15,10 @@ import {
   CORE_PARALLEL_MANIFEST,
   CORE_REGISTRY_RELEASE_SUPPORT,
   CORE_REGISTRY_RELEASE_SUCCESSOR,
+  CORE_SCHEDULE_MANIFEST,
   CORE_SWITCH_MANIFEST,
   CORE_WAIT_MANIFEST,
+  CORE_WEBHOOK_MANIFEST,
 } from '@pertexo/nodes-core';
 
 const httpExecutorAbi = HTTP_REQUEST_MANIFEST.executorAbi;
@@ -392,6 +394,86 @@ export const PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE =
     policies: PLATFORM_REGISTRY_RELEASE_EMAIL_STAGED.policies,
   });
 
+const webhookExecutorAbi = CORE_WEBHOOK_MANIFEST.executorAbi;
+if (webhookExecutorAbi === undefined)
+  throw new Error('Webhook manifest must pin its executor ABI');
+
+export const PLATFORM_REGISTRY_RELEASE_WEBHOOK_STAGED =
+  createRegistryReleaseSuccessor({
+    previous: PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE,
+    epoch: 21,
+    definitions: [
+      ...PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE.definitions,
+      CORE_WEBHOOK_MANIFEST,
+    ],
+    executors: [
+      ...PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE.executors,
+      {
+        executor: CORE_WEBHOOK_MANIFEST.executor,
+        abiVersion: webhookExecutorAbi,
+        definitions: [CORE_WEBHOOK_MANIFEST.definition],
+        lifecycle: 'staged',
+        policyReferences: CORE_WEBHOOK_MANIFEST.policyReferences,
+      },
+    ],
+    policies: PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE.policies,
+  });
+
+export const PLATFORM_REGISTRY_RELEASE_WEBHOOK_ACTIVE =
+  createRegistryReleaseSuccessor({
+    previous: PLATFORM_REGISTRY_RELEASE_WEBHOOK_STAGED,
+    epoch: 22,
+    definitions: PLATFORM_REGISTRY_RELEASE_WEBHOOK_STAGED.definitions,
+    executors: PLATFORM_REGISTRY_RELEASE_WEBHOOK_STAGED.executors.map(
+      (executor) =>
+        executor.executor.key === CORE_WEBHOOK_MANIFEST.executor.key &&
+        executor.executor.version === CORE_WEBHOOK_MANIFEST.executor.version
+          ? { ...executor, lifecycle: 'active' as const }
+          : executor,
+    ),
+    policies: PLATFORM_REGISTRY_RELEASE_WEBHOOK_STAGED.policies,
+  });
+
+const scheduleExecutorAbi = CORE_SCHEDULE_MANIFEST.executorAbi;
+if (scheduleExecutorAbi === undefined)
+  throw new Error('Schedule manifest must pin its executor ABI');
+
+export const PLATFORM_REGISTRY_RELEASE_SCHEDULE_STAGED =
+  createRegistryReleaseSuccessor({
+    previous: PLATFORM_REGISTRY_RELEASE_WEBHOOK_ACTIVE,
+    epoch: 23,
+    definitions: [
+      ...PLATFORM_REGISTRY_RELEASE_WEBHOOK_ACTIVE.definitions,
+      CORE_SCHEDULE_MANIFEST,
+    ],
+    executors: [
+      ...PLATFORM_REGISTRY_RELEASE_WEBHOOK_ACTIVE.executors,
+      {
+        executor: CORE_SCHEDULE_MANIFEST.executor,
+        abiVersion: scheduleExecutorAbi,
+        definitions: [CORE_SCHEDULE_MANIFEST.definition],
+        lifecycle: 'staged',
+        policyReferences: CORE_SCHEDULE_MANIFEST.policyReferences,
+      },
+    ],
+    policies: PLATFORM_REGISTRY_RELEASE_WEBHOOK_ACTIVE.policies,
+  });
+
+export const PLATFORM_REGISTRY_RELEASE_SCHEDULE_ACTIVE =
+  createRegistryReleaseSuccessor({
+    previous: PLATFORM_REGISTRY_RELEASE_SCHEDULE_STAGED,
+    epoch: 24,
+    definitions: PLATFORM_REGISTRY_RELEASE_SCHEDULE_STAGED.definitions,
+    executors: PLATFORM_REGISTRY_RELEASE_SCHEDULE_STAGED.executors.map(
+      (executor) =>
+        executor.executor.key === CORE_SCHEDULE_MANIFEST.executor.key &&
+        executor.executor.version === CORE_SCHEDULE_MANIFEST.executor.version
+          ? { ...executor, lifecycle: 'active' as const }
+          : executor,
+    ),
+    policies: PLATFORM_REGISTRY_RELEASE_SCHEDULE_STAGED.policies,
+  });
+
 /** Complete audit/test history; never pass this to one serving artifact. */
 export const PLATFORM_REGISTRY_RELEASE_HISTORY = Object.freeze([
   ...CORE_REGISTRY_RELEASE_SUPPORT,
@@ -413,6 +495,10 @@ export const PLATFORM_REGISTRY_RELEASE_HISTORY = Object.freeze([
   PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_EMAIL_STAGED,
   PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_WEBHOOK_STAGED,
+  PLATFORM_REGISTRY_RELEASE_WEBHOOK_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_SCHEDULE_STAGED,
+  PLATFORM_REGISTRY_RELEASE_SCHEDULE_ACTIVE,
 ]);
 
 /** Backward-compatible default cohort until deployment selects a Phase 4 cohort. */
@@ -508,6 +594,22 @@ export const PLATFORM_EMAIL_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
   PLATFORM_REGISTRY_RELEASE_EMAIL_STAGED,
   PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE,
 ]);
+export const PLATFORM_WEBHOOK_STAGING_RELEASE_SUPPORT = Object.freeze([
+  PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_WEBHOOK_STAGED,
+]);
+export const PLATFORM_WEBHOOK_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
+  PLATFORM_REGISTRY_RELEASE_WEBHOOK_STAGED,
+  PLATFORM_REGISTRY_RELEASE_WEBHOOK_ACTIVE,
+]);
+export const PLATFORM_SCHEDULE_STAGING_RELEASE_SUPPORT = Object.freeze([
+  PLATFORM_REGISTRY_RELEASE_WEBHOOK_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_SCHEDULE_STAGED,
+]);
+export const PLATFORM_SCHEDULE_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
+  PLATFORM_REGISTRY_RELEASE_SCHEDULE_STAGED,
+  PLATFORM_REGISTRY_RELEASE_SCHEDULE_ACTIVE,
+]);
 
 export const PLATFORM_RELEASE_COHORTS = Object.freeze([
   'core',
@@ -529,6 +631,10 @@ export const PLATFORM_RELEASE_COHORTS = Object.freeze([
   'slack_activation',
   'email_staging',
   'email_activation',
+  'webhook_staging',
+  'webhook_activation',
+  'schedule_staging',
+  'schedule_activation',
 ] as const);
 export type PlatformReleaseCohort = (typeof PLATFORM_RELEASE_COHORTS)[number];
 
@@ -572,6 +678,14 @@ export function platformRegistryReleaseSupport(cohort: PlatformReleaseCohort) {
       return PLATFORM_EMAIL_STAGING_RELEASE_SUPPORT;
     case 'email_activation':
       return PLATFORM_EMAIL_ACTIVATION_RELEASE_SUPPORT;
+    case 'webhook_staging':
+      return PLATFORM_WEBHOOK_STAGING_RELEASE_SUPPORT;
+    case 'webhook_activation':
+      return PLATFORM_WEBHOOK_ACTIVATION_RELEASE_SUPPORT;
+    case 'schedule_staging':
+      return PLATFORM_SCHEDULE_STAGING_RELEASE_SUPPORT;
+    case 'schedule_activation':
+      return PLATFORM_SCHEDULE_ACTIVATION_RELEASE_SUPPORT;
   }
 }
 
@@ -629,6 +743,14 @@ export function platformServingRegistryRelease(cohort: PlatformReleaseCohort) {
       return PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE;
     case 'email_activation':
       return PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE;
+    case 'webhook_staging':
+      return PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE;
+    case 'webhook_activation':
+      return PLATFORM_REGISTRY_RELEASE_WEBHOOK_ACTIVE;
+    case 'schedule_staging':
+      return PLATFORM_REGISTRY_RELEASE_WEBHOOK_ACTIVE;
+    case 'schedule_activation':
+      return PLATFORM_REGISTRY_RELEASE_SCHEDULE_ACTIVE;
   }
 }
 

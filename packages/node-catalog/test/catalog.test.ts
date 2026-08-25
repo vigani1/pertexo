@@ -29,10 +29,15 @@ import {
   CORE_PARALLEL_EXECUTOR,
   CORE_SET_DEFINITION,
   CORE_SET_EXECUTOR,
+  CORE_SCHEDULE_CONFIG_SCHEMA,
+  CORE_SCHEDULE_DEFINITION,
+  CORE_SCHEDULE_EXECUTOR,
   CORE_SWITCH_DEFINITION,
   CORE_SWITCH_EXECUTOR,
   CORE_WAIT_DEFINITION,
   CORE_WAIT_EXECUTOR,
+  CORE_WEBHOOK_DEFINITION,
+  CORE_WEBHOOK_EXECUTOR,
 } from '@pertexo/nodes-core';
 
 import {
@@ -57,6 +62,14 @@ import {
   PLATFORM_REGISTRY_RELEASE_EMAIL_STAGED,
   PLATFORM_EMAIL_ACTIVATION_RELEASE_SUPPORT,
   PLATFORM_EMAIL_STAGING_RELEASE_SUPPORT,
+  PLATFORM_REGISTRY_RELEASE_SCHEDULE_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_SCHEDULE_STAGED,
+  PLATFORM_REGISTRY_RELEASE_WEBHOOK_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_WEBHOOK_STAGED,
+  PLATFORM_SCHEDULE_ACTIVATION_RELEASE_SUPPORT,
+  PLATFORM_SCHEDULE_STAGING_RELEASE_SUPPORT,
+  PLATFORM_WEBHOOK_ACTIVATION_RELEASE_SUPPORT,
+  PLATFORM_WEBHOOK_STAGING_RELEASE_SUPPORT,
   PLATFORM_CONDITION_ACTIVATION_RELEASE_SUPPORT,
   PLATFORM_CONDITION_STAGING_RELEASE_SUPPORT,
   PLATFORM_FOR_EACH_ACTIVATION_RELEASE_SUPPORT,
@@ -83,6 +96,146 @@ import {
 } from '../src/server.js';
 
 describe('platform node compatibility catalog', () => {
+  it('retains and executes staged-then-active generic Webhook releases', async () => {
+    expect(PLATFORM_REGISTRY_RELEASE_WEBHOOK_STAGED.epoch).toBe(21);
+    expect(PLATFORM_REGISTRY_RELEASE_WEBHOOK_ACTIVE.epoch).toBe(22);
+    expect(
+      PLATFORM_WEBHOOK_STAGING_RELEASE_SUPPORT.map(({ epoch }) => epoch),
+    ).toEqual([20, 21]);
+    expect(
+      PLATFORM_WEBHOOK_ACTIVATION_RELEASE_SUPPORT.map(({ epoch }) => epoch),
+    ).toEqual([21, 22]);
+    expect(platformServingRegistryRelease('webhook_staging').epoch).toBe(20);
+    expect(platformServingRegistryRelease('webhook_activation').epoch).toBe(22);
+
+    const definition = resolvePlatformNodeDefinitionForRelease(
+      PLATFORM_REGISTRY_RELEASE_WEBHOOK_ACTIVE,
+      CORE_WEBHOOK_DEFINITION,
+    );
+    expect(definition.manifest).toMatchObject({
+      definition: { key: 'core.webhook', version: 1 },
+      family: 'trigger',
+      ports: { inputs: [], outputs: ['out'] },
+      credentialRequirements: [],
+      connectionRequirements: [],
+    });
+    expect(definition.configSchema.safeParse({}).success).toBe(true);
+    expect(
+      definition.configSchema.safeParse({ signingSecret: 'must-not-live-here' })
+        .success,
+    ).toBe(false);
+    await expect(
+      createPlatformNodeRegistryForRelease(
+        PLATFORM_REGISTRY_RELEASE_WEBHOOK_ACTIVE,
+      ).execute({
+        config: {},
+        definition: CORE_WEBHOOK_DEFINITION,
+        executor: CORE_WEBHOOK_EXECUTOR,
+        input: { event: 'created', id: 42 },
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({
+      kind: 'succeeded',
+      output: { event: 'created', id: 42 },
+    });
+  });
+
+  it('retains and executes strict staged-then-active Schedule releases', async () => {
+    expect(PLATFORM_REGISTRY_RELEASE_SCHEDULE_STAGED.epoch).toBe(23);
+    expect(PLATFORM_REGISTRY_RELEASE_SCHEDULE_ACTIVE.epoch).toBe(24);
+    expect(
+      PLATFORM_SCHEDULE_STAGING_RELEASE_SUPPORT.map(({ epoch }) => epoch),
+    ).toEqual([22, 23]);
+    expect(
+      PLATFORM_SCHEDULE_ACTIVATION_RELEASE_SUPPORT.map(({ epoch }) => epoch),
+    ).toEqual([23, 24]);
+    expect(platformServingRegistryRelease('schedule_staging').epoch).toBe(22);
+    expect(platformServingRegistryRelease('schedule_activation').epoch).toBe(
+      24,
+    );
+
+    const definition = resolvePlatformNodeDefinitionForRelease(
+      PLATFORM_REGISTRY_RELEASE_SCHEDULE_ACTIVE,
+      CORE_SCHEDULE_DEFINITION,
+    );
+    expect(definition.manifest).toMatchObject({
+      definition: { key: 'core.schedule', version: 1 },
+      family: 'trigger',
+      ports: { inputs: [], outputs: ['out'] },
+    });
+    expect(
+      definition.configSchema.safeParse({
+        kind: 'cron',
+        expression: '0 9 * * 1-5',
+        timezone: 'America/New_York',
+        misfirePolicy: 'catch_up_once',
+      }).success,
+    ).toBe(true);
+    expect(
+      CORE_SCHEDULE_CONFIG_SCHEMA.safeParse({
+        kind: 'interval',
+        intervalMinutes: 43_200,
+        misfirePolicy: 'skip',
+      }).success,
+    ).toBe(true);
+    expect(
+      CORE_SCHEDULE_CONFIG_SCHEMA.parse({
+        kind: 'interval',
+        intervalMinutes: 15,
+      }),
+    ).toEqual({
+      kind: 'interval',
+      intervalMinutes: 15,
+      misfirePolicy: 'catch_up_once',
+    });
+    for (const config of [
+      {
+        kind: 'cron',
+        expression: '0 9 * * 1-5',
+        misfirePolicy: 'catch_up_once',
+      },
+      {
+        kind: 'cron',
+        expression: '0 0 9 * * 1-5',
+        timezone: 'America/New_York',
+        misfirePolicy: 'catch_up_once',
+      },
+      {
+        kind: 'cron',
+        expression: '0 9 * * 1-5',
+        timezone: 'US/Eastern',
+        misfirePolicy: 'catch_up_once',
+      },
+      { kind: 'interval', intervalMinutes: 0, misfirePolicy: 'skip' },
+      { kind: 'interval', intervalMinutes: 43_201, misfirePolicy: 'skip' },
+      {
+        kind: 'interval',
+        intervalMinutes: 15,
+        timezone: 'UTC',
+        misfirePolicy: 'skip',
+      },
+      { kind: 'interval', intervalMinutes: 15, misfirePolicy: 'replay_all' },
+    ])
+      expect(CORE_SCHEDULE_CONFIG_SCHEMA.safeParse(config).success).toBe(false);
+
+    const input = { scheduledAt: '2026-08-25T13:00:00.000Z' };
+    await expect(
+      createPlatformNodeRegistryForRelease(
+        PLATFORM_REGISTRY_RELEASE_SCHEDULE_ACTIVE,
+      ).execute({
+        config: {
+          kind: 'interval',
+          intervalMinutes: 15,
+          misfirePolicy: 'skip',
+        },
+        definition: CORE_SCHEDULE_DEFINITION,
+        executor: CORE_SCHEDULE_EXECUTOR,
+        input,
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({ kind: 'succeeded', output: input });
+  });
+
   it('retains staged and active email releases with no staging admission', async () => {
     expect(PLATFORM_REGISTRY_RELEASE_EMAIL_STAGED.epoch).toBe(19);
     expect(PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE.epoch).toBe(20);
@@ -452,7 +605,10 @@ describe('platform node compatibility catalog', () => {
   });
   it('retains every additive release in canonical order', () => {
     expect(PLATFORM_REGISTRY_RELEASE_HISTORY.map(({ epoch }) => epoch)).toEqual(
-      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+      [
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+        21, 22, 23, 24,
+      ],
     );
     expect(PLATFORM_REGISTRY_RELEASE_SUPPORT.map(({ epoch }) => epoch)).toEqual(
       [1, 2],
@@ -651,7 +807,7 @@ describe('platform node compatibility catalog', () => {
       new Set(
         PLATFORM_REGISTRY_RELEASE_HISTORY.map(({ fingerprint }) => fingerprint),
       ).size,
-    ).toBe(20);
+    ).toBe(24);
   });
 
   it('builds one exact active server registry with retained core and dispatch-aware HTTP', async () => {
