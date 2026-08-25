@@ -317,6 +317,14 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
     expect(provisioned.signingSecret).toMatch(/^[A-Za-z0-9_-]{43}$/u);
     const endpointKey = requireString(provisioned.endpointKey);
     const originalSecret = requireString(provisioned.signingSecret);
+    await expect(
+      service.provision({
+        workspaceId,
+        actorId,
+        triggerId: trigger.id,
+        idempotencyKey: 'direct-webhook-provision',
+      }),
+    ).resolves.toEqual({ trigger: provisioned.trigger, replayed: true });
 
     const config: ApiConfig = {
       database: apiConfig,
@@ -531,6 +539,19 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
     const failureMillis = performance.now() - failureStarted;
     expectProblem(unavailable, 503, 'webhook.unavailable');
     expect(failureMillis).toBeLessThan(2_000);
+
+    const endpointRotation = {
+      workspaceId,
+      actorId,
+      triggerId: trigger.id,
+      idempotencyKey: 'direct-webhook-rotate-endpoint',
+    };
+    const rotatedEndpoint = await service.rotateEndpoint(endpointRotation);
+    expect(rotatedEndpoint.endpointKey).toMatch(/^[A-Za-z0-9_-]{43}$/u);
+    await expect(service.rotateEndpoint(endpointRotation)).resolves.toEqual({
+      trigger: rotatedEndpoint.trigger,
+      replayed: true,
+    });
   }, 60_000);
 
   async function activateWebhookRelease(): Promise<void> {

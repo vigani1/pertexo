@@ -81,6 +81,35 @@ describe('webhook management service', () => {
     expect(requests[0]).not.toBe(requests[1]);
   });
 
+  it.each(['provision', 'rotateEndpoint'] as const)(
+    'keeps %s idempotency stable across generated endpoint material',
+    async (operation) => {
+      const { service, database } = setup(true);
+      await service[operation](input);
+      await service[operation](input);
+      const requests = database[operation].mock.calls.map(
+        ([request]) => (request as { requestHash: string }).requestHash,
+      );
+
+      expect(requests[0]).toBe(requests[1]);
+    },
+  );
+
+  it('binds generated-material commands to their operation and target', async () => {
+    const { service, database } = setup(true);
+    await service.provision(input);
+    await service.rotateEndpoint(input);
+    await service.provision({ ...input, triggerId: health.workflowVersionId });
+
+    const provisionRequests = database.provision.mock.calls.map(
+      ([request]) => (request as { requestHash: string }).requestHash,
+    );
+    const endpointRotation = database.rotateEndpoint.mock.calls[0]?.[0] as
+      { requestHash: string } | undefined;
+    expect(provisionRequests[0]).not.toBe(endpointRotation?.requestHash);
+    expect(provisionRequests[0]).not.toBe(provisionRequests[1]);
+  });
+
   it('maps management command idempotency conflicts to the stable public code', async () => {
     const { service, database } = setup(true);
     database.provision.mockRejectedValueOnce(

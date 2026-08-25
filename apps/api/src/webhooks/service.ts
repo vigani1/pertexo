@@ -70,7 +70,9 @@ export class WebhookManagementService {
         triggerId: input.triggerId,
         idempotencyKey: input.idempotencyKey,
         requestHash: sha256(
-          `${operation}\0${input.workspaceId}\0${input.triggerId}\0${endpointHash ?? ''}`,
+          `${operation}\0${input.workspaceId}\0${input.triggerId}\0${
+            operation === 'rotateSecret' ? (endpointHash ?? '') : ''
+          }`,
         ),
       };
       const secret =
