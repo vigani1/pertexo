@@ -1,4 +1,24 @@
 export {
+  createWorkflowTriggerReconciliationDatabase,
+  WorkflowTriggerReconciliationMismatchError,
+  type WorkflowTriggerHealth,
+  type WorkflowTriggerReconciliationDatabase,
+} from './workflow-triggers.js';
+export {
+  createWebhookTriggerDatabase,
+  WebhookDeliveryIneligibleError,
+  WebhookDeliveryReplayMismatchError,
+  WebhookTriggerIdempotencyConflictError,
+  WebhookTriggerNotFoundError,
+  type AcceptVerifiedWebhookDeliveryInput,
+  type SealedWebhookTriggerSecret,
+  type WebhookCheckpointFactory,
+  type WebhookTriggerDatabase,
+  type WebhookVerificationReference,
+} from './webhook-triggers.js';
+export { workflowTriggerProjection } from './workflow-trigger-projection.js';
+export type { WorkflowTriggerProjection } from './workflow-trigger-projection.js';
+export {
   createFailureNotificationDestinationDatabase,
   FailureNotificationDestinationConflictError,
   FailureNotificationDestinationIdempotencyConflictError,
@@ -332,6 +352,11 @@ export {
   workflowVersions,
   workflows,
   workflowRuns,
+  workflowTriggers,
+  webhookTriggerDeliveries,
+  webhookTriggerEndpoints,
+  webhookTriggerReplayRecords,
+  webhookTriggerSecretVersions,
 } from './schema.js';
 export { migrateDatabase, MIGRATIONS_DIRECTORY } from './migrations.js';
 export {
