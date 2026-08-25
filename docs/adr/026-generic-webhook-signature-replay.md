@@ -13,6 +13,36 @@ than the bytes the sender transmitted.
 
 ## Decision
 
+The published node identity is `core.webhook@1`. Its graph configuration is a
+strict empty object: endpoint addresses, signing secrets, delivery policy, and
+health are materialized trigger state rather than workflow JSON.
+
+Reconciliation creates the materialized trigger in `configuration_required`
+state without generating credentials that no caller could recover. An
+authenticated, workspace-scoped, idempotent provision command generates an
+independent endpoint key and signing secret, persists only the endpoint-key
+hash and the encrypted secret, and returns both plaintext values exactly once
+in the completed command result. Exact command replay may return that same
+one-time result during the command's 24-hour idempotency window; normal trigger
+queries never return either value. Separate idempotent commands rotate the
+public endpoint key or signing secret. Endpoint-key rotation invalidates the
+old public address at commit. Secret rotation retains the previous encrypted
+version only for the five-minute overlap described below. Trigger disable or
+workflow archive invalidates ingress without deleting retained delivery facts.
+
+The public management interface exposes bounded trigger identity, kind, status,
+health, and endpoint readiness. It does not expose endpoint-key hashes,
+ciphertext, fingerprints, payloads, or secret-version references. The ingress
+success response is `{ runId, replayed }` with HTTP `202`; workflow-controlled
+response bodies remain unsupported.
+
+Missing or inactive endpoints, malformed authentication headers, stale
+timestamps, and signature mismatches share one non-disclosing
+`webhook.authentication_failed` response. Unsupported media type, encoded body,
+oversized body, malformed JSON, idempotency conflict, and admission throttling
+use distinct stable problem codes because callers can correct them without
+learning whether another endpoint exists.
+
 Each published generic webhook has an opaque, unguessable endpoint key that is
 independent of its encrypted random 32-byte HMAC secret. PostgreSQL stores only
 the endpoint-key hash. Secret rotation retains current and previous encrypted
