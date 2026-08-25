@@ -27,6 +27,7 @@ import {
   type CompatibilityReleaseExpectation,
 } from './compatibility-release.js';
 import { canonicalOutboxPayloadChecksum } from './outbox.js';
+import { workflowTriggerProjection } from './workflow-trigger-projection.js';
 import {
   acceptPreviewRun,
   readPreviewRun,
@@ -281,6 +282,7 @@ export type WorkflowAuthoringTestHooks = Readonly<{
     step:
       | 'version'
       | 'integration_usage'
+      | 'trigger_projection'
       | 'pointer'
       | 'outbox'
       | 'audit'
@@ -1272,6 +1274,44 @@ export function createWorkflowAuthoringDatabase(
             );
           }
           await options.testHooks?.afterPublishStep?.('integration_usage');
+          const triggerProjection = workflowTriggerProjection(
+            version.graphJson,
+          );
+          await client.query(
+            `delete from app.workflow_triggers
+             where workspace_id = $1 and workflow_version_id = $2
+               and not (node_id = any($3::varchar[]))`,
+            [
+              input.workspaceId,
+              version.id,
+              triggerProjection.map(({ nodeId }) => nodeId),
+            ],
+          );
+          for (const trigger of triggerProjection) {
+            await client.query(
+              `insert into app.workflow_triggers (
+                 id, workspace_id, workflow_id, workflow_version_id, node_id,
+                 kind, desired_config, config_fingerprint, status
+               ) values ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,'desired')
+               on conflict (workflow_version_id,node_id) do update set
+                 desired_config=excluded.desired_config,
+                 config_fingerprint=excluded.config_fingerprint
+               where app.workflow_triggers.workspace_id=excluded.workspace_id
+                 and app.workflow_triggers.workflow_id=excluded.workflow_id
+                 and app.workflow_triggers.kind=excluded.kind`,
+              [
+                randomUUID(),
+                input.workspaceId,
+                workflowId,
+                version.id,
+                trigger.nodeId,
+                trigger.kind,
+                JSON.stringify(trigger.config),
+                trigger.configFingerprint,
+              ],
+            );
+          }
+          await options.testHooks?.afterPublishStep?.('trigger_projection');
           await client.query(
             "update app.workflows set published_version_id = $1, activation_status = 'inactive', updated_at = transaction_timestamp() where workspace_id = $2 and id = $3",
             [version.id, input.workspaceId, workflowId],

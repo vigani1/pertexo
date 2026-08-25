@@ -1535,6 +1535,7 @@ describe('workflow authoring persistence', () => {
     const steps = [
       'version',
       'integration_usage',
+      'trigger_projection',
       'pointer',
       'outbox',
       'audit',
@@ -1591,6 +1592,7 @@ describe('workflow authoring persistence', () => {
           outbox: string;
           pointer: string | null;
           usage: string;
+          triggers: string;
           versions: string;
         }>(
           `select
@@ -1599,6 +1601,7 @@ describe('workflow authoring persistence', () => {
             (select count(*) from app.outbox_events where aggregate_id = $1 and job_name = 'reconcile-workflow-triggers')::text outbox,
             (select count(*) from app.idempotency_records where resource_id = $1 and operation = 'workflow.publish')::text commands,
             (select count(*) from app.workflow_integration_usage usage join app.workflow_versions version on version.id = usage.workflow_version_id where version.workflow_id = $1)::text usage,
+            (select count(*) from app.workflow_triggers trigger where trigger.workflow_id = $1)::text triggers,
             (select published_version_id::text from app.workflows where id = $1) pointer`,
           [created.workflowId],
         );
@@ -1608,6 +1611,7 @@ describe('workflow authoring persistence', () => {
           outbox: '0',
           pointer: null,
           usage: '0',
+          triggers: '0',
           versions: '0',
         });
         await proof.query('rollback');

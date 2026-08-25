@@ -1161,6 +1161,161 @@ export const workflowIntegrationUsage = appSchema.table(
   ],
 );
 
+export const workflowTriggers = appSchema.table(
+  'workflow_triggers',
+  {
+    id: uuid('id').primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    workflowId: uuid('workflow_id').notNull(),
+    workflowVersionId: uuid('workflow_version_id').notNull(),
+    nodeId: varchar('node_id', { length: 128 }).notNull(),
+    kind: varchar('kind', { length: 16 }).notNull(),
+    status: varchar('status', { length: 32 }).notNull(),
+    desiredConfig: jsonb('desired_config').notNull(),
+    configFingerprint: varchar('config_fingerprint', { length: 82 }).notNull(),
+    healthStatus: varchar('health_status', { length: 32 }).notNull(),
+    lastErrorCode: varchar('last_error_code', { length: 128 }),
+    reconciledAt: timestamp('reconciled_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('workflow_triggers_workspace_identity_unique').on(
+      table.workspaceId,
+      table.id,
+    ),
+    uniqueIndex('workflow_triggers_version_node_unique').on(
+      table.workflowVersionId,
+      table.nodeId,
+    ),
+    index('workflow_triggers_workflow_version_idx').on(
+      table.workspaceId,
+      table.workflowId,
+      table.workflowVersionId,
+      table.nodeId,
+    ),
+  ],
+);
+
+export const webhookTriggerSecretVersions = appSchema.table(
+  'webhook_trigger_secret_versions',
+  {
+    id: uuid('id').primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    triggerId: uuid('trigger_id').notNull(),
+    purpose: varchar('purpose', { length: 32 }).notNull(),
+    schemaVersion: smallint('schema_version').notNull(),
+    kmsKeyReference: varchar('kms_key_reference', { length: 2048 }).notNull(),
+    encryptedDataKey: text('encrypted_data_key').notNull(),
+    ciphertext: text('ciphertext').notNull(),
+    nonce: varchar('nonce', { length: 64 }).notNull(),
+    authTag: varchar('auth_tag', { length: 64 }).notNull(),
+    createdBy: uuid('created_by').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('webhook_trigger_secret_versions_trigger_identity_unique').on(
+      table.workspaceId,
+      table.triggerId,
+      table.id,
+    ),
+  ],
+);
+
+export const webhookTriggerEndpoints = appSchema.table(
+  'webhook_trigger_endpoints',
+  {
+    id: uuid('id').primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    triggerId: uuid('trigger_id').notNull(),
+    endpointKeyHash: varchar('endpoint_key_hash', { length: 64 }).notNull(),
+    status: varchar('status', { length: 16 }).notNull(),
+    currentSecretVersionId: uuid('current_secret_version_id').notNull(),
+    previousSecretVersionId: uuid('previous_secret_version_id'),
+    previousSecretValidUntil: timestamp('previous_secret_valid_until', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('webhook_trigger_endpoints_workspace_identity_unique').on(
+      table.workspaceId,
+      table.id,
+    ),
+    uniqueIndex('webhook_trigger_endpoints_trigger_unique').on(table.triggerId),
+    uniqueIndex('webhook_trigger_endpoints_key_hash_unique').on(
+      table.endpointKeyHash,
+    ),
+  ],
+);
+
+export const webhookTriggerDeliveries = appSchema.table(
+  'webhook_trigger_deliveries',
+  {
+    id: uuid('id').primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    triggerId: uuid('trigger_id').notNull(),
+    endpointId: uuid('endpoint_id').notNull(),
+    workflowRunId: uuid('workflow_run_id').notNull(),
+    dedupeKind: varchar('dedupe_kind', { length: 16 }).notNull(),
+    receivedAt: timestamp('received_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('webhook_trigger_deliveries_workspace_identity_unique').on(
+      table.workspaceId,
+      table.id,
+    ),
+  ],
+);
+
+export const webhookTriggerReplayRecords = appSchema.table(
+  'webhook_trigger_replay_records',
+  {
+    workspaceId: uuid('workspace_id').notNull(),
+    endpointId: uuid('endpoint_id').notNull(),
+    dedupeKind: varchar('dedupe_kind', { length: 16 }).notNull(),
+    dedupeKeyHash: varchar('dedupe_key_hash', { length: 64 }).notNull(),
+    requestFingerprint: varchar('request_fingerprint', {
+      length: 64,
+    }).notNull(),
+    deliveryId: uuid('delivery_id').notNull(),
+    workflowRunId: uuid('workflow_run_id'),
+    expiresAt: timestamp('expires_at', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.endpointId, table.dedupeKind, table.dedupeKeyHash],
+    }),
+    index('webhook_trigger_replay_records_expiry_idx').on(
+      table.expiresAt,
+      table.endpointId,
+    ),
+  ],
+);
+
 export const nodeCompatibilityReleases = appSchema.table(
   'node_compatibility_releases',
   {
@@ -1370,6 +1525,11 @@ export const databaseSchema = {
   workspaces,
   workflowDrafts,
   workflowIntegrationUsage,
+  workflowTriggers,
+  webhookTriggerDeliveries,
+  webhookTriggerEndpoints,
+  webhookTriggerReplayRecords,
+  webhookTriggerSecretVersions,
   workflowVersions,
   workflows,
   workflowRuns,

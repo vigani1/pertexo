@@ -536,6 +536,7 @@ describe('connection persistence', () => {
     expect(priorApplied).toEqual([
       '0037_failure_notification_destinations.sql',
       '0038_execution_admission.sql',
+      '0039_webhook_triggers.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, priorDatabaseName),
@@ -548,7 +549,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0038_execution_admission.sql',
+        migrationHead: '0039_webhook_triggers.sql',
       });
       const bindingSurface = await pool.query<{
         node_column: boolean;
@@ -751,6 +752,7 @@ describe('connection persistence', () => {
       '0036_resend_api_key_connections.sql',
       '0037_failure_notification_destinations.sql',
       '0038_execution_admission.sql',
+      '0039_webhook_triggers.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, upgradeDatabaseName),
@@ -763,7 +765,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0038_execution_admission.sql',
+        migrationHead: '0039_webhook_triggers.sql',
       });
     } finally {
       await pool.end();
@@ -1750,7 +1752,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0038_execution_admission.sql',
+        migrationHead: '0039_webhook_triggers.sql',
       });
       await expect(
         checkDatabaseReadiness(workerReadinessPool, {
@@ -1758,7 +1760,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0038_execution_admission.sql',
+        migrationHead: '0039_webhook_triggers.sql',
       });
     } finally {
       await Promise.all([apiReadinessPool.end(), workerReadinessPool.end()]);

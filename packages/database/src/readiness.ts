@@ -8,7 +8,7 @@ import {
   type CompatibilityReleaseExpectationSet,
 } from './compatibility-release.js';
 
-export const EXPECTED_MIGRATION_HEAD = '0038_execution_admission.sql';
+export const EXPECTED_MIGRATION_HEAD = '0039_webhook_triggers.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -51,6 +51,7 @@ interface ReadinessRow {
   durable_wait_compatible: boolean;
   failure_notification_compatible: boolean;
   execution_admission_compatible: boolean;
+  webhook_triggers_compatible: boolean;
   due_node_wakeups_compatible: boolean;
   postgres_major: number;
   relforcerowsecurity: boolean;
@@ -1515,6 +1516,39 @@ export async function checkDatabaseReadiness(
         and has_function_privilege($2,'app.release_workflow_run_active_admission(uuid,uuid)','EXECUTE')
       ) as execution_admission_compatible,
       (
+        to_regclass('app.workflow_triggers') is not null
+        and to_regclass('app.webhook_trigger_endpoints') is not null
+        and to_regclass('app.webhook_trigger_secret_versions') is not null
+        and to_regclass('app.webhook_trigger_deliveries') is not null
+        and to_regclass('app.webhook_trigger_replay_records') is not null
+        and not exists (select 1 from (values
+          ('workflow_triggers'),('webhook_trigger_endpoints'),
+          ('webhook_trigger_secret_versions'),('webhook_trigger_deliveries'),
+          ('webhook_trigger_replay_records')
+        ) expected(table_name) where not (select relrowsecurity and relforcerowsecurity
+          from pg_class where oid=to_regclass('app.'||expected.table_name)))
+        and exists (select 1 from pg_trigger
+          where tgrelid=to_regclass('app.webhook_trigger_secret_versions')
+            and tgname='webhook_trigger_secret_versions_immutable'
+            and not tgisinternal)
+        and exists (select 1 from pg_proc proc
+          where proc.oid=to_regprocedure('app.resolve_public_webhook_endpoint(character)')
+            and proc.prosecdef and pg_get_userbyid(proc.proowner)=$1
+            and 'row_security=on'=any(proc.proconfig)
+            and 'search_path=pg_catalog, app'=any(proc.proconfig))
+        and case when has_function_privilege(current_user,
+          'app.create_workflow_with_draft(uuid,uuid,character varying,uuid,integer,jsonb,character,character,character varying,character varying)',
+          'EXECUTE') then has_function_privilege(current_user,
+            'app.resolve_public_webhook_endpoint(character)','EXECUTE')
+          else not has_function_privilege(current_user,
+            'app.resolve_public_webhook_endpoint(character)','EXECUTE') end
+        and not has_table_privilege($2,'app.webhook_trigger_endpoints','SELECT')
+        and not has_table_privilege($2,'app.webhook_trigger_secret_versions','SELECT')
+        and not has_table_privilege(current_user,'app.webhook_trigger_secret_versions','UPDATE')
+        and not has_table_privilege(current_user,'app.webhook_trigger_secret_versions','DELETE')
+        and not has_table_privilege(current_user,'app.webhook_trigger_secret_versions','SELECT')
+      ) as webhook_triggers_compatible,
+      (
         select name
         from pertexo_internal.schema_migrations
         order by name desc
@@ -1608,6 +1642,9 @@ export async function checkDatabaseReadiness(
   }
   if (!row.execution_admission_compatible) {
     throw new Error('Execution admission persistence is incompatible');
+  }
+  if (!row.webhook_triggers_compatible) {
+    throw new Error('Webhook trigger persistence is incompatible');
   }
   if (!row.phase4_connections_compatible) {
     throw new Error('Connection persistence schema or grants are incompatible');

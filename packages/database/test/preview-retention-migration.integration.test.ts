@@ -214,6 +214,7 @@ describe('preview retention migration', () => {
       '0036_resend_api_key_connections.sql',
       '0037_failure_notification_destinations.sql',
       '0038_execution_admission.sql',
+      '0039_webhook_triggers.sql',
     ]);
 
     const verification = new Pool({

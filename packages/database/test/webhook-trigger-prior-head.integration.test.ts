@@ -1,0 +1,74 @@
+import { copyFile, mkdtemp, readdir, rm } from 'node:fs/promises';
+import path from 'node:path';
+import { randomUUID } from 'node:crypto';
+
+import { Pool } from 'pg';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../src/migrations.js';
+import { dropDisconnectedDatabase } from './support/disposable-database.js';
+
+const adminUrl =
+  process.env.DATABASE_ADMIN_URL ??
+  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+const migrationBaseUrl =
+  process.env.DATABASE_MIGRATION_URL ??
+  'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
+const databaseName = `pertexo_test_webhook_prior_${randomUUID().replaceAll('-', '')}`;
+const databaseUrl = (() => {
+  const url = new URL(migrationBaseUrl);
+  url.pathname = `/${databaseName}`;
+  return url.toString();
+})();
+const migrationConfig = {
+  connectionString: databaseUrl,
+  ownerRole: 'pertexo_owner',
+  apiRuntimeRole: 'pertexo_api',
+  workerRuntimeRole: 'pertexo_worker',
+  dispatcherRole: 'pertexo_dispatcher',
+} as const;
+let priorDirectory = '';
+
+beforeAll(async () => {
+  const admin = new Pool({ connectionString: adminUrl, max: 1 });
+  try {
+    await admin.query(`create database "${databaseName}" owner pertexo_owner`);
+    await admin.query(`revoke all on database "${databaseName}" from public`);
+    await admin.query(
+      `grant connect on database "${databaseName}" to pertexo_migration,pertexo_api,pertexo_worker,pertexo_dispatcher`,
+    );
+  } finally {
+    await admin.end();
+  }
+  priorDirectory = await mkdtemp(
+    '/private/var/folders/1b/2tzp51hj4wg0rcvmj2j_pwlh0000gn/T/opencode/webhook-prior-',
+  );
+  for (const name of await readdir(MIGRATIONS_DIRECTORY)) {
+    if (/^\d{4}_.+\.sql$/u.test(name) && name < '0039_webhook_triggers.sql')
+      await copyFile(
+        path.join(MIGRATIONS_DIRECTORY, name),
+        path.join(priorDirectory, name),
+      );
+  }
+});
+
+afterAll(async () => {
+  if (priorDirectory !== '')
+    await rm(priorDirectory, { recursive: true, force: true });
+  const admin = new Pool({ connectionString: adminUrl, max: 1 });
+  try {
+    await dropDisconnectedDatabase(admin, databaseName);
+  } finally {
+    await admin.end();
+  }
+});
+
+describe('webhook trigger prior-head migration', () => {
+  it('applies only 0039 after an exact 0038 head', async () => {
+    const prior = await migrateDatabase(migrationConfig, priorDirectory);
+    expect(prior.at(-1)).toBe('0038_execution_admission.sql');
+    await expect(migrateDatabase(migrationConfig)).resolves.toEqual([
+      '0039_webhook_triggers.sql',
+    ]);
+  });
+});
