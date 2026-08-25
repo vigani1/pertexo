@@ -1468,16 +1468,43 @@ export async function checkDatabaseReadiness(
              where oid=to_regclass('app.workflow_run_active_admissions'))
         and exists (select 1 from pg_trigger
           where tgrelid=to_regclass('app.workspace_execution_entitlement_versions')
-            and tgname='workspace_execution_entitlement_versions_immutable' and not tgisinternal)
+            and tgname='workspace_execution_entitlement_versions_immutable'
+            and tgfoid=to_regprocedure('app.reject_execution_entitlement_version_mutation()')
+            and tgenabled='O' and tgtype=27 and not tgisinternal)
         and exists (select 1 from pg_trigger
           where tgrelid=to_regclass('app.workflow_runs')
-            and tgname='workflow_runs_execution_admission' and not tgisinternal)
+            and tgname='workflow_runs_execution_admission'
+            and tgfoid=to_regprocedure('app.enforce_workflow_run_admission()')
+            and tgenabled='O' and tgtype=23 and not tgisinternal)
         and exists (select 1 from pg_trigger
           where tgrelid=to_regclass('app.workflow_runs')
-            and tgname='workflow_runs_refresh_execution_admission' and not tgisinternal)
+            and tgname='workflow_runs_refresh_execution_admission'
+            and tgfoid=to_regprocedure('app.refresh_workflow_run_admission_counters()')
+            and tgenabled='O' and tgtype=21 and not tgisinternal)
         and exists (select 1 from pg_trigger
           where tgrelid=to_regclass('app.workspaces')
-            and tgname='workspaces_provision_execution_admission' and not tgisinternal)
+            and tgname='workspaces_provision_execution_admission'
+            and tgfoid=to_regprocedure('app.provision_workspace_execution_admission()')
+            and tgenabled='O' and tgtype=5 and not tgisinternal)
+        and 11=(select count(*) from pg_proc admission_function
+          join pg_roles admission_owner on admission_owner.oid=admission_function.proowner
+          where admission_function.oid=any(array[
+            to_regprocedure('app.provision_workspace_execution_admission()'),
+            to_regprocedure('app.enforce_workflow_run_admission()'),
+            to_regprocedure('app.refresh_workflow_run_admission_counters()'),
+            to_regprocedure('app.reconcile_workspace_execution_admission(uuid)'),
+            to_regprocedure('app.workflow_run_active_capacity_available(uuid,integer,uuid)'),
+            to_regprocedure('app.workflow_run_active_admission_eligible(uuid,uuid,uuid)'),
+            to_regprocedure('app.reserve_workflow_run_active_admission(uuid,uuid,uuid)'),
+            to_regprocedure('app.release_workflow_run_active_admission(uuid,uuid)'),
+            to_regprocedure('app.release_dispatcher_workflow_run_active_admission(uuid,uuid)'),
+            to_regprocedure('app.arm_dispatcher_workflow_run_active_admission(uuid,uuid)'),
+            to_regprocedure('app.recover_due_workflow_run_active_admissions(integer)')
+          ]) and admission_function.prosecdef
+            and admission_owner.rolname=$1
+            and 'row_security=on'=any(admission_function.proconfig)
+            and exists (select 1 from unnest(admission_function.proconfig) setting
+                         where setting like 'search_path=pg_catalog%'))
         and has_table_privilege(current_user,'app.workspace_execution_entitlements','SELECT')
         and has_table_privilege(current_user,'app.workspace_execution_entitlement_versions','SELECT')
         and has_table_privilege(current_user,'app.workspace_execution_admission_counters','SELECT')

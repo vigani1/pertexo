@@ -2823,13 +2823,17 @@ Current evidence:
   claim transaction. Queued coordinator work acquires a durable active-capacity
   reservation in that transaction, so capacity-blocked work stays in PostgreSQL
   and never reaches BullMQ; transitions and terminal publisher failures release
-  reservations without opening excess capacity. A fresh dispatcher instance
-  continues after the durable cursor, while queue contracts and identifier-only
-  BullMQ jobs remain unchanged; preview admission and cleanup code are untouched.
+  reservations without opening excess capacity. Published coordinator
+  reservations become recoverable after a bounded lease, so Redis loss reopens
+  the same outbox identity for deterministic republish instead of stranding the
+  run or its allowance. Saturated workspace windows still advance the durable
+  cursor, and a fresh dispatcher instance continues after it, while queue
+  contracts and identifier-only BullMQ jobs remain unchanged; preview admission
+  and cleanup code are untouched.
 - Focused verification on 2026-08-25: a fresh PostgreSQL 18 database applied all
   39 reviewed revisions from zero through `0038`; the exact prior-head path is
   covered by the disposable coordinator matrix. Database unit tests pass 69
-  assertions. Disposable PostgreSQL suites pass 33 acceptance assertions
+  assertions. Disposable PostgreSQL suites pass 34 acceptance assertions
   (including 101 concurrent requests with exactly 100 accepted), 40 coordinator
   assertions, and 19 outbox/dispatcher assertions. The focused API problem and
   persistence suites pass 14 assertions, and root `pnpm check` passes formatting,

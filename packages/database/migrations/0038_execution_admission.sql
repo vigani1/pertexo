@@ -46,7 +46,11 @@ CREATE TABLE app.workflow_run_active_admissions (
   workspace_id uuid NOT NULL,
   workflow_run_id uuid PRIMARY KEY,
   outbox_event_id uuid NOT NULL UNIQUE,
+  recover_after timestamptz,
+  recovery_count integer NOT NULL DEFAULT 0,
   created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+  CONSTRAINT workflow_run_active_admissions_recovery_count_valid
+    CHECK (recovery_count BETWEEN 0 AND 1000),
   CONSTRAINT workflow_run_active_admissions_workspace_fk
     FOREIGN KEY (workspace_id) REFERENCES app.workspaces(id) ON DELETE RESTRICT,
   CONSTRAINT workflow_run_active_admissions_run_fk
@@ -477,6 +481,64 @@ BEGIN
   RETURN FOUND;
 END $$;
 
+CREATE FUNCTION app.arm_dispatcher_workflow_run_active_admission(
+  p_workspace_id uuid,
+  p_outbox_event_id uuid
+) RETURNS boolean
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,app SET row_security=on AS $$
+BEGIN
+  UPDATE app.workflow_run_active_admissions
+     SET recover_after=clock_timestamp()+interval '5 minutes'
+   WHERE workspace_id=p_workspace_id AND outbox_event_id=p_outbox_event_id;
+  RETURN FOUND;
+END $$;
+
+CREATE FUNCTION app.recover_due_workflow_run_active_admissions(p_limit integer)
+RETURNS integer
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,app SET row_security=on AS $$
+DECLARE
+  admission record;
+  prior_workspace text;
+  recovered integer := 0;
+BEGIN
+  IF p_limit NOT BETWEEN 1 AND 1000 THEN
+    RAISE EXCEPTION 'invalid active admission recovery limit' USING ERRCODE='22023';
+  END IF;
+  prior_workspace := current_setting('app.workspace_id',true);
+  FOR admission IN
+    SELECT active.workspace_id,active.workflow_run_id,active.outbox_event_id
+      FROM app.workflow_run_active_admissions active
+     WHERE active.recover_after<=clock_timestamp()
+       AND active.recovery_count<1000
+     ORDER BY active.recover_after,active.outbox_event_id
+     FOR UPDATE OF active SKIP LOCKED
+     LIMIT p_limit
+  LOOP
+    PERFORM set_config('app.workspace_id',admission.workspace_id::text,true);
+    PERFORM 1 FROM app.workflow_runs
+     WHERE workspace_id=admission.workspace_id
+       AND id=admission.workflow_run_id AND status='queued';
+    IF NOT FOUND THEN CONTINUE; END IF;
+    UPDATE app.outbox_events
+       SET published_at=null,available_at=clock_timestamp(),
+           last_error_code='publish.delivery_recovery',updated_at=clock_timestamp()
+     WHERE workspace_id=admission.workspace_id
+       AND id=admission.outbox_event_id
+       AND published_at is not null AND failed_at is null;
+    IF FOUND THEN
+      UPDATE app.workflow_run_active_admissions
+         SET recover_after=null,recovery_count=recovery_count+1
+       WHERE workflow_run_id=admission.workflow_run_id;
+      recovered := recovered+1;
+    END IF;
+  END LOOP;
+  PERFORM set_config('app.workspace_id',coalesce(prior_workspace,''),true);
+  RETURN recovered;
+EXCEPTION WHEN OTHERS THEN
+  PERFORM set_config('app.workspace_id',coalesce(prior_workspace,''),true);
+  RAISE;
+END $$;
+
 CREATE TABLE app.outbox_fair_dispatch_cursor (
   singleton boolean PRIMARY KEY DEFAULT true CHECK(singleton),
   last_workspace_id uuid,
@@ -514,6 +576,10 @@ CREATE POLICY workflow_run_active_admissions_owner
 CREATE POLICY outbox_events_active_admission_owner_select
   ON app.outbox_events FOR SELECT TO {{owner_role}}
   USING(workspace_id::text=nullif(current_setting('app.workspace_id',true),''));
+CREATE POLICY outbox_events_active_admission_owner_update
+  ON app.outbox_events FOR UPDATE TO {{owner_role}}
+  USING(workspace_id::text=nullif(current_setting('app.workspace_id',true),''))
+  WITH CHECK(workspace_id::text=nullif(current_setting('app.workspace_id',true),''));
 
 REVOKE ALL ON app.workspace_execution_entitlement_versions,
   app.workspace_execution_entitlements,app.workspace_execution_admission_counters,
@@ -540,6 +606,12 @@ GRANT EXECUTE ON FUNCTION app.release_workflow_run_active_admission(uuid,uuid)
   TO {{worker_runtime_role}};
 REVOKE ALL ON FUNCTION app.release_dispatcher_workflow_run_active_admission(uuid,uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION app.release_dispatcher_workflow_run_active_admission(uuid,uuid)
+  TO {{dispatcher_role}};
+REVOKE ALL ON FUNCTION app.arm_dispatcher_workflow_run_active_admission(uuid,uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION app.arm_dispatcher_workflow_run_active_admission(uuid,uuid)
+  TO {{dispatcher_role}};
+REVOKE ALL ON FUNCTION app.recover_due_workflow_run_active_admissions(integer) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION app.recover_due_workflow_run_active_admissions(integer)
   TO {{dispatcher_role}};
 GRANT SELECT,UPDATE(last_workspace_id,updated_at)
   ON app.outbox_fair_dispatch_cursor TO {{dispatcher_role}};

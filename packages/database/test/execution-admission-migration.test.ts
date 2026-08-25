@@ -30,6 +30,7 @@ describe('execution admission migration contract', () => {
     expect(migration).toContain(
       'release_dispatcher_workflow_run_active_admission',
     );
+    expect(migration).toContain('recover_due_workflow_run_active_admissions');
     expect(migration).toContain("VALUES (NEW.id,1,'active',5,100");
   });
 });

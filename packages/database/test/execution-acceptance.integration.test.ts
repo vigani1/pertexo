@@ -17,6 +17,11 @@ import {
 } from '../src/execution-acceptance.js';
 import { migrateDatabase } from '../src/migrations.js';
 import {
+  canonicalOutboxPayloadChecksum,
+  insertOutboxEvent,
+} from '../src/outbox.js';
+import { checkDatabaseReadiness } from '../src/readiness.js';
+import {
   idempotencyRecords,
   outboxEvents,
   runCheckpoints,
@@ -1325,18 +1330,101 @@ describe('atomic workflow run acceptance', () => {
         limit: 1,
         maxAttempts: 3,
       });
+    const admittedEventIds: string[] = [];
     const admittedRunIds: string[] = [];
     for (let index = 0; index < 5; index += 1) {
       const batch = await claim();
       const event = batch.events[0];
       if (event === undefined)
         throw new Error(`Expected admitted outbox work ${String(index + 1)}`);
+      admittedEventIds.push(event.id);
       admittedRunIds.push(event.aggregateId);
       await expect(
         dispatcherDatabase.markPublished(event.id, event.leaseToken),
       ).resolves.toBe(true);
     }
     await expect(claim()).resolves.toMatchObject({ events: [] });
+
+    const otherEventId = randomUUID();
+    const otherPayload = {
+      schemaVersion: 1,
+      workspaceId: workspaceB,
+      outboxEventId: otherEventId,
+    } as const;
+    await apiDatabase.withWorkspace(workspaceB, (transaction) =>
+      insertOutboxEvent(transaction, {
+        id: otherEventId,
+        jobName: 'phase0-duplicate-proof',
+        schemaVersion: 1,
+        aggregateType: 'fairness-probe',
+        aggregateId: randomUUID(),
+        payload: otherPayload,
+        payloadChecksum: canonicalOutboxPayloadChecksum(otherPayload),
+        availableAt: new Date(0),
+      }),
+    );
+    const cursorOwner = new Pool({ connectionString: migrationUrl, max: 1 });
+    try {
+      await cursorOwner.query('begin');
+      await cursorOwner.query('set local role pertexo_owner');
+      await cursorOwner.query(
+        `update app.outbox_fair_dispatch_cursor set last_workspace_id=$1`,
+        [workspaceB],
+      );
+      await cursorOwner.query('commit');
+    } finally {
+      await cursorOwner.query('rollback').catch(() => undefined);
+      await cursorOwner.end();
+    }
+    const mixedClaim = () =>
+      dispatcherDatabase.claimBatch({
+        enabledJobNames: ['advance-workflow-run', 'phase0-duplicate-proof'],
+        leaseDurationMillis: 30_000,
+        leaseOwner: 'saturated-window-test',
+        leaseToken: randomUUID(),
+        limit: 1,
+        maxAttempts: 3,
+      });
+    await expect(mixedClaim()).resolves.toMatchObject({ events: [] });
+    const afterSaturatedWindow = await mixedClaim();
+    expect(afterSaturatedWindow.events[0]?.id).toBe(otherEventId);
+    const otherEvent = afterSaturatedWindow.events[0];
+    if (otherEvent === undefined)
+      throw new Error('Expected fair probe delivery');
+    await dispatcherDatabase.markPublished(
+      otherEvent.id,
+      otherEvent.leaseToken,
+    );
+
+    const firstEventId = admittedEventIds[0];
+    if (firstEventId === undefined)
+      throw new Error('Expected admitted outbox identity');
+    const owner = new Pool({ connectionString: migrationUrl, max: 1 });
+    try {
+      await owner.query('begin');
+      await owner.query('set local role pertexo_owner');
+      await owner.query(
+        `update app.workflow_run_active_admissions
+            set recover_after='-infinity'::timestamptz
+          where outbox_event_id=$1`,
+        [firstEventId],
+      );
+      await owner.query('commit');
+    } finally {
+      await owner.query('rollback').catch(() => undefined);
+      await owner.end();
+    }
+    const recovered = await claim();
+    expect(recovered.events[0]?.id).toBe(firstEventId);
+    const recoveredEvent = recovered.events[0];
+    if (recoveredEvent === undefined)
+      throw new Error('Expected recovered coordinator delivery');
+    await expect(
+      dispatcherDatabase.markPublished(
+        recoveredEvent.id,
+        recoveredEvent.leaseToken,
+      ),
+    ).resolves.toBe(true);
 
     const firstRunId = admittedRunIds[0];
     if (firstRunId === undefined)
@@ -1911,5 +1999,41 @@ describe('atomic workflow run acceptance', () => {
         `),
       ),
     ).rejects.toSatisfy(hasPostgresCode('42501'));
+  });
+
+  it('fails readiness when an admission trigger is disabled', async () => {
+    const readiness = new Pool({ connectionString: apiUrl, max: 1 });
+    const owner = new Pool({ connectionString: migrationUrl, max: 1 });
+    try {
+      await expect(
+        checkDatabaseReadiness(readiness, {
+          ownerRole: 'pertexo_owner',
+          workerRuntimeRole: 'pertexo_worker',
+        }),
+      ).resolves.toBeDefined();
+      await owner.query('begin');
+      await owner.query('set local role pertexo_owner');
+      await owner.query(
+        'alter table app.workflow_runs disable trigger workflow_runs_execution_admission',
+      );
+      await owner.query('commit');
+      await expect(
+        checkDatabaseReadiness(readiness, {
+          ownerRole: 'pertexo_owner',
+          workerRuntimeRole: 'pertexo_worker',
+        }),
+      ).rejects.toThrow('Execution admission persistence is incompatible');
+    } finally {
+      await owner.query('rollback').catch(() => undefined);
+      await owner.query('begin').catch(() => undefined);
+      await owner.query('set local role pertexo_owner').catch(() => undefined);
+      await owner
+        .query(
+          'alter table app.workflow_runs enable trigger workflow_runs_execution_admission',
+        )
+        .catch(() => undefined);
+      await owner.query('commit').catch(() => undefined);
+      await Promise.all([owner.end(), readiness.end()]);
+    }
   });
 });

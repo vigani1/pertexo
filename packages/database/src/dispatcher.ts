@@ -204,6 +204,8 @@ async function checkDispatcherReadiness(
           and has_function_privilege(current_user,'app.reserve_workflow_run_active_admission(uuid,uuid,uuid)','EXECUTE')
           and has_function_privilege(current_user,'app.workflow_run_active_admission_eligible(uuid,uuid,uuid)','EXECUTE')
           and has_function_privilege(current_user,'app.release_dispatcher_workflow_run_active_admission(uuid,uuid)','EXECUTE')
+          and has_function_privilege(current_user,'app.arm_dispatcher_workflow_run_active_admission(uuid,uuid)','EXECUTE')
+          and has_function_privilege(current_user,'app.recover_due_workflow_run_active_admissions(integer)','EXECUTE')
         ) as fair_cursor_compatible,
         (
           select count(*)::integer
@@ -275,6 +277,9 @@ export function createOutboxDispatcherDatabase(
       const client = await pool.connect();
       try {
         await client.query('begin');
+        await client.query(
+          `select app.recover_due_workflow_run_active_admissions(100)`,
+        );
         const result = await client.query<ClaimQueryResult>(
           `
             with cursor_state as materialized (
@@ -357,11 +362,11 @@ export function createOutboxDispatcherDatabase(
             ), cursor_updated as (
               update app.outbox_fair_dispatch_cursor cursor
               set last_workspace_id=(
-                    select workspace_id from candidates
+                    select workspace_id from workspace_round
                     order by round_ordinal desc limit 1
                   ),
                   updated_at=clock_timestamp()
-              where cursor.singleton and exists(select 1 from candidates)
+              where cursor.singleton and exists(select 1 from workspace_round)
               returning cursor.singleton
             )
             , leased as (
@@ -419,6 +424,7 @@ export function createOutboxDispatcherDatabase(
       const parsed = leasedEventSchema.parse({ id: eventId, leaseToken });
       const result = await pool.query(
         `
+          with published as (
           update app.outbox_events
           set
             published_at = clock_timestamp(),
@@ -431,6 +437,11 @@ export function createOutboxDispatcherDatabase(
             and lease_token = $2
             and published_at is null
             and failed_at is null
+          returning workspace_id,id
+          ) select id,
+              app.arm_dispatcher_workflow_run_active_admission(workspace_id,id)
+                as armed_admission
+            from published
         `,
         [parsed.id, parsed.leaseToken],
       );
