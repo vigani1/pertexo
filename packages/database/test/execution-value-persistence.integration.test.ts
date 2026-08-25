@@ -238,7 +238,7 @@ describe('execution value persistence migration', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0039_webhook_triggers.sql',
+          migrationHead: '0040_schedule_triggers.sql',
           role: expectedRole,
         });
       } finally {

@@ -310,14 +310,14 @@ describe('generic webhook database seam', () => {
         outboxEventId: eventId,
       }),
     ).resolves.toMatchObject([
-      { nodeId: 'schedule', kind: 'schedule', status: 'pending' },
+      { nodeId: 'schedule', kind: 'schedule', status: 'active' },
       { nodeId: 'webhook', kind: 'webhook', status: 'configuration_required' },
     ]);
   });
 
   it('migrates from zero, reconciles configuration, and exposes no hashes or secrets in health', async () => {
     await expect(checkDatabaseReadiness(readinessPool)).resolves.toMatchObject({
-      migrationHead: '0039_webhook_triggers.sql',
+      migrationHead: '0040_schedule_triggers.sql',
     });
     await expect(
       checkDatabaseReadiness(workerReadinessPool),

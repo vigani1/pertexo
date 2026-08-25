@@ -1316,6 +1316,82 @@ export const webhookTriggerReplayRecords = appSchema.table(
   ],
 );
 
+export const triggerSchedules = appSchema.table(
+  'trigger_schedules',
+  {
+    triggerId: uuid('trigger_id').primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    recurrenceKind: varchar('recurrence_kind', { length: 16 }).notNull(),
+    cronExpression: varchar('cron_expression', { length: 256 }),
+    timezone: varchar('timezone', { length: 128 }),
+    intervalMinutes: integer('interval_minutes'),
+    misfirePolicy: varchar('misfire_policy', { length: 32 }).notNull(),
+    configFingerprint: varchar('config_fingerprint', { length: 82 }).notNull(),
+    anchorAt: timestamp('anchor_at', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    nextFireAt: timestamp('next_fire_at', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    lastFireAt: timestamp('last_fire_at', { withTimezone: true, mode: 'date' }),
+    status: varchar('status', { length: 16 }).notNull(),
+    healthStatus: varchar('health_status', { length: 32 }).notNull(),
+    lastErrorCode: varchar('last_error_code', { length: 128 }),
+    leaseOwner: varchar('lease_owner', { length: 128 }),
+    leaseToken: uuid('lease_token'),
+    leaseAcquiredAt: timestamp('lease_acquired_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    leaseExpiresAt: timestamp('lease_expires_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    createdAt: timestamp('created_at', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    updatedAt: timestamp('updated_at', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+  },
+  (table) => [
+    uniqueIndex('trigger_schedules_workspace_identity_unique').on(
+      table.workspaceId,
+      table.triggerId,
+    ),
+    index('trigger_schedules_due_idx').on(table.nextFireAt, table.triggerId),
+  ],
+);
+
+export const triggerScheduleOccurrences = appSchema.table(
+  'trigger_schedule_occurrences',
+  {
+    id: uuid('id').primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    triggerId: uuid('trigger_id').notNull(),
+    scheduledAt: timestamp('scheduled_at', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    disposition: varchar('disposition', { length: 16 }).notNull(),
+    workflowRunId: uuid('workflow_run_id'),
+    createdAt: timestamp('created_at', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+  },
+  (table) => [
+    uniqueIndex('trigger_schedule_occurrences_identity_unique').on(
+      table.triggerId,
+      table.scheduledAt,
+    ),
+  ],
+);
+
 export const nodeCompatibilityReleases = appSchema.table(
   'node_compatibility_releases',
   {
@@ -1518,6 +1594,8 @@ export const databaseSchema = {
   runCheckpoints,
   runEvents,
   transportSecurityAuditFacts,
+  triggerScheduleOccurrences,
+  triggerSchedules,
   usageEvents,
   sessions,
   users,

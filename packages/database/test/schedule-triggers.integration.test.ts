@@ -1,0 +1,477 @@
+import { createHash, randomUUID } from 'node:crypto';
+
+import { Pool } from 'pg';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+import { parseDatabaseConfig } from '../src/config.js';
+import { createIdentityWorkspaceDatabase } from '../src/identity-workspace.js';
+import { migrateDatabase } from '../src/migrations.js';
+import { canonicalOutboxPayloadChecksum } from '../src/outbox.js';
+import { checkDatabaseReadiness } from '../src/readiness.js';
+import {
+  createScheduleTriggerDatabase,
+  createScheduleTriggerScanner,
+} from '../src/schedule-triggers.js';
+import { createWorkflowTriggerReconciliationDatabase } from '../src/workflow-triggers.js';
+import { PHASE3_COMPATIBILITY_EXPECTATION } from './phase3-compatibility-fixture.js';
+import { dropDisconnectedDatabase } from './support/disposable-database.js';
+
+const adminUrl =
+  process.env.DATABASE_ADMIN_URL ??
+  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+const migrationBaseUrl =
+  process.env.DATABASE_MIGRATION_URL ??
+  'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
+const apiBaseUrl =
+  process.env.DATABASE_API_URL ??
+  'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
+const workerBaseUrl =
+  process.env.DATABASE_WORKER_URL ??
+  'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
+const databaseName = `pertexo_test_schedule_${randomUUID().replaceAll('-', '')}`;
+const url = (base: string): string => {
+  const parsed = new URL(base);
+  parsed.pathname = `/${databaseName}`;
+  return parsed.toString();
+};
+
+const actorId = randomUUID();
+const workspaceId = randomUUID();
+const workflowId = randomUUID();
+const versionId = randomUUID();
+const triggerId = randomUUID();
+const skipTriggerId = randomUUID();
+const quotaTriggerId = randomUUID();
+const migrationConfig = {
+  connectionString: url(migrationBaseUrl),
+  ownerRole: 'pertexo_owner',
+  apiRuntimeRole: 'pertexo_api',
+  workerRuntimeRole: 'pertexo_worker',
+  dispatcherRole: 'pertexo_dispatcher',
+} as const;
+const apiConfig = parseDatabaseConfig({ connectionString: url(apiBaseUrl) });
+const workerConfig = parseDatabaseConfig({
+  connectionString: url(workerBaseUrl),
+  max: 8,
+});
+const identity = createIdentityWorkspaceDatabase(apiConfig);
+const reconciliation = createWorkflowTriggerReconciliationDatabase(apiConfig);
+const schedules = createScheduleTriggerDatabase(apiConfig);
+const scannerOne = createScheduleTriggerScanner(
+  workerConfig,
+  PHASE3_COMPATIBILITY_EXPECTATION,
+  apiConfig,
+);
+const scannerTwo = createScheduleTriggerScanner(
+  workerConfig,
+  PHASE3_COMPATIBILITY_EXPECTATION,
+  apiConfig,
+);
+const owner = new Pool({ connectionString: url(migrationBaseUrl), max: 1 });
+const worker = new Pool({ connectionString: url(workerBaseUrl), max: 1 });
+
+async function ownerQuery(statement: string, parameters: unknown[] = []) {
+  const client = await owner.connect();
+  try {
+    await client.query('begin');
+    await client.query('set local role pertexo_owner');
+    await client.query("select set_config('app.workspace_id',$1,true)", [
+      workspaceId,
+    ]);
+    const result = await client.query(statement, parameters);
+    await client.query('commit');
+    return result;
+  } catch (error: unknown) {
+    await client.query('rollback').catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+const checkpointFactory = () => ({
+  engineVersion: 'schedule-test-engine',
+  checkpoint: {
+    schemaVersion: 1,
+    engineVersion: 'schedule-test-engine',
+    workflowVersionId: versionId,
+    revision: 0,
+    runStatus: 'queued',
+    nextEventSequence: 2,
+    readySet: [],
+    admittedInvocationKeys: [],
+    invocations: [],
+    joins: [],
+    loops: [],
+    remainingIterationBudget: 0,
+    cancelRequested: false,
+    deadlineExpired: false,
+  },
+});
+
+beforeAll(async () => {
+  const admin = new Pool({ connectionString: adminUrl, max: 1 });
+  try {
+    await admin.query(`create database "${databaseName}" owner pertexo_owner`);
+    await admin.query(`revoke all on database "${databaseName}" from public`);
+    await admin.query(
+      `grant connect on database "${databaseName}" to pertexo_migration,pertexo_api,pertexo_worker,pertexo_dispatcher`,
+    );
+  } finally {
+    await admin.end();
+  }
+  await migrateDatabase(migrationConfig);
+  await identity.createUser({
+    id: actorId,
+    email: `schedule-${actorId}@example.test`,
+    displayName: 'Schedule Owner',
+  });
+  await identity.createWorkspaceWithOwner({
+    id: workspaceId,
+    name: 'Schedule Workspace',
+    slug: `schedule-${actorId}`,
+    ownerUserId: actorId,
+    idempotencyKey: `schedule-${actorId}`,
+  });
+  await ownerQuery(
+    `insert into app.workflows(id,workspace_id,name,lifecycle_status,activation_status,
+       published_version_id,created_by) values($1,$2,'Schedule','active','active',null,$3)`,
+    [workflowId, workspaceId, actorId],
+  );
+  await ownerQuery(
+    `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,
+       schema_version,graph_json,checksum,executable_schema_version,executable_json,
+       compatibility_release_epoch,published_by)
+     values($1,$2,$3,1,1,'{"schemaVersion":1,"settings":{},"nodes":[],"edges":[]}'::jsonb,
+       $4,2,'{}'::jsonb,1,$5)`,
+    [
+      versionId,
+      workspaceId,
+      workflowId,
+      `wf:v2:sha256:${'a'.repeat(64)}`,
+      actorId,
+    ],
+  );
+  await ownerQuery(
+    'update app.workflows set published_version_id=$2 where id=$1',
+    [workflowId, versionId],
+  );
+  for (const [id, nodeId, policy, age] of [
+    [triggerId, 'schedule-main', 'catch_up_once', '10 minutes'],
+    [skipTriggerId, 'schedule-skip', 'skip', '3 minutes'],
+  ] as const) {
+    const fingerprint = `trigger:v1:sha256:${createHash('sha256').update(id).digest('hex')}`;
+    await ownerQuery(
+      `insert into app.workflow_triggers(id,workspace_id,workflow_id,workflow_version_id,
+         node_id,kind,status,desired_config,config_fingerprint,health_status)
+       values($1,$2,$3,$4,$5,'schedule','active',$6::jsonb,$7,'healthy')`,
+      [
+        id,
+        workspaceId,
+        workflowId,
+        versionId,
+        nodeId,
+        JSON.stringify({
+          kind: 'interval',
+          intervalMinutes: 1,
+          misfirePolicy: policy,
+        }),
+        fingerprint,
+      ],
+    );
+    await ownerQuery(
+      `insert into app.trigger_schedules(trigger_id,workspace_id,recurrence_kind,
+         interval_minutes,misfire_policy,config_fingerprint,anchor_at,next_fire_at)
+       values($1,$2,'interval',1,$3,$4,clock_timestamp()-$5::interval,
+         clock_timestamp()-$5::interval+interval '1 minute')`,
+      [id, workspaceId, policy, fingerprint, age],
+    );
+  }
+}, 60_000);
+
+afterAll(async () => {
+  await scannerOne.close();
+  await scannerTwo.close();
+  await reconciliation.close();
+  await schedules.close();
+  await identity.close();
+  await worker.end();
+  await owner.end();
+  const admin = new Pool({ connectionString: adminUrl, max: 1 });
+  try {
+    await dropDisconnectedDatabase(admin, databaseName);
+  } finally {
+    await admin.end();
+  }
+});
+
+describe('schedule trigger PostgreSQL slice', () => {
+  it('recovers an expired lease, excludes competing scanners, and commits one acceptance with outbox', async () => {
+    await expect(checkDatabaseReadiness(worker)).resolves.toMatchObject({
+      migrationHead: '0040_schedule_triggers.sql',
+      role: 'pertexo_worker',
+    });
+    const crashed = await worker.query(
+      'select * from app.claim_due_trigger_schedules($1,1,1)',
+      ['crashed-scanner'],
+    );
+    expect(crashed.rowCount).toBe(1);
+    await expect(
+      scannerOne.scanDue({
+        leaseOwner: 'blocked-scanner',
+        limit: 1,
+        leaseSeconds: 30,
+        checkpointFactory,
+      }),
+    ).resolves.toMatchObject({ claimed: 1, skipped: 1 });
+    await new Promise((resolve) => setTimeout(resolve, 1_100));
+    const results = await Promise.all([
+      scannerOne.scanDue({
+        leaseOwner: 'scanner-one',
+        limit: 10,
+        leaseSeconds: 30,
+        checkpointFactory,
+      }),
+      scannerTwo.scanDue({
+        leaseOwner: 'scanner-two',
+        limit: 10,
+        leaseSeconds: 30,
+        checkpointFactory,
+      }),
+    ]);
+    expect(results.reduce((total, result) => total + result.accepted, 0)).toBe(
+      1,
+    );
+    const facts = await ownerQuery(
+      `select occurrence.scheduled_at,run.id run_id,run.trigger_type,
+              run.failure_notification_policy_version,
+              exists(select 1 from app.outbox_events event where event.aggregate_id=run.id) has_outbox
+         from app.trigger_schedule_occurrences occurrence
+         join app.workflow_runs run on run.id=occurrence.workflow_run_id
+        where occurrence.trigger_id=$1`,
+      [triggerId],
+    );
+    expect(facts.rows).toHaveLength(1);
+    expect(facts.rows[0]).toMatchObject({
+      trigger_type: 'schedule',
+      failure_notification_policy_version: null,
+      has_outbox: true,
+    });
+  });
+
+  it('deduplicates an occurrence and preserves a saturated occurrence until capacity recovers', async () => {
+    const first = await ownerQuery(
+      'select scheduled_at,workflow_run_id from app.trigger_schedule_occurrences where trigger_id=$1',
+      [triggerId],
+    );
+    const scheduledAt = first.rows[0]?.scheduled_at as Date;
+    await ownerQuery(
+      `update app.trigger_schedules set last_fire_at=null,next_fire_at=$2
+        where trigger_id=$1`,
+      [triggerId, scheduledAt],
+    );
+    await scannerOne.scanDue({
+      leaseOwner: 'duplicate-scanner',
+      limit: 1,
+      leaseSeconds: 30,
+      checkpointFactory,
+    });
+    const duplicateFacts = await ownerQuery(
+      `select (select count(*) from app.trigger_schedule_occurrences where trigger_id=$1) occurrences,
+              (select count(*) from app.workflow_runs where workflow_id=$2) runs`,
+      [triggerId, workflowId],
+    );
+    expect(duplicateFacts.rows[0]).toMatchObject({
+      occurrences: '1',
+      runs: '1',
+    });
+
+    const fingerprint = `trigger:v1:sha256:${createHash('sha256').update(quotaTriggerId).digest('hex')}`;
+    await ownerQuery(
+      `insert into app.workflow_triggers(id,workspace_id,workflow_id,workflow_version_id,node_id,
+         kind,status,desired_config,config_fingerprint,health_status)
+       values($1,$2,$3,$4,'schedule-quota','schedule','active',$5::jsonb,$6,'healthy')`,
+      [
+        quotaTriggerId,
+        workspaceId,
+        workflowId,
+        versionId,
+        JSON.stringify({
+          kind: 'interval',
+          intervalMinutes: 1,
+          misfirePolicy: 'catch_up_once',
+        }),
+        fingerprint,
+      ],
+    );
+    await ownerQuery(
+      `insert into app.trigger_schedules(trigger_id,workspace_id,recurrence_kind,interval_minutes,
+         misfire_policy,config_fingerprint,anchor_at,next_fire_at)
+       values($1,$2,'interval',1,'catch_up_once',$3,clock_timestamp()-interval '2 minutes',
+         clock_timestamp()-interval '1 minute')`,
+      [quotaTriggerId, workspaceId, fingerprint],
+    );
+    await ownerQuery(
+      `insert into app.workspace_execution_entitlement_versions
+         (workspace_id,version,status,active_run_limit,queued_run_limit,effective_at)
+       values($1,2,'active',5,1,'-infinity')`,
+      [workspaceId],
+    );
+    await ownerQuery(
+      'update app.workspace_execution_entitlements set current_version=2 where workspace_id=$1',
+      [workspaceId],
+    );
+    await expect(
+      scannerOne.scanDue({
+        leaseOwner: 'quota-scanner',
+        limit: 10,
+        leaseSeconds: 30,
+        checkpointFactory,
+      }),
+    ).resolves.toMatchObject({ deferred: 1 });
+    let backlog = await ownerQuery(
+      'select next_fire_at<=clock_timestamp() due from app.trigger_schedules where trigger_id=$1',
+      [quotaTriggerId],
+    );
+    expect(backlog.rows[0]?.due).toBe(true);
+    await ownerQuery(
+      "update app.workflow_runs set status='succeeded' where id=$1",
+      [first.rows[0]?.workflow_run_id],
+    );
+    await expect(
+      scannerOne.scanDue({
+        leaseOwner: 'recovery-scanner',
+        limit: 10,
+        leaseSeconds: 30,
+        checkpointFactory,
+      }),
+    ).resolves.toMatchObject({ accepted: 1 });
+    backlog = await ownerQuery(
+      'select next_fire_at>clock_timestamp() advanced from app.trigger_schedules where trigger_id=$1',
+      [quotaTriggerId],
+    );
+    expect(backlog.rows[0]?.advanced).toBe(true);
+  });
+
+  it('records skip atomically and supersedes a republished configuration without rewriting history', async () => {
+    const skipped = await ownerQuery(
+      `select disposition,workflow_run_id from app.trigger_schedule_occurrences
+        where trigger_id=$1`,
+      [skipTriggerId],
+    );
+    expect(skipped.rows).toEqual([
+      { disposition: 'skipped', workflow_run_id: null },
+    ]);
+    await ownerQuery(
+      `update app.trigger_schedules set last_fire_at=null,
+         next_fire_at=clock_timestamp()-interval '1 minute'
+        where trigger_id=$1`,
+      [skipTriggerId],
+    );
+    const disabledNext = await schedules.setEnabled({
+      workspaceId,
+      actorId,
+      triggerId: skipTriggerId,
+      enabled: false,
+    });
+    expect(disabledNext.status).toBe('disabled');
+    const retained = await ownerQuery(
+      'select next_fire_at from app.trigger_schedules where trigger_id=$1',
+      [skipTriggerId],
+    );
+    await schedules.setEnabled({
+      workspaceId,
+      actorId,
+      triggerId: skipTriggerId,
+      enabled: true,
+    });
+    const reenabled = await ownerQuery(
+      `select next_fire_at>$2 advanced from app.trigger_schedules where trigger_id=$1`,
+      [skipTriggerId, retained.rows[0]?.next_fire_at],
+    );
+    expect(reenabled.rows[0]?.advanced).toBe(true);
+
+    const nextVersionId = randomUUID();
+    const nextTriggerId = randomUUID();
+    const outboxEventId = randomUUID();
+    const fingerprint = `trigger:v1:sha256:${createHash('sha256').update(nextTriggerId).digest('hex')}`;
+    await ownerQuery(
+      `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,schema_version,
+         graph_json,checksum,executable_schema_version,executable_json,compatibility_release_epoch,published_by)
+       values($1,$2,$3,2,1,'{"schemaVersion":1,"settings":{},"nodes":[],"edges":[]}'::jsonb,
+         $4,2,'{}'::jsonb,1,$5)`,
+      [
+        nextVersionId,
+        workspaceId,
+        workflowId,
+        `wf:v2:sha256:${'b'.repeat(64)}`,
+        actorId,
+      ],
+    );
+    await ownerQuery(
+      'update app.workflows set published_version_id=$1 where id=$2',
+      [nextVersionId, workflowId],
+    );
+    await ownerQuery(
+      `insert into app.workflow_triggers(id,workspace_id,workflow_id,workflow_version_id,node_id,
+         kind,status,desired_config,config_fingerprint)
+       values($1,$2,$3,$4,'schedule-main','schedule','desired',$5::jsonb,$6)`,
+      [
+        nextTriggerId,
+        workspaceId,
+        workflowId,
+        nextVersionId,
+        JSON.stringify({
+          kind: 'interval',
+          intervalMinutes: 5,
+          misfirePolicy: 'catch_up_once',
+        }),
+        fingerprint,
+      ],
+    );
+    await ownerQuery(
+      `insert into app.outbox_events(id,workspace_id,job_name,schema_version,aggregate_type,
+         aggregate_id,payload,payload_checksum)
+       values($1,$2,'reconcile-workflow-triggers',1,'workflow',$3,$4::jsonb,$5)`,
+      [
+        outboxEventId,
+        workspaceId,
+        workflowId,
+        JSON.stringify({
+          schemaVersion: 1,
+          workspaceId,
+          outboxEventId,
+          workflowId,
+          publishedVersionId: nextVersionId,
+        }),
+        canonicalOutboxPayloadChecksum({
+          schemaVersion: 1,
+          workspaceId,
+          outboxEventId,
+          workflowId,
+          publishedVersionId: nextVersionId,
+        }),
+      ],
+    );
+    await expect(
+      reconciliation.reconcile({
+        workspaceId,
+        workflowId,
+        publishedVersionId: nextVersionId,
+        outboxEventId,
+      }),
+    ).resolves.toMatchObject([{ id: nextTriggerId, status: 'active' }]);
+    const state = await ownerQuery(
+      `select old.status old_status,new.interval_minutes,
+              (select count(*) from app.trigger_schedule_occurrences where trigger_id=$1) old_occurrences
+         from app.trigger_schedules old cross join app.trigger_schedules new
+        where old.trigger_id=$1 and new.trigger_id=$2`,
+      [triggerId, nextTriggerId],
+    );
+    expect(state.rows[0]).toMatchObject({
+      old_status: 'disabled',
+      interval_minutes: 5,
+      old_occurrences: '1',
+    });
+  });
+});

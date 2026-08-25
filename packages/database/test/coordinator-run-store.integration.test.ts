@@ -2010,7 +2010,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0039_webhook_triggers.sql',
+          migrationHead: '0040_schedule_triggers.sql',
           role: 'pertexo_worker',
         });
       } finally {
@@ -2075,6 +2075,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         '0037_failure_notification_destinations.sql',
         '0038_execution_admission.sql',
         '0039_webhook_triggers.sql',
+        '0040_schedule_triggers.sql',
       ]);
       const workerPool = new Pool({
         connectionString: namedDatabaseUrl(
@@ -2090,7 +2091,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0039_webhook_triggers.sql',
+          migrationHead: '0040_schedule_triggers.sql',
           role: 'pertexo_worker',
         });
         await expect(
@@ -2157,7 +2158,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0039_webhook_triggers.sql',
+        migrationHead: '0040_schedule_triggers.sql',
         role: 'pertexo_worker',
       });
       const catalog = await readinessPool.query<{
@@ -2396,7 +2397,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0039_webhook_triggers.sql',
+        migrationHead: '0040_schedule_triggers.sql',
       });
     } finally {
       await readinessPool.end();
@@ -2582,7 +2583,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         workerRuntimeRole: 'pertexo_worker',
       }),
     ).resolves.toMatchObject({
-      migrationHead: '0039_webhook_triggers.sql',
+      migrationHead: '0040_schedule_triggers.sql',
     });
     await readinessPool.end();
   });

@@ -17,6 +17,23 @@ export {
   type WebhookVerificationReference,
 } from './webhook-triggers.js';
 export { workflowTriggerProjection } from './workflow-trigger-projection.js';
+export {
+  createScheduleTriggerScanner,
+  createScheduleTriggerDatabase,
+  ScheduleClaimLostError,
+  ScheduleTriggerNotFoundError,
+  type ScanDueSchedulesResult,
+  type ScheduleCheckpointFactory,
+  type ScheduleTriggerScanner,
+  type ScheduleTriggerDatabase,
+} from './schedule-triggers.js';
+export {
+  parseScheduleRecurrence,
+  resolveScheduleObservation,
+  SCHEDULE_CRON_PARSER_VERSION,
+  type ScheduleObservation,
+  type ScheduleRecurrence,
+} from './schedule-recurrence.js';
 export type { WorkflowTriggerProjection } from './workflow-trigger-projection.js';
 export {
   createFailureNotificationDestinationDatabase,
@@ -342,6 +359,8 @@ export {
   runEvents,
   sessions,
   transportSecurityAuditFacts,
+  triggerScheduleOccurrences,
+  triggerSchedules,
   usageEvents,
   users,
   workspaceMemberships,

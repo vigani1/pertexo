@@ -8,7 +8,7 @@ import {
   type CompatibilityReleaseExpectationSet,
 } from './compatibility-release.js';
 
-export const EXPECTED_MIGRATION_HEAD = '0039_webhook_triggers.sql';
+export const EXPECTED_MIGRATION_HEAD = '0040_schedule_triggers.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -52,6 +52,7 @@ interface ReadinessRow {
   failure_notification_compatible: boolean;
   execution_admission_compatible: boolean;
   webhook_triggers_compatible: boolean;
+  schedule_triggers_compatible: boolean;
   due_node_wakeups_compatible: boolean;
   postgres_major: number;
   relforcerowsecurity: boolean;
@@ -1549,6 +1550,40 @@ export async function checkDatabaseReadiness(
         and not has_table_privilege(current_user,'app.webhook_trigger_secret_versions','SELECT')
       ) as webhook_triggers_compatible,
       (
+        to_regclass('app.trigger_schedules') is not null
+        and to_regclass('app.trigger_schedule_occurrences') is not null
+        and (select relrowsecurity and relforcerowsecurity from pg_class
+          where oid=to_regclass('app.trigger_schedules'))
+        and (select relrowsecurity and relforcerowsecurity from pg_class
+          where oid=to_regclass('app.trigger_schedule_occurrences'))
+        and exists (select 1 from pg_indexes where schemaname='app'
+          and tablename='trigger_schedules' and indexname='trigger_schedules_due_idx'
+          and indexdef like '%next_fire_at, trigger_id%'
+          and indexdef like '%status%enabled%')
+        and exists (select 1 from pg_constraint where
+          conrelid=to_regclass('app.trigger_schedule_occurrences')
+          and conname='trigger_schedule_occurrences_identity_unique' and contype='u')
+        and exists (select 1 from pg_trigger where
+          tgrelid=to_regclass('app.trigger_schedules')
+          and tgname='trigger_schedules_config_immutable' and not tgisinternal)
+        and 4=(select count(*) from pg_proc proc where proc.oid=any(array[
+          to_regprocedure('app.claim_due_trigger_schedules(character varying,integer,integer)'),
+          to_regprocedure('app.schedule_claim_is_eligible(uuid,uuid)'),
+          to_regprocedure('app.complete_trigger_schedule_claim(uuid,uuid,uuid,timestamp with time zone,character varying,uuid,timestamp with time zone)'),
+          to_regprocedure('app.release_trigger_schedule_claim(uuid,uuid)')
+        ]) and proc.prosecdef and pg_get_userbyid(proc.proowner)=$1
+          and 'row_security=on'=any(proc.proconfig)
+          and exists(select 1 from unnest(proc.proconfig) setting where setting like 'search_path=pg_catalog%'))
+        and has_function_privilege($2,
+          'app.claim_due_trigger_schedules(character varying,integer,integer)','EXECUTE')
+        and has_function_privilege($2,'app.schedule_claim_is_eligible(uuid,uuid)','EXECUTE')
+        and has_function_privilege($2,
+          'app.complete_trigger_schedule_claim(uuid,uuid,uuid,timestamp with time zone,character varying,uuid,timestamp with time zone)','EXECUTE')
+        and has_function_privilege($2,'app.release_trigger_schedule_claim(uuid,uuid)','EXECUTE')
+        and not has_table_privilege($2,'app.trigger_schedules','SELECT')
+        and not has_table_privilege($2,'app.trigger_schedule_occurrences','SELECT')
+      ) as schedule_triggers_compatible,
+      (
         select name
         from pertexo_internal.schema_migrations
         order by name desc
@@ -1645,6 +1680,9 @@ export async function checkDatabaseReadiness(
   }
   if (!row.webhook_triggers_compatible) {
     throw new Error('Webhook trigger persistence is incompatible');
+  }
+  if (!row.schedule_triggers_compatible) {
+    throw new Error('Schedule trigger persistence is incompatible');
   }
   if (!row.phase4_connections_compatible) {
     throw new Error('Connection persistence schema or grants are incompatible');

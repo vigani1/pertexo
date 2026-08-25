@@ -198,7 +198,7 @@ describe('durable node compatibility release authority', () => {
           preactivationTarget: targetExpectation,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0039_webhook_triggers.sql',
+        migrationHead: '0040_schedule_triggers.sql',
       });
 
       for (const [roleKind, artifactId] of [
@@ -321,7 +321,7 @@ describe('durable node compatibility release authority', () => {
           expectedCompatibilityReleases: rollingExpectations,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0039_webhook_triggers.sql',
+        migrationHead: '0040_schedule_triggers.sql',
       });
       await expect(
         checkDatabaseReadiness(api, {
@@ -434,7 +434,7 @@ describe('durable node compatibility release authority', () => {
             expectedCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0039_webhook_triggers.sql',
+          migrationHead: '0040_schedule_triggers.sql',
         });
         await expect(
           checkExpectedCompatibilityRelease(pool, {
@@ -462,7 +462,7 @@ describe('durable node compatibility release authority', () => {
           expectedCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0039_webhook_triggers.sql',
+        migrationHead: '0040_schedule_triggers.sql',
       });
     } finally {
       await pool.end();
