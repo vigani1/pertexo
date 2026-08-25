@@ -494,7 +494,7 @@ export function createWebhookTriggerDatabase(
              for update
           `);
           const replay = existing.rows[0];
-          if (replay !== undefined && replay.active) {
+          if (replay?.active === true) {
             if (replay.request_fingerprint !== requestFingerprint)
               throw new WebhookDeliveryReplayMismatchError();
             if (replay.workflow_run_id === null)

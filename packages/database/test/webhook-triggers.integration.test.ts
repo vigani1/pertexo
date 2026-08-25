@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 
-import { Pool } from 'pg';
+import { Pool, type QueryResultRow } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '../src/config.js';
@@ -99,7 +99,10 @@ const authoring: WorkflowAuthoringDatabase = createWorkflowAuthoringDatabase(
   { definitionCatalog: triggerCatalog },
 );
 
-async function ownerQuery(statement: string, parameters: unknown[] = []) {
+async function ownerQuery<Row extends QueryResultRow = QueryResultRow>(
+  statement: string,
+  parameters: unknown[] = [],
+) {
   const client = await owner.connect();
   try {
     await client.query('begin');
@@ -107,7 +110,7 @@ async function ownerQuery(statement: string, parameters: unknown[] = []) {
     await client.query("select set_config('app.workspace_id',$1,true)", [
       workspaceId,
     ]);
-    const result = await client.query(statement, parameters);
+    const result = await client.query<Row>(statement, parameters);
     await client.query('commit');
     return result;
   } catch (error: unknown) {
@@ -296,7 +299,7 @@ describe('generic webhook database seam', () => {
       idempotencyKey: 'publish-trigger-projection',
       requestHash: hash('publish-trigger-projection'),
     });
-    const event = await ownerQuery(
+    const event = await ownerQuery<{ id: string }>(
       `select id from app.outbox_events where aggregate_id=$1
         and job_name='reconcile-workflow-triggers'`,
       [created.workflowId],

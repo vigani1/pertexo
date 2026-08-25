@@ -73,7 +73,10 @@ function cronParser(
   });
 }
 
-function localParts(date: Date, timezone: string): readonly number[] {
+function localParts(
+  date: Date,
+  timezone: string,
+): readonly [number, number, number, number, number, number] {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: timezone,
     year: 'numeric',
@@ -98,9 +101,7 @@ function localParts(date: Date, timezone: string): readonly number[] {
 
 function offsetAt(date: Date, timezone: string): number {
   const [year, month, day, hour, minute, second] = localParts(date, timezone);
-  return (
-    Date.UTC(year!, month! - 1, day, hour, minute, second) - date.getTime()
-  );
+  return Date.UTC(year, month - 1, day, hour, minute, second) - date.getTime();
 }
 
 function matchesLocalExpression(
@@ -111,7 +112,7 @@ function matchesLocalExpression(
     date,
     recurrence.timezone,
   );
-  const localAsUtc = new Date(Date.UTC(year!, month! - 1, day, hour, minute));
+  const localAsUtc = new Date(Date.UTC(year, month - 1, day, hour, minute));
   const parser = CronExpressionParser.parse(`0 ${recurrence.expression}`, {
     currentDate: new Date(localAsUtc.getTime() - 1),
     strict: true,

@@ -33,15 +33,16 @@ const graphSchema = z
       z
         .object({
           id: z.string().min(1).max(128),
-          definition: z
-            .object({ key: z.string(), version: z.number().int() })
-            .passthrough(),
+          definition: z.looseObject({
+            key: z.string(),
+            version: z.number().int(),
+          }),
           config: z.unknown(),
         })
-        .passthrough(),
+        .loose(),
     ),
   })
-  .passthrough();
+  .loose();
 
 export type WorkflowTriggerProjection = Readonly<{
   nodeId: string;
