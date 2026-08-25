@@ -20,6 +20,19 @@ export type {
   SealedConnectionSecret,
 } from './credentials/envelope-encryption.js';
 export {
+  AwsKmsWebhookEnvelopeKeyProvider,
+  WebhookTriggerEnvelopeEncryption,
+  WebhookTriggerSecretEncryptionError,
+  verifyWebhookSignature,
+  webhookTriggerSecretAssociatedData,
+} from './webhooks/crypto.js';
+export type {
+  GeneratedWebhookEnvelopeKey,
+  SealedWebhookTriggerSecretEnvelope,
+  WebhookEnvelopeKeyProvider,
+  WebhookTriggerSecretContext,
+} from './webhooks/crypto.js';
+export {
   SECURE_HTTP_ERROR_CODE,
   SecureHttpClient,
   SecureHttpError,
