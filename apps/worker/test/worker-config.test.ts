@@ -62,6 +62,12 @@ describe('parseWorkerConfig', () => {
         pollIntervalMillis: 250,
         retryDelayMillis: 1_000,
       },
+      triggerRuntime: {
+        batchSize: 25,
+        leaseDurationSeconds: 30,
+        leaseOwner: 'schedule:worker-local',
+        pollIntervalMillis: 250,
+      },
       redisUrl: 'redis://:secret@localhost:6379/0',
     });
   });
@@ -127,6 +133,12 @@ describe('parseWorkerConfig', () => {
         operationTimeoutMillis: 5_000,
         pollIntervalMillis: 250,
         retryDelayMillis: 1_000,
+      },
+      triggerRuntime: {
+        batchSize: 25,
+        leaseDurationSeconds: 30,
+        leaseOwner: 'schedule:worker-local',
+        pollIntervalMillis: 250,
       },
       redisUrl: 'redis://:secret@localhost:6379/0',
     });
@@ -258,6 +270,26 @@ describe('parseWorkerConfig', () => {
     ).toThrow(/invalid worker configuration/i);
   });
 
+  it.each([
+    ['TRIGGER_SCHEDULE_BATCH_SIZE', '0'],
+    ['TRIGGER_SCHEDULE_BATCH_SIZE', '101'],
+    ['TRIGGER_SCHEDULE_LEASE_SECONDS', '0'],
+    ['TRIGGER_SCHEDULE_LEASE_SECONDS', '301'],
+    ['TRIGGER_SCHEDULE_POLL_MILLIS', '9'],
+    ['TRIGGER_SCHEDULE_POLL_MILLIS', '60001'],
+  ])('rejects an invalid trigger scanner bound (%s=%s)', (name, value) => {
+    expect(() =>
+      parseWorkerConfig({
+        DATABASE_DISPATCHER_URL:
+          'postgresql://pertexo_dispatcher:secret@localhost:5432/pertexo',
+        DATABASE_WORKER_URL:
+          'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
+        REDIS_URL: 'redis://:secret@localhost:6379/0',
+        [name]: value,
+      }),
+    ).toThrow(/invalid worker configuration/i);
+  });
+
   it('rejects a node-attempt heartbeat that cannot renew before lease expiry', () => {
     expect(() =>
       parseWorkerConfig({
@@ -297,6 +329,7 @@ describe('parseWorkerConfig', () => {
         JOB_NAME.advanceWorkflowRun,
         JOB_NAME.reconcilePreviewAttempt,
         JOB_NAME.sweepExpiredPreviews,
+        JOB_NAME.reconcileWorkflowTriggers,
       ].join(','),
     });
 
@@ -305,13 +338,13 @@ describe('parseWorkerConfig', () => {
       JOB_NAME.advanceWorkflowRun,
       JOB_NAME.reconcilePreviewAttempt,
       JOB_NAME.sweepExpiredPreviews,
+      JOB_NAME.reconcileWorkflowTriggers,
     ]);
     expect(Object.isFrozen(config.outboxDispatcher.enabledJobNames)).toBe(true);
   });
 
   it.each([
     `${JOB_NAME.advanceWorkflowRun},${JOB_NAME.advanceWorkflowRun}`,
-    JOB_NAME.reconcileWorkflowTriggers,
     'unknown-job',
   ])('rejects an invalid dispatcher allowlist (%s)', (jobNames) => {
     expect(() =>

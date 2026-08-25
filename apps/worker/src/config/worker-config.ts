@@ -35,6 +35,7 @@ export const SUPPORTED_DISPATCH_CAPABILITIES = Object.freeze([
   JOB_NAME.sweepExpiredPreviews,
   JOB_NAME.expireArtifacts,
   JOB_NAME.deliverRunFailureNotification,
+  JOB_NAME.reconcileWorkflowTriggers,
 ] as const satisfies readonly JobName[]);
 
 const supportedDispatchCapabilitySet = new Set<JobName>(
@@ -164,6 +165,24 @@ export const workerConfigSchema = z
       .min(10)
       .max(60_000)
       .default(250),
+    TRIGGER_SCHEDULE_BATCH_SIZE: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(100)
+      .default(25),
+    TRIGGER_SCHEDULE_LEASE_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(300)
+      .default(30),
+    TRIGGER_SCHEDULE_POLL_MILLIS: z.coerce
+      .number()
+      .int()
+      .min(10)
+      .max(60_000)
+      .default(250),
     NODE_ATTEMPT_LEASE_SECONDS: z.coerce
       .number()
       .int()
@@ -224,6 +243,9 @@ export const workerConfigSchema = z
       WORKFLOW_COORDINATOR_MAX_ADMISSIONS,
       WORKFLOW_DUE_WAKEUP_BATCH_SIZE,
       WORKFLOW_DUE_WAKEUP_POLL_MILLIS,
+      TRIGGER_SCHEDULE_BATCH_SIZE,
+      TRIGGER_SCHEDULE_LEASE_SECONDS,
+      TRIGGER_SCHEDULE_POLL_MILLIS,
       NODE_ATTEMPT_LEASE_SECONDS,
       NODE_ATTEMPT_HEARTBEAT_MILLIS,
       WORKER_INSTANCE_ID,
@@ -282,6 +304,12 @@ export const workerConfigSchema = z
         heartbeatIntervalMillis: NODE_ATTEMPT_HEARTBEAT_MILLIS,
         leaseDurationSeconds: NODE_ATTEMPT_LEASE_SECONDS,
         workerId: WORKER_INSTANCE_ID,
+      },
+      triggerRuntime: {
+        batchSize: TRIGGER_SCHEDULE_BATCH_SIZE,
+        leaseDurationSeconds: TRIGGER_SCHEDULE_LEASE_SECONDS,
+        leaseOwner: `schedule:${WORKER_INSTANCE_ID}`,
+        pollIntervalMillis: TRIGGER_SCHEDULE_POLL_MILLIS,
       },
       redisUrl: REDIS_URL,
     }),
@@ -396,6 +424,7 @@ export function parseWorkerConfig(
       dispatcherDatabase: Object.freeze(result.data.dispatcherDatabase),
       coordinator: Object.freeze(result.data.coordinator),
       nodeAttempt: Object.freeze(result.data.nodeAttempt),
+      triggerRuntime: Object.freeze(result.data.triggerRuntime),
       outboxDispatcher: Object.freeze(result.data.outboxDispatcher),
     });
   } catch (error: unknown) {

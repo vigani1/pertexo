@@ -13,6 +13,7 @@ import type { WorkerConfig } from './config/worker-config.js';
 import type { CoordinatorRuntime } from './execution/coordinator-runtime.js';
 import type { NodeAttemptRuntime } from './execution/node-attempt-runtime.js';
 import type { PreviewMaintenanceRuntime } from './execution/preview-maintenance-runtime.js';
+import type { TriggerRuntime } from './triggers/trigger-runtime.js';
 import { WORKSPACE_DATABASE } from './platform/database/database.module.js';
 import { NestLoggerAdapter } from './platform/observability/observability.module.js';
 import { observeWorkspaceArtifactCapacity } from './runtime/artifact-metrics.js';
@@ -29,6 +30,7 @@ export type WorkerApplicationDependencies = Readonly<{
   coordinatorRuntime?: CoordinatorRuntime;
   nodeAttemptRuntime?: NodeAttemptRuntime;
   previewMaintenanceRuntime?: PreviewMaintenanceRuntime;
+  triggerRuntime?: TriggerRuntime;
   database?: WorkspaceDatabase;
   dispatchConsumerCapabilities?: DispatchConsumerCapabilityRegistry;
   dispatcherDatabase?: OutboxDispatcherDatabase;

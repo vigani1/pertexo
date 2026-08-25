@@ -44,6 +44,10 @@ import {
 } from '../execution/preview-maintenance-runtime.js';
 import type { FailureNotificationDeliveryCapability } from '../execution/failure-notification-handler.js';
 import { createProviderFailureNotificationDelivery } from '../execution/failure-notification-delivery.js';
+import {
+  createTriggerRuntime,
+  type TriggerRuntime,
+} from '../triggers/trigger-runtime.js';
 import { WorkerDrainState } from '../runtime/worker-drain-state.js';
 import {
   createDispatchConsumerCapabilityRegistry,
@@ -60,6 +64,7 @@ export const NODE_ATTEMPT_RUNTIME = Symbol('NODE_ATTEMPT_RUNTIME');
 export const PREVIEW_MAINTENANCE_RUNTIME = Symbol(
   'PREVIEW_MAINTENANCE_RUNTIME',
 );
+export const TRIGGER_RUNTIME = Symbol('TRIGGER_RUNTIME');
 export const DISPATCH_CONSUMER_CAPABILITIES = Symbol(
   'DISPATCH_CONSUMER_CAPABILITIES',
 );
@@ -68,6 +73,7 @@ export type TransportModuleDependencies = Readonly<{
   coordinatorRuntime?: CoordinatorRuntime;
   nodeAttemptRuntime?: NodeAttemptRuntime;
   previewMaintenanceRuntime?: PreviewMaintenanceRuntime;
+  triggerRuntime?: TriggerRuntime;
   dispatchConsumerCapabilities?: DispatchConsumerCapabilityRegistry;
   dispatcherDatabase?: OutboxDispatcherDatabase;
   queueProducer?: QueueProducer;
@@ -89,6 +95,8 @@ class OutboxDispatcherLifecycle
     @Inject(PREVIEW_MAINTENANCE_RUNTIME)
     private readonly previewMaintenanceRuntime:
       PreviewMaintenanceRuntime | undefined,
+    @Inject(TRIGGER_RUNTIME)
+    private readonly triggerRuntime: TriggerRuntime | undefined,
     private readonly drainState: WorkerDrainState,
   ) {}
 
@@ -108,10 +116,43 @@ class OutboxDispatcherLifecycle
       ...(this.previewMaintenanceRuntime === undefined
         ? []
         : [this.previewMaintenanceRuntime.close()]),
+      ...(this.triggerRuntime === undefined
+        ? []
+        : [this.triggerRuntime.close()]),
     ]);
     const failure = results.find((result) => result.status === 'rejected');
     if (failure?.status === 'rejected') throw failure.reason;
   }
+}
+
+function triggerRuntimeProvider(
+  config: WorkerConfig,
+  dependencies: TransportModuleDependencies,
+): Provider {
+  return {
+    provide: TRIGGER_RUNTIME,
+    inject: [QUEUE_CONSUMER_OBSERVER],
+    useFactory: async (
+      observer: QueueConsumerObserver,
+    ): Promise<TriggerRuntime | undefined> => {
+      if (dependencies.triggerRuntime !== undefined)
+        return dependencies.triggerRuntime;
+      if (
+        dependencies.dispatchConsumerCapabilities !== undefined ||
+        !config.outboxDispatcher.enabledJobNames.includes(
+          JOB_NAME.reconcileWorkflowTriggers,
+        )
+      )
+        return undefined;
+      return createTriggerRuntime({
+        ...config.triggerRuntime,
+        database: config.database,
+        observer,
+        redisUrl: config.redisUrl,
+        releaseCohort: config.nodeCompatibilityCohort,
+      });
+    },
+  };
 }
 
 function previewMaintenanceRuntimeProvider(
@@ -381,11 +422,13 @@ function dispatchCapabilitiesProvider(
       COORDINATOR_RUNTIME,
       NODE_ATTEMPT_RUNTIME,
       PREVIEW_MAINTENANCE_RUNTIME,
+      TRIGGER_RUNTIME,
     ],
     useFactory: (
       runtime: CoordinatorRuntime | undefined,
       nodeAttemptRuntime: NodeAttemptRuntime | undefined,
       previewMaintenanceRuntime: PreviewMaintenanceRuntime | undefined,
+      triggerRuntime: TriggerRuntime | undefined,
     ): DispatchConsumerCapabilityRegistry =>
       dependencies.dispatchConsumerCapabilities ??
       createDispatchConsumerCapabilityRegistry([
@@ -430,6 +473,17 @@ function dispatchCapabilitiesProvider(
               {
                 jobName: JOB_NAME.reconcilePreviewAttempt,
                 consumer: previewMaintenanceRuntime.consumer,
+              } as const,
+            ]),
+        ...(triggerRuntime === undefined ||
+        !config.outboxDispatcher.enabledJobNames.includes(
+          JOB_NAME.reconcileWorkflowTriggers,
+        )
+          ? []
+          : [
+              {
+                jobName: JOB_NAME.reconcileWorkflowTriggers,
+                consumer: triggerRuntime.consumer,
               } as const,
             ]),
         ...(previewMaintenanceRuntime === undefined ||
@@ -479,6 +533,7 @@ export class TransportModule {
       config,
       dependencies,
     );
+    const triggerProvider = triggerRuntimeProvider(config, dependencies);
     const provider = dispatcherProvider(config, dependencies);
     const metricsProvider: Provider = {
       provide: TRANSPORT_METRICS,
@@ -500,6 +555,7 @@ export class TransportModule {
         runtimeProvider,
         attemptRuntimeProvider,
         maintenanceRuntimeProvider,
+        triggerProvider,
         capabilitiesProvider,
         provider,
         OutboxDispatcherLifecycle,

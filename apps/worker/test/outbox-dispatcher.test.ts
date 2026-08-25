@@ -155,26 +155,25 @@ describe('outbox dispatcher', () => {
     vi.useRealTimers();
   });
 
-  it('rejects a job kind unsupported by this dispatcher build', () => {
+  it('accepts trigger reconciliation as a dispatcher build capability', () => {
     const selected = boundaries([]);
 
     expect(
-      () =>
-        new OutboxDispatcher(
-          selected.database,
-          selected.producer,
-          new WorkerDrainState(),
-          {
-            batchSize: 10,
-            enabledJobNames: [JOB_NAME.reconcileWorkflowTriggers],
-            leaseDurationMillis: 30_000,
-            leaseOwner: 'worker-a',
-            maxAttempts: 3,
-            pollIntervalMillis: 10,
-            retryDelayMillis: 1_000,
-          },
-        ),
-    ).toThrow();
+      new OutboxDispatcher(
+        selected.database,
+        selected.producer,
+        new WorkerDrainState(),
+        {
+          batchSize: 10,
+          enabledJobNames: [JOB_NAME.reconcileWorkflowTriggers],
+          leaseDurationMillis: 30_000,
+          leaseOwner: 'worker-a',
+          maxAttempts: 3,
+          pollIntervalMillis: 10,
+          retryDelayMillis: 1_000,
+        },
+      ),
+    ).toBeInstanceOf(OutboxDispatcher);
   });
 
   it('holds every row when no dispatch kind or consumer is composed', async () => {

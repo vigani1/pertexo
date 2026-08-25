@@ -20,6 +20,7 @@ import { createWorkerApplication } from '../src/app.js';
 import type { CoordinatorRuntime } from '../src/execution/coordinator-runtime.js';
 import type { NodeAttemptRuntime } from '../src/execution/node-attempt-runtime.js';
 import type { PreviewMaintenanceRuntime } from '../src/execution/preview-maintenance-runtime.js';
+import type { TriggerRuntime } from '../src/triggers/trigger-runtime.js';
 import { NestWorkspaceDatabase } from '../src/platform/database/database.module.js';
 import { WorkerDrainState } from '../src/runtime/worker-drain-state.js';
 import { WorkerReadiness } from '../src/runtime/worker-readiness.js';
@@ -86,6 +87,12 @@ const workerConfig = {
     operationTimeoutMillis: 5_000,
     pollIntervalMillis: 250,
     retryDelayMillis: 1_000,
+  },
+  triggerRuntime: {
+    batchSize: 25,
+    leaseDurationSeconds: 30,
+    leaseOwner: 'schedule:worker-test',
+    pollIntervalMillis: 250,
   },
   redisUrl: 'redis://localhost:6379/0',
 };
@@ -335,6 +342,34 @@ describe('worker application bootstrap', () => {
       await app.close();
     }
     expect(previewMaintenanceRuntime.close).toHaveBeenCalledOnce();
+  });
+
+  it('gates trigger reconciliation dispatch on the trigger runtime consumer', async () => {
+    const selected = dependencies();
+    const consumer: QueueConsumer = {
+      close: vi.fn().mockResolvedValue({ abortedJobs: 0, forced: false }),
+      isReady: vi.fn().mockReturnValue(true),
+      waitUntilReady: vi.fn().mockResolvedValue(undefined),
+    };
+    const triggerRuntime: TriggerRuntime = {
+      consumer,
+      close: vi.fn().mockResolvedValue(undefined),
+    };
+    const enabledConfig = {
+      ...workerConfig,
+      outboxDispatcher: {
+        ...workerConfig.outboxDispatcher,
+        enabledJobNames: [JOB_NAME.reconcileWorkflowTriggers],
+      },
+    };
+    const app = await createWorkerApplication(enabledConfig, {
+      ...selected,
+      triggerRuntime,
+    });
+
+    expect(consumer.waitUntilReady).toHaveBeenCalledOnce();
+    await app.close();
+    expect(triggerRuntime.close).toHaveBeenCalledOnce();
   });
 
   it('routes reconciliation and cleanup through one maintenance consumer', async () => {
