@@ -106,6 +106,7 @@ async function resetTransportFixture(): Promise<void> {
       truncate table
         app.transport_security_audit_facts,
         app.inbox_receipts,
+        app.workflow_run_active_admissions,
         app.outbox_events,
         app.queue_duplicate_probe_attempts,
         app.queue_duplicate_probe_events,

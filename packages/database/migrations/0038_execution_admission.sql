@@ -42,6 +42,19 @@ CREATE TABLE app.workspace_execution_admission_counters (
   )
 );
 
+CREATE TABLE app.workflow_run_active_admissions (
+  workspace_id uuid NOT NULL,
+  workflow_run_id uuid PRIMARY KEY,
+  outbox_event_id uuid NOT NULL UNIQUE,
+  created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+  CONSTRAINT workflow_run_active_admissions_workspace_fk
+    FOREIGN KEY (workspace_id) REFERENCES app.workspaces(id) ON DELETE RESTRICT,
+  CONSTRAINT workflow_run_active_admissions_run_fk
+    FOREIGN KEY (workflow_run_id) REFERENCES app.workflow_runs(id) ON DELETE CASCADE,
+  CONSTRAINT workflow_run_active_admissions_outbox_fk
+    FOREIGN KEY (outbox_event_id) REFERENCES app.outbox_events(id) ON DELETE CASCADE
+);
+
 INSERT INTO app.workspace_execution_entitlement_versions (
   workspace_id, version, status, active_run_limit, queued_run_limit, effective_at
 )
@@ -111,6 +124,7 @@ DECLARE
   entitlement record;
   actual_queued integer;
   actual_active integer;
+  reserved_active integer;
   next_queued integer;
   next_active integer;
   workspace_status text;
@@ -164,8 +178,18 @@ BEGIN
          count(*) FILTER (WHERE status IN ('running','waiting'))::integer
     INTO actual_queued,actual_active
     FROM app.workflow_runs WHERE workspace_id=NEW.workspace_id;
+  IF TG_OP='INSERT' THEN
+    SELECT count(*)::integer INTO reserved_active
+      FROM app.workflow_run_active_admissions admission
+     WHERE admission.workspace_id=NEW.workspace_id;
+  ELSE
+    SELECT count(*)::integer INTO reserved_active
+      FROM app.workflow_run_active_admissions admission
+     WHERE admission.workspace_id=NEW.workspace_id
+       AND admission.workflow_run_id<>OLD.id;
+  END IF;
   next_queued := actual_queued;
-  next_active := actual_active;
+  next_active := actual_active + reserved_active;
 
   IF TG_OP='INSERT' THEN
     NEW.execution_entitlement_version := entitlement.version;
@@ -185,7 +209,9 @@ BEGIN
     END IF;
   END IF;
 
-  IF (TG_OP='INSERT' AND NEW.status='queued' AND next_queued > entitlement.queued_run_limit) THEN
+  IF ((TG_OP='INSERT' AND NEW.status='queued') OR
+      (TG_OP='UPDATE' AND OLD.status<>'queued' AND NEW.status='queued')) AND
+     next_queued > entitlement.queued_run_limit THEN
     RAISE EXCEPTION 'workspace.queued_run_limit_exceeded' USING ERRCODE='PTA02';
   END IF;
   IF ((TG_OP='INSERT' AND NEW.status IN ('running','waiting')) OR
@@ -205,6 +231,10 @@ CREATE FUNCTION app.refresh_workflow_run_admission_counters()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
 SET search_path=pg_catalog,app SET row_security=on AS $$
 BEGIN
+  IF NEW.status<>'queued' THEN
+    DELETE FROM app.workflow_run_active_admissions
+     WHERE workspace_id=NEW.workspace_id AND workflow_run_id=NEW.id;
+  END IF;
   UPDATE app.workspace_execution_admission_counters counter
      SET queued_runs=(SELECT count(*)::integer FROM app.workflow_runs
                        WHERE workspace_id=NEW.workspace_id AND status='queued'),
@@ -246,12 +276,15 @@ END $$;
 
 CREATE FUNCTION app.workflow_run_active_capacity_available(
   p_workspace_id uuid,
-  p_entitlement_version integer
+  p_entitlement_version integer,
+  p_workflow_run_id uuid
 ) RETURNS boolean
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,app SET row_security=on AS $$
 DECLARE
   active_limit integer;
   active_count integer;
+  reserved_count integer;
+  workspace_status text;
 BEGIN
   IF nullif(current_setting('app.workspace_id',true),'')::uuid IS DISTINCT FROM p_workspace_id THEN
     RAISE EXCEPTION 'workspace context mismatch' USING ERRCODE='42501';
@@ -270,7 +303,178 @@ BEGIN
   IF NOT FOUND THEN
     RAISE EXCEPTION 'workspace admission state missing' USING ERRCODE='PTA01';
   END IF;
-  RETURN active_count < active_limit;
+  SELECT count(*)::integer INTO reserved_count
+    FROM app.workflow_run_active_admissions admission
+   WHERE admission.workspace_id=p_workspace_id
+     AND admission.workflow_run_id<>p_workflow_run_id;
+  SELECT status INTO workspace_status FROM app.workspaces
+   WHERE id=p_workspace_id;
+  RETURN workspace_status='active' AND active_count + reserved_count < active_limit;
+END $$;
+
+CREATE FUNCTION app.workflow_run_active_admission_eligible(
+  p_workspace_id uuid,
+  p_outbox_event_id uuid,
+  p_workflow_run_id uuid
+) RETURNS boolean
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,app SET row_security=on AS $$
+DECLARE
+  active_limit integer;
+  active_count integer;
+  entitlement_version integer;
+  prior_workspace text;
+  reserved_count integer;
+  result boolean := false;
+  run_status text;
+  workspace_status text;
+BEGIN
+  prior_workspace := current_setting('app.workspace_id',true);
+  PERFORM set_config('app.workspace_id',p_workspace_id::text,true);
+  SELECT run.status,run.execution_entitlement_version,workspace.status
+    INTO run_status,entitlement_version,workspace_status
+    FROM app.workflow_runs run
+    JOIN app.workspaces workspace ON workspace.id=run.workspace_id
+    JOIN app.outbox_events event
+      ON event.id=p_outbox_event_id
+     AND event.workspace_id=run.workspace_id
+     AND event.aggregate_type='workflow-run'
+     AND event.aggregate_id=run.id
+     AND event.job_name='advance-workflow-run'
+   WHERE run.workspace_id=p_workspace_id AND run.id=p_workflow_run_id;
+  IF NOT FOUND THEN
+    result := false;
+  ELSIF run_status<>'queued' THEN
+    result := true;
+  ELSIF workspace_status<>'active' THEN
+    result := false;
+  ELSIF EXISTS (
+    SELECT 1 FROM app.workflow_run_active_admissions
+     WHERE workspace_id=p_workspace_id AND workflow_run_id=p_workflow_run_id
+       AND outbox_event_id=p_outbox_event_id
+  ) THEN
+    result := true;
+  ELSIF NOT EXISTS (
+    SELECT 1 FROM app.workflow_run_active_admissions
+     WHERE workspace_id=p_workspace_id AND workflow_run_id=p_workflow_run_id
+  ) THEN
+    SELECT version.active_run_limit,
+           (SELECT count(*)::integer FROM app.workflow_runs active_run
+             WHERE active_run.workspace_id=p_workspace_id
+               AND active_run.status IN ('running','waiting')),
+           (SELECT count(*)::integer FROM app.workflow_run_active_admissions admission
+             WHERE admission.workspace_id=p_workspace_id)
+      INTO active_limit,active_count,reserved_count
+      FROM app.workspace_execution_admission_counters counter
+      JOIN app.workspace_execution_entitlement_versions version
+        ON version.workspace_id=counter.workspace_id
+       AND version.version=entitlement_version
+     WHERE counter.workspace_id=p_workspace_id;
+    result := FOUND AND active_count + reserved_count < active_limit;
+  END IF;
+  PERFORM set_config('app.workspace_id',coalesce(prior_workspace,''),true);
+  RETURN result;
+EXCEPTION WHEN OTHERS THEN
+  PERFORM set_config('app.workspace_id',coalesce(prior_workspace,''),true);
+  RAISE;
+END $$;
+
+CREATE FUNCTION app.reserve_workflow_run_active_admission(
+  p_workspace_id uuid,
+  p_outbox_event_id uuid,
+  p_workflow_run_id uuid
+) RETURNS boolean
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,app SET row_security=on AS $$
+DECLARE
+  active_limit integer;
+  active_count integer;
+  entitlement_version integer;
+  prior_workspace text;
+  reserved_count integer;
+  result boolean := false;
+  run_status text;
+  workspace_status text;
+BEGIN
+  prior_workspace := current_setting('app.workspace_id',true);
+  PERFORM set_config('app.workspace_id',p_workspace_id::text,true);
+  SELECT run.status,run.execution_entitlement_version,workspace.status
+    INTO run_status,entitlement_version,workspace_status
+    FROM app.workflow_runs run
+    JOIN app.workspaces workspace ON workspace.id=run.workspace_id
+    JOIN app.outbox_events event
+      ON event.id=p_outbox_event_id
+     AND event.workspace_id=run.workspace_id
+     AND event.aggregate_type='workflow-run'
+     AND event.aggregate_id=run.id
+     AND event.job_name='advance-workflow-run'
+   WHERE run.workspace_id=p_workspace_id AND run.id=p_workflow_run_id;
+  IF NOT FOUND THEN
+    result := false;
+  ELSIF run_status<>'queued' THEN
+    result := true;
+  ELSIF workspace_status<>'active' THEN
+    result := false;
+  ELSIF EXISTS (
+    SELECT 1 FROM app.workflow_run_active_admissions
+     WHERE workspace_id=p_workspace_id AND workflow_run_id=p_workflow_run_id
+       AND outbox_event_id=p_outbox_event_id
+  ) THEN
+    result := true;
+  ELSIF EXISTS (
+    SELECT 1 FROM app.workflow_run_active_admissions
+     WHERE workspace_id=p_workspace_id AND workflow_run_id=p_workflow_run_id
+  ) THEN
+    result := false;
+  ELSE
+    SELECT version.active_run_limit,
+           (SELECT count(*)::integer FROM app.workflow_runs active_run
+             WHERE active_run.workspace_id=p_workspace_id
+               AND active_run.status IN ('running','waiting')),
+           (SELECT count(*)::integer FROM app.workflow_run_active_admissions admission
+             WHERE admission.workspace_id=p_workspace_id)
+      INTO active_limit,active_count,reserved_count
+      FROM app.workspace_execution_admission_counters counter
+      JOIN app.workspace_execution_entitlement_versions version
+        ON version.workspace_id=counter.workspace_id
+       AND version.version=entitlement_version
+     WHERE counter.workspace_id=p_workspace_id
+     FOR UPDATE OF counter;
+    IF FOUND AND active_count + reserved_count < active_limit THEN
+      INSERT INTO app.workflow_run_active_admissions(
+        workspace_id,workflow_run_id,outbox_event_id
+      ) VALUES (p_workspace_id,p_workflow_run_id,p_outbox_event_id);
+      result := true;
+    END IF;
+  END IF;
+  PERFORM set_config('app.workspace_id',coalesce(prior_workspace,''),true);
+  RETURN result;
+EXCEPTION WHEN OTHERS THEN
+  PERFORM set_config('app.workspace_id',coalesce(prior_workspace,''),true);
+  RAISE;
+END $$;
+
+CREATE FUNCTION app.release_workflow_run_active_admission(
+  p_workspace_id uuid,
+  p_outbox_event_id uuid
+) RETURNS boolean
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,app SET row_security=on AS $$
+BEGIN
+  IF nullif(current_setting('app.workspace_id',true),'')::uuid IS DISTINCT FROM p_workspace_id THEN
+    RAISE EXCEPTION 'workspace context mismatch' USING ERRCODE='42501';
+  END IF;
+  DELETE FROM app.workflow_run_active_admissions
+   WHERE workspace_id=p_workspace_id AND outbox_event_id=p_outbox_event_id;
+  RETURN FOUND;
+END $$;
+
+CREATE FUNCTION app.release_dispatcher_workflow_run_active_admission(
+  p_workspace_id uuid,
+  p_outbox_event_id uuid
+) RETURNS boolean
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,app SET row_security=on AS $$
+BEGIN
+  DELETE FROM app.workflow_run_active_admissions
+   WHERE workspace_id=p_workspace_id AND outbox_event_id=p_outbox_event_id;
+  RETURN FOUND;
 END $$;
 
 CREATE TABLE app.outbox_fair_dispatch_cursor (
@@ -286,6 +490,8 @@ ALTER TABLE app.workspace_execution_entitlements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE app.workspace_execution_entitlements FORCE ROW LEVEL SECURITY;
 ALTER TABLE app.workspace_execution_admission_counters ENABLE ROW LEVEL SECURITY;
 ALTER TABLE app.workspace_execution_admission_counters FORCE ROW LEVEL SECURITY;
+ALTER TABLE app.workflow_run_active_admissions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app.workflow_run_active_admissions FORCE ROW LEVEL SECURITY;
 
 CREATE POLICY workspace_execution_entitlement_versions_scope
   ON app.workspace_execution_entitlement_versions FOR ALL
@@ -302,9 +508,16 @@ CREATE POLICY workspace_execution_admission_counters_scope
   TO {{owner_role}},{{api_runtime_role}},{{worker_runtime_role}}
   USING(workspace_id::text=nullif(current_setting('app.workspace_id',true),''))
   WITH CHECK(workspace_id::text=nullif(current_setting('app.workspace_id',true),''));
+CREATE POLICY workflow_run_active_admissions_owner
+  ON app.workflow_run_active_admissions FOR ALL TO {{owner_role}}
+  USING(true) WITH CHECK(true);
+CREATE POLICY outbox_events_active_admission_owner_select
+  ON app.outbox_events FOR SELECT TO {{owner_role}}
+  USING(workspace_id::text=nullif(current_setting('app.workspace_id',true),''));
 
 REVOKE ALL ON app.workspace_execution_entitlement_versions,
   app.workspace_execution_entitlements,app.workspace_execution_admission_counters,
+  app.workflow_run_active_admissions,
   app.outbox_fair_dispatch_cursor
   FROM PUBLIC,{{api_runtime_role}},{{worker_runtime_role}},{{dispatcher_role}};
 GRANT SELECT ON app.workspace_execution_entitlement_versions,
@@ -313,8 +526,20 @@ GRANT SELECT ON app.workspace_execution_entitlement_versions,
 REVOKE ALL ON FUNCTION app.reconcile_workspace_execution_admission(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION app.reconcile_workspace_execution_admission(uuid)
   TO {{api_runtime_role}},{{worker_runtime_role}};
-REVOKE ALL ON FUNCTION app.workflow_run_active_capacity_available(uuid,integer) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION app.workflow_run_active_capacity_available(uuid,integer)
+REVOKE ALL ON FUNCTION app.workflow_run_active_capacity_available(uuid,integer,uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION app.workflow_run_active_capacity_available(uuid,integer,uuid)
   TO {{worker_runtime_role}};
+REVOKE ALL ON FUNCTION app.reserve_workflow_run_active_admission(uuid,uuid,uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION app.reserve_workflow_run_active_admission(uuid,uuid,uuid)
+  TO {{dispatcher_role}};
+REVOKE ALL ON FUNCTION app.workflow_run_active_admission_eligible(uuid,uuid,uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION app.workflow_run_active_admission_eligible(uuid,uuid,uuid)
+  TO {{dispatcher_role}};
+REVOKE ALL ON FUNCTION app.release_workflow_run_active_admission(uuid,uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION app.release_workflow_run_active_admission(uuid,uuid)
+  TO {{worker_runtime_role}};
+REVOKE ALL ON FUNCTION app.release_dispatcher_workflow_run_active_admission(uuid,uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION app.release_dispatcher_workflow_run_active_admission(uuid,uuid)
+  TO {{dispatcher_role}};
 GRANT SELECT,UPDATE(last_workspace_id,updated_at)
   ON app.outbox_fair_dispatch_cursor TO {{dispatcher_role}};

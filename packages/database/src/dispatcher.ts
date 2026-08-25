@@ -201,6 +201,9 @@ async function checkDispatcherReadiness(
           and not has_column_privilege(current_user,'app.outbox_fair_dispatch_cursor','singleton','UPDATE')
           and not has_table_privilege(current_user,'app.outbox_fair_dispatch_cursor','INSERT')
           and not has_table_privilege(current_user,'app.outbox_fair_dispatch_cursor','DELETE')
+          and has_function_privilege(current_user,'app.reserve_workflow_run_active_admission(uuid,uuid,uuid)','EXECUTE')
+          and has_function_privilege(current_user,'app.workflow_run_active_admission_eligible(uuid,uuid,uuid)','EXECUTE')
+          and has_function_privilege(current_user,'app.release_dispatcher_workflow_run_active_admission(uuid,uuid)','EXECUTE')
         ) as fair_cursor_compatible,
         (
           select count(*)::integer
@@ -303,11 +306,12 @@ export function createOutboxDispatcherDatabase(
                 eligible.workspace_id
               limit $1
             ), candidates as materialized (
-              select picked.id,picked.publish_attempts,
+              select picked.id,picked.publish_attempts,picked.job_name,
+                     picked.aggregate_type,picked.aggregate_id,
                      workspace_round.workspace_id,workspace_round.round_ordinal
               from workspace_round
               cross join lateral (
-                select id,publish_attempts
+                select id,publish_attempts,job_name,aggregate_type,aggregate_id
                 from app.outbox_events event
                 where event.workspace_id=workspace_round.workspace_id
                   and published_at is null
@@ -315,10 +319,25 @@ export function createOutboxDispatcherDatabase(
                   and job_name = any($5::varchar[])
                   and available_at <= clock_timestamp()
                   and (lease_expires_at is null or lease_expires_at <= clock_timestamp())
+                  and (
+                    publish_attempts >= $6
+                    or job_name <> 'advance-workflow-run'
+                    or app.workflow_run_active_admission_eligible(
+                         event.workspace_id,event.id,event.aggregate_id
+                       )
+                  )
                 order by available_at,id
                 for update skip locked
                 limit 1
               ) picked
+            ), admitted as materialized (
+              select candidates.*
+              from candidates
+              where candidates.publish_attempts >= $6
+                 or candidates.job_name <> 'advance-workflow-run'
+                 or app.reserve_workflow_run_active_admission(
+                      candidates.workspace_id,candidates.id,candidates.aggregate_id
+                    )
             ), exhausted as (
               update app.outbox_events event
               set
@@ -328,10 +347,13 @@ export function createOutboxDispatcherDatabase(
                 lease_token = null,
                 lease_expires_at = null,
                 updated_at = clock_timestamp()
-              from candidates
-              where event.id = candidates.id
-                and candidates.publish_attempts >= $6
-              returning event.id
+              from admitted
+              where event.id = admitted.id
+                and admitted.publish_attempts >= $6
+              returning event.id,event.workspace_id
+            ), released_exhausted_admissions as (
+              select app.release_dispatcher_workflow_run_active_admission(workspace_id,id)
+              from exhausted
             ), cursor_updated as (
               update app.outbox_fair_dispatch_cursor cursor
               set last_workspace_id=(
@@ -350,9 +372,9 @@ export function createOutboxDispatcherDatabase(
                 lease_expires_at = clock_timestamp() + ($4::integer * interval '1 millisecond'),
                 publish_attempts = event.publish_attempts + 1,
                 updated_at = clock_timestamp()
-              from candidates
-              where event.id = candidates.id
-                and candidates.publish_attempts < $6
+              from admitted
+              where event.id = admitted.id
+                and admitted.publish_attempts < $6
               returning event.*
             )
             select
@@ -361,7 +383,8 @@ export function createOutboxDispatcherDatabase(
                 '[]'::jsonb
               ) as events,
               (select count(*)::integer from exhausted) as exhausted_count,
-              (select count(*) from cursor_updated) as cursor_update_count
+              (select count(*) from cursor_updated) as cursor_update_count,
+              (select count(*) from released_exhausted_admissions) as released_admission_count
             from leased
           `,
           [
@@ -419,6 +442,7 @@ export function createOutboxDispatcherDatabase(
       const parsed = releaseInputSchema.parse(input);
       const result = await pool.query<{ failed: boolean }>(
         `
+          with updated as (
           update app.outbox_events
           set
             available_at = case
@@ -438,7 +462,12 @@ export function createOutboxDispatcherDatabase(
             and lease_token = $2
             and published_at is null
             and failed_at is null
-          returning failed_at is not null as failed
+          returning failed_at is not null as failed,workspace_id,id
+          ) select failed,
+              case when failed then
+                app.release_dispatcher_workflow_run_active_admission(workspace_id,id)
+              else false end as released_admission
+            from updated
         `,
         [
           parsed.id,

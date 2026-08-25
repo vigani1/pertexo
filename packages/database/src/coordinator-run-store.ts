@@ -441,6 +441,10 @@ async function completeCoordinatorReceipt(
     ],
   );
   if (completed.rowCount !== 1) throw new CoordinatorRunStateCorruptError();
+  await client.query(
+    `select app.release_workflow_run_active_admission($1,$2)`,
+    [workspaceId, delivery.outboxEventId],
+  );
 }
 
 async function deferCoordinatorForActiveCapacity(
@@ -455,8 +459,8 @@ async function deferCoordinatorForActiveCapacity(
   }>,
 ): Promise<CommitAdvancePlanResult | undefined> {
   const capacity = await client.query<{ available: boolean }>(
-    `select app.workflow_run_active_capacity_available($1,$2) as available`,
-    [input.workspaceId, input.entitlementVersion],
+    `select app.workflow_run_active_capacity_available($1,$2,$3) as available`,
+    [input.workspaceId, input.entitlementVersion, input.runId],
   );
   const row = capacity.rows[0];
   if (row === undefined) throw new CoordinatorRunStateCorruptError();

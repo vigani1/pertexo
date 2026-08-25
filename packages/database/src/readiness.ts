@@ -1457,25 +1457,35 @@ export async function checkDatabaseReadiness(
         to_regclass('app.workspace_execution_entitlement_versions') is not null
         and to_regclass('app.workspace_execution_entitlements') is not null
         and to_regclass('app.workspace_execution_admission_counters') is not null
+        and to_regclass('app.workflow_run_active_admissions') is not null
         and (select relrowsecurity and relforcerowsecurity from pg_class
              where oid=to_regclass('app.workspace_execution_entitlement_versions'))
         and (select relrowsecurity and relforcerowsecurity from pg_class
              where oid=to_regclass('app.workspace_execution_entitlements'))
         and (select relrowsecurity and relforcerowsecurity from pg_class
              where oid=to_regclass('app.workspace_execution_admission_counters'))
+        and (select relrowsecurity and relforcerowsecurity from pg_class
+             where oid=to_regclass('app.workflow_run_active_admissions'))
         and exists (select 1 from pg_trigger
           where tgrelid=to_regclass('app.workspace_execution_entitlement_versions')
             and tgname='workspace_execution_entitlement_versions_immutable' and not tgisinternal)
         and exists (select 1 from pg_trigger
           where tgrelid=to_regclass('app.workflow_runs')
             and tgname='workflow_runs_execution_admission' and not tgisinternal)
+        and exists (select 1 from pg_trigger
+          where tgrelid=to_regclass('app.workflow_runs')
+            and tgname='workflow_runs_refresh_execution_admission' and not tgisinternal)
+        and exists (select 1 from pg_trigger
+          where tgrelid=to_regclass('app.workspaces')
+            and tgname='workspaces_provision_execution_admission' and not tgisinternal)
         and has_table_privilege(current_user,'app.workspace_execution_entitlements','SELECT')
         and has_table_privilege(current_user,'app.workspace_execution_entitlement_versions','SELECT')
         and has_table_privilege(current_user,'app.workspace_execution_admission_counters','SELECT')
         and not has_table_privilege(current_user,'app.workspace_execution_entitlement_versions','INSERT')
         and not has_table_privilege(current_user,'app.workspace_execution_entitlements','UPDATE')
         and has_function_privilege(current_user,'app.reconcile_workspace_execution_admission(uuid)','EXECUTE')
-        and has_function_privilege($2,'app.workflow_run_active_capacity_available(uuid,integer)','EXECUTE')
+        and has_function_privilege($2,'app.workflow_run_active_capacity_available(uuid,integer,uuid)','EXECUTE')
+        and has_function_privilege($2,'app.release_workflow_run_active_admission(uuid,uuid)','EXECUTE')
       ) as execution_admission_compatible,
       (
         select name

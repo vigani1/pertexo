@@ -24,6 +24,12 @@ describe('execution admission migration contract', () => {
     expect(migration).toContain('FORCE ROW LEVEL SECURITY');
     expect(migration).toContain('outbox_fair_dispatch_cursor');
     expect(migration).toContain('workflow_run_active_capacity_available');
+    expect(migration).toContain('workflow_run_active_admissions');
+    expect(migration).toContain('reserve_workflow_run_active_admission');
+    expect(migration).toContain('workflow_run_active_admission_eligible');
+    expect(migration).toContain(
+      'release_dispatcher_workflow_run_active_admission',
+    );
     expect(migration).toContain("VALUES (NEW.id,1,'active',5,100");
   });
 });

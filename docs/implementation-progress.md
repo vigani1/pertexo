@@ -2820,13 +2820,16 @@ Current evidence:
   `workspace.quota_exceeded` RFC 9457 `429` with bounded `Retry-After: 5`.
 - The outbox dispatcher now performs a bounded `SKIP LOCKED` fairness round with
   at most one due row per workspace and advances a PostgreSQL cursor in the same
-  claim transaction. A fresh dispatcher instance continues after the durable
-  cursor, while queue contracts and identifier-only BullMQ jobs remain
-  unchanged; preview admission and cleanup code are untouched.
+  claim transaction. Queued coordinator work acquires a durable active-capacity
+  reservation in that transaction, so capacity-blocked work stays in PostgreSQL
+  and never reaches BullMQ; transitions and terminal publisher failures release
+  reservations without opening excess capacity. A fresh dispatcher instance
+  continues after the durable cursor, while queue contracts and identifier-only
+  BullMQ jobs remain unchanged; preview admission and cleanup code are untouched.
 - Focused verification on 2026-08-25: a fresh PostgreSQL 18 database applied all
   39 reviewed revisions from zero through `0038`; the exact prior-head path is
   covered by the disposable coordinator matrix. Database unit tests pass 69
-  assertions. Disposable PostgreSQL suites pass 32 acceptance assertions
+  assertions. Disposable PostgreSQL suites pass 33 acceptance assertions
   (including 101 concurrent requests with exactly 100 accepted), 40 coordinator
   assertions, and 19 outbox/dispatcher assertions. The focused API problem and
   persistence suites pass 14 assertions, and root `pnpm check` passes formatting,

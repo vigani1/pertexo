@@ -6,6 +6,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '../src/config.js';
 import { createWorkspaceDatabase } from '../src/database.js';
+import { createOutboxDispatcherDatabase } from '../src/dispatcher.js';
 import {
   acceptWorkflowRun,
   IDEMPOTENCY_STATUS_VALUES,
@@ -36,6 +37,9 @@ const apiUrl =
 const workerUrl =
   process.env.DATABASE_WORKER_URL ??
   'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
+const dispatcherUrl =
+  process.env.DATABASE_DISPATCHER_URL ??
+  'postgresql://pertexo_dispatcher:pertexo-local-dispatcher@localhost:5432/pertexo';
 
 const workspaceA = randomUUID();
 const workspaceB = randomUUID();
@@ -51,6 +55,9 @@ const apiDatabase = createWorkspaceDatabase(
 );
 const workerDatabase = createWorkspaceDatabase(
   parseDatabaseConfig({ connectionString: workerUrl, max: 2 }),
+);
+const dispatcherDatabase = createOutboxDispatcherDatabase(
+  parseDatabaseConfig({ connectionString: dispatcherUrl, max: 1 }),
 );
 
 const migrationConfig = {
@@ -382,7 +389,11 @@ beforeAll(async () => {
 beforeEach(resetExecutionFixture);
 
 afterAll(async () => {
-  await Promise.all([apiDatabase.close(), workerDatabase.close()]);
+  await Promise.all([
+    apiDatabase.close(),
+    dispatcherDatabase.close(),
+    workerDatabase.close(),
+  ]);
 });
 
 describe('atomic workflow run acceptance', () => {
@@ -1253,6 +1264,100 @@ describe('atomic workflow run acceptance', () => {
     expect(rejected).toHaveLength(1);
     expect(rejected[0]?.reason).toBeInstanceOf(WorkspaceRunQuotaExceededError);
     await expectAcceptanceRecordCounts(100);
+
+    const admitted = outcomes.find(
+      (
+        outcome,
+      ): outcome is PromiseFulfilledResult<
+        Awaited<ReturnType<typeof acceptWorkflowRun>>
+      > => outcome.status === 'fulfilled',
+    );
+    if (admitted === undefined) throw new Error('Expected an admitted run');
+    await workerDatabase.withWorkspace(workspaceA, ({ db }) =>
+      db.execute(sql`
+        update app.workflow_runs set status='running'
+         where workspace_id=${workspaceA} and id=${admitted.value.runId}
+      `),
+    );
+    await apiDatabase.withWorkspace(workspaceA, (transaction) =>
+      acceptWorkflowRun(transaction, {
+        ...acceptanceInput(
+          createHash('sha256').update('replacement-request').digest('hex'),
+        ),
+        keyHash: createHash('sha256').update('replacement-key').digest('hex'),
+        scope: 'quota:replacement',
+      }),
+    );
+    await expect(
+      workerDatabase.withWorkspace(workspaceA, ({ db }) =>
+        db.execute(sql`
+          update app.workflow_runs set status='queued'
+           where workspace_id=${workspaceA} and id=${admitted.value.runId}
+        `),
+      ),
+    ).rejects.toSatisfy(hasPostgresCode('PTA02'));
+  });
+
+  it('reserves active capacity before coordinator outbox work reaches BullMQ', async () => {
+    const accepted = await Promise.all(
+      Array.from({ length: 6 }, (_, index) =>
+        apiDatabase.withWorkspace(workspaceA, (transaction) =>
+          acceptWorkflowRun(transaction, {
+            ...acceptanceInput(
+              createHash('sha256')
+                .update(`dispatch-request-${String(index)}`)
+                .digest('hex'),
+            ),
+            keyHash: createHash('sha256')
+              .update(`dispatch-key-${String(index)}`)
+              .digest('hex'),
+            scope: `dispatch:${String(index)}`,
+          }),
+        ),
+      ),
+    );
+    const claim = () =>
+      dispatcherDatabase.claimBatch({
+        enabledJobNames: ['advance-workflow-run'],
+        leaseDurationMillis: 30_000,
+        leaseOwner: 'active-admission-test',
+        leaseToken: randomUUID(),
+        limit: 1,
+        maxAttempts: 3,
+      });
+    const admittedRunIds: string[] = [];
+    for (let index = 0; index < 5; index += 1) {
+      const batch = await claim();
+      const event = batch.events[0];
+      if (event === undefined)
+        throw new Error(`Expected admitted outbox work ${String(index + 1)}`);
+      admittedRunIds.push(event.aggregateId);
+      await expect(
+        dispatcherDatabase.markPublished(event.id, event.leaseToken),
+      ).resolves.toBe(true);
+    }
+    await expect(claim()).resolves.toMatchObject({ events: [] });
+
+    const firstRunId = admittedRunIds[0];
+    if (firstRunId === undefined)
+      throw new Error('Expected admitted run identity');
+    await workerDatabase.withWorkspace(workspaceA, ({ db }) =>
+      db.execute(sql`
+        update app.workflow_runs set status='running'
+         where workspace_id=${workspaceA} and id=${firstRunId}
+      `),
+    );
+    await workerDatabase.withWorkspace(workspaceA, ({ db }) =>
+      db.execute(sql`
+        update app.workflow_runs set status='succeeded'
+         where workspace_id=${workspaceA} and id=${firstRunId}
+      `),
+    );
+    const released = await claim();
+    expect(released.events).toHaveLength(1);
+    expect(
+      accepted.some(({ runId }) => runId === released.events[0]?.aggregateId),
+    ).toBe(true);
   });
 
   it('resolves an exact replay before a later entitlement suspension', async () => {
