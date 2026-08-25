@@ -196,6 +196,22 @@ describe('generic webhook ingress', () => {
     });
   });
 
+  it('fails closed with a bounded response when infrastructure is unavailable', async () => {
+    const { application, database } = setup();
+    database.resolveVerification.mockRejectedValueOnce(
+      new Error('sensitive database failure'),
+    );
+
+    const response = await application.inject(request('{}', currentSecret));
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json<{ code: string }>()).toMatchObject({
+      code: 'webhook.unavailable',
+    });
+    expect(response.body).not.toContain('sensitive database failure');
+    expect(database.acceptVerifiedDelivery).not.toHaveBeenCalled();
+  });
+
   function setup(
     reference = verification,
     acceptanceError?: Error,

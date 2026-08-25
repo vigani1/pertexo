@@ -26,6 +26,7 @@ export const API_PROBLEM_CODES = [
   'webhook.invalid_json',
   'webhook.idempotency_conflict',
   'webhook.rate_limited',
+  'webhook.unavailable',
   'internal.unexpected',
 ] as const;
 

@@ -31,20 +31,18 @@ export function registerWebhookIngress(
 ): void {
   void fastify.register((scope, _options, done) => {
     scope.setErrorHandler((error, request, reply) => {
+      const requestId =
+        safeRequestId(request.headers['x-request-id']) ?? randomUUID();
       if (
         typeof error === 'object' &&
         error !== null &&
         'statusCode' in error &&
         error.statusCode === 413
-      )
-        problem(
-          reply,
-          413,
-          'webhook.payload_too_large',
-          safeRequestId(request.headers['x-request-id']) ?? randomUUID(),
-        );
-      return;
-      void reply.send(error);
+      ) {
+        problem(reply, 413, 'webhook.payload_too_large', requestId);
+        return;
+      }
+      problem(reply, 503, 'webhook.unavailable', requestId);
     });
     scope.removeAllContentTypeParsers();
     scope.addContentTypeParser(
