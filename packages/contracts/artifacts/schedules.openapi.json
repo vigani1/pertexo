@@ -1,0 +1,202 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Pertexo Schedules API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers/schedules": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Published schedule trigger health"
+          },
+          "401": {
+            "description": "auth.unauthenticated",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "x-pertexo-code": "auth.unauthenticated",
+            "status": 401
+          },
+          "404": {
+            "description": "resource.not_found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "x-pertexo-code": "resource.not_found",
+            "status": 404
+          }
+        }
+      }
+    },
+    "/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers/{triggerId}/schedule/enable": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Schedule trigger command completed"
+          },
+          "400": {
+            "description": "request.invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "x-pertexo-code": "request.invalid",
+            "status": 400
+          },
+          "401": {
+            "description": "auth.unauthenticated",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "x-pertexo-code": "auth.unauthenticated",
+            "status": 401
+          },
+          "404": {
+            "description": "resource.not_found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "x-pertexo-code": "resource.not_found",
+            "status": 404
+          },
+          "409": {
+            "description": "request.idempotency_conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "x-pertexo-code": "request.idempotency_conflict",
+            "status": 409
+          },
+          "428": {
+            "description": "request.precondition_required",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "x-pertexo-code": "request.precondition_required",
+            "status": 428
+          }
+        }
+      }
+    },
+    "/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers/{triggerId}/schedule/disable": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Schedule trigger command completed"
+          },
+          "400": {
+            "description": "request.invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "x-pertexo-code": "request.invalid",
+            "status": 400
+          },
+          "401": {
+            "description": "auth.unauthenticated",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "x-pertexo-code": "auth.unauthenticated",
+            "status": 401
+          },
+          "404": {
+            "description": "resource.not_found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "x-pertexo-code": "resource.not_found",
+            "status": 404
+          },
+          "409": {
+            "description": "request.idempotency_conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "x-pertexo-code": "request.idempotency_conflict",
+            "status": 409
+          },
+          "428": {
+            "description": "request.precondition_required",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "x-pertexo-code": "request.precondition_required",
+            "status": 428
+          }
+        }
+      }
+    }
+  }
+}

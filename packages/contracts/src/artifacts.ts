@@ -19,6 +19,10 @@ import {
   workflowRunsOpenApiDocument,
 } from './workflow-runs.js';
 import { webhooksClientContract, webhooksOpenApiDocument } from './webhooks.js';
+import {
+  schedulesClientContract,
+  schedulesOpenApiDocument,
+} from './schedules.js';
 
 export const CONTRACT_ARTIFACTS = Object.freeze([
   Object.freeze({
@@ -60,6 +64,14 @@ export const CONTRACT_ARTIFACTS = Object.freeze([
   Object.freeze({
     fileName: 'workflow-runs.openapi.json',
     content: `${JSON.stringify(workflowRunsOpenApiDocument, undefined, 2)}\n`,
+  }),
+  Object.freeze({
+    fileName: 'schedules.client-schema.json',
+    content: `${JSON.stringify(schedulesClientContract, undefined, 2)}\n`,
+  }),
+  Object.freeze({
+    fileName: 'schedules.openapi.json',
+    content: `${JSON.stringify(schedulesOpenApiDocument, undefined, 2)}\n`,
   }),
   Object.freeze({
     fileName: 'webhooks.client-schema.json',

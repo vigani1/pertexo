@@ -35,3 +35,8 @@ export {
 export * from './http/workflow-runs.js';
 export { webhooksClientContract, webhooksOpenApiDocument } from './webhooks.js';
 export * from './http/webhooks.js';
+export {
+  schedulesClientContract,
+  schedulesOpenApiDocument,
+} from './schedules.js';
+export * from './http/schedules.js';

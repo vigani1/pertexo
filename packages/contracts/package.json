@@ -36,6 +36,10 @@
     "./webhooks": {
       "types": "./dist/webhooks.d.ts",
       "default": "./dist/webhooks.js"
+    },
+    "./schedules": {
+      "types": "./dist/schedules.d.ts",
+      "default": "./dist/schedules.js"
     }
   },
   "scripts": {
