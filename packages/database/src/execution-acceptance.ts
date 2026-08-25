@@ -2,7 +2,6 @@ import { createHash, randomUUID } from 'node:crypto';
 
 import { and, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
-import { FailureNotificationPolicyV1Schema } from '@pertexo/workflow-model/failure-notification';
 
 import { canonicalOutboxPayloadChecksum, insertOutboxEvent } from './outbox.js';
 import {
@@ -38,7 +37,6 @@ const acceptWorkflowRunInputSchema = z
     scope: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u),
     traceparent: traceparentSchema,
     triggerType: z.enum(['api', 'manual', 'replay', 'schedule', 'webhook']),
-    failureNotificationPolicy: FailureNotificationPolicyV1Schema.optional(),
     workflowId: z.uuid(),
     workflowVersionId: z.uuid(),
   })
@@ -132,6 +130,120 @@ async function assertWorkspaceAcceptsNewRuns(
   if (result.rows[0]?.status !== 'active') {
     throw new WorkspaceRunAdmissionDeniedError();
   }
+}
+
+type ResolvedFailureNotificationPolicy = Readonly<{
+  policyVersion: 1;
+  destinationId: string;
+  destinationConfigVersion: number;
+  sideEffectClass: 'idempotent_with_key' | 'unsafe';
+  connectionSecretVersionId: string;
+}>;
+
+/** Shared acceptance-time resolver for manual, webhook, and schedule admission. */
+export async function resolveWorkflowFailureNotificationPolicy(
+  transaction: WorkspaceTransaction,
+  workflowId: string,
+): Promise<ResolvedFailureNotificationPolicy | undefined> {
+  const destinationResult = await transaction.db.execute<{
+    connection_id: string | null;
+    destination_id: string;
+    current_config_version: number;
+    destination_status: string;
+    side_effect_class: 'idempotent_with_key' | 'unsafe';
+    kind: 'email' | 'slack';
+    workspace_status: string;
+  }>(sql`
+    select destination.id as destination_id,
+           destination.current_config_version,
+           destination.status as destination_status,
+           workspace.status as workspace_status,
+           version.kind,
+           version.side_effect_class,
+           case
+             when jsonb_typeof(version.config) = 'object'
+               and version.config ? 'connectionId'
+               and (version.config->>'connectionId') ~
+                 '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+             then (version.config->>'connectionId')::uuid
+             else null
+           end as connection_id
+    from app.workflow_failure_notification_policies policy
+    join app.failure_notification_destinations destination
+      on destination.workspace_id = policy.workspace_id
+     and destination.id = policy.destination_id
+    join app.failure_notification_destination_versions version
+      on version.workspace_id = destination.workspace_id
+     and version.destination_id = destination.id
+     and version.version = destination.current_config_version
+    join app.workspaces workspace on workspace.id = policy.workspace_id
+    where policy.workspace_id = ${transaction.workspaceId}
+      and policy.workflow_id = ${workflowId}
+    for share of policy, destination, workspace
+  `);
+  const destination = destinationResult.rows[0];
+  if (
+    destination?.connection_id == null ||
+    destination.workspace_status !== 'active' ||
+    destination.destination_status !== 'enabled' ||
+    (destination.kind === 'slack' &&
+      destination.side_effect_class !== 'unsafe') ||
+    (destination.kind === 'email' &&
+      destination.side_effect_class !== 'idempotent_with_key')
+  )
+    return undefined;
+
+  const connectionResult = await transaction.db.execute<{
+    auth_type: string;
+    current_secret_version_id: string;
+    provider_key: string;
+    status: string;
+  }>(sql`
+    select connection.auth_type,
+           connection.current_secret_version_id,
+           connection.provider_key,
+           connection.status
+    from app.connections connection
+    where connection.workspace_id = ${transaction.workspaceId}
+      and connection.id = ${destination.connection_id}
+    for share of connection
+  `);
+  const connection = connectionResult.rows[0];
+  if (
+    connection?.status !== 'active' ||
+    (destination.kind === 'slack' &&
+      (connection.provider_key !== 'slack' ||
+        connection.auth_type !== 'slack_bot_token')) ||
+    (destination.kind === 'email' &&
+      (connection.provider_key !== 'email' ||
+        connection.auth_type !== 'resend_api_key'))
+  )
+    return undefined;
+
+  const secretResult = await transaction.db.execute<{ id: string }>(sql`
+    select secret.id
+    from app.connection_secret_versions secret
+    where secret.workspace_id = ${transaction.workspaceId}
+      and secret.connection_id = ${destination.connection_id}
+      and secret.id = ${connection.current_secret_version_id}
+  `);
+  if (secretResult.rows[0] === undefined) return undefined;
+
+  return Object.freeze({
+    policyVersion: 1,
+    destinationId: z.uuid().parse(destination.destination_id),
+    destinationConfigVersion: z
+      .number()
+      .int()
+      .positive()
+      .parse(destination.current_config_version),
+    sideEffectClass: z
+      .enum(['idempotent_with_key', 'unsafe'])
+      .parse(destination.side_effect_class),
+    connectionSecretVersionId: z
+      .uuid()
+      .parse(connection.current_secret_version_id),
+  });
 }
 
 async function readExistingAcceptance(
@@ -253,6 +365,11 @@ export async function acceptWorkflowRun(
   if (existing !== null) return existing;
 
   await assertWorkspaceAcceptsNewRuns(transaction);
+  const failureNotificationPolicy =
+    await resolveWorkflowFailureNotificationPolicy(
+      transaction,
+      parsed.workflowId,
+    );
   const idempotencyRecordId = randomUUID();
   const runId = randomUUID();
   const outboxEventId = randomUUID();
@@ -304,17 +421,19 @@ export async function acceptWorkflowRun(
       inputRef:
         storedRunInputJson === null ? null : sql`${storedRunInputJson}::jsonb`,
       triggerType: parsed.triggerType,
-      ...(parsed.failureNotificationPolicy === undefined
+      ...(failureNotificationPolicy === undefined
         ? {}
         : {
             failureNotificationPolicyVersion:
-              parsed.failureNotificationPolicy.policyVersion,
+              failureNotificationPolicy.policyVersion,
             failureNotificationDestinationId:
-              parsed.failureNotificationPolicy.destinationId,
+              failureNotificationPolicy.destinationId,
             failureNotificationDestinationConfigVersion:
-              parsed.failureNotificationPolicy.destinationConfigVersion,
+              failureNotificationPolicy.destinationConfigVersion,
             failureNotificationSideEffectClass:
-              parsed.failureNotificationPolicy.sideEffectClass,
+              failureNotificationPolicy.sideEffectClass,
+            failureNotificationConnectionSecretVersionId:
+              failureNotificationPolicy.connectionSecretVersionId,
           }),
       ...(parsed.deadlineAt === undefined
         ? {}

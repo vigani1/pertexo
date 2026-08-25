@@ -5,6 +5,9 @@ import {
   ConnectionSecretVersionConflictError,
   ConnectionTestInProgressError,
   ConnectionUnavailableError,
+  FailureNotificationDestinationConflictError,
+  FailureNotificationDestinationIdempotencyConflictError,
+  FailureNotificationDestinationNotFoundError,
 } from '@pertexo/database';
 import {
   ConnectionSecretEncryptionError,
@@ -27,6 +30,16 @@ export function mapConnectionError(error: unknown): ApplicationError {
     return applicationError(error.code, { safeDetail: error.message });
   if (error instanceof ConnectionNotFoundError)
     return applicationError('resource.not_found');
+  if (error instanceof FailureNotificationDestinationNotFoundError)
+    return applicationError('resource.not_found');
+  if (error instanceof FailureNotificationDestinationIdempotencyConflictError)
+    return applicationError('request.idempotency_conflict', {
+      safeDetail: 'The idempotency key was already used for another request.',
+    });
+  if (error instanceof FailureNotificationDestinationConflictError)
+    return applicationError('connection.conflict', {
+      safeDetail: 'The destination conflicts with current state.',
+    });
   if (error instanceof ConnectionIdempotencyConflictError)
     return applicationError('request.idempotency_conflict', {
       safeDetail: 'The idempotency key was already used for another request.',

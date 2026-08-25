@@ -45,18 +45,23 @@ export type GeneratedEnvelopeKey = Readonly<{
 export interface EnvelopeKeyProvider {
   generateDataKey(
     context: ConnectionSecretContext,
+    signal?: AbortSignal,
   ): Promise<GeneratedEnvelopeKey>;
   decryptDataKey(
     encryptedDataKey: Uint8Array,
     keyReference: string,
     context: ConnectionSecretContext,
+    signal?: AbortSignal,
   ): Promise<Uint8Array>;
 }
 
 export type KmsCommand = GenerateDataKeyCommand | DecryptCommand;
 
 export interface KmsClientLike {
-  send(command: KmsCommand): Promise<unknown>;
+  send(
+    command: KmsCommand,
+    options?: Readonly<{ abortSignal?: AbortSignal }>,
+  ): Promise<unknown>;
 }
 
 export class ConnectionSecretEncryptionError extends Error {
@@ -70,6 +75,16 @@ export class ConnectionSecretEncryptionError extends Error {
 function fail(cause?: unknown): never {
   void cause;
   throw new ConnectionSecretEncryptionError();
+}
+
+function assertNotAborted(signal?: AbortSignal): void {
+  if (signal?.aborted === true) fail(signal.reason);
+}
+
+function kmsOptions(
+  signal?: AbortSignal,
+): Readonly<{ abortSignal?: AbortSignal }> | undefined {
+  return signal === undefined ? undefined : { abortSignal: signal };
 }
 
 function kmsEncryptionContext(
@@ -136,9 +151,13 @@ export class AwsKmsEnvelopeKeyProvider implements EnvelopeKeyProvider {
 
   public async generateDataKey(
     context: ConnectionSecretContext,
+    signal?: AbortSignal,
   ): Promise<GeneratedEnvelopeKey> {
     const parsed = contextSchema.parse(context);
+    let plaintextKey: Uint8Array | undefined;
+    let providerPlaintextKey: Uint8Array | undefined;
     try {
+      assertNotAborted(signal);
       const response = responseRecord(
         await this.client.send(
           new GenerateDataKeyCommand({
@@ -146,10 +165,16 @@ export class AwsKmsEnvelopeKeyProvider implements EnvelopeKeyProvider {
             KeySpec: 'AES_256',
             EncryptionContext: kmsEncryptionContext(parsed),
           }),
+          kmsOptions(signal),
         ),
       );
-      const plaintextKey = boundedBytes(response.Plaintext, DATA_KEY_BYTES);
-      if (response.Plaintext instanceof Uint8Array) response.Plaintext.fill(0);
+      providerPlaintextKey =
+        response.Plaintext instanceof Uint8Array
+          ? response.Plaintext
+          : undefined;
+      plaintextKey = boundedBytes(response.Plaintext, DATA_KEY_BYTES);
+      providerPlaintextKey?.fill(0);
+      assertNotAborted(signal);
       if (plaintextKey.byteLength !== DATA_KEY_BYTES) fail();
       const encryptedDataKey = boundedBytes(
         response.CiphertextBlob,
@@ -171,6 +196,8 @@ export class AwsKmsEnvelopeKeyProvider implements EnvelopeKeyProvider {
             : this.keyReference,
       });
     } catch (error: unknown) {
+      providerPlaintextKey?.fill(0);
+      plaintextKey?.fill(0);
       throw error instanceof ConnectionSecretEncryptionError
         ? error
         : new ConnectionSecretEncryptionError();
@@ -181,6 +208,7 @@ export class AwsKmsEnvelopeKeyProvider implements EnvelopeKeyProvider {
     encryptedDataKey: Uint8Array,
     keyReference: string,
     context: ConnectionSecretContext,
+    signal?: AbortSignal,
   ): Promise<Uint8Array> {
     const parsed = contextSchema.parse(context);
     const boundedEncryptedKey = boundedBytes(
@@ -192,7 +220,10 @@ export class AwsKmsEnvelopeKeyProvider implements EnvelopeKeyProvider {
       Buffer.byteLength(keyReference, 'utf8') > MAX_KEY_REFERENCE_BYTES
     )
       fail();
+    let plaintextKey: Uint8Array | undefined;
+    let providerPlaintextKey: Uint8Array | undefined;
     try {
+      assertNotAborted(signal);
       const response = responseRecord(
         await this.client.send(
           new DecryptCommand({
@@ -201,13 +232,21 @@ export class AwsKmsEnvelopeKeyProvider implements EnvelopeKeyProvider {
             EncryptionAlgorithm: 'SYMMETRIC_DEFAULT',
             EncryptionContext: kmsEncryptionContext(parsed),
           }),
+          kmsOptions(signal),
         ),
       );
-      const plaintextKey = boundedBytes(response.Plaintext, DATA_KEY_BYTES);
-      if (response.Plaintext instanceof Uint8Array) response.Plaintext.fill(0);
+      providerPlaintextKey =
+        response.Plaintext instanceof Uint8Array
+          ? response.Plaintext
+          : undefined;
+      plaintextKey = boundedBytes(response.Plaintext, DATA_KEY_BYTES);
+      providerPlaintextKey?.fill(0);
+      assertNotAborted(signal);
       if (plaintextKey.byteLength !== DATA_KEY_BYTES) fail();
       return plaintextKey;
     } catch (error: unknown) {
+      providerPlaintextKey?.fill(0);
+      plaintextKey?.fill(0);
       throw error instanceof ConnectionSecretEncryptionError
         ? error
         : new ConnectionSecretEncryptionError();
@@ -221,14 +260,17 @@ export class ConnectionEnvelopeEncryption {
   public async seal(
     plaintext: Uint8Array,
     context: ConnectionSecretContext,
+    signal?: AbortSignal,
   ): Promise<SealedConnectionSecret> {
     const parsedContext = contextSchema.parse(context);
     const boundedPlaintext = boundedBytes(plaintext, MAX_PLAINTEXT_BYTES);
     let plaintextKey: Uint8Array | undefined;
     let providerPlaintextKey: Uint8Array | undefined;
     try {
-      const generated = await this.keys.generateDataKey(parsedContext);
+      assertNotAborted(signal);
+      const generated = await this.keys.generateDataKey(parsedContext, signal);
       providerPlaintextKey = generated.plaintextKey;
+      assertNotAborted(signal);
       plaintextKey = boundedBytes(providerPlaintextKey, DATA_KEY_BYTES);
       if (plaintextKey.byteLength !== DATA_KEY_BYTES) fail();
       const encryptedDataKey = boundedBytes(
@@ -249,6 +291,7 @@ export class ConnectionEnvelopeEncryption {
         cipher.final(),
       ]);
       const tag = cipher.getAuthTag();
+      assertNotAborted(signal);
       if (tag.byteLength !== GCM_TAG_BYTES) fail();
       return sealedSchema.parse({
         schemaVersion: 1,
@@ -272,10 +315,13 @@ export class ConnectionEnvelopeEncryption {
   public async open(
     sealed: SealedConnectionSecret,
     context: ConnectionSecretContext,
+    signal?: AbortSignal,
   ): Promise<Uint8Array> {
     let plaintextKey: Uint8Array | undefined;
     let providerPlaintextKey: Uint8Array | undefined;
+    let result: Uint8Array | undefined;
     try {
+      assertNotAborted(signal);
       const parsedSealed = sealedSchema.parse(sealed);
       const parsedContext = contextSchema.parse(context);
       const encryptedDataKey = decode(
@@ -286,7 +332,9 @@ export class ConnectionEnvelopeEncryption {
         encryptedDataKey,
         parsedSealed.kmsKeyReference,
         parsedContext,
+        signal,
       );
+      assertNotAborted(signal);
       plaintextKey = boundedBytes(providerPlaintextKey, DATA_KEY_BYTES);
       if (plaintextKey.byteLength !== DATA_KEY_BYTES) fail();
       const nonce = decode(parsedSealed.nonce, GCM_NONCE_BYTES);
@@ -313,14 +361,16 @@ export class ConnectionEnvelopeEncryption {
         plaintext.byteLength > MAX_PLAINTEXT_BYTES
       )
         fail();
-      const result = new Uint8Array(plaintext);
+      result = new Uint8Array(plaintext);
       plaintext.fill(0);
+      assertNotAborted(signal);
       return result;
     } catch (error: unknown) {
       throw error instanceof ConnectionSecretEncryptionError
         ? error
         : new ConnectionSecretEncryptionError();
     } finally {
+      if (signal?.aborted === true) result?.fill(0);
       plaintextKey?.fill(0);
       providerPlaintextKey?.fill(0);
     }

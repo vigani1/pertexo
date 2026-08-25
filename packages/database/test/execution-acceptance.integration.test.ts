@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 
-import { count, eq } from 'drizzle-orm';
+import { count, eq, sql } from 'drizzle-orm';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
@@ -137,7 +137,13 @@ async function resetExecutionFixture(): Promise<void> {
         app.run_events,
         app.run_checkpoints,
         app.workflow_runs,
-        app.outbox_events
+        app.outbox_events,
+        app.workflow_failure_notification_policies,
+        app.failure_notification_destination_versions,
+        app.failure_notification_destinations,
+        app.connection_secret_versions,
+        app.connections,
+        app.workflows
       cascade
     `);
     await client.query(
@@ -175,6 +181,191 @@ async function resetExecutionFixture(): Promise<void> {
   }
 }
 
+async function createNotificationFixture(
+  input: Readonly<{
+    connectionKind?: 'email' | 'slack';
+    destinationKind?: 'email' | 'slack';
+  }> = {},
+): Promise<
+  Readonly<{
+    connectionId: string;
+    destinationId: string;
+    secretVersionId: string;
+  }>
+> {
+  const connectionKind = input.connectionKind ?? 'email';
+  const destinationKind = input.destinationKind ?? 'email';
+  const connectionId = randomUUID();
+  const destinationId = randomUUID();
+  const secretVersionId = randomUUID();
+  const pool = new Pool({ connectionString: migrationUrl, max: 1 });
+  const client = await pool.connect();
+  const protectedTables = [
+    'workflows',
+    'connections',
+    'connection_secret_versions',
+    'failure_notification_destinations',
+    'failure_notification_destination_versions',
+  ] as const;
+  try {
+    await client.query('begin');
+    await client.query('set local role pertexo_owner');
+    await client.query("select set_config('app.workspace_id',$1,true)", [
+      workspaceA,
+    ]);
+    for (const table of protectedTables)
+      await client.query(
+        `alter table app.${table} no force row level security`,
+      );
+    await client.query(
+      `insert into app.workflows (id,workspace_id,name,created_by)
+       values ($1,$2,'Notification pin fixture',$3)
+       on conflict (id) do nothing`,
+      [workflowId, workspaceA, workspaceCreatorId],
+    );
+    await client.query(
+      `insert into app.connections (
+         id,workspace_id,provider_key,name,auth_type,status,
+         current_secret_version_id,created_by
+       ) values ($1,$2,$3,$7,$4,'active',$5,$6)`,
+      [
+        connectionId,
+        workspaceA,
+        connectionKind,
+        connectionKind === 'slack' ? 'slack_bot_token' : 'resend_api_key',
+        secretVersionId,
+        workspaceCreatorId,
+        `Notification pin ${connectionId}`,
+      ],
+    );
+    await client.query(
+      `insert into app.connection_secret_versions (
+         id,workspace_id,connection_id,schema_version,kms_key_reference,
+         encrypted_data_key,ciphertext,nonce,auth_tag,created_by
+       ) values ($1,$2,$3,1,'kms','key','cipher','AAAAAAAAAAAAAAAA',
+         'AAAAAAAAAAAAAAAAAAAAAA',$4)`,
+      [secretVersionId, workspaceA, connectionId, workspaceCreatorId],
+    );
+    await client.query(
+      `insert into app.failure_notification_destinations
+         (id,workspace_id,kind,status,current_config_version,created_by)
+       values ($1,$2,$3,'enabled',1,$4)`,
+      [destinationId, workspaceA, destinationKind, workspaceCreatorId],
+    );
+    await client.query(
+      `insert into app.failure_notification_destination_versions
+         (workspace_id,destination_id,version,kind,side_effect_class,config,created_by)
+       values ($1,$2,1,$3,$4,$5::jsonb,$6)`,
+      [
+        workspaceA,
+        destinationId,
+        destinationKind,
+        destinationKind === 'slack' ? 'unsafe' : 'idempotent_with_key',
+        JSON.stringify(
+          destinationKind === 'slack'
+            ? { connectionId, channelId: 'C12345' }
+            : { connectionId, toEmail: 'pin@example.test' },
+        ),
+        workspaceCreatorId,
+      ],
+    );
+    await client.query('set constraints all immediate');
+    for (const table of protectedTables)
+      await client.query(`alter table app.${table} force row level security`);
+    await client.query('commit');
+    return { connectionId, destinationId, secretVersionId };
+  } catch (error: unknown) {
+    await client.query('rollback').catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+    await pool.end();
+  }
+}
+
+async function insertDirectPinnedRun(
+  pin: Readonly<{
+    destinationId: string;
+    secretVersionId: string;
+    sideEffectClass: 'idempotent_with_key' | 'unsafe';
+  }>,
+): Promise<void> {
+  await apiDatabase.withWorkspace(workspaceA, ({ db }) =>
+    db
+      .execute(
+        sql`
+      insert into app.workflow_runs (
+        id,workspace_id,workflow_id,workflow_version_id,trigger_type,status,
+        failure_notification_policy_version,
+        failure_notification_destination_id,
+        failure_notification_destination_config_version,
+        failure_notification_side_effect_class,
+        failure_notification_connection_secret_version_id
+      ) values (${randomUUID()},${workspaceA},${workflowId},${workflowVersionId},
+        'manual','queued',1,${pin.destinationId},1,${pin.sideEffectClass},
+        ${pin.secretVersionId})
+    `,
+      )
+      .then(() => undefined),
+  );
+}
+
+async function setFixtureStatus(
+  table: 'connections' | 'failure_notification_destinations' | 'workspaces',
+  id: string,
+  status: string,
+): Promise<void> {
+  const pool = new Pool({
+    connectionString: table === 'workspaces' ? migrationUrl : apiUrl,
+    max: 1,
+  });
+  const client = await pool.connect();
+  try {
+    await client.query('begin');
+    if (table === 'workspaces')
+      await client.query('set local role pertexo_owner');
+    await client.query("select set_config('app.workspace_id',$1,true)", [
+      workspaceA,
+    ]);
+    const updated = await client.query(
+      `update app.${table} set status=$2 where id=$1`,
+      [id, status],
+    );
+    if (updated.rowCount !== 1) throw new Error('Fixture status update failed');
+    await client.query('commit');
+  } catch (error: unknown) {
+    await client.query('rollback').catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+    await pool.end();
+  }
+}
+
+async function setNotificationPolicy(destinationId: string): Promise<void> {
+  const pool = new Pool({ connectionString: apiUrl, max: 1 });
+  const client = await pool.connect();
+  try {
+    await client.query('begin');
+    await client.query("select set_config('app.workspace_id',$1,true)", [
+      workspaceA,
+    ]);
+    await client.query(
+      `insert into app.workflow_failure_notification_policies
+         (workspace_id,workflow_id,destination_id,updated_by)
+       values ($1,$2,$3,$4)`,
+      [workspaceA, workflowId, destinationId, workspaceCreatorId],
+    );
+    await client.query('commit');
+  } catch (error: unknown) {
+    await client.query('rollback').catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+    await pool.end();
+  }
+}
+
 beforeAll(async () => {
   await migrateDatabase(migrationConfig);
 });
@@ -186,6 +377,326 @@ afterAll(async () => {
 });
 
 describe('atomic workflow run acceptance', () => {
+  it('rejects malformed destination pins and inactive acceptance identities atomically', async () => {
+    const valid = await createNotificationFixture();
+    const unrelated = await createNotificationFixture();
+    const wrongProvider = await createNotificationFixture({
+      connectionKind: 'slack',
+      destinationKind: 'email',
+    });
+    const validPin = {
+      destinationId: valid.destinationId,
+      secretVersionId: valid.secretVersionId,
+      sideEffectClass: 'idempotent_with_key' as const,
+    };
+    const expectRejected = async (
+      operation: () => Promise<void>,
+    ): Promise<void> => {
+      await expect(operation()).rejects.toSatisfy(hasPostgresCode('23514'));
+      await apiDatabase.withWorkspace(workspaceA, async ({ db }) => {
+        expect(await db.select({ count: count() }).from(workflowRuns)).toEqual([
+          { count: 0 },
+        ]);
+      });
+    };
+
+    await expectRejected(() =>
+      insertDirectPinnedRun({ ...validPin, sideEffectClass: 'unsafe' }),
+    );
+    await expectRejected(() =>
+      insertDirectPinnedRun({
+        ...validPin,
+        secretVersionId: unrelated.secretVersionId,
+      }),
+    );
+    await expectRejected(() =>
+      insertDirectPinnedRun({
+        ...validPin,
+        destinationId: wrongProvider.destinationId,
+        secretVersionId: wrongProvider.secretVersionId,
+      }),
+    );
+
+    for (const [table, id, status] of [
+      ['failure_notification_destinations', valid.destinationId, 'disabled'],
+      ['connections', valid.connectionId, 'revoked'],
+      ['workspaces', workspaceA, 'suspended'],
+    ] as const) {
+      await setFixtureStatus(table, id, status);
+      await expectRejected(() => insertDirectPinnedRun(validPin));
+      await setFixtureStatus(
+        table,
+        id,
+        table === 'failure_notification_destinations' ? 'enabled' : 'active',
+      );
+    }
+
+    await expect(
+      apiDatabase.withWorkspace(workspaceA, ({ db }) =>
+        db.execute(sql`
+          insert into app.failure_notification_destination_versions
+            (workspace_id,destination_id,version,kind,side_effect_class,config,created_by)
+          values (${workspaceA},${randomUUID()},1,'email','idempotent_with_key',
+            ${JSON.stringify({ connectionId: 'malformed', toEmail: 'pin@example.test' })}::jsonb,
+            ${workspaceCreatorId})
+        `),
+      ),
+    ).rejects.toSatisfy(hasPostgresCode('23514'));
+  });
+
+  it('serializes destination disable before acceptance and persists no stale pin', async () => {
+    const fixture = await createNotificationFixture();
+    await setNotificationPolicy(fixture.destinationId);
+    const pool = new Pool({ connectionString: apiUrl, max: 1 });
+    const disabling = await pool.connect();
+    try {
+      await disabling.query('begin');
+      await disabling.query("select set_config('app.workspace_id',$1,true)", [
+        workspaceA,
+      ]);
+      await disabling.query(
+        `update app.failure_notification_destinations set status='disabled'
+          where workspace_id=$1 and id=$2`,
+        [workspaceA, fixture.destinationId],
+      );
+      const acceptance = apiDatabase.withWorkspace(workspaceA, (transaction) =>
+        acceptWorkflowRun(transaction, acceptanceInput()),
+      );
+      await expect(
+        Promise.race([
+          acceptance.then(() => 'settled'),
+          new Promise<'waiting'>((resolve) => {
+            setTimeout(() => {
+              resolve('waiting');
+            }, 50);
+          }),
+        ]),
+      ).resolves.toBe('waiting');
+      await disabling.query('commit');
+      const accepted = await acceptance;
+      const pin = await apiDatabase.withWorkspace(workspaceA, ({ db }) =>
+        db.execute<{ destination_id: string | null }>(sql`
+          select failure_notification_destination_id destination_id
+            from app.workflow_runs where id=${accepted.runId}
+        `),
+      );
+      expect(pin.rows[0]).toEqual({ destination_id: null });
+    } finally {
+      await disabling.query('rollback').catch(() => undefined);
+      disabling.release();
+      await pool.end();
+    }
+  });
+
+  it('serializes credential rotation before acceptance and pins the new current secret', async () => {
+    const fixture = await createNotificationFixture();
+    await setNotificationPolicy(fixture.destinationId);
+    const nextSecretVersionId = randomUUID();
+    const pool = new Pool({ connectionString: apiUrl, max: 1 });
+    const rotating = await pool.connect();
+    try {
+      await rotating.query('begin');
+      await rotating.query("select set_config('app.workspace_id',$1,true)", [
+        workspaceA,
+      ]);
+      await rotating.query(
+        `insert into app.connection_secret_versions (
+           id,workspace_id,connection_id,schema_version,kms_key_reference,
+           encrypted_data_key,ciphertext,nonce,auth_tag,created_by
+         ) values ($1,$2,$3,1,'kms','new-key','new-cipher','BBBBBBBBBBBBBBBB',
+           'BBBBBBBBBBBBBBBBBBBBBB',$4)`,
+        [
+          nextSecretVersionId,
+          workspaceA,
+          fixture.connectionId,
+          workspaceCreatorId,
+        ],
+      );
+      await rotating.query(
+        `update app.connections set current_secret_version_id=$3
+          where workspace_id=$1 and id=$2`,
+        [workspaceA, fixture.connectionId, nextSecretVersionId],
+      );
+      const acceptance = apiDatabase.withWorkspace(workspaceA, (transaction) =>
+        acceptWorkflowRun(transaction, acceptanceInput()),
+      );
+      await expect(
+        Promise.race([
+          acceptance.then(() => 'settled'),
+          new Promise<'waiting'>((resolve) => {
+            setTimeout(() => {
+              resolve('waiting');
+            }, 50);
+          }),
+        ]),
+      ).resolves.toBe('waiting');
+      await rotating.query('commit');
+      const accepted = await acceptance;
+      const pin = await apiDatabase.withWorkspace(workspaceA, ({ db }) =>
+        db.execute<{ secret_version_id: string | null }>(sql`
+          select failure_notification_connection_secret_version_id secret_version_id
+            from app.workflow_runs where id=${accepted.runId}
+        `),
+      );
+      expect(pin.rows[0]).toEqual({ secret_version_id: nextSecretVersionId });
+    } finally {
+      await rotating.query('rollback').catch(() => undefined);
+      rotating.release();
+      await pool.end();
+    }
+  });
+
+  it('pins a manual-run destination once and replays after config, status, and credential changes', async () => {
+    const connectionId = randomUUID();
+    const secretVersionId = randomUUID();
+    const destinationId = randomUUID();
+    const owner = new Pool({ connectionString: migrationUrl, max: 1 });
+    const client = await owner.connect();
+    const protectedTables = [
+      'workflows',
+      'connections',
+      'connection_secret_versions',
+      'failure_notification_destinations',
+      'failure_notification_destination_versions',
+      'workflow_failure_notification_policies',
+    ] as const;
+    try {
+      await client.query('begin');
+      await client.query('set local role pertexo_owner');
+      await client.query("select set_config('app.workspace_id',$1,true)", [
+        workspaceA,
+      ]);
+      for (const table of protectedTables)
+        await client.query(
+          `alter table app.${table} no force row level security`,
+        );
+      await client.query(
+        `insert into app.workflows (id,workspace_id,name,created_by)
+         values ($1,$2,'Manual notification acceptance',$3)`,
+        [workflowId, workspaceA, workspaceCreatorId],
+      );
+      await client.query(
+        `insert into app.connections (
+           id,workspace_id,provider_key,name,auth_type,status,
+           current_secret_version_id,created_by
+         ) values ($1,$2,'email','Manual notification email',
+           'resend_api_key','active',$3,$4)`,
+        [connectionId, workspaceA, secretVersionId, workspaceCreatorId],
+      );
+      await client.query(
+        `insert into app.connection_secret_versions (
+           id,workspace_id,connection_id,schema_version,kms_key_reference,
+           encrypted_data_key,ciphertext,nonce,auth_tag,created_by
+         ) values ($1,$2,$3,1,'kms','key','cipher','AAAAAAAAAAAAAAAA',
+           'AAAAAAAAAAAAAAAAAAAAAA',$4)`,
+        [secretVersionId, workspaceA, connectionId, workspaceCreatorId],
+      );
+      await client.query(
+        `insert into app.failure_notification_destinations
+           (id,workspace_id,kind,status,current_config_version,created_by)
+         values ($1,$2,'email','enabled',1,$3)`,
+        [destinationId, workspaceA, workspaceCreatorId],
+      );
+      await client.query(
+        `insert into app.failure_notification_destination_versions
+           (workspace_id,destination_id,version,kind,side_effect_class,config,created_by)
+         values ($1,$2,1,'email','idempotent_with_key',$3::jsonb,$4)`,
+        [
+          workspaceA,
+          destinationId,
+          JSON.stringify({ connectionId, toEmail: 'manual@example.test' }),
+          workspaceCreatorId,
+        ],
+      );
+      await client.query(
+        `insert into app.workflow_failure_notification_policies
+           (workspace_id,workflow_id,destination_id,updated_by)
+         values ($1,$2,$3,$4)`,
+        [workspaceA, workflowId, destinationId, workspaceCreatorId],
+      );
+      await client.query('set constraints all immediate');
+      for (const table of protectedTables)
+        await client.query(`alter table app.${table} force row level security`);
+      await client.query('commit');
+    } catch (error: unknown) {
+      await client.query('rollback').catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+      await owner.end();
+    }
+
+    const first = await apiDatabase.withWorkspace(workspaceA, (transaction) =>
+      acceptWorkflowRun(transaction, acceptanceInput()),
+    );
+    const nextSecretVersionId = randomUUID();
+    await apiDatabase.withWorkspace(workspaceA, async ({ db }) => {
+      await db.execute(sql`
+        insert into app.failure_notification_destination_versions
+          (workspace_id,destination_id,version,kind,side_effect_class,config,created_by)
+        values (${workspaceA},${destinationId},2,'email','idempotent_with_key',
+          ${JSON.stringify({ connectionId, toEmail: 'changed@example.test' })}::jsonb,
+          ${workspaceCreatorId})
+      `);
+      await db.execute(sql`
+        update app.failure_notification_destinations
+           set current_config_version=2,status='disabled'
+         where workspace_id=${workspaceA} and id=${destinationId}
+      `);
+      await db.execute(sql`
+        insert into app.connection_secret_versions (
+          id,workspace_id,connection_id,schema_version,kms_key_reference,
+          encrypted_data_key,ciphertext,nonce,auth_tag,created_by
+        ) values (${nextSecretVersionId},${workspaceA},${connectionId},1,
+          'kms','key2','cipher2','BBBBBBBBBBBBBBBB',
+          'BBBBBBBBBBBBBBBBBBBBBB',${workspaceCreatorId})
+      `);
+      await db.execute(sql`
+        update app.connections set current_secret_version_id=${nextSecretVersionId}
+         where workspace_id=${workspaceA} and id=${connectionId}
+      `);
+    });
+
+    await expect(
+      apiDatabase.withWorkspace(workspaceA, (transaction) =>
+        acceptWorkflowRun(transaction, acceptanceInput()),
+      ),
+    ).resolves.toEqual({ ...first, duplicate: true });
+    const pins = await apiDatabase.withWorkspace(workspaceA, ({ db }) =>
+      db.execute<{
+        destination_config_version: number | null;
+        destination_id: string | null;
+        secret_version_id: string | null;
+      }>(sql`
+        select failure_notification_destination_id destination_id,
+               failure_notification_destination_config_version destination_config_version,
+               failure_notification_connection_secret_version_id secret_version_id
+          from app.workflow_runs where id=${first.runId}
+      `),
+    );
+    expect(pins.rows[0]).toEqual({
+      destination_id: destinationId,
+      destination_config_version: 1,
+      secret_version_id: secretVersionId,
+    });
+
+    const second = await apiDatabase.withWorkspace(workspaceA, (transaction) =>
+      acceptWorkflowRun(transaction, {
+        ...acceptanceInput(
+          createHash('sha256').update('request-2').digest('hex'),
+        ),
+        keyHash: createHash('sha256').update('acceptance-key-2').digest('hex'),
+      }),
+    );
+    const secondPins = await apiDatabase.withWorkspace(workspaceA, ({ db }) =>
+      db.execute<{ destination_id: string | null }>(sql`
+        select failure_notification_destination_id destination_id
+          from app.workflow_runs where id=${second.runId}
+      `),
+    );
+    expect(secondPins.rows[0]).toEqual({ destination_id: null });
+  });
+
   it.each(['suspended', 'pending_deletion', 'deleted'] as const)(
     'rejects new runs while the workspace is %s without persisting acceptance state',
     async (status) => {

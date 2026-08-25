@@ -28,3 +28,14 @@ export class ConnectionUseGuard extends WorkspaceCapabilityGuard {
     super('connection:use', authorization, contexts, 'not_found', ['active']);
   }
 }
+
+@Injectable()
+export class FailureNotificationWorkflowEditGuard extends WorkspaceCapabilityGuard {
+  public constructor(
+    @Inject(CONNECTION_AUTHORIZATION)
+    authorization: WorkspaceAuthorizationSource,
+    contexts: RequestContextStore,
+  ) {
+    super('workflow:update', authorization, contexts, 'not_found', ['active']);
+  }
+}

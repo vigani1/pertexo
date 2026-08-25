@@ -22,7 +22,7 @@ not complete a phase.
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 5 — orchestration slice | Complete | ADRs 008/017/018/019/020/021/022; implementation through `9d7e071`; migration head `0034_run_failure_notifications.sql`; 862 unit assertions and complete real-service/recovery matrix; independent fixed-head Spec and Standards completion GO |
-| Phase 6 — V1 providers and triggers | In progress | ADRs 023–024; Slack `slack.send_message@1` and email `email.send_notification@1` ABI 2 are active at retained epochs 18 and 20 after staged epochs 17 and 19; destinations, Webhook, and Schedule remain |
+| Phase 6 — V1 providers and triggers | In progress | ADRs 023–025; Slack `slack.send_message@1`, email `email.send_notification@1`, and ADR 025 Slack/email failure-notification destinations are active at migration head `0037`; Webhook and Schedule remain |
 | Phase 7 — production operations | Not started | — |
 
 The `0A`–`0E` checkpoints are implementation-sized subdivisions of the plan's
@@ -2714,7 +2714,7 @@ Authority and sequencing:
       slice.
 - [x] Accept ADR 025 for immutable Slack/email failure-notification
       destinations, workflow policy, connection fencing, and delivery outcomes.
-- [ ] Add versioned Slack and email destinations behind ADR 022 without changing
+- [x] Add versioned Slack and email destinations behind ADR 022 without changing
       terminal run truth or introducing notification nodes.
 - [ ] Accept ADR 012 before enabling any production trigger reconciliation or
       acceptance path.
@@ -2764,20 +2764,20 @@ Email `send_notification` completion gates:
 
 Failure-notification destination completion gates:
 
-- [ ] Add workspace-scoped destination identities, immutable Slack/email config
+- [x] Add workspace-scoped destination identities, immutable Slack/email config
       versions, optimistic updates, disable behavior, RLS, audit, and strict API
       contracts without exposing provider or secret material.
 - [ ] Add one workflow policy reference outside graph topology and atomically pin
       its exact active destination version and side-effect class into every new
       manual, webhook, and schedule run.
-- [ ] Compose provider-neutral delivery over the proven Slack and Resend clients,
+- [x] Compose provider-neutral delivery over the proven Slack and Resend clients,
       deterministic ADR 022 safe messages, exact connection/config fencing,
       bounded provider references, and fail-closed readiness.
-- [ ] Prove Slack definite retry versus unsafe ambiguity, Resend identical-key
+- [x] Prove Slack definite retry versus unsafe ambiguity, Resend identical-key
       recovery, changed credentials, policy/config changes after run acceptance,
       duplicate delivery, crashes, PostgreSQL/Redis loss, drain, and no recursive
       notification or terminal-run mutation.
-- [ ] Activate destination production and recovery consumers only after the full
+- [x] Activate destination production and recovery consumers only after the full
       real-service matrix passes with both providers and retained run truth.
 
 Phase-wide completion gates:
@@ -2925,6 +2925,172 @@ Current evidence:
   tests additionally prove suspended-workspace refusal, unchanged binding/marker
   state, active-workspace success, and unresolved-state hydration without adding
   a persisted secret or ambiguity column. No commit or push was made.
+- ADR 025 implementation work on 2026-08-25 added migration
+  `0037_failure_notification_destinations.sql`, strict public configuration
+  schemas, a tenant-scoped destination/policy database adapter and Nest routes,
+  acceptance-time policy/config/side-effect/secret pinning, and production
+  Slack/Resend notification delivery with JIT credential audit, deterministic
+  ADR 022 text, final dispatch fencing, and a nonsecret email delivery binding.
+  A disposable PostgreSQL 18 database migrated zero-to-head and an exact
+  `0036` prior head applied only `0037`; direct database execution proved create,
+  append from version 1 to 2, policy set, disable/enable, list, pinned policy
+  resolution, and cross-workspace hiding. `pnpm check` passed 918 assertions
+  before two focused contract assertions were added; the focused worker suite
+  passed 161 assertions and PostgreSQL/Redis health checks returned ready/PONG.
+  The ordinary shared-service `pnpm test:integration` was also attempted and
+  was not completion evidence: suites using the known reusable database failed
+  on its pre-existing `0012` checksum mismatch, while fresh suites exposed
+  expected-head fixture drift and one coordinator fixture that still constructs
+  caller-supplied notification policy without the new pinned secret. The
+  destination completion boxes remain unchecked until command idempotency,
+  canonical generated OpenAPI/client artifacts, direct API/database integration
+  files, complete pinning/replay and provider recovery/service-loss assertions,
+  and the full disposable real-service matrix are green.
+- ADR 025 destination/API checkpoint verification on 2026-08-25 completes the
+  workspace-scoped destination identity and provider-neutral delivery gates.
+  Mutating API commands require bounded `Idempotency-Key` headers and atomically
+  persist actor-scoped request hashes, result snapshots, destination/policy
+  changes, and deduplicated audit facts; changed requests conflict. The Nest
+  controller uses established session, CSRF, `connection:manage`, and
+  `workflow:update` guards, RFC 9457 mapping, fixed-cardinality telemetry, and
+  generated OpenAPI/client artifacts. Strict public configs contain only
+  `{ connectionId, channelId }` or `{ connectionId, toEmail }`.
+- A populated exact-`0036` migration fixture preserves historical terminal rows,
+  quarantines orphan `pending` and `retry` intents as bounded
+  `delivery.destination_unavailable` dead letters, and preserves the possible
+  dispatch truth of historical `dispatching` intents as `outcome_unknown` with
+  `delivery.recovery_ambiguous`, `possibly_dispatched=true`, and matching audit
+  facts. Their
+  retained outbox deliveries claim terminally without context parsing or provider
+  calls. `NOT VALID` destination-version and exact composite run-pin foreign keys
+  preserve historical rows while an insert trigger rejects every new null or
+  mismatched run pin.
+  Clean and prior-head fixtures, forced RLS, least-privilege grants, immutable
+  versions, optimistic append, status changes, cross-workspace hiding, replay,
+  and no duplicate audit are executable. Manual acceptance pins destination
+  version 1 and secret version 1; exact replay keeps those pins after config
+  append, disable, and credential rotation, while a new run after disable has
+  no notification policy. Pinned delivery continues to resolve the original
+  config after destination disable, but changed current credentials fail closed.
+- Delivery classification proves definite Slack `service_unavailable`/429
+  retries without unsafe replay, terminal Slack 5xx/invalid-response ambiguity,
+  identical email binding/key/payload recovery, first-fence refusal, historical
+  email identity loss, and exhausted ambiguous email `outcome_unknown` truth.
+  The real PostgreSQL/Redis/BullMQ notification recovery path uses the production
+  provider adapter and durable fence for both providers. Email recovers a durable
+  pre-dispatch crash and delivers once with the same binding/key/payload. Slack
+  fences once, classifies a post-dispatch invalid response as terminal
+  `outcome_unknown`, and never sends again on exact BullMQ redelivery. Neither
+  path mutates terminal run/checkpoint/event truth, and durable notification
+  surfaces contain no credential, target, sender, or message content.
+- Final checkpoint commands are green: root `pnpm check` passes all builds,
+  formatting, lint, generated-contract drift, typechecks, and 929 unit
+  assertions; generated destination contracts pass 16 assertions. A fresh
+  PostgreSQL 18 database runs the complete sequential database matrix with 259
+  assertions, including zero-to-`0037` and populated `0036`-to-`0037` paths.
+  The enabled worker real-service matrix passes 18 assertions against PostgreSQL
+  18, Redis 8.2.8, and BullMQ 6.1.2; the focused notification recovery assertion
+  passes with the real provider adapter seam. `git diff --check`, PostgreSQL
+  `pg_isready`, Redis authenticated `PONG`, and Docker health checks pass.
+- The ADR 025 destination consumer is wired and its two-provider recovery fixture
+  passes. The shared PostgreSQL/Redis-loss and drain matrices also pass, but they
+  are not a substitute for direct destination cases: PostgreSQL loss before the
+  final provider fence, Redis loss after notification intent/outbox commit, and
+  shutdown during blocked destination delivery still need executable
+  service-stop/restart coverage for both provider paths. The corresponding
+  destination completion gates remain open.
+  The all-trigger pinning gate remains unchecked because webhook and schedule
+  acceptance do not yet exist; all Phase 6-wide gates therefore remain
+  unchecked. No commit or push was made.
+- Independent-review fixes on 2026-08-25 split notification claim from provider
+  dispatch. `pending`/`retry` now become recoverable `claimed` rows without
+  dispatch evidence; the full immutable destination, provider/auth, secret,
+  workspace, attempt, and binding fence atomically enters `dispatching`
+  immediately before provider bytes. Expired `claimed` rows retry safely, while
+  expired `dispatching` preserves Slack ambiguity and email idempotent recovery.
+  Persisted email ambiguity is separate from the stable delivery binding:
+  initial post-dispatch 5xx/invalid transport retries set unresolved truth,
+  subsequent non-success becomes `outcome_unknown`, repeated definite 429s stay
+  retryable, and exhausted unresolved delivery never dead-letters.
+- The worker real-service fixture now creates separate email and Slack runs by
+  actual acceptance plus `CoordinatorRunStore` terminalization; it no longer
+  injects a second provider intent for one run. Focused PostgreSQL/Redis/BullMQ
+  execution passes with email predispatch recovery, Slack terminal ambiguity,
+  exact redelivery inertia, immutable terminal run/checkpoint/event truth, and
+  durable leakage checks. The complete disposable PostgreSQL matrix passes 259
+  assertions, the enabled worker matrix passes 18 with four intentional skips,
+  destination contracts pass 16, and provider delivery unit coverage includes
+  bounded blocked KMS, KMS failure, malformed/local classification, repeated 429,
+  and post-fence network ambiguity. Disposable databases were dropped and Redis
+  DB 12 was flushed. No commit or push was made.
+- The remaining independent-review correctness fixes are executable. A
+  `dispatching` intent with durable possible-dispatch evidence now terminalizes
+  as `outcome_unknown` regardless of an unsafe handler's fallback `retry`
+  classification; the real Slack path throws unexpectedly after its final fence
+  and remains terminal and inert. Exact clear-policy replay is resolved before
+  current workflow visibility, including after workflow deletion, while a new
+  key remains not found. Envelope encryption and key-provider APIs propagate an
+  optional abort signal through AWS KMS send options, check cancellation around
+  local cryptography, and zero plaintext returned after a signal-ignoring late
+  KMS response. Destination loading owns a signal-aware transaction, destroys an
+  active PostgreSQL client on abort, and applies a 30-second local statement
+  timeout instead of abandoning a raced query promise.
+- Verification after those fixes: `pnpm check` passes formatting, all builds,
+  lint, generated-contract drift, typechecks, and 941 unit assertions. A fresh
+  disposable PostgreSQL database passes all 259 integration assertions,
+  including populated `0036` migration and deletion-replay cases. An isolated
+  worker matrix passes 18 PostgreSQL/Redis/BullMQ assertions with four
+  intentional skips, including coordinator-created email recovery and Slack's
+  unexpected post-fence exception. The reusable local database still has the
+  known historical `0012` checksum mismatch and was not used as completion
+  evidence. Direct provider-specific PostgreSQL-stop, Redis-stop/restart, and
+  blocked-delivery drain cases remain open, so destination and Phase 6 gates
+  remain unchecked. No commit or push was made.
+- Run-pin and direct service-loss follow-up on 2026-08-25 strengthens every new
+  non-null run pin at the database write boundary. The trigger safely parses the
+  exact immutable destination config, requires active workspace/destination/
+  connection identity, enforces Slack/unsafe or email/idempotent-with-key with
+  the exact provider/auth pair, and accepts only the configured connection's
+  current secret version. The shared acceptance resolver now locks mutable rows
+  in separate statements before reading the immutable secret, avoiding a
+  pre-wait PostgreSQL join snapshot that could silently drop a policy during
+  credential rotation. Direct integration cases reject wrong class, unrelated
+  secret, wrong provider/auth, and disabled destination, revoked connection, or
+  suspended workspace without a run row; destination-disable and credential-
+  rotation races serialize to no pin or the newly committed exact pin.
+- The isolated coordinator destination matrix now stops PostgreSQL after real
+  coordinator terminalization and before `fenceDispatch` for both Slack and
+  email. Dispatcher readiness fails closed, destination loading returns a
+  definite pre-dispatch retry, credential/provider adapters receive zero calls,
+  and both expired `claimed` rows recover as retry with
+  `possibly_dispatched=false`. It also stops Redis after both intent/outbox
+  commits: dispatcher readiness/admission fails closed, PostgreSQL truth remains
+  retryable, and a fresh runtime after restart backfills four original/recovery
+  outboxes. Email sends once with its exact deterministic key; Slack crosses its
+  fence once, terminalizes the injected unexpected exception as
+  `outcome_unknown`, and both duplicate queue replays are inert. Terminal run,
+  checkpoint, and event truth and non-recursive/leakage assertions remain
+  unchanged.
+- Verification for that follow-up: `pnpm check` passes 943 unit assertions;
+  explicit contract generation/check reports no drift; the complete disposable
+  database matrix passes 262 assertions in 34.95 seconds. Isolated worker files
+  pass 18 assertions with four intentional skips: the complete coordinator file
+  passes 9 in 94.00 seconds, transport passes 5 in 4.52 seconds, and preview
+  passes 4 with one intentional skip. The shared destructive transport matrix
+  passes one assertion in 16.70 seconds, including PostgreSQL/Redis restart,
+  zero claims after drain, 0.36 ms dispatcher close, and 64.62 ms forced active-
+  consumer close. Running destructive and ordinary worker files concurrently was
+  intentionally rejected as evidence because a service stop disrupts parallel
+  fixtures; reruns used isolated sequencing and disposable database/Redis DBs.
+  The direct blocked in-flight destination case now fences both coordinator-
+  created provider intents, blocks both adapters, and aborts them within the
+  shutdown bound. Slack persists `outcome_unknown` and receives no replay; email
+  persists unresolved retry truth and later succeeds with the same binding and
+  idempotency key. The production dispatcher rejects readiness, claims zero rows
+  after drain, and closes within two seconds. The focused destructive assertion
+  passes in 82.16 seconds. Destination delivery and consumer gates are complete;
+  the all-trigger pinning gate remains open until Webhook and Schedule use the
+  shared resolver, so Phase 6 remains in progress. No commit or push was made.
 
 ## Later Phases
 

@@ -54,9 +54,13 @@ function store(kind: 'ready' | 'terminal' = 'ready'): FailureNotificationStore {
             idempotencyKey:
               'failure-notification:v1:55555555-5555-4555-8555-555555555555',
             sideEffectClass: 'idempotent_with_key',
+            connectionSecretVersionId: '88888888-8888-4888-8888-888888888888',
+            deliveryUnresolved: false,
           },
     ),
     completeDelivery: vi.fn().mockResolvedValue('completed'),
+    loadDestination: vi.fn(),
+    fenceDispatch: vi.fn(),
     recoverDue: vi.fn(),
     close: vi.fn(),
   };
@@ -106,7 +110,7 @@ describe('failure notification handler', () => {
     expect(repository.completeDelivery).not.toHaveBeenCalled();
   });
 
-  it('turns provider timeout into a retryable ambiguous bounded result', async () => {
+  it('records provider timeout as retry with unresolved dispatch evidence', async () => {
     const repository = store();
     const handler = createFailureNotificationHandler({
       store: repository,
@@ -131,7 +135,7 @@ describe('failure notification handler', () => {
       expect.objectContaining({
         result: {
           schemaVersion: 1,
-          kind: 'outcome_unknown',
+          kind: 'retry',
           safeErrorCode: 'delivery.timeout',
           possiblyDispatched: true,
         },

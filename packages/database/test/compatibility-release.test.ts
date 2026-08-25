@@ -33,7 +33,9 @@ describe('node compatibility release persistence', () => {
       'utf8',
     );
 
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0036_resend_api_key_connections.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe(
+      '0037_failure_notification_destinations.sql',
+    );
     expect(migration).toContain('CREATE TABLE app.node_compatibility_releases');
     expect(migration).toContain('CREATE TABLE app.node_compatibility_current');
     expect(migration).toContain(

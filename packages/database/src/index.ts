@@ -1,4 +1,12 @@
 export {
+  createFailureNotificationDestinationDatabase,
+  FailureNotificationDestinationConflictError,
+  FailureNotificationDestinationIdempotencyConflictError,
+  FailureNotificationDestinationNotFoundError,
+  type FailureNotificationDestinationDatabase,
+  type FailureNotificationDestinationRecord,
+} from './failure-notification-destinations.js';
+export {
   parseDatabaseConfig,
   parseMigrationConfig,
   parseOutboxDispatcherConfig,

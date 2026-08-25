@@ -52,6 +52,9 @@ const versionB = randomUUID();
 const retainedRunId = randomUUID();
 const retainedLegacyNodeRunId = randomUUID();
 const retainedLegacyInvocationKey = 'legacy/node#1';
+const notificationConnectionId = randomUUID();
+const notificationSecretVersionId = randomUUID();
+const notificationDestinationId = randomUUID();
 
 function namedDatabaseUrl(base: string, name: string): string {
   const value = new URL(base);
@@ -340,6 +343,15 @@ async function seedIdentityAndExecutables(): Promise<void> {
     await client.query(
       'alter table app.workflow_versions no force row level security',
     );
+    for (const table of [
+      'connections',
+      'connection_secret_versions',
+      'failure_notification_destinations',
+      'failure_notification_destination_versions',
+    ])
+      await client.query(
+        `alter table app.${table} no force row level security`,
+      );
     await client.query(
       `insert into app.users (id,email,display_name) values ($1,$2,'Run Store')`,
       [actorId, `run-store-${actorId}@example.test`],
@@ -379,10 +391,63 @@ async function seedIdentityAndExecutables(): Promise<void> {
         ],
       );
     }
+    await client.query(
+      `insert into app.connections (
+         id,workspace_id,provider_key,name,auth_type,status,
+         current_secret_version_id,created_by
+       ) values ($1,$2,'email','Run failure email','resend_api_key','active',$3,$4)`,
+      [
+        notificationConnectionId,
+        workspaceA,
+        notificationSecretVersionId,
+        actorId,
+      ],
+    );
+    await client.query(
+      `insert into app.connection_secret_versions (
+         id,workspace_id,connection_id,schema_version,kms_key_reference,
+         encrypted_data_key,ciphertext,nonce,auth_tag,created_by
+       ) values ($1,$2,$3,1,'kms','key','cipher','AAAAAAAAAAAAAAAA',
+         'AAAAAAAAAAAAAAAAAAAAAA',$4)`,
+      [
+        notificationSecretVersionId,
+        workspaceA,
+        notificationConnectionId,
+        actorId,
+      ],
+    );
+    await client.query(
+      `insert into app.failure_notification_destinations
+         (id,workspace_id,kind,status,current_config_version,created_by)
+       values ($1,$2,'email','enabled',1,$3)`,
+      [notificationDestinationId, workspaceA, actorId],
+    );
+    await client.query(
+      `insert into app.failure_notification_destination_versions
+         (workspace_id,destination_id,version,kind,side_effect_class,config,created_by)
+       values ($1,$2,1,'email','idempotent_with_key',$3::jsonb,$4)`,
+      [
+        workspaceA,
+        notificationDestinationId,
+        JSON.stringify({
+          connectionId: notificationConnectionId,
+          toEmail: 'run-store@example.test',
+        }),
+        actorId,
+      ],
+    );
     await client.query('alter table app.workflows force row level security');
     await client.query(
       'alter table app.workflow_versions force row level security',
     );
+    await client.query('set constraints all immediate');
+    for (const table of [
+      'connections',
+      'connection_secret_versions',
+      'failure_notification_destinations',
+      'failure_notification_destination_versions',
+    ])
+      await client.query(`alter table app.${table} force row level security`);
   });
 }
 
@@ -398,6 +463,7 @@ async function insertRun(input: {
     destinationId: string;
     destinationConfigVersion: number;
     sideEffectClass: string;
+    connectionSecretVersionId: string;
   }>;
 }): Promise<string> {
   const workspaceId = input.workspaceId ?? workspaceA;
@@ -409,9 +475,10 @@ async function insertRun(input: {
          id,workspace_id,workflow_id,workflow_version_id,trigger_type,status,
           deadline_at,input_ref,failure_notification_policy_version,
           failure_notification_destination_id,
-          failure_notification_destination_config_version,
-          failure_notification_side_effect_class
-        ) values ($1,$2,$3,$4,'manual',$5,$6,$7::jsonb,$8,$9,$10,$11)`,
+           failure_notification_destination_config_version,
+           failure_notification_side_effect_class,
+           failure_notification_connection_secret_version_id
+         ) values ($1,$2,$3,$4,'manual',$5,$6,$7::jsonb,$8,$9,$10,$11,$12)`,
       [
         runId,
         workspaceId,
@@ -424,6 +491,7 @@ async function insertRun(input: {
         input.failureNotificationPolicy?.destinationId ?? null,
         input.failureNotificationPolicy?.destinationConfigVersion ?? null,
         input.failureNotificationPolicy?.sideEffectClass ?? null,
+        input.failureNotificationPolicy?.connectionSecretVersionId ?? null,
       ],
     );
     await client.query(
@@ -555,9 +623,10 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         ],
       }),
       failureNotificationPolicy: {
-        destinationId: randomUUID(),
-        destinationConfigVersion: 4,
+        destinationId: notificationDestinationId,
+        destinationConfigVersion: 1,
         sideEffectClass: 'idempotent_with_key',
+        connectionSecretVersionId: notificationSecretVersionId,
       },
     });
     const nodeRunId = randomUUID();
@@ -710,6 +779,45 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
       if (ready?.kind !== 'ready') throw new Error('delivery claim missing');
       expect(ready.context.runId).toBe(runId);
 
+      await asRuntime(apiBaseUrl, workspaceA, async (client) => {
+        await client.query(
+          `insert into app.failure_notification_destination_versions
+             (workspace_id,destination_id,version,kind,side_effect_class,config,created_by)
+           select workspace_id,destination_id,2,kind,side_effect_class,
+                  jsonb_set(config,'{toEmail}','"changed@example.test"'),$3
+             from app.failure_notification_destination_versions
+            where workspace_id=$1 and destination_id=$2 and version=1`,
+          [workspaceA, notificationDestinationId, actorId],
+        );
+        await client.query(
+          `update app.failure_notification_destinations
+              set current_config_version=2,status='disabled'
+            where workspace_id=$1 and id=$2`,
+          [workspaceA, notificationDestinationId],
+        );
+      });
+      await expect(
+        deliveryStore.loadDestination({
+          workspaceId: workspaceA,
+          intentId: first.intent_id,
+          attemptNumber: ready.attemptNumber,
+          workerId: 'notification-test-worker',
+          signal: new AbortController().signal,
+        }),
+      ).resolves.toMatchObject({
+        kind: 'email',
+        secretVersionId: notificationSecretVersionId,
+        target: 'run-store@example.test',
+      });
+      await expect(
+        deliveryStore.fenceDispatch({
+          workspaceId: workspaceA,
+          intentId: first.intent_id,
+          attemptNumber: ready.attemptNumber,
+          deliveryBinding: `email:v1:sha256:${'a'.repeat(64)}`,
+        }),
+      ).resolves.toBeUndefined();
+
       await asRuntime(workerBaseUrl, workspaceA, (client) =>
         client.query(
           `update app.run_failure_notification_intents
@@ -718,7 +826,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           [first.intent_id],
         ),
       );
-      await expect(deliveryStore.recoverDue(10)).resolves.toBe(1);
+      await expect(deliveryStore.recoverDue(10, 3)).resolves.toBe(1);
       for (let attempt = 2; attempt <= 3; attempt += 1) {
         const next = await asRuntime(workerBaseUrl, workspaceA, (client) =>
           client.query<{ id: string; payload_checksum: string }>(
@@ -738,6 +846,38 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         });
         if (claimed.kind !== 'ready')
           throw new Error('retry was not claimable');
+        if (attempt === 2) {
+          const rotatedSecretVersionId = randomUUID();
+          await asRuntime(apiBaseUrl, workspaceA, async (client) => {
+            await client.query(
+              `insert into app.connection_secret_versions (
+                 id,workspace_id,connection_id,schema_version,kms_key_reference,
+                 encrypted_data_key,ciphertext,nonce,auth_tag,created_by
+               ) values ($1,$2,$3,1,'kms','key2','cipher2','BBBBBBBBBBBBBBBB',
+                 'BBBBBBBBBBBBBBBBBBBBBB',$4)`,
+              [
+                rotatedSecretVersionId,
+                workspaceA,
+                notificationConnectionId,
+                actorId,
+              ],
+            );
+            await client.query(
+              `update app.connections set current_secret_version_id=$3
+                where workspace_id=$1 and id=$2`,
+              [workspaceA, notificationConnectionId, rotatedSecretVersionId],
+            );
+          });
+          await expect(
+            deliveryStore.loadDestination({
+              workspaceId: workspaceA,
+              intentId: first.intent_id,
+              attemptNumber: claimed.attemptNumber,
+              workerId: 'notification-test-worker',
+              signal: new AbortController().signal,
+            }),
+          ).rejects.toThrow('Delivery destination is unavailable');
+        }
         const workerClock =
           attempt === 2
             ? vi
@@ -820,37 +960,72 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         ),
       );
       expect(terminal.rows[0]).toEqual({
-        status: 'dead_letter',
+        status: 'outcome_unknown',
         run_status: 'failed',
         event_count: 3,
       });
 
-      const unsafeId = randomUUID();
+      const exhaustedId = randomUUID();
       await asRuntime(workerBaseUrl, workspaceA, (client) =>
         client.query(
           `insert into app.run_failure_notification_intents (
              id,workspace_id,workflow_run_id,terminal_event_sequence,policy_version,
              destination_id,destination_config_version,side_effect_class,
+             connection_secret_version_id,delivery_binding,context,context_checksum,
+             status,delivery_attempts,dispatch_marked_at,recovery_at,possibly_dispatched
+           ) select $1,workspace_id,workflow_run_id,terminal_event_sequence+2,policy_version,
+                    destination_id,destination_config_version,'idempotent_with_key',
+                    connection_secret_version_id,$3,context,context_checksum,
+                    'dispatching',3,clock_timestamp(),clock_timestamp()+interval '1 minute',true
+               from app.run_failure_notification_intents where id=$2`,
+          [exhaustedId, first.intent_id, `email:v1:sha256:${'b'.repeat(64)}`],
+        ),
+      );
+      await expect(
+        deliveryStore.completeDelivery({
+          workspaceId: workspaceA,
+          intentId: exhaustedId,
+          attemptNumber: 3,
+          maxAttempts: 3,
+          retryDelaySeconds: 0,
+          result: {
+            schemaVersion: 1,
+            kind: 'retry',
+            safeErrorCode: 'delivery.provider_ambiguous',
+            possiblyDispatched: true,
+          },
+        }),
+      ).resolves.toBe('completed');
+      const exhausted = await asRuntime(workerBaseUrl, workspaceA, (client) =>
+        client.query<{ status: string; possibly_dispatched: boolean }>(
+          `select status,possibly_dispatched
+               from app.run_failure_notification_intents where id=$1`,
+          [exhaustedId],
+        ),
+      );
+      expect(exhausted.rows[0]).toEqual({
+        status: 'outcome_unknown',
+        possibly_dispatched: true,
+      });
+
+      await expect(
+        asRuntime(workerBaseUrl, workspaceA, (client) =>
+          client.query(
+            `insert into app.run_failure_notification_intents (
+             id,workspace_id,workflow_run_id,terminal_event_sequence,policy_version,
+             destination_id,destination_config_version,side_effect_class,
              context,context_checksum,status,delivery_attempts,dispatch_marked_at,recovery_at
            ) select $1,workspace_id,workflow_run_id,terminal_event_sequence+1,policy_version,
-                    destination_id,destination_config_version,'unsafe',context,context_checksum,
+                     destination_id,destination_config_version,'unsafe',context,context_checksum,
                     'dispatching',1,clock_timestamp()-interval '2 seconds',
                     clock_timestamp()-interval '1 second'
              from app.run_failure_notification_intents where id=$2`,
-          [unsafeId, first.intent_id],
+            [randomUUID(), first.intent_id],
+          ),
         ),
+      ).rejects.toThrow(
+        'new failure notification intent must exactly match its run pin',
       );
-      await expect(deliveryStore.recoverDue(10)).resolves.toBe(1);
-      const unsafe = await asRuntime(workerBaseUrl, workspaceA, (client) =>
-        client.query<{ status: string; safe_error_code: string }>(
-          `select status,safe_error_code from app.run_failure_notification_intents where id=$1`,
-          [unsafeId],
-        ),
-      );
-      expect(unsafe.rows[0]).toEqual({
-        status: 'outcome_unknown',
-        safe_error_code: 'delivery.recovery_ambiguous',
-      });
     } finally {
       await deliveryStore.close();
     }
@@ -858,11 +1033,6 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
     const canceledRun = await insertRun({
       status: 'canceled',
       schedulerState: checkpoint({ runStatus: 'canceled' }),
-      failureNotificationPolicy: {
-        destinationId: randomUUID(),
-        destinationConfigVersion: 1,
-        sideEffectClass: 'safe',
-      },
     });
     const excluded = await asRuntime(workerBaseUrl, workspaceA, (client) =>
       client.query(
@@ -1603,7 +1773,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0036_resend_api_key_connections.sql',
+          migrationHead: '0037_failure_notification_destinations.sql',
           role: 'pertexo_worker',
         });
       } finally {
@@ -1665,6 +1835,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         '0034_run_failure_notifications.sql',
         '0035_slack_bot_token_connections.sql',
         '0036_resend_api_key_connections.sql',
+        '0037_failure_notification_destinations.sql',
       ]);
       const workerPool = new Pool({
         connectionString: namedDatabaseUrl(
@@ -1680,7 +1851,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0036_resend_api_key_connections.sql',
+          migrationHead: '0037_failure_notification_destinations.sql',
           role: 'pertexo_worker',
         });
         await expect(
@@ -1747,7 +1918,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0036_resend_api_key_connections.sql',
+        migrationHead: '0037_failure_notification_destinations.sql',
         role: 'pertexo_worker',
       });
       const catalog = await readinessPool.query<{
@@ -1986,7 +2157,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0036_resend_api_key_connections.sql',
+        migrationHead: '0037_failure_notification_destinations.sql',
       });
     } finally {
       await readinessPool.end();
@@ -2172,7 +2343,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         workerRuntimeRole: 'pertexo_worker',
       }),
     ).resolves.toMatchObject({
-      migrationHead: '0036_resend_api_key_connections.sql',
+      migrationHead: '0037_failure_notification_destinations.sql',
     });
     await readinessPool.end();
   });

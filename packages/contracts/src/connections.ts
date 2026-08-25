@@ -9,8 +9,17 @@ import {
   connectionTestRequestSchema,
   connectionTestResponseSchema,
 } from './http/connections.js';
+import {
+  failureNotificationDestinationAppendVersionRequestSchema,
+  failureNotificationDestinationCreateRequestSchema,
+  failureNotificationDestinationListResponseSchema,
+  failureNotificationDestinationResponseSchema,
+  failureNotificationDestinationStatusRequestSchema,
+  workflowFailureNotificationPolicyRequestSchema,
+} from './http/failure-notification-destinations.js';
 
 export * from './http/connections.js';
+export * from './http/failure-notification-destinations.js';
 
 const schemas = Object.freeze({
   ApiProblem: jsonSchema(apiProblemSchema, 'output'),
@@ -22,10 +31,34 @@ const schemas = Object.freeze({
   ),
   ConnectionTestRequest: jsonSchema(connectionTestRequestSchema, 'input'),
   ConnectionTestResponse: jsonSchema(connectionTestResponseSchema, 'output'),
+  FailureNotificationDestinationAppendVersionRequest: jsonSchema(
+    failureNotificationDestinationAppendVersionRequestSchema,
+    'input',
+  ),
+  FailureNotificationDestinationCreateRequest: jsonSchema(
+    failureNotificationDestinationCreateRequestSchema,
+    'input',
+  ),
+  FailureNotificationDestinationListResponse: jsonSchema(
+    failureNotificationDestinationListResponseSchema,
+    'output',
+  ),
+  FailureNotificationDestinationResponse: jsonSchema(
+    failureNotificationDestinationResponseSchema,
+    'output',
+  ),
+  FailureNotificationDestinationStatusRequest: jsonSchema(
+    failureNotificationDestinationStatusRequestSchema,
+    'input',
+  ),
+  WorkflowFailureNotificationPolicyRequest: jsonSchema(
+    workflowFailureNotificationPolicyRequestSchema,
+    'input',
+  ),
 });
 
 export const connectionsClientContract = Object.freeze({
-  schemaVersion: '1.0.0',
+  schemaVersion: '1.1.0',
   schemas,
 });
 
@@ -33,7 +66,7 @@ const problemResponses = Object.freeze({
   BadRequest: problemResponse('Invalid request'),
   Unauthenticated: problemResponse('Authentication required'),
   Forbidden: problemResponse('Forbidden'),
-  NotFound: problemResponse('Connection not found'),
+  NotFound: problemResponse('Resource not found'),
   Conflict: problemResponse('Request conflict'),
   ReauthorizationRequired: problemResponse('Reauthorization required'),
   ServiceUnavailable: problemResponse('Key or provider service unavailable'),
@@ -51,6 +84,18 @@ const connectionParameter = {
   in: 'path',
   required: true,
   schema: jsonSchema(connectionIdentifierSchema, 'input'),
+} as const;
+const destinationParameter = {
+  name: 'destinationId',
+  in: 'path',
+  required: true,
+  schema: { type: 'string', format: 'uuid' },
+} as const;
+const workflowParameter = {
+  name: 'workflowId',
+  in: 'path',
+  required: true,
+  schema: { type: 'string', format: 'uuid' },
 } as const;
 const csrfParameter = {
   name: 'x-csrf-token',
@@ -72,7 +117,7 @@ const idempotencyParameter = {
 
 export const connectionsOpenApiDocument = Object.freeze({
   openapi: '3.1.0',
-  info: { title: 'Pertexo Connections API', version: '1.0.0' },
+  info: { title: 'Pertexo Connections API', version: '1.1.0' },
   paths: {
     '/v1/workspaces/{workspaceId}/connections': {
       post: {
@@ -158,6 +203,157 @@ export const connectionsOpenApiDocument = Object.freeze({
         },
       },
     },
+    '/v1/workspaces/{workspaceId}/failure-notification-destinations': {
+      get: {
+        operationId: 'listFailureNotificationDestinations',
+        security: [{ cookieSession: [] }],
+        parameters: [workspaceParameter],
+        responses: {
+          '200': jsonResponse(
+            'Failure notification destinations',
+            'FailureNotificationDestinationListResponse',
+          ),
+          '401': responseReference('Unauthenticated'),
+          '403': responseReference('Forbidden'),
+          '404': responseReference('NotFound'),
+          '500': responseReference('Unexpected'),
+        },
+      },
+      post: {
+        operationId: 'createFailureNotificationDestination',
+        security: [{ cookieSession: [] }],
+        parameters: [workspaceParameter, csrfParameter, idempotencyParameter],
+        requestBody: jsonRequest('FailureNotificationDestinationCreateRequest'),
+        responses: {
+          '201': jsonResponse(
+            'Failure notification destination created',
+            'FailureNotificationDestinationResponse',
+          ),
+          '400': responseReference('BadRequest'),
+          '401': responseReference('Unauthenticated'),
+          '403': responseReference('Forbidden'),
+          '404': responseReference('NotFound'),
+          '409': responseReference('Conflict'),
+          '500': responseReference('Unexpected'),
+        },
+      },
+    },
+    '/v1/workspaces/{workspaceId}/failure-notification-destinations/{destinationId}':
+      {
+        get: {
+          operationId: 'getFailureNotificationDestination',
+          security: [{ cookieSession: [] }],
+          parameters: [workspaceParameter, destinationParameter],
+          responses: {
+            '200': jsonResponse(
+              'Failure notification destination',
+              'FailureNotificationDestinationResponse',
+            ),
+            '401': responseReference('Unauthenticated'),
+            '403': responseReference('Forbidden'),
+            '404': responseReference('NotFound'),
+            '500': responseReference('Unexpected'),
+          },
+        },
+      },
+    '/v1/workspaces/{workspaceId}/failure-notification-destinations/{destinationId}/versions':
+      {
+        post: {
+          operationId: 'appendFailureNotificationDestinationVersion',
+          security: [{ cookieSession: [] }],
+          parameters: [
+            workspaceParameter,
+            destinationParameter,
+            csrfParameter,
+            idempotencyParameter,
+          ],
+          requestBody: jsonRequest(
+            'FailureNotificationDestinationAppendVersionRequest',
+          ),
+          responses: {
+            '200': jsonResponse(
+              'Failure notification destination version appended',
+              'FailureNotificationDestinationResponse',
+            ),
+            '400': responseReference('BadRequest'),
+            '401': responseReference('Unauthenticated'),
+            '403': responseReference('Forbidden'),
+            '404': responseReference('NotFound'),
+            '409': responseReference('Conflict'),
+            '500': responseReference('Unexpected'),
+          },
+        },
+      },
+    '/v1/workspaces/{workspaceId}/failure-notification-destinations/{destinationId}/status':
+      {
+        put: {
+          operationId: 'setFailureNotificationDestinationStatus',
+          security: [{ cookieSession: [] }],
+          parameters: [
+            workspaceParameter,
+            destinationParameter,
+            csrfParameter,
+            idempotencyParameter,
+          ],
+          requestBody: jsonRequest(
+            'FailureNotificationDestinationStatusRequest',
+          ),
+          responses: {
+            '200': jsonResponse(
+              'Failure notification destination status changed',
+              'FailureNotificationDestinationResponse',
+            ),
+            '400': responseReference('BadRequest'),
+            '401': responseReference('Unauthenticated'),
+            '403': responseReference('Forbidden'),
+            '404': responseReference('NotFound'),
+            '409': responseReference('Conflict'),
+            '500': responseReference('Unexpected'),
+          },
+        },
+      },
+    '/v1/workspaces/{workspaceId}/workflows/{workflowId}/failure-notification-policy':
+      {
+        put: {
+          operationId: 'setWorkflowFailureNotificationPolicy',
+          security: [{ cookieSession: [] }],
+          parameters: [
+            workspaceParameter,
+            workflowParameter,
+            csrfParameter,
+            idempotencyParameter,
+          ],
+          requestBody: jsonRequest('WorkflowFailureNotificationPolicyRequest'),
+          responses: {
+            '204': { description: 'Failure notification policy set' },
+            '400': responseReference('BadRequest'),
+            '401': responseReference('Unauthenticated'),
+            '403': responseReference('Forbidden'),
+            '404': responseReference('NotFound'),
+            '409': responseReference('Conflict'),
+            '500': responseReference('Unexpected'),
+          },
+        },
+        delete: {
+          operationId: 'clearWorkflowFailureNotificationPolicy',
+          security: [{ cookieSession: [] }],
+          parameters: [
+            workspaceParameter,
+            workflowParameter,
+            csrfParameter,
+            idempotencyParameter,
+          ],
+          responses: {
+            '204': { description: 'Failure notification policy cleared' },
+            '400': responseReference('BadRequest'),
+            '401': responseReference('Unauthenticated'),
+            '403': responseReference('Forbidden'),
+            '404': responseReference('NotFound'),
+            '409': responseReference('Conflict'),
+            '500': responseReference('Unexpected'),
+          },
+        },
+      },
   },
   components: {
     schemas,

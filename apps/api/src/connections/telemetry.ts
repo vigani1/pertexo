@@ -3,6 +3,11 @@ export const CONNECTION_OPERATION = Object.freeze({
   rotate: 'connection.secret.rotate',
   revoke: 'connection.revoke',
   test: 'connection.test',
+  destinationCreate: 'failure_notification_destination.create',
+  destinationAppend: 'failure_notification_destination.version.append',
+  destinationStatus: 'failure_notification_destination.status',
+  policySet: 'workflow.failure_notification_policy.set',
+  policyClear: 'workflow.failure_notification_policy.clear',
 } as const);
 
 export type ConnectionOperation =

@@ -20,9 +20,16 @@ export interface FailureNotificationDeliveryCapability {
   deliver(
     input: Readonly<{
       context: FailureNotificationContextV1;
+      workspaceId: string;
+      intentId: string;
+      attemptNumber: number;
       destinationId: string;
       destinationConfigVersion: number;
       idempotencyKey: string;
+      sideEffectClass: 'safe' | 'idempotent_with_key' | 'unsafe';
+      connectionSecretVersionId: string;
+      deliveryBinding?: string;
+      deliveryUnresolved: boolean;
       signal: AbortSignal;
     }>,
   ): Promise<FailureNotificationDeliveryResultV1>;
@@ -76,16 +83,25 @@ export function createFailureNotificationHandler(
         result = FailureNotificationDeliveryResultV1Schema.parse(
           await dependencies.delivery.deliver({
             context: claim.context,
+            workspaceId: delivery.data.workspaceId,
+            intentId: delivery.data.notificationIntentId,
+            attemptNumber: claim.attemptNumber,
             destinationId: claim.destinationId,
             destinationConfigVersion: claim.destinationConfigVersion,
             idempotencyKey: claim.idempotencyKey,
+            sideEffectClass: claim.sideEffectClass,
+            connectionSecretVersionId: claim.connectionSecretVersionId,
+            deliveryUnresolved: claim.deliveryUnresolved,
+            ...(claim.deliveryBinding === undefined
+              ? {}
+              : { deliveryBinding: claim.deliveryBinding }),
             signal: controller.signal,
           }),
         );
       } catch {
         result = {
           schemaVersion: 1,
-          kind: 'outcome_unknown',
+          kind: 'retry',
           safeErrorCode: controller.signal.aborted
             ? 'delivery.timeout'
             : 'delivery.provider_failure',

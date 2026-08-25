@@ -11,7 +11,15 @@ import {
 } from '../identity-workspace/guards.js';
 import { RequestContextStore } from '../platform/http/index.js';
 import { ConnectionsController } from './controllers.js';
-import { ConnectionManageGuard, ConnectionUseGuard } from './guards.js';
+import {
+  FailureNotificationDestinationsController,
+  FailureNotificationDestinationUseCases,
+} from './failure-notification-destinations.js';
+import {
+  ConnectionManageGuard,
+  ConnectionUseGuard,
+  FailureNotificationWorkflowEditGuard,
+} from './guards.js';
 import type { ConnectionDependencies } from './ports.js';
 import { NOOP_CONNECTION_TELEMETRY } from './telemetry.js';
 import {
@@ -46,6 +54,7 @@ export class ConnectionsModule {
       { provide: CONNECTION_TELEMETRY, useValue: telemetry },
       ConnectionManageGuard,
       ConnectionUseGuard,
+      FailureNotificationWorkflowEditGuard,
       {
         provide: SessionAuthenticationGuard,
         useFactory: (
@@ -99,10 +108,23 @@ export class ConnectionsModule {
         ),
       },
     ];
+    if (dependencies.destinationPersistence !== undefined)
+      providers.push({
+        provide: FailureNotificationDestinationUseCases,
+        useValue: new FailureNotificationDestinationUseCases(
+          dependencies.destinationPersistence,
+          telemetry,
+        ),
+      });
     return {
       module: ConnectionsModule,
       imports: [identityModule],
-      controllers: [ConnectionsController],
+      controllers: [
+        ConnectionsController,
+        ...(dependencies.destinationPersistence === undefined
+          ? []
+          : [FailureNotificationDestinationsController]),
+      ],
       providers,
       exports: [
         CreateConnectionUseCase,

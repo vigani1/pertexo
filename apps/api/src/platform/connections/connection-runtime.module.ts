@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { metrics, trace } from '@opentelemetry/api';
 import {
   createConnectionDatabase,
+  createFailureNotificationDestinationDatabase,
   type ConnectionDatabase,
   type DatabaseConfig,
 } from '@pertexo/database';
@@ -49,6 +50,8 @@ export function createApiConnectionRuntime(
 ): ApiConnectionRuntime {
   const database =
     overrides.database ?? createConnectionDatabase(databaseConfig);
+  const destinationDatabase =
+    createFailureNotificationDestinationDatabase(databaseConfig);
   const encryptionRuntime =
     overrides.encryption === undefined
       ? createAwsConnectionEnvelopeEncryption({
@@ -68,6 +71,7 @@ export function createApiConnectionRuntime(
   return Object.freeze({
     dependencies: Object.freeze({
       persistence: database,
+      destinationPersistence: destinationDatabase,
       authorization: identityRuntime.dependencies.authorization,
       encryption,
       httpClient,
@@ -76,7 +80,11 @@ export function createApiConnectionRuntime(
       telemetry,
     }),
     close: (): Promise<void> => {
-      closePromise ??= closeResources(database, encryptionRuntime);
+      closePromise ??= closeResources(
+        database,
+        destinationDatabase,
+        encryptionRuntime,
+      );
       return closePromise;
     },
   });
@@ -84,10 +92,14 @@ export function createApiConnectionRuntime(
 
 async function closeResources(
   database: ConnectionDatabase,
+  destinationDatabase: ReturnType<
+    typeof createFailureNotificationDestinationDatabase
+  >,
   encryption: AwsConnectionEnvelopeEncryptionRuntime | undefined,
 ): Promise<void> {
   const results = await Promise.allSettled([
     database.close(),
+    destinationDatabase.close(),
     Promise.resolve(encryption?.close()),
   ]);
   const failures = results.flatMap((result) =>

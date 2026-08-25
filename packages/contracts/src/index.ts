@@ -3,6 +3,7 @@ export {
   connectionsOpenApiDocument,
 } from './connections.js';
 export * from './http/connections.js';
+export * from './http/failure-notification-destinations.js';
 export {
   API_PROBLEM_CODES,
   apiProblemCodeSchema,

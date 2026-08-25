@@ -4,6 +4,8 @@ import {
   ConnectionsController,
   ConnectionsModule,
   CreateConnectionUseCase,
+  FailureNotificationDestinationsController,
+  FailureNotificationDestinationUseCases,
   type ConnectionDependencies,
 } from '../../src/connections/index.js';
 
@@ -28,6 +30,16 @@ const dependencies = {
     open: () => Promise.reject(new Error('not exercised')),
   },
   httpClient: { execute: () => Promise.reject(new Error('not exercised')) },
+  destinationPersistence: {
+    create: () => Promise.reject(new Error('not exercised')),
+    get: () => Promise.reject(new Error('not exercised')),
+    list: () => Promise.reject(new Error('not exercised')),
+    appendVersion: () => Promise.reject(new Error('not exercised')),
+    setStatus: () => Promise.reject(new Error('not exercised')),
+    setWorkflowPolicy: () => Promise.reject(new Error('not exercised')),
+    clearWorkflowPolicy: () => Promise.reject(new Error('not exercised')),
+    close: () => Promise.resolve(),
+  },
 } satisfies ConnectionDependencies;
 
 // Nest dynamic modules require a class token.
@@ -42,8 +54,14 @@ describe('connections Nest module', () => {
     expect(dynamic.providers).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ provide: CreateConnectionUseCase }),
+        expect.objectContaining({
+          provide: FailureNotificationDestinationUseCases,
+        }),
       ]),
     );
     expect(dynamic.controllers).toContain(ConnectionsController);
+    expect(dynamic.controllers).toContain(
+      FailureNotificationDestinationsController,
+    );
   });
 });

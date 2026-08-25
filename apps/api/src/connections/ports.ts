@@ -1,4 +1,7 @@
-import type { ConnectionDatabase } from '@pertexo/database';
+import type {
+  ConnectionDatabase,
+  FailureNotificationDestinationDatabase,
+} from '@pertexo/database';
 import type {
   ConnectionSecretContext,
   SealedConnectionSecret,
@@ -54,4 +57,5 @@ export type ConnectionDependencies = Readonly<{
   slackClient?: ConnectionSlackClient;
   emailClient?: ConnectionEmailClient;
   telemetry?: ConnectionTelemetry;
+  destinationPersistence?: FailureNotificationDestinationDatabase;
 }>;

@@ -164,4 +164,41 @@ describe('AWS KMS envelope-key adapter', () => {
     );
     expect(failure).not.toHaveProperty('cause');
   });
+
+  it('forwards abort to KMS and zeroes plaintext returned after abort', async () => {
+    const controller = new AbortController();
+    const latePlaintext = randomBytes(32);
+    let resolveKms: ((value: unknown) => void) | undefined;
+    let observedSignal: AbortSignal | undefined;
+    const provider = new AwsKmsEnvelopeKeyProvider(
+      {
+        send: (
+          _command: KmsCommand,
+          options?: Readonly<{ abortSignal?: AbortSignal }>,
+        ) => {
+          observedSignal = options?.abortSignal;
+          return new Promise<unknown>((resolve) => {
+            resolveKms = resolve;
+          });
+        },
+      },
+      'alias/pertexo',
+    );
+
+    const pending = provider.decryptDataKey(
+      randomBytes(96),
+      'alias/pertexo',
+      context(),
+      controller.signal,
+    );
+    await Promise.resolve();
+    expect(observedSignal).toBe(controller.signal);
+    controller.abort();
+    resolveKms?.({ Plaintext: latePlaintext });
+
+    await expect(pending).rejects.toBeInstanceOf(
+      ConnectionSecretEncryptionError,
+    );
+    expect([...latePlaintext]).toEqual(new Array<number>(32).fill(0));
+  });
 });

@@ -665,8 +665,21 @@ async function persistFailureNotificationIntent(
   const inserted = await client.query(
     `insert into app.run_failure_notification_intents (
        id,workspace_id,workflow_run_id,terminal_event_sequence,policy_version,
-       destination_id,destination_config_version,side_effect_class,context,context_checksum
-     ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10)
+       destination_id,destination_config_version,side_effect_class,
+       connection_secret_version_id,context,context_checksum
+      ) select $1,run.workspace_id,run.id,$4,
+               run.failure_notification_policy_version,
+               run.failure_notification_destination_id,
+               run.failure_notification_destination_config_version,
+               run.failure_notification_side_effect_class,
+               run.failure_notification_connection_secret_version_id,$9::jsonb,$10
+        from app.workflow_runs run
+       where run.workspace_id=$2 and run.id=$3
+         and run.failure_notification_policy_version=$5
+         and run.failure_notification_destination_id=$6
+         and run.failure_notification_destination_config_version=$7
+         and run.failure_notification_side_effect_class=$8
+         and run.failure_notification_connection_secret_version_id is not null
      on conflict (workflow_run_id,terminal_event_sequence,policy_version) do nothing
      returning id`,
     [

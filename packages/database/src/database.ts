@@ -36,6 +36,7 @@ export function createWorkspaceDatabase(
       'Compatibility release database configuration is ambiguous',
     );
   const pool = new Pool(config);
+  pool.on('error', () => undefined);
 
   return Object.freeze({
     withWorkspace: async <T>(

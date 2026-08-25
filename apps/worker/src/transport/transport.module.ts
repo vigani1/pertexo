@@ -6,9 +6,16 @@ import type {
 } from '@nestjs/common';
 import { Inject, Injectable, Module } from '@nestjs/common';
 import {
+  createFailureNotificationStore,
   createOutboxDispatcherDatabase,
   type OutboxDispatcherDatabase,
 } from '@pertexo/database';
+import {
+  createAwsConnectionEnvelopeEncryption,
+  createNodeSecureHttpClient,
+  createResendClient,
+  createSlackClient,
+} from '@pertexo/integrations/server';
 import {
   createTransportMetrics,
   type TransportMetrics,
@@ -36,6 +43,7 @@ import {
   type PreviewMaintenanceRuntime,
 } from '../execution/preview-maintenance-runtime.js';
 import type { FailureNotificationDeliveryCapability } from '../execution/failure-notification-handler.js';
+import { createProviderFailureNotificationDelivery } from '../execution/failure-notification-delivery.js';
 import { WorkerDrainState } from '../runtime/worker-drain-state.js';
 import {
   createDispatchConsumerCapabilityRegistry,
@@ -132,28 +140,84 @@ function previewMaintenanceRuntimeProvider(
         return undefined;
       if (
         notificationEnabled &&
-        dependencies.failureNotificationDelivery === undefined
+        dependencies.failureNotificationDelivery === undefined &&
+        config.connectionEncryption === undefined
       )
         throw new TypeError(
-          'Failure notification dispatch requires a composed delivery capability',
+          'Failure notification dispatch requires connection encryption',
         );
       if (cleanupEnabled && config.artifactStore === undefined)
         throw new TypeError(
           'Preview cleanup requires the artifact-store capability',
         );
-      return createPreviewMaintenanceRuntime({
-        ...(cleanupEnabled && config.artifactStore !== undefined
-          ? { artifactStore: config.artifactStore }
-          : {}),
-        database: config.database,
-        observer,
-        redisUrl: config.redisUrl,
-        ...(dependencies.failureNotificationDelivery === undefined
-          ? {}
-          : {
-              failureNotificationDelivery:
-                dependencies.failureNotificationDelivery,
-            }),
+      const notificationStore =
+        notificationEnabled &&
+        dependencies.failureNotificationDelivery === undefined
+          ? createFailureNotificationStore(config.database)
+          : undefined;
+      const encryptionRuntime =
+        notificationStore === undefined ||
+        config.connectionEncryption === undefined
+          ? undefined
+          : createAwsConnectionEnvelopeEncryption(config.connectionEncryption);
+      const httpClient =
+        encryptionRuntime === undefined
+          ? undefined
+          : createNodeSecureHttpClient();
+      const failureNotificationDelivery =
+        dependencies.failureNotificationDelivery ??
+        (notificationStore === undefined ||
+        encryptionRuntime === undefined ||
+        httpClient === undefined
+          ? undefined
+          : createProviderFailureNotificationDelivery({
+              store: notificationStore,
+              encryption: encryptionRuntime.encryption,
+              slack: createSlackClient(httpClient),
+              email: createResendClient(httpClient),
+              workerId: config.nodeAttempt.workerId,
+            }));
+      if (notificationEnabled && failureNotificationDelivery === undefined)
+        throw new TypeError(
+          'Failure notification dispatch composition is incomplete',
+        );
+      let runtime: PreviewMaintenanceRuntime;
+      try {
+        runtime = await createPreviewMaintenanceRuntime({
+          ...(cleanupEnabled && config.artifactStore !== undefined
+            ? { artifactStore: config.artifactStore }
+            : {}),
+          database: config.database,
+          observer,
+          redisUrl: config.redisUrl,
+          ...(failureNotificationDelivery === undefined
+            ? {}
+            : {
+                failureNotificationDelivery: failureNotificationDelivery,
+              }),
+        });
+      } catch (error: unknown) {
+        await Promise.allSettled([
+          notificationStore?.close(),
+          Promise.resolve(encryptionRuntime?.close()),
+        ]);
+        throw error;
+      }
+      if (notificationStore === undefined && encryptionRuntime === undefined)
+        return runtime;
+      return Object.freeze({
+        consumer: runtime.consumer,
+        close: async (): Promise<void> => {
+          const results = await Promise.allSettled([
+            runtime.close(),
+            notificationStore?.close(),
+            Promise.resolve(encryptionRuntime?.close()),
+          ]);
+          const failure = results.find(
+            (result) => result.status === 'rejected',
+          );
+          if (failure?.status === 'rejected') throw failure.reason;
+        },
       });
     },
   };

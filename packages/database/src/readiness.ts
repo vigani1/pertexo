@@ -8,7 +8,8 @@ import {
   type CompatibilityReleaseExpectationSet,
 } from './compatibility-release.js';
 
-export const EXPECTED_MIGRATION_HEAD = '0036_resend_api_key_connections.sql';
+export const EXPECTED_MIGRATION_HEAD =
+  '0037_failure_notification_destinations.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -538,7 +539,7 @@ export async function checkDatabaseReadiness(
             and attname = 'input_ref' and atttypid = 'jsonb'::regtype
             and not attnotnull and not attisdropped
         )
-        and (select count(*) = 22 from pg_attribute where attrelid = to_regclass('app.workflow_runs') and attnum > 0 and not attisdropped)
+        and (select count(*) = 23 from pg_attribute where attrelid = to_regclass('app.workflow_runs') and attnum > 0 and not attisdropped)
         and exists (
           select 1 from pg_attribute where attrelid = to_regclass('app.run_checkpoints')
             and attname = 'workflow_version_id' and atttypid = 'uuid'::regtype
@@ -1400,6 +1401,18 @@ export async function checkDatabaseReadiness(
         and exists (select 1 from pg_constraint
           where conrelid=to_regclass('app.run_failure_notification_intents')
             and conname='run_failure_notification_intents_context_bounded')
+        and exists (select 1 from pg_constraint
+          where conrelid=to_regclass('app.run_failure_notification_intents')
+            and conname='run_failure_notification_intents_run_pin_fk'
+            and not convalidated)
+        and exists (select 1 from pg_constraint
+          where conrelid=to_regclass('app.run_failure_notification_intents')
+            and conname='run_failure_notification_intents_status_valid'
+            and pg_get_constraintdef(oid) like '%claimed%')
+        and exists (select 1 from pg_trigger
+          where tgrelid=to_regclass('app.run_failure_notification_intents')
+            and tgname='run_failure_notification_intents_require_run_pin'
+            and not tgisinternal)
         and exists (select 1 from pg_policy
           where polrelid=to_regclass('app.run_failure_notification_intents')
             and polname='run_failure_notification_intents_workspace_scope')
@@ -1411,6 +1424,34 @@ export async function checkDatabaseReadiness(
         and has_table_privilege($2, 'app.run_failure_notification_audit_facts', 'INSERT')
         and not has_table_privilege($2, 'app.run_failure_notification_audit_facts', 'UPDATE')
         and not has_table_privilege($2, 'app.run_failure_notification_audit_facts', 'DELETE')
+        and to_regclass('app.failure_notification_destinations') is not null
+        and to_regclass('app.failure_notification_destination_versions') is not null
+        and to_regclass('app.workflow_failure_notification_policies') is not null
+        and (select relrowsecurity and relforcerowsecurity from pg_class
+             where oid=to_regclass('app.failure_notification_destinations'))
+        and (select relrowsecurity and relforcerowsecurity from pg_class
+             where oid=to_regclass('app.failure_notification_destination_versions'))
+        and (select relrowsecurity and relforcerowsecurity from pg_class
+             where oid=to_regclass('app.workflow_failure_notification_policies'))
+        and exists (select 1 from pg_constraint
+          where conrelid=to_regclass('app.failure_notification_destination_versions')
+            and conname='failure_notification_destination_versions_config_strict')
+        and exists (select 1 from pg_constraint
+          where conrelid=to_regclass('app.failure_notification_destination_versions')
+            and conname='failure_notification_destination_versions_destination_kind_fk')
+        and exists (select 1 from pg_trigger
+          where tgrelid=to_regclass('app.failure_notification_destination_versions')
+            and tgname='failure_notification_destination_versions_immutable'
+            and not tgisinternal)
+        and has_table_privilege($2, 'app.failure_notification_destinations', 'SELECT')
+        and has_table_privilege($2, 'app.failure_notification_destination_versions', 'SELECT')
+        and not has_table_privilege($2, 'app.failure_notification_destinations', 'INSERT')
+        and not has_table_privilege($2, 'app.failure_notification_destination_versions', 'INSERT')
+        and not has_table_privilege($2, 'app.workflow_failure_notification_policies', 'SELECT')
+        and has_column_privilege($2, 'app.run_failure_notification_intents', 'delivery_binding', 'UPDATE')
+        and not has_column_privilege($2, 'app.run_failure_notification_intents', 'connection_secret_version_id', 'UPDATE')
+        and has_function_privilege($2, 'app.recover_due_run_failure_notifications(integer,integer)', 'EXECUTE')
+        and to_regprocedure('app.recover_due_run_failure_notifications(integer)') is null
       ) as failure_notification_compatible,
       (
         select name

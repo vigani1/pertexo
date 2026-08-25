@@ -242,6 +242,7 @@ export function createOutboxDispatcherDatabase(
 ): OutboxDispatcherDatabase {
   const { ownerRole, ...poolConfig } = config;
   const pool = new Pool(poolConfig);
+  pool.on('error', () => undefined);
 
   return Object.freeze({
     claimBatch: async (

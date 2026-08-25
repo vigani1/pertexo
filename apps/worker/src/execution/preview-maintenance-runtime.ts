@@ -180,7 +180,7 @@ export async function createPreviewMaintenanceRuntime(
   const recoveryLoop = (async (): Promise<void> => {
     while (!recoveryAbort.signal.aborted) {
       try {
-        await failureNotificationStore?.recoverDue(25);
+        await failureNotificationStore?.recoverDue(25, 3);
       } catch {
         // PostgreSQL authority is retried; dependency readiness remains fail closed.
       }

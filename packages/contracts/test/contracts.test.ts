@@ -259,7 +259,7 @@ describe('public contracts package', () => {
     ).toBe(false);
   });
 
-  it('documents create, rotate, revoke, and bounded test operations', () => {
+  it('documents connection and failure-notification destination operations', () => {
     expect(connectionsClientContract.schemas).toHaveProperty(
       'ConnectionCreateRequest',
     );
@@ -268,6 +268,11 @@ describe('public contracts package', () => {
       '/v1/workspaces/{workspaceId}/connections/{connectionId}/secret',
       '/v1/workspaces/{workspaceId}/connections/{connectionId}',
       '/v1/workspaces/{workspaceId}/connections/{connectionId}/test',
+      '/v1/workspaces/{workspaceId}/failure-notification-destinations',
+      '/v1/workspaces/{workspaceId}/failure-notification-destinations/{destinationId}',
+      '/v1/workspaces/{workspaceId}/failure-notification-destinations/{destinationId}/versions',
+      '/v1/workspaces/{workspaceId}/failure-notification-destinations/{destinationId}/status',
+      '/v1/workspaces/{workspaceId}/workflows/{workflowId}/failure-notification-policy',
     ]);
     expect(
       connectionsOpenApiDocument.paths[
