@@ -55,6 +55,7 @@ import {
 } from './dispatch-consumer-capabilities.js';
 import { OutboxDispatcher } from './outbox-dispatcher.js';
 import { createQueueMetricsObserver } from './transport-metrics-adapter.js';
+import type { StructuredLogger } from '@pertexo/observability';
 
 export const OUTBOX_DISPATCHER = Symbol('OUTBOX_DISPATCHER');
 export const QUEUE_CONSUMER_OBSERVER = Symbol('QUEUE_CONSUMER_OBSERVER');
@@ -79,6 +80,7 @@ export type TransportModuleDependencies = Readonly<{
   queueProducer?: QueueProducer;
   transportMetrics?: TransportMetrics;
   failureNotificationDelivery?: FailureNotificationDeliveryCapability;
+  logger?: StructuredLogger;
 }>;
 
 @Injectable()
@@ -144,13 +146,18 @@ function triggerRuntimeProvider(
         )
       )
         return undefined;
-      return createTriggerRuntime({
-        ...config.triggerRuntime,
-        database: config.database,
-        observer,
-        redisUrl: config.redisUrl,
-        releaseCohort: config.nodeCompatibilityCohort,
-      });
+      return createTriggerRuntime(
+        {
+          ...config.triggerRuntime,
+          database: config.database,
+          observer,
+          redisUrl: config.redisUrl,
+          releaseCohort: config.nodeCompatibilityCohort,
+        },
+        dependencies.logger === undefined
+          ? {}
+          : { logger: dependencies.logger },
+      );
     },
   };
 }
@@ -560,7 +567,13 @@ export class TransportModule {
         provider,
         OutboxDispatcherLifecycle,
       ],
-      exports: [WorkerDrainState, metricsProvider, observerProvider, provider],
+      exports: [
+        WorkerDrainState,
+        metricsProvider,
+        observerProvider,
+        provider,
+        TRIGGER_RUNTIME,
+      ],
     };
   }
 }

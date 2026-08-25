@@ -59,6 +59,7 @@ export class WorkerModule {
       imports: [
         DatabaseModule.register(config.database, databaseOptions),
         TransportModule.register(config, {
+          logger: dependencies.logger,
           ...(dependencies.coordinatorRuntime === undefined
             ? {}
             : { coordinatorRuntime: dependencies.coordinatorRuntime }),

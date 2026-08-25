@@ -14,6 +14,7 @@ import {
   type PlatformReleaseCohort,
 } from '@pertexo/node-catalog';
 import { createQueueTraceRunner } from '@pertexo/observability';
+import type { StructuredLogger } from '@pertexo/observability';
 import {
   createQueueConsumer,
   InvalidQueueDeliveryError,
@@ -35,6 +36,7 @@ import { createTriggerReconciliationHandler } from './trigger-handler.js';
 
 export interface TriggerRuntime {
   readonly consumer: QueueConsumer;
+  checkReadiness(): Promise<void>;
   close(): Promise<void>;
 }
 
@@ -55,6 +57,7 @@ export type TriggerRuntimeDependencies = Readonly<{
   reader?: PublishedWorkflowReader;
   reconciliation?: WorkflowTriggerReconciliationDatabase;
   scanner?: ScheduleTriggerScanner;
+  logger?: StructuredLogger;
 }>;
 
 function validateOptions(options: TriggerRuntimeOptions): void {
@@ -194,6 +197,7 @@ export async function createTriggerRuntime(
   }
 
   const scannerAbort = new AbortController();
+  let latestScanFailed = false;
   const scannerLoop = (async () => {
     while (!scannerAbort.signal.aborted) {
       try {
@@ -204,8 +208,14 @@ export async function createTriggerRuntime(
           checkpointFactory,
           signal: scannerAbort.signal,
         });
-      } catch {
-        // PostgreSQL remains authoritative; retry after the bounded poll delay.
+        latestScanFailed = false;
+      } catch (error: unknown) {
+        latestScanFailed = true;
+        dependencies.logger?.error(
+          'trigger.schedule_scan_failed',
+          { safeErrorCode: 'trigger.schedule_scan_failed' },
+          error,
+        );
       }
       await abortableDelay(options.pollIntervalMillis, scannerAbort.signal);
     }
@@ -213,6 +223,11 @@ export async function createTriggerRuntime(
   let closePromise: Promise<void> | undefined;
   return Object.freeze({
     consumer,
+    checkReadiness: () => {
+      if (latestScanFailed)
+        return Promise.reject(new Error('Schedule scanner latest scan failed'));
+      return Promise.resolve();
+    },
     close: () => {
       closePromise ??= (async () => {
         scannerAbort.abort();

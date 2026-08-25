@@ -353,6 +353,7 @@ describe('worker application bootstrap', () => {
     };
     const triggerRuntime: TriggerRuntime = {
       consumer,
+      checkReadiness: vi.fn().mockResolvedValue(undefined),
       close: vi.fn().mockResolvedValue(undefined),
     };
     const enabledConfig = {
@@ -368,6 +369,10 @@ describe('worker application bootstrap', () => {
     });
 
     expect(consumer.waitUntilReady).toHaveBeenCalledOnce();
+    await expect(
+      app.get(WorkerReadiness).checkReadiness(),
+    ).resolves.toBeUndefined();
+    expect(triggerRuntime.checkReadiness).toHaveBeenCalled();
     await app.close();
     expect(triggerRuntime.close).toHaveBeenCalledOnce();
   });

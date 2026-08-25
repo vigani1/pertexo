@@ -10,6 +10,7 @@ import {
   type QueueConsumerOptions,
 } from '@pertexo/queue';
 import { describe, expect, it, vi } from 'vitest';
+import type { StructuredLogger } from '@pertexo/observability';
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/unbound-method -- assertions target injected seam fakes */
 
@@ -40,11 +41,20 @@ function dependencies() {
     recordFailure: vi.fn(),
   };
   let options: QueueConsumerOptions | undefined;
+  const logger = {
+    debug: vi.fn(),
+    error: vi.fn(),
+    fatal: vi.fn(),
+    info: vi.fn(),
+    trace: vi.fn(),
+    warn: vi.fn(),
+  } satisfies StructuredLogger;
   return {
     consumer,
     scanner,
     reader,
     reconciliation,
+    logger,
     consumerFactory: (input: QueueConsumerOptions): QueueConsumer => {
       options = input;
       return consumer;
@@ -108,11 +118,21 @@ describe('trigger runtime', () => {
       checkpointFactory: () => ({ engineVersion: 'test', checkpoint: {} }),
     });
 
+    await vi.waitFor(() =>
+      expect(runtime.checkReadiness()).rejects.toThrow(/schedule scanner/i),
+    );
+    expect(selected.logger.error).toHaveBeenCalledWith(
+      'trigger.schedule_scan_failed',
+      { safeErrorCode: 'trigger.schedule_scan_failed' },
+      expect.any(Error),
+    );
+
     await vi.waitFor(() => {
       expect(
         vi.mocked(selected.scanner.scanDue).mock.calls.length,
       ).toBeGreaterThanOrEqual(2);
     });
+    await expect(runtime.checkReadiness()).resolves.toBeUndefined();
     await runtime.close();
     const callsAfterClose = vi.mocked(selected.scanner.scanDue).mock.calls
       .length;
