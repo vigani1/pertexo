@@ -71,6 +71,7 @@ export interface ScheduleTriggerScanner {
       limit: number;
       leaseSeconds: number;
       checkpointFactory: ScheduleCheckpointFactory;
+      signal?: AbortSignal;
     }>,
   ): Promise<ScanDueSchedulesResult>;
   close(): Promise<void>;
@@ -248,10 +249,11 @@ export function createScheduleTriggerScanner(
         .min(1)
         .max(300)
         .parse(input.leaseSeconds);
-      const claimed = await claimPool.query<Record<string, unknown>>(
-        'select * from app.claim_due_trigger_schedules($1,$2,$3)',
-        [leaseOwner, limit, leaseSeconds],
-      );
+      const claimed = await claimPool.query<Record<string, unknown>>({
+        text: 'select * from app.claim_due_trigger_schedules($1,$2,$3)',
+        values: [leaseOwner, limit, leaseSeconds],
+        ...(input.signal === undefined ? {} : { signal: input.signal }),
+      });
       let accepted = 0;
       let skipped = 0;
       let deferred = 0;
@@ -300,9 +302,9 @@ export function createScheduleTriggerScanner(
                   throw new ScheduleClaimLostError(
                     'Schedule is no longer eligible',
                   );
-                const version = await transaction.db.execute<
+                const version = await transaction.db.execute(sql<
                   Record<string, unknown>
-                >(sql`
+                >`
                   select id,workspace_id,workflow_id,version_number,schema_version,checksum,
                          executable_schema_version,executable_json,compatibility_release_epoch
                    from app.workflow_versions

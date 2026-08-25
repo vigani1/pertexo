@@ -1,6 +1,7 @@
 export {
   createWorkflowTriggerReconciliationDatabase,
   WorkflowTriggerReconciliationMismatchError,
+  WorkflowTriggerStalePublicationError,
   type WorkflowTriggerHealth,
   type WorkflowTriggerReconciliationDatabase,
 } from './workflow-triggers.js';
