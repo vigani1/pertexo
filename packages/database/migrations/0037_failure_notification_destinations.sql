@@ -305,6 +305,56 @@ CREATE TRIGGER run_failure_notification_intents_require_run_pin
   ON app.run_failure_notification_intents FOR EACH ROW
   EXECUTE FUNCTION app.require_new_failure_notification_intent_pin();
 
+CREATE FUNCTION app.lock_failure_notification_dispatch_destination(
+  p_workspace_id uuid,
+  p_intent_id uuid,
+  p_attempt_number integer
+) RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, app
+SET row_security = on
+AS $function$
+DECLARE
+  workspace_active boolean := false;
+  destination_enabled boolean := false;
+BEGIN
+  IF nullif(current_setting('app.workspace_id', true), '')::uuid
+       IS DISTINCT FROM p_workspace_id THEN
+    RETURN false;
+  END IF;
+
+  SELECT true INTO workspace_active
+  FROM app.workspaces workspace
+  WHERE workspace.id = p_workspace_id
+    AND workspace.status = 'active'
+  FOR SHARE OF workspace;
+
+  IF NOT coalesce(workspace_active, false) THEN
+    RETURN false;
+  END IF;
+
+  SELECT destination.status = 'enabled' INTO destination_enabled
+  FROM app.run_failure_notification_intents intent
+  JOIN app.failure_notification_destinations destination
+    ON destination.workspace_id = intent.workspace_id
+   AND destination.id = intent.destination_id
+  WHERE intent.workspace_id = p_workspace_id
+    AND intent.id = p_intent_id
+    AND intent.status = 'claimed'
+    AND intent.delivery_attempts = p_attempt_number
+  FOR SHARE OF destination;
+
+  RETURN coalesce(destination_enabled, false);
+END;
+$function$;
+ALTER FUNCTION app.lock_failure_notification_dispatch_destination(uuid, uuid, integer)
+  OWNER TO {{owner_role}};
+REVOKE ALL ON FUNCTION app.lock_failure_notification_dispatch_destination(uuid, uuid, integer)
+  FROM PUBLIC, {{api_runtime_role}}, {{worker_runtime_role}}, {{dispatcher_role}};
+GRANT EXECUTE ON FUNCTION app.lock_failure_notification_dispatch_destination(uuid, uuid, integer)
+  TO {{worker_runtime_role}};
+
 DROP FUNCTION app.recover_due_run_failure_notifications(integer);
 CREATE FUNCTION app.recover_due_run_failure_notifications(
   p_limit integer,
@@ -416,15 +466,15 @@ ALTER TABLE app.workflow_failure_notification_policies ENABLE ROW LEVEL SECURITY
 ALTER TABLE app.workflow_failure_notification_policies FORCE ROW LEVEL SECURITY;
 
 CREATE POLICY failure_notification_destinations_workspace_scope
-  ON app.failure_notification_destinations FOR ALL TO {{api_runtime_role}}, {{worker_runtime_role}}
+  ON app.failure_notification_destinations FOR ALL TO {{owner_role}}, {{api_runtime_role}}, {{worker_runtime_role}}
   USING (workspace_id::text = NULLIF(current_setting('app.workspace_id', true), ''))
   WITH CHECK (workspace_id::text = NULLIF(current_setting('app.workspace_id', true), ''));
 CREATE POLICY failure_notification_destination_versions_workspace_scope
-  ON app.failure_notification_destination_versions FOR ALL TO {{api_runtime_role}}, {{worker_runtime_role}}
+  ON app.failure_notification_destination_versions FOR ALL TO {{owner_role}}, {{api_runtime_role}}, {{worker_runtime_role}}
   USING (workspace_id::text = NULLIF(current_setting('app.workspace_id', true), ''))
   WITH CHECK (workspace_id::text = NULLIF(current_setting('app.workspace_id', true), ''));
 CREATE POLICY workflow_failure_notification_policies_workspace_scope
-  ON app.workflow_failure_notification_policies FOR ALL TO {{api_runtime_role}}
+  ON app.workflow_failure_notification_policies FOR ALL TO {{owner_role}}, {{api_runtime_role}}
   USING (workspace_id::text = NULLIF(current_setting('app.workspace_id', true), ''))
   WITH CHECK (workspace_id::text = NULLIF(current_setting('app.workspace_id', true), ''));
 

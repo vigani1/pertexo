@@ -105,6 +105,40 @@ describe('provider failure notification delivery', () => {
   );
 
   it.each(['slack', 'email'] as const)(
+    'terminalizes disabled %s destination loading without provider bytes',
+    async (kind) => {
+      const persistence = store(kind);
+      vi.mocked(persistence.loadDestination).mockRejectedValue(
+        new (await import('@pertexo/database')).FailureNotificationStateError(
+          'destination disabled',
+        ),
+      );
+      const sendMessage = vi.fn();
+      const sendNotification = vi.fn();
+      const delivery = createProviderFailureNotificationDelivery({
+        store: persistence,
+        encryption: { open: vi.fn() },
+        slack: { sendMessage },
+        email: { sendNotification },
+        workerId: 'worker-1',
+      });
+
+      await expect(
+        delivery.deliver({
+          ...identity,
+          sideEffectClass: kind === 'slack' ? 'unsafe' : 'idempotent_with_key',
+        }),
+      ).resolves.toMatchObject({
+        kind: 'definite_failure',
+        safeErrorCode: 'delivery.destination_unavailable',
+        possiblyDispatched: false,
+      });
+      expect(sendMessage).not.toHaveBeenCalled();
+      expect(sendNotification).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['slack', 'email'] as const)(
     'bounds blocked %s credential loading on shutdown without provider bytes',
     async (kind) => {
       const persistence = store(kind);
@@ -505,6 +539,74 @@ describe('provider failure notification delivery', () => {
       await expect(
         delivery.deliver({ ...identity, sideEffectClass: 'unsafe' }),
       ).resolves.toMatchObject(expected);
+    },
+  );
+
+  it.each(['slack', 'email'] as const)(
+    'blocks %s provider bytes when destination disable wins the final fence',
+    async (kind) => {
+      const persistence = store(kind);
+      const providerCalls: string[] = [];
+      vi.mocked(persistence.fenceDispatch).mockRejectedValue(
+        new (await import('@pertexo/database')).FailureNotificationStateError(
+          'fence rejected',
+        ),
+      );
+      const delivery = createProviderFailureNotificationDelivery({
+        store: persistence,
+        encryption: {
+          open: vi.fn(() =>
+            Promise.resolve(
+              new TextEncoder().encode(
+                JSON.stringify(
+                  kind === 'slack'
+                    ? {
+                        schemaVersion: 1,
+                        type: 'slack_bot_token',
+                        botToken: 'xoxb-1234567890',
+                      }
+                    : {
+                        schemaVersion: 1,
+                        type: 'resend_api_key',
+                        apiKey: 're_12345678',
+                        fromEmail: 'sender@example.test',
+                      },
+                ),
+              ),
+            ),
+          ),
+        },
+        slack: {
+          sendMessage: vi.fn<SlackClient['sendMessage']>(async (input) => {
+            await input.beforeDispatch();
+            providerCalls.push('slack');
+            throw new Error('provider bytes must not be sent');
+          }),
+        },
+        email: {
+          sendNotification: vi.fn<ResendClient['sendNotification']>(
+            async (input) => {
+              await input.beforeDispatch();
+              providerCalls.push('email');
+              throw new Error('provider bytes must not be sent');
+            },
+          ),
+        },
+        workerId: 'worker-1',
+      });
+
+      await expect(
+        delivery.deliver({
+          ...identity,
+          sideEffectClass: kind === 'slack' ? 'unsafe' : 'idempotent_with_key',
+        }),
+      ).resolves.toMatchObject({
+        kind: 'definite_failure',
+        safeErrorCode: 'delivery.dispatch_fence_failed',
+        possiblyDispatched: false,
+      });
+      expect(providerCalls).toEqual([]);
+      expect(persistence.completeDelivery).not.toHaveBeenCalled();
     },
   );
 

@@ -2970,8 +2970,9 @@ Current evidence:
   and no duplicate audit are executable. Manual acceptance pins destination
   version 1 and secret version 1; exact replay keeps those pins after config
   append, disable, and credential rotation, while a new run after disable has
-  no notification policy. Pinned delivery continues to resolve the original
-  config after destination disable, but changed current credentials fail closed.
+  no notification policy. A destination disabled after acceptance preserves the
+  original run/intent pin and audit identity but fails closed before any new
+  provider fence or bytes; changed current credentials also fail closed.
 - Delivery classification proves definite Slack `service_unavailable`/429
   retries without unsafe replay, terminal Slack 5xx/invalid-response ambiguity,
   identical email binding/key/payload recovery, first-fence refusal, historical
@@ -3091,6 +3092,27 @@ Current evidence:
   passes in 82.16 seconds. Destination delivery and consumer gates are complete;
   the all-trigger pinning gate remains open until Webhook and Schedule use the
   shared resolver, so Phase 6 remains in progress. No commit or push was made.
+- Destination-disable review fixes on 2026-08-25 make the destination lifecycle
+  an operational provider-byte fence without rewriting accepted identity. Load
+  and the final fence require `enabled`; a narrowly executable security-definer
+  function locks active workspace then destination while preserving worker
+  least privilege. Executable races prove disable-first blocks an in-flight
+  fence until commit and then rejects it, while fence-first persists
+  `dispatching` before a later disable. Accepted run/intent pins and audit truth
+  remain intact, and connection disable/rotation continues to fail closed.
+- Focused provider-delivery tests pass 25 assertions for Slack/email disable
+  before load and between credential load and final fence, returning bounded
+  definite pre-dispatch results with zero provider bytes. Six direct Nest API
+  seam assertions cover get, append success, optimistic/idempotency conflicts,
+  policy set/clear exact replay metadata, and hidden not-found behavior. Root
+  `pnpm check` passes formatting, builds, lint, contract drift, typechecks, and
+  951 unit assertions. The fresh coordinator PostgreSQL regression passes, the
+  changed disposable database files pass 39 coordinator and 15 connection
+  assertions, and the enabled real PostgreSQL/Redis/BullMQ provider-adapter
+  recovery assertion passes in 82.27 seconds. The broad reusable-database
+  command still reproduces only the known `0012` checksum mismatch in ten
+  shared suites; its seven disposable suites pass 95 assertions. Docker reports
+  PostgreSQL, Redis, and artifact-store healthy. No commit or push was made.
 
 ## Later Phases
 

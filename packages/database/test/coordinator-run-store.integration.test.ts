@@ -769,6 +769,13 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         recoverySeconds: 1,
         maxAttempts: 3,
       } as const;
+      await asRuntime(apiBaseUrl, workspaceA, (client) =>
+        client.query(
+          `update app.failure_notification_destinations set status='disabled'
+            where workspace_id=$1 and id=$2`,
+          [workspaceA, notificationDestinationId],
+        ),
+      );
       const claims = await Promise.all([
         deliveryStore.claimDelivery(claimInput),
         deliveryStore.claimDelivery(claimInput),
@@ -792,10 +799,26 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         await client.query(
           `update app.failure_notification_destinations
               set current_config_version=2,status='disabled'
-            where workspace_id=$1 and id=$2`,
+             where workspace_id=$1 and id=$2`,
           [workspaceA, notificationDestinationId],
         );
       });
+      await expect(
+        deliveryStore.loadDestination({
+          workspaceId: workspaceA,
+          intentId: first.intent_id,
+          attemptNumber: ready.attemptNumber,
+          workerId: 'notification-test-worker',
+          signal: new AbortController().signal,
+        }),
+      ).rejects.toThrow('Delivery destination is unavailable');
+      await asRuntime(apiBaseUrl, workspaceA, (client) =>
+        client.query(
+          `update app.failure_notification_destinations set status='enabled'
+            where workspace_id=$1 and id=$2`,
+          [workspaceA, notificationDestinationId],
+        ),
+      );
       await expect(
         deliveryStore.loadDestination({
           workspaceId: workspaceA,
@@ -809,6 +832,63 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         secretVersionId: notificationSecretVersionId,
         target: 'run-store@example.test',
       });
+
+      const disablePool = new Pool({
+        connectionString: databaseUrl(apiBaseUrl),
+        max: 1,
+      });
+      const disableClient = await disablePool.connect();
+      try {
+        await disableClient.query('begin');
+        await disableClient.query(
+          "select set_config('app.workspace_id',$1,true)",
+          [workspaceA],
+        );
+        await disableClient.query(
+          `update app.failure_notification_destinations set status='disabled'
+            where workspace_id=$1 and id=$2`,
+          [workspaceA, notificationDestinationId],
+        );
+        let fenceSettled = false;
+        const disabledFence = deliveryStore
+          .fenceDispatch({
+            workspaceId: workspaceA,
+            intentId: first.intent_id,
+            attemptNumber: ready.attemptNumber,
+            deliveryBinding: `email:v1:sha256:${'a'.repeat(64)}`,
+          })
+          .then(
+            () => ({ kind: 'resolved' as const }),
+            (error: unknown) => ({ kind: 'rejected' as const, error }),
+          )
+          .finally(() => {
+            fenceSettled = true;
+          });
+        await new Promise<void>((resolve) => setTimeout(resolve, 50));
+        expect(fenceSettled).toBe(false);
+        await disableClient.query('commit');
+        const fenceResult = await disabledFence;
+        expect(fenceSettled).toBe(true);
+        expect(fenceResult.kind).toBe('rejected');
+        if (fenceResult.kind !== 'rejected')
+          throw new Error('disabled destination fence unexpectedly committed');
+        expect(fenceResult.error).toEqual(
+          expect.objectContaining({
+            message: 'Delivery dispatch fence failed',
+          }),
+        );
+      } finally {
+        await disableClient.query('rollback').catch(() => undefined);
+        disableClient.release();
+        await disablePool.end();
+      }
+      await asRuntime(apiBaseUrl, workspaceA, (client) =>
+        client.query(
+          `update app.failure_notification_destinations set status='enabled'
+            where workspace_id=$1 and id=$2`,
+          [workspaceA, notificationDestinationId],
+        ),
+      );
       await expect(
         deliveryStore.fenceDispatch({
           workspaceId: workspaceA,
@@ -817,6 +897,29 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           deliveryBinding: `email:v1:sha256:${'a'.repeat(64)}`,
         }),
       ).resolves.toBeUndefined();
+      await asRuntime(apiBaseUrl, workspaceA, (client) =>
+        client.query(
+          `update app.failure_notification_destinations set status='disabled'
+            where workspace_id=$1 and id=$2`,
+          [workspaceA, notificationDestinationId],
+        ),
+      );
+      await expect(
+        asRuntime(workerBaseUrl, workspaceA, (client) =>
+          client.query<{ status: string }>(
+            `select status from app.run_failure_notification_intents
+              where workspace_id=$1 and id=$2`,
+            [workspaceA, first.intent_id],
+          ),
+        ),
+      ).resolves.toMatchObject({ rows: [{ status: 'dispatching' }] });
+      await asRuntime(apiBaseUrl, workspaceA, (client) =>
+        client.query(
+          `update app.failure_notification_destinations set status='enabled'
+            where workspace_id=$1 and id=$2`,
+          [workspaceA, notificationDestinationId],
+        ),
+      );
 
       await asRuntime(workerBaseUrl, workspaceA, (client) =>
         client.query(

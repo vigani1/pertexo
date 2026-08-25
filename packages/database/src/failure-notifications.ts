@@ -440,9 +440,10 @@ export function createFailureNotificationStore(
                on secret.workspace_id=connection.workspace_id
               and secret.connection_id=connection.id
               and secret.id=intent.connection_secret_version_id
-             where intent.workspace_id=$1 and intent.id=$2
-               and intent.status='claimed' and intent.delivery_attempts=$3
-               and destination.kind=version.kind
+              where intent.workspace_id=$1 and intent.id=$2
+                and intent.status='claimed' and intent.delivery_attempts=$3
+                and destination.status='enabled'
+                and destination.kind=version.kind
                and version.side_effect_class=intent.side_effect_class
                and connection.provider_key=version.kind
                and connection.auth_type=case version.kind
@@ -512,6 +513,14 @@ export function createFailureNotificationStore(
                 .string()
                 .regex(/^email:v1:sha256:[0-9a-f]{64}$/u)
                 .parse(binding);
+        const destination = await client.query<{ ready: boolean }>(
+          `select app.lock_failure_notification_dispatch_destination($1,$2,$3) ready`,
+          [workspaceId, intentId, raw.attemptNumber],
+        );
+        if (destination.rows[0]?.ready !== true)
+          throw new FailureNotificationStateError(
+            'Delivery dispatch fence failed',
+          );
         const fenced = await client.query(
           `update app.run_failure_notification_intents intent
               set status='dispatching',dispatch_marked_at=clock_timestamp(),
@@ -522,9 +531,10 @@ export function createFailureNotificationStore(
                   app.connections connection
             where intent.workspace_id=$1 and intent.id=$2
               and intent.status='claimed' and intent.delivery_attempts=$3
-              and destination.workspace_id=intent.workspace_id
-              and destination.id=intent.destination_id
-              and destination.kind=version.kind
+               and destination.workspace_id=intent.workspace_id
+               and destination.id=intent.destination_id
+               and destination.status='enabled'
+               and destination.kind=version.kind
               and version.workspace_id=intent.workspace_id
               and version.destination_id=intent.destination_id
               and version.version=intent.destination_config_version

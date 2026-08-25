@@ -27,9 +27,12 @@ immutable config versions. A destination is one of:
 
 Destination config versions are append-only. Update creates the next version
 under an optimistic expected-version check; it never mutates an older version.
-Disable prevents new runs from pinning the destination but does not invalidate
-an intent already committed against an older version. Deleting destination or
-version history is outside Phase 6 retention processing.
+Disable prevents new runs from pinning the destination and prevents any
+accepted intent that has not already committed its provider-dispatch fence from
+sending provider bytes. It preserves the run pin, intent identity, immutable
+version history, and audit truth rather than deleting or rewriting them.
+Deleting destination or version history is outside Phase 6 retention
+processing.
 
 Each workflow may reference at most one enabled destination through a
 workspace-scoped workflow policy. The policy is control-plane state separate
@@ -49,12 +52,15 @@ credentials or encrypted-secret metadata.
 
 Delivery loads the immutable destination version and resolves the pinned
 connection secret just in time. Immediately before provider bytes, one
-PostgreSQL transaction verifies active workspace, destination identity/version,
-connection identity/auth/current secret version, and intent dispatch ownership.
-The destination and connection may be disabled, rotated, reauthorized, or
-revoked for future work, but an already pinned intent fails closed rather than
-silently changing target or credentials. No provider call is made after a
-failed fence.
+PostgreSQL transaction verifies active workspace, enabled destination and exact
+version, connection identity/auth/current secret version, and intent dispatch
+ownership. Destination disable is serialized on the destination row against
+that final transition. If disable commits first, load/fence fails closed and no
+provider bytes are sent; if `dispatching` commits first, disable cannot
+time-travel to cancel bytes and the outcome follows that persisted dispatch
+truth. Connection disable, rotation, reauthorization, or revocation also fails
+closed rather than silently changing credentials. No provider call is made
+after a failed fence.
 
 Slack delivery reuses the fixed `chat.postMessage` client and deterministic safe
 text rendered only from ADR 022 context. It records dispatch before the call,
