@@ -471,11 +471,10 @@ describe('generic webhook database seam', () => {
   });
 
   it('enforces the endpoint ingress boundary atomically under concurrency', async () => {
-    const consumeIngressLimit = webhook.consumeIngressLimit?.bind(webhook);
-    if (consumeIngressLimit === undefined)
-      throw new Error('Webhook ingress limiter is unavailable');
     const attempts = await Promise.allSettled(
-      Array.from({ length: 61 }, () => consumeIngressLimit(endpointHash)),
+      Array.from({ length: 61 }, () =>
+        webhook.consumeIngressLimit(endpointHash),
+      ),
     );
     expect(
       attempts.filter(({ status }) => status === 'fulfilled'),
