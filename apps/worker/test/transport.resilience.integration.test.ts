@@ -232,24 +232,24 @@ async function insertProofEvent(
       max: 1,
     }),
   );
-  const runId = randomUUID();
-  const payload = { runId };
+  const artifactId = randomUUID();
+  const payload = { artifactId };
   try {
-    await database.withWorkspace(workspaceId, (transaction) =>
-      insertOutboxEvent(transaction, {
-        aggregateId: runId,
-        aggregateType: 'workflow-run',
+    await database.withWorkspace(workspaceId, async (transaction) => {
+      await insertOutboxEvent(transaction, {
+        aggregateId: artifactId,
+        aggregateType: 'artifact',
         // The dispatcher is intentionally cross-workspace. Make this proof row
         // deterministically earlier than unrelated local development rows so
         // a bounded global claim always includes the row under test.
         availableAt: new Date('1900-01-01T00:00:00.000Z'),
         id,
-        jobName: JOB_NAME.advanceWorkflowRun,
+        jobName: JOB_NAME.expireArtifacts,
         payload,
         payloadChecksum: canonicalOutboxPayloadChecksum(payload),
         schemaVersion: 1,
-      }).then(() => undefined),
-    );
+      });
+    });
   } finally {
     await database.close();
   }
@@ -310,6 +310,9 @@ async function cleanupWorkspace(workspaceId: string): Promise<void> {
   try {
     await client.query('begin');
     await client.query(`set local role "${ownerRole}"`);
+    await client.query("select set_config('app.workspace_id',$1,true)", [
+      workspaceId,
+    ]);
     await client.query(
       'delete from app.outbox_events where workspace_id = $1',
       [workspaceId],
@@ -350,7 +353,7 @@ function createDispatcher(
         isReady: () => true,
         waitUntilReady: () => Promise.resolve(),
       },
-      jobName: JOB_NAME.advanceWorkflowRun,
+      jobName: JOB_NAME.expireArtifacts,
     },
   ]);
   return {
@@ -361,7 +364,7 @@ function createDispatcher(
       drainState,
       {
         batchSize: 100,
-        enabledJobNames: [JOB_NAME.advanceWorkflowRun],
+        enabledJobNames: [JOB_NAME.expireArtifacts],
         leaseDurationMillis: 1_000,
         leaseOwner,
         maxAttempts: 5,
@@ -459,7 +462,7 @@ describeResilience(
         await dependencyEvidence(measurements);
         expect(measurements.migrationHead).toBe(EXPECTED_MIGRATION_HEAD);
 
-        queue = new Queue(QUEUE_NAME.workflowCoordinator, {
+        queue = new Queue(QUEUE_NAME.maintenance, {
           connection: redisConnection(),
         });
         await queue.waitUntilReady();
@@ -475,7 +478,7 @@ describeResilience(
         // PostgreSQL outbox row, and every Redis key is then lost.
         await insertProofEvent(workspaceId, queueLossEventId);
         const claimed = await redisBoundaries.database.claimBatch({
-          enabledJobNames: [JOB_NAME.advanceWorkflowRun],
+          enabledJobNames: [JOB_NAME.expireArtifacts],
           leaseDurationMillis: 1_000,
           leaseOwner: 'resilience-crashed',
           leaseToken: randomUUID(),
@@ -591,7 +594,7 @@ describeResilience(
           performance.now() - postgresDetectionStartedAt;
         await expect(postgresDispatcher.dispatchOnce()).rejects.toThrow();
 
-        queue = new Queue(QUEUE_NAME.workflowCoordinator, {
+        queue = new Queue(QUEUE_NAME.maintenance, {
           connection: redisConnection(),
         });
         await queue.waitUntilReady();
