@@ -538,6 +538,8 @@ describe('connection persistence', () => {
       '0038_execution_admission.sql',
       '0039_webhook_triggers.sql',
       '0040_schedule_triggers.sql',
+      '0041_trigger_hardening.sql',
+      '0042_worker_run_admission_lock.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, priorDatabaseName),
@@ -755,6 +757,8 @@ describe('connection persistence', () => {
       '0038_execution_admission.sql',
       '0039_webhook_triggers.sql',
       '0040_schedule_triggers.sql',
+      '0041_trigger_hardening.sql',
+      '0042_worker_run_admission_lock.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, upgradeDatabaseName),

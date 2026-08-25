@@ -64,11 +64,12 @@ afterAll(async () => {
 });
 
 describe('trigger hardening prior-head migration', () => {
-  it('applies only 0041 after an exact 0040 head', async () => {
+  it('applies trigger hardening after an exact 0040 head', async () => {
     const prior = await migrateDatabase(migrationConfig, priorDirectory);
     expect(prior.at(-1)).toBe('0040_schedule_triggers.sql');
     await expect(migrateDatabase(migrationConfig)).resolves.toEqual([
       '0041_trigger_hardening.sql',
+      '0042_worker_run_admission_lock.sql',
     ]);
   });
 });

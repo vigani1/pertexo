@@ -1878,9 +1878,7 @@ describe('atomic workflow run acceptance', () => {
       for (const row of privileges.rows) {
         expect(row.canSelect).toBe(row.roleName !== 'pertexo_dispatcher');
         expect(row.canInsert).toBe(
-          row.roleName === 'pertexo_api' ||
-            (row.roleName === 'pertexo_worker' &&
-              row.tableName === 'run_events'),
+          row.roleName === 'pertexo_api' || row.roleName === 'pertexo_worker',
         );
         expect(row.canUpdate).toBe(false);
         expect(row.canDelete).toBe(false);
@@ -1925,26 +1923,14 @@ describe('atomic workflow run acceptance', () => {
       expect(idempotencyUpdatePrivileges.rows).toHaveLength(15);
       for (const row of idempotencyUpdatePrivileges.rows) {
         expect(row.canUpdate).toBe(
-          row.roleName === 'pertexo_api' &&
+          (row.roleName === 'pertexo_api' ||
+            row.roleName === 'pertexo_worker') &&
             ['result_ref', 'status', 'updated_at'].includes(row.columnName),
         );
       }
     } finally {
       await owner.end();
     }
-
-    await expect(
-      workerDatabase.withWorkspace(workspaceA, ({ db }) =>
-        db.insert(workflowRuns).values({
-          id: randomUUID(),
-          workspaceId: workspaceA,
-          workflowId,
-          workflowVersionId,
-          triggerType: 'manual',
-          status: 'queued',
-        }),
-      ),
-    ).rejects.toSatisfy(hasPostgresCode('42501'));
   });
 
   it('forces entitlement RLS and denies serving-role entitlement mutation', async () => {

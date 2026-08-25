@@ -2076,6 +2076,8 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         '0038_execution_admission.sql',
         '0039_webhook_triggers.sql',
         '0040_schedule_triggers.sql',
+        '0041_trigger_hardening.sql',
+        '0042_worker_run_admission_lock.sql',
       ]);
       const workerPool = new Pool({
         connectionString: namedDatabaseUrl(
