@@ -73,7 +73,7 @@ export function registerWebhookIngress(
       '/hooks/:endpointKey',
       { bodyLimit: MAX_BODY + 1 },
       (request, reply) =>
-        telemetry.trace(() =>
+        telemetry.trace(singleHeader(request, 'traceparent'), () =>
           acceptWebhook(request, reply, dependencies, telemetry),
         ),
     );
@@ -222,7 +222,7 @@ async function acceptWebhook(
       `${verification.endpointId}\0${sha256(body)}\0application/json`,
     );
     try {
-      const traceparent = singleHeader(request, 'traceparent');
+      const traceparent = telemetry.traceparent();
       const verifiedSecretVersionId = currentValid
         ? verification.currentSecret.id
         : previousReference?.id;

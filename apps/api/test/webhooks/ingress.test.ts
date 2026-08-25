@@ -62,7 +62,10 @@ describe('generic webhook ingress', () => {
       replayed: false,
     });
     expect(database.acceptVerifiedDelivery).toHaveBeenCalledWith(
-      expect.objectContaining({ payload: { value: 1 } }),
+      expect.objectContaining({
+        payload: { value: 1 },
+        traceparent: '00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01',
+      }),
     );
     expect(database.consumeIngressLimit).toHaveBeenCalledOnce();
     expect(delivery).toHaveBeenCalledWith('accepted');
@@ -274,7 +277,12 @@ describe('generic webhook ingress', () => {
       delivery,
       deduplication,
       health,
-      trace: async <T>(work: () => Promise<T>) => {
+      traceparent: () =>
+        '00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01',
+      trace: async <T>(
+        _traceparent: string | undefined,
+        work: () => Promise<T>,
+      ) => {
         trace();
         return work();
       },
