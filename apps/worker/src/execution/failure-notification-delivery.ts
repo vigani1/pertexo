@@ -6,6 +6,7 @@ import {
 } from '@pertexo/integrations';
 import {
   FailureNotificationStateError,
+  type FailureNotificationResolvedDestination,
   type FailureNotificationStore,
 } from '@pertexo/database';
 import type {
@@ -20,6 +21,7 @@ import {
   SECURE_HTTP_ERROR_CODE,
   SecureHttpError,
 } from '@pertexo/integrations/server';
+import { assertNever } from '@pertexo/workflow-model/assert-never';
 import type {
   FailureNotificationContextV1,
   FailureNotificationDeliveryResultV1,
@@ -69,7 +71,7 @@ function localFailure(
   throw error;
 }
 
-function settleEmail(
+function settleUnresolvedDelivery(
   result: FailureNotificationDeliveryResultV1,
   deliveryUnresolved: boolean,
 ): FailureNotificationDeliveryResultV1 {
@@ -226,18 +228,221 @@ function emailResult(result: ResendApiResult) {
   }
 }
 
+type DeliveryInput = Parameters<
+  FailureNotificationDeliveryCapability['deliver']
+>[0];
+type DeliveryDependencies = Readonly<{
+  store: FailureNotificationStore;
+  encryption: Pick<ConnectionEnvelopeEncryption, 'open'>;
+  slack: Pick<SlackClient, 'sendMessage'>;
+  email: Pick<ResendClient, 'sendNotification'>;
+  workerId: string;
+}>;
+type SlackDestination = Extract<
+  FailureNotificationResolvedDestination,
+  Readonly<{ kind: 'slack' }>
+>;
+type EmailDestination = Extract<
+  FailureNotificationResolvedDestination,
+  Readonly<{ kind: 'email' }>
+>;
+
+function canceled(input: DeliveryInput): FailureNotificationDeliveryResultV1 {
+  return settleUnresolvedDelivery(
+    {
+      schemaVersion: 1,
+      kind: 'retry',
+      safeErrorCode: 'delivery.canceled',
+      possiblyDispatched: false,
+    },
+    input.deliveryUnresolved,
+  );
+}
+
+async function deliverSlack(
+  dependencies: DeliveryDependencies,
+  destination: SlackDestination,
+  input: DeliveryInput,
+): Promise<FailureNotificationDeliveryResultV1> {
+  let bytes: Uint8Array;
+  try {
+    bytes = await dependencies.encryption.open(
+      destination.sealed,
+      {
+        workspaceId: input.workspaceId,
+        connectionId: destination.connectionId,
+        secretVersionId: destination.secretVersionId,
+      },
+      input.signal,
+    );
+  } catch (error: unknown) {
+    if (input.signal.aborted) return canceled(input);
+    return settleUnresolvedDelivery(
+      localFailure(error, 'slack'),
+      input.deliveryUnresolved,
+    );
+  }
+
+  try {
+    if (input.sideEffectClass !== 'unsafe')
+      throw new Error('Failure notification side-effect class mismatch');
+    let credential: ReturnType<typeof slackBotTokenCredentialSchema.parse>;
+    try {
+      const decoded = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+      credential = slackBotTokenCredentialSchema.parse(
+        JSON.parse(decoded) as unknown,
+      );
+    } catch {
+      return settleUnresolvedDelivery(
+        {
+          schemaVersion: 1,
+          kind: 'definite_failure',
+          safeErrorCode: 'delivery.credential_invalid',
+          possiblyDispatched: false,
+        },
+        input.deliveryUnresolved,
+      );
+    }
+    const message = render(input.context);
+    try {
+      return slackResult(
+        await dependencies.slack.sendMessage({
+          botToken: credential.botToken,
+          channelId: destination.channelId,
+          text: message.text,
+          timeoutMillis: TIMEOUT_MILLIS,
+          signal: input.signal,
+          beforeDispatch: () =>
+            dependencies.store.fenceDispatch({
+              workspaceId: input.workspaceId,
+              intentId: input.intentId,
+              attemptNumber: input.attemptNumber,
+            }),
+        }),
+      );
+    } catch (error: unknown) {
+      if (error instanceof FailureNotificationStateError)
+        return {
+          schemaVersion: 1,
+          kind: 'definite_failure',
+          safeErrorCode: 'delivery.dispatch_fence_failed',
+          possiblyDispatched: false,
+        };
+      return localFailure(error, 'slack');
+    }
+  } finally {
+    bytes.fill(0);
+  }
+}
+
+async function deliverEmail(
+  dependencies: DeliveryDependencies,
+  destination: EmailDestination,
+  input: DeliveryInput,
+): Promise<FailureNotificationDeliveryResultV1> {
+  let bytes: Uint8Array;
+  try {
+    bytes = await dependencies.encryption.open(
+      destination.sealed,
+      {
+        workspaceId: input.workspaceId,
+        connectionId: destination.connectionId,
+        secretVersionId: destination.secretVersionId,
+      },
+      input.signal,
+    );
+  } catch (error: unknown) {
+    if (input.signal.aborted) return canceled(input);
+    return settleUnresolvedDelivery(
+      localFailure(error, 'email'),
+      input.deliveryUnresolved,
+    );
+  }
+
+  try {
+    if (input.sideEffectClass !== 'idempotent_with_key')
+      throw new Error('Failure notification side-effect class mismatch');
+    let credential: ReturnType<typeof resendApiKeyCredentialSchema.parse>;
+    try {
+      const decoded = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+      credential = resendApiKeyCredentialSchema.parse(
+        JSON.parse(decoded) as unknown,
+      );
+    } catch {
+      return settleUnresolvedDelivery(
+        {
+          schemaVersion: 1,
+          kind: 'definite_failure',
+          safeErrorCode: 'delivery.credential_invalid',
+          possiblyDispatched: false,
+        },
+        input.deliveryUnresolved,
+      );
+    }
+    const message = render(input.context);
+    const binding = `email:v1:sha256:${createHash('sha256')
+      .update(
+        JSON.stringify({
+          secretVersionId: destination.secretVersionId,
+          fromEmail: credential.fromEmail,
+          toEmail: destination.toEmail,
+          subject: message.subject,
+          text: message.text,
+          idempotencyKey: input.idempotencyKey,
+        }),
+      )
+      .digest('hex')}`;
+    try {
+      return settleUnresolvedDelivery(
+        emailResult(
+          await dependencies.email.sendNotification({
+            apiKey: credential.apiKey,
+            fromEmail: credential.fromEmail,
+            toEmail: destination.toEmail,
+            subject: message.subject,
+            text: message.text,
+            idempotencyKey: input.idempotencyKey,
+            timeoutMillis: TIMEOUT_MILLIS,
+            signal: input.signal,
+            beforeDispatch: () =>
+              dependencies.store.fenceDispatch({
+                workspaceId: input.workspaceId,
+                intentId: input.intentId,
+                attemptNumber: input.attemptNumber,
+                deliveryBinding: binding,
+              }),
+          }),
+        ),
+        input.deliveryUnresolved,
+      );
+    } catch (error: unknown) {
+      if (error instanceof FailureNotificationStateError)
+        return {
+          schemaVersion: 1,
+          kind: input.deliveryUnresolved
+            ? 'outcome_unknown'
+            : 'definite_failure',
+          safeErrorCode: input.deliveryUnresolved
+            ? 'delivery.identity_changed'
+            : 'delivery.dispatch_fence_failed',
+          possiblyDispatched: input.deliveryUnresolved,
+        };
+      return settleUnresolvedDelivery(
+        localFailure(error, 'email'),
+        input.deliveryUnresolved,
+      );
+    }
+  } finally {
+    bytes.fill(0);
+  }
+}
+
 export function createProviderFailureNotificationDelivery(
-  dependencies: Readonly<{
-    store: FailureNotificationStore;
-    encryption: Pick<ConnectionEnvelopeEncryption, 'open'>;
-    slack: Pick<SlackClient, 'sendMessage'>;
-    email: Pick<ResendClient, 'sendNotification'>;
-    workerId: string;
-  }>,
+  dependencies: DeliveryDependencies,
 ): FailureNotificationDeliveryCapability {
   return Object.freeze({
     deliver: async (
-      input: Parameters<FailureNotificationDeliveryCapability['deliver']>[0],
+      input: DeliveryInput,
     ): Promise<FailureNotificationDeliveryResultV1> => {
       let destination: Awaited<
         ReturnType<FailureNotificationStore['loadDestination']>
@@ -251,16 +456,7 @@ export function createProviderFailureNotificationDelivery(
           signal: input.signal,
         });
       } catch (error: unknown) {
-        if (input.signal.aborted)
-          return settleEmail(
-            {
-              schemaVersion: 1,
-              kind: 'retry',
-              safeErrorCode: 'delivery.canceled',
-              possiblyDispatched: false,
-            },
-            input.deliveryUnresolved,
-          );
+        if (input.signal.aborted) return canceled(input);
         if (error instanceof FailureNotificationStateError)
           return {
             schemaVersion: 1 as const,
@@ -272,7 +468,7 @@ export function createProviderFailureNotificationDelivery(
               : 'delivery.identity_changed',
             possiblyDispatched: input.deliveryUnresolved,
           };
-        return settleEmail(
+        return settleUnresolvedDelivery(
           {
             schemaVersion: 1,
             kind: 'retry',
@@ -283,7 +479,7 @@ export function createProviderFailureNotificationDelivery(
         );
       }
       if (destination.secretVersionId !== input.connectionSecretVersionId)
-        return settleEmail(
+        return settleUnresolvedDelivery(
           {
             schemaVersion: 1,
             kind: 'definite_failure',
@@ -292,166 +488,13 @@ export function createProviderFailureNotificationDelivery(
           },
           input.deliveryUnresolved,
         );
-      let bytes: Uint8Array;
-      try {
-        bytes = await dependencies.encryption.open(
-          destination.sealed,
-          {
-            workspaceId: input.workspaceId,
-            connectionId: destination.connectionId,
-            secretVersionId: destination.secretVersionId,
-          },
-          input.signal,
-        );
-      } catch (error: unknown) {
-        if (input.signal.aborted)
-          return settleEmail(
-            {
-              schemaVersion: 1,
-              kind: 'retry',
-              safeErrorCode: 'delivery.canceled',
-              possiblyDispatched: false,
-            },
-            input.deliveryUnresolved,
-          );
-        return settleEmail(
-          localFailure(error, destination.kind),
-          input.deliveryUnresolved,
-        );
-      }
-      const message = render(input.context);
-      try {
-        let decoded: string;
-        try {
-          decoded = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-        } catch {
-          return settleEmail(
-            {
-              schemaVersion: 1,
-              kind: 'definite_failure',
-              safeErrorCode: 'delivery.credential_invalid',
-              possiblyDispatched: false,
-            },
-            input.deliveryUnresolved,
-          );
-        }
-        if (destination.kind === 'slack') {
-          if (input.sideEffectClass !== 'unsafe')
-            throw new Error('Failure notification side-effect class mismatch');
-          let credential: ReturnType<
-            typeof slackBotTokenCredentialSchema.parse
-          >;
-          try {
-            credential = slackBotTokenCredentialSchema.parse(
-              JSON.parse(decoded) as unknown,
-            );
-          } catch {
-            return {
-              schemaVersion: 1,
-              kind: 'definite_failure',
-              safeErrorCode: 'delivery.credential_invalid',
-              possiblyDispatched: false,
-            };
-          }
-          try {
-            return slackResult(
-              await dependencies.slack.sendMessage({
-                botToken: credential.botToken,
-                channelId: destination.target,
-                text: message.text,
-                timeoutMillis: TIMEOUT_MILLIS,
-                signal: input.signal,
-                beforeDispatch: () =>
-                  dependencies.store.fenceDispatch({
-                    workspaceId: input.workspaceId,
-                    intentId: input.intentId,
-                    attemptNumber: input.attemptNumber,
-                  }),
-              }),
-            );
-          } catch (error: unknown) {
-            if (error instanceof FailureNotificationStateError)
-              return {
-                schemaVersion: 1 as const,
-                kind: 'definite_failure' as const,
-                safeErrorCode: 'delivery.dispatch_fence_failed',
-                possiblyDispatched: false,
-              };
-            return localFailure(error, 'slack');
-          }
-        }
-        if (input.sideEffectClass !== 'idempotent_with_key')
-          throw new Error('Failure notification side-effect class mismatch');
-        let credential: ReturnType<typeof resendApiKeyCredentialSchema.parse>;
-        try {
-          credential = resendApiKeyCredentialSchema.parse(
-            JSON.parse(decoded) as unknown,
-          );
-        } catch {
-          return settleEmail(
-            {
-              schemaVersion: 1,
-              kind: 'definite_failure',
-              safeErrorCode: 'delivery.credential_invalid',
-              possiblyDispatched: false,
-            },
-            input.deliveryUnresolved,
-          );
-        }
-        const binding = `email:v1:sha256:${createHash('sha256')
-          .update(
-            JSON.stringify({
-              secretVersionId: destination.secretVersionId,
-              fromEmail: credential.fromEmail,
-              toEmail: destination.target,
-              subject: message.subject,
-              text: message.text,
-              idempotencyKey: input.idempotencyKey,
-            }),
-          )
-          .digest('hex')}`;
-        try {
-          return settleEmail(
-            emailResult(
-              await dependencies.email.sendNotification({
-                apiKey: credential.apiKey,
-                fromEmail: credential.fromEmail,
-                toEmail: destination.target,
-                subject: message.subject,
-                text: message.text,
-                idempotencyKey: input.idempotencyKey,
-                timeoutMillis: TIMEOUT_MILLIS,
-                signal: input.signal,
-                beforeDispatch: () =>
-                  dependencies.store.fenceDispatch({
-                    workspaceId: input.workspaceId,
-                    intentId: input.intentId,
-                    attemptNumber: input.attemptNumber,
-                    deliveryBinding: binding,
-                  }),
-              }),
-            ),
-            input.deliveryUnresolved,
-          );
-        } catch (error: unknown) {
-          if (error instanceof FailureNotificationStateError)
-            return {
-              schemaVersion: 1 as const,
-              kind: !input.deliveryUnresolved
-                ? ('definite_failure' as const)
-                : ('outcome_unknown' as const),
-              safeErrorCode: !input.deliveryUnresolved
-                ? 'delivery.dispatch_fence_failed'
-                : 'delivery.identity_changed',
-              possiblyDispatched: input.deliveryUnresolved,
-            };
-          return settleEmail(
-            localFailure(error, 'email'),
-            input.deliveryUnresolved,
-          );
-        }
-      } finally {
-        bytes.fill(0);
+      switch (destination.kind) {
+        case 'slack':
+          return deliverSlack(dependencies, destination, input);
+        case 'email':
+          return deliverEmail(dependencies, destination, input);
+        default:
+          return assertNever(destination);
       }
     },
   });

@@ -410,13 +410,14 @@ describe('connection persistence', () => {
       config: {
         kind: 'email' as const,
         connectionId: connection.connectionId,
-        toEmail: 'ops@example.test',
+        toEmail: 'Ops@EXAMPLE.TEST',
       },
       idempotencyKey: `destination-create-${destinationId}`,
       requestHash: '1'.repeat(64),
       requestId: `request-${destinationId}`,
     };
     const created = await destinations.create(create);
+    expect(created.config).toMatchObject({ toEmail: 'Ops@example.test' });
     const replayed = await destinations.create({
       ...create,
       destinationId: randomUUID(),

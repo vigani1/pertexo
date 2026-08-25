@@ -16,7 +16,9 @@ import {
 import {
   failureNotificationDestinationAppendVersionRequestSchema,
   failureNotificationDestinationCreateRequestSchema,
+  failureNotificationDestinationListResponseSchema,
   failureNotificationDestinationStatusRequestSchema,
+  type FailureNotificationDestinationResponse,
   workflowFailureNotificationPolicyRequestSchema,
 } from '@pertexo/contracts';
 import { idempotencyKeySchema } from '@pertexo/contracts/identity-workspace';
@@ -77,13 +79,46 @@ function idempotentCommand(
 
 function response(
   record: Awaited<ReturnType<FailureNotificationDestinationDatabase['get']>>,
-) {
+): FailureNotificationDestinationResponse {
   return {
     ...record,
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
   };
 }
+
+type DestinationRequestInput = Readonly<{
+  request: ConnectionRequest;
+  workspaceId: string;
+}>;
+export type CreateFailureNotificationDestinationInput =
+  DestinationRequestInput &
+    Readonly<{
+      body: z.output<typeof failureNotificationDestinationCreateRequestSchema>;
+    }>;
+export type ListFailureNotificationDestinationsInput = DestinationRequestInput;
+export type GetFailureNotificationDestinationInput = DestinationRequestInput &
+  Readonly<{ destinationId: string }>;
+export type AppendFailureNotificationDestinationVersionInput =
+  GetFailureNotificationDestinationInput &
+    Readonly<{
+      body: z.output<
+        typeof failureNotificationDestinationAppendVersionRequestSchema
+      >;
+    }>;
+export type SetFailureNotificationDestinationStatusInput =
+  GetFailureNotificationDestinationInput &
+    Readonly<{
+      body: z.output<typeof failureNotificationDestinationStatusRequestSchema>;
+    }>;
+export type SetWorkflowFailureNotificationPolicyInput =
+  DestinationRequestInput &
+    Readonly<{
+      workflowId: string;
+      body: z.output<typeof workflowFailureNotificationPolicyRequestSchema>;
+    }>;
+export type ClearWorkflowFailureNotificationPolicyInput =
+  DestinationRequestInput & Readonly<{ workflowId: string }>;
 
 @Injectable()
 export class FailureNotificationDestinationUseCases {
@@ -92,107 +127,101 @@ export class FailureNotificationDestinationUseCases {
     private readonly telemetry: ConnectionTelemetry = NOOP_CONNECTION_TELEMETRY,
   ) {}
 
-  public async create(
-    request: ConnectionRequest,
-    workspaceId: string,
-    body: z.output<typeof failureNotificationDestinationCreateRequestSchema>,
-  ) {
+  public create(
+    input: CreateFailureNotificationDestinationInput,
+  ): Promise<FailureNotificationDestinationResponse> {
     return this.telemetry.measure(
       CONNECTION_OPERATION.destinationCreate,
       async () =>
         response(
           await this.database.create({
-            ...idempotentCommand(request, workspaceId, body),
+            ...idempotentCommand(input.request, input.workspaceId, input.body),
             destinationId: randomUUID(),
-            config: body,
+            config: input.body,
           }),
         ),
     );
   }
-  public async list(request: ConnectionRequest, workspaceId: string) {
-    const records = await this.database.list(command(request, workspaceId));
+  public async list(
+    input: ListFailureNotificationDestinationsInput,
+  ): Promise<
+    z.output<typeof failureNotificationDestinationListResponseSchema>
+  > {
+    const records = await this.database.list(
+      command(input.request, input.workspaceId),
+    );
     return { items: records.map(response) };
   }
   public async get(
-    request: ConnectionRequest,
-    workspaceId: string,
-    destinationId: string,
-  ) {
+    input: GetFailureNotificationDestinationInput,
+  ): Promise<FailureNotificationDestinationResponse> {
     return response(
       await this.database.get({
-        ...command(request, workspaceId),
-        destinationId,
+        ...command(input.request, input.workspaceId),
+        destinationId: input.destinationId,
       }),
     );
   }
-  public async append(
-    request: ConnectionRequest,
-    workspaceId: string,
-    destinationId: string,
-    body: z.output<
-      typeof failureNotificationDestinationAppendVersionRequestSchema
-    >,
-  ) {
+  public append(
+    input: AppendFailureNotificationDestinationVersionInput,
+  ): Promise<FailureNotificationDestinationResponse> {
     return this.telemetry.measure(
       CONNECTION_OPERATION.destinationAppend,
       async () =>
         response(
           await this.database.appendVersion({
-            ...idempotentCommand(request, workspaceId, {
-              destinationId,
-              ...body,
+            ...idempotentCommand(input.request, input.workspaceId, {
+              destinationId: input.destinationId,
+              ...input.body,
             }),
-            destinationId,
-            expectedVersion: body.expectedVersion,
-            config: body.config,
+            destinationId: input.destinationId,
+            expectedVersion: input.body.expectedVersion,
+            config: input.body.config,
           }),
         ),
     );
   }
-  public async status(
-    request: ConnectionRequest,
-    workspaceId: string,
-    destinationId: string,
-    body: z.output<typeof failureNotificationDestinationStatusRequestSchema>,
-  ) {
+  public status(
+    input: SetFailureNotificationDestinationStatusInput,
+  ): Promise<FailureNotificationDestinationResponse> {
     return this.telemetry.measure(
       CONNECTION_OPERATION.destinationStatus,
       async () =>
         response(
           await this.database.setStatus({
-            ...idempotentCommand(request, workspaceId, {
-              destinationId,
-              ...body,
+            ...idempotentCommand(input.request, input.workspaceId, {
+              destinationId: input.destinationId,
+              ...input.body,
             }),
-            destinationId,
-            status: body.status,
+            destinationId: input.destinationId,
+            status: input.body.status,
           }),
         ),
     );
   }
   public setPolicy(
-    request: ConnectionRequest,
-    workspaceId: string,
-    workflowId: string,
-    body: z.output<typeof workflowFailureNotificationPolicyRequestSchema>,
-  ) {
+    input: SetWorkflowFailureNotificationPolicyInput,
+  ): Promise<void> {
     return this.telemetry.measure(CONNECTION_OPERATION.policySet, () =>
       this.database.setWorkflowPolicy({
-        ...idempotentCommand(request, workspaceId, { workflowId, ...body }),
-        workflowId,
-        destinationId: body.destinationId,
+        ...idempotentCommand(input.request, input.workspaceId, {
+          workflowId: input.workflowId,
+          ...input.body,
+        }),
+        workflowId: input.workflowId,
+        destinationId: input.body.destinationId,
       }),
     );
   }
   public clearPolicy(
-    request: ConnectionRequest,
-    workspaceId: string,
-    workflowId: string,
-  ) {
+    input: ClearWorkflowFailureNotificationPolicyInput,
+  ): Promise<void> {
     return this.telemetry.measure(CONNECTION_OPERATION.policyClear, () =>
       this.database.clearWorkflowPolicy({
-        ...idempotentCommand(request, workspaceId, { workflowId }),
-        workflowId,
+        ...idempotentCommand(input.request, input.workspaceId, {
+          workflowId: input.workflowId,
+        }),
+        workflowId: input.workflowId,
       }),
     );
   }
@@ -218,11 +247,11 @@ export class FailureNotificationDestinationsController {
   ) {
     try {
       const route = paramsSchema.parse(params);
-      return await this.useCases.create(
+      return await this.useCases.create({
         request,
-        route.workspaceId,
-        failureNotificationDestinationCreateRequestSchema.parse(body),
-      );
+        workspaceId: route.workspaceId,
+        body: failureNotificationDestinationCreateRequestSchema.parse(body),
+      });
     } catch (error: unknown) {
       return throwConnectionApplicationError(error);
     }
@@ -234,10 +263,10 @@ export class FailureNotificationDestinationsController {
     @Param() params: unknown,
   ) {
     try {
-      return await this.useCases.list(
+      return await this.useCases.list({
         request,
-        paramsSchema.parse(params).workspaceId,
-      );
+        workspaceId: paramsSchema.parse(params).workspaceId,
+      });
     } catch (error: unknown) {
       return throwConnectionApplicationError(error);
     }
@@ -250,11 +279,11 @@ export class FailureNotificationDestinationsController {
   ) {
     try {
       const route = paramsSchema.parse(params);
-      return await this.useCases.get(
+      return await this.useCases.get({
         request,
-        route.workspaceId,
-        z.uuid().parse(route.destinationId),
-      );
+        workspaceId: route.workspaceId,
+        destinationId: z.uuid().parse(route.destinationId),
+      });
     } catch (error: unknown) {
       return throwConnectionApplicationError(error);
     }
@@ -272,12 +301,14 @@ export class FailureNotificationDestinationsController {
   ) {
     try {
       const route = paramsSchema.parse(params);
-      return await this.useCases.append(
+      return await this.useCases.append({
         request,
-        route.workspaceId,
-        z.uuid().parse(route.destinationId),
-        failureNotificationDestinationAppendVersionRequestSchema.parse(body),
-      );
+        workspaceId: route.workspaceId,
+        destinationId: z.uuid().parse(route.destinationId),
+        body: failureNotificationDestinationAppendVersionRequestSchema.parse(
+          body,
+        ),
+      });
     } catch (error: unknown) {
       return throwConnectionApplicationError(error);
     }
@@ -295,12 +326,12 @@ export class FailureNotificationDestinationsController {
   ) {
     try {
       const route = paramsSchema.parse(params);
-      return await this.useCases.status(
+      return await this.useCases.status({
         request,
-        route.workspaceId,
-        z.uuid().parse(route.destinationId),
-        failureNotificationDestinationStatusRequestSchema.parse(body),
-      );
+        workspaceId: route.workspaceId,
+        destinationId: z.uuid().parse(route.destinationId),
+        body: failureNotificationDestinationStatusRequestSchema.parse(body),
+      });
     } catch (error: unknown) {
       return throwConnectionApplicationError(error);
     }
@@ -319,12 +350,12 @@ export class FailureNotificationDestinationsController {
   ) {
     try {
       const route = paramsSchema.parse(params);
-      await this.useCases.setPolicy(
+      await this.useCases.setPolicy({
         request,
-        route.workspaceId,
-        z.uuid().parse(route.workflowId),
-        workflowFailureNotificationPolicyRequestSchema.parse(body),
-      );
+        workspaceId: route.workspaceId,
+        workflowId: z.uuid().parse(route.workflowId),
+        body: workflowFailureNotificationPolicyRequestSchema.parse(body),
+      });
     } catch (error: unknown) {
       return throwConnectionApplicationError(error);
     }
@@ -342,11 +373,11 @@ export class FailureNotificationDestinationsController {
   ) {
     try {
       const route = paramsSchema.parse(params);
-      await this.useCases.clearPolicy(
+      await this.useCases.clearPolicy({
         request,
-        route.workspaceId,
-        z.uuid().parse(route.workflowId),
-      );
+        workspaceId: route.workspaceId,
+        workflowId: z.uuid().parse(route.workflowId),
+      });
     } catch (error: unknown) {
       return throwConnectionApplicationError(error);
     }

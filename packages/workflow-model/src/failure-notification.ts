@@ -5,6 +5,36 @@ export const FAILURE_NOTIFICATION_POLICY_VERSION = 1 as const;
 
 const safeCodeSchema = z.string().regex(/^[a-z][a-z0-9._:-]{0,127}$/u);
 
+export const FailureNotificationDestinationConfigSchema = z.discriminatedUnion(
+  'kind',
+  [
+    z
+      .object({
+        kind: z.literal('slack'),
+        connectionId: z.uuid(),
+        channelId: z.string().regex(/^[CDGU][A-Z0-9]{1,79}$/u),
+      })
+      .strict(),
+    z
+      .object({
+        kind: z.literal('email'),
+        connectionId: z.uuid(),
+        toEmail: z
+          .email()
+          .max(254)
+          .overwrite((value) => {
+            const at = value.lastIndexOf('@');
+            return `${value.slice(0, at)}@${value.slice(at + 1).toLowerCase()}`;
+          }),
+      })
+      .strict(),
+  ],
+);
+
+export type FailureNotificationDestinationConfig = z.output<
+  typeof FailureNotificationDestinationConfigSchema
+>;
+
 export const FailureNotificationPolicyV1Schema = z
   .object({
     schemaVersion: z.literal(1),

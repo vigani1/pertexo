@@ -65,7 +65,9 @@ function store(kind: 'slack' | 'email'): FailureNotificationStore {
       connectionId: '88888888-8888-4888-8888-888888888888',
       secretVersionId: identity.connectionSecretVersionId,
       sealed,
-      target: kind === 'slack' ? 'C12345' : 'ops@example.test',
+      ...(kind === 'slack'
+        ? { channelId: 'C12345' }
+        : { toEmail: 'ops@example.test' }),
     }),
     fenceDispatch: vi.fn(),
   };
@@ -103,6 +105,31 @@ describe('provider failure notification delivery', () => {
       expect(sendNotification).not.toHaveBeenCalled();
     },
   );
+
+  it('preserves unresolved Slack truth when credential bytes are invalid UTF-8', async () => {
+    const persistence = store('slack');
+    const sendMessage = vi.fn();
+    const delivery = createProviderFailureNotificationDelivery({
+      store: persistence,
+      encryption: { open: vi.fn().mockResolvedValue(Uint8Array.from([0xff])) },
+      slack: { sendMessage },
+      email: { sendNotification: vi.fn() },
+      workerId: 'worker-1',
+    });
+
+    await expect(
+      delivery.deliver({
+        ...identity,
+        sideEffectClass: 'unsafe',
+        deliveryUnresolved: true,
+      }),
+    ).resolves.toMatchObject({
+      kind: 'outcome_unknown',
+      safeErrorCode: 'delivery.previous_outcome_unresolved',
+      possiblyDispatched: true,
+    });
+    expect(sendMessage).not.toHaveBeenCalled();
+  });
 
   it.each(['slack', 'email'] as const)(
     'terminalizes disabled %s destination loading without provider bytes',

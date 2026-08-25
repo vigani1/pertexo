@@ -21,6 +21,7 @@ export {
 export type {
   FailureNotificationClaimResult,
   FailureNotificationDelivery,
+  FailureNotificationResolvedDestination,
   FailureNotificationStore,
 } from './failure-notifications.js';
 export { createDeadlineWakeupScanner } from './deadline-wakeup-scanner.js';

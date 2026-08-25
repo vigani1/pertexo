@@ -1,6 +1,9 @@
 import { z } from 'zod';
+import {
+  FailureNotificationDestinationConfigSchema,
+  type FailureNotificationDestinationConfig,
+} from '@pertexo/workflow-model/failure-notification';
 
-const slackChannelIdSchema = z.string().regex(/^[CDGU][A-Z0-9]{1,79}$/u);
 export const failureNotificationDestinationKindSchema = z.enum([
   'slack',
   'email',
@@ -9,31 +12,8 @@ export const failureNotificationDestinationStatusSchema = z.enum([
   'enabled',
   'disabled',
 ]);
-export const failureNotificationDestinationConfigSchema = z.discriminatedUnion(
-  'kind',
-  [
-    z
-      .object({
-        kind: z.literal('slack'),
-        connectionId: z.uuid(),
-        channelId: slackChannelIdSchema,
-      })
-      .strict(),
-    z
-      .object({
-        kind: z.literal('email'),
-        connectionId: z.uuid(),
-        toEmail: z
-          .email()
-          .max(254)
-          .overwrite((value) => {
-            const at = value.lastIndexOf('@');
-            return `${value.slice(0, at)}@${value.slice(at + 1).toLowerCase()}`;
-          }),
-      })
-      .strict(),
-  ],
-);
+export const failureNotificationDestinationConfigSchema =
+  FailureNotificationDestinationConfigSchema;
 
 export const failureNotificationDestinationCreateRequestSchema =
   failureNotificationDestinationConfigSchema;
@@ -65,9 +45,7 @@ export const failureNotificationDestinationStatusRequestSchema = z
   .object({ status: failureNotificationDestinationStatusSchema })
   .strict();
 
-export type FailureNotificationDestinationConfig = z.output<
-  typeof failureNotificationDestinationConfigSchema
->;
+export type { FailureNotificationDestinationConfig };
 export type FailureNotificationDestinationResponse = z.output<
   typeof failureNotificationDestinationResponseSchema
 >;

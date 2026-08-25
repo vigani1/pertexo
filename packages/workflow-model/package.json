@@ -27,6 +27,10 @@
       "types": "./dist/failure-notification.d.ts",
       "default": "./dist/failure-notification.js"
     },
+    "./assert-never": {
+      "types": "./dist/assert-never.d.ts",
+      "default": "./dist/assert-never.js"
+    },
     "./mapping": {
       "types": "./dist/mapping.d.ts",
       "node": "./dist/mapping.js",

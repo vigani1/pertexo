@@ -4,6 +4,7 @@ import { Pool, type PoolClient } from 'pg';
 import { v5 as uuidv5 } from 'uuid';
 import { z } from 'zod';
 import {
+  FailureNotificationDestinationConfigSchema,
   FailureNotificationContextV1Schema,
   FailureNotificationDeliveryResultV1Schema,
   type FailureNotificationContextV1,
@@ -37,8 +38,7 @@ export type FailureNotificationClaimResult =
       deliveryUnresolved: boolean;
     }>;
 
-export type FailureNotificationDestination = Readonly<{
-  kind: 'slack' | 'email';
+type FailureNotificationResolvedDestinationBase = Readonly<{
   connectionId: string;
   secretVersionId: string;
   sealed: Readonly<{
@@ -49,8 +49,13 @@ export type FailureNotificationDestination = Readonly<{
     nonce: string;
     tag: string;
   }>;
-  target: string;
 }>;
+
+export type FailureNotificationResolvedDestination =
+  | (FailureNotificationResolvedDestinationBase &
+      Readonly<{ kind: 'slack'; channelId: string }>)
+  | (FailureNotificationResolvedDestinationBase &
+      Readonly<{ kind: 'email'; toEmail: string }>);
 
 export interface FailureNotificationStore {
   claimDelivery(
@@ -80,7 +85,7 @@ export interface FailureNotificationStore {
       workerId: string;
       signal: AbortSignal;
     }>,
-  ): Promise<FailureNotificationDestination>;
+  ): Promise<FailureNotificationResolvedDestination>;
   fenceDispatch(
     input: Readonly<{
       workspaceId: string;
@@ -457,14 +462,12 @@ export function createFailureNotificationStore(
             throw new FailureNotificationStateError(
               'Delivery destination is unavailable',
             );
-          const config = z.record(z.string(), z.unknown()).parse(row.config);
           const kind = z.enum(['slack', 'email']).parse(row.kind);
-          const connectionId = identitySchema.parse(config.connectionId);
-          const target = z
-            .string()
-            .min(1)
-            .max(254)
-            .parse(kind === 'slack' ? config.channelId : config.toEmail);
+          const config = FailureNotificationDestinationConfigSchema.parse({
+            ...z.record(z.string(), z.unknown()).parse(row.config),
+            kind,
+          });
+          const connectionId = config.connectionId;
           const secretVersionId = identitySchema.parse(
             row.connection_secret_version_id,
           );
@@ -482,11 +485,9 @@ export function createFailureNotificationStore(
               }),
             ],
           );
-          return Object.freeze({
-            kind,
+          const resolved = {
             connectionId,
             secretVersionId,
-            target,
             sealed: Object.freeze({
               schemaVersion: z.literal(1).parse(row.schema_version),
               kmsKeyReference: z.string().parse(row.kms_key_reference),
@@ -495,7 +496,18 @@ export function createFailureNotificationStore(
               nonce: z.string().parse(row.nonce),
               tag: z.string().parse(row.auth_tag),
             }),
-          });
+          };
+          return config.kind === 'slack'
+            ? Object.freeze({
+                ...resolved,
+                kind: config.kind,
+                channelId: config.channelId,
+              })
+            : Object.freeze({
+                ...resolved,
+                kind: config.kind,
+                toEmail: config.toEmail,
+              });
         },
       );
     },

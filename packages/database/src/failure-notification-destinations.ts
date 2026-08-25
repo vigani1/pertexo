@@ -2,27 +2,15 @@ import { createHash, randomUUID } from 'node:crypto';
 
 import { Pool, type PoolClient } from 'pg';
 import { z } from 'zod';
+import {
+  FailureNotificationDestinationConfigSchema,
+  type FailureNotificationDestinationConfig,
+} from '@pertexo/workflow-model/failure-notification';
 
 import type { DatabaseConfig } from './config.js';
 import { withTenantScopedClient } from './workspace.js';
 
-const configSchema = z.discriminatedUnion('kind', [
-  z
-    .object({
-      kind: z.literal('slack'),
-      connectionId: z.uuid(),
-      channelId: z.string().regex(/^[CDGU][A-Z0-9]{1,79}$/u),
-    })
-    .strict(),
-  z
-    .object({
-      kind: z.literal('email'),
-      connectionId: z.uuid(),
-      toEmail: z.email().max(254),
-    })
-    .strict(),
-]);
-type DestinationConfig = z.output<typeof configSchema>;
+type DestinationConfig = FailureNotificationDestinationConfig;
 
 export type FailureNotificationDestinationRecord = Readonly<{
   id: string;
@@ -202,7 +190,7 @@ function replayRecord(value: unknown): FailureNotificationDestinationRecord {
       kind: z.enum(['slack', 'email']),
       status: z.enum(['enabled', 'disabled']),
       currentVersion: z.number().int().positive(),
-      config: configSchema,
+      config: FailureNotificationDestinationConfigSchema,
       createdAt: z.iso.datetime(),
       updatedAt: z.iso.datetime(),
     })
@@ -274,7 +262,10 @@ function map(
       .int()
       .positive()
       .parse(row.current_config_version),
-    config: configSchema.parse({ kind, ...stored }),
+    config: FailureNotificationDestinationConfigSchema.parse({
+      kind,
+      ...stored,
+    }),
     createdAt: z.date().parse(row.created_at),
     updatedAt: z.date().parse(row.updated_at),
   });
@@ -328,6 +319,33 @@ async function audit(
   );
 }
 
+async function insertVersion(
+  client: PoolClient,
+  input: Readonly<{
+    workspaceId: string;
+    destinationId: string;
+    version: number;
+    config: DestinationConfig;
+    actorId: string;
+  }>,
+): Promise<void> {
+  const { kind, ...config } = input.config;
+  await client.query(
+    `insert into app.failure_notification_destination_versions
+       (workspace_id,destination_id,version,kind,side_effect_class,config,created_by)
+     values ($1,$2,$3,$4,$5,$6::jsonb,$7)`,
+    [
+      input.workspaceId,
+      input.destinationId,
+      input.version,
+      kind,
+      kind === 'slack' ? 'unsafe' : 'idempotent_with_key',
+      JSON.stringify(config),
+      input.actorId,
+    ],
+  );
+}
+
 export function createFailureNotificationDestinationDatabase(
   config: DatabaseConfig,
 ): FailureNotificationDestinationDatabase {
@@ -351,7 +369,9 @@ export function createFailureNotificationDestinationDatabase(
       transaction(input, async (client) => {
         await authorize(client, input.workspaceId, input.actorId, true);
         const destinationId = z.uuid().parse(input.destinationId);
-        const parsed = configSchema.parse(input.config);
+        const parsed = FailureNotificationDestinationConfigSchema.parse(
+          input.config,
+        );
         const operation = 'failure.notification.destination.create';
         const scope = input.actorId;
         const replay = await claimCommand(
@@ -369,29 +389,13 @@ export function createFailureNotificationDestinationDatabase(
          values ($1,$2,$3,'enabled',1,$4)`,
           [destinationId, input.workspaceId, parsed.kind, input.actorId],
         );
-        await client.query(
-          `insert into app.failure_notification_destination_versions
-           (workspace_id,destination_id,version,kind,side_effect_class,config,created_by)
-         values ($1,$2,1,$3,$4,$5::jsonb,$6)`,
-          [
-            input.workspaceId,
-            destinationId,
-            parsed.kind,
-            parsed.kind === 'slack' ? 'unsafe' : 'idempotent_with_key',
-            JSON.stringify(
-              parsed.kind === 'slack'
-                ? {
-                    connectionId: parsed.connectionId,
-                    channelId: parsed.channelId,
-                  }
-                : {
-                    connectionId: parsed.connectionId,
-                    toEmail: parsed.toEmail,
-                  },
-            ),
-            input.actorId,
-          ],
-        );
+        await insertVersion(client, {
+          workspaceId: input.workspaceId,
+          destinationId,
+          version: 1,
+          config: parsed,
+          actorId: input.actorId,
+        });
         await audit(
           client,
           input,
@@ -457,7 +461,9 @@ export function createFailureNotificationDestinationDatabase(
           destinationId,
           true,
         );
-        const parsed = configSchema.parse(input.config);
+        const parsed = FailureNotificationDestinationConfigSchema.parse(
+          input.config,
+        );
         if (
           current.currentVersion !== input.expectedVersion ||
           current.kind !== parsed.kind
@@ -467,30 +473,13 @@ export function createFailureNotificationDestinationDatabase(
           );
         await assertConnection(client, input.workspaceId, parsed);
         const next = current.currentVersion + 1;
-        await client.query(
-          `insert into app.failure_notification_destination_versions
-           (workspace_id,destination_id,version,kind,side_effect_class,config,created_by)
-         values ($1,$2,$3,$4,$5,$6::jsonb,$7)`,
-          [
-            input.workspaceId,
-            current.id,
-            next,
-            parsed.kind,
-            parsed.kind === 'slack' ? 'unsafe' : 'idempotent_with_key',
-            JSON.stringify(
-              parsed.kind === 'slack'
-                ? {
-                    connectionId: parsed.connectionId,
-                    channelId: parsed.channelId,
-                  }
-                : {
-                    connectionId: parsed.connectionId,
-                    toEmail: parsed.toEmail,
-                  },
-            ),
-            input.actorId,
-          ],
-        );
+        await insertVersion(client, {
+          workspaceId: input.workspaceId,
+          destinationId: current.id,
+          version: next,
+          config: parsed,
+          actorId: input.actorId,
+        });
         await client.query(
           `update app.failure_notification_destinations
             set current_config_version=$3,updated_at=clock_timestamp()

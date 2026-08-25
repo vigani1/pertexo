@@ -100,13 +100,13 @@ describe('failure notification destination API seams', () => {
       },
     });
 
-    await useCases.list(request(), workspaceId);
-    await useCases.status(
-      request({ 'idempotency-key': 'destination-status-42' }),
+    await useCases.list({ request: request(), workspaceId });
+    await useCases.status({
+      request: request({ 'idempotency-key': 'destination-status-42' }),
       workspaceId,
       destinationId,
-      { status: 'disabled' },
-    );
+      body: { status: 'disabled' },
+    });
 
     expect(database.list).toHaveBeenCalledWith(
       expect.not.objectContaining({ idempotencyKey: expect.anything() }),

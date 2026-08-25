@@ -830,7 +830,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
       ).resolves.toMatchObject({
         kind: 'email',
         secretVersionId: notificationSecretVersionId,
-        target: 'run-store@example.test',
+        toEmail: 'run-store@example.test',
       });
 
       const disablePool = new Pool({
