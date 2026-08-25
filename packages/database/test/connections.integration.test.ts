@@ -540,6 +540,7 @@ describe('connection persistence', () => {
       '0040_schedule_triggers.sql',
       '0041_trigger_hardening.sql',
       '0042_worker_run_admission_lock.sql',
+      '0043_workflow_run_input_retention.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, priorDatabaseName),
@@ -552,7 +553,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0042_worker_run_admission_lock.sql',
+        migrationHead: '0043_workflow_run_input_retention.sql',
       });
       const bindingSurface = await pool.query<{
         node_column: boolean;
@@ -759,6 +760,7 @@ describe('connection persistence', () => {
       '0040_schedule_triggers.sql',
       '0041_trigger_hardening.sql',
       '0042_worker_run_admission_lock.sql',
+      '0043_workflow_run_input_retention.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, upgradeDatabaseName),
@@ -771,7 +773,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0042_worker_run_admission_lock.sql',
+        migrationHead: '0043_workflow_run_input_retention.sql',
       });
     } finally {
       await pool.end();
@@ -1758,7 +1760,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0042_worker_run_admission_lock.sql',
+        migrationHead: '0043_workflow_run_input_retention.sql',
       });
       await expect(
         checkDatabaseReadiness(workerReadinessPool, {
@@ -1766,7 +1768,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0042_worker_run_admission_lock.sql',
+        migrationHead: '0043_workflow_run_input_retention.sql',
       });
     } finally {
       await Promise.all([apiReadinessPool.end(), workerReadinessPool.end()]);

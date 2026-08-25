@@ -33,7 +33,9 @@ describe('node compatibility release persistence', () => {
       'utf8',
     );
 
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0042_worker_run_admission_lock.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe(
+      '0043_workflow_run_input_retention.sql',
+    );
     expect(migration).toContain('CREATE TABLE app.node_compatibility_releases');
     expect(migration).toContain('CREATE TABLE app.node_compatibility_current');
     expect(migration).toContain(

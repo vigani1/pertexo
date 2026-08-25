@@ -8,7 +8,7 @@ import {
   type CompatibilityReleaseExpectationSet,
 } from './compatibility-release.js';
 
-export const EXPECTED_MIGRATION_HEAD = '0042_worker_run_admission_lock.sql';
+export const EXPECTED_MIGRATION_HEAD = '0043_workflow_run_input_retention.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -541,7 +541,14 @@ export async function checkDatabaseReadiness(
             and attname = 'input_ref' and atttypid = 'jsonb'::regtype
             and not attnotnull and not attisdropped
         )
-        and (select count(*) = 24 from pg_attribute where attrelid = to_regclass('app.workflow_runs') and attnum > 0 and not attisdropped)
+        and exists (
+          select 1 from pg_attribute
+          where attrelid = to_regclass('app.workflow_runs')
+            and attname = 'input_ref_expires_at'
+            and atttypid = 'timestamp with time zone'::regtype
+            and not attnotnull and not attisdropped
+        )
+        and (select count(*) = 25 from pg_attribute where attrelid = to_regclass('app.workflow_runs') and attnum > 0 and not attisdropped)
         and exists (
           select 1 from pg_attribute where attrelid = to_regclass('app.run_checkpoints')
             and attname = 'workflow_version_id' and atttypid = 'uuid'::regtype
@@ -586,6 +593,13 @@ export async function checkDatabaseReadiness(
               and pg_get_constraintdef(constraint_record.oid) = expected.definition
           )
         )
+        and exists (
+          select 1 from pg_constraint
+          where conrelid = to_regclass('app.workflow_runs')
+            and conname = 'workflow_runs_input_ref_expiry_valid'
+            and convalidated
+            and pg_get_constraintdef(oid) = 'CHECK ((((input_ref IS NULL) AND (input_ref_expires_at IS NULL)) OR ((input_ref IS NOT NULL) AND (input_ref_expires_at IS NOT NULL) AND (input_ref_expires_at > created_at) AND (input_ref_expires_at <= (created_at + ''30 days''::interval)))))'
+        )
         and not exists (
           select 1 from (values
             ('workflow_runs', 'workflow_runs_workspace_scope'),
@@ -622,11 +636,16 @@ export async function checkDatabaseReadiness(
             and pg_get_expr(policy.polwithcheck, policy.polrelid) = '((workspace_id)::text = NULLIF(current_setting(''app.workspace_id''::text, true), ''''::text))'
         )
         and not exists (
-          select 1 from (values ('workflow_runs', 'input_ref')) protected(table_name, column_name)
+          select 1 from (values
+            ('workflow_runs', 'input_ref'),
+            ('workflow_runs', 'input_ref_expires_at')
+          ) protected(table_name, column_name)
           where has_column_privilege($2, 'app.' || protected.table_name, protected.column_name, 'UPDATE')
         )
         and has_column_privilege($2, 'app.workflow_runs', 'input_ref', 'SELECT')
         and has_column_privilege($2, 'app.workflow_runs', 'input_ref', 'INSERT')
+        and has_column_privilege($2, 'app.workflow_runs', 'input_ref_expires_at', 'SELECT')
+        and has_column_privilege($2, 'app.workflow_runs', 'input_ref_expires_at', 'INSERT')
         and not exists (
           select 1 from pg_policy policy, unnest(policy.polroles) runtime_role
           where policy.polrelid = to_regclass('app.workflow_runs')
@@ -636,6 +655,9 @@ export async function checkDatabaseReadiness(
               not has_column_privilege(pg_get_userbyid(runtime_role), 'app.workflow_runs', 'input_ref', 'SELECT')
               or not has_column_privilege(pg_get_userbyid(runtime_role), 'app.workflow_runs', 'input_ref', 'INSERT')
               or has_column_privilege(pg_get_userbyid(runtime_role), 'app.workflow_runs', 'input_ref', 'UPDATE')
+              or not has_column_privilege(pg_get_userbyid(runtime_role), 'app.workflow_runs', 'input_ref_expires_at', 'SELECT')
+              or not has_column_privilege(pg_get_userbyid(runtime_role), 'app.workflow_runs', 'input_ref_expires_at', 'INSERT')
+              or has_column_privilege(pg_get_userbyid(runtime_role), 'app.workflow_runs', 'input_ref_expires_at', 'UPDATE')
             )
         )
         and not exists (

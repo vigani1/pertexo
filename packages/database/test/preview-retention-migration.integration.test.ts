@@ -218,6 +218,7 @@ describe('preview retention migration', () => {
       '0040_schedule_triggers.sql',
       '0041_trigger_hardening.sql',
       '0042_worker_run_admission_lock.sql',
+      '0043_workflow_run_input_retention.sql',
     ]);
 
     const verification = new Pool({

@@ -1027,12 +1027,18 @@ describe('atomic workflow run acceptance', () => {
     await apiDatabase.withWorkspace(workspaceA, async ({ db }) => {
       await expect(
         db
-          .select({ inputRef: workflowRuns.inputRef })
+          .select({
+            inputRef: workflowRuns.inputRef,
+            inputRefExpiresAt: workflowRuns.inputRefExpiresAt,
+          })
           .from(workflowRuns)
           .where(eq(workflowRuns.id, accepted.runId)),
       ).resolves.toEqual([
         {
           inputRef: { schemaVersion: 1, kind: 'inline', value: runInput },
+          inputRefExpiresAt: new Date(
+            accepted.acceptedAt.getTime() + 30 * 24 * 60 * 60 * 1_000,
+          ),
         },
       ]);
     });

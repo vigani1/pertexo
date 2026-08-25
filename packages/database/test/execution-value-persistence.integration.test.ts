@@ -251,7 +251,7 @@ describe('execution value persistence migration', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0042_worker_run_admission_lock.sql',
+          migrationHead: '0043_workflow_run_input_retention.sql',
           role: expectedRole,
         });
       } finally {
@@ -310,8 +310,10 @@ describe('execution value persistence migration', () => {
         await expect(
           pool.query(
             `insert into app.workflow_runs
-             (id, workspace_id, workflow_id, workflow_version_id, trigger_type, status, input_ref)
-           values ($1, $2, $3, $4, 'manual', 'queued', $5::jsonb)`,
+             (id, workspace_id, workflow_id, workflow_version_id, trigger_type,
+              status, input_ref, input_ref_expires_at)
+           values ($1, $2, $3, $4, 'manual', 'queued', $5::jsonb,
+                   now() + interval '30 days')`,
             [
               randomUUID(),
               workspaceId,
@@ -335,8 +337,10 @@ describe('execution value persistence migration', () => {
         async (pool) => {
           await pool.query(
             `insert into app.workflow_runs
-             (id, workspace_id, workflow_id, workflow_version_id, trigger_type, status, input_ref)
-           values ($1, $2, $3, $4, 'manual', 'queued', $5::jsonb)`,
+             (id, workspace_id, workflow_id, workflow_version_id, trigger_type,
+              status, input_ref, input_ref_expires_at)
+           values ($1, $2, $3, $4, 'manual', 'queued', $5::jsonb,
+                   now() + interval '30 days')`,
             [
               randomUUID(),
               workspaceId,

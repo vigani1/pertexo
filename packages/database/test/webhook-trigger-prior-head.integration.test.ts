@@ -70,6 +70,7 @@ describe('trigger hardening prior-head migration', () => {
     await expect(migrateDatabase(migrationConfig)).resolves.toEqual([
       '0041_trigger_hardening.sql',
       '0042_worker_run_admission_lock.sql',
+      '0043_workflow_run_input_retention.sql',
     ]);
   });
 });

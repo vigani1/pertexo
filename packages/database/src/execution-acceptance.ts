@@ -417,6 +417,8 @@ export async function acceptWorkflowRun(
           storedRunInputJson === null
             ? null
             : sql`${storedRunInputJson}::jsonb`,
+        inputRefExpiresAt:
+          storedRunInputJson === null ? null : sql`now() + interval '30 days'`,
         triggerType: parsed.triggerType,
         ...(failureNotificationPolicy === undefined
           ? {}

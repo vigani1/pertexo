@@ -490,12 +490,15 @@ async function insertRun(input: {
     await client.query(
       `insert into app.workflow_runs (
          id,workspace_id,workflow_id,workflow_version_id,trigger_type,status,
-          deadline_at,input_ref,failure_notification_policy_version,
+           deadline_at,input_ref,input_ref_expires_at,
+           failure_notification_policy_version,
           failure_notification_destination_id,
            failure_notification_destination_config_version,
            failure_notification_side_effect_class,
            failure_notification_connection_secret_version_id
-         ) values ($1,$2,$3,$4,'manual',$5,$6,$7::jsonb,$8,$9,$10,$11,$12)`,
+          ) values ($1,$2,$3,$4,'manual',$5,$6,$7::jsonb,
+            case when $7::jsonb is null then null else now()+interval '30 days' end,
+            $8,$9,$10,$11,$12)`,
       [
         runId,
         workspaceId,
@@ -2010,7 +2013,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0042_worker_run_admission_lock.sql',
+          migrationHead: '0043_workflow_run_input_retention.sql',
           role: 'pertexo_worker',
         });
       } finally {
@@ -2078,6 +2081,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         '0040_schedule_triggers.sql',
         '0041_trigger_hardening.sql',
         '0042_worker_run_admission_lock.sql',
+        '0043_workflow_run_input_retention.sql',
       ]);
       const workerPool = new Pool({
         connectionString: namedDatabaseUrl(
@@ -2093,7 +2097,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0042_worker_run_admission_lock.sql',
+          migrationHead: '0043_workflow_run_input_retention.sql',
           role: 'pertexo_worker',
         });
         await expect(
@@ -2160,7 +2164,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0042_worker_run_admission_lock.sql',
+        migrationHead: '0043_workflow_run_input_retention.sql',
         role: 'pertexo_worker',
       });
       const catalog = await readinessPool.query<{
@@ -2399,7 +2403,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0042_worker_run_admission_lock.sql',
+        migrationHead: '0043_workflow_run_input_retention.sql',
       });
     } finally {
       await readinessPool.end();
@@ -2585,7 +2589,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         workerRuntimeRole: 'pertexo_worker',
       }),
     ).resolves.toMatchObject({
-      migrationHead: '0042_worker_run_admission_lock.sql',
+      migrationHead: '0043_workflow_run_input_retention.sql',
     });
     await readinessPool.end();
   });

@@ -198,7 +198,7 @@ describe('durable node compatibility release authority', () => {
           preactivationTarget: targetExpectation,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0042_worker_run_admission_lock.sql',
+        migrationHead: '0043_workflow_run_input_retention.sql',
       });
 
       for (const [roleKind, artifactId] of [
@@ -321,7 +321,7 @@ describe('durable node compatibility release authority', () => {
           expectedCompatibilityReleases: rollingExpectations,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0042_worker_run_admission_lock.sql',
+        migrationHead: '0043_workflow_run_input_retention.sql',
       });
       await expect(
         checkDatabaseReadiness(api, {
@@ -434,7 +434,7 @@ describe('durable node compatibility release authority', () => {
             expectedCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0042_worker_run_admission_lock.sql',
+          migrationHead: '0043_workflow_run_input_retention.sql',
         });
         await expect(
           checkExpectedCompatibilityRelease(pool, {
@@ -462,7 +462,7 @@ describe('durable node compatibility release authority', () => {
           expectedCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0042_worker_run_admission_lock.sql',
+        migrationHead: '0043_workflow_run_input_retention.sql',
       });
     } finally {
       await pool.end();
