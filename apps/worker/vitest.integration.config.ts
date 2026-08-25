@@ -4,6 +4,7 @@ export default defineConfig({
   root: import.meta.dirname,
   test: {
     environment: 'node',
+    fileParallelism: false,
     exclude: [
       'test/**/*.resilience.integration.test.ts',
       'test/phase0e-execution.integration.test.ts',

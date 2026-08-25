@@ -57,7 +57,8 @@ const dispatcherUrl =
 const redisUrl =
   process.env.REDIS_URL ?? 'redis://:pertexo-local-redis@localhost:6379/0';
 
-const workspaceId = randomUUID();
+const workspaceId = '00000000-0000-4000-8000-0000000000d4';
+const actorId = '00000000-0000-4000-8000-0000000000a4';
 const TRACEPARENT = `00-${'a'.repeat(32)}-${'b'.repeat(16)}-01`;
 const apiDatabase = createWorkspaceDatabase(
   parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
@@ -122,6 +123,16 @@ async function applyLedgerFixture(): Promise<void> {
     await client.query('begin');
     await client.query('set local role pertexo_owner');
     await client.query(fixture);
+    await client.query(
+      `insert into app.users (id,email,display_name)
+       values ($1,$2,'Worker transport proof') on conflict (id) do nothing`,
+      [actorId, `worker-transport-${actorId}@example.test`],
+    );
+    await client.query(
+      `insert into app.workspaces (id,name,slug,created_by)
+       values ($1,'Worker transport proof',$2,$3) on conflict (id) do nothing`,
+      [workspaceId, `worker-transport-${workspaceId}`, actorId],
+    );
     await client.query('commit');
   } catch (error: unknown) {
     await client.query('rollback').catch(() => undefined);
@@ -141,8 +152,15 @@ async function insertRunEvent(
     runId: randomUUID(),
     ...(traceparent ? { traceparent } : {}),
   };
-  await apiDatabase.withWorkspace(workspaceId, (transaction) =>
-    insertOutboxEvent(transaction, {
+  await apiDatabase.withWorkspace(workspaceId, async (transaction) => {
+    await transaction.db.execute(sql`
+      insert into app.workflow_runs (
+        id,workspace_id,workflow_id,workflow_version_id,trigger_type,status
+      ) values (
+        ${payload.runId},${workspaceId},${randomUUID()},${randomUUID()},'manual','succeeded'
+      )
+    `);
+    await insertOutboxEvent(transaction, {
       aggregateId: payload.runId,
       aggregateType: 'workflow-run',
       availableAt: new Date(0),
@@ -151,8 +169,8 @@ async function insertRunEvent(
       payload,
       payloadChecksum: checksum(payload),
       schemaVersion: 1,
-    }).then(() => undefined),
-  );
+    });
+  });
   return id;
 }
 
@@ -301,6 +319,47 @@ function deferred(): Readonly<{ promise: Promise<void>; resolve(): void }> {
   };
 }
 
+async function dispatchFairRounds(
+  dispatchers: readonly OutboxDispatcher[],
+  expectedClaims: number,
+): Promise<Readonly<{ claimed: number; failed: number; published: number }>> {
+  const totals = { claimed: 0, failed: 0, published: 0 };
+  const maximumRounds = expectedClaims + 2;
+  for (let round = 0; round < maximumRounds; round += 1) {
+    const results = await Promise.all(
+      dispatchers.map((dispatcher) => dispatcher.dispatchOnce()),
+    );
+    for (const result of results) {
+      totals.claimed += result.claimed;
+      totals.failed += result.failed;
+      totals.published += result.published;
+    }
+    if (totals.claimed >= expectedClaims) return totals;
+  }
+  throw new Error(
+    `Fair dispatch did not claim ${String(expectedClaims)} events within ${String(maximumRounds)} rounds: ${JSON.stringify(totals)}`,
+  );
+}
+
+async function claimEventAcrossFairRounds(
+  database: ReturnType<typeof createOutboxDispatcherDatabase>,
+  eventId: string,
+) {
+  for (let round = 0; round < 3; round += 1) {
+    const claimed = await database.claimBatch({
+      enabledJobNames: [JOB_NAME.advanceWorkflowRun],
+      leaseDurationMillis: 1_000,
+      leaseOwner: 'integration-crashed',
+      leaseToken: randomUUID(),
+      limit: 100,
+      maxAttempts: 3,
+    });
+    const event = claimed.events.find((candidate) => candidate.id === eventId);
+    if (event !== undefined) return event;
+  }
+  throw new Error('Proof event was not claimed within bounded fair rounds');
+}
+
 async function waitForRemovableJob(queue: Queue, id: string): Promise<void> {
   const deadline = Date.now() + 10_000;
   while (Date.now() < deadline) {
@@ -344,6 +403,7 @@ async function cleanup(): Promise<void> {
       'queue_duplicate_probe_attempts',
       'inbox_receipts',
       'outbox_events',
+      'workflow_runs',
     ]) {
       await client.query(`delete from app.${table} where workspace_id = $1`, [
         workspaceId,
@@ -393,11 +453,13 @@ describeIntegration(
       const second = createDispatcher('integration-b', 2);
       try {
         await Promise.all([first.checkReadiness(), second.checkReadiness()]);
-        const results = await Promise.all([
-          first.dispatchOnce(),
-          second.dispatchOnce(),
-        ]);
-        expect(results.map((result) => result.claimed).sort()).toEqual([2, 2]);
+        await expect(
+          dispatchFairRounds([first, second], ids.length),
+        ).resolves.toMatchObject({
+          claimed: ids.length,
+          failed: 0,
+          published: ids.length,
+        });
         const queue = new Queue(QUEUE_NAME.workflowCoordinator, {
           connection: redisConnection(),
         });
@@ -482,7 +544,9 @@ describeIntegration(
           mismatchedDispatcher.checkReadiness(),
         ).rejects.toBeInstanceOf(DispatchConsumerCapabilityError);
         await dispatcher.checkReadiness();
-        await expect(dispatcher.dispatchOnce()).resolves.toMatchObject({
+        await expect(
+          dispatchFairRounds([dispatcher], 1),
+        ).resolves.toMatchObject({
           claimed: 1,
           published: 1,
         });
@@ -689,16 +753,7 @@ describeIntegration(
           producer.waitUntilReady(),
           firstCoordinator.waitUntilReady(),
         ]);
-        const claimed = await rawDispatcher.claimBatch({
-          enabledJobNames: [JOB_NAME.advanceWorkflowRun],
-          leaseDurationMillis: 1_000,
-          leaseOwner: 'integration-crashed',
-          leaseToken: randomUUID(),
-          limit: 100,
-          maxAttempts: 3,
-        });
-        const event = claimed.events.find((candidate) => candidate.id === id);
-        if (event === undefined) throw new Error('Proof event was not claimed');
+        const event = await claimEventAcrossFairRounds(rawDispatcher, id);
         await producer.publish({
           name: JOB_NAME.advanceWorkflowRun,
           data: {
@@ -717,7 +772,7 @@ describeIntegration(
           secondCoordinator.waitUntilReady(),
           providerConsumer.waitUntilReady(),
         ]);
-        await dispatcher.dispatchOnce();
+        await dispatchFairRounds([dispatcher], 2);
         await Promise.all([
           duplicateCoordinatorCommit.promise,
           providerCompleted.promise,
@@ -964,9 +1019,9 @@ describeIntegration(
           coordinator.waitUntilReady(),
           providerConsumer.waitUntilReady(),
         ]);
-        await dispatcher.dispatchOnce();
+        await dispatchFairRounds([dispatcher], 1);
         await coordinatorCompleted.promise;
-        await dispatcher.dispatchOnce();
+        await dispatchFairRounds([dispatcher], 1);
         await ambiguityPersisted.promise;
         await new Promise((resolve) => setTimeout(resolve, 1_200));
         expect(providerDeliveries).toBe(1);

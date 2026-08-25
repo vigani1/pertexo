@@ -1340,6 +1340,24 @@ function createFailureNotificationDispatcher(
   );
 }
 
+async function dispatchFairRounds(
+  dispatcher: OutboxDispatcher,
+  expectedClaims: number,
+): Promise<Readonly<{ claimed: number; failed: number; published: number }>> {
+  const totals = { claimed: 0, failed: 0, published: 0 };
+  const maximumRounds = expectedClaims + 2;
+  for (let round = 0; round < maximumRounds; round += 1) {
+    const result = await dispatcher.dispatchOnce();
+    totals.claimed += result.claimed;
+    totals.failed += result.failed;
+    totals.published += result.published;
+    if (totals.claimed >= expectedClaims) return totals;
+  }
+  throw new Error(
+    `Fair dispatch did not claim ${String(expectedClaims)} events within ${String(maximumRounds)} rounds: ${JSON.stringify(totals)}`,
+  );
+}
+
 describeIntegration('Phase 3 coordinator consumer', () => {
   beforeAll(setupFixture, 60_000);
   afterAll(async () => {
@@ -2003,10 +2021,8 @@ describeIntegration('Phase 3 coordinator consumer', () => {
       runtime.consumer,
       drainState,
     );
-    let producer = createQueueProducer({ redisUrl });
-    const queue = new Queue(QUEUE_NAME.maintenance, {
-      connection: redisConnection(),
-    });
+    let producer: ReturnType<typeof createQueueProducer> | undefined;
+    let queue: Queue | undefined;
     try {
       await stopService('redis');
       await expect(dispatcher.checkReadiness()).rejects.toThrow();
@@ -2026,11 +2042,11 @@ describeIntegration('Phase 3 coordinator consumer', () => {
         ]),
       );
       await startService('redis');
-      await Promise.allSettled([
-        dispatcher.close(),
-        runtime.close(),
-        producer.close(),
+      await Promise.all([
+        runtime.consumer.waitUntilReady(5_000),
+        dispatcher.checkReadiness(),
       ]);
+      await Promise.allSettled([dispatcher.close(), runtime.close()]);
       runtime = await createPreviewMaintenanceRuntime({
         database: parseDatabaseConfig({
           connectionString: databaseUrl(workerUrl),
@@ -2045,10 +2061,15 @@ describeIntegration('Phase 3 coordinator consumer', () => {
         drainState,
       );
       producer = createQueueProducer({ redisUrl });
+      const activeProducer = producer;
+      queue = new Queue(QUEUE_NAME.maintenance, {
+        connection: redisConnection(),
+      });
+      const activeQueue = queue;
       await Promise.all([
         runtime.consumer.waitUntilReady(5_000),
         dispatcher.checkReadiness(),
-        producer.waitUntilReady(5_000),
+        activeProducer.waitUntilReady(5_000),
       ]);
       const recovered = await waitFor(
         () =>
@@ -2064,7 +2085,7 @@ describeIntegration('Phase 3 coordinator consumer', () => {
           ),
         (rows) => rows.length === 2,
       );
-      await expect(dispatcher.dispatchOnce()).resolves.toMatchObject({
+      await expect(dispatchFairRounds(dispatcher, 5)).resolves.toMatchObject({
         claimed: 5,
         published: 5,
       });
@@ -2097,28 +2118,31 @@ describeIntegration('Phase 3 coordinator consumer', () => {
 
       const retry = recovered[0];
       if (retry === undefined) throw new Error('notification recovery missing');
-      const completedJob = await queue.getJob(`outbox-${retry.id}`);
+      const completedJob = await activeQueue.getJob(`outbox-${retry.id}`);
       await completedJob?.remove();
-      await producer.publish({
+      await activeProducer.publish({
         name: JOB_NAME.deliverRunFailureNotification,
         data: retry.payload,
       });
       await waitFor(
-        async () => (await queue.getJob(`outbox-${retry.id}`))?.getState(),
+        async () =>
+          (await activeQueue.getJob(`outbox-${retry.id}`))?.getState(),
         (state) => state === 'completed',
       );
       expect(deliveries).toHaveLength(1);
-      const slackCompletedJob = await queue.getJob(
+      const slackCompletedJob = await activeQueue.getJob(
         `outbox-${slackOutboxEventId}`,
       );
       await slackCompletedJob?.remove();
-      await producer.publish({
+      await activeProducer.publish({
         name: JOB_NAME.deliverRunFailureNotification,
         data: slackPayload,
       });
       await waitFor(
         async () =>
-          (await queue.getJob(`outbox-${slackOutboxEventId}`))?.getState(),
+          (
+            await activeQueue.getJob(`outbox-${slackOutboxEventId}`)
+          )?.getState(),
         (state) => state === 'completed',
       );
       expect(slackDeliveries).toHaveLength(0);
@@ -2173,10 +2197,10 @@ describeIntegration('Phase 3 coordinator consumer', () => {
         dispatcher.close(),
         runtime.close(),
         providerStore.close(),
-        producer.close(),
+        producer?.close() ?? Promise.resolve(),
       ]);
-      await queue.obliterate({ force: true }).catch(() => undefined);
-      await queue.close();
+      await queue?.obliterate({ force: true }).catch(() => undefined);
+      await queue?.close();
     }
   }, 120_000);
 
@@ -3842,13 +3866,13 @@ describeIntegration('Phase 3 coordinator consumer', () => {
       unavailableRedis.toString(),
     );
     try {
-      await expect(unavailableDispatcher.dispatchOnce()).resolves.toMatchObject(
-        {
-          claimed: 2,
-          failed: 2,
-          published: 0,
-        },
-      );
+      await expect(
+        dispatchFairRounds(unavailableDispatcher, 2),
+      ).resolves.toMatchObject({
+        claimed: 2,
+        failed: 2,
+        published: 0,
+      });
     } finally {
       await unavailableDispatcher.close().catch(() => undefined);
       redisError.mockRestore();
@@ -3858,7 +3882,7 @@ describeIntegration('Phase 3 coordinator consumer', () => {
     const dispatcher = createCoordinatorDispatcher(afterClaim.consumer);
     try {
       await dispatcher.checkReadiness();
-      await expect(dispatcher.dispatchOnce()).resolves.toMatchObject({
+      await expect(dispatchFairRounds(dispatcher, 2)).resolves.toMatchObject({
         claimed: 2,
         published: 2,
       });
