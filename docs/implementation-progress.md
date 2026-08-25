@@ -22,7 +22,7 @@ not complete a phase.
 | Phase 3 — first executable-node slice | Complete | ADR 010; implementation through `7487ae6`; migration head `0019_node_compatibility_preactivation.sql`; 575 unit and 217 sequential real-service assertions; five process-recovery, one transport-outage, one SSE-outage, and one additive-rollout assertion; independent Spec and Standards completion GO |
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 5 — orchestration slice | Complete | ADRs 008/017/018/019/020/021/022; implementation through `9d7e071`; migration head `0034_run_failure_notifications.sql`; 862 unit assertions and complete real-service/recovery matrix; independent fixed-head Spec and Standards completion GO |
-| Phase 6 — V1 providers and triggers | In progress | ADRs 012–014 and 023–026; Slack `slack.send_message@1`, email `email.send_notification@1`, failure-notification destinations, and shared execution admission/fair dispatch are active at migration head `0038`; Webhook and Schedule remain |
+| Phase 6 — V1 providers and triggers | In progress | ADRs 012–014 and 023–026; Slack, email, failure-notification destinations, Webhook, Schedule, and shared admission/fair dispatch are implemented at migration head `0043`; final retained Phase 0E Redis child-process recovery verification remains open |
 | Phase 7 — production operations | Not started | — |
 
 The `0A`–`0E` checkpoints are implementation-sized subdivisions of the plan's
@@ -2729,9 +2729,9 @@ Authority and sequencing:
 - [x] Complete webhook
       reconciliation, raw-byte verification, deduplication, and run acceptance.
 - [x] Accept ADR 014 before implementing Schedule.
-- [ ] Complete Schedule and prove timezone, DST,
+- [x] Complete Schedule and prove timezone, DST,
       misfire, PostgreSQL authority, and recovery behavior.
-- [ ] Keep polling deferred unless launch validation explicitly promotes it.
+- [x] Keep polling deferred unless launch validation explicitly promotes it.
 
 Slack `send_message` completion gates:
 
@@ -2775,7 +2775,7 @@ Failure-notification destination completion gates:
 - [x] Add workspace-scoped destination identities, immutable Slack/email config
       versions, optimistic updates, disable behavior, RLS, audit, and strict API
       contracts without exposing provider or secret material.
-- [ ] Add one workflow policy reference outside graph topology and atomically pin
+- [x] Add one workflow policy reference outside graph topology and atomically pin
       its exact active destination version and side-effect class into every new
       manual, webhook, and schedule run.
 - [x] Compose provider-neutral delivery over the proven Slack and Resend clients,
@@ -2790,13 +2790,13 @@ Failure-notification destination completion gates:
 
 Phase-wide completion gates:
 
-- [ ] Complete Slack, email, failure-notification destinations, Webhook, and
+- [x] Complete Slack, email, failure-notification destinations, Webhook, and
       Schedule in that order; do not add polling.
 - [ ] Run root checks, provider contracts, zero/prior-head migrations, complete
       real-service matrices, retained recovery fixtures, and additive rollout.
 - [ ] Record exact versions, commands, assertion counts, timings, cleanup, and
       post-test dependency health.
-- [ ] Resolve every blocker/high finding from independent fixed-head Spec and
+- [x] Resolve every blocker/high finding from independent fixed-head Spec and
       Standards reviews and push all coherent implementation/evidence commits.
 
 Current evidence:
@@ -2835,6 +2835,28 @@ Current evidence:
   in 1,003 ms (3.55 seconds including migration, release rollout, Redis/BullMQ,
   and cleanup), dropped its disposable database, and left isolated Redis DB 13
   empty.
+- Final trigger hardening through `de28879` makes the PostgreSQL endpoint ingress
+  limiter mandatory before every KMS decrypt, keeps generated credentials out of
+  webhook command identity, persists a separately constrained 30-day run-input
+  expiry at migration `0043_workflow_run_input_retention.sql`, and emits bounded-
+  cardinality Webhook delivery/deduplication/health and Schedule lag/scan/
+  reconciliation/health telemetry. Webhook ingress now extracts an incoming W3C
+  parent when valid, starts `webhook.ingress`, and persists the active span context
+  for outbox and worker continuation. Independent fixed-head Spec and Standards
+  re-reviews found no implementation blocker/high after these corrections.
+- Final verification on 2026-08-25: root `pnpm check` passes formatting, builds,
+  lint, generated-contract drift, typechecks, and 1,020 unit assertions;
+  `pnpm audit --prod` reports no known vulnerabilities. A fresh PostgreSQL 18
+  database applies all 44 migrations through `0043` and passes 288 assertions
+  across 21 sequential integration files. The direct Webhook gate passes in
+  3.75 seconds, the direct Schedule gate passes in 3.84 seconds, and additive
+  compatibility rollout passes against a freshly migrated disposable database
+  in 4.20 seconds; each disposable database was dropped. The retained Phase 0E
+  fixture still passes three of five process-recovery cases but its two Redis-
+  backed cases time out before a Vitest-spawned BullMQ consumer reports ready;
+  direct fixture launch, direct trigger gates, and destructive transport recovery
+  remain green. Phase 6 therefore remains in progress rather than claiming the
+  phase-wide recovery gate complete.
 - Migration `0038_execution_admission.sql` provisions existing and new
   workspaces with immutable entitlement version 1 (five active, 100 queued), a
   forced-RLS current projection, and reconciled queued/active counters. Run
@@ -2865,9 +2887,9 @@ Current evidence:
   (including 101 concurrent requests with exactly 100 accepted), 40 coordinator
   assertions, and 19 outbox/dispatcher assertions. The focused API problem and
   persistence suites pass 14 assertions, and root `pnpm check` passes formatting,
-  builds, lint, contract drift, typechecks, and 954 unit assertions. Complete
-  Phase 6 trigger real-service/process recovery gates remain open; Phase 6 stays
-  in progress because Webhook and Schedule are unfinished.
+  builds, lint, contract drift, typechecks, and 954 unit assertions. At that
+  checkpoint the Webhook and Schedule slices were unfinished; the later trigger
+  evidence above supersedes that implementation status.
 - ADR 023 fixes `slack.send_message@1` as an unsafe ABI 2 action with strict
   browser-safe schemas, a single `slack_bot_token` slot, fixed
   `chat.postMessage`/`auth.test` endpoints, no redirects or hidden retries, a
