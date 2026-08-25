@@ -151,6 +151,12 @@ export const APPLICATION_ERROR_CATALOG = {
     severity: 'warn',
     exposeDetail: false,
   },
+  'webhook.unavailable': {
+    status: 503,
+    title: 'Webhook unavailable',
+    severity: 'error',
+    exposeDetail: false,
+  },
   'internal.unexpected': {
     status: 500,
     title: 'Internal server error',

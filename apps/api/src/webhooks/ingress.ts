@@ -221,11 +221,21 @@ async function openSecret(
   sealed: WebhookVerificationReference['currentSecret'],
   verification: Pick<WebhookVerificationReference, 'workspaceId' | 'triggerId'>,
 ) {
-  return encryption.open(sealed, {
-    workspaceId: verification.workspaceId,
-    triggerId: verification.triggerId,
-    secretVersionId: sealed.id,
-  });
+  return encryption.open(
+    {
+      schemaVersion: sealed.schemaVersion,
+      kmsKeyReference: sealed.kmsKeyReference,
+      encryptedDataKey: sealed.encryptedDataKey,
+      ciphertext: sealed.ciphertext,
+      nonce: sealed.nonce,
+      authTag: sealed.authTag,
+    },
+    {
+      workspaceId: verification.workspaceId,
+      triggerId: verification.triggerId,
+      secretVersionId: sealed.id,
+    },
+  );
 }
 
 function headerPresent(request: FastifyRequest, name: string): boolean {
