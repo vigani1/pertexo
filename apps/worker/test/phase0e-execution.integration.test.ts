@@ -584,31 +584,36 @@ async function publishOutbox(duplicateAggregateId?: string): Promise<number> {
   await producer.waitUntilReady(5_000);
   let published = 0;
   try {
-    const batch = await dispatcherDatabase.claimBatch({
-      enabledJobNames: [
-        JOB_NAME.advanceWorkflowRun,
-        JOB_NAME.executeNodeAttempt,
-      ],
-      leaseDurationMillis: 5_000,
-      leaseOwner: `phase0e:${randomUUID()}`,
-      leaseToken: randomUUID(),
-      limit: 100,
-      maxAttempts: 5,
-    });
-    for (const event of batch.events) {
-      const job = parseQueueJob({ name: event.jobName, data: event.payload });
-      await producer.publish(job);
-      if (event.aggregateId === duplicateAggregateId) {
+    for (let round = 0; round < 100; round += 1) {
+      const batch = await dispatcherDatabase.claimBatch({
+        enabledJobNames: [
+          JOB_NAME.advanceWorkflowRun,
+          JOB_NAME.executeNodeAttempt,
+        ],
+        leaseDurationMillis: 5_000,
+        leaseOwner: `phase0e:${randomUUID()}`,
+        leaseToken: randomUUID(),
+        limit: 100,
+        maxAttempts: 5,
+      });
+      if (batch.events.length === 0) return published;
+      for (const event of batch.events) {
+        const job = parseQueueJob({ name: event.jobName, data: event.payload });
         await producer.publish(job);
-      }
-      if (await dispatcherDatabase.markPublished(event.id, event.leaseToken)) {
-        published += 1;
+        if (event.aggregateId === duplicateAggregateId) {
+          await producer.publish(job);
+        }
+        if (
+          await dispatcherDatabase.markPublished(event.id, event.leaseToken)
+        ) {
+          published += 1;
+        }
       }
     }
+    throw new Error('Phase 0E outbox did not drain within 100 fairness rounds');
   } finally {
     await producer.close();
   }
-  return published;
 }
 
 async function waitFor<T>(
