@@ -17,6 +17,8 @@ import {
 import { ApiDrainState } from '../src/platform/health/drain-state.js';
 import type { ApiIdentityRuntime } from '../src/platform/identity/identity-runtime.module.js';
 import type { ApiWorkflowRuntime } from '../src/platform/workflow/workflow-runtime.module.js';
+import type { ApiWebhookRuntime } from '../src/platform/webhooks/webhook-runtime.module.js';
+import type { WebhookManagementService } from '../src/webhooks/service.js';
 
 const database: WorkspaceDatabase = {
   withWorkspace: async <T>(
@@ -360,6 +362,48 @@ describe('API bootstrap', () => {
     application = undefined;
     expect(identityClose).toHaveBeenCalledOnce();
     expect(workflowClose).toHaveBeenCalledOnce();
+  });
+
+  it('registers the encapsulated webhook route and closes its runtime', async () => {
+    const selectedIdentityRuntime = identityRuntime();
+    const webhookClose = vi.fn().mockResolvedValue(undefined);
+    const webhookRuntime = {
+      service: {} as WebhookManagementService,
+      ingress: {
+        database: {
+          resolveVerification: vi.fn().mockResolvedValue(null),
+        },
+        encryption: {},
+        checkpointFactory: () => ({ engineVersion: 'test', checkpoint: {} }),
+      },
+      close: webhookClose,
+    } as unknown as ApiWebhookRuntime;
+    application = await createApiApplication(config, {
+      ...dependencies(),
+      identityRuntime: selectedIdentityRuntime,
+      webhookRuntime,
+    });
+
+    const response = await application.inject({
+      method: 'POST',
+      url: `/hooks/${'a'.repeat(43)}`,
+      headers: { 'content-type': 'application/json' },
+      payload: '{}',
+    });
+    expect(response.statusCode).toBe(401);
+    expect(response.json<{ code: string }>().code).toBe(
+      'webhook.authentication_failed',
+    );
+
+    const management = await application.inject({
+      method: 'GET',
+      url: '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/workflows/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/triggers',
+    });
+    expect(management.statusCode).toBe(401);
+
+    await application.close();
+    application = undefined;
+    expect(webhookClose).toHaveBeenCalledOnce();
   });
 
   it('registers node-testing routes and providers with the production workflow runtime', async () => {

@@ -1,7 +1,7 @@
 import {
   DecryptCommand,
   GenerateDataKeyCommand,
-  type KMSClient,
+  KMSClient,
 } from '@aws-sdk/client-kms';
 import {
   createCipheriv,
@@ -123,6 +123,7 @@ export class AwsKmsWebhookEnvelopeKeyProvider implements WebhookEnvelopeKeyProvi
   ) {
     const parsed = contextSchema.parse(context);
     let providerPlaintext: Uint8Array | undefined;
+    let plaintextKey: Uint8Array | undefined;
     try {
       const response = await this.client.send(
         new GenerateDataKeyCommand({
@@ -133,7 +134,7 @@ export class AwsKmsWebhookEnvelopeKeyProvider implements WebhookEnvelopeKeyProvi
         signal === undefined ? undefined : { abortSignal: signal },
       );
       providerPlaintext = response.Plaintext;
-      const plaintextKey = copyBytes(providerPlaintext, 32);
+      plaintextKey = copyBytes(providerPlaintext, 32);
       const encryptedDataKey = copyBytes(response.CiphertextBlob, 8_192);
       providerPlaintext?.fill(0);
       if (plaintextKey.byteLength !== 32)
@@ -145,6 +146,7 @@ export class AwsKmsWebhookEnvelopeKeyProvider implements WebhookEnvelopeKeyProvi
       });
     } catch {
       providerPlaintext?.fill(0);
+      plaintextKey?.fill(0);
       throw new WebhookTriggerSecretEncryptionError();
     }
   }
@@ -156,6 +158,7 @@ export class AwsKmsWebhookEnvelopeKeyProvider implements WebhookEnvelopeKeyProvi
     signal?: AbortSignal,
   ): Promise<Uint8Array> {
     let providerPlaintext: Uint8Array | undefined;
+    let result: Uint8Array | undefined;
     try {
       const response = await this.client.send(
         new DecryptCommand({
@@ -167,16 +170,38 @@ export class AwsKmsWebhookEnvelopeKeyProvider implements WebhookEnvelopeKeyProvi
         signal === undefined ? undefined : { abortSignal: signal },
       );
       providerPlaintext = response.Plaintext;
-      const result = copyBytes(providerPlaintext, 32);
+      result = copyBytes(providerPlaintext, 32);
       providerPlaintext?.fill(0);
       if (result.byteLength !== 32)
         throw new WebhookTriggerSecretEncryptionError();
       return result;
     } catch {
       providerPlaintext?.fill(0);
+      result?.fill(0);
       throw new WebhookTriggerSecretEncryptionError();
     }
   }
+}
+
+export function createAwsWebhookTriggerEnvelopeEncryption(
+  config: Readonly<{
+    keyReference: string;
+    region: string;
+    endpoint?: string;
+  }>,
+) {
+  const client = new KMSClient({
+    region: config.region,
+    ...(config.endpoint === undefined ? {} : { endpoint: config.endpoint }),
+  });
+  return Object.freeze({
+    encryption: new WebhookTriggerEnvelopeEncryption(
+      new AwsKmsWebhookEnvelopeKeyProvider(client, config.keyReference),
+    ),
+    close: () => {
+      client.destroy();
+    },
+  });
 }
 
 export class WebhookTriggerEnvelopeEncryption {

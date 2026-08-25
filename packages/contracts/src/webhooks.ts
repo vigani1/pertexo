@@ -51,6 +51,29 @@ const managementPath = {
     },
   },
 };
+const rotateSecretPath = {
+  post: {
+    ...managementPath.post,
+    requestBody: {
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['endpointKey'],
+            properties: {
+              endpointKey: {
+                type: 'string',
+                pattern: '^[A-Za-z0-9_-]{43}$',
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+};
 
 export const webhooksOpenApiDocument = Object.freeze({
   openapi: '3.1.0',
@@ -66,7 +89,7 @@ export const webhooksOpenApiDocument = Object.freeze({
     '/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers/{triggerId}/webhook/rotate-endpoint':
       managementPath,
     '/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers/{triggerId}/webhook/rotate-secret':
-      managementPath,
+      rotateSecretPath,
     '/hooks/{endpointKey}': {
       post: {
         requestBody: {

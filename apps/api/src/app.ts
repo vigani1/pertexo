@@ -6,6 +6,7 @@ import type {
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter } from '@nestjs/platform-fastify';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
+import type { FastifyInstance } from 'fastify';
 
 import { AppModule } from './app.module.js';
 import type { ApiConfig } from './platform/config/api-config.js';
@@ -26,6 +27,11 @@ import {
   type ApiWorkflowRuntime,
   type ApiWorkflowRuntimeOverrides,
 } from './platform/workflow/workflow-runtime.module.js';
+import {
+  createApiWebhookRuntime,
+  type ApiWebhookRuntime,
+} from './platform/webhooks/webhook-runtime.module.js';
+import { registerWebhookIngress } from './webhooks/ingress.js';
 
 export type ApiApplicationDependencies = Readonly<{
   database?: WorkspaceDatabase;
@@ -35,6 +41,7 @@ export type ApiApplicationDependencies = Readonly<{
   connectionOverrides?: ApiConnectionRuntimeOverrides;
   workflowRuntime?: ApiWorkflowRuntime;
   workflowOverrides?: ApiWorkflowRuntimeOverrides;
+  webhookRuntime?: ApiWebhookRuntime;
   logger: StructuredLogger;
   telemetry: TelemetryLifecycle;
 }>;
@@ -76,6 +83,15 @@ export async function createApiApplication(
           identityRuntime,
           dependencies.connectionOverrides,
         ));
+  const webhookRuntime =
+    dependencies.webhookRuntime ??
+    (identityRuntime === undefined || config.webhooks === undefined
+      ? undefined
+      : createApiWebhookRuntime(
+          config.webhooks,
+          config.database,
+          config.nodeCompatibilityCohort,
+        ));
   let application: NestFastifyApplication;
   try {
     application = await NestFactory.create<NestFastifyApplication>(
@@ -84,6 +100,7 @@ export async function createApiApplication(
         ...(identityRuntime === undefined ? {} : { identityRuntime }),
         ...(workflowRuntime === undefined ? {} : { workflowRuntime }),
         ...(connectionRuntime === undefined ? {} : { connectionRuntime }),
+        ...(webhookRuntime === undefined ? {} : { webhookRuntime }),
       }),
       new FastifyAdapter(),
       { abortOnError: false, logger: nestLogger },
@@ -93,13 +110,22 @@ export async function createApiApplication(
       identityRuntime?.close(),
       workflowRuntime?.close(),
       connectionRuntime?.close(),
+      webhookRuntime?.close(),
     ]);
     throw error;
   }
 
   application.enableShutdownHooks();
-
   try {
+    await application.init();
+    if (webhookRuntime !== undefined) {
+      registerWebhookIngress(
+        application
+          .getHttpAdapter()
+          .getInstance() as unknown as FastifyInstance,
+        webhookRuntime.ingress,
+      );
+    }
     await application
       .get<WorkspaceDatabase>(WORKSPACE_DATABASE)
       .checkReadiness();

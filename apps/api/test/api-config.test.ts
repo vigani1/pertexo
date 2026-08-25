@@ -143,6 +143,8 @@ describe('parseApiConfig', () => {
       region: 'eu-central-1',
     });
     expect(Object.isFrozen(config.connections)).toBe(true);
+    expect(config.webhooks).toEqual(config.connections);
+    expect(Object.isFrozen(config.webhooks)).toBe(true);
   });
 
   it('rejects partial local identity configuration without exposing its secret', () => {

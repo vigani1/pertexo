@@ -98,6 +98,23 @@ verification; all subsequent tenant writes run with explicit workspace context.
 
 ## Consequences
 
+### Public management clarification
+
+The management routes are scoped below a workflow trigger collection. Provision
+and both rotation commands require `Idempotency-Key`, the existing session and
+CSRF controls, and workflow-update authorization. Secret rotation also requires
+the current endpoint key in its authenticated JSON request. The API uses that
+key only to resolve the post-command encrypted secret-version identity, allowing
+it to distinguish the original successful command from a completed replay
+without persisting or logging the plaintext endpoint key. A caller that has lost
+the endpoint key rotates the endpoint first. Normal trigger reads remain free of
+credentials and hashes.
+
+Webhook trigger secrets use a dedicated envelope purpose and associated-data
+shape containing workspace, trigger, and secret-version identity. They may use
+the same configured AWS KMS key reference as connection secrets, but never the
+connection-secret envelope purpose or associated data.
+
 Public URL rotation and signing-secret rotation are independent, signatures
 cover the actual transmitted bytes, and exact retries cannot create duplicate
 runs. PostgreSQL loss fails closed. The trade-off is raw-body handling, a

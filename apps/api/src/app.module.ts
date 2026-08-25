@@ -32,12 +32,15 @@ import {
   WorkflowRuntimeModule,
   type ApiWorkflowRuntime,
 } from './platform/workflow/workflow-runtime.module.js';
+import type { ApiWebhookRuntime } from './platform/webhooks/webhook-runtime.module.js';
+import { WebhookModule } from './webhooks/module.js';
 
 export type ApiModuleDependencies = Readonly<{
   database?: WorkspaceDatabase;
   identityRuntime?: ApiIdentityRuntime;
   connectionRuntime?: ApiConnectionRuntime;
   workflowRuntime?: ApiWorkflowRuntime;
+  webhookRuntime?: ApiWebhookRuntime;
   logger: StructuredLogger;
   telemetry: TelemetryLifecycle;
 }>;
@@ -86,6 +89,9 @@ export class AppModule {
       dependencies.identityRuntime === undefined
         ? undefined
         : IdentityRuntimeModule.register(dependencies.identityRuntime);
+    const authorization =
+      dependencies.identityRuntime?.dependencies.authorization;
+    const webhookRuntime = dependencies.webhookRuntime;
     const featureModules =
       identityModule === undefined
         ? []
@@ -106,6 +112,15 @@ export class AppModule {
                     identityModule,
                   ),
                 ]),
+            ...(webhookRuntime === undefined || authorization === undefined
+              ? []
+              : [
+                  WebhookModule.register(
+                    webhookRuntime.service,
+                    authorization,
+                    identityModule,
+                  ),
+                ]),
           ];
 
     return {
@@ -120,7 +135,19 @@ export class AppModule {
         HttpPlatformModule.register(httpErrorLogger),
       ],
       controllers: [LiveController, ReadyController],
-      providers: [ApiDrainState],
+      providers: [
+        ApiDrainState,
+        ...(webhookRuntime === undefined
+          ? []
+          : [
+              {
+                provide: Symbol('WEBHOOK_RUNTIME_SHUTDOWN'),
+                useValue: {
+                  onApplicationShutdown: () => webhookRuntime.close(),
+                },
+              },
+            ]),
+      ],
     };
   }
 }

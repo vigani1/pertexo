@@ -182,6 +182,26 @@
             "x-pertexo-code": "request.idempotency_conflict",
             "status": 409
           }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "endpointKey"
+                ],
+                "properties": {
+                  "endpointKey": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{43}$"
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },

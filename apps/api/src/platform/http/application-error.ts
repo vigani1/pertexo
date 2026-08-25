@@ -115,6 +115,42 @@ export const APPLICATION_ERROR_CATALOG = {
     severity: 'error',
     exposeDetail: true,
   },
+  'webhook.authentication_failed': {
+    status: 401,
+    title: 'Webhook authentication failed',
+    severity: 'info',
+    exposeDetail: false,
+  },
+  'webhook.payload_too_large': {
+    status: 413,
+    title: 'Webhook payload too large',
+    severity: 'info',
+    exposeDetail: false,
+  },
+  'webhook.unsupported_media_type': {
+    status: 415,
+    title: 'Unsupported webhook media type',
+    severity: 'info',
+    exposeDetail: false,
+  },
+  'webhook.invalid_json': {
+    status: 400,
+    title: 'Invalid webhook JSON',
+    severity: 'info',
+    exposeDetail: false,
+  },
+  'webhook.idempotency_conflict': {
+    status: 409,
+    title: 'Webhook idempotency conflict',
+    severity: 'warn',
+    exposeDetail: false,
+  },
+  'webhook.rate_limited': {
+    status: 429,
+    title: 'Webhook rate limit reached',
+    severity: 'warn',
+    exposeDetail: false,
+  },
   'internal.unexpected': {
     status: 500,
     title: 'Internal server error',

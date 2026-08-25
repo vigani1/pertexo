@@ -21,6 +21,7 @@ export type {
 } from './credentials/envelope-encryption.js';
 export {
   AwsKmsWebhookEnvelopeKeyProvider,
+  createAwsWebhookTriggerEnvelopeEncryption,
   WebhookTriggerEnvelopeEncryption,
   WebhookTriggerSecretEncryptionError,
   verifyWebhookSignature,

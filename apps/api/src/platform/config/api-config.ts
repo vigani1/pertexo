@@ -140,6 +140,11 @@ export type ApiConfig = Readonly<{
     region: string;
     endpoint?: string;
   }>;
+  webhooks?: Readonly<{
+    kmsKeyReference: string;
+    region: string;
+    endpoint?: string;
+  }>;
   database: Readonly<{
     connectionString: string;
     connectionTimeoutMillis: number;
@@ -180,6 +185,7 @@ export function parseApiConfig(
 
   return Object.freeze({
     ...(connections === undefined ? {} : { connections }),
+    ...(connections === undefined ? {} : { webhooks: connections }),
     database: Object.freeze({
       connectionString: parsed.DATABASE_API_URL,
       connectionTimeoutMillis: parsed.DATABASE_CONNECTION_TIMEOUT_MILLIS,
