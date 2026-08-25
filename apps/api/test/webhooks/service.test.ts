@@ -65,8 +65,7 @@ describe('webhook management service', () => {
       endpointKey,
     );
     const persisted = database.rotateSecret.mock.calls[0]?.[0] as
-      | { endpointKeyHash?: unknown }
-      | undefined;
+      { endpointKeyHash?: unknown } | undefined;
     expect(persisted?.endpointKeyHash).toEqual(
       expect.stringMatching(/^[0-9a-f]{64}$/u),
     );
