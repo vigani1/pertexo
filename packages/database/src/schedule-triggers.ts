@@ -103,6 +103,7 @@ export type ScanDueSchedulesResult = Readonly<{
   accepted: number;
   skipped: number;
   deferred: number;
+  maxLagSeconds: number;
 }>;
 
 export interface ScheduleTriggerScanner {
@@ -519,8 +520,13 @@ export function createScheduleTriggerScanner(
       let accepted = 0;
       let skipped = 0;
       let deferred = 0;
+      let maxLagSeconds = 0;
       for (const raw of claimed.rows) {
         const claim = claimSchema.parse(raw);
+        maxLagSeconds = Math.max(
+          maxLagSeconds,
+          (claim.observed_at.getTime() - claim.next_fire_at.getTime()) / 1_000,
+        );
         const recurrence = parseScheduleRecurrence(
           claim.recurrence_kind === 'cron'
             ? {
@@ -646,6 +652,7 @@ export function createScheduleTriggerScanner(
         accepted,
         skipped,
         deferred,
+        maxLagSeconds,
       });
     },
     close: async () => {

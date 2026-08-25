@@ -15,6 +15,7 @@ import type { FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { registerWebhookIngress } from '../../src/webhooks/ingress.js';
+import type { WebhookIngressTelemetry } from '../../src/webhooks/telemetry.js';
 
 const endpointKey = 'a'.repeat(43);
 const currentSecret = new Uint8Array(32).fill(4);
@@ -50,7 +51,8 @@ describe('generic webhook ingress', () => {
   });
 
   it('verifies exact raw bytes before parsing and returns strict 202', async () => {
-    const { application, database } = setup();
+    const { application, database, delivery, deduplication, health, trace } =
+      setup();
     const body = '{"value": 1}\n';
     const response = await application.inject(request(body, currentSecret));
 
@@ -62,6 +64,11 @@ describe('generic webhook ingress', () => {
     expect(database.acceptVerifiedDelivery).toHaveBeenCalledWith(
       expect.objectContaining({ payload: { value: 1 } }),
     );
+    expect(database.consumeIngressLimit).toHaveBeenCalledOnce();
+    expect(delivery).toHaveBeenCalledWith('accepted');
+    expect(deduplication).toHaveBeenCalledWith('new');
+    expect(health).toHaveBeenCalledWith('healthy');
+    expect(trace).toHaveBeenCalledOnce();
 
     const changed = await application.inject({
       ...request('{"value":1}\n', currentSecret),
@@ -259,14 +266,36 @@ describe('generic webhook ingress', () => {
     const encryption = {
       open: openSecret,
     } as unknown as WebhookTriggerEnvelopeEncryption;
+    const delivery = vi.fn();
+    const deduplication = vi.fn();
+    const health = vi.fn();
+    const trace = vi.fn();
+    const telemetry: WebhookIngressTelemetry = {
+      delivery,
+      deduplication,
+      health,
+      trace: async <T>(work: () => Promise<T>) => {
+        trace();
+        return work();
+      },
+    };
     const application = Fastify();
     applications.push(application);
     registerWebhookIngress(application, {
       database: database as unknown as WebhookTriggerDatabase,
       encryption,
       checkpointFactory: () => ({ engineVersion: 'test', checkpoint: {} }),
+      telemetry,
     });
-    return { application, database, openSecret };
+    return {
+      application,
+      database,
+      delivery,
+      deduplication,
+      health,
+      openSecret,
+      trace,
+    };
   }
 });
 

@@ -33,6 +33,10 @@ import {
 } from '@pertexo/workflow-engine';
 
 import { createTriggerReconciliationHandler } from './trigger-handler.js';
+import {
+  createTriggerRuntimeTelemetry,
+  type TriggerRuntimeTelemetry,
+} from './trigger-telemetry.js';
 
 export interface TriggerRuntime {
   readonly consumer: QueueConsumer;
@@ -58,6 +62,7 @@ export type TriggerRuntimeDependencies = Readonly<{
   reconciliation?: WorkflowTriggerReconciliationDatabase;
   scanner?: ScheduleTriggerScanner;
   logger?: StructuredLogger;
+  telemetry?: TriggerRuntimeTelemetry;
 }>;
 
 function validateOptions(options: TriggerRuntimeOptions): void {
@@ -182,7 +187,17 @@ export async function createTriggerRuntime(
           throw new InvalidQueueDeliveryError(
             `Trigger runtime cannot handle ${delivery.name}`,
           );
-        await handler.handle(delivery, context);
+        try {
+          await handler.handle(delivery, context);
+          recordTelemetry(() => {
+            telemetry.reconciliationCompleted('succeeded');
+          });
+        } catch (error: unknown) {
+          recordTelemetry(() => {
+            telemetry.reconciliationCompleted('failed');
+          });
+          throw error;
+        }
       },
       ...(options.observer === undefined ? {} : { observer: options.observer }),
       traceRunner: createQueueTraceRunner(),
@@ -197,19 +212,32 @@ export async function createTriggerRuntime(
   }
 
   const scannerAbort = new AbortController();
+  const telemetry = dependencies.telemetry ?? createTriggerRuntimeTelemetry();
   let latestScanFailed = false;
   const scannerLoop = (async () => {
     while (!scannerAbort.signal.aborted) {
+      const started = performance.now();
       try {
-        await scanner.scanDue({
+        const result = await scanner.scanDue({
           leaseOwner: options.leaseOwner,
           limit: options.batchSize,
           leaseSeconds: options.leaseDurationSeconds,
           checkpointFactory,
           signal: scannerAbort.signal,
         });
+        recordTelemetry(() => {
+          telemetry.scanCompleted(
+            result,
+            Math.max(0, performance.now() - started) / 1_000,
+          );
+        });
         latestScanFailed = false;
       } catch (error: unknown) {
+        recordTelemetry(() => {
+          telemetry.scanFailed(
+            Math.max(0, performance.now() - started) / 1_000,
+          );
+        });
         latestScanFailed = true;
         dependencies.logger?.error(
           'trigger.schedule_scan_failed',
@@ -248,4 +276,12 @@ export async function createTriggerRuntime(
       return closePromise;
     },
   });
+}
+
+function recordTelemetry(operation: () => void): void {
+  try {
+    operation();
+  } catch {
+    // Diagnostics cannot change schedule occurrence truth.
+  }
 }

@@ -174,6 +174,8 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
       if (failVerification) throw new Error('forced webhook database outage');
       return webhookDatabase.resolveVerification(endpointKeyHash);
     },
+    consumeIngressLimit: (endpointKeyHash) =>
+      webhookDatabase.consumeIngressLimit(endpointKeyHash),
     acceptVerifiedDelivery: (input) =>
       webhookDatabase.acceptVerifiedDelivery(input),
     close: () => Promise.resolve(),

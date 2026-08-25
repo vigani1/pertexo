@@ -29,6 +29,7 @@ function dependencies() {
       accepted: 0,
       skipped: 0,
       deferred: 0,
+      maxLagSeconds: 0,
     }),
   };
   const reader: PublishedWorkflowReader = {
@@ -49,12 +50,18 @@ function dependencies() {
     trace: vi.fn(),
     warn: vi.fn(),
   } satisfies StructuredLogger;
+  const telemetry = {
+    reconciliationCompleted: vi.fn(),
+    scanCompleted: vi.fn(),
+    scanFailed: vi.fn(),
+  };
   return {
     consumer,
     scanner,
     reader,
     reconciliation,
     logger,
+    telemetry,
     consumerFactory: (input: QueueConsumerOptions): QueueConsumer => {
       options = input;
       return consumer;
@@ -105,6 +112,10 @@ describe('trigger runtime', () => {
       }),
     );
     expect(selected.consumerOptions()?.traceRunner).toBeDefined();
+    expect(selected.telemetry.scanCompleted).toHaveBeenCalledWith(
+      expect.objectContaining({ maxLagSeconds: 0 }),
+      expect.any(Number),
+    );
     await runtime.close();
   });
 
@@ -112,7 +123,13 @@ describe('trigger runtime', () => {
     const selected = dependencies();
     vi.mocked(selected.scanner.scanDue)
       .mockRejectedValueOnce(new Error('database unavailable'))
-      .mockResolvedValue({ claimed: 1, accepted: 0, skipped: 1, deferred: 0 });
+      .mockResolvedValue({
+        claimed: 1,
+        accepted: 0,
+        skipped: 1,
+        deferred: 0,
+        maxLagSeconds: 3,
+      });
     const runtime = await createTriggerRuntime(options, {
       ...selected,
       checkpointFactory: () => ({ engineVersion: 'test', checkpoint: {} }),
@@ -125,6 +142,9 @@ describe('trigger runtime', () => {
       'trigger.schedule_scan_failed',
       { safeErrorCode: 'trigger.schedule_scan_failed' },
       expect.any(Error),
+    );
+    expect(selected.telemetry.scanFailed).toHaveBeenCalledWith(
+      expect.any(Number),
     );
 
     await vi.waitFor(() => {
@@ -217,6 +237,9 @@ describe('trigger runtime', () => {
         { signal: new AbortController().signal },
       ),
     ).resolves.toBeUndefined();
+    expect(selected.telemetry.reconciliationCompleted).toHaveBeenCalledWith(
+      'succeeded',
+    );
     await runtime.close();
   });
 });

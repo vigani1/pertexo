@@ -108,7 +108,7 @@ export interface WebhookTriggerDatabase {
   resolveVerification(
     endpointKeyHash: string,
   ): Promise<WebhookVerificationReference | null>;
-  consumeIngressLimit?(endpointKeyHash: string): Promise<void>;
+  consumeIngressLimit(endpointKeyHash: string): Promise<void>;
   acceptVerifiedDelivery(
     input: AcceptVerifiedWebhookDeliveryInput,
   ): Promise<Readonly<{ runId: string; replayed: boolean }>>;

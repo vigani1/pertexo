@@ -16,6 +16,11 @@ import {
 } from '@pertexo/integrations/server';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
+import {
+  createWebhookIngressTelemetry,
+  type WebhookIngressTelemetry,
+} from './telemetry.js';
+
 const MAX_BODY = 256 * 1024;
 const JSON_MEDIA_TYPE = /^application\/json(?:\s*;\s*charset=utf-8)?$/iu;
 const IDEMPOTENCY_KEY = /^[\x21-\x2b\x2d-\x7e]{1,128}$/u;
@@ -24,12 +29,14 @@ export type WebhookIngressDependencies = Readonly<{
   database: WebhookTriggerDatabase;
   encryption: WebhookTriggerEnvelopeEncryption;
   checkpointFactory: WebhookCheckpointFactory;
+  telemetry?: WebhookIngressTelemetry;
 }>;
 
 export function registerWebhookIngress(
   fastify: FastifyInstance,
   dependencies: WebhookIngressDependencies,
 ): void {
+  const telemetry = dependencies.telemetry ?? createWebhookIngressTelemetry();
   void fastify.register((scope, _options, done) => {
     scope.setErrorHandler((error, request, reply) => {
       const requestId =
@@ -40,9 +47,18 @@ export function registerWebhookIngress(
         'statusCode' in error &&
         error.statusCode === 413
       ) {
+        record(() => {
+          telemetry.delivery('invalid_request');
+        });
         problem(reply, 413, 'webhook.payload_too_large', requestId);
         return;
       }
+      record(() => {
+        telemetry.delivery('unavailable');
+      });
+      record(() => {
+        telemetry.health('degraded');
+      });
       problem(reply, 503, 'webhook.unavailable', requestId);
     });
     scope.removeAllContentTypeParsers();
@@ -56,7 +72,10 @@ export function registerWebhookIngress(
     scope.post(
       '/hooks/:endpointKey',
       { bodyLimit: MAX_BODY + 1 },
-      (request, reply) => acceptWebhook(request, reply, dependencies),
+      (request, reply) =>
+        telemetry.trace(() =>
+          acceptWebhook(request, reply, dependencies, telemetry),
+        ),
     );
     done();
   });
@@ -66,15 +85,22 @@ async function acceptWebhook(
   request: FastifyRequest,
   reply: FastifyReply,
   dependencies: WebhookIngressDependencies,
+  telemetry: WebhookIngressTelemetry,
 ): Promise<void> {
   const requestId =
     safeRequestId(request.headers['x-request-id']) ?? randomUUID();
   const body = request.body;
   if (!(body instanceof Uint8Array)) {
+    record(() => {
+      telemetry.delivery('invalid_request');
+    });
     problem(reply, 400, 'webhook.invalid_json', requestId);
     return;
   }
   if (body.byteLength > MAX_BODY) {
+    record(() => {
+      telemetry.delivery('invalid_request');
+    });
     problem(reply, 413, 'webhook.payload_too_large', requestId);
     return;
   }
@@ -84,6 +110,9 @@ async function acceptWebhook(
     !JSON_MEDIA_TYPE.test(contentType) ||
     headerPresent(request, 'content-encoding')
   ) {
+    record(() => {
+      telemetry.delivery('invalid_request');
+    });
     problem(reply, 415, 'webhook.unsupported_media_type', requestId);
     return;
   }
@@ -97,22 +126,25 @@ async function acceptWebhook(
     timestamp === undefined ||
     signature === undefined
   ) {
-    authenticationFailed(reply, requestId);
+    authenticationFailed(reply, requestId, telemetry);
     return;
   }
   const verification = await dependencies.database.resolveVerification(
     sha256(endpointKey),
   );
   if (verification === null || !/^\d{1,16}$/u.test(timestamp)) {
-    authenticationFailed(reply, requestId);
+    authenticationFailed(reply, requestId, telemetry);
     return;
   }
   try {
-    await dependencies.database.consumeIngressLimit?.(
+    await dependencies.database.consumeIngressLimit(
       verification.endpointKeyHash,
     );
   } catch (error) {
     if (error instanceof WebhookIngressRateLimitExceededError) {
+      record(() => {
+        telemetry.delivery('rate_limited');
+      });
       reply.header('retry-after', String(error.retryAfterSeconds));
       problem(reply, 429, 'webhook.rate_limited', requestId);
       return;
@@ -124,7 +156,7 @@ async function acceptWebhook(
     !Number.isSafeInteger(seconds) ||
     Math.abs(verification.databaseTime.getTime() / 1000 - seconds) > 300
   ) {
-    authenticationFailed(reply, requestId);
+    authenticationFailed(reply, requestId, telemetry);
     return;
   }
 
@@ -162,7 +194,7 @@ async function acceptWebhook(
       });
     }
     if (!currentValid && !previousValid) {
-      authenticationFailed(reply, requestId);
+      authenticationFailed(reply, requestId, telemetry);
       return;
     }
 
@@ -172,11 +204,17 @@ async function acceptWebhook(
         new TextDecoder('utf-8', { fatal: true }).decode(body),
       ) as unknown;
     } catch {
+      record(() => {
+        telemetry.delivery('invalid_request');
+      });
       problem(reply, 400, 'webhook.invalid_json', requestId);
       return;
     }
     const idempotency = optionalIdempotencyKey(request);
     if (idempotency === null) {
+      record(() => {
+        telemetry.delivery('invalid_request');
+      });
       problem(reply, 400, 'request.invalid', requestId);
       return;
     }
@@ -189,7 +227,7 @@ async function acceptWebhook(
         ? verification.currentSecret.id
         : previousReference?.id;
       if (verifiedSecretVersionId === undefined) {
-        authenticationFailed(reply, requestId);
+        authenticationFailed(reply, requestId, telemetry);
         return;
       }
       const result = await dependencies.database.acceptVerifiedDelivery({
@@ -203,13 +241,31 @@ async function acceptWebhook(
         checkpointFactory: dependencies.checkpointFactory,
         ...(traceparent === undefined ? {} : { traceparent }),
       });
+      record(() => {
+        telemetry.delivery(result.replayed ? 'replayed' : 'accepted');
+      });
+      record(() => {
+        telemetry.deduplication(result.replayed ? 'replayed' : 'new');
+      });
+      record(() => {
+        telemetry.health('healthy');
+      });
       void reply.code(202).send(result);
     } catch (error) {
       if (error instanceof WebhookDeliveryReplayMismatchError) {
+        record(() => {
+          telemetry.delivery('conflict');
+        });
+        record(() => {
+          telemetry.deduplication('conflict');
+        });
         problem(reply, 409, 'webhook.idempotency_conflict', requestId);
         return;
       }
       if (error instanceof WorkspaceRunQuotaExceededError) {
+        record(() => {
+          telemetry.delivery('rate_limited');
+        });
         reply.header('retry-after', String(error.retryAfterSeconds));
         problem(reply, 429, 'webhook.rate_limited', requestId);
         return;
@@ -218,7 +274,7 @@ async function acceptWebhook(
         error instanceof WebhookDeliveryIneligibleError ||
         error instanceof WorkspaceRunAdmissionDeniedError
       ) {
-        authenticationFailed(reply, requestId);
+        authenticationFailed(reply, requestId, telemetry);
         return;
       }
       throw error;
@@ -293,9 +349,21 @@ function safeRequestId(value: unknown): string | undefined {
 function authenticationFailed(
   reply: FastifyReply,
   requestId: string,
+  telemetry: WebhookIngressTelemetry,
 ): undefined {
+  record(() => {
+    telemetry.delivery('authentication_failed');
+  });
   problem(reply, 401, 'webhook.authentication_failed', requestId);
   return undefined;
+}
+
+function record(operation: () => void): void {
+  try {
+    operation();
+  } catch {
+    // Diagnostics cannot change webhook acceptance truth.
+  }
 }
 
 function problem(

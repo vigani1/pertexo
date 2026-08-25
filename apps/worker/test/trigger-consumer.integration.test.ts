@@ -86,6 +86,7 @@ describeIntegration('trigger lifecycle BullMQ consumer', () => {
         accepted: 0,
         skipped: 0,
         deferred: 0,
+        maxLagSeconds: 0,
       }),
     };
     const runtime = await createTriggerRuntime(
