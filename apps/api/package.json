@@ -35,6 +35,8 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
-    "@pertexo/node-sdk": "workspace:*"
+    "@pertexo/node-sdk": "workspace:*",
+    "@types/pg": "8.21.0",
+    "pg": "8.23.0"
   }
 }

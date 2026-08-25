@@ -2726,7 +2726,7 @@ Authority and sequencing:
 - [x] Accept ADR 013 before retaining webhook delivery payloads or history.
 - [x] Accept ADR 026 for generic webhook signature/replay semantics before
       implementing raw-byte verification and deduplication.
-- [ ] Complete webhook
+- [x] Complete webhook
       reconciliation, raw-byte verification, deduplication, and run acceptance.
 - [x] Accept ADR 014 before implementing Schedule.
 - [ ] Complete Schedule and prove timezone, DST,
@@ -2808,6 +2808,18 @@ Current evidence:
   pins five-field local cron/interval, IANA timezone, deterministic DST and
   misfire behavior, and requires implementation to pin `cron-parser` 5.10.0
   directly before Schedule is exposed.
+- The API direct-webhook integration gate provisions a fresh disposable
+  PostgreSQL database, advances the real compatibility release history,
+  publishes and reconciles a `core.webhook@1` workflow, provisions the endpoint
+  through the production database and envelope-cryptography seams, and sends
+  exact raw bytes through a loopback Nest/Fastify listener. Its 34 assertions
+  prove atomic delivery/run/event/checkpoint/outbox acceptance, exact and
+  concurrent replay, changed-key conflict, malformed-JSON and quota rollback,
+  current/previous secret rotation boundaries, bounded database failure, and no
+  raw envelope, signature, endpoint key, signing secret, or non-identifier
+  queue payload leakage. The focused test completed in 343 ms (3.66 seconds
+  including migration, release rollout, app startup, and cleanup), and dropped
+  its disposable database.
 - Migration `0038_execution_admission.sql` provisions existing and new
   workspaces with immutable entitlement version 1 (five active, 100 queued), a
   forced-RLS current projection, and reconciled queued/active counters. Run
