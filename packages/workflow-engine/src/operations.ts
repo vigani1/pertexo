@@ -1755,6 +1755,12 @@ function isAbortError(error: unknown): boolean {
   );
 }
 
+const TRIGGER_SOURCE_IDENTITIES = new Set([
+  'core.manual@1',
+  'core.schedule@1',
+  'core.webhook@1',
+]);
+
 async function resolveMappedNodeInput(
   node: Pick<WorkflowExecutableNodeV2, 'definition' | 'inputMappings'>,
   runInput: JsonValue,
@@ -1763,7 +1769,11 @@ async function resolveMappedNodeInput(
   signal: AbortSignal,
   structuredInputs?: Readonly<Record<string, JsonValue>>,
 ): Promise<JsonValue> {
-  if (node.definition.key === 'core.manual' && node.definition.version === 1)
+  if (
+    TRIGGER_SOURCE_IDENTITIES.has(
+      `${node.definition.key}@${String(node.definition.version)}`,
+    )
+  )
     return runInput;
   const mapped: Record<string, JsonValue> = {};
   for (const key of Object.keys(node.inputMappings).sort()) {

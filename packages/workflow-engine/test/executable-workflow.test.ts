@@ -41,9 +41,11 @@ function manifest(
     | 'core.manual'
     | 'core.merge'
     | 'core.parallel'
+    | 'core.schedule'
     | 'core.set'
     | 'core.switch'
     | 'core.terminate'
+    | 'core.webhook'
     | 'test.unrelated',
   policies: readonly PolicyReference[] = [boundedPolicy],
 ): NodeManifest {
@@ -51,7 +53,7 @@ function manifest(
     schemaVersion: 1,
     definition: { key, version: 1 },
     family:
-      key === 'core.manual'
+      key === 'core.manual' || key === 'core.schedule' || key === 'core.webhook'
         ? 'trigger'
         : key === 'core.terminate'
           ? 'output'
@@ -68,7 +70,9 @@ function manifest(
     outputSchema: schema,
     ports: {
       inputs:
-        key === 'core.manual'
+        key === 'core.manual' ||
+        key === 'core.schedule' ||
+        key === 'core.webhook'
           ? []
           : key === 'core.merge'
             ? [
@@ -161,6 +165,8 @@ function nodeRelease(input?: {
   readonly parallel?: boolean;
   readonly merge?: boolean;
   readonly forEach?: boolean;
+  readonly schedule?: boolean;
+  readonly webhook?: boolean;
 }): RegistryRelease {
   const definitions = [
     manifest('core.manual'),
@@ -169,6 +175,8 @@ function nodeRelease(input?: {
       input?.mutateSet ? [jsonataPolicy] : [boundedPolicy, jsonataPolicy],
     ),
     manifest('core.terminate'),
+    ...(input?.schedule ? [manifest('core.schedule')] : []),
+    ...(input?.webhook ? [manifest('core.webhook')] : []),
     ...(input?.condition ? [manifest('core.condition')] : []),
     ...(input?.switch ? [manifest('core.switch')] : []),
     ...(input?.parallel ? [manifest('core.parallel')] : []),
@@ -4495,6 +4503,51 @@ describe('Phase 3 production operations', () => {
       message: 'node execution failed',
     });
   });
+
+  it.each([
+    ['core.manual', {}],
+    ['core.webhook', { webhook: true }],
+    ['core.schedule', { schedule: true }],
+  ] as const)(
+    'passes accepted run input to a %s trigger root',
+    async (key, releaseOptions) => {
+      const triggerGraph = structuredClone(graph());
+      const trigger = triggerGraph.nodes[0];
+      Object.assign(trigger, { definition: { key, version: 1 } });
+      const executable = buildWorkflowExecutableV2({
+        graph: triggerGraph,
+        release: composeExecutableCompatibilityRelease(
+          nodeRelease(releaseOptions),
+        ),
+      });
+      const runInput = { accepted: true, source: key };
+
+      await expect(
+        executeNodeAttempt({
+          runId: 'run-trigger',
+          nodeRunId: 'node-run-trigger',
+          attemptId: 'attempt-trigger',
+          executable,
+          workflowVersionId: 'version-1',
+          invocationKey: invocationKey({
+            workflowVersionId: 'version-1',
+            nodeId: 'manual',
+          }),
+          nodeId: 'manual',
+          runInput,
+          completedNodeOutputs: {},
+          registry: {
+            execute: (request) =>
+              Promise.resolve({
+                kind: 'succeeded',
+                output: request.input as never,
+              }),
+          },
+          signal: new AbortController().signal,
+        }),
+      ).resolves.toMatchObject({ output: runInput });
+    },
+  );
 
   it('resolves isolated preview inputs through the production mapping path', async () => {
     await expect(
