@@ -20,6 +20,8 @@ import {
   createWebhookTriggerDatabase,
   WebhookDeliveryIneligibleError,
   WebhookDeliveryReplayMismatchError,
+  WebhookIngressRateLimitExceededError,
+  WebhookTriggerNotFoundError,
 } from '../src/webhook-triggers.js';
 import { createWorkflowTriggerReconciliationDatabase } from '../src/workflow-triggers.js';
 import { PHASE3_COMPATIBILITY_EXPECTATION } from './phase3-compatibility-fixture.js';
@@ -51,6 +53,9 @@ const versionId = randomUUID();
 const triggerId = randomUUID();
 const endpointId = randomUUID();
 const outboxEventId = randomUUID();
+const notificationConnectionId = randomUUID();
+const notificationSecretVersionId = randomUUID();
+const notificationDestinationId = randomUUID();
 const hash = (value: string): string =>
   createHash('sha256').update(value).digest('hex');
 const endpointHash = hash('endpoint-one');
@@ -75,8 +80,13 @@ const apiConfig = parseDatabaseConfig({
   connectionString: url(apiBaseUrl),
   max: 8,
 });
+const workerConfig = parseDatabaseConfig({
+  connectionString: url(workerBaseUrl),
+  max: 8,
+});
 const identity = createIdentityWorkspaceDatabase(apiConfig);
-const reconciliation = createWorkflowTriggerReconciliationDatabase(apiConfig);
+const reconciliation =
+  createWorkflowTriggerReconciliationDatabase(workerConfig);
 const webhook = createWebhookTriggerDatabase(
   apiConfig,
   PHASE3_COMPATIBILITY_EXPECTATION,
@@ -194,6 +204,43 @@ beforeAll(async () => {
   await ownerQuery(
     'update app.workflows set published_version_id=$2 where id=$1',
     [workflowId, versionId],
+  );
+  await ownerQuery(
+    `with inserted_connection as (insert into app.connections(id,workspace_id,provider_key,name,auth_type,status,
+       current_secret_version_id,created_by)
+     values($1,$2,'email','Webhook notifications','resend_api_key','active',$3,$4) returning id)
+     insert into app.connection_secret_versions(id,workspace_id,connection_id,schema_version,
+       kms_key_reference,encrypted_data_key,ciphertext,nonce,auth_tag,created_by)
+     select $3,$2,id,1,'kms','key','cipher','AAAAAAAAAAAAAAAA','AAAAAAAAAAAAAAAAAAAAAA',$4
+       from inserted_connection`,
+    [
+      notificationConnectionId,
+      workspaceId,
+      notificationSecretVersionId,
+      actorId,
+    ],
+  );
+  await ownerQuery(
+    `with inserted_destination as (insert into app.failure_notification_destinations
+       (id,workspace_id,kind,status,current_config_version,created_by)
+     values($1,$2,'email','enabled',1,$4) returning id)
+     insert into app.failure_notification_destination_versions
+       (workspace_id,destination_id,version,kind,side_effect_class,config,created_by)
+     select $2,id,1,'email','idempotent_with_key',$3::jsonb,$4 from inserted_destination`,
+    [
+      notificationDestinationId,
+      workspaceId,
+      JSON.stringify({
+        connectionId: notificationConnectionId,
+        toEmail: 'webhook@example.test',
+      }),
+      actorId,
+    ],
+  );
+  await ownerQuery(
+    `insert into app.workflow_failure_notification_policies
+       (workspace_id,workflow_id,destination_id,updated_by) values($1,$2,$3,$4)`,
+    [workspaceId, workflowId, notificationDestinationId, actorId],
   );
   await ownerQuery(
     `insert into app.workflow_triggers(id,workspace_id,workflow_id,workflow_version_id,
@@ -320,7 +367,7 @@ describe('generic webhook database seam', () => {
 
   it('migrates from zero, reconciles configuration, and exposes no hashes or secrets in health', async () => {
     await expect(checkDatabaseReadiness(readinessPool)).resolves.toMatchObject({
-      migrationHead: '0040_schedule_triggers.sql',
+      migrationHead: '0041_trigger_hardening.sql',
     });
     await expect(
       checkDatabaseReadiness(workerReadinessPool),
@@ -381,15 +428,70 @@ describe('generic webhook database seam', () => {
       false,
       true,
     ]);
+    const pins = await ownerQuery(
+      `select failure_notification_policy_version,
+              failure_notification_destination_id,
+              failure_notification_destination_config_version,
+              failure_notification_side_effect_class,
+              failure_notification_connection_secret_version_id
+         from app.workflow_runs where id=$1`,
+      [accepted[0].runId],
+    );
+    expect(pins.rows).toEqual([
+      {
+        failure_notification_policy_version: 1,
+        failure_notification_destination_id: notificationDestinationId,
+        failure_notification_destination_config_version: 1,
+        failure_notification_side_effect_class: 'idempotent_with_key',
+        failure_notification_connection_secret_version_id:
+          notificationSecretVersionId,
+      },
+    ]);
     await expect(
       webhook.acceptVerifiedDelivery({
         ...input,
         requestFingerprint: hash('changed-payload'),
       }),
     ).rejects.toBeInstanceOf(WebhookDeliveryReplayMismatchError);
+    const retention = await ownerQuery<{
+      delivery_seconds: number;
+      replay_seconds: number;
+    }>(
+      `select extract(epoch from delivery.expires_at-delivery.received_at)::integer delivery_seconds,
+              extract(epoch from replay.expires_at-replay.created_at)::integer replay_seconds
+         from app.webhook_trigger_deliveries delivery
+         join app.webhook_trigger_replay_records replay on replay.delivery_id=delivery.id
+        where delivery.endpoint_id=$1`,
+      [endpointId],
+    );
+    expect(retention.rows[0]).toEqual({
+      delivery_seconds: 90 * 24 * 60 * 60,
+      replay_seconds: 24 * 60 * 60,
+    });
+  });
+
+  it('enforces the endpoint ingress boundary atomically under concurrency', async () => {
+    const consumeIngressLimit = webhook.consumeIngressLimit?.bind(webhook);
+    if (consumeIngressLimit === undefined)
+      throw new Error('Webhook ingress limiter is unavailable');
+    const attempts = await Promise.allSettled(
+      Array.from({ length: 61 }, () => consumeIngressLimit(endpointHash)),
+    );
+    expect(
+      attempts.filter(({ status }) => status === 'fulfilled'),
+    ).toHaveLength(60);
+    const denied = attempts.filter(({ status }) => status === 'rejected');
+    expect(denied).toHaveLength(1);
+    expect((denied[0] as PromiseRejectedResult).reason).toBeInstanceOf(
+      WebhookIngressRateLimitExceededError,
+    );
   });
 
   it('invalidates old endpoint references at rotation commit and bounds prior secrets', async () => {
+    await ownerQuery(
+      "update app.workspace_memberships set role='builder' where workspace_id=$1 and user_id=$2",
+      [workspaceId, actorId],
+    );
     const oldVerification = await webhook.resolveVerification(endpointHash);
     if (oldVerification === null) throw new Error('Expected old endpoint');
     const nextEndpointHash = hash('endpoint-two');
@@ -417,10 +519,37 @@ describe('generic webhook database seam', () => {
     if (beforeSecretRotation === null)
       throw new Error('Expected rotated endpoint');
     const nextSecret = secret();
+    const beforeWrongKey = await ownerQuery(
+      `select endpoint.current_secret_version_id,
+              (select count(*)::integer from app.webhook_trigger_secret_versions
+                where trigger_id=$1) secret_count
+         from app.webhook_trigger_endpoints endpoint where endpoint.trigger_id=$1`,
+      [triggerId],
+    );
+    await expect(
+      webhook.rotateSecret({
+        workspaceId,
+        actorId,
+        triggerId,
+        endpointKeyHash: hash('wrong-endpoint'),
+        secret: nextSecret,
+        idempotencyKey: 'rotate-secret-wrong-key',
+        requestHash: hash('rotate-secret-wrong-key'),
+      }),
+    ).rejects.toBeInstanceOf(WebhookTriggerNotFoundError);
+    const afterWrongKey = await ownerQuery(
+      `select endpoint.current_secret_version_id,
+              (select count(*)::integer from app.webhook_trigger_secret_versions
+                where trigger_id=$1) secret_count
+         from app.webhook_trigger_endpoints endpoint where endpoint.trigger_id=$1`,
+      [triggerId],
+    );
+    expect(afterWrongKey.rows).toEqual(beforeWrongKey.rows);
     await webhook.rotateSecret({
       workspaceId,
       actorId,
       triggerId,
+      endpointKeyHash: nextEndpointHash,
       secret: nextSecret,
       idempotencyKey: 'rotate-secret',
       requestHash: hash('rotate-secret'),

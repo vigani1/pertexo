@@ -6,7 +6,7 @@ import { EXPECTED_MIGRATION_HEAD } from '../src/readiness.js';
 
 describe('webhook trigger migration contract', () => {
   it('forces tenant isolation and keeps endpoint credentials non-public', async () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0040_schedule_triggers.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0041_trigger_hardening.sql');
     const migration = await readFile(
       new URL('../migrations/0039_webhook_triggers.sql', import.meta.url),
       'utf8',
@@ -21,5 +21,13 @@ describe('webhook trigger migration contract', () => {
     expect(migration).not.toMatch(
       /raw_(body|bytes)|request_headers|signature_header/u,
     );
+    const hardening = await readFile(
+      new URL('../migrations/0041_trigger_hardening.sql', import.meta.url),
+      'utf8',
+    );
+    expect(hardening).toContain("interval '90 days'");
+    expect(hardening).toContain('webhook_trigger_deliveries_expiry_idx');
+    expect(hardening).toContain('consume_webhook_ingress_limit');
+    expect(hardening).toContain('FORCE ROW LEVEL SECURITY');
   });
 });

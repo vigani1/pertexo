@@ -92,7 +92,11 @@ export interface WebhookTriggerDatabase {
     input: Command & Readonly<{ endpointKeyHash: string }>,
   ): Promise<WorkflowTriggerHealth>;
   rotateSecret(
-    input: Command & Readonly<{ secret: SealedWebhookTriggerSecret }>,
+    input: Command &
+      Readonly<{
+        endpointKeyHash: string;
+        secret: SealedWebhookTriggerSecret;
+      }>,
   ): Promise<WorkflowTriggerHealth>;
   getHealth(
     input: Readonly<{
@@ -104,6 +108,7 @@ export interface WebhookTriggerDatabase {
   resolveVerification(
     endpointKeyHash: string,
   ): Promise<WebhookVerificationReference | null>;
+  consumeIngressLimit?(endpointKeyHash: string): Promise<void>;
   acceptVerifiedDelivery(
     input: AcceptVerifiedWebhookDeliveryInput,
   ): Promise<Readonly<{ runId: string; replayed: boolean }>>;
@@ -122,6 +127,12 @@ export class WebhookDeliveryReplayMismatchError extends Error {
 export class WebhookDeliveryIneligibleError extends Error {
   public override readonly name = 'WebhookDeliveryIneligibleError';
 }
+export class WebhookIngressRateLimitExceededError extends Error {
+  public override readonly name = 'WebhookIngressRateLimitExceededError';
+  public constructor(public readonly retryAfterSeconds: number) {
+    super('webhook.rate_limited');
+  }
+}
 
 function keyHash(value: string): string {
   return createHash('sha256')
@@ -139,7 +150,7 @@ async function authorizeManager(
       join app.workspaces workspace on workspace.id=membership.workspace_id
       join app.users actor on actor.id=membership.user_id
      where membership.workspace_id=$1 and membership.user_id=$2
-       and membership.status='active' and membership.role in ('owner','admin')
+        and membership.status='active' and membership.role in ('owner','admin','builder')
        and workspace.status='active' and actor.status='active'`,
     [workspaceId, actorId],
   );
@@ -391,14 +402,25 @@ export function createWebhookTriggerDatabase(
       command(input, async (client) => {
         await authorizeManager(client, input.workspaceId, input.actorId);
         const operation = 'webhook.trigger.secret.rotate';
-        if (await claimCommand(client, input, operation))
+        const keyedCommand = {
+          ...input,
+          requestHash: createHash('sha256')
+            .update(`${input.requestHash}\0${input.endpointKeyHash}`)
+            .digest('hex'),
+        };
+        if (await claimCommand(client, keyedCommand, operation))
           return oneHealth(client, input.workspaceId, input.triggerId);
         const endpoint = await client.query<{
           current_secret_version_id: string;
         }>(
           `select current_secret_version_id from app.webhook_trigger_endpoints
-            where workspace_id=$1 and trigger_id=$2 and status='active' for update`,
-          [input.workspaceId, input.triggerId],
+             where workspace_id=$1 and trigger_id=$2 and endpoint_key_hash=$3
+               and status='active' for update`,
+          [
+            input.workspaceId,
+            input.triggerId,
+            digestSchema.parse(input.endpointKeyHash),
+          ],
         );
         const current = endpoint.rows[0]?.current_secret_version_id;
         if (current === undefined) throw new WebhookTriggerNotFoundError();
@@ -410,7 +432,7 @@ export function createWebhookTriggerDatabase(
              updated_at=clock_timestamp() where workspace_id=$1 and trigger_id=$2`,
           [input.workspaceId, input.triggerId, secret.id, current],
         );
-        await completeCommand(client, input, operation);
+        await completeCommand(client, keyedCommand, operation);
         return oneHealth(client, input.workspaceId, input.triggerId);
       }),
     getHealth: (input: Parameters<WebhookTriggerDatabase['getHealth']>[0]) =>
@@ -463,6 +485,19 @@ export function createWebhookTriggerDatabase(
               }),
             }),
       });
+    },
+    consumeIngressLimit: async (endpointKeyHashInput: string) => {
+      const result = await pool.query<{
+        allowed: boolean;
+        retry_after_seconds: number;
+      }>('select * from app.consume_webhook_ingress_limit($1::char(64))', [
+        digestSchema.parse(endpointKeyHashInput),
+      ]);
+      const decision = result.rows[0];
+      if (decision?.allowed !== true)
+        throw new WebhookIngressRateLimitExceededError(
+          z.number().int().min(1).max(60).parse(decision?.retry_after_seconds),
+        );
     },
     acceptVerifiedDelivery: async (
       input: Parameters<WebhookTriggerDatabase['acceptVerifiedDelivery']>[0],

@@ -6,7 +6,7 @@ import { EXPECTED_MIGRATION_HEAD } from '../src/readiness.js';
 
 describe('schedule trigger migration contract', () => {
   it('persists immutable recurrence, unique occurrences, bounded leases, and narrow worker functions', async () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0040_schedule_triggers.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0041_trigger_hardening.sql');
     const migration = await readFile(
       new URL('../migrations/0040_schedule_triggers.sql', import.meta.url),
       'utf8',
@@ -21,5 +21,18 @@ describe('schedule trigger migration contract', () => {
     expect(migration).toContain('complete_trigger_schedule_claim');
     expect(migration).toContain('release_trigger_schedule_claim');
     expect(migration).toContain('TO {{worker_runtime_role}}');
+    const hardening = await readFile(
+      new URL('../migrations/0041_trigger_hardening.sql', import.meta.url),
+      'utf8',
+    );
+    expect(hardening).toContain(
+      'row_number() over (partition by schedule.workspace_id',
+    );
+    expect(hardening).toContain('admission_deferred_until');
+    expect(hardening).toContain('defer_trigger_schedule_claim');
+    expect(hardening).toContain(
+      "last_error_code='schedule.admission_throttled'",
+    );
+    expect(hardening).toContain('fail_trigger_schedule_claim');
   });
 });

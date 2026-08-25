@@ -8,7 +8,7 @@ import {
   type CompatibilityReleaseExpectationSet,
 } from './compatibility-release.js';
 
-export const EXPECTED_MIGRATION_HEAD = '0040_schedule_triggers.sql';
+export const EXPECTED_MIGRATION_HEAD = '0041_trigger_hardening.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -404,7 +404,7 @@ export async function checkDatabaseReadiness(
         (select relrowsecurity and relforcerowsecurity from pg_class where oid = to_regclass('app.workflows'))
         and (select relrowsecurity and relforcerowsecurity from pg_class where oid = to_regclass('app.workflow_drafts'))
         and (select relrowsecurity and relforcerowsecurity from pg_class where oid = to_regclass('app.workflow_versions'))
-        and (select count(*) from pg_policy where polrelid in (to_regclass('app.workflows'), to_regclass('app.workflow_drafts'), to_regclass('app.workflow_versions'))) = 4
+        and (select count(*) from pg_policy where polrelid in (to_regclass('app.workflows'), to_regclass('app.workflow_drafts'), to_regclass('app.workflow_versions'))) = 5
         and exists (select 1 from pg_policy p where p.polrelid = to_regclass('app.workflows') and p.polname = 'workflows_workspace_scope' and p.polqual is not null and p.polwithcheck is not null and cardinality(p.polroles) = 2 and (select oid from pg_roles where rolname = $1) = any(p.polroles) and exists (select 1 from unnest(p.polroles) policy_role where policy_role <> (select oid from pg_roles where rolname = $1) and has_function_privilege(pg_get_userbyid(policy_role), 'app.create_workflow_with_draft(uuid,uuid,character varying,uuid,integer,jsonb,character,character,character varying,character varying)', 'EXECUTE')))
         and exists (select 1 from pg_policy p where p.polrelid = to_regclass('app.workflow_drafts') and p.polname = 'workflow_drafts_workspace_scope' and p.polqual is not null and p.polwithcheck is not null and cardinality(p.polroles) = 2 and (select oid from pg_roles where rolname = $1) = any(p.polroles) and exists (select 1 from unnest(p.polroles) policy_role where policy_role <> (select oid from pg_roles where rolname = $1) and has_function_privilege(pg_get_userbyid(policy_role), 'app.create_workflow_with_draft(uuid,uuid,character varying,uuid,integer,jsonb,character,character,character varying,character varying)', 'EXECUTE')))
         and exists (select 1 from pg_policy p where p.polrelid = to_regclass('app.workflow_versions') and p.polname = 'workflow_versions_workspace_scope' and p.polqual is not null and p.polwithcheck is not null and cardinality(p.polroles) = 2 and (select oid from pg_roles where rolname = $1) = any(p.polroles) and exists (select 1 from unnest(p.polroles) policy_role where policy_role <> (select oid from pg_roles where rolname = $1) and has_function_privilege(pg_get_userbyid(policy_role), 'app.create_workflow_with_draft(uuid,uuid,character varying,uuid,integer,jsonb,character,character,character varying,character varying)', 'EXECUTE')))
@@ -1531,10 +1531,11 @@ export async function checkDatabaseReadiness(
         and to_regclass('app.webhook_trigger_secret_versions') is not null
         and to_regclass('app.webhook_trigger_deliveries') is not null
         and to_regclass('app.webhook_trigger_replay_records') is not null
+        and to_regclass('app.webhook_endpoint_ingress_limits') is not null
         and not exists (select 1 from (values
           ('workflow_triggers'),('webhook_trigger_endpoints'),
           ('webhook_trigger_secret_versions'),('webhook_trigger_deliveries'),
-          ('webhook_trigger_replay_records')
+          ('webhook_trigger_replay_records'),('webhook_endpoint_ingress_limits')
         ) expected(table_name) where not (select relrowsecurity and relforcerowsecurity
           from pg_class where oid=to_regclass('app.'||expected.table_name)))
         and exists (select 1 from pg_trigger
@@ -1546,12 +1547,23 @@ export async function checkDatabaseReadiness(
             and proc.prosecdef and pg_get_userbyid(proc.proowner)=$1
             and 'row_security=on'=any(proc.proconfig)
             and 'search_path=pg_catalog, app'=any(proc.proconfig))
+        and exists (select 1 from pg_proc proc
+          where proc.oid=to_regprocedure('app.consume_webhook_ingress_limit(character)')
+            and proc.prosecdef and pg_get_userbyid(proc.proowner)=$1
+            and 'row_security=on'=any(proc.proconfig)
+            and exists(select 1 from unnest(proc.proconfig) setting where setting like 'search_path=pg_catalog%'))
         and case when has_function_privilege(current_user,
           'app.create_workflow_with_draft(uuid,uuid,character varying,uuid,integer,jsonb,character,character,character varying,character varying)',
           'EXECUTE') then has_function_privilege(current_user,
             'app.resolve_public_webhook_endpoint(character)','EXECUTE')
           else not has_function_privilege(current_user,
             'app.resolve_public_webhook_endpoint(character)','EXECUTE') end
+        and case when has_function_privilege(current_user,
+          'app.create_workflow_with_draft(uuid,uuid,character varying,uuid,integer,jsonb,character,character,character varying,character varying)',
+          'EXECUTE') then has_function_privilege(current_user,
+            'app.consume_webhook_ingress_limit(character)','EXECUTE')
+          else not has_function_privilege(current_user,
+            'app.consume_webhook_ingress_limit(character)','EXECUTE') end
         and not has_table_privilege($2,'app.webhook_trigger_endpoints','SELECT')
         and not has_table_privilege($2,'app.webhook_trigger_secret_versions','SELECT')
         and not has_table_privilege(current_user,'app.webhook_trigger_secret_versions','UPDATE')
@@ -1567,7 +1579,7 @@ export async function checkDatabaseReadiness(
           where oid=to_regclass('app.trigger_schedule_occurrences'))
         and exists (select 1 from pg_indexes where schemaname='app'
           and tablename='trigger_schedules' and indexname='trigger_schedules_due_idx'
-          and indexdef like '%next_fire_at, trigger_id%'
+           and indexdef like '%next_fire_at, workspace_id, trigger_id%'
           and indexdef like '%status%enabled%')
         and exists (select 1 from pg_constraint where
           conrelid=to_regclass('app.trigger_schedule_occurrences')
@@ -1575,11 +1587,13 @@ export async function checkDatabaseReadiness(
         and exists (select 1 from pg_trigger where
           tgrelid=to_regclass('app.trigger_schedules')
           and tgname='trigger_schedules_config_immutable' and not tgisinternal)
-        and 4=(select count(*) from pg_proc proc where proc.oid=any(array[
+        and 6=(select count(*) from pg_proc proc where proc.oid=any(array[
           to_regprocedure('app.claim_due_trigger_schedules(character varying,integer,integer)'),
           to_regprocedure('app.schedule_claim_is_eligible(uuid,uuid)'),
           to_regprocedure('app.complete_trigger_schedule_claim(uuid,uuid,uuid,timestamp with time zone,character varying,uuid,timestamp with time zone)'),
-          to_regprocedure('app.release_trigger_schedule_claim(uuid,uuid)')
+          to_regprocedure('app.release_trigger_schedule_claim(uuid,uuid)'),
+          to_regprocedure('app.defer_trigger_schedule_claim(uuid,uuid,integer)'),
+          to_regprocedure('app.fail_trigger_schedule_claim(uuid,uuid)')
         ]) and proc.prosecdef and pg_get_userbyid(proc.proowner)=$1
           and 'row_security=on'=any(proc.proconfig)
           and exists(select 1 from unnest(proc.proconfig) setting where setting like 'search_path=pg_catalog%'))
@@ -1589,7 +1603,26 @@ export async function checkDatabaseReadiness(
         and has_function_privilege($2,
           'app.complete_trigger_schedule_claim(uuid,uuid,uuid,timestamp with time zone,character varying,uuid,timestamp with time zone)','EXECUTE')
         and has_function_privilege($2,'app.release_trigger_schedule_claim(uuid,uuid)','EXECUTE')
-        and not has_table_privilege($2,'app.trigger_schedules','SELECT')
+        and has_function_privilege($2,'app.defer_trigger_schedule_claim(uuid,uuid,integer)','EXECUTE')
+        and has_function_privilege($2,'app.fail_trigger_schedule_claim(uuid,uuid)','EXECUTE')
+        and has_table_privilege($2,'app.trigger_schedules','SELECT')
+        and has_table_privilege($2,'app.workflow_triggers','SELECT')
+        and has_column_privilege($2,'app.workflows','published_version_id','SELECT')
+        and has_column_privilege($2,'app.workflows','activation_status','UPDATE')
+        and has_column_privilege($2,'app.workflow_triggers','status','UPDATE')
+        and has_column_privilege($2,'app.webhook_trigger_endpoints','status','SELECT')
+        and has_column_privilege($2,'app.webhook_trigger_endpoints','status','UPDATE')
+        and has_table_privilege($2,'app.trigger_schedules','INSERT')
+        and has_column_privilege($2,'app.trigger_schedules','admission_deferred_until','UPDATE')
+        and not has_column_privilege($2,'app.webhook_trigger_endpoints','endpoint_key_hash','SELECT')
+        and exists(select 1 from pg_policy policy where
+          policy.polrelid=to_regclass('app.workflow_triggers')
+          and policy.polname='workflow_triggers_worker_reconciliation'
+          and (select oid from pg_roles where rolname=$2)=any(policy.polroles))
+        and exists(select 1 from pg_policy policy where
+          policy.polrelid=to_regclass('app.trigger_schedules')
+          and policy.polname='trigger_schedules_worker_reconciliation'
+          and (select oid from pg_roles where rolname=$2)=any(policy.polroles))
         and not has_table_privilege($2,'app.trigger_schedule_occurrences','SELECT')
       ) as schedule_triggers_compatible,
       (

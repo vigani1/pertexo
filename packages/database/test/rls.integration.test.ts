@@ -427,7 +427,7 @@ describe.each([
 describe('database readiness', () => {
   it('verifies migration, PostgreSQL, ownership, RLS, and runtime role compatibility', async () => {
     await expect(database.checkReadiness()).resolves.toEqual({
-      migrationHead: '0040_schedule_triggers.sql',
+      migrationHead: '0041_trigger_hardening.sql',
       postgresMajor: 18,
       role: 'pertexo_api',
     });

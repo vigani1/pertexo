@@ -9,6 +9,7 @@ export {
   createWebhookTriggerDatabase,
   WebhookDeliveryIneligibleError,
   WebhookDeliveryReplayMismatchError,
+  WebhookIngressRateLimitExceededError,
   WebhookTriggerIdempotencyConflictError,
   WebhookTriggerNotFoundError,
   type AcceptVerifiedWebhookDeliveryInput,

@@ -626,14 +626,18 @@ export function createScheduleTriggerScanner(
           if (claim.misfire_policy === 'skip') skipped += 1;
           else accepted += 1;
         } catch (error: unknown) {
-          await claimPool.query(
-            'select app.release_trigger_schedule_claim($1,$2)',
-            [claim.trigger_id, claim.lease_token],
-          );
           if (error instanceof WorkspaceRunQuotaExceededError) {
+            await claimPool.query(
+              'select app.defer_trigger_schedule_claim($1,$2,$3)',
+              [claim.trigger_id, claim.lease_token, error.retryAfterSeconds],
+            );
             deferred += 1;
             continue;
           }
+          await claimPool.query(
+            'select app.fail_trigger_schedule_claim($1,$2)',
+            [claim.trigger_id, claim.lease_token],
+          );
           throw error;
         }
       }

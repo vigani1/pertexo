@@ -2010,7 +2010,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0040_schedule_triggers.sql',
+          migrationHead: '0041_trigger_hardening.sql',
           role: 'pertexo_worker',
         });
       } finally {
@@ -2091,7 +2091,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0040_schedule_triggers.sql',
+          migrationHead: '0041_trigger_hardening.sql',
           role: 'pertexo_worker',
         });
         await expect(
@@ -2158,7 +2158,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0040_schedule_triggers.sql',
+        migrationHead: '0041_trigger_hardening.sql',
         role: 'pertexo_worker',
       });
       const catalog = await readinessPool.query<{
@@ -2397,7 +2397,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0040_schedule_triggers.sql',
+        migrationHead: '0041_trigger_hardening.sql',
       });
     } finally {
       await readinessPool.end();
@@ -2583,7 +2583,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         workerRuntimeRole: 'pertexo_worker',
       }),
     ).resolves.toMatchObject({
-      migrationHead: '0040_schedule_triggers.sql',
+      migrationHead: '0041_trigger_hardening.sql',
     });
     await readinessPool.end();
   });

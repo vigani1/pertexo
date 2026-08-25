@@ -44,6 +44,9 @@ const versionId = randomUUID();
 const triggerId = randomUUID();
 const skipTriggerId = randomUUID();
 const quotaTriggerId = randomUUID();
+const notificationConnectionId = randomUUID();
+const notificationSecretVersionId = randomUUID();
+const notificationDestinationId = randomUUID();
 const migrationConfig = {
   connectionString: url(migrationBaseUrl),
   ownerRole: 'pertexo_owner',
@@ -75,13 +78,14 @@ const worker = new Pool({ connectionString: url(workerBaseUrl), max: 1 });
 async function ownerQuery<Row extends QueryResultRow = QueryResultRow>(
   statement: string,
   parameters: unknown[] = [],
+  scopedWorkspaceId = workspaceId,
 ) {
   const client = await owner.connect();
   try {
     await client.query('begin');
     await client.query('set local role pertexo_owner');
     await client.query("select set_config('app.workspace_id',$1,true)", [
-      workspaceId,
+      scopedWorkspaceId,
     ]);
     const result = await client.query<Row>(statement, parameters);
     await client.query('commit');
@@ -161,6 +165,43 @@ beforeAll(async () => {
     'update app.workflows set published_version_id=$2 where id=$1',
     [workflowId, versionId],
   );
+  await ownerQuery(
+    `with inserted_connection as (insert into app.connections(id,workspace_id,provider_key,name,auth_type,status,
+       current_secret_version_id,created_by)
+     values($1,$2,'email','Schedule notifications','resend_api_key','active',$3,$4) returning id)
+     insert into app.connection_secret_versions(id,workspace_id,connection_id,schema_version,
+       kms_key_reference,encrypted_data_key,ciphertext,nonce,auth_tag,created_by)
+     select $3,$2,id,1,'kms','key','cipher','AAAAAAAAAAAAAAAA','AAAAAAAAAAAAAAAAAAAAAA',$4
+       from inserted_connection`,
+    [
+      notificationConnectionId,
+      workspaceId,
+      notificationSecretVersionId,
+      actorId,
+    ],
+  );
+  await ownerQuery(
+    `with inserted_destination as (insert into app.failure_notification_destinations
+       (id,workspace_id,kind,status,current_config_version,created_by)
+     values($1,$2,'email','enabled',1,$4) returning id)
+     insert into app.failure_notification_destination_versions
+       (workspace_id,destination_id,version,kind,side_effect_class,config,created_by)
+     select $2,id,1,'email','idempotent_with_key',$3::jsonb,$4 from inserted_destination`,
+    [
+      notificationDestinationId,
+      workspaceId,
+      JSON.stringify({
+        connectionId: notificationConnectionId,
+        toEmail: 'schedule@example.test',
+      }),
+      actorId,
+    ],
+  );
+  await ownerQuery(
+    `insert into app.workflow_failure_notification_policies
+       (workspace_id,workflow_id,destination_id,updated_by) values($1,$2,$3,$4)`,
+    [workspaceId, workflowId, notificationDestinationId, actorId],
+  );
   for (const [id, nodeId, policy, age] of [
     [triggerId, 'schedule-main', 'catch_up_once', '10 minutes'],
     [skipTriggerId, 'schedule-skip', 'skip', '3 minutes'],
@@ -211,9 +252,181 @@ afterAll(async () => {
 });
 
 describe('schedule trigger PostgreSQL slice', () => {
+  it('admits one due schedule per workspace and backoff prevents limit-one starvation', async () => {
+    const otherWorkspaceId = randomUUID();
+    const otherWorkflowId = randomUUID();
+    const otherVersionId = randomUUID();
+    const oldestTriggerId = randomUUID();
+    const otherTriggerId = randomUUID();
+    await identity.createWorkspaceWithOwner({
+      id: otherWorkspaceId,
+      name: 'Other Schedule Workspace',
+      slug: `schedule-other-${otherWorkspaceId}`,
+      ownerUserId: actorId,
+      idempotencyKey: `schedule-other-${otherWorkspaceId}`,
+    });
+    await ownerQuery(
+      `insert into app.workflows(id,workspace_id,name,lifecycle_status,activation_status,
+         published_version_id,created_by) values($1,$2,'Other','active','active',null,$3)`,
+      [otherWorkflowId, otherWorkspaceId, actorId],
+      otherWorkspaceId,
+    );
+    await ownerQuery(
+      `insert into app.workflow_versions(id,workspace_id,workflow_id,version_number,
+         schema_version,graph_json,checksum,executable_schema_version,executable_json,
+         compatibility_release_epoch,published_by)
+       values($1,$2,$3,1,1,'{"schemaVersion":1,"settings":{},"nodes":[],"edges":[]}'::jsonb,
+         $4,2,'{}'::jsonb,1,$5)`,
+      [
+        otherVersionId,
+        otherWorkspaceId,
+        otherWorkflowId,
+        `wf:v2:sha256:${'b'.repeat(64)}`,
+        actorId,
+      ],
+      otherWorkspaceId,
+    );
+    await ownerQuery(
+      'update app.workflows set published_version_id=$2 where id=$1',
+      [otherWorkflowId, otherVersionId],
+      otherWorkspaceId,
+    );
+    for (const [id, scopedWorkspace, workflow, version, age] of [
+      [oldestTriggerId, workspaceId, workflowId, versionId, '30 minutes'],
+      [
+        otherTriggerId,
+        otherWorkspaceId,
+        otherWorkflowId,
+        otherVersionId,
+        '20 minutes',
+      ],
+    ] as const) {
+      const fingerprint = `trigger:v1:sha256:${createHash('sha256').update(id).digest('hex')}`;
+      await ownerQuery(
+        `insert into app.workflow_triggers(id,workspace_id,workflow_id,workflow_version_id,
+           node_id,kind,status,desired_config,config_fingerprint,health_status)
+         values($1,$2,$3,$4,$5,'schedule','active',$6::jsonb,$7,'healthy')`,
+        [
+          id,
+          scopedWorkspace,
+          workflow,
+          version,
+          `fair-${id}`,
+          JSON.stringify({
+            kind: 'interval',
+            intervalMinutes: 1,
+            misfirePolicy: 'catch_up_once',
+          }),
+          fingerprint,
+        ],
+        scopedWorkspace,
+      );
+      await ownerQuery(
+        `insert into app.trigger_schedules(trigger_id,workspace_id,recurrence_kind,
+           interval_minutes,misfire_policy,config_fingerprint,anchor_at,next_fire_at)
+         values($1,$2,'interval',1,'catch_up_once',$3,clock_timestamp()-$4::interval,
+           clock_timestamp()-$4::interval)`,
+        [id, scopedWorkspace, fingerprint, age],
+        scopedWorkspace,
+      );
+    }
+    const first = await worker.query<{
+      trigger_id: string;
+      lease_token: string;
+    }>(
+      `select trigger_id,lease_token from app.claim_due_trigger_schedules($1,1,30)`,
+      ['fairness-one'],
+    );
+    expect(first.rows[0]?.trigger_id).toBe(oldestTriggerId);
+    await worker.query('select app.defer_trigger_schedule_claim($1,$2,5)', [
+      oldestTriggerId,
+      first.rows[0]?.lease_token,
+    ]);
+    const second = await worker.query<{
+      trigger_id: string;
+      lease_token: string;
+    }>(
+      `select trigger_id,lease_token from app.claim_due_trigger_schedules($1,1,30)`,
+      ['fairness-two'],
+    );
+    expect(second.rows[0]?.trigger_id).toBe(otherTriggerId);
+    await worker.query('select app.release_trigger_schedule_claim($1,$2)', [
+      otherTriggerId,
+      second.rows[0]?.lease_token,
+    ]);
+    await ownerQuery(
+      "update app.trigger_schedules set status='disabled' where trigger_id=$1",
+      [oldestTriggerId],
+    );
+    await ownerQuery(
+      "update app.trigger_schedules set status='disabled' where trigger_id=$1",
+      [otherTriggerId],
+      otherWorkspaceId,
+    );
+  });
+
+  it('marks a claimed permanent scan failure degraded without advancing the occurrence', async () => {
+    const failedTriggerId = randomUUID();
+    const fingerprint = `trigger:v1:sha256:${createHash('sha256').update(failedTriggerId).digest('hex')}`;
+    await ownerQuery(
+      `insert into app.workflow_triggers(id,workspace_id,workflow_id,workflow_version_id,
+         node_id,kind,status,desired_config,config_fingerprint,health_status)
+       values($1,$2,$3,$4,'schedule-failed','schedule','active',$5::jsonb,$6,'healthy')`,
+      [
+        failedTriggerId,
+        workspaceId,
+        workflowId,
+        versionId,
+        JSON.stringify({
+          kind: 'interval',
+          intervalMinutes: 1,
+          misfirePolicy: 'catch_up_once',
+        }),
+        fingerprint,
+      ],
+    );
+    await ownerQuery(
+      `insert into app.trigger_schedules(trigger_id,workspace_id,recurrence_kind,
+         interval_minutes,misfire_policy,config_fingerprint,anchor_at,next_fire_at)
+       values($1,$2,'interval',1,'catch_up_once',$3,clock_timestamp()-interval '40 minutes',
+         clock_timestamp()-interval '40 minutes')`,
+      [failedTriggerId, workspaceId, fingerprint],
+    );
+    await expect(
+      scannerOne.scanDue({
+        leaseOwner: 'failed-scanner',
+        limit: 1,
+        leaseSeconds: 30,
+        checkpointFactory: () => {
+          throw new Error('permanent checkpoint failure');
+        },
+      }),
+    ).rejects.toThrow('permanent checkpoint failure');
+    await expect(
+      ownerQuery(
+        `select health_status,last_error_code,last_fire_at,next_fire_at<=clock_timestamp() due
+           from app.trigger_schedules where trigger_id=$1`,
+        [failedTriggerId],
+      ),
+    ).resolves.toMatchObject({
+      rows: [
+        {
+          health_status: 'degraded',
+          last_error_code: 'schedule.scan_failed',
+          last_fire_at: null,
+          due: true,
+        },
+      ],
+    });
+    await ownerQuery(
+      "update app.trigger_schedules set status='disabled' where trigger_id=$1",
+      [failedTriggerId],
+    );
+  });
+
   it('recovers an expired lease, excludes competing scanners, and commits one acceptance with outbox', async () => {
     await expect(checkDatabaseReadiness(worker)).resolves.toMatchObject({
-      migrationHead: '0040_schedule_triggers.sql',
+      migrationHead: '0041_trigger_hardening.sql',
       role: 'pertexo_worker',
     });
     const crashed = await worker.query(
@@ -249,7 +462,11 @@ describe('schedule trigger PostgreSQL slice', () => {
     );
     const facts = await ownerQuery(
       `select occurrence.scheduled_at,run.id run_id,run.trigger_type,
-              run.failure_notification_policy_version,
+               run.failure_notification_policy_version,
+               run.failure_notification_destination_id,
+               run.failure_notification_destination_config_version,
+               run.failure_notification_side_effect_class,
+               run.failure_notification_connection_secret_version_id,
               exists(select 1 from app.outbox_events event where event.aggregate_id=run.id) has_outbox
          from app.trigger_schedule_occurrences occurrence
          join app.workflow_runs run on run.id=occurrence.workflow_run_id
@@ -259,7 +476,12 @@ describe('schedule trigger PostgreSQL slice', () => {
     expect(facts.rows).toHaveLength(1);
     expect(facts.rows[0]).toMatchObject({
       trigger_type: 'schedule',
-      failure_notification_policy_version: null,
+      failure_notification_policy_version: 1,
+      failure_notification_destination_id: notificationDestinationId,
+      failure_notification_destination_config_version: 1,
+      failure_notification_side_effect_class: 'idempotent_with_key',
+      failure_notification_connection_secret_version_id:
+        notificationSecretVersionId,
       has_outbox: true,
     });
   });
@@ -345,9 +567,27 @@ describe('schedule trigger PostgreSQL slice', () => {
       [quotaTriggerId],
     );
     expect(backlog.rows[0]?.due).toBe(true);
+    await expect(
+      ownerQuery(
+        `select health_status,last_error_code from app.trigger_schedules where trigger_id=$1`,
+        [quotaTriggerId],
+      ),
+    ).resolves.toMatchObject({
+      rows: [
+        {
+          health_status: 'degraded',
+          last_error_code: 'schedule.admission_throttled',
+        },
+      ],
+    });
     await ownerQuery(
       "update app.workflow_runs set status='succeeded' where id=$1",
       [first.rows[0]?.workflow_run_id],
+    );
+    await ownerQuery(
+      `update app.trigger_schedules set admission_deferred_until=clock_timestamp()
+        where trigger_id=$1`,
+      [quotaTriggerId],
     );
     await expect(
       scannerOne.scanDue({
@@ -362,6 +602,14 @@ describe('schedule trigger PostgreSQL slice', () => {
       [quotaTriggerId],
     );
     expect(advanced.rows[0]?.advanced).toBe(true);
+    await expect(
+      ownerQuery(
+        `select health_status,last_error_code from app.trigger_schedules where trigger_id=$1`,
+        [quotaTriggerId],
+      ),
+    ).resolves.toMatchObject({
+      rows: [{ health_status: 'healthy', last_error_code: null }],
+    });
   });
 
   it('records skip atomically and supersedes a republished configuration without rewriting history', async () => {

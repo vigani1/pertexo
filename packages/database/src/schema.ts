@@ -1276,6 +1276,9 @@ export const webhookTriggerDeliveries = appSchema.table(
     receivedAt: timestamp('received_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
       .notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'date' })
+      .default(sql`clock_timestamp()+interval '90 days'`)
+      .notNull(),
   },
   (table) => [
     uniqueIndex('webhook_trigger_deliveries_workspace_identity_unique').on(
@@ -1283,6 +1286,24 @@ export const webhookTriggerDeliveries = appSchema.table(
       table.id,
     ),
   ],
+);
+
+export const webhookEndpointIngressLimits = appSchema.table(
+  'webhook_endpoint_ingress_limits',
+  {
+    endpointId: uuid('endpoint_id').primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    bucketStartedAt: timestamp('bucket_started_at', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    requestCount: integer('request_count').notNull(),
+    updatedAt: timestamp('updated_at', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+  },
+  () => [],
 );
 
 export const webhookTriggerReplayRecords = appSchema.table(
@@ -1346,6 +1367,10 @@ export const triggerSchedules = appSchema.table(
       mode: 'date',
     }),
     leaseExpiresAt: timestamp('lease_expires_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    admissionDeferredUntil: timestamp('admission_deferred_until', {
       withTimezone: true,
       mode: 'date',
     }),
@@ -1605,6 +1630,7 @@ export const databaseSchema = {
   workflowIntegrationUsage,
   workflowTriggers,
   webhookTriggerDeliveries,
+  webhookEndpointIngressLimits,
   webhookTriggerEndpoints,
   webhookTriggerReplayRecords,
   webhookTriggerSecretVersions,

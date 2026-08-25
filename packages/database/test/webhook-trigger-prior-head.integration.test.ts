@@ -44,7 +44,7 @@ beforeAll(async () => {
     '/private/var/folders/1b/2tzp51hj4wg0rcvmj2j_pwlh0000gn/T/opencode/webhook-prior-',
   );
   for (const name of await readdir(MIGRATIONS_DIRECTORY)) {
-    if (/^\d{4}_.+\.sql$/u.test(name) && name < '0040_schedule_triggers.sql')
+    if (/^\d{4}_.+\.sql$/u.test(name) && name < '0041_trigger_hardening.sql')
       await copyFile(
         path.join(MIGRATIONS_DIRECTORY, name),
         path.join(priorDirectory, name),
@@ -63,12 +63,12 @@ afterAll(async () => {
   }
 });
 
-describe('schedule trigger prior-head migration', () => {
-  it('applies only 0040 after an exact 0039 head', async () => {
+describe('trigger hardening prior-head migration', () => {
+  it('applies only 0041 after an exact 0040 head', async () => {
     const prior = await migrateDatabase(migrationConfig, priorDirectory);
-    expect(prior.at(-1)).toBe('0039_webhook_triggers.sql');
+    expect(prior.at(-1)).toBe('0040_schedule_triggers.sql');
     await expect(migrateDatabase(migrationConfig)).resolves.toEqual([
-      '0040_schedule_triggers.sql',
+      '0041_trigger_hardening.sql',
     ]);
   });
 });
