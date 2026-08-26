@@ -1113,6 +1113,16 @@ export function createIdentityWorkspaceDatabase(
         );
         if (!claim.claimed) return claim.result;
 
+        const revocable = await client.query<{ count: string }>(
+          `select count(*)::text as count from app.sessions s
+           where s.revoked_at is null
+             and exists (
+               select 1 from app.workspace_memberships m
+               where m.workspace_id = $1 and m.user_id = s.user_id
+                 and m.status <> 'removed'
+             )`,
+          [workspaceId],
+        );
         const result = await client.query(
           `update app.workspaces
            set status = 'pending_deletion', deletion_requested_at = clock_timestamp(),
@@ -1131,17 +1141,6 @@ export function createIdentityWorkspaceDatabase(
             'Workspace is neither active nor suspended',
           );
         }
-        const revoked = await client.query(
-          `update app.sessions s
-           set revoked_at = coalesce(s.revoked_at, clock_timestamp())
-           where s.revoked_at is null
-             and exists (
-               select 1 from app.workspace_memberships m
-               where m.workspace_id = $1 and m.user_id = s.user_id
-                 and m.status <> 'removed'
-             )`,
-          [workspaceId],
-        );
         await client.query(
           `insert into app.audit_events
              (id, workspace_id, actor_user_id, action, target_type, target_id,
@@ -1158,7 +1157,7 @@ export function createIdentityWorkspaceDatabase(
         );
         const commandResult = {
           workspace: mapWorkspace(result.rows[0] as Record<string, unknown>),
-          revokedSessionCount: revoked.rowCount ?? 0,
+          revokedSessionCount: Number(revocable.rows[0]?.count ?? 0),
         };
         await completeWorkspaceLifecycleCommand(
           client,

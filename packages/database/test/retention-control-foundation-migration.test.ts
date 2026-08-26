@@ -12,7 +12,7 @@ const migrationUrl = new URL(
 describe('retention control foundation migration contract', () => {
   it('is a non-destructive, least-privilege control-plane migration', async () => {
     expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0048_workspace_lifecycle_command_hardening.sql',
+      '0049_workspace_deletion_side_effects.sql',
     );
     const migration = await readFile(migrationUrl, 'utf8');
 

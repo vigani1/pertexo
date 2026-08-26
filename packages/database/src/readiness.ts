@@ -9,7 +9,7 @@ import {
 } from './compatibility-release.js';
 
 export const EXPECTED_MIGRATION_HEAD =
-  '0048_workspace_lifecycle_command_hardening.sql';
+  '0049_workspace_deletion_side_effects.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -611,8 +611,9 @@ export async function checkDatabaseReadiness(
           ) expected(table_name, policy_name)
           where (select count(*) from pg_policy where polrelid = to_regclass('app.' || expected.table_name)) <>
                 case
-                  when expected.table_name = 'node_runs' then 3
+                  when expected.table_name = 'node_runs' then 4
                   when expected.table_name = 'workflow_runs' then 3
+                  when expected.table_name in ('run_events', 'run_checkpoints') then 3
                   else 1
                 end
             or not exists (

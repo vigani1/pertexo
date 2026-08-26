@@ -34,6 +34,14 @@ const lifecycleUrl = withDatabase(lifecycleBaseUrl);
 const workspaceId = randomUUID();
 const ownerUserId = randomUUID();
 const otherUserId = randomUUID();
+const connectionId = randomUUID();
+const connectionSecretId = randomUUID();
+const queuedRunId = randomUUID();
+const runningRunId = randomUUID();
+const scheduleTriggerId = randomUUID();
+const webhookTriggerId = randomUUID();
+const workflowId = randomUUID();
+const workflowVersionId = randomUUID();
 let api: Pool | undefined;
 let lifecycle: Pool | undefined;
 let firstOperationId = '';
@@ -116,6 +124,80 @@ beforeAll(async () => {
        values($1,$2,$3,clock_timestamp()+interval '1 day')`,
       [randomUUID(), ownerUserId, '7'.repeat(64)],
     );
+    await owner.query(
+      `insert into app.workflows(id,workspace_id,name,lifecycle_status,
+         activation_status,published_version_id,created_by)
+       values($1,$2,'Lifecycle fixture','active','inactive',null,$3)`,
+      [workflowId, workspaceId, ownerUserId],
+    );
+    await owner.query(
+      `insert into app.workflow_versions(id,workspace_id,workflow_id,
+         version_number,schema_version,graph_json,checksum,
+         executable_schema_version,executable_json,compatibility_release_epoch,
+         published_by)
+       values($1,$2,$3,1,1,$4::jsonb,$5,2,'{}'::jsonb,1,$6)`,
+      [
+        workflowVersionId,
+        workspaceId,
+        workflowId,
+        JSON.stringify({
+          schemaVersion: 1,
+          settings: {},
+          nodes: [],
+          edges: [],
+        }),
+        `wf:v2:sha256:${'a'.repeat(64)}`,
+        ownerUserId,
+      ],
+    );
+    await owner.query(
+      "update app.workflows set published_version_id=$2,activation_status='active' where id=$1",
+      [workflowId, workflowVersionId],
+    );
+    await owner.query(
+      `insert into app.workflow_triggers(id,workspace_id,workflow_id,
+         workflow_version_id,node_id,kind,status,health_status,desired_config,
+         config_fingerprint)
+       values($1,$2,$3,$4,'schedule','schedule','active','healthy',$5::jsonb,$6),
+             ($7,$2,$3,$4,'webhook','webhook','active','healthy','{}'::jsonb,$8)`,
+      [
+        scheduleTriggerId,
+        workspaceId,
+        workflowId,
+        workflowVersionId,
+        JSON.stringify({ recurrence: 'interval' }),
+        `trigger:v1:sha256:${'b'.repeat(64)}`,
+        webhookTriggerId,
+        `trigger:v1:sha256:${'c'.repeat(64)}`,
+      ],
+    );
+    await owner.query(
+      `insert into app.trigger_schedules(trigger_id,workspace_id,recurrence_kind,
+         interval_minutes,misfire_policy,config_fingerprint,anchor_at,next_fire_at,
+         status,health_status,lease_owner,lease_token,lease_acquired_at,lease_expires_at)
+       values($1,$2,'interval',5,'skip',$3,clock_timestamp(),
+         clock_timestamp()+interval '5 minutes','enabled','healthy','scanner',$4,
+         clock_timestamp(),clock_timestamp()+interval '1 minute')`,
+      [
+        scheduleTriggerId,
+        workspaceId,
+        `trigger:v1:sha256:${'b'.repeat(64)}`,
+        randomUUID(),
+      ],
+    );
+    await owner.query(
+      `with connection as (
+         insert into app.connections(id,workspace_id,provider_key,name,auth_type,
+           status,current_secret_version_id,created_by)
+         values($1,$2,'http','Lifecycle connection','http_headers','active',$3,$4)
+         returning id
+       ) insert into app.connection_secret_versions(id,workspace_id,connection_id,
+         schema_version,kms_key_reference,encrypted_data_key,ciphertext,nonce,
+         auth_tag,created_by)
+       select $3,$2,id,1,'kms','key','cipher','AAAAAAAAAAAAAAAA',
+         'AAAAAAAAAAAAAAAAAAAAAA',$4 from connection`,
+      [connectionId, workspaceId, connectionSecretId, ownerUserId],
+    );
     await owner.query('commit');
   } catch (error: unknown) {
     await owner.query('rollback');
@@ -124,6 +206,56 @@ beforeAll(async () => {
     await owner.end();
   }
   api = new Pool({ connectionString: apiUrl, max: 2 });
+  const queuedCheckpoint = {
+    schemaVersion: 1,
+    engineVersion: 'phase0-engine-v1',
+    workflowVersionId,
+    revision: 0,
+    runStatus: 'queued',
+    nextEventSequence: 2,
+    readySet: [],
+    admittedInvocationKeys: [],
+    invocations: [],
+    joins: [],
+    loops: [],
+    remainingIterationBudget: 0,
+    cancelRequested: false,
+    deadlineExpired: false,
+  };
+  const runningCheckpoint = {
+    ...queuedCheckpoint,
+    revision: 1,
+    runStatus: 'running',
+    nextEventSequence: 3,
+  };
+  await apiWorkspaceQuery(
+    `insert into app.workflow_runs(id,workspace_id,workflow_id,
+       workflow_version_id,trigger_type,status,started_at)
+     values($1,$3,$4,$5,'manual','queued',null),
+           ($2,$3,$4,$5,'manual','running',clock_timestamp())`,
+    [queuedRunId, runningRunId, workspaceId, workflowId, workflowVersionId],
+  );
+  await apiWorkspaceQuery(
+    `insert into app.run_events(workspace_id,workflow_run_id,sequence,type,payload)
+     values($1,$2,1,'run.queued','{}'::jsonb),
+           ($1,$3,1,'run.queued','{}'::jsonb),
+           ($1,$3,2,'run.started','{}'::jsonb)`,
+    [workspaceId, queuedRunId, runningRunId],
+  );
+  await apiWorkspaceQuery(
+    `insert into app.run_checkpoints(workflow_run_id,workspace_id,revision,
+       engine_version,scheduler_state,workflow_version_id)
+     values($1,$3,0,'phase0-engine-v1',$4::jsonb,$6),
+           ($2,$3,1,'phase0-engine-v1',$5::jsonb,$6)`,
+    [
+      queuedRunId,
+      runningRunId,
+      workspaceId,
+      JSON.stringify(queuedCheckpoint),
+      JSON.stringify(runningCheckpoint),
+      workflowVersionId,
+    ],
+  );
   lifecycle = new Pool({ connectionString: lifecycleUrl, max: 2 });
 }, 120_000);
 
@@ -471,6 +603,45 @@ describe('workspace lifecycle command intents', () => {
         operation_status: 'completed',
         session_revoked: true,
         workspace_status: 'pending_deletion',
+      });
+      const effects = await apiWorkspaceQuery(
+        `select
+          (select status from app.connections where id=$2) connection_status,
+          (select cancel_requested_at is not null from app.workflow_runs where id=$3)
+            queued_cancel_requested,
+          (select scheduler_state->>'runStatus' from app.run_checkpoints
+            where workflow_run_id=$3) queued_checkpoint_status,
+          (select status from app.workflow_runs where id=$3) queued_status,
+          (select cancel_requested_at is not null from app.workflow_runs where id=$4)
+            running_cancel_requested,
+          (select count(*) from app.outbox_events where workspace_id=$1
+            and aggregate_id=$4 and job_name='advance-workflow-run') running_wakeup_count,
+          (select lease_token is null from app.trigger_schedules where trigger_id=$5)
+            schedule_lease_cleared,
+          (select status from app.trigger_schedules where trigger_id=$5) schedule_status,
+          (select bool_and(status='disabled' and health_status='disabled')
+            from app.workflow_triggers where workspace_id=$1) triggers_disabled,
+          (select activation_status from app.workflows where id=$6) workflow_status`,
+        [
+          workspaceId,
+          connectionId,
+          queuedRunId,
+          runningRunId,
+          scheduleTriggerId,
+          workflowId,
+        ],
+      );
+      expect(effects.rows[0]).toEqual({
+        connection_status: 'reauthorization_required',
+        queued_cancel_requested: true,
+        queued_checkpoint_status: 'canceled',
+        queued_status: 'canceled',
+        running_cancel_requested: true,
+        running_wakeup_count: '1',
+        schedule_lease_cleared: true,
+        schedule_status: 'disabled',
+        triggers_disabled: true,
+        workflow_status: 'inactive',
       });
     } finally {
       await owner.end();

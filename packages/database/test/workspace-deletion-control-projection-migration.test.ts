@@ -12,7 +12,7 @@ const migrationUrl = new URL(
 describe('workspace deletion control projection migration contract', () => {
   it('adds only non-destructive, maintenance-owned lifecycle projection', async () => {
     expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0048_workspace_lifecycle_command_hardening.sql',
+      '0049_workspace_deletion_side_effects.sql',
     );
     const migration = await readFile(migrationUrl, 'utf8');
 

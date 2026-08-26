@@ -78,6 +78,7 @@ describe('trigger hardening prior-head migration', () => {
       '0046_workspace_deletion_control_projection.sql',
       '0047_workspace_lifecycle_command_intents.sql',
       '0048_workspace_lifecycle_command_hardening.sql',
+      '0049_workspace_deletion_side_effects.sql',
     ]);
   });
 });

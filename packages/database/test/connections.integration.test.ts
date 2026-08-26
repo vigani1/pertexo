@@ -548,6 +548,7 @@ describe('connection persistence', () => {
       '0046_workspace_deletion_control_projection.sql',
       '0047_workspace_lifecycle_command_intents.sql',
       '0048_workspace_lifecycle_command_hardening.sql',
+      '0049_workspace_deletion_side_effects.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, priorDatabaseName),
@@ -560,7 +561,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0048_workspace_lifecycle_command_hardening.sql',
+        migrationHead: '0049_workspace_deletion_side_effects.sql',
       });
       const bindingSurface = await pool.query<{
         node_column: boolean;
@@ -773,6 +774,7 @@ describe('connection persistence', () => {
       '0046_workspace_deletion_control_projection.sql',
       '0047_workspace_lifecycle_command_intents.sql',
       '0048_workspace_lifecycle_command_hardening.sql',
+      '0049_workspace_deletion_side_effects.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, upgradeDatabaseName),
@@ -785,7 +787,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0048_workspace_lifecycle_command_hardening.sql',
+        migrationHead: '0049_workspace_deletion_side_effects.sql',
       });
     } finally {
       await pool.end();
@@ -1772,7 +1774,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0048_workspace_lifecycle_command_hardening.sql',
+        migrationHead: '0049_workspace_deletion_side_effects.sql',
       });
       await expect(
         checkDatabaseReadiness(workerReadinessPool, {
@@ -1780,7 +1782,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0048_workspace_lifecycle_command_hardening.sql',
+        migrationHead: '0049_workspace_deletion_side_effects.sql',
       });
     } finally {
       await Promise.all([apiReadinessPool.end(), workerReadinessPool.end()]);

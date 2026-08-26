@@ -886,7 +886,8 @@ describe('atomic workflow run acceptance', () => {
       expect(stateBeforeAdmissionCommit).toBe('waiting');
 
       releaseAdmission();
-      await expect(admission).resolves.toMatchObject({
+      const accepted = await admission;
+      expect(accepted).toMatchObject({
         duplicate: false,
         status: 'queued',
       });
@@ -894,7 +895,25 @@ describe('atomic workflow run acceptance', () => {
         rows: [{ status: 'pending_deletion' }],
       });
       await deletionClient.query('commit');
-      await expectAcceptanceRecordCounts(1);
+      await apiDatabase.withWorkspace(workspaceA, async ({ db }) => {
+        await expect(
+          db
+            .select({ status: workflowRuns.status })
+            .from(workflowRuns)
+            .where(eq(workflowRuns.id, accepted.runId)),
+        ).resolves.toEqual([{ status: 'canceled' }]);
+        await expect(
+          db
+            .select({ type: runEvents.type })
+            .from(runEvents)
+            .where(eq(runEvents.workflowRunId, accepted.runId))
+            .orderBy(runEvents.sequence),
+        ).resolves.toEqual([
+          { type: 'run.queued' },
+          { type: 'run.cancel_requested' },
+          { type: 'run.canceled' },
+        ]);
+      });
     } finally {
       releaseAdmission();
       await Promise.allSettled([admission, deletion]);
@@ -1211,17 +1230,21 @@ describe('atomic workflow run acceptance', () => {
         await owner.end();
       }
 
-      await expect(
-        apiDatabase.withWorkspace(workspaceA, (transaction) =>
-          acceptWorkflowRun(transaction, acceptanceInput()),
-        ),
-      ).resolves.toEqual({ ...first, duplicate: true });
+      const replay = await apiDatabase.withWorkspace(
+        workspaceA,
+        (transaction) => acceptWorkflowRun(transaction, acceptanceInput()),
+      );
+      expect(replay).toEqual(
+        status === 'pending_deletion'
+          ? { ...first, duplicate: true, status: 'canceled' }
+          : { ...first, duplicate: true },
+      );
       await expect(
         apiDatabase.withWorkspace(workspaceA, (transaction) =>
           acceptWorkflowRun(transaction, acceptanceInput(otherRequestHash)),
         ),
       ).rejects.toBeInstanceOf(IdempotencyRequestConflictError);
-      await expectAcceptanceRecordCounts(1);
+      if (status !== 'pending_deletion') await expectAcceptanceRecordCounts(1);
     },
   );
 

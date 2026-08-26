@@ -212,12 +212,17 @@ beforeAll(async () => {
     ),
     path.join(priorDirectory, '0048_workspace_lifecycle_command_hardening.sql'),
   );
+  await copyFile(
+    path.join(MIGRATIONS_DIRECTORY, '0049_workspace_deletion_side_effects.sql'),
+    path.join(priorDirectory, '0049_workspace_deletion_side_effects.sql'),
+  );
   await expect(
     migrateDatabase(migrationConfig, priorDirectory),
   ).resolves.toEqual([
     '0046_workspace_deletion_control_projection.sql',
     '0047_workspace_lifecycle_command_intents.sql',
     '0048_workspace_lifecycle_command_hardening.sql',
+    '0049_workspace_deletion_side_effects.sql',
   ]);
   maintenance = new Pool({ connectionString: maintenanceUrl, max: 4 });
 }, 120_000);
