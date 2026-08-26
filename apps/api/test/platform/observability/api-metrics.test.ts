@@ -68,12 +68,31 @@ describe('API metrics', () => {
       status_class: '5xx',
     });
     expect(eligibleCount).toHaveBeenCalledWith(1, {
-      outcome: 'capacity_shed',
+      outcome: 'eligible_failure',
       route: '/v1/workspaces/:workspaceId/runs/:runId',
     });
     expect(record).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(requestCount.mock.calls)).not.toContain(
       'unbounded-request-id',
     );
+
+    const shedRequest = {
+      method: 'POST',
+      routeOptions: {
+        url: '/v1/workspaces/:workspaceId/workflows/:workflowId/runs',
+      },
+    };
+    hooks.get('onRequest')?.(shedRequest, reply, vi.fn());
+    hooks.get('onSend')?.(
+      shedRequest,
+      reply,
+      JSON.stringify({ code: 'workspace.quota_exceeded' }),
+      vi.fn(),
+    );
+    hooks.get('onResponse')?.(shedRequest, reply, vi.fn());
+    expect(eligibleCount).toHaveBeenLastCalledWith(1, {
+      outcome: 'capacity_shed',
+      route: '/v1/workspaces/:workspaceId/workflows/:workflowId/runs',
+    });
   });
 });

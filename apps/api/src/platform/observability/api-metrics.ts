@@ -93,11 +93,12 @@ export function registerApiMetrics(
         );
       }
       if (eligible(route)) {
+        const problem = responseProblemCodes.get(request) ?? 'none';
         eligibleRequests.add(1, {
           outcome:
             reply.statusCode < 500
               ? 'eligible_success'
-              : reply.statusCode === 503
+              : problem === 'workspace.quota_exceeded'
                 ? 'capacity_shed'
                 : 'eligible_failure',
           route,
