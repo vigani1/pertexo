@@ -17,7 +17,7 @@ const integrationUsageMigrationUrl = new URL(
 describe('workflow authoring migration contract', () => {
   it('advances the reviewed migration head', () => {
     expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0047_workspace_lifecycle_command_intents.sql',
+      '0048_workspace_lifecycle_command_hardening.sql',
     );
   });
 

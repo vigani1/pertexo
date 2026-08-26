@@ -9,7 +9,7 @@ import {
 } from './compatibility-release.js';
 
 export const EXPECTED_MIGRATION_HEAD =
-  '0047_workspace_lifecycle_command_intents.sql';
+  '0048_workspace_lifecycle_command_hardening.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{

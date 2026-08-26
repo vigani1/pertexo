@@ -23,7 +23,7 @@ not complete a phase.
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 5 — orchestration slice | Complete | ADRs 008/017/018/019/020/021/022; implementation through `9d7e071`; migration head `0034_run_failure_notifications.sql`; 862 unit assertions and complete real-service/recovery matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 6 — V1 providers and triggers | Complete | ADRs 012–014 and 023–026; implementation through `0f8a170`; migration head `0043_workflow_run_input_retention.sql`; 1,021 unit and 288 real-service assertions; complete retained recovery and additive-rollout gates; independent fixed-head Spec and Standards completion GO |
-| Phase 7 — production operations | In progress | ADRs 013/015/027; Frankfurt launch and Ireland recovery policy accepted; maintenance and lifecycle-command credential boundaries, non-destructive retention-control foundation, all-six-command recovery projection plus legal-hold command coordination, durable fenced lifecycle intents through migration `0047_workspace_lifecycle_command_intents.sql`, fail-closed dual-region control-ledger facade, bounded restore-before-serve executable, and a two-process MinIO integration harness; MinIO policy incompatibility blocks the full local control proof, while lifecycle command processing and side effects, API authority migration, deployed admission wiring, AWS Object Lock/regional proof, destructive retention/purge, operator recovery, observability, exercises, restore drills, and autoscaling remain open |
+| Phase 7 — production operations | In progress | ADRs 013/015/027; Frankfurt launch and Ireland recovery policy accepted; maintenance and lifecycle-command credential boundaries, non-destructive retention-control foundation, all-six-command recovery projection plus legal-hold command coordination, durable operation-bound and lease-fenced lifecycle intents through migration `0048_workspace_lifecycle_command_hardening.sql`, fail-closed dual-region control-ledger facade, bounded restore-before-serve executable, and a two-process MinIO integration harness; MinIO policy incompatibility blocks the full local control proof, while lifecycle command processing and remaining side effects, API authority migration, deployed admission wiring, AWS Object Lock/regional proof, destructive retention/purge, operator recovery, observability, exercises, restore drills, and autoscaling remain open |
 
 The `0A`–`0E` checkpoints are implementation-sized subdivisions of the plan's
 single Phase 0. They do not alter the authoritative scope. Phase 0 is complete
@@ -3582,6 +3582,29 @@ Current evidence:
   projection completion, side effects, generated asynchronous API contract,
   deployment, and operational evidence remain open, so no retention/deletion
   checklist item changes status.
+- Migration `0048_workspace_lifecycle_command_hardening.sql` closes the
+  executable-review findings before any command worker is added. The lifecycle
+  role loses the unbound request/restore projector and generic workspace lock,
+  command-read, and transition-validation functions. Authorization is now
+  durable only for an exact accepted operation after a second active-user/owner
+  and current-transition check under the workspace lock. Projection derives the
+  workspace, command ID/type, actor, reason, subject, authority, occurrence time,
+  and fixed recovery interval from that operation; it requires the exact live
+  token/fence and atomically projects, revokes member sessions for deletion, and
+  completes the operation. Exact five-minute claims use one database timestamp,
+  occurrence time is canonicalized to milliseconds before external I/O, and
+  lease expiry independently prevents authorize, release, failure, projection,
+  or completion. An already-authorized retry remains able to repair an ambiguous
+  append without silently reauthorizing after a credential or deadline change.
+  Six focused lifecycle PostgreSQL assertions prove the dropped broad projector,
+  exact maximum lease, expiry and stale-fence denial, lost-owner rejection after
+  API acceptance, operation-bound projection/completion with session revocation,
+  and restore rejection after its deadline; the combined coordinator/lifecycle
+  focus passes 16 assertions. All 107 database unit assertions pass. Root
+  `pnpm check` passes all 1,150 unit assertions, and a clean zero-to-`0048`
+  PostgreSQL matrix passes all 307 assertions across 24 files in 44.37 seconds;
+  the temporary database was dropped. Trigger/run/provider side effects, the
+  command executable, API migration, and deployment remain open.
 
 ## Update protocol
 

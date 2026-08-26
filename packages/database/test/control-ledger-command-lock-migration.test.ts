@@ -12,7 +12,7 @@ const migrationUrl = new URL(
 describe('control ledger command lock migration contract', () => {
   it('exposes only narrow non-destructive maintenance functions', async () => {
     expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0047_workspace_lifecycle_command_intents.sql',
+      '0048_workspace_lifecycle_command_hardening.sql',
     );
     const migration = await readFile(migrationUrl, 'utf8');
 

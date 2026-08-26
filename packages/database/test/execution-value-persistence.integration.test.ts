@@ -253,7 +253,7 @@ describe('execution value persistence migration', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0047_workspace_lifecycle_command_intents.sql',
+          migrationHead: '0048_workspace_lifecycle_command_hardening.sql',
           role: expectedRole,
         });
       } finally {
