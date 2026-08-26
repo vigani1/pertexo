@@ -23,7 +23,7 @@ not complete a phase.
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 5 — orchestration slice | Complete | ADRs 008/017/018/019/020/021/022; implementation through `9d7e071`; migration head `0034_run_failure_notifications.sql`; 862 unit assertions and complete real-service/recovery matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 6 — V1 providers and triggers | Complete | ADRs 012–014 and 023–026; implementation through `0f8a170`; migration head `0043_workflow_run_input_retention.sql`; 1,021 unit and 288 real-service assertions; complete retained recovery and additive-rollout gates; independent fixed-head Spec and Standards completion GO |
-| Phase 7 — production operations | In progress | ADR 013; dedicated maintenance database boundary implemented; retention control, purge, operator recovery, observability, load/failure exercises, restore drills, autoscaling, and ADR 015 remain open |
+| Phase 7 — production operations | In progress | ADR 013; maintenance boundary and non-destructive retention-control foundation through migration `0044_retention_control_foundation.sql`; external ledger integration, destructive retention/purge, operator recovery, observability, exercises, restore drills, autoscaling, and ADR 015 remain open |
 
 The `0A`–`0E` checkpoints are implementation-sized subdivisions of the plan's
 single Phase 0. They do not alter the authoritative scope. Phase 0 is complete
@@ -3311,6 +3311,38 @@ Current evidence:
   records while remaining `NOSUPERUSER`, `NOBYPASSRLS`, and unable to select
   `app.workspaces`. The disposable database was dropped. No retained tenant data
   is deleted by this checkpoint.
+- Migration `0044_retention_control_foundation.sql` adds only non-destructive
+  local control-plane foundations: a generic ordered workspace-control
+  projection schema and high-water fields, workspace-wide legal holds with
+  immutable linked audit facts, and durable dry-run-only retention batch
+  progress with bounded leases and fencing. New-workspace high water is forced
+  to the empty state by a database trigger. The due run-input index and cursor
+  both use workspace, expiry, and row identity order. Batch starts require a
+  bounded requester and reason, canonicalize required strings, reject
+  non-dry-runs, and append exactly one existing `audit_events` fact on exact
+  replay. There is deliberately no standalone destruction guard or destructive
+  function: a future checkpoint must combine ledger freshness, hold checks,
+  lease fencing, and mutation atomically before any deletion authority exists.
+  Maintenance, API, worker, and dispatcher roles have no DML privilege on the
+  new tables; maintenance can execute only the four narrow projection and batch
+  functions. Exact `0043` -> `0044` PostgreSQL 18 testing covers forged API
+  inserts, concurrent workspace-lock serialization, exact replay and conflict
+  handling, repeated release, sequence/hash failures, immutable relational
+  linkage, dry-run audit/progress, lease reclaim and stale fencing, monotonic
+  expiry cursors, and expanded unchanged tenant-data snapshots. The dedicated
+  exact `0042` -> `0043` suite remains independently green. Because Pertexo has
+  not launched, the workspace-first partial index is intentionally created
+  non-concurrently and `0044` must land before production data; this is not an
+  online-upgrade claim. A fresh zero-to-`0044` PostgreSQL 18 database passes the
+  complete 291-assertion database integration matrix across 22 files in 43.60
+  seconds; focused exact-head testing passes five assertions and every
+  disposable database is dropped. Root `pnpm check` passes formatting, builds,
+  lint, generated-contract drift, typechecks, and 1,023 unit assertions. Final
+  PostgreSQL/security and Spec re-reviews report no blocker, high, or medium
+  findings, and PostgreSQL, Redis, and the artifact store remain healthy.
+  External object-ledger I/O and freshness reconciliation, restore-before-serve
+  gating, destructive retention/purge, telemetry, and policy enforcement remain
+  open, so no broader Phase 7 checklist item is marked complete.
 
 ## Update protocol
 

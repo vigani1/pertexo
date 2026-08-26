@@ -128,9 +128,13 @@ afterAll(async () => {
 
 describe('workflow run input retention prior-head migration', () => {
   it('upgrades exact 0042 input rows and enforces expiry pairing and bounds', async () => {
-    await expect(migrateDatabase(migrationConfig)).resolves.toEqual([
-      '0043_workflow_run_input_retention.sql',
-    ]);
+    await copyFile(
+      path.join(MIGRATIONS_DIRECTORY, '0043_workflow_run_input_retention.sql'),
+      path.join(priorDirectory, '0043_workflow_run_input_retention.sql'),
+    );
+    await expect(
+      migrateDatabase(migrationConfig, priorDirectory),
+    ).resolves.toEqual(['0043_workflow_run_input_retention.sql']);
     const result = await asOwner((pool) =>
       pool.query<{
         input_ref: unknown;

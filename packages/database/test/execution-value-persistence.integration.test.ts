@@ -252,7 +252,7 @@ describe('execution value persistence migration', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0043_workflow_run_input_retention.sql',
+          migrationHead: '0044_retention_control_foundation.sql',
           role: expectedRole,
         });
       } finally {
