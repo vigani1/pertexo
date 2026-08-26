@@ -23,7 +23,7 @@ not complete a phase.
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 5 — orchestration slice | Complete | ADRs 008/017/018/019/020/021/022; implementation through `9d7e071`; migration head `0034_run_failure_notifications.sql`; 862 unit assertions and complete real-service/recovery matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 6 — V1 providers and triggers | Complete | ADRs 012–014 and 023–026; implementation through `0f8a170`; migration head `0043_workflow_run_input_retention.sql`; 1,021 unit and 288 real-service assertions; complete retained recovery and additive-rollout gates; independent fixed-head Spec and Standards completion GO |
-| Phase 7 — production operations | In progress | ADRs 013/015/027; Frankfurt launch and Ireland recovery policy accepted; maintenance and lifecycle-command credential boundaries, non-destructive retention-control foundation, all-six-command recovery projection plus legal-hold command coordination, durable operation-bound and lease-fenced lifecycle intents through migration `0048_workspace_lifecycle_command_hardening.sql`, fail-closed dual-region control-ledger facade, bounded restore-before-serve executable, and a two-process MinIO integration harness; MinIO policy incompatibility blocks the full local control proof, while lifecycle command processing and remaining side effects, API authority migration, deployed admission wiring, AWS Object Lock/regional proof, destructive retention/purge, operator recovery, observability, exercises, restore drills, and autoscaling remain open |
+| Phase 7 — production operations | In progress | ADRs 013/015/027; Frankfurt launch and Ireland recovery policy accepted; maintenance and lifecycle-command credential boundaries, non-destructive retention-control foundation, all-six-command recovery projection plus legal-hold command coordination, durable operation-bound and lease-fenced lifecycle intents through migration `0048_workspace_lifecycle_command_hardening.sql`, bounded dual-region lifecycle coordinator and standalone command worker, fail-closed dual-region control-ledger facade, bounded restore-before-serve executable, and a two-process MinIO integration harness; MinIO policy incompatibility blocks the full local control proof, while remaining deletion side effects, API authority migration, deployed admission wiring, AWS Object Lock/regional proof, destructive retention/purge, operator recovery, observability, exercises, restore drills, and autoscaling remain open |
 
 The `0A`–`0E` checkpoints are implementation-sized subdivisions of the plan's
 single Phase 0. They do not alter the authoritative scope. Phase 0 is complete
@@ -3603,8 +3603,36 @@ Current evidence:
   focus passes 16 assertions. All 107 database unit assertions pass. Root
   `pnpm check` passes all 1,150 unit assertions, and a clean zero-to-`0048`
   PostgreSQL matrix passes all 307 assertions across 24 files in 44.37 seconds;
-  the temporary database was dropped. Trigger/run/provider side effects, the
-  command executable, API migration, and deployment remain open.
+  the temporary database was dropped. Trigger/run/provider side effects, API
+  migration, and deployment remain open.
+- Commits `c57eb14` and `d66562c` add the operation-bound lifecycle coordinator
+  and standalone `@pertexo/lifecycle-command` process. The coordinator claims
+  one fenced intent, commits the under-lock authorization decision before
+  external I/O, requires exact dual-ledger page-end and high-water evidence,
+  enables repair only for the durable operation command ID, verifies every
+  returned record field, and atomically projects and completes through the
+  migration `0048` function. External calls are bounded even for a
+  non-cooperative adapter; caller cancellation reaches pool acquisition, SQL,
+  and projection, destroys a cancellation-targeted client, and releases the
+  operation for retry before propagating shutdown. A conservative timeout
+  budget must fit inside the maximum five-minute lease. Stable lost-owner and
+  invalid-transition errors become bounded terminal operation failures, while
+  outage, timeout, ambiguous append, and stale ownership remain retryable.
+  The real PostgreSQL lifecycle suite proves that an append whose response is
+  lost releases the intent, reclaims it with a new fence, discovers the exact
+  durable record, and completes once with session revocation and
+  `pending_deletion` projection; all six focused assertions pass. The executable
+  parses only lifecycle-command database, dual-ledger, polling, timeout, and
+  observability configuration; proves both ledgers ready before claiming; opens
+  no HTTP, Redis, BullMQ, or tenant-artifact dependency; drains completed work;
+  backs off idle/retry outcomes; and closes all resources on signal or failure.
+  Its five focused configuration/lifecycle assertions, package build,
+  typecheck, and lint pass. Root `pnpm check` passes formatting, all production
+  builds, lint, generated-contract drift, typechecks, and all 1,156 unit
+  assertions. Trigger/run/API-key/provider cancellation and revocation side
+  effects, asynchronous API contract/authority migration, deployment admission,
+  and the broader production gates remain open, so no Phase 7 checklist item is
+  marked complete by this checkpoint.
 
 ## Update protocol
 
