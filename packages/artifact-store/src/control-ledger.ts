@@ -64,19 +64,15 @@ const controlLedgerRecordSchema = z.discriminatedUnion('commandType', [
   }),
   recordBaseSchema.extend({
     commandType: z.literal('deletion_requested'),
-    legalAuthority: boundedText(256).optional(),
   }),
   recordBaseSchema.extend({
     commandType: z.literal('deletion_restored'),
-    legalAuthority: boundedText(256).optional(),
   }),
   recordBaseSchema.extend({
     commandType: z.literal('purge_started'),
-    legalAuthority: boundedText(256).optional(),
   }),
   recordBaseSchema.extend({
     commandType: z.literal('deletion_completed'),
-    legalAuthority: boundedText(256).optional(),
   }),
 ]);
 
@@ -91,19 +87,15 @@ const appendSchema = z.discriminatedUnion('commandType', [
   }),
   recordBaseSchema.omit({ recordHash: true, schemaVersion: true }).extend({
     commandType: z.literal('deletion_requested'),
-    legalAuthority: boundedText(256).optional(),
   }),
   recordBaseSchema.omit({ recordHash: true, schemaVersion: true }).extend({
     commandType: z.literal('deletion_restored'),
-    legalAuthority: boundedText(256).optional(),
   }),
   recordBaseSchema.omit({ recordHash: true, schemaVersion: true }).extend({
     commandType: z.literal('purge_started'),
-    legalAuthority: boundedText(256).optional(),
   }),
   recordBaseSchema.omit({ recordHash: true, schemaVersion: true }).extend({
     commandType: z.literal('deletion_completed'),
-    legalAuthority: boundedText(256).optional(),
   }),
 ]);
 

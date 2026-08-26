@@ -69,7 +69,7 @@ export type WorkspacePersistenceRecord = Readonly<{
   id: string;
   name: string;
   slug: string;
-  status: 'active' | 'suspended' | 'pending_deletion' | 'deleted';
+  status: 'active' | 'suspended' | 'pending_deletion' | 'purging' | 'deleted';
   createdAt: Date;
   updatedAt: Date;
 }>;

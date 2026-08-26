@@ -200,7 +200,7 @@ describe('durable node compatibility release authority', () => {
           preactivationTarget: targetExpectation,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0045_control_ledger_command_lock.sql',
+        migrationHead: '0046_workspace_deletion_control_projection.sql',
       });
 
       for (const [roleKind, artifactId] of [
@@ -323,7 +323,7 @@ describe('durable node compatibility release authority', () => {
           expectedCompatibilityReleases: rollingExpectations,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0045_control_ledger_command_lock.sql',
+        migrationHead: '0046_workspace_deletion_control_projection.sql',
       });
       await expect(
         checkDatabaseReadiness(api, {
@@ -436,7 +436,7 @@ describe('durable node compatibility release authority', () => {
             expectedCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0045_control_ledger_command_lock.sql',
+          migrationHead: '0046_workspace_deletion_control_projection.sql',
         });
         await expect(
           checkExpectedCompatibilityRelease(pool, {
@@ -464,7 +464,7 @@ describe('durable node compatibility release authority', () => {
           expectedCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0045_control_ledger_command_lock.sql',
+        migrationHead: '0046_workspace_deletion_control_projection.sql',
       });
     } finally {
       await pool.end();

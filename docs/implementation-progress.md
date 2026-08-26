@@ -23,7 +23,7 @@ not complete a phase.
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 5 — orchestration slice | Complete | ADRs 008/017/018/019/020/021/022; implementation through `9d7e071`; migration head `0034_run_failure_notifications.sql`; 862 unit assertions and complete real-service/recovery matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 6 — V1 providers and triggers | Complete | ADRs 012–014 and 023–026; implementation through `0f8a170`; migration head `0043_workflow_run_input_retention.sql`; 1,021 unit and 288 real-service assertions; complete retained recovery and additive-rollout gates; independent fixed-head Spec and Standards completion GO |
-| Phase 7 — production operations | In progress | ADRs 013/015; Frankfurt launch and Ireland recovery policy accepted; maintenance boundary, non-destructive retention-control foundation, external legal-hold command coordination through migration `0045_control_ledger_command_lock.sql`, fail-closed dual-region control-ledger facade, and a two-process MinIO integration harness; MinIO policy incompatibility blocks the full local control proof, while coordinator wiring, AWS Object Lock/regional proof, restore-before-serve, destructive retention/purge, operator recovery, observability, exercises, restore drills, and autoscaling remain open |
+| Phase 7 — production operations | In progress | ADRs 013/015; Frankfurt launch and Ireland recovery policy accepted; maintenance boundary, non-destructive retention-control foundation, all-six-command recovery projection plus legal-hold command coordination through migration `0046_workspace_deletion_control_projection.sql`, fail-closed dual-region control-ledger facade, and a two-process MinIO integration harness; MinIO policy incompatibility blocks the full local control proof, while workspace deletion command creation and side effects, API authority migration, AWS Object Lock/regional proof, restore-before-serve, destructive retention/purge, operator recovery, observability, exercises, restore drills, and autoscaling remain open |
 
 The `0A`–`0E` checkpoints are implementation-sized subdivisions of the plan's
 single Phase 0. They do not alter the authoritative scope. Phase 0 is complete
@@ -3474,6 +3474,30 @@ Current evidence:
   S3Mock is not real Object Lock or AWS regional-isolation evidence. Therefore
   the combined external-ledger checklist remains unchecked and Phase 7 remains in
   progress.
+- Migration `0046_workspace_deletion_control_projection.sql` adds `purging` and
+  protects control-ledger sequence/hash anchors while deliberately preserving
+  the existing API lifecycle and deletion-metadata grants. The immutable control
+  audit relation now accepts all six command types. A maintenance-only deletion
+  projector enforces exact replay and sequence/hash chaining, workspace subject
+  identity, NULL deletion legal authority, UUID/existing-user request actors,
+  monotonic event-time request/restore/purge/completion ordering, the exact
+  default 30-day recovery interval, restore to suspended with cleared metadata,
+  completion only from purging, and active workspace-hold blocking. It exposes
+  preflight only for future request/restore command creation and no purge command
+  creation surface; bounded keyset anchor enumeration is maintenance-only and
+  serving roles cannot project or enumerate. The coordinator remains a legal-hold
+  command API and now reconciles all six authoritative record types, dispatching
+  deletion records only for recovery projection. The existing HTTP
+  identity/workspace deletion and restore use cases remain the legacy direct
+  PostgreSQL authority and retain their behavior in this additive checkpoint.
+  Root `pnpm check` passes all 1,137 unit assertions, and a clean zero-to-head
+  PostgreSQL matrix passes all 300 assertions including the exact `0045` ->
+  `0046` upgrade and the unchanged legacy deletion/restore API behavior.
+  Normal external-ledger deletion command creation, ADR-required session/key/
+  trigger/run/provider side effects, API authority migration, destructive purge
+  proof, deployment-wide anchor enumeration/reconciliation, and the
+  restore-before-serve gate remain open; the combined checklist items above stay
+  unchecked.
 - Local and CI composition now define two independent, persistent MinIO
   `RELEASE.2025-09-07T16-13-09Z` processes on loopback-only ports 9091 and 9092,
   reporting `eu-central-1` and `eu-west-1` respectively, with separate data

@@ -278,21 +278,6 @@ describe('dual-region control ledger', () => {
     expect(recovery.appendRequests).toEqual([request, request]);
   });
 
-  it('treats omitted and undefined optional properties as exact canonical replay', async () => {
-    const { ledger, primary, recovery } = fixture();
-    primary.storedRecord = record();
-    recovery.storedRecord = {
-      ...record(),
-      legalAuthority: undefined,
-    } as unknown as ControlLedgerRecord;
-
-    await expect(
-      ledger.append(appendRequest({ legalAuthority: undefined })),
-    ).resolves.toEqual(record());
-    expect(primary.appendRequests).toHaveLength(0);
-    expect(recovery.appendRequests).toHaveLength(0);
-  });
-
   it('does not write the missing region for a different command', async () => {
     const { ledger, primary, recovery } = fixture();
     primary.storedRecord = record();

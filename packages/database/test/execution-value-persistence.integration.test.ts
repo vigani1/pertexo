@@ -252,7 +252,7 @@ describe('execution value persistence migration', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0045_control_ledger_command_lock.sql',
+          migrationHead: '0046_workspace_deletion_control_projection.sql',
           role: expectedRole,
         });
       } finally {

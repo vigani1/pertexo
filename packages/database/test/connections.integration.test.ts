@@ -544,6 +544,7 @@ describe('connection persistence', () => {
       '0043_workflow_run_input_retention.sql',
       '0044_retention_control_foundation.sql',
       '0045_control_ledger_command_lock.sql',
+      '0046_workspace_deletion_control_projection.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, priorDatabaseName),
@@ -556,7 +557,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0045_control_ledger_command_lock.sql',
+        migrationHead: '0046_workspace_deletion_control_projection.sql',
       });
       const bindingSurface = await pool.query<{
         node_column: boolean;
@@ -766,6 +767,7 @@ describe('connection persistence', () => {
       '0043_workflow_run_input_retention.sql',
       '0044_retention_control_foundation.sql',
       '0045_control_ledger_command_lock.sql',
+      '0046_workspace_deletion_control_projection.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, upgradeDatabaseName),
@@ -778,7 +780,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0045_control_ledger_command_lock.sql',
+        migrationHead: '0046_workspace_deletion_control_projection.sql',
       });
     } finally {
       await pool.end();
@@ -1765,7 +1767,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0045_control_ledger_command_lock.sql',
+        migrationHead: '0046_workspace_deletion_control_projection.sql',
       });
       await expect(
         checkDatabaseReadiness(workerReadinessPool, {
@@ -1773,7 +1775,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0045_control_ledger_command_lock.sql',
+        migrationHead: '0046_workspace_deletion_control_projection.sql',
       });
     } finally {
       await Promise.all([apiReadinessPool.end(), workerReadinessPool.end()]);

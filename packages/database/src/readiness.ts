@@ -8,7 +8,8 @@ import {
   type CompatibilityReleaseExpectationSet,
 } from './compatibility-release.js';
 
-export const EXPECTED_MIGRATION_HEAD = '0045_control_ledger_command_lock.sql';
+export const EXPECTED_MIGRATION_HEAD =
+  '0046_workspace_deletion_control_projection.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{

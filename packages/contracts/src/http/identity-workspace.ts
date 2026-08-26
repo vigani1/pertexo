@@ -40,7 +40,13 @@ export const workspaceResponseSchema = z
     id: z.uuid(),
     name: z.string(),
     slug: z.string(),
-    status: z.enum(['active', 'suspended', 'pending_deletion', 'deleted']),
+    status: z.enum([
+      'active',
+      'suspended',
+      'pending_deletion',
+      'purging',
+      'deleted',
+    ]),
     createdAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),
   })

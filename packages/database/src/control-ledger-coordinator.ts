@@ -350,20 +350,41 @@ function assertRecord(
       'External control ledger record chain is invalid',
     );
   if (
-    record.commandType !== 'legal_hold_placed' &&
-    record.commandType !== 'legal_hold_released'
+    !z
+      .enum([
+        'legal_hold_placed',
+        'legal_hold_released',
+        'deletion_requested',
+        'deletion_restored',
+        'purge_started',
+        'deletion_completed',
+      ])
+      .safeParse(record.commandType).success
   )
     throw new ControlLedgerReconciliationError(
       `Unsupported control ledger command: ${record.commandType}`,
     );
-  z.object({
+  const material = z.object({
     actorRef: boundedText(128),
     commandId: uuidSchema,
-    legalAuthority: boundedText(256),
     occurredAt: occurredAtSchema,
     reason: boundedText(512),
     subjectId: uuidSchema,
-  }).parse(record);
+  });
+  material.parse(record);
+  if (record.commandType.startsWith('legal_hold_'))
+    boundedText(256).parse(record.legalAuthority);
+  else if (record.legalAuthority !== undefined)
+    throw new ControlLedgerReconciliationError(
+      'Deletion control ledger record must omit legal authority',
+    );
+  if (
+    !record.commandType.startsWith('legal_hold_') &&
+    record.subjectId !== workspaceId
+  )
+    throw new ControlLedgerReconciliationError(
+      'Deletion control ledger subject must be its workspace',
+    );
 }
 
 async function project(
@@ -371,11 +392,13 @@ async function project(
   record: ControlLedgerRecord,
   signal?: AbortSignal,
 ): Promise<boolean> {
-  const result = await query<{ project_workspace_legal_hold: boolean }>(
+  const legalHold = record.commandType.startsWith('legal_hold_');
+  const projection = legalHold
+    ? 'app.project_workspace_legal_hold'
+    : 'app.project_workspace_deletion';
+  const result = await query<Record<string, boolean>>(
     client,
-    `select app.project_workspace_legal_hold(
-       $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11
-     ) project_workspace_legal_hold`,
+    `select ${projection}($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) projected`,
     [
       record.workspaceId,
       record.sequence,
@@ -391,7 +414,7 @@ async function project(
     ],
     signal,
   );
-  return result.rows[0]?.project_workspace_legal_hold === true;
+  return result.rows[0]?.projected === true;
 }
 
 export function createControlLedgerCoordinator(

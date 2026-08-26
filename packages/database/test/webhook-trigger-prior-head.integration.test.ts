@@ -74,6 +74,7 @@ describe('trigger hardening prior-head migration', () => {
       '0043_workflow_run_input_retention.sql',
       '0044_retention_control_foundation.sql',
       '0045_control_ledger_command_lock.sql',
+      '0046_workspace_deletion_control_projection.sql',
     ]);
   });
 });

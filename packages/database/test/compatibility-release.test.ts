@@ -34,7 +34,7 @@ describe('node compatibility release persistence', () => {
     );
 
     expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0045_control_ledger_command_lock.sql',
+      '0046_workspace_deletion_control_projection.sql',
     );
     expect(migration).toContain('CREATE TABLE app.node_compatibility_releases');
     expect(migration).toContain('CREATE TABLE app.node_compatibility_current');

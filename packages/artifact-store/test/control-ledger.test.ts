@@ -290,6 +290,17 @@ function key(sequence: number): string {
 }
 
 describe('external control ledger', () => {
+  it('rejects legal authority on deletion records', async () => {
+    const { ledger } = fixture();
+    await expect(
+      ledger.append(
+        command({
+          legalAuthority: 'must-not-be-present',
+        }),
+      ),
+    ).rejects.toThrow();
+  });
+
   it('writes exact canonical bytes and hashes the canonical record without recordHash', async () => {
     const { client, ledger } = fixture();
     const record = await ledger.append(command());

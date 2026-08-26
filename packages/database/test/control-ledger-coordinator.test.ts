@@ -212,7 +212,7 @@ function fakeDatabase(events: string[], processId?: number) {
                     actor_ref: record.actorRef,
                     command_id: record.commandId,
                     command_type: record.commandType,
-                    legal_authority: record.legalAuthority,
+                    legal_authority: record.legalAuthority ?? null,
                     occurred_at: record.occurredAt,
                     previous_hash: record.previousHash,
                     reason: record.reason,
@@ -240,7 +240,9 @@ function fakeDatabase(events: string[], processId?: number) {
           (placement === undefined || released)
         )
           throw new Error('legal hold is absent or already released');
-      } else if (normalized.includes('project_workspace_legal_hold')) {
+      } else if (normalized.includes('validate_workspace_deletion_command')) {
+        events.push('VALIDATE');
+      } else if (normalized.includes('project_workspace_')) {
         events.push('PROJECT');
         if (failProjection) throw new Error('projection failed');
         const record: ControlLedgerRecord = {
@@ -252,14 +254,16 @@ function fakeDatabase(events: string[], processId?: number) {
           previousHash: String(values[5]),
           recordHash: String(values[6]),
           actorRef: String(values[7]),
-          legalAuthority: String(values[8]),
+          ...(typeof values[8] === 'string'
+            ? { legalAuthority: values[8] }
+            : {}),
           reason: String(values[9]),
           occurredAt: String(values[10]),
           schemaVersion: 1,
         };
         projections.set(record.commandId, record);
         highWater = { hash: record.recordHash, sequence: record.sequence };
-        return { rowCount: 1, rows: [{ project_workspace_legal_hold: true }] };
+        return { rowCount: 1, rows: [{ projected: true }] };
       } else if (normalized === 'commit') events.push('COMMIT');
       else if (normalized === 'rollback') {
         events.push('ROLLBACK');
@@ -507,23 +511,25 @@ describe('control ledger coordinator', () => {
     expect(events.indexOf('VALIDATE')).toBeLessThan(events.indexOf('append'));
   });
 
-  it('fails closed on unsupported external deletion commands', async () => {
+  it('reconciles authoritative deletion commands through the deletion projector', async () => {
     const events: string[] = [];
     const database = fakeDatabase(events);
     const ledger = new MemoryLedger();
-    ledger.records.push(
-      record(1, CONTROL_LEDGER_ZERO_HASH, {
-        commandType: 'deletion_requested',
-      }),
-    );
+    const deletionRecord = record(1, CONTROL_LEDGER_ZERO_HASH, {
+      actorRef: randomUUID(),
+      commandType: 'deletion_requested',
+      subjectId: workspaceId,
+    });
+    delete (deletionRecord as { legalAuthority?: string }).legalAuthority;
+    ledger.records.push(deletionRecord);
     const coordinator = createControlLedgerCoordinator(config, ledger, {
       pool: database.pool,
     });
 
     await expect(
       coordinator.reconcileWorkspace({ workspaceId }),
-    ).rejects.toBeInstanceOf(ControlLedgerReconciliationError);
-    expect(events).toContain('ROLLBACK');
+    ).resolves.toMatchObject({ highWaterSequence: 1, projectedCount: 1 });
+    expect(events).toContain('PROJECT');
   });
 
   it('rolls back an aborted command and passes cancellation to the ledger', async () => {

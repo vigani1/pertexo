@@ -543,6 +543,7 @@
               "active",
               "suspended",
               "pending_deletion",
+              "purging",
               "deleted"
             ]
           },

@@ -2014,7 +2014,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0045_control_ledger_command_lock.sql',
+          migrationHead: '0046_workspace_deletion_control_projection.sql',
           role: 'pertexo_worker',
         });
       } finally {
@@ -2085,6 +2085,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         '0043_workflow_run_input_retention.sql',
         '0044_retention_control_foundation.sql',
         '0045_control_ledger_command_lock.sql',
+        '0046_workspace_deletion_control_projection.sql',
       ]);
       const workerPool = new Pool({
         connectionString: namedDatabaseUrl(
@@ -2100,7 +2101,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0045_control_ledger_command_lock.sql',
+          migrationHead: '0046_workspace_deletion_control_projection.sql',
           role: 'pertexo_worker',
         });
         await expect(
@@ -2167,7 +2168,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0045_control_ledger_command_lock.sql',
+        migrationHead: '0046_workspace_deletion_control_projection.sql',
         role: 'pertexo_worker',
       });
       const catalog = await readinessPool.query<{
@@ -2406,7 +2407,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0045_control_ledger_command_lock.sql',
+        migrationHead: '0046_workspace_deletion_control_projection.sql',
       });
     } finally {
       await readinessPool.end();
@@ -2592,7 +2593,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         workerRuntimeRole: 'pertexo_worker',
       }),
     ).resolves.toMatchObject({
-      migrationHead: '0045_control_ledger_command_lock.sql',
+      migrationHead: '0046_workspace_deletion_control_projection.sql',
     });
     await readinessPool.end();
   });

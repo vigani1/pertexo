@@ -20,6 +20,7 @@ export const WORKSPACE_STATUSES = Object.freeze([
   'active',
   'suspended',
   'pending_deletion',
+  'purging',
   'deleted',
 ] as const);
 

@@ -45,6 +45,7 @@ describe('workspace authorization policy', () => {
       'active',
       'suspended',
       'pending_deletion',
+      'purging',
       'deleted',
     ]);
     expect(AUTHORIZATION_CAPABILITIES).toEqual([
@@ -146,7 +147,7 @@ describe('workspace authorization policy', () => {
     },
   );
 
-  it.each(['suspended', 'pending_deletion', 'deleted'] as const)(
+  it.each(['suspended', 'pending_deletion', 'purging', 'deleted'] as const)(
     'does not authorize a %s workspace for normal operations',
     async (workspaceStatus) => {
       await expect(
