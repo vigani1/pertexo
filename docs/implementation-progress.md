@@ -23,7 +23,7 @@ not complete a phase.
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 5 — orchestration slice | Complete | ADRs 008/017/018/019/020/021/022; implementation through `9d7e071`; migration head `0034_run_failure_notifications.sql`; 862 unit assertions and complete real-service/recovery matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 6 — V1 providers and triggers | Complete | ADRs 012–014 and 023–026; implementation through `0f8a170`; migration head `0043_workflow_run_input_retention.sql`; 1,021 unit and 288 real-service assertions; complete retained recovery and additive-rollout gates; independent fixed-head Spec and Standards completion GO |
-| Phase 7 — production operations | In progress | ADR 013; maintenance boundary, non-destructive retention-control foundation, and external legal-hold command coordination through migration `0045_control_ledger_command_lock.sql`; real Object Lock proof, restore-before-serve, destructive retention/purge, operator recovery, observability, exercises, restore drills, autoscaling, and ADR 015 remain open |
+| Phase 7 — production operations | In progress | ADRs 013/015; Frankfurt launch and Ireland recovery policy accepted; maintenance boundary, non-destructive retention-control foundation, and external legal-hold command coordination through migration `0045_control_ledger_command_lock.sql`; real Object Lock proof, restore-before-serve, destructive retention/purge, operator recovery, observability, exercises, restore drills, and autoscaling remain open |
 
 The `0A`–`0E` checkpoints are implementation-sized subdivisions of the plan's
 single Phase 0. They do not alter the authoritative scope. Phase 0 is complete
@@ -3242,9 +3242,9 @@ Authority and production policy:
 
 - [x] Accept ADR 013 before destructive retention, workspace purge, legal-hold,
       or backup-erasure implementation.
-- [ ] Accept ADR 015 before production launch, fixing the initial SLO, RPO/RTO,
+- [x] Accept ADR 015 before production launch, fixing the initial SLO, RPO/RTO,
       hosting-region, backup, failover, and regional-recovery strategy.
-- [ ] Record operated legal authority, backup rotation, data minimization, and
+- [x] Record operated legal authority, backup rotation, data minimization, and
       production retention policy inputs without claiming legal certification.
 
 Retention, deletion, and legal hold:
@@ -3297,6 +3297,22 @@ Release exercises and completion gates:
       Standards reviews and push every coherent implementation/evidence commit.
 
 Current evidence:
+
+- Accepted ADR 015 fixes AWS `eu-central-1` as the multi-AZ primary region,
+  `eu-west-1` as the warm regional-recovery target, RDS PostgreSQL Multi-AZ plus
+  an encrypted cross-region replica, synchronous immutable dual-region control
+  records, 99.9% monthly eligible-request availability, a five-minute
+  PostgreSQL/object-storage RPO, and a 24-hour regional RTO. The ADR defines the
+  separate availability/latency SLIs, capacity-shedding treatment, replica-lag
+  and dual-object-write admission fences, exact recovery dependency order,
+  audited traffic cutover, failback direction, and dual-ledger restore agreement
+  while leaving implementation and drills open.
+  `docs/operations/production-data-policy.md` records the selected 35-day
+  recovery-eligibility limit and asynchronous physical-deletion evidence,
+  covered backup surfaces, V1 retention and minimization defaults, accountable
+  legal-owner approval plus separate legal-administrator execution, quarterly
+  access review, backup-beyond-use behavior, and restore-before-serve rule
+  without claiming legal certification.
 
 - The first Phase 7 checkpoint exposes `DATABASE_MAINTENANCE_URL` through a
   dedicated conservative pool parser, makes `POSTGRES_MAINTENANCE_USER` an
