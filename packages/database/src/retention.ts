@@ -1,7 +1,8 @@
-import { Pool, type QueryResult } from 'pg';
+import { Pool, type PoolClient, type QueryResult } from 'pg';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from './config.js';
+import type { ControlLedger } from './control-ledger-coordinator.js';
 import { EXPECTED_MIGRATION_HEAD } from './readiness.js';
 
 const uuidSchema = z.uuid();
@@ -17,6 +18,9 @@ export interface StartWorkflowRunInputRetentionDryRunInput {
   readonly signal?: AbortSignal;
   readonly workspaceId: string;
 }
+
+export type StartWorkflowRunInputRetentionInput =
+  StartWorkflowRunInputRetentionDryRunInput;
 
 export interface RetentionDryRunClaim {
   readonly batchId: string;
@@ -74,6 +78,29 @@ export interface RetentionDatabase {
   startDryRun(
     input: StartWorkflowRunInputRetentionDryRunInput,
   ): Promise<string>;
+  startEnforcement(input: StartWorkflowRunInputRetentionInput): Promise<string>;
+}
+
+export type RetentionEnforcementProcessResult =
+  | Readonly<{ status: 'idle' }>
+  | Readonly<{
+      batchId: string;
+      eligibleCount: number;
+      examinedCount: number;
+      pageCount: number;
+      status: 'completed' | 'paused' | 'released' | 'stale';
+      workspaceId: string;
+    }>;
+
+export interface RetentionEnforcementCoordinator {
+  close(): Promise<void>;
+  processNext(signal?: AbortSignal): Promise<RetentionEnforcementProcessResult>;
+}
+
+export interface RetentionEnforcementCoordinatorOptions extends RetentionDatabaseOptions {
+  readonly externalOperationTimeoutMs?: number;
+  readonly lockTimeoutMs?: number;
+  readonly statementTimeoutMs?: number;
 }
 
 const optionsSchema = z
@@ -192,6 +219,43 @@ export function createRetentionDatabase(
     });
   };
 
+  const startBatch = async (
+    input: StartWorkflowRunInputRetentionInput,
+    dryRun: boolean,
+  ) => {
+    const parsed = z
+      .object({
+        batchId: uuidSchema,
+        cutoffAt: dateSchema,
+        idempotencyKey: boundedText(128),
+        reason: boundedText(512),
+        requestedBy: boundedText(128),
+        signal: z
+          .custom<AbortSignal>((value) => value instanceof AbortSignal)
+          .optional(),
+        workspaceId: uuidSchema,
+      })
+      .strict()
+      .parse(input);
+    const result = await query<{ batch_id: string }>(
+      pool,
+      `select app.start_retention_batch(
+        $1::uuid,$2::uuid,$3::varchar,'workflow_run_input',
+        $4::timestamptz,$5::boolean,$6::varchar,$7::varchar) batch_id`,
+      [
+        parsed.batchId,
+        parsed.workspaceId,
+        parsed.idempotencyKey,
+        parsed.cutoffAt,
+        dryRun,
+        parsed.requestedBy,
+        parsed.reason,
+      ],
+      parsed.signal,
+    );
+    return uuidSchema.parse(result.rows[0]?.batch_id);
+  };
+
   const database: RetentionDatabase = {
     checkReadiness: async ({
       expectedMaintenanceRole,
@@ -220,6 +284,16 @@ export function createRetentionDatabase(
               'app.claim_retention_dry_run_batches(character varying,integer,integer)','EXECUTE')
             and has_function_privilege(current_user,
               'app.execute_workflow_run_input_retention_dry_run_page(uuid,uuid,bigint,integer)','EXECUTE')
+            and has_function_privilege(current_user,
+              'app.claim_retention_destructive_batches(character varying,integer,integer)','EXECUTE')
+            and has_function_privilege(current_user,
+              'app.release_retention_batch(uuid,uuid,bigint)','EXECUTE')
+            and has_function_privilege(current_user,
+              'app.execute_workflow_run_input_retention_page(uuid,uuid,bigint,integer,bigint,character)','EXECUTE')
+            and not has_function_privilege(current_user,
+              'app.claim_retention_batches(character varying,integer,integer)','EXECUTE')
+            and not has_function_privilege(current_user,
+              'app.checkpoint_retention_batch(uuid,uuid,bigint,timestamp with time zone,uuid,integer,integer,boolean)','EXECUTE')
             and not has_table_privilege(current_user,'app.workflow_runs','SELECT,INSERT,UPDATE,DELETE')
             as compatible`,
         [role],
@@ -264,38 +338,219 @@ export function createRetentionDatabase(
       }
       throw new Error('Retention dry-run page bound exceeded');
     },
-    startDryRun: async (input: StartWorkflowRunInputRetentionDryRunInput) => {
-      const parsed = z
-        .object({
-          batchId: uuidSchema,
-          cutoffAt: dateSchema,
-          idempotencyKey: boundedText(128),
-          reason: boundedText(512),
-          requestedBy: boundedText(128),
-          signal: z
-            .custom<AbortSignal>((value) => value instanceof AbortSignal)
-            .optional(),
-          workspaceId: uuidSchema,
-        })
-        .strict()
-        .parse(input);
-      const result = await query<{ batch_id: string }>(
-        pool,
-        `select app.start_retention_batch(
-          $1::uuid,$2::uuid,$3::varchar,'workflow_run_input',
-          $4::timestamptz,true,$5::varchar,$6::varchar) batch_id`,
-        [
-          parsed.batchId,
-          parsed.workspaceId,
-          parsed.idempotencyKey,
-          parsed.cutoffAt,
-          parsed.requestedBy,
-          parsed.reason,
-        ],
-        parsed.signal,
-      );
-      return uuidSchema.parse(result.rows[0]?.batch_id);
-    },
+    startDryRun: (input) => startBatch(input, true),
+    startEnforcement: (input) => startBatch(input, false),
   };
   return Object.freeze(database);
+}
+
+const enforcementOptionsSchema = optionsSchema.extend({
+  externalOperationTimeoutMs: z
+    .number()
+    .int()
+    .min(1_000)
+    .max(300_000)
+    .default(30_000),
+  lockTimeoutMs: z.number().int().min(100).max(300_000).default(10_000),
+  statementTimeoutMs: z.number().int().min(1_000).max(300_000).default(30_000),
+});
+
+function transactionQuery<Row extends Record<string, unknown>>(
+  client: PoolClient,
+  text: string,
+  values: readonly unknown[],
+  signal?: AbortSignal,
+): Promise<QueryResult<Row>> {
+  signal?.throwIfAborted();
+  return client.query<Row>({
+    text,
+    values: [...values],
+    ...(signal === undefined ? {} : { signal }),
+  });
+}
+
+export function createRetentionEnforcementCoordinator(
+  config: DatabaseConfig,
+  ledger: ControlLedger,
+  inputOptions: RetentionEnforcementCoordinatorOptions,
+): RetentionEnforcementCoordinator {
+  const options = enforcementOptionsSchema.parse(inputOptions);
+  const pool = new Pool({
+    connectionString: config.connectionString,
+    connectionTimeoutMillis: config.connectionTimeoutMillis,
+    idleTimeoutMillis: config.idleTimeoutMillis,
+    max: config.max,
+  });
+
+  const claim = async (signal?: AbortSignal) => {
+    const result = await query(
+      pool,
+      'select * from app.claim_retention_destructive_batches($1,1,$2)',
+      [options.leaseOwner, options.leaseSeconds],
+      signal,
+    );
+    return result.rows.map(mapClaim)[0];
+  };
+
+  const release = async (
+    claimed: RetentionDryRunClaim,
+    signal?: AbortSignal,
+  ): Promise<void> => {
+    await query(
+      pool,
+      'select app.release_retention_batch($1,$2,$3)',
+      [claimed.batchId, claimed.leaseToken, claimed.leaseFence],
+      signal,
+    );
+  };
+
+  return Object.freeze({
+    close: () => pool.end(),
+    processNext: async (signal?: AbortSignal) => {
+      const claimed = await claim(signal);
+      if (claimed === undefined) return { status: 'idle' as const };
+      let examinedCount = 0;
+      let eligibleCount = 0;
+      for (
+        let pageCount = 1;
+        pageCount <= options.maxPagesPerBatch;
+        pageCount += 1
+      ) {
+        const client = await pool.connect();
+        let transactionComplete = false;
+        try {
+          await transactionQuery(client, 'begin', [], signal);
+          await transactionQuery(
+            client,
+            `set local lock_timeout='${String(options.lockTimeoutMs)}ms';
+             set local statement_timeout='${String(options.statementTimeoutMs)}ms';
+             set local idle_in_transaction_session_timeout='0'`,
+            [],
+            signal,
+          );
+          const lock = await transactionQuery<{
+            retention_control_hash: string;
+            retention_control_sequence: string | number;
+          }>(
+            client,
+            'select * from app.lock_workspace_control_ledger($1)',
+            [claimed.workspaceId],
+            signal,
+          );
+          const highWater = lock.rows[0];
+          if (highWater === undefined)
+            throw new Error(
+              'Retention workspace control lock was not returned',
+            );
+          const sequence = z.coerce
+            .number()
+            .int()
+            .nonnegative()
+            .parse(highWater.retention_control_sequence);
+          const hash = z
+            .string()
+            .regex(/^[0-9a-f]{64}$/u)
+            .parse(highWater.retention_control_hash);
+          const timeoutSignal = AbortSignal.timeout(
+            options.externalOperationTimeoutMs,
+          );
+          const externalSignal =
+            signal === undefined
+              ? timeoutSignal
+              : AbortSignal.any([signal, timeoutSignal]);
+          const reconciliation = await ledger.reconcile({
+            maxRecords: 1,
+            projectedHash: hash,
+            projectedSequence: sequence,
+            signal: externalSignal,
+            workspaceId: claimed.workspaceId,
+          });
+          if (
+            !reconciliation.reachedHighWater ||
+            reconciliation.hasMore ||
+            reconciliation.records.length !== 0 ||
+            reconciliation.pageEndSequence !== sequence ||
+            reconciliation.pageEndHash !== hash
+          ) {
+            throw new Error(
+              'Retention control ledger is not exactly projected',
+            );
+          }
+          const page = await transactionQuery<{
+            cursor_expires_at: Date | string | null;
+            cursor_id: string | null;
+            eligible_delta: string | number;
+            examined_delta: string | number;
+            outcome: string;
+          }>(
+            client,
+            `select * from app.execute_workflow_run_input_retention_page(
+              $1,$2,$3,$4,$5,$6)`,
+            [
+              claimed.batchId,
+              claimed.leaseToken,
+              claimed.leaseFence,
+              options.pageSize,
+              sequence,
+              hash,
+            ],
+            signal,
+          );
+          const row = page.rows[0];
+          if (row === undefined)
+            throw new Error('Destructive retention page was not returned');
+          const outcome = z
+            .enum(['completed', 'paused', 'progressed', 'stale'])
+            .parse(row.outcome);
+          const examinedDelta = z.coerce
+            .number()
+            .int()
+            .nonnegative()
+            .parse(row.examined_delta);
+          const eligibleDelta = z.coerce
+            .number()
+            .int()
+            .nonnegative()
+            .parse(row.eligible_delta);
+          await transactionQuery(client, 'commit', [], signal);
+          transactionComplete = true;
+          examinedCount += examinedDelta;
+          eligibleCount += eligibleDelta;
+          if (outcome !== 'progressed') {
+            return Object.freeze({
+              batchId: claimed.batchId,
+              eligibleCount,
+              examinedCount,
+              pageCount,
+              status: outcome,
+              workspaceId: claimed.workspaceId,
+            });
+          }
+        } catch {
+          if (!transactionComplete)
+            await client.query('rollback').catch(() => undefined);
+          await release(claimed, signal).catch(() => undefined);
+          return Object.freeze({
+            batchId: claimed.batchId,
+            eligibleCount,
+            examinedCount,
+            pageCount,
+            status: 'released' as const,
+            workspaceId: claimed.workspaceId,
+          });
+        } finally {
+          client.release();
+        }
+      }
+      await release(claimed, signal);
+      return Object.freeze({
+        batchId: claimed.batchId,
+        eligibleCount,
+        examinedCount,
+        pageCount: options.maxPagesPerBatch,
+        status: 'released' as const,
+        workspaceId: claimed.workspaceId,
+      });
+    },
+  });
 }

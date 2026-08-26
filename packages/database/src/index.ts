@@ -179,14 +179,21 @@ export type {
 } from './artifacts.js';
 export { createWorkspaceDatabase } from './database.js';
 export type { WorkspaceDatabase } from './database.js';
-export { createRetentionDatabase } from './retention.js';
+export {
+  createRetentionDatabase,
+  createRetentionEnforcementCoordinator,
+} from './retention.js';
 export type {
   RetentionDatabase,
   RetentionDatabaseOptions,
   RetentionDryRunClaim,
   RetentionDryRunPageResult,
   RetentionDryRunProcessResult,
+  RetentionEnforcementCoordinator,
+  RetentionEnforcementCoordinatorOptions,
+  RetentionEnforcementProcessResult,
   StartWorkflowRunInputRetentionDryRunInput,
+  StartWorkflowRunInputRetentionInput,
 } from './retention.js';
 export {
   createIdentityWorkspaceDatabase,

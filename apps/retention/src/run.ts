@@ -1,4 +1,8 @@
-import type { RetentionDatabase } from '@pertexo/database';
+import type { DualRegionControlLedger } from '@pertexo/artifact-store';
+import type {
+  RetentionDatabase,
+  RetentionEnforcementCoordinator,
+} from '@pertexo/database';
 import type { StructuredLogger } from '@pertexo/observability/logging';
 import type { TelemetryLifecycle } from '@pertexo/observability/telemetry';
 
@@ -6,8 +10,10 @@ import type { RetentionMetrics } from './metrics.js';
 
 export interface RetentionWorkerResources {
   readonly database: RetentionDatabase;
+  readonly enforcement: RetentionEnforcementCoordinator;
   readonly expectedMaintenanceRole: string;
   readonly logger: StructuredLogger;
+  readonly ledger: DualRegionControlLedger;
   readonly metrics: RetentionMetrics;
   readonly pollIntervalMs: number;
   readonly signal: AbortSignal;
@@ -37,16 +43,27 @@ export async function runRetentionWorker(
       expectedMaintenanceRole: resources.expectedMaintenanceRole,
       signal: resources.signal,
     });
+    await resources.ledger.checkReadiness(resources.signal);
     resources.logger.info('retention.ready');
     while (!resources.signal.aborted) {
       const startedAt = performance.now();
       try {
-        const outcome = await resources.database.processNext(resources.signal);
+        const dryRun = await resources.database.processNext(resources.signal);
         resources.metrics.record(
-          outcome,
+          dryRun,
           (performance.now() - startedAt) / 1_000,
+          'dry_run',
         );
-        if (outcome.status !== 'idle') {
+        const enforcement = await resources.enforcement.processNext(
+          resources.signal,
+        );
+        resources.metrics.record(
+          enforcement,
+          (performance.now() - startedAt) / 1_000,
+          'enforce',
+        );
+        for (const outcome of [dryRun, enforcement]) {
+          if (outcome.status === 'idle') continue;
           resources.logger.info('retention.batch_processed', {
             eligibleCount: outcome.eligibleCount,
             examinedCount: outcome.examinedCount,
@@ -54,7 +71,7 @@ export async function runRetentionWorker(
             pageCount: outcome.pageCount,
           });
         }
-        if (outcome.status === 'idle' || outcome.status === 'stale') {
+        if (dryRun.status === 'idle' && enforcement.status !== 'completed') {
           await waitForNextPoll(resources.pollIntervalMs, resources.signal);
         }
       } catch (error: unknown) {
@@ -70,7 +87,11 @@ export async function runRetentionWorker(
 
   const cleanupErrors: unknown[] = [];
   for (const close of [
+    () => resources.enforcement.close(),
     () => resources.database.close(),
+    () => {
+      resources.ledger.close();
+    },
     () => resources.telemetry.shutdown(),
   ]) {
     await Promise.resolve()

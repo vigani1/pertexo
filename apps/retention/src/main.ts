@@ -1,4 +1,8 @@
-import type { RetentionDatabase } from '@pertexo/database';
+import type { DualRegionControlLedger } from '@pertexo/artifact-store';
+import type {
+  RetentionDatabase,
+  RetentionEnforcementCoordinator,
+} from '@pertexo/database';
 import type { StructuredLogger } from '@pertexo/observability/logging';
 import { createTelemetryLifecycle } from '@pertexo/observability/telemetry';
 
@@ -15,25 +19,41 @@ async function bootstrap(): Promise<void> {
   process.once('SIGINT', stop);
   process.once('SIGTERM', stop);
   let database: RetentionDatabase | undefined;
+  let enforcement: RetentionEnforcementCoordinator | undefined;
+  let ledger: DualRegionControlLedger | undefined;
   let logger: StructuredLogger | undefined;
   let workerInvoked = false;
   try {
     telemetry.start();
-    const [databasePackage, logging, worker] = await Promise.all([
-      import('@pertexo/database'),
-      import('@pertexo/observability/logging'),
-      import('./run.js'),
-    ]);
+    const [artifactStore, databasePackage, logging, worker] = await Promise.all(
+      [
+        import('@pertexo/artifact-store'),
+        import('@pertexo/database'),
+        import('@pertexo/observability/logging'),
+        import('./run.js'),
+      ],
+    );
     logger = logging.createStructuredLogger(config.observability);
+    ledger = artifactStore.createDualRegionControlLedger(
+      config.ledger.primary,
+      config.ledger.recovery,
+    );
     database = databasePackage.createRetentionDatabase(
       config.database,
+      config.options,
+    );
+    enforcement = databasePackage.createRetentionEnforcementCoordinator(
+      config.database,
+      ledger,
       config.options,
     );
     workerInvoked = true;
     await worker.runRetentionWorker({
       database,
+      enforcement,
       expectedMaintenanceRole: config.expectedMaintenanceRole,
       logger,
+      ledger,
       metrics: createRetentionMetrics(),
       pollIntervalMs: config.pollIntervalMs,
       signal: shutdown.signal,
@@ -46,7 +66,9 @@ async function bootstrap(): Promise<void> {
       error,
     );
     if (!workerInvoked) {
+      await enforcement?.close().catch(() => undefined);
       await database?.close().catch(() => undefined);
+      ledger?.close();
       await telemetry.shutdown().catch(() => undefined);
     }
     throw error;

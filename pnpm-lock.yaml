@@ -141,6 +141,9 @@ importers:
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
+      '@pertexo/artifact-store':
+        specifier: workspace:*
+        version: link:../../packages/artifact-store
       '@pertexo/database':
         specifier: workspace:*
         version: link:../../packages/database

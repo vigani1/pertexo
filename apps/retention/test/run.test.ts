@@ -1,4 +1,6 @@
 import type { RetentionDatabase } from '@pertexo/database';
+import type { DualRegionControlLedger } from '@pertexo/artifact-store';
+import type { RetentionEnforcementCoordinator } from '@pertexo/database';
 import type { StructuredLogger } from '@pertexo/observability/logging';
 import type { TelemetryLifecycle } from '@pertexo/observability/telemetry';
 import { describe, expect, it, vi } from 'vitest';
@@ -39,7 +41,42 @@ function resources(outcomes: ('completed' | 'idle' | 'stale')[]) {
     executeDryRunPage: vi.fn(),
     processNext,
     startDryRun: vi.fn(),
+    startEnforcement: vi.fn(),
   } satisfies RetentionDatabase;
+  const enforcement = {
+    close: vi.fn(() => {
+      events.push('enforcement-close');
+      return Promise.resolve();
+    }),
+    processNext: vi.fn(() => Promise.resolve({ status: 'idle' as const })),
+  } satisfies RetentionEnforcementCoordinator;
+  const ledger = {
+    append: vi.fn(),
+    checkReadiness: vi.fn(() => {
+      events.push('ledger-ready');
+      return Promise.resolve({
+        bucket: 'primary',
+        minRetentionDays: 30,
+        prefix: 'control-ledger/workspaces/' as const,
+        primary: {
+          bucket: 'primary',
+          minRetentionDays: 30,
+          prefix: 'control-ledger/workspaces/' as const,
+          region: 'eu-central-1',
+        },
+        recovery: {
+          bucket: 'recovery',
+          minRetentionDays: 30,
+          prefix: 'control-ledger/workspaces/' as const,
+          region: 'eu-west-1',
+        },
+        region: 'eu-central-1',
+      });
+    }),
+    close: vi.fn(() => events.push('ledger-close')),
+    read: vi.fn(),
+    reconcile: vi.fn(),
+  } satisfies DualRegionControlLedger;
   const logger = {
     debug: vi.fn(),
     error: vi.fn(),
@@ -66,9 +103,11 @@ function resources(outcomes: ('completed' | 'idle' | 'stale')[]) {
   return {
     controller,
     database,
+    enforcement,
     events,
     expectedMaintenanceRole: 'pertexo_maintenance',
     logger,
+    ledger,
     metrics,
     pollIntervalMs: 1,
     processNext,
@@ -86,12 +125,15 @@ describe('retention worker', () => {
     expect(input.events).toEqual([
       'telemetry-start',
       'database-ready',
+      'ledger-ready',
       'process:completed',
       'process:idle',
+      'enforcement-close',
       'database-close',
+      'ledger-close',
       'telemetry-close',
     ]);
-    expect(input.metrics.record).toHaveBeenCalledTimes(2);
+    expect(input.metrics.record).toHaveBeenCalledTimes(4);
   });
 
   it('does not claim when readiness fails and still closes resources', async () => {
@@ -104,9 +146,6 @@ describe('retention worker', () => {
       'Retention worker did not stop cleanly',
     );
     expect(input.processNext).not.toHaveBeenCalled();
-    expect(input.events.slice(-2)).toEqual([
-      'database-close',
-      'telemetry-close',
-    ]);
+    expect(input.events.slice(-2)).toEqual(['ledger-close', 'telemetry-close']);
   });
 });

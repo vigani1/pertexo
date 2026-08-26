@@ -353,6 +353,8 @@ export const retentionBatches = appSchema.table(
     requestedBy: varchar('requested_by', { length: 128 }).notNull(),
     reason: varchar('reason', { length: 512 }).notNull(),
     status: varchar('status', { length: 16 }).default('ready').notNull(),
+    pauseReason: varchar('pause_reason', { length: 32 }),
+    pausedAt: timestamp('paused_at', { withTimezone: true, mode: 'date' }),
     cursorExpiresAt: timestamp('cursor_expires_at', {
       withTimezone: true,
       mode: 'date',
@@ -393,7 +395,7 @@ export const retentionBatches = appSchema.table(
     ),
     index('retention_batches_claim_idx')
       .on(table.createdAt, table.id)
-      .where(sql`${table.status} in ('ready', 'running')`),
+      .where(sql`${table.status} in ('ready', 'running', 'paused')`),
     foreignKey({
       columns: [table.workspaceId],
       foreignColumns: [workspaces.id],

@@ -230,6 +230,16 @@ beforeAll(async () => {
     ),
     path.join(priorDirectory, '0051_workflow_run_input_retention_dry_run.sql'),
   );
+  await copyFile(
+    path.join(
+      MIGRATIONS_DIRECTORY,
+      '0052_workflow_run_input_retention_enforcement.sql',
+    ),
+    path.join(
+      priorDirectory,
+      '0052_workflow_run_input_retention_enforcement.sql',
+    ),
+  );
   await expect(
     migrateDatabase(migrationConfig, priorDirectory),
   ).resolves.toEqual([
@@ -239,6 +249,7 @@ beforeAll(async () => {
     '0049_workspace_deletion_side_effects.sql',
     '0050_workspace_lifecycle_api_authority.sql',
     '0051_workflow_run_input_retention_dry_run.sql',
+    '0052_workflow_run_input_retention_enforcement.sql',
   ]);
   maintenance = new Pool({ connectionString: maintenanceUrl, max: 4 });
 }, 120_000);

@@ -1,8 +1,15 @@
 import { metrics } from '@opentelemetry/api';
-import type { RetentionDryRunProcessResult } from '@pertexo/database';
+import type {
+  RetentionDryRunProcessResult,
+  RetentionEnforcementProcessResult,
+} from '@pertexo/database';
 
 export interface RetentionMetrics {
-  record(result: RetentionDryRunProcessResult, durationSeconds: number): void;
+  record(
+    result: RetentionDryRunProcessResult | RetentionEnforcementProcessResult,
+    durationSeconds: number,
+    mode: 'dry_run' | 'enforce',
+  ): void;
   recordFailure(durationSeconds: number): void;
 }
 
@@ -15,9 +22,13 @@ export function createRetentionMetrics(): RetentionMetrics {
     unit: 's',
   });
   const retentionMetrics: RetentionMetrics = {
-    record: (result: RetentionDryRunProcessResult, durationSeconds: number) => {
+    record: (
+      result: RetentionDryRunProcessResult | RetentionEnforcementProcessResult,
+      durationSeconds: number,
+      mode: 'dry_run' | 'enforce',
+    ) => {
       const attributes = {
-        mode: 'dry_run',
+        mode,
         outcome: result.status,
         retention_kind: 'workflow_run_input',
       };

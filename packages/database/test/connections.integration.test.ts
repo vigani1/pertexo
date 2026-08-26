@@ -551,6 +551,7 @@ describe('connection persistence', () => {
       '0049_workspace_deletion_side_effects.sql',
       '0050_workspace_lifecycle_api_authority.sql',
       '0051_workflow_run_input_retention_dry_run.sql',
+      '0052_workflow_run_input_retention_enforcement.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, priorDatabaseName),
@@ -563,7 +564,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0051_workflow_run_input_retention_dry_run.sql',
+        migrationHead: '0052_workflow_run_input_retention_enforcement.sql',
       });
       const bindingSurface = await pool.query<{
         node_column: boolean;
@@ -779,6 +780,7 @@ describe('connection persistence', () => {
       '0049_workspace_deletion_side_effects.sql',
       '0050_workspace_lifecycle_api_authority.sql',
       '0051_workflow_run_input_retention_dry_run.sql',
+      '0052_workflow_run_input_retention_enforcement.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, upgradeDatabaseName),
@@ -791,7 +793,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0051_workflow_run_input_retention_dry_run.sql',
+        migrationHead: '0052_workflow_run_input_retention_enforcement.sql',
       });
     } finally {
       await pool.end();
@@ -1778,7 +1780,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0051_workflow_run_input_retention_dry_run.sql',
+        migrationHead: '0052_workflow_run_input_retention_enforcement.sql',
       });
       await expect(
         checkDatabaseReadiness(workerReadinessPool, {
@@ -1786,7 +1788,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0051_workflow_run_input_retention_dry_run.sql',
+        migrationHead: '0052_workflow_run_input_retention_enforcement.sql',
       });
     } finally {
       await Promise.all([apiReadinessPool.end(), workerReadinessPool.end()]);
