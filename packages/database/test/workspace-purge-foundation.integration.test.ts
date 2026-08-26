@@ -201,6 +201,13 @@ describe('workspace purge foundation', () => {
         'started',
       ]);
       expect(ledger.appendCalls).toBe(1);
+      let completed = false;
+      for (let page = 0; page < 20 && !completed; page += 1) {
+        const outcome = await first.processNext();
+        expect(['completed', 'progressed']).toContain(outcome.status);
+        completed = outcome.status === 'completed';
+      }
+      expect(completed).toBe(true);
     } finally {
       await first.close();
       await second.close();
@@ -216,6 +223,9 @@ describe('workspace purge foundation', () => {
     await owner.query('begin');
     try {
       await owner.query('set local role pertexo_owner');
+      await owner.query("select set_config('app.workspace_id',$1,true)", [
+        workspaceId,
+      ]);
       await owner.query(
         "insert into app.users(id,email,display_name) values($1,$2,'Purge owner')",
         [userId, `${userId}@example.test`],
@@ -223,6 +233,36 @@ describe('workspace purge foundation', () => {
       await owner.query(
         "insert into app.workspaces(id,name,slug,created_by) values($1,'Purge fixture',$2,$3)",
         [workspaceId, `purge-${workspaceId}`, userId],
+      );
+      await owner.query(
+        "insert into app.workspace_memberships(workspace_id,user_id,role) values($1,$2,'owner')",
+        [workspaceId, userId],
+      );
+      await owner.query(
+        `insert into app.audit_events
+          (id,workspace_id,actor_user_id,action,target_type,target_id,request_id,trace_id,metadata)
+         values($1,$2,$3,'workspace.fixture','workspace',$3,'request-secret','trace-secret',$4)`,
+        [randomUUID(), workspaceId, userId, { tenant: 'secret' }],
+      );
+      const usageId = randomUUID();
+      await owner.query(
+        `insert into app.usage_events
+          (id,workspace_id,category,quantity,resource_type,resource_id,idempotency_key,metadata)
+         values($1,$2,'preview.execution',1,'preview-run',$3,$4,$5)`,
+        [
+          usageId,
+          workspaceId,
+          randomUUID(),
+          `usage-${usageId}`,
+          { tenant: 'secret' },
+        ],
+      );
+      const securityFactId = randomUUID();
+      await owner.query(
+        `insert into app.transport_security_audit_facts
+          (id,workspace_id,fact_type,consumer_name,message_id)
+         values($1,$2,'inbox_checksum_mismatch','worker.fixture',$3)`,
+        [securityFactId, workspaceId, randomUUID()],
       );
       await owner.query('commit');
     } catch (error: unknown) {
@@ -300,6 +340,9 @@ describe('workspace purge foundation', () => {
       [workspaceId, randomUUID(), holdId, purgeHash, holdHash],
     );
     await expect(
+      maintenance.query('select * from app.find_due_workspace_purge_step()'),
+    ).resolves.toMatchObject({ rows: [] });
+    await expect(
       maintenance.query(
         `select * from app.claim_workspace_purge_step(
           $1,3,$2,'integration-worker',interval '1 minute'
@@ -315,6 +358,34 @@ describe('workspace purge foundation', () => {
       )`,
       [workspaceId, randomUUID(), holdId, holdHash, releaseHash],
     );
+    let tenantRowsCompleted = false;
+    for (let page = 0; page < 20 && !tenantRowsCompleted; page += 1) {
+      const claim = await maintenance.query<{
+        lease_fence: string;
+        lease_token: string;
+      }>(
+        `select * from app.claim_workspace_purge_step(
+          $1,4,$2,'integration-worker',interval '1 minute'
+        )`,
+        [retry.rows[0]?.job_id, releaseHash],
+      );
+      const lease = claim.rows[0];
+      if (lease === undefined)
+        throw new Error('Expected tenant-row purge claim');
+      const executed = await maintenance.query<{ completed: boolean }>(
+        `select * from app.execute_workspace_tenant_rows_page(
+          $1,$2,$3,10,4,$4
+        )`,
+        [
+          retry.rows[0]?.job_id,
+          lease.lease_token,
+          lease.lease_fence,
+          releaseHash,
+        ],
+      );
+      tenantRowsCompleted = executed.rows[0]?.completed === true;
+    }
+    expect(tenantRowsCompleted).toBe(true);
     await expect(
       maintenance.query(
         `select app.project_workspace_deletion(
@@ -341,7 +412,31 @@ describe('workspace purge foundation', () => {
       );
       expect(state.rows[0]).toEqual({
         status: 'purging',
-        step_status: 'pending',
+        step_status: 'completed',
+      });
+      const residue = await owner.query<{
+        audit_sensitive: string;
+        membership_count: string;
+        security_sensitive: string;
+        usage_sensitive: string;
+      }>(
+        `select
+          (select count(*) from app.workspace_memberships where workspace_id=$1) membership_count,
+          (select count(*) from app.audit_events where workspace_id=$1 and
+            (actor_user_id is not null or request_id is not null or trace_id is not null
+             or metadata<>'{}'::jsonb or target_id is distinct from $1)) audit_sensitive,
+          (select count(*) from app.usage_events where workspace_id=$1 and
+            (metadata<>'{}'::jsonb or resource_id<>$1
+             or resource_type<>'workspace-tombstone' or idempotency_key<>id::text)) usage_sensitive,
+          (select count(*) from app.transport_security_audit_facts where workspace_id=$1
+            and (consumer_name<>'purged' or message_id<>id)) security_sensitive`,
+        [workspaceId],
+      );
+      expect(residue.rows[0]).toEqual({
+        audit_sensitive: '0',
+        membership_count: '0',
+        security_sensitive: '0',
+        usage_sensitive: '0',
       });
       await owner.query('commit');
     } catch (error: unknown) {

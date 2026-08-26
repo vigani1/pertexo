@@ -429,7 +429,7 @@ describe.each([
 describe('database readiness', () => {
   it('verifies migration, PostgreSQL, ownership, RLS, and runtime role compatibility', async () => {
     await expect(database.checkReadiness()).resolves.toEqual({
-      migrationHead: '0056_workspace_purge_foundation.sql',
+      migrationHead: '0057_workspace_tenant_rows_purge.sql',
       postgresMajor: 18,
       role: 'pertexo_api',
     });

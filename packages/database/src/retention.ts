@@ -339,6 +339,10 @@ export function createRetentionDatabase(
               'app.project_workspace_purge_started(uuid,uuid,bigint,bigint,character,character)','EXECUTE')
             and has_function_privilege(current_user,
               'app.claim_workspace_purge_step(uuid,bigint,character,character varying,interval)','EXECUTE')
+            and has_function_privilege(current_user,
+              'app.find_due_workspace_purge_step()','EXECUTE')
+            and has_function_privilege(current_user,
+              'app.execute_workspace_tenant_rows_page(uuid,uuid,bigint,integer,bigint,character)','EXECUTE')
             and not has_function_privilege(current_user,
               'app.claim_retention_batches(character varying,integer,integer)','EXECUTE')
             and not has_function_privilege(current_user,

@@ -253,7 +253,7 @@ describe('execution value persistence migration', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0056_workspace_purge_foundation.sql',
+          migrationHead: '0057_workspace_tenant_rows_purge.sql',
           role: expectedRole,
         });
       } finally {

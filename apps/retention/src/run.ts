@@ -123,7 +123,8 @@ export async function runRetentionWorker(
           preview.status !== 'completed' &&
           preview.status !== 'progressed' &&
           runArtifact.status !== 'completed' &&
-          workspacePurge.status !== 'started'
+          workspacePurge.status !== 'started' &&
+          workspacePurge.status !== 'progressed'
         ) {
           await waitForNextPoll(resources.pollIntervalMs, resources.signal);
         }

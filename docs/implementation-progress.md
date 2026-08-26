@@ -23,7 +23,7 @@ not complete a phase.
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 5 — orchestration slice | Complete | ADRs 008/017/018/019/020/021/022; implementation through `9d7e071`; migration head `0034_run_failure_notifications.sql`; 862 unit assertions and complete real-service/recovery matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 6 — V1 providers and triggers | Complete | ADRs 012–014 and 023–026; implementation through `0f8a170`; migration head `0043_workflow_run_input_retention.sql`; 1,021 unit and 288 real-service assertions; complete retained recovery and additive-rollout gates; independent fixed-head Spec and Standards completion GO |
-| Phase 7 — production operations | In progress | ADRs 013/015/027/028; Frankfurt launch and Ireland recovery policy accepted; maintenance and lifecycle-command credential boundaries, automatic durable dual-ledger/hold-gated 30/90/365-day PostgreSQL and object-store retention through migration `0055_standard_retention_classes.sql`, a fenced and crash-repairable workspace-purge foundation at migration `0056`, seven-day preview retention, route-template-only API availability/latency SLIs, non-root read-only ECS container/task contracts with separate roles and release-job migrations, a bounded secret-free load-evidence harness, all-six-command recovery projection plus legal-hold command coordination, durable operation-bound and lease-fenced lifecycle intents, atomic persisted-surface deletion side effects, asynchronous `202 Accepted` lifecycle API operations and direct-mutation revocation, bounded dual-region lifecycle coordinator and standalone command workers, fail-closed dual-region control-ledger facade, bounded restore-before-serve executable, and a two-process MinIO integration harness; MinIO policy incompatibility blocks the full local control proof, while purge data/object steps, standard-class dry-run/operator commands, deployed AWS/IAM/admission wiring, AWS Object Lock/regional proof, measured load/failure exercises, restore drills, and autoscaling remain open; API-key and connected-subscription entities are explicitly deferred by the V1 plan and are not invented solely for deletion |
+| Phase 7 — production operations | In progress | ADRs 013/015/027/028; Frankfurt launch and Ireland recovery policy accepted; maintenance and lifecycle-command credential boundaries, automatic durable dual-ledger/hold-gated 30/90/365-day PostgreSQL and object-store retention through migration `0055_standard_retention_classes.sql`, a fenced and crash-repairable workspace-purge foundation plus bounded tenant-row purge through migrations `0056`–`0057`, seven-day preview retention, route-template-only API availability/latency SLIs, non-root read-only ECS container/task contracts with separate roles and release-job migrations, a bounded secret-free load-evidence harness, all-six-command recovery projection plus legal-hold command coordination, durable operation-bound and lease-fenced lifecycle intents, atomic persisted-surface deletion side effects, asynchronous `202 Accepted` lifecycle API operations and direct-mutation revocation, bounded dual-region lifecycle coordinator and standalone command workers, fail-closed dual-region control-ledger facade, bounded restore-before-serve executable, and a two-process MinIO integration harness; MinIO policy incompatibility blocks the full local control proof, while purge object-version/final-completion steps, standard-class dry-run/operator commands, deployed AWS/IAM/admission wiring, AWS Object Lock/regional proof, measured load/failure exercises, restore drills, and autoscaling remain open; API-key and connected-subscription entities are explicitly deferred by the V1 plan and are not invented solely for deletion |
 
 The `0A`–`0E` checkpoints are implementation-sized subdivisions of the plan's
 single Phase 0. They do not alter the authoritative scope. Phase 0 is complete
@@ -3522,6 +3522,26 @@ Current evidence:
   rows, object versions, secret versions, indexes, and retained-fact minimization
   are deliberately not implemented by this foundation, so workspace purge and
   deletion-completion checklist items remain open.
+- Migration `0057_workspace_tenant_rows_purge.sql` implements the `tenant_rows`
+  step as one dependency-ordered page per maintenance transaction. Every page
+  rechecks the exact external-ledger high water, active legal holds, workspace
+  state, and lease token/fence before deleting at most 500 ordinary rows; the
+  three deferred current-version parent/child units affect at most 500 parents
+  plus their current immutable versions. Immutable history triggers admit delete
+  only while the live purge lease token is transaction-locally armed. The step
+  removes V1 tenant data and encrypted secret-version rows, minimizes retained
+  audit, usage, and transport-security facts, preserves the workspace/control/
+  legal-hold/purge tombstone surfaces, and fails closed if a new `workspace_id`
+  table has residual rows. The retention process now drives these pages through
+  the same maintenance-only exact-ledger coordinator and treats legal-hold or
+  concurrent-claim loss as idle. Focused end-to-end tests cover hold blocking,
+  lease fencing, coordinator-driven completion, retained-fact minimization,
+  residue detection, and denial of premature `deletion_completed`; a fresh
+  zero/prior-head PostgreSQL 18 matrix passes all 315 assertions across 26
+  integration files, while all 116 database unit and six retention assertions
+  pass with root builds, contract drift checks, and typechecks. Object bytes and
+  every S3 version/delete marker remain a separate step, so the broad purge and
+  deletion-completion checklist stays open.
 - Accepted ADR 028 defines a repository-owned ECS workload manifest and migration
   release-job contract. The multi-stage production image runs as UID/GID 10001
   under `tini` with production dependencies only. Rendered Fargate definitions

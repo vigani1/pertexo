@@ -86,6 +86,7 @@ describe('trigger hardening prior-head migration', () => {
       '0054_workflow_run_input_retention_scheduling.sql',
       '0055_standard_retention_classes.sql',
       '0056_workspace_purge_foundation.sql',
+      '0057_workspace_tenant_rows_purge.sql',
     ]);
   });
 });

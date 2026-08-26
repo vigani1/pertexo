@@ -11,7 +11,9 @@ const migrationUrl = new URL(
 
 describe('workspace deletion control projection migration contract', () => {
   it('adds only non-destructive, maintenance-owned lifecycle projection', async () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0056_workspace_purge_foundation.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe(
+      '0057_workspace_tenant_rows_purge.sql',
+    );
     const migration = await readFile(migrationUrl, 'utf8');
 
     expect(migration).toContain("'purging'");

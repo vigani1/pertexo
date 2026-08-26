@@ -869,6 +869,8 @@ export function createControlLedgerCoordinator(
                 and has_function_privilege(current_user,'app.workspace_purge_repair_command_id(uuid)','EXECUTE')
                 and has_function_privilege(current_user,'app.prepare_workspace_purge_job(uuid,bigint,character,character varying,interval)','EXECUTE')
                 and has_function_privilege(current_user,'app.project_workspace_purge_started(uuid,uuid,bigint,bigint,character,character)','EXECUTE')
+                and has_function_privilege(current_user,'app.find_due_workspace_purge_step()','EXECUTE')
+                and has_function_privilege(current_user,'app.execute_workspace_tenant_rows_page(uuid,uuid,bigint,integer,bigint,character)','EXECUTE')
                and not has_table_privilege(current_user,'app.workspaces','INSERT,UPDATE,DELETE,TRUNCATE')
                and not has_table_privilege(current_user,'app.workspace_control_ledger_projection','INSERT,UPDATE,DELETE,TRUNCATE')
                as boundary_compatible

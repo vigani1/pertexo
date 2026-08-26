@@ -556,6 +556,7 @@ describe('connection persistence', () => {
       '0054_workflow_run_input_retention_scheduling.sql',
       '0055_standard_retention_classes.sql',
       '0056_workspace_purge_foundation.sql',
+      '0057_workspace_tenant_rows_purge.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, priorDatabaseName),
@@ -568,7 +569,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0056_workspace_purge_foundation.sql',
+        migrationHead: '0057_workspace_tenant_rows_purge.sql',
       });
       const bindingSurface = await pool.query<{
         node_column: boolean;
@@ -789,6 +790,7 @@ describe('connection persistence', () => {
       '0054_workflow_run_input_retention_scheduling.sql',
       '0055_standard_retention_classes.sql',
       '0056_workspace_purge_foundation.sql',
+      '0057_workspace_tenant_rows_purge.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, upgradeDatabaseName),
@@ -801,7 +803,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0056_workspace_purge_foundation.sql',
+        migrationHead: '0057_workspace_tenant_rows_purge.sql',
       });
     } finally {
       await pool.end();
@@ -1788,7 +1790,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0056_workspace_purge_foundation.sql',
+        migrationHead: '0057_workspace_tenant_rows_purge.sql',
       });
       await expect(
         checkDatabaseReadiness(workerReadinessPool, {
@@ -1796,7 +1798,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0056_workspace_purge_foundation.sql',
+        migrationHead: '0057_workspace_tenant_rows_purge.sql',
       });
     } finally {
       await Promise.all([apiReadinessPool.end(), workerReadinessPool.end()]);

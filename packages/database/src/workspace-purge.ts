@@ -53,7 +53,7 @@ export type WorkspacePurgeProcessResult =
   | Readonly<{ status: 'idle' }>
   | Readonly<{
       jobId: string;
-      status: 'released' | 'stale' | 'started';
+      status: 'completed' | 'progressed' | 'released' | 'stale' | 'started';
       workspaceId: string;
     }>;
 
@@ -112,6 +112,16 @@ function isClaimRace(error: unknown): boolean {
     error !== null &&
     'code' in error &&
     error.code === '55P03'
+  );
+}
+
+function isLegalHold(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'message' in error &&
+    typeof error.message === 'string' &&
+    error.message.includes('active workspace legal hold')
   );
 }
 
@@ -213,6 +223,113 @@ export function createWorkspacePurgeCoordinator(
     close: () => (ownsPool ? pool.end() : Promise.resolve()),
     processNext: async (signal?: AbortSignal) => {
       signal?.throwIfAborted();
+      const dueStep = await pool.query<{
+        job_id: string;
+        workspace_id: string;
+      }>('select * from app.find_due_workspace_purge_step()');
+      const stepCandidate = dueStep.rows[0];
+      if (stepCandidate !== undefined) {
+        const stepJobId = uuidSchema.parse(stepCandidate.job_id);
+        const stepWorkspaceId = uuidSchema.parse(stepCandidate.workspace_id);
+        try {
+          const page = await transaction(signal, async (client) => {
+            const locked = await query<{
+              retention_control_hash: string;
+              retention_control_sequence: number | string;
+            }>(
+              client,
+              'select * from app.lock_workspace_control_ledger($1)',
+              [stepWorkspaceId],
+              signal,
+            );
+            const anchor = locked.rows[0];
+            if (anchor === undefined)
+              throw new Error(
+                'Workspace purge step control lock was not returned',
+              );
+            const projectedSequence = sequence(
+              anchor.retention_control_sequence,
+            );
+            const projectedHash = hashSchema.parse(
+              anchor.retention_control_hash,
+            );
+            const operationSignal = AbortSignal.any([
+              ...(signal === undefined ? [] : [signal]),
+              AbortSignal.timeout(options.externalOperationTimeoutMs),
+            ]);
+            const reconciliation = await ledger.reconcile({
+              maxRecords: 1,
+              projectedHash,
+              projectedSequence,
+              signal: operationSignal,
+              workspaceId: stepWorkspaceId,
+            });
+            if (
+              !reconciliation.reachedHighWater ||
+              reconciliation.hasMore ||
+              reconciliation.records.length !== 0 ||
+              reconciliation.pageEndSequence !== projectedSequence ||
+              reconciliation.pageEndHash !== projectedHash
+            )
+              throw new Error(
+                'Workspace purge step requires exact control ledger high water',
+              );
+            const claimed = await query<{
+              lease_fence: number | string;
+              lease_token: string;
+              step_name: string;
+            }>(
+              client,
+              `select * from app.claim_workspace_purge_step(
+                $1,$2,$3,$4,make_interval(secs=>$5)
+              )`,
+              [
+                stepJobId,
+                projectedSequence,
+                projectedHash,
+                options.leaseOwner,
+                options.leaseSeconds,
+              ],
+              signal,
+            );
+            const claim = claimed.rows[0];
+            if (claim === undefined) return undefined;
+            const executed = await query<{
+              affected_count: number | string;
+              completed: boolean;
+              surface: string;
+            }>(
+              client,
+              `select * from app.execute_workspace_tenant_rows_page(
+                $1,$2,$3,$4,$5,$6
+              )`,
+              [
+                stepJobId,
+                uuidSchema.parse(claim.lease_token),
+                sequence(claim.lease_fence),
+                500,
+                projectedSequence,
+                projectedHash,
+              ],
+              signal,
+            );
+            return executed.rows[0];
+          });
+          if (page === undefined) return { status: 'idle' as const };
+          return {
+            jobId: stepJobId,
+            status: page.completed
+              ? ('completed' as const)
+              : ('progressed' as const),
+            workspaceId: stepWorkspaceId,
+          };
+        } catch (error: unknown) {
+          if (signal?.aborted === true) throw signal.reason;
+          if (isLegalHold(error) || isClaimRace(error))
+            return { status: 'idle' as const };
+          throw error;
+        }
+      }
       const due = await pool.query<{ workspace_id: string }>(
         'select * from app.find_due_workspace_purge()',
       );

@@ -11,7 +11,9 @@ const migrationUrl = new URL(
 
 describe('workspace purge foundation migration', () => {
   it('keeps purge fenced, maintenance-only, and incomplete', async () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0056_workspace_purge_foundation.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe(
+      '0057_workspace_tenant_rows_purge.sql',
+    );
     const migration = await readFile(migrationUrl, 'utf8');
 
     expect(migration).toContain('workspace_purge_jobs');
