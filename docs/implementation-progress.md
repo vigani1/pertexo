@@ -3819,9 +3819,10 @@ Current evidence:
   purge remains open, so the deletion checklist is not complete.
 - API request SLI instrumentation now records count and duration using only the
   Fastify route template, HTTP method, status class, and the finite public
-  problem-code vocabulary. SLO-eligible outcomes classify successful requests,
-  server failures, and explicit `503` capacity shedding separately; liveness and
-  readiness probes are excluded. Raw URLs, workspace/run IDs, request IDs, and
+  problem-code vocabulary. Availability outcomes classify successful requests
+  and server failures while excluding client-invalid, unauthorized, and
+  legitimate tenant-quota responses from the denominator; liveness and readiness
+  probes are excluded. Raw URLs, workspace/run IDs, request IDs, and
   arbitrary response codes are never metric attributes. API typechecking and all
   264 API unit assertions pass, including a cardinality regression test.
 - A local observability stack now wires OTLP HTTP/gRPC through a memory-limited,

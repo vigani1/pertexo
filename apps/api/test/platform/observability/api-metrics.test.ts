@@ -15,7 +15,7 @@ describe('API metrics', () => {
     const record = vi.fn();
     const createCounter = vi.fn((name: string) => ({
       add:
-        name === API_METRIC_NAME.eligibleRequests
+        name === API_METRIC_NAME.availabilityRequests
           ? eligibleCount
           : requestCount,
     }));
@@ -37,7 +37,7 @@ describe('API metrics', () => {
       expect.any(Object),
     );
     expect(createCounter).toHaveBeenCalledWith(
-      API_METRIC_NAME.eligibleRequests,
+      API_METRIC_NAME.availabilityRequests,
       expect.any(Object),
     );
     expect(createHistogram).toHaveBeenCalledWith(
@@ -91,7 +91,7 @@ describe('API metrics', () => {
     );
     hooks.get('onResponse')?.(shedRequest, reply, vi.fn());
     expect(eligibleCount).toHaveBeenLastCalledWith(1, {
-      outcome: 'capacity_shed',
+      outcome: 'excluded_tenant_quota',
       route: '/v1/workspaces/:workspaceId/workflows/:workflowId/runs',
     });
   });

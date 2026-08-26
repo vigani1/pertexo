@@ -3,12 +3,26 @@ import { API_PROBLEM_CODES } from '@pertexo/contracts';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
 export const API_METRIC_NAME = Object.freeze({
-  eligibleRequests: 'pertexo.api.eligible_request.count',
+  availabilityRequests: 'pertexo.api.availability_request.count',
   requestDuration: 'pertexo.api.request.duration',
   requests: 'pertexo.api.request.count',
 });
 
 const problemCodes = new Set<string>(API_PROBLEM_CODES);
+const excludedClientProblems = new Set<string>([
+  'auth.forbidden',
+  'auth.unauthenticated',
+  'request.invalid',
+  'request.precondition_required',
+  'webhook.authentication_failed',
+  'webhook.invalid_json',
+  'webhook.payload_too_large',
+  'webhook.unsupported_media_type',
+]);
+const excludedQuotaProblems = new Set<string>([
+  'webhook.rate_limited',
+  'workspace.quota_exceeded',
+]);
 
 function statusClass(statusCode: number): string {
   return `${String(Math.floor(statusCode / 100))}xx`;
@@ -40,6 +54,12 @@ function eligible(route: string): boolean {
   return route !== '/health/live' && route !== '/health/ready';
 }
 
+function availabilityOutcome(statusCode: number, problem: string): string {
+  if (excludedClientProblems.has(problem)) return 'excluded_client';
+  if (excludedQuotaProblems.has(problem)) return 'excluded_tenant_quota';
+  return statusCode < 500 ? 'eligible_success' : 'eligible_failure';
+}
+
 export function registerApiMetrics(
   server: FastifyInstance,
   meter: Meter = metrics.getMeter('@pertexo/api.http', '0.0.0'),
@@ -48,8 +68,8 @@ export function registerApiMetrics(
     description: 'API requests by bounded route template and response class',
     unit: '{request}',
   });
-  const eligibleRequests = meter.createCounter(
-    API_METRIC_NAME.eligibleRequests,
+  const availabilityRequests = meter.createCounter(
+    API_METRIC_NAME.availabilityRequests,
     {
       description: 'SLO-eligible API requests by bounded outcome',
       unit: '{request}',
@@ -94,13 +114,8 @@ export function registerApiMetrics(
       }
       if (eligible(route)) {
         const problem = responseProblemCodes.get(request) ?? 'none';
-        eligibleRequests.add(1, {
-          outcome:
-            reply.statusCode < 500
-              ? 'eligible_success'
-              : problem === 'workspace.quota_exceeded'
-                ? 'capacity_shed'
-                : 'eligible_failure',
+        availabilityRequests.add(1, {
+          outcome: availabilityOutcome(reply.statusCode, problem),
           route,
         });
       }

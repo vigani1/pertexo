@@ -9,7 +9,7 @@
       "id": 1,
       "targets": [
         {
-          "expr": "1 - (sum(rate(pertexo_api_eligible_request_count_total{outcome=\"eligible_failure\"}[5m])) / clamp_min(sum(rate(pertexo_api_eligible_request_count_total[5m])), 0.001))",
+          "expr": "1 - (sum(rate(pertexo_api_availability_request_count_total{outcome=\"eligible_failure\"}[5m])) / clamp_min(sum(rate(pertexo_api_availability_request_count_total{outcome=~\"eligible_success|eligible_failure\"}[5m])), 0.001))",
           "refId": "A"
         }
       ],
