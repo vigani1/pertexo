@@ -228,6 +228,7 @@ describe('preview retention migration', () => {
       '0048_workspace_lifecycle_command_hardening.sql',
       '0049_workspace_deletion_side_effects.sql',
       '0050_workspace_lifecycle_api_authority.sql',
+      '0051_workflow_run_input_retention_dry_run.sql',
     ]);
 
     const verification = new Pool({

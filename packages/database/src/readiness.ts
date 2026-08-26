@@ -9,7 +9,7 @@ import {
 } from './compatibility-release.js';
 
 export const EXPECTED_MIGRATION_HEAD =
-  '0050_workspace_lifecycle_api_authority.sql';
+  '0051_workflow_run_input_retention_dry_run.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{

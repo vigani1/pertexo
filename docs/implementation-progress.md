@@ -23,7 +23,7 @@ not complete a phase.
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 5 — orchestration slice | Complete | ADRs 008/017/018/019/020/021/022; implementation through `9d7e071`; migration head `0034_run_failure_notifications.sql`; 862 unit assertions and complete real-service/recovery matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 6 — V1 providers and triggers | Complete | ADRs 012–014 and 023–026; implementation through `0f8a170`; migration head `0043_workflow_run_input_retention.sql`; 1,021 unit and 288 real-service assertions; complete retained recovery and additive-rollout gates; independent fixed-head Spec and Standards completion GO |
-| Phase 7 — production operations | In progress | ADRs 013/015/027; Frankfurt launch and Ireland recovery policy accepted; maintenance and lifecycle-command credential boundaries, non-destructive retention-control foundation, all-six-command recovery projection plus legal-hold command coordination, durable operation-bound and lease-fenced lifecycle intents, atomic persisted-surface deletion side effects, asynchronous `202 Accepted` lifecycle API operations and direct-mutation revocation through migration `0050_workspace_lifecycle_api_authority.sql`, bounded dual-region lifecycle coordinator and standalone command worker, fail-closed dual-region control-ledger facade, bounded restore-before-serve executable, and a two-process MinIO integration harness; MinIO policy incompatibility blocks the full local control proof, while API-key and external-provider revocation, deployed admission wiring, AWS Object Lock/regional proof, destructive retention/purge, operator recovery, observability, exercises, restore drills, and autoscaling remain open |
+| Phase 7 — production operations | In progress | ADRs 013/015/027; Frankfurt launch and Ireland recovery policy accepted; maintenance and lifecycle-command credential boundaries, executable non-destructive workflow-input retention inventory through migration `0051_workflow_run_input_retention_dry_run.sql`, all-six-command recovery projection plus legal-hold command coordination, durable operation-bound and lease-fenced lifecycle intents, atomic persisted-surface deletion side effects, asynchronous `202 Accepted` lifecycle API operations and direct-mutation revocation, bounded dual-region lifecycle coordinator and standalone command worker, fail-closed dual-region control-ledger facade, bounded restore-before-serve executable, and a two-process MinIO integration harness; MinIO policy incompatibility blocks the full local control proof, while API-key and external-provider revocation, deployed admission wiring, AWS Object Lock/regional proof, destructive retention/purge, operator recovery, broader observability, exercises, restore drills, and autoscaling remain open |
 
 The `0A`–`0E` checkpoints are implementation-sized subdivisions of the plan's
 single Phase 0. They do not alter the authoritative scope. Phase 0 is complete
@@ -3361,6 +3361,31 @@ Current evidence:
   External object-ledger I/O and freshness reconciliation, restore-before-serve
   gating, destructive retention/purge, telemetry, and policy enforcement remain
   open, so no broader Phase 7 checklist item is marked complete.
+- Migration `0051_workflow_run_input_retention_dry_run.sql` makes the existing
+  `workflow_run_input` dry-run control executable without introducing tenant-data
+  mutation. Maintenance-only functions claim at most 25 batches with
+  `FOR UPDATE SKIP LOCKED`, reclaim expired leases with monotonic fences, and
+  inventory at most 1,000 due inputs per keyset page. Every page validates the
+  live token, fence, and database-time lease, holds the batch and workspace rows,
+  and atomically advances its cursor and counts; completion clears the lease and
+  appends one bounded audit event in the same transaction. API, worker,
+  dispatcher, and lifecycle-command roles cannot execute either new function
+  and the maintenance role still has no direct workflow-run table privilege.
+  The new no-HTTP `@pertexo/retention` process parses only maintenance database,
+  bounded lease/page/polling, and observability configuration; proves exact role,
+  migration head, function grants, and direct-table denial before claiming;
+  supports abortable SQL and signal shutdown; drains completed work; emits only
+  bounded mode/kind/outcome metrics; and closes database and telemetry resources
+  on success or failure. Four focused executable assertions pass. A clean
+  zero-to-`0051` PostgreSQL 18 matrix passes all 307 assertions across 25 files;
+  focused real-service tests prove exact batch replay, two-page cursor progress,
+  exact due counts, unchanged tenant payloads, one completion audit fact, stale
+  fence rejection, and API execution denial. Root `pnpm check` passes formatting,
+  production builds, lint, generated-contract drift, typechecks, and all 1,163
+  unit assertions. Non-dry-run starts remain rejected and migration `0051`
+  contains no workflow-run update/delete statement, so destructive retention,
+  legal-hold gating, ledger-freshness gating, and the broad retention checklist
+  item remain open.
 - The artifact-store package now exposes a separate append-only ADR 013 control
   ledger adapter and dedicated `CONTROL_LEDGER_*` configuration without changing
   the tenant `ArtifactStore` API or worker artifact configuration. Its principal

@@ -1,0 +1,112 @@
+import type { RetentionDatabase } from '@pertexo/database';
+import type { StructuredLogger } from '@pertexo/observability/logging';
+import type { TelemetryLifecycle } from '@pertexo/observability/telemetry';
+import { describe, expect, it, vi } from 'vitest';
+
+import type { RetentionMetrics } from '../src/metrics.js';
+import { runRetentionWorker } from '../src/run.js';
+
+function resources(outcomes: ('completed' | 'idle' | 'stale')[]) {
+  const controller = new AbortController();
+  const events: string[] = [];
+  const processNext = vi.fn(() => {
+    const status = outcomes.shift() ?? 'idle';
+    events.push(`process:${status}`);
+    if (status !== 'completed') controller.abort(new Error('stop'));
+    return Promise.resolve(
+      status === 'idle'
+        ? ({ status } as const)
+        : ({
+            batchId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+            eligibleCount: 3,
+            examinedCount: 3,
+            pageCount: 2,
+            status,
+            workspaceId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+          } as const),
+    );
+  });
+  const database = {
+    checkReadiness: vi.fn(() => {
+      events.push('database-ready');
+      return Promise.resolve();
+    }),
+    claimDryRuns: vi.fn(),
+    close: vi.fn(() => {
+      events.push('database-close');
+      return Promise.resolve();
+    }),
+    executeDryRunPage: vi.fn(),
+    processNext,
+    startDryRun: vi.fn(),
+  } satisfies RetentionDatabase;
+  const logger = {
+    debug: vi.fn(),
+    error: vi.fn(),
+    fatal: vi.fn(),
+    info: vi.fn(),
+    trace: vi.fn(),
+    warn: vi.fn(),
+  } satisfies StructuredLogger;
+  const metrics = {
+    record: vi.fn(),
+    recordFailure: vi.fn(),
+  } satisfies RetentionMetrics;
+  const telemetry = {
+    enabled: false,
+    get started() {
+      return true;
+    },
+    shutdown: vi.fn(() => {
+      events.push('telemetry-close');
+      return Promise.resolve();
+    }),
+    start: vi.fn(() => events.push('telemetry-start')),
+  } satisfies TelemetryLifecycle;
+  return {
+    controller,
+    database,
+    events,
+    expectedMaintenanceRole: 'pertexo_maintenance',
+    logger,
+    metrics,
+    pollIntervalMs: 1,
+    processNext,
+    signal: controller.signal,
+    telemetry,
+  };
+}
+
+describe('retention worker', () => {
+  it('proves authority, drains completed work, records metrics, and closes', async () => {
+    const input = resources(['completed', 'idle']);
+
+    await expect(runRetentionWorker(input)).resolves.toBeUndefined();
+
+    expect(input.events).toEqual([
+      'telemetry-start',
+      'database-ready',
+      'process:completed',
+      'process:idle',
+      'database-close',
+      'telemetry-close',
+    ]);
+    expect(input.metrics.record).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not claim when readiness fails and still closes resources', async () => {
+    const input = resources([]);
+    input.database.checkReadiness = vi.fn(() =>
+      Promise.reject(new Error('authority unavailable')),
+    );
+
+    await expect(runRetentionWorker(input)).rejects.toThrow(
+      'Retention worker did not stop cleanly',
+    );
+    expect(input.processNext).not.toHaveBeenCalled();
+    expect(input.events.slice(-2)).toEqual([
+      'database-close',
+      'telemetry-close',
+    ]);
+  });
+});

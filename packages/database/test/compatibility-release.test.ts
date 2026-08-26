@@ -34,7 +34,7 @@ describe('node compatibility release persistence', () => {
     );
 
     expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0050_workspace_lifecycle_api_authority.sql',
+      '0051_workflow_run_input_retention_dry_run.sql',
     );
     expect(migration).toContain('CREATE TABLE app.node_compatibility_releases');
     expect(migration).toContain('CREATE TABLE app.node_compatibility_current');

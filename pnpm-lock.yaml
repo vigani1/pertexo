@@ -136,6 +136,21 @@ importers:
         specifier: 4.4.3
         version: 4.4.3
 
+  apps/retention:
+    dependencies:
+      '@opentelemetry/api':
+        specifier: 1.9.0
+        version: 1.9.0
+      '@pertexo/database':
+        specifier: workspace:*
+        version: link:../../packages/database
+      '@pertexo/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
+
   apps/worker:
     dependencies:
       '@nestjs/common':

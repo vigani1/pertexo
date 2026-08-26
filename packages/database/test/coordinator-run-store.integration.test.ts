@@ -2015,7 +2015,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0050_workspace_lifecycle_api_authority.sql',
+          migrationHead: '0051_workflow_run_input_retention_dry_run.sql',
           role: 'pertexo_worker',
         });
       } finally {
@@ -2091,6 +2091,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         '0048_workspace_lifecycle_command_hardening.sql',
         '0049_workspace_deletion_side_effects.sql',
         '0050_workspace_lifecycle_api_authority.sql',
+        '0051_workflow_run_input_retention_dry_run.sql',
       ]);
       const workerPool = new Pool({
         connectionString: namedDatabaseUrl(
@@ -2106,7 +2107,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0050_workspace_lifecycle_api_authority.sql',
+          migrationHead: '0051_workflow_run_input_retention_dry_run.sql',
           role: 'pertexo_worker',
         });
         await expect(
@@ -2173,7 +2174,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0050_workspace_lifecycle_api_authority.sql',
+        migrationHead: '0051_workflow_run_input_retention_dry_run.sql',
         role: 'pertexo_worker',
       });
       const catalog = await readinessPool.query<{
@@ -2412,7 +2413,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0050_workspace_lifecycle_api_authority.sql',
+        migrationHead: '0051_workflow_run_input_retention_dry_run.sql',
       });
     } finally {
       await readinessPool.end();
@@ -2598,7 +2599,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         workerRuntimeRole: 'pertexo_worker',
       }),
     ).resolves.toMatchObject({
-      migrationHead: '0050_workspace_lifecycle_api_authority.sql',
+      migrationHead: '0051_workflow_run_input_retention_dry_run.sql',
     });
     await readinessPool.end();
   });
