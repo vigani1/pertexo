@@ -88,6 +88,7 @@ describe('trigger hardening prior-head migration', () => {
       '0056_workspace_purge_foundation.sql',
       '0057_workspace_tenant_rows_purge.sql',
       '0058_workspace_object_versions_purge.sql',
+      '0059_workspace_purge_completion.sql',
     ]);
   });
 });

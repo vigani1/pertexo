@@ -24,7 +24,7 @@ export interface WorkspacePurgeLedger {
   append(input: {
     readonly actorRef: string;
     readonly commandId: string;
-    readonly commandType: 'purge_started';
+    readonly commandType: 'deletion_completed' | 'purge_started';
     readonly occurredAt: string;
     readonly previousHash: string;
     readonly reason: string;
@@ -163,22 +163,28 @@ async function query<Row extends Record<string, unknown>>(
 
 function verifyRecord(
   record: WorkspacePurgeLedgerRecord,
-  job: PreparedJob,
-  workspaceId: string,
-  previousHash: string,
-  expectedSequence: number,
+  expected: Readonly<{
+    actorRef: string;
+    commandId: string;
+    commandType: 'deletion_completed' | 'purge_started';
+    occurredAt: Date | string;
+    previousHash: string;
+    reason: string;
+    sequence: number;
+    workspaceId: string;
+  }>,
 ): void {
   if (
-    record.actorRef !== job.actor_ref ||
-    record.commandId !== job.command_id ||
-    record.commandType !== 'purge_started' ||
+    record.actorRef !== expected.actorRef ||
+    record.commandId !== expected.commandId ||
+    record.commandType !== expected.commandType ||
     new Date(record.occurredAt).toISOString() !==
-      new Date(job.occurred_at).toISOString() ||
-    record.previousHash !== previousHash ||
-    record.reason !== job.reason ||
-    record.sequence !== expectedSequence ||
-    record.subjectId !== workspaceId ||
-    record.workspaceId !== workspaceId ||
+      new Date(expected.occurredAt).toISOString() ||
+    record.previousHash !== expected.previousHash ||
+    record.reason !== expected.reason ||
+    record.sequence !== expected.sequence ||
+    record.subjectId !== expected.workspaceId ||
+    record.workspaceId !== expected.workspaceId ||
     record.schemaVersion !== 1 ||
     !hashSchema.safeParse(record.recordHash).success
   )
@@ -189,6 +195,15 @@ interface PreparedJob extends Record<string, unknown> {
   actor_ref: string;
   command_id: string;
   job_id: string;
+  lease_fence: number | string;
+  lease_token: string;
+  occurred_at: Date | string;
+  reason: string;
+}
+
+interface PreparedCompletion extends Record<string, unknown> {
+  actor_ref: string;
+  command_id: string;
   lease_fence: number | string;
   lease_token: string;
   occurred_at: Date | string;
@@ -378,9 +393,7 @@ export function createWorkspacePurgeCoordinator(
           if (page === undefined) return { status: 'idle' as const };
           return {
             jobId: stepJobId,
-            status: page.completed
-              ? ('completed' as const)
-              : ('progressed' as const),
+            status: 'progressed' as const,
             workspaceId: stepWorkspaceId,
           };
         } catch (error: unknown) {
@@ -388,6 +401,217 @@ export function createWorkspacePurgeCoordinator(
           if (isLegalHold(error) || isClaimRace(error))
             return { status: 'idle' as const };
           throw error;
+        }
+      }
+      const dueCompletion = await pool.query<{
+        job_id: string;
+        workspace_id: string;
+      }>('select * from app.find_due_workspace_purge_completion()');
+      const completionCandidate = dueCompletion.rows[0];
+      if (completionCandidate !== undefined) {
+        const completionJobId = uuidSchema.parse(completionCandidate.job_id);
+        const completionWorkspaceId = uuidSchema.parse(
+          completionCandidate.workspace_id,
+        );
+        let completion: PreparedCompletion | undefined;
+        try {
+          completion = await transaction(signal, async (client) => {
+            const locked = await query<{
+              retention_control_hash: string;
+              retention_control_sequence: number | string;
+            }>(
+              client,
+              'select * from app.lock_workspace_control_ledger($1)',
+              [completionWorkspaceId],
+              signal,
+            );
+            const anchor = locked.rows[0];
+            if (anchor === undefined)
+              throw new Error(
+                'Workspace purge completion control lock was not returned',
+              );
+            const projectedSequence = sequence(
+              anchor.retention_control_sequence,
+            );
+            const projectedHash = hashSchema.parse(
+              anchor.retention_control_hash,
+            );
+            const repair = await query<{ command_id: string | null }>(
+              client,
+              'select app.workspace_purge_completion_repair_command_id($1) command_id',
+              [completionWorkspaceId],
+              signal,
+            );
+            const repairCommandId =
+              repair.rows[0]?.command_id === null ||
+              repair.rows[0]?.command_id === undefined
+                ? undefined
+                : uuidSchema.parse(repair.rows[0].command_id);
+            const operationSignal = AbortSignal.any([
+              ...(signal === undefined ? [] : [signal]),
+              AbortSignal.timeout(options.externalOperationTimeoutMs),
+            ]);
+            const reconciliation = await ledger.reconcile({
+              maxRecords: 1,
+              projectedHash,
+              projectedSequence,
+              ...(repairCommandId === undefined ? {} : { repairCommandId }),
+              signal: operationSignal,
+              workspaceId: completionWorkspaceId,
+            });
+            if (
+              !reconciliation.reachedHighWater ||
+              reconciliation.hasMore ||
+              reconciliation.records.length >
+                (repairCommandId === undefined ? 0 : 1) ||
+              (reconciliation.records.length === 0 &&
+                (reconciliation.pageEndSequence !== projectedSequence ||
+                  reconciliation.pageEndHash !== projectedHash))
+            )
+              throw new Error(
+                'Workspace purge completion requires exact control ledger high water',
+              );
+            const prepared = await query<PreparedCompletion>(
+              client,
+              `select * from app.prepare_workspace_purge_completion(
+                $1,$2,$3,$4,make_interval(secs=>$5)
+              )`,
+              [
+                completionJobId,
+                projectedSequence,
+                projectedHash,
+                options.leaseOwner,
+                options.leaseSeconds,
+              ],
+              signal,
+            );
+            const value = prepared.rows[0];
+            if (value === undefined)
+              throw new Error('Workspace purge completion was not prepared');
+            return value;
+          });
+          const preparedCompletion = completion;
+          await transaction(signal, async (client) => {
+            const locked = await query<{
+              retention_control_hash: string;
+              retention_control_sequence: number | string;
+            }>(
+              client,
+              'select * from app.lock_workspace_control_ledger($1)',
+              [completionWorkspaceId],
+              signal,
+            );
+            const anchor = locked.rows[0];
+            if (anchor === undefined)
+              throw new Error(
+                'Workspace purge completion control lock was not returned',
+              );
+            const projectedSequence = sequence(
+              anchor.retention_control_sequence,
+            );
+            const previousHash = hashSchema.parse(
+              anchor.retention_control_hash,
+            );
+            await query(
+              client,
+              'select app.authorize_workspace_purge_completion_append($1,$2,$3,$4,$5)',
+              [
+                completionJobId,
+                preparedCompletion.lease_token,
+                sequence(preparedCompletion.lease_fence),
+                projectedSequence,
+                previousHash,
+              ],
+              signal,
+            );
+            const operationSignal = AbortSignal.any([
+              ...(signal === undefined ? [] : [signal]),
+              AbortSignal.timeout(options.externalOperationTimeoutMs),
+            ]);
+            const reconciliation = await ledger.reconcile({
+              maxRecords: 2,
+              projectedHash: previousHash,
+              projectedSequence,
+              repairCommandId: preparedCompletion.command_id,
+              signal: operationSignal,
+              workspaceId: completionWorkspaceId,
+            });
+            if (
+              !reconciliation.reachedHighWater ||
+              reconciliation.hasMore ||
+              reconciliation.records.length > 1
+            )
+              throw new Error(
+                'Workspace purge completion ledger has unrelated unprojected commands',
+              );
+            const expectedSequence = projectedSequence + 1;
+            let record = reconciliation.records[0];
+            record ??= await ledger.append({
+              actorRef: preparedCompletion.actor_ref,
+              commandId: preparedCompletion.command_id,
+              commandType: 'deletion_completed',
+              occurredAt: new Date(
+                preparedCompletion.occurred_at,
+              ).toISOString(),
+              previousHash,
+              reason: preparedCompletion.reason,
+              sequence: expectedSequence,
+              signal: operationSignal,
+              subjectId: completionWorkspaceId,
+              workspaceId: completionWorkspaceId,
+            });
+            verifyRecord(record, {
+              actorRef: preparedCompletion.actor_ref,
+              commandId: preparedCompletion.command_id,
+              commandType: 'deletion_completed',
+              occurredAt: preparedCompletion.occurred_at,
+              previousHash,
+              reason: preparedCompletion.reason,
+              sequence: expectedSequence,
+              workspaceId: completionWorkspaceId,
+            });
+            await query(
+              client,
+              'select app.project_workspace_purge_completion($1,$2,$3,$4,$5,$6)',
+              [
+                completionJobId,
+                preparedCompletion.lease_token,
+                sequence(preparedCompletion.lease_fence),
+                record.sequence,
+                record.previousHash,
+                record.recordHash,
+              ],
+              signal,
+            );
+          });
+          return {
+            jobId: completionJobId,
+            status: 'completed' as const,
+            workspaceId: completionWorkspaceId,
+          };
+        } catch (error: unknown) {
+          if (signal?.aborted === true) throw signal.reason;
+          if (completion === undefined) {
+            if (isLegalHold(error) || isClaimRace(error))
+              return { status: 'idle' as const };
+            throw error;
+          }
+          const released = await pool.query<{ changed: boolean }>(
+            'select app.release_workspace_purge_completion($1,$2,$3) changed',
+            [
+              completionJobId,
+              completion.lease_token,
+              sequence(completion.lease_fence),
+            ],
+          );
+          return {
+            jobId: completionJobId,
+            status:
+              released.rows[0]?.changed === true
+                ? ('released' as const)
+                : ('stale' as const),
+            workspaceId: completionWorkspaceId,
+          };
         }
       }
       const due = await pool.query<{ workspace_id: string }>(
@@ -519,13 +743,16 @@ export function createWorkspacePurgeCoordinator(
             subjectId: workspaceId,
             workspaceId,
           });
-          verifyRecord(
-            record,
-            preparedJob,
-            workspaceId,
+          verifyRecord(record, {
+            actorRef: preparedJob.actor_ref,
+            commandId: preparedJob.command_id,
+            commandType: 'purge_started',
+            occurredAt: preparedJob.occurred_at,
             previousHash,
-            expectedSequence,
-          );
+            reason: preparedJob.reason,
+            sequence: expectedSequence,
+            workspaceId,
+          });
           await query(
             client,
             'select app.project_workspace_purge_started($1,$2,$3,$4,$5,$6)',

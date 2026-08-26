@@ -42,22 +42,30 @@ let owner: Pool | undefined;
 
 class MemoryPurgeLedger implements WorkspacePurgeLedger {
   public appendCalls = 0;
+  public failCommandType: WorkspacePurgeLedgerRecord['commandType'] | undefined;
   public failAfterFirstAppend = false;
-  private readonly records = new Map<string, WorkspacePurgeLedgerRecord>();
+  private readonly records = new Map<string, WorkspacePurgeLedgerRecord[]>();
 
   public async append(input: Parameters<WorkspacePurgeLedger['append']>[0]) {
     await Promise.resolve();
     this.appendCalls += 1;
-    const existing = this.records.get(input.workspaceId);
+    const workspaceRecords = this.records.get(input.workspaceId) ?? [];
+    const existing = workspaceRecords.find(
+      (record) => record.commandId === input.commandId,
+    );
     if (existing !== undefined) return existing;
     const { signal, ...material } = input;
     signal?.throwIfAborted();
     const record = {
       ...material,
-      recordHash: 'a'.repeat(64),
+      recordHash: (input.sequence === 2 ? 'a' : 'b').repeat(64),
       schemaVersion: 1,
     };
-    this.records.set(input.workspaceId, record);
+    this.records.set(input.workspaceId, [...workspaceRecords, record]);
+    if (this.failCommandType === input.commandType) {
+      this.failCommandType = undefined;
+      throw new Error(`ambiguous ${input.commandType} append result`);
+    }
     if (this.failAfterFirstAppend) {
       this.failAfterFirstAppend = false;
       throw new Error('ambiguous append result');
@@ -69,21 +77,20 @@ class MemoryPurgeLedger implements WorkspacePurgeLedger {
     input: Parameters<WorkspacePurgeLedger['reconcile']>[0],
   ) {
     await Promise.resolve();
-    const record = this.records.get(input.workspaceId);
-    const records =
-      record === undefined || record.sequence <= input.projectedSequence
-        ? []
-        : [record];
+    const unprojected = (this.records.get(input.workspaceId) ?? [])
+      .filter((record) => record.sequence > input.projectedSequence)
+      .toSorted((left, right) => left.sequence - right.sequence);
+    const records = unprojected.slice(0, input.maxRecords);
     if (
       records.length === 1 &&
       input.repairCommandId !== undefined &&
-      input.repairCommandId !== record?.commandId
+      input.repairCommandId !== records[0]?.commandId
     )
       throw new Error('repair command mismatch');
     return {
-      hasMore: false,
-      pageEndHash: record?.recordHash ?? input.projectedHash,
-      pageEndSequence: record?.sequence ?? input.projectedSequence,
+      hasMore: unprojected.length > records.length,
+      pageEndHash: records.at(-1)?.recordHash ?? input.projectedHash,
+      pageEndSequence: records.at(-1)?.sequence ?? input.projectedSequence,
       reachedHighWater: true,
       records,
     };
@@ -228,6 +235,37 @@ describe('workspace purge foundation', () => {
       }
       expect(completed).toBe(true);
       expect(objectStore.calls).toBe(1);
+      expect(ledger.appendCalls).toBe(2);
+      if (owner === undefined) throw new Error('Owner pool unavailable');
+      await owner.query('begin');
+      try {
+        await owner.query('set local role pertexo_owner');
+        const tombstone = await owner.query(
+          `select workspace.name,workspace.slug,workspace.status,
+             workspace.created_by,workspace.deletion_requested_by,
+             workspace.deletion_reason,job.status job_status,
+             completion.status completion_status
+           from app.workspaces workspace
+           join app.workspace_purge_jobs job on job.workspace_id=workspace.id
+           join app.workspace_purge_completions completion on completion.job_id=job.id
+           where workspace.id=$1`,
+          [workspaceId],
+        );
+        expect(tombstone.rows[0]).toEqual({
+          completion_status: 'projected',
+          created_by: null,
+          deletion_reason: 'purged',
+          deletion_requested_by: null,
+          job_status: 'completed',
+          name: 'Deleted workspace',
+          slug: `deleted-${workspaceId}`,
+          status: 'deleted',
+        });
+        await owner.query('commit');
+      } catch (error: unknown) {
+        await owner.query('rollback');
+        throw error;
+      }
     } finally {
       await first.close();
       await second.close();
@@ -271,11 +309,30 @@ describe('workspace purge foundation', () => {
         workspaceId,
       });
       expect(objectStore.calls).toBe(2);
-      let completed = false;
-      for (let page = 0; page < 20 && !completed; page += 1) {
-        completed = (await coordinator.processNext()).status === 'completed';
+      let completionDue = false;
+      for (let page = 0; page < 20 && !completionDue; page += 1) {
+        const due = await maintenance?.query<{
+          workspace_id: string;
+        }>('select * from app.find_due_workspace_purge_completion()');
+        completionDue = due?.rows[0]?.workspace_id === workspaceId;
+        if (!completionDue) {
+          await expect(coordinator.processNext()).resolves.toMatchObject({
+            status: 'progressed',
+            workspaceId,
+          });
+        }
       }
-      expect(completed).toBe(true);
+      expect(completionDue).toBe(true);
+      ledger.failCommandType = 'deletion_completed';
+      await expect(coordinator.processNext()).resolves.toMatchObject({
+        status: 'released',
+        workspaceId,
+      });
+      await expect(coordinator.processNext()).resolves.toMatchObject({
+        status: 'completed',
+        workspaceId,
+      });
+      expect(ledger.appendCalls).toBe(2);
     } finally {
       await coordinator.close();
     }

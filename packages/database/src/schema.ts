@@ -132,7 +132,7 @@ export const workspaces = appSchema.table(
     name: varchar('name', { length: 128 }).notNull(),
     slug: varchar('slug', { length: 64 }).notNull(),
     status: varchar('status', { length: 32 }).notNull(),
-    createdBy: uuid('created_by').notNull(),
+    createdBy: uuid('created_by'),
     deletionRequestedAt: timestamp('deletion_requested_at', {
       withTimezone: true,
       mode: 'date',

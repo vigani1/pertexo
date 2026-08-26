@@ -345,6 +345,14 @@ export function createRetentionDatabase(
               'app.execute_workspace_tenant_rows_page(uuid,uuid,bigint,integer,bigint,character)','EXECUTE')
             and has_function_privilege(current_user,
               'app.checkpoint_workspace_object_versions_page(uuid,uuid,bigint,integer,boolean,bigint,character)','EXECUTE')
+            and has_function_privilege(current_user,
+              'app.find_due_workspace_purge_completion()','EXECUTE')
+            and has_function_privilege(current_user,
+              'app.prepare_workspace_purge_completion(uuid,bigint,character,character varying,interval)','EXECUTE')
+            and has_function_privilege(current_user,
+              'app.authorize_workspace_purge_completion_append(uuid,uuid,bigint,bigint,character)','EXECUTE')
+            and has_function_privilege(current_user,
+              'app.project_workspace_purge_completion(uuid,uuid,bigint,bigint,character,character)','EXECUTE')
             and not has_function_privilege(current_user,
               'app.claim_retention_batches(character varying,integer,integer)','EXECUTE')
             and not has_function_privilege(current_user,

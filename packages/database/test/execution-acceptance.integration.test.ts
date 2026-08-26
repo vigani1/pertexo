@@ -174,9 +174,12 @@ async function resetExecutionFixture(): Promise<void> {
        values
          ($1, 'Execution A', $3, 'active', $5),
          ($2, 'Execution B', $4, 'active', $5)
-       on conflict (id) do update set
-         status = 'active',
-         deletion_requested_at = null,
+        on conflict (id) do update set
+          name = excluded.name,
+          slug = excluded.slug,
+          status = 'active',
+          created_by = excluded.created_by,
+          deletion_requested_at = null,
          deletion_requested_by = null,
          deletion_reason = null,
          purge_after = null`,

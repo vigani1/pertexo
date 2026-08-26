@@ -11,9 +11,7 @@ const migrationUrl = new URL(
 
 describe('preview retention enforcement migration', () => {
   it('moves bounded preview destruction behind maintenance authority', async () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0058_workspace_object_versions_purge.sql',
-    );
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0059_workspace_purge_completion.sql');
     const migration = await readFile(migrationUrl, 'utf8');
 
     expect(migration).toContain('artifacts_preview_destruction_guard');

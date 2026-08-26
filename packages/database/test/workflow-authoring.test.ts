@@ -16,9 +16,7 @@ const integrationUsageMigrationUrl = new URL(
 
 describe('workflow authoring migration contract', () => {
   it('advances the reviewed migration head', () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0058_workspace_object_versions_purge.sql',
-    );
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0059_workspace_purge_completion.sql');
   });
 
   it('emits the identifier-only trigger-reconciliation payload', () => {

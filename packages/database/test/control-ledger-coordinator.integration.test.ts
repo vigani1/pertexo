@@ -270,6 +270,10 @@ beforeAll(async () => {
     path.join(MIGRATIONS_DIRECTORY, '0058_workspace_object_versions_purge.sql'),
     path.join(priorDirectory, '0058_workspace_object_versions_purge.sql'),
   );
+  await copyFile(
+    path.join(MIGRATIONS_DIRECTORY, '0059_workspace_purge_completion.sql'),
+    path.join(priorDirectory, '0059_workspace_purge_completion.sql'),
+  );
   await expect(
     migrateDatabase(migrationConfig, priorDirectory),
   ).resolves.toEqual([
@@ -286,6 +290,7 @@ beforeAll(async () => {
     '0056_workspace_purge_foundation.sql',
     '0057_workspace_tenant_rows_purge.sql',
     '0058_workspace_object_versions_purge.sql',
+    '0059_workspace_purge_completion.sql',
   ]);
   maintenance = new Pool({ connectionString: maintenanceUrl, max: 4 });
 }, 120_000);
