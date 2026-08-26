@@ -20,28 +20,36 @@ groups:
         annotations:
           summary: Durable accepted work has waited over one minute for dispatch
       - alert: PertexoQueueOldestJobAgeHigh
-        expr: max by (queue_name) (pertexo_transport_queue_oldest_job_age_seconds) > 60
+        expr:
+          max by (queue_name) (pertexo_transport_queue_oldest_job_age_seconds) >
+          60
         for: 10m
         labels:
           severity: page
         annotations:
           summary: A worker queue has user-visible delayed work
       - alert: PertexoRetentionFailures
-        expr: increase(pertexo_retention_batch_count_total{outcome="failed"}[15m]) > 0
+        expr:
+          increase(pertexo_retention_batch_count_total{outcome="failed"}[15m]) >
+          0
         for: 5m
         labels:
           severity: ticket
         annotations:
           summary: Destructive maintenance reported a bounded failure
       - alert: PertexoLifecycleCommandFailure
-        expr: increase(pertexo_lifecycle_command_process_count_total{outcome="failed"}[15m]) > 0
+        expr:
+          increase(pertexo_lifecycle_command_process_count_total{outcome="failed"}[15m])
+          > 0
         for: 1m
         labels:
           severity: page
         annotations:
           summary: Lifecycle command processing failed
       - alert: PertexoControlLedgerDivergence
-        expr: increase(pertexo_control_ledger_reconciliation_count_total{outcome!="agreed"}[5m]) > 0
+        expr:
+          increase(pertexo_control_ledger_reconciliation_count_total{outcome!="agreed"}[5m])
+          > 0
         for: 1m
         labels:
           severity: page

@@ -19,7 +19,9 @@ describe('operations observability assets', () => {
         readFile(new URL('grafana-dashboards.yaml', assets), 'utf8'),
       ]);
 
-    expect(() => JSON.parse(dashboard)).not.toThrow();
+    expect(() => {
+      JSON.parse(dashboard);
+    }).not.toThrow();
     expect(alerts).toContain('PertexoApiEligibleErrorBudgetBurn');
     expect(alerts).toContain('PertexoControlLedgerDivergence');
     expect(collector).toContain('memory_limiter');
