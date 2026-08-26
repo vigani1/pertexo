@@ -48,6 +48,14 @@ jobs:
       ARTIFACT_STORE_BUCKET: pertexo-artifacts
       ARTIFACT_STORE_FORCE_PATH_STYLE: 'true'
       ARTIFACT_STORE_INTEGRATION: 'true'
+      CONTROL_LEDGER_ENDPOINT: http://127.0.0.1:9090
+      CONTROL_LEDGER_REGION: us-east-1
+      CONTROL_LEDGER_ACCESS_KEY_ID: pertexo-local-ledger-access-key
+      CONTROL_LEDGER_SECRET_ACCESS_KEY: pertexo-local-ledger-secret-key
+      CONTROL_LEDGER_BUCKET: pertexo-control-ledger
+      CONTROL_LEDGER_FORCE_PATH_STYLE: 'true'
+      CONTROL_LEDGER_REQUEST_TIMEOUT_MS: '5000'
+      CONTROL_LEDGER_MIN_RETENTION_DAYS: '30'
       API_SSE_INTEGRATION: 'true'
       API_IDENTITY_INTEGRATION: 'true'
       WORKER_TRANSPORT_INTEGRATION: 'true'

@@ -1,6 +1,6 @@
 # Backend Implementation Progress
 
-Last updated: 2026-08-25
+Last updated: 2026-08-26
 
 This file tracks delivery against
 [the authoritative backend plan](./workflow-platform-backend-plan.md). A phase
@@ -3343,6 +3343,47 @@ Current evidence:
   External object-ledger I/O and freshness reconciliation, restore-before-serve
   gating, destructive retention/purge, telemetry, and policy enforcement remain
   open, so no broader Phase 7 checklist item is marked complete.
+- The artifact-store package now exposes a separate append-only ADR 013 control
+  ledger adapter and dedicated `CONTROL_LEDGER_*` configuration without changing
+  the tenant `ArtifactStore` API or worker artifact configuration. Its principal
+  and bucket must be distinct from tenant artifact storage. Records use
+  strict unified command contracts, canonical UTF-8 JSON, and SHA-256 over the
+  canonical record excluding `recordHash`; every read validates canonical bytes,
+  identity, bounds, and the recomputed hash. Fixed zero-padded sequence keys live
+  under `control-ledger/workspaces/`, outside `workspaces/` tenant artifact
+  prefixes. Conditional `If-None-Match: *` writes provide exact canonical replay
+  or a stable content conflict. Append and reconciliation fail closed unless
+  `HeadBucket`, versioning `Enabled`, Object Lock `Enabled`, default `COMPLIANCE`
+  retention at least as long as the deployment-provided minimum, no lifecycle
+  rules, and an unconditional public-principal policy deny for object deletion,
+  version deletion, object replication, and replicated deletion are verified for
+  that operation. The policy must separately deny
+  `PutObject` for the public principal and ledger resource when `If-None-Match`
+  is absent, preventing clients from bypassing conditional-create semantics. A
+  separate least-privilege ledger principal remains a deployment requirement.
+  Writes request SHA-256 checksums,
+  validate returned checksums when supplied, and explicitly set COMPLIANCE mode
+  plus a retain-until date at the configured minimum. Reconciliation validates a
+  nonzero caller anchor, uses one strongly consistent bounded `ListObjectsV2`
+  request for at most the requested page plus one key, rejects malformed, foreign,
+  or nonconsecutive keys, and distinguishes a page end from proven high water.
+  Sixty-three focused memory-S3 tests prove bytes/hash, ordering, replay/conflict
+  races, predecessor/anchor corruption, bounded list contracts and external gaps,
+  exact not-found handling, cancellation/timeout propagation, dedicated
+  configuration, production controls, and explicit client ownership. Package
+  build/typecheck and all 94 package unit assertions pass. Adobe S3Mock does not
+  provide a credible proof of versioning, Object Lock default COMPLIANCE
+  retention, lifecycle absence, and delete/replication-deny bucket policy, so the
+  real S3Mock suite continues to prove two tenant artifact I/O assertions only
+  and does not run or claim production-readiness proof for the gated
+  control-ledger adapter. A real Object-Lock-capable service test remains
+  required. The retained S3Mock artifact integration passes both assertions, and
+  root `pnpm check` passes formatting, builds, lint, generated-contract drift,
+  typechecks, and all 1,089 unit assertions. Final security and Spec reviews
+  report no blocker, high, or medium findings. PostgreSQL command projection,
+  exact restore reconciliation, and restore-before-serve wiring are still absent,
+  so the combined external-ledger checklist item remains unchecked and Phase 7
+  remains in progress.
 
 ## Update protocol
 
