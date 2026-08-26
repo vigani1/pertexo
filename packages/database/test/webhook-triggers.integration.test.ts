@@ -76,6 +76,7 @@ const migrationConfig = {
   workerRuntimeRole: 'pertexo_worker',
   dispatcherRole: 'pertexo_dispatcher',
   maintenanceRole: 'pertexo_maintenance',
+  lifecycleCommandRole: 'pertexo_lifecycle_command',
 } as const;
 const apiConfig = parseDatabaseConfig({
   connectionString: url(apiBaseUrl),
@@ -368,7 +369,7 @@ describe('generic webhook database seam', () => {
 
   it('migrates from zero, reconciles configuration, and exposes no hashes or secrets in health', async () => {
     await expect(checkDatabaseReadiness(readinessPool)).resolves.toMatchObject({
-      migrationHead: '0046_workspace_deletion_control_projection.sql',
+      migrationHead: '0047_workspace_lifecycle_command_intents.sql',
     });
     await expect(
       checkDatabaseReadiness(workerReadinessPool),

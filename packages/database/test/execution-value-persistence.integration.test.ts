@@ -51,6 +51,7 @@ function migrationConfig(databaseName: string) {
     connectionString: databaseUrl(migrationBaseUrl, databaseName),
     dispatcherRole: 'pertexo_dispatcher',
     maintenanceRole: 'pertexo_maintenance',
+    lifecycleCommandRole: 'pertexo_lifecycle_command',
     ownerRole: 'pertexo_owner',
     workerRuntimeRole: 'pertexo_worker',
   } as const;
@@ -252,7 +253,7 @@ describe('execution value persistence migration', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0046_workspace_deletion_control_projection.sql',
+          migrationHead: '0047_workspace_lifecycle_command_intents.sql',
           role: expectedRole,
         });
       } finally {

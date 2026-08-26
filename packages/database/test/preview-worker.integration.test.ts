@@ -367,6 +367,7 @@ beforeAll(async () => {
     workerRuntimeRole: 'pertexo_worker',
     dispatcherRole: 'pertexo_dispatcher',
     maintenanceRole: 'pertexo_maintenance',
+    lifecycleCommandRole: 'pertexo_lifecycle_command',
   });
   await insertIdentity();
 }, 60_000);

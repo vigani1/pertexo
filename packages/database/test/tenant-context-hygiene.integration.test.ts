@@ -80,6 +80,7 @@ beforeAll(async () => {
     workerRuntimeRole: 'pertexo_worker',
     dispatcherRole: 'pertexo_dispatcher',
     maintenanceRole: 'pertexo_maintenance',
+    lifecycleCommandRole: 'pertexo_lifecycle_command',
   });
 }, 60_000);
 

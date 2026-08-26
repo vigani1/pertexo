@@ -51,6 +51,7 @@ export {
 export {
   parseDatabaseConfig,
   parseMaintenanceDatabaseConfig,
+  parseLifecycleCommandDatabaseConfig,
   parseMigrationConfig,
   parseOutboxDispatcherConfig,
 } from './config.js';

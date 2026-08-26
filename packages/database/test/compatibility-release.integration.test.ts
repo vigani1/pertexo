@@ -105,6 +105,7 @@ function migrationConfig(name: string) {
     connectionString: databaseUrl(migrationBaseUrl, name),
     dispatcherRole: 'pertexo_dispatcher',
     maintenanceRole: 'pertexo_maintenance',
+    lifecycleCommandRole: 'pertexo_lifecycle_command',
     ownerRole: 'pertexo_owner',
     workerRuntimeRole: 'pertexo_worker',
   } as const;
@@ -137,6 +138,7 @@ beforeAll(async () => {
     connectionString: databaseUrl(migrationBaseUrl),
     dispatcherRole: 'pertexo_dispatcher',
     maintenanceRole: 'pertexo_maintenance',
+    lifecycleCommandRole: 'pertexo_lifecycle_command',
     ownerRole: 'pertexo_owner',
     workerRuntimeRole: 'pertexo_worker',
   });
@@ -200,7 +202,7 @@ describe('durable node compatibility release authority', () => {
           preactivationTarget: targetExpectation,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0046_workspace_deletion_control_projection.sql',
+        migrationHead: '0047_workspace_lifecycle_command_intents.sql',
       });
 
       for (const [roleKind, artifactId] of [
@@ -323,7 +325,7 @@ describe('durable node compatibility release authority', () => {
           expectedCompatibilityReleases: rollingExpectations,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0046_workspace_deletion_control_projection.sql',
+        migrationHead: '0047_workspace_lifecycle_command_intents.sql',
       });
       await expect(
         checkDatabaseReadiness(api, {
@@ -436,7 +438,7 @@ describe('durable node compatibility release authority', () => {
             expectedCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0046_workspace_deletion_control_projection.sql',
+          migrationHead: '0047_workspace_lifecycle_command_intents.sql',
         });
         await expect(
           checkExpectedCompatibilityRelease(pool, {
@@ -464,7 +466,7 @@ describe('durable node compatibility release authority', () => {
           expectedCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0046_workspace_deletion_control_projection.sql',
+        migrationHead: '0047_workspace_lifecycle_command_intents.sql',
       });
     } finally {
       await pool.end();

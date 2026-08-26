@@ -12,7 +12,7 @@ const migrationUrl = new URL(
 describe('published workflow execution migration contract', () => {
   it('adds a V2 executable envelope while preserving V1 rows', async () => {
     expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0046_workspace_deletion_control_projection.sql',
+      '0047_workspace_lifecycle_command_intents.sql',
     );
 
     const sql = await readFile(migrationUrl, 'utf8');

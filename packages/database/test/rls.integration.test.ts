@@ -45,6 +45,7 @@ const migrationConfig = {
   connectionString: migrationUrl,
   dispatcherRole: 'pertexo_dispatcher',
   maintenanceRole: 'pertexo_maintenance',
+  lifecycleCommandRole: 'pertexo_lifecycle_command',
   ownerRole: 'pertexo_owner',
   workerRuntimeRole: 'pertexo_worker',
 } as const;
@@ -428,7 +429,7 @@ describe.each([
 describe('database readiness', () => {
   it('verifies migration, PostgreSQL, ownership, RLS, and runtime role compatibility', async () => {
     await expect(database.checkReadiness()).resolves.toEqual({
-      migrationHead: '0046_workspace_deletion_control_projection.sql',
+      migrationHead: '0047_workspace_lifecycle_command_intents.sql',
       postgresMajor: 18,
       role: 'pertexo_api',
     });

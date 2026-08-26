@@ -41,6 +41,7 @@ const migrationConfig = {
   connectionString: migrationUrl,
   dispatcherRole: 'pertexo_dispatcher',
   maintenanceRole: 'pertexo_maintenance',
+  lifecycleCommandRole: 'pertexo_lifecycle_command',
   ownerRole: 'pertexo_owner',
   workerRuntimeRole: 'pertexo_worker',
 } as const;
@@ -197,9 +198,19 @@ beforeAll(async () => {
     ),
     path.join(priorDirectory, '0046_workspace_deletion_control_projection.sql'),
   );
+  await copyFile(
+    path.join(
+      MIGRATIONS_DIRECTORY,
+      '0047_workspace_lifecycle_command_intents.sql',
+    ),
+    path.join(priorDirectory, '0047_workspace_lifecycle_command_intents.sql'),
+  );
   await expect(
     migrateDatabase(migrationConfig, priorDirectory),
-  ).resolves.toEqual(['0046_workspace_deletion_control_projection.sql']);
+  ).resolves.toEqual([
+    '0046_workspace_deletion_control_projection.sql',
+    '0047_workspace_lifecycle_command_intents.sql',
+  ]);
   maintenance = new Pool({ connectionString: maintenanceUrl, max: 4 });
 }, 120_000);
 
@@ -215,7 +226,7 @@ afterAll(async () => {
   }
 });
 
-describe('control ledger coordinator exact 0045 to 0046 integration', () => {
+describe('control ledger coordinator exact 0045 to 0047 integration', () => {
   it('proves the maintenance boundary and stable complete inventory', async () => {
     const coordinator = createControlLedgerCoordinator(
       {

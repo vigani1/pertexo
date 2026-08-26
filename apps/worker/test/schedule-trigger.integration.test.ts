@@ -380,6 +380,7 @@ describeIntegration('direct Schedule worker integration gate', () => {
       workerRuntimeRole: 'pertexo_worker',
       dispatcherRole: 'pertexo_dispatcher',
       maintenanceRole: 'pertexo_maintenance',
+      lifecycleCommandRole: 'pertexo_lifecycle_command',
     });
     for (const release of platformExecutableRegistryHistory(releaseCohort))
       await activateRelease(release);

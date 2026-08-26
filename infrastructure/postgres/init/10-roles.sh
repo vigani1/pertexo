@@ -8,6 +8,8 @@ set -Eeuo pipefail
 : "${POSTGRES_MIGRATION_PASSWORD:?POSTGRES_MIGRATION_PASSWORD is required}"
 : "${POSTGRES_MAINTENANCE_USER:?POSTGRES_MAINTENANCE_USER is required}"
 : "${POSTGRES_MAINTENANCE_PASSWORD:?POSTGRES_MAINTENANCE_PASSWORD is required}"
+: "${POSTGRES_LIFECYCLE_COMMAND_USER:?POSTGRES_LIFECYCLE_COMMAND_USER is required}"
+: "${POSTGRES_LIFECYCLE_COMMAND_PASSWORD:?POSTGRES_LIFECYCLE_COMMAND_PASSWORD is required}"
 : "${POSTGRES_API_RUNTIME_USER:?POSTGRES_API_RUNTIME_USER is required}"
 : "${POSTGRES_API_RUNTIME_PASSWORD:?POSTGRES_API_RUNTIME_PASSWORD is required}"
 : "${POSTGRES_WORKER_RUNTIME_USER:?POSTGRES_WORKER_RUNTIME_USER is required}"
@@ -27,6 +29,8 @@ psql \
   --set migration_password="$POSTGRES_MIGRATION_PASSWORD" \
   --set maintenance_user="$POSTGRES_MAINTENANCE_USER" \
   --set maintenance_password="$POSTGRES_MAINTENANCE_PASSWORD" \
+  --set lifecycle_command_user="$POSTGRES_LIFECYCLE_COMMAND_USER" \
+  --set lifecycle_command_password="$POSTGRES_LIFECYCLE_COMMAND_PASSWORD" \
   --set api_runtime_user="$POSTGRES_API_RUNTIME_USER" \
   --set api_runtime_password="$POSTGRES_API_RUNTIME_PASSWORD" \
   --set worker_runtime_user="$POSTGRES_WORKER_RUNTIME_USER" \
@@ -56,6 +60,13 @@ ALTER ROLE :"maintenance_user" PASSWORD :'maintenance_password';
 
 SELECT format(
   'CREATE ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS',
+  :'lifecycle_command_user'
+)
+WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'lifecycle_command_user')\gexec
+ALTER ROLE :"lifecycle_command_user" PASSWORD :'lifecycle_command_password';
+
+SELECT format(
+  'CREATE ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS',
   :'api_runtime_user'
 )
 WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'api_runtime_user')\gexec
@@ -82,7 +93,7 @@ GRANT :"owner_user" TO :"migration_user";
 ALTER DATABASE :"database_name" OWNER TO :"owner_user";
 REVOKE ALL ON DATABASE :"database_name" FROM PUBLIC;
 GRANT CONNECT ON DATABASE :"database_name"
-  TO :"migration_user", :"maintenance_user", :"api_runtime_user", :"worker_runtime_user", :"dispatcher_runtime_user";
+  TO :"migration_user", :"maintenance_user", :"lifecycle_command_user", :"api_runtime_user", :"worker_runtime_user", :"dispatcher_runtime_user";
 
 ALTER SCHEMA public OWNER TO :"owner_user";
 REVOKE ALL ON SCHEMA public FROM PUBLIC;

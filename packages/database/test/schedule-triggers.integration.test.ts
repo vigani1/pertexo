@@ -54,6 +54,7 @@ const migrationConfig = {
   workerRuntimeRole: 'pertexo_worker',
   dispatcherRole: 'pertexo_dispatcher',
   maintenanceRole: 'pertexo_maintenance',
+  lifecycleCommandRole: 'pertexo_lifecycle_command',
 } as const;
 const apiConfig = parseDatabaseConfig({ connectionString: url(apiBaseUrl) });
 const workerConfig = parseDatabaseConfig({
@@ -427,7 +428,7 @@ describe('schedule trigger PostgreSQL slice', () => {
 
   it('recovers an expired lease, excludes competing scanners, and commits one acceptance with outbox', async () => {
     await expect(checkDatabaseReadiness(worker)).resolves.toMatchObject({
-      migrationHead: '0046_workspace_deletion_control_projection.sql',
+      migrationHead: '0047_workspace_lifecycle_command_intents.sql',
       role: 'pertexo_worker',
     });
     const crashed = await worker.query(

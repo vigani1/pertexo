@@ -49,6 +49,10 @@ const migrationEnvironmentSchema = z.object({
     .string()
     .regex(/^[a-z_][a-z0-9_]*$/u)
     .default('pertexo_maintenance'),
+  POSTGRES_LIFECYCLE_COMMAND_USER: z
+    .string()
+    .regex(/^[a-z_][a-z0-9_]*$/u)
+    .default('pertexo_lifecycle_command'),
   POSTGRES_WORKER_RUNTIME_USER: z
     .string()
     .regex(/^[a-z_][a-z0-9_]*$/u)
@@ -60,6 +64,7 @@ export type MigrationConfig = Readonly<{
   connectionString: string;
   dispatcherRole: string;
   maintenanceRole: string;
+  lifecycleCommandRole: string;
   ownerRole: string;
   workerRuntimeRole: string;
 }>;
@@ -73,6 +78,7 @@ export function parseMigrationConfig(
     connectionString: parsed.DATABASE_MIGRATION_URL,
     dispatcherRole: parsed.POSTGRES_DISPATCHER_RUNTIME_USER,
     maintenanceRole: parsed.POSTGRES_MAINTENANCE_USER,
+    lifecycleCommandRole: parsed.POSTGRES_LIFECYCLE_COMMAND_USER,
     ownerRole: parsed.POSTGRES_OWNER_USER,
     workerRuntimeRole: parsed.POSTGRES_WORKER_RUNTIME_USER,
   });
@@ -141,6 +147,52 @@ const maintenanceEnvironmentSchema = z.object({
     .regex(/^[a-z_][a-z0-9_]*$/u)
     .default('pertexo_worker'),
 });
+
+const lifecycleCommandEnvironmentSchema = z.object({
+  DATABASE_LIFECYCLE_COMMAND_URL: z
+    .url()
+    .refine((value) => value.startsWith('postgresql://'), {
+      message: 'DATABASE_LIFECYCLE_COMMAND_URL must be a postgresql:// URL',
+    }),
+  DATABASE_CONNECTION_TIMEOUT_MILLIS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(5_000),
+  DATABASE_IDLE_TIMEOUT_MILLIS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(30_000),
+  DATABASE_LIFECYCLE_COMMAND_POOL_MAX: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(10)
+    .default(2),
+  POSTGRES_OWNER_USER: z
+    .string()
+    .regex(/^[a-z_][a-z0-9_]*$/u)
+    .default('pertexo_owner'),
+  POSTGRES_WORKER_RUNTIME_USER: z
+    .string()
+    .regex(/^[a-z_][a-z0-9_]*$/u)
+    .default('pertexo_worker'),
+});
+
+export function parseLifecycleCommandDatabaseConfig(
+  environment: Readonly<Record<string, string | undefined>> = process.env,
+): DatabaseConfig {
+  const parsed = lifecycleCommandEnvironmentSchema.parse(environment);
+  return parseDatabaseConfig({
+    connectionString: parsed.DATABASE_LIFECYCLE_COMMAND_URL,
+    connectionTimeoutMillis: parsed.DATABASE_CONNECTION_TIMEOUT_MILLIS,
+    idleTimeoutMillis: parsed.DATABASE_IDLE_TIMEOUT_MILLIS,
+    max: parsed.DATABASE_LIFECYCLE_COMMAND_POOL_MAX,
+    ownerRole: parsed.POSTGRES_OWNER_USER,
+    workerRuntimeRole: parsed.POSTGRES_WORKER_RUNTIME_USER,
+  });
+}
 
 export function parseMaintenanceDatabaseConfig(
   environment: Readonly<Record<string, string | undefined>> = process.env,

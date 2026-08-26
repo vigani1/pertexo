@@ -36,6 +36,7 @@ const migrationConfig = {
   connectionString: databaseUrl(migrationBaseUrl),
   dispatcherRole: 'pertexo_dispatcher',
   maintenanceRole: 'pertexo_maintenance',
+  lifecycleCommandRole: 'pertexo_lifecycle_command',
   ownerRole: 'pertexo_owner',
   workerRuntimeRole: 'pertexo_worker',
 } as const;
@@ -223,6 +224,7 @@ describe('preview retention migration', () => {
       '0044_retention_control_foundation.sql',
       '0045_control_ledger_command_lock.sql',
       '0046_workspace_deletion_control_projection.sql',
+      '0047_workspace_lifecycle_command_intents.sql',
     ]);
 
     const verification = new Pool({

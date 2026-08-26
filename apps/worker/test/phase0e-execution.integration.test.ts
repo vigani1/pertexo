@@ -87,6 +87,7 @@ interface MigrationApi {
     readonly connectionString: string;
     readonly dispatcherRole: string;
     readonly maintenanceRole: string;
+    readonly lifecycleCommandRole: string;
     readonly ownerRole: string;
     readonly workerRuntimeRole: string;
   }): Promise<void>;
@@ -129,6 +130,7 @@ async function migrate(): Promise<void> {
     connectionString: migrationUrl,
     dispatcherRole: 'pertexo_dispatcher',
     maintenanceRole: 'pertexo_maintenance',
+    lifecycleCommandRole: 'pertexo_lifecycle_command',
     ownerRole: 'pertexo_owner',
     workerRuntimeRole: 'pertexo_worker',
   });
