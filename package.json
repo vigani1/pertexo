@@ -18,6 +18,8 @@
     "deployment:check": "node infrastructure/ecs/validate-deployment.mjs",
     "deployment:render": "node infrastructure/ecs/render-task-definitions.mjs",
     "db:migrate": "pnpm --filter @pertexo/database db:migrate",
+    "exercise:check": "node infrastructure/exercises/validate-exercises.mjs && node --check infrastructure/exercises/run-http-exercise.mjs",
+    "exercise:http": "node infrastructure/exercises/run-http-exercise.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "NODE_OPTIONS=--max-old-space-size=8192 eslint .",

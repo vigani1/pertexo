@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "name": "api-steady-20-per-second",
+  "durationSeconds": 60,
+  "requestsPerSecond": 20,
+  "maxInFlight": 40,
+  "method": "POST",
+  "pathEnvironment": "PERTEXO_EXERCISE_PATH",
+  "bodyFileEnvironment": "PERTEXO_EXERCISE_BODY_FILE",
+  "headers": {
+    "content-type": "application/json",
+    "idempotency-key": "${requestId}"
+  },
+  "objectives": {
+    "minimumAchievedRateRatio": 0.98,
+    "maximumServerErrorRatio": 0.001,
+    "maximumP95Milliseconds": 500
+  }
+}
