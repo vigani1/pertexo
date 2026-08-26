@@ -3884,6 +3884,16 @@ Current evidence:
   lookup timed out while pulling the pinned images. Production pager routing and
   synthetic fire/clear proof remain organization/deployment work, so the broad
   dashboard/alert checklist remains open.
+- Lifecycle-command processing now emits fixed-cardinality command type, outcome,
+  and duration metrics, including an explicit failure outcome when no durable
+  operation result exists. Restore-before-serve emits agreed/failed control-ledger
+  reconciliation count and duration around the complete gate. The alert set now
+  uses only emitted series for lifecycle-command failures and dual-ledger
+  disagreement. Observability, lifecycle-command, and recovery typechecks pass
+  with 47 focused assertions across their suites; high-cardinality operation,
+  workspace, sequence, hash, and actor values remain logs/audit data rather than
+  metric attributes. Database/Redis/resource and broader worker metrics remain
+  open, so the complete telemetry checklist is not marked done.
 
 ## Update protocol
 

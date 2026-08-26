@@ -33,13 +33,13 @@ groups:
           severity: ticket
         annotations:
           summary: Destructive maintenance reported a bounded failure
-      - alert: PertexoLifecycleCommandBacklog
-        expr: max(pertexo_lifecycle_command_oldest_age_seconds) > 30
-        for: 5m
+      - alert: PertexoLifecycleCommandFailure
+        expr: increase(pertexo_lifecycle_command_process_count_total{outcome="failed"}[15m]) > 0
+        for: 1m
         labels:
           severity: page
         annotations:
-          summary: Accepted lifecycle revocation commands are delayed
+          summary: Lifecycle command processing failed
       - alert: PertexoControlLedgerDivergence
         expr: increase(pertexo_control_ledger_reconciliation_count_total{outcome!="agreed"}[5m]) > 0
         for: 1m

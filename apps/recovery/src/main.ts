@@ -20,12 +20,14 @@ async function bootstrap(): Promise<void> {
   let recoveryInvoked = false;
   try {
     telemetry.start();
-    const [artifactStore, database, logging, recovery] = await Promise.all([
-      import('@pertexo/artifact-store'),
-      import('@pertexo/database'),
-      import('@pertexo/observability/logging'),
-      import('./restore-before-serve.js'),
-    ]);
+    const [artifactStore, database, observability, logging, recovery] =
+      await Promise.all([
+        import('@pertexo/artifact-store'),
+        import('@pertexo/database'),
+        import('@pertexo/observability'),
+        import('@pertexo/observability/logging'),
+        import('./restore-before-serve.js'),
+      ]);
     logger = logging.createStructuredLogger(config.observability);
     ledger = artifactStore.createDualRegionControlLedger(
       config.ledger.primary,
@@ -46,6 +48,7 @@ async function bootstrap(): Promise<void> {
       expectedMaintenanceRole: config.maintenanceRole,
       ledger,
       logger,
+      metrics: observability.createMaintenanceMetrics(),
       signal,
       telemetry,
     });

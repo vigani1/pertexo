@@ -12,6 +12,11 @@ export {
   createTelemetryLifecycle,
 } from './telemetry.js';
 export { createQueueTraceRunner } from './queue-tracing.js';
+export {
+  createMaintenanceMetrics,
+  MAINTENANCE_METRIC_NAME,
+} from './maintenance-metrics.js';
+export type { MaintenanceMetrics } from './maintenance-metrics.js';
 export type {
   QueueTraceObservation,
   QueueTraceRunner,

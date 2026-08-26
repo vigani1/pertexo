@@ -20,12 +20,14 @@ async function bootstrap(): Promise<void> {
   let workerInvoked = false;
   try {
     telemetry.start();
-    const [artifactStore, database, logging, worker] = await Promise.all([
-      import('@pertexo/artifact-store'),
-      import('@pertexo/database'),
-      import('@pertexo/observability/logging'),
-      import('./run.js'),
-    ]);
+    const [artifactStore, database, observability, logging, worker] =
+      await Promise.all([
+        import('@pertexo/artifact-store'),
+        import('@pertexo/database'),
+        import('@pertexo/observability'),
+        import('@pertexo/observability/logging'),
+        import('./run.js'),
+      ]);
     logger = logging.createStructuredLogger(config.observability);
     ledger = artifactStore.createDualRegionControlLedger(
       config.ledger.primary,
@@ -41,6 +43,7 @@ async function bootstrap(): Promise<void> {
       coordinator,
       ledger,
       logger,
+      metrics: observability.createMaintenanceMetrics(),
       pollIntervalMs: config.pollIntervalMs,
       signal: shutdown.signal,
       telemetry,

@@ -1,12 +1,14 @@
 import type { DualRegionControlLedger } from '@pertexo/artifact-store';
 import type { WorkspaceLifecycleCommandCoordinator } from '@pertexo/database';
 import type { StructuredLogger } from '@pertexo/observability/logging';
+import type { MaintenanceMetrics } from '@pertexo/observability';
 import type { TelemetryLifecycle } from '@pertexo/observability/telemetry';
 
 export interface LifecycleCommandResources {
   readonly coordinator: WorkspaceLifecycleCommandCoordinator;
   readonly ledger: DualRegionControlLedger;
   readonly logger: StructuredLogger;
+  readonly metrics: MaintenanceMetrics;
   readonly pollIntervalMs: number;
   readonly signal: AbortSignal;
   readonly telemetry: TelemetryLifecycle;
@@ -39,10 +41,26 @@ export async function runLifecycleCommandWorker(
     });
 
     while (!resources.signal.aborted) {
-      const outcome = await resources.coordinator.processNext({
-        signal: resources.signal,
-      });
+      const startedAt = performance.now();
+      let outcome;
+      try {
+        outcome = await resources.coordinator.processNext({
+          signal: resources.signal,
+        });
+      } catch (error: unknown) {
+        resources.metrics.recordLifecycleCommand(
+          'unknown',
+          'failed',
+          (performance.now() - startedAt) / 1_000,
+        );
+        throw error;
+      }
       if (outcome.status !== 'idle') {
+        resources.metrics.recordLifecycleCommand(
+          outcome.commandType,
+          outcome.status,
+          (performance.now() - startedAt) / 1_000,
+        );
         resources.logger.info('lifecycle_command.processed', {
           commandType: outcome.commandType,
           operationId: outcome.operationId,

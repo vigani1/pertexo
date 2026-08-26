@@ -83,12 +83,17 @@ function resources(outcomes: ('completed' | 'idle' | 'released')[]) {
     }),
     start: vi.fn(() => events.push('telemetry-start')),
   } satisfies TelemetryLifecycle;
+  const metrics = {
+    recordControlLedgerReconciliation: vi.fn(),
+    recordLifecycleCommand: vi.fn(),
+  };
   return {
     coordinator,
     controller,
     events,
     ledger,
     logger,
+    metrics,
     pollIntervalMs: 1,
     processNext,
     signal: controller.signal,

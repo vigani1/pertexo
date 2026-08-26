@@ -96,11 +96,17 @@ function resources(events: string[]) {
     shutdown: shutdownTelemetry,
     start: startTelemetry,
   } satisfies TelemetryLifecycle;
+  const recordControlLedgerReconciliation = vi.fn();
+  const metrics = {
+    recordControlLedgerReconciliation,
+    recordLifecycleCommand: vi.fn(),
+  };
   return {
     coordinator,
     expectedMaintenanceRole: 'pertexo_maintenance',
     ledger,
     logger,
+    metrics,
     signal: new AbortController().signal,
     spies: {
       checkLedgerReadiness,
@@ -109,6 +115,7 @@ function resources(events: string[]) {
       closeLedger,
       logInfo,
       reconcileAllWorkspaces,
+      recordControlLedgerReconciliation,
       shutdownTelemetry,
       startTelemetry,
     },

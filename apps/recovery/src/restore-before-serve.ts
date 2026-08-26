@@ -7,6 +7,7 @@ import type {
   ControlLedgerInventoryResult,
 } from '@pertexo/database';
 import type { StructuredLogger } from '@pertexo/observability/logging';
+import type { MaintenanceMetrics } from '@pertexo/observability';
 import type { TelemetryLifecycle } from '@pertexo/observability/telemetry';
 
 export interface RestoreBeforeServeResources {
@@ -14,6 +15,7 @@ export interface RestoreBeforeServeResources {
   readonly expectedMaintenanceRole: string;
   readonly ledger: DualRegionControlLedger;
   readonly logger: StructuredLogger;
+  readonly metrics: MaintenanceMetrics;
   readonly signal: AbortSignal;
   readonly telemetry: TelemetryLifecycle;
 }
@@ -28,6 +30,7 @@ export async function restoreBeforeServe(
 ): Promise<RestoreBeforeServeResult> {
   let result: RestoreBeforeServeResult | undefined;
   let operationError: unknown;
+  const startedAt = performance.now();
   try {
     resources.telemetry.start();
     resources.signal.throwIfAborted();
@@ -40,6 +43,10 @@ export async function restoreBeforeServe(
       signal: resources.signal,
     });
     result = Object.freeze({ inventory, ledger });
+    resources.metrics.recordControlLedgerReconciliation(
+      'agreed',
+      (performance.now() - startedAt) / 1_000,
+    );
     resources.logger.info('restore_before_serve.completed', {
       inventoryDigest: inventory.inventoryDigest,
       projectedRecordCount: inventory.projectedRecordCount,
@@ -47,6 +54,10 @@ export async function restoreBeforeServe(
       workspaceCount: inventory.workspaceCount,
     });
   } catch (error: unknown) {
+    resources.metrics.recordControlLedgerReconciliation(
+      'failed',
+      (performance.now() - startedAt) / 1_000,
+    );
     operationError = error;
     resources.logger.error(
       'restore_before_serve.failed',
