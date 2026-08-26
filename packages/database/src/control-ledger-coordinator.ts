@@ -70,6 +70,7 @@ export interface ControlLedger {
     readonly maxRecords: number;
     readonly projectedHash: string;
     readonly projectedSequence: number;
+    readonly repairCommandId?: string;
     readonly signal?: AbortSignal;
     readonly workspaceId: string;
   }): Promise<ControlLedgerReconciliation>;
@@ -506,6 +507,7 @@ export function createControlLedgerCoordinator(
     initial: HighWater,
     maximumRecords: number,
     signal?: AbortSignal,
+    repairCommandId?: string,
   ): Promise<
     ControlLedgerReconcileResult & { readonly reachedHighWater: boolean }
   > => {
@@ -521,6 +523,7 @@ export function createControlLedgerCoordinator(
         maxRecords: requested,
         projectedHash: highWater.hash,
         projectedSequence: highWater.sequence,
+        ...(repairCommandId === undefined ? {} : { repairCommandId }),
         signal: operationSignal,
         workspaceId,
       }),
@@ -598,6 +601,7 @@ export function createControlLedgerCoordinator(
             initial,
             remaining,
             parsed.signal,
+            parsed.commandId,
           );
           if (!reconciled.reachedHighWater)
             return {

@@ -2,8 +2,14 @@ import './server-only.js';
 
 export { parseArtifactStoreConfig } from './config.js';
 export type { ArtifactStoreConfig } from './config.js';
-export { parseControlLedgerConfig } from './control-ledger-config.js';
-export type { ControlLedgerConfig } from './control-ledger-config.js';
+export {
+  parseControlLedgerConfig,
+  parseDualRegionControlLedgerConfig,
+} from './control-ledger-config.js';
+export type {
+  ControlLedgerConfig,
+  DualRegionControlLedgerConfig,
+} from './control-ledger-config.js';
 export {
   ControlLedgerClosedError,
   ControlLedgerConflictError,
@@ -11,6 +17,14 @@ export {
   ControlLedgerReadinessError,
   createControlLedger,
 } from './control-ledger.js';
+export {
+  ControlLedgerPartialReplicationError,
+  createDualRegionControlLedger,
+} from './dual-region-control-ledger.js';
+export type {
+  DualRegionControlLedger,
+  DualRegionControlLedgerReadiness,
+} from './dual-region-control-ledger.js';
 export type {
   AppendControlLedgerRecord,
   ControlLedger,

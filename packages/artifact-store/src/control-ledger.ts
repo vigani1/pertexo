@@ -1,5 +1,6 @@
 import {
   GetBucketLifecycleConfigurationCommand,
+  GetBucketLocationCommand,
   GetBucketPolicyCommand,
   GetBucketVersioningCommand,
   GetObjectCommand,
@@ -121,6 +122,7 @@ export interface ReconcileControlLedgerRequest {
   readonly maxRecords: number;
   readonly projectedHash: string;
   readonly projectedSequence: number;
+  readonly repairCommandId?: string;
   readonly signal?: AbortSignal;
   readonly workspaceId: string;
 }
@@ -137,6 +139,7 @@ export interface ControlLedgerReadiness {
   readonly bucket: string;
   readonly minRetentionDays: number;
   readonly prefix: 'control-ledger/workspaces/';
+  readonly region: string;
 }
 
 export interface ControlLedger {
@@ -155,6 +158,7 @@ export interface ControlLedgerS3Client {
     command:
       | GetBucketVersioningCommand
       | GetBucketLifecycleConfigurationCommand
+      | GetBucketLocationCommand
       | GetBucketPolicyCommand
       | GetObjectCommand
       | GetObjectLockConfigurationCommand
@@ -594,11 +598,28 @@ class AwsControlLedger implements ControlLedger {
     const options = {
       abortSignal: requestSignal(this.config.requestTimeoutMs, signal),
     };
+    let actualRegion: string;
     try {
       await this.client.send(
         new HeadBucketCommand({ Bucket: this.config.bucket }),
         options,
       );
+      const location = (await this.client.send(
+        new GetBucketLocationCommand({ Bucket: this.config.bucket }),
+        options,
+      )) as { readonly LocationConstraint?: string | null };
+      const reportedRegion = location.LocationConstraint ?? '';
+      actualRegion =
+        reportedRegion === ''
+          ? 'us-east-1'
+          : reportedRegion === 'EU'
+            ? 'eu-west-1'
+            : reportedRegion;
+      if (actualRegion !== this.config.region) {
+        throw new ControlLedgerReadinessError(
+          'Control ledger bucket region does not match the configured region',
+        );
+      }
       const versioning = (await this.client.send(
         new GetBucketVersioningCommand({ Bucket: this.config.bucket }),
         options,
@@ -693,6 +714,7 @@ class AwsControlLedger implements ControlLedger {
       bucket: this.config.bucket,
       minRetentionDays: this.config.minRetentionDays,
       prefix: 'control-ledger/workspaces/' as const,
+      region: actualRegion,
     });
   }
 

@@ -23,7 +23,7 @@ not complete a phase.
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 5 — orchestration slice | Complete | ADRs 008/017/018/019/020/021/022; implementation through `9d7e071`; migration head `0034_run_failure_notifications.sql`; 862 unit assertions and complete real-service/recovery matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 6 — V1 providers and triggers | Complete | ADRs 012–014 and 023–026; implementation through `0f8a170`; migration head `0043_workflow_run_input_retention.sql`; 1,021 unit and 288 real-service assertions; complete retained recovery and additive-rollout gates; independent fixed-head Spec and Standards completion GO |
-| Phase 7 — production operations | In progress | ADRs 013/015; Frankfurt launch and Ireland recovery policy accepted; maintenance boundary, non-destructive retention-control foundation, and external legal-hold command coordination through migration `0045_control_ledger_command_lock.sql`; real Object Lock proof, restore-before-serve, destructive retention/purge, operator recovery, observability, exercises, restore drills, and autoscaling remain open |
+| Phase 7 — production operations | In progress | ADRs 013/015; Frankfurt launch and Ireland recovery policy accepted; maintenance boundary, non-destructive retention-control foundation, external legal-hold command coordination through migration `0045_control_ledger_command_lock.sql`, and fail-closed dual-region control-ledger facade; coordinator wiring to that facade, real Object Lock proof, restore-before-serve, destructive retention/purge, operator recovery, observability, exercises, restore drills, and autoscaling remain open |
 
 The `0A`–`0E` checkpoints are implementation-sized subdivisions of the plan's
 single Phase 0. They do not alter the authoritative scope. Phase 0 is complete
@@ -3369,7 +3369,8 @@ Current evidence:
   under `control-ledger/workspaces/`, outside `workspaces/` tenant artifact
   prefixes. Conditional `If-None-Match: *` writes provide exact canonical replay
   or a stable content conflict. Append and reconciliation fail closed unless
-  `HeadBucket`, versioning `Enabled`, Object Lock `Enabled`, default `COMPLIANCE`
+  `HeadBucket`, a bucket location equal to the configured region, versioning
+  `Enabled`, Object Lock `Enabled`, default `COMPLIANCE`
   retention at least as long as the deployment-provided minimum, no lifecycle
   rules, and an unconditional public-principal policy deny for object deletion,
   version deletion, object replication, and replicated deletion are verified for
@@ -3439,6 +3440,40 @@ Current evidence:
   medium findings. The real Object-Lock-capable service matrix and
   restore-before-serve gate remain open, so the combined external-ledger
   checklist stays unchecked and Phase 7 remains in progress.
+- The artifact-store package now exposes the ADR 015 dual-region control-ledger
+  facade and dedicated `CONTROL_LEDGER_RECOVERY_*` configuration. Configuration
+  requires distinct primary/recovery regions, buckets, and access-key IDs, and
+  keeps both ledger buckets separate from tenant artifacts. Readiness runs both
+  per-bucket control proofs concurrently, including `GetBucketLocation`, and
+  requires distinct service-reported bucket regions before every append, read,
+  or reconciliation. Append pre-reads the target sequence in both regions.
+  Empty targets receive the same append concurrently; an exact two-sided record
+  is replayed without writing; and an exact one-sided record can write only the
+  missing side. Different command material cannot fill a one-sided gap. Settled
+  append classification distinguishes two conflicts, one-success-plus-conflict
+  integrity divergence, and retryable one-success-plus-outage partial
+  replication before considering cancellation. Canonical comparisons ignore
+  omitted/`undefined` object properties and object property order while retaining
+  array order. Reads remain strict. Reconciliation remains strict unless a
+  database command reconciliation supplies its current UUID as
+  `repairCommandId`; only one matching immediate one-sided tail after an exact
+  common page can then expose that common prefix as high water so the normal
+  conditional append heals the missing side. Explicit workspace reconciliation
+  never enables this path, no record is copied automatically, and divergent or
+  unavailable evidence remains fail closed. Owned close attempts both ledgers
+  and aggregates failures. The focused tests cover actual-region drift,
+  mandatory isolation, canonical optional fields, settled error classes,
+  one-sided exact repair, different-command poisoning prevention, strict reads
+  and reconciliation, wrapped cancellation, Ireland's legacy `EU` location
+  response, and exception-safe ownership. Artifact-store and database unit suites
+  pass 122 and 100 assertions respectively; root `pnpm check` passes all 1,135
+  unit assertions, and the retained S3Mock tenant-artifact integration passes both
+  assertions. Final security and Spec reviews report no blocker, high, or medium
+  findings. This remains memory-adapter evidence only: the PostgreSQL coordinator
+  does not yet instantiate the facade, restore-before-serve remains absent, and
+  S3Mock is not real Object Lock or AWS regional-isolation evidence. Therefore
+  the combined external-ledger checklist remains unchecked and Phase 7 remains in
+  progress.
 
 ## Update protocol
 

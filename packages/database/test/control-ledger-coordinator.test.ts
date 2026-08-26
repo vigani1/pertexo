@@ -107,6 +107,56 @@ class MemoryLedger implements ControlLedger {
   }
 }
 
+class OneSidedRepairLedger implements ControlLedger {
+  public appendCalls = 0;
+  public readonly reconcileRepairIds: (string | undefined)[] = [];
+  public readonly recoveryRecords: ControlLedgerRecord[] = [];
+
+  public constructor(public readonly primaryRecord: ControlLedgerRecord) {}
+
+  public async append(
+    request: AppendControlLedgerRecord,
+  ): Promise<ControlLedgerRecord> {
+    await Promise.resolve();
+    this.appendCalls += 1;
+    const { signal, ...material } = request;
+    void signal;
+    const { recordHash, schemaVersion, ...existingMaterial } =
+      this.primaryRecord;
+    void recordHash;
+    void schemaVersion;
+    if (JSON.stringify(material) !== JSON.stringify(existingMaterial)) {
+      throw new ControlLedgerCommandConflictError();
+    }
+    this.recoveryRecords.push(this.primaryRecord);
+    return this.primaryRecord;
+  }
+
+  public async reconcile(request: {
+    maxRecords: number;
+    projectedHash: string;
+    projectedSequence: number;
+    repairCommandId?: string;
+    signal?: AbortSignal;
+    workspaceId: string;
+  }) {
+    await Promise.resolve();
+    this.reconcileRepairIds.push(request.repairCommandId);
+    if (request.repairCommandId !== this.primaryRecord.commandId) {
+      throw new ControlLedgerReconciliationError(
+        'One-sided ledger tail does not match repair command',
+      );
+    }
+    return {
+      hasMore: false,
+      pageEndHash: request.projectedHash,
+      pageEndSequence: request.projectedSequence,
+      reachedHighWater: true,
+      records: [],
+    };
+  }
+}
+
 function fakeDatabase(events: string[], processId?: number) {
   const releaseErrors: (Error | boolean | undefined)[] = [];
   const timeouts: string[] = [];
@@ -338,6 +388,59 @@ describe('control ledger coordinator', () => {
     });
     expect(ledger.records).toHaveLength(1);
     expect(database.projections.size).toBe(1);
+  });
+
+  it('passes only the current command ID to heal an exact one-sided retry', async () => {
+    const events: string[] = [];
+    const database = fakeDatabase(events);
+    const pending = record(1, CONTROL_LEDGER_ZERO_HASH, {
+      actorRef: 'operator:test',
+      commandId,
+      commandType: 'legal_hold_placed',
+      legalAuthority: 'case-123',
+      occurredAt,
+      reason: 'Preserve records',
+      subjectId: holdId,
+    });
+    const ledger = new OneSidedRepairLedger(pending);
+    const coordinator = createControlLedgerCoordinator(config, ledger, {
+      pool: database.pool,
+    });
+
+    await expect(coordinator.placeLegalHold(input())).resolves.toMatchObject({
+      commandId,
+      sequence: 1,
+    });
+    expect(ledger.reconcileRepairIds).toEqual([commandId]);
+    expect(ledger.appendCalls).toBe(1);
+    expect(ledger.recoveryRecords).toEqual([pending]);
+    expect(database.projections.get(commandId)).toEqual(pending);
+  });
+
+  it('fails a different command before appending into a one-sided gap', async () => {
+    const events: string[] = [];
+    const database = fakeDatabase(events);
+    const pending = record(1, CONTROL_LEDGER_ZERO_HASH, {
+      actorRef: 'operator:test',
+      commandId,
+      commandType: 'legal_hold_placed',
+      legalAuthority: 'case-123',
+      occurredAt,
+      reason: 'Preserve records',
+      subjectId: holdId,
+    });
+    const ledger = new OneSidedRepairLedger(pending);
+    const coordinator = createControlLedgerCoordinator(config, ledger, {
+      pool: database.pool,
+    });
+    const differentCommandId = randomUUID();
+
+    await expect(
+      coordinator.placeLegalHold(input({ commandId: differentCommandId })),
+    ).rejects.toBeInstanceOf(ControlLedgerReconciliationError);
+    expect(ledger.reconcileRepairIds).toEqual([differentCommandId]);
+    expect(ledger.appendCalls).toBe(0);
+    expect(ledger.recoveryRecords).toHaveLength(0);
   });
 
   it('reconciles a prior external command before appending a different command', async () => {

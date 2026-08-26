@@ -1,5 +1,6 @@
 import {
   GetBucketLifecycleConfigurationCommand,
+  GetBucketLocationCommand,
   GetBucketPolicyCommand,
   GetBucketVersioningCommand,
   GetObjectCommand,
@@ -81,6 +82,7 @@ class MemoryS3 implements ControlLedgerS3Client {
     { name: 'NoSuchLifecycleConfiguration' },
   );
   public lifecycleRules: readonly unknown[] | undefined;
+  public locationConstraint: string | null | undefined = null;
   public listOutput: unknown;
   public policy: string | undefined = bucketPolicy(
     DELETE_DENY,
@@ -94,6 +96,7 @@ class MemoryS3 implements ControlLedgerS3Client {
     command:
       | GetBucketVersioningCommand
       | GetBucketLifecycleConfigurationCommand
+      | GetBucketLocationCommand
       | GetBucketPolicyCommand
       | GetObjectCommand
       | GetObjectLockConfigurationCommand
@@ -107,6 +110,9 @@ class MemoryS3 implements ControlLedgerS3Client {
       if (this.hangReadiness) await this.waitForAbort(options?.abortSignal);
       if (this.headFailure !== undefined) throw this.headFailure;
       return {};
+    }
+    if (command instanceof GetBucketLocationCommand) {
+      return { LocationConstraint: this.locationConstraint };
     }
     if (command instanceof GetBucketVersioningCommand) {
       return { Status: this.versioningEnabled ? 'Enabled' : 'Suspended' };
@@ -239,7 +245,11 @@ class MemoryS3 implements ControlLedgerS3Client {
 
 const NOW = new Date('2026-08-26T00:00:00.000Z');
 
-function fixture(client = new MemoryS3(), requestTimeoutMs = 50) {
+function fixture(
+  client = new MemoryS3(),
+  requestTimeoutMs = 50,
+  region = 'us-east-1',
+) {
   return {
     client,
     ledger: createControlLedger(
@@ -249,7 +259,7 @@ function fixture(client = new MemoryS3(), requestTimeoutMs = 50) {
         endpoint: 'http://localhost:9090',
         forcePathStyle: true,
         minRetentionDays: 30,
-        region: 'us-east-1',
+        region,
         requestTimeoutMs,
         secretAccessKey: 'secret',
       },
@@ -730,18 +740,50 @@ describe('external control ledger', () => {
       bucket: 'pertexo-control-ledger',
       minRetentionDays: 30,
       prefix: 'control-ledger/workspaces/',
+      region: 'us-east-1',
     });
     expect('delete' in ledger).toBe(false);
-    expect(client.commands).toHaveLength(5);
+    expect(client.commands).toHaveLength(6);
     expect(client.commands[0]).toBeInstanceOf(HeadBucketCommand);
-    expect(client.commands[1]).toBeInstanceOf(GetBucketVersioningCommand);
-    expect(client.commands[2]).toBeInstanceOf(
+    expect(client.commands[1]).toBeInstanceOf(GetBucketLocationCommand);
+    expect(client.commands[2]).toBeInstanceOf(GetBucketVersioningCommand);
+    expect(client.commands[3]).toBeInstanceOf(
       GetObjectLockConfigurationCommand,
     );
-    expect(client.commands[3]).toBeInstanceOf(
+    expect(client.commands[4]).toBeInstanceOf(
       GetBucketLifecycleConfigurationCommand,
     );
-    expect(client.commands[4]).toBeInstanceOf(GetBucketPolicyCommand);
+    expect(client.commands[5]).toBeInstanceOf(GetBucketPolicyCommand);
+  });
+
+  it('returns the service-reported region and rejects configured drift', async () => {
+    const matching = new MemoryS3();
+    matching.locationConstraint = 'us-east-1';
+    await expect(
+      fixture(matching).ledger.checkReadiness(),
+    ).resolves.toMatchObject({
+      region: 'us-east-1',
+    });
+
+    const empty = new MemoryS3();
+    empty.locationConstraint = '';
+    await expect(fixture(empty).ledger.checkReadiness()).resolves.toMatchObject(
+      {
+        region: 'us-east-1',
+      },
+    );
+
+    const ireland = new MemoryS3();
+    ireland.locationConstraint = 'EU';
+    await expect(
+      fixture(ireland, 50, 'eu-west-1').ledger.checkReadiness(),
+    ).resolves.toMatchObject({ region: 'eu-west-1' });
+
+    const mismatched = new MemoryS3();
+    mismatched.locationConstraint = 'eu-west-1';
+    await expect(fixture(mismatched).ledger.checkReadiness()).rejects.toThrow(
+      'does not match',
+    );
   });
 
   it('accepts default compliance retention expressed in years', async () => {
