@@ -65,6 +65,7 @@ export {
   type ControlLedger,
   type ControlLedgerCommandType,
   type ControlLedgerCoordinator,
+  type ControlLedgerInventoryResult,
   type ControlLedgerReconcileResult,
   type ControlLedgerReconciliation,
   type ControlLedgerRecord,

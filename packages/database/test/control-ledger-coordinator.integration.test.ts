@@ -216,6 +216,37 @@ afterAll(async () => {
 });
 
 describe('control ledger coordinator exact 0045 to 0046 integration', () => {
+  it('proves the maintenance boundary and stable complete inventory', async () => {
+    const coordinator = createControlLedgerCoordinator(
+      {
+        connectionString: maintenanceUrl,
+        connectionTimeoutMillis: 5_000,
+        idleTimeoutMillis: 30_000,
+        max: 2,
+        ownerRole: migrationConfig.ownerRole,
+        workerRuntimeRole: migrationConfig.workerRuntimeRole,
+      },
+      new MemoryLedger(),
+      { inventoryPageSize: 3 },
+    );
+    try {
+      await expect(
+        coordinator.checkRestoreReadiness({
+          expectedMaintenanceRole: migrationConfig.maintenanceRole,
+        }),
+      ).resolves.toBeUndefined();
+      await expect(coordinator.reconcileAllWorkspaces()).resolves.toMatchObject(
+        {
+          projectedRecordCount: 0,
+          sweepCount: 2,
+          workspaceCount: 8,
+        },
+      );
+    } finally {
+      await coordinator.close();
+    }
+  });
+
   it('keeps maintenance least privileged and serializes the workspace lock', async () => {
     if (maintenance === undefined)
       throw new Error('Maintenance pool unavailable');

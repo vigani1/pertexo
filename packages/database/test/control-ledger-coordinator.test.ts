@@ -157,7 +157,11 @@ class OneSidedRepairLedger implements ControlLedger {
   }
 }
 
-function fakeDatabase(events: string[], processId?: number) {
+function fakeDatabase(
+  events: string[],
+  processId?: number,
+  inventory: string[] = [workspaceId],
+) {
   const releaseErrors: (Error | boolean | undefined)[] = [];
   const timeouts: string[] = [];
   let highWater = { hash: CONTROL_LEDGER_ZERO_HASH, sequence: 0 };
@@ -165,6 +169,8 @@ function fakeDatabase(events: string[], processId?: number) {
   let failProjection = false;
   let transactionProjectionSnapshot = new Map<string, ControlLedgerRecord>();
   let transactionHighWater = highWater;
+  let enumerationCount = 0;
+  let onEnumerate: ((count: number) => void) | undefined;
   const client = {
     ...(processId === undefined ? {} : { processID: processId }),
     query: async (
@@ -198,6 +204,19 @@ function fakeDatabase(events: string[], processId?: number) {
               retention_control_sequence: highWater.sequence,
             },
           ],
+        };
+      } else if (normalized.includes('enumerate_workspace_control_anchors')) {
+        enumerationCount += 1;
+        onEnumerate?.(enumerationCount);
+        const after = typeof values[0] === 'string' ? values[0] : undefined;
+        const limit = Number(values[1]);
+        return {
+          rowCount: null,
+          rows: [...inventory]
+            .sort()
+            .filter((id) => after === undefined || id > after)
+            .slice(0, limit)
+            .map((id) => ({ workspace_id: id })),
         };
       } else if (normalized.includes('read_workspace_control_command')) {
         events.push('LOOKUP');
@@ -294,6 +313,9 @@ function fakeDatabase(events: string[], processId?: number) {
     timeouts,
     setFailProjection(value: boolean) {
       failProjection = value;
+    },
+    setOnEnumerate(callback: (count: number) => void) {
+      onEnumerate = callback;
     },
   };
 }
@@ -572,6 +594,75 @@ describe('control ledger coordinator', () => {
       coordinator.reconcileWorkspace({ workspaceId }),
     ).resolves.toMatchObject({ highWaterSequence: 2, projectedCount: 1 });
     expect(database.projections.size).toBe(2);
+  });
+
+  it('restarts inventory sweeps and catches a lower-sorting workspace', async () => {
+    const events: string[] = [];
+    const firstWorkspaceId = '80000000-0000-4000-8000-000000000000';
+    const insertedWorkspaceId = '10000000-0000-4000-8000-000000000000';
+    const inventory = [firstWorkspaceId];
+    const database = fakeDatabase(events, undefined, inventory);
+    database.setOnEnumerate((count) => {
+      if (count === 3) inventory.push(insertedWorkspaceId);
+    });
+    const coordinator = createControlLedgerCoordinator(
+      config,
+      new MemoryLedger(),
+      {
+        inventoryPageSize: 1,
+        maxInventoryPages: 4,
+        maxInventorySweeps: 3,
+        pool: database.pool,
+      },
+    );
+
+    await expect(coordinator.reconcileAllWorkspaces()).resolves.toMatchObject({
+      projectedRecordCount: 0,
+      sweepCount: 3,
+      workspaceCount: 2,
+    });
+  });
+
+  it('requires a stable zero-projection sweep after a command arrives', async () => {
+    const events: string[] = [];
+    const database = fakeDatabase(events);
+    const ledger = new MemoryLedger();
+    database.setOnEnumerate((count) => {
+      if (count !== 2) return;
+      ledger.records.push(record(1, CONTROL_LEDGER_ZERO_HASH));
+    });
+    const coordinator = createControlLedgerCoordinator(config, ledger, {
+      maxInventorySweeps: 3,
+      pool: database.pool,
+    });
+
+    await expect(coordinator.reconcileAllWorkspaces()).resolves.toMatchObject({
+      projectedRecordCount: 1,
+      sweepCount: 3,
+      workspaceCount: 1,
+    });
+  });
+
+  it('fails closed when the inventory cannot stabilize within its bound', async () => {
+    const events: string[] = [];
+    const database = fakeDatabase(events);
+    const ledger = new MemoryLedger();
+    database.setOnEnumerate((count) => {
+      ledger.records.push(
+        record(
+          count,
+          ledger.records.at(-1)?.recordHash ?? CONTROL_LEDGER_ZERO_HASH,
+        ),
+      );
+    });
+    const coordinator = createControlLedgerCoordinator(config, ledger, {
+      maxInventorySweeps: 2,
+      pool: database.pool,
+    });
+
+    await expect(coordinator.reconcileAllWorkspaces()).rejects.toBeInstanceOf(
+      ControlLedgerReconciliationError,
+    );
   });
 
   it('commits backlog chunks before appending a command at proven high water', async () => {

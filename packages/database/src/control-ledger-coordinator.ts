@@ -1,7 +1,13 @@
+import { createHash } from 'node:crypto';
+
 import { Pool, type PoolClient, type QueryConfig, type QueryResult } from 'pg';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from './config.js';
+import {
+  EXPECTED_MIGRATION_HEAD,
+  MINIMUM_POSTGRES_MAJOR,
+} from './readiness.js';
 
 const ZERO_HASH = '0'.repeat(64);
 const BACKEND_CANCELLATION_TIMEOUT_MS = 1_000;
@@ -104,13 +110,27 @@ export interface ControlLedgerReconcileResult {
   readonly workspaceId: string;
 }
 
+export interface ControlLedgerInventoryResult {
+  readonly inventoryDigest: string;
+  readonly projectedRecordCount: number;
+  readonly sweepCount: number;
+  readonly workspaceCount: number;
+}
+
 export interface ControlLedgerCoordinator {
+  checkRestoreReadiness(input: {
+    readonly expectedMaintenanceRole: string;
+    readonly signal?: AbortSignal;
+  }): Promise<void>;
   close(): Promise<void>;
   placeLegalHold(input: LegalHoldCommandInput): Promise<LegalHoldCommandResult>;
   reconcileWorkspace(input: {
     readonly signal?: AbortSignal;
     readonly workspaceId: string;
   }): Promise<ControlLedgerReconcileResult>;
+  reconcileAllWorkspaces(input?: {
+    readonly signal?: AbortSignal;
+  }): Promise<ControlLedgerInventoryResult>;
   releaseLegalHold(
     input: LegalHoldCommandInput,
   ): Promise<LegalHoldCommandResult>;
@@ -169,8 +189,12 @@ const optionsSchema = z.object({
     .max(300_000)
     .default(120_000),
   lockTimeoutMs: z.number().int().min(100).max(300_000).default(10_000),
+  inventoryPageSize: z.number().int().min(1).max(100).default(100),
+  maxInventoryPages: z.number().int().min(1).max(100_000).default(10_000),
+  maxInventorySweeps: z.number().int().min(2).max(100).default(3),
   maxPages: z.number().int().min(1).max(1_000).default(10),
   maxRecords: z.number().int().min(1).max(1_000).default(1_000),
+  maxWorkspaceReconcileAttempts: z.number().int().min(1).max(1_000).default(10),
   pageSize: z.number().int().min(1).max(100).default(100),
   statementTimeoutMs: z.number().int().min(1_000).max(300_000).default(30_000),
 });
@@ -422,9 +446,13 @@ export function createControlLedgerCoordinator(
   ledger: ControlLedger,
   options: Readonly<{
     externalOperationTimeoutMs?: number;
+    inventoryPageSize?: number;
     lockTimeoutMs?: number;
+    maxInventoryPages?: number;
+    maxInventorySweeps?: number;
     maxPages?: number;
     maxRecords?: number;
+    maxWorkspaceReconcileAttempts?: number;
     pageSize?: number;
     pool?: MaintenancePool;
     statementTimeoutMs?: number;
@@ -605,6 +633,83 @@ export function createControlLedgerCoordinator(
     throw new ControlLedgerReconciliationBoundError();
   };
 
+  const enumerateAnchors = async (
+    afterWorkspaceId: string | undefined,
+    signal?: AbortSignal,
+  ): Promise<readonly string[]> => {
+    const client = await acquirePoolClient(pool, signal);
+    try {
+      const result = await query<{ workspace_id: string }>(
+        client,
+        'select workspace_id from app.enumerate_workspace_control_anchors($1,$2)',
+        [afterWorkspaceId ?? null, parsedOptions.inventoryPageSize],
+        signal,
+      );
+      const workspaceIds = result.rows.map((row) =>
+        uuidSchema.parse(row.workspace_id),
+      );
+      let previous = afterWorkspaceId;
+      for (const workspaceId of workspaceIds) {
+        if (previous !== undefined && workspaceId <= previous)
+          throw new ControlLedgerReconciliationError(
+            'Workspace control anchor inventory is not strictly ordered',
+          );
+        previous = workspaceId;
+      }
+      return Object.freeze(workspaceIds);
+    } finally {
+      client.release();
+    }
+  };
+
+  const reconcileSweep = async (
+    signal?: AbortSignal,
+  ): Promise<{
+    readonly digest: string;
+    readonly projectedRecordCount: number;
+    readonly workspaceCount: number;
+  }> => {
+    const digest = createHash('sha256');
+    let afterWorkspaceId: string | undefined;
+    let projectedRecordCount = 0;
+    let workspaceCount = 0;
+    for (let page = 0; page < parsedOptions.maxInventoryPages; page += 1) {
+      throwIfAborted(signal);
+      const workspaceIds = await enumerateAnchors(afterWorkspaceId, signal);
+      for (const workspaceId of workspaceIds) {
+        let reconciled: ControlLedgerReconcileResult | undefined;
+        for (
+          let attempt = 0;
+          attempt < parsedOptions.maxWorkspaceReconcileAttempts;
+          attempt += 1
+        ) {
+          try {
+            reconciled = await reconcileWorkspace(workspaceId, signal);
+            break;
+          } catch (error: unknown) {
+            if (!(error instanceof ControlLedgerReconciliationBoundError))
+              throw error;
+          }
+        }
+        if (reconciled === undefined)
+          throw new ControlLedgerReconciliationBoundError();
+        digest.update(
+          `${workspaceId}\0${String(reconciled.highWaterSequence)}\0${reconciled.highWaterHash}\n`,
+        );
+        projectedRecordCount += reconciled.projectedCount;
+        workspaceCount += 1;
+      }
+      if (workspaceIds.length < parsedOptions.inventoryPageSize)
+        return Object.freeze({
+          digest: digest.digest('hex'),
+          projectedRecordCount,
+          workspaceCount,
+        });
+      afterWorkspaceId = workspaceIds.at(-1);
+    }
+    throw new ControlLedgerReconciliationBoundError();
+  };
+
   const command = async (
     commandType: LegalHoldCommandType,
     input: LegalHoldCommandInput,
@@ -728,6 +833,60 @@ export function createControlLedgerCoordinator(
   };
 
   return Object.freeze({
+    checkRestoreReadiness: async (input: {
+      readonly expectedMaintenanceRole: string;
+      readonly signal?: AbortSignal;
+    }): Promise<void> => {
+      const parsedInput = z
+        .object({
+          expectedMaintenanceRole: z.string().regex(/^[a-z_][a-z0-9_]*$/u),
+          signal: z
+            .custom<AbortSignal>((value) => value instanceof AbortSignal)
+            .optional(),
+        })
+        .strict()
+        .parse(input);
+      const client = await acquirePoolClient(pool, parsedInput.signal);
+      try {
+        const result = await query<{
+          boundary_compatible: boolean;
+          current_user: string;
+          migration_head: string | null;
+          postgres_major: number;
+        }>(
+          client,
+          `select current_user,
+             current_setting('server_version_num')::integer / 10000 as postgres_major,
+             (select name from pertexo_internal.schema_migrations order by name desc limit 1) as migration_head,
+             not role.rolsuper
+               and not role.rolbypassrls
+               and not pg_has_role(current_user,$1::name,'MEMBER')
+               and has_function_privilege(current_user,'app.lock_workspace_control_ledger(uuid)','EXECUTE')
+               and has_function_privilege(current_user,'app.project_workspace_legal_hold(uuid,bigint,uuid,character varying,uuid,character,character,character varying,character varying,character varying,timestamp with time zone)','EXECUTE')
+               and has_function_privilege(current_user,'app.project_workspace_deletion(uuid,bigint,uuid,character varying,uuid,character,character,character varying,character varying,character varying,timestamp with time zone,interval)','EXECUTE')
+               and has_function_privilege(current_user,'app.enumerate_workspace_control_anchors(uuid,integer)','EXECUTE')
+               and not has_table_privilege(current_user,'app.workspaces','INSERT,UPDATE,DELETE,TRUNCATE')
+               and not has_table_privilege(current_user,'app.workspace_control_ledger_projection','INSERT,UPDATE,DELETE,TRUNCATE')
+               as boundary_compatible
+           from pg_roles role where role.rolname=current_user`,
+          [config.ownerRole],
+          parsedInput.signal,
+        );
+        const row = result.rows.at(0);
+        if (
+          result.rowCount !== 1 ||
+          row?.current_user !== parsedInput.expectedMaintenanceRole ||
+          row.postgres_major < MINIMUM_POSTGRES_MAJOR ||
+          row.migration_head !== EXPECTED_MIGRATION_HEAD ||
+          !row.boundary_compatible
+        )
+          throw new Error(
+            'Restore maintenance database boundary is incompatible',
+          );
+      } finally {
+        client.release();
+      }
+    },
     close: async (): Promise<void> => {
       if (ownsPool) await pool.end();
     },
@@ -747,6 +906,39 @@ export function createControlLedgerCoordinator(
         .strict()
         .parse(input);
       return reconcileWorkspace(parsed.workspaceId, parsed.signal);
+    },
+    reconcileAllWorkspaces: async (input = {}) => {
+      const parsedInput = z
+        .object({
+          signal: z
+            .custom<AbortSignal>((value) => value instanceof AbortSignal)
+            .optional(),
+        })
+        .strict()
+        .parse(input);
+      let previous: Awaited<ReturnType<typeof reconcileSweep>> | undefined;
+      let projectedRecordCount = 0;
+      for (
+        let sweepCount = 1;
+        sweepCount <= parsedOptions.maxInventorySweeps;
+        sweepCount += 1
+      ) {
+        const current = await reconcileSweep(parsedInput.signal);
+        projectedRecordCount += current.projectedRecordCount;
+        if (
+          current.digest === previous?.digest &&
+          current.workspaceCount === previous.workspaceCount &&
+          current.projectedRecordCount === 0
+        )
+          return Object.freeze({
+            inventoryDigest: current.digest,
+            projectedRecordCount,
+            sweepCount,
+            workspaceCount: current.workspaceCount,
+          });
+        previous = current;
+      }
+      throw new ControlLedgerReconciliationBoundError();
     },
     releaseLegalHold: (input: LegalHoldCommandInput) =>
       command('legal_hold_released', input),
