@@ -1,0 +1,49 @@
+groups:
+  - name: pertexo-user-impact
+    rules:
+      - alert: PertexoApiEligibleErrorBudgetBurn
+        expr: |
+          sum(rate(pertexo_api_eligible_request_count_total{outcome="eligible_failure"}[5m]))
+          /
+          clamp_min(sum(rate(pertexo_api_eligible_request_count_total[5m])), 0.001)
+          > 0.01
+        for: 10m
+        labels:
+          severity: page
+        annotations:
+          summary: API eligible-request failures exceed the 99.9% objective
+      - alert: PertexoOutboxOldestAgeHigh
+        expr: max(pertexo_transport_outbox_oldest_age_seconds) > 60
+        for: 10m
+        labels:
+          severity: page
+        annotations:
+          summary: Durable accepted work has waited over one minute for dispatch
+      - alert: PertexoQueueOldestJobAgeHigh
+        expr: max by (queue_name) (pertexo_transport_queue_oldest_job_age_seconds) > 60
+        for: 10m
+        labels:
+          severity: page
+        annotations:
+          summary: A worker queue has user-visible delayed work
+      - alert: PertexoRetentionFailures
+        expr: increase(pertexo_retention_batch_count_total{outcome="failed"}[15m]) > 0
+        for: 5m
+        labels:
+          severity: ticket
+        annotations:
+          summary: Destructive maintenance reported a bounded failure
+      - alert: PertexoLifecycleCommandBacklog
+        expr: max(pertexo_lifecycle_command_oldest_age_seconds) > 30
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: Accepted lifecycle revocation commands are delayed
+      - alert: PertexoControlLedgerDivergence
+        expr: increase(pertexo_control_ledger_reconciliation_count_total{outcome!="agreed"}[5m]) > 0
+        for: 1m
+        labels:
+          severity: page
+        annotations:
+          summary: Dual-region control-ledger agreement is not proven

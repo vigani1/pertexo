@@ -1,0 +1,60 @@
+{
+  "annotations": { "list": [] },
+  "editable": false,
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "id": 1,
+      "targets": [
+        {
+          "expr": "1 - (sum(rate(pertexo_api_eligible_request_count_total{outcome=\"eligible_failure\"}[5m])) / clamp_min(sum(rate(pertexo_api_eligible_request_count_total[5m])), 0.001))",
+          "refId": "A"
+        }
+      ],
+      "title": "Eligible API Availability",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+      "id": 2,
+      "targets": [
+        {
+          "expr": "max(pertexo_transport_outbox_oldest_age_seconds)",
+          "refId": "A"
+        },
+        {
+          "expr": "max by (queue_name) (pertexo_transport_queue_oldest_job_age_seconds)",
+          "refId": "B"
+        }
+      ],
+      "title": "Accepted Work Backlog Age",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+      "id": 3,
+      "targets": [
+        {
+          "expr": "sum by (retention_kind, outcome) (rate(pertexo_retention_batch_count_total[15m]))",
+          "refId": "A"
+        }
+      ],
+      "title": "Retention Outcomes",
+      "type": "timeseries"
+    }
+  ],
+  "schemaVersion": 41,
+  "tags": ["pertexo", "production-operations"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timezone": "utc",
+  "title": "Pertexo Production Operations",
+  "uid": "pertexo-production-operations",
+  "version": 1
+}

@@ -3824,6 +3824,18 @@ Current evidence:
   readiness probes are excluded. Raw URLs, workspace/run IDs, request IDs, and
   arbitrary response codes are never metric attributes. API typechecking and all
   264 API unit assertions pass, including a cardinality regression test.
+- A local observability stack now wires OTLP HTTP/gRPC through a memory-limited,
+  batched OpenTelemetry Collector into Prometheus and a provisioned read-only
+  Grafana operations dashboard. Alert rules cover eligible API error-budget burn,
+  outbox and queue oldest age, retention failures, lifecycle-command backlog, and
+  dual-ledger disagreement without tenant identifiers. Static asset tests parse
+  the dashboard, enforce forbidden high-cardinality dimensions, and prove the
+  collector, scrape, datasource, and dashboard provisioning links; all 33
+  observability assertions and Compose rendering pass. Local image-level
+  `promtool` and Collector validation could not run because Docker credential
+  lookup timed out while pulling the pinned images. Production pager routing and
+  synthetic fire/clear proof remain organization/deployment work, so the broad
+  dashboard/alert checklist remains open.
 
 ## Update protocol
 
