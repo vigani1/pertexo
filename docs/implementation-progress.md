@@ -23,7 +23,7 @@ not complete a phase.
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 5 — orchestration slice | Complete | ADRs 008/017/018/019/020/021/022; implementation through `9d7e071`; migration head `0034_run_failure_notifications.sql`; 862 unit assertions and complete real-service/recovery matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 6 — V1 providers and triggers | Complete | ADRs 012–014 and 023–026; implementation through `0f8a170`; migration head `0043_workflow_run_input_retention.sql`; 1,021 unit and 288 real-service assertions; complete retained recovery and additive-rollout gates; independent fixed-head Spec and Standards completion GO |
-| Phase 7 — production operations | In progress | ADRs 013/015/027; Frankfurt launch and Ireland recovery policy accepted; maintenance and lifecycle-command credential boundaries, automatic durable dual-ledger/hold-gated 30/90/365-day PostgreSQL and object-store retention through migration `0055_standard_retention_classes.sql`, a fenced and crash-repairable workspace-purge foundation at migration `0056`, seven-day preview retention, route-template-only API availability/latency SLIs, all-six-command recovery projection plus legal-hold command coordination, durable operation-bound and lease-fenced lifecycle intents, atomic persisted-surface deletion side effects, asynchronous `202 Accepted` lifecycle API operations and direct-mutation revocation, bounded dual-region lifecycle coordinator and standalone command workers, fail-closed dual-region control-ledger facade, bounded restore-before-serve executable, and a two-process MinIO integration harness; MinIO policy incompatibility blocks the full local control proof, while purge data/object steps, standard-class dry-run/operator commands, deployed admission wiring, AWS Object Lock/regional proof, broader observability, exercises, restore drills, and autoscaling remain open; API-key and connected-subscription entities are explicitly deferred by the V1 plan and are not invented solely for deletion |
+| Phase 7 — production operations | In progress | ADRs 013/015/027/028; Frankfurt launch and Ireland recovery policy accepted; maintenance and lifecycle-command credential boundaries, automatic durable dual-ledger/hold-gated 30/90/365-day PostgreSQL and object-store retention through migration `0055_standard_retention_classes.sql`, a fenced and crash-repairable workspace-purge foundation at migration `0056`, seven-day preview retention, route-template-only API availability/latency SLIs, non-root read-only ECS container/task contracts with separate roles and release-job migrations, all-six-command recovery projection plus legal-hold command coordination, durable operation-bound and lease-fenced lifecycle intents, atomic persisted-surface deletion side effects, asynchronous `202 Accepted` lifecycle API operations and direct-mutation revocation, bounded dual-region lifecycle coordinator and standalone command workers, fail-closed dual-region control-ledger facade, bounded restore-before-serve executable, and a two-process MinIO integration harness; MinIO policy incompatibility blocks the full local control proof, while purge data/object steps, standard-class dry-run/operator commands, deployed AWS/IAM/admission wiring, AWS Object Lock/regional proof, broader observability, exercises, restore drills, and autoscaling remain open; API-key and connected-subscription entities are explicitly deferred by the V1 plan and are not invented solely for deletion |
 
 The `0A`–`0E` checkpoints are implementation-sized subdivisions of the plan's
 single Phase 0. They do not alter the authoritative scope. Phase 0 is complete
@@ -3522,6 +3522,22 @@ Current evidence:
   rows, object versions, secret versions, indexes, and retained-fact minimization
   are deliberately not implemented by this foundation, so workspace purge and
   deletion-completion checklist items remain open.
+- Accepted ADR 028 defines a repository-owned ECS workload manifest and migration
+  release-job contract. The multi-stage production image runs as UID/GID 10001
+  under `tini` with production dependencies only. Rendered Fargate definitions
+  keep root filesystems read-only with ephemeral `/tmp`, separate API, worker,
+  lifecycle-command, retention, recovery, and migration commands, use readiness
+  or process/exit health appropriate to each role, and source credentials only
+  through Secrets Manager while non-sensitive configuration comes through SSM.
+  Static validation rejects plaintext credential placement, combined or missing
+  role commands, missing service health checks, and incorrect Frankfurt/Ireland
+  API/worker counts. ARM64 and declared `linux/amd64` images built successfully;
+  non-root, read-only-root, entrypoint, executable, migration-SQL, and
+  production-dependency smoke checks passed. `pnpm deployment:check`, deterministic
+  rendering of all six definitions, focused ESLint, and release-shell syntax pass.
+  Actual IAM policies, ECS services, networking, secret delivery, release rollout,
+  and the restore gate still require AWS, so the deployment checklist remains
+  open rather than treating manifests as production proof.
 - The artifact-store package now exposes a separate append-only ADR 013 control
   ledger adapter and dedicated `CONTROL_LEDGER_*` configuration without changing
   the tenant `ArtifactStore` API or worker artifact configuration. Its principal

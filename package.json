@@ -15,6 +15,8 @@
     "contracts:generate": "pnpm --filter @pertexo/contracts contracts:generate",
     "dev:api": "pnpm --filter @pertexo/api dev",
     "dev:worker": "pnpm --filter @pertexo/worker dev",
+    "deployment:check": "node infrastructure/ecs/validate-deployment.mjs",
+    "deployment:render": "node infrastructure/ecs/render-task-definitions.mjs",
     "db:migrate": "pnpm --filter @pertexo/database db:migrate",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

@@ -1,0 +1,163 @@
+{
+  "schemaVersion": 1,
+  "platform": {
+    "architecture": "X86_64",
+    "cpu": "512",
+    "memory": "1024",
+    "networkMode": "awsvpc",
+    "operatingSystem": "LINUX"
+  },
+  "workloads": {
+    "api": {
+      "kind": "service",
+      "desiredCount": { "eu-central-1": 2, "eu-west-1": 0 },
+      "command": ["node", "apps/api/dist/main.js"],
+      "environment": {
+        "HOST": "0.0.0.0",
+        "NODE_ENV": "production",
+        "PORT": "3000"
+      },
+      "configuration": [
+        "OIDC_AUTHORIZATION_ENDPOINT",
+        "OIDC_CLIENT_ID",
+        "OIDC_ISSUER",
+        "OIDC_JWKS_URI",
+        "OIDC_REDIRECT_URI",
+        "OIDC_TOKEN_ENDPOINT",
+        "OIDC_TRANSACTION_KEY_VERSION"
+      ],
+      "secrets": [
+        "DATABASE_API_URL",
+        "REDIS_URL",
+        "OIDC_CLIENT_SECRET",
+        "OIDC_TRANSACTION_KEY"
+      ],
+      "port": 3000,
+      "healthCheck": [
+        "CMD-SHELL",
+        "node -e \"fetch('http://127.0.0.1:3000/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""
+      ]
+    },
+    "worker": {
+      "kind": "service",
+      "desiredCount": { "eu-central-1": 2, "eu-west-1": 0 },
+      "command": [
+        "/bin/sh",
+        "-c",
+        "export WORKER_INSTANCE_ID=$HOSTNAME; exec node apps/worker/dist/main.js"
+      ],
+      "environment": { "NODE_ENV": "production" },
+      "configuration": [
+        "ARTIFACT_STORE_BUCKET",
+        "ARTIFACT_STORE_ENDPOINT",
+        "ARTIFACT_STORE_FORCE_PATH_STYLE",
+        "ARTIFACT_STORE_REGION"
+      ],
+      "secrets": [
+        "DATABASE_WORKER_URL",
+        "DATABASE_DISPATCHER_URL",
+        "REDIS_URL",
+        "ARTIFACT_STORE_ACCESS_KEY_ID",
+        "ARTIFACT_STORE_SECRET_ACCESS_KEY"
+      ],
+      "healthCheck": ["CMD-SHELL", "kill -0 1"]
+    },
+    "lifecycle-command": {
+      "kind": "service",
+      "desiredCount": { "eu-central-1": 2, "eu-west-1": 0 },
+      "command": [
+        "/bin/sh",
+        "-c",
+        "export LIFECYCLE_COMMAND_LEASE_OWNER=$HOSTNAME; exec node apps/lifecycle-command/dist/main.js"
+      ],
+      "environment": { "NODE_ENV": "production" },
+      "configuration": [
+        "CONTROL_LEDGER_BUCKET",
+        "CONTROL_LEDGER_ENDPOINT",
+        "CONTROL_LEDGER_FORCE_PATH_STYLE",
+        "CONTROL_LEDGER_MIN_RETENTION_DAYS",
+        "CONTROL_LEDGER_REGION",
+        "CONTROL_LEDGER_RECOVERY_BUCKET",
+        "CONTROL_LEDGER_RECOVERY_ENDPOINT",
+        "CONTROL_LEDGER_RECOVERY_FORCE_PATH_STYLE",
+        "CONTROL_LEDGER_RECOVERY_MIN_RETENTION_DAYS",
+        "CONTROL_LEDGER_RECOVERY_REGION"
+      ],
+      "secrets": [
+        "DATABASE_LIFECYCLE_COMMAND_URL",
+        "CONTROL_LEDGER_ACCESS_KEY_ID",
+        "CONTROL_LEDGER_SECRET_ACCESS_KEY",
+        "CONTROL_LEDGER_RECOVERY_ACCESS_KEY_ID",
+        "CONTROL_LEDGER_RECOVERY_SECRET_ACCESS_KEY"
+      ],
+      "healthCheck": ["CMD-SHELL", "kill -0 1"]
+    },
+    "retention": {
+      "kind": "service",
+      "desiredCount": { "eu-central-1": 2, "eu-west-1": 0 },
+      "command": [
+        "/bin/sh",
+        "-c",
+        "export RETENTION_LEASE_OWNER=$HOSTNAME; exec node apps/retention/dist/main.js"
+      ],
+      "environment": { "NODE_ENV": "production" },
+      "configuration": [
+        "ARTIFACT_STORE_BUCKET",
+        "ARTIFACT_STORE_ENDPOINT",
+        "ARTIFACT_STORE_FORCE_PATH_STYLE",
+        "ARTIFACT_STORE_REGION",
+        "CONTROL_LEDGER_BUCKET",
+        "CONTROL_LEDGER_ENDPOINT",
+        "CONTROL_LEDGER_FORCE_PATH_STYLE",
+        "CONTROL_LEDGER_MIN_RETENTION_DAYS",
+        "CONTROL_LEDGER_REGION",
+        "CONTROL_LEDGER_RECOVERY_BUCKET",
+        "CONTROL_LEDGER_RECOVERY_ENDPOINT",
+        "CONTROL_LEDGER_RECOVERY_FORCE_PATH_STYLE",
+        "CONTROL_LEDGER_RECOVERY_MIN_RETENTION_DAYS",
+        "CONTROL_LEDGER_RECOVERY_REGION"
+      ],
+      "secrets": [
+        "DATABASE_MAINTENANCE_URL",
+        "ARTIFACT_STORE_ACCESS_KEY_ID",
+        "ARTIFACT_STORE_SECRET_ACCESS_KEY",
+        "CONTROL_LEDGER_ACCESS_KEY_ID",
+        "CONTROL_LEDGER_SECRET_ACCESS_KEY",
+        "CONTROL_LEDGER_RECOVERY_ACCESS_KEY_ID",
+        "CONTROL_LEDGER_RECOVERY_SECRET_ACCESS_KEY"
+      ],
+      "healthCheck": ["CMD-SHELL", "kill -0 1"]
+    },
+    "recovery": {
+      "kind": "job",
+      "command": ["node", "apps/recovery/dist/main.js"],
+      "environment": { "NODE_ENV": "production" },
+      "configuration": [
+        "CONTROL_LEDGER_BUCKET",
+        "CONTROL_LEDGER_ENDPOINT",
+        "CONTROL_LEDGER_FORCE_PATH_STYLE",
+        "CONTROL_LEDGER_MIN_RETENTION_DAYS",
+        "CONTROL_LEDGER_REGION",
+        "CONTROL_LEDGER_RECOVERY_BUCKET",
+        "CONTROL_LEDGER_RECOVERY_ENDPOINT",
+        "CONTROL_LEDGER_RECOVERY_FORCE_PATH_STYLE",
+        "CONTROL_LEDGER_RECOVERY_MIN_RETENTION_DAYS",
+        "CONTROL_LEDGER_RECOVERY_REGION"
+      ],
+      "secrets": [
+        "DATABASE_MAINTENANCE_URL",
+        "CONTROL_LEDGER_ACCESS_KEY_ID",
+        "CONTROL_LEDGER_SECRET_ACCESS_KEY",
+        "CONTROL_LEDGER_RECOVERY_ACCESS_KEY_ID",
+        "CONTROL_LEDGER_RECOVERY_SECRET_ACCESS_KEY"
+      ]
+    },
+    "migration": {
+      "kind": "release-job",
+      "command": ["node", "packages/database/dist/migrate.js"],
+      "environment": { "NODE_ENV": "production" },
+      "configuration": [],
+      "secrets": ["DATABASE_MIGRATION_URL"]
+    }
+  }
+}
