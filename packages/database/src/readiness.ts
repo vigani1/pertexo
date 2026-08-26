@@ -8,8 +8,7 @@ import {
   type CompatibilityReleaseExpectationSet,
 } from './compatibility-release.js';
 
-export const EXPECTED_MIGRATION_HEAD =
-  '0052_workflow_run_input_retention_enforcement.sql';
+export const EXPECTED_MIGRATION_HEAD = '0053_preview_retention_enforcement.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -1063,7 +1062,7 @@ export async function checkDatabaseReadiness(
           where routine.oid = to_regprocedure('app.complete_preview_cleanup(uuid,uuid)')
             and routine.prosecdef
             and pg_get_userbyid(routine.proowner) = $1
-            and has_function_privilege($2, routine.oid, 'EXECUTE')
+            and not has_function_privilege($2, routine.oid, 'EXECUTE')
         )
         and exists (
           select 1 from pg_class protected

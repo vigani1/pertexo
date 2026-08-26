@@ -1,9 +1,4 @@
 import {
-  createArtifactStore,
-  type ArtifactStore,
-  type ArtifactStoreConfig,
-} from '@pertexo/artifact-store';
-import {
   createFailureNotificationStore,
   type DatabaseConfig,
   type FailureNotificationStore,
@@ -18,12 +13,6 @@ import {
   type QueueConsumerObserver,
 } from '@pertexo/queue';
 
-import {
-  createDatabasePreviewCleanupStore,
-  createPreviewCleanupHandler,
-  mapPreviewCleanupError,
-  type PreviewCleanupStore,
-} from './preview-cleanup-runtime.js';
 import {
   createDatabasePreviewReconciliationStore,
   createPreviewReconciliationHandler,
@@ -43,18 +32,12 @@ export interface PreviewMaintenanceRuntime {
 
 export async function createPreviewMaintenanceRuntime(
   options: Readonly<{
-    artifactStore?: ArtifactStoreConfig;
     database: DatabaseConfig;
     observer?: QueueConsumerObserver;
     redisUrl: string;
     failureNotificationDelivery?: FailureNotificationDeliveryCapability;
   }>,
   dependencies: Readonly<{
-    artifactStore?: Pick<
-      ArtifactStore,
-      'checkReadiness' | 'delete' | 'head'
-    > & { close?: () => void };
-    cleanupStore?: PreviewCleanupStore & { close?: () => Promise<void> };
     consumerFactory?: typeof createQueueConsumer;
     reconciliationStore?: PreviewReconciliationStore & {
       close?: () => Promise<void>;
@@ -82,50 +65,12 @@ export async function createPreviewMaintenanceRuntime(
           maxAttempts: 3,
           retryDelaySeconds: 30,
         });
-  const hasInjectedCleanupStore = dependencies.cleanupStore !== undefined;
-  const hasInjectedArtifactStore = dependencies.artifactStore !== undefined;
-  if (
-    options.artifactStore === undefined &&
-    hasInjectedCleanupStore !== hasInjectedArtifactStore
-  )
-    throw new TypeError(
-      'Preview maintenance cleanup dependencies are incomplete',
-    );
-  const cleanupEnabled =
-    options.artifactStore !== undefined ||
-    (hasInjectedCleanupStore && hasInjectedArtifactStore);
-  const cleanupStore = !cleanupEnabled
-    ? undefined
-    : (dependencies.cleanupStore ??
-      createDatabasePreviewCleanupStore(options.database));
-  const artifacts =
-    dependencies.artifactStore ??
-    (options.artifactStore === undefined
-      ? undefined
-      : createArtifactStore(options.artifactStore));
-  const artifactQuiescenceSeconds =
-    options.artifactStore === undefined
-      ? undefined
-      : Math.min(
-          120,
-          Math.ceil(options.artifactStore.requestTimeoutMs / 1_000) + 1,
-        );
   const reconciliation = createPreviewReconciliationHandler(
     reconciliationStore,
     dependencies.previewTelemetry,
   );
-  const cleanup =
-    cleanupStore === undefined || artifacts === undefined
-      ? undefined
-      : createPreviewCleanupHandler(
-          cleanupStore,
-          artifacts,
-          25,
-          artifactQuiescenceSeconds ?? 60,
-        );
   let consumer: QueueConsumer;
   try {
-    await artifacts?.checkReadiness();
     consumer = (dependencies.consumerFactory ?? createQueueConsumer)({
       queueName: QUEUE_NAME.maintenance,
       redisUrl: options.redisUrl,
@@ -135,18 +80,6 @@ export async function createPreviewMaintenanceRuntime(
             await reconciliation.handle(delivery, context);
           } catch (error: unknown) {
             throw mapPreviewReconciliationError(error);
-          }
-          return;
-        }
-        if (delivery.name === JOB_NAME.sweepExpiredPreviews) {
-          if (cleanup === undefined)
-            throw new InvalidQueueDeliveryError(
-              'Preview cleanup is not enabled in this maintenance runtime',
-            );
-          try {
-            await cleanup.handle(delivery, context);
-          } catch (error: unknown) {
-            throw mapPreviewCleanupError(error);
           }
           return;
         }
@@ -169,8 +102,6 @@ export async function createPreviewMaintenanceRuntime(
     await Promise.allSettled([
       reconciliationStore.close?.(),
       failureNotificationStore?.close(),
-      cleanupStore?.close?.(),
-      Promise.resolve(artifacts?.close?.()),
     ]);
     throw error;
   }
@@ -207,8 +138,6 @@ export async function createPreviewMaintenanceRuntime(
           recoveryLoop,
           reconciliationStore.close?.(),
           failureNotificationStore?.close(),
-          cleanupStore?.close?.(),
-          Promise.resolve(artifacts?.close?.()),
         ]);
         const failure = results.find((result) => result.status === 'rejected');
         if (failure?.status === 'rejected') throw failure.reason;

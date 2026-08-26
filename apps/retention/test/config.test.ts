@@ -3,6 +3,11 @@ import { describe, expect, it } from 'vitest';
 import { parseRetentionWorkerConfig } from '../src/config.js';
 
 const environment = {
+  ARTIFACT_STORE_ACCESS_KEY_ID: 'artifact-key',
+  ARTIFACT_STORE_BUCKET: 'pertexo-artifacts',
+  ARTIFACT_STORE_ENDPOINT: 'https://s3.eu-central-1.amazonaws.com',
+  ARTIFACT_STORE_REGION: 'eu-central-1',
+  ARTIFACT_STORE_SECRET_ACCESS_KEY: 'artifact-secret',
   CONTROL_LEDGER_ACCESS_KEY_ID: 'primary-key',
   CONTROL_LEDGER_BUCKET: 'pertexo-control-primary',
   CONTROL_LEDGER_ENDPOINT: 'https://s3.eu-central-1.amazonaws.com',
@@ -23,6 +28,7 @@ const environment = {
 describe('retention worker configuration', () => {
   it('uses bounded defaults and only the maintenance database credential', () => {
     expect(parseRetentionWorkerConfig(environment)).toMatchObject({
+      artifactStore: { bucket: 'pertexo-artifacts' },
       database: { max: 2 },
       expectedMaintenanceRole: 'pertexo_maintenance',
       observability: { serviceName: 'pertexo-retention' },
@@ -57,5 +63,14 @@ describe('retention worker configuration', () => {
         RETENTION_DATABASE_STATEMENT_TIMEOUT_MS: '30000',
       }),
     ).toThrow('timeout budget must be shorter than the lease');
+  });
+
+  it('rejects reuse of a control-ledger principal for tenant artifacts', () => {
+    expect(() =>
+      parseRetentionWorkerConfig({
+        ...environment,
+        ARTIFACT_STORE_ACCESS_KEY_ID: environment.CONTROL_LEDGER_ACCESS_KEY_ID,
+      }),
+    ).toThrow('distinct principals and buckets');
   });
 });

@@ -290,6 +290,14 @@ export function createRetentionDatabase(
               'app.release_retention_batch(uuid,uuid,bigint)','EXECUTE')
             and has_function_privilege(current_user,
               'app.execute_workflow_run_input_retention_page(uuid,uuid,bigint,integer,bigint,character)','EXECUTE')
+            and has_function_privilege(current_user,
+              'app.find_due_preview_cleanup(integer)','EXECUTE')
+            and has_function_privilege(current_user,
+              'app.prepare_preview_cleanup_step(uuid,uuid,integer,bigint,character)','EXECUTE')
+            and has_function_privilege(current_user,
+              'app.complete_preview_artifact_cleanup(uuid,uuid,bigint,character)','EXECUTE')
+            and has_function_privilege(current_user,
+              'app.finish_preview_cleanup(uuid,uuid,bigint,character)','EXECUTE')
             and not has_function_privilege(current_user,
               'app.claim_retention_batches(character varying,integer,integer)','EXECUTE')
             and not has_function_privilege(current_user,

@@ -760,7 +760,6 @@ describeIntegration('preview execution real transport', () => {
         workerId,
       });
       const cleanupRuntime = await createPreviewMaintenanceRuntime({
-        artifactStore: artifactConfig,
         database: parseDatabaseConfig({
           connectionString: databaseUrl(workerUrl),
         }),

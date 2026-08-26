@@ -1,7 +1,11 @@
-import type { DualRegionControlLedger } from '@pertexo/artifact-store';
+import type {
+  ArtifactStore,
+  DualRegionControlLedger,
+} from '@pertexo/artifact-store';
 import type {
   RetentionDatabase,
   RetentionEnforcementCoordinator,
+  PreviewRetentionCoordinator,
 } from '@pertexo/database';
 import type { StructuredLogger } from '@pertexo/observability/logging';
 import { createTelemetryLifecycle } from '@pertexo/observability/telemetry';
@@ -22,6 +26,8 @@ async function bootstrap(): Promise<void> {
   let enforcement: RetentionEnforcementCoordinator | undefined;
   let ledger: DualRegionControlLedger | undefined;
   let logger: StructuredLogger | undefined;
+  let preview: PreviewRetentionCoordinator | undefined;
+  let artifacts: ArtifactStore | undefined;
   let workerInvoked = false;
   try {
     telemetry.start();
@@ -38,6 +44,7 @@ async function bootstrap(): Promise<void> {
       config.ledger.primary,
       config.ledger.recovery,
     );
+    artifacts = artifactStore.createArtifactStore(config.artifactStore);
     database = databasePackage.createRetentionDatabase(
       config.database,
       config.options,
@@ -47,8 +54,23 @@ async function bootstrap(): Promise<void> {
       ledger,
       config.options,
     );
+    preview = databasePackage.createPreviewRetentionCoordinator(
+      config.database,
+      ledger,
+      artifacts,
+      {
+        artifactQuiescenceSeconds: Math.min(
+          120,
+          Math.ceil(config.artifactStore.requestTimeoutMs / 1_000) + 1,
+        ),
+        externalOperationTimeoutMs: config.options.externalOperationTimeoutMs,
+        lockTimeoutMs: config.options.lockTimeoutMs,
+        statementTimeoutMs: config.options.statementTimeoutMs,
+      },
+    );
     workerInvoked = true;
     await worker.runRetentionWorker({
+      artifacts,
       database,
       enforcement,
       expectedMaintenanceRole: config.expectedMaintenanceRole,
@@ -56,6 +78,7 @@ async function bootstrap(): Promise<void> {
       ledger,
       metrics: createRetentionMetrics(),
       pollIntervalMs: config.pollIntervalMs,
+      preview,
       signal: shutdown.signal,
       telemetry,
     });
@@ -67,7 +90,9 @@ async function bootstrap(): Promise<void> {
     );
     if (!workerInvoked) {
       await enforcement?.close().catch(() => undefined);
+      await preview?.close().catch(() => undefined);
       await database?.close().catch(() => undefined);
+      artifacts?.close();
       ledger?.close();
       await telemetry.shutdown().catch(() => undefined);
     }

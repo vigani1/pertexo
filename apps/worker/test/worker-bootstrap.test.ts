@@ -377,7 +377,7 @@ describe('worker application bootstrap', () => {
     expect(triggerRuntime.close).toHaveBeenCalledOnce();
   });
 
-  it('routes reconciliation and cleanup through one maintenance consumer', async () => {
+  it('routes preview reconciliation through its maintenance consumer', async () => {
     const selected = dependencies();
     const consumer: QueueConsumer = {
       close: vi.fn().mockResolvedValue({ abortedJobs: 0, forced: false }),
@@ -392,10 +392,7 @@ describe('worker application bootstrap', () => {
       ...workerConfig,
       outboxDispatcher: {
         ...workerConfig.outboxDispatcher,
-        enabledJobNames: [
-          JOB_NAME.reconcilePreviewAttempt,
-          JOB_NAME.sweepExpiredPreviews,
-        ],
+        enabledJobNames: [JOB_NAME.reconcilePreviewAttempt],
       },
     };
     const app = await createWorkerApplication(enabledConfig, {
@@ -403,7 +400,7 @@ describe('worker application bootstrap', () => {
       previewMaintenanceRuntime,
     });
 
-    expect(consumer.waitUntilReady).toHaveBeenCalledTimes(2);
+    expect(consumer.waitUntilReady).toHaveBeenCalledOnce();
     try {
       expect(consumer.isReady).toHaveBeenCalled();
     } finally {

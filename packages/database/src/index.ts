@@ -275,6 +275,13 @@ export type {
   PreviewCleanupClaimResult,
   PreviewCleanupFinishResult,
 } from './preview-cleanup.js';
+export { createPreviewRetentionCoordinator } from './preview-retention.js';
+export type {
+  PreviewRetentionArtifactStore,
+  PreviewRetentionCoordinator,
+  PreviewRetentionCoordinatorOptions,
+  PreviewRetentionProcessResult,
+} from './preview-retention.js';
 export type {
   AcceptedPreviewRun,
   AcceptPreviewRunInput,

@@ -8,7 +8,6 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../src/migrations.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';
-import { canonicalOutboxPayloadChecksum } from '../src/outbox.js';
 import { PHASE3_COMPATIBILITY_EXPECTATION } from './phase3-compatibility-fixture.js';
 
 const adminUrl =
@@ -88,7 +87,7 @@ beforeAll(createDatabase);
 afterAll(dropDatabase);
 
 describe('preview retention migration', () => {
-  it('backfills checksum-valid cleanup delivery for a retained 0023 preview', async () => {
+  it('retires legacy cleanup delivery for a retained 0023 preview', async () => {
     await migrateThrough0023();
 
     const actorUserId = randomUUID();
@@ -230,6 +229,7 @@ describe('preview retention migration', () => {
       '0050_workspace_lifecycle_api_authority.sql',
       '0051_workflow_run_input_retention_dry_run.sql',
       '0052_workflow_run_input_retention_enforcement.sql',
+      '0053_preview_retention_enforcement.sql',
     ]);
 
     const verification = new Pool({
@@ -254,20 +254,7 @@ describe('preview retention migration', () => {
             and job_name='sweep-expired-previews'`,
         [workspaceId, previewRunId],
       );
-      expect(result.rows).toHaveLength(1);
-      const event = result.rows[0];
-      if (event === undefined) throw new Error('cleanup backfill missing');
-      expect(event.payload).toEqual({
-        outboxEventId: event.id,
-        previewRunId,
-        schemaVersion: 1,
-        traceparent,
-        workspaceId,
-      });
-      expect(event.payload_checksum).toBe(
-        canonicalOutboxPayloadChecksum(event.payload),
-      );
-      expect(event.available_at.getTime()).toBe(expiresAt.getTime());
+      expect(result.rows).toEqual([]);
       await verification.query('commit');
     } catch (error: unknown) {
       await verification.query('rollback').catch(() => undefined);

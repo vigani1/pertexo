@@ -180,12 +180,10 @@ function previewMaintenanceRuntimeProvider(
       const reconciliationEnabled = jobNames.includes(
         JOB_NAME.reconcilePreviewAttempt,
       );
-      const cleanupEnabled = jobNames.includes(JOB_NAME.sweepExpiredPreviews);
       const notificationEnabled = jobNames.includes(
         JOB_NAME.deliverRunFailureNotification,
       );
-      if (!reconciliationEnabled && !cleanupEnabled && !notificationEnabled)
-        return undefined;
+      if (!reconciliationEnabled && !notificationEnabled) return undefined;
       if (
         notificationEnabled &&
         dependencies.failureNotificationDelivery === undefined &&
@@ -193,10 +191,6 @@ function previewMaintenanceRuntimeProvider(
       )
         throw new TypeError(
           'Failure notification dispatch requires connection encryption',
-        );
-      if (cleanupEnabled && config.artifactStore === undefined)
-        throw new TypeError(
-          'Preview cleanup requires the artifact-store capability',
         );
       const notificationStore =
         notificationEnabled &&
@@ -232,9 +226,6 @@ function previewMaintenanceRuntimeProvider(
       let runtime: PreviewMaintenanceRuntime;
       try {
         runtime = await createPreviewMaintenanceRuntime({
-          ...(cleanupEnabled && config.artifactStore !== undefined
-            ? { artifactStore: config.artifactStore }
-            : {}),
           database: config.database,
           observer,
           redisUrl: config.redisUrl,

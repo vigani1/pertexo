@@ -1,6 +1,7 @@
 import type { RetentionDatabase } from '@pertexo/database';
 import type { DualRegionControlLedger } from '@pertexo/artifact-store';
 import type { RetentionEnforcementCoordinator } from '@pertexo/database';
+import type { PreviewRetentionCoordinator } from '@pertexo/database';
 import type { StructuredLogger } from '@pertexo/observability/logging';
 import type { TelemetryLifecycle } from '@pertexo/observability/telemetry';
 import { describe, expect, it, vi } from 'vitest';
@@ -50,6 +51,13 @@ function resources(outcomes: ('completed' | 'idle' | 'stale')[]) {
     }),
     processNext: vi.fn(() => Promise.resolve({ status: 'idle' as const })),
   } satisfies RetentionEnforcementCoordinator;
+  const preview = {
+    close: vi.fn(() => {
+      events.push('preview-close');
+      return Promise.resolve();
+    }),
+    processNext: vi.fn(() => Promise.resolve({ status: 'idle' as const })),
+  } satisfies PreviewRetentionCoordinator;
   const ledger = {
     append: vi.fn(),
     checkReadiness: vi.fn(() => {
@@ -88,6 +96,7 @@ function resources(outcomes: ('completed' | 'idle' | 'stale')[]) {
   const metrics = {
     record: vi.fn(),
     recordFailure: vi.fn(),
+    recordPreview: vi.fn(),
   } satisfies RetentionMetrics;
   const telemetry = {
     enabled: false,
@@ -101,6 +110,13 @@ function resources(outcomes: ('completed' | 'idle' | 'stale')[]) {
     start: vi.fn(() => events.push('telemetry-start')),
   } satisfies TelemetryLifecycle;
   return {
+    artifacts: {
+      checkReadiness: vi.fn(() => {
+        events.push('artifacts-ready');
+        return Promise.resolve({});
+      }),
+      close: vi.fn(() => events.push('artifacts-close')),
+    },
     controller,
     database,
     enforcement,
@@ -110,6 +126,7 @@ function resources(outcomes: ('completed' | 'idle' | 'stale')[]) {
     ledger,
     metrics,
     pollIntervalMs: 1,
+    preview,
     processNext,
     signal: controller.signal,
     telemetry,
@@ -126,8 +143,11 @@ describe('retention worker', () => {
       'telemetry-start',
       'database-ready',
       'ledger-ready',
+      'artifacts-ready',
       'process:completed',
       'process:idle',
+      'preview-close',
+      'artifacts-close',
       'enforcement-close',
       'database-close',
       'ledger-close',

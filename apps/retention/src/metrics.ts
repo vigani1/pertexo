@@ -2,6 +2,7 @@ import { metrics } from '@opentelemetry/api';
 import type {
   RetentionDryRunProcessResult,
   RetentionEnforcementProcessResult,
+  PreviewRetentionProcessResult,
 } from '@pertexo/database';
 
 export interface RetentionMetrics {
@@ -11,6 +12,10 @@ export interface RetentionMetrics {
     mode: 'dry_run' | 'enforce',
   ): void;
   recordFailure(durationSeconds: number): void;
+  recordPreview(
+    result: PreviewRetentionProcessResult,
+    durationSeconds: number,
+  ): void;
 }
 
 export function createRetentionMetrics(): RetentionMetrics {
@@ -54,6 +59,19 @@ export function createRetentionMetrics(): RetentionMetrics {
       };
       batches.add(1, attributes);
       duration.record(durationSeconds, attributes);
+    },
+    recordPreview: (
+      result: PreviewRetentionProcessResult,
+      durationSeconds: number,
+    ) => {
+      const attributes = {
+        mode: 'enforce',
+        outcome: result.status,
+        retention_kind: 'preview',
+      };
+      batches.add(1, attributes);
+      duration.record(durationSeconds, attributes);
+      if (result.status !== 'idle') pages.add(1, attributes);
     },
   };
   return Object.freeze(retentionMetrics);

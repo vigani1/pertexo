@@ -2,6 +2,7 @@ import type { DualRegionControlLedger } from '@pertexo/artifact-store';
 import type {
   RetentionDatabase,
   RetentionEnforcementCoordinator,
+  PreviewRetentionCoordinator,
 } from '@pertexo/database';
 import type { StructuredLogger } from '@pertexo/observability/logging';
 import type { TelemetryLifecycle } from '@pertexo/observability/telemetry';
@@ -9,12 +10,14 @@ import type { TelemetryLifecycle } from '@pertexo/observability/telemetry';
 import type { RetentionMetrics } from './metrics.js';
 
 export interface RetentionWorkerResources {
+  readonly artifacts: { checkReadiness(): Promise<unknown>; close(): void };
   readonly database: RetentionDatabase;
   readonly enforcement: RetentionEnforcementCoordinator;
   readonly expectedMaintenanceRole: string;
   readonly logger: StructuredLogger;
   readonly ledger: DualRegionControlLedger;
   readonly metrics: RetentionMetrics;
+  readonly preview: PreviewRetentionCoordinator;
   readonly pollIntervalMs: number;
   readonly signal: AbortSignal;
   readonly telemetry: TelemetryLifecycle;
@@ -44,6 +47,7 @@ export async function runRetentionWorker(
       signal: resources.signal,
     });
     await resources.ledger.checkReadiness(resources.signal);
+    await resources.artifacts.checkReadiness();
     resources.logger.info('retention.ready');
     while (!resources.signal.aborted) {
       const startedAt = performance.now();
@@ -62,6 +66,11 @@ export async function runRetentionWorker(
           (performance.now() - startedAt) / 1_000,
           'enforce',
         );
+        const preview = await resources.preview.processNext(resources.signal);
+        resources.metrics.recordPreview(
+          preview,
+          (performance.now() - startedAt) / 1_000,
+        );
         for (const outcome of [dryRun, enforcement]) {
           if (outcome.status === 'idle') continue;
           resources.logger.info('retention.batch_processed', {
@@ -71,7 +80,17 @@ export async function runRetentionWorker(
             pageCount: outcome.pageCount,
           });
         }
-        if (dryRun.status === 'idle' && enforcement.status !== 'completed') {
+        if (preview.status !== 'idle') {
+          resources.logger.info('retention.preview_processed', {
+            outcome: preview.status,
+          });
+        }
+        if (
+          dryRun.status === 'idle' &&
+          enforcement.status !== 'completed' &&
+          preview.status !== 'completed' &&
+          preview.status !== 'progressed'
+        ) {
           await waitForNextPoll(resources.pollIntervalMs, resources.signal);
         }
       } catch (error: unknown) {
@@ -87,6 +106,10 @@ export async function runRetentionWorker(
 
   const cleanupErrors: unknown[] = [];
   for (const close of [
+    () => resources.preview.close(),
+    () => {
+      resources.artifacts.close();
+    },
     () => resources.enforcement.close(),
     () => resources.database.close(),
     () => {

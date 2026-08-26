@@ -23,7 +23,7 @@ not complete a phase.
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 5 — orchestration slice | Complete | ADRs 008/017/018/019/020/021/022; implementation through `9d7e071`; migration head `0034_run_failure_notifications.sql`; 862 unit assertions and complete real-service/recovery matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 6 — V1 providers and triggers | Complete | ADRs 012–014 and 023–026; implementation through `0f8a170`; migration head `0043_workflow_run_input_retention.sql`; 1,021 unit and 288 real-service assertions; complete retained recovery and additive-rollout gates; independent fixed-head Spec and Standards completion GO |
-| Phase 7 — production operations | In progress | ADRs 013/015/027; Frankfurt launch and Ireland recovery policy accepted; maintenance and lifecycle-command credential boundaries, dual-ledger/hold-gated 30-day workflow-input retention enforcement through migration `0052_workflow_run_input_retention_enforcement.sql`, all-six-command recovery projection plus legal-hold command coordination, durable operation-bound and lease-fenced lifecycle intents, atomic persisted-surface deletion side effects, asynchronous `202 Accepted` lifecycle API operations and direct-mutation revocation, bounded dual-region lifecycle coordinator and standalone command worker, fail-closed dual-region control-ledger facade, bounded restore-before-serve executable, and a two-process MinIO integration harness; MinIO policy incompatibility blocks the full local control proof, while remaining retention classes, purge, API-key and external-provider revocation, deployed admission wiring, AWS Object Lock/regional proof, operator recovery, broader observability, exercises, restore drills, and autoscaling remain open |
+| Phase 7 — production operations | In progress | ADRs 013/015/027; Frankfurt launch and Ireland recovery policy accepted; maintenance and lifecycle-command credential boundaries, dual-ledger/hold-gated 30-day workflow-input and seven-day preview retention enforcement through migration `0053_preview_retention_enforcement.sql`, all-six-command recovery projection plus legal-hold command coordination, durable operation-bound and lease-fenced lifecycle intents, atomic persisted-surface deletion side effects, asynchronous `202 Accepted` lifecycle API operations and direct-mutation revocation, bounded dual-region lifecycle coordinator and standalone command workers, fail-closed dual-region control-ledger facade, bounded restore-before-serve executable, and a two-process MinIO integration harness; MinIO policy incompatibility blocks the full local control proof, while remaining retention classes, purge, API-key and external-provider revocation, deployed admission wiring, AWS Object Lock/regional proof, operator recovery, broader observability, exercises, restore drills, and autoscaling remain open |
 
 The `0A`–`0E` checkpoints are implementation-sized subdivisions of the plan's
 single Phase 0. They do not alter the authoritative scope. Phase 0 is complete
@@ -3413,11 +3413,34 @@ Current evidence:
   batch creation, the other 30/90/365-day data classes, preview hold coordination,
   artifact-byte deletion, workspace purge, and real AWS Object Lock evidence
   remain open, so the broad retention and purge checklist items stay unchecked.
-- Preview admission now uses ADR 013's seven-day retention period consistently
-  at both the API default and PostgreSQL adapter bound, replacing the prior
-  one-hour default and 24-hour cap. Existing preview cleanup remains resumable,
-  but object and database destruction is not yet serialized with legal holds;
-  preview retention therefore remains an open part of the broad policy gate.
+- Migration `0053_preview_retention_enforcement.sql` moves seven-day preview
+  destruction out of the ordinary BullMQ worker and into the no-HTTP
+  `@pertexo/retention` process. New previews no longer create cleanup outbox
+  events, legacy cleanup events/receipts are retired during migration, the worker
+  build no longer advertises or routes the cleanup capability, and the worker's
+  legacy privileged completion grant is revoked. A trigger rejects API/worker
+  transitions of preview-owned artifacts into `deleting` or `deleted`; only
+  maintenance-only discovery, preparation, object checkpoint, and final cleanup
+  functions can set the guarded transition. Discovery excludes active holds and
+  is bounded to 25 candidates. Each destructive transaction locks the workspace
+  control row, requires the exact dual-region ledger sequence/hash with no
+  unprojected record, rechecks expiry, terminal status, child previews, and legal
+  holds, then advances at most one artifact. A first pass durably marks the
+  artifact `deleting`; only a later quiescent pass performs idempotent object
+  deletion and confirms absence with `HEAD` while retaining the workspace lock.
+  Metadata checkpoint and optional preview/link/attempt/expired-idempotency
+  removal commit under that same lock. A crash after object deletion retries the
+  same object safely. Tenant artifact credentials are parsed separately from
+  both control-ledger principals, artifact and ledger readiness fail before work,
+  bounded preview outcomes are emitted, and every database, ledger, artifact,
+  and telemetry resource closes on shutdown. Disposable PostgreSQL tests pass 20
+  preview authority/execution assertions, the exact prior-preview migration
+  assertion, and all 10 control-ledger coordination assertions; `pnpm check`
+  passes formatting, production builds, lint, generated-contract drift,
+  typechecks, and all unit tests. Scheduled workflow-input batch creation, other
+  30/90/365-day classes, general run-artifact retention, workspace purge, and
+  real AWS Object Lock evidence remain open, so the broad retention and purge
+  checklist items stay unchecked.
 - The artifact-store package now exposes a separate append-only ADR 013 control
   ledger adapter and dedicated `CONTROL_LEDGER_*` configuration without changing
   the tenant `ArtifactStore` API or worker artifact configuration. Its principal

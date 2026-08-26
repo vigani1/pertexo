@@ -3,7 +3,9 @@ import {
   type DatabaseConfig,
 } from '@pertexo/database';
 import {
+  parseArtifactStoreConfig,
   parseDualRegionControlLedgerConfig,
+  type ArtifactStoreConfig,
   type DualRegionControlLedgerConfig,
 } from '@pertexo/artifact-store';
 import {
@@ -80,6 +82,7 @@ const environmentSchema = z
   });
 
 export interface RetentionWorkerConfig {
+  readonly artifactStore: ArtifactStoreConfig;
   readonly database: DatabaseConfig;
   readonly expectedMaintenanceRole: string;
   readonly ledger: DualRegionControlLedgerConfig;
@@ -100,10 +103,23 @@ export function parseRetentionWorkerConfig(
   environment: Readonly<Record<string, string | undefined>> = process.env,
 ): RetentionWorkerConfig {
   const parsed = environmentSchema.parse(environment);
+  const artifactStore = parseArtifactStoreConfig(environment);
+  const ledger = parseDualRegionControlLedgerConfig(environment);
+  if (
+    [ledger.primary, ledger.recovery].some(
+      (control) =>
+        control.accessKeyId === artifactStore.accessKeyId ||
+        control.bucket === artifactStore.bucket,
+    )
+  )
+    throw new Error(
+      'Tenant artifacts and control ledgers require distinct principals and buckets',
+    );
   return Object.freeze({
+    artifactStore,
     database: parseMaintenanceDatabaseConfig(environment),
     expectedMaintenanceRole: parsed.POSTGRES_MAINTENANCE_USER,
-    ledger: parseDualRegionControlLedgerConfig(environment),
+    ledger,
     observability: parseObservabilityConfig({
       environment: parsed.NODE_ENV,
       logLevel: parsed.LOG_LEVEL,

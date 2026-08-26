@@ -21,6 +21,9 @@ import {
   type PreviewAttemptLease,
   type PreviewDelivery,
 } from '../src/preview-execution.js';
+import { parseDatabaseConfig } from '../src/config.js';
+import type { ControlLedger } from '../src/control-ledger-coordinator.js';
+import { createPreviewRetentionCoordinator } from '../src/preview-retention.js';
 import {
   artifactStorageKey,
   createPendingPreviewArtifact,
@@ -53,6 +56,9 @@ const apiBaseUrl =
 const workerBaseUrl =
   process.env.DATABASE_WORKER_URL ??
   'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
+const maintenanceBaseUrl =
+  process.env.DATABASE_MAINTENANCE_URL ??
+  'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
 
 const databaseName = `pertexo_test_preview_worker_${randomUUID().replaceAll('-', '')}`;
 const workspaceId = randomUUID();
@@ -355,7 +361,7 @@ beforeAll(async () => {
     await admin.query(`create database "${databaseName}" owner pertexo_owner`);
     await admin.query(`revoke all on database "${databaseName}" from public`);
     await admin.query(
-      `grant connect on database "${databaseName}" to pertexo_migration, pertexo_api, pertexo_worker, pertexo_dispatcher`,
+      `grant connect on database "${databaseName}" to pertexo_migration, pertexo_api, pertexo_worker, pertexo_dispatcher, pertexo_maintenance`,
     );
   } finally {
     await admin.end();
@@ -617,7 +623,7 @@ describe('worker-side preview execution seam', () => {
     expect(rolledBack.rows[0]).toEqual({ count: '0' });
   });
 
-  it('does not quarantine an artifact while its preview attempt is nonterminal', async () => {
+  it('cannot invoke or stage preview destruction with worker authority', async () => {
     const previewDeadline = new Date(Date.now() + 200);
     const accepted = await acceptFixture({ expiresAt: previewDeadline });
     const artifactId = randomUUID();
@@ -639,41 +645,27 @@ describe('worker-side preview execution seam', () => {
         },
       ),
     );
-    const cleanup = await scopedQuery<{
-      id: string;
-      payload_checksum: string;
-    }>(
-      `select id,payload_checksum from app.outbox_events
-       where workspace_id=$1 and aggregate_id=$2
-         and job_name='sweep-expired-previews'`,
-      [workspaceId, accepted.previewRunId],
-    );
-    const cleanupRow = cleanup.rows[0];
-    if (cleanupRow === undefined)
-      throw new Error('preview cleanup outbox missing');
     await ownerPool.query('select pg_sleep(0.25)');
-    const directCleanup = await withTenantScopedClient(
-      workerPool,
-      { workspaceId },
-      (client) =>
-        client.query<{ completed: boolean }>(
+    await expect(
+      withTenantScopedClient(workerPool, { workspaceId }, (client) =>
+        client.query(
           `select app.complete_preview_cleanup($1,$2) as completed`,
           [workspaceId, accepted.previewRunId],
         ),
-    );
-    expect(directCleanup.rows[0]).toEqual({ completed: false });
+      ),
+    ).rejects.toSatisfy(expectPgCode('42501'));
     await expect(
-      claimPreviewCleanupDelivery(workerPool, {
-        artifactLimit: 10,
-        artifactQuiescenceSeconds: 1,
-        delivery: {
-          outboxEventId: cleanupRow.id,
-          payloadChecksum: cleanupRow.payload_checksum,
-        },
-        previewRunId: accepted.previewRunId,
-        workspaceId,
+      withTenantScopedClient(workerPool, { workspaceId }, async (client) => {
+        await client.query(
+          "select set_config('app.preview_retention_transition','on',true)",
+        );
+        return client.query(
+          `update app.artifacts set status='deleting',updated_at=clock_timestamp()
+              where workspace_id=$1 and id=$2`,
+          [workspaceId, artifactId],
+        );
       }),
-    ).resolves.toMatchObject({ kind: 'rescheduled' });
+    ).rejects.toSatisfy(expectPgCode('42501'));
     const state = await scopedQuery<{ status: string }>(
       `select status from app.artifacts
        where workspace_id=$1 and id=$2`,
@@ -682,7 +674,7 @@ describe('worker-side preview execution seam', () => {
     expect(state.rows[0]).toEqual({ status: 'pending' });
   });
 
-  it('deletes expired preview rows and owned artifact metadata through the authorized function', async () => {
+  it('does not emit ordinary-worker cleanup deliveries for new previews', async () => {
     const previewDeadline = new Date(Date.now() + 250);
     const reusableKeyHash = '9'.repeat(64);
     const accepted = await acceptFixture({
@@ -712,8 +704,8 @@ describe('worker-side preview execution seam', () => {
       [workspaceId, accepted.previewRunId],
     );
     const cleanupRow = cleanup.rows[0];
-    if (cleanupRow === undefined)
-      throw new Error('preview cleanup outbox missing');
+    expect(cleanupRow).toBeUndefined();
+    if (cleanupRow === undefined) return;
     const artifactIds = [randomUUID(), randomUUID()].toSorted();
     await withTenantScopedClient(
       workerPool,
@@ -885,6 +877,99 @@ describe('worker-side preview execution seam', () => {
         requestHash: '8'.repeat(64),
       }),
     ).resolves.toMatchObject({ duplicate: false });
+  });
+
+  it('deletes one preview artifact under maintenance and exact ledger authority', async () => {
+    const previewDeadline = new Date(Date.now() + 250);
+    const accepted = await acceptFixture({ expiresAt: previewDeadline });
+    const claimed = await claimFixture(accepted, 'maintenance-preview-cleanup');
+    await completePreviewAttempt(workerPool, {
+      delivery: accepted.delivery,
+      lease: claimed.lease,
+      outcome: {
+        safeErrorCode: 'preview.cleanup_fixture',
+        status: PREVIEW_STATUS.failed,
+      },
+      workerId: claimed.workerId,
+    });
+    const artifactId = randomUUID();
+    await withTenantScopedClient(workerPool, { workspaceId }, (client) =>
+      createPendingPreviewArtifact(
+        {
+          db: drizzle(client, { schema: databaseSchema }),
+          workspaceId: parseWorkspaceId(workspaceId),
+        },
+        {
+          artifactId,
+          byteLength: 3,
+          expiresAt: previewDeadline,
+          mediaType: 'application/octet-stream',
+          previewRunId: accepted.previewRunId,
+          purpose: 'node-output',
+          sha256: 'e'.repeat(64),
+          storageKey: artifactStorageKey(workspaceId, artifactId),
+        },
+      ),
+    );
+    await ownerPool.query('select pg_sleep(0.3)');
+    const ledger: ControlLedger = {
+      append: vi.fn(),
+      reconcile: vi.fn((request: Parameters<ControlLedger['reconcile']>[0]) =>
+        Promise.resolve({
+          hasMore: false,
+          pageEndHash: request.projectedHash,
+          pageEndSequence: request.projectedSequence,
+          reachedHighWater: true,
+          records: [],
+        }),
+      ),
+    };
+    const remove = vi.fn(() => Promise.resolve());
+    const coordinator = createPreviewRetentionCoordinator(
+      parseDatabaseConfig({
+        connectionString: databaseUrl(maintenanceBaseUrl),
+        max: 1,
+      }),
+      ledger,
+      { delete: remove, head: () => Promise.resolve(null) },
+      { artifactQuiescenceSeconds: 1 },
+    );
+    const processTarget = async () => {
+      for (let attempt = 0; attempt < 25; attempt += 1) {
+        const result = await coordinator.processNext();
+        if (
+          result.status !== 'idle' &&
+          result.previewRunId === accepted.previewRunId
+        )
+          return result;
+      }
+      throw new Error('Target preview cleanup was not discovered');
+    };
+    try {
+      await expect(processTarget()).resolves.toMatchObject({
+        previewRunId: accepted.previewRunId,
+        status: 'waiting',
+        workspaceId,
+      });
+      expect(remove).not.toHaveBeenCalled();
+      await ownerPool.query('select pg_sleep(1.1)');
+      await expect(processTarget()).resolves.toMatchObject({
+        artifactId,
+        previewRunId: accepted.previewRunId,
+        status: 'completed',
+        workspaceId,
+      });
+      expect(remove).toHaveBeenCalledOnce();
+      const removed = await scopedQuery<{ artifacts: string; runs: string }>(
+        `select
+          (select count(*)::text from app.preview_runs where workspace_id=$1 and id=$2) runs,
+          (select count(*)::text from app.artifacts where workspace_id=$1 and id=$3) artifacts`,
+        [workspaceId, accepted.previewRunId, artifactId],
+      );
+      expect(removed.rows[0]).toEqual({ artifacts: '0', runs: '0' });
+    } finally {
+      await coordinator.close();
+    }
   });
 
   it('claims a queued attempt with pinned identity and completes truthfully', async () => {
