@@ -89,7 +89,105 @@ services:
       start_period: 15s
     stop_grace_period: 30s
 
+  control-ledger-primary:
+    image: ${MINIO_IMAGE:-minio/minio:RELEASE.2025-09-07T16-13-09Z}
+    restart: unless-stopped
+    command:
+      - server
+      - /data
+      - --console-address
+      - :9001
+    environment:
+      MINIO_ROOT_USER: ${CONTROL_LEDGER_ADMIN_ACCESS_KEY_ID:-pertexo-local-primary-admin}
+      MINIO_ROOT_PASSWORD: ${CONTROL_LEDGER_ADMIN_SECRET_ACCESS_KEY:-pertexo-local-primary-admin-secret}
+      MINIO_REGION_NAME: ${CONTROL_LEDGER_REGION:-eu-central-1}
+    ports:
+      - '127.0.0.1:${CONTROL_LEDGER_PORT:-9091}:9000'
+    volumes:
+      - pertexo-control-ledger-primary-data:/data
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - --fail
+        - --silent
+        - http://localhost:9000/minio/health/live
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    stop_grace_period: 30s
+
+  control-ledger-primary-bootstrap:
+    image: ${MINIO_IMAGE:-minio/minio:RELEASE.2025-09-07T16-13-09Z}
+    restart: 'no'
+    depends_on:
+      control-ledger-primary:
+        condition: service_healthy
+    entrypoint:
+      - /bin/sh
+      - /bootstrap/bootstrap-ledger.sh
+    environment:
+      LEDGER_ENDPOINT: http://control-ledger-primary:9000
+      LEDGER_POLICY_FILE: primary-ledger-policy.json
+      LEDGER_ADMIN_ACCESS_KEY_ID: ${CONTROL_LEDGER_ADMIN_ACCESS_KEY_ID:-pertexo-local-primary-admin}
+      LEDGER_ADMIN_SECRET_ACCESS_KEY: ${CONTROL_LEDGER_ADMIN_SECRET_ACCESS_KEY:-pertexo-local-primary-admin-secret}
+      LEDGER_ACCESS_KEY_ID: ${CONTROL_LEDGER_ACCESS_KEY_ID:-pertexo-local-ledger-primary}
+      LEDGER_SECRET_ACCESS_KEY: ${CONTROL_LEDGER_SECRET_ACCESS_KEY:-pertexo-local-ledger-primary-secret}
+    volumes:
+      - ./infrastructure/minio:/bootstrap:ro
+
+  control-ledger-recovery:
+    image: ${MINIO_IMAGE:-minio/minio:RELEASE.2025-09-07T16-13-09Z}
+    restart: unless-stopped
+    command:
+      - server
+      - /data
+      - --console-address
+      - :9002
+    environment:
+      MINIO_ROOT_USER: ${CONTROL_LEDGER_RECOVERY_ADMIN_ACCESS_KEY_ID:-pertexo-local-recovery-admin}
+      MINIO_ROOT_PASSWORD: ${CONTROL_LEDGER_RECOVERY_ADMIN_SECRET_ACCESS_KEY:-pertexo-local-recovery-admin-secret}
+      MINIO_REGION_NAME: ${CONTROL_LEDGER_RECOVERY_REGION:-eu-west-1}
+    ports:
+      - '127.0.0.1:${CONTROL_LEDGER_RECOVERY_PORT:-9092}:9000'
+    volumes:
+      - pertexo-control-ledger-recovery-data:/data
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - --fail
+        - --silent
+        - http://localhost:9000/minio/health/live
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    stop_grace_period: 30s
+
+  control-ledger-recovery-bootstrap:
+    image: ${MINIO_IMAGE:-minio/minio:RELEASE.2025-09-07T16-13-09Z}
+    restart: 'no'
+    depends_on:
+      control-ledger-recovery:
+        condition: service_healthy
+    entrypoint:
+      - /bin/sh
+      - /bootstrap/bootstrap-ledger.sh
+    environment:
+      LEDGER_ENDPOINT: http://control-ledger-recovery:9000
+      LEDGER_POLICY_FILE: recovery-ledger-policy.json
+      LEDGER_ADMIN_ACCESS_KEY_ID: ${CONTROL_LEDGER_RECOVERY_ADMIN_ACCESS_KEY_ID:-pertexo-local-recovery-admin}
+      LEDGER_ADMIN_SECRET_ACCESS_KEY: ${CONTROL_LEDGER_RECOVERY_ADMIN_SECRET_ACCESS_KEY:-pertexo-local-recovery-admin-secret}
+      LEDGER_ACCESS_KEY_ID: ${CONTROL_LEDGER_RECOVERY_ACCESS_KEY_ID:-pertexo-local-ledger-recovery}
+      LEDGER_SECRET_ACCESS_KEY: ${CONTROL_LEDGER_RECOVERY_SECRET_ACCESS_KEY:-pertexo-local-ledger-recovery-secret}
+    volumes:
+      - ./infrastructure/minio:/bootstrap:ro
+
 volumes:
   pertexo-postgres-data:
   pertexo-redis-data:
   pertexo-artifact-data:
+  pertexo-control-ledger-primary-data:
+  pertexo-control-ledger-recovery-data:

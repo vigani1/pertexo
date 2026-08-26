@@ -1,0 +1,36 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetBucketLocation",
+        "s3:GetBucketObjectLockConfiguration",
+        "s3:GetBucketPolicy",
+        "s3:GetBucketVersioning",
+        "s3:GetLifecycleConfiguration",
+        "s3:ListBucket"
+      ],
+      "Resource": ["arn:aws:s3:::pertexo-control-ledger-recovery"]
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:PutObject"],
+      "Resource": [
+        "arn:aws:s3:::pertexo-control-ledger-recovery/control-ledger/*"
+      ]
+    },
+    {
+      "Effect": "Deny",
+      "Action": [
+        "s3:DeleteObject",
+        "s3:DeleteObjectVersion",
+        "s3:ReplicateObject",
+        "s3:ReplicateDelete"
+      ],
+      "Resource": [
+        "arn:aws:s3:::pertexo-control-ledger-recovery/control-ledger/*"
+      ]
+    }
+  ]
+}

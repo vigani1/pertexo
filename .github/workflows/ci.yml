@@ -48,14 +48,31 @@ jobs:
       ARTIFACT_STORE_BUCKET: pertexo-artifacts
       ARTIFACT_STORE_FORCE_PATH_STYLE: 'true'
       ARTIFACT_STORE_INTEGRATION: 'true'
-      CONTROL_LEDGER_ENDPOINT: http://127.0.0.1:9090
-      CONTROL_LEDGER_REGION: us-east-1
-      CONTROL_LEDGER_ACCESS_KEY_ID: pertexo-local-ledger-access-key
-      CONTROL_LEDGER_SECRET_ACCESS_KEY: pertexo-local-ledger-secret-key
+      MINIO_IMAGE: minio/minio:RELEASE.2025-09-07T16-13-09Z
+      CONTROL_LEDGER_PORT: '9091'
+      CONTROL_LEDGER_ENDPOINT: http://127.0.0.1:9091
+      CONTROL_LEDGER_REGION: eu-central-1
+      CONTROL_LEDGER_ACCESS_KEY_ID: pertexo-local-ledger-primary
+      CONTROL_LEDGER_SECRET_ACCESS_KEY: pertexo-local-ledger-primary-secret
+      CONTROL_LEDGER_ADMIN_ACCESS_KEY_ID: pertexo-local-primary-admin
+      CONTROL_LEDGER_ADMIN_SECRET_ACCESS_KEY: pertexo-local-primary-admin-secret
       CONTROL_LEDGER_BUCKET: pertexo-control-ledger
       CONTROL_LEDGER_FORCE_PATH_STYLE: 'true'
       CONTROL_LEDGER_REQUEST_TIMEOUT_MS: '5000'
       CONTROL_LEDGER_MIN_RETENTION_DAYS: '30'
+      CONTROL_LEDGER_RECOVERY_PORT: '9092'
+      CONTROL_LEDGER_RECOVERY_ENDPOINT: http://127.0.0.1:9092
+      CONTROL_LEDGER_RECOVERY_REGION: eu-west-1
+      CONTROL_LEDGER_RECOVERY_ACCESS_KEY_ID: pertexo-local-ledger-recovery
+      CONTROL_LEDGER_RECOVERY_SECRET_ACCESS_KEY: pertexo-local-ledger-recovery-secret
+      CONTROL_LEDGER_RECOVERY_ADMIN_ACCESS_KEY_ID: pertexo-local-recovery-admin
+      CONTROL_LEDGER_RECOVERY_ADMIN_SECRET_ACCESS_KEY: pertexo-local-recovery-admin-secret
+      CONTROL_LEDGER_RECOVERY_BUCKET: pertexo-control-ledger-recovery
+      CONTROL_LEDGER_RECOVERY_FORCE_PATH_STYLE: 'true'
+      CONTROL_LEDGER_RECOVERY_REQUEST_TIMEOUT_MS: '5000'
+      CONTROL_LEDGER_RECOVERY_MIN_RETENTION_DAYS: '30'
+      CONTROL_LEDGER_INTEGRATION: 'true'
+      CONTROL_LEDGER_INTEGRATION_PROVIDER: minio
       API_SSE_INTEGRATION: 'true'
       API_IDENTITY_INTEGRATION: 'true'
       WORKER_TRANSPORT_INTEGRATION: 'true'
@@ -82,7 +99,10 @@ jobs:
         run: pnpm check
 
       - name: Start integration dependencies
-        run: docker compose up -d --wait postgres redis artifact-store
+        run: |
+          docker compose up -d --wait postgres redis artifact-store control-ledger-primary control-ledger-recovery
+          docker compose run --rm control-ledger-primary-bootstrap
+          docker compose run --rm control-ledger-recovery-bootstrap
 
       - name: Verify local service boundaries and Redis policy
         shell: bash
@@ -91,6 +111,8 @@ jobs:
           test "$(docker compose port postgres 5432)" = "127.0.0.1:$POSTGRES_PORT"
           test "$(docker compose port redis 6379)" = "127.0.0.1:$REDIS_PORT"
           test "$(docker compose port artifact-store 9090)" = "127.0.0.1:$ARTIFACT_STORE_PORT"
+          test "$(docker compose port control-ledger-primary 9000)" = "127.0.0.1:$CONTROL_LEDGER_PORT"
+          test "$(docker compose port control-ledger-recovery 9000)" = "127.0.0.1:$CONTROL_LEDGER_RECOVERY_PORT"
           unauthenticated_output="$(docker compose exec -T redis redis-cli --raw ping 2>&1 | tr -d '\r')"
           case "$unauthenticated_output" in
             NOAUTH*) ;;
@@ -133,7 +155,7 @@ jobs:
         if: failure()
         run: |
           docker compose ps --all
-          docker compose logs --no-color --timestamps postgres redis artifact-store
+          docker compose logs --no-color --timestamps postgres redis artifact-store control-ledger-primary control-ledger-recovery control-ledger-primary-bootstrap control-ledger-recovery-bootstrap
 
       - name: Stop integration dependencies
         if: always()

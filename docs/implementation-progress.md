@@ -23,7 +23,7 @@ not complete a phase.
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 5 — orchestration slice | Complete | ADRs 008/017/018/019/020/021/022; implementation through `9d7e071`; migration head `0034_run_failure_notifications.sql`; 862 unit assertions and complete real-service/recovery matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 6 — V1 providers and triggers | Complete | ADRs 012–014 and 023–026; implementation through `0f8a170`; migration head `0043_workflow_run_input_retention.sql`; 1,021 unit and 288 real-service assertions; complete retained recovery and additive-rollout gates; independent fixed-head Spec and Standards completion GO |
-| Phase 7 — production operations | In progress | ADRs 013/015; Frankfurt launch and Ireland recovery policy accepted; maintenance boundary, non-destructive retention-control foundation, external legal-hold command coordination through migration `0045_control_ledger_command_lock.sql`, and fail-closed dual-region control-ledger facade; coordinator wiring to that facade, real Object Lock proof, restore-before-serve, destructive retention/purge, operator recovery, observability, exercises, restore drills, and autoscaling remain open |
+| Phase 7 — production operations | In progress | ADRs 013/015; Frankfurt launch and Ireland recovery policy accepted; maintenance boundary, non-destructive retention-control foundation, external legal-hold command coordination through migration `0045_control_ledger_command_lock.sql`, fail-closed dual-region control-ledger facade, and a two-process MinIO integration harness; MinIO policy incompatibility blocks the full local control proof, while coordinator wiring, AWS Object Lock/regional proof, restore-before-serve, destructive retention/purge, operator recovery, observability, exercises, restore drills, and autoscaling remain open |
 
 The `0A`–`0E` checkpoints are implementation-sized subdivisions of the plan's
 single Phase 0. They do not alter the authoritative scope. Phase 0 is complete
@@ -3474,6 +3474,29 @@ Current evidence:
   S3Mock is not real Object Lock or AWS regional-isolation evidence. Therefore
   the combined external-ledger checklist remains unchecked and Phase 7 remains in
   progress.
+- Local and CI composition now define two independent, persistent MinIO
+  `RELEASE.2025-09-07T16-13-09Z` processes on loopback-only ports 9091 and 9092,
+  reporting `eu-central-1` and `eu-west-1` respectively, with separate data
+  volumes and credentials. Both processes start healthy, and the gated
+  artifact-store integration setup idempotently creates distinct fixed buckets
+  with Object Lock enabled, versioning enabled, and 30-day default COMPLIANCE
+  retention. CI proves conditional create/replay rejection and unconditional
+  deletion denial against both services. The test fixture also retains the
+  complete AWS path for the adapter's exact unconditional delete/version-delete/
+  replication deny and missing-`If-None-Match` write deny, plus randomized
+  append/replay/conflict/one-sided-retry and raw mutation proofs. MinIO accepts the
+  replication action names but rejects the required policy with
+  `MalformedPolicy: invalid condition key 's3:if-none-match'`. The same result
+  was reproduced with `RELEASE.2025-04-22T22-12-26Z`; MinIO supports conditional
+  `PutObject` requests but exposes no equivalent bucket-policy condition that
+  can enforce the header. Weakening the production adapter or treating Object
+  Lock version preservation as overwrite prevention would not prove the
+  required control. CI asserts this incompatibility and verifies that adapter
+  readiness fails closed rather than bypassing it. This is local S3-compatible
+  implementation evidence only, not AWS IAM, AWS regional infrastructure,
+  durability, or Frankfurt-to-Ireland recovery evidence. The production AWS/
+  Object Lock regional drill and the combined external-ledger checklist remain
+  open.
 
 ## Update protocol
 
