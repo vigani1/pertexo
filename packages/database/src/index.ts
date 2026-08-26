@@ -188,6 +188,7 @@ export { createWorkspacePurgeCoordinator } from './workspace-purge.js';
 export type {
   WorkspacePurgeCoordinator,
   WorkspacePurgeLedger,
+  WorkspacePurgeObjectStore,
   WorkspacePurgeProcessResult,
 } from './workspace-purge.js';
 export type {

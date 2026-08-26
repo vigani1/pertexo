@@ -7,7 +7,7 @@ import { EXPECTED_MIGRATION_HEAD } from '../src/readiness.js';
 describe('schedule trigger migration contract', () => {
   it('persists immutable recurrence, unique occurrences, bounded leases, and narrow worker functions', async () => {
     expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0057_workspace_tenant_rows_purge.sql',
+      '0058_workspace_object_versions_purge.sql',
     );
     const migration = await readFile(
       new URL('../migrations/0040_schedule_triggers.sql', import.meta.url),

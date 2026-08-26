@@ -62,6 +62,17 @@ export interface WorkspacePurgeCoordinator {
   processNext(signal?: AbortSignal): Promise<WorkspacePurgeProcessResult>;
 }
 
+export interface WorkspacePurgeObjectStore {
+  purgeWorkspacePage(input: {
+    readonly maxObjects: number;
+    readonly signal?: AbortSignal;
+    readonly workspaceId: string;
+  }): Promise<{
+    readonly completed: boolean;
+    readonly deletedCount: number;
+  }>;
+}
+
 interface MaintenancePool {
   connect(): Promise<PoolClient>;
   end(): Promise<void>;
@@ -98,6 +109,17 @@ const optionsSchema = z
 type WorkspacePurgeOptions = z.input<typeof optionsSchema> & {
   readonly pool?: MaintenancePool;
 };
+
+const objectPageSchema = z
+  .object({
+    completed: z.boolean(),
+    deletedCount: z.number().int().min(0).max(500),
+  })
+  .refine(
+    ({ completed, deletedCount }) =>
+      (completed && deletedCount === 0) || (!completed && deletedCount > 0),
+    { message: 'Invalid workspace object purge page result' },
+  );
 
 function sequence(value: number | string): number {
   const parsed = typeof value === 'number' ? value : Number(value);
@@ -176,6 +198,7 @@ interface PreparedJob extends Record<string, unknown> {
 export function createWorkspacePurgeCoordinator(
   config: DatabaseConfig,
   ledger: WorkspacePurgeLedger,
+  objectStore: WorkspacePurgeObjectStore,
   inputOptions: WorkspacePurgeOptions,
 ): WorkspacePurgeCoordinator {
   const { pool: suppliedPool, ...rawOptions } = inputOptions;
@@ -294,6 +317,43 @@ export function createWorkspacePurgeCoordinator(
             );
             const claim = claimed.rows[0];
             if (claim === undefined) return undefined;
+            const stepName = z
+              .enum(['object_versions', 'tenant_rows'])
+              .parse(claim.step_name);
+            const leaseToken = uuidSchema.parse(claim.lease_token);
+            const leaseFence = sequence(claim.lease_fence);
+            if (stepName === 'object_versions') {
+              const objectPage = objectPageSchema.parse(
+                await objectStore.purgeWorkspacePage({
+                  maxObjects: 500,
+                  signal: operationSignal,
+                  workspaceId: stepWorkspaceId,
+                }),
+              );
+              await query(
+                client,
+                `select app.checkpoint_workspace_object_versions_page(
+                  $1,$2,$3,$4,$5,$6,$7
+                )`,
+                [
+                  stepJobId,
+                  leaseToken,
+                  leaseFence,
+                  objectPage.deletedCount,
+                  objectPage.completed,
+                  projectedSequence,
+                  projectedHash,
+                ],
+                signal,
+              );
+              return { completed: false };
+            }
+            await query(
+              client,
+              "select set_config('app.workspace_id',$1,true)",
+              [stepWorkspaceId],
+              signal,
+            );
             const executed = await query<{
               affected_count: number | string;
               completed: boolean;
@@ -305,8 +365,8 @@ export function createWorkspacePurgeCoordinator(
               )`,
               [
                 stepJobId,
-                uuidSchema.parse(claim.lease_token),
-                sequence(claim.lease_fence),
+                leaseToken,
+                leaseFence,
                 500,
                 projectedSequence,
                 projectedHash,

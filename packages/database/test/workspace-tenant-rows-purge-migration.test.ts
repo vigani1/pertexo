@@ -12,7 +12,7 @@ const migrationUrl = new URL(
 describe('workspace tenant-row purge migration', () => {
   it('keeps pages bounded, fenced, hold-safe, and maintenance-only', async () => {
     expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0057_workspace_tenant_rows_purge.sql',
+      '0058_workspace_object_versions_purge.sql',
     );
     const migration = await readFile(migrationUrl, 'utf8');
 

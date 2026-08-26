@@ -8,7 +8,8 @@ import {
   type CompatibilityReleaseExpectationSet,
 } from './compatibility-release.js';
 
-export const EXPECTED_MIGRATION_HEAD = '0057_workspace_tenant_rows_purge.sql';
+export const EXPECTED_MIGRATION_HEAD =
+  '0058_workspace_object_versions_purge.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{

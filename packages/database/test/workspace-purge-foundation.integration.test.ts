@@ -90,6 +90,21 @@ class MemoryPurgeLedger implements WorkspacePurgeLedger {
   }
 }
 
+class MemoryObjectPurgeStore {
+  public calls = 0;
+  public failAfterDelete = false;
+
+  public async purgeWorkspacePage() {
+    await Promise.resolve();
+    this.calls += 1;
+    if (this.failAfterDelete) {
+      this.failAfterDelete = false;
+      throw new Error('ambiguous object deletion result');
+    }
+    return { completed: true, deletedCount: 0 };
+  }
+}
+
 async function createDueWorkspace(): Promise<string> {
   if (maintenance === undefined || owner === undefined)
     throw new Error('Database pools unavailable');
@@ -155,6 +170,7 @@ describe('workspace purge foundation', () => {
   it('repairs an ambiguous purge append and treats a concurrent claim as idle', async () => {
     const workspaceId = await createDueWorkspace();
     const ledger = new MemoryPurgeLedger();
+    const objectStore = new MemoryObjectPurgeStore();
     ledger.failAfterFirstAppend = true;
     const coordinatorOptions = {
       externalOperationTimeoutMs: 1_000,
@@ -173,6 +189,7 @@ describe('workspace purge foundation', () => {
         workerRuntimeRole: 'pertexo_worker',
       },
       ledger,
+      objectStore,
       coordinatorOptions,
     );
     const second = createWorkspacePurgeCoordinator(
@@ -185,6 +202,7 @@ describe('workspace purge foundation', () => {
         workerRuntimeRole: 'pertexo_worker',
       },
       ledger,
+      objectStore,
       { ...coordinatorOptions, leaseOwner: 'purge-integration-b' },
     );
     try {
@@ -201,6 +219,7 @@ describe('workspace purge foundation', () => {
         'started',
       ]);
       expect(ledger.appendCalls).toBe(1);
+      expect(objectStore.calls).toBe(0);
       let completed = false;
       for (let page = 0; page < 20 && !completed; page += 1) {
         const outcome = await first.processNext();
@@ -208,9 +227,57 @@ describe('workspace purge foundation', () => {
         completed = outcome.status === 'completed';
       }
       expect(completed).toBe(true);
+      expect(objectStore.calls).toBe(1);
     } finally {
       await first.close();
       await second.close();
+    }
+  });
+
+  it('retries object erasure after deletion succeeds before checkpointing', async () => {
+    const workspaceId = await createDueWorkspace();
+    const ledger = new MemoryPurgeLedger();
+    const objectStore = new MemoryObjectPurgeStore();
+    objectStore.failAfterDelete = true;
+    const coordinator = createWorkspacePurgeCoordinator(
+      {
+        connectionString: maintenanceUrl,
+        connectionTimeoutMillis: 1_000,
+        idleTimeoutMillis: 1_000,
+        max: 2,
+        ownerRole: 'pertexo_owner',
+        workerRuntimeRole: 'pertexo_worker',
+      },
+      ledger,
+      objectStore,
+      {
+        externalOperationTimeoutMs: 1_000,
+        leaseOwner: 'purge-object-retry',
+        leaseSeconds: 5,
+        lockTimeoutMs: 1_000,
+        statementTimeoutMs: 1_000,
+      },
+    );
+    try {
+      await expect(coordinator.processNext()).resolves.toMatchObject({
+        status: 'started',
+        workspaceId,
+      });
+      await expect(coordinator.processNext()).rejects.toThrow(
+        'ambiguous object deletion result',
+      );
+      await expect(coordinator.processNext()).resolves.toMatchObject({
+        status: 'progressed',
+        workspaceId,
+      });
+      expect(objectStore.calls).toBe(2);
+      let completed = false;
+      for (let page = 0; page < 20 && !completed; page += 1) {
+        completed = (await coordinator.processNext()).status === 'completed';
+      }
+      expect(completed).toBe(true);
+    } finally {
+      await coordinator.close();
     }
   });
 
@@ -219,6 +286,7 @@ describe('workspace purge foundation', () => {
       throw new Error('Database pools unavailable');
     const workspaceId = randomUUID();
     const userId = randomUUID();
+    const artifactId = randomUUID();
     const requestHash = '1'.repeat(64);
     await owner.query('begin');
     try {
@@ -263,6 +331,13 @@ describe('workspace purge foundation', () => {
           (id,workspace_id,fact_type,consumer_name,message_id)
          values($1,$2,'inbox_checksum_mismatch','worker.fixture',$3)`,
         [securityFactId, workspaceId, randomUUID()],
+      );
+      await owner.query(
+        `insert into app.artifacts
+          (id,workspace_id,purpose,storage_key,media_type,byte_length,sha256,expires_at)
+         values($1::uuid,$2::uuid,'output','workspaces/'||$2::text||'/artifacts/'||$1::text,
+          'application/json',2,$3,clock_timestamp()+interval '1 day')`,
+        [artifactId, workspaceId, '9'.repeat(64)],
       );
       await owner.query('commit');
     } catch (error: unknown) {
@@ -358,11 +433,63 @@ describe('workspace purge foundation', () => {
       )`,
       [workspaceId, randomUUID(), holdId, holdHash, releaseHash],
     );
+    const objectClaim = await maintenance.query<{
+      lease_fence: string;
+      lease_token: string;
+      step_name: string;
+    }>(
+      `select * from app.claim_workspace_purge_step(
+        $1,4,$2,'integration-worker',interval '1 minute'
+      )`,
+      [retry.rows[0]?.job_id, releaseHash],
+    );
+    expect(objectClaim.rows[0]?.step_name).toBe('object_versions');
+    await owner.query('begin');
+    try {
+      await owner.query('set local role pertexo_owner');
+      await expect(
+        owner.query('select count(*) count from app.artifacts where id=$1', [
+          artifactId,
+        ]),
+      ).resolves.toMatchObject({ rows: [{ count: '1' }] });
+      await owner.query('commit');
+    } catch (error: unknown) {
+      await owner.query('rollback');
+      throw error;
+    }
+    await maintenance.query(
+      `select app.checkpoint_workspace_object_versions_page(
+        $1,$2,$3,0,true,4,$4
+      )`,
+      [
+        retry.rows[0]?.job_id,
+        objectClaim.rows[0]?.lease_token,
+        objectClaim.rows[0]?.lease_fence,
+        releaseHash,
+      ],
+    );
+    await expect(
+      maintenance.query(
+        `select app.checkpoint_workspace_object_versions_page(
+          $1,$2,$3,0,true,4,$4
+        )`,
+        [
+          retry.rows[0]?.job_id,
+          objectClaim.rows[0]?.lease_token,
+          objectClaim.rows[0]?.lease_fence,
+          releaseHash,
+        ],
+      ),
+    ).rejects.toMatchObject({ code: '55000' });
+    await maintenance.query("select set_config('app.workspace_id',$1,false)", [
+      workspaceId,
+    ]);
     let tenantRowsCompleted = false;
     for (let page = 0; page < 20 && !tenantRowsCompleted; page += 1) {
       const claim = await maintenance.query<{
         lease_fence: string;
         lease_token: string;
+        step_name: string;
       }>(
         `select * from app.claim_workspace_purge_step(
           $1,4,$2,'integration-worker',interval '1 minute'
@@ -372,6 +499,7 @@ describe('workspace purge foundation', () => {
       const lease = claim.rows[0];
       if (lease === undefined)
         throw new Error('Expected tenant-row purge claim');
+      expect(lease.step_name).toBe('tenant_rows');
       const executed = await maintenance.query<{ completed: boolean }>(
         `select * from app.execute_workspace_tenant_rows_page(
           $1,$2,$3,10,4,$4
@@ -400,28 +528,30 @@ describe('workspace purge foundation', () => {
     try {
       await owner.query('set local role pertexo_owner');
       const state = await owner.query<{
+        completed_steps: string;
         status: string;
-        step_status: string;
       }>(
-        `select workspace.status,step.status step_status
+        `select workspace.status,count(*) filter (where step.status='completed') completed_steps
          from app.workspaces workspace
          join app.workspace_purge_jobs job on job.workspace_id=workspace.id
          join app.workspace_purge_steps step on step.job_id=job.id
-         where workspace.id=$1`,
+         where workspace.id=$1 group by workspace.status`,
         [workspaceId],
       );
       expect(state.rows[0]).toEqual({
+        completed_steps: '2',
         status: 'purging',
-        step_status: 'completed',
       });
       const residue = await owner.query<{
         audit_sensitive: string;
+        artifact_count: string;
         membership_count: string;
         security_sensitive: string;
         usage_sensitive: string;
       }>(
         `select
           (select count(*) from app.workspace_memberships where workspace_id=$1) membership_count,
+          (select count(*) from app.artifacts where workspace_id=$1) artifact_count,
           (select count(*) from app.audit_events where workspace_id=$1 and
             (actor_user_id is not null or request_id is not null or trace_id is not null
              or metadata<>'{}'::jsonb or target_id is distinct from $1)) audit_sensitive,
@@ -434,6 +564,7 @@ describe('workspace purge foundation', () => {
       );
       expect(residue.rows[0]).toEqual({
         audit_sensitive: '0',
+        artifact_count: '0',
         membership_count: '0',
         security_sensitive: '0',
         usage_sensitive: '0',

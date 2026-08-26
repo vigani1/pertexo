@@ -1,6 +1,7 @@
 import type {
   ArtifactStore,
   DualRegionControlLedger,
+  WorkspaceObjectPurgeStore,
 } from '@pertexo/artifact-store';
 import type {
   RetentionDatabase,
@@ -31,7 +32,7 @@ async function bootstrap(): Promise<void> {
   let preview: PreviewRetentionCoordinator | undefined;
   let runArtifacts: RunArtifactRetentionCoordinator | undefined;
   let workspacePurge: WorkspacePurgeCoordinator | undefined;
-  let artifacts: ArtifactStore | undefined;
+  let artifacts: (ArtifactStore & WorkspaceObjectPurgeStore) | undefined;
   let workerInvoked = false;
   try {
     telemetry.start();
@@ -85,6 +86,7 @@ async function bootstrap(): Promise<void> {
     workspacePurge = databasePackage.createWorkspacePurgeCoordinator(
       config.database,
       ledger,
+      artifacts,
       config.options,
     );
     workerInvoked = true;

@@ -764,7 +764,8 @@ describe('atomic workflow run acceptance', () => {
                returning id
              ) insert into app.workspace_purge_steps
                  (job_id,step_name,status,completed_at)
-               select id,'tenant_rows','completed',now() from job`,
+               select id,step_name,'completed',now() from job
+               cross join unnest(array['object_versions','tenant_rows']) step_name`,
             [workspaceA, 'f'.repeat(64)],
           );
         }
@@ -1244,7 +1245,8 @@ describe('atomic workflow run acceptance', () => {
                returning id
              ) insert into app.workspace_purge_steps
                  (job_id,step_name,status,completed_at)
-               select id,'tenant_rows','completed',now() from job`,
+               select id,step_name,'completed',now() from job
+               cross join unnest(array['object_versions','tenant_rows']) step_name`,
             [workspaceA, 'f'.repeat(64)],
           );
         }

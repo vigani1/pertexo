@@ -34,7 +34,7 @@ describe('node compatibility release persistence', () => {
     );
 
     expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0057_workspace_tenant_rows_purge.sql',
+      '0058_workspace_object_versions_purge.sql',
     );
     expect(migration).toContain('CREATE TABLE app.node_compatibility_releases');
     expect(migration).toContain('CREATE TABLE app.node_compatibility_current');

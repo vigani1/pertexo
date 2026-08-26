@@ -343,6 +343,8 @@ export function createRetentionDatabase(
               'app.find_due_workspace_purge_step()','EXECUTE')
             and has_function_privilege(current_user,
               'app.execute_workspace_tenant_rows_page(uuid,uuid,bigint,integer,bigint,character)','EXECUTE')
+            and has_function_privilege(current_user,
+              'app.checkpoint_workspace_object_versions_page(uuid,uuid,bigint,integer,boolean,bigint,character)','EXECUTE')
             and not has_function_privilege(current_user,
               'app.claim_retention_batches(character varying,integer,integer)','EXECUTE')
             and not has_function_privilege(current_user,

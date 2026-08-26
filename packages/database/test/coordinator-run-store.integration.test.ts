@@ -2015,7 +2015,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0057_workspace_tenant_rows_purge.sql',
+          migrationHead: '0058_workspace_object_versions_purge.sql',
           role: 'pertexo_worker',
         });
       } finally {
@@ -2098,6 +2098,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         '0055_standard_retention_classes.sql',
         '0056_workspace_purge_foundation.sql',
         '0057_workspace_tenant_rows_purge.sql',
+        '0058_workspace_object_versions_purge.sql',
       ]);
       const workerPool = new Pool({
         connectionString: namedDatabaseUrl(
@@ -2113,7 +2114,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0057_workspace_tenant_rows_purge.sql',
+          migrationHead: '0058_workspace_object_versions_purge.sql',
           role: 'pertexo_worker',
         });
         await expect(
@@ -2180,7 +2181,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0057_workspace_tenant_rows_purge.sql',
+        migrationHead: '0058_workspace_object_versions_purge.sql',
         role: 'pertexo_worker',
       });
       const catalog = await readinessPool.query<{
@@ -2419,7 +2420,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0057_workspace_tenant_rows_purge.sql',
+        migrationHead: '0058_workspace_object_versions_purge.sql',
       });
     } finally {
       await readinessPool.end();
@@ -2605,7 +2606,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         workerRuntimeRole: 'pertexo_worker',
       }),
     ).resolves.toMatchObject({
-      migrationHead: '0057_workspace_tenant_rows_purge.sql',
+      migrationHead: '0058_workspace_object_versions_purge.sql',
     });
     await readinessPool.end();
   });
