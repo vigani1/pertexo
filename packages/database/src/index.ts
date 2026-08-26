@@ -57,6 +57,14 @@ export {
 } from './config.js';
 export type { DatabaseConfig, MigrationConfig } from './config.js';
 export {
+  createWorkspaceLifecycleCommandCoordinator,
+  type WorkspaceLifecycleCommandCoordinator,
+  type WorkspaceLifecycleCommandOutcome,
+  type WorkspaceLifecycleCommandType,
+  type WorkspaceLifecycleLedger,
+  type WorkspaceLifecycleLedgerRecord,
+} from './workspace-lifecycle-commands.js';
+export {
   CONTROL_LEDGER_ZERO_HASH,
   ControlLedgerCommandConflictError,
   ControlLedgerReconciliationBoundError,

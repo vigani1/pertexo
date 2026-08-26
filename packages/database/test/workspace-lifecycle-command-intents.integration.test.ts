@@ -4,6 +4,10 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { migrateDatabase } from '../src/migrations.js';
+import {
+  createWorkspaceLifecycleCommandCoordinator,
+  type WorkspaceLifecycleLedgerRecord,
+} from '../src/workspace-lifecycle-commands.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';
 
 const adminUrl =
@@ -387,35 +391,63 @@ describe('workspace lifecycle command intents', () => {
   });
 
   it('binds projection, session revocation, and completion to one live lease', async () => {
-    if (lifecycle === undefined) throw new Error('Lifecycle pool unavailable');
-    const claimed = await lifecycle.query<{
-      lease_fence: string;
-      lease_token: string;
-      operation_id: string;
-    }>(
-      "select * from app.claim_workspace_lifecycle_operations('command:project',1,interval '1 minute')",
+    const ledgerCalls: string[] = [];
+    let durableRecord: WorkspaceLifecycleLedgerRecord | undefined;
+    const coordinator = createWorkspaceLifecycleCommandCoordinator(
+      {
+        connectionString: lifecycleUrl,
+        connectionTimeoutMillis: 5_000,
+        idleTimeoutMillis: 30_000,
+        max: 2,
+        ownerRole: 'pertexo_owner',
+        workerRuntimeRole: 'pertexo_worker',
+      },
+      {
+        append: (input) => {
+          ledgerCalls.push('append');
+          durableRecord = {
+            ...input,
+            recordHash: '9'.repeat(64),
+            schemaVersion: 1,
+          };
+          return Promise.reject(new Error('append response was lost'));
+        },
+        reconcile: () => {
+          ledgerCalls.push('reconcile');
+          return Promise.resolve({
+            hasMore: false,
+            pageEndHash: durableRecord?.recordHash ?? '0'.repeat(64),
+            pageEndSequence: durableRecord?.sequence ?? 0,
+            reachedHighWater: true,
+            records:
+              durableRecord === undefined
+                ? ([] as WorkspaceLifecycleLedgerRecord[])
+                : [durableRecord],
+          });
+        },
+      },
+      {
+        externalOperationTimeoutMs: 5_000,
+        leaseDurationMs: 60_000,
+        leaseOwner: 'command:coordinator',
+        statementTimeoutMs: 5_000,
+      },
     );
-    expect(claimed.rows[0]?.operation_id).toBe(firstOperationId);
-    const lease = claimed.rows[0];
-    await lifecycle.query(
-      'select app.lock_workspace_lifecycle_operation($1,$2,$3)',
-      [lease?.operation_id, lease?.lease_token, lease?.lease_fence],
-    );
-    await lifecycle.query(
-      'select app.authorize_workspace_lifecycle_append($1,$2,$3)',
-      [lease?.operation_id, lease?.lease_token, lease?.lease_fence],
-    );
-    await lifecycle.query(
-      'select app.project_and_complete_workspace_lifecycle_operation($1,$2,$3,$4,$5,$6)',
-      [
-        lease?.operation_id,
-        lease?.lease_token,
-        lease?.lease_fence,
-        1,
-        '0'.repeat(64),
-        '9'.repeat(64),
-      ],
-    );
+    try {
+      await expect(coordinator.processNext()).resolves.toEqual({
+        commandType: 'deletion_requested',
+        operationId: firstOperationId,
+        status: 'released',
+      });
+      await expect(coordinator.processNext()).resolves.toEqual({
+        commandType: 'deletion_requested',
+        operationId: firstOperationId,
+        status: 'completed',
+      });
+      expect(ledgerCalls).toEqual(['reconcile', 'append', 'reconcile']);
+    } finally {
+      await coordinator.close();
+    }
 
     const owner = new Pool({ connectionString: migrationUrl, max: 1 });
     try {
