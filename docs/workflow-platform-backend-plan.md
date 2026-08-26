@@ -2363,6 +2363,7 @@ Status values are `proposed`, `accepted`, `superseded`, or `rejected`.
 | 024 | Resend email-notification provider contract                                      | email action             |
 | 025 | Provider failure-notification destinations                                       | provider destinations    |
 | 026 | Generic webhook signature and replay contract                                    | Webhook trigger          |
+| 027 | Workspace lifecycle command dispatch and credential boundary                     | deletion API migration   |
 
 Deferred features receive new ADRs when promoted. Do not pre-author detailed
 ADRs for custom code, approvals, forms, nested workflows, synchronous webhooks,

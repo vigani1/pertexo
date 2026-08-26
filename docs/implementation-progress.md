@@ -3246,6 +3246,8 @@ Authority and production policy:
       hosting-region, backup, failover, and regional-recovery strategy.
 - [x] Record operated legal authority, backup rotation, data minimization, and
       production retention policy inputs without claiming legal certification.
+- [x] Accept ADR 027 before moving tenant-facing deletion and restore off direct
+      PostgreSQL mutation, fixing asynchronous intent dispatch and credentials.
 
 Retention, deletion, and legal hold:
 
@@ -3549,6 +3551,14 @@ Current evidence:
   manifests or AWS resources exist yet, and MinIO still fails the exact production
   bucket-policy proof. Therefore the combined external-ledger/restore checklist
   remains unchecked and no regional drill or RPO/RTO claim is made.
+- ADR 027 keeps maintenance and dual-ledger credentials out of the public API.
+  Deletion and restore become durable asynchronous operation resources processed
+  by a separate lifecycle-command worker with a request/restore-only database
+  role. The decision fixes exact command identity before external I/O, bounded
+  lease/fence recovery, under-lock authorization recheck, `202` acceptance,
+  exact idempotency replay, a fixed 30-day deadline, and restore-to-suspended
+  behavior. Implementation, generated contracts, deployment, and operational
+  evidence remain open, so no retention/deletion checklist item changes status.
 
 ## Update protocol
 
