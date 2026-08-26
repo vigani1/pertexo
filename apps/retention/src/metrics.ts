@@ -4,6 +4,7 @@ import type {
   RetentionEnforcementProcessResult,
   PreviewRetentionProcessResult,
   RetentionScheduleResult,
+  RunArtifactRetentionProcessResult,
 } from '@pertexo/database';
 
 export interface RetentionMetrics {
@@ -19,6 +20,10 @@ export interface RetentionMetrics {
   recordFailure(durationSeconds: number): void;
   recordPreview(
     result: PreviewRetentionProcessResult,
+    durationSeconds: number,
+  ): void;
+  recordRunArtifact(
+    result: RunArtifactRetentionProcessResult,
     durationSeconds: number,
   ): void;
 }
@@ -42,7 +47,7 @@ export function createRetentionMetrics(): RetentionMetrics {
       const attributes = {
         mode: 'schedule',
         outcome: result.scheduledCount > 0 ? 'scheduled' : 'idle',
-        retention_kind: 'workflow_run_input',
+        retention_kind: 'all',
       };
       scheduleScans.add(1, attributes);
       scheduleWorkspaces.add(result.scannedCount, {
@@ -63,7 +68,8 @@ export function createRetentionMetrics(): RetentionMetrics {
       const attributes = {
         mode,
         outcome: result.status,
-        retention_kind: 'workflow_run_input',
+        retention_kind:
+          result.status === 'idle' ? 'none' : result.retentionKind,
       };
       batches.add(1, attributes);
       duration.record(durationSeconds, attributes);
@@ -96,6 +102,16 @@ export function createRetentionMetrics(): RetentionMetrics {
         mode: 'enforce',
         outcome: result.status,
         retention_kind: 'preview',
+      };
+      batches.add(1, attributes);
+      duration.record(durationSeconds, attributes);
+      if (result.status !== 'idle') pages.add(1, attributes);
+    },
+    recordRunArtifact: (result, durationSeconds) => {
+      const attributes = {
+        mode: 'enforce',
+        outcome: result.status,
+        retention_kind: 'run_artifact',
       };
       batches.add(1, attributes);
       duration.record(durationSeconds, attributes);

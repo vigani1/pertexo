@@ -1290,7 +1290,8 @@ async function validateLoadedCheckpointPhysicalState(
   const available = await client.query<{ id: string }>(
     `select id from app.artifacts
      where workspace_id=$1 and id=any($2::uuid[])
-       and status='available' and deleted_at is null`,
+       and status='available' and deleted_at is null
+     for share`,
     [workspaceId, [...artifactIds]],
   );
   if (new Set(available.rows.map(({ id }) => id)).size !== artifactIds.size)
@@ -2341,7 +2342,8 @@ export function createCoordinatorRunStore(
             const availableArtifacts = await client.query<{ id: string }>(
               `select id from app.artifacts
                where workspace_id = $1 and id = any($2::uuid[])
-                 and status = 'available' and deleted_at is null`,
+                  and status = 'available' and deleted_at is null
+                for share`,
               [workspaceId, artifactIds],
             );
             if (

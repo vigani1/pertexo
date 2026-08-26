@@ -349,6 +349,9 @@ export const retentionBatches = appSchema.table(
       withTimezone: true,
       mode: 'date',
     }).notNull(),
+    retentionStage: varchar('retention_stage', { length: 32 })
+      .default('records')
+      .notNull(),
     dryRun: boolean('dry_run').default(true).notNull(),
     requestedBy: varchar('requested_by', { length: 128 }).notNull(),
     reason: varchar('reason', { length: 512 }).notNull(),
@@ -407,10 +410,8 @@ export const retentionBatches = appSchema.table(
 export const retentionScheduleState = appSchema.table(
   'retention_schedule_state',
   {
-    workspaceId: uuid('workspace_id').primaryKey(),
-    retentionKind: varchar('retention_kind', { length: 32 })
-      .default('workflow_run_input')
-      .notNull(),
+    workspaceId: uuid('workspace_id').notNull(),
+    retentionKind: varchar('retention_kind', { length: 32 }).notNull(),
     nextScanAt: timestamp('next_scan_at', { withTimezone: true, mode: 'date' })
       .default(sql`clock_timestamp()`)
       .notNull(),
@@ -427,6 +428,7 @@ export const retentionScheduleState = appSchema.table(
       .notNull(),
   },
   (table) => [
+    primaryKey({ columns: [table.workspaceId, table.retentionKind] }),
     index('retention_schedule_state_due_idx').on(
       table.nextScanAt,
       table.workspaceId,
@@ -671,6 +673,10 @@ export const artifacts = appSchema.table(
       mode: 'date',
     }),
     deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'date' }),
+    retentionRetryAt: timestamp('retention_retry_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
       .notNull(),
@@ -847,6 +853,10 @@ export const workflowRuns = appSchema.table(
     }),
     inputRef: jsonb('input_ref'),
     inputRefExpiresAt: timestamp('input_ref_expires_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    detailsPurgedAt: timestamp('details_purged_at', {
       withTimezone: true,
       mode: 'date',
     }),

@@ -202,7 +202,7 @@ describe('durable node compatibility release authority', () => {
           preactivationTarget: targetExpectation,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0054_workflow_run_input_retention_scheduling.sql',
+        migrationHead: '0055_standard_retention_classes.sql',
       });
 
       for (const [roleKind, artifactId] of [
@@ -325,7 +325,7 @@ describe('durable node compatibility release authority', () => {
           expectedCompatibilityReleases: rollingExpectations,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0054_workflow_run_input_retention_scheduling.sql',
+        migrationHead: '0055_standard_retention_classes.sql',
       });
       await expect(
         checkDatabaseReadiness(api, {
@@ -438,7 +438,7 @@ describe('durable node compatibility release authority', () => {
             expectedCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0054_workflow_run_input_retention_scheduling.sql',
+          migrationHead: '0055_standard_retention_classes.sql',
         });
         await expect(
           checkExpectedCompatibilityRelease(pool, {
@@ -466,7 +466,7 @@ describe('durable node compatibility release authority', () => {
           expectedCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0054_workflow_run_input_retention_scheduling.sql',
+        migrationHead: '0055_standard_retention_classes.sql',
       });
     } finally {
       await pool.end();

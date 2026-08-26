@@ -2015,7 +2015,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0054_workflow_run_input_retention_scheduling.sql',
+          migrationHead: '0055_standard_retention_classes.sql',
           role: 'pertexo_worker',
         });
       } finally {
@@ -2095,6 +2095,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         '0052_workflow_run_input_retention_enforcement.sql',
         '0053_preview_retention_enforcement.sql',
         '0054_workflow_run_input_retention_scheduling.sql',
+        '0055_standard_retention_classes.sql',
       ]);
       const workerPool = new Pool({
         connectionString: namedDatabaseUrl(
@@ -2110,7 +2111,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0054_workflow_run_input_retention_scheduling.sql',
+          migrationHead: '0055_standard_retention_classes.sql',
           role: 'pertexo_worker',
         });
         await expect(
@@ -2177,7 +2178,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0054_workflow_run_input_retention_scheduling.sql',
+        migrationHead: '0055_standard_retention_classes.sql',
         role: 'pertexo_worker',
       });
       const catalog = await readinessPool.query<{
@@ -2416,7 +2417,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0054_workflow_run_input_retention_scheduling.sql',
+        migrationHead: '0055_standard_retention_classes.sql',
       });
     } finally {
       await readinessPool.end();
@@ -2602,7 +2603,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         workerRuntimeRole: 'pertexo_worker',
       }),
     ).resolves.toMatchObject({
-      migrationHead: '0054_workflow_run_input_retention_scheduling.sql',
+      migrationHead: '0055_standard_retention_classes.sql',
     });
     await readinessPool.end();
   });
@@ -3397,43 +3398,28 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         ],
       );
     });
-    await asRuntime(workerBaseUrl, workspaceA, async (client) => {
-      await client.query(
-        `insert into app.node_runs (
+    await expect(
+      asRuntime(workerBaseUrl, workspaceA, async (client) => {
+        await client.query(
+          `insert into app.node_runs (
            id,workspace_id,workflow_run_id,node_id,invocation_key,branch_context,
            status,side_effect_class,current_attempt_id,current_attempt_number
-         ) values ($1,$2,$3,'artifact',$4,'{}','succeeded','safe',$5,1)`,
-        [nodeRunId, workspaceA, runId, invocationKey, attemptId],
-      );
-      await client.query(
-        `insert into app.node_attempts (
+          ) values ($1,$2,$3,'artifact',$4,'{}','succeeded','safe',$5,1)`,
+          [nodeRunId, workspaceA, runId, invocationKey, attemptId],
+        );
+        await client.query(
+          `insert into app.node_attempts (
            id,workspace_id,node_run_id,attempt_number,status,side_effect_class,output_ref
-         ) values ($1,$2,$3,1,'succeeded','safe',$4::jsonb)`,
-        [
-          attemptId,
-          workspaceA,
-          nodeRunId,
-          JSON.stringify({ schemaVersion: 1, kind: 'artifact', artifactId }),
-        ],
-      );
-      await client.query(
-        `insert into app.run_events
-           (workspace_id,workflow_run_id,sequence,type,payload)
-         values ($1,$2,2,'node.succeeded',$3::jsonb)`,
-        [
-          workspaceA,
-          runId,
-          JSON.stringify({ schemaVersion: 1, nodeRunId, attemptId }),
-        ],
-      );
-    });
-    await expect(
-      store.loadAdvanceState({
-        workspaceId: workspaceA,
-        runId,
-        signal: new AbortController().signal,
+          ) values ($1,$2,$3,1,'succeeded','safe',$4::jsonb)`,
+          [
+            attemptId,
+            workspaceA,
+            nodeRunId,
+            JSON.stringify({ schemaVersion: 1, kind: 'artifact', artifactId }),
+          ],
+        );
       }),
-    ).rejects.toBeInstanceOf(CoordinatorRunStateCorruptError);
+    ).rejects.toMatchObject({ code: '23503' });
   });
 
   it('derives deadline and due observations from durable database truth', async () => {
@@ -3652,36 +3638,13 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
       schedulerState: artifactCurrent,
       status: 'running',
     });
-    await seedSucceededFact(artifactRun, artifactInvocation, {
-      schemaVersion: 1,
-      kind: 'artifact',
-      artifactId,
-    });
     await expect(
-      store.commitAdvancePlan({
-        workspaceId: workspaceA,
-        runId: artifactRun,
-        workflowVersionId: versionA,
-        signal: new AbortController().signal,
-        plan: {
-          ...terminalPlan,
-          checkpoint: checkpoint({
-            revision: 1,
-            runStatus: 'succeeded',
-            nextEventSequence: 4,
-            invocations: [
-              {
-                invocationKey: artifactInvocation,
-                nodeId: 'artifact',
-                status: 'succeeded',
-                attemptNumber: 1,
-                output: { kind: 'artifact', artifactId },
-              },
-            ],
-          }),
-        },
+      seedSucceededFact(artifactRun, artifactInvocation, {
+        schemaVersion: 1,
+        kind: 'artifact',
+        artifactId,
       }),
-    ).rejects.toBeInstanceOf(CoordinatorRunStateCorruptError);
+    ).rejects.toMatchObject({ code: '23503' });
   });
 
   it('waits for artifact invalidation and rejects the now-unavailable checkpoint output', async () => {
@@ -5551,6 +5514,21 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
       finalOrigin: 'https://provider.example.test',
       redirectCount: 0,
     };
+    await asRuntime(workerBaseUrl, workspaceA, (client) =>
+      client.query(
+        `insert into app.artifacts (
+           id,workspace_id,purpose,storage_key,media_type,byte_length,sha256,
+           status,expires_at,finalized_at
+         ) values ($1,$2,'node-output',$3,'application/octet-stream',70000,$4,
+           'available',now()+interval '1 day',now())`,
+        [
+          httpArtifactOutput.body.artifactId,
+          workspaceA,
+          `workspaces/${workspaceA}/artifacts/${httpArtifactOutput.body.artifactId}`,
+          httpArtifactOutput.body.sha256,
+        ],
+      ),
+    );
     const completed = await nodeAttemptStore.complete({
       lease: claimed.lease,
       outcome: { status: 'succeeded', output: httpArtifactOutput },

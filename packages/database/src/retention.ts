@@ -8,6 +8,14 @@ import { EXPECTED_MIGRATION_HEAD } from './readiness.js';
 const uuidSchema = z.uuid();
 const boundedText = (maximum: number) => z.string().trim().min(1).max(maximum);
 const dateSchema = z.date().refine((value) => Number.isFinite(value.getTime()));
+const retentionKindSchema = z.enum([
+  'workflow_run_input',
+  'execution_detail',
+  'run_summary',
+  'trigger_summary',
+  'audit_security',
+]);
+export type RetentionKind = z.infer<typeof retentionKindSchema>;
 
 export interface StartWorkflowRunInputRetentionDryRunInput {
   readonly batchId: string;
@@ -32,7 +40,7 @@ export interface RetentionDryRunClaim {
   readonly leaseToken: string;
   readonly reason: string;
   readonly requestedBy: string;
-  readonly retentionKind: 'workflow_run_input';
+  readonly retentionKind: RetentionKind;
   readonly workspaceId: string;
 }
 
@@ -52,6 +60,7 @@ export type RetentionDryRunProcessResult =
       eligibleCount: number;
       examinedCount: number;
       pageCount: number;
+      retentionKind: RetentionKind;
       status: 'completed' | 'stale';
       workspaceId: string;
     }>;
@@ -95,6 +104,7 @@ export type RetentionEnforcementProcessResult =
       eligibleCount: number;
       examinedCount: number;
       pageCount: number;
+      retentionKind: RetentionKind;
       status: 'completed' | 'paused' | 'released' | 'stale';
       workspaceId: string;
     }>;
@@ -137,7 +147,7 @@ function mapClaim(row: Record<string, unknown>): RetentionDryRunClaim {
   return Object.freeze({
     batchId: uuidSchema.parse(row.batch_id),
     workspaceId: uuidSchema.parse(row.workspace_id),
-    retentionKind: z.literal('workflow_run_input').parse(row.retention_kind),
+    retentionKind: retentionKindSchema.parse(row.retention_kind),
     cutoffAt: new Date(row.cutoff_at as string | Date),
     requestedBy: boundedText(128).parse(row.requested_by),
     reason: boundedText(512).parse(row.reason),
@@ -307,6 +317,16 @@ export function createRetentionDatabase(
               'app.finish_preview_cleanup(uuid,uuid,bigint,character)','EXECUTE')
             and has_function_privilege(current_user,
               'app.schedule_workflow_run_input_retention(integer)','EXECUTE')
+            and has_function_privilege(current_user,
+              'app.execute_standard_retention_page(uuid,uuid,bigint,integer,bigint,character)','EXECUTE')
+            and has_function_privilege(current_user,
+              'app.find_due_run_artifact_retention(integer)','EXECUTE')
+            and has_function_privilege(current_user,
+              'app.prepare_run_artifact_retention(uuid,uuid,bigint,character)','EXECUTE')
+            and has_function_privilege(current_user,
+              'app.complete_run_artifact_retention(uuid,uuid,bigint,character)','EXECUTE')
+            and has_function_privilege(current_user,
+              'app.defer_run_artifact_retention(uuid,uuid,bigint,character)','EXECUTE')
             and not has_function_privilege(current_user,
               'app.claim_retention_batches(character varying,integer,integer)','EXECUTE')
             and not has_function_privilege(current_user,
@@ -349,6 +369,7 @@ export function createRetentionDatabase(
             eligibleCount,
             examinedCount,
             pageCount,
+            retentionKind: claimed.retentionKind,
             status: page.completed ? 'completed' : 'stale',
             workspaceId: claimed.workspaceId,
           });
@@ -532,8 +553,11 @@ export function createRetentionEnforcementCoordinator(
             outcome: string;
           }>(
             client,
-            `select * from app.execute_workflow_run_input_retention_page(
-              $1,$2,$3,$4,$5,$6)`,
+            claimed.retentionKind === 'workflow_run_input'
+              ? `select * from app.execute_workflow_run_input_retention_page(
+                  $1,$2,$3,$4,$5,$6)`
+              : `select * from app.execute_standard_retention_page(
+                  $1,$2,$3,$4,$5,$6)`,
             [
               claimed.batchId,
               claimed.leaseToken,
@@ -570,6 +594,7 @@ export function createRetentionEnforcementCoordinator(
               eligibleCount,
               examinedCount,
               pageCount,
+              retentionKind: claimed.retentionKind,
               status: outcome,
               workspaceId: claimed.workspaceId,
             });
@@ -583,6 +608,7 @@ export function createRetentionEnforcementCoordinator(
             eligibleCount,
             examinedCount,
             pageCount,
+            retentionKind: claimed.retentionKind,
             status: 'released' as const,
             workspaceId: claimed.workspaceId,
           });
@@ -596,6 +622,7 @@ export function createRetentionEnforcementCoordinator(
         eligibleCount,
         examinedCount,
         pageCount: options.maxPagesPerBatch,
+        retentionKind: claimed.retentionKind,
         status: 'released' as const,
         workspaceId: claimed.workspaceId,
       });

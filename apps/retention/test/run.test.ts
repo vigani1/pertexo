@@ -2,6 +2,7 @@ import type { RetentionDatabase } from '@pertexo/database';
 import type { DualRegionControlLedger } from '@pertexo/artifact-store';
 import type { RetentionEnforcementCoordinator } from '@pertexo/database';
 import type { PreviewRetentionCoordinator } from '@pertexo/database';
+import type { RunArtifactRetentionCoordinator } from '@pertexo/database';
 import type { StructuredLogger } from '@pertexo/observability/logging';
 import type { TelemetryLifecycle } from '@pertexo/observability/telemetry';
 import { describe, expect, it, vi } from 'vitest';
@@ -24,6 +25,7 @@ function resources(outcomes: ('completed' | 'idle' | 'stale')[]) {
             eligibleCount: 3,
             examinedCount: 3,
             pageCount: 2,
+            retentionKind: 'workflow_run_input',
             status,
             workspaceId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
           } as const),
@@ -65,6 +67,13 @@ function resources(outcomes: ('completed' | 'idle' | 'stale')[]) {
     }),
     processNext: vi.fn(() => Promise.resolve({ status: 'idle' as const })),
   } satisfies PreviewRetentionCoordinator;
+  const runArtifacts = {
+    close: vi.fn(() => {
+      events.push('run-artifacts-close');
+      return Promise.resolve();
+    }),
+    processNext: vi.fn(() => Promise.resolve({ status: 'idle' as const })),
+  } satisfies RunArtifactRetentionCoordinator;
   const ledger = {
     append: vi.fn(),
     checkReadiness: vi.fn(() => {
@@ -104,6 +113,7 @@ function resources(outcomes: ('completed' | 'idle' | 'stale')[]) {
     record: vi.fn(),
     recordFailure: vi.fn(),
     recordPreview: vi.fn(),
+    recordRunArtifact: vi.fn(),
     recordSchedule: vi.fn(),
   } satisfies RetentionMetrics;
   const telemetry = {
@@ -136,6 +146,7 @@ function resources(outcomes: ('completed' | 'idle' | 'stale')[]) {
     pollIntervalMs: 1,
     preview,
     processNext,
+    runArtifacts,
     signal: controller.signal,
     telemetry,
   };
@@ -155,6 +166,7 @@ describe('retention worker', () => {
       'process:completed',
       'process:idle',
       'preview-close',
+      'run-artifacts-close',
       'artifacts-close',
       'enforcement-close',
       'database-close',

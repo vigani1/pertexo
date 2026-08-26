@@ -554,6 +554,7 @@ describe('connection persistence', () => {
       '0052_workflow_run_input_retention_enforcement.sql',
       '0053_preview_retention_enforcement.sql',
       '0054_workflow_run_input_retention_scheduling.sql',
+      '0055_standard_retention_classes.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, priorDatabaseName),
@@ -566,7 +567,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0054_workflow_run_input_retention_scheduling.sql',
+        migrationHead: '0055_standard_retention_classes.sql',
       });
       const bindingSurface = await pool.query<{
         node_column: boolean;
@@ -785,6 +786,7 @@ describe('connection persistence', () => {
       '0052_workflow_run_input_retention_enforcement.sql',
       '0053_preview_retention_enforcement.sql',
       '0054_workflow_run_input_retention_scheduling.sql',
+      '0055_standard_retention_classes.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, upgradeDatabaseName),
@@ -797,7 +799,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0054_workflow_run_input_retention_scheduling.sql',
+        migrationHead: '0055_standard_retention_classes.sql',
       });
     } finally {
       await pool.end();
@@ -1784,7 +1786,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0054_workflow_run_input_retention_scheduling.sql',
+        migrationHead: '0055_standard_retention_classes.sql',
       });
       await expect(
         checkDatabaseReadiness(workerReadinessPool, {
@@ -1792,7 +1794,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0054_workflow_run_input_retention_scheduling.sql',
+        migrationHead: '0055_standard_retention_classes.sql',
       });
     } finally {
       await Promise.all([apiReadinessPool.end(), workerReadinessPool.end()]);

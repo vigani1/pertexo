@@ -183,6 +183,13 @@ export {
   createRetentionDatabase,
   createRetentionEnforcementCoordinator,
 } from './retention.js';
+export { createRunArtifactRetentionCoordinator } from './run-artifact-retention.js';
+export type {
+  RunArtifactRetentionCoordinator,
+  RunArtifactRetentionCoordinatorOptions,
+  RunArtifactRetentionProcessResult,
+  RunArtifactRetentionStore,
+} from './run-artifact-retention.js';
 export type {
   RetentionDatabase,
   RetentionDatabaseOptions,
@@ -192,6 +199,7 @@ export type {
   RetentionEnforcementCoordinator,
   RetentionEnforcementCoordinatorOptions,
   RetentionEnforcementProcessResult,
+  RetentionKind,
   RetentionScheduleResult,
   StartWorkflowRunInputRetentionDryRunInput,
   StartWorkflowRunInputRetentionInput,

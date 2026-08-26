@@ -428,7 +428,7 @@ describe('schedule trigger PostgreSQL slice', () => {
 
   it('recovers an expired lease, excludes competing scanners, and commits one acceptance with outbox', async () => {
     await expect(checkDatabaseReadiness(worker)).resolves.toMatchObject({
-      migrationHead: '0054_workflow_run_input_retention_scheduling.sql',
+      migrationHead: '0055_standard_retention_classes.sql',
       role: 'pertexo_worker',
     });
     const crashed = await worker.query(

@@ -8,8 +8,7 @@ import {
   type CompatibilityReleaseExpectationSet,
 } from './compatibility-release.js';
 
-export const EXPECTED_MIGRATION_HEAD =
-  '0054_workflow_run_input_retention_scheduling.sql';
+export const EXPECTED_MIGRATION_HEAD = '0055_standard_retention_classes.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -556,7 +555,7 @@ export async function checkDatabaseReadiness(
             and atttypid = 'timestamp with time zone'::regtype
             and not attnotnull and not attisdropped
         )
-        and (select count(*) = 25 from pg_attribute where attrelid = to_regclass('app.workflow_runs') and attnum > 0 and not attisdropped)
+        and (select count(*) = 26 from pg_attribute where attrelid = to_regclass('app.workflow_runs') and attnum > 0 and not attisdropped)
         and exists (
           select 1 from pg_attribute where attrelid = to_regclass('app.run_checkpoints')
             and attname = 'workflow_version_id' and atttypid = 'uuid'::regtype
@@ -618,9 +617,10 @@ export async function checkDatabaseReadiness(
           ) expected(table_name, policy_name)
           where (select count(*) from pg_policy where polrelid = to_regclass('app.' || expected.table_name)) <>
                 case
-                  when expected.table_name = 'node_runs' then 4
-                  when expected.table_name = 'workflow_runs' then 3
-                  when expected.table_name in ('run_events', 'run_checkpoints') then 3
+                  when expected.table_name = 'node_runs' then 5
+                  when expected.table_name = 'workflow_runs' then 4
+                  when expected.table_name in ('run_events', 'run_checkpoints') then 4
+                  when expected.table_name = 'node_attempts' then 2
                   else 1
                 end
             or not exists (

@@ -3,6 +3,7 @@ import type {
   RetentionDatabase,
   RetentionEnforcementCoordinator,
   PreviewRetentionCoordinator,
+  RunArtifactRetentionCoordinator,
 } from '@pertexo/database';
 import type { StructuredLogger } from '@pertexo/observability/logging';
 import type { TelemetryLifecycle } from '@pertexo/observability/telemetry';
@@ -18,6 +19,7 @@ export interface RetentionWorkerResources {
   readonly ledger: DualRegionControlLedger;
   readonly metrics: RetentionMetrics;
   readonly preview: PreviewRetentionCoordinator;
+  readonly runArtifacts: RunArtifactRetentionCoordinator;
   readonly pollIntervalMs: number;
   readonly signal: AbortSignal;
   readonly telemetry: TelemetryLifecycle;
@@ -78,6 +80,13 @@ export async function runRetentionWorker(
           preview,
           (performance.now() - startedAt) / 1_000,
         );
+        const runArtifact = await resources.runArtifacts.processNext(
+          resources.signal,
+        );
+        resources.metrics.recordRunArtifact(
+          runArtifact,
+          (performance.now() - startedAt) / 1_000,
+        );
         for (const outcome of [dryRun, enforcement]) {
           if (outcome.status === 'idle') continue;
           resources.logger.info('retention.batch_processed', {
@@ -92,12 +101,18 @@ export async function runRetentionWorker(
             outcome: preview.status,
           });
         }
+        if (runArtifact.status !== 'idle') {
+          resources.logger.info('retention.run_artifact_processed', {
+            outcome: runArtifact.status,
+          });
+        }
         if (
           schedule.scannedCount < 25 &&
           dryRun.status === 'idle' &&
           enforcement.status !== 'completed' &&
           preview.status !== 'completed' &&
-          preview.status !== 'progressed'
+          preview.status !== 'progressed' &&
+          runArtifact.status !== 'completed'
         ) {
           await waitForNextPoll(resources.pollIntervalMs, resources.signal);
         }
@@ -115,6 +130,7 @@ export async function runRetentionWorker(
   const cleanupErrors: unknown[] = [];
   for (const close of [
     () => resources.preview.close(),
+    () => resources.runArtifacts.close(),
     () => {
       resources.artifacts.close();
     },

@@ -6,6 +6,7 @@ import type {
   RetentionDatabase,
   RetentionEnforcementCoordinator,
   PreviewRetentionCoordinator,
+  RunArtifactRetentionCoordinator,
 } from '@pertexo/database';
 import type { StructuredLogger } from '@pertexo/observability/logging';
 import { createTelemetryLifecycle } from '@pertexo/observability/telemetry';
@@ -27,6 +28,7 @@ async function bootstrap(): Promise<void> {
   let ledger: DualRegionControlLedger | undefined;
   let logger: StructuredLogger | undefined;
   let preview: PreviewRetentionCoordinator | undefined;
+  let runArtifacts: RunArtifactRetentionCoordinator | undefined;
   let artifacts: ArtifactStore | undefined;
   let workerInvoked = false;
   try {
@@ -68,6 +70,16 @@ async function bootstrap(): Promise<void> {
         statementTimeoutMs: config.options.statementTimeoutMs,
       },
     );
+    runArtifacts = databasePackage.createRunArtifactRetentionCoordinator(
+      config.database,
+      ledger,
+      artifacts,
+      {
+        externalOperationTimeoutMs: config.options.externalOperationTimeoutMs,
+        lockTimeoutMs: config.options.lockTimeoutMs,
+        statementTimeoutMs: config.options.statementTimeoutMs,
+      },
+    );
     workerInvoked = true;
     await worker.runRetentionWorker({
       artifacts,
@@ -79,6 +91,7 @@ async function bootstrap(): Promise<void> {
       metrics: createRetentionMetrics(),
       pollIntervalMs: config.pollIntervalMs,
       preview,
+      runArtifacts,
       signal: shutdown.signal,
       telemetry,
     });
@@ -91,6 +104,7 @@ async function bootstrap(): Promise<void> {
     if (!workerInvoked) {
       await enforcement?.close().catch(() => undefined);
       await preview?.close().catch(() => undefined);
+      await runArtifacts?.close().catch(() => undefined);
       await database?.close().catch(() => undefined);
       artifacts?.close();
       ledger?.close();
