@@ -23,7 +23,7 @@ not complete a phase.
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 5 — orchestration slice | Complete | ADRs 008/017/018/019/020/021/022; implementation through `9d7e071`; migration head `0034_run_failure_notifications.sql`; 862 unit assertions and complete real-service/recovery matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 6 — V1 providers and triggers | Complete | ADRs 012–014 and 023–026; implementation through `0f8a170`; migration head `0043_workflow_run_input_retention.sql`; 1,021 unit and 288 real-service assertions; complete retained recovery and additive-rollout gates; independent fixed-head Spec and Standards completion GO |
-| Phase 7 — production operations | In progress | ADR 013; maintenance boundary and non-destructive retention-control foundation through migration `0044_retention_control_foundation.sql`; external ledger integration, destructive retention/purge, operator recovery, observability, exercises, restore drills, autoscaling, and ADR 015 remain open |
+| Phase 7 — production operations | In progress | ADR 013; maintenance boundary, non-destructive retention-control foundation, and external legal-hold command coordination through migration `0045_control_ledger_command_lock.sql`; real Object Lock proof, restore-before-serve, destructive retention/purge, operator recovery, observability, exercises, restore drills, autoscaling, and ADR 015 remain open |
 
 The `0A`–`0E` checkpoints are implementation-sized subdivisions of the plan's
 single Phase 0. They do not alter the authoritative scope. Phase 0 is complete
@@ -3384,6 +3384,45 @@ Current evidence:
   exact restore reconciliation, and restore-before-serve wiring are still absent,
   so the combined external-ledger checklist item remains unchecked and Phase 7
   remains in progress.
+- Migration `0045_control_ledger_command_lock.sql` adds a narrow
+  `SECURITY DEFINER` maintenance function that locks one workspace lifecycle row
+  for the caller transaction and returns its projected control-ledger high water,
+  plus command-id lookup and no-mutation legal-hold transition preflight functions
+  executable only by maintenance. Maintenance retains no direct control-table
+  privileges. The database package exposes a structural,
+  artifact-store-independent legal-hold coordinator over the maintenance pool.
+  Placement, release, and one-workspace reconciliation validate bounded inputs,
+  cap adapter pages at 100 records, set transaction-local lock and statement
+  timeouts while explicitly disabling idle-in-transaction timeout, and hold the
+  PostgreSQL row lock through externally timed ledger operations. Reconciliation
+  projects and commits one bounded chunk per lock transaction; invocation bounds
+  raise a stable error only after completed chunks are durable, so retries resume
+  from the advanced database high water. Commands append only after a transaction
+  proves external high water, performs exact replay lookup, and validates the
+  requested hold transition under the lock. Duplicate placement, absent release,
+  and repeated release therefore create no irreversible external records. SQL
+  queries receive caller cancellation, pool acquisition releases an eventual
+  client after prompt abort, and a dedicated PostgreSQL cancellation request
+  interrupts an in-flight lock wait; every cancellation-targeted client is
+  destroyed before reuse so a delayed backend cancel cannot affect another query. Exact
+  replay, payload conflict, and the append-success/projection-failure crash window
+  remain recoverable without duplicate append. Fifteen focused fake pool/ledger
+  tests cover ordering, preflight, rollback, cancellation, external timeout,
+  replay/conflict, crash recovery, durable bounded progress, command catch-up,
+  unsupported commands, pool acquisition, and page limits. Seven PostgreSQL
+  integration tests prove the exact `0044` -> `0045` migration, maintenance-only
+  execution and NULL/exact-command behavior, lock serialization, invalid-transition
+  preflight, append-failure atomicity, external-timeout lock lifetime, in-flight SQL
+  cancellation, durable chunk retry, command catch-up, interrupted-append recovery,
+  multiple holds, release, and exact sequence/hash advancement. Database
+  typechecking and all 98 unit assertions pass. A complete isolated fresh-database
+  matrix passes all 298 PostgreSQL assertions across 23 files in 44.84 seconds;
+  the temporary database was dropped afterward. Root `pnpm check` passes
+  formatting, builds, lint, generated-contract drift, typechecks, and all 1,105
+  unit assertions. Final security and Spec reviews report no blocker, high, or
+  medium findings. The real Object-Lock-capable service matrix and
+  restore-before-serve gate remain open, so the combined external-ledger
+  checklist stays unchecked and Phase 7 remains in progress.
 
 ## Update protocol
 

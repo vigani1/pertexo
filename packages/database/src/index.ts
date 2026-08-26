@@ -55,6 +55,23 @@ export {
   parseOutboxDispatcherConfig,
 } from './config.js';
 export type { DatabaseConfig, MigrationConfig } from './config.js';
+export {
+  CONTROL_LEDGER_ZERO_HASH,
+  ControlLedgerCommandConflictError,
+  ControlLedgerReconciliationBoundError,
+  ControlLedgerReconciliationError,
+  createControlLedgerCoordinator,
+  type AppendControlLedgerRecord,
+  type ControlLedger,
+  type ControlLedgerCommandType,
+  type ControlLedgerCoordinator,
+  type ControlLedgerReconcileResult,
+  type ControlLedgerReconciliation,
+  type ControlLedgerRecord,
+  type LegalHoldCommandInput,
+  type LegalHoldCommandResult,
+  type LegalHoldCommandType,
+} from './control-ledger-coordinator.js';
 export { createDueNodeWakeupScanner } from './due-node-wakeup-scanner.js';
 export type { DueNodeWakeupScanner } from './due-node-wakeup-scanner.js';
 export {

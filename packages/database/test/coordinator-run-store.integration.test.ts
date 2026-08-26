@@ -2014,7 +2014,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0044_retention_control_foundation.sql',
+          migrationHead: '0045_control_ledger_command_lock.sql',
           role: 'pertexo_worker',
         });
       } finally {
@@ -2084,6 +2084,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         '0042_worker_run_admission_lock.sql',
         '0043_workflow_run_input_retention.sql',
         '0044_retention_control_foundation.sql',
+        '0045_control_ledger_command_lock.sql',
       ]);
       const workerPool = new Pool({
         connectionString: namedDatabaseUrl(
@@ -2099,7 +2100,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0044_retention_control_foundation.sql',
+          migrationHead: '0045_control_ledger_command_lock.sql',
           role: 'pertexo_worker',
         });
         await expect(
@@ -2166,7 +2167,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0044_retention_control_foundation.sql',
+        migrationHead: '0045_control_ledger_command_lock.sql',
         role: 'pertexo_worker',
       });
       const catalog = await readinessPool.query<{
@@ -2405,7 +2406,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0044_retention_control_foundation.sql',
+        migrationHead: '0045_control_ledger_command_lock.sql',
       });
     } finally {
       await readinessPool.end();
@@ -2591,7 +2592,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         workerRuntimeRole: 'pertexo_worker',
       }),
     ).resolves.toMatchObject({
-      migrationHead: '0044_retention_control_foundation.sql',
+      migrationHead: '0045_control_ledger_command_lock.sql',
     });
     await readinessPool.end();
   });

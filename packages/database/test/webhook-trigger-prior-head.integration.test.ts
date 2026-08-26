@@ -73,6 +73,7 @@ describe('trigger hardening prior-head migration', () => {
       '0042_worker_run_admission_lock.sql',
       '0043_workflow_run_input_retention.sql',
       '0044_retention_control_foundation.sql',
+      '0045_control_ledger_command_lock.sql',
     ]);
   });
 });

@@ -17,7 +17,7 @@ const integrationUsageMigrationUrl = new URL(
 describe('workflow authoring migration contract', () => {
   it('advances the reviewed migration head', () => {
     expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0044_retention_control_foundation.sql',
+      '0045_control_ledger_command_lock.sql',
     );
   });
 
