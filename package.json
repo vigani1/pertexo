@@ -19,6 +19,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "NODE_OPTIONS=--max-old-space-size=8192 eslint .",
+    "restore:before-serve": "pnpm --filter @pertexo/recovery start",
     "test": "pnpm --recursive --if-present test",
     "test:integration": "pnpm --filter @pertexo/artifact-store test:integration && pnpm --filter @pertexo/database test:integration && pnpm --filter @pertexo/worker test:integration && pnpm --filter @pertexo/api test:integration",
     "typecheck": "tsc --build --pretty false && pnpm --recursive --if-present typecheck"

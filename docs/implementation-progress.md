@@ -23,7 +23,7 @@ not complete a phase.
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 5 — orchestration slice | Complete | ADRs 008/017/018/019/020/021/022; implementation through `9d7e071`; migration head `0034_run_failure_notifications.sql`; 862 unit assertions and complete real-service/recovery matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 6 — V1 providers and triggers | Complete | ADRs 012–014 and 023–026; implementation through `0f8a170`; migration head `0043_workflow_run_input_retention.sql`; 1,021 unit and 288 real-service assertions; complete retained recovery and additive-rollout gates; independent fixed-head Spec and Standards completion GO |
-| Phase 7 — production operations | In progress | ADRs 013/015; Frankfurt launch and Ireland recovery policy accepted; maintenance boundary, non-destructive retention-control foundation, all-six-command recovery projection plus legal-hold command coordination through migration `0046_workspace_deletion_control_projection.sql`, fail-closed dual-region control-ledger facade, and a two-process MinIO integration harness; MinIO policy incompatibility blocks the full local control proof, while workspace deletion command creation and side effects, API authority migration, AWS Object Lock/regional proof, restore-before-serve, destructive retention/purge, operator recovery, observability, exercises, restore drills, and autoscaling remain open |
+| Phase 7 — production operations | In progress | ADRs 013/015; Frankfurt launch and Ireland recovery policy accepted; maintenance boundary, non-destructive retention-control foundation, all-six-command recovery projection plus legal-hold command coordination through migration `0046_workspace_deletion_control_projection.sql`, fail-closed dual-region control-ledger facade, bounded restore-before-serve executable, and a two-process MinIO integration harness; MinIO policy incompatibility blocks the full local control proof, while workspace deletion command creation and side effects, API authority migration, deployed admission wiring, AWS Object Lock/regional proof, destructive retention/purge, operator recovery, observability, exercises, restore drills, and autoscaling remain open |
 
 The `0A`–`0E` checkpoints are implementation-sized subdivisions of the plan's
 single Phase 0. They do not alter the authoritative scope. Phase 0 is complete
@@ -3521,6 +3521,34 @@ Current evidence:
   durability, or Frankfurt-to-Ireland recovery evidence. The production AWS/
   Object Lock regional drill and the combined external-ledger checklist remain
   open.
+- Commit `edf4dc2` adds maintenance-role readiness and bounded complete-workspace
+  reconciliation to the database coordinator. Recovery inventory uses the
+  maintenance-only keyset function from migration `0046`, releases each inventory
+  client before workspace reconciliation, retries only the coordinator's durable
+  record-bound error, restarts every sweep at the beginning, and hashes ordered
+  workspace/final-sequence/final-hash tuples. Success requires two consecutive
+  complete sweeps with identical count and digest and zero projections in the
+  later sweep. Focused tests prove lower-sorting workspace insertion, a command
+  arriving between sweeps, bounded non-stabilization, and cancellation. A real
+  PostgreSQL 18 disposable database proves the exact maintenance role, migration
+  head, function grants, direct-DML denial, and an eight-workspace multi-page
+  stable inventory; all 10 focused integration assertions pass.
+- The dedicated `@pertexo/recovery` one-shot executable composes the restricted
+  maintenance database, dual-region control ledger, telemetry, process timeout,
+  and signal cancellation without starting HTTP listeners, Redis, BullMQ, or
+  tenant artifact storage. It fails on dependency readiness, regional disagreement,
+  reconciliation bounds, interruption, timeout, or any resource cleanup error.
+  Configuration is fully parsed before resources open, and seven focused tests
+  cover defaults/cross-field bounds, regional isolation, success ordering,
+  readiness failure, cancellation, and cleanup failure. Package build, typecheck,
+  lint, and tests pass; root `pnpm check` passes all 1,148 unit assertions.
+  `docs/operations/regional-recovery.md` fixes the admission
+  order: globally fence every writer, recover and migrate PostgreSQL, require a
+  fresh successful one-shot job, rebuild Redis, then open workers and API traffic.
+  The executable cannot prove that deployment-wide writer fence; no deployment
+  manifests or AWS resources exist yet, and MinIO still fails the exact production
+  bucket-policy proof. Therefore the combined external-ledger/restore checklist
+  remains unchecked and no regional drill or RPO/RTO claim is made.
 
 ## Update protocol
 

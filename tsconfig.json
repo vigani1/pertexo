@@ -13,6 +13,7 @@
     { "path": "./packages/queue/tsconfig.json" },
     { "path": "./packages/workflow-engine/tsconfig.json" },
     { "path": "./apps/api/tsconfig.json" },
-    { "path": "./apps/worker/tsconfig.json" }
+    { "path": "./apps/worker/tsconfig.json" },
+    { "path": "./apps/recovery/tsconfig.json" }
   ]
 }
