@@ -203,6 +203,7 @@ export type {
   RetentionDryRunClaim,
   RetentionDryRunPageResult,
   RetentionDryRunProcessResult,
+  RetentionDryRunTuple,
   RetentionEnforcementCoordinator,
   RetentionEnforcementCoordinatorOptions,
   RetentionEnforcementProcessResult,

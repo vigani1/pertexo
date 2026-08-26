@@ -202,7 +202,7 @@ describe('durable node compatibility release authority', () => {
           preactivationTarget: targetExpectation,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0059_workspace_purge_completion.sql',
+        migrationHead: '0060_standard_retention_dry_run.sql',
       });
 
       for (const [roleKind, artifactId] of [
@@ -325,7 +325,7 @@ describe('durable node compatibility release authority', () => {
           expectedCompatibilityReleases: rollingExpectations,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0059_workspace_purge_completion.sql',
+        migrationHead: '0060_standard_retention_dry_run.sql',
       });
       await expect(
         checkDatabaseReadiness(api, {
@@ -438,7 +438,7 @@ describe('durable node compatibility release authority', () => {
             expectedCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0059_workspace_purge_completion.sql',
+          migrationHead: '0060_standard_retention_dry_run.sql',
         });
         await expect(
           checkExpectedCompatibilityRelease(pool, {
@@ -466,7 +466,7 @@ describe('durable node compatibility release authority', () => {
           expectedCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0059_workspace_purge_completion.sql',
+        migrationHead: '0060_standard_retention_dry_run.sql',
       });
     } finally {
       await pool.end();

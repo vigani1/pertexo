@@ -16,7 +16,7 @@ const integrationUsageMigrationUrl = new URL(
 
 describe('workflow authoring migration contract', () => {
   it('advances the reviewed migration head', () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0059_workspace_purge_completion.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0060_standard_retention_dry_run.sql');
   });
 
   it('emits the identifier-only trigger-reconciliation payload', () => {

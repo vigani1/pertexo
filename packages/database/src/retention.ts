@@ -23,6 +23,7 @@ export interface StartWorkflowRunInputRetentionDryRunInput {
   readonly idempotencyKey: string;
   readonly reason: string;
   readonly requestedBy: string;
+  readonly retentionKind?: RetentionKind;
   readonly signal?: AbortSignal;
   readonly workspaceId: string;
 }
@@ -35,6 +36,8 @@ export interface RetentionDryRunClaim {
   readonly cutoffAt: Date;
   readonly cursorExpiresAt: Date | null;
   readonly cursorId: string | null;
+  readonly dryRunCursor: RetentionDryRunTuple | null;
+  readonly dryRunUpper: RetentionDryRunTuple | null;
   readonly leaseExpiresAt: Date;
   readonly leaseFence: number;
   readonly leaseToken: string;
@@ -50,8 +53,14 @@ export interface RetentionDryRunPageResult {
   readonly cursorId: string | null;
   readonly eligibleDelta: number;
   readonly examinedDelta: number;
+  readonly outcome: 'completed' | 'progressed' | 'stale';
   readonly stale: boolean;
 }
+
+export type RetentionDryRunTuple = Readonly<{
+  type: 'timestamp_uuid' | 'timestamp_uuid_text_text' | 'uuid' | 'uuid_bigint';
+  values: readonly (number | string)[];
+}>;
 
 export type RetentionDryRunProcessResult =
   | Readonly<{ status: 'idle' }>
@@ -156,11 +165,31 @@ function mapClaim(row: Record<string, unknown>): RetentionDryRunClaim {
         ? null
         : new Date(row.cursor_expires_at as string | Date),
     cursorId: row.cursor_id === null ? null : uuidSchema.parse(row.cursor_id),
+    dryRunCursor:
+      row.dry_run_cursor === null || row.dry_run_cursor === undefined
+        ? null
+        : retentionTupleSchema.parse(row.dry_run_cursor),
+    dryRunUpper:
+      row.dry_run_upper === null || row.dry_run_upper === undefined
+        ? null
+        : retentionTupleSchema.parse(row.dry_run_upper),
     leaseToken: uuidSchema.parse(row.lease_token),
     leaseFence: z.coerce.number().int().positive().parse(row.lease_fence),
     leaseExpiresAt: new Date(row.lease_expires_at as string | Date),
   });
 }
+
+const retentionTupleSchema = z
+  .object({
+    type: z.enum([
+      'timestamp_uuid',
+      'timestamp_uuid_text_text',
+      'uuid',
+      'uuid_bigint',
+    ]),
+    values: z.array(z.union([z.string(), z.number()])),
+  })
+  .strict();
 
 export function createRetentionDatabase(
   config: DatabaseConfig,
@@ -188,9 +217,13 @@ export function createRetentionDatabase(
     claimed: RetentionDryRunClaim,
     signal?: AbortSignal,
   ): Promise<RetentionDryRunPageResult> => {
+    const standard = claimed.retentionKind !== 'workflow_run_input';
     const result = await query(
       pool,
-      `select * from app.execute_workflow_run_input_retention_dry_run_page(
+      standard
+        ? `select * from app.execute_standard_retention_dry_run_page(
+          $1::uuid,$2::uuid,$3::bigint,$4::integer)`
+        : `select * from app.execute_workflow_run_input_retention_dry_run_page(
         $1::uuid,$2::uuid,$3::bigint,$4::integer)`,
       [
         claimed.batchId,
@@ -214,25 +247,33 @@ export function createRetentionDatabase(
       .nonnegative()
       .max(examinedDelta)
       .parse(row.eligible_delta);
-    const completed = z.boolean().parse(row.completed);
+    const outcome = standard
+      ? z.enum(['completed', 'progressed', 'stale']).parse(row.outcome)
+      : z.boolean().parse(row.completed)
+        ? 'completed'
+        : examinedDelta === 0 &&
+            eligibleDelta === 0 &&
+            row.cursor_expires_at === null &&
+            row.cursor_id === null
+          ? 'stale'
+          : 'progressed';
+    const completed = outcome === 'completed';
     const cursorExpiresAt =
-      row.cursor_expires_at === null
+      row.cursor_expires_at === null || row.cursor_expires_at === undefined
         ? null
         : new Date(row.cursor_expires_at as string | Date);
     const cursorId =
-      row.cursor_id === null ? null : uuidSchema.parse(row.cursor_id);
+      row.cursor_id === null || row.cursor_id === undefined
+        ? null
+        : uuidSchema.parse(row.cursor_id);
     return Object.freeze({
       completed,
       cursorExpiresAt,
       cursorId,
       eligibleDelta,
       examinedDelta,
-      stale:
-        !completed &&
-        examinedDelta === 0 &&
-        eligibleDelta === 0 &&
-        cursorExpiresAt === null &&
-        cursorId === null,
+      outcome,
+      stale: outcome === 'stale',
     });
   };
 
@@ -247,6 +288,7 @@ export function createRetentionDatabase(
         idempotencyKey: boundedText(128),
         reason: boundedText(512),
         requestedBy: boundedText(128),
+        retentionKind: retentionKindSchema.default('workflow_run_input'),
         signal: z
           .custom<AbortSignal>((value) => value instanceof AbortSignal)
           .optional(),
@@ -257,12 +299,13 @@ export function createRetentionDatabase(
     const result = await query<{ batch_id: string }>(
       pool,
       `select app.start_retention_batch(
-        $1::uuid,$2::uuid,$3::varchar,'workflow_run_input',
-        $4::timestamptz,$5::boolean,$6::varchar,$7::varchar) batch_id`,
+        $1::uuid,$2::uuid,$3::varchar,$4::varchar,
+        $5::timestamptz,$6::boolean,$7::varchar,$8::varchar) batch_id`,
       [
         parsed.batchId,
         parsed.workspaceId,
         parsed.idempotencyKey,
+        parsed.retentionKind,
         parsed.cutoffAt,
         dryRun,
         parsed.requestedBy,
@@ -301,6 +344,8 @@ export function createRetentionDatabase(
               'app.claim_retention_dry_run_batches(character varying,integer,integer)','EXECUTE')
             and has_function_privilege(current_user,
               'app.execute_workflow_run_input_retention_dry_run_page(uuid,uuid,bigint,integer)','EXECUTE')
+            and has_function_privilege(current_user,
+              'app.execute_standard_retention_dry_run_page(uuid,uuid,bigint,integer)','EXECUTE')
             and has_function_privilege(current_user,
               'app.claim_retention_destructive_batches(character varying,integer,integer)','EXECUTE')
             and has_function_privilege(current_user,

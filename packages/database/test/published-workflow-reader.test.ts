@@ -11,7 +11,7 @@ const migrationUrl = new URL(
 
 describe('published workflow execution migration contract', () => {
   it('adds a V2 executable envelope while preserving V1 rows', async () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0059_workspace_purge_completion.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0060_standard_retention_dry_run.sql');
 
     const sql = await readFile(migrationUrl, 'utf8');
     expect(sql).toContain('executable_schema_version integer');

@@ -2015,7 +2015,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0059_workspace_purge_completion.sql',
+          migrationHead: '0060_standard_retention_dry_run.sql',
           role: 'pertexo_worker',
         });
       } finally {
@@ -2100,6 +2100,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         '0057_workspace_tenant_rows_purge.sql',
         '0058_workspace_object_versions_purge.sql',
         '0059_workspace_purge_completion.sql',
+        '0060_standard_retention_dry_run.sql',
       ]);
       const workerPool = new Pool({
         connectionString: namedDatabaseUrl(
@@ -2115,7 +2116,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0059_workspace_purge_completion.sql',
+          migrationHead: '0060_standard_retention_dry_run.sql',
           role: 'pertexo_worker',
         });
         await expect(
@@ -2182,7 +2183,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0059_workspace_purge_completion.sql',
+        migrationHead: '0060_standard_retention_dry_run.sql',
         role: 'pertexo_worker',
       });
       const catalog = await readinessPool.query<{
@@ -2421,7 +2422,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0059_workspace_purge_completion.sql',
+        migrationHead: '0060_standard_retention_dry_run.sql',
       });
     } finally {
       await readinessPool.end();
@@ -2607,7 +2608,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         workerRuntimeRole: 'pertexo_worker',
       }),
     ).resolves.toMatchObject({
-      migrationHead: '0059_workspace_purge_completion.sql',
+      migrationHead: '0060_standard_retention_dry_run.sql',
     });
     await readinessPool.end();
   });

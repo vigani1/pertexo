@@ -559,6 +559,7 @@ describe('connection persistence', () => {
       '0057_workspace_tenant_rows_purge.sql',
       '0058_workspace_object_versions_purge.sql',
       '0059_workspace_purge_completion.sql',
+      '0060_standard_retention_dry_run.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, priorDatabaseName),
@@ -571,7 +572,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0059_workspace_purge_completion.sql',
+        migrationHead: '0060_standard_retention_dry_run.sql',
       });
       const bindingSurface = await pool.query<{
         node_column: boolean;
@@ -795,6 +796,7 @@ describe('connection persistence', () => {
       '0057_workspace_tenant_rows_purge.sql',
       '0058_workspace_object_versions_purge.sql',
       '0059_workspace_purge_completion.sql',
+      '0060_standard_retention_dry_run.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, upgradeDatabaseName),
@@ -807,7 +809,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0059_workspace_purge_completion.sql',
+        migrationHead: '0060_standard_retention_dry_run.sql',
       });
     } finally {
       await pool.end();
@@ -1794,7 +1796,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0059_workspace_purge_completion.sql',
+        migrationHead: '0060_standard_retention_dry_run.sql',
       });
       await expect(
         checkDatabaseReadiness(workerReadinessPool, {
@@ -1802,7 +1804,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0059_workspace_purge_completion.sql',
+        migrationHead: '0060_standard_retention_dry_run.sql',
       });
     } finally {
       await Promise.all([apiReadinessPool.end(), workerReadinessPool.end()]);

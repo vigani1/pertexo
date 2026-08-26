@@ -23,7 +23,7 @@ not complete a phase.
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 5 — orchestration slice | Complete | ADRs 008/017/018/019/020/021/022; implementation through `9d7e071`; migration head `0034_run_failure_notifications.sql`; 862 unit assertions and complete real-service/recovery matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 6 — V1 providers and triggers | Complete | ADRs 012–014 and 023–026; implementation through `0f8a170`; migration head `0043_workflow_run_input_retention.sql`; 1,021 unit and 288 real-service assertions; complete retained recovery and additive-rollout gates; independent fixed-head Spec and Standards completion GO |
-| Phase 7 — production operations | In progress | ADRs 013/015/027/028; Frankfurt launch and Ireland recovery policy accepted; maintenance and lifecycle-command credential boundaries, automatic durable dual-ledger/hold-gated 30/90/365-day PostgreSQL and object-store retention through migration `0055_standard_retention_classes.sql`, fenced and crash-repairable workspace tenant-row/object-version purge plus minimized completion tombstones through migrations `0056`–`0059`, seven-day preview retention, route-template-only API availability/latency SLIs, non-root read-only ECS container/task contracts with separate roles and release-job migrations, a bounded secret-free load-evidence harness, all-six-command recovery projection plus legal-hold command coordination, durable operation-bound and lease-fenced lifecycle intents, atomic persisted-surface deletion side effects, asynchronous `202 Accepted` lifecycle API operations and direct-mutation revocation, bounded dual-region lifecycle coordinator and standalone command workers, fail-closed dual-region control-ledger facade, bounded restore-before-serve executable, and a two-process MinIO integration harness; MinIO policy incompatibility blocks the full local control proof, while live version-enabled tenant-bucket proof, standard-class dry-run/operator commands, deployed AWS/IAM/admission wiring, AWS Object Lock/regional proof, measured load/failure exercises, restore drills, and autoscaling remain open; API-key and connected-subscription entities are explicitly deferred by the V1 plan and are not invented solely for deletion |
+| Phase 7 — production operations | In progress | ADRs 013/015/027/028; Frankfurt launch and Ireland recovery policy accepted; maintenance and lifecycle-command credential boundaries, automatic durable dual-ledger/hold-gated 30/90/365-day PostgreSQL and object-store retention plus frozen standard-class dry-run inventory through migration `0060_standard_retention_dry_run.sql`, fenced and crash-repairable workspace tenant-row/object-version purge plus minimized completion tombstones through migrations `0056`–`0059`, seven-day preview retention, route-template-only API availability/latency SLIs, non-root read-only ECS container/task contracts with separate roles and release-job migrations, a bounded secret-free load-evidence harness, all-six-command recovery projection plus legal-hold command coordination, durable operation-bound and lease-fenced lifecycle intents, atomic persisted-surface deletion side effects, asynchronous `202 Accepted` lifecycle API operations and direct-mutation revocation, bounded dual-region lifecycle coordinator and standalone command workers, fail-closed dual-region control-ledger facade, bounded restore-before-serve executable, and a two-process MinIO integration harness; MinIO policy incompatibility blocks the full local control proof, while supported operator rerun commands, live version-enabled tenant-bucket proof, deployed AWS/IAM/admission wiring, AWS Object Lock/regional proof, measured load/failure exercises, restore drills, and autoscaling remain open; API-key and connected-subscription entities are explicitly deferred by the V1 plan and are not invented solely for deletion |
 
 The `0A`–`0E` checkpoints are implementation-sized subdivisions of the plan's
 single Phase 0. They do not alter the authoritative scope. Phase 0 is complete
@@ -3581,6 +3581,34 @@ Current evidence:
   database unit assertions pass, and a fresh zero/prior-head PostgreSQL 18 matrix
   passes all 316 assertions across 26 integration files; live provider
   version-erasure evidence remains the only open workspace-purge proof.
+- Migration `0060_standard_retention_dry_run.sql` extends dry-run inventory to
+  execution detail, run summaries, trigger summaries, and audit/security facts.
+  Execution-detail inventory counts due run envelopes rather than walking an
+  unbounded number of child rows; enforcement retains its dependency-safe child
+  stages and reports their actual progress separately.
+  When each stage begins it freezes one typed JSONB upper tuple; resumable typed
+  cursors remain bounded by that stage high water and reset at stage transition.
+  Only the active stage is queried, using native typed row comparisons, supporting
+  keyset indexes, and a hard page-plus-one limit. Pages return explicit
+  `progressed`, `completed`, or `stale` outcomes, validate the lease token/fence
+  and expiry under the batch lock, and separately count examined candidates and
+  currently eligible effects. Rejected run/delivery candidates advance the
+  cursor, while delivery eligibility models the preceding expired-replay cleanup
+  without mutating it. Pages update only retention control progress and completion
+  audit facts. The
+  maintenance process dispatches by explicit retention kind while omitted kinds
+  retain the existing `workflow_run_input` API default. The bounded stage helper
+  is internal, and serving and lifecycle-command roles cannot execute either it
+  or the maintenance page. Page-size-one testing proves stage and empty-stage
+  progress, lease reclaim without duplicate counts, frozen-upper deferral, stale
+  fencing, and unchanged source rows. Inventory is intentionally weakly
+  consistent across transactions: rows inserted or made eligible behind a
+  committed cursor are deferred to a later batch rather than presented as part
+  of a point-in-time snapshot. All 119 database unit assertions and seven focused
+  disposable-PostgreSQL retention assertions pass; a clean zero/prior-head
+  PostgreSQL 18 matrix passes all 316 assertions across 26 integration files at
+  migration head `0060`. Supported operator rerun commands remain open, so the
+  broad retention-batch checklist stays unchecked.
 - Accepted ADR 028 defines a repository-owned ECS workload manifest and migration
   release-job contract. The multi-stage production image runs as UID/GID 10001
   under `tini` with production dependencies only. Rendered Fargate definitions
