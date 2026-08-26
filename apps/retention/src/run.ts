@@ -52,6 +52,13 @@ export async function runRetentionWorker(
     while (!resources.signal.aborted) {
       const startedAt = performance.now();
       try {
+        const schedule = await resources.database.scheduleEnforcement(
+          resources.signal,
+        );
+        resources.metrics.recordSchedule(
+          schedule,
+          (performance.now() - startedAt) / 1_000,
+        );
         const dryRun = await resources.database.processNext(resources.signal);
         resources.metrics.record(
           dryRun,
@@ -86,6 +93,7 @@ export async function runRetentionWorker(
           });
         }
         if (
+          schedule.scannedCount < 25 &&
           dryRun.status === 'idle' &&
           enforcement.status !== 'completed' &&
           preview.status !== 'completed' &&

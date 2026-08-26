@@ -63,6 +63,12 @@ export interface RetentionDatabaseOptions {
   readonly pageSize?: number;
 }
 
+export interface RetentionScheduleResult {
+  readonly cutoffAt: Date;
+  readonly scannedCount: number;
+  readonly scheduledCount: number;
+}
+
 export interface RetentionDatabase {
   checkReadiness(input: {
     readonly expectedMaintenanceRole: string;
@@ -75,6 +81,7 @@ export interface RetentionDatabase {
     signal?: AbortSignal,
   ): Promise<RetentionDryRunPageResult>;
   processNext(signal?: AbortSignal): Promise<RetentionDryRunProcessResult>;
+  scheduleEnforcement(signal?: AbortSignal): Promise<RetentionScheduleResult>;
   startDryRun(
     input: StartWorkflowRunInputRetentionDryRunInput,
   ): Promise<string>;
@@ -298,11 +305,14 @@ export function createRetentionDatabase(
               'app.complete_preview_artifact_cleanup(uuid,uuid,bigint,character)','EXECUTE')
             and has_function_privilege(current_user,
               'app.finish_preview_cleanup(uuid,uuid,bigint,character)','EXECUTE')
+            and has_function_privilege(current_user,
+              'app.schedule_workflow_run_input_retention(integer)','EXECUTE')
             and not has_function_privilege(current_user,
               'app.claim_retention_batches(character varying,integer,integer)','EXECUTE')
             and not has_function_privilege(current_user,
               'app.checkpoint_retention_batch(uuid,uuid,bigint,timestamp with time zone,uuid,integer,integer,boolean)','EXECUTE')
             and not has_table_privilege(current_user,'app.workflow_runs','SELECT,INSERT,UPDATE,DELETE')
+            and not has_table_privilege(current_user,'app.retention_schedule_state','SELECT,INSERT,UPDATE,DELETE')
             as compatible`,
         [role],
         signal,
@@ -345,6 +355,36 @@ export function createRetentionDatabase(
         }
       }
       throw new Error('Retention dry-run page bound exceeded');
+    },
+    scheduleEnforcement: async (signal?: AbortSignal) => {
+      const result = await query<{
+        cutoff_at: Date | string;
+        scanned_count: number | string;
+        scheduled_count: number | string;
+      }>(
+        pool,
+        'select * from app.schedule_workflow_run_input_retention(25)',
+        [],
+        signal,
+      );
+      const row = result.rows[0];
+      if (row === undefined)
+        throw new Error('Retention schedule result was not returned');
+      return Object.freeze({
+        cutoffAt: new Date(row.cutoff_at),
+        scannedCount: z.coerce
+          .number()
+          .int()
+          .min(0)
+          .max(25)
+          .parse(row.scanned_count),
+        scheduledCount: z.coerce
+          .number()
+          .int()
+          .min(0)
+          .max(25)
+          .parse(row.scheduled_count),
+      });
     },
     startDryRun: (input) => startBatch(input, true),
     startEnforcement: (input) => startBatch(input, false),

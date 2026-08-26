@@ -83,6 +83,7 @@ describe('trigger hardening prior-head migration', () => {
       '0051_workflow_run_input_retention_dry_run.sql',
       '0052_workflow_run_input_retention_enforcement.sql',
       '0053_preview_retention_enforcement.sql',
+      '0054_workflow_run_input_retention_scheduling.sql',
     ]);
   });
 });

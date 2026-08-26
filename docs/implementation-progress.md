@@ -23,7 +23,7 @@ not complete a phase.
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 5 — orchestration slice | Complete | ADRs 008/017/018/019/020/021/022; implementation through `9d7e071`; migration head `0034_run_failure_notifications.sql`; 862 unit assertions and complete real-service/recovery matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 6 — V1 providers and triggers | Complete | ADRs 012–014 and 023–026; implementation through `0f8a170`; migration head `0043_workflow_run_input_retention.sql`; 1,021 unit and 288 real-service assertions; complete retained recovery and additive-rollout gates; independent fixed-head Spec and Standards completion GO |
-| Phase 7 — production operations | In progress | ADRs 013/015/027; Frankfurt launch and Ireland recovery policy accepted; maintenance and lifecycle-command credential boundaries, dual-ledger/hold-gated 30-day workflow-input and seven-day preview retention enforcement through migration `0053_preview_retention_enforcement.sql`, all-six-command recovery projection plus legal-hold command coordination, durable operation-bound and lease-fenced lifecycle intents, atomic persisted-surface deletion side effects, asynchronous `202 Accepted` lifecycle API operations and direct-mutation revocation, bounded dual-region lifecycle coordinator and standalone command workers, fail-closed dual-region control-ledger facade, bounded restore-before-serve executable, and a two-process MinIO integration harness; MinIO policy incompatibility blocks the full local control proof, while remaining retention classes, purge, API-key and external-provider revocation, deployed admission wiring, AWS Object Lock/regional proof, operator recovery, broader observability, exercises, restore drills, and autoscaling remain open |
+| Phase 7 — production operations | In progress | ADRs 013/015/027; Frankfurt launch and Ireland recovery policy accepted; maintenance and lifecycle-command credential boundaries, automatic durable workflow-input scheduling plus dual-ledger/hold-gated 30-day workflow-input and seven-day preview retention enforcement through migration `0054_workflow_run_input_retention_scheduling.sql`, all-six-command recovery projection plus legal-hold command coordination, durable operation-bound and lease-fenced lifecycle intents, atomic persisted-surface deletion side effects, asynchronous `202 Accepted` lifecycle API operations and direct-mutation revocation, bounded dual-region lifecycle coordinator and standalone command workers, fail-closed dual-region control-ledger facade, bounded restore-before-serve executable, and a two-process MinIO integration harness; MinIO policy incompatibility blocks the full local control proof, while remaining retention classes, purge, API-key and external-provider revocation, deployed admission wiring, AWS Object Lock/regional proof, operator recovery, broader observability, exercises, restore drills, and autoscaling remain open |
 
 The `0A`–`0E` checkpoints are implementation-sized subdivisions of the plan's
 single Phase 0. They do not alter the authoritative scope. Phase 0 is complete
@@ -3441,6 +3441,30 @@ Current evidence:
   30/90/365-day classes, general run-artifact retention, workspace purge, and
   real AWS Object Lock evidence remain open, so the broad retention and purge
   checklist items stay unchecked.
+- Migration `0054_workflow_run_input_retention_scheduling.sql` makes the proven
+  30-day workflow-input enforcement automatic without adding cron or serving-role
+  authority. Every workspace has one durable daily scan cursor, including an
+  upgrade backfill and trigger provisioning for new workspaces. One
+  maintenance-only database call uses PostgreSQL time, claims at most 25 due
+  cursors with `FOR UPDATE SKIP LOCKED`, and atomically advances each cursor. It
+  creates an audited, date-keyed destructive batch only when expired input exists,
+  no destructive batch is unfinished, and the same UTC schedule period was not
+  already created. A failed transaction leaves both cursor and batch creation
+  retryable; concurrent processes cannot claim the same cursor; restart scans do
+  not duplicate batches or audit facts. The no-HTTP retention process schedules
+  before enforcement, drains saturated 25-workspace scans without polling delay,
+  and emits only fixed-cardinality scanned/scheduled telemetry. Readiness requires
+  the narrow function grant and rejects direct schedule-table authority; API,
+  worker, dispatcher, and lifecycle-command roles cannot execute the function or
+  read its state. A fresh PostgreSQL 18 focused suite passes five assertions,
+  including 26 workspaces split across concurrent claims, exact restart replay,
+  future cursor advancement, and API denial. The complete disposable database
+  matrix passes all 311 assertions across 25 files at head `0054`; root
+  `pnpm check` passes formatting, all production builds, lint, generated-contract
+  drift, typechecks, and all 1,161 unit assertions. Other 30/90/365-day classes,
+  general run-artifact retention, workspace purge, and real AWS Object Lock
+  evidence remain open, so the broad retention and purge checklist items stay
+  unchecked.
 - The artifact-store package now exposes a separate append-only ADR 013 control
   ledger adapter and dedicated `CONTROL_LEDGER_*` configuration without changing
   the tenant `ArtifactStore` API or worker artifact configuration. Its principal

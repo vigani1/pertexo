@@ -192,6 +192,7 @@ export type {
   RetentionEnforcementCoordinator,
   RetentionEnforcementCoordinatorOptions,
   RetentionEnforcementProcessResult,
+  RetentionScheduleResult,
   StartWorkflowRunInputRetentionDryRunInput,
   StartWorkflowRunInputRetentionInput,
 } from './retention.js';

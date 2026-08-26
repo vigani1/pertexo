@@ -404,6 +404,41 @@ export const retentionBatches = appSchema.table(
   ],
 );
 
+export const retentionScheduleState = appSchema.table(
+  'retention_schedule_state',
+  {
+    workspaceId: uuid('workspace_id').primaryKey(),
+    retentionKind: varchar('retention_kind', { length: 32 })
+      .default('workflow_run_input')
+      .notNull(),
+    nextScanAt: timestamp('next_scan_at', { withTimezone: true, mode: 'date' })
+      .default(sql`clock_timestamp()`)
+      .notNull(),
+    lastScannedAt: timestamp('last_scanned_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    lastCutoffAt: timestamp('last_cutoff_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .default(sql`clock_timestamp()`)
+      .notNull(),
+  },
+  (table) => [
+    index('retention_schedule_state_due_idx').on(
+      table.nextScanAt,
+      table.workspaceId,
+    ),
+    foreignKey({
+      columns: [table.workspaceId],
+      foreignColumns: [workspaces.id],
+      name: 'retention_schedule_state_workspace_fk',
+    }).onDelete('cascade'),
+  ],
+);
+
 export const workspaceMemberships = appSchema.table(
   'workspace_memberships',
   {

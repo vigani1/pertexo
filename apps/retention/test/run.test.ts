@@ -41,6 +41,13 @@ function resources(outcomes: ('completed' | 'idle' | 'stale')[]) {
     }),
     executeDryRunPage: vi.fn(),
     processNext,
+    scheduleEnforcement: vi.fn(() =>
+      Promise.resolve({
+        cutoffAt: new Date('2026-08-26T00:00:00.000Z'),
+        scannedCount: 0,
+        scheduledCount: 0,
+      }),
+    ),
     startDryRun: vi.fn(),
     startEnforcement: vi.fn(),
   } satisfies RetentionDatabase;
@@ -97,6 +104,7 @@ function resources(outcomes: ('completed' | 'idle' | 'stale')[]) {
     record: vi.fn(),
     recordFailure: vi.fn(),
     recordPreview: vi.fn(),
+    recordSchedule: vi.fn(),
   } satisfies RetentionMetrics;
   const telemetry = {
     enabled: false,
@@ -154,6 +162,7 @@ describe('retention worker', () => {
       'telemetry-close',
     ]);
     expect(input.metrics.record).toHaveBeenCalledTimes(4);
+    expect(input.metrics.recordSchedule).toHaveBeenCalledTimes(2);
   });
 
   it('does not claim when readiness fails and still closes resources', async () => {

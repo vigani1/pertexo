@@ -3,9 +3,14 @@ import type {
   RetentionDryRunProcessResult,
   RetentionEnforcementProcessResult,
   PreviewRetentionProcessResult,
+  RetentionScheduleResult,
 } from '@pertexo/database';
 
 export interface RetentionMetrics {
+  recordSchedule(
+    result: RetentionScheduleResult,
+    durationSeconds: number,
+  ): void;
   record(
     result: RetentionDryRunProcessResult | RetentionEnforcementProcessResult,
     durationSeconds: number,
@@ -26,7 +31,30 @@ export function createRetentionMetrics(): RetentionMetrics {
   const duration = meter.createHistogram('pertexo.retention.batch.duration', {
     unit: 's',
   });
+  const scheduleScans = meter.createCounter(
+    'pertexo.retention.schedule.scan.count',
+  );
+  const scheduleWorkspaces = meter.createCounter(
+    'pertexo.retention.schedule.workspace.count',
+  );
   const retentionMetrics: RetentionMetrics = {
+    recordSchedule: (result, durationSeconds) => {
+      const attributes = {
+        mode: 'schedule',
+        outcome: result.scheduledCount > 0 ? 'scheduled' : 'idle',
+        retention_kind: 'workflow_run_input',
+      };
+      scheduleScans.add(1, attributes);
+      scheduleWorkspaces.add(result.scannedCount, {
+        ...attributes,
+        workspace_outcome: 'scanned',
+      });
+      scheduleWorkspaces.add(result.scheduledCount, {
+        ...attributes,
+        workspace_outcome: 'scheduled',
+      });
+      duration.record(durationSeconds, attributes);
+    },
     record: (
       result: RetentionDryRunProcessResult | RetentionEnforcementProcessResult,
       durationSeconds: number,

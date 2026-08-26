@@ -8,7 +8,8 @@ import {
   type CompatibilityReleaseExpectationSet,
 } from './compatibility-release.js';
 
-export const EXPECTED_MIGRATION_HEAD = '0053_preview_retention_enforcement.sql';
+export const EXPECTED_MIGRATION_HEAD =
+  '0054_workflow_run_input_retention_scheduling.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
