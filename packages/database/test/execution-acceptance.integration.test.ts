@@ -148,6 +148,8 @@ async function resetExecutionFixture(): Promise<void> {
     await client.query('set local role pertexo_owner');
     await client.query(`
       truncate table
+        app.workspace_purge_steps,
+        app.workspace_purge_jobs,
         app.idempotency_records,
         app.run_events,
         app.run_checkpoints,
@@ -751,6 +753,21 @@ describe('atomic workflow run acceptance', () => {
       try {
         await client.query('begin');
         await client.query('set local role pertexo_owner');
+        if (status === 'deleted') {
+          await client.query(
+            `with job as (
+               insert into app.workspace_purge_jobs
+                 (id,workspace_id,command_id,actor_ref,reason,occurred_at,status,
+                  control_sequence,control_record_hash,completed_at)
+               values (gen_random_uuid(),$1,gen_random_uuid(),'fixture:purge',
+                 'Completed purge fixture',now(),'completed',1,$2,now())
+               returning id
+             ) insert into app.workspace_purge_steps
+                 (job_id,step_name,status,completed_at)
+               select id,'tenant_rows','completed',now() from job`,
+            [workspaceA, 'f'.repeat(64)],
+          );
+        }
         await client.query(
           `update app.workspaces
            set status = $2::varchar,
@@ -1216,6 +1233,21 @@ describe('atomic workflow run acceptance', () => {
       const owner = new Pool({ connectionString: migrationUrl, max: 1 });
       try {
         await owner.query('set role pertexo_owner');
+        if (status === 'deleted') {
+          await owner.query(
+            `with job as (
+               insert into app.workspace_purge_jobs
+                 (id,workspace_id,command_id,actor_ref,reason,occurred_at,status,
+                  control_sequence,control_record_hash,completed_at)
+               values (gen_random_uuid(),$1,gen_random_uuid(),'fixture:purge',
+                 'Completed purge fixture',now(),'completed',1,$2,now())
+               returning id
+             ) insert into app.workspace_purge_steps
+                 (job_id,step_name,status,completed_at)
+               select id,'tenant_rows','completed',now() from job`,
+            [workspaceA, 'f'.repeat(64)],
+          );
+        }
         await owner.query(
           `update app.workspaces
            set status = $2::varchar,

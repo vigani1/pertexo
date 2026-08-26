@@ -8,7 +8,7 @@ import {
   type CompatibilityReleaseExpectationSet,
 } from './compatibility-release.js';
 
-export const EXPECTED_MIGRATION_HEAD = '0055_standard_retention_classes.sql';
+export const EXPECTED_MIGRATION_HEAD = '0056_workspace_purge_foundation.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{

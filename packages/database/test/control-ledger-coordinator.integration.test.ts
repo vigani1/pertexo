@@ -258,6 +258,10 @@ beforeAll(async () => {
     path.join(MIGRATIONS_DIRECTORY, '0055_standard_retention_classes.sql'),
     path.join(priorDirectory, '0055_standard_retention_classes.sql'),
   );
+  await copyFile(
+    path.join(MIGRATIONS_DIRECTORY, '0056_workspace_purge_foundation.sql'),
+    path.join(priorDirectory, '0056_workspace_purge_foundation.sql'),
+  );
   await expect(
     migrateDatabase(migrationConfig, priorDirectory),
   ).resolves.toEqual([
@@ -271,6 +275,7 @@ beforeAll(async () => {
     '0053_preview_retention_enforcement.sql',
     '0054_workflow_run_input_retention_scheduling.sql',
     '0055_standard_retention_classes.sql',
+    '0056_workspace_purge_foundation.sql',
   ]);
   maintenance = new Pool({ connectionString: maintenanceUrl, max: 4 });
 }, 120_000);
@@ -874,7 +879,7 @@ describe('control ledger coordinator exact 0045 to 0047 integration', () => {
     );
     await expect(
       coordinator.reconcileWorkspace({ workspaceId: deletionWorkspaceId }),
-    ).resolves.toMatchObject({ highWaterSequence: 7, projectedCount: 1 });
+    ).rejects.toMatchObject({ code: '55000' });
 
     const verifier = new Pool({ connectionString: migrationUrl, max: 1 });
     try {
@@ -893,9 +898,9 @@ describe('control ledger coordinator exact 0045 to 0047 integration', () => {
         [deletionWorkspaceId],
       );
       expect(state.rows[0]).toMatchObject({
-        fact_count: '7',
-        retention_control_sequence: '7',
-        status: 'deleted',
+        fact_count: '6',
+        retention_control_sequence: '6',
+        status: 'purging',
       });
       const row = state.rows[0];
       if (row === undefined)

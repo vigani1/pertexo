@@ -864,7 +864,11 @@ export function createControlLedgerCoordinator(
                and has_function_privilege(current_user,'app.lock_workspace_control_ledger(uuid)','EXECUTE')
                and has_function_privilege(current_user,'app.project_workspace_legal_hold(uuid,bigint,uuid,character varying,uuid,character,character,character varying,character varying,character varying,timestamp with time zone)','EXECUTE')
                and has_function_privilege(current_user,'app.project_workspace_deletion(uuid,bigint,uuid,character varying,uuid,character,character,character varying,character varying,character varying,timestamp with time zone,interval)','EXECUTE')
-               and has_function_privilege(current_user,'app.enumerate_workspace_control_anchors(uuid,integer)','EXECUTE')
+                and has_function_privilege(current_user,'app.enumerate_workspace_control_anchors(uuid,integer)','EXECUTE')
+                and has_function_privilege(current_user,'app.find_due_workspace_purge()','EXECUTE')
+                and has_function_privilege(current_user,'app.workspace_purge_repair_command_id(uuid)','EXECUTE')
+                and has_function_privilege(current_user,'app.prepare_workspace_purge_job(uuid,bigint,character,character varying,interval)','EXECUTE')
+                and has_function_privilege(current_user,'app.project_workspace_purge_started(uuid,uuid,bigint,bigint,character,character)','EXECUTE')
                and not has_table_privilege(current_user,'app.workspaces','INSERT,UPDATE,DELETE,TRUNCATE')
                and not has_table_privilege(current_user,'app.workspace_control_ledger_projection','INSERT,UPDATE,DELETE,TRUNCATE')
                as boundary_compatible

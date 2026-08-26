@@ -232,6 +232,7 @@ describe('preview retention migration', () => {
       '0053_preview_retention_enforcement.sql',
       '0054_workflow_run_input_retention_scheduling.sql',
       '0055_standard_retention_classes.sql',
+      '0056_workspace_purge_foundation.sql',
     ]);
 
     const verification = new Pool({

@@ -184,6 +184,12 @@ export {
   createRetentionEnforcementCoordinator,
 } from './retention.js';
 export { createRunArtifactRetentionCoordinator } from './run-artifact-retention.js';
+export { createWorkspacePurgeCoordinator } from './workspace-purge.js';
+export type {
+  WorkspacePurgeCoordinator,
+  WorkspacePurgeLedger,
+  WorkspacePurgeProcessResult,
+} from './workspace-purge.js';
 export type {
   RunArtifactRetentionCoordinator,
   RunArtifactRetentionCoordinatorOptions,

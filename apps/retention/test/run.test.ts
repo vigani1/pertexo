@@ -3,6 +3,7 @@ import type { DualRegionControlLedger } from '@pertexo/artifact-store';
 import type { RetentionEnforcementCoordinator } from '@pertexo/database';
 import type { PreviewRetentionCoordinator } from '@pertexo/database';
 import type { RunArtifactRetentionCoordinator } from '@pertexo/database';
+import type { WorkspacePurgeCoordinator } from '@pertexo/database';
 import type { StructuredLogger } from '@pertexo/observability/logging';
 import type { TelemetryLifecycle } from '@pertexo/observability/telemetry';
 import { describe, expect, it, vi } from 'vitest';
@@ -74,6 +75,13 @@ function resources(outcomes: ('completed' | 'idle' | 'stale')[]) {
     }),
     processNext: vi.fn(() => Promise.resolve({ status: 'idle' as const })),
   } satisfies RunArtifactRetentionCoordinator;
+  const workspacePurge = {
+    close: vi.fn(() => {
+      events.push('workspace-purge-close');
+      return Promise.resolve();
+    }),
+    processNext: vi.fn(() => Promise.resolve({ status: 'idle' as const })),
+  } satisfies WorkspacePurgeCoordinator;
   const ledger = {
     append: vi.fn(),
     checkReadiness: vi.fn(() => {
@@ -147,6 +155,7 @@ function resources(outcomes: ('completed' | 'idle' | 'stale')[]) {
     preview,
     processNext,
     runArtifacts,
+    workspacePurge,
     signal: controller.signal,
     telemetry,
   };
@@ -167,6 +176,7 @@ describe('retention worker', () => {
       'process:idle',
       'preview-close',
       'run-artifacts-close',
+      'workspace-purge-close',
       'artifacts-close',
       'enforcement-close',
       'database-close',

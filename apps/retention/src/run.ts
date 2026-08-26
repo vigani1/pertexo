@@ -4,6 +4,7 @@ import type {
   RetentionEnforcementCoordinator,
   PreviewRetentionCoordinator,
   RunArtifactRetentionCoordinator,
+  WorkspacePurgeCoordinator,
 } from '@pertexo/database';
 import type { StructuredLogger } from '@pertexo/observability/logging';
 import type { TelemetryLifecycle } from '@pertexo/observability/telemetry';
@@ -20,6 +21,7 @@ export interface RetentionWorkerResources {
   readonly metrics: RetentionMetrics;
   readonly preview: PreviewRetentionCoordinator;
   readonly runArtifacts: RunArtifactRetentionCoordinator;
+  readonly workspacePurge: WorkspacePurgeCoordinator;
   readonly pollIntervalMs: number;
   readonly signal: AbortSignal;
   readonly telemetry: TelemetryLifecycle;
@@ -83,6 +85,9 @@ export async function runRetentionWorker(
         const runArtifact = await resources.runArtifacts.processNext(
           resources.signal,
         );
+        const workspacePurge = await resources.workspacePurge.processNext(
+          resources.signal,
+        );
         resources.metrics.recordRunArtifact(
           runArtifact,
           (performance.now() - startedAt) / 1_000,
@@ -106,13 +111,19 @@ export async function runRetentionWorker(
             outcome: runArtifact.status,
           });
         }
+        if (workspacePurge.status !== 'idle') {
+          resources.logger.info('retention.workspace_purge_processed', {
+            outcome: workspacePurge.status,
+          });
+        }
         if (
           schedule.scannedCount < 25 &&
           dryRun.status === 'idle' &&
           enforcement.status !== 'completed' &&
           preview.status !== 'completed' &&
           preview.status !== 'progressed' &&
-          runArtifact.status !== 'completed'
+          runArtifact.status !== 'completed' &&
+          workspacePurge.status !== 'started'
         ) {
           await waitForNextPoll(resources.pollIntervalMs, resources.signal);
         }
@@ -131,6 +142,7 @@ export async function runRetentionWorker(
   for (const close of [
     () => resources.preview.close(),
     () => resources.runArtifacts.close(),
+    () => resources.workspacePurge.close(),
     () => {
       resources.artifacts.close();
     },

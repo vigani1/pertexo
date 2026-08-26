@@ -7,6 +7,7 @@ import type {
   RetentionEnforcementCoordinator,
   PreviewRetentionCoordinator,
   RunArtifactRetentionCoordinator,
+  WorkspacePurgeCoordinator,
 } from '@pertexo/database';
 import type { StructuredLogger } from '@pertexo/observability/logging';
 import { createTelemetryLifecycle } from '@pertexo/observability/telemetry';
@@ -29,6 +30,7 @@ async function bootstrap(): Promise<void> {
   let logger: StructuredLogger | undefined;
   let preview: PreviewRetentionCoordinator | undefined;
   let runArtifacts: RunArtifactRetentionCoordinator | undefined;
+  let workspacePurge: WorkspacePurgeCoordinator | undefined;
   let artifacts: ArtifactStore | undefined;
   let workerInvoked = false;
   try {
@@ -80,6 +82,11 @@ async function bootstrap(): Promise<void> {
         statementTimeoutMs: config.options.statementTimeoutMs,
       },
     );
+    workspacePurge = databasePackage.createWorkspacePurgeCoordinator(
+      config.database,
+      ledger,
+      config.options,
+    );
     workerInvoked = true;
     await worker.runRetentionWorker({
       artifacts,
@@ -92,6 +99,7 @@ async function bootstrap(): Promise<void> {
       pollIntervalMs: config.pollIntervalMs,
       preview,
       runArtifacts,
+      workspacePurge,
       signal: shutdown.signal,
       telemetry,
     });
@@ -105,6 +113,7 @@ async function bootstrap(): Promise<void> {
       await enforcement?.close().catch(() => undefined);
       await preview?.close().catch(() => undefined);
       await runArtifacts?.close().catch(() => undefined);
+      await workspacePurge?.close().catch(() => undefined);
       await database?.close().catch(() => undefined);
       artifacts?.close();
       ledger?.close();

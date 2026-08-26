@@ -369,7 +369,7 @@ describe('generic webhook database seam', () => {
 
   it('migrates from zero, reconciles configuration, and exposes no hashes or secrets in health', async () => {
     await expect(checkDatabaseReadiness(readinessPool)).resolves.toMatchObject({
-      migrationHead: '0055_standard_retention_classes.sql',
+      migrationHead: '0056_workspace_purge_foundation.sql',
     });
     await expect(
       checkDatabaseReadiness(workerReadinessPool),

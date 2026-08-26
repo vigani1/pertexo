@@ -327,6 +327,18 @@ export function createRetentionDatabase(
               'app.complete_run_artifact_retention(uuid,uuid,bigint,character)','EXECUTE')
             and has_function_privilege(current_user,
               'app.defer_run_artifact_retention(uuid,uuid,bigint,character)','EXECUTE')
+            and has_function_privilege(current_user,
+              'app.find_due_workspace_purge()','EXECUTE')
+            and has_function_privilege(current_user,
+              'app.workspace_purge_repair_command_id(uuid)','EXECUTE')
+            and has_function_privilege(current_user,
+              'app.prepare_workspace_purge_job(uuid,bigint,character,character varying,interval)','EXECUTE')
+            and has_function_privilege(current_user,
+              'app.release_workspace_purge_job(uuid,uuid,bigint)','EXECUTE')
+            and has_function_privilege(current_user,
+              'app.project_workspace_purge_started(uuid,uuid,bigint,bigint,character,character)','EXECUTE')
+            and has_function_privilege(current_user,
+              'app.claim_workspace_purge_step(uuid,bigint,character,character varying,interval)','EXECUTE')
             and not has_function_privilege(current_user,
               'app.claim_retention_batches(character varying,integer,integer)','EXECUTE')
             and not has_function_privilege(current_user,
