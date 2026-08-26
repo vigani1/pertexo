@@ -32,7 +32,7 @@ import {
   type NodeValidationIssue,
 } from './validation.js';
 
-const PREVIEW_RETENTION_MS = 60 * 60 * 1_000;
+const PREVIEW_RETENTION_MS = 7 * 24 * 60 * 60 * 1_000;
 const executableNodeSchema = z.record(z.string(), z.json());
 
 export type NodeTestUseCaseInput = Readonly<{

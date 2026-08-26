@@ -20,7 +20,7 @@ const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const workflowId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const connectionId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const acceptedAt = new Date('2026-08-22T20:00:00.000Z');
-const expiresAt = new Date('2026-08-22T21:00:00.000Z');
+const expiresAt = new Date('2026-08-29T20:00:00.000Z');
 const actor = createActorContext({
   actorId,
   workspaceId,

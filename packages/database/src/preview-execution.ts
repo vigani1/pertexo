@@ -41,7 +41,7 @@ const executableNodeSchema = z
     (value) => Buffer.byteLength(JSON.stringify(value), 'utf8') <= 1_048_576,
   );
 
-export const PREVIEW_RETENTION_MAX_MS = 24 * 60 * 60 * 1_000;
+export const PREVIEW_RETENTION_MAX_MS = 7 * 24 * 60 * 60 * 1_000;
 
 export const PREVIEW_STATUS = Object.freeze({
   queued: 'queued',

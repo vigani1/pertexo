@@ -3413,6 +3413,11 @@ Current evidence:
   batch creation, the other 30/90/365-day data classes, preview hold coordination,
   artifact-byte deletion, workspace purge, and real AWS Object Lock evidence
   remain open, so the broad retention and purge checklist items stay unchecked.
+- Preview admission now uses ADR 013's seven-day retention period consistently
+  at both the API default and PostgreSQL adapter bound, replacing the prior
+  one-hour default and 24-hour cap. Existing preview cleanup remains resumable,
+  but object and database destruction is not yet serialized with legal holds;
+  preview retention therefore remains an open part of the broad policy gate.
 - The artifact-store package now exposes a separate append-only ADR 013 control
   ledger adapter and dedicated `CONTROL_LEDGER_*` configuration without changing
   the tenant `ArtifactStore` API or worker artifact configuration. Its principal
