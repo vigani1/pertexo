@@ -216,6 +216,13 @@ beforeAll(async () => {
     path.join(MIGRATIONS_DIRECTORY, '0049_workspace_deletion_side_effects.sql'),
     path.join(priorDirectory, '0049_workspace_deletion_side_effects.sql'),
   );
+  await copyFile(
+    path.join(
+      MIGRATIONS_DIRECTORY,
+      '0050_workspace_lifecycle_api_authority.sql',
+    ),
+    path.join(priorDirectory, '0050_workspace_lifecycle_api_authority.sql'),
+  );
   await expect(
     migrateDatabase(migrationConfig, priorDirectory),
   ).resolves.toEqual([
@@ -223,6 +230,7 @@ beforeAll(async () => {
     '0047_workspace_lifecycle_command_intents.sql',
     '0048_workspace_lifecycle_command_hardening.sql',
     '0049_workspace_deletion_side_effects.sql',
+    '0050_workspace_lifecycle_api_authority.sql',
   ]);
   maintenance = new Pool({ connectionString: maintenanceUrl, max: 4 });
 }, 120_000);
@@ -866,7 +874,7 @@ describe('control ledger coordinator exact 0045 to 0047 integration', () => {
     }
   });
 
-  it('keeps anchor enumeration maintenance-only while preserving legacy API lifecycle writes', async () => {
+  it('keeps anchor enumeration maintenance-only and denies legacy API lifecycle writes', async () => {
     if (maintenance === undefined)
       throw new Error('Maintenance pool unavailable');
     await expect(
@@ -890,7 +898,7 @@ describe('control ledger coordinator exact 0045 to 0047 integration', () => {
         api.query("update app.workspaces set status='suspended' where id=$1", [
           workspaceId,
         ]),
-      ).resolves.toMatchObject({ rowCount: 1 });
+      ).rejects.toMatchObject({ code: '42501' });
       await expect(
         api.query(
           `update app.workspaces set status='pending_deletion',
@@ -900,7 +908,7 @@ describe('control ledger coordinator exact 0045 to 0047 integration', () => {
            where id=$1`,
           [workspaceId, deletionActorId],
         ),
-      ).resolves.toMatchObject({ rowCount: 1 });
+      ).rejects.toMatchObject({ code: '42501' });
       await expect(
         api.query(
           `update app.workspaces set status='suspended',deletion_requested_at=null,
@@ -908,7 +916,7 @@ describe('control ledger coordinator exact 0045 to 0047 integration', () => {
            where id=$1`,
           [workspaceId],
         ),
-      ).resolves.toMatchObject({ rowCount: 1 });
+      ).rejects.toMatchObject({ code: '42501' });
     } finally {
       await api.end();
     }

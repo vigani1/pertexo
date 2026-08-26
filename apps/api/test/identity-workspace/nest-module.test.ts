@@ -55,30 +55,18 @@ const dependencies: IdentityWorkspaceDependencies = {
         createdAt: new Date(),
         updatedAt: new Date(),
       }),
-    requestWorkspaceDeletion: () =>
+    requestWorkspaceLifecycleOperation: () =>
       Promise.resolve({
-        workspace: {
-          id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-          name: 'Workspace',
-          slug: 'workspace',
-          status: 'pending_deletion' as const,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        revokedSessionCount: 0,
+        id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+        workspaceId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+        commandType: 'deletion_requested' as const,
+        status: 'pending' as const,
+        submittedAt: new Date(),
+        updatedAt: new Date(),
+        completedAt: null,
+        errorCode: null,
       }),
-    restoreWorkspace: () =>
-      Promise.resolve({
-        workspace: {
-          id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-          name: 'Workspace',
-          slug: 'workspace',
-          status: 'suspended' as const,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        revokedSessionCount: 0,
-      }),
+    readWorkspaceLifecycleOperation: () => Promise.resolve(null),
   },
   authorization: { findAccess: () => Promise.resolve(undefined) },
 };

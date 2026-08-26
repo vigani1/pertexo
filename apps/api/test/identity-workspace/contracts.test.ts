@@ -9,6 +9,7 @@ import {
   oidcStartResponseSchema,
   workspaceCreateRequestSchema,
   workspaceDeletionRequestSchema,
+  workspaceLifecycleOperationResponseSchema,
   workspaceResponseSchema,
 } from '../../src/identity-workspace/index.js';
 
@@ -28,12 +29,16 @@ describe('identity/workspace generated contracts', () => {
           workspaceDeletionRequestSchema,
           'input',
         ),
+        WorkspaceLifecycleOperationResponse: generated(
+          workspaceLifecycleOperationResponseSchema,
+          'output',
+        ),
         WorkspaceResponse: generated(workspaceResponseSchema, 'output'),
       },
     });
   });
 
-  it('documents all five public route templates and their request/response schemas', () => {
+  it('documents all six public route templates and their request/response schemas', () => {
     expect(identityWorkspaceOpenApiDocument.openapi).toBe('3.1.0');
     expect(Object.keys(identityWorkspaceOpenApiDocument.paths)).toEqual([
       '/v1/auth/oidc/start',
@@ -41,6 +46,7 @@ describe('identity/workspace generated contracts', () => {
       '/v1/auth/logout',
       '/v1/workspaces',
       '/v1/workspaces/{workspaceId}/deletion',
+      '/v1/workspaces/{workspaceId}/lifecycle-operations/{operationId}',
     ]);
     expect(identityWorkspaceOpenApiDocument.components.schemas).toEqual(
       identityWorkspaceClientContract.schemas,
@@ -54,6 +60,19 @@ describe('identity/workspace generated contracts', () => {
         '/v1/workspaces/{workspaceId}/deletion'
       ].post.requestBody.content['application/json'].schema,
     ).toEqual({ $ref: '#/components/schemas/WorkspaceDeletionRequest' });
+    expect(
+      identityWorkspaceOpenApiDocument.paths[
+        '/v1/workspaces/{workspaceId}/deletion'
+      ].post.responses['202'],
+    ).toMatchObject({
+      content: {
+        'application/json': {
+          schema: {
+            $ref: '#/components/schemas/WorkspaceLifecycleOperationResponse',
+          },
+        },
+      },
+    });
     expect(
       identityWorkspaceOpenApiDocument.components.securitySchemes.cookieSession,
     ).toEqual({

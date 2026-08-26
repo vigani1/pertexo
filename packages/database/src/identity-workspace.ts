@@ -185,16 +185,28 @@ export type WorkspaceWithOwnerInput = Readonly<{
   idempotencyKey?: string;
 }>;
 
-export type WorkspaceCommandOptions = Readonly<{
-  requestId?: string;
-  traceId?: string;
-  metadata?: Record<string, unknown>;
-  idempotencyKey?: string;
-}>;
-
-export type WorkspaceLifecycleResult = Readonly<{
+type WorkspaceCreationResult = Readonly<{
   workspace: WorkspaceRecord;
   revokedSessionCount: number;
+}>;
+
+export type WorkspaceLifecycleOperation = Readonly<{
+  id: string;
+  workspaceId: string;
+  commandType: 'deletion_requested' | 'deletion_restored';
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  submittedAt: Date;
+  updatedAt: Date;
+  completedAt: Date | null;
+  errorCode: string | null;
+}>;
+
+export type RequestWorkspaceLifecycleOperationInput = Readonly<{
+  workspaceId: string;
+  actorUserId: string;
+  commandType: WorkspaceLifecycleOperation['commandType'];
+  reason: string;
+  idempotencyKey: string;
 }>;
 
 export type IdentityWorkspaceDatabase = Readonly<{
@@ -219,18 +231,14 @@ export type IdentityWorkspaceDatabase = Readonly<{
   createWorkspaceWithOwner(
     input: WorkspaceWithOwnerInput,
   ): Promise<WorkspaceRecord>;
-  requestWorkspaceDeletion(
+  requestWorkspaceLifecycleOperation(
+    input: RequestWorkspaceLifecycleOperationInput,
+  ): Promise<WorkspaceLifecycleOperation>;
+  readWorkspaceLifecycleOperation(
     workspaceId: string,
+    operationId: string,
     actorUserId: string,
-    purgeAfter: Date | undefined,
-    reason: string,
-    options?: WorkspaceCommandOptions,
-  ): Promise<WorkspaceLifecycleResult>;
-  restoreWorkspace(
-    workspaceId: string,
-    actorUserId: string,
-    options?: WorkspaceCommandOptions,
-  ): Promise<WorkspaceLifecycleResult>;
+  ): Promise<WorkspaceLifecycleOperation | null>;
   close(): Promise<void>;
 }>;
 
@@ -353,6 +361,49 @@ function mapWorkspace(row: Record<string, unknown>): WorkspaceRecord {
   });
 }
 
+function mapWorkspaceLifecycleOperation(
+  row: Record<string, unknown>,
+): WorkspaceLifecycleOperation {
+  return Object.freeze({
+    id: uuidSchema.parse(row.operation_id),
+    workspaceId: uuidSchema.parse(row.workspace_id),
+    commandType: z
+      .enum(['deletion_requested', 'deletion_restored'])
+      .parse(row.command_type),
+    status: z
+      .enum(['pending', 'running', 'completed', 'failed'])
+      .parse(row.status),
+    submittedAt: new Date(row.occurred_at as string | Date),
+    updatedAt: new Date(row.updated_at as string | Date),
+    completedAt:
+      row.completed_at === null
+        ? null
+        : new Date(row.completed_at as string | Date),
+    errorCode: z.string().nullable().parse(row.error_code),
+  });
+}
+
+function workspaceLifecycleOperationError(error: unknown): never {
+  const code =
+    error instanceof Error ? (error as DatabaseError).code : undefined;
+  if (code === '23505') throw new IdempotencyRequestConflictError();
+  if (code === '42501') {
+    throw new WorkspaceLifecycleConflictError(
+      'actor_inactive',
+      'Workspace lifecycle actor is not authorized',
+      { cause: error },
+    );
+  }
+  if (code === '55000' || code === '23503') {
+    throw new WorkspaceLifecycleConflictError(
+      'invalid_state',
+      'Workspace lifecycle transition is not valid',
+      { cause: error },
+    );
+  }
+  throw error;
+}
+
 const durableWorkspaceResultSchema = z
   .object({
     workspace: z
@@ -395,7 +446,7 @@ function durableWorkspaceResult(
   });
 }
 
-function parseDurableWorkspaceResult(value: unknown): WorkspaceLifecycleResult {
+function parseDurableWorkspaceResult(value: unknown): WorkspaceCreationResult {
   const result = durableWorkspaceResultSchema.safeParse(value);
   if (!result.success) throw new IdempotencyRecordCorruptError();
   const workspace = result.data.workspace;
@@ -443,7 +494,7 @@ function commandKeyHash(value: string | undefined): string {
 
 type CommandClaim =
   | Readonly<{ claimed: true; id: string }>
-  | Readonly<{ claimed: false; result: WorkspaceLifecycleResult }>;
+  | Readonly<{ claimed: false; result: WorkspaceCreationResult }>;
 
 async function claimWorkspaceCreationCommand(
   client: PoolClient,
@@ -490,7 +541,7 @@ async function claimWorkspaceCreationCommand(
 async function completeWorkspaceCreationCommand(
   client: PoolClient,
   claimId: string,
-  result: WorkspaceLifecycleResult,
+  result: WorkspaceCreationResult,
 ): Promise<void> {
   const completed = await client.query(
     `update app.workspace_creation_idempotency_records
@@ -500,70 +551,6 @@ async function completeWorkspaceCreationCommand(
     [
       claimId,
       result.workspace.id,
-      JSON.stringify(
-        durableWorkspaceResult(result.workspace, result.revokedSessionCount),
-      ),
-    ],
-  );
-  if (completed.rowCount !== 1) throw new IdempotencyRecordCorruptError();
-}
-
-async function claimWorkspaceLifecycleCommand(
-  client: PoolClient,
-  workspaceId: string,
-  operation: 'workspace.deletion.request' | 'workspace.restore',
-  keyHash: string,
-  requestHash: string,
-): Promise<CommandClaim> {
-  const scope = 'workspace.lifecycle';
-  const claimId = randomUUID();
-  const inserted = await client.query<{ id: string }>(
-    `insert into app.idempotency_records
-       (id, workspace_id, operation, scope, key_hash, request_hash, status,
-        resource_id, result_ref)
-     values ($1, $2, $3, $4, $5, $6, 'in_progress', $2, '{}'::jsonb)
-     on conflict (workspace_id, operation, scope, key_hash) do nothing
-     returning id`,
-    [claimId, workspaceId, operation, scope, keyHash, requestHash],
-  );
-  if (inserted.rowCount === 1) return { claimed: true, id: claimId };
-
-  const existing = await client.query<{
-    request_hash: string;
-    result_ref: unknown;
-    status: string;
-  }>(
-    `select request_hash, status, result_ref
-     from app.idempotency_records
-     where workspace_id = $1 and operation = $2 and scope = $3 and key_hash = $4`,
-    [workspaceId, operation, scope, keyHash],
-  );
-  const row = existing.rows[0];
-  if (row === undefined) throw new IdempotencyRecordCorruptError();
-  if (row.request_hash !== requestHash) {
-    throw new IdempotencyRequestConflictError();
-  }
-  if (row.status !== IDEMPOTENCY_STATUS.completed) {
-    throw new IdempotencyRecordCorruptError();
-  }
-  return {
-    claimed: false,
-    result: parseDurableWorkspaceResult(row.result_ref),
-  };
-}
-
-async function completeWorkspaceLifecycleCommand(
-  client: PoolClient,
-  claimId: string,
-  result: WorkspaceLifecycleResult,
-): Promise<void> {
-  const completed = await client.query(
-    `update app.idempotency_records
-     set status = 'completed', result_ref = $2::jsonb,
-         updated_at = clock_timestamp()
-     where id = $1 and status = 'in_progress'`,
-    [
-      claimId,
       JSON.stringify(
         durableWorkspaceResult(result.workspace, result.revokedSessionCount),
       ),
@@ -1063,191 +1050,82 @@ export function createIdentityWorkspaceDatabase(
       }
     },
 
-    requestWorkspaceDeletion: async (
-      workspaceIdInput: string,
-      actorUserIdInput: string,
-      purgeAfter: Date | undefined,
-      reason: string,
-      options = {},
-    ): Promise<WorkspaceLifecycleResult> => {
-      const workspaceId = parseUuid(workspaceIdInput);
-      const actorUserId = parseUuid(actorUserIdInput);
-      if (
-        purgeAfter !== undefined &&
-        (!(purgeAfter instanceof Date) ||
-          !Number.isFinite(purgeAfter.getTime()) ||
-          purgeAfter.getTime() <= Date.now())
-      ) {
-        throw new Error('Workspace purge deadline must be in the future');
-      }
-      const purgeDeadline =
-        purgeAfter ?? new Date(Date.now() + 30 * 24 * 60 * 60_000);
-      const deletionReason = z.string().trim().min(1).max(512).parse(reason);
-      const metadata = parseMetadata(options.metadata);
-      const keyHash = commandKeyHash(options.idempotencyKey);
+    requestWorkspaceLifecycleOperation: async (
+      input: RequestWorkspaceLifecycleOperationInput,
+    ): Promise<WorkspaceLifecycleOperation> => {
+      const workspaceId = parseUuid(input.workspaceId);
+      const actorUserId = parseUuid(input.actorUserId);
+      const commandType = z
+        .enum(['deletion_requested', 'deletion_restored'])
+        .parse(input.commandType);
+      const reason = z.string().trim().min(1).max(512).parse(input.reason);
+      const idempotencyKeyHash = commandKeyHash(input.idempotencyKey);
       const requestHash = commandRequestHash({
-        actorId: actorUserId,
-        metadata,
-        purgeAfter: purgeAfter?.toISOString() ?? null,
-        reason: deletionReason,
+        actorUserId,
+        commandType,
+        reason,
         workspaceId,
       });
-      return withTransaction(pool, workspaceId, async (client) => {
-        const actor = await client.query(
-          `select 1 from app.workspace_memberships
-           where workspace_id = $1 and user_id = $2 and status = 'active'`,
-          [workspaceId, actorUserId],
-        );
-        if (actor.rowCount !== 1) {
-          throw new WorkspaceLifecycleConflictError(
-            'actor_inactive',
-            'Workspace actor is not an active member',
-          );
-        }
-        const claim = await claimWorkspaceLifecycleCommand(
-          client,
+      try {
+        return await withTransaction(
+          pool,
           workspaceId,
-          'workspace.deletion.request',
-          keyHash,
-          requestHash,
+          async (client) => {
+            const result = await client.query(
+              `select * from app.request_workspace_lifecycle_operation(
+                $1::uuid,$2::uuid,$3::char(64),$4::varchar,$5::uuid,
+                $6::varchar,$7::char(64))`,
+              [
+                randomUUID(),
+                workspaceId,
+                idempotencyKeyHash,
+                commandType,
+                actorUserId,
+                reason,
+                requestHash,
+              ],
+            );
+            const row = result.rows[0] as Record<string, unknown> | undefined;
+            if (result.rowCount !== 1 || row === undefined) {
+              throw new Error('Workspace lifecycle operation was not returned');
+            }
+            return mapWorkspaceLifecycleOperation(row);
+          },
+          actorUserId,
         );
-        if (!claim.claimed) return claim.result;
-
-        const revocable = await client.query<{ count: string }>(
-          `select count(*)::text as count from app.sessions s
-           where s.revoked_at is null
-             and exists (
-               select 1 from app.workspace_memberships m
-               where m.workspace_id = $1 and m.user_id = s.user_id
-                 and m.status <> 'removed'
-             )`,
-          [workspaceId],
-        );
-        const result = await client.query(
-          `update app.workspaces
-           set status = 'pending_deletion', deletion_requested_at = clock_timestamp(),
-               deletion_requested_by = $2, deletion_reason = $3,
-               purge_after = $4, updated_at = clock_timestamp()
-           where id = $1 and status in ('active', 'suspended')
-           returning id, name, slug, status, created_by,
-                     deletion_requested_at, deletion_requested_by, deletion_reason,
-                     purge_after,
-                     created_at, updated_at`,
-          [workspaceId, actorUserId, deletionReason, purgeDeadline],
-        );
-        if (result.rowCount !== 1) {
-          throw new WorkspaceLifecycleConflictError(
-            'invalid_state',
-            'Workspace is neither active nor suspended',
-          );
-        }
-        await client.query(
-          `insert into app.audit_events
-             (id, workspace_id, actor_user_id, action, target_type, target_id,
-              request_id, trace_id, metadata)
-           values ($1, $2, $3, 'workspace.deletion_requested', 'workspace', $2, $4, $5, $6::jsonb)`,
-          [
-            randomUUID(),
-            workspaceId,
-            actorUserId,
-            options.requestId ?? null,
-            options.traceId ?? null,
-            JSON.stringify(metadata),
-          ],
-        );
-        const commandResult = {
-          workspace: mapWorkspace(result.rows[0] as Record<string, unknown>),
-          revokedSessionCount: Number(revocable.rows[0]?.count ?? 0),
-        };
-        await completeWorkspaceLifecycleCommand(
-          client,
-          claim.id,
-          commandResult,
-        );
-        return commandResult;
-      });
+      } catch (error: unknown) {
+        workspaceLifecycleOperationError(error);
+      }
     },
 
-    restoreWorkspace: async (
+    readWorkspaceLifecycleOperation: async (
       workspaceIdInput: string,
+      operationIdInput: string,
       actorUserIdInput: string,
-      options = {},
-    ): Promise<WorkspaceLifecycleResult> => {
+    ): Promise<WorkspaceLifecycleOperation | null> => {
       const workspaceId = parseUuid(workspaceIdInput);
+      const operationId = parseUuid(operationIdInput);
       const actorUserId = parseUuid(actorUserIdInput);
-      const metadata = parseMetadata(options.metadata);
-      const keyHash = commandKeyHash(options.idempotencyKey);
-      const requestHash = commandRequestHash({
-        actorId: actorUserId,
-        metadata,
-        workspaceId,
-      });
-      return withTransaction(pool, workspaceId, async (client) => {
-        const actor = await client.query(
-          `select 1 from app.workspace_memberships
-           where workspace_id = $1 and user_id = $2 and status = 'active'`,
-          [workspaceId, actorUserId],
-        );
-        if (actor.rowCount !== 1) {
-          throw new WorkspaceLifecycleConflictError(
-            'actor_inactive',
-            'Workspace actor is not an active member',
-          );
-        }
-        const claim = await claimWorkspaceLifecycleCommand(
-          client,
+      try {
+        return await withTransaction(
+          pool,
           workspaceId,
-          'workspace.restore',
-          keyHash,
-          requestHash,
+          async (client) => {
+            const result = await client.query(
+              `select * from app.read_workspace_lifecycle_operation(
+                $1::uuid,$2::uuid,$3::uuid)`,
+              [workspaceId, operationId, actorUserId],
+            );
+            const row = result.rows[0] as Record<string, unknown> | undefined;
+            return row === undefined
+              ? null
+              : mapWorkspaceLifecycleOperation(row);
+          },
+          actorUserId,
         );
-        if (!claim.claimed) return claim.result;
-
-        const result = await client.query(
-          `update app.workspaces
-           set status = 'suspended', deletion_requested_at = null,
-               deletion_requested_by = null, deletion_reason = null, purge_after = null,
-               updated_at = clock_timestamp()
-           where id = $1
-             and status = 'pending_deletion'
-             and purge_after > clock_timestamp()
-           returning id, name, slug, status, created_by,
-                     deletion_requested_at, deletion_requested_by, deletion_reason,
-                     purge_after,
-                     created_at, updated_at`,
-          [workspaceId],
-        );
-        if (result.rowCount !== 1) {
-          throw new WorkspaceLifecycleConflictError(
-            'invalid_state',
-            'Workspace is not restorable',
-          );
-        }
-        await client.query(
-          `insert into app.audit_events
-             (id, workspace_id, actor_user_id, action, target_type, target_id,
-              request_id, trace_id, metadata)
-           values ($1, $2, $3, 'workspace.restored', 'workspace', $2, $4, $5, $6::jsonb)`,
-          [
-            randomUUID(),
-            workspaceId,
-            actorUserId,
-            options.requestId ?? null,
-            options.traceId ?? null,
-            JSON.stringify(metadata),
-          ],
-        );
-        const commandResult = {
-          workspace: mapWorkspace(result.rows[0] as Record<string, unknown>),
-          revokedSessionCount: 0,
-        };
-        await completeWorkspaceLifecycleCommand(
-          client,
-          claim.id,
-          commandResult,
-        );
-        return commandResult;
-      });
+      } catch (error: unknown) {
+        workspaceLifecycleOperationError(error);
+      }
     },
 
     close: async (): Promise<void> => pool.end(),

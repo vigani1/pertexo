@@ -583,7 +583,7 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     expectProblem(forgedWorkspace, 403, 'auth.forbidden');
   });
 
-  it('records deletion reason, revokes sessions, restores once, and reports lifecycle conflicts', async () => {
+  it('accepts and exposes one safe asynchronous deletion operation without projecting state', async () => {
     const deletionCookies = await login();
     const deletionRequestId = `phase1-delete-${randomUUID()}`;
     const deletionKey = `delete-${randomUUID()}`;
@@ -596,10 +596,23 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
       }),
       payload: { reason: 'customer requested integration deletion' },
     });
-    expect(deletion.statusCode).toBe(201);
-    expect(deletion.json()).toMatchObject({ status: 'pending_deletion' });
+    expect(deletion.statusCode).toBe(202);
+    expect(deletion.json()).toMatchObject({
+      workspaceId: primaryWorkspaceId,
+      commandType: 'deletion_requested',
+      status: 'pending',
+      completedAt: null,
+      errorCode: null,
+      result: null,
+    });
+    const operationId = deletion.json<{ id: string }>().id;
+    expect(deletion.payload).not.toContain(
+      'customer requested integration deletion',
+    );
+    expect(deletion.payload).not.toContain('controlSequence');
+    expect(deletion.payload).not.toContain('controlRecordHash');
 
-    const revokedDeletionRetry = await application.inject({
+    const deletionRetry = await application.inject({
       method: 'POST',
       url: `/v1/workspaces/${primaryWorkspaceId}/deletion`,
       headers: mutationHeaders(deletionCookies, {
@@ -607,78 +620,45 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
       }),
       payload: { reason: 'customer requested integration deletion' },
     });
-    expectProblem(revokedDeletionRetry, 401, 'auth.unauthenticated');
+    expect(deletionRetry.statusCode).toBe(202);
+    expect(deletionRetry.json()).toEqual(deletion.json());
 
-    const revoked = await application.inject({
-      method: 'POST',
-      url: '/v1/workspaces',
-      headers: mutationHeaders(deletionCookies),
-      payload: {
-        name: 'Must Not Be Created',
-        slug: `revoked-${randomUUID().slice(0, 12)}`,
-      },
+    const operation = await application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${primaryWorkspaceId}/lifecycle-operations/${operationId}`,
+      headers: { cookie: deletionCookies.cookieHeader },
     });
-    expectProblem(revoked, 401, 'auth.unauthenticated');
+    expect(operation.statusCode).toBe(200);
+    expect(operation.json()).toEqual(deletion.json());
 
-    const pending = await workspaceAggregate(primaryWorkspaceId);
-    expect(pending.workspace).toMatchObject({
-      status: 'pending_deletion',
-      deletionReason: 'customer requested integration deletion',
+    const unchanged = await workspaceAggregate(primaryWorkspaceId);
+    expect(unchanged.workspace).toMatchObject({
+      status: 'active',
+      deletionReason: null,
     });
-    expect(pending.events.at(-1)).toMatchObject({
-      action: 'workspace.deletion_requested',
-      requestId: deletionRequestId,
-    });
+    expect(unchanged.events.map(({ action }) => action)).toEqual([
+      'workspace.created',
+    ]);
 
-    const restoreCookies = await login();
-    const deletionReplay = await application.inject({
+    const changedReplay = await application.inject({
       method: 'POST',
       url: `/v1/workspaces/${primaryWorkspaceId}/deletion`,
-      headers: mutationHeaders(restoreCookies, {
+      headers: mutationHeaders(deletionCookies, {
         'idempotency-key': deletionKey,
       }),
-      payload: { reason: 'customer requested integration deletion' },
+      payload: { reason: 'changed deletion request' },
     });
-    expect(deletionReplay.statusCode).toBe(201);
-    expect(deletionReplay.json()).toEqual(deletion.json());
+    expectProblem(changedReplay, 409, 'request.idempotency_conflict');
 
     const restoreKey = `restore-${randomUUID()}`;
     const restore = await application.inject({
       method: 'DELETE',
       url: `/v1/workspaces/${primaryWorkspaceId}/deletion`,
-      headers: mutationHeaders(restoreCookies, {
+      headers: mutationHeaders(deletionCookies, {
         'idempotency-key': restoreKey,
       }),
     });
-    expect(restore.statusCode).toBe(200);
-    expect(restore.json()).toMatchObject({ status: 'suspended' });
-
-    const restoreRetry = await application.inject({
-      method: 'DELETE',
-      url: `/v1/workspaces/${primaryWorkspaceId}/deletion`,
-      headers: mutationHeaders(restoreCookies, {
-        'idempotency-key': restoreKey,
-      }),
-    });
-    expect(restoreRetry.statusCode).toBe(200);
-    expect(restoreRetry.json()).toEqual(restore.json());
-
-    const repeatedRestore = await application.inject({
-      method: 'DELETE',
-      url: `/v1/workspaces/${primaryWorkspaceId}/deletion`,
-      headers: mutationHeaders(restoreCookies),
-    });
-    expectProblem(repeatedRestore, 409, 'workspace.conflict');
-    const restored = await workspaceAggregate(primaryWorkspaceId);
-    expect(restored.workspace).toMatchObject({
-      status: 'suspended',
-      deletionReason: null,
-    });
-    expect(restored.events.map(({ action }) => action)).toEqual([
-      'workspace.created',
-      'workspace.deletion_requested',
-      'workspace.restored',
-    ]);
+    expectProblem(restore, 409, 'workspace.conflict');
   });
 
   it('rejects explicitly revoked and expired sessions without exposing cookie values', async () => {

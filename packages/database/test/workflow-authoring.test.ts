@@ -17,7 +17,7 @@ const integrationUsageMigrationUrl = new URL(
 describe('workflow authoring migration contract', () => {
   it('advances the reviewed migration head', () => {
     expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0049_workspace_deletion_side_effects.sql',
+      '0050_workspace_lifecycle_api_authority.sql',
     );
   });
 

@@ -28,12 +28,18 @@ export const workspaceCreateRequestSchema = z
 export const workspaceDeletionRequestSchema = z
   .object({
     reason: z.string().trim().min(1).max(512),
-    purgeAfter: z.iso.datetime({ offset: true }).optional(),
   })
   .strict();
 export const workspaceIdentifierSchema = z.uuid();
+export const workspaceLifecycleOperationIdentifierSchema = z.uuid();
 export const workspaceIdParamSchema = z
   .object({ workspaceId: workspaceIdentifierSchema })
+  .strict();
+export const workspaceLifecycleOperationParamsSchema = z
+  .object({
+    workspaceId: workspaceIdentifierSchema,
+    operationId: workspaceLifecycleOperationIdentifierSchema,
+  })
   .strict();
 export const workspaceResponseSchema = z
   .object({
@@ -51,5 +57,27 @@ export const workspaceResponseSchema = z
     updatedAt: z.iso.datetime(),
   })
   .strict();
+export const workspaceLifecycleOperationResponseSchema = z
+  .object({
+    id: workspaceLifecycleOperationIdentifierSchema,
+    workspaceId: workspaceIdentifierSchema,
+    commandType: z.enum(['deletion_requested', 'deletion_restored']),
+    status: z.enum(['pending', 'running', 'completed', 'failed']),
+    submittedAt: z.iso.datetime(),
+    updatedAt: z.iso.datetime(),
+    completedAt: z.iso.datetime().nullable(),
+    errorCode: z
+      .string()
+      .regex(/^[a-z][a-z0-9_.:-]{0,63}$/u)
+      .nullable(),
+    result: z
+      .object({ workspaceId: workspaceIdentifierSchema })
+      .strict()
+      .nullable(),
+  })
+  .strict();
 
 export type WorkspaceResponse = z.output<typeof workspaceResponseSchema>;
+export type WorkspaceLifecycleOperationResponse = z.output<
+  typeof workspaceLifecycleOperationResponseSchema
+>;

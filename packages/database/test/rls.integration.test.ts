@@ -429,7 +429,7 @@ describe.each([
 describe('database readiness', () => {
   it('verifies migration, PostgreSQL, ownership, RLS, and runtime role compatibility', async () => {
     await expect(database.checkReadiness()).resolves.toEqual({
-      migrationHead: '0049_workspace_deletion_side_effects.sql',
+      migrationHead: '0050_workspace_lifecycle_api_authority.sql',
       postgresMajor: 18,
       role: 'pertexo_api',
     });

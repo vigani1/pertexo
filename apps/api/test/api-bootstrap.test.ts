@@ -124,8 +124,10 @@ function identityRuntime(
           userId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
         }),
       createWorkspaceWithOwner: () => Promise.reject(new Error('not used')),
-      requestWorkspaceDeletion: () => Promise.reject(new Error('not used')),
-      restoreWorkspace: () => Promise.reject(new Error('not used')),
+      requestWorkspaceLifecycleOperation: () =>
+        Promise.reject(new Error('not used')),
+      readWorkspaceLifecycleOperation: () =>
+        Promise.reject(new Error('not used')),
     },
     authorization: {
       findAccess: () =>

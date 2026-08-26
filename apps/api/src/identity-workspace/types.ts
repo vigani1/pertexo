@@ -8,7 +8,10 @@ export {
   workspaceDeletionRequestSchema,
   workspaceIdentifierSchema,
   workspaceIdParamSchema,
+  workspaceLifecycleOperationParamsSchema,
+  workspaceLifecycleOperationResponseSchema,
   workspaceResponseSchema,
+  type WorkspaceLifecycleOperationResponse,
   type WorkspaceResponse,
 } from '@pertexo/contracts/identity-workspace';
 

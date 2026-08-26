@@ -437,211 +437,77 @@ describe('identity/workspace persistence', () => {
     }
   });
 
-  it('rolls back deletion state and session changes when audit facts are unsafe', async () => {
-    const digest = createHash('sha256').update(randomUUID()).digest('hex');
-    await identityDatabase.createSession({
-      userId: ownerUserId,
-      tokenDigest: digest,
-      expiresAt: new Date(Date.now() + 60_000),
-    });
-    await expect(
-      identityDatabase.requestWorkspaceDeletion(
-        workspaceId,
-        ownerUserId,
-        new Date(Date.now() + 60_000),
-        'rollback test',
-        { metadata: { token: 'forbidden' } },
-      ),
-    ).rejects.toThrow('Unsafe audit metadata key');
-    await expect(
-      identityDatabase.findWorkspaceAccess(ownerUserId, workspaceId),
-    ).resolves.toMatchObject({ workspaceStatus: 'active' });
-    await expect(
-      identityDatabase.findActiveSessionByDigest(digest),
-    ).resolves.not.toBeNull();
-  });
-
-  it('revokes member sessions atomically and restores to suspended before the purge deadline', async () => {
-    const extraSession = await identityDatabase.createSession({
-      userId: ownerUserId,
-      tokenDigest: createHash('sha256').update(randomUUID()).digest('hex'),
-      expiresAt: new Date(Date.now() + 60_000),
-    });
-    const result = await identityDatabase.requestWorkspaceDeletion(
-      workspaceId,
-      ownerUserId,
-      new Date(Date.now() + 60_000),
-      'customer requested deletion',
-      { requestId: 'delete-request' },
-    );
-    expect(result.workspace.status).toBe('pending_deletion');
-    expect(result.workspace.deletionReason).toBe('customer requested deletion');
-    expect(result.revokedSessionCount).toBeGreaterThanOrEqual(1);
-    expect(
-      await identityDatabase.findActiveSessionByDigest(
-        extraSession.tokenDigest,
-      ),
-    ).toBeNull();
-
-    const restored = await identityDatabase.restoreWorkspace(
-      workspaceId,
-      ownerUserId,
-      {
-        requestId: 'restore-request',
-      },
-    );
-    expect(restored.workspace.status).toBe('suspended');
-    expect(restored.workspace.deletionReason).toBeNull();
-    await expect(
-      identityDatabase.restoreWorkspace(workspaceId, ownerUserId),
-    ).rejects.toMatchObject({ reason: 'invalid_state' });
-    const repeatedDeletion = await identityDatabase.requestWorkspaceDeletion(
-      workspaceId,
-      ownerUserId,
-      new Date(Date.now() + 60_000),
-      'delete after suspended restore',
-    );
-    expect(repeatedDeletion.workspace.status).toBe('pending_deletion');
-    await expect(
-      identityDatabase.restoreWorkspace(workspaceId, ownerUserId),
-    ).resolves.toMatchObject({ workspace: { status: 'suspended' } });
-    const events = await tenantDatabase.withWorkspace(
-      workspaceId,
-      async ({ db }) =>
-        db.select({ action: auditEvents.action }).from(auditEvents),
-    );
-    expect(events.map((event) => event.action)).toEqual([
-      'workspace.created',
-      'workspace.deletion_requested',
-      'workspace.restored',
-      'workspace.deletion_requested',
-      'workspace.restored',
-    ]);
-  });
-
-  it('persists exact deletion and restore command results with one concurrent winner', async () => {
+  it('accepts and reads one exact lifecycle operation without projecting workspace state', async () => {
     const workspace = await identityDatabase.createWorkspaceWithOwner({
-      name: 'Idempotent lifecycle workspace',
+      name: 'Asynchronous lifecycle workspace',
       slug: `lifecycle-${randomUUID().slice(0, 12)}`,
       ownerUserId,
     });
-    const otherUser = await identityDatabase.createUser({
-      email: `${randomUUID()}@example.test`,
-      displayName: 'Second lifecycle actor',
-    });
-    await tenantDatabase.withWorkspace(workspace.id, async ({ db }) => {
-      await db.insert(workspaceMemberships).values({
-        workspaceId: workspace.id,
-        userId: otherUser.id,
-        role: 'admin',
-        status: 'active',
-      });
-    });
-    await identityDatabase.createSession({
-      userId: ownerUserId,
-      tokenDigest: createHash('sha256').update(randomUUID()).digest('hex'),
-      expiresAt: new Date(Date.now() + 60_000),
-    });
-
-    const purgeAfter = new Date(Date.now() + 60_000);
     const deletionKey = `delete-${randomUUID()}`;
     const deletionCommand = () =>
-      identityDatabase.requestWorkspaceDeletion(
-        workspace.id,
-        ownerUserId,
-        purgeAfter,
-        'idempotent deletion',
-        { idempotencyKey: deletionKey },
-      );
+      identityDatabase.requestWorkspaceLifecycleOperation({
+        workspaceId: workspace.id,
+        actorUserId: ownerUserId,
+        commandType: 'deletion_requested',
+        reason: 'idempotent deletion',
+        idempotencyKey: deletionKey,
+      });
     const [deletedLeft, deletedRight] = await Promise.all([
       deletionCommand(),
       deletionCommand(),
     ]);
     expect(deletedRight).toEqual(deletedLeft);
-    await expect(
-      identityDatabase.requestWorkspaceDeletion(
-        workspace.id,
-        ownerUserId,
-        purgeAfter,
-        'changed deletion request',
-        { idempotencyKey: deletionKey },
-      ),
-    ).rejects.toBeInstanceOf(IdempotencyRequestConflictError);
-
-    const restoreKey = `restore-${randomUUID()}`;
-    const restoreCommand = () =>
-      identityDatabase.restoreWorkspace(workspace.id, ownerUserId, {
-        idempotencyKey: restoreKey,
-      });
-    const [restoredLeft, restoredRight] = await Promise.all([
-      restoreCommand(),
-      restoreCommand(),
-    ]);
-    expect(restoredRight).toEqual(restoredLeft);
-    await expect(
-      identityDatabase.restoreWorkspace(workspace.id, otherUser.id, {
-        idempotencyKey: restoreKey,
-      }),
-    ).rejects.toBeInstanceOf(IdempotencyRequestConflictError);
-
-    const events = await tenantDatabase.withWorkspace(
-      workspace.id,
-      async ({ db }) =>
-        db
-          .select({ action: auditEvents.action })
-          .from(auditEvents)
-          .orderBy(auditEvents.occurredAt, auditEvents.id),
-    );
-    expect(events.map(({ action }) => action)).toEqual([
-      'workspace.created',
-      'workspace.deletion_requested',
-      'workspace.restored',
-    ]);
-  });
-
-  it('rejects restore after the PostgreSQL purge deadline without changing state or audit history', async () => {
-    const workspace = await identityDatabase.createWorkspaceWithOwner({
-      name: 'Expired Restore Workspace',
-      slug: `expired-restore-${randomUUID().slice(0, 12)}`,
-      ownerUserId,
+    expect(deletedLeft).toMatchObject({
+      workspaceId: workspace.id,
+      commandType: 'deletion_requested',
+      status: 'pending',
+      completedAt: null,
+      errorCode: null,
     });
-    await identityDatabase.requestWorkspaceDeletion(
-      workspace.id,
-      ownerUserId,
-      new Date(Date.now() + 60_000),
-      'deadline boundary test',
-    );
-
-    const owner = new Pool({ connectionString: migrationUrl, max: 1 });
-    try {
-      await owner.query('set role pertexo_owner');
-      await owner.query(
-        `update app.workspaces
-         set deletion_requested_at = clock_timestamp() - interval '2 seconds',
-             purge_after = clock_timestamp() - interval '1 second'
-         where id = $1`,
-        [workspace.id],
-      );
-    } finally {
-      await owner.end();
-    }
-
     await expect(
-      identityDatabase.restoreWorkspace(workspace.id, ownerUserId),
-    ).rejects.toMatchObject({ reason: 'invalid_state' });
+      identityDatabase.readWorkspaceLifecycleOperation(
+        workspace.id,
+        deletedLeft.id,
+        ownerUserId,
+      ),
+    ).resolves.toEqual(deletedLeft);
     await expect(
       identityDatabase.findWorkspaceAccess(ownerUserId, workspace.id),
-    ).resolves.toMatchObject({ workspaceStatus: 'pending_deletion' });
+    ).resolves.toMatchObject({ workspaceStatus: 'active' });
+    await expect(
+      identityDatabase.requestWorkspaceLifecycleOperation({
+        workspaceId: workspace.id,
+        actorUserId: ownerUserId,
+        commandType: 'deletion_requested',
+        reason: 'changed deletion request',
+        idempotencyKey: deletionKey,
+      }),
+    ).rejects.toBeInstanceOf(IdempotencyRequestConflictError);
+    await expect(
+      identityDatabase.readWorkspaceLifecycleOperation(
+        workspace.id,
+        randomUUID(),
+        ownerUserId,
+      ),
+    ).resolves.toBeNull();
+  });
 
-    const events = await tenantDatabase.withWorkspace(
-      workspace.id,
-      async ({ db }) =>
-        db.select({ action: auditEvents.action }).from(auditEvents),
-    );
-    expect(events.map((event) => event.action)).toEqual([
-      'workspace.created',
-      'workspace.deletion_requested',
-    ]);
+  it('denies direct lifecycle projection to the API credential', async () => {
+    const api = new Pool({ connectionString: apiUrl, max: 1 });
+    try {
+      await expect(
+        api.query(
+          `update app.workspaces set status='pending_deletion',
+             deletion_requested_at=clock_timestamp(),deletion_requested_by=$2,
+             deletion_reason='direct projection is forbidden',
+             purge_after=clock_timestamp()+interval '30 days'
+           where id=$1`,
+          [workspaceId, ownerUserId],
+        ),
+      ).rejects.toMatchObject({ code: '42501' });
+    } finally {
+      await api.end();
+    }
   });
 
   it('denies audit updates and deletes to the API runtime role', async () => {

@@ -44,24 +44,20 @@ export class DatabaseIdentityWorkspaceAdapter
     return result ?? undefined;
   }
 
-  public async requestWorkspaceDeletion(
-    ...input: Parameters<IdentityWorkspaceDatabase['requestWorkspaceDeletion']>
+  public requestWorkspaceLifecycleOperation(
+    ...input: Parameters<
+      IdentityWorkspaceDatabase['requestWorkspaceLifecycleOperation']
+    >
   ) {
-    const result = await this.database.requestWorkspaceDeletion(...input);
-    return Object.freeze({
-      workspace: mapWorkspace(result.workspace),
-      revokedSessionCount: result.revokedSessionCount,
-    });
+    return this.database.requestWorkspaceLifecycleOperation(...input);
   }
 
-  public async restoreWorkspace(
-    ...input: Parameters<IdentityWorkspaceDatabase['restoreWorkspace']>
+  public readWorkspaceLifecycleOperation(
+    ...input: Parameters<
+      IdentityWorkspaceDatabase['readWorkspaceLifecycleOperation']
+    >
   ) {
-    const result = await this.database.restoreWorkspace(...input);
-    return Object.freeze({
-      workspace: mapWorkspace(result.workspace),
-      revokedSessionCount: result.revokedSessionCount,
-    });
+    return this.database.readWorkspaceLifecycleOperation(...input);
   }
 
   public async create(record: SessionRecord): Promise<void> {

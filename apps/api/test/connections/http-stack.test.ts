@@ -104,8 +104,10 @@ function identityRuntime(): ApiIdentityRuntime {
       revokeByDigest: () => Promise.resolve(false),
       resolveOrCreateIdentity: () => Promise.resolve({ userId: actorId }),
       createWorkspaceWithOwner: () => Promise.reject(new Error('not used')),
-      requestWorkspaceDeletion: () => Promise.reject(new Error('not used')),
-      restoreWorkspace: () => Promise.reject(new Error('not used')),
+      requestWorkspaceLifecycleOperation: () =>
+        Promise.reject(new Error('not used')),
+      readWorkspaceLifecycleOperation: () =>
+        Promise.reject(new Error('not used')),
     },
     authorization: {
       findAccess: (query: Readonly<{ actorId: string; workspaceId: string }>) =>

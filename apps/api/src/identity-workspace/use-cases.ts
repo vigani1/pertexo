@@ -9,11 +9,14 @@ import {
   type ActorContext,
   type AuthorizedWorkspaceContext,
   type AuthorizationCapability,
+  AuthorizationError,
   type WorkspaceStatus,
 } from '../workspaces/index.js';
 import {
   workspaceCreateRequestSchema,
+  workspaceLifecycleOperationResponseSchema,
   workspaceResponseSchema,
+  type WorkspaceLifecycleOperationResponse,
   type WorkspaceResponse,
 } from './types.js';
 import type {
@@ -138,7 +141,13 @@ export type WorkspaceLifecycleInput = Readonly<{
 }>;
 
 export type RequestDeletionInput = WorkspaceLifecycleInput &
-  Readonly<{ purgeAfter?: Date; reason: string }>;
+  Readonly<{ reason: string }>;
+
+export type ReadWorkspaceLifecycleOperationInput = Readonly<{
+  actor: ActorContext;
+  routeWorkspaceId: string;
+  operationId: string;
+}>;
 
 export class WorkspaceLifecycleUseCase {
   public constructor(
@@ -149,7 +158,7 @@ export class WorkspaceLifecycleUseCase {
 
   public async requestDeletion(
     input: RequestDeletionInput,
-  ): Promise<WorkspaceResponse> {
+  ): Promise<WorkspaceLifecycleOperationResponse> {
     return this.telemetry.measure(
       IDENTITY_WORKSPACE_OPERATION.workspaceRequestDeletion,
       async () => {
@@ -158,23 +167,22 @@ export class WorkspaceLifecycleUseCase {
           'workspace:manage',
           LIFECYCLE_VISIBLE_STATUSES,
         );
-        const result = await this.persistence.requestWorkspaceDeletion(
-          input.routeWorkspaceId,
-          input.actor.actorId,
-          input.purgeAfter,
-          input.reason,
-          auditOptions(input),
-        );
-        return workspaceResponseSchema.parse(
-          toWorkspaceResponse(result.workspace),
-        );
+        const operation =
+          await this.persistence.requestWorkspaceLifecycleOperation({
+            workspaceId: input.routeWorkspaceId,
+            actorUserId: input.actor.actorId,
+            commandType: 'deletion_requested',
+            reason: input.reason,
+            idempotencyKey: input.idempotencyKey,
+          });
+        return toWorkspaceLifecycleOperationResponse(operation);
       },
     );
   }
 
   public async restore(
     input: WorkspaceLifecycleInput,
-  ): Promise<WorkspaceResponse> {
+  ): Promise<WorkspaceLifecycleOperationResponse> {
     return this.telemetry.measure(
       IDENTITY_WORKSPACE_OPERATION.workspaceRestore,
       async () => {
@@ -183,20 +191,39 @@ export class WorkspaceLifecycleUseCase {
           'workspace:manage',
           LIFECYCLE_VISIBLE_STATUSES,
         );
-        const result = await this.persistence.restoreWorkspace(
-          input.routeWorkspaceId,
-          input.actor.actorId,
-          auditOptions(input),
-        );
-        return workspaceResponseSchema.parse(
-          toWorkspaceResponse(result.workspace),
-        );
+        const operation =
+          await this.persistence.requestWorkspaceLifecycleOperation({
+            workspaceId: input.routeWorkspaceId,
+            actorUserId: input.actor.actorId,
+            commandType: 'deletion_restored',
+            reason: 'Workspace deletion restored',
+            idempotencyKey: input.idempotencyKey,
+          });
+        return toWorkspaceLifecycleOperationResponse(operation);
       },
     );
   }
 
+  public async readOperation(
+    input: ReadWorkspaceLifecycleOperationInput,
+  ): Promise<WorkspaceLifecycleOperationResponse> {
+    await this.authorize(input, 'workspace:manage', LIFECYCLE_VISIBLE_STATUSES);
+    const operation = await this.persistence.readWorkspaceLifecycleOperation(
+      input.routeWorkspaceId,
+      input.operationId,
+      input.actor.actorId,
+    );
+    if (operation === null) {
+      throw new AuthorizationError(
+        'resource.not_found',
+        'Workspace lifecycle operation was not found',
+      );
+    }
+    return toWorkspaceLifecycleOperationResponse(operation);
+  }
+
   private authorize(
-    input: WorkspaceLifecycleInput,
+    input: Readonly<{ actor: ActorContext; routeWorkspaceId: string }>,
     capability: AuthorizationCapability,
     allowedWorkspaceStatuses: readonly WorkspaceStatus[],
   ): Promise<AuthorizedWorkspaceContext> {
@@ -211,20 +238,30 @@ export class WorkspaceLifecycleUseCase {
   }
 }
 
-function auditOptions(input: WorkspaceLifecycleInput): Readonly<{
-  idempotencyKey: string;
-  requestId?: string;
-  traceId?: string;
-  metadata?: Record<string, unknown>;
-}> {
-  return {
-    idempotencyKey: input.idempotencyKey,
-    requestId: input.requestId ?? input.actor.requestId,
-    ...(input.traceId === undefined && input.actor.traceId === undefined
-      ? {}
-      : { traceId: input.traceId ?? input.actor.traceId }),
-    metadata: input.metadata ?? {},
-  };
+function toWorkspaceLifecycleOperationResponse(operation: {
+  id: string;
+  workspaceId: string;
+  commandType: 'deletion_requested' | 'deletion_restored';
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  submittedAt: Date;
+  updatedAt: Date;
+  completedAt: Date | null;
+  errorCode: string | null;
+}): WorkspaceLifecycleOperationResponse {
+  return workspaceLifecycleOperationResponseSchema.parse({
+    id: operation.id,
+    workspaceId: operation.workspaceId,
+    commandType: operation.commandType,
+    status: operation.status,
+    submittedAt: operation.submittedAt.toISOString(),
+    updatedAt: operation.updatedAt.toISOString(),
+    completedAt: operation.completedAt?.toISOString() ?? null,
+    errorCode: operation.errorCode,
+    result:
+      operation.status === 'completed'
+        ? { workspaceId: operation.workspaceId }
+        : null,
+  });
 }
 
 function toWorkspaceResponse(

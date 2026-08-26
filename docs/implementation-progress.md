@@ -23,7 +23,7 @@ not complete a phase.
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 5 — orchestration slice | Complete | ADRs 008/017/018/019/020/021/022; implementation through `9d7e071`; migration head `0034_run_failure_notifications.sql`; 862 unit assertions and complete real-service/recovery matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 6 — V1 providers and triggers | Complete | ADRs 012–014 and 023–026; implementation through `0f8a170`; migration head `0043_workflow_run_input_retention.sql`; 1,021 unit and 288 real-service assertions; complete retained recovery and additive-rollout gates; independent fixed-head Spec and Standards completion GO |
-| Phase 7 — production operations | In progress | ADRs 013/015/027; Frankfurt launch and Ireland recovery policy accepted; maintenance and lifecycle-command credential boundaries, non-destructive retention-control foundation, all-six-command recovery projection plus legal-hold command coordination, durable operation-bound and lease-fenced lifecycle intents, atomic persisted-surface deletion side effects through migration `0049_workspace_deletion_side_effects.sql`, bounded dual-region lifecycle coordinator and standalone command worker, fail-closed dual-region control-ledger facade, bounded restore-before-serve executable, and a two-process MinIO integration harness; MinIO policy incompatibility blocks the full local control proof, while API-key and external-provider revocation, API authority migration, deployed admission wiring, AWS Object Lock/regional proof, destructive retention/purge, operator recovery, observability, exercises, restore drills, and autoscaling remain open |
+| Phase 7 — production operations | In progress | ADRs 013/015/027; Frankfurt launch and Ireland recovery policy accepted; maintenance and lifecycle-command credential boundaries, non-destructive retention-control foundation, all-six-command recovery projection plus legal-hold command coordination, durable operation-bound and lease-fenced lifecycle intents, atomic persisted-surface deletion side effects, asynchronous `202 Accepted` lifecycle API operations and direct-mutation revocation through migration `0050_workspace_lifecycle_api_authority.sql`, bounded dual-region lifecycle coordinator and standalone command worker, fail-closed dual-region control-ledger facade, bounded restore-before-serve executable, and a two-process MinIO integration harness; MinIO policy incompatibility blocks the full local control proof, while API-key and external-provider revocation, deployed admission wiring, AWS Object Lock/regional proof, destructive retention/purge, operator recovery, observability, exercises, restore drills, and autoscaling remain open |
 
 The `0A`–`0E` checkpoints are implementation-sized subdivisions of the plan's
 single Phase 0. They do not alter the authoritative scope. Phase 0 is complete
@@ -3654,6 +3654,27 @@ Current evidence:
   external provider subscription/revocation dispatch do not yet exist, and the
   public HTTP API still mutates lifecycle state directly, so the deletion
   checklist remains open.
+- The public deletion and restore endpoints now implement ADR 027 as
+  asynchronous `202 Accepted` commands backed by the durable lifecycle-operation
+  table. Exact idempotency replay returns the same operation, changed command
+  material returns a conflict, and the new owner-authorized polling endpoint
+  exposes only operation identity, command type, state, safe timestamps, bounded
+  error code, and a completed workspace reference. It never returns the actor,
+  reason, request/key hashes, ledger sequence/hash, lease, fence, or attempts;
+  V1 deletion input no longer accepts a caller-selected purge deadline. Migration
+  `0050_workspace_lifecycle_api_authority.sql` revokes every API-role workspace
+  lifecycle update column while retaining only the unrelated `updated_at`
+  authority required by existing PostgreSQL row-locking paths. Readiness proves
+  both narrow lifecycle functions are executable and every direct lifecycle
+  column is non-updatable. The obsolete synchronous database methods and API
+  adapter surface were removed. Root `pnpm check` passes formatting, production
+  builds, lint, generated-contract drift, typechecks, and all 1,158 unit
+  assertions. A clean zero-to-`0050` PostgreSQL matrix passes all 305 assertions
+  across 24 files, and the six-assertion real API slice proves `202` acceptance,
+  exact replay/conflict, safe polling, unchanged pre-projection workspace state,
+  invalid restore conflict, and denied direct API mutation. API-key entities and
+  external provider subscription revocation still do not exist, and destructive
+  purge remains open, so the deletion checklist is not complete.
 
 ## Update protocol
 

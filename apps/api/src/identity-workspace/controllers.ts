@@ -44,6 +44,7 @@ import {
   workspaceCreateRequestSchema,
   workspaceDeletionRequestSchema,
   workspaceIdParamSchema,
+  workspaceLifecycleOperationParamsSchema,
   type CookieResponse,
   type IdentityWorkspaceRequest,
 } from './types.js';
@@ -177,6 +178,7 @@ export class WorkspaceController {
   }
 
   @Post(':workspaceId/deletion')
+  @HttpCode(202)
   @UseGuards(
     SessionAuthenticationGuard,
     CsrfProtectionGuard,
@@ -204,9 +206,6 @@ export class WorkspaceController {
         actor,
         idempotencyKey: requestIdempotencyKey(request),
         routeWorkspaceId: workspaceId,
-        ...(deletion.purgeAfter === undefined
-          ? {}
-          : { purgeAfter: new Date(deletion.purgeAfter) }),
         reason: deletion.reason,
         requestId,
         ...traceFields(traceId),
@@ -217,6 +216,7 @@ export class WorkspaceController {
   }
 
   @Delete(':workspaceId/deletion')
+  @HttpCode(202)
   @UseGuards(
     SessionAuthenticationGuard,
     CsrfProtectionGuard,
@@ -244,6 +244,35 @@ export class WorkspaceController {
         routeWorkspaceId: workspaceId,
         requestId,
         ...traceFields(traceId),
+      });
+    } catch (error: unknown) {
+      return throwApplicationError(mapIdentityWorkspaceError(error));
+    }
+  }
+
+  @Get(':workspaceId/lifecycle-operations/:operationId')
+  @UseGuards(SessionAuthenticationGuard, WorkspaceManageGuard)
+  public async readLifecycleOperation(
+    @Req() request: IdentityWorkspaceRequest,
+    @Param() params: unknown,
+  ) {
+    try {
+      const { workspaceId, operationId } =
+        workspaceLifecycleOperationParamsSchema.parse(params);
+      const session = authenticatedSession(request);
+      const requestId = requestIdentifier(request);
+      const traceId = traceIdentifier(request);
+      const actor = createActorContext({
+        actorId: session.userId,
+        workspaceId,
+        sessionId: session.sessionId,
+        requestId,
+        ...traceFields(traceId),
+      });
+      return await this.lifecycle.readOperation({
+        actor,
+        routeWorkspaceId: workspaceId,
+        operationId,
       });
     } catch (error: unknown) {
       return throwApplicationError(mapIdentityWorkspaceError(error));

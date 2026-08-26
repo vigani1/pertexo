@@ -195,7 +195,7 @@ function workspacePersistence(): IdentityWorkspacePersistence {
       createdAt: new Date('2026-08-20T12:00:00.000Z'),
       updatedAt: new Date('2026-08-20T12:00:00.000Z'),
     }),
-    requestWorkspaceDeletion: vi.fn(),
-    restoreWorkspace: vi.fn(),
+    requestWorkspaceLifecycleOperation: vi.fn(),
+    readWorkspaceLifecycleOperation: vi.fn(),
   };
 }

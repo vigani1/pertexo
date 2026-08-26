@@ -51,18 +51,18 @@ export interface IdentityWorkspacePersistence extends SessionStorePort {
       metadata?: Record<string, unknown>;
     }>,
   ): Promise<WorkspacePersistenceRecord>;
-  requestWorkspaceDeletion(
+  requestWorkspaceLifecycleOperation(input: {
+    workspaceId: WorkspaceId;
+    actorUserId: string;
+    commandType: WorkspaceLifecycleOperationRecord['commandType'];
+    reason: string;
+    idempotencyKey: string;
+  }): Promise<WorkspaceLifecycleOperationRecord>;
+  readWorkspaceLifecycleOperation(
     workspaceId: WorkspaceId,
+    operationId: string,
     actorUserId: string,
-    purgeAfter: Date | undefined,
-    reason: string,
-    options: WorkspaceCommandOptions,
-  ): Promise<WorkspaceLifecyclePersistenceResult>;
-  restoreWorkspace(
-    workspaceId: WorkspaceId,
-    actorUserId: string,
-    options: WorkspaceCommandOptions,
-  ): Promise<WorkspaceLifecyclePersistenceResult>;
+  ): Promise<WorkspaceLifecycleOperationRecord | null>;
 }
 
 export type WorkspacePersistenceRecord = Readonly<{
@@ -74,19 +74,16 @@ export type WorkspacePersistenceRecord = Readonly<{
   updatedAt: Date;
 }>;
 
-export type WorkspaceLifecyclePersistenceResult = Readonly<{
-  workspace: WorkspacePersistenceRecord;
-  revokedSessionCount: number;
+export type WorkspaceLifecycleOperationRecord = Readonly<{
+  id: string;
+  workspaceId: string;
+  commandType: 'deletion_requested' | 'deletion_restored';
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  submittedAt: Date;
+  updatedAt: Date;
+  completedAt: Date | null;
+  errorCode: string | null;
 }>;
-
-export type AuditOptions = Readonly<{
-  requestId?: string;
-  traceId?: string;
-  metadata?: Record<string, unknown>;
-}>;
-
-export type WorkspaceCommandOptions = AuditOptions &
-  Readonly<{ idempotencyKey: string }>;
 
 export interface WorkspaceAuthorizationReader {
   findAccess(query: WorkspaceAccessQuery): Promise<WorkspaceAccess | undefined>;

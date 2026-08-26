@@ -8,10 +8,7 @@ import {
   workspaceCreateRequestSchema,
 } from '../../src/identity-workspace/index.js';
 import { createActorContext } from '../../src/workspaces/index.js';
-import type {
-  IdentityWorkspacePersistence,
-  WorkspaceAuthorizationReader,
-} from '../../src/identity-workspace/ports.js';
+import type { WorkspaceAuthorizationReader } from '../../src/identity-workspace/ports.js';
 import type { WorkspaceAccess } from '../../src/workspaces/index.js';
 import { OpaqueSessionService } from '../../src/identity/index.js';
 
@@ -32,21 +29,36 @@ function workspace() {
   };
 }
 
-function persistence(): IdentityWorkspacePersistence {
+function operation(
+  commandType:
+    'deletion_requested' | 'deletion_restored' = 'deletion_requested',
+) {
+  return {
+    id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+    workspaceId,
+    commandType,
+    status: 'pending' as const,
+    submittedAt: new Date('2026-08-20T12:00:00.000Z'),
+    updatedAt: new Date('2026-08-20T12:00:00.000Z'),
+    completedAt: null,
+    errorCode: null,
+  };
+}
+
+function persistence() {
   return {
     create: vi.fn(),
     findByDigest: vi.fn(),
     revokeByDigest: vi.fn(),
     resolveOrCreateIdentity: vi.fn(),
     createWorkspaceWithOwner: vi.fn().mockResolvedValue(workspace()),
-    requestWorkspaceDeletion: vi.fn().mockResolvedValue({
-      workspace: { ...workspace(), status: 'pending_deletion' },
-      revokedSessionCount: 2,
-    }),
-    restoreWorkspace: vi.fn().mockResolvedValue({
-      workspace: { ...workspace(), status: 'suspended' },
-      revokedSessionCount: 0,
-    }),
+    requestWorkspaceLifecycleOperation: vi
+      .fn()
+      .mockImplementation(
+        (input: { commandType: 'deletion_requested' | 'deletion_restored' }) =>
+          Promise.resolve(operation(input.commandType)),
+      ),
+    readWorkspaceLifecycleOperation: vi.fn().mockResolvedValue(operation()),
   };
 }
 
@@ -167,7 +179,6 @@ describe('identity/workspace application use cases', () => {
       createdAt: '2026-08-20T12:00:00.000Z',
       updatedAt: '2026-08-20T12:00:00.000Z',
     });
-    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(vi.mocked(store.createWorkspaceWithOwner)).toHaveBeenCalledWith({
       ownerUserId: actorId,
       idempotencyKey,
@@ -179,7 +190,7 @@ describe('identity/workspace application use cases', () => {
     });
   });
 
-  it('authorizes deletion before persistence and rejects a forged workspace without opening a transaction', async () => {
+  it('authorizes deletion before accepting a lifecycle operation', async () => {
     const store = persistence();
     const authorization: WorkspaceAuthorizationReader = {
       findAccess: vi.fn().mockResolvedValue(activeAccess()),
@@ -191,14 +202,12 @@ describe('identity/workspace application use cases', () => {
         actor: actor(),
         idempotencyKey,
         routeWorkspaceId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
-        purgeAfter: new Date('2026-09-20T12:00:00.000Z'),
         reason: 'retiring the temporary workspace',
       }),
     ).rejects.toMatchObject({ code: 'auth.forbidden' });
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(vi.mocked(authorization.findAccess)).not.toHaveBeenCalled();
-    // eslint-disable-next-line @typescript-eslint/unbound-method
-    expect(vi.mocked(store.requestWorkspaceDeletion)).not.toHaveBeenCalled();
+    expect(store.requestWorkspaceLifecycleOperation).not.toHaveBeenCalled();
   });
 
   it('denies a non-owner capability and does not call lifecycle persistence', async () => {
@@ -213,12 +222,10 @@ describe('identity/workspace application use cases', () => {
         actor: actor(),
         idempotencyKey,
         routeWorkspaceId: workspaceId,
-        purgeAfter: new Date('2026-09-20T12:00:00.000Z'),
         reason: 'retiring the temporary workspace',
       }),
     ).rejects.toMatchObject({ code: 'auth.forbidden' });
-    // eslint-disable-next-line @typescript-eslint/unbound-method
-    expect(vi.mocked(store.requestWorkspaceDeletion)).not.toHaveBeenCalled();
+    expect(store.requestWorkspaceLifecycleOperation).not.toHaveBeenCalled();
   });
 
   it('keeps a missing workspace indistinguishable from unauthorized access', async () => {
@@ -233,12 +240,10 @@ describe('identity/workspace application use cases', () => {
         actor: actor(),
         idempotencyKey,
         routeWorkspaceId: workspaceId,
-        purgeAfter: new Date('2026-09-20T12:00:00.000Z'),
         reason: 'retiring the temporary workspace',
       }),
     ).rejects.toMatchObject({ code: 'auth.forbidden' });
-    // eslint-disable-next-line @typescript-eslint/unbound-method
-    expect(vi.mocked(store.requestWorkspaceDeletion)).not.toHaveBeenCalled();
+    expect(store.requestWorkspaceLifecycleOperation).not.toHaveBeenCalled();
   });
 
   it('authorizes visible owner lifecycle states and leaves exact transition conflicts to persistence', async () => {
@@ -257,23 +262,21 @@ describe('identity/workspace application use cases', () => {
         actor: actor(),
         idempotencyKey,
         routeWorkspaceId: workspaceId,
-        purgeAfter: new Date('2026-09-20T12:00:00.000Z'),
         reason: 'retiring the suspended workspace',
       }),
-    ).resolves.toMatchObject({ status: 'pending_deletion' });
+    ).resolves.toMatchObject({ status: 'pending' });
     await expect(
       app.restore({
         actor: actor(),
         idempotencyKey,
         routeWorkspaceId: workspaceId,
       }),
-    ).resolves.toMatchObject({ status: 'suspended' });
+    ).resolves.toMatchObject({ status: 'pending' });
     const conflict = new WorkspaceLifecycleConflictError(
       'invalid_state',
       'Workspace is not pending deletion',
     );
-    // eslint-disable-next-line @typescript-eslint/unbound-method
-    vi.mocked(store.restoreWorkspace).mockRejectedValueOnce(conflict);
+    store.requestWorkspaceLifecycleOperation.mockRejectedValueOnce(conflict);
     await expect(
       app.restore({
         actor: actor(),
@@ -281,8 +284,7 @@ describe('identity/workspace application use cases', () => {
         routeWorkspaceId: workspaceId,
       }),
     ).rejects.toBe(conflict);
-    // eslint-disable-next-line @typescript-eslint/unbound-method
-    expect(vi.mocked(store.restoreWorkspace)).toHaveBeenCalledTimes(2);
+    expect(store.requestWorkspaceLifecycleOperation).toHaveBeenCalledTimes(3);
   });
 
   it('denies lifecycle access to a deleted workspace before persistence', async () => {
@@ -299,8 +301,7 @@ describe('identity/workspace application use cases', () => {
         routeWorkspaceId: workspaceId,
       }),
     ).rejects.toMatchObject({ code: 'auth.forbidden' });
-    // eslint-disable-next-line @typescript-eslint/unbound-method
-    expect(vi.mocked(store.restoreWorkspace)).not.toHaveBeenCalled();
+    expect(store.requestWorkspaceLifecycleOperation).not.toHaveBeenCalled();
   });
 
   it('returns lifecycle transitions and preserves persistence failures for rollback/error mapping', async () => {
@@ -319,27 +320,31 @@ describe('identity/workspace application use cases', () => {
         actor: actor(),
         idempotencyKey,
         routeWorkspaceId: workspaceId,
-        purgeAfter: new Date('2026-09-20T12:00:00.000Z'),
         reason: 'retiring the temporary workspace',
       }),
-    ).resolves.toMatchObject({ status: 'pending_deletion' });
+    ).resolves.toMatchObject({
+      commandType: 'deletion_requested',
+      status: 'pending',
+      result: null,
+    });
     await expect(
       app.restore({
         actor: actor(),
         idempotencyKey,
         routeWorkspaceId: workspaceId,
       }),
-    ).resolves.toMatchObject({ status: 'suspended' });
+    ).resolves.toMatchObject({
+      commandType: 'deletion_restored',
+      status: 'pending',
+    });
 
     const failure = new Error('transaction rolled back');
-    // eslint-disable-next-line @typescript-eslint/unbound-method
-    vi.mocked(store.requestWorkspaceDeletion).mockRejectedValueOnce(failure);
+    store.requestWorkspaceLifecycleOperation.mockRejectedValueOnce(failure);
     await expect(
       app.requestDeletion({
         actor: actor(),
         idempotencyKey,
         routeWorkspaceId: workspaceId,
-        purgeAfter: new Date('2026-09-20T12:00:00.000Z'),
         reason: 'retiring the temporary workspace',
       }),
     ).rejects.toBe(failure);

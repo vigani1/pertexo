@@ -9,7 +9,7 @@ import {
 } from './compatibility-release.js';
 
 export const EXPECTED_MIGRATION_HEAD =
-  '0049_workspace_deletion_side_effects.sql';
+  '0050_workspace_lifecycle_api_authority.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -219,6 +219,13 @@ export async function checkDatabaseReadiness(
         and has_table_privilege(current_user, 'app.workspaces', 'SELECT')
         and has_table_privilege(current_user, 'app.workspace_memberships', 'SELECT')
         and has_table_privilege(current_user, 'app.audit_events', 'SELECT')
+        and has_function_privilege(current_user, 'app.request_workspace_lifecycle_operation(uuid,uuid,character,character varying,uuid,character varying,character)', 'EXECUTE')
+        and has_function_privilege(current_user, 'app.read_workspace_lifecycle_operation(uuid,uuid,uuid)', 'EXECUTE')
+        and not has_column_privilege(current_user, 'app.workspaces', 'status', 'UPDATE')
+        and not has_column_privilege(current_user, 'app.workspaces', 'deletion_requested_at', 'UPDATE')
+        and not has_column_privilege(current_user, 'app.workspaces', 'deletion_requested_by', 'UPDATE')
+        and not has_column_privilege(current_user, 'app.workspaces', 'deletion_reason', 'UPDATE')
+        and not has_column_privilege(current_user, 'app.workspaces', 'purge_after', 'UPDATE')
         and not has_table_privilege(current_user, 'app.audit_events', 'UPDATE')
         and not has_table_privilege(current_user, 'app.audit_events', 'DELETE')
         else

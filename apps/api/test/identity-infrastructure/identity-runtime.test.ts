@@ -54,8 +54,8 @@ function identityDatabase(close = vi.fn().mockResolvedValue(undefined)) {
     revokeSession: vi.fn(),
     revokeSessionByDigest: vi.fn(),
     createWorkspaceWithOwner: vi.fn(),
-    requestWorkspaceDeletion: vi.fn(),
-    restoreWorkspace: vi.fn(),
+    requestWorkspaceLifecycleOperation: vi.fn(),
+    readWorkspaceLifecycleOperation: vi.fn(),
     close,
   } as unknown as IdentityWorkspaceDatabase;
 }
