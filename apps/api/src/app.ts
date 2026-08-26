@@ -12,6 +12,7 @@ import { AppModule } from './app.module.js';
 import type { ApiConfig } from './platform/config/api-config.js';
 import { WORKSPACE_DATABASE } from './platform/database/database.module.js';
 import { NestLoggerAdapter } from './platform/observability/observability.module.js';
+import { registerApiMetrics } from './platform/observability/api-metrics.js';
 import {
   createApiConnectionRuntime,
   type ApiConnectionRuntime,
@@ -129,6 +130,9 @@ export async function createApiApplication(
 
   application.enableShutdownHooks();
   try {
+    registerApiMetrics(
+      application.getHttpAdapter().getInstance() as unknown as FastifyInstance,
+    );
     await application.init();
     if (webhookRuntime !== undefined) {
       registerWebhookIngress(
