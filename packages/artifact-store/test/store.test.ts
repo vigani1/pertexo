@@ -1,8 +1,10 @@
 import {
   DeleteObjectCommand,
+  DeleteObjectsCommand,
   GetObjectCommand,
   HeadBucketCommand,
   HeadObjectCommand,
+  ListObjectVersionsCommand,
   PutObjectCommand,
 } from '@aws-sdk/client-s3';
 import { Readable } from 'node:stream';
@@ -53,11 +55,27 @@ class MemoryS3Client implements S3ClientLike {
   private readonly objects = new Map<string, StoredObject>();
   public ambiguousPutFailure: Error | undefined;
   public destroyCalls = 0;
+  public deleteVersionsErrors:
+    | readonly Readonly<{ Code: string; Key: string; VersionId: string }>[]
+    | undefined;
+  public deletedVersions:
+    | readonly Readonly<{
+        Key?: string | undefined;
+        VersionId?: string | undefined;
+      }>[]
+    | undefined;
   public hangReadiness = false;
   public lastGetBody: Readable | undefined;
   public getCalls = 0;
   public provideProviderChecksum = true;
   public putFailureAfterStore: Error | undefined;
+  public versionListOutput: unknown = {};
+  public versionListInput:
+    | Readonly<{
+        MaxKeys?: number | undefined;
+        Prefix?: string | undefined;
+      }>
+    | undefined;
   public useInvalidHeadMetadata = false;
   public useInvalidGetMetadata = false;
   public getBodyFactory: ((object: StoredObject) => Readable) | undefined;
@@ -122,6 +140,14 @@ class MemoryS3Client implements S3ClientLike {
     if (command instanceof DeleteObjectCommand) {
       this.objects.delete(String(command.input.Key));
       return {};
+    }
+    if (command instanceof ListObjectVersionsCommand) {
+      this.versionListInput = command.input;
+      return this.versionListOutput;
+    }
+    if (command instanceof DeleteObjectsCommand) {
+      this.deletedVersions = command.input.Delete?.Objects;
+      return { Errors: this.deleteVersionsErrors };
     }
     if (command instanceof HeadBucketCommand) {
       if (this.hangReadiness) {
@@ -606,6 +632,95 @@ describe('ArtifactStore', () => {
     await expect(store.getStream(identity)).rejects.toBeInstanceOf(
       ArtifactNotFoundError,
     );
+  });
+
+  it('deletes one bounded workspace page of versions and delete markers', async () => {
+    const { client, store } = createStore();
+    const prefix = `workspaces/${WORKSPACE_ID}/`;
+    client.versionListOutput = {
+      DeleteMarkers: [{ Key: `${prefix}markers/one`, VersionId: 'marker-1' }],
+      IsTruncated: true,
+      Versions: [
+        { Key: `${prefix}artifacts/${ARTIFACT_ID}`, VersionId: 'version-1' },
+      ],
+    };
+
+    await expect(
+      store.purgeWorkspacePage({ maxObjects: 2, workspaceId: WORKSPACE_ID }),
+    ).resolves.toEqual({ completed: false, deletedCount: 2 });
+    expect(client.versionListInput).toMatchObject({
+      MaxKeys: 2,
+      Prefix: prefix,
+    });
+    expect(client.deletedVersions).toEqual([
+      { Key: `${prefix}artifacts/${ARTIFACT_ID}`, VersionId: 'version-1' },
+      { Key: `${prefix}markers/one`, VersionId: 'marker-1' },
+    ]);
+  });
+
+  it('completes only on a fresh empty version listing', async () => {
+    const { client, store } = createStore();
+
+    await expect(
+      store.purgeWorkspacePage({ maxObjects: 500, workspaceId: WORKSPACE_ID }),
+    ).resolves.toEqual({ completed: true, deletedCount: 0 });
+    expect(client.deletedVersions).toBeUndefined();
+
+    client.versionListOutput = { IsTruncated: true };
+    await expect(
+      store.purgeWorkspacePage({ maxObjects: 500, workspaceId: WORKSPACE_ID }),
+    ).rejects.toBeInstanceOf(ArtifactIntegrityError);
+  });
+
+  it('rejects malformed, foreign, duplicate, and over-bound listings', async () => {
+    const { client, store } = createStore();
+    const purge = () =>
+      store.purgeWorkspacePage({ maxObjects: 1, workspaceId: WORKSPACE_ID });
+
+    client.versionListOutput = {
+      Versions: [{ Key: 'workspaces/foreign/artifacts/one', VersionId: 'v1' }],
+    };
+    await expect(purge()).rejects.toBeInstanceOf(ArtifactIntegrityError);
+    client.versionListOutput = {
+      Versions: [
+        {
+          Key: `workspaces/${WORKSPACE_ID}/artifacts/one`,
+          VersionId: '',
+        },
+      ],
+    };
+    await expect(purge()).rejects.toBeInstanceOf(ArtifactIntegrityError);
+    const duplicate = {
+      Key: `workspaces/${WORKSPACE_ID}/artifacts/one`,
+      VersionId: 'v1',
+    };
+    client.versionListOutput = {
+      DeleteMarkers: [duplicate],
+      Versions: [duplicate],
+    };
+    await expect(
+      store.purgeWorkspacePage({ maxObjects: 2, workspaceId: WORKSPACE_ID }),
+    ).rejects.toBeInstanceOf(ArtifactIntegrityError);
+    client.versionListOutput = {
+      Versions: [duplicate, { ...duplicate, VersionId: 'v2' }],
+    };
+    await expect(purge()).rejects.toBeInstanceOf(ArtifactIntegrityError);
+    expect(client.deletedVersions).toBeUndefined();
+  });
+
+  it('fails a page when S3 reports a partial version deletion error', async () => {
+    const { client, store } = createStore();
+    const key = `workspaces/${WORKSPACE_ID}/artifacts/${ARTIFACT_ID}`;
+    client.versionListOutput = {
+      Versions: [{ Key: key, VersionId: 'version-1' }],
+    };
+    client.deleteVersionsErrors = [
+      { Code: 'AccessDenied', Key: key, VersionId: 'version-1' },
+    ];
+
+    await expect(
+      store.purgeWorkspacePage({ maxObjects: 1, workspaceId: WORKSPACE_ID }),
+    ).rejects.toBeInstanceOf(ArtifactIntegrityError);
   });
 
   it('bounds readiness and closes the client exactly once', async () => {

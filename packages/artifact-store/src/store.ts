@@ -1,14 +1,18 @@
 import {
   DeleteObjectCommand,
+  DeleteObjectsCommand,
   GetObjectCommand,
   HeadBucketCommand,
   HeadObjectCommand,
+  ListObjectVersionsCommand,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
 import type {
+  DeleteObjectsCommandOutput,
   GetObjectCommandOutput,
   HeadObjectCommandOutput,
+  ListObjectVersionsCommandOutput,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { createHash } from 'node:crypto';
@@ -20,9 +24,11 @@ import type { ArtifactStoreConfig } from './config.js';
 
 type S3Command =
   | DeleteObjectCommand
+  | DeleteObjectsCommand
   | GetObjectCommand
   | HeadBucketCommand
   | HeadObjectCommand
+  | ListObjectVersionsCommand
   | PutObjectCommand;
 
 export interface S3ClientLike {
@@ -103,6 +109,23 @@ export interface ArtifactStore {
   ): Promise<ArtifactMetadata>;
 }
 
+export interface PurgeWorkspaceObjectsRequest {
+  readonly maxObjects: number;
+  readonly signal?: AbortSignal;
+  readonly workspaceId: string;
+}
+
+export interface WorkspaceObjectPurgePage {
+  readonly completed: boolean;
+  readonly deletedCount: number;
+}
+
+export interface WorkspaceObjectPurgeStore {
+  purgeWorkspacePage(
+    request: PurgeWorkspaceObjectsRequest,
+  ): Promise<WorkspaceObjectPurgePage>;
+}
+
 export class ArtifactIntegrityError extends Error {
   public constructor(message: string) {
     super(message);
@@ -126,6 +149,11 @@ export class ArtifactStoreClosedError extends Error {
 
 const identitySchema = z.object({
   artifactId: z.uuid(),
+  workspaceId: z.uuid(),
+});
+
+const purgeWorkspaceSchema = z.object({
+  maxObjects: z.number().int().min(1).max(500),
   workspaceId: z.uuid(),
 });
 
@@ -165,6 +193,10 @@ const DIRECT_UPLOAD_UNHOISTABLE_HEADERS = new Set([
 
 function storageKey(identity: ArtifactIdentity): string {
   return `workspaces/${identity.workspaceId}/artifacts/${identity.artifactId}`;
+}
+
+function workspacePrefix(workspaceId: string): string {
+  return `workspaces/${workspaceId}/`;
 }
 
 function requestSignal(
@@ -370,7 +402,7 @@ function isDestroyable(value: unknown): value is Destroyable {
   return typeof candidate.destroy === 'function';
 }
 
-class AwsArtifactStore implements ArtifactStore {
+class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
   private closed = false;
 
   public constructor(
@@ -580,6 +612,77 @@ class AwsArtifactStore implements ArtifactStore {
     }
   }
 
+  public async purgeWorkspacePage(
+    request: PurgeWorkspaceObjectsRequest,
+  ): Promise<WorkspaceObjectPurgePage> {
+    this.assertOpen();
+    const input = purgeWorkspaceSchema.parse(request);
+    const prefix = workspacePrefix(input.workspaceId);
+    const signal = requestSignal(this.config.requestTimeoutMs, request.signal);
+    const listed = (await this.client.send(
+      new ListObjectVersionsCommand({
+        Bucket: this.config.bucket,
+        MaxKeys: input.maxObjects,
+        Prefix: prefix,
+      }),
+      { abortSignal: signal },
+    )) as ListObjectVersionsCommandOutput;
+    const entries = [
+      ...(listed.Versions ?? []),
+      ...(listed.DeleteMarkers ?? []),
+    ];
+    if (entries.length > input.maxObjects) {
+      throw new ArtifactIntegrityError(
+        'Object version listing exceeded the requested page bound',
+      );
+    }
+    if (entries.length === 0) {
+      if (listed.IsTruncated === true) {
+        throw new ArtifactIntegrityError(
+          'Object version listing was truncated without entries',
+        );
+      }
+      return Object.freeze({ completed: true, deletedCount: 0 });
+    }
+    const seen = new Set<string>();
+    const objects = entries.map((entry) => {
+      if (
+        typeof entry.Key !== 'string' ||
+        !entry.Key.startsWith(prefix) ||
+        typeof entry.VersionId !== 'string' ||
+        entry.VersionId.length === 0
+      ) {
+        throw new ArtifactIntegrityError(
+          'Object version listing contained an invalid workspace entry',
+        );
+      }
+      const identity = `${entry.Key}\u0000${entry.VersionId}`;
+      if (seen.has(identity)) {
+        throw new ArtifactIntegrityError(
+          'Object version listing contained a duplicate entry',
+        );
+      }
+      seen.add(identity);
+      return { Key: entry.Key, VersionId: entry.VersionId };
+    });
+    const deleted = (await this.client.send(
+      new DeleteObjectsCommand({
+        Bucket: this.config.bucket,
+        Delete: { Objects: objects, Quiet: false },
+      }),
+      { abortSignal: signal },
+    )) as DeleteObjectsCommandOutput;
+    if ((deleted.Errors?.length ?? 0) > 0) {
+      throw new ArtifactIntegrityError(
+        'Object version deletion reported one or more failures',
+      );
+    }
+    return Object.freeze({
+      completed: false,
+      deletedCount: objects.length,
+    });
+  }
+
   public async validateDirectUpload(
     request: ValidateDirectUploadRequest,
   ): Promise<ArtifactMetadata> {
@@ -664,7 +767,7 @@ export function createArtifactStore(
     client?: S3ClientLike;
     presignPutObject?: PutObjectPresigner;
   }> = {},
-): ArtifactStore {
+): ArtifactStore & WorkspaceObjectPurgeStore {
   const client =
     options.client ??
     new S3Client({

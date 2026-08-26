@@ -50,5 +50,8 @@ export type {
   BeginDirectUploadRequest,
   DirectUpload,
   PutArtifactRequest,
+  PurgeWorkspaceObjectsRequest,
   ValidateDirectUploadRequest,
+  WorkspaceObjectPurgePage,
+  WorkspaceObjectPurgeStore,
 } from './store.js';
