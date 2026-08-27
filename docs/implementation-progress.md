@@ -3636,6 +3636,13 @@ Current evidence:
   `db:provision-operator` prerequisite that must run through their authenticated
   database-provisioning path before release migration. The broad operator-command checklist remains unchecked
   until the other recovery commands are supported.
+- Migration `0062_operator_command_ledger.sql` broadens the bounded,
+  function-only command ledger and status projection for the remaining ADR 029
+  command types without granting generic table authority or retaining tenant
+  request material beyond the normal workspace audit lifecycle. Existing
+  redispatch status remains compatible, and zero/prior-head migration coverage
+  includes the new ledger head. No additional recovery mutation authority is
+  introduced by this foundation checkpoint.
 - Accepted ADR 028 defines a repository-owned ECS workload manifest and migration
   release-job contract. The multi-stage production image runs as UID/GID 10001
   under `tini` with production dependencies only. Rendered Fargate definitions

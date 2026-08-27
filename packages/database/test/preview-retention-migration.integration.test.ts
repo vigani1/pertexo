@@ -239,6 +239,7 @@ describe('preview retention migration', () => {
       '0059_workspace_purge_completion.sql',
       '0060_standard_retention_dry_run.sql',
       '0061_operator_outbox_redispatch.sql',
+      '0062_operator_command_ledger.sql',
     ]);
 
     const verification = new Pool({

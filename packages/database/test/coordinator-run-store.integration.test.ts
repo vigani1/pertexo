@@ -2016,7 +2016,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0061_operator_outbox_redispatch.sql',
+          migrationHead: '0062_operator_command_ledger.sql',
           role: 'pertexo_worker',
         });
       } finally {
@@ -2103,6 +2103,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         '0059_workspace_purge_completion.sql',
         '0060_standard_retention_dry_run.sql',
         '0061_operator_outbox_redispatch.sql',
+        '0062_operator_command_ledger.sql',
       ]);
       const workerPool = new Pool({
         connectionString: namedDatabaseUrl(
@@ -2118,7 +2119,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0061_operator_outbox_redispatch.sql',
+          migrationHead: '0062_operator_command_ledger.sql',
           role: 'pertexo_worker',
         });
         await expect(
@@ -2185,7 +2186,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0061_operator_outbox_redispatch.sql',
+        migrationHead: '0062_operator_command_ledger.sql',
         role: 'pertexo_worker',
       });
       const catalog = await readinessPool.query<{
@@ -2424,7 +2425,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0061_operator_outbox_redispatch.sql',
+        migrationHead: '0062_operator_command_ledger.sql',
       });
     } finally {
       await readinessPool.end();
@@ -2610,7 +2611,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         workerRuntimeRole: 'pertexo_worker',
       }),
     ).resolves.toMatchObject({
-      migrationHead: '0061_operator_outbox_redispatch.sql',
+      migrationHead: '0062_operator_command_ledger.sql',
     });
     await readinessPool.end();
   });

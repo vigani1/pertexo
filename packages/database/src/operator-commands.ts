@@ -42,17 +42,28 @@ export type OperatorCommandResult = Readonly<{
 }>;
 export type OperatorCommandRecord = Readonly<{
   commandId: string;
-  commandType: 'outbox.redispatch';
+  commandType: OperatorCommandType;
   completedAt: Date;
   createdAt: Date;
   dryRun: boolean;
-  outcome: OperatorCommandOutcome;
+  outcome: string;
   priorErrorCode: string | null;
   priorFailedAt: Date | null;
   priorPublishAttempts: number | null;
+  result: Readonly<Record<string, unknown>>;
   requestFingerprint: string;
   status: 'completed';
 }>;
+export type OperatorCommandType =
+  | 'attempt.reconcile'
+  | 'due-work.resume'
+  | 'outbox.redispatch'
+  | 'purge.rerun'
+  | 'retention.rerun'
+  | 'run.cancel'
+  | 'run.replay'
+  | 'trigger.reconcile'
+  | 'unknown-outcome.record-evidence';
 export type GetOperatorCommandInput = Readonly<{
   actorRef: string;
   commandId: string;
@@ -84,6 +95,17 @@ const outcomeSchema = z.enum([
   'not_found',
   'redispatched',
   'would_redispatch',
+]);
+const commandTypeSchema = z.enum([
+  'attempt.reconcile',
+  'due-work.resume',
+  'outbox.redispatch',
+  'purge.rerun',
+  'retention.rerun',
+  'run.cancel',
+  'run.replay',
+  'trigger.reconcile',
+  'unknown-outcome.record-evidence',
 ]);
 
 export class OperatorCommandConflictError extends Error {
@@ -261,9 +283,12 @@ export function createOperatorCommandDatabase(
         await query(client, 'commit', [], parsed.signal);
         const row = result.rows[0];
         if (row === undefined) return null;
+        const commandResult = z
+          .record(z.string(), z.unknown())
+          .parse(row.result);
         return Object.freeze({
           commandId: z.uuid().parse(row.command_id),
-          commandType: z.literal('outbox.redispatch').parse(row.command_type),
+          commandType: commandTypeSchema.parse(row.command_type),
           completedAt: new Date(
             z.union([z.string(), z.date()]).parse(row.completed_at),
           ),
@@ -271,18 +296,29 @@ export function createOperatorCommandDatabase(
             z.union([z.string(), z.date()]).parse(row.created_at),
           ),
           dryRun: z.boolean().parse(row.dry_run),
-          outcome: outcomeSchema.parse(row.command_outcome),
-          priorErrorCode: z.string().nullable().parse(row.prior_error_code),
+          outcome: z
+            .string()
+            .regex(/^[a-z][a-z0-9_]{0,31}$/u)
+            .parse(row.command_outcome),
+          priorErrorCode: z
+            .string()
+            .nullable()
+            .parse(commandResult.priorErrorCode ?? null),
           priorFailedAt:
-            row.prior_failed_at === null
+            commandResult.priorFailedAt == null
               ? null
-              : new Date(row.prior_failed_at as string | Date),
+              : new Date(
+                  z
+                    .union([z.string(), z.date()])
+                    .parse(commandResult.priorFailedAt),
+                ),
           priorPublishAttempts: z.coerce
             .number()
             .int()
             .nonnegative()
             .nullable()
-            .parse(row.prior_publish_attempts),
+            .parse(commandResult.priorPublishAttempts ?? null),
+          result: Object.freeze(commandResult),
           requestFingerprint: z
             .string()
             .regex(/^[0-9a-f]{64}$/u)

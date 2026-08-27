@@ -254,7 +254,7 @@ describe('execution value persistence migration', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0061_operator_outbox_redispatch.sql',
+          migrationHead: '0062_operator_command_ledger.sql',
           role: expectedRole,
         });
       } finally {

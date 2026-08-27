@@ -15,7 +15,7 @@ const workerAdmissionMigrationUrl = new URL(
 
 describe('execution admission migration contract', () => {
   it('owns immutable entitlement history, reconciled slots, and durable fairness', async () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0061_operator_outbox_redispatch.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0062_operator_command_ledger.sql');
     const migration = await readFile(migrationUrl, 'utf8');
 
     expect(migration).toContain(

@@ -429,7 +429,7 @@ describe('schedule trigger PostgreSQL slice', () => {
 
   it('recovers an expired lease, excludes competing scanners, and commits one acceptance with outbox', async () => {
     await expect(checkDatabaseReadiness(worker)).resolves.toMatchObject({
-      migrationHead: '0061_operator_outbox_redispatch.sql',
+      migrationHead: '0062_operator_command_ledger.sql',
       role: 'pertexo_worker',
     });
     const crashed = await worker.query(
