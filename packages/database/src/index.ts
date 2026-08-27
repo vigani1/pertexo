@@ -212,6 +212,7 @@ export type {
   RunArtifactRetentionStore,
 } from './run-artifact-retention.js';
 export type {
+  OperatorMaintenanceRerunResult,
   RetentionDatabase,
   RetentionDatabaseOptions,
   RetentionDryRunClaim,
@@ -407,6 +408,7 @@ export {
   type GetOperatorCommandInput,
   type GenericOperatorCommandResult,
   type OperatorRunCommandInput,
+  type OperatorMaintenanceRerunInput,
   type OperatorWorkflowCommandInput,
   type ReplayOperatorRunInput,
   type OperatorCommandDatabase,

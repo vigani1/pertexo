@@ -118,6 +118,20 @@ const environmentSchema = z.discriminatedUnion('OPERATOR_COMMAND_TYPE', [
       .transform((value) => value === 'true'),
     OPERATOR_WORKFLOW_ID: z.uuid(),
   }),
+  baseEnvironmentSchema.extend({
+    OPERATOR_COMMAND_TYPE: z.literal('retention.rerun'),
+    OPERATOR_DRY_RUN: z
+      .enum(['true', 'false'])
+      .transform((value) => value === 'true'),
+    OPERATOR_RETENTION_BATCH_ID: z.uuid(),
+  }),
+  baseEnvironmentSchema.extend({
+    OPERATOR_COMMAND_TYPE: z.literal('purge.rerun'),
+    OPERATOR_DRY_RUN: z
+      .enum(['true', 'false'])
+      .transform((value) => value === 'true'),
+    OPERATOR_PURGE_JOB_ID: z.uuid(),
+  }),
 ]);
 
 export interface OperatorCommandConfig {
@@ -186,6 +200,16 @@ export interface OperatorCommandConfig {
         reason: string;
         type: 'trigger.reconcile';
         workflowId: string;
+        workspaceId: string;
+      }>
+    | Readonly<{
+        actorRef: string;
+        commandId: string;
+        dryRun: boolean;
+        reason: string;
+        targetId: string;
+        targetType: 'retention_batch' | 'workspace_purge_job';
+        type: 'purge.rerun' | 'retention.rerun';
         workspaceId: string;
       }>;
   readonly database: DatabaseConfig;
@@ -275,6 +299,28 @@ export function parseOperatorCommandConfig(
             sourceRunId: parsed.OPERATOR_RUN_ID,
             type: parsed.OPERATOR_COMMAND_TYPE,
             workflowVersionId: parsed.OPERATOR_WORKFLOW_VERSION_ID,
+            workspaceId: parsed.OPERATOR_WORKSPACE_ID,
+          });
+        case 'retention.rerun':
+          return Object.freeze({
+            actorRef: parsed.OPERATOR_ACTOR_REF,
+            commandId: parsed.OPERATOR_COMMAND_ID,
+            dryRun: parsed.OPERATOR_DRY_RUN,
+            reason: parsed.OPERATOR_REASON,
+            targetId: parsed.OPERATOR_RETENTION_BATCH_ID,
+            targetType: 'retention_batch' as const,
+            type: parsed.OPERATOR_COMMAND_TYPE,
+            workspaceId: parsed.OPERATOR_WORKSPACE_ID,
+          });
+        case 'purge.rerun':
+          return Object.freeze({
+            actorRef: parsed.OPERATOR_ACTOR_REF,
+            commandId: parsed.OPERATOR_COMMAND_ID,
+            dryRun: parsed.OPERATOR_DRY_RUN,
+            reason: parsed.OPERATOR_REASON,
+            targetId: parsed.OPERATOR_PURGE_JOB_ID,
+            targetType: 'workspace_purge_job' as const,
+            type: parsed.OPERATOR_COMMAND_TYPE,
             workspaceId: parsed.OPERATOR_WORKSPACE_ID,
           });
       }

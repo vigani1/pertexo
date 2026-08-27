@@ -430,7 +430,7 @@ describe.each([
 describe('database readiness', () => {
   it('verifies migration, PostgreSQL, ownership, RLS, and runtime role compatibility', async () => {
     await expect(database.checkReadiness()).resolves.toEqual({
-      migrationHead: '0065_operator_run_replay.sql',
+      migrationHead: '0066_operator_maintenance_rerun.sql',
       postgresMajor: 18,
       role: 'pertexo_api',
     });

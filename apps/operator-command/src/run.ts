@@ -71,6 +71,16 @@ export interface OperatorCommandResources {
         type: 'run.replay';
         workflowVersionId: string;
         workspaceId: string;
+      }>
+    | Readonly<{
+        actorRef: string;
+        commandId: string;
+        dryRun: boolean;
+        reason: string;
+        targetId: string;
+        targetType: 'retention_batch' | 'workspace_purge_job';
+        type: 'purge.rerun' | 'retention.rerun';
+        workspaceId: string;
       }>;
   readonly database: OperatorCommandDatabase;
   readonly logger: StructuredLogger;
@@ -171,6 +181,13 @@ export async function runOperatorCommand(
         break;
       case 'run.replay':
         result = await resources.database.replayRun({
+          ...resources.command,
+          signal: resources.signal,
+        });
+        break;
+      case 'purge.rerun':
+      case 'retention.rerun':
+        result = await resources.database.requestMaintenanceRerun({
           ...resources.command,
           signal: resources.signal,
         });

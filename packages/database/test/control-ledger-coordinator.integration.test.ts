@@ -299,6 +299,10 @@ beforeAll(async () => {
     path.join(MIGRATIONS_DIRECTORY, '0065_operator_run_replay.sql'),
     path.join(priorDirectory, '0065_operator_run_replay.sql'),
   );
+  await copyFile(
+    path.join(MIGRATIONS_DIRECTORY, '0066_operator_maintenance_rerun.sql'),
+    path.join(priorDirectory, '0066_operator_maintenance_rerun.sql'),
+  );
   await expect(
     migrateDatabase(migrationConfig, priorDirectory),
   ).resolves.toEqual([
@@ -322,6 +326,7 @@ beforeAll(async () => {
     '0063_operator_execution_recovery.sql',
     '0064_operator_trigger_reconciliation.sql',
     '0065_operator_run_replay.sql',
+    '0066_operator_maintenance_rerun.sql',
   ]);
   maintenance = new Pool({ connectionString: maintenanceUrl, max: 4 });
 }, 120_000);

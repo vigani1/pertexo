@@ -154,4 +154,32 @@ describe('operator command config', () => {
       workspaceId,
     });
   });
+
+  it('parses a maintenance-owned retention rerun request', () => {
+    const commandId = randomUUID();
+    const targetId = randomUUID();
+    const workspaceId = randomUUID();
+    expect(
+      parseOperatorCommandConfig({
+        DATABASE_OPERATOR_URL:
+          'postgresql://pertexo_operator:secret@localhost:5432/pertexo',
+        OPERATOR_ACTOR_REF: 'ci-test-operator',
+        OPERATOR_COMMAND_ID: commandId,
+        OPERATOR_COMMAND_TYPE: 'retention.rerun',
+        OPERATOR_DRY_RUN: 'false',
+        OPERATOR_REASON: 'wake retained batch',
+        OPERATOR_RETENTION_BATCH_ID: targetId,
+        OPERATOR_WORKSPACE_ID: workspaceId,
+      }).command,
+    ).toEqual({
+      actorRef: 'ci-test-operator',
+      commandId,
+      dryRun: false,
+      reason: 'wake retained batch',
+      targetId,
+      targetType: 'retention_batch',
+      type: 'retention.rerun',
+      workspaceId,
+    });
+  });
 });

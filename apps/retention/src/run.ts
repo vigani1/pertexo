@@ -56,6 +56,9 @@ export async function runRetentionWorker(
     while (!resources.signal.aborted) {
       const startedAt = performance.now();
       try {
+        const operatorRerun = await resources.database.processOperatorRerun(
+          resources.signal,
+        );
         const schedule = await resources.database.scheduleEnforcement(
           resources.signal,
         );
@@ -114,6 +117,12 @@ export async function runRetentionWorker(
         if (workspacePurge.status !== 'idle') {
           resources.logger.info('retention.workspace_purge_processed', {
             outcome: workspacePurge.status,
+          });
+        }
+        if (operatorRerun !== null) {
+          resources.logger.info('retention.operator_rerun_processed', {
+            outcome: operatorRerun.outcome,
+            targetType: operatorRerun.targetType,
           });
         }
         if (

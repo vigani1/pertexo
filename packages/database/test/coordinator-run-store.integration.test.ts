@@ -2016,7 +2016,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0065_operator_run_replay.sql',
+          migrationHead: '0066_operator_maintenance_rerun.sql',
           role: 'pertexo_worker',
         });
       } finally {
@@ -2107,6 +2107,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         '0063_operator_execution_recovery.sql',
         '0064_operator_trigger_reconciliation.sql',
         '0065_operator_run_replay.sql',
+        '0066_operator_maintenance_rerun.sql',
       ]);
       const workerPool = new Pool({
         connectionString: namedDatabaseUrl(
@@ -2122,7 +2123,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0065_operator_run_replay.sql',
+          migrationHead: '0066_operator_maintenance_rerun.sql',
           role: 'pertexo_worker',
         });
         await expect(
@@ -2189,7 +2190,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0065_operator_run_replay.sql',
+        migrationHead: '0066_operator_maintenance_rerun.sql',
         role: 'pertexo_worker',
       });
       const catalog = await readinessPool.query<{
@@ -2428,7 +2429,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0065_operator_run_replay.sql',
+        migrationHead: '0066_operator_maintenance_rerun.sql',
       });
     } finally {
       await readinessPool.end();
@@ -2614,7 +2615,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         workerRuntimeRole: 'pertexo_worker',
       }),
     ).resolves.toMatchObject({
-      migrationHead: '0065_operator_run_replay.sql',
+      migrationHead: '0066_operator_maintenance_rerun.sql',
     });
     await readinessPool.end();
   });

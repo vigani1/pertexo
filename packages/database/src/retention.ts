@@ -99,12 +99,23 @@ export interface RetentionDatabase {
     signal?: AbortSignal,
   ): Promise<RetentionDryRunPageResult>;
   processNext(signal?: AbortSignal): Promise<RetentionDryRunProcessResult>;
+  processOperatorRerun(
+    signal?: AbortSignal,
+  ): Promise<OperatorMaintenanceRerunResult | null>;
   scheduleEnforcement(signal?: AbortSignal): Promise<RetentionScheduleResult>;
   startDryRun(
     input: StartWorkflowRunInputRetentionDryRunInput,
   ): Promise<string>;
   startEnforcement(input: StartWorkflowRunInputRetentionInput): Promise<string>;
 }
+
+export type OperatorMaintenanceRerunResult = Readonly<{
+  commandId: string;
+  outcome: string;
+  targetId: string;
+  targetType: 'retention_batch' | 'workspace_purge_job';
+  workspaceId: string;
+}>;
 
 export type RetentionEnforcementProcessResult =
   | Readonly<{ status: 'idle' }>
@@ -339,6 +350,8 @@ export function createRetentionDatabase(
           current_user=$1
             and not (select rolsuper or rolbypassrls from pg_roles where rolname=current_user)
             and has_function_privilege(current_user,
+              'app.process_operator_maintenance_rerun()','EXECUTE')
+            and has_function_privilege(current_user,
               'app.start_retention_batch(uuid,uuid,character varying,character varying,timestamp with time zone,boolean,character varying,character varying)','EXECUTE')
             and has_function_privilege(current_user,
               'app.claim_retention_dry_run_batches(character varying,integer,integer)','EXECUTE')
@@ -420,6 +433,28 @@ export function createRetentionDatabase(
     claimDryRuns: claim,
     close: () => pool.end(),
     executeDryRunPage,
+    processOperatorRerun: async (signal?: AbortSignal) => {
+      const result = await query(
+        pool,
+        'select * from app.process_operator_maintenance_rerun()',
+        [],
+        signal,
+      );
+      const row = result.rows[0];
+      if (row === undefined) return null;
+      return Object.freeze({
+        commandId: uuidSchema.parse(row.command_id),
+        outcome: z
+          .string()
+          .regex(/^[a-z][a-z0-9_]{0,31}$/u)
+          .parse(row.outcome),
+        targetId: uuidSchema.parse(row.target_id),
+        targetType: z
+          .enum(['retention_batch', 'workspace_purge_job'])
+          .parse(row.target_type),
+        workspaceId: uuidSchema.parse(row.workspace_id),
+      });
+    },
     processNext: async (signal?: AbortSignal) => {
       const claimed = (await claim(signal))[0];
       if (claimed === undefined) return { status: 'idle' as const };

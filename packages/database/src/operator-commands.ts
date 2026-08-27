@@ -58,6 +58,12 @@ const replayRunInputSchema = baseCommandInputSchema
     workflowVersionId: z.uuid(),
   })
   .strict();
+const maintenanceRerunInputSchema = baseCommandInputSchema
+  .extend({
+    targetId: z.uuid(),
+    targetType: z.enum(['retention_batch', 'workspace_purge_job']),
+  })
+  .strict();
 const unknownEvidenceInputSchema = baseCommandInputSchema
   .omit({ dryRun: true })
   .extend({
@@ -81,6 +87,9 @@ export type OperatorWorkflowCommandInput = Readonly<
 >;
 export type ReplayOperatorRunInput = Readonly<
   z.input<typeof replayRunInputSchema>
+>;
+export type OperatorMaintenanceRerunInput = Readonly<
+  z.input<typeof maintenanceRerunInputSchema>
 >;
 export type RecordUnknownOutcomeEvidenceInput = Readonly<
   z.input<typeof unknownEvidenceInputSchema>
@@ -159,6 +168,9 @@ export interface OperatorCommandDatabase {
   ): Promise<GenericOperatorCommandResult>;
   replayRun(
     input: ReplayOperatorRunInput,
+  ): Promise<GenericOperatorCommandResult>;
+  requestMaintenanceRerun(
+    input: OperatorMaintenanceRerunInput,
   ): Promise<GenericOperatorCommandResult>;
   retryTriggerReconciliation(
     input: OperatorWorkflowCommandInput,
@@ -313,6 +325,7 @@ export function createOperatorCommandDatabase(
           can_get: boolean;
           can_trigger_command: boolean;
           can_replay_command: boolean;
+          can_maintenance_rerun: boolean;
           direct_audit: boolean;
           direct_command: boolean;
           direct_evidence: boolean;
@@ -355,6 +368,7 @@ export function createOperatorCommandDatabase(
           has_function_privilege(current_user,'app.get_operator_command(uuid,uuid,character varying,character varying)','EXECUTE') can_get,
           has_function_privilege(current_user,'app.retry_operator_trigger_reconciliation(uuid,uuid,uuid,character varying,character varying,boolean)','EXECUTE') can_trigger_command,
           has_function_privilege(current_user,'app.request_operator_run_replay(uuid,uuid,uuid,uuid,jsonb,character varying,character varying,boolean)','EXECUTE') can_replay_command,
+          has_function_privilege(current_user,'app.request_operator_maintenance_rerun(uuid,uuid,character varying,uuid,character varying,character varying,boolean)','EXECUTE') can_maintenance_rerun,
           has_function_privilege(current_user,'app.execute_operator_execution_command(uuid,character varying,uuid,uuid,bigint,character varying,character varying,jsonb,character varying,character varying,boolean)','EXECUTE') private_command,
           (select name from pertexo_internal.schema_migrations order by name desc limit 1) migration_head
         from pg_roles role where role.rolname=current_user`,
@@ -382,6 +396,7 @@ export function createOperatorCommandDatabase(
           !row.can_execution_commands ||
           !row.can_trigger_command ||
           !row.can_replay_command ||
+          !row.can_maintenance_rerun ||
           !row.can_get
         ) {
           throw new Error('Operator command database boundary is incompatible');
@@ -613,6 +628,22 @@ export function createOperatorCommandDatabase(
           parsed.sourceRunId,
           parsed.workflowVersionId,
           JSON.stringify(parsed.runInput),
+          parsed.actorRef,
+          parsed.reason,
+          parsed.dryRun,
+        ],
+        parsed.signal,
+      );
+    },
+    requestMaintenanceRerun: async (input: OperatorMaintenanceRerunInput) => {
+      const parsed = maintenanceRerunInputSchema.parse(input);
+      return executeCommand(
+        'select * from app.request_operator_maintenance_rerun($1::uuid,$2::uuid,$3::varchar,$4::uuid,$5::varchar,$6::varchar,$7::boolean)',
+        [
+          parsed.commandId,
+          parsed.workspaceId,
+          parsed.targetType,
+          parsed.targetId,
           parsed.actorRef,
           parsed.reason,
           parsed.dryRun,

@@ -11,7 +11,7 @@ const migrationUrl = new URL(
 
 describe('standard retention dry-run migration', () => {
   it('freezes typed stage bounds behind fenced maintenance-only pages', async () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0065_operator_run_replay.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0066_operator_maintenance_rerun.sql');
     const migration = await readFile(migrationUrl, 'utf8');
 
     expect(migration).toContain('dry_run_cursor jsonb');

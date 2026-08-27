@@ -44,6 +44,7 @@ function resources(outcomes: ('completed' | 'idle' | 'stale')[]) {
     }),
     executeDryRunPage: vi.fn(),
     processNext,
+    processOperatorRerun: vi.fn(() => Promise.resolve(null)),
     scheduleEnforcement: vi.fn(() =>
       Promise.resolve({
         cutoffAt: new Date('2026-08-26T00:00:00.000Z'),

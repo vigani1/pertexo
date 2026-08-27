@@ -3678,6 +3678,15 @@ Current evidence:
   asynchronous status moves from `pending` to `completed` or `failed` without
   granting the operator table authority. Maintenance-owned retention/purge
   reruns remain open.
+- Migration `0066_operator_maintenance_rerun.sql` completes the repository-owned
+  command family with bounded `retention.rerun` and `purge.rerun` wake requests.
+  Operators can inventory or durably request one named batch/job but receive no
+  maintenance-table authority. The retention executable consumes at most one
+  request per poll, classifies active leases, legal holds, completed work, and
+  reclaimable targets under `pertexo_maintenance`, then invokes the unchanged
+  lease-, ledger-, hold-, and page-fenced coordinators in the same cycle. The
+  broad checklist remains open until approved production IAM admission and
+  immutable invocation evidence are captured.
 - Accepted ADR 028 defines a repository-owned ECS workload manifest and migration
   release-job contract. The multi-stage production image runs as UID/GID 10001
   under `tini` with production dependencies only. Rendered Fargate definitions

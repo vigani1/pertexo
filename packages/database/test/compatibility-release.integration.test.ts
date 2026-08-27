@@ -204,7 +204,7 @@ describe('durable node compatibility release authority', () => {
           preactivationTarget: targetExpectation,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0065_operator_run_replay.sql',
+        migrationHead: '0066_operator_maintenance_rerun.sql',
       });
 
       for (const [roleKind, artifactId] of [
@@ -327,7 +327,7 @@ describe('durable node compatibility release authority', () => {
           expectedCompatibilityReleases: rollingExpectations,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0065_operator_run_replay.sql',
+        migrationHead: '0066_operator_maintenance_rerun.sql',
       });
       await expect(
         checkDatabaseReadiness(api, {
@@ -440,7 +440,7 @@ describe('durable node compatibility release authority', () => {
             expectedCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0065_operator_run_replay.sql',
+          migrationHead: '0066_operator_maintenance_rerun.sql',
         });
         await expect(
           checkExpectedCompatibilityRelease(pool, {
@@ -468,7 +468,7 @@ describe('durable node compatibility release authority', () => {
           expectedCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0065_operator_run_replay.sql',
+        migrationHead: '0066_operator_maintenance_rerun.sql',
       });
     } finally {
       await pool.end();

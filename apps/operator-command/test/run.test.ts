@@ -23,6 +23,7 @@ describe('operator command runner', () => {
       resumeDueWork: vi.fn(),
       retryTriggerReconciliation: vi.fn(),
       replayRun: vi.fn(),
+      requestMaintenanceRerun: vi.fn(),
     };
     const logger = {
       info: vi.fn(),
