@@ -1,8 +1,14 @@
 import {
+  createDatabaseOperatorRunReplayStore,
+  createOperatorRunReplayHandler,
+} from './operator-run-replay-runtime.js';
+import {
   createFailureNotificationStore,
   type DatabaseConfig,
   type FailureNotificationStore,
+  type OperatorRunReplayStore,
 } from '@pertexo/database';
+import type { PlatformReleaseCohort } from '@pertexo/node-catalog';
 import { createQueueTraceRunner } from '@pertexo/observability';
 import {
   createQueueConsumer,
@@ -43,6 +49,8 @@ export async function createPreviewMaintenanceRuntime(
     redisUrl: string;
     failureNotificationDelivery?: FailureNotificationDeliveryCapability;
     unknownOutcomeReconciliation?: boolean;
+    runReplay?: boolean;
+    releaseCohort?: PlatformReleaseCohort;
   }>,
   dependencies: Readonly<{
     consumerFactory?: typeof createQueueConsumer;
@@ -54,6 +62,7 @@ export async function createPreviewMaintenanceRuntime(
     unknownOutcomeStore?: UnknownOutcomeReconciliationStore & {
       close?: () => Promise<void>;
     };
+    runReplayStore?: OperatorRunReplayStore;
   }> = {},
 ): Promise<PreviewMaintenanceRuntime> {
   const reconciliationStore =
@@ -68,6 +77,14 @@ export async function createPreviewMaintenanceRuntime(
     options.unknownOutcomeReconciliation === true
       ? (dependencies.unknownOutcomeStore ??
         createDatabaseUnknownOutcomeReconciliationStore(options.database))
+      : undefined;
+  const runReplayStore =
+    options.runReplay === true
+      ? (dependencies.runReplayStore ??
+        createDatabaseOperatorRunReplayStore(
+          options.database,
+          options.releaseCohort,
+        ))
       : undefined;
   const failureNotification =
     options.failureNotificationDelivery === undefined ||
@@ -88,6 +105,10 @@ export async function createPreviewMaintenanceRuntime(
     unknownOutcomeStore === undefined
       ? undefined
       : createUnknownOutcomeReconciliationHandler(unknownOutcomeStore);
+  const runReplay =
+    runReplayStore === undefined
+      ? undefined
+      : createOperatorRunReplayHandler(runReplayStore);
   let consumer: QueueConsumer;
   try {
     consumer = (dependencies.consumerFactory ?? createQueueConsumer)({
@@ -114,6 +135,12 @@ export async function createPreviewMaintenanceRuntime(
           }
           return;
         }
+        if (delivery.name === JOB_NAME.replayWorkflowRun) {
+          if (runReplay === undefined)
+            throw new InvalidQueueDeliveryError('Run replay is not enabled');
+          await runReplay.handle(delivery, context);
+          return;
+        }
         if (delivery.name === JOB_NAME.deliverRunFailureNotification) {
           if (failureNotification === undefined)
             throw new InvalidQueueDeliveryError(
@@ -133,6 +160,7 @@ export async function createPreviewMaintenanceRuntime(
     await Promise.allSettled([
       reconciliationStore.close?.(),
       unknownOutcomeStore?.close?.(),
+      runReplayStore?.close(),
       failureNotificationStore?.close(),
     ]);
     throw error;
@@ -170,6 +198,7 @@ export async function createPreviewMaintenanceRuntime(
           recoveryLoop,
           reconciliationStore.close?.(),
           unknownOutcomeStore?.close?.(),
+          runReplayStore?.close(),
           failureNotificationStore?.close(),
         ]);
         const failure = results.find((result) => result.status === 'rejected');

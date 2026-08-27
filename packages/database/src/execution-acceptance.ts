@@ -33,6 +33,8 @@ const acceptWorkflowRunInputSchema = z
     keyHash: sha256Schema,
     operation: z.literal('workflow.run.accept'),
     requestHash: sha256Schema,
+    replayCommandId: z.uuid().optional(),
+    replaySourceRunId: z.uuid().optional(),
     runInput: z.unknown().optional(),
     scope: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u),
     traceparent: traceparentSchema,
@@ -341,6 +343,16 @@ export async function acceptWorkflowRun(
           kind: 'inline',
           value: parsed.runInput,
         });
+  if (
+    (parsed.replayCommandId === undefined) !==
+    (parsed.replaySourceRunId === undefined)
+  )
+    throw new TypeError('Replay lineage must be provided together');
+  if (
+    (parsed.triggerType === 'replay') !==
+    (parsed.replayCommandId !== undefined)
+  )
+    throw new TypeError('Replay lineage must match the replay trigger type');
   const initialCheckpointJson = serializePersistedPhase3Checkpoint(
     parseInitialPhase3Checkpoint(parsed.initialCheckpoint, {
       engineVersion: parsed.engineVersion,
@@ -413,6 +425,12 @@ export async function acceptWorkflowRun(
         workspaceId: transaction.workspaceId,
         workflowId: parsed.workflowId,
         workflowVersionId: parsed.workflowVersionId,
+        ...(parsed.replayCommandId === undefined
+          ? {}
+          : {
+              replayCommandId: parsed.replayCommandId,
+              replaySourceRunId: parsed.replaySourceRunId,
+            }),
         inputRef:
           storedRunInputJson === null
             ? null

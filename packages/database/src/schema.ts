@@ -816,6 +816,8 @@ export const workflowRuns = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     workflowId: uuid('workflow_id').notNull(),
     workflowVersionId: uuid('workflow_version_id').notNull(),
+    replaySourceRunId: uuid('replay_source_run_id'),
+    replayCommandId: uuid('replay_command_id'),
     triggerType: varchar('trigger_type', { length: 32 }).notNull(),
     failureNotificationPolicyVersion: smallint(
       'failure_notification_policy_version',

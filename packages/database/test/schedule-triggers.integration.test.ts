@@ -6,7 +6,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { parseDatabaseConfig } from '../src/config.js';
 import { createIdentityWorkspaceDatabase } from '../src/identity-workspace.js';
 import { migrateDatabase } from '../src/migrations.js';
+import { acceptWorkflowRun } from '../src/execution-acceptance.js';
+import { createWorkspaceDatabase } from '../src/database.js';
 import { createOperatorCommandDatabase } from '../src/operator-commands.js';
+import { createOperatorRunReplayStore } from '../src/operator-run-replay.js';
 import { canonicalOutboxPayloadChecksum } from '../src/outbox.js';
 import { checkDatabaseReadiness } from '../src/readiness.js';
 import {
@@ -45,6 +48,7 @@ const actorId = randomUUID();
 const workspaceId = randomUUID();
 const workflowId = randomUUID();
 const versionId = randomUUID();
+let replaySourceRunId = '';
 const triggerId = randomUUID();
 const skipTriggerId = randomUUID();
 const quotaTriggerId = randomUUID();
@@ -127,6 +131,12 @@ const checkpointFactory = () => ({
     deadlineExpired: false,
   },
 });
+const replayStore = createOperatorRunReplayStore(
+  workerConfig,
+  [PHASE3_COMPATIBILITY_EXPECTATION],
+  checkpointFactory,
+);
+const sourceRunDatabase = createWorkspaceDatabase(apiConfig);
 
 beforeAll(async () => {
   const admin = new Pool({ connectionString: adminUrl, max: 1 });
@@ -243,6 +253,27 @@ beforeAll(async () => {
       [id, workspaceId, policy, fingerprint, age],
     );
   }
+  const source = await sourceRunDatabase.withWorkspace(
+    workspaceId,
+    (transaction) =>
+      acceptWorkflowRun(transaction, {
+        engineVersion: checkpointFactory().engineVersion,
+        initialCheckpoint: checkpointFactory().checkpoint,
+        keyHash: 'b'.repeat(64),
+        operation: 'workflow.run.accept',
+        requestHash: 'c'.repeat(64),
+        scope: `operator-source:${workflowId}`,
+        triggerType: 'manual',
+        workflowId,
+        workflowVersionId: versionId,
+      }),
+  );
+  replaySourceRunId = source.runId;
+  await ownerQuery(
+    `update app.workflow_runs set status='succeeded',completed_at=clock_timestamp()
+     where id=$1`,
+    [replaySourceRunId],
+  );
 }, 60_000);
 
 afterAll(async () => {
@@ -252,6 +283,8 @@ afterAll(async () => {
   await schedules.close();
   await identity.close();
   await operator.close();
+  await replayStore.close();
+  await sourceRunDatabase.close();
   await worker.end();
   await owner.end();
   const admin = new Pool({ connectionString: adminUrl, max: 1 });
@@ -263,6 +296,101 @@ afterAll(async () => {
 });
 
 describe('schedule trigger PostgreSQL slice', () => {
+  it('requests and worker-admits a replay with immutable lineage', async () => {
+    await expect(
+      operator.replayRun({
+        actorRef: 'integration-operator',
+        commandId: randomUUID(),
+        dryRun: true,
+        reason: 'inspect explicit replay',
+        runInput: { explicit: 'operator-replay' },
+        sourceRunId: replaySourceRunId,
+        workflowVersionId: versionId,
+        workspaceId,
+      }),
+    ).resolves.toMatchObject({
+      outcome: 'would_request',
+      replayed: false,
+      status: 'completed',
+    });
+    const commandId = randomUUID();
+    const command = {
+      actorRef: 'integration-operator',
+      commandId,
+      dryRun: false,
+      reason: 'replay after reconciled provider outcome',
+      runInput: { explicit: 'operator-replay' },
+      sourceRunId: replaySourceRunId,
+      workflowVersionId: versionId,
+      workspaceId,
+    } as const;
+    const requested = await operator.replayRun(command);
+    expect(requested).toMatchObject({
+      outcome: 'replay_requested',
+      replayed: false,
+      status: 'pending',
+    });
+    expect(await operator.replayRun(command)).toEqual({
+      ...requested,
+      replayed: true,
+    });
+    await expect(
+      operator.replayRun({ ...command, runInput: { conflicting: true } }),
+    ).rejects.toThrow('conflicts');
+
+    const outboxEventId = requested.result.outboxEventId;
+    expect(outboxEventId).toEqual(expect.any(String));
+    const processed = await replayStore.replay({
+      commandId,
+      delivery: {
+        outboxEventId: String(outboxEventId),
+        payloadChecksum: canonicalOutboxPayloadChecksum({
+          commandId,
+          outboxEventId,
+          schemaVersion: 1,
+          workspaceId,
+        }),
+      },
+      workspaceId,
+    });
+    expect(processed.kind).toBe('processed');
+    expect(typeof processed.runId).toBe('string');
+    const replayRunId = processed.runId;
+    const lineage = await ownerQuery<{
+      replay_command_id: string;
+      replay_source_run_id: string;
+      trigger_type: string;
+      workflow_version_id: string;
+    }>(
+      `select replay_command_id,replay_source_run_id,trigger_type,workflow_version_id
+       from app.workflow_runs where id=$1`,
+      [replayRunId],
+    );
+    expect(lineage.rows[0]).toEqual({
+      replay_command_id: commandId,
+      replay_source_run_id: replaySourceRunId,
+      trigger_type: 'replay',
+      workflow_version_id: versionId,
+    });
+    const completed = await operator.getCommand({
+      actorRef: 'integration-operator',
+      commandId,
+      reason: 'verify replay completion',
+      workspaceId,
+    });
+    expect(completed?.completedAt).toBeInstanceOf(Date);
+    expect(completed).toMatchObject({
+      outcome: 'replay_created',
+      status: 'completed',
+      result: { resultRunId: replayRunId },
+    });
+    await ownerQuery(
+      `update app.workflow_runs set status='succeeded',completed_at=clock_timestamp()
+       where id=$1`,
+      [replayRunId],
+    );
+  });
+
   it('dry-runs and exactly replays a fresh operator reconciliation request', async () => {
     const dryRun = await operator.retryTriggerReconciliation({
       actorRef: 'integration-operator',
@@ -489,7 +617,7 @@ describe('schedule trigger PostgreSQL slice', () => {
 
   it('recovers an expired lease, excludes competing scanners, and commits one acceptance with outbox', async () => {
     await expect(checkDatabaseReadiness(worker)).resolves.toMatchObject({
-      migrationHead: '0064_operator_trigger_reconciliation.sql',
+      migrationHead: '0065_operator_run_replay.sql',
       role: 'pertexo_worker',
     });
     const crashed = await worker.query(
@@ -574,7 +702,8 @@ describe('schedule trigger PostgreSQL slice', () => {
     });
     const duplicateFacts = await ownerQuery(
       `select (select count(*) from app.trigger_schedule_occurrences where trigger_id=$1) occurrences,
-              (select count(*) from app.workflow_runs where workflow_id=$2) runs`,
+              (select count(*) from app.workflow_runs
+                where workflow_id=$2 and trigger_type='schedule') runs`,
       [triggerId, workflowId],
     );
     expect(duplicateFacts.rows[0]).toMatchObject({

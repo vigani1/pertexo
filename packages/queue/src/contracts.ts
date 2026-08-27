@@ -69,6 +69,13 @@ export const ReconcileUnknownOutcomeJobSchema = z
   })
   .strict();
 
+export const ReplayWorkflowRunJobSchema = z
+  .object({
+    ...commonJobShape,
+    commandId: z.uuid(),
+  })
+  .strict();
+
 export const SweepExpiredPreviewsJobSchema = z
   .object({
     ...commonJobShape,
@@ -109,6 +116,7 @@ export type ReconcilePreviewAttemptJob = z.infer<
 export type ReconcileUnknownOutcomeJob = z.infer<
   typeof ReconcileUnknownOutcomeJobSchema
 >;
+export type ReplayWorkflowRunJob = z.infer<typeof ReplayWorkflowRunJobSchema>;
 export type SweepExpiredPreviewsJob = z.infer<
   typeof SweepExpiredPreviewsJobSchema
 >;
@@ -126,6 +134,7 @@ export interface QueueJobDataByName {
   [JOB_NAME.executePreviewAttempt]: ExecutePreviewAttemptJob;
   [JOB_NAME.reconcilePreviewAttempt]: ReconcilePreviewAttemptJob;
   [JOB_NAME.reconcileUnknownOutcome]: ReconcileUnknownOutcomeJob;
+  [JOB_NAME.replayWorkflowRun]: ReplayWorkflowRunJob;
   [JOB_NAME.sweepExpiredPreviews]: SweepExpiredPreviewsJob;
   [JOB_NAME.reconcileWorkflowTriggers]: ReconcileWorkflowTriggersJob;
   [JOB_NAME.expireArtifacts]: ExpireArtifactsJob;
@@ -159,6 +168,10 @@ export const QUEUE_JOB_REGISTRY = Object.freeze({
   [JOB_NAME.reconcileUnknownOutcome]: {
     queueName: QUEUE_FOR_JOB[JOB_NAME.reconcileUnknownOutcome],
     schema: ReconcileUnknownOutcomeJobSchema,
+  },
+  [JOB_NAME.replayWorkflowRun]: {
+    queueName: QUEUE_FOR_JOB[JOB_NAME.replayWorkflowRun],
+    schema: ReplayWorkflowRunJobSchema,
   },
   [JOB_NAME.sweepExpiredPreviews]: {
     queueName: QUEUE_FOR_JOB[JOB_NAME.sweepExpiredPreviews],

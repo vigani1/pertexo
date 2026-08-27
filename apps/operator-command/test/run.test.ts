@@ -22,6 +22,7 @@ describe('operator command runner', () => {
       redispatchFailedOutbox: vi.fn().mockResolvedValue(result),
       resumeDueWork: vi.fn(),
       retryTriggerReconciliation: vi.fn(),
+      replayRun: vi.fn(),
     };
     const logger = {
       info: vi.fn(),

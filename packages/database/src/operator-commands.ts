@@ -47,6 +47,17 @@ const targetRunInputSchema = baseCommandInputSchema
 const targetWorkflowInputSchema = baseCommandInputSchema
   .extend({ workflowId: z.uuid() })
   .strict();
+const replayRunInputSchema = baseCommandInputSchema
+  .extend({
+    runInput: z
+      .json()
+      .refine(
+        (value) => Buffer.byteLength(JSON.stringify(value), 'utf8') <= 65_536,
+      ),
+    sourceRunId: z.uuid(),
+    workflowVersionId: z.uuid(),
+  })
+  .strict();
 const unknownEvidenceInputSchema = baseCommandInputSchema
   .omit({ dryRun: true })
   .extend({
@@ -68,6 +79,9 @@ export type OperatorRunCommandInput = Readonly<
 export type OperatorWorkflowCommandInput = Readonly<
   z.input<typeof targetWorkflowInputSchema>
 >;
+export type ReplayOperatorRunInput = Readonly<
+  z.input<typeof replayRunInputSchema>
+>;
 export type RecordUnknownOutcomeEvidenceInput = Readonly<
   z.input<typeof unknownEvidenceInputSchema>
 >;
@@ -81,19 +95,19 @@ export type OperatorCommandResult = Readonly<{
   commandId: string;
   outcome: OperatorCommandOutcome;
   replayed: boolean;
-  status: 'completed';
+  status: 'completed' | 'failed' | 'pending';
 }>;
 export type GenericOperatorCommandResult = Readonly<{
   commandId: string;
   outcome: string;
   replayed: boolean;
   result: Readonly<Record<string, unknown>>;
-  status: 'completed';
+  status: 'completed' | 'failed' | 'pending';
 }>;
 export type OperatorCommandRecord = Readonly<{
   commandId: string;
   commandType: OperatorCommandType;
-  completedAt: Date;
+  completedAt: Date | null;
   createdAt: Date;
   dryRun: boolean;
   outcome: string;
@@ -102,7 +116,7 @@ export type OperatorCommandRecord = Readonly<{
   priorPublishAttempts: number | null;
   result: Readonly<Record<string, unknown>>;
   requestFingerprint: string;
-  status: 'completed';
+  status: 'completed' | 'failed' | 'pending';
 }>;
 export type OperatorCommandType =
   | 'attempt.reconcile'
@@ -142,6 +156,9 @@ export interface OperatorCommandDatabase {
   ): Promise<OperatorCommandResult>;
   resumeDueWork(
     input: OperatorRunCommandInput,
+  ): Promise<GenericOperatorCommandResult>;
+  replayRun(
+    input: ReplayOperatorRunInput,
   ): Promise<GenericOperatorCommandResult>;
   retryTriggerReconciliation(
     input: OperatorWorkflowCommandInput,
@@ -267,7 +284,9 @@ export function createOperatorCommandDatabase(
         result: Object.freeze(
           z.record(z.string(), z.unknown()).parse(row.result),
         ),
-        status: z.literal('completed').parse(row.command_status),
+        status: z
+          .enum(['completed', 'failed', 'pending'])
+          .parse(row.command_status),
       });
     } catch (error: unknown) {
       await client.query('rollback').catch(() => undefined);
@@ -293,6 +312,7 @@ export function createOperatorCommandDatabase(
           can_execution_commands: boolean;
           can_get: boolean;
           can_trigger_command: boolean;
+          can_replay_command: boolean;
           direct_audit: boolean;
           direct_command: boolean;
           direct_evidence: boolean;
@@ -334,6 +354,7 @@ export function createOperatorCommandDatabase(
             and has_function_privilege(current_user,'app.cancel_operator_run(uuid,uuid,uuid,character varying,character varying,boolean)','EXECUTE')) can_execution_commands,
           has_function_privilege(current_user,'app.get_operator_command(uuid,uuid,character varying,character varying)','EXECUTE') can_get,
           has_function_privilege(current_user,'app.retry_operator_trigger_reconciliation(uuid,uuid,uuid,character varying,character varying,boolean)','EXECUTE') can_trigger_command,
+          has_function_privilege(current_user,'app.request_operator_run_replay(uuid,uuid,uuid,uuid,jsonb,character varying,character varying,boolean)','EXECUTE') can_replay_command,
           has_function_privilege(current_user,'app.execute_operator_execution_command(uuid,character varying,uuid,uuid,bigint,character varying,character varying,jsonb,character varying,character varying,boolean)','EXECUTE') private_command,
           (select name from pertexo_internal.schema_migrations order by name desc limit 1) migration_head
         from pg_roles role where role.rolname=current_user`,
@@ -360,6 +381,7 @@ export function createOperatorCommandDatabase(
           !row.can_command ||
           !row.can_execution_commands ||
           !row.can_trigger_command ||
+          !row.can_replay_command ||
           !row.can_get
         ) {
           throw new Error('Operator command database boundary is incompatible');
@@ -432,9 +454,12 @@ export function createOperatorCommandDatabase(
         return Object.freeze({
           commandId: z.uuid().parse(row.command_id),
           commandType: commandTypeSchema.parse(row.command_type),
-          completedAt: new Date(
-            z.union([z.string(), z.date()]).parse(row.completed_at),
-          ),
+          completedAt:
+            row.completed_at === null
+              ? null
+              : new Date(
+                  z.union([z.string(), z.date()]).parse(row.completed_at),
+                ),
           createdAt: new Date(
             z.union([z.string(), z.date()]).parse(row.created_at),
           ),
@@ -466,7 +491,9 @@ export function createOperatorCommandDatabase(
             .string()
             .regex(/^[0-9a-f]{64}$/u)
             .parse(row.request_fingerprint),
-          status: z.literal('completed').parse(row.command_status),
+          status: z
+            .enum(['completed', 'failed', 'pending'])
+            .parse(row.command_status),
         });
       } catch (error: unknown) {
         await client.query('rollback').catch(() => undefined);
@@ -569,6 +596,23 @@ export function createOperatorCommandDatabase(
           parsed.commandId,
           parsed.workspaceId,
           parsed.runId,
+          parsed.actorRef,
+          parsed.reason,
+          parsed.dryRun,
+        ],
+        parsed.signal,
+      );
+    },
+    replayRun: async (input: ReplayOperatorRunInput) => {
+      const parsed = replayRunInputSchema.parse(input);
+      return executeCommand(
+        'select * from app.request_operator_run_replay($1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::jsonb,$6::varchar,$7::varchar,$8::boolean)',
+        [
+          parsed.commandId,
+          parsed.workspaceId,
+          parsed.sourceRunId,
+          parsed.workflowVersionId,
+          JSON.stringify(parsed.runInput),
           parsed.actorRef,
           parsed.reason,
           parsed.dryRun,

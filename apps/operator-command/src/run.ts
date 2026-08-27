@@ -3,6 +3,7 @@ import type {
   OperatorCommandRecord,
   OperatorCommandResult,
   RedispatchFailedOutboxInput,
+  ReplayOperatorRunInput,
   GenericOperatorCommandResult,
 } from '@pertexo/database';
 import type { StructuredLogger } from '@pertexo/observability/logging';
@@ -58,6 +59,17 @@ export interface OperatorCommandResources {
         reason: string;
         type: 'trigger.reconcile';
         workflowId: string;
+        workspaceId: string;
+      }>
+    | Readonly<{
+        actorRef: string;
+        commandId: string;
+        dryRun: boolean;
+        reason: string;
+        runInput: ReplayOperatorRunInput['runInput'];
+        sourceRunId: string;
+        type: 'run.replay';
+        workflowVersionId: string;
         workspaceId: string;
       }>;
   readonly database: OperatorCommandDatabase;
@@ -153,6 +165,12 @@ export async function runOperatorCommand(
         break;
       case 'trigger.reconcile':
         result = await resources.database.retryTriggerReconciliation({
+          ...resources.command,
+          signal: resources.signal,
+        });
+        break;
+      case 'run.replay':
+        result = await resources.database.replayRun({
           ...resources.command,
           signal: resources.signal,
         });

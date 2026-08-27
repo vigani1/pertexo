@@ -1,4 +1,11 @@
 export {
+  createOperatorRunReplayStore,
+  OperatorRunReplayMismatchError,
+  OperatorRunReplayNotExecutableError,
+  type OperatorRunReplayCheckpointFactory,
+  type OperatorRunReplayStore,
+} from './operator-run-replay.js';
+export {
   reconcileUnknownOutcomeEvidence,
   UnknownOutcomeReconciliationMismatchError,
   UnknownOutcomeReconciliationStateError,
@@ -401,6 +408,7 @@ export {
   type GenericOperatorCommandResult,
   type OperatorRunCommandInput,
   type OperatorWorkflowCommandInput,
+  type ReplayOperatorRunInput,
   type OperatorCommandDatabase,
   type OperatorCommandDatabaseOptions,
   type OperatorCommandOutcome,

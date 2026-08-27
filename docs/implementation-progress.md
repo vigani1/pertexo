@@ -3667,6 +3667,17 @@ Current evidence:
   returns the original outbox identity, conflicting reuse is rejected, and the
   existing trigger worker remains the sole reconciliation authority. Run replay
   and maintenance-owned retention/purge reruns remain open.
+- Migration `0065_operator_run_replay.sql` adds asynchronous `run.replay` with
+  an explicit source run, pinned workflow version, and bounded explicit input.
+  The operator records only a durable request and identifier-only
+  `replay-workflow-run` outbox event; a normal worker verifies the outbox/inbox
+  identity and executable compatibility, creates a fresh initial checkpoint,
+  admits a new run through the standard quota/outbox path, and atomically stores
+  immutable source-run and command lineage. Dry-run inventories eligibility,
+  exact request replay is stable, conflicting command reuse is rejected, and
+  asynchronous status moves from `pending` to `completed` or `failed` without
+  granting the operator table authority. Maintenance-owned retention/purge
+  reruns remain open.
 - Accepted ADR 028 defines a repository-owned ECS workload manifest and migration
   release-job contract. The multi-stage production image runs as UID/GID 10001
   under `tini` with production dependencies only. Rendered Fargate definitions

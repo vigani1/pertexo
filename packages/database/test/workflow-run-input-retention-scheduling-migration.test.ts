@@ -11,9 +11,7 @@ const migrationUrl = new URL(
 
 describe('workflow-run-input retention scheduling migration', () => {
   it('adds bounded durable maintenance-only scheduling', async () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0064_operator_trigger_reconciliation.sql',
-    );
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0065_operator_run_replay.sql');
     const migration = await readFile(migrationUrl, 'utf8');
 
     expect(migration).toContain('retention_schedule_state');

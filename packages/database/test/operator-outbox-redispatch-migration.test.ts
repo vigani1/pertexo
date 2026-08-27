@@ -14,9 +14,7 @@ describe('operator outbox redispatch migration', () => {
       'utf8',
     );
 
-    expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0064_operator_trigger_reconciliation.sql',
-    );
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0065_operator_run_replay.sql');
     expect(migration).toContain('CREATE TABLE app.operator_commands');
     expect(migration).toContain('pg_advisory_xact_lock');
     expect(migration).toContain("ELSE 'conflict' END");

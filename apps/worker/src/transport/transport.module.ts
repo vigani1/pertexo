@@ -186,10 +186,12 @@ function previewMaintenanceRuntimeProvider(
       const unknownOutcomeEnabled = jobNames.includes(
         JOB_NAME.reconcileUnknownOutcome,
       );
+      const runReplayEnabled = jobNames.includes(JOB_NAME.replayWorkflowRun);
       if (
         !reconciliationEnabled &&
         !notificationEnabled &&
-        !unknownOutcomeEnabled
+        !unknownOutcomeEnabled &&
+        !runReplayEnabled
       )
         return undefined;
       if (
@@ -238,6 +240,8 @@ function previewMaintenanceRuntimeProvider(
           observer,
           redisUrl: config.redisUrl,
           unknownOutcomeReconciliation: unknownOutcomeEnabled,
+          runReplay: runReplayEnabled,
+          releaseCohort: config.nodeCompatibilityCohort,
           ...(failureNotificationDelivery === undefined
             ? {}
             : {
@@ -490,6 +494,17 @@ function dispatchCapabilitiesProvider(
           : [
               {
                 jobName: JOB_NAME.reconcileUnknownOutcome,
+                consumer: previewMaintenanceRuntime.consumer,
+              } as const,
+            ]),
+        ...(previewMaintenanceRuntime === undefined ||
+        !config.outboxDispatcher.enabledJobNames.includes(
+          JOB_NAME.replayWorkflowRun,
+        )
+          ? []
+          : [
+              {
+                jobName: JOB_NAME.replayWorkflowRun,
                 consumer: previewMaintenanceRuntime.consumer,
               } as const,
             ]),

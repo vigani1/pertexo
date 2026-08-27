@@ -565,6 +565,7 @@ describe('connection persistence', () => {
       '0062_operator_command_ledger.sql',
       '0063_operator_execution_recovery.sql',
       '0064_operator_trigger_reconciliation.sql',
+      '0065_operator_run_replay.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, priorDatabaseName),
@@ -577,7 +578,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0064_operator_trigger_reconciliation.sql',
+        migrationHead: '0065_operator_run_replay.sql',
       });
       const bindingSurface = await pool.query<{
         node_column: boolean;
@@ -806,6 +807,7 @@ describe('connection persistence', () => {
       '0062_operator_command_ledger.sql',
       '0063_operator_execution_recovery.sql',
       '0064_operator_trigger_reconciliation.sql',
+      '0065_operator_run_replay.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, upgradeDatabaseName),
@@ -818,7 +820,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0064_operator_trigger_reconciliation.sql',
+        migrationHead: '0065_operator_run_replay.sql',
       });
     } finally {
       await pool.end();
@@ -1805,7 +1807,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0064_operator_trigger_reconciliation.sql',
+        migrationHead: '0065_operator_run_replay.sql',
       });
       await expect(
         checkDatabaseReadiness(workerReadinessPool, {
@@ -1813,7 +1815,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0064_operator_trigger_reconciliation.sql',
+        migrationHead: '0065_operator_run_replay.sql',
       });
     } finally {
       await Promise.all([apiReadinessPool.end(), workerReadinessPool.end()]);

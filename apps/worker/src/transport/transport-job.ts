@@ -23,6 +23,10 @@ const TRANSPORT_JOB_BY_NAME = Object.freeze({
     jobName: JOB_NAME.reconcileUnknownOutcome,
     queueName: QUEUE_FOR_JOB[JOB_NAME.reconcileUnknownOutcome],
   },
+  [JOB_NAME.replayWorkflowRun]: {
+    jobName: JOB_NAME.replayWorkflowRun,
+    queueName: QUEUE_FOR_JOB[JOB_NAME.replayWorkflowRun],
+  },
   [JOB_NAME.sweepExpiredPreviews]: {
     jobName: JOB_NAME.sweepExpiredPreviews,
     queueName: QUEUE_FOR_JOB[JOB_NAME.sweepExpiredPreviews],

@@ -2016,7 +2016,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0064_operator_trigger_reconciliation.sql',
+          migrationHead: '0065_operator_run_replay.sql',
           role: 'pertexo_worker',
         });
       } finally {
@@ -2106,6 +2106,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         '0062_operator_command_ledger.sql',
         '0063_operator_execution_recovery.sql',
         '0064_operator_trigger_reconciliation.sql',
+        '0065_operator_run_replay.sql',
       ]);
       const workerPool = new Pool({
         connectionString: namedDatabaseUrl(
@@ -2121,7 +2122,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0064_operator_trigger_reconciliation.sql',
+          migrationHead: '0065_operator_run_replay.sql',
           role: 'pertexo_worker',
         });
         await expect(
@@ -2188,7 +2189,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0064_operator_trigger_reconciliation.sql',
+        migrationHead: '0065_operator_run_replay.sql',
         role: 'pertexo_worker',
       });
       const catalog = await readinessPool.query<{
@@ -2427,7 +2428,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0064_operator_trigger_reconciliation.sql',
+        migrationHead: '0065_operator_run_replay.sql',
       });
     } finally {
       await readinessPool.end();
@@ -2613,7 +2614,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         workerRuntimeRole: 'pertexo_worker',
       }),
     ).resolves.toMatchObject({
-      migrationHead: '0064_operator_trigger_reconciliation.sql',
+      migrationHead: '0065_operator_run_replay.sql',
     });
     await readinessPool.end();
   });

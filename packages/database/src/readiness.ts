@@ -8,8 +8,7 @@ import {
   type CompatibilityReleaseExpectationSet,
 } from './compatibility-release.js';
 
-export const EXPECTED_MIGRATION_HEAD =
-  '0064_operator_trigger_reconciliation.sql';
+export const EXPECTED_MIGRATION_HEAD = '0065_operator_run_replay.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -556,7 +555,7 @@ export async function checkDatabaseReadiness(
             and atttypid = 'timestamp with time zone'::regtype
             and not attnotnull and not attisdropped
         )
-        and (select count(*) = 26 from pg_attribute where attrelid = to_regclass('app.workflow_runs') and attnum > 0 and not attisdropped)
+        and (select count(*) = 28 from pg_attribute where attrelid = to_regclass('app.workflow_runs') and attnum > 0 and not attisdropped)
         and exists (
           select 1 from pg_attribute where attrelid = to_regclass('app.run_checkpoints')
             and attname = 'workflow_version_id' and atttypid = 'uuid'::regtype

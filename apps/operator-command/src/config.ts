@@ -93,6 +93,25 @@ const environmentSchema = z.discriminatedUnion('OPERATOR_COMMAND_TYPE', [
     OPERATOR_RUN_ID: z.uuid(),
   }),
   baseEnvironmentSchema.extend({
+    OPERATOR_COMMAND_TYPE: z.literal('run.replay'),
+    OPERATOR_DRY_RUN: z
+      .enum(['true', 'false'])
+      .transform((value) => value === 'true'),
+    OPERATOR_RUN_INPUT: z.string().transform((value, context) => {
+      try {
+        const parsed = z.json().parse(JSON.parse(value));
+        if (Buffer.byteLength(JSON.stringify(parsed), 'utf8') > 65_536)
+          throw new Error('Input is too large');
+        return parsed;
+      } catch {
+        context.addIssue({ code: 'custom', message: 'Invalid run input JSON' });
+        return z.NEVER;
+      }
+    }),
+    OPERATOR_RUN_ID: z.uuid(),
+    OPERATOR_WORKFLOW_VERSION_ID: z.uuid(),
+  }),
+  baseEnvironmentSchema.extend({
     OPERATOR_COMMAND_TYPE: z.literal('trigger.reconcile'),
     OPERATOR_DRY_RUN: z
       .enum(['true', 'false'])
@@ -110,6 +129,17 @@ export interface OperatorCommandConfig {
         outboxEventId: string;
         reason: string;
         type: 'outbox.redispatch';
+        workspaceId: string;
+      }>
+    | Readonly<{
+        actorRef: string;
+        commandId: string;
+        dryRun: boolean;
+        reason: string;
+        runInput: z.infer<ReturnType<typeof z.json>>;
+        sourceRunId: string;
+        type: 'run.replay';
+        workflowVersionId: string;
         workspaceId: string;
       }>
     | Readonly<{
@@ -233,6 +263,18 @@ export function parseOperatorCommandConfig(
             reason: parsed.OPERATOR_REASON,
             type: parsed.OPERATOR_COMMAND_TYPE,
             workflowId: parsed.OPERATOR_WORKFLOW_ID,
+            workspaceId: parsed.OPERATOR_WORKSPACE_ID,
+          });
+        case 'run.replay':
+          return Object.freeze({
+            actorRef: parsed.OPERATOR_ACTOR_REF,
+            commandId: parsed.OPERATOR_COMMAND_ID,
+            dryRun: parsed.OPERATOR_DRY_RUN,
+            reason: parsed.OPERATOR_REASON,
+            runInput: parsed.OPERATOR_RUN_INPUT,
+            sourceRunId: parsed.OPERATOR_RUN_ID,
+            type: parsed.OPERATOR_COMMAND_TYPE,
+            workflowVersionId: parsed.OPERATOR_WORKFLOW_VERSION_ID,
             workspaceId: parsed.OPERATOR_WORKSPACE_ID,
           });
       }

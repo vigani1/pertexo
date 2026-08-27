@@ -33,6 +33,7 @@ export const SUPPORTED_DISPATCH_CAPABILITIES = Object.freeze([
   JOB_NAME.executePreviewAttempt,
   JOB_NAME.reconcilePreviewAttempt,
   JOB_NAME.reconcileUnknownOutcome,
+  JOB_NAME.replayWorkflowRun,
   JOB_NAME.expireArtifacts,
   JOB_NAME.deliverRunFailureNotification,
   JOB_NAME.reconcileWorkflowTriggers,

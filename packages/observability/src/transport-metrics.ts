@@ -49,6 +49,10 @@ export type TransportJob =
       readonly queueName: 'maintenance';
     }
   | {
+      readonly jobName: 'replay-workflow-run';
+      readonly queueName: 'maintenance';
+    }
+  | {
       readonly jobName: 'expire-artifacts';
       readonly queueName: 'maintenance';
     }

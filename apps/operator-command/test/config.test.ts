@@ -122,4 +122,36 @@ describe('operator command config', () => {
       workspaceId,
     });
   });
+
+  it('parses explicit bounded replay input', () => {
+    const commandId = randomUUID();
+    const sourceRunId = randomUUID();
+    const workflowVersionId = randomUUID();
+    const workspaceId = randomUUID();
+    expect(
+      parseOperatorCommandConfig({
+        DATABASE_OPERATOR_URL:
+          'postgresql://pertexo_operator:secret@localhost:5432/pertexo',
+        OPERATOR_ACTOR_REF: 'ci-test-operator',
+        OPERATOR_COMMAND_ID: commandId,
+        OPERATOR_COMMAND_TYPE: 'run.replay',
+        OPERATOR_DRY_RUN: 'false',
+        OPERATOR_REASON: 'replay reconciled run',
+        OPERATOR_RUN_ID: sourceRunId,
+        OPERATOR_RUN_INPUT: '{"explicit":true}',
+        OPERATOR_WORKFLOW_VERSION_ID: workflowVersionId,
+        OPERATOR_WORKSPACE_ID: workspaceId,
+      }).command,
+    ).toEqual({
+      actorRef: 'ci-test-operator',
+      commandId,
+      dryRun: false,
+      reason: 'replay reconciled run',
+      runInput: { explicit: true },
+      sourceRunId,
+      type: 'run.replay',
+      workflowVersionId,
+      workspaceId,
+    });
+  });
 });
