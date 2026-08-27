@@ -1,0 +1,17 @@
+{
+  "name": "@pertexo/operator-command",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/main.js",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.test.json --noEmit"
+  },
+  "dependencies": {
+    "@pertexo/database": "workspace:*",
+    "@pertexo/observability": "workspace:*",
+    "zod": "4.4.3"
+  }
+}

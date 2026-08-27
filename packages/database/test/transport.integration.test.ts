@@ -9,6 +9,10 @@ import { parseDatabaseConfig } from '../src/config.js';
 import { createWorkspaceDatabase } from '../src/database.js';
 import { createOutboxDispatcherDatabase } from '../src/dispatcher.js';
 import {
+  createOperatorCommandDatabase,
+  OperatorCommandConflictError,
+} from '../src/operator-commands.js';
+import {
   consumeInboxMessage,
   InboxChecksumMismatchError,
   InboxReceiptUnavailableError,
@@ -20,6 +24,7 @@ import {
 } from '../src/outbox.js';
 import {
   inboxReceipts,
+  auditEvents,
   outboxEvents,
   transportSecurityAuditFacts,
 } from '../src/schema.js';
@@ -36,9 +41,13 @@ const workerUrl =
 const dispatcherUrl =
   process.env.DATABASE_DISPATCHER_URL ??
   'postgresql://pertexo_dispatcher:pertexo-local-dispatcher@localhost:5432/pertexo';
+const operatorUrl =
+  process.env.DATABASE_OPERATOR_URL ??
+  'postgresql://pertexo_operator:pertexo-local-operator@localhost:5432/pertexo';
 
 const workspaceA = randomUUID();
 const workspaceB = randomUUID();
+const fixtureUserId = randomUUID();
 const checksumA = createHash('sha256').update('payload-a').digest('hex');
 const checksumB = createHash('sha256').update('payload-b').digest('hex');
 const enabledJobNames = Object.freeze(['phase0-duplicate-proof']);
@@ -52,6 +61,12 @@ const workerDatabase = createWorkspaceDatabase(
 const dispatcher = createOutboxDispatcherDatabase(
   parseDatabaseConfig({ connectionString: dispatcherUrl, max: 2 }),
 );
+const operator = createOperatorCommandDatabase(
+  parseDatabaseConfig({ connectionString: operatorUrl, max: 1 }),
+);
+const operatorReplica = createOperatorCommandDatabase(
+  parseDatabaseConfig({ connectionString: operatorUrl, max: 1 }),
+);
 
 const migrationConfig = {
   apiRuntimeRole: 'pertexo_api',
@@ -59,6 +74,7 @@ const migrationConfig = {
   dispatcherRole: 'pertexo_dispatcher',
   maintenanceRole: 'pertexo_maintenance',
   lifecycleCommandRole: 'pertexo_lifecycle_command',
+  operatorRole: 'pertexo_operator',
   ownerRole: 'pertexo_owner',
   workerRuntimeRole: 'pertexo_worker',
 } as const;
@@ -88,6 +104,23 @@ async function applyProofFixture(): Promise<void> {
     await client.query('begin');
     await client.query('set local role pertexo_owner');
     await client.query(fixture);
+    await client.query(
+      `insert into app.users(id,email,display_name) values($1,$2,'Transport fixture')
+       on conflict(id) do nothing`,
+      [fixtureUserId, `transport-${fixtureUserId}@example.test`],
+    );
+    await client.query(
+      `insert into app.workspaces(id,name,slug,created_by)
+       values($1,'Transport A',$3,$2),($4,'Transport B',$5,$2)
+       on conflict(id) do nothing`,
+      [
+        workspaceA,
+        fixtureUserId,
+        `transport-a-${workspaceA}`,
+        workspaceB,
+        `transport-b-${workspaceB}`,
+      ],
+    );
     await client.query('commit');
   } catch (error: unknown) {
     await client.query('rollback').catch(() => undefined);
@@ -107,6 +140,8 @@ async function resetTransportFixture(): Promise<void> {
     await client.query(`
       truncate table
         app.transport_security_audit_facts,
+        app.operator_commands,
+        app.audit_events,
         app.inbox_receipts,
         app.workflow_run_active_admissions,
         app.outbox_events,
@@ -164,6 +199,8 @@ afterAll(async () => {
     apiDatabase.close(),
     workerDatabase.close(),
     dispatcher.close(),
+    operator.close(),
+    operatorReplica.close(),
   ]);
 });
 
@@ -688,6 +725,195 @@ describe('transactional outbox persistence', () => {
 
   it('verifies the dedicated dispatcher grants and migration head', async () => {
     await expect(dispatcher.checkReadiness()).resolves.toBeUndefined();
+  });
+
+  it('dry-runs and exactly replays a durable failed-row redispatch command', async () => {
+    const input = outboxInput();
+    await apiDatabase.withWorkspace(workspaceA, (transaction) =>
+      insertOutboxEvent(transaction, {
+        ...input,
+        availableAt: new Date(0),
+      }).then(() => undefined),
+    );
+    const claimed = await dispatcher.claimBatch({
+      enabledJobNames,
+      leaseDurationMillis: 30_000,
+      leaseOwner: 'operator-proof',
+      leaseToken: randomUUID(),
+      limit: 1,
+      maxAttempts: 1,
+    });
+    const event = claimed.events.find(({ id }) => id === input.id);
+    if (event === undefined)
+      throw new Error('Expected failed-row fixture claim');
+    await expect(
+      dispatcher.releaseOrFail({
+        errorCode: 'redis.unavailable',
+        id: event.id,
+        leaseToken: event.leaseToken,
+        maxAttempts: 1,
+        retryAt: new Date(),
+      }),
+    ).resolves.toBe('failed');
+
+    const commandId = randomUUID();
+    const command = {
+      actorRef: 'ci-test-operator',
+      commandId,
+      dryRun: true,
+      outboxEventId: input.id,
+      reason: 'prove bounded failed outbox redispatch',
+      workspaceId: workspaceA,
+    } as const;
+    const concurrent = await Promise.all([
+      operator.redispatchFailedOutbox(command),
+      operatorReplica.redispatchFailedOutbox(command),
+    ]);
+    expect(concurrent.map(({ replayed }) => replayed).sort()).toEqual([
+      false,
+      true,
+    ]);
+    expect(concurrent).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          commandId,
+          outcome: 'would_redispatch',
+          status: 'completed',
+        }),
+      ]),
+    );
+    await expect(
+      operator.redispatchFailedOutbox({
+        ...command,
+        reason: 'conflicting reason',
+      }),
+    ).rejects.toBeInstanceOf(OperatorCommandConflictError);
+
+    const failed = await apiDatabase.withWorkspace(workspaceA, ({ db }) =>
+      db.select().from(outboxEvents).where(eq(outboxEvents.id, input.id)),
+    );
+    expect(failed[0]?.failedAt).toBeInstanceOf(Date);
+    expect(failed[0]).toMatchObject({
+      lastErrorCode: 'redis.unavailable',
+      publishAttempts: 1,
+    });
+    await expect(
+      operator.getCommand({
+        actorRef: command.actorRef,
+        commandId,
+        reason: 'inspect dry-run result',
+        workspaceId: workspaceA,
+      }),
+    ).resolves.toMatchObject({
+      commandId,
+      outcome: 'would_redispatch',
+      priorErrorCode: 'redis.unavailable',
+      priorPublishAttempts: 1,
+    });
+    await expect(
+      operator.getCommand({
+        actorRef: command.actorRef,
+        commandId,
+        reason: 'prove workspace-bound lookup',
+        workspaceId: workspaceB,
+      }),
+    ).resolves.toBeNull();
+    await expect(
+      operator.redispatchFailedOutbox({
+        ...command,
+        reason: 'cross-workspace conflicting replay',
+        workspaceId: workspaceB,
+      }),
+    ).rejects.toBeInstanceOf(OperatorCommandConflictError);
+    await expect(
+      operator.getCommand({
+        actorRef: command.actorRef,
+        commandId,
+        reason: 'prove conflict cannot forge workspace binding',
+        workspaceId: workspaceB,
+      }),
+    ).resolves.toBeNull();
+    const audits = await apiDatabase.withWorkspace(workspaceA, ({ db }) =>
+      db
+        .select({ id: auditEvents.id })
+        .from(auditEvents)
+        .where(eq(auditEvents.requestId, commandId)),
+    );
+    expect(audits).toHaveLength(3);
+  });
+
+  it('redispatches one failed row without changing immutable transport identity', async () => {
+    const input = outboxInput();
+    await apiDatabase.withWorkspace(workspaceA, (transaction) =>
+      insertOutboxEvent(transaction, {
+        ...input,
+        availableAt: new Date(0),
+      }).then(() => undefined),
+    );
+    const claimed = await dispatcher.claimBatch({
+      enabledJobNames,
+      leaseDurationMillis: 30_000,
+      leaseOwner: 'operator-execute-proof',
+      leaseToken: randomUUID(),
+      limit: 1,
+      maxAttempts: 1,
+    });
+    const event = claimed.events.find(({ id }) => id === input.id);
+    if (event === undefined)
+      throw new Error('Expected failed-row fixture claim');
+    await dispatcher.releaseOrFail({
+      errorCode: 'redis.unavailable',
+      id: event.id,
+      leaseToken: event.leaseToken,
+      maxAttempts: 1,
+      retryAt: new Date(),
+    });
+
+    const before = await apiDatabase.withWorkspace(workspaceA, ({ db }) =>
+      db.select().from(outboxEvents).where(eq(outboxEvents.id, input.id)),
+    );
+    const commandId = randomUUID();
+    await expect(
+      operator.redispatchFailedOutbox({
+        actorRef: 'ci-test-operator',
+        commandId,
+        dryRun: false,
+        outboxEventId: input.id,
+        reason: 'retry after queue recovery',
+        workspaceId: workspaceA,
+      }),
+    ).resolves.toMatchObject({ outcome: 'redispatched', replayed: false });
+
+    const after = await apiDatabase.withWorkspace(workspaceA, ({ db }) =>
+      db.select().from(outboxEvents).where(eq(outboxEvents.id, input.id)),
+    );
+    expect(after[0]).toMatchObject({
+      aggregateId: before[0]?.aggregateId,
+      aggregateType: before[0]?.aggregateType,
+      failedAt: null,
+      id: before[0]?.id,
+      jobName: before[0]?.jobName,
+      lastErrorCode: null,
+      payload: before[0]?.payload,
+      payloadChecksum: before[0]?.payloadChecksum,
+      publishAttempts: 0,
+      publishedAt: null,
+      schemaVersion: before[0]?.schemaVersion,
+      workspaceId: before[0]?.workspaceId,
+    });
+    const reclaimed = await dispatcher.claimBatch({
+      enabledJobNames,
+      leaseDurationMillis: 30_000,
+      leaseOwner: 'operator-normal-dispatch',
+      leaseToken: randomUUID(),
+      limit: 1,
+      maxAttempts: 3,
+    });
+    expect(reclaimed.events.map(({ id }) => id)).toContain(input.id);
+  });
+
+  it('keeps the operator role function-only and on the expected migration head', async () => {
+    await expect(operator.checkReadiness()).resolves.toBeUndefined();
   });
 });
 

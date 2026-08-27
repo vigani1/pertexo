@@ -152,6 +152,13 @@
         "CONTROL_LEDGER_RECOVERY_SECRET_ACCESS_KEY"
       ]
     },
+    "operator-command": {
+      "kind": "job",
+      "command": ["node", "apps/operator-command/dist/main.js"],
+      "environment": { "NODE_ENV": "production" },
+      "configuration": [],
+      "secrets": ["DATABASE_OPERATOR_URL"]
+    },
     "migration": {
       "kind": "release-job",
       "command": ["node", "packages/database/dist/migrate.js"],

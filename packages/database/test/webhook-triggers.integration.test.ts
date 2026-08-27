@@ -77,6 +77,7 @@ const migrationConfig = {
   dispatcherRole: 'pertexo_dispatcher',
   maintenanceRole: 'pertexo_maintenance',
   lifecycleCommandRole: 'pertexo_lifecycle_command',
+  operatorRole: 'pertexo_operator',
 } as const;
 const apiConfig = parseDatabaseConfig({
   connectionString: url(apiBaseUrl),
@@ -369,7 +370,7 @@ describe('generic webhook database seam', () => {
 
   it('migrates from zero, reconciles configuration, and exposes no hashes or secrets in health', async () => {
     await expect(checkDatabaseReadiness(readinessPool)).resolves.toMatchObject({
-      migrationHead: '0060_standard_retention_dry_run.sql',
+      migrationHead: '0061_operator_outbox_redispatch.sql',
     });
     await expect(
       checkDatabaseReadiness(workerReadinessPool),

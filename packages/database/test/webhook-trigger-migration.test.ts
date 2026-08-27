@@ -6,7 +6,7 @@ import { EXPECTED_MIGRATION_HEAD } from '../src/readiness.js';
 
 describe('webhook trigger migration contract', () => {
   it('forces tenant isolation and keeps endpoint credentials non-public', async () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0060_standard_retention_dry_run.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0061_operator_outbox_redispatch.sql');
     const migration = await readFile(
       new URL('../migrations/0039_webhook_triggers.sql', import.meta.url),
       'utf8',

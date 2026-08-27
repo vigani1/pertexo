@@ -53,6 +53,7 @@ export {
   parseMaintenanceDatabaseConfig,
   parseLifecycleCommandDatabaseConfig,
   parseMigrationConfig,
+  parseOperatorDatabaseConfig,
   parseOutboxDispatcherConfig,
 } from './config.js';
 export type { DatabaseConfig, MigrationConfig } from './config.js';
@@ -387,6 +388,17 @@ export type {
   ReadPublishedWorkflowForExecutionInput,
 } from './published-workflow-reader.js';
 export { createOutboxDispatcherDatabase } from './dispatcher.js';
+export {
+  createOperatorCommandDatabase,
+  OperatorCommandConflictError,
+  type GetOperatorCommandInput,
+  type OperatorCommandDatabase,
+  type OperatorCommandDatabaseOptions,
+  type OperatorCommandOutcome,
+  type OperatorCommandRecord,
+  type OperatorCommandResult,
+  type RedispatchFailedOutboxInput,
+} from './operator-commands.js';
 export type {
   ClaimOutboxBatchInput,
   ClaimOutboxBatchResult,

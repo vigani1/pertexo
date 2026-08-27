@@ -374,6 +374,7 @@ beforeAll(async () => {
     dispatcherRole: 'pertexo_dispatcher',
     maintenanceRole: 'pertexo_maintenance',
     lifecycleCommandRole: 'pertexo_lifecycle_command',
+    operatorRole: 'pertexo_operator',
   });
   await insertIdentity();
 }, 60_000);

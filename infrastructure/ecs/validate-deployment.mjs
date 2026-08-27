@@ -18,6 +18,7 @@ const expectedCommands = new Map([
   ['lifecycle-command', 'apps/lifecycle-command/dist/main.js'],
   ['retention', 'apps/retention/dist/main.js'],
   ['recovery', 'apps/recovery/dist/main.js'],
+  ['operator-command', 'apps/operator-command/dist/main.js'],
   ['migration', 'packages/database/dist/migrate.js'],
 ]);
 const credentialPattern =

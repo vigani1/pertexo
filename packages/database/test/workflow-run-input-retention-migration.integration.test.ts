@@ -28,6 +28,7 @@ const migrationConfig = {
   dispatcherRole: 'pertexo_dispatcher',
   maintenanceRole: 'pertexo_maintenance',
   lifecycleCommandRole: 'pertexo_lifecycle_command',
+  operatorRole: 'pertexo_operator',
 } as const;
 const workspaceId = randomUUID();
 const userId = randomUUID();

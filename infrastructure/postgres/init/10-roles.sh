@@ -10,6 +10,8 @@ set -Eeuo pipefail
 : "${POSTGRES_MAINTENANCE_PASSWORD:?POSTGRES_MAINTENANCE_PASSWORD is required}"
 : "${POSTGRES_LIFECYCLE_COMMAND_USER:?POSTGRES_LIFECYCLE_COMMAND_USER is required}"
 : "${POSTGRES_LIFECYCLE_COMMAND_PASSWORD:?POSTGRES_LIFECYCLE_COMMAND_PASSWORD is required}"
+: "${POSTGRES_OPERATOR_USER:?POSTGRES_OPERATOR_USER is required}"
+: "${POSTGRES_OPERATOR_PASSWORD:?POSTGRES_OPERATOR_PASSWORD is required}"
 : "${POSTGRES_API_RUNTIME_USER:?POSTGRES_API_RUNTIME_USER is required}"
 : "${POSTGRES_API_RUNTIME_PASSWORD:?POSTGRES_API_RUNTIME_PASSWORD is required}"
 : "${POSTGRES_WORKER_RUNTIME_USER:?POSTGRES_WORKER_RUNTIME_USER is required}"
@@ -31,6 +33,8 @@ psql \
   --set maintenance_password="$POSTGRES_MAINTENANCE_PASSWORD" \
   --set lifecycle_command_user="$POSTGRES_LIFECYCLE_COMMAND_USER" \
   --set lifecycle_command_password="$POSTGRES_LIFECYCLE_COMMAND_PASSWORD" \
+  --set operator_user="$POSTGRES_OPERATOR_USER" \
+  --set operator_password="$POSTGRES_OPERATOR_PASSWORD" \
   --set api_runtime_user="$POSTGRES_API_RUNTIME_USER" \
   --set api_runtime_password="$POSTGRES_API_RUNTIME_PASSWORD" \
   --set worker_runtime_user="$POSTGRES_WORKER_RUNTIME_USER" \
@@ -67,6 +71,13 @@ ALTER ROLE :"lifecycle_command_user" PASSWORD :'lifecycle_command_password';
 
 SELECT format(
   'CREATE ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS',
+  :'operator_user'
+)
+WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'operator_user')\gexec
+ALTER ROLE :"operator_user" PASSWORD :'operator_password';
+
+SELECT format(
+  'CREATE ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS',
   :'api_runtime_user'
 )
 WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'api_runtime_user')\gexec
@@ -93,7 +104,7 @@ GRANT :"owner_user" TO :"migration_user";
 ALTER DATABASE :"database_name" OWNER TO :"owner_user";
 REVOKE ALL ON DATABASE :"database_name" FROM PUBLIC;
 GRANT CONNECT ON DATABASE :"database_name"
-  TO :"migration_user", :"maintenance_user", :"lifecycle_command_user", :"api_runtime_user", :"worker_runtime_user", :"dispatcher_runtime_user";
+  TO :"migration_user", :"maintenance_user", :"lifecycle_command_user", :"operator_user", :"api_runtime_user", :"worker_runtime_user", :"dispatcher_runtime_user";
 
 ALTER SCHEMA public OWNER TO :"owner_user";
 REVOKE ALL ON SCHEMA public FROM PUBLIC;

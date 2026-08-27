@@ -106,6 +106,7 @@ function migrationConfig(name: string) {
     dispatcherRole: 'pertexo_dispatcher',
     maintenanceRole: 'pertexo_maintenance',
     lifecycleCommandRole: 'pertexo_lifecycle_command',
+    operatorRole: 'pertexo_operator',
     ownerRole: 'pertexo_owner',
     workerRuntimeRole: 'pertexo_worker',
   } as const;
@@ -139,6 +140,7 @@ beforeAll(async () => {
     dispatcherRole: 'pertexo_dispatcher',
     maintenanceRole: 'pertexo_maintenance',
     lifecycleCommandRole: 'pertexo_lifecycle_command',
+    operatorRole: 'pertexo_operator',
     ownerRole: 'pertexo_owner',
     workerRuntimeRole: 'pertexo_worker',
   });
@@ -202,7 +204,7 @@ describe('durable node compatibility release authority', () => {
           preactivationTarget: targetExpectation,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0060_standard_retention_dry_run.sql',
+        migrationHead: '0061_operator_outbox_redispatch.sql',
       });
 
       for (const [roleKind, artifactId] of [
@@ -325,7 +327,7 @@ describe('durable node compatibility release authority', () => {
           expectedCompatibilityReleases: rollingExpectations,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0060_standard_retention_dry_run.sql',
+        migrationHead: '0061_operator_outbox_redispatch.sql',
       });
       await expect(
         checkDatabaseReadiness(api, {
@@ -438,7 +440,7 @@ describe('durable node compatibility release authority', () => {
             expectedCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0060_standard_retention_dry_run.sql',
+          migrationHead: '0061_operator_outbox_redispatch.sql',
         });
         await expect(
           checkExpectedCompatibilityRelease(pool, {
@@ -466,7 +468,7 @@ describe('durable node compatibility release authority', () => {
           expectedCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0060_standard_retention_dry_run.sql',
+        migrationHead: '0061_operator_outbox_redispatch.sql',
       });
     } finally {
       await pool.end();

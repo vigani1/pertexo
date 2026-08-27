@@ -42,6 +42,7 @@ const migrationConfig = {
   dispatcherRole: 'pertexo_dispatcher',
   maintenanceRole: 'pertexo_maintenance',
   lifecycleCommandRole: 'pertexo_lifecycle_command',
+  operatorRole: 'pertexo_operator',
   ownerRole: 'pertexo_owner',
   workerRuntimeRole: 'pertexo_worker',
 } as const;
@@ -278,6 +279,10 @@ beforeAll(async () => {
     path.join(MIGRATIONS_DIRECTORY, '0060_standard_retention_dry_run.sql'),
     path.join(priorDirectory, '0060_standard_retention_dry_run.sql'),
   );
+  await copyFile(
+    path.join(MIGRATIONS_DIRECTORY, '0061_operator_outbox_redispatch.sql'),
+    path.join(priorDirectory, '0061_operator_outbox_redispatch.sql'),
+  );
   await expect(
     migrateDatabase(migrationConfig, priorDirectory),
   ).resolves.toEqual([
@@ -296,6 +301,7 @@ beforeAll(async () => {
     '0058_workspace_object_versions_purge.sql',
     '0059_workspace_purge_completion.sql',
     '0060_standard_retention_dry_run.sql',
+    '0061_operator_outbox_redispatch.sql',
   ]);
   maintenance = new Pool({ connectionString: maintenanceUrl, max: 4 });
 }, 120_000);

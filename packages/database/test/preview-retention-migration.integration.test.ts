@@ -36,6 +36,7 @@ const migrationConfig = {
   dispatcherRole: 'pertexo_dispatcher',
   maintenanceRole: 'pertexo_maintenance',
   lifecycleCommandRole: 'pertexo_lifecycle_command',
+  operatorRole: 'pertexo_operator',
   ownerRole: 'pertexo_owner',
   workerRuntimeRole: 'pertexo_worker',
 } as const;
@@ -237,6 +238,7 @@ describe('preview retention migration', () => {
       '0058_workspace_object_versions_purge.sql',
       '0059_workspace_purge_completion.sql',
       '0060_standard_retention_dry_run.sql',
+      '0061_operator_outbox_redispatch.sql',
     ]);
 
     const verification = new Pool({

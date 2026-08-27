@@ -36,6 +36,7 @@ const migrationConfig = {
   dispatcherRole: 'pertexo_dispatcher',
   maintenanceRole: 'pertexo_maintenance',
   lifecycleCommandRole: 'pertexo_lifecycle_command',
+  operatorRole: 'pertexo_operator',
 } as const;
 let maintenance: Pool | undefined;
 let owner: Pool | undefined;

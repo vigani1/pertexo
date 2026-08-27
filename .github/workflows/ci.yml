@@ -26,6 +26,7 @@ jobs:
       POSTGRES_MIGRATION_USER: pertexo_migration
       POSTGRES_MIGRATION_PASSWORD: pertexo-local-migration
       POSTGRES_MAINTENANCE_USER: pertexo_maintenance
+      POSTGRES_OPERATOR_USER: pertexo_operator
       POSTGRES_MAINTENANCE_PASSWORD: pertexo-local-maintenance
       POSTGRES_LIFECYCLE_COMMAND_USER: pertexo_lifecycle_command
       POSTGRES_LIFECYCLE_COMMAND_PASSWORD: pertexo-local-lifecycle-command
@@ -37,6 +38,7 @@ jobs:
       POSTGRES_DISPATCHER_RUNTIME_PASSWORD: pertexo-local-dispatcher
       DATABASE_MIGRATION_URL: postgresql://pertexo_migration:pertexo-local-migration@127.0.0.1:5432/pertexo
       DATABASE_MAINTENANCE_URL: postgresql://pertexo_maintenance:pertexo-local-maintenance@127.0.0.1:5432/pertexo
+      DATABASE_OPERATOR_URL: postgresql://pertexo_operator:pertexo-local-operator@127.0.0.1:5432/pertexo
       DATABASE_LIFECYCLE_COMMAND_URL: postgresql://pertexo_lifecycle_command:pertexo-local-lifecycle-command@127.0.0.1:5432/pertexo
       DATABASE_API_URL: postgresql://pertexo_api:pertexo-local-api@127.0.0.1:5432/pertexo
       DATABASE_WORKER_URL: postgresql://pertexo_worker:pertexo-local-worker@127.0.0.1:5432/pertexo

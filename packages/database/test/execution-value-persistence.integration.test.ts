@@ -52,6 +52,7 @@ function migrationConfig(databaseName: string) {
     dispatcherRole: 'pertexo_dispatcher',
     maintenanceRole: 'pertexo_maintenance',
     lifecycleCommandRole: 'pertexo_lifecycle_command',
+    operatorRole: 'pertexo_operator',
     ownerRole: 'pertexo_owner',
     workerRuntimeRole: 'pertexo_worker',
   } as const;
@@ -253,7 +254,7 @@ describe('execution value persistence migration', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0060_standard_retention_dry_run.sql',
+          migrationHead: '0061_operator_outbox_redispatch.sql',
           role: expectedRole,
         });
       } finally {

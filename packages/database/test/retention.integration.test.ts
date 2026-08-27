@@ -70,6 +70,7 @@ beforeAll(async () => {
     connectionString: migrationUrl,
     dispatcherRole: 'pertexo_dispatcher',
     lifecycleCommandRole: 'pertexo_lifecycle_command',
+    operatorRole: 'pertexo_operator',
     maintenanceRole: 'pertexo_maintenance',
     ownerRole: 'pertexo_owner',
     workerRuntimeRole: 'pertexo_worker',

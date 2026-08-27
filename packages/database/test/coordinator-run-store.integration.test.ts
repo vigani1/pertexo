@@ -72,6 +72,7 @@ const migrationConfig = {
   dispatcherRole: 'pertexo_dispatcher',
   maintenanceRole: 'pertexo_maintenance',
   lifecycleCommandRole: 'pertexo_lifecycle_command',
+  operatorRole: 'pertexo_operator',
   ownerRole: 'pertexo_owner',
   workerRuntimeRole: 'pertexo_worker',
 } as const;
@@ -2015,7 +2016,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0060_standard_retention_dry_run.sql',
+          migrationHead: '0061_operator_outbox_redispatch.sql',
           role: 'pertexo_worker',
         });
       } finally {
@@ -2101,6 +2102,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         '0058_workspace_object_versions_purge.sql',
         '0059_workspace_purge_completion.sql',
         '0060_standard_retention_dry_run.sql',
+        '0061_operator_outbox_redispatch.sql',
       ]);
       const workerPool = new Pool({
         connectionString: namedDatabaseUrl(
@@ -2116,7 +2118,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0060_standard_retention_dry_run.sql',
+          migrationHead: '0061_operator_outbox_redispatch.sql',
           role: 'pertexo_worker',
         });
         await expect(
@@ -2183,7 +2185,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0060_standard_retention_dry_run.sql',
+        migrationHead: '0061_operator_outbox_redispatch.sql',
         role: 'pertexo_worker',
       });
       const catalog = await readinessPool.query<{
@@ -2422,7 +2424,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0060_standard_retention_dry_run.sql',
+        migrationHead: '0061_operator_outbox_redispatch.sql',
       });
     } finally {
       await readinessPool.end();
@@ -2608,7 +2610,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         workerRuntimeRole: 'pertexo_worker',
       }),
     ).resolves.toMatchObject({
-      migrationHead: '0060_standard_retention_dry_run.sql',
+      migrationHead: '0061_operator_outbox_redispatch.sql',
     });
     await readinessPool.end();
   });

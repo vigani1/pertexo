@@ -119,6 +119,7 @@ function migrationConfig(name = databaseName) {
     dispatcherRole: 'pertexo_dispatcher',
     maintenanceRole: 'pertexo_maintenance',
     lifecycleCommandRole: 'pertexo_lifecycle_command',
+    operatorRole: 'pertexo_operator',
     ownerRole: 'pertexo_owner',
     workerRuntimeRole: 'pertexo_worker',
   } as const;
@@ -560,6 +561,7 @@ describe('connection persistence', () => {
       '0058_workspace_object_versions_purge.sql',
       '0059_workspace_purge_completion.sql',
       '0060_standard_retention_dry_run.sql',
+      '0061_operator_outbox_redispatch.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, priorDatabaseName),
@@ -572,7 +574,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0060_standard_retention_dry_run.sql',
+        migrationHead: '0061_operator_outbox_redispatch.sql',
       });
       const bindingSurface = await pool.query<{
         node_column: boolean;
@@ -797,6 +799,7 @@ describe('connection persistence', () => {
       '0058_workspace_object_versions_purge.sql',
       '0059_workspace_purge_completion.sql',
       '0060_standard_retention_dry_run.sql',
+      '0061_operator_outbox_redispatch.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, upgradeDatabaseName),
@@ -809,7 +812,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0060_standard_retention_dry_run.sql',
+        migrationHead: '0061_operator_outbox_redispatch.sql',
       });
     } finally {
       await pool.end();
@@ -1796,7 +1799,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0060_standard_retention_dry_run.sql',
+        migrationHead: '0061_operator_outbox_redispatch.sql',
       });
       await expect(
         checkDatabaseReadiness(workerReadinessPool, {
@@ -1804,7 +1807,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0060_standard_retention_dry_run.sql',
+        migrationHead: '0061_operator_outbox_redispatch.sql',
       });
     } finally {
       await Promise.all([apiReadinessPool.end(), workerReadinessPool.end()]);

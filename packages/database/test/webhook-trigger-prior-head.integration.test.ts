@@ -28,6 +28,7 @@ const migrationConfig = {
   dispatcherRole: 'pertexo_dispatcher',
   maintenanceRole: 'pertexo_maintenance',
   lifecycleCommandRole: 'pertexo_lifecycle_command',
+  operatorRole: 'pertexo_operator',
 } as const;
 let priorDirectory = '';
 
@@ -90,6 +91,7 @@ describe('trigger hardening prior-head migration', () => {
       '0058_workspace_object_versions_purge.sql',
       '0059_workspace_purge_completion.sql',
       '0060_standard_retention_dry_run.sql',
+      '0061_operator_outbox_redispatch.sql',
     ]);
   });
 });

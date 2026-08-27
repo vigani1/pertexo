@@ -53,6 +53,10 @@ const migrationEnvironmentSchema = z.object({
     .string()
     .regex(/^[a-z_][a-z0-9_]*$/u)
     .default('pertexo_lifecycle_command'),
+  POSTGRES_OPERATOR_USER: z
+    .string()
+    .regex(/^[a-z_][a-z0-9_]*$/u)
+    .default('pertexo_operator'),
   POSTGRES_WORKER_RUNTIME_USER: z
     .string()
     .regex(/^[a-z_][a-z0-9_]*$/u)
@@ -65,6 +69,7 @@ export type MigrationConfig = Readonly<{
   dispatcherRole: string;
   maintenanceRole: string;
   lifecycleCommandRole: string;
+  operatorRole: string;
   ownerRole: string;
   workerRuntimeRole: string;
 }>;
@@ -79,6 +84,7 @@ export function parseMigrationConfig(
     dispatcherRole: parsed.POSTGRES_DISPATCHER_RUNTIME_USER,
     maintenanceRole: parsed.POSTGRES_MAINTENANCE_USER,
     lifecycleCommandRole: parsed.POSTGRES_LIFECYCLE_COMMAND_USER,
+    operatorRole: parsed.POSTGRES_OPERATOR_USER,
     ownerRole: parsed.POSTGRES_OWNER_USER,
     workerRuntimeRole: parsed.POSTGRES_WORKER_RUNTIME_USER,
   });
@@ -180,6 +186,32 @@ const lifecycleCommandEnvironmentSchema = z.object({
     .default('pertexo_worker'),
 });
 
+const operatorEnvironmentSchema = z.object({
+  DATABASE_OPERATOR_URL: z
+    .url()
+    .refine((value) => value.startsWith('postgresql://'), {
+      message: 'DATABASE_OPERATOR_URL must be a postgresql:// URL',
+    }),
+  DATABASE_CONNECTION_TIMEOUT_MILLIS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(5_000),
+  DATABASE_IDLE_TIMEOUT_MILLIS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(30_000),
+  POSTGRES_OPERATOR_USER: z
+    .string()
+    .regex(/^[a-z_][a-z0-9_]*$/u)
+    .default('pertexo_operator'),
+  POSTGRES_OWNER_USER: z
+    .string()
+    .regex(/^[a-z_][a-z0-9_]*$/u)
+    .default('pertexo_owner'),
+});
+
 export function parseLifecycleCommandDatabaseConfig(
   environment: Readonly<Record<string, string | undefined>> = process.env,
 ): DatabaseConfig {
@@ -205,6 +237,22 @@ export function parseMaintenanceDatabaseConfig(
     max: parsed.DATABASE_MAINTENANCE_POOL_MAX,
     ownerRole: parsed.POSTGRES_OWNER_USER,
     workerRuntimeRole: parsed.POSTGRES_WORKER_RUNTIME_USER,
+  });
+}
+
+export function parseOperatorDatabaseConfig(
+  environment: Readonly<Record<string, string | undefined>> = process.env,
+): DatabaseConfig & Readonly<{ operatorRole: string }> {
+  const parsed = operatorEnvironmentSchema.parse(environment);
+  return Object.freeze({
+    ...parseDatabaseConfig({
+      connectionString: parsed.DATABASE_OPERATOR_URL,
+      connectionTimeoutMillis: parsed.DATABASE_CONNECTION_TIMEOUT_MILLIS,
+      idleTimeoutMillis: parsed.DATABASE_IDLE_TIMEOUT_MILLIS,
+      max: 1,
+      ownerRole: parsed.POSTGRES_OWNER_USER,
+    }),
+    operatorRole: parsed.POSTGRES_OPERATOR_USER,
   });
 }
 

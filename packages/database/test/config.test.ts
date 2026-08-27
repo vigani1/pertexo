@@ -5,6 +5,7 @@ import {
   parseLifecycleCommandDatabaseConfig,
   parseMaintenanceDatabaseConfig,
   parseMigrationConfig,
+  parseOperatorDatabaseConfig,
   parseOutboxDispatcherConfig,
 } from '../src/config.js';
 import { parseWorkspaceId } from '../src/workspace.js';
@@ -41,6 +42,7 @@ describe('database configuration', () => {
         POSTGRES_API_RUNTIME_USER: 'api_role',
         POSTGRES_DISPATCHER_RUNTIME_USER: 'dispatcher_role',
         POSTGRES_MAINTENANCE_USER: 'maintenance_role',
+        POSTGRES_OPERATOR_USER: 'operator_role',
         POSTGRES_LIFECYCLE_COMMAND_USER: 'lifecycle_role',
         POSTGRES_OWNER_USER: 'pertexo_owner',
         POSTGRES_WORKER_RUNTIME_USER: 'worker_role',
@@ -52,6 +54,7 @@ describe('database configuration', () => {
       dispatcherRole: 'dispatcher_role',
       maintenanceRole: 'maintenance_role',
       lifecycleCommandRole: 'lifecycle_role',
+      operatorRole: 'operator_role',
       ownerRole: 'pertexo_owner',
       workerRuntimeRole: 'worker_role',
     });
@@ -86,6 +89,24 @@ describe('database configuration', () => {
       connectionTimeoutMillis: 5_000,
       idleTimeoutMillis: 30_000,
       max: 2,
+      ownerRole: 'pertexo_owner',
+      workerRuntimeRole: 'pertexo_worker',
+    });
+  });
+
+  it('parses a one-connection operator-only pool', () => {
+    expect(
+      parseOperatorDatabaseConfig({
+        DATABASE_OPERATOR_URL:
+          'postgresql://pertexo_operator:secret@localhost:5432/pertexo',
+      }),
+    ).toEqual({
+      connectionString:
+        'postgresql://pertexo_operator:secret@localhost:5432/pertexo',
+      connectionTimeoutMillis: 5_000,
+      idleTimeoutMillis: 30_000,
+      max: 1,
+      operatorRole: 'pertexo_operator',
       ownerRole: 'pertexo_owner',
       workerRuntimeRole: 'pertexo_worker',
     });
