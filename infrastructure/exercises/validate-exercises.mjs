@@ -2,30 +2,46 @@
 
 import { readFile } from 'node:fs/promises';
 
-const profiles = [
-  new URL('./profiles/api-steady.json', import.meta.url),
-  new URL('./profiles/api-burst.json', import.meta.url),
+import { parseProfile } from './run-http-exercise.mjs';
+
+const expectedScenarios = new Set([
+  'steady-run-start',
+  'webhook-burst',
+  'large-fan-out',
+  'long-wait',
+  'noisy-tenant-load',
+  'noisy-tenant-control',
+]);
+const profileDirectory = new URL('./profiles/', import.meta.url);
+const profileNames = [
+  'api-steady.json',
+  'webhook-burst.json',
+  'large-fan-out.json',
+  'long-wait.json',
+  'noisy-tenant-load.json',
+  'noisy-tenant-control.json',
 ];
 
-for (const profileUrl of profiles) {
-  const profile = JSON.parse(await readFile(profileUrl, 'utf8'));
-  if (profile.schemaVersion !== 1)
-    throw new Error(`${profileUrl.pathname}: unsupported schema`);
+for (const profileName of profileNames) {
+  const profileUrl = new URL(profileName, profileDirectory);
+  const bytes = await readFile(profileUrl, 'utf8');
+  const profile = parseProfile(JSON.parse(bytes));
+  if (!expectedScenarios.delete(profile.scenario))
+    throw new Error(`${profileUrl.pathname}: duplicate or invalid scenario`);
   if (
-    !Number.isInteger(profile.requestsPerSecond) ||
-    profile.requestsPerSecond < 1
+    profile.authentication === 'webhook-hmac' &&
+    profile.scenario !== 'webhook-burst'
   )
-    throw new Error(`${profileUrl.pathname}: invalid rate`);
-  if (!Number.isInteger(profile.durationSeconds) || profile.durationSeconds < 1)
-    throw new Error(`${profileUrl.pathname}: invalid duration`);
-  if (profile.method !== 'POST')
-    throw new Error(`${profileUrl.pathname}: unsafe method`);
-  if (JSON.stringify(profile).match(/authorization|token|secret/iu))
     throw new Error(
-      `${profileUrl.pathname}: profile may not contain credentials`,
+      `${profileUrl.pathname}: webhook authentication is scenario-specific`,
     );
 }
 
+if (expectedScenarios.size > 0)
+  throw new Error(
+    `Missing exercise scenarios: ${[...expectedScenarios].join(', ')}`,
+  );
+
 process.stdout.write(
-  `Validated ${String(profiles.length)} exercise profiles\n`,
+  `Validated ${String(profileNames.length)} exercise profiles\n`,
 );

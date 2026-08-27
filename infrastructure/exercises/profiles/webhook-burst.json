@@ -1,15 +1,21 @@
 {
   "schemaVersion": 1,
-  "name": "api-burst-50-per-second",
+  "name": "webhook-burst-50-per-second",
+  "scenario": "webhook-burst",
   "durationSeconds": 300,
   "requestsPerSecond": 50,
   "maxInFlight": 100,
   "method": "POST",
-  "pathEnvironment": "PERTEXO_EXERCISE_PATH",
-  "bodyFileEnvironment": "PERTEXO_EXERCISE_BODY_FILE",
+  "authentication": "webhook-hmac",
+  "pathEnvironment": "PERTEXO_EXERCISE_WEBHOOK_PATH",
+  "bodyFileEnvironment": "PERTEXO_EXERCISE_WEBHOOK_BODY_FILE",
   "headers": {
     "content-type": "application/json",
     "idempotency-key": "${requestId}"
+  },
+  "responsePolicy": {
+    "expectedStatuses": [202],
+    "expectedProblemCodes": []
   },
   "objectives": {
     "minimumAchievedRateRatio": 0.98,

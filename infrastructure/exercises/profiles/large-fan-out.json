@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "name": "api-steady-20-per-second",
-  "scenario": "steady-run-start",
+  "name": "large-fan-out-starts",
+  "scenario": "large-fan-out",
   "durationSeconds": 60,
-  "requestsPerSecond": 20,
+  "requestsPerSecond": 10,
   "maxInFlight": 40,
   "method": "POST",
   "authentication": "session-cookie",
-  "pathEnvironment": "PERTEXO_EXERCISE_PATH",
-  "bodyFileEnvironment": "PERTEXO_EXERCISE_BODY_FILE",
+  "pathEnvironment": "PERTEXO_EXERCISE_FAN_OUT_PATH",
+  "bodyFileEnvironment": "PERTEXO_EXERCISE_FAN_OUT_BODY_FILE",
   "headers": {
     "content-type": "application/json",
     "idempotency-key": "${requestId}"

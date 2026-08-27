@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "name": "api-steady-20-per-second",
-  "scenario": "steady-run-start",
-  "durationSeconds": 60,
-  "requestsPerSecond": 20,
-  "maxInFlight": 40,
+  "name": "noisy-tenant-control",
+  "scenario": "noisy-tenant-control",
+  "durationSeconds": 300,
+  "requestsPerSecond": 10,
+  "maxInFlight": 20,
   "method": "POST",
   "authentication": "session-cookie",
-  "pathEnvironment": "PERTEXO_EXERCISE_PATH",
-  "bodyFileEnvironment": "PERTEXO_EXERCISE_BODY_FILE",
+  "pathEnvironment": "PERTEXO_EXERCISE_CONTROL_TENANT_PATH",
+  "bodyFileEnvironment": "PERTEXO_EXERCISE_CONTROL_TENANT_BODY_FILE",
   "headers": {
     "content-type": "application/json",
     "idempotency-key": "${requestId}"
