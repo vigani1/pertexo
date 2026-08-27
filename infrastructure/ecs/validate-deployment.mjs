@@ -7,6 +7,9 @@ const root = resolve(import.meta.dirname, '../..');
 const manifest = JSON.parse(
   await readFile(resolve(root, 'infrastructure/ecs/workloads.json'), 'utf8'),
 );
+const autoscaling = JSON.parse(
+  await readFile(resolve(root, 'infrastructure/ecs/autoscaling.json'), 'utf8'),
+);
 const dockerfile = await readFile(resolve(root, 'Dockerfile'), 'utf8');
 const releaseJob = await readFile(
   resolve(root, 'infrastructure/ecs/run-release-job.sh'),
@@ -23,9 +26,30 @@ const expectedCommands = new Map([
 ]);
 const credentialPattern =
   /(DATABASE_.*_URL|REDIS_URL|SECRET.*KEY|CLIENT_SECRET|TRANSACTION_KEY|ACCESS_KEY_ID)$/u;
+const expectedScalingSignals = new Map([
+  [
+    'api',
+    new Map([
+      ['latency', 'pertexo.api.request.duration'],
+      ['saturation', 'AWS/ECS.CPUUtilization'],
+    ]),
+  ],
+  [
+    'worker',
+    new Map([
+      ['active-slots', 'pertexo.transport.handler.active'],
+      ['oldest-admitted-job', 'pertexo.transport.queue.oldest_job_age'],
+    ]),
+  ],
+]);
 
 if (!dockerfile.includes('USER 10001:10001'))
   throw new Error('runtime image must be non-root');
+if (
+  (dockerfile.match(/^FROM node:[^\s]+@sha256:[a-f0-9]{64}/gmu) ?? [])
+    .length !== 3
+)
+  throw new Error('every Node image stage must pin an immutable base digest');
 if (!dockerfile.includes('ENTRYPOINT ["/usr/bin/tini", "--"]'))
   throw new Error('runtime image must use tini');
 if (!dockerfile.includes('pnpm install --prod --frozen-lockfile'))
@@ -58,6 +82,65 @@ for (const name of ['api', 'worker']) {
   const counts = manifest.workloads[name].desiredCount;
   if (counts['eu-central-1'] < 2 || counts['eu-west-1'] !== 0) {
     throw new Error(`${name} does not match ADR 015 regional desired counts`);
+  }
+}
+
+if (autoscaling.schemaVersion !== 1)
+  throw new Error('unsupported autoscaling schema version');
+const scalingNames = Object.keys(autoscaling.services).sort();
+if (scalingNames.join(',') !== 'api,worker')
+  throw new Error(
+    'autoscaling must contain only independent api and worker services',
+  );
+for (const [name, expectedSignals] of expectedScalingSignals) {
+  const service = autoscaling.services[name];
+  if (!service || service.workload !== name)
+    throw new Error(`${name} autoscaling must target its own workload`);
+  for (const region of ['eu-central-1', 'eu-west-1']) {
+    const capacity = service.capacity[region];
+    if (
+      !capacity ||
+      !Number.isSafeInteger(capacity.min) ||
+      !Number.isSafeInteger(capacity.max) ||
+      capacity.min < 0 ||
+      capacity.max < capacity.min ||
+      manifest.workloads[name].desiredCount[region] < capacity.min ||
+      manifest.workloads[name].desiredCount[region] > capacity.max
+    ) {
+      throw new Error(`${name} has invalid ${region} autoscaling capacity`);
+    }
+  }
+  if (
+    !Number.isSafeInteger(service.scaleOutCooldownSeconds) ||
+    !Number.isSafeInteger(service.scaleInCooldownSeconds) ||
+    service.scaleOutCooldownSeconds <= 0 ||
+    service.scaleInCooldownSeconds <= service.scaleOutCooldownSeconds
+  ) {
+    throw new Error(`${name} autoscaling cooldowns must favor slower scale-in`);
+  }
+  if (service.signals.length !== expectedSignals.size)
+    throw new Error(
+      `${name} must declare exactly the required scaling signals`,
+    );
+  for (const signal of service.signals) {
+    if (
+      !expectedSignals.has(signal.name) ||
+      expectedSignals.get(signal.name) !== signal.metric
+    )
+      throw new Error(
+        `${name} has an unexpected ${signal.name} scaling metric`,
+      );
+    if (
+      !['Average', 'Maximum', 'p95'].includes(signal.statistic) ||
+      !Number.isFinite(signal.threshold) ||
+      signal.threshold <= 0 ||
+      !Number.isSafeInteger(signal.periodSeconds) ||
+      signal.periodSeconds < 60 ||
+      !Number.isSafeInteger(signal.evaluationPeriods) ||
+      signal.evaluationPeriods < 1
+    ) {
+      throw new Error(`${name} ${signal.name} scaling signal is invalid`);
+    }
   }
 }
 if (manifest.workloads.migration.kind !== 'release-job')

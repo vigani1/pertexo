@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "services": {
+    "api": {
+      "workload": "api",
+      "capacity": {
+        "eu-central-1": { "min": 2, "max": 20 },
+        "eu-west-1": { "min": 0, "max": 20 }
+      },
+      "scaleOutCooldownSeconds": 60,
+      "scaleInCooldownSeconds": 300,
+      "signals": [
+        {
+          "name": "latency",
+          "metric": "pertexo.api.request.duration",
+          "statistic": "p95",
+          "threshold": 0.4,
+          "unit": "Seconds",
+          "periodSeconds": 60,
+          "evaluationPeriods": 3
+        },
+        {
+          "name": "saturation",
+          "metric": "AWS/ECS.CPUUtilization",
+          "statistic": "Average",
+          "threshold": 70,
+          "unit": "Percent",
+          "periodSeconds": 60,
+          "evaluationPeriods": 3
+        }
+      ]
+    },
+    "worker": {
+      "workload": "worker",
+      "capacity": {
+        "eu-central-1": { "min": 2, "max": 20 },
+        "eu-west-1": { "min": 0, "max": 20 }
+      },
+      "scaleOutCooldownSeconds": 30,
+      "scaleInCooldownSeconds": 300,
+      "signals": [
+        {
+          "name": "oldest-admitted-job",
+          "metric": "pertexo.transport.queue.oldest_job_age",
+          "statistic": "Maximum",
+          "threshold": 3,
+          "unit": "Seconds",
+          "periodSeconds": 60,
+          "evaluationPeriods": 2
+        },
+        {
+          "name": "active-slots",
+          "metric": "pertexo.transport.handler.active",
+          "statistic": "Maximum",
+          "threshold": 80,
+          "unit": "PercentOfConfiguredSlots",
+          "periodSeconds": 60,
+          "evaluationPeriods": 2
+        }
+      ]
+    }
+  }
+}

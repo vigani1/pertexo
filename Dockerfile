@@ -1,23 +1,26 @@
 # syntax=docker/dockerfile:1.7
-FROM node:24.15.0-bookworm-slim AS build
+FROM node:24.18.1-bookworm-slim@sha256:235600a8101ab264e117b1768e925532262668dc9b581ef1dd7d96ced463b8e7 AS build
 WORKDIR /workspace
 RUN corepack enable && corepack prepare pnpm@11.22.0 --activate
 COPY . .
 RUN pnpm install --frozen-lockfile && pnpm build
 
-FROM node:24.15.0-bookworm-slim AS production-dependencies
+FROM node:24.18.1-bookworm-slim@sha256:235600a8101ab264e117b1768e925532262668dc9b581ef1dd7d96ced463b8e7 AS production-dependencies
 WORKDIR /workspace
 RUN corepack enable && corepack prepare pnpm@11.22.0 --activate
 COPY . .
 RUN pnpm install --prod --frozen-lockfile \
   && find apps packages -type d \( -name src -o -name test -o -name coverage \) -prune -exec rm -rf '{}' +
 
-FROM node:24.15.0-bookworm-slim AS runtime
+FROM node:24.18.1-bookworm-slim@sha256:235600a8101ab264e117b1768e925532262668dc9b581ef1dd7d96ced463b8e7 AS runtime
 ENV NODE_ENV=production
 WORKDIR /workspace
 RUN apt-get update \
+  && apt-get upgrade --yes \
   && apt-get install --no-install-recommends --yes tini \
   && rm -rf /var/lib/apt/lists/* \
+  && rm -rf /usr/local/lib/node_modules/corepack /usr/local/lib/node_modules/npm \
+  && rm -f /usr/local/bin/corepack /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/pnpm /usr/local/bin/pnpx \
   && groupadd --gid 10001 pertexo \
   && useradd --uid 10001 --gid pertexo --no-create-home --shell /usr/sbin/nologin pertexo
 COPY --from=production-dependencies --chown=10001:10001 /workspace/node_modules ./node_modules

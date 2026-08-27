@@ -19,9 +19,20 @@ const requiredEnvironment = [
 for (const name of requiredEnvironment) {
   if (!process.env[name]) throw new Error(`${name} is required`);
 }
+if (
+  !/^[A-Za-z0-9][A-Za-z0-9._:/-]*@sha256:[a-f0-9]{64}$/u.test(
+    process.env.ECS_IMAGE_URI,
+  )
+) {
+  throw new Error(
+    'ECS_IMAGE_URI must be digest-qualified (<repository>@sha256:<64 lowercase hex characters>)',
+  );
+}
 
 await mkdir(outputDirectory, { recursive: true });
-for (const [name, workload] of Object.entries(manifest.workloads)) {
+for (const [name, workload] of Object.entries(manifest.workloads).sort(
+  ([left], [right]) => left.localeCompare(right),
+)) {
   const container = {
     name,
     image: process.env.ECS_IMAGE_URI,
@@ -29,16 +40,15 @@ for (const [name, workload] of Object.entries(manifest.workloads)) {
     readonlyRootFilesystem: true,
     user: '10001:10001',
     command: workload.command,
-    environment: Object.entries(workload.environment).map(([key, value]) => ({
-      name: key,
-      value,
-    })),
+    environment: Object.entries(workload.environment)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, value]) => ({ name: key, value })),
     secrets: [
-      ...workload.configuration.map((configuration) => ({
+      ...[...workload.configuration].sort().map((configuration) => ({
         name: configuration,
         valueFrom: `${process.env.ECS_CONFIG_PREFIX_ARN}/${name}/${configuration}`,
       })),
-      ...workload.secrets.map((secret) => ({
+      ...[...workload.secrets].sort().map((secret) => ({
         name: secret,
         valueFrom: `${process.env.ECS_SECRET_PREFIX_ARN}/${name}/${secret}`,
       })),
