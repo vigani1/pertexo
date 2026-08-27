@@ -204,7 +204,7 @@ describe('durable node compatibility release authority', () => {
           preactivationTarget: targetExpectation,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0062_operator_command_ledger.sql',
+        migrationHead: '0063_operator_execution_recovery.sql',
       });
 
       for (const [roleKind, artifactId] of [
@@ -327,7 +327,7 @@ describe('durable node compatibility release authority', () => {
           expectedCompatibilityReleases: rollingExpectations,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0062_operator_command_ledger.sql',
+        migrationHead: '0063_operator_execution_recovery.sql',
       });
       await expect(
         checkDatabaseReadiness(api, {
@@ -440,7 +440,7 @@ describe('durable node compatibility release authority', () => {
             expectedCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0062_operator_command_ledger.sql',
+          migrationHead: '0063_operator_execution_recovery.sql',
         });
         await expect(
           checkExpectedCompatibilityRelease(pool, {
@@ -468,7 +468,7 @@ describe('durable node compatibility release authority', () => {
           expectedCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0062_operator_command_ledger.sql',
+        migrationHead: '0063_operator_execution_recovery.sql',
       });
     } finally {
       await pool.end();

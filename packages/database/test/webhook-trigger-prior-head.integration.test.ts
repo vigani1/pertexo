@@ -93,6 +93,7 @@ describe('trigger hardening prior-head migration', () => {
       '0060_standard_retention_dry_run.sql',
       '0061_operator_outbox_redispatch.sql',
       '0062_operator_command_ledger.sql',
+      '0063_operator_execution_recovery.sql',
     ]);
   });
 });

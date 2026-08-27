@@ -3643,6 +3643,22 @@ Current evidence:
   redispatch status remains compatible, and zero/prior-head migration coverage
   includes the new ledger head. No additional recovery mutation authority is
   introduced by this foundation checkpoint.
+- Migration `0063_operator_execution_recovery.sql` adds four narrow synchronous
+  ADR 029 commands: dry-runnable expired-attempt reconciliation, dry-runnable
+  due-work resume, append-only unknown-outcome evidence, and dry-runnable run
+  cancellation. The shared dispatcher is owner-only; `pertexo_operator` can
+  execute only typed wrappers and has no direct command, evidence, execution,
+  outbox, or audit table authority. Reconciliation preserves fence and
+  side-effect-class rules, unknown evidence cascades with the tenant attempt,
+  and resume/cancellation emit the normal identifier-only coordinator wakeup.
+  Unknown-outcome evidence emits a dedicated identifier-only maintenance wake;
+  its checksum-bound consumer completes one durable inbox receipt while leaving
+  immutable attempt, node, and run outcomes unchanged. Due-work processing is
+  capped at 100 nodes per command and reports whether another command is needed.
+  Focused PostgreSQL integration passes 24 execution-runtime assertions,
+  including positive mutation, dry-run, exact replay, and append-only evidence
+  paths. Run replay, trigger reconciliation retry, and retention/purge reruns
+  remain open, so the broad operator-command checklist stays unchecked.
 - Accepted ADR 028 defines a repository-owned ECS workload manifest and migration
   release-job contract. The multi-stage production image runs as UID/GID 10001
   under `tini` with production dependencies only. Rendered Fargate definitions

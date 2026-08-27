@@ -45,6 +45,10 @@ export type TransportJob =
       readonly queueName: 'maintenance';
     }
   | {
+      readonly jobName: 'reconcile-unknown-outcome';
+      readonly queueName: 'maintenance';
+    }
+  | {
       readonly jobName: 'expire-artifacts';
       readonly queueName: 'maintenance';
     }

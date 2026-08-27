@@ -15,13 +15,18 @@ const baseEnvironmentSchema = z.object({
   NODE_ENV: z
     .enum(['development', 'test', 'staging', 'production'])
     .default('development'),
+  OPERATOR_ACTOR_REF: z
+    .string()
+    .regex(/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/u),
   OPERATOR_COMMAND_ID: z.uuid(),
+  OPERATOR_REASON: z.string().min(1).max(512),
   OPERATOR_TIMEOUT_MS: z.coerce
     .number()
     .int()
     .min(1_000)
     .max(300_000)
     .default(30_000),
+  OPERATOR_WORKSPACE_ID: z.uuid(),
   OTEL_EXPORTER_OTLP_ENDPOINT: z.url().optional(),
   POSTGRES_API_RUNTIME_USER: z.string().default('pertexo_api'),
   POSTGRES_DISPATCHER_RUNTIME_USER: z.string().default('pertexo_dispatcher'),
@@ -41,24 +46,51 @@ const baseEnvironmentSchema = z.object({
 
 const environmentSchema = z.discriminatedUnion('OPERATOR_COMMAND_TYPE', [
   baseEnvironmentSchema.extend({
-    OPERATOR_ACTOR_REF: z
-      .string()
-      .regex(/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/u),
     OPERATOR_COMMAND_TYPE: z.literal('outbox.redispatch'),
     OPERATOR_DRY_RUN: z
       .enum(['true', 'false'])
       .transform((value) => value === 'true'),
     OPERATOR_OUTBOX_EVENT_ID: z.uuid(),
-    OPERATOR_REASON: z.string().min(1).max(512),
-    OPERATOR_WORKSPACE_ID: z.uuid(),
   }),
   baseEnvironmentSchema.extend({
-    OPERATOR_ACTOR_REF: z
-      .string()
-      .regex(/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/u),
     OPERATOR_COMMAND_TYPE: z.literal('operator.status'),
-    OPERATOR_REASON: z.string().min(1).max(512),
-    OPERATOR_WORKSPACE_ID: z.uuid(),
+  }),
+  baseEnvironmentSchema.extend({
+    OPERATOR_ATTEMPT_ACTION: z.enum(['reclaim', 'outcome_unknown']),
+    OPERATOR_ATTEMPT_ID: z.uuid(),
+    OPERATOR_COMMAND_TYPE: z.literal('attempt.reconcile'),
+    OPERATOR_DRY_RUN: z
+      .enum(['true', 'false'])
+      .transform((value) => value === 'true'),
+    OPERATOR_EXPECTED_FENCE_TOKEN: z.coerce.number().int().positive(),
+  }),
+  baseEnvironmentSchema.extend({
+    OPERATOR_COMMAND_TYPE: z.literal('due-work.resume'),
+    OPERATOR_DRY_RUN: z
+      .enum(['true', 'false'])
+      .transform((value) => value === 'true'),
+    OPERATOR_RUN_ID: z.uuid(),
+  }),
+  baseEnvironmentSchema.extend({
+    OPERATOR_ATTEMPT_ID: z.uuid(),
+    OPERATOR_COMMAND_TYPE: z.literal('unknown-outcome.record-evidence'),
+    OPERATOR_EVIDENCE_KIND: z.string().regex(/^[a-z][a-z0-9_.-]{0,63}$/u),
+    OPERATOR_EVIDENCE_REF: z.string().transform((value, context) => {
+      try {
+        const parsed: unknown = JSON.parse(value);
+        return z.record(z.string(), z.unknown()).parse(parsed);
+      } catch {
+        context.addIssue({ code: 'custom', message: 'Invalid evidence JSON' });
+        return z.NEVER;
+      }
+    }),
+  }),
+  baseEnvironmentSchema.extend({
+    OPERATOR_COMMAND_TYPE: z.literal('run.cancel'),
+    OPERATOR_DRY_RUN: z
+      .enum(['true', 'false'])
+      .transform((value) => value === 'true'),
+    OPERATOR_RUN_ID: z.uuid(),
   }),
 ]);
 
@@ -79,6 +111,36 @@ export interface OperatorCommandConfig {
         reason: string;
         type: 'operator.status';
         workspaceId: string;
+      }>
+    | Readonly<{
+        action: 'outcome_unknown' | 'reclaim';
+        actorRef: string;
+        attemptId: string;
+        commandId: string;
+        dryRun: boolean;
+        expectedFenceToken: number;
+        reason: string;
+        type: 'attempt.reconcile';
+        workspaceId: string;
+      }>
+    | Readonly<{
+        actorRef: string;
+        commandId: string;
+        dryRun: boolean;
+        reason: string;
+        runId: string;
+        type: 'due-work.resume' | 'run.cancel';
+        workspaceId: string;
+      }>
+    | Readonly<{
+        actorRef: string;
+        attemptId: string;
+        commandId: string;
+        evidenceKind: string;
+        evidenceRef: Readonly<Record<string, unknown>>;
+        reason: string;
+        type: 'unknown-outcome.record-evidence';
+        workspaceId: string;
       }>;
   readonly database: DatabaseConfig;
   readonly observability: ObservabilityConfig;
@@ -93,16 +155,18 @@ export function parseOperatorCommandConfig(
   const parsed = environmentSchema.parse(environment);
   const database = parseOperatorDatabaseConfig(environment);
   return Object.freeze({
-    command:
-      parsed.OPERATOR_COMMAND_TYPE === 'operator.status'
-        ? Object.freeze({
+    command: (() => {
+      switch (parsed.OPERATOR_COMMAND_TYPE) {
+        case 'operator.status':
+          return Object.freeze({
             actorRef: parsed.OPERATOR_ACTOR_REF,
             commandId: parsed.OPERATOR_COMMAND_ID,
             reason: parsed.OPERATOR_REASON,
             type: parsed.OPERATOR_COMMAND_TYPE,
             workspaceId: parsed.OPERATOR_WORKSPACE_ID,
-          })
-        : Object.freeze({
+          });
+        case 'outbox.redispatch':
+          return Object.freeze({
             actorRef: parsed.OPERATOR_ACTOR_REF,
             commandId: parsed.OPERATOR_COMMAND_ID,
             dryRun: parsed.OPERATOR_DRY_RUN,
@@ -110,7 +174,43 @@ export function parseOperatorCommandConfig(
             reason: parsed.OPERATOR_REASON,
             type: parsed.OPERATOR_COMMAND_TYPE,
             workspaceId: parsed.OPERATOR_WORKSPACE_ID,
-          }),
+          });
+        case 'attempt.reconcile':
+          return Object.freeze({
+            action: parsed.OPERATOR_ATTEMPT_ACTION,
+            actorRef: parsed.OPERATOR_ACTOR_REF,
+            attemptId: parsed.OPERATOR_ATTEMPT_ID,
+            commandId: parsed.OPERATOR_COMMAND_ID,
+            dryRun: parsed.OPERATOR_DRY_RUN,
+            expectedFenceToken: parsed.OPERATOR_EXPECTED_FENCE_TOKEN,
+            reason: parsed.OPERATOR_REASON,
+            type: parsed.OPERATOR_COMMAND_TYPE,
+            workspaceId: parsed.OPERATOR_WORKSPACE_ID,
+          });
+        case 'due-work.resume':
+        case 'run.cancel':
+          return Object.freeze({
+            actorRef: parsed.OPERATOR_ACTOR_REF,
+            commandId: parsed.OPERATOR_COMMAND_ID,
+            dryRun: parsed.OPERATOR_DRY_RUN,
+            reason: parsed.OPERATOR_REASON,
+            runId: parsed.OPERATOR_RUN_ID,
+            type: parsed.OPERATOR_COMMAND_TYPE,
+            workspaceId: parsed.OPERATOR_WORKSPACE_ID,
+          });
+        case 'unknown-outcome.record-evidence':
+          return Object.freeze({
+            actorRef: parsed.OPERATOR_ACTOR_REF,
+            attemptId: parsed.OPERATOR_ATTEMPT_ID,
+            commandId: parsed.OPERATOR_COMMAND_ID,
+            evidenceKind: parsed.OPERATOR_EVIDENCE_KIND,
+            evidenceRef: Object.freeze(parsed.OPERATOR_EVIDENCE_REF),
+            reason: parsed.OPERATOR_REASON,
+            type: parsed.OPERATOR_COMMAND_TYPE,
+            workspaceId: parsed.OPERATOR_WORKSPACE_ID,
+          });
+      }
+    })(),
     database,
     forbiddenRoles: Object.freeze([
       parsed.POSTGRES_API_RUNTIME_USER,

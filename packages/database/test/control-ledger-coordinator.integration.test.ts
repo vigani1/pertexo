@@ -287,6 +287,10 @@ beforeAll(async () => {
     path.join(MIGRATIONS_DIRECTORY, '0062_operator_command_ledger.sql'),
     path.join(priorDirectory, '0062_operator_command_ledger.sql'),
   );
+  await copyFile(
+    path.join(MIGRATIONS_DIRECTORY, '0063_operator_execution_recovery.sql'),
+    path.join(priorDirectory, '0063_operator_execution_recovery.sql'),
+  );
   await expect(
     migrateDatabase(migrationConfig, priorDirectory),
   ).resolves.toEqual([
@@ -307,6 +311,7 @@ beforeAll(async () => {
     '0060_standard_retention_dry_run.sql',
     '0061_operator_outbox_redispatch.sql',
     '0062_operator_command_ledger.sql',
+    '0063_operator_execution_recovery.sql',
   ]);
   maintenance = new Pool({ connectionString: maintenanceUrl, max: 4 });
 }, 120_000);

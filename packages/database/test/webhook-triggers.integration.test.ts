@@ -370,7 +370,7 @@ describe('generic webhook database seam', () => {
 
   it('migrates from zero, reconciles configuration, and exposes no hashes or secrets in health', async () => {
     await expect(checkDatabaseReadiness(readinessPool)).resolves.toMatchObject({
-      migrationHead: '0062_operator_command_ledger.sql',
+      migrationHead: '0063_operator_execution_recovery.sql',
     });
     await expect(
       checkDatabaseReadiness(workerReadinessPool),

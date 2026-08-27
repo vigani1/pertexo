@@ -1,4 +1,10 @@
 export {
+  reconcileUnknownOutcomeEvidence,
+  UnknownOutcomeReconciliationMismatchError,
+  UnknownOutcomeReconciliationStateError,
+  type UnknownOutcomeReconciliationResult,
+} from './unknown-outcome-reconciliation.js';
+export {
   createWorkflowTriggerReconciliationDatabase,
   WorkflowTriggerReconciliationMismatchError,
   WorkflowTriggerStalePublicationError,
@@ -392,11 +398,15 @@ export {
   createOperatorCommandDatabase,
   OperatorCommandConflictError,
   type GetOperatorCommandInput,
+  type GenericOperatorCommandResult,
+  type OperatorRunCommandInput,
   type OperatorCommandDatabase,
   type OperatorCommandDatabaseOptions,
   type OperatorCommandOutcome,
   type OperatorCommandRecord,
   type OperatorCommandResult,
+  type ReconcileOperatorAttemptInput,
+  type RecordUnknownOutcomeEvidenceInput,
   type RedispatchFailedOutboxInput,
 } from './operator-commands.js';
 export type {

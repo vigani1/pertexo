@@ -183,7 +183,15 @@ function previewMaintenanceRuntimeProvider(
       const notificationEnabled = jobNames.includes(
         JOB_NAME.deliverRunFailureNotification,
       );
-      if (!reconciliationEnabled && !notificationEnabled) return undefined;
+      const unknownOutcomeEnabled = jobNames.includes(
+        JOB_NAME.reconcileUnknownOutcome,
+      );
+      if (
+        !reconciliationEnabled &&
+        !notificationEnabled &&
+        !unknownOutcomeEnabled
+      )
+        return undefined;
       if (
         notificationEnabled &&
         dependencies.failureNotificationDelivery === undefined &&
@@ -229,6 +237,7 @@ function previewMaintenanceRuntimeProvider(
           database: config.database,
           observer,
           redisUrl: config.redisUrl,
+          unknownOutcomeReconciliation: unknownOutcomeEnabled,
           ...(failureNotificationDelivery === undefined
             ? {}
             : {
@@ -470,6 +479,17 @@ function dispatchCapabilitiesProvider(
           : [
               {
                 jobName: JOB_NAME.reconcilePreviewAttempt,
+                consumer: previewMaintenanceRuntime.consumer,
+              } as const,
+            ]),
+        ...(previewMaintenanceRuntime === undefined ||
+        !config.outboxDispatcher.enabledJobNames.includes(
+          JOB_NAME.reconcileUnknownOutcome,
+        )
+          ? []
+          : [
+              {
+                jobName: JOB_NAME.reconcileUnknownOutcome,
                 consumer: previewMaintenanceRuntime.consumer,
               } as const,
             ]),

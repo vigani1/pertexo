@@ -13,10 +13,14 @@ describe('operator command runner', () => {
       status: 'completed',
     } as const;
     const database = {
+      cancelRun: vi.fn(),
       checkReadiness: vi.fn().mockResolvedValue(undefined),
       close: vi.fn().mockResolvedValue(undefined),
       getCommand: vi.fn(),
+      reconcileAttempt: vi.fn(),
+      recordUnknownOutcomeEvidence: vi.fn(),
       redispatchFailedOutbox: vi.fn().mockResolvedValue(result),
+      resumeDueWork: vi.fn(),
     };
     const logger = {
       info: vi.fn(),

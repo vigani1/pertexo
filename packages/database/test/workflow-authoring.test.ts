@@ -16,7 +16,9 @@ const integrationUsageMigrationUrl = new URL(
 
 describe('workflow authoring migration contract', () => {
   it('advances the reviewed migration head', () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0062_operator_command_ledger.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe(
+      '0063_operator_execution_recovery.sql',
+    );
   });
 
   it('emits the identifier-only trigger-reconciliation payload', () => {

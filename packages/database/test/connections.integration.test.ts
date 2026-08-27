@@ -563,6 +563,7 @@ describe('connection persistence', () => {
       '0060_standard_retention_dry_run.sql',
       '0061_operator_outbox_redispatch.sql',
       '0062_operator_command_ledger.sql',
+      '0063_operator_execution_recovery.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, priorDatabaseName),
@@ -575,7 +576,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0062_operator_command_ledger.sql',
+        migrationHead: '0063_operator_execution_recovery.sql',
       });
       const bindingSurface = await pool.query<{
         node_column: boolean;
@@ -802,6 +803,7 @@ describe('connection persistence', () => {
       '0060_standard_retention_dry_run.sql',
       '0061_operator_outbox_redispatch.sql',
       '0062_operator_command_ledger.sql',
+      '0063_operator_execution_recovery.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, upgradeDatabaseName),
@@ -814,7 +816,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0062_operator_command_ledger.sql',
+        migrationHead: '0063_operator_execution_recovery.sql',
       });
     } finally {
       await pool.end();
@@ -1801,7 +1803,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0062_operator_command_ledger.sql',
+        migrationHead: '0063_operator_execution_recovery.sql',
       });
       await expect(
         checkDatabaseReadiness(workerReadinessPool, {
@@ -1809,7 +1811,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0062_operator_command_ledger.sql',
+        migrationHead: '0063_operator_execution_recovery.sql',
       });
     } finally {
       await Promise.all([apiReadinessPool.end(), workerReadinessPool.end()]);

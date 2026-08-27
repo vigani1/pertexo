@@ -2016,7 +2016,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0062_operator_command_ledger.sql',
+          migrationHead: '0063_operator_execution_recovery.sql',
           role: 'pertexo_worker',
         });
       } finally {
@@ -2104,6 +2104,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         '0060_standard_retention_dry_run.sql',
         '0061_operator_outbox_redispatch.sql',
         '0062_operator_command_ledger.sql',
+        '0063_operator_execution_recovery.sql',
       ]);
       const workerPool = new Pool({
         connectionString: namedDatabaseUrl(
@@ -2119,7 +2120,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0062_operator_command_ledger.sql',
+          migrationHead: '0063_operator_execution_recovery.sql',
           role: 'pertexo_worker',
         });
         await expect(
@@ -2186,7 +2187,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0062_operator_command_ledger.sql',
+        migrationHead: '0063_operator_execution_recovery.sql',
         role: 'pertexo_worker',
       });
       const catalog = await readinessPool.query<{
@@ -2425,7 +2426,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0062_operator_command_ledger.sql',
+        migrationHead: '0063_operator_execution_recovery.sql',
       });
     } finally {
       await readinessPool.end();
@@ -2611,7 +2612,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         workerRuntimeRole: 'pertexo_worker',
       }),
     ).resolves.toMatchObject({
-      migrationHead: '0062_operator_command_ledger.sql',
+      migrationHead: '0063_operator_execution_recovery.sql',
     });
     await readinessPool.end();
   });

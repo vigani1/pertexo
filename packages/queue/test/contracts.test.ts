@@ -14,6 +14,7 @@ const IDS = {
   publishedVersionId: '66666666-6666-4666-8666-666666666666',
   artifactId: '77777777-7777-4777-8777-777777777777',
   notificationIntentId: '12121212-1212-4212-8212-121212121212',
+  evidenceCommandId: '13131313-1313-4313-8313-131313131313',
   outboxEventId: '88888888-8888-4888-8888-888888888888',
 } as const;
 
@@ -70,6 +71,16 @@ describe('versioned queue contracts', () => {
           previewRunId: IDS.previewRunId,
           previewAttemptId: IDS.previewAttemptId,
           attemptFenceToken: 7,
+          outboxEventId: IDS.outboxEventId,
+        },
+      ],
+      [
+        JOB_NAME.reconcileUnknownOutcome,
+        {
+          schemaVersion: 1,
+          workspaceId: IDS.workspaceId,
+          attemptId: IDS.attemptId,
+          evidenceCommandId: IDS.evidenceCommandId,
           outboxEventId: IDS.outboxEventId,
         },
       ],

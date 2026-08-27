@@ -64,4 +64,35 @@ describe('operator command config', () => {
       workspaceId: '9b7f2d18-938c-47bd-aab8-b9722f7600c4',
     });
   });
+
+  it('parses bounded execution recovery material', () => {
+    const attemptId = randomUUID();
+    const commandId = randomUUID();
+    const workspaceId = randomUUID();
+    expect(
+      parseOperatorCommandConfig({
+        DATABASE_OPERATOR_URL:
+          'postgresql://pertexo_operator:secret@localhost:5432/pertexo',
+        OPERATOR_ACTOR_REF: 'ci-test-operator',
+        OPERATOR_ATTEMPT_ACTION: 'reclaim',
+        OPERATOR_ATTEMPT_ID: attemptId,
+        OPERATOR_COMMAND_ID: commandId,
+        OPERATOR_COMMAND_TYPE: 'attempt.reconcile',
+        OPERATOR_DRY_RUN: 'true',
+        OPERATOR_EXPECTED_FENCE_TOKEN: '7',
+        OPERATOR_REASON: 'inspect expired lease',
+        OPERATOR_WORKSPACE_ID: workspaceId,
+      }).command,
+    ).toEqual({
+      action: 'reclaim',
+      actorRef: 'ci-test-operator',
+      attemptId,
+      commandId,
+      dryRun: true,
+      expectedFenceToken: 7,
+      reason: 'inspect expired lease',
+      type: 'attempt.reconcile',
+      workspaceId,
+    });
+  });
 });

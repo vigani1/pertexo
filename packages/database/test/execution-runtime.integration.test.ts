@@ -29,6 +29,9 @@ import {
   suspendNodeAttemptUntil,
 } from '../src/execution-runtime.js';
 import { migrateDatabase } from '../src/migrations.js';
+import { createOperatorCommandDatabase } from '../src/operator-commands.js';
+import { canonicalOutboxPayloadChecksum } from '../src/outbox.js';
+import { reconcileUnknownOutcomeEvidence } from '../src/unknown-outcome-reconciliation.js';
 
 const migrationUrl =
   process.env.DATABASE_MIGRATION_URL ??
@@ -39,12 +42,18 @@ const apiUrl =
 const workerUrl =
   process.env.DATABASE_WORKER_URL ??
   'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
+const operatorUrl =
+  process.env.DATABASE_OPERATOR_URL ??
+  'postgresql://pertexo_operator:pertexo-local-operator@localhost:5432/pertexo';
 
 const api = createWorkspaceDatabase(
   parseDatabaseConfig({ connectionString: apiUrl, max: 4 }),
 );
 const worker = createWorkspaceDatabase(
   parseDatabaseConfig({ connectionString: workerUrl, max: 4 }),
+);
+const operator = createOperatorCommandDatabase(
+  parseDatabaseConfig({ connectionString: operatorUrl, max: 1 }),
 );
 const workspaceA = randomUUID();
 const workspaceB = randomUUID();
@@ -68,7 +77,8 @@ async function resetFixture(): Promise<void> {
   try {
     await pool.query('set local role pertexo_owner');
     await pool.query(`
-      truncate table app.node_attempts, app.node_runs,
+      truncate table app.operator_commands, app.audit_events,
+        app.node_attempts, app.node_runs,
         app.idempotency_records, app.run_events, app.run_checkpoints,
         app.workflow_runs, app.outbox_events cascade
     `);
@@ -192,7 +202,7 @@ async function startRun(runId: string, admitted = admission()) {
 
 beforeAll(() => migrateDatabase(migrationConfig));
 beforeEach(resetFixture);
-afterAll(() => Promise.all([api.close(), worker.close()]));
+afterAll(() => Promise.all([api.close(), worker.close(), operator.close()]));
 
 describe('durable execution persistence', () => {
   it('stops admission after the durable run deadline and permits only timed_out finalization', async () => {
@@ -1183,6 +1193,180 @@ describe('durable execution persistence', () => {
       `);
       expect(events.rows).toEqual([{ count: 2 }]);
     });
+  });
+
+  it('dry-runs and exactly replays operator recovery of an expired safe attempt', async () => {
+    const runId = await acceptRun();
+    const admitted = await startRun(runId, admission('safe'));
+    await worker.withWorkspace(workspaceA, async (transaction) => {
+      await claimNodeAttempt(transaction, {
+        attemptId: admitted.attemptId,
+        leaseDurationSeconds: 30,
+        workerId: 'operator-reconcile-proof',
+      });
+      await transaction.db.execute(sql`
+        update app.node_attempts set lease_expires_at=clock_timestamp()-interval '1 second'
+        where id=${admitted.attemptId}
+      `);
+    });
+    const dryRun = await operator.reconcileAttempt({
+      action: 'reclaim',
+      actorRef: 'integration-operator',
+      attemptId: admitted.attemptId,
+      commandId: randomUUID(),
+      dryRun: true,
+      expectedFenceToken: 1,
+      reason: 'inspect expired safe attempt',
+      workspaceId: workspaceA,
+    });
+    expect(dryRun.outcome).toBe('would_reclaim');
+    const command = {
+      action: 'reclaim' as const,
+      actorRef: 'integration-operator',
+      attemptId: admitted.attemptId,
+      commandId: randomUUID(),
+      dryRun: false,
+      expectedFenceToken: 1,
+      reason: 'recover expired safe attempt',
+      workspaceId: workspaceA,
+    };
+    const first = await operator.reconcileAttempt(command);
+    const replay = await operator.reconcileAttempt(command);
+    expect(first).toMatchObject({ outcome: 'reclaimed', replayed: false });
+    expect(replay).toEqual({ ...first, replayed: true });
+  });
+
+  it('marks an expired unsafe attempt unknown and appends separate operator evidence', async () => {
+    const runId = await acceptRun();
+    const admitted = await startRun(runId, admission('unsafe'));
+    await worker.withWorkspace(workspaceA, async (transaction) => {
+      await claimNodeAttempt(transaction, {
+        attemptId: admitted.attemptId,
+        leaseDurationSeconds: 30,
+        workerId: 'operator-unknown-proof',
+      });
+      await markNodeAttemptDispatched(transaction, {
+        attemptId: admitted.attemptId,
+        fenceToken: 1,
+        workerId: 'operator-unknown-proof',
+      });
+      await transaction.db.execute(sql`
+        update app.node_attempts set lease_expires_at=clock_timestamp()-interval '1 second'
+        where id=${admitted.attemptId}
+      `);
+    });
+    await expect(
+      operator.reconcileAttempt({
+        action: 'outcome_unknown',
+        actorRef: 'integration-operator',
+        attemptId: admitted.attemptId,
+        commandId: randomUUID(),
+        dryRun: false,
+        expectedFenceToken: 1,
+        reason: 'preserve ambiguous provider truth',
+        workspaceId: workspaceA,
+      }),
+    ).resolves.toMatchObject({ outcome: 'marked_unknown' });
+    const evidenceCommandId = randomUUID();
+    const evidence = await operator.recordUnknownOutcomeEvidence({
+      actorRef: 'integration-operator',
+      attemptId: admitted.attemptId,
+      commandId: evidenceCommandId,
+      evidenceKind: 'provider.case_reference',
+      evidenceRef: { caseRef: 'case-123' },
+      reason: 'record provider investigation reference',
+      workspaceId: workspaceA,
+    });
+    expect(evidence).toMatchObject({ outcome: 'evidence_recorded' });
+    const wake = await worker.withWorkspace(workspaceA, async ({ db }) => {
+      const rows = await db.execute<{
+        payload: Readonly<{
+          attemptId: string;
+          evidenceCommandId: string;
+          outboxEventId: string;
+          schemaVersion: 1;
+          workspaceId: string;
+        }>;
+      }>(sql`
+        select payload from app.outbox_events
+        where job_name='reconcile-unknown-outcome'
+          and aggregate_id=${admitted.attemptId}
+      `);
+      return rows.rows[0]?.payload;
+    });
+    if (wake === undefined) throw new Error('Unknown-outcome wake missing');
+    const delivery = {
+      outboxEventId: wake.outboxEventId,
+      payloadChecksum: canonicalOutboxPayloadChecksum(wake),
+    };
+    await expect(
+      reconcileUnknownOutcomeEvidence(worker, {
+        attemptId: admitted.attemptId,
+        delivery,
+        evidenceCommandId,
+        workspaceId: workspaceA,
+      }),
+    ).resolves.toEqual({ kind: 'processed' });
+    await expect(
+      reconcileUnknownOutcomeEvidence(worker, {
+        attemptId: admitted.attemptId,
+        delivery,
+        evidenceCommandId,
+        workspaceId: workspaceA,
+      }),
+    ).resolves.toEqual({ kind: 'duplicate' });
+    await expect(
+      operator.recordUnknownOutcomeEvidence({
+        actorRef: 'integration-operator',
+        attemptId: admitted.attemptId,
+        commandId: evidenceCommandId,
+        evidenceKind: 'provider.case_reference',
+        evidenceRef: { caseRef: 'case-123' },
+        reason: 'record provider investigation reference',
+        workspaceId: workspaceA,
+      }),
+    ).resolves.toMatchObject({ outcome: 'evidence_recorded', replayed: true });
+  });
+
+  it('resumes due work and requests cancellation through normal coordinator wakeups', async () => {
+    const dueRunId = await acceptRun();
+    const admitted = await startRun(dueRunId, admission('safe'));
+    await worker.withWorkspace(workspaceA, async (transaction) => {
+      await claimNodeAttempt(transaction, {
+        attemptId: admitted.attemptId,
+        leaseDurationSeconds: 30,
+        workerId: 'operator-due-proof',
+      });
+      await scheduleNodeAttemptRetry(transaction, {
+        attemptId: admitted.attemptId,
+        dueAt: new Date(0),
+        fenceToken: 1,
+        safeErrorCode: 'provider.busy',
+        workerId: 'operator-due-proof',
+      });
+    });
+    await expect(
+      operator.resumeDueWork({
+        actorRef: 'integration-operator',
+        commandId: randomUUID(),
+        dryRun: false,
+        reason: 'restore missed due wakeup',
+        runId: dueRunId,
+        workspaceId: workspaceA,
+      }),
+    ).resolves.toMatchObject({ outcome: 'resumed' });
+
+    const cancelRunId = await acceptRun();
+    await expect(
+      operator.cancelRun({
+        actorRef: 'integration-operator',
+        commandId: randomUUID(),
+        dryRun: false,
+        reason: 'stop affected execution',
+        runId: cancelRunId,
+        workspaceId: workspaceA,
+      }),
+    ).resolves.toMatchObject({ outcome: 'cancel_requested' });
   });
 
   it('forces workspace isolation and exposes no mutation path to the API for attempt history', async () => {

@@ -8,7 +8,7 @@ import {
   type CompatibilityReleaseExpectationSet,
 } from './compatibility-release.js';
 
-export const EXPECTED_MIGRATION_HEAD = '0062_operator_command_ledger.sql';
+export const EXPECTED_MIGRATION_HEAD = '0063_operator_execution_recovery.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{

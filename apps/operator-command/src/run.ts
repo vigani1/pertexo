@@ -3,6 +3,7 @@ import type {
   OperatorCommandRecord,
   OperatorCommandResult,
   RedispatchFailedOutboxInput,
+  GenericOperatorCommandResult,
 } from '@pertexo/database';
 import type { StructuredLogger } from '@pertexo/observability/logging';
 import type { TelemetryLifecycle } from '@pertexo/observability/telemetry';
@@ -18,6 +19,36 @@ export interface OperatorCommandResources {
         commandId: string;
         reason: string;
         type: 'operator.status';
+        workspaceId: string;
+      }>
+    | Readonly<{
+        action: 'outcome_unknown' | 'reclaim';
+        actorRef: string;
+        attemptId: string;
+        commandId: string;
+        dryRun: boolean;
+        expectedFenceToken: number;
+        reason: string;
+        type: 'attempt.reconcile';
+        workspaceId: string;
+      }>
+    | Readonly<{
+        actorRef: string;
+        commandId: string;
+        dryRun: boolean;
+        reason: string;
+        runId: string;
+        type: 'due-work.resume' | 'run.cancel';
+        workspaceId: string;
+      }>
+    | Readonly<{
+        actorRef: string;
+        attemptId: string;
+        commandId: string;
+        evidenceKind: string;
+        evidenceRef: Readonly<Record<string, unknown>>;
+        reason: string;
+        type: 'unknown-outcome.record-evidence';
         workspaceId: string;
       }>;
   readonly database: OperatorCommandDatabase;
@@ -49,34 +80,72 @@ async function boundedCleanup(
 
 export async function runOperatorCommand(
   resources: OperatorCommandResources,
-): Promise<OperatorCommandResult | OperatorCommandRecord | null> {
-  let result: OperatorCommandResult | OperatorCommandRecord | null | undefined;
+): Promise<
+  | OperatorCommandResult
+  | GenericOperatorCommandResult
+  | OperatorCommandRecord
+  | null
+> {
+  let result:
+    | OperatorCommandResult
+    | GenericOperatorCommandResult
+    | OperatorCommandRecord
+    | null
+    | undefined;
   let operationError: unknown;
   try {
     resources.telemetry.start();
     resources.signal.throwIfAborted();
     await resources.database.checkReadiness(resources.signal);
-    result =
-      resources.command.type === 'operator.status'
-        ? await resources.database.getCommand({
-            actorRef: resources.command.actorRef,
-            commandId: resources.command.commandId,
-            reason: resources.command.reason,
-            signal: resources.signal,
-            workspaceId: resources.command.workspaceId,
-          })
-        : await resources.database.redispatchFailedOutbox({
-            actorRef: resources.command.actorRef,
-            commandId: resources.command.commandId,
-            dryRun: resources.command.dryRun,
-            outboxEventId: resources.command.outboxEventId,
-            reason: resources.command.reason,
-            signal: resources.signal,
-            workspaceId: resources.command.workspaceId,
-          });
+    switch (resources.command.type) {
+      case 'operator.status':
+        result = await resources.database.getCommand({
+          actorRef: resources.command.actorRef,
+          commandId: resources.command.commandId,
+          reason: resources.command.reason,
+          signal: resources.signal,
+          workspaceId: resources.command.workspaceId,
+        });
+        break;
+      case 'outbox.redispatch':
+        result = await resources.database.redispatchFailedOutbox({
+          actorRef: resources.command.actorRef,
+          commandId: resources.command.commandId,
+          dryRun: resources.command.dryRun,
+          outboxEventId: resources.command.outboxEventId,
+          reason: resources.command.reason,
+          signal: resources.signal,
+          workspaceId: resources.command.workspaceId,
+        });
+        break;
+      case 'attempt.reconcile':
+        result = await resources.database.reconcileAttempt({
+          ...resources.command,
+          signal: resources.signal,
+        });
+        break;
+      case 'due-work.resume':
+        result = await resources.database.resumeDueWork({
+          ...resources.command,
+          signal: resources.signal,
+        });
+        break;
+      case 'run.cancel':
+        result = await resources.database.cancelRun({
+          ...resources.command,
+          signal: resources.signal,
+        });
+        break;
+      case 'unknown-outcome.record-evidence':
+        result = await resources.database.recordUnknownOutcomeEvidence({
+          ...resources.command,
+          signal: resources.signal,
+        });
+        break;
+    }
     resources.logger.info('operator_command.completed', {
       commandType: resources.command.type,
-      ...(resources.command.type === 'outbox.redispatch'
+      ...('dryRun' in resources.command
         ? { dryRun: resources.command.dryRun }
         : {}),
       outcome: result === null ? 'not_found' : result.outcome,
@@ -90,7 +159,7 @@ export async function runOperatorCommand(
       'operator_command.failed',
       {
         commandType: resources.command.type,
-        ...(resources.command.type === 'outbox.redispatch'
+        ...('dryRun' in resources.command
           ? { dryRun: resources.command.dryRun }
           : {}),
         errorType: error instanceof Error ? error.name : typeof error,

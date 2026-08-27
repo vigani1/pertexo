@@ -21,6 +21,12 @@ import {
 } from './preview-reconciliation-runtime.js';
 import type { PreviewTelemetry } from './preview-telemetry.js';
 import {
+  createDatabaseUnknownOutcomeReconciliationStore,
+  createUnknownOutcomeReconciliationHandler,
+  mapUnknownOutcomeReconciliationError,
+  type UnknownOutcomeReconciliationStore,
+} from './unknown-outcome-reconciliation-runtime.js';
+import {
   createFailureNotificationHandler,
   type FailureNotificationDeliveryCapability,
 } from './failure-notification-handler.js';
@@ -36,6 +42,7 @@ export async function createPreviewMaintenanceRuntime(
     observer?: QueueConsumerObserver;
     redisUrl: string;
     failureNotificationDelivery?: FailureNotificationDeliveryCapability;
+    unknownOutcomeReconciliation?: boolean;
   }>,
   dependencies: Readonly<{
     consumerFactory?: typeof createQueueConsumer;
@@ -44,6 +51,9 @@ export async function createPreviewMaintenanceRuntime(
     };
     previewTelemetry?: PreviewTelemetry;
     failureNotificationStore?: FailureNotificationStore;
+    unknownOutcomeStore?: UnknownOutcomeReconciliationStore & {
+      close?: () => Promise<void>;
+    };
   }> = {},
 ): Promise<PreviewMaintenanceRuntime> {
   const reconciliationStore =
@@ -54,6 +64,11 @@ export async function createPreviewMaintenanceRuntime(
       ? undefined
       : (dependencies.failureNotificationStore ??
         createFailureNotificationStore(options.database));
+  const unknownOutcomeStore =
+    options.unknownOutcomeReconciliation === true
+      ? (dependencies.unknownOutcomeStore ??
+        createDatabaseUnknownOutcomeReconciliationStore(options.database))
+      : undefined;
   const failureNotification =
     options.failureNotificationDelivery === undefined ||
     failureNotificationStore === undefined
@@ -69,6 +84,10 @@ export async function createPreviewMaintenanceRuntime(
     reconciliationStore,
     dependencies.previewTelemetry,
   );
+  const unknownOutcomeReconciliation =
+    unknownOutcomeStore === undefined
+      ? undefined
+      : createUnknownOutcomeReconciliationHandler(unknownOutcomeStore);
   let consumer: QueueConsumer;
   try {
     consumer = (dependencies.consumerFactory ?? createQueueConsumer)({
@@ -80,6 +99,18 @@ export async function createPreviewMaintenanceRuntime(
             await reconciliation.handle(delivery, context);
           } catch (error: unknown) {
             throw mapPreviewReconciliationError(error);
+          }
+          return;
+        }
+        if (delivery.name === JOB_NAME.reconcileUnknownOutcome) {
+          if (unknownOutcomeReconciliation === undefined)
+            throw new InvalidQueueDeliveryError(
+              'Unknown-outcome reconciliation is not enabled',
+            );
+          try {
+            await unknownOutcomeReconciliation.handle(delivery, context);
+          } catch (error: unknown) {
+            throw mapUnknownOutcomeReconciliationError(error);
           }
           return;
         }
@@ -101,6 +132,7 @@ export async function createPreviewMaintenanceRuntime(
   } catch (error: unknown) {
     await Promise.allSettled([
       reconciliationStore.close?.(),
+      unknownOutcomeStore?.close?.(),
       failureNotificationStore?.close(),
     ]);
     throw error;
@@ -137,6 +169,7 @@ export async function createPreviewMaintenanceRuntime(
           consumer.close(),
           recoveryLoop,
           reconciliationStore.close?.(),
+          unknownOutcomeStore?.close?.(),
           failureNotificationStore?.close(),
         ]);
         const failure = results.find((result) => result.status === 'rejected');
