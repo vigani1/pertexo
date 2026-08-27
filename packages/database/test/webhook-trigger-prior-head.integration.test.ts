@@ -94,6 +94,7 @@ describe('trigger hardening prior-head migration', () => {
       '0061_operator_outbox_redispatch.sql',
       '0062_operator_command_ledger.sql',
       '0063_operator_execution_recovery.sql',
+      '0064_operator_trigger_reconciliation.sql',
     ]);
   });
 });

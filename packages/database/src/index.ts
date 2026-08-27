@@ -400,6 +400,7 @@ export {
   type GetOperatorCommandInput,
   type GenericOperatorCommandResult,
   type OperatorRunCommandInput,
+  type OperatorWorkflowCommandInput,
   type OperatorCommandDatabase,
   type OperatorCommandDatabaseOptions,
   type OperatorCommandOutcome,

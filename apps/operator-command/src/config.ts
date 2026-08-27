@@ -92,6 +92,13 @@ const environmentSchema = z.discriminatedUnion('OPERATOR_COMMAND_TYPE', [
       .transform((value) => value === 'true'),
     OPERATOR_RUN_ID: z.uuid(),
   }),
+  baseEnvironmentSchema.extend({
+    OPERATOR_COMMAND_TYPE: z.literal('trigger.reconcile'),
+    OPERATOR_DRY_RUN: z
+      .enum(['true', 'false'])
+      .transform((value) => value === 'true'),
+    OPERATOR_WORKFLOW_ID: z.uuid(),
+  }),
 ]);
 
 export interface OperatorCommandConfig {
@@ -140,6 +147,15 @@ export interface OperatorCommandConfig {
         evidenceRef: Readonly<Record<string, unknown>>;
         reason: string;
         type: 'unknown-outcome.record-evidence';
+        workspaceId: string;
+      }>
+    | Readonly<{
+        actorRef: string;
+        commandId: string;
+        dryRun: boolean;
+        reason: string;
+        type: 'trigger.reconcile';
+        workflowId: string;
         workspaceId: string;
       }>;
   readonly database: DatabaseConfig;
@@ -207,6 +223,16 @@ export function parseOperatorCommandConfig(
             evidenceRef: Object.freeze(parsed.OPERATOR_EVIDENCE_REF),
             reason: parsed.OPERATOR_REASON,
             type: parsed.OPERATOR_COMMAND_TYPE,
+            workspaceId: parsed.OPERATOR_WORKSPACE_ID,
+          });
+        case 'trigger.reconcile':
+          return Object.freeze({
+            actorRef: parsed.OPERATOR_ACTOR_REF,
+            commandId: parsed.OPERATOR_COMMAND_ID,
+            dryRun: parsed.OPERATOR_DRY_RUN,
+            reason: parsed.OPERATOR_REASON,
+            type: parsed.OPERATOR_COMMAND_TYPE,
+            workflowId: parsed.OPERATOR_WORKFLOW_ID,
             workspaceId: parsed.OPERATOR_WORKSPACE_ID,
           });
       }

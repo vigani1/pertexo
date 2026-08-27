@@ -34,7 +34,7 @@ describe('node compatibility release persistence', () => {
     );
 
     expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0063_operator_execution_recovery.sql',
+      '0064_operator_trigger_reconciliation.sql',
     );
     expect(migration).toContain('CREATE TABLE app.node_compatibility_releases');
     expect(migration).toContain('CREATE TABLE app.node_compatibility_current');

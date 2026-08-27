@@ -12,7 +12,7 @@ const migrationUrl = new URL(
 describe('standard retention classes migration', () => {
   it('keeps all destructive retention behind bounded maintenance functions', async () => {
     expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0063_operator_execution_recovery.sql',
+      '0064_operator_trigger_reconciliation.sql',
     );
     const migration = await readFile(migrationUrl, 'utf8');
 

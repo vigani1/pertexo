@@ -44,6 +44,9 @@ const reconcileAttemptInputSchema = baseCommandInputSchema
 const targetRunInputSchema = baseCommandInputSchema
   .extend({ runId: z.uuid() })
   .strict();
+const targetWorkflowInputSchema = baseCommandInputSchema
+  .extend({ workflowId: z.uuid() })
+  .strict();
 const unknownEvidenceInputSchema = baseCommandInputSchema
   .omit({ dryRun: true })
   .extend({
@@ -61,6 +64,9 @@ export type ReconcileOperatorAttemptInput = Readonly<
 >;
 export type OperatorRunCommandInput = Readonly<
   z.input<typeof targetRunInputSchema>
+>;
+export type OperatorWorkflowCommandInput = Readonly<
+  z.input<typeof targetWorkflowInputSchema>
 >;
 export type RecordUnknownOutcomeEvidenceInput = Readonly<
   z.input<typeof unknownEvidenceInputSchema>
@@ -136,6 +142,9 @@ export interface OperatorCommandDatabase {
   ): Promise<OperatorCommandResult>;
   resumeDueWork(
     input: OperatorRunCommandInput,
+  ): Promise<GenericOperatorCommandResult>;
+  retryTriggerReconciliation(
+    input: OperatorWorkflowCommandInput,
   ): Promise<GenericOperatorCommandResult>;
 }
 
@@ -283,6 +292,7 @@ export function createOperatorCommandDatabase(
           can_command: boolean;
           can_execution_commands: boolean;
           can_get: boolean;
+          can_trigger_command: boolean;
           direct_audit: boolean;
           direct_command: boolean;
           direct_evidence: boolean;
@@ -323,6 +333,7 @@ export function createOperatorCommandDatabase(
             and has_function_privilege(current_user,'app.record_operator_unknown_outcome_evidence(uuid,uuid,uuid,character varying,jsonb,character varying,character varying)','EXECUTE')
             and has_function_privilege(current_user,'app.cancel_operator_run(uuid,uuid,uuid,character varying,character varying,boolean)','EXECUTE')) can_execution_commands,
           has_function_privilege(current_user,'app.get_operator_command(uuid,uuid,character varying,character varying)','EXECUTE') can_get,
+          has_function_privilege(current_user,'app.retry_operator_trigger_reconciliation(uuid,uuid,uuid,character varying,character varying,boolean)','EXECUTE') can_trigger_command,
           has_function_privilege(current_user,'app.execute_operator_execution_command(uuid,character varying,uuid,uuid,bigint,character varying,character varying,jsonb,character varying,character varying,boolean)','EXECUTE') private_command,
           (select name from pertexo_internal.schema_migrations order by name desc limit 1) migration_head
         from pg_roles role where role.rolname=current_user`,
@@ -348,6 +359,7 @@ export function createOperatorCommandDatabase(
           row.private_command ||
           !row.can_command ||
           !row.can_execution_commands ||
+          !row.can_trigger_command ||
           !row.can_get
         ) {
           throw new Error('Operator command database boundary is incompatible');
@@ -557,6 +569,21 @@ export function createOperatorCommandDatabase(
           parsed.commandId,
           parsed.workspaceId,
           parsed.runId,
+          parsed.actorRef,
+          parsed.reason,
+          parsed.dryRun,
+        ],
+        parsed.signal,
+      );
+    },
+    retryTriggerReconciliation: async (input: OperatorWorkflowCommandInput) => {
+      const parsed = targetWorkflowInputSchema.parse(input);
+      return executeCommand(
+        'select * from app.retry_operator_trigger_reconciliation($1::uuid,$2::uuid,$3::uuid,$4::varchar,$5::varchar,$6::boolean)',
+        [
+          parsed.commandId,
+          parsed.workspaceId,
+          parsed.workflowId,
           parsed.actorRef,
           parsed.reason,
           parsed.dryRun,

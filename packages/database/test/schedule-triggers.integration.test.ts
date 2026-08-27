@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { parseDatabaseConfig } from '../src/config.js';
 import { createIdentityWorkspaceDatabase } from '../src/identity-workspace.js';
 import { migrateDatabase } from '../src/migrations.js';
+import { createOperatorCommandDatabase } from '../src/operator-commands.js';
 import { canonicalOutboxPayloadChecksum } from '../src/outbox.js';
 import { checkDatabaseReadiness } from '../src/readiness.js';
 import {
@@ -30,6 +31,9 @@ const apiBaseUrl =
 const workerBaseUrl =
   process.env.DATABASE_WORKER_URL ??
   'postgresql://pertexo_worker:pertexo-local-worker@localhost:5432/pertexo';
+const operatorBaseUrl =
+  process.env.DATABASE_OPERATOR_URL ??
+  'postgresql://pertexo_operator:pertexo-local-operator@localhost:5432/pertexo';
 const databaseName = `pertexo_test_schedule_${randomUUID().replaceAll('-', '')}`;
 const url = (base: string): string => {
   const parsed = new URL(base);
@@ -77,6 +81,9 @@ const scannerTwo = createScheduleTriggerScanner(
 );
 const owner = new Pool({ connectionString: url(migrationBaseUrl), max: 1 });
 const worker = new Pool({ connectionString: url(workerBaseUrl), max: 1 });
+const operator = createOperatorCommandDatabase(
+  parseDatabaseConfig({ connectionString: url(operatorBaseUrl), max: 1 }),
+);
 
 async function ownerQuery<Row extends QueryResultRow = QueryResultRow>(
   statement: string,
@@ -127,7 +134,7 @@ beforeAll(async () => {
     await admin.query(`create database "${databaseName}" owner pertexo_owner`);
     await admin.query(`revoke all on database "${databaseName}" from public`);
     await admin.query(
-      `grant connect on database "${databaseName}" to pertexo_migration,pertexo_api,pertexo_worker,pertexo_dispatcher`,
+      `grant connect on database "${databaseName}" to pertexo_migration,pertexo_api,pertexo_worker,pertexo_dispatcher,pertexo_operator`,
     );
   } finally {
     await admin.end();
@@ -244,6 +251,7 @@ afterAll(async () => {
   await reconciliation.close();
   await schedules.close();
   await identity.close();
+  await operator.close();
   await worker.end();
   await owner.end();
   const admin = new Pool({ connectionString: adminUrl, max: 1 });
@@ -255,6 +263,58 @@ afterAll(async () => {
 });
 
 describe('schedule trigger PostgreSQL slice', () => {
+  it('dry-runs and exactly replays a fresh operator reconciliation request', async () => {
+    const dryRun = await operator.retryTriggerReconciliation({
+      actorRef: 'integration-operator',
+      commandId: randomUUID(),
+      dryRun: true,
+      reason: 'inspect trigger reconciliation retry',
+      workflowId,
+      workspaceId,
+    });
+    expect(dryRun).toMatchObject({ outcome: 'would_retry', replayed: false });
+
+    const command = {
+      actorRef: 'integration-operator',
+      commandId: randomUUID(),
+      dryRun: false,
+      reason: 'retry trigger reconciliation after provider recovery',
+      workflowId,
+      workspaceId,
+    } as const;
+    const first = await operator.retryTriggerReconciliation(command);
+    const replay = await operator.retryTriggerReconciliation(command);
+    expect(first).toMatchObject({
+      outcome: 'retry_requested',
+      replayed: false,
+    });
+    expect(replay).toEqual({ ...first, replayed: true });
+
+    const outboxEventId = first.result.outboxEventId;
+    expect(outboxEventId).toEqual(expect.any(String));
+    const event = await ownerQuery<{
+      job_name: string;
+      payload: Record<string, unknown>;
+      payload_checksum: string;
+    }>(
+      `select job_name,payload,payload_checksum from app.outbox_events where id=$1`,
+      [outboxEventId],
+    );
+    expect(event.rows[0]).toMatchObject({
+      job_name: 'reconcile-workflow-triggers',
+      payload: {
+        outboxEventId,
+        publishedVersionId: versionId,
+        schemaVersion: 1,
+        workflowId,
+        workspaceId,
+      },
+    });
+    expect(event.rows[0]?.payload_checksum).toBe(
+      canonicalOutboxPayloadChecksum(event.rows[0]?.payload),
+    );
+  });
+
   it('admits one due schedule per workspace and backoff prevents limit-one starvation', async () => {
     const otherWorkspaceId = randomUUID();
     const otherWorkflowId = randomUUID();
@@ -429,7 +489,7 @@ describe('schedule trigger PostgreSQL slice', () => {
 
   it('recovers an expired lease, excludes competing scanners, and commits one acceptance with outbox', async () => {
     await expect(checkDatabaseReadiness(worker)).resolves.toMatchObject({
-      migrationHead: '0063_operator_execution_recovery.sql',
+      migrationHead: '0064_operator_trigger_reconciliation.sql',
       role: 'pertexo_worker',
     });
     const crashed = await worker.query(

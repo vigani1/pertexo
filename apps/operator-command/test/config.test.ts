@@ -95,4 +95,31 @@ describe('operator command config', () => {
       workspaceId,
     });
   });
+
+  it('parses a trigger reconciliation retry', () => {
+    const commandId = randomUUID();
+    const workflowId = randomUUID();
+    const workspaceId = randomUUID();
+    expect(
+      parseOperatorCommandConfig({
+        DATABASE_OPERATOR_URL:
+          'postgresql://pertexo_operator:secret@localhost:5432/pertexo',
+        OPERATOR_ACTOR_REF: 'ci-test-operator',
+        OPERATOR_COMMAND_ID: commandId,
+        OPERATOR_COMMAND_TYPE: 'trigger.reconcile',
+        OPERATOR_DRY_RUN: 'false',
+        OPERATOR_REASON: 'retry failed trigger projection',
+        OPERATOR_WORKFLOW_ID: workflowId,
+        OPERATOR_WORKSPACE_ID: workspaceId,
+      }).command,
+    ).toEqual({
+      actorRef: 'ci-test-operator',
+      commandId,
+      dryRun: false,
+      reason: 'retry failed trigger projection',
+      type: 'trigger.reconcile',
+      workflowId,
+      workspaceId,
+    });
+  });
 });

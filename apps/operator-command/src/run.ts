@@ -50,6 +50,15 @@ export interface OperatorCommandResources {
         reason: string;
         type: 'unknown-outcome.record-evidence';
         workspaceId: string;
+      }>
+    | Readonly<{
+        actorRef: string;
+        commandId: string;
+        dryRun: boolean;
+        reason: string;
+        type: 'trigger.reconcile';
+        workflowId: string;
+        workspaceId: string;
       }>;
   readonly database: OperatorCommandDatabase;
   readonly logger: StructuredLogger;
@@ -138,6 +147,12 @@ export async function runOperatorCommand(
         break;
       case 'unknown-outcome.record-evidence':
         result = await resources.database.recordUnknownOutcomeEvidence({
+          ...resources.command,
+          signal: resources.signal,
+        });
+        break;
+      case 'trigger.reconcile':
+        result = await resources.database.retryTriggerReconciliation({
           ...resources.command,
           signal: resources.signal,
         });

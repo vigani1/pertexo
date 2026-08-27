@@ -12,7 +12,7 @@ const migrationUrl = new URL(
 describe('standard retention dry-run migration', () => {
   it('freezes typed stage bounds behind fenced maintenance-only pages', async () => {
     expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0063_operator_execution_recovery.sql',
+      '0064_operator_trigger_reconciliation.sql',
     );
     const migration = await readFile(migrationUrl, 'utf8');
 

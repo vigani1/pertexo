@@ -564,6 +564,7 @@ describe('connection persistence', () => {
       '0061_operator_outbox_redispatch.sql',
       '0062_operator_command_ledger.sql',
       '0063_operator_execution_recovery.sql',
+      '0064_operator_trigger_reconciliation.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, priorDatabaseName),
@@ -576,7 +577,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0063_operator_execution_recovery.sql',
+        migrationHead: '0064_operator_trigger_reconciliation.sql',
       });
       const bindingSurface = await pool.query<{
         node_column: boolean;
@@ -804,6 +805,7 @@ describe('connection persistence', () => {
       '0061_operator_outbox_redispatch.sql',
       '0062_operator_command_ledger.sql',
       '0063_operator_execution_recovery.sql',
+      '0064_operator_trigger_reconciliation.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, upgradeDatabaseName),
@@ -816,7 +818,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0063_operator_execution_recovery.sql',
+        migrationHead: '0064_operator_trigger_reconciliation.sql',
       });
     } finally {
       await pool.end();
@@ -1803,7 +1805,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0063_operator_execution_recovery.sql',
+        migrationHead: '0064_operator_trigger_reconciliation.sql',
       });
       await expect(
         checkDatabaseReadiness(workerReadinessPool, {
@@ -1811,7 +1813,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0063_operator_execution_recovery.sql',
+        migrationHead: '0064_operator_trigger_reconciliation.sql',
       });
     } finally {
       await Promise.all([apiReadinessPool.end(), workerReadinessPool.end()]);

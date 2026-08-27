@@ -3659,6 +3659,14 @@ Current evidence:
   including positive mutation, dry-run, exact replay, and append-only evidence
   paths. Run replay, trigger reconciliation retry, and retention/purge reruns
   remain open, so the broad operator-command checklist stays unchecked.
+- Migration `0064_operator_trigger_reconciliation.sql` adds the narrow,
+  dry-runnable `trigger.reconcile` command. It locks the active workflow,
+  captures its current published version, and requests a fresh normal
+  `reconcile-workflow-triggers` delivery without mutating trigger projections or
+  granting trigger-table authority to `pertexo_operator`. Exact command replay
+  returns the original outbox identity, conflicting reuse is rejected, and the
+  existing trigger worker remains the sole reconciliation authority. Run replay
+  and maintenance-owned retention/purge reruns remain open.
 - Accepted ADR 028 defines a repository-owned ECS workload manifest and migration
   release-job contract. The multi-stage production image runs as UID/GID 10001
   under `tini` with production dependencies only. Rendered Fargate definitions
