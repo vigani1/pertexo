@@ -1,15 +1,18 @@
 {
   "annotations": { "list": [] },
+  "description": "Repository-emitted user-impact, durable-backlog, worker, trigger, provider, artifact, and destructive-maintenance telemetry. Infrastructure service exporters are intentionally out of scope until configured.",
   "editable": false,
   "panels": [
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Five-minute availability for SLO-eligible API traffic; client-invalid, authorization, and tenant-quota responses are excluded by the emitter.",
       "fieldConfig": { "defaults": { "unit": "percentunit" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "gridPos": { "h": 7, "w": 6, "x": 0, "y": 0 },
       "id": 1,
       "targets": [
         {
           "expr": "1 - (sum(rate(pertexo_api_availability_request_count_total{outcome=\"eligible_failure\"}[5m])) / clamp_min(sum(rate(pertexo_api_availability_request_count_total{outcome=~\"eligible_success|eligible_failure\"}[5m])), 0.001))",
+          "legendFormat": "availability",
           "refId": "A"
         }
       ],
@@ -18,16 +21,51 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "API p95 request latency grouped only by bounded route template and method.",
       "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+      "gridPos": { "h": 7, "w": 9, "x": 6, "y": 0 },
       "id": 2,
       "targets": [
         {
+          "expr": "histogram_quantile(0.95, sum by (le, route, method) (rate(pertexo_api_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "{{method}} {{route}}",
+          "refId": "A"
+        }
+      ],
+      "title": "API p95 Latency",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Request throughput by response class and the finite public problem vocabulary.",
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "gridPos": { "h": 7, "w": 9, "x": 15, "y": 0 },
+      "id": 3,
+      "targets": [
+        {
+          "expr": "sum by (status_class, problem_code) (rate(pertexo_api_request_count_total[5m]))",
+          "legendFormat": "{{status_class}} {{problem_code}}",
+          "refId": "A"
+        }
+      ],
+      "title": "API Request Outcomes",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Oldest durable outbox row and oldest waiting queue job; these ages expose user-visible accepted-work delay.",
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 7 },
+      "id": 4,
+      "targets": [
+        {
           "expr": "max(pertexo_transport_outbox_oldest_age_seconds)",
+          "legendFormat": "outbox",
           "refId": "A"
         },
         {
           "expr": "max by (queue_name) (pertexo_transport_queue_oldest_job_age_seconds)",
+          "legendFormat": "queue {{queue_name}}",
           "refId": "B"
         }
       ],
@@ -36,17 +74,220 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "fieldConfig": { "defaults": {}, "overrides": [] },
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
-      "id": 3,
+      "description": "Transport handler completion and failure rate by bounded queue and job contract.",
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 7 },
+      "id": 5,
       "targets": [
         {
-          "expr": "sum by (retention_kind, outcome) (rate(pertexo_retention_batch_count_total[15m]))",
+          "expr": "sum by (queue_name, job_name, outcome) (rate(pertexo_transport_handler_executions_total[5m]))",
+          "legendFormat": "{{queue_name}} {{job_name}} {{outcome}}",
           "refId": "A"
+        }
+      ],
+      "title": "Worker Handler Outcomes",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "BullMQ stalls, forced drains, and worker process starts are resource-safety and churn signals; they are not substitutes for CPU or memory telemetry.",
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 15 },
+      "id": 6,
+      "targets": [
+        {
+          "expr": "sum by (queue_name) (increase(pertexo_transport_queue_stalls_total[15m]))",
+          "legendFormat": "stalls {{queue_name}}",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (queue_name) (increase(pertexo_transport_consumer_lifecycle_total{event=\"drain_forced\"}[15m]))",
+          "legendFormat": "forced drain {{queue_name}}",
+          "refId": "B"
+        },
+        {
+          "expr": "sum(increase(pertexo_worker_process_starts_total[15m]))",
+          "legendFormat": "worker starts",
+          "refId": "C"
+        }
+      ],
+      "title": "Worker Safety And Churn",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Observed schedule-to-scan lag and trigger reconciliation failures from the trigger runtime.",
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 15 },
+      "id": 7,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(pertexo_schedule_lag_seconds_bucket[10m])))",
+          "legendFormat": "schedule lag p95",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(increase(pertexo_trigger_reconciliation_count_total{outcome=\"failed\"}[10m]))",
+          "legendFormat": "reconciliation failures",
+          "refId": "B"
+        }
+      ],
+      "title": "Trigger Lag And Reconciliation",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Webhook delivery decisions and degraded ingress observations using bounded outcomes only.",
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 15 },
+      "id": 8,
+      "targets": [
+        {
+          "expr": "sum by (outcome) (rate(pertexo_webhook_delivery_count_total[5m]))",
+          "legendFormat": "delivery {{outcome}}",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(increase(pertexo_webhook_health_count_total{status=\"degraded\"}[10m]))",
+          "legendFormat": "degraded",
+          "refId": "B"
+        }
+      ],
+      "title": "Webhook User Impact",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Provider request failures and explicit rate-limit outcomes by the repository's finite provider and operation dimensions.",
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 23 },
+      "id": 9,
+      "targets": [
+        {
+          "expr": "sum by (provider_key, operation_key, outcome) (rate(pertexo_provider_request_count_total[5m]))",
+          "legendFormat": "{{provider_key}} {{operation_key}} {{outcome}}",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (provider_key, operation_key) (increase(pertexo_provider_rate_limit_count_total[15m]))",
+          "legendFormat": "rate limit {{provider_key}} {{operation_key}}",
+          "refId": "B"
+        }
+      ],
+      "title": "Provider Outcomes And Rate Limits",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Current artifact metadata count and bytes by finite lifecycle status; this does not claim object-store service health.",
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 23 },
+      "id": 10,
+      "targets": [
+        {
+          "expr": "sum by (status) (pertexo_transport_artifact_count)",
+          "legendFormat": "count {{status}}",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (status) (pertexo_transport_artifact_bytes)",
+          "legendFormat": "bytes {{status}}",
+          "refId": "B"
+        }
+      ],
+      "title": "Artifact Inventory",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Retention batch throughput and accurately attributed operation failures.",
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 31 },
+      "id": 11,
+      "targets": [
+        {
+          "expr": "sum by (retention_kind, mode, outcome) (rate(pertexo_retention_batch_count_total[15m]))",
+          "legendFormat": "{{retention_kind}} {{mode}} {{outcome}}",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (operation) (increase(pertexo_retention_operation_failure_count_total[15m]))",
+          "legendFormat": "failure {{operation}}",
+          "refId": "B"
         }
       ],
       "title": "Retention Outcomes",
       "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Workspace purge processing attempts and latency. Workspace and job identifiers are intentionally absent.",
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 31 },
+      "id": 12,
+      "targets": [
+        {
+          "expr": "sum by (outcome) (increase(pertexo_purge_batch_count_total[15m]))",
+          "legendFormat": "{{outcome}}",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(pertexo_purge_batch_duration_seconds_bucket[15m])))",
+          "legendFormat": "duration p95",
+          "refId": "B"
+        }
+      ],
+      "title": "Workspace Purge",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Operator maintenance rerun command processing, including idle polls, by bounded target type and normalized outcome.",
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 31 },
+      "id": 13,
+      "targets": [
+        {
+          "expr": "sum by (target_type, outcome) (increase(pertexo_maintenance_operator_rerun_count_total[15m]))",
+          "legendFormat": "{{target_type}} {{outcome}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Operator Maintenance Reruns",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Lifecycle command outcomes and restore control-ledger reconciliation results.",
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 39 },
+      "id": 14,
+      "targets": [
+        {
+          "expr": "sum by (command_type, outcome) (increase(pertexo_lifecycle_command_process_count_total[15m]))",
+          "legendFormat": "lifecycle {{command_type}} {{outcome}}",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (outcome) (increase(pertexo_control_ledger_reconciliation_count_total[15m]))",
+          "legendFormat": "ledger {{outcome}}",
+          "refId": "B"
+        }
+      ],
+      "title": "Lifecycle And Ledger Safety",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Surfaces intentionally not represented because repository-local emitters or exporters are not yet configured.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 39 },
+      "id": 15,
+      "options": {
+        "content": "### Open telemetry surfaces\n\nPostgreSQL pool/query/lock metrics, Redis service metrics, object-store service health, and worker CPU/RSS/heap/event-loop metrics are not currently emitted into this stack. See the observability runbook before adding alerts or panels for them.",
+        "mode": "markdown"
+      },
+      "title": "Known Coverage Gaps",
+      "type": "text"
     }
   ],
   "schemaVersion": 41,
@@ -56,5 +297,5 @@
   "timezone": "utc",
   "title": "Pertexo Production Operations",
   "uid": "pertexo-production-operations",
-  "version": 1
+  "version": 2
 }

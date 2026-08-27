@@ -9,7 +9,7 @@ import type {
 import type { StructuredLogger } from '@pertexo/observability/logging';
 import type { TelemetryLifecycle } from '@pertexo/observability/telemetry';
 
-import type { RetentionMetrics } from './metrics.js';
+import type { RetentionMetrics, RetentionOperation } from './metrics.js';
 
 export interface RetentionWorkerResources {
   readonly artifacts: { checkReadiness(): Promise<unknown>; close(): void };
@@ -54,11 +54,18 @@ export async function runRetentionWorker(
     await resources.artifacts.checkReadiness();
     resources.logger.info('retention.ready');
     while (!resources.signal.aborted) {
-      const startedAt = performance.now();
+      let operation: RetentionOperation = 'operator_rerun';
+      let startedAt = performance.now();
       try {
         const operatorRerun = await resources.database.processOperatorRerun(
           resources.signal,
         );
+        resources.metrics.recordOperatorRerun(
+          operatorRerun,
+          (performance.now() - startedAt) / 1_000,
+        );
+        operation = 'schedule';
+        startedAt = performance.now();
         const schedule = await resources.database.scheduleEnforcement(
           resources.signal,
         );
@@ -66,12 +73,16 @@ export async function runRetentionWorker(
           schedule,
           (performance.now() - startedAt) / 1_000,
         );
+        operation = 'dry_run';
+        startedAt = performance.now();
         const dryRun = await resources.database.processNext(resources.signal);
         resources.metrics.record(
           dryRun,
           (performance.now() - startedAt) / 1_000,
           'dry_run',
         );
+        operation = 'enforce';
+        startedAt = performance.now();
         const enforcement = await resources.enforcement.processNext(
           resources.signal,
         );
@@ -80,19 +91,29 @@ export async function runRetentionWorker(
           (performance.now() - startedAt) / 1_000,
           'enforce',
         );
+        operation = 'preview';
+        startedAt = performance.now();
         const preview = await resources.preview.processNext(resources.signal);
         resources.metrics.recordPreview(
           preview,
           (performance.now() - startedAt) / 1_000,
         );
+        operation = 'run_artifact';
+        startedAt = performance.now();
         const runArtifact = await resources.runArtifacts.processNext(
-          resources.signal,
-        );
-        const workspacePurge = await resources.workspacePurge.processNext(
           resources.signal,
         );
         resources.metrics.recordRunArtifact(
           runArtifact,
+          (performance.now() - startedAt) / 1_000,
+        );
+        operation = 'workspace_purge';
+        startedAt = performance.now();
+        const workspacePurge = await resources.workspacePurge.processNext(
+          resources.signal,
+        );
+        resources.metrics.recordWorkspacePurge(
+          workspacePurge,
           (performance.now() - startedAt) / 1_000,
         );
         for (const outcome of [dryRun, enforcement]) {
@@ -139,6 +160,7 @@ export async function runRetentionWorker(
         }
       } catch (error: unknown) {
         resources.metrics.recordFailure(
+          operation,
           (performance.now() - startedAt) / 1_000,
         );
         throw error;

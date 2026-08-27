@@ -12,6 +12,67 @@ groups:
           severity: page
         annotations:
           summary: API eligible-request failures exceed the 99.9% objective
+          description:
+            More than one percent of SLO-eligible API requests failed for ten
+            minutes.
+          runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexoapieligibleerrorbudgetburn
+      - alert: PertexoApiWriteLatencyHigh
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(pertexo_api_request_duration_seconds_bucket{method=~"POST|PUT|PATCH|DELETE"}[5m])))
+          > 0.5
+        for: 15m
+        labels:
+          severity: ticket
+        annotations:
+          summary: API write p95 exceeds the initial 500 ms target
+          description:
+            Sufficient write traffic has remained above the initial latency
+            objective for fifteen minutes.
+          runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexoapiwritelatencyhigh
+      - alert: PertexoWebhookUnavailable
+        expr:
+          increase(pertexo_webhook_delivery_count_total{outcome="unavailable"}[10m])
+          > 0
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: Webhook durable acceptance is unavailable
+          description:
+            At least one webhook delivery was rejected as unavailable during the
+            last ten minutes.
+          runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexowebhookunavailable
+      - alert: PertexoScheduleLagHigh
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(pertexo_schedule_lag_seconds_bucket[10m]))) > 5
+        for: 10m
+        labels:
+          severity: page
+        annotations:
+          summary: Schedule-to-scan p95 exceeds five seconds
+          description:
+            Accepted scheduled work may be starting later than the initial
+            user-impact target.
+          runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexoschedulelaghigh
+      - alert: PertexoProviderFailureRateHigh
+        expr: |
+          sum(rate(pertexo_provider_request_count_total{outcome!="succeeded"}[10m]))
+          /
+          clamp_min(sum(rate(pertexo_provider_request_count_total[10m])), 0.001)
+          > 0.1
+        for: 15m
+        labels:
+          severity: ticket
+        annotations:
+          summary: Provider request failure rate exceeds ten percent
+          description:
+            Side-effecting provider requests are failing at an elevated rate
+            across bounded provider classes.
+          runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexoproviderfailureratehigh
+
+  - name: pertexo-durable-backlog
+    rules:
       - alert: PertexoOutboxOldestAgeHigh
         expr: max(pertexo_transport_outbox_oldest_age_seconds) > 60
         for: 10m
@@ -19,6 +80,10 @@ groups:
           severity: page
         annotations:
           summary: Durable accepted work has waited over one minute for dispatch
+          description:
+            The oldest publishable PostgreSQL outbox row has remained delayed
+            for ten minutes.
+          runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexooutboxoldestagehigh
       - alert: PertexoQueueOldestJobAgeHigh
         expr:
           max by (queue_name) (pertexo_transport_queue_oldest_job_age_seconds) >
@@ -28,15 +93,88 @@ groups:
           severity: page
         annotations:
           summary: A worker queue has user-visible delayed work
-      - alert: PertexoRetentionFailures
+          description:
+            The oldest waiting job in a bounded queue has remained delayed for
+            ten minutes.
+          runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexoqueueoldestjobagehigh
+      - alert: PertexoTriggerReconciliationFailures
         expr:
-          increase(pertexo_retention_batch_count_total{outcome="failed"}[15m]) >
-          0
+          increase(pertexo_trigger_reconciliation_count_total{outcome="failed"}[15m])
+          > 0
         for: 5m
         labels:
           severity: ticket
         annotations:
-          summary: Destructive maintenance reported a bounded failure
+          summary: Trigger reconciliation delivery failed
+          description:
+            At least one durable trigger reconciliation delivery failed in the
+            last fifteen minutes.
+          runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexotriggerreconciliationfailures
+
+  - name: pertexo-resource-safety
+    rules:
+      - alert: PertexoWorkerQueueStalls
+        expr: increase(pertexo_transport_queue_stalls_total[15m]) > 0
+        for: 5m
+        labels:
+          severity: ticket
+        annotations:
+          summary: A BullMQ delivery stalled
+          description:
+            A worker failed to renew or complete a queue delivery within its
+            lock window.
+          runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexoworkerqueuestalls
+      - alert: PertexoWorkerForcedDrain
+        expr:
+          increase(pertexo_transport_consumer_lifecycle_total{event="drain_forced"}[15m])
+          > 0
+        for: 1m
+        labels:
+          severity: ticket
+        annotations:
+          summary: A worker exceeded its graceful drain window
+          description:
+            At least one queue consumer required a forced drain instead of
+            completing gracefully.
+          runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexoworkerforceddrain
+      - alert: PertexoWorkerRestartBurst
+        expr: increase(pertexo_worker_process_starts_total[15m]) > 5
+        for: 5m
+        labels:
+          severity: ticket
+        annotations:
+          summary: Worker process starts indicate elevated churn
+          description:
+            More than five successful worker compositions were observed in
+            fifteen minutes.
+          runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexoworkerrestartburst
+
+  - name: pertexo-destructive-maintenance
+    rules:
+      - alert: PertexoRetentionOperationFailure
+        expr: increase(pertexo_retention_operation_failure_count_total[15m]) > 0
+        for: 1m
+        labels:
+          severity: ticket
+        annotations:
+          summary: Retention worker operation failed
+          description:
+            A retention operation failed; the operation label identifies the
+            correctly attributed stage.
+          runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexoretentionoperationfailure
+      - alert: PertexoWorkspacePurgeReleasedOrStale
+        expr:
+          increase(pertexo_purge_batch_count_total{outcome=~"released|stale"}[15m])
+          > 0
+        for: 1m
+        labels:
+          severity: ticket
+        annotations:
+          summary: Workspace purge lost progress authority
+          description:
+            A purge attempt released its lease or observed stale fencing and
+            requires backlog inspection.
+          runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexoworkspacepurgereleasedorstale
       - alert: PertexoLifecycleCommandFailure
         expr:
           increase(pertexo_lifecycle_command_process_count_total{outcome="failed"}[15m])
@@ -46,6 +184,10 @@ groups:
           severity: page
         annotations:
           summary: Lifecycle command processing failed
+          description:
+            An asynchronous deletion or restore command failed before reaching a
+            durable result.
+          runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexolifecyclecommandfailure
       - alert: PertexoControlLedgerDivergence
         expr:
           increase(pertexo_control_ledger_reconciliation_count_total{outcome!="agreed"}[5m])
@@ -55,3 +197,7 @@ groups:
           severity: page
         annotations:
           summary: Dual-region control-ledger agreement is not proven
+          description:
+            Restore-before-serve reconciliation failed and tenant serving must
+            remain fenced.
+          runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexocontrolledgerdivergence

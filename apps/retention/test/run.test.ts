@@ -121,9 +121,11 @@ function resources(outcomes: ('completed' | 'idle' | 'stale')[]) {
   const metrics = {
     record: vi.fn(),
     recordFailure: vi.fn(),
+    recordOperatorRerun: vi.fn(),
     recordPreview: vi.fn(),
     recordRunArtifact: vi.fn(),
     recordSchedule: vi.fn(),
+    recordWorkspacePurge: vi.fn(),
   } satisfies RetentionMetrics;
   const telemetry = {
     enabled: false,
@@ -185,7 +187,97 @@ describe('retention worker', () => {
       'telemetry-close',
     ]);
     expect(input.metrics.record).toHaveBeenCalledTimes(4);
+    expect(input.metrics.recordOperatorRerun).toHaveBeenCalledTimes(2);
     expect(input.metrics.recordSchedule).toHaveBeenCalledTimes(2);
+    expect(input.metrics.recordWorkspacePurge).toHaveBeenCalledTimes(2);
+  });
+
+  it('measures each poll operation independently', async () => {
+    const input = resources(['idle']);
+    let now = 0;
+    const clock = vi.spyOn(performance, 'now').mockImplementation(() => now);
+    const advance = <Result>(result: Result): Promise<Result> => {
+      now += 100;
+      return Promise.resolve(result);
+    };
+    input.database.processOperatorRerun = vi.fn(() => advance(null));
+    input.database.scheduleEnforcement = vi.fn(() =>
+      advance({
+        cutoffAt: new Date('2026-08-26T00:00:00.000Z'),
+        scannedCount: 0,
+        scheduledCount: 0,
+      }),
+    );
+    const processNext = input.database.processNext;
+    input.database.processNext = vi.fn(async () => {
+      now += 100;
+      return processNext();
+    });
+    input.enforcement.processNext = vi.fn(() =>
+      advance({ status: 'idle' as const }),
+    );
+    input.preview.processNext = vi.fn(() =>
+      advance({ status: 'idle' as const }),
+    );
+    input.runArtifacts.processNext = vi.fn(() =>
+      advance({ status: 'idle' as const }),
+    );
+    input.workspacePurge.processNext = vi.fn(() =>
+      advance({ status: 'idle' as const }),
+    );
+
+    try {
+      await runRetentionWorker(input);
+    } finally {
+      clock.mockRestore();
+    }
+
+    expect(input.metrics.recordOperatorRerun).toHaveBeenCalledWith(null, 0.1);
+    expect(input.metrics.recordSchedule).toHaveBeenCalledWith(
+      expect.any(Object),
+      0.1,
+    );
+    expect(input.metrics.record).toHaveBeenNthCalledWith(
+      1,
+      expect.any(Object),
+      0.1,
+      'dry_run',
+    );
+    expect(input.metrics.record).toHaveBeenNthCalledWith(
+      2,
+      expect.any(Object),
+      0.1,
+      'enforce',
+    );
+    expect(input.metrics.recordPreview).toHaveBeenCalledWith(
+      expect.any(Object),
+      0.1,
+    );
+    expect(input.metrics.recordRunArtifact).toHaveBeenCalledWith(
+      expect.any(Object),
+      0.1,
+    );
+    expect(input.metrics.recordWorkspacePurge).toHaveBeenCalledWith(
+      expect.any(Object),
+      0.1,
+    );
+  });
+
+  it('attributes failures to the operation that threw', async () => {
+    const input = resources(['idle']);
+    input.workspacePurge.processNext = vi.fn(() =>
+      Promise.reject(new Error('purge unavailable')),
+    );
+
+    await expect(runRetentionWorker(input)).rejects.toThrow(
+      'Retention worker did not stop cleanly',
+    );
+
+    expect(input.metrics.recordFailure).toHaveBeenCalledWith(
+      'workspace_purge',
+      expect.any(Number),
+    );
+    expect(input.metrics.recordWorkspacePurge).not.toHaveBeenCalled();
   });
 
   it('does not claim when readiness fails and still closes resources', async () => {
