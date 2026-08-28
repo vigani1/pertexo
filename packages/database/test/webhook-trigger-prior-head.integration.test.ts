@@ -1,4 +1,5 @@
 import { copyFile, mkdtemp, readdir, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 
@@ -43,9 +44,7 @@ beforeAll(async () => {
   } finally {
     await admin.end();
   }
-  priorDirectory = await mkdtemp(
-    '/private/var/folders/1b/2tzp51hj4wg0rcvmj2j_pwlh0000gn/T/opencode/webhook-prior-',
-  );
+  priorDirectory = await mkdtemp(path.join(tmpdir(), 'webhook-prior-'));
   for (const name of await readdir(MIGRATIONS_DIRECTORY)) {
     if (/^\d{4}_.+\.sql$/u.test(name) && name < '0041_trigger_hardening.sql')
       await copyFile(
