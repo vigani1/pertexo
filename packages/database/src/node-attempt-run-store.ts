@@ -1,9 +1,8 @@
 import { createDatabasePool } from './postgres-telemetry.js';
 import { createHash, randomUUID } from 'node:crypto';
 
-import type { Pool } from 'pg';
 import type { PoolClient } from 'pg';
-import { z } from 'zod';
+import type { z } from 'zod';
 
 import type { DatabaseConfig } from './config.js';
 import { parsePersistedPhase3Checkpoint } from './phase3-checkpoint.js';
@@ -14,629 +13,61 @@ import {
   serializeStoredExecutionValueV1,
 } from './stored-execution-value.js';
 
-const identitySchema = z
-  .string()
-  .regex(
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u,
-  );
-const checksumSchema = z.string().regex(/^[0-9a-f]{64}$/u);
-const workerIdSchema = z
-  .string()
-  .regex(/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/u);
-const deliverySchema = z
-  .object({
-    outboxEventId: identitySchema,
-    payloadChecksum: checksumSchema,
-  })
-  .strict();
-const claimDeliverySchema = z
-  .object({
-    workspaceId: identitySchema,
-    runId: identitySchema,
-    nodeRunId: identitySchema,
-    attemptId: identitySchema,
-    delivery: deliverySchema,
-    leaseDurationSeconds: z.number().int().min(1).max(300),
-    workerId: workerIdSchema,
-    signal: z.custom<AbortSignal>((value) => value instanceof AbortSignal),
-  })
-  .strict();
-const attemptJobPayloadSchema = z
-  .object({
-    schemaVersion: z.literal(1),
-    workspaceId: identitySchema,
-    runId: identitySchema,
-    nodeRunId: identitySchema,
-    attemptId: identitySchema,
-    outboxEventId: identitySchema,
-    traceparent: z
-      .string()
-      .regex(/^00-[\da-f]{32}-[\da-f]{16}-[\da-f]{2}$/u)
-      .optional(),
-  })
-  .strict();
+import {
+  DeliveryMismatch,
+  NodeAttemptConnectionFenceError,
+  NodeAttemptControlActiveError,
+  NodeAttemptDeliveryMismatchError,
+  NodeAttemptDispatchBindingMismatchError,
+  NodeAttemptOutputInvalidError,
+  NodeAttemptReconciliationRequiredError,
+  NodeAttemptStateCorruptError,
+  branchContextSchema,
+  claimDeliverySchema,
+  completionSchema,
+  dispatchSchema,
+  heartbeatSchema,
+  loadInputsSchema,
+  type CompleteNodeAttemptResult,
+  type NodeAttemptClaimResult,
+  type NodeAttemptCompletion,
+  type NodeAttemptDelivery,
+  type NodeAttemptInputs,
+  type NodeAttemptLease,
+  type NodeAttemptRunStore,
+} from './node-attempt-run-store-contract.js';
+import {
+  auditMismatch,
+  claimReceipt,
+  completeReceipt,
+  nodeAttemptConsumerName as consumerName,
+  validateDelivery,
+} from './node-attempt-run-store-delivery.js';
+import {
+  assertNotAborted,
+  scopedInvocationKey,
+  withWorkspaceReadClient,
+  withWorkspaceWriteClient,
+} from './node-attempt-run-store-transactions.js';
 
-const consumerName = 'node-attempt-worker';
-const nodeIdSchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u);
-const invocationKeySchema = z.string().min(1).max(256);
-const sideEffectClassSchema = z.enum(['safe', 'idempotent_with_key', 'unsafe']);
-const admissionKindSchema = z.enum(['execute', 'retry', 'wait_resume']);
-const branchScopePartSchema = z
-  .object({
-    nodeId: nodeIdSchema,
-    outputPort: nodeIdSchema,
-  })
-  .strict();
-const iterationScopePartSchema = z
-  .object({
-    loopNodeId: nodeIdSchema,
-    ordinal: z.number().int().nonnegative(),
-  })
-  .strict();
-const branchContextSchema = z
-  .object({
-    branchPath: z.array(branchScopePartSchema).max(1_000).optional(),
-    iterationPath: z.array(iterationScopePartSchema).max(1_000).optional(),
-  })
-  .strict()
-  .superRefine(({ branchPath }, context) => {
-    if (
-      branchPath !== undefined &&
-      new Set(branchPath.map(({ nodeId }) => nodeId)).size !== branchPath.length
-    )
-      context.addIssue({
-        code: 'custom',
-        message: 'branch path contains a repeated node',
-      });
-  });
-
-export type NodeAttemptDelivery = Readonly<z.output<typeof deliverySchema>>;
-
-const providerDispatchBindingSchema = z
-  .string()
-  .max(128)
-  .regex(/^[a-z][a-z0-9._-]{0,31}:v[1-9][0-9]{0,2}:sha256:[0-9a-f]{64}$/u);
-const connectionDispatchFenceSchema = z
-  .object({
-    connectionId: z.uuid(),
-    expectedProviderKey: z.string().regex(/^[a-z][a-z0-9._-]{0,63}$/u),
-    expectedAuthType: z.string().regex(/^[a-z][a-z0-9._-]{0,63}$/u),
-    secretVersionId: z.uuid(),
-  })
-  .strict();
-
-export type NodeAttemptLease = Readonly<{
-  workspaceId: string;
-  runId: string;
-  workflowVersionId: string;
-  nodeRunId: string;
-  attemptId: string;
-  attemptNumber: number;
-  admissionKind: 'execute' | 'retry' | 'wait_resume';
-  invocationKey: string;
-  nodeId: string;
-  branchPath?: readonly Readonly<{ nodeId: string; outputPort: string }>[];
-  iterationPath?: readonly Readonly<{
-    loopNodeId: string;
-    ordinal: number;
-  }>[];
-  sideEffectClass: 'safe' | 'idempotent_with_key' | 'unsafe';
-  providerIdempotencyKey?: string;
-  providerDispatchBinding?: string;
-  providerDispatchUnresolved?: true;
-  workerId: string;
-  fenceToken: number;
-  leaseExpiresAt: Date;
-  delivery: NodeAttemptDelivery;
-}>;
-
-const nodeAttemptLeaseSchema = z
-  .object({
-    workspaceId: identitySchema,
-    runId: identitySchema,
-    workflowVersionId: identitySchema,
-    nodeRunId: identitySchema,
-    attemptId: identitySchema,
-    attemptNumber: z.number().int().positive(),
-    admissionKind: admissionKindSchema,
-    invocationKey: invocationKeySchema,
-    nodeId: nodeIdSchema,
-    branchPath: z.array(branchScopePartSchema).min(1).max(1_000).optional(),
-    iterationPath: z
-      .array(iterationScopePartSchema)
-      .min(1)
-      .max(1_000)
-      .optional(),
-    sideEffectClass: sideEffectClassSchema,
-    providerIdempotencyKey: z.string().min(1).max(256).optional(),
-    providerDispatchBinding: providerDispatchBindingSchema.optional(),
-    providerDispatchUnresolved: z.literal(true).optional(),
-    workerId: workerIdSchema,
-    fenceToken: z.number().int().positive(),
-    leaseExpiresAt: z.date(),
-    delivery: deliverySchema,
-  })
-  .strict();
-
-const loadInputsSchema = z
-  .object({
-    lease: nodeAttemptLeaseSchema,
-    upstreamNodeOutputs: z
-      .array(
-        z
-          .object({
-            nodeId: nodeIdSchema,
-            invocationKey: invocationKeySchema,
-          })
-          .strict(),
-      )
-      .max(100)
-      .refine(
-        (values) =>
-          new Set(values.map(({ invocationKey }) => invocationKey)).size ===
-          values.length,
-      ),
-    signal: z.custom<AbortSignal>((value) => value instanceof AbortSignal),
-  })
-  .strict();
-const ownedLeaseSchema = z
-  .object({
-    lease: nodeAttemptLeaseSchema,
-    signal: z.custom<AbortSignal>((value) => value instanceof AbortSignal),
-  })
-  .strict();
-const dispatchSchema = ownedLeaseSchema
-  .extend({
-    connectionFence: connectionDispatchFenceSchema.optional(),
-    providerDispatchBinding: providerDispatchBindingSchema.optional(),
-  })
-  .strict();
-const heartbeatSchema = ownedLeaseSchema
-  .extend({ leaseDurationSeconds: z.number().int().min(1).max(300) })
-  .strict();
-const safeErrorCodeSchema = z
-  .string()
-  .regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u);
-const executorFailureKindSchema = z.enum([
-  'failed',
-  'canceled',
-  'retry',
-  'outcome_unknown',
-]);
-const executorErrorKindSchema = z.enum([
-  'authentication',
-  'canceled',
-  'configuration',
-  'internal',
-  'network',
-  'provider',
-  'rate_limit',
-  'timeout',
-]);
-const completionOutcomeSchema = z.discriminatedUnion('status', [
-  z.object({ status: z.literal('succeeded'), output: z.unknown() }).strict(),
-  z
-    .object({
-      status: z.literal('suspended'),
-      output: z.unknown(),
-      durationSeconds: z.number().int().min(1).max(2_592_000),
-    })
-    .strict(),
-  z
-    .object({
-      status: z.enum(['failed', 'canceled', 'timed_out', 'outcome_unknown']),
-      safeErrorCode: safeErrorCodeSchema,
-      errorSummary: z.string().max(2048).optional(),
-    })
-    .strict(),
-  z
-    .object({
-      status: z.literal('executor_failure'),
-      failureKind: executorFailureKindSchema,
-      errorKind: executorErrorKindSchema,
-      possiblyDispatched: z.boolean(),
-      safeErrorCode: safeErrorCodeSchema,
-    })
-    .strict(),
-]);
-const traceparentSchema = z
-  .string()
-  .regex(/^00-[\da-f]{32}-[\da-f]{16}-[\da-f]{2}$/u)
-  .optional();
-const completionSchema = ownedLeaseSchema
-  .extend({ outcome: completionOutcomeSchema, traceparent: traceparentSchema })
-  .strict();
-
-export type NodeAttemptClaimResult =
-  | Readonly<{ kind: 'duplicate' }>
-  | Readonly<{ kind: 'claimed'; lease: NodeAttemptLease }>;
-
-export type NodeAttemptInputs = Readonly<{
-  runInput: unknown;
-  completedNodeOutputs: unknown;
-  structuredCollection?: Readonly<{
-    loopNodeId: string;
-    ordinal: number;
-    collection: unknown;
-    collectionSize: number;
-    declaredCollectionChecksum: string;
-  }>;
-  coordinatorInput?: unknown;
-  resumeOutput?: unknown;
-  abortRequested: boolean;
-  abortReason?: 'canceled' | 'timed_out';
-  deadlineAt?: Date;
-}>;
-
-export type NodeAttemptCompletion =
-  | Readonly<{ status: 'succeeded'; output: unknown }>
-  | Readonly<{ status: 'suspended'; output: unknown; durationSeconds: number }>
-  | Readonly<{
-      status: 'failed' | 'canceled' | 'timed_out' | 'outcome_unknown';
-      safeErrorCode: string;
-      errorSummary?: string;
-    }>
-  | Readonly<{
-      status: 'executor_failure';
-      failureKind: z.output<typeof executorFailureKindSchema>;
-      errorKind: z.output<typeof executorErrorKindSchema>;
-      possiblyDispatched: boolean;
-      safeErrorCode: string;
-    }>;
-
-export type CompleteNodeAttemptResult =
-  | Readonly<{ kind: 'committed'; outboxEventId: string }>
-  | Readonly<{ kind: 'duplicate'; outboxEventId: null }>;
-
-export interface NodeAttemptRunStore {
-  claimDelivery(
-    input: Readonly<z.input<typeof claimDeliverySchema>>,
-  ): Promise<NodeAttemptClaimResult>;
-  loadInputs(
-    input: Readonly<{
-      lease: NodeAttemptLease;
-      upstreamNodeOutputs: readonly Readonly<{
-        nodeId: string;
-        invocationKey: string;
-      }>[];
-      signal: AbortSignal;
-    }>,
-  ): Promise<NodeAttemptInputs>;
-  markDispatched(
-    input: Readonly<{
-      lease: NodeAttemptLease;
-      connectionFence?: z.output<typeof connectionDispatchFenceSchema>;
-      providerDispatchBinding?: string;
-      signal: AbortSignal;
-    }>,
-  ): Promise<Readonly<{ dispatchedAt: Date }>>;
-  heartbeat(
-    input: Readonly<{
-      lease: NodeAttemptLease;
-      leaseDurationSeconds: number;
-      signal: AbortSignal;
-    }>,
-  ): Promise<
-    Readonly<{
-      leaseExpiresAt: Date;
-      abortRequested: boolean;
-      abortReason?: 'canceled' | 'timed_out';
-    }>
-  >;
-  complete(
-    input: Readonly<{
-      lease: NodeAttemptLease;
-      outcome: NodeAttemptCompletion;
-      traceparent?: string;
-      signal: AbortSignal;
-    }>,
-  ): Promise<CompleteNodeAttemptResult>;
-  close(): Promise<void>;
-}
-
-export class NodeAttemptDeliveryMismatchError extends Error {
-  public override readonly name = 'NodeAttemptDeliveryMismatchError';
-  public constructor() {
-    super('Node attempt delivery does not match its durable outbox identity');
-  }
-}
-
-export class NodeAttemptReconciliationRequiredError extends Error {
-  public override readonly name = 'NodeAttemptReconciliationRequiredError';
-  public constructor() {
-    super('Node attempt requires lease reconciliation before execution');
-  }
-}
-
-export class NodeAttemptDispatchBindingMismatchError extends Error {
-  public override readonly name = 'NodeAttemptDispatchBindingMismatchError';
-  public constructor() {
-    super('Node attempt provider dispatch binding does not match');
-  }
-}
-
-export class NodeAttemptConnectionFenceError extends Error {
-  public override readonly name = 'NodeAttemptConnectionFenceError';
-  public constructor() {
-    super('Node attempt connection fence does not match current active state');
-  }
-}
-
-export class NodeAttemptControlActiveError extends Error {
-  public override readonly name = 'NodeAttemptControlActiveError';
-  public constructor() {
-    super('Node attempt cannot start after durable run control activation');
-  }
-}
-
-export class NodeAttemptStateCorruptError extends Error {
-  public override readonly name = 'NodeAttemptStateCorruptError';
-  public constructor() {
-    super('Persisted node attempt state is invalid');
-  }
-}
-
-export class NodeAttemptOutputInvalidError extends Error {
-  public override readonly name = 'NodeAttemptOutputInvalidError';
-  public constructor() {
-    super('Node attempt output violates the inline execution-value contract');
-  }
-}
-
-class DeliveryMismatch extends Error {}
-
-function assertNotAborted(signal: AbortSignal): void {
-  if (signal.aborted)
-    throw new DOMException('The operation was aborted', 'AbortError');
-}
-
-function scopedInvocationKey(
-  input: Readonly<{
-    workflowVersionId: string;
-    nodeId: string;
-    branchPath?: readonly Readonly<{ nodeId: string; outputPort: string }>[];
-    iterationPath?: readonly Readonly<{
-      loopNodeId: string;
-      ordinal: number;
-    }>[];
-  }>,
-): string {
-  const branches = (input.branchPath ?? [])
-    .map(({ nodeId, outputPort }) => `${nodeId}:${outputPort}`)
-    .join('/');
-  const iterations = (input.iterationPath ?? [])
-    .map(({ loopNodeId, ordinal }) => `${loopNodeId}:${String(ordinal)}`)
-    .join('/');
-  return `${encodeURIComponent(input.workflowVersionId)}|${encodeURIComponent(input.nodeId)}|b:${encodeURIComponent(branches)}|i:${encodeURIComponent(iterations)}`;
-}
-
-async function acquirePoolClient(
-  pool: Pool,
-  signal: AbortSignal,
-  abortFailure: Error,
-): Promise<PoolClient> {
-  const connection = pool.connect();
-  let rejectAbort: ((reason: Error) => void) | undefined;
-  const abort = new Promise<never>((_resolve, reject) => {
-    rejectAbort = reject;
-  });
-  const onAbort = (): void => rejectAbort?.(abortFailure);
-  signal.addEventListener('abort', onAbort, { once: true });
-  try {
-    if (signal.aborted) throw abortFailure;
-    return await Promise.race([connection, abort]);
-  } catch (error: unknown) {
-    if (signal.aborted)
-      void connection.then(
-        (client) => {
-          client.release(abortFailure);
-        },
-        () => undefined,
-      );
-    throw error;
-  } finally {
-    signal.removeEventListener('abort', onAbort);
-  }
-}
-
-async function withWorkspaceWriteClient<T>(
-  pool: Pool,
-  workspaceId: string,
-  signal: AbortSignal,
-  operation: (client: PoolClient) => Promise<T>,
-): Promise<T> {
-  assertNotAborted(signal);
-  const abortFailure = new Error('Node attempt transaction aborted');
-  abortFailure.name = 'AbortError';
-  const client = await acquirePoolClient(pool, signal, abortFailure);
-  const connectionState = { released: false };
-  const releaseForAbort = (): void => {
-    if (connectionState.released) return;
-    connectionState.released = true;
-    client.release(abortFailure);
-  };
-  signal.addEventListener('abort', releaseForAbort, { once: true });
-  try {
-    assertNotAborted(signal);
-    await client.query('begin');
-    await client.query("select set_config('app.workspace_id', $1, true)", [
-      workspaceId,
-    ]);
-    const result = await operation(client);
-    assertNotAborted(signal);
-    await client.query('commit');
-    return result;
-  } catch (error: unknown) {
-    if (signal.aborted) throw abortFailure;
-    if (!connectionState.released)
-      await client.query('rollback').catch(() => undefined);
-    throw error;
-  } finally {
-    signal.removeEventListener('abort', releaseForAbort);
-    if (!connectionState.released) {
-      connectionState.released = true;
-      client.release();
-    }
-  }
-}
-
-async function withWorkspaceReadClient<T>(
-  pool: Pool,
-  workspaceId: string,
-  signal: AbortSignal,
-  operation: (client: PoolClient) => Promise<T>,
-): Promise<T> {
-  assertNotAborted(signal);
-  const abortFailure = new Error('Node attempt read aborted');
-  abortFailure.name = 'AbortError';
-  const client = await acquirePoolClient(pool, signal, abortFailure);
-  const connectionState = { released: false };
-  const releaseForAbort = (): void => {
-    if (connectionState.released) return;
-    connectionState.released = true;
-    client.release(abortFailure);
-  };
-  signal.addEventListener('abort', releaseForAbort, { once: true });
-  try {
-    assertNotAborted(signal);
-    await client.query('begin isolation level repeatable read read only');
-    await client.query("select set_config('app.workspace_id', $1, true)", [
-      workspaceId,
-    ]);
-    const result = await operation(client);
-    assertNotAborted(signal);
-    await client.query('commit');
-    return result;
-  } catch (error: unknown) {
-    if (signal.aborted) throw abortFailure;
-    if (!connectionState.released)
-      await client.query('rollback').catch(() => undefined);
-    throw error;
-  } finally {
-    signal.removeEventListener('abort', releaseForAbort);
-    if (!connectionState.released) {
-      connectionState.released = true;
-      client.release();
-    }
-  }
-}
-
-async function validateDelivery(
-  client: PoolClient,
-  input: z.output<typeof claimDeliverySchema>,
-): Promise<void> {
-  const result = await client.query<{
-    aggregate_id: string;
-    aggregate_type: string;
-    job_name: string;
-    payload: unknown;
-    payload_checksum: string;
-    schema_version: number;
-  }>(
-    `select aggregate_id,aggregate_type,job_name,payload,
-            payload_checksum,schema_version
-     from app.outbox_events
-     where workspace_id=$1 and id=$2`,
-    [input.workspaceId, input.delivery.outboxEventId],
-  );
-  const row = result.rows[0];
-  let payload: z.output<typeof attemptJobPayloadSchema> | undefined;
-  let checksum: string | undefined;
-  try {
-    payload = attemptJobPayloadSchema.parse(row?.payload);
-    checksum = createHash('sha256')
-      .update(serializeStoredExecutionJsonValue(payload))
-      .digest('hex');
-  } catch {
-    throw new DeliveryMismatch();
-  }
-  if (
-    row?.aggregate_id !== input.attemptId ||
-    row.aggregate_type !== 'node-attempt' ||
-    row.job_name !== 'execute-node-attempt' ||
-    row.schema_version !== 1 ||
-    row.payload_checksum !== input.delivery.payloadChecksum ||
-    checksum !== row.payload_checksum ||
-    payload.workspaceId !== input.workspaceId ||
-    payload.runId !== input.runId ||
-    payload.nodeRunId !== input.nodeRunId ||
-    payload.attemptId !== input.attemptId ||
-    payload.outboxEventId !== input.delivery.outboxEventId
-  )
-    throw new DeliveryMismatch();
-}
-
-async function claimReceipt(
-  client: PoolClient,
-  workspaceId: string,
-  delivery: NodeAttemptDelivery,
-): Promise<'new' | 'incomplete' | 'completed'> {
-  const inserted = await client.query(
-    `insert into app.inbox_receipts (
-       consumer_name,message_id,workspace_id,payload_checksum
-     ) values ($1,$2,$3,$4)
-     on conflict (consumer_name,message_id) do nothing
-     returning message_id`,
-    [
-      consumerName,
-      delivery.outboxEventId,
-      workspaceId,
-      delivery.payloadChecksum,
-    ],
-  );
-  if (inserted.rowCount === 1) return 'new';
-  const existing = await client.query<{
-    completed_at: Date | null;
-    payload_checksum: string;
-  }>(
-    `select completed_at,payload_checksum
-     from app.inbox_receipts
-     where consumer_name=$1 and message_id=$2 and workspace_id=$3
-     for update`,
-    [consumerName, delivery.outboxEventId, workspaceId],
-  );
-  const receipt = existing.rows[0];
-  if (receipt === undefined) throw new NodeAttemptStateCorruptError();
-  if (receipt.payload_checksum !== delivery.payloadChecksum)
-    throw new DeliveryMismatch();
-  return receipt.completed_at === null ? 'incomplete' : 'completed';
-}
-
-async function completeReceipt(
-  client: PoolClient,
-  workspaceId: string,
-  delivery: NodeAttemptDelivery,
-): Promise<void> {
-  const result = await client.query(
-    `update app.inbox_receipts set completed_at=clock_timestamp()
-     where consumer_name=$1 and message_id=$2 and workspace_id=$3
-       and payload_checksum=$4 and completed_at is null`,
-    [
-      consumerName,
-      delivery.outboxEventId,
-      workspaceId,
-      delivery.payloadChecksum,
-    ],
-  );
-  if (result.rowCount !== 1) throw new NodeAttemptStateCorruptError();
-}
-
-async function auditMismatch(
-  pool: Pool,
-  workspaceId: string,
-  delivery: NodeAttemptDelivery,
-  signal: AbortSignal,
-): Promise<never> {
-  await withWorkspaceWriteClient(pool, workspaceId, signal, async (client) => {
-    await client.query(
-      `insert into app.transport_security_audit_facts (
-         id,workspace_id,fact_type,consumer_name,message_id
-       ) values ($1,$2,'inbox_checksum_mismatch',$3,$4)`,
-      [randomUUID(), workspaceId, consumerName, delivery.outboxEventId],
-    );
-  });
-  throw new NodeAttemptDeliveryMismatchError();
-}
+export {
+  NodeAttemptConnectionFenceError,
+  NodeAttemptControlActiveError,
+  NodeAttemptDeliveryMismatchError,
+  NodeAttemptDispatchBindingMismatchError,
+  NodeAttemptOutputInvalidError,
+  NodeAttemptReconciliationRequiredError,
+  NodeAttemptStateCorruptError,
+};
+export type {
+  CompleteNodeAttemptResult,
+  NodeAttemptClaimResult,
+  NodeAttemptCompletion,
+  NodeAttemptDelivery,
+  NodeAttemptInputs,
+  NodeAttemptLease,
+  NodeAttemptRunStore,
+};
 
 async function appendStartedEvent(
   client: PoolClient,

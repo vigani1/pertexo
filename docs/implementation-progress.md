@@ -4376,6 +4376,15 @@ Current evidence:
   cover every A-06 seam without moving state authority into executors or
   persistence adapters, completing A-06; root `pnpm check` passes all 1,234
   unit assertions.
+- A-07 node-attempt decomposition has begun with stable contract and foundation
+  seams. Boundary schemas, lease/result vocabulary, public errors, and the
+  narrow worker-facing store interface are isolated from implementation.
+  Read/write transaction mechanics share a coordinator-private module, while
+  outbox validation, inbox receipt claim/completion, and checksum-mismatch audit
+  persistence move together. No SQL transaction scope changed. All 136 database
+  unit assertions and the focused 24-assertion real-PostgreSQL execution-runtime
+  suite pass. Claim, input loading, dispatch, heartbeat, completion, and the
+  equivalent preview lifecycle extraction remain open.
 
 ## Update protocol
 

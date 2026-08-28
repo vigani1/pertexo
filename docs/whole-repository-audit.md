@@ -357,6 +357,16 @@ Split private implementation by acceptance, claim/heartbeat, dispatch fencing,
 completion, and reconciliation. Preserve one transaction per authoritative
 state change and retain the current narrow worker-facing interfaces.
 
+Progress: node-attempt boundary schemas, lease/result vocabulary, the public
+store interface, and public errors now live in
+`node-attempt-run-store-contract.ts`. Coordinator-style read/write transaction
+mechanics are isolated in `node-attempt-run-store-transactions.ts`, while
+durable outbox validation, receipt claim/completion, and mismatch auditing are
+cohesive in `node-attempt-run-store-delivery.ts`. The public interface and every
+SQL transaction remain unchanged. Claim, input loading, dispatch, heartbeat,
+and completion operation extraction remains open, followed by the equivalent
+preview lifecycle split.
+
 ### A-08: Narrow the database package's public capability surface
 
 - **Severity:** Low
