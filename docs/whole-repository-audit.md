@@ -4,6 +4,8 @@ Recorded: 2026-08-28
 
 Audited head: `8debd0090a972921ce523b0f7809558f6ba7c10d`
 
+Remediation evidence reviewed through implementation commit: `57003e9`
+
 Status: current repository audit and sole audit source of truth
 
 ## 1. Purpose
@@ -152,22 +154,22 @@ finding.
 ### F-01 — Bind OIDC login to the initiating browser
 
 - **Severity:** P1
+- **Status:** Resolved on 2026-08-28
 - **Area:** identity and security
 - **Evidence:** `apps/api/src/identity-workspace/controllers.ts`,
   `apps/api/src/identity-workspace/use-cases.ts`, `apps/api/src/identity/oidc.ts`,
   `packages/database/src/oidc-login-transactions.ts`
 
-The OIDC start endpoint returns an authorization URL but sets no independent
-browser-binding cookie. The callback accepts `code` and `state`, consumes the
-server-side transaction, and issues a session. State, nonce, PKCE, expiry, and
-single-use consumption protect the provider exchange, but they do not prove that
-the browser completing the callback is the browser that initiated the login.
+The start endpoint now creates an independent 256-bit browser-binding secret,
+stores only its SHA-256 digest with the OIDC transaction, and returns the raw
+value only to the HTTP cookie boundary. The callback-path cookie is `HttpOnly`,
+`Secure` under the deployed cookie policy, `SameSite=Lax`, and bounded by the
+transaction expiry. The callback requires the cookie. PostgreSQL locks the
+transaction, compares fixed-length digests in constant time, and records
+single-use consumption in the same transaction before provider exchange.
+Success and every terminal callback failure clear the cookie.
 
-This permits login-CSRF/account-confusion: an attacker can initiate and
-authenticate an OIDC transaction for the attacker's identity, then cause another
-browser to consume the callback and receive a session for the attacker.
-
-#### Required design
+#### Implemented design
 
 1. Generate a separate high-entropy browser-binding secret at login start.
 2. Set it in a narrowly scoped, `Secure`, `HttpOnly`, appropriate-`SameSite`
@@ -179,15 +181,19 @@ browser to consume the callback and receive a session for the attacker.
 6. Clear the binding cookie on success and every terminal callback failure.
 7. Never reuse the session CSRF token as the login binding.
 
-#### Verification
+#### Completion evidence
 
-- same-browser start/callback succeeds;
-- callback without the binding cookie fails closed;
-- callback with another transaction's cookie fails closed;
-- replay fails after successful consumption;
-- expired state and expired binding fail;
-- logs and problem responses contain neither raw state nor binding secret; and
-- the real HTTP integration carries cookies from start to callback.
+- Unit coverage proves digest-only storage, missing/wrong binding rejection,
+  successful recovery with the correct binding, replay rejection, expiry, and
+  omission of the raw binding from the response body.
+- Real PostgreSQL coverage proves a binding mismatch is non-consuming and
+  concurrent correct callbacks produce one success and one replay.
+- The populated-`0070` upgrade regression proves migration `0071` invalidates
+  transactions that cannot possess the new browser secret and enforces the
+  non-null fixed-width digest constraint.
+- The real Nest HTTP flow carries the cookie from start to callback and checks
+  its flags, narrow path, bounded lifetime, success/failure clearing, missing
+  and wrong-cookie failure, replay, and response redaction.
 
 ### F-02 — Implement the plan's complete rate-limit model
 
@@ -687,6 +693,7 @@ or table grants.
 #### Preserve
 
 - opaque server-side sessions;
+- OIDC initiating-browser binding with digest-only durable state;
 - secure cookie and CSRF protections;
 - envelope encryption with identity-bound associated data;
 - byte wiping and redaction;
@@ -697,7 +704,6 @@ or table grants.
 
 #### Improve
 
-- add OIDC initiating-browser binding;
 - complete actor/workspace/endpoint/provider rate limits;
 - validate trusted proxy configuration;
 - continuously test session fixation, login CSRF, logout, rotation, and replay;
@@ -915,7 +921,7 @@ can exercise the current production seam.
 
 ### Checkpoint 1 — Security and transaction correctness
 
-1. F-01 OIDC browser binding.
+1. F-01 OIDC browser binding — complete in `57003e9`.
 2. F-03 shared hardened worker transaction engine.
 3. F-02 complete rate-limit model and external ingress contract.
 4. F-07 unique replica identity.
