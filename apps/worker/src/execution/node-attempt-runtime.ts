@@ -83,7 +83,7 @@ export type PreviewAttemptRuntimeDependency = Readonly<{
   heartbeatIntervalMillis?: number;
   invoker: PreviewNodeInvoker;
   leaseDurationSeconds?: number;
-  runStore: PreviewAttemptRunStore;
+  runStore: PreviewAttemptRunStore & Readonly<{ close?: () => Promise<void> }>;
   runtimeCapabilities?: PreviewRuntimeCapabilityFactories;
 }>;
 
@@ -246,19 +246,11 @@ export async function createNodeAttemptRuntime(
   }
   const runtimeCapabilities =
     dependencies.runtimeCapabilities ?? capabilityRuntime?.factories;
-  let previewClose: (() => Promise<void>) | undefined;
-  if (options.preview !== undefined) {
-    const previewStore: PreviewAttemptRunStore = options.preview.runStore;
-    const closable = previewStore as unknown as {
-      close?: () => Promise<void>;
-    };
-    if (typeof closable.close === 'function') {
-      const bound = closable.close.bind(previewStore);
-      previewClose = async (): Promise<void> => {
-        await bound();
-      };
-    }
-  }
+  const previewStore = options.preview?.runStore;
+  const previewClose =
+    previewStore?.close === undefined
+      ? undefined
+      : previewStore.close.bind(previewStore);
   const nodeHandler = createNodeAttemptHandler({
     engine,
     heartbeatIntervalMillis: options.heartbeatIntervalMillis,

@@ -531,13 +531,20 @@ complete.
 - **Severity:** Low
 - **Category:** TypeScript safety
 - **File:** `apps/worker/src/execution/node-attempt-runtime.ts`
-- **Classification:** harmless drift
+- **Classification:** corrected after the audited head
 
 The preview-store cleanup path uses `as unknown as` to discover a close
 capability. Give the dependency an explicit optional close contract or use a
 small runtime type guard. The codebase otherwise uses `unknown` and runtime
 validation well; this cleanup prevents a local escape hatch from becoming a
 pattern.
+
+Resolution: `PreviewAttemptRuntimeDependency.runStore` now carries an explicit
+optional asynchronous `close` capability. Runtime construction binds that
+declared capability directly and preserves the existing startup-failure and
+idempotent shutdown cleanup paths without a double assertion. The focused
+runtime test still proves preview-store cleanup when consumer construction
+fails. A-12 is complete.
 
 ## Repetition and consistency observations
 

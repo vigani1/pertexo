@@ -4480,6 +4480,10 @@ Current evidence:
   diagnosis, and forward-only repair procedure. Startup compatibility keeps the
   exact hashes; recurring readiness remains bounded and does not perform these
   catalog checks.
+- A-12 TypeScript cleanup is complete. The preview attempt store dependency now
+  declares its optional asynchronous close capability, and node-attempt runtime
+  construction binds it without `as unknown as`. Existing startup-failure and
+  idempotent runtime cleanup semantics are unchanged.
 
 ## Update protocol
 
