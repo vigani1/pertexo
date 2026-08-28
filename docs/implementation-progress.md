@@ -4472,6 +4472,14 @@ Current evidence:
   it; production AWS, immutable invocation, pager, measured load/failure,
   backup/PITR, and regional restore evidence remains unchecked. Phase 7 remains
   in progress.
+- A-11 readiness hash governance is complete. The nine security- and
+  compatibility-critical PostgreSQL function hashes are inventoried with their
+  signatures, security modes, search paths, and owning migrations.
+  `docs/operations/database-function-readiness.md` defines the synchronized
+  forward migration/application rollout, required prior-head coverage, failure
+  diagnosis, and forward-only repair procedure. Startup compatibility keeps the
+  exact hashes; recurring readiness remains bounded and does not perform these
+  catalog checks.
 
 ## Update protocol
 

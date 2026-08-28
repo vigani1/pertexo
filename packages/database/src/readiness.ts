@@ -8,6 +8,10 @@ import {
   type CompatibilityReleaseExpectationSet,
 } from './compatibility-release.js';
 
+// Exact function-body hashes below are startup compatibility controls. Keep
+// their inventory and synchronized rollout/rollback procedure aligned with
+// docs/operations/database-function-readiness.md.
+
 export const EXPECTED_MIGRATION_HEAD = '0069_regional_write_admission.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 

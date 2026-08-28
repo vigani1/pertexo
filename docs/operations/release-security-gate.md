@@ -40,6 +40,11 @@ wait for its successful exit before updating serving tasks. The local gate does
 not prove AWS IAM, networking, Secrets Manager delivery, service rollout,
 autoscaling alarms/policies, or migration execution against production.
 
+Changes to readiness-hashed PostgreSQL functions follow the synchronized
+forward-migration, startup, and rollback procedure in
+[Database Function Readiness](./database-function-readiness.md). A hash/body
+change and its application inventory are one release unit.
+
 ## Autoscaling Contract
 
 `infrastructure/ecs/autoscaling.json` keeps API and worker capacity independent.

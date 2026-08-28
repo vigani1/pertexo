@@ -502,7 +502,7 @@ complete.
 - **Severity:** Low
 - **Category:** compatibility and maintainability
 - **File:** `packages/database/src/readiness.ts`
-- **Classification:** intentional but brittle
+- **Classification:** intentional and documented after the audited head
 
 Exact `md5(function.prosrc)` checks provide strong detection of unauthorized
 function drift, but they also couple application readiness to the exact textual
@@ -514,6 +514,17 @@ the security- and compatibility-critical functions unless a later ADR explicitly
 reassigns that authority. Document the synchronized update and rollback
 procedure, inventory the intentionally hashed functions, and keep prior-head
 compatibility tests for every supported rolling release.
+
+Resolution: `docs/operations/database-function-readiness.md` inventories all
+nine intentionally hashed functions with their signatures, exact hashes,
+security modes, search paths, and owning migrations. It defines a synchronized
+forward-migration and application rollout, requires exact prior-head coverage
+for every supported overlap, and defines forward-only repair instead of
+migration rewriting or readiness bypass. The release gate links this procedure,
+and the executable inventory points maintainers back to it. Existing real
+PostgreSQL tests retain exact drift rejection for the preview pin and Phase 3
+non-removal guards plus the bounded predecessor-release overlap. A-11 is
+complete.
 
 ### A-12: Replace the remaining production double assertion
 
