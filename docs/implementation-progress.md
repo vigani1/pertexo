@@ -4394,8 +4394,12 @@ Current evidence:
   attempt-failure facts remain together in the observation module, while
   checkpoint parsing remains the one reconstruction interface. These modules
   cover every A-06 seam without moving state authority into executors or
-  persistence adapters, completing A-06; root `pnpm check` passes all 1,234
-  unit assertions.
+  persistence adapters. Scheduler advancement now delegates deterministic
+  observation, derived-readiness/join/loop, control-stop, and final-plan
+  transition families to cohesive internal modules sharing one private state
+  vocabulary. `advanceWorkflowFromSchedulerState` is reduced from approximately
+  1,040 lines to 106 and remains the sole orchestration interface. All 121
+  workflow-engine assertions pass, completing A-06.
 - A-07 node-attempt decomposition has begun with stable contract and foundation
   seams. Boundary schemas, lease/result vocabulary, public errors, and the
   narrow worker-facing store interface are isolated from implementation.

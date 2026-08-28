@@ -350,11 +350,13 @@ Resolution: every requested pure seam is now explicit. Persisted observations
 own ordinary outcomes plus retry/wait, due, deadline, cursor, and attempt-failure
 facts; coordinator observations own branch selection, Parallel/Merge, and For
 Each derivation; transition decisions own bounded admission and terminal
-selection. `advanceWorkflow` and `advanceWorkflowFromSchedulerState` remain the
-only orchestration interfaces and use the existing transition vocabulary. No
-transition authority moved into executors or persistence adapters. All 121
-workflow-engine assertions and the full repository gate remain green. A-06 is
-complete.
+selection. Scheduler advancement now composes explicit deterministic units for
+observation application, graph/join/loop derivation, cancellation/deadline
+stopping, admission and terminal-plan construction, plus shared transition
+state invariants. `advanceWorkflowFromSchedulerState` is reduced from
+approximately 1,040 lines to 106 while remaining the single orchestration
+interface; no transition authority moved into executors or persistence
+adapters. All 121 workflow-engine assertions remain green. A-06 is complete.
 
 ### A-07: Decompose preview and node-attempt persistence by lifecycle stage
 
