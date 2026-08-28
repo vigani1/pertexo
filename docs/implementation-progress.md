@@ -4255,16 +4255,18 @@ Current evidence:
   24 assertions, including real preview deletion through the maintenance
   credential/coordinator, provider socket-drop redelivery, duplicate fencing,
   webhook/schedule reconciliation, schedule contention/saturation/recovery, and
-  drain behavior. The API matrix passes eight assertions for SSE, direct webhook
-  ingress, and real session/workspace behavior. Five process-crash/restart
+  drain behavior. The local API matrix passes eight assertions for SSE, direct
+  webhook ingress, and real session/workspace behavior. Five process-crash/restart
   assertions, one SSE Redis-loss reconstruction, one sequential Redis/queue/
   PostgreSQL loss plus worker-drain assertion, and one additive compatibility
   rollout assertion pass. The matrix exposed and corrected stale fixtures that
   expected the removed pre-`0053` preview cleanup outbox, activated registry
   releases newer than an email-cohort artifact, counted prior test ledger rows,
-  and referenced a nonexistent retained artifact. CI now explicitly enables the
-  direct webhook and schedule-trigger integration gates instead of silently
-  skipping them. Root `pnpm check` again passes all 1,195 unit assertions, and
+  and referenced a nonexistent retained artifact. The current CI configuration
+  sets the direct-webhook flag but omits `DATABASE_ADMIN_URL`, so that HTTP
+  assertion is silently skipped remotely; whole-repository audit F-04 restores
+  this as open work and requires requested gates to fail on missing
+  configuration. Root `pnpm check` again passes all 1,195 unit assertions, and
   the production image build, UID 10001/read-only-root smoke, dependency audit,
   fixable-high/critical Grype scan, deterministic deployment render, Prometheus
   validation, and exercise-contract validation pass. This completes the local
@@ -4496,15 +4498,16 @@ Current evidence:
   declares its optional asynchronous close capability, and node-attempt runtime
   construction binds it without `as unknown as`. Existing startup-failure and
   idempotent runtime cleanup semantics are unchanged.
-- Engineering audit Finding 5 is closed. The additive compatibility-rollout
+- The historical additive compatibility-rollout isolation finding is closed.
   proof now creates, migrates, and drops its own randomly named PostgreSQL
   database instead of advancing the shared compatibility-release pointer. The
   complete epoch/cohort rollout assertion passes with the shared development
   database untouched.
-- Engineering audit deviations D6 and D7 are closed. The accepted ADR 016
-  amendment ratifies V1 preview identity and separates execution from
-  retention. Migration `0070_preview_execution_deadline.sql` adds a
-  backfilled, immutable, maximum-five-minute `execution_deadline_at`.
+- The historical preview deadline and identity deviations are closed. The
+  accepted ADR 016 amendment ratifies V1 preview identity and separates
+  execution from retention. Migration
+  `0070_preview_execution_deadline.sql` adds a backfilled, immutable,
+  maximum-five-minute `execution_deadline_at`.
   Claim/heartbeat/worker/reconciliation deadline decisions use that field;
   status visibility, prior-preview eligibility, cleanup, and preview artifact
   lifetime retain the independent seven-day `expires_at`. Verification passes
@@ -4519,6 +4522,16 @@ Current evidence:
   empty-database application produced the same final schema. The retained-0023
   upgrade and four startup-compatibility drift assertions now pass together
   (34 real-PostgreSQL assertions).
+- The former whole-repository audit and Phase 4 engineering findings journal are
+  consolidated into `docs/whole-repository-audit.md` at audited head
+  `8debd0090a972921ce523b0f7809558f6ba7c10d`. The new single source records the
+  current architecture and package assessment, resolved prior work, complete
+  area-by-area target state, ordered remediation and verification criteria, and
+  new findings F-01 through F-20. It identifies P1 work for OIDC initiating-
+  browser binding, complete rate limits, coordinator/node-attempt transaction
+  hygiene, truthful direct-webhook CI execution, protected required checks, and
+  live Phase 7 evidence. No Phase 7 completion box changes because those code,
+  external-governance, and live-production requirements remain open.
 
 ## Update protocol
 
