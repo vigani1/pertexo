@@ -52,6 +52,10 @@ const environmentSchema = z
       .enum(['development', 'test', 'staging', 'production'])
       .default('development'),
     OTEL_EXPORTER_OTLP_ENDPOINT: z.url().optional(),
+    POSTGRES_LIFECYCLE_COMMAND_USER: z
+      .string()
+      .regex(/^[a-z_][a-z0-9_]*$/u)
+      .default('pertexo_lifecycle_command'),
     SERVICE_VERSION: z.string().trim().min(1).default('0.0.0-dev'),
   })
   .superRefine((value, context) => {
@@ -88,6 +92,7 @@ export interface LifecycleCommandConfig {
     statementTimeoutMs: number;
   }>;
   readonly database: DatabaseConfig;
+  readonly lifecycleCommandRole: string;
   readonly ledger: DualRegionControlLedgerConfig;
   readonly observability: ObservabilityConfig;
   readonly pollIntervalMs: number;
@@ -108,6 +113,7 @@ export function parseLifecycleCommandConfig(
         parsed.LIFECYCLE_COMMAND_DATABASE_STATEMENT_TIMEOUT_MS,
     }),
     database: parseLifecycleCommandDatabaseConfig(environment),
+    lifecycleCommandRole: parsed.POSTGRES_LIFECYCLE_COMMAND_USER,
     ledger: parseDualRegionControlLedgerConfig(environment),
     observability: parseObservabilityConfig({
       environment: parsed.NODE_ENV,

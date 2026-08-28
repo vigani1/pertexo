@@ -566,6 +566,16 @@ describe('workspace lifecycle command intents', () => {
         statementTimeoutMs: 5_000,
       },
     );
+    await expect(
+      coordinator.checkReadiness({
+        expectedLifecycleCommandRole: 'pertexo_worker',
+      }),
+    ).rejects.toThrow('Lifecycle command database boundary is incompatible');
+    await expect(
+      coordinator.checkReadiness({
+        expectedLifecycleCommandRole: 'pertexo_lifecycle_command',
+      }),
+    ).resolves.toBeUndefined();
     try {
       await expect(coordinator.processNext()).resolves.toEqual({
         commandType: 'deletion_requested',

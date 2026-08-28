@@ -2,29 +2,22 @@ import type { DualRegionControlLedger } from '@pertexo/artifact-store';
 import type { WorkspaceLifecycleCommandCoordinator } from '@pertexo/database';
 import type { StructuredLogger } from '@pertexo/observability/logging';
 import type { MaintenanceMetrics } from '@pertexo/observability';
+import { waitForAbortableDelay } from '@pertexo/observability/runtime';
 import type { TelemetryLifecycle } from '@pertexo/observability/telemetry';
 
 export interface LifecycleCommandResources {
   readonly coordinator: WorkspaceLifecycleCommandCoordinator;
+  readonly expectedLifecycleCommandRole: string;
   readonly ledger: DualRegionControlLedger;
   readonly logger: StructuredLogger;
   readonly metrics: MaintenanceMetrics;
   readonly pollIntervalMs: number;
+  readonly readiness: Readonly<{
+    clear(): Promise<void>;
+    mark(): Promise<void>;
+  }>;
   readonly signal: AbortSignal;
   readonly telemetry: TelemetryLifecycle;
-}
-
-function waitForNextPoll(milliseconds: number, signal: AbortSignal) {
-  return new Promise<void>((resolve) => {
-    const timeout = setTimeout(finish, milliseconds);
-    function finish(): void {
-      clearTimeout(timeout);
-      signal.removeEventListener('abort', finish);
-      resolve();
-    }
-    signal.addEventListener('abort', finish, { once: true });
-    if (signal.aborted) finish();
-  });
 }
 
 export async function runLifecycleCommandWorker(
@@ -33,8 +26,14 @@ export async function runLifecycleCommandWorker(
   let operationError: unknown;
   try {
     resources.telemetry.start();
+    await resources.readiness.clear();
     resources.signal.throwIfAborted();
+    await resources.coordinator.checkReadiness({
+      expectedLifecycleCommandRole: resources.expectedLifecycleCommandRole,
+      signal: resources.signal,
+    });
     const readiness = await resources.ledger.checkReadiness(resources.signal);
+    await resources.readiness.mark();
     resources.logger.info('lifecycle_command.ready', {
       primaryRegion: readiness.primary.region,
       recoveryRegion: readiness.recovery.region,
@@ -72,7 +71,7 @@ export async function runLifecycleCommandWorker(
         outcome.status === 'released' ||
         outcome.status === 'stale'
       ) {
-        await waitForNextPoll(resources.pollIntervalMs, resources.signal);
+        await waitForAbortableDelay(resources.pollIntervalMs, resources.signal);
       }
     }
   } catch (error: unknown) {
@@ -81,6 +80,7 @@ export async function runLifecycleCommandWorker(
 
   const cleanupErrors: unknown[] = [];
   for (const close of [
+    () => resources.readiness.clear(),
     () => resources.coordinator.close(),
     () => {
       resources.ledger.close();

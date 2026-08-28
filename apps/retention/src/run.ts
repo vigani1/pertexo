@@ -8,6 +8,7 @@ import type {
 } from '@pertexo/database';
 import type { StructuredLogger } from '@pertexo/observability/logging';
 import type { TelemetryLifecycle } from '@pertexo/observability/telemetry';
+import { waitForAbortableDelay } from '@pertexo/observability/runtime';
 
 import type { RetentionMetrics, RetentionOperation } from './metrics.js';
 
@@ -25,19 +26,6 @@ export interface RetentionWorkerResources {
   readonly pollIntervalMs: number;
   readonly signal: AbortSignal;
   readonly telemetry: TelemetryLifecycle;
-}
-
-function waitForNextPoll(milliseconds: number, signal: AbortSignal) {
-  return new Promise<void>((resolve) => {
-    const timeout = setTimeout(finish, milliseconds);
-    function finish(): void {
-      clearTimeout(timeout);
-      signal.removeEventListener('abort', finish);
-      resolve();
-    }
-    signal.addEventListener('abort', finish, { once: true });
-    if (signal.aborted) finish();
-  });
 }
 
 export async function runRetentionWorker(
@@ -156,7 +144,10 @@ export async function runRetentionWorker(
           workspacePurge.status !== 'started' &&
           workspacePurge.status !== 'progressed'
         ) {
-          await waitForNextPoll(resources.pollIntervalMs, resources.signal);
+          await waitForAbortableDelay(
+            resources.pollIntervalMs,
+            resources.signal,
+          );
         }
       } catch (error: unknown) {
         resources.metrics.recordFailure(

@@ -4,6 +4,10 @@ import type { PoolClient, QueryConfig, QueryResult } from 'pg';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from './config.js';
+import {
+  EXPECTED_MIGRATION_HEAD,
+  MINIMUM_POSTGRES_MAJOR,
+} from './readiness.js';
 
 const uuidSchema = z.uuid();
 const hashSchema = z.string().regex(/^[0-9a-f]{64}$/u);
@@ -63,6 +67,10 @@ export type WorkspaceLifecycleCommandOutcome =
     }>;
 
 export interface WorkspaceLifecycleCommandCoordinator {
+  checkReadiness(input: {
+    readonly expectedLifecycleCommandRole: string;
+    readonly signal?: AbortSignal;
+  }): Promise<void>;
   close(): Promise<void>;
   processNext(input?: {
     readonly signal?: AbortSignal;
@@ -323,6 +331,73 @@ export function createWorkspaceLifecycleCommandCoordinator(
   };
 
   const coordinator: WorkspaceLifecycleCommandCoordinator = {
+    checkReadiness: async (input): Promise<void> => {
+      const parsedInput = z
+        .object({
+          expectedLifecycleCommandRole: z.string().regex(/^[a-z_][a-z0-9_]*$/u),
+          signal: z
+            .custom<AbortSignal>((value) => value instanceof AbortSignal)
+            .optional(),
+        })
+        .strict()
+        .parse(input);
+      const result = await pool.query<{
+        boundary_compatible: boolean;
+        current_user: string;
+        migration_head: string | null;
+        postgres_major: number;
+      }>({
+        ...(parsedInput.signal === undefined
+          ? {}
+          : { signal: parsedInput.signal }),
+        text: `select current_user,
+          current_setting('server_version_num')::integer/10000 postgres_major,
+          (select name from pertexo_internal.schema_migrations
+            order by name desc limit 1) migration_head,
+          current_user=$1::name
+            and not role.rolsuper
+            and not role.rolbypassrls
+            and not pg_has_role(current_user,$2::name,'MEMBER')
+            and not pg_has_role(current_user,$3::name,'MEMBER')
+            and has_function_privilege(current_user,
+              'app.claim_workspace_lifecycle_operations(character varying,integer,interval)','EXECUTE')
+            and has_function_privilege(current_user,
+              'app.lock_workspace_lifecycle_operation(uuid,uuid,bigint)','EXECUTE')
+            and has_function_privilege(current_user,
+              'app.authorize_workspace_lifecycle_append(uuid,uuid,bigint)','EXECUTE')
+            and has_function_privilege(current_user,
+              'app.project_and_complete_workspace_lifecycle_operation(uuid,uuid,bigint,bigint,character,character)','EXECUTE')
+            and has_function_privilege(current_user,
+              'app.release_workspace_lifecycle_operation(uuid,uuid,bigint)','EXECUTE')
+            and has_function_privilege(current_user,
+              'app.fail_workspace_lifecycle_operation(uuid,uuid,bigint,character varying)','EXECUTE')
+            and not exists(select 1 from (values
+              ('workspace_lifecycle_operations'),
+              ('workspace_control_ledger_projection'),
+              ('workspaces'),('sessions')) protected(table_name)
+              where has_any_column_privilege(current_user,
+                'app.'||protected.table_name,'SELECT,INSERT,UPDATE,REFERENCES')
+                or has_table_privilege(current_user,
+                  'app.'||protected.table_name,'DELETE,TRUNCATE,TRIGGER'))
+            as boundary_compatible
+          from pg_roles role where role.rolname=current_user`,
+        values: [
+          parsedInput.expectedLifecycleCommandRole,
+          config.ownerRole,
+          config.workerRuntimeRole,
+        ],
+      });
+      parsedInput.signal?.throwIfAborted();
+      const row = result.rows[0];
+      if (
+        result.rowCount !== 1 ||
+        row?.current_user !== parsedInput.expectedLifecycleCommandRole ||
+        row.postgres_major < MINIMUM_POSTGRES_MAJOR ||
+        row.migration_head !== EXPECTED_MIGRATION_HEAD ||
+        !row.boundary_compatible
+      )
+        throw new Error('Lifecycle command database boundary is incompatible');
+    },
     close: async () => pool.end(),
     processNext: async (processInput = {}) => {
       const { signal } = processInput;

@@ -50,6 +50,10 @@ const expectedScalingSignals = new Map([
     ]),
   ],
 ]);
+const readinessMarkers = new Map([
+  ['worker', '/tmp/pertexo-worker-ready'],
+  ['lifecycle-command', '/tmp/pertexo-lifecycle-command-ready'],
+]);
 
 if (!dockerfile.includes('USER 10001:10001'))
   throw new Error('runtime image must be non-root');
@@ -84,6 +88,12 @@ for (const [name, expectedEntry] of expectedCommands) {
     throw new Error(`${name} service requires a health check`);
   if (workload.kind !== 'service' && workload.healthCheck)
     throw new Error(`${name} job must report health by exit status`);
+  const readinessMarker = readinessMarkers.get(name);
+  if (
+    readinessMarker !== undefined &&
+    !workload.healthCheck.join(' ').includes(readinessMarker)
+  )
+    throw new Error(`${name} health check must require its readiness marker`);
   if (
     telemetryWorkloads.has(name) &&
     !workload.configuration.includes('OTEL_EXPORTER_OTLP_ENDPOINT')

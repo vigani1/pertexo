@@ -108,7 +108,10 @@
         "CONTROL_LEDGER_RECOVERY_ACCESS_KEY_ID",
         "CONTROL_LEDGER_RECOVERY_SECRET_ACCESS_KEY"
       ],
-      "healthCheck": ["CMD-SHELL", "kill -0 1"]
+      "healthCheck": [
+        "CMD-SHELL",
+        "test -f /tmp/pertexo-lifecycle-command-ready && kill -0 1"
+      ]
     },
     "retention": {
       "kind": "service",

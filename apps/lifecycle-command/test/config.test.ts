@@ -33,6 +33,7 @@ describe('parseLifecycleCommandConfig', () => {
     expect(parsed.ledger.primary.region).toBe('eu-central-1');
     expect(parsed.ledger.recovery.region).toBe('eu-west-1');
     expect(parsed.observability.serviceName).toBe('pertexo-lifecycle-command');
+    expect(parsed.lifecycleCommandRole).toBe('pertexo_lifecycle_command');
     expect(parsed.pollIntervalMs).toBe(1_000);
   });
 

@@ -31,6 +31,10 @@ function resources(outcomes: ('completed' | 'idle' | 'released')[]) {
     return Promise.resolve({ status: outcome } as const);
   });
   const coordinator = {
+    checkReadiness: vi.fn(() => {
+      events.push('database-ready');
+      return Promise.resolve();
+    }),
     close: vi.fn(() => {
       events.push('database-close');
       return Promise.resolve();
@@ -87,15 +91,27 @@ function resources(outcomes: ('completed' | 'idle' | 'released')[]) {
     recordControlLedgerReconciliation: vi.fn(),
     recordLifecycleCommand: vi.fn(),
   };
+  const readiness = {
+    clear: vi.fn(() => {
+      events.push('marker-clear');
+      return Promise.resolve();
+    }),
+    mark: vi.fn(() => {
+      events.push('marker-mark');
+      return Promise.resolve();
+    }),
+  };
   return {
     coordinator,
     controller,
     events,
+    expectedLifecycleCommandRole: 'pertexo_lifecycle_command',
     ledger,
     logger,
     metrics,
     pollIntervalMs: 1,
     processNext,
+    readiness,
     signal: controller.signal,
     telemetry,
   };
@@ -109,9 +125,13 @@ describe('runLifecycleCommandWorker', () => {
 
     expect(input.events).toEqual([
       'telemetry-start',
+      'marker-clear',
+      'database-ready',
       'ledger-ready',
+      'marker-mark',
       'process:completed',
       'process:idle',
+      'marker-clear',
       'database-close',
       'ledger-close',
       'telemetry-close',
@@ -136,10 +156,25 @@ describe('runLifecycleCommandWorker', () => {
       'Lifecycle command worker did not stop cleanly',
     );
     expect(input.processNext).not.toHaveBeenCalled();
-    expect(input.events.slice(-3)).toEqual([
+    expect(input.events.slice(-4)).toEqual([
+      'marker-clear',
       'database-close',
       'ledger-close',
       'telemetry-close',
     ]);
+  });
+
+  it('does not check the ledger or claim work when database readiness fails', async () => {
+    const input = resources([]);
+    input.coordinator.checkReadiness = vi.fn(() =>
+      Promise.reject(new Error('database incompatible')),
+    );
+
+    await expect(runLifecycleCommandWorker(input)).rejects.toThrow(
+      'Lifecycle command worker did not stop cleanly',
+    );
+    expect(input.ledger.checkReadiness).not.toHaveBeenCalled();
+    expect(input.processNext).not.toHaveBeenCalled();
+    expect(input.readiness.mark).not.toHaveBeenCalled();
   });
 });

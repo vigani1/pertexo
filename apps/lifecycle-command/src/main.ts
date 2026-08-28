@@ -4,11 +4,13 @@ import type { StructuredLogger } from '@pertexo/observability/logging';
 import { createTelemetryLifecycle } from '@pertexo/observability/telemetry';
 
 import { parseLifecycleCommandConfig } from './config.js';
+import { createLifecycleCommandReadinessMarker } from './readiness-marker.js';
 
 async function bootstrap(): Promise<void> {
   const config = parseLifecycleCommandConfig();
   const telemetry = createTelemetryLifecycle(config.observability);
   const shutdown = new AbortController();
+  const readiness = createLifecycleCommandReadinessMarker();
   const stop = (): void => {
     shutdown.abort(new Error('Lifecycle command worker interrupted'));
   };
@@ -41,10 +43,12 @@ async function bootstrap(): Promise<void> {
     workerInvoked = true;
     await worker.runLifecycleCommandWorker({
       coordinator,
+      expectedLifecycleCommandRole: config.lifecycleCommandRole,
       ledger,
       logger,
       metrics: observability.createMaintenanceMetrics(),
       pollIntervalMs: config.pollIntervalMs,
+      readiness,
       signal: shutdown.signal,
       telemetry,
     });
@@ -55,6 +59,7 @@ async function bootstrap(): Promise<void> {
       error,
     );
     if (!workerInvoked) {
+      await readiness.clear().catch(() => undefined);
       await coordinator?.close().catch(() => undefined);
       try {
         ledger?.close();
