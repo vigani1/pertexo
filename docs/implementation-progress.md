@@ -4354,7 +4354,8 @@ Current evidence:
   internal module. Shared untrusted-JSON guards are isolated separately, while
   `advanceWorkflow` remains the sole orchestration interface and transition
   authority. All 121 workflow-engine assertions pass. Branch, loop,
-  retry/wait, ready-admission, and terminal-selection extraction remains open.
+  retry/wait, ready-admission, and terminal-selection extraction remained for
+  the following checkpoints.
 - Coordinator-derived control observations are isolated from the main engine
   operation. One internal module now validates completed-output evidence and
   derives branch selections, Parallel/Merge join declarations and branch
@@ -4362,16 +4363,19 @@ Current evidence:
   Recursive executable traversal is shared through its own internal module.
   `operations.ts` is reduced from 2,134 to 946 lines without changing the
   `advanceWorkflow` interface or transition authority; all 121 engine
-  assertions remain green. Retry/wait, ready-admission, and terminal-selection
-  extraction remains open.
+  assertions remain green.
 - Bounded ready admission and terminal run selection are now pure internal
   decision functions. Parallel-scope concurrency accounting and the global
   admission cap are hidden behind one ready-selection interface; terminal
   precedence for unknown outcome, cancellation, deadline, failure, and success
   is hidden behind another. `advanceWorkflowFromSchedulerState` still applies
   both decisions and remains the canonical transition authority. All 121
-  engine assertions pass. Retry/wait observation handling and checkpoint
-  organization remain open for A-06.
+  engine assertions pass. Persisted retry/wait, due, deadline, cursor, and
+  attempt-failure facts remain together in the observation module, while
+  checkpoint parsing remains the one reconstruction interface. These modules
+  cover every A-06 seam without moving state authority into executors or
+  persistence adapters, completing A-06; root `pnpm check` passes all 1,234
+  unit assertions.
 
 ## Update protocol
 

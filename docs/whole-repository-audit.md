@@ -294,7 +294,7 @@ characterization suite remains green. A-05 is complete.
 - **Files:** `packages/workflow-engine/src/operations.ts`,
   `packages/workflow-engine/src/advance-workflow.ts`,
   `packages/workflow-engine/src/checkpoint.ts`
-- **Classification:** partially reducible complexity
+- **Classification:** corrected after the audited head
 
 The engine correctly centralizes deterministic state transitions, but the major
 files are large and require broad knowledge to modify. The complexity of joins,
@@ -329,7 +329,19 @@ checkpoint state: the former accounts for already-running Parallel scopes while
 respecting the global admission cap, and the latter applies outcome-unknown,
 cancellation, deadline, failure, and successful-completion precedence. The
 orchestrator remains responsible for applying both decisions. Retry/wait
-observation handling and checkpoint organization remain open.
+observation parsing and stale reconciliation remain owned by
+`persisted-observations.ts`; checkpoint parsing remains the single canonical
+reconstruction interface rather than being split by schema version.
+
+Resolution: every requested pure seam is now explicit. Persisted observations
+own ordinary outcomes plus retry/wait, due, deadline, cursor, and attempt-failure
+facts; coordinator observations own branch selection, Parallel/Merge, and For
+Each derivation; transition decisions own bounded admission and terminal
+selection. `advanceWorkflow` and `advanceWorkflowFromSchedulerState` remain the
+only orchestration interfaces and use the existing transition vocabulary. No
+transition authority moved into executors or persistence adapters. All 121
+workflow-engine assertions and the full repository gate remain green. A-06 is
+complete.
 
 ### A-07: Decompose preview and node-attempt persistence by lifecycle stage
 
