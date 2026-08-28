@@ -370,8 +370,11 @@ method. The public interface and original single write transaction remain
 unchanged. `node-attempt-run-store-inputs.ts` now owns the complete input-load
 read transaction, including lease/control validation, scoped upstream-output
 resolution, checkpoint join input, nested-loop collection reconstruction, and
-wait-resume output. Dispatch, heartbeat, and completion operation extraction
-remain open, followed by the equivalent preview lifecycle split.
+wait-resume output. `node-attempt-run-store-dispatch.ts` now owns connection
+dispatch-fence
+validation, provider binding compare-and-set semantics, and durable dispatch
+marking in the original write transaction. Heartbeat and completion operation
+extraction remain open, followed by the equivalent preview lifecycle split.
 
 ### A-08: Narrow the database package's public capability surface
 

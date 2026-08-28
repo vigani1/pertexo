@@ -4388,10 +4388,12 @@ Current evidence:
   transaction scope changed. Input loading is also isolated behind its existing
   method and original repeatable-read transaction; it retains lease/control,
   invocation-scope, upstream-output, join, nested-loop collection, and
-  wait-resume validation. All 136 database unit assertions and the focused
-  24-assertion real-PostgreSQL execution-runtime suite pass. Dispatch,
-  heartbeat, completion, and the equivalent preview lifecycle extraction
-  remain open.
+  wait-resume validation. Dispatch persistence is also isolated with its
+  connection fence, provider binding compare-and-set, lease fence, and durable
+  dispatch marker inside the original write transaction. All 136 database unit
+  assertions and the focused 24-assertion real-PostgreSQL execution-runtime
+  suite pass. Heartbeat, completion, and the equivalent preview lifecycle
+  extraction remain open.
 
 ## Update protocol
 
