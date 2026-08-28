@@ -4325,7 +4325,11 @@ Current evidence:
   coordinator-private transaction module and share acquisition, abort,
   workspace-context, commit/rollback, and release mechanics without changing
   the public `CoordinatorRunStore` port or SQL transaction boundaries. The
-  focused 41-assertion real-PostgreSQL characterization suite passes. Loading,
+  stable contract and boundary parsers are isolated from implementation, and
+  one complete durable operation module now owns delivery validation, receipt
+  claim/completion, capacity deferral, mismatch auditing, and acknowledgement.
+  Commit-time delivery handling reuses the same module. The focused
+  41-assertion real-PostgreSQL characterization suite passes. Loading, ready
   admission, settlement, and terminalization extraction remains open.
 
 ## Update protocol

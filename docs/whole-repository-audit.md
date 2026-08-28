@@ -263,8 +263,13 @@ write transaction boundary has moved into
 `coordinator-run-store-transactions.ts`. The public store remains unchanged,
 and both paths share acquisition, abort cancellation, workspace-context setup,
 commit/rollback, and release behavior. This is the first extraction seam for
-the operation modules below; authoritative loading, admission, settlement, and
-terminalization remain to be separated before A-05 is complete.
+the operation modules below. The stable public port, results, errors, and
+boundary schemas now live in `coordinator-run-store-contract.ts`, avoiding
+circular ownership as implementations split. Durable delivery validation,
+receipt claim/completion, capacity deferral, mismatch auditing, and delivery
+acknowledgement move together in `coordinator-run-store-delivery.ts`; the commit
+path reuses those same invariants. Authoritative loading, ready admission,
+settlement, and terminalization remain to be separated before A-05 is complete.
 
 ### A-06: Split engine operations without splitting the state machine
 
