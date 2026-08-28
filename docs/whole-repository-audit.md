@@ -380,7 +380,11 @@ and lease fencing, terminal attempt/node facts, retry/reconciliation evidence,
 run events, coordinator wake-up intent, and receipt completion remain atomic in
 the original write transaction. The public node-attempt store is now a 65-line
 composition root, completing the node-attempt half of this finding. The
-equivalent preview lifecycle split remains open.
+preview half is now in progress: immutable preview acceptance, duplicate
+idempotency resolution, actor/draft/retention admission, prior-preview input
+resolution, and status reads live in `preview-execution-acceptance.ts` behind
+the unchanged `preview-execution` export path. Preview claim/heartbeat,
+dispatch, completion, and reconciliation extraction remain open.
 
 ### A-08: Narrow the database package's public capability surface
 

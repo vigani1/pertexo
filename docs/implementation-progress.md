@@ -4399,7 +4399,12 @@ Current evidence:
   The public node-attempt store is now a 65-line composition root. All 136
   database unit assertions and the focused 24-assertion real-PostgreSQL
   execution-runtime suite pass, completing the node-attempt half of A-07. The
-  equivalent preview lifecycle extraction remains open.
+  preview half has begun: immutable acceptance and reads now own duplicate
+  idempotency resolution, actor/draft/retention admission, prior-preview input
+  resolution, and status mapping behind the unchanged public export path. All
+  136 database unit assertions and 28 focused real-PostgreSQL preview
+  acceptance/worker assertions pass. Preview claim/heartbeat, dispatch,
+  completion, and reconciliation extraction remain open.
 
 ## Update protocol
 
