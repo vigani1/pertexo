@@ -4432,6 +4432,22 @@ Current evidence:
   while preserving the existing API/worker dependency-direction checks. Two
   package-contract regressions fix the manifest paths and prove role surfaces
   do not delegate through `index.ts`. All 138 database unit assertions pass.
+- A-09 test decomposition is complete. The 4,643-line workflow-engine
+  executable suite is replaced by six invariant-owned suites and one typed
+  fixture module; all 121 assertions pass. The 6,365-line coordinator
+  persistence suite is replaced by nine durable-transaction/invariant suites
+  and focused PostgreSQL fixture helpers; all 41 original assertions pass on
+  disposable databases. The 4,067-line worker coordinator transport suite is
+  replaced by seven scenario-owned suites covering exact redelivery, failure
+  notification, linear execution, Parallel/Merge Redis-loss recovery, For Each
+  cancellation, retry/Wait outage recovery, and transport identity fencing.
+  The transport-enabled worker integration command retains real PostgreSQL,
+  BullMQ, Redis-loss, and fresh-worker proofs and passes 17 assertions with five
+  unrelated environment-gated scenarios skipped. Root `pnpm check` passes all
+  1,236 unit assertions. The shared development database still contains
+  compatibility/readiness drift from earlier test work: the same 11 unrelated
+  database integration failures reproduce when their four files run alone, so
+  they are not attributed to this test-only decomposition.
 
 ## Update protocol
 

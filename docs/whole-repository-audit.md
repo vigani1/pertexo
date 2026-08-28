@@ -177,7 +177,7 @@ and external-I/O sequencing remain inside the existing coordinators.
 - **Files:** `docs/implementation-progress.md`,
   `.github/workflows/release-gate.yml`, `infrastructure/exercises/**`,
   `docs/operations/regional-recovery.md`
-- **Classification:** should be corrected
+- **Classification:** corrected after the audited head
 
 The repository contains strong deployment, exercise, recovery, ledger, artifact,
 dashboard, and alert machinery. The current automated gates primarily validate
@@ -453,6 +453,19 @@ Divide them by invariant or durable transaction rather than by arbitrary file
 size. Reuse typed seed/build helpers, but avoid a large general fixture framework.
 Keep process-kill, duplicate-delivery, Redis-loss, and real PostgreSQL scenarios
 intact instead of replacing them with mocks.
+
+Resolution: the workflow-engine executable suite is divided into six
+invariant-owned suites plus a typed fixture module; all 121 assertions remain
+unchanged and green. The coordinator persistence suite is divided into nine
+durable-transaction/invariant suites plus PostgreSQL fixture helpers; all 41
+original assertions pass against disposable databases. The worker coordinator
+transport suite is divided into seven scenario-owned files for exact
+redelivery, failure notification, linear execution, Parallel/Merge recovery,
+For Each cancellation, retry/Wait recovery, and identity fencing. Its
+PostgreSQL, BullMQ, Redis-loss, and fresh-worker behavior remains real rather
+than mocked; the complete transport-enabled worker integration run passes 17
+assertions with five unrelated environment-gated scenarios skipped. The full
+repository gate passes all 1,236 unit assertions. A-09 is complete.
 
 ### A-10: Improve Phase 7 checklist granularity
 
