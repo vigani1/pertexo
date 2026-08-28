@@ -40,15 +40,17 @@ class FakeTransactions implements OidcLoginTransactionStore {
     return Promise.resolve();
   }
 
-  consume(stateDigest: string, now: Date) {
+  consume(stateDigest: string, browserBindingDigest: string, now: Date) {
     const transaction = this.records.get(stateDigest);
     if (transaction === undefined)
       return Promise.resolve({ status: 'missing' as const });
     if (this.consumed.has(stateDigest))
       return Promise.resolve({ status: 'replayed' as const });
-    this.consumed.add(stateDigest);
     if (now >= transaction.expiresAt)
       return Promise.resolve({ status: 'expired' as const });
+    if (browserBindingDigest !== transaction.browserBindingDigest)
+      return Promise.resolve({ status: 'binding_mismatch' as const });
+    this.consumed.add(stateDigest);
     return Promise.resolve({ status: 'ok' as const, transaction });
   }
 }
@@ -139,12 +141,14 @@ describe('managed OIDC application service', () => {
     expect(transaction?.stateDigest).toMatch(/^[a-f0-9]{64}$/u);
     expect(transaction?.stateDigest).not.toBe(request?.state);
     expect(transaction?.stateDigest).not.toContain(request?.state ?? 'never');
+    expect(transaction?.browserBindingDigest).toMatch(/^[a-f0-9]{64}$/u);
+    expect(transaction?.browserBindingDigest).not.toBe(start.browserBinding);
     expect(transaction?.codeVerifier).not.toBe(request?.codeChallenge);
   });
 
   it('verifies issuer, audience, nonce, subject and maps the stable external identity', async () => {
     const setup = service(new FakeClock());
-    await setup.app.startLogin();
+    const start = await setup.app.startLogin();
     const transaction = defined(
       setup.transactions.records.values().next().value,
     );
@@ -154,10 +158,13 @@ describe('managed OIDC application service', () => {
       nonce: transaction.nonce,
     };
 
-    const result = await setup.app.completeLogin({
-      code: 'one-time-code',
-      state: defined(setup.provider.request).state,
-    });
+    const result = await setup.app.completeLogin(
+      {
+        code: 'one-time-code',
+        state: defined(setup.provider.request).state,
+      },
+      start.browserBinding,
+    );
     expect(result).toEqual({
       externalIdentity: {
         issuer: configuration.issuer,
@@ -189,17 +196,51 @@ describe('managed OIDC application service', () => {
     const callbackState = mode === 'state' ? `${state}tampered` : state;
     if (mode === 'replayed') {
       await expect(
-        setup.app.completeLogin({ code: 'one-time-code', state }),
+        setup.app.completeLogin(
+          { code: 'one-time-code', state },
+          start.browserBinding,
+        ),
       ).rejects.toMatchObject({
         code: 'identity.provider_unavailable',
       });
     }
     await expect(
-      setup.app.completeLogin({ code: 'one-time-code', state: callbackState }),
+      setup.app.completeLogin(
+        { code: 'one-time-code', state: callbackState },
+        start.browserBinding,
+      ),
     ).rejects.toMatchObject({
       code: expected,
     });
     expect(start.authorizationUrl).toBeTruthy();
+  });
+
+  it('rejects a different browser binding without consuming the transaction', async () => {
+    const setup = service(new FakeClock());
+    const start = await setup.app.startLogin();
+    const state = defined(setup.provider.request).state;
+
+    await expect(
+      setup.app.completeLogin(
+        { code: 'one-time-code', state },
+        'wrong-browser',
+      ),
+    ).rejects.toMatchObject({ code: 'identity.callback_rejected' });
+
+    const transaction = defined(
+      setup.transactions.records.values().next().value,
+    );
+    setup.provider.requestVerifier = transaction.codeVerifier;
+    setup.provider.response = {
+      ...setup.provider.response,
+      nonce: transaction.nonce,
+    };
+    await expect(
+      setup.app.completeLogin(
+        { code: 'one-time-code', state },
+        start.browserBinding,
+      ),
+    ).resolves.toMatchObject({ internalIdentity: { userId } });
   });
 
   it.each([
@@ -213,7 +254,7 @@ describe('managed OIDC application service', () => {
     ['subject', { subject: '' }, 'identity.subject_missing'],
   ])('rejects a tampered %s claim', async (_name, change, expected) => {
     const setup = service(new FakeClock());
-    await setup.app.startLogin();
+    const start = await setup.app.startLogin();
     const transaction = defined(
       setup.transactions.records.values().next().value,
     );
@@ -224,10 +265,13 @@ describe('managed OIDC application service', () => {
       ...change,
     };
     await expect(
-      setup.app.completeLogin({
-        code: 'one-time-code',
-        state: defined(setup.provider.request).state,
-      }),
+      setup.app.completeLogin(
+        {
+          code: 'one-time-code',
+          state: defined(setup.provider.request).state,
+        },
+        start.browserBinding,
+      ),
     ).rejects.toMatchObject({
       code: expected,
     });
@@ -235,15 +279,18 @@ describe('managed OIDC application service', () => {
 
   it('classifies opaque provider failures as unavailable without exposing secret values', async () => {
     const setup = service(new FakeClock());
-    await setup.app.startLogin();
+    const start = await setup.app.startLogin();
     setup.provider.exchangeCode = () => {
       throw new Error('provider-token-should-never-escape');
     };
     try {
-      await setup.app.completeLogin({
-        code: 'one-time-code',
-        state: defined(setup.provider.request).state,
-      });
+      await setup.app.completeLogin(
+        {
+          code: 'one-time-code',
+          state: defined(setup.provider.request).state,
+        },
+        start.browserBinding,
+      );
     } catch (error) {
       expect(error).toBeInstanceOf(IdentityError);
       expect(error).toMatchObject({
@@ -256,7 +303,7 @@ describe('managed OIDC application service', () => {
 
   it('requires bounded verified profile fields for first-user mapping', async () => {
     const setup = service(new FakeClock());
-    await setup.app.startLogin();
+    const start = await setup.app.startLogin();
     const transaction = defined(
       setup.transactions.records.values().next().value,
     );
@@ -272,16 +319,19 @@ describe('managed OIDC application service', () => {
       nonce: transaction.nonce,
     };
     await expect(
-      setup.app.completeLogin({
-        code: 'one-time-code',
-        state: defined(setup.provider.request).state,
-      }),
+      setup.app.completeLogin(
+        {
+          code: 'one-time-code',
+          state: defined(setup.provider.request).state,
+        },
+        start.browserBinding,
+      ),
     ).rejects.toMatchObject({
       code: 'identity.profile_incomplete',
     });
 
     const bounded = service(new FakeClock());
-    await bounded.app.startLogin();
+    const boundedStart = await bounded.app.startLogin();
     const boundedTransaction = defined(
       bounded.transactions.records.values().next().value,
     );
@@ -292,10 +342,13 @@ describe('managed OIDC application service', () => {
       displayName: 'x'.repeat(257),
     };
     await expect(
-      bounded.app.completeLogin({
-        code: 'one-time-code',
-        state: defined(bounded.provider.request).state,
-      }),
+      bounded.app.completeLogin(
+        {
+          code: 'one-time-code',
+          state: defined(bounded.provider.request).state,
+        },
+        boundedStart.browserBinding,
+      ),
     ).rejects.toMatchObject({
       code: 'identity.callback_rejected',
     });
@@ -314,7 +367,7 @@ describe('managed OIDC application service', () => {
       mapperProvider,
       malformedMapper,
     );
-    await mapperService.startLogin();
+    const mapperStart = await mapperService.startLogin();
     const transaction = defined(
       mapperTransactions.records.values().next().value,
     );
@@ -324,10 +377,13 @@ describe('managed OIDC application service', () => {
       nonce: transaction.nonce,
     };
     await expect(
-      mapperService.completeLogin({
-        code: 'one-time-code',
-        state: defined(mapperProvider.request).state,
-      }),
+      mapperService.completeLogin(
+        {
+          code: 'one-time-code',
+          state: defined(mapperProvider.request).state,
+        },
+        mapperStart.browserBinding,
+      ),
     ).rejects.toMatchObject({ code: 'identity.mapping_failed' });
 
     const unsafeProvider = new FakeProvider();

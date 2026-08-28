@@ -37,10 +37,16 @@ const LIFECYCLE_VISIBLE_STATUSES = [
 
 export interface OidcLoginPort {
   startLogin(): Promise<
-    Readonly<{ authorizationUrl: string; expiresAt: Date }>
+    Readonly<{
+      authorizationUrl: string;
+      expiresAt: Date;
+      browserBindingMaxAgeSeconds: number;
+      browserBinding: string;
+    }>
   >;
   completeLogin(
     input: Readonly<{ code: string; state: string }>,
+    browserBinding: string | undefined,
   ): Promise<OidcLoginResult>;
 }
 
@@ -59,7 +65,12 @@ export class OidcApplicationService {
   ) {}
 
   public start(): Promise<
-    Readonly<{ authorizationUrl: string; expiresAt: Date }>
+    Readonly<{
+      authorizationUrl: string;
+      expiresAt: Date;
+      browserBindingMaxAgeSeconds: number;
+      browserBinding: string;
+    }>
   > {
     return this.telemetry.measure(IDENTITY_WORKSPACE_OPERATION.oidcStart, () =>
       this.oidc.startLogin(),
@@ -68,13 +79,14 @@ export class OidcApplicationService {
 
   public async complete(
     input: unknown,
+    browserBinding: string | undefined,
     cookieBoundary: SessionCookieBoundary,
   ): Promise<SessionIssueResult & Readonly<{ userId: string }>> {
     return this.telemetry.measure(
       IDENTITY_WORKSPACE_OPERATION.oidcCallback,
       async () => {
         const callback = oidcCallbackInputSchema.parse(input);
-        const result = await this.oidc.completeLogin(callback);
+        const result = await this.oidc.completeLogin(callback, browserBinding);
         const session = await this.sessions.issue(
           { userId: result.internalIdentity.userId },
           cookieBoundary,

@@ -35,6 +35,7 @@ export type OidcCallbackInput = Readonly<
 
 export type OidcLoginTransaction = Readonly<{
   stateDigest: string;
+  browserBindingDigest: string;
   codeVerifier: string;
   nonce: string;
   expiresAt: Date;

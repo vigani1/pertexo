@@ -56,7 +56,7 @@ describe('Coordinator migration and identity invariants', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0070_preview_execution_deadline.sql',
+          migrationHead: '0071_oidc_browser_binding.sql',
           role: 'pertexo_worker',
         });
       } finally {
@@ -152,6 +152,7 @@ describe('Coordinator migration and identity invariants', () => {
         '0068_restore_artifact_inventory.sql',
         '0069_regional_write_admission.sql',
         '0070_preview_execution_deadline.sql',
+        '0071_oidc_browser_binding.sql',
       ]);
       const workerPool = new Pool({
         connectionString: namedDatabaseUrl(
@@ -167,7 +168,7 @@ describe('Coordinator migration and identity invariants', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0070_preview_execution_deadline.sql',
+          migrationHead: '0071_oidc_browser_binding.sql',
           role: 'pertexo_worker',
         });
         await expect(
@@ -234,7 +235,7 @@ describe('Coordinator migration and identity invariants', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0070_preview_execution_deadline.sql',
+        migrationHead: '0071_oidc_browser_binding.sql',
         role: 'pertexo_worker',
       });
       const catalog = await readinessPool.query<{
@@ -473,7 +474,7 @@ describe('Coordinator migration and identity invariants', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0070_preview_execution_deadline.sql',
+        migrationHead: '0071_oidc_browser_binding.sql',
       });
     } finally {
       await readinessPool.end();

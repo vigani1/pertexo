@@ -13,15 +13,16 @@ import type {
 
 export interface OidcLoginTransactionStore {
   create(transaction: OidcLoginTransaction): Promise<void>;
-  /** Atomically returns and consumes a transaction. The state digest is the only lookup key. */
+  /** Atomically verifies the browser binding and consumes the transaction. */
   consume(
     stateDigest: string,
+    browserBindingDigest: string,
     now: Date,
   ): Promise<OidcTransactionConsumeResult | undefined>;
 }
 
 export type OidcTransactionConsumeResult = Readonly<{
-  status: 'ok' | 'missing' | 'expired' | 'replayed';
+  status: 'ok' | 'missing' | 'expired' | 'replayed' | 'binding_mismatch';
   transaction?: OidcLoginTransaction;
 }>;
 

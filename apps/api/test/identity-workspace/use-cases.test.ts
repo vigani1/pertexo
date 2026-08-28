@@ -116,6 +116,8 @@ describe('identity/workspace application use cases', () => {
         Promise.resolve({
           authorizationUrl: 'https://issuer.example.test/authorize',
           expiresAt: new Date('2026-08-20T20:00:00.000Z'),
+          browserBindingMaxAgeSeconds: 300,
+          browserBinding: 'browser-binding-secret',
         }),
       completeLogin: vi.fn().mockResolvedValue({
         externalIdentity: {
@@ -147,14 +149,15 @@ describe('identity/workspace application use cases', () => {
 
     const result = await app.complete(
       { code: 'code', state: 'state-value-123456' },
+      'browser-binding-secret',
       cookieBoundary,
     );
 
     expect(result.userId).toBe(actorId);
-    expect(oidc.completeLogin).toHaveBeenCalledWith({
-      code: 'code',
-      state: 'state-value-123456',
-    });
+    expect(oidc.completeLogin).toHaveBeenCalledWith(
+      { code: 'code', state: 'state-value-123456' },
+      'browser-binding-secret',
+    );
     expect(sessions.issue).toHaveBeenCalledWith(
       { userId: actorId },
       cookieBoundary,

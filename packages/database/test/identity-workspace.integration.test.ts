@@ -127,11 +127,12 @@ async function replaceOidcTransactions(input: {
            (state_digest, code_verifier_ciphertext, code_verifier_nonce,
             code_verifier_tag, code_verifier_key_version, nonce_ciphertext,
             nonce_nonce, nonce_tag, nonce_key_version, expires_at, consumed_at,
-            created_at)
+            created_at, browser_binding_digest)
          select md5($1 || series::text) || md5(series::text || $1),
                 'sealed-verifier', 'nonce', 'tag', 'test-v1',
                 'sealed-nonce', 'nonce', 'tag', 'test-v1',
-                ${variant.expiresAt}, ${variant.consumedAt}, ${variant.createdAt}
+                ${variant.expiresAt}, ${variant.consumedAt}, ${variant.createdAt},
+                repeat('0', 64)
          from generate_series(1, $2::integer) as series`,
         [variant.prefix, variant.count],
       );
@@ -156,6 +157,9 @@ async function clearOidcTransactions(): Promise<void> {
 function oidcTransaction() {
   return {
     stateDigest: createHash('sha256').update(randomUUID()).digest('hex'),
+    browserBindingDigest: createHash('sha256')
+      .update(randomUUID())
+      .digest('hex'),
     codeVerifier: `verifier-${randomUUID()}`,
     nonce: `nonce-${randomUUID()}`,
     expiresAt: new Date(Date.now() + 60_000),
@@ -676,8 +680,17 @@ describe('identity/workspace persistence', () => {
     const stateDigest = createHash('sha256').update(randomUUID()).digest('hex');
     const codeVerifier = `verifier-${randomUUID()}`;
     const nonce = `nonce-${randomUUID()}`;
+    const browserBindingDigest = createHash('sha256')
+      .update(randomUUID())
+      .digest('hex');
     const expiresAt = new Date(Date.now() + 60_000);
-    await oidcStore.create({ stateDigest, codeVerifier, nonce, expiresAt });
+    await oidcStore.create({
+      stateDigest,
+      browserBindingDigest,
+      codeVerifier,
+      nonce,
+      expiresAt,
+    });
     const rawPool = new Pool({ connectionString: apiUrl, max: 1 });
     const raw = await rawPool.connect();
     try {
@@ -697,30 +710,44 @@ describe('identity/workspace persistence', () => {
       raw.release();
       await rawPool.end();
     }
+    const wrongBindingDigest = createHash('sha256')
+      .update(randomUUID())
+      .digest('hex');
+    expect(
+      (await oidcStore.consume(stateDigest, wrongBindingDigest, new Date()))
+        .status,
+    ).toBe('binding_mismatch');
     const [first, second] = await Promise.all([
-      oidcStore.consume(stateDigest, new Date()),
-      oidcStore.consume(stateDigest, new Date()),
+      oidcStore.consume(stateDigest, browserBindingDigest, new Date()),
+      oidcStore.consume(stateDigest, browserBindingDigest, new Date()),
     ]);
     expect([first.status, second.status].sort()).toEqual(['ok', 'replayed']);
     const successful = first.status === 'ok' ? first : second;
     expect(successful.transaction?.codeVerifier).toBe(codeVerifier);
     expect(successful.transaction?.nonce).toBe(nonce);
-    expect((await oidcStore.consume(stateDigest, new Date())).status).toBe(
-      'replayed',
-    );
+    expect(
+      (await oidcStore.consume(stateDigest, browserBindingDigest, new Date()))
+        .status,
+    ).toBe('replayed');
 
     const expiredDigest = createHash('sha256')
       .update(randomUUID())
       .digest('hex');
     await oidcStore.create({
       stateDigest: expiredDigest,
+      browserBindingDigest,
       codeVerifier,
       nonce,
       expiresAt: new Date(Date.now() + 60_000),
     });
     expect(
-      (await oidcStore.consume(expiredDigest, new Date(Date.now() + 120_000)))
-        .status,
+      (
+        await oidcStore.consume(
+          expiredDigest,
+          browserBindingDigest,
+          new Date(Date.now() + 120_000),
+        )
+      ).status,
     ).toBe('expired');
   });
 

@@ -27,6 +27,8 @@ import {
   authenticatedSession,
   CSRF_COOKIE_NAME,
   CsrfProtectionGuard,
+  OIDC_BROWSER_BINDING_COOKIE_NAME,
+  readCookie,
   SESSION_COOKIE_NAME,
   SessionAuthenticationGuard,
   sessionToken,
@@ -71,6 +73,8 @@ export class OidcController {
     oidc: OidcLoginService,
     sessions: OpaqueSessionService,
     private readonly csrf: DoubleSubmitCsrfPolicy,
+    @Inject(SESSION_COOKIE_POLICY)
+    private readonly cookiePolicy: SessionCookiePolicy,
     @Inject(IDENTITY_WORKSPACE_TELEMETRY)
     telemetry: IdentityWorkspaceTelemetry = NOOP_IDENTITY_WORKSPACE_TELEMETRY,
   ) {
@@ -78,11 +82,20 @@ export class OidcController {
   }
 
   @Get('start')
-  public async start(): Promise<
-    Readonly<{ authorizationUrl: string; expiresAt: string }>
-  > {
+  public async start(
+    @Res({ passthrough: true }) response: CookieResponse,
+  ): Promise<Readonly<{ authorizationUrl: string; expiresAt: string }>> {
     try {
       const result = await this.application.start();
+      response.header(
+        'set-cookie',
+        serializeOidcBindingCookie(
+          result.browserBinding,
+          result.expiresAt,
+          result.browserBindingMaxAgeSeconds,
+          this.cookiePolicy,
+        ),
+      );
       return oidcStartResponseSchema.parse({
         authorizationUrl: result.authorizationUrl,
         expiresAt: result.expiresAt.toISOString(),
@@ -96,16 +109,28 @@ export class OidcController {
   @HttpCode(204)
   public async callback(
     @Query() query: unknown,
+    @Req() request: IdentityWorkspaceRequest,
     @Res({ passthrough: true }) response: CookieResponse,
   ): Promise<void> {
+    const clearedBinding = clearOidcBindingCookie(this.cookiePolicy);
     try {
       const callback = oidcCallbackRequestSchema.parse(query);
       const cookies = new ResponseCookieBoundary(
         response,
         this.csrf.issueToken(),
+        clearedBinding,
       );
-      await this.application.complete(callback, cookies);
+      await this.application.complete(
+        callback,
+        readCookie(request, OIDC_BROWSER_BINDING_COOKIE_NAME),
+        cookies,
+      );
     } catch (error: unknown) {
+      try {
+        response.header('set-cookie', clearedBinding);
+      } catch {
+        // Preserve the original callback error if the response boundary failed.
+      }
       return throwApplicationError(mapIdentityWorkspaceError(error));
     }
   }
@@ -291,6 +316,7 @@ class ResponseCookieBoundary {
   public constructor(
     private readonly response: CookieResponse,
     private readonly csrfToken: string,
+    private readonly clearedOidcBinding: string,
   ) {}
 
   public writeSessionCookie(
@@ -298,10 +324,45 @@ class ResponseCookieBoundary {
     options: SessionCookieOptions,
   ): void {
     this.response.header('set-cookie', [
+      this.clearedOidcBinding,
       serializeCookie('pertexo_session', token, options),
       serializeCookie('pertexo_csrf', this.csrfToken, options, false),
     ]);
   }
+}
+
+const OIDC_CALLBACK_COOKIE_PATH = '/v1/auth/oidc/callback';
+
+function serializeOidcBindingCookie(
+  value: string,
+  expiresAt: Date,
+  maxAgeSeconds: number,
+  policy: SessionCookiePolicy,
+): string {
+  return [
+    `${OIDC_BROWSER_BINDING_COOKIE_NAME}=${encodeURIComponent(value)}`,
+    `Path=${OIDC_CALLBACK_COOKIE_PATH}`,
+    'HttpOnly',
+    policy.secure ? 'Secure' : undefined,
+    'SameSite=Lax',
+    `Expires=${expiresAt.toUTCString()}`,
+    `Max-Age=${String(maxAgeSeconds)}`,
+  ]
+    .filter((part): part is string => part !== undefined)
+    .join('; ');
+}
+
+function clearOidcBindingCookie(policy: SessionCookiePolicy): string {
+  return [
+    `${OIDC_BROWSER_BINDING_COOKIE_NAME}=`,
+    `Path=${OIDC_CALLBACK_COOKIE_PATH}`,
+    'Max-Age=0',
+    'HttpOnly',
+    policy.secure ? 'Secure' : undefined,
+    'SameSite=Lax',
+  ]
+    .filter((part): part is string => part !== undefined)
+    .join('; ');
 }
 
 function serializeCookie(

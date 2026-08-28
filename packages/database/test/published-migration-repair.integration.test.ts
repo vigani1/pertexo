@@ -103,6 +103,7 @@ describe('published migration repair upgrade', () => {
       '0068_restore_artifact_inventory.sql',
       '0069_regional_write_admission.sql',
       '0070_preview_execution_deadline.sql',
+      '0071_oidc_browser_binding.sql',
     ]);
     await expect(migrateDatabase(migrationConfig)).resolves.toEqual([]);
 

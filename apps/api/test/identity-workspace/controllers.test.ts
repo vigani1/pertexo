@@ -16,6 +16,35 @@ import {
 import type { IdentityWorkspaceRequest } from '../../src/identity-workspace/index.js';
 
 describe('identity/workspace controllers', () => {
+  it('sets a narrow HttpOnly OIDC binding cookie without exposing its value in the body', async () => {
+    const oidc = {
+      startLogin: vi.fn().mockResolvedValue({
+        authorizationUrl: 'https://issuer.example.test/authorize?state=opaque',
+        expiresAt: new Date(Date.now() + 300_000),
+        browserBindingMaxAgeSeconds: 300,
+        browserBinding: 'raw-browser-binding',
+      }),
+    } as unknown as OidcLoginService;
+    const response: CookieResponse = { header: vi.fn() };
+    const controller = new OidcController(
+      oidc,
+      { issue: vi.fn() } as never,
+      new DoubleSubmitCsrfPolicy(nodeIdentityCrypto),
+      { secure: true, sameSite: 'lax' },
+    );
+
+    const body = await controller.start(response);
+
+    expect(JSON.stringify(body)).not.toContain('raw-browser-binding');
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(vi.mocked(response.header)).toHaveBeenCalledWith(
+      'set-cookie',
+      expect.stringMatching(
+        /^pertexo_oidc_binding=raw-browser-binding; Path=\/v1\/auth\/oidc\/callback; HttpOnly; Secure; SameSite=Lax; Expires=.+; Max-Age=300$/u,
+      ),
+    );
+  });
+
   it('writes session and CSRF cookies in one aligned response header', async () => {
     const oidc = {
       completeLogin: vi.fn().mockResolvedValue({
@@ -75,11 +104,19 @@ describe('identity/workspace controllers', () => {
       oidc,
       sessions as never,
       new DoubleSubmitCsrfPolicy(nodeIdentityCrypto),
+      { secure: true, sameSite: 'strict' },
     );
 
     await controller.callback(
       { code: 'authorization-code', state: 'state-value-123456' },
+      { cookies: { pertexo_oidc_binding: 'browser-binding' } },
       response,
+    );
+
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(oidc.completeLogin).toHaveBeenCalledWith(
+      { code: 'authorization-code', state: 'state-value-123456' },
+      'browser-binding',
     );
 
     // eslint-disable-next-line @typescript-eslint/unbound-method
@@ -89,6 +126,9 @@ describe('identity/workspace controllers', () => {
       'set-cookie',
       expect.arrayContaining([
         expect.stringContaining('pertexo_session=opaque-session-token'),
+        expect.stringContaining(
+          'pertexo_oidc_binding=; Path=/v1/auth/oidc/callback; Max-Age=0',
+        ),
         expect.stringMatching(
           /^pertexo_csrf=[^;]+; Path=\/; Secure; SameSite=Strict; Max-Age=900$/,
         ),
@@ -132,11 +172,13 @@ describe('identity/workspace controllers', () => {
       oidc,
       sessions,
       new DoubleSubmitCsrfPolicy(nodeIdentityCrypto),
+      { secure: true, sameSite: 'lax' },
     );
 
     await expect(
       controller.callback(
         { code: 'authorization-code', state: 'state-value-123456' },
+        { cookies: { pertexo_oidc_binding: 'browser-binding' } },
         response,
       ),
     ).rejects.toMatchObject({ code: 'auth.unauthenticated' });
@@ -182,13 +224,21 @@ describe('identity/workspace controllers', () => {
       oidc,
       { issue: vi.fn() } as never,
       new DoubleSubmitCsrfPolicy(nodeIdentityCrypto),
+      { secure: true, sameSite: 'lax' },
     );
+    const malformedResponse: CookieResponse = { header: vi.fn() };
     await expect(
       oidcController.callback(
         { code: 'authorization-code', state: 'short' },
-        { header: vi.fn() },
+        {},
+        malformedResponse,
       ),
     ).rejects.toMatchObject({ code: 'request.invalid' });
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(vi.mocked(malformedResponse.header)).toHaveBeenCalledWith(
+      'set-cookie',
+      expect.stringContaining('pertexo_oidc_binding=;'),
+    );
 
     const workspaceController = new WorkspaceController(
       { execute: vi.fn() } as never,
@@ -240,11 +290,13 @@ describe('identity/workspace controllers', () => {
       oidc,
       { issue: vi.fn() } as never,
       new DoubleSubmitCsrfPolicy(nodeIdentityCrypto),
+      { secure: true, sameSite: 'lax' },
     );
 
     await expect(
       controller.callback(
         { code: 'authorization-code', state: 'state-value-123456' },
+        { cookies: { pertexo_oidc_binding: 'browser-binding' } },
         { header: vi.fn() },
       ),
     ).rejects.toMatchObject({

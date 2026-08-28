@@ -181,6 +181,23 @@ export class IdentityWorkspaceModule {
       },
       WorkspaceManageGuard,
       {
+        provide: OidcController,
+        useFactory: (
+          oidc: OidcLoginService,
+          sessions: OpaqueSessionService,
+          csrf: DoubleSubmitCsrfPolicy,
+          policy: SessionCookiePolicy,
+          telemetry: IdentityWorkspaceTelemetry,
+        ) => new OidcController(oidc, sessions, csrf, policy, telemetry),
+        inject: [
+          OidcLoginService,
+          OpaqueSessionService,
+          CSRF_POLICY,
+          SESSION_COOKIE_POLICY,
+          IDENTITY_WORKSPACE_TELEMETRY,
+        ],
+      },
+      {
         provide: SessionController,
         useFactory: (
           sessions: OpaqueSessionService,

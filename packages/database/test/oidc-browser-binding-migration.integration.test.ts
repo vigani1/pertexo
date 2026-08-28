@@ -1,0 +1,136 @@
+import { randomUUID } from 'node:crypto';
+import { copyFile, mkdtemp, readdir, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+
+import { Pool } from 'pg';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../src/migrations.js';
+import { dropDisconnectedDatabase } from './support/disposable-database.js';
+
+const adminUrl =
+  process.env.DATABASE_ADMIN_URL ??
+  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+const migrationBaseUrl =
+  process.env.DATABASE_MIGRATION_URL ??
+  'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
+const databaseName = `pertexo_test_0071_oidc_binding_${randomUUID().replaceAll('-', '')}`;
+
+function databaseUrl(base: string): string {
+  const value = new URL(base);
+  value.pathname = `/${databaseName}`;
+  return value.toString();
+}
+
+const migrationConfig = {
+  apiRuntimeRole: 'pertexo_api',
+  connectionString: databaseUrl(migrationBaseUrl),
+  dispatcherRole: 'pertexo_dispatcher',
+  lifecycleCommandRole: 'pertexo_lifecycle_command',
+  maintenanceRole: 'pertexo_maintenance',
+  operatorRole: 'pertexo_operator',
+  ownerRole: 'pertexo_owner',
+  workerRuntimeRole: 'pertexo_worker',
+} as const;
+
+beforeAll(async () => {
+  const admin = new Pool({ connectionString: adminUrl, max: 1 });
+  try {
+    await admin.query(`create database "${databaseName}" owner pertexo_owner`);
+    await admin.query(`revoke all on database "${databaseName}" from public`);
+    await admin.query(
+      `grant connect on database "${databaseName}" to pertexo_migration, pertexo_api`,
+    );
+  } finally {
+    await admin.end();
+  }
+}, 30_000);
+
+afterAll(async () => {
+  const admin = new Pool({ connectionString: adminUrl, max: 1 });
+  try {
+    await dropDisconnectedDatabase(admin, databaseName);
+  } finally {
+    await admin.end();
+  }
+});
+
+describe('OIDC browser binding prior-head migration', () => {
+  it('upgrades populated 0070 transactions without leaving them reusable', async () => {
+    const priorDirectory = await mkdtemp(
+      path.join(tmpdir(), 'pertexo-0070-oidc-binding-'),
+    );
+    try {
+      const migrations = (await readdir(MIGRATIONS_DIRECTORY)).filter(
+        (name) => /^\d{4}_.+\.sql$/u.test(name) && name < '0071_',
+      );
+      await Promise.all(
+        migrations.map((name) =>
+          copyFile(
+            path.join(MIGRATIONS_DIRECTORY, name),
+            path.join(priorDirectory, name),
+          ),
+        ),
+      );
+      await migrateDatabase(migrationConfig, priorDirectory);
+
+      const owner = new Pool({
+        connectionString: databaseUrl(adminUrl),
+        max: 1,
+      });
+      const stateDigest = '1'.repeat(64);
+      try {
+        await owner.query('set role pertexo_owner');
+        await owner.query(
+          `insert into app.oidc_login_transactions
+             (state_digest, code_verifier_ciphertext, code_verifier_nonce,
+              code_verifier_tag, code_verifier_key_version, nonce_ciphertext,
+              nonce_nonce, nonce_tag, nonce_key_version, expires_at)
+           values ($1, 'sealed-verifier', 'nonce', 'tag', 'v1',
+                   'sealed-nonce', 'nonce', 'tag', 'v1',
+                   clock_timestamp() + interval '5 minutes')`,
+          [stateDigest],
+        );
+      } finally {
+        await owner.end();
+      }
+
+      expect(await migrateDatabase(migrationConfig)).toEqual([
+        '0071_oidc_browser_binding.sql',
+      ]);
+
+      const verifier = new Pool({
+        connectionString: databaseUrl(adminUrl),
+        max: 1,
+      });
+      try {
+        const row = await verifier.query<{
+          browser_binding_digest: string;
+          consumed_at: Date | null;
+        }>(
+          `select browser_binding_digest, consumed_at
+           from app.oidc_login_transactions where state_digest = $1`,
+          [stateDigest],
+        );
+        expect(row.rows[0]?.browser_binding_digest).toBe('0'.repeat(64));
+        expect(row.rows[0]?.consumed_at).toBeInstanceOf(Date);
+        await expect(
+          verifier.query(
+            `insert into app.oidc_login_transactions
+               (state_digest, code_verifier_ciphertext, code_verifier_nonce,
+                code_verifier_tag, code_verifier_key_version, nonce_ciphertext,
+                nonce_nonce, nonce_tag, nonce_key_version, expires_at)
+             values ($1, 'v', 'n', 't', 'k', 'n', 'n', 't', 'k',
+                     clock_timestamp() + interval '5 minutes')`,
+            ['2'.repeat(64)],
+          ),
+        ).rejects.toMatchObject({ code: '23502' });
+      } finally {
+        await verifier.end();
+      }
+    } finally {
+      await rm(priorDirectory, { recursive: true, force: true });
+    }
+  }, 60_000);
+});

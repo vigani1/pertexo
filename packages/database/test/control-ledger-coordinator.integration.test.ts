@@ -348,6 +348,10 @@ beforeAll(async () => {
     path.join(MIGRATIONS_DIRECTORY, '0070_preview_execution_deadline.sql'),
     path.join(priorDirectory, '0070_preview_execution_deadline.sql'),
   );
+  await copyFile(
+    path.join(MIGRATIONS_DIRECTORY, '0071_oidc_browser_binding.sql'),
+    path.join(priorDirectory, '0071_oidc_browser_binding.sql'),
+  );
   await expect(
     migrateDatabase(migrationConfig, priorDirectory),
   ).resolves.toEqual([
@@ -376,6 +380,7 @@ beforeAll(async () => {
     '0068_restore_artifact_inventory.sql',
     '0069_regional_write_admission.sql',
     '0070_preview_execution_deadline.sql',
+    '0071_oidc_browser_binding.sql',
   ]);
   maintenance = new Pool({ connectionString: maintenanceUrl, max: 4 });
 }, 120_000);

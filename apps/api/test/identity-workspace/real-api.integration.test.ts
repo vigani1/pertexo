@@ -154,10 +154,29 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     expect(authorizationUrl.searchParams.get('code_challenge_method')).toBe(
       'S256',
     );
+    expect(start.browserCookie).toMatch(/^pertexo_oidc_binding=[^;]+$/u);
+
+    const exchangeCountBeforeBindingChecks = provider.exchangeCount;
+    const missingBinding = await application.inject({
+      method: 'GET',
+      url: `/v1/auth/oidc/callback?code=valid&state=${encodeURIComponent(request.state)}`,
+    });
+    expectProblem(missingBinding, 400, 'request.invalid');
+    expect(String(missingBinding.headers['set-cookie'])).toContain(
+      'pertexo_oidc_binding=; Path=/v1/auth/oidc/callback; Max-Age=0',
+    );
+    const wrongBinding = await application.inject({
+      method: 'GET',
+      url: `/v1/auth/oidc/callback?code=valid&state=${encodeURIComponent(request.state)}`,
+      headers: { cookie: 'pertexo_oidc_binding=wrong-browser' },
+    });
+    expectProblem(wrongBinding, 400, 'request.invalid');
+    expect(provider.exchangeCount).toBe(exchangeCountBeforeBindingChecks);
 
     const callback = await application.inject({
       method: 'GET',
       url: `/v1/auth/oidc/callback?code=valid&state=${encodeURIComponent(request.state)}`,
+      headers: { cookie: start.browserCookie },
     });
     expect(callback.statusCode).toBe(204);
     const cookies = sessionCookies(callback.headers['set-cookie']);
@@ -180,6 +199,7 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     const replay = await application.inject({
       method: 'GET',
       url: `/v1/auth/oidc/callback?code=valid&state=${encodeURIComponent(request.state)}`,
+      headers: { cookie: start.browserCookie },
     });
     expectProblem(replay, 400, 'request.invalid');
     expect(provider.exchangeCount).toBe(exchangeCount);
@@ -187,6 +207,7 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     const tampered = await application.inject({
       method: 'GET',
       url: `/v1/auth/oidc/callback?code=valid&state=${'x'.repeat(43)}`,
+      headers: { cookie: start.browserCookie },
     });
     expectProblem(tampered, 400, 'request.invalid');
     expect(provider.exchangeCount).toBe(exchangeCount);
@@ -215,7 +236,7 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
       }),
       payload: { name: 'Inbound automation' },
     });
-    expect(created.statusCode).toBe(201);
+    expect(created.statusCode, created.payload).toBe(201);
     expect(String(created.headers.etag)).toMatch(
       /^"draft-v1\.[A-Za-z0-9_-]{43}"$/u,
     );
@@ -477,6 +498,7 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     const nonceFailure = await application.inject({
       method: 'GET',
       url: `/v1/auth/oidc/callback?code=bad-nonce&state=${encodeURIComponent(nonceState ?? '')}`,
+      headers: { cookie: nonceStart.browserCookie },
     });
     expectProblem(nonceFailure, 400, 'request.invalid');
     expect(nonceFailure.payload).not.toContain('forged-nonce');
@@ -488,6 +510,7 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     const providerFailure = await application.inject({
       method: 'GET',
       url: `/v1/auth/oidc/callback?code=provider-failure&state=${encodeURIComponent(providerState ?? '')}`,
+      headers: { cookie: providerStart.browserCookie },
     });
     expectProblem(providerFailure, 503, 'provider.unavailable');
     expect(providerFailure.payload).not.toContain(
@@ -684,13 +707,29 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
   async function startLogin(): Promise<{
     authorizationUrl: string;
     expiresAt: string;
+    browserCookie: string;
   }> {
     const response = await application.inject({
       method: 'GET',
       url: '/v1/auth/oidc/start',
     });
     expect(response.statusCode).toBe(200);
-    return response.json();
+    const payload = response.json<{
+      authorizationUrl: string;
+      expiresAt: string;
+    }>();
+    const setCookie = String(response.headers['set-cookie']);
+    expect(setCookie).toContain('Path=/v1/auth/oidc/callback');
+    expect(setCookie).toContain('HttpOnly');
+    expect(setCookie).toContain('Secure');
+    expect(setCookie).toContain('SameSite=Lax');
+    expect(setCookie).toContain('Max-Age=30');
+    const browserBinding = cookieValue([setCookie], 'pertexo_oidc_binding');
+    expect(response.payload).not.toContain(browserBinding);
+    return {
+      ...payload,
+      browserCookie: `pertexo_oidc_binding=${encodeURIComponent(browserBinding)}`,
+    };
   }
 
   async function login(): Promise<SessionCookies> {
@@ -700,6 +739,7 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     const response = await application.inject({
       method: 'GET',
       url: `/v1/auth/oidc/callback?code=valid&state=${encodeURIComponent(state)}`,
+      headers: { cookie: start.browserCookie },
     });
     expect(response.statusCode).toBe(204);
     return sessionCookies(response.headers['set-cookie']);

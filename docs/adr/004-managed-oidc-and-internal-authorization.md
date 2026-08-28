@@ -46,8 +46,15 @@ new or superseding ADR. The chosen vendor remains a procurement/configuration
 choice, not an implementation dependency in domain modules.
 
 OIDC state is stored as a short-lived, single-use hash and is checked against
-the callback. Use nonce and PKCE protections where required or supported by
-the provider. Provider access or refresh tokens, if a later integration needs
+the callback. Each login also creates an independent high-entropy browser
+binding secret. Only its digest is stored with the transaction; the raw secret
+is placed in an `HttpOnly` callback-path cookie using the deployed cookie
+security policy and a lifetime no longer than the transaction. The callback
+must present that cookie, and persistence compares its digest in constant time
+while atomically consuming the transaction. The cookie is cleared on success
+and every terminal callback failure. It is not the session CSRF token. Use
+nonce and PKCE protections where required or supported by the provider.
+Provider access or refresh tokens, if a later integration needs
 them, belong to the connections/secret-storage boundary and are never put in
 workflow graphs, sessions, actor context, audit metadata, logs, or events.
 

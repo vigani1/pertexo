@@ -254,7 +254,7 @@ describe('execution value persistence migration', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0070_preview_execution_deadline.sql',
+          migrationHead: '0071_oidc_browser_binding.sql',
           role: expectedRole,
         });
       } finally {

@@ -1,4 +1,7 @@
+import { timingSafeEqual } from 'node:crypto';
+
 import { createDatabasePool } from './postgres-telemetry.js';
+import { withPlatformTransaction } from './workspace.js';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from './config.js';
@@ -15,6 +18,7 @@ const sealMetadataSchema = z.object({
 
 export type OidcLoginTransaction = Readonly<{
   stateDigest: string;
+  browserBindingDigest: string;
   codeVerifier: string;
   nonce: string;
   expiresAt: Date;
@@ -35,7 +39,7 @@ export interface OidcSecretEncryptionAdapter {
 }
 
 export type OidcTransactionConsumeResult = Readonly<{
-  status: 'ok' | 'missing' | 'expired' | 'replayed';
+  status: 'ok' | 'missing' | 'expired' | 'replayed' | 'binding_mismatch';
   transaction?: OidcLoginTransaction;
 }>;
 
@@ -51,6 +55,7 @@ export type OidcLoginTransactionStore = Readonly<{
   create(transaction: OidcLoginTransaction): Promise<void>;
   consume(
     stateDigest: string,
+    browserBindingDigest: string,
     now: Date,
   ): Promise<OidcTransactionConsumeResult>;
   close(): Promise<void>;
@@ -88,6 +93,9 @@ export function createOidcLoginTransactionStore(
   return Object.freeze({
     create: async (transaction: OidcLoginTransaction): Promise<void> => {
       const stateDigest = stateDigestSchema.parse(transaction.stateDigest);
+      const browserBindingDigest = stateDigestSchema.parse(
+        transaction.browserBindingDigest,
+      );
       if (
         !(transaction.expiresAt instanceof Date) ||
         transaction.expiresAt.getTime() <= Date.now()
@@ -110,8 +118,8 @@ export function createOidcLoginTransactionStore(
              (state_digest, code_verifier_ciphertext, code_verifier_nonce,
               code_verifier_tag, code_verifier_key_version,
               nonce_ciphertext, nonce_nonce, nonce_tag, nonce_key_version,
-              expires_at)
-           values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+              browser_binding_digest, expires_at)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
           [
             stateDigest,
             sealedCodeVerifier.ciphertext,
@@ -122,6 +130,7 @@ export function createOidcLoginTransactionStore(
             sealedNonce.nonce,
             sealedNonce.tag,
             sealedNonce.keyVersion,
+            browserBindingDigest,
             transaction.expiresAt,
           ],
         );
@@ -143,83 +152,102 @@ export function createOidcLoginTransactionStore(
 
     consume: async (
       stateDigestInput: string,
+      browserBindingDigestInput: string,
       now: Date,
     ): Promise<OidcTransactionConsumeResult> => {
       const stateDigest = stateDigestSchema.parse(stateDigestInput);
+      const browserBindingDigest = stateDigestSchema.parse(
+        browserBindingDigestInput,
+      );
       if (!(now instanceof Date) || Number.isNaN(now.getTime())) {
         throw new Error('OIDC transaction consume time is invalid');
       }
-      const consumed = await pool.query(
-        `update app.oidc_login_transactions
-         set consumed_at = clock_timestamp()
-         where state_digest = $1 and consumed_at is null and expires_at > $2
-         returning state_digest, code_verifier_ciphertext, code_verifier_nonce,
-                   code_verifier_tag, code_verifier_key_version,
-                   nonce_ciphertext, nonce_nonce, nonce_tag, nonce_key_version,
-                   expires_at`,
-        [stateDigest, now],
-      );
-      const consumedRow = consumed.rows[0] as
-        Record<string, unknown> | undefined;
-      if (consumedRow !== undefined) {
-        try {
-          const sealedCodeVerifier = parseSealed({
-            ciphertext: String(consumedRow.code_verifier_ciphertext),
-            nonce: String(consumedRow.code_verifier_nonce),
-            tag: String(consumedRow.code_verifier_tag),
-            keyVersion: String(consumedRow.code_verifier_key_version),
-          });
-          const sealedNonce = parseSealed({
-            ciphertext: String(consumedRow.nonce_ciphertext),
-            nonce: String(consumedRow.nonce_nonce),
-            tag: String(consumedRow.nonce_tag),
-            keyVersion: String(consumedRow.nonce_key_version),
-          });
-          const [codeVerifier, nonce] = await Promise.all([
-            encryption.open(
-              sealedCodeVerifier,
-              associatedData(stateDigest, 'code_verifier'),
-            ),
-            encryption.open(sealedNonce, associatedData(stateDigest, 'nonce')),
-          ]);
-          return {
-            status: 'ok',
-            transaction: Object.freeze({
-              stateDigest,
-              codeVerifier,
-              nonce,
-              expiresAt: new Date(consumedRow.expires_at as string | Date),
-            }),
-          };
-        } catch (error: unknown) {
-          throw new OidcTransactionSealingError(
-            'OIDC transaction secret could not be opened',
-            {
-              cause: error,
-            },
-          );
+      const result = await withPlatformTransaction(pool, async (client) => {
+        const locked = await client.query(
+          `select state_digest, browser_binding_digest,
+                  code_verifier_ciphertext, code_verifier_nonce,
+                  code_verifier_tag, code_verifier_key_version,
+                  nonce_ciphertext, nonce_nonce, nonce_tag, nonce_key_version,
+                  expires_at, consumed_at
+           from app.oidc_login_transactions
+           where state_digest = $1
+           for update`,
+          [stateDigest],
+        );
+        const row = locked.rows[0] as Record<string, unknown> | undefined;
+        if (row === undefined) return { status: 'missing' as const };
+        if (row.consumed_at !== null) return { status: 'replayed' as const };
+        if (
+          new Date(row.expires_at as string | Date).getTime() <= now.getTime()
+        )
+          return { status: 'expired' as const };
+        if (
+          !constantTimeDigestEqual(
+            String(row.browser_binding_digest),
+            browserBindingDigest,
+          )
+        ) {
+          return { status: 'binding_mismatch' as const };
         }
+        await client.query(
+          `update app.oidc_login_transactions
+           set consumed_at = clock_timestamp()
+           where state_digest = $1`,
+          [stateDigest],
+        );
+        return { status: 'ok' as const, row };
+      });
+      if (result.status !== 'ok') return result;
+      const consumedRow = result.row;
+      try {
+        const sealedCodeVerifier = parseSealed({
+          ciphertext: String(consumedRow.code_verifier_ciphertext),
+          nonce: String(consumedRow.code_verifier_nonce),
+          tag: String(consumedRow.code_verifier_tag),
+          keyVersion: String(consumedRow.code_verifier_key_version),
+        });
+        const sealedNonce = parseSealed({
+          ciphertext: String(consumedRow.nonce_ciphertext),
+          nonce: String(consumedRow.nonce_nonce),
+          tag: String(consumedRow.nonce_tag),
+          keyVersion: String(consumedRow.nonce_key_version),
+        });
+        const [codeVerifier, nonce] = await Promise.all([
+          encryption.open(
+            sealedCodeVerifier,
+            associatedData(stateDigest, 'code_verifier'),
+          ),
+          encryption.open(sealedNonce, associatedData(stateDigest, 'nonce')),
+        ]);
+        return {
+          status: 'ok',
+          transaction: Object.freeze({
+            stateDigest,
+            browserBindingDigest,
+            codeVerifier,
+            nonce,
+            expiresAt: new Date(consumedRow.expires_at as string | Date),
+          }),
+        };
+      } catch (error: unknown) {
+        throw new OidcTransactionSealingError(
+          'OIDC transaction secret could not be opened',
+          {
+            cause: error,
+          },
+        );
       }
-
-      const state = await pool.query(
-        `select expires_at, consumed_at
-         from app.oidc_login_transactions
-         where state_digest = $1`,
-        [stateDigest],
-      );
-      const stateRow = state.rows[0] as
-        | { expires_at: string | Date; consumed_at: string | Date | null }
-        | undefined;
-      if (stateRow === undefined) return { status: 'missing' };
-      if (stateRow.consumed_at !== null) return { status: 'replayed' };
-      if (new Date(stateRow.expires_at).getTime() <= now.getTime())
-        return { status: 'expired' };
-      // A concurrent consumer can commit between the guarded UPDATE and this
-      // classification query. Re-read as replay rather than ever returning
-      // plaintext or allowing a second successful consume.
-      return { status: 'replayed' };
     },
 
     close: async (): Promise<void> => pool.end(),
   });
+}
+
+function constantTimeDigestEqual(left: string, right: string): boolean {
+  const leftBytes = Buffer.from(left, 'hex');
+  const rightBytes = Buffer.from(right, 'hex');
+  return (
+    leftBytes.length === rightBytes.length &&
+    timingSafeEqual(leftBytes, rightBytes)
+  );
 }

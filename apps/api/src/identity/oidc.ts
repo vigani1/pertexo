@@ -44,6 +44,9 @@ const tokenResponseSchema = z.object({
 export type OidcLoginStart = Readonly<{
   authorizationUrl: string;
   expiresAt: Date;
+  browserBindingMaxAgeSeconds: number;
+  /** Raw, one-time value for the HTTP cookie boundary. Never serialize it in a response body. */
+  browserBinding: string;
 }>;
 
 export type OidcLoginResult = Readonly<{
@@ -82,6 +85,7 @@ export class OidcLoginService {
   async startLogin(): Promise<OidcLoginStart> {
     const now = this.clock.now();
     const state = encodeBase64Url(this.crypto.randomBytes(32));
+    const browserBinding = encodeBase64Url(this.crypto.randomBytes(32));
     const nonce = encodeBase64Url(this.crypto.randomBytes(32));
     // 32 random bytes encode to 43 chars, within RFC 7636's 43..128 range.
     const codeVerifier = encodeBase64Url(this.crypto.randomBytes(32));
@@ -92,6 +96,7 @@ export class OidcLoginService {
       await this.transactions.create(
         Object.freeze({
           stateDigest: digestSha256Hex(state, this.crypto),
+          browserBindingDigest: digestSha256Hex(browserBinding, this.crypto),
           codeVerifier,
           nonce,
           expiresAt,
@@ -135,6 +140,10 @@ export class OidcLoginService {
       return Object.freeze({
         authorizationUrl: parsedUrl.toString(),
         expiresAt,
+        browserBindingMaxAgeSeconds: Math.floor(
+          this.configuration.transactionTtlMillis / 1_000,
+        ),
+        browserBinding,
       });
     } catch {
       // The transaction remains bounded and will expire; no provider data is exposed.
@@ -142,12 +151,18 @@ export class OidcLoginService {
     }
   }
 
-  async completeLogin(input: OidcCallbackInput): Promise<OidcLoginResult> {
+  async completeLogin(
+    input: OidcCallbackInput,
+    browserBinding: string | undefined,
+  ): Promise<OidcLoginResult> {
     let callback: OidcCallbackInput;
     try {
       callback = oidcCallbackInputSchema.parse(input);
     } catch {
       throw new IdentityError('identity.invalid_input');
+    }
+    if (browserBinding === undefined || browserBinding.length > 512) {
+      throw new IdentityError('identity.callback_rejected');
     }
 
     const now = this.clock.now();
@@ -155,6 +170,7 @@ export class OidcLoginService {
     try {
       consumed = await this.transactions.consume(
         digestSha256Hex(callback.state, this.crypto),
+        digestSha256Hex(browserBinding, this.crypto),
         now,
       );
     } catch {
@@ -168,6 +184,9 @@ export class OidcLoginService {
     }
     if (consumed.status === 'replayed') {
       throw new IdentityError('identity.transaction_replayed');
+    }
+    if (consumed.status === 'binding_mismatch') {
+      throw new IdentityError('identity.callback_rejected');
     }
     const transaction = consumed.transaction;
     if (transaction === undefined) {

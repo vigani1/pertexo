@@ -15,7 +15,7 @@ describe('preview execution deadline migration', () => {
       'utf8',
     );
 
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0070_preview_execution_deadline.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0071_oidc_browser_binding.sql');
     expect(MIGRATIONS_DIRECTORY).toContain('migrations');
     expect(sql).toContain('ADD COLUMN execution_deadline_at timestamptz');
     expect(sql).toContain(
