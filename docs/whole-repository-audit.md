@@ -4,7 +4,7 @@ Recorded: 2026-08-28
 
 Audited head: `8debd0090a972921ce523b0f7809558f6ba7c10d`
 
-Remediation evidence reviewed through implementation commit: `57003e9`
+Remediation evidence reviewed through implementation commit: `6496897`
 
 Status: current repository audit and sole audit source of truth
 
@@ -238,19 +238,21 @@ duplicate effects; it does not limit fresh-key abuse.
 ### F-03 — Use one hardened tenant transaction engine everywhere
 
 - **Severity:** P1
+- **Status:** Resolved on 2026-08-28
 - **Area:** tenancy, PostgreSQL pooling, and failure handling
 - **Evidence:** `packages/database/src/coordinator-run-store-transactions.ts` and
   `packages/database/src/node-attempt-run-store-transactions.ts` differ from the
   hardened engine in `packages/database/src/workspace.ts`.
 
-The coordinator and node-attempt helpers set local workspace context but do not
-perform the shared engine's pre-use absence check, context read-back, post-commit
-cleanup check, rollback-error preservation, or contaminated-client destruction.
-They suppress rollback errors and then release normally. Transaction-local
-settings ordinarily clear on commit or rollback, but an uncertain rollback or
-connection state must never be returned to the pool.
+The coordinator and node-attempt behavior-named helpers now delegate to the
+shared tenant transaction engine. That engine owns pre-use absence checks,
+workspace/actor read-back, post-commit cleanup checks, rollback-error
+preservation, contaminated-client destruction, abort-driven wire cancellation,
+and cancellation while waiting for a pool connection. Its internal
+repeatable-read seam preserves stable read snapshots without expanding the
+package's public transaction options.
 
-#### Required design
+#### Implemented design
 
 Deepen the existing transaction module rather than introducing a fourth helper.
 Allow the hardened private engine to accept the required transaction mode:
@@ -264,16 +266,17 @@ their behavior-named public interfaces. Abort-driven wire cancellation,
 read-back verification, aggregate rollback failures, and destroy-on-uncertainty
 must be identical across every tenant-scoped pool path.
 
-#### Verification
+#### Completion evidence
 
-- pre-contaminated clients are rejected and destroyed;
-- incorrect context read-back fails before domain queries;
-- commit-path retained context destroys the client;
-- rollback failure preserves both the original and rollback errors and destroys
-  the client;
-- abort during acquisition and an in-flight query removes the connection;
-- repeatable-read behavior is retained; and
-- a subsequent workspace can never observe a previous workspace's context.
+- Five focused engine regressions prove pre-contamination destruction,
+  read-back failure before domain work, aggregate operation/rollback errors,
+  acquisition cancellation with late-client destruction, and retained
+  read/write transaction modes.
+- The existing real PostgreSQL hygiene suite proves commit-path contamination
+  destruction, in-flight cancellation, actor/workspace verification, clean
+  reuse, and the Drizzle facade on the same primitive.
+- Coordinator and node-attempt real PostgreSQL scenarios pass after their local
+  transaction implementations are removed.
 
 ### F-04 — Make requested integration gates fail rather than skip
 
@@ -922,7 +925,7 @@ can exercise the current production seam.
 ### Checkpoint 1 — Security and transaction correctness
 
 1. F-01 OIDC browser binding — complete in `57003e9`.
-2. F-03 shared hardened worker transaction engine.
+2. F-03 shared hardened worker transaction engine — complete in `6496897`.
 3. F-02 complete rate-limit model and external ingress contract.
 4. F-07 unique replica identity.
 

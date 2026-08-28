@@ -4535,15 +4535,24 @@ Current evidence:
   including populated-`0070` upgrade, wrong-binding non-consumption, and
   concurrent replay; the binding-focused real Nest HTTP scenario passes with
   cookie flags, transport, clearing, rejection, replay, and redaction checks.
+- Audit finding F-03 is closed by commit `6496897`. Coordinator and node-attempt
+  transaction facades now use the shared hardened tenant engine for pre-use
+  context absence, context read-back, post-commit cleanup, rollback-error
+  preservation, destroy-on-uncertainty, and acquisition/in-flight cancellation.
+  A private repeatable-read seam preserves stable worker snapshots without
+  expanding the package's public transaction options. Five focused unit
+  regressions and 10 focused real PostgreSQL hygiene/coordinator assertions
+  pass, along with all 145 database unit assertions, typecheck, build, ESLint,
+  and formatting checks.
 - The former whole-repository audit and Phase 4 engineering findings journal are
   consolidated into `docs/whole-repository-audit.md` at audited head
   `8debd0090a972921ce523b0f7809558f6ba7c10d`. The new single source records the
   current architecture and package assessment, resolved prior work, complete
   area-by-area target state, ordered remediation and verification criteria, and
   new findings F-01 through F-20. F-01 is now closed; the audit continues to
-  identify P1 work for complete rate limits, coordinator/node-attempt
-  transaction hygiene, truthful direct-webhook CI execution, protected required
-  checks, and live Phase 7 evidence. No Phase 7 completion box changes because
+  identify P1 work for complete rate limits, truthful direct-webhook CI
+  execution, protected required checks, and live Phase 7 evidence. No Phase 7
+  completion box changes because
   those code, external-governance, and live-production requirements remain open.
 
 ## Update protocol
