@@ -23,7 +23,7 @@ not complete a phase.
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 5 — orchestration slice | Complete | ADRs 008/017/018/019/020/021/022; implementation through `9d7e071`; migration head `0034_run_failure_notifications.sql`; 862 unit assertions and complete real-service/recovery matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 6 — V1 providers and triggers | Complete | ADRs 012–014 and 023–026; implementation through `0f8a170`; migration head `0043_workflow_run_input_retention.sql`; 1,021 unit and 288 real-service assertions; complete retained recovery and additive-rollout gates; independent fixed-head Spec and Standards completion GO |
-| Phase 7 — production operations | In progress | ADRs 013/015/027/028/029; Frankfurt launch and Ireland recovery policy accepted; maintenance, lifecycle-command, and function-only operator credential boundaries, automatic durable dual-ledger/hold-gated 30/90/365-day PostgreSQL and object-store retention plus frozen standard-class dry-run inventory, the complete repository-owned operator command family through migration `0066_operator_maintenance_rerun.sql`, fenced and crash-repairable workspace tenant-row/object-version purge plus minimized completion tombstones through migrations `0056`–`0059`, seven-day preview retention, route-template-only API availability/latency SLIs, non-root read-only ECS container/task contracts with separate roles and release-job migrations, a bounded secret-free load-evidence harness, all-six-command recovery projection plus legal-hold command coordination, durable operation-bound and lease-fenced lifecycle intents, atomic persisted-surface deletion side effects, asynchronous `202 Accepted` lifecycle API operations and direct-mutation revocation, bounded dual-region lifecycle coordinator and standalone command workers, fail-closed dual-region control-ledger facade, bounded restore-before-serve executable, and a two-process MinIO integration harness; MinIO policy incompatibility blocks the full local control proof, while production operator IAM/admission and immutable-invocation evidence, live version-enabled tenant-bucket proof, AWS Object Lock/regional proof, measured load/failure exercises, restore drills, and autoscaling remain open; API-key and connected-subscription entities are explicitly deferred by the V1 plan and are not invented solely for deletion |
+| Phase 7 — production operations | In progress | ADRs 013/015/027/028/029; Frankfurt launch and Ireland recovery policy accepted; maintenance, lifecycle-command, and function-only operator credential boundaries, automatic durable dual-ledger/hold-gated 30/90/365-day PostgreSQL and object-store retention plus frozen standard-class dry-run inventory, the complete repository-owned operator command family through migration `0066_operator_maintenance_rerun.sql`, fenced and crash-repairable workspace tenant-row/object-version purge plus minimized completion tombstones through migrations `0056`–`0059`, seven-day preview retention, route-template-only API availability/latency SLIs, non-root read-only ECS container/task contracts with separate roles and release-job migrations, digest-pinned deterministic render validation, declarative separate API/worker autoscaling inputs, production dependency and image scanning plus manual/scheduled local release gates, a bounded secret-free load-evidence harness, expanded emitted-series dashboards and alerts, all-six-command recovery projection plus legal-hold command coordination, durable operation-bound and lease-fenced lifecycle intents, atomic persisted-surface deletion side effects, asynchronous `202 Accepted` lifecycle API operations and direct-mutation revocation, bounded dual-region lifecycle coordinator and standalone command workers, fail-closed dual-region control-ledger facade, bounded restore-before-serve executable, and a two-process MinIO integration harness; MinIO policy incompatibility blocks the full local control proof, while production operator IAM/admission and immutable-invocation evidence, live version-enabled tenant-bucket proof, AWS Object Lock/regional proof, measured load/failure exercises, restore drills, and deployed autoscaling evidence remain open; API-key and connected-subscription entities are explicitly deferred by the V1 plan and are not invented solely for deletion |
 
 The `0A`–`0E` checkpoints are implementation-sized subdivisions of the plan's
 single Phase 0. They do not alter the authoritative scope. Phase 0 is complete
@@ -3293,7 +3293,7 @@ Release exercises and completion gates:
       object-storage failure exercises without contradictory durable truth.
 - [ ] Run backup/PITR and regional restore drills, reconcile the control ledger
       before tenant traffic, and measure the five-minute RPO and 24-hour RTO.
-- [ ] Run root checks, dependency/security scans, zero/prior-head migrations,
+- [x] Run root checks, dependency/security scans, zero/prior-head migrations,
       complete real-service/recovery matrices, and production-build verification.
 - [ ] Resolve every blocker/high finding from independent fixed-head Spec and
       Standards reviews and push every coherent implementation/evidence commit.
@@ -3703,18 +3703,50 @@ Current evidence:
   Actual IAM policies, ECS services, networking, secret delivery, release rollout,
   and the restore gate still require AWS, so the deployment checklist remains
   open rather than treating manifests as production proof.
-- A bounded open-loop HTTP exercise runner now provides reviewed 20 starts/second
-  and 50 starts/second for five minutes profiles. It caps duration, rate, and
-  in-flight work; uses per-request idempotency keys; applies a 30-second request
-  timeout; and fails on configured throughput, server/transport error, or p95
-  latency objectives. The versioned JSON evidence includes profile and body
-  digests, status classes, latency quantiles, scheduling loss, timestamps, and
-  objective results while excluding authorization, request bodies, and concrete
-  resource paths. Evidence files are created exclusively so a rerun cannot
-  overwrite prior results. Profile validation, Node syntax, focused ESLint, and
-  formatting pass. No measured load result is claimed because an authenticated
-  target and approved exercise tenant were not available; noisy-tenant, fan-out,
-  long-wait, and failure-injection exercises therefore remain open.
+- The local release/security checkpoint adds a fail-closed
+  `pnpm security:audit` production dependency gate and composes it with root and
+  quality, deployment, and exercise checks in `pnpm release:check`. CI declares
+  dependency, deployment, and exercise validation on pull requests and `main`
+  pushes; a manual and weekly workflow declares the complete local gate plus a
+  production-image build, non-root/read-only smoke, and commit-pinned Grype scan.
+  A separate commit-pinned CodeQL workflow covers JavaScript/TypeScript on `main`,
+  weekly, and by manual dispatch. Task-definition rendering requires a lowercase
+  SHA-256 digest-qualified image, sorts source collections, renders twice, and
+  verifies byte identity, workload-specific task roles, non-root users, and
+  read-only roots while proving a mutable tag is rejected. Every Node Docker
+  stage pins the current Node 24 base digest; the runtime applies current Debian
+  fixes and removes unused npm/Corepack binaries. A separately validated
+  autoscaling contract declares independent Frankfurt/Ireland API and worker
+  bounds: API uses p95 request latency and ECS saturation, while workers use the
+  existing oldest-job-age and active-handler signals. Local ARM64 production-image
+  build and UID 10001/read-only-root smoke pass. Grype `v0.97.1` reports no
+  fixable high or critical findings; unfixed findings remain visible for release
+  risk review. `pnpm release:check` passes the production dependency audit,
+  formatting, all production builds, lint, generated-contract drift, typechecks,
+  all 1,194 unit assertions, deterministic deployment checks, and six-profile/five-
+  assertion exercise validation. These checks provide no AWS IAM, service, alarm,
+  scaling-policy, workflow-execution, deployed-image, or rollout evidence, so the
+  deployment, autoscaling, and broad Phase 7 release checklist items remain open.
+- A bounded open-loop HTTP exercise runner now provides six validated profiles:
+  a 20 starts/second confidence run, a signed 50 webhooks/second five-minute
+  burst, pre-provisioned large-fan-out and long-wait workflow starts, and
+  separate noisy/control tenant lanes. API mutation profiles send the product's
+  session cookie plus double-submit CSRF values; webhook requests generate a
+  fresh timestamp and HMAC over the exact raw body. Credentials remain
+  environment-only and are absent from evidence. Exact response policy requires
+  `202 Accepted`, so `401`, `403`, an unintended `429`, redirects, and other
+  client failures cannot pass merely because the server-error ratio is green; a
+  future intentional `429` profile must name its stable rate-limit problem code.
+  Evidence adds bounded status/problem counts and unexpected-response truth to
+  the existing profile/body digests, latency, scheduling, and objective fields.
+  Fixture validation rejects unknown fields and profile headers containing
+  authentication material. `pnpm exercise:check` passes validation, Node syntax,
+  and five focused authentication/signature/response-policy assertions; focused
+  ESLint, Prettier, and diff checks pass. No measured load result is claimed
+  because an authenticated target and approved exercise tenants were not
+  available. HTTP acceptance also does not prove fan-out completion, durable
+  waits, or cross-tenant fairness, so all measured load and failure-injection
+  release exercises remain open.
 - The artifact-store package now exposes a separate append-only ADR 013 control
   ledger adapter and dedicated `CONTROL_LEDGER_*` configuration without changing
   the tenant `ArtifactStore` API or worker artifact configuration. Its principal
@@ -4059,6 +4091,52 @@ Current evidence:
   workspace, sequence, hash, and actor values remain logs/audit data rather than
   metric attributes. Database/Redis/resource and broader worker metrics remain
   open, so the complete telemetry checklist is not marked done.
+- Retention worker telemetry now measures each operation independently instead
+  of cumulatively from the beginning of a poll, attributes exceptions to the
+  exact finite operation stage, and emits dedicated workspace-purge and operator
+  maintenance-rerun count/duration series. Rerun outcomes are normalized to a
+  finite vocabulary and workspace, command, target, batch, and job identifiers
+  remain excluded. The operations dashboard expands from three to fifteen
+  panels covering emitted API impact, durable backlog, worker transport,
+  trigger/webhook, provider, artifact inventory, retention/purge, operator
+  rerun, lifecycle-command, and control-ledger signals. Fifteen Prometheus rules
+  are grouped by user impact, durable backlog, resource safety, and destructive
+  maintenance; every rule has a description and repository runbook URL. Static
+  tests require unique described panels, non-empty PromQL, complete alert
+  annotations/runbook sections, a fixed emitted-series inventory, forbidden
+  high-cardinality dimensions, and explicit absence of invented PostgreSQL,
+  Redis, object-store, or worker-resource series. Retention typechecking and all
+  nine retention assertions pass; observability typechecking and all 34
+  observability assertions pass; Compose rendering passes. Prometheus `v3.6.0`
+  (`sha256:76947e7ef22f8a698fc638f706685909be425dbe09bd7a2cd7aca849f79b5f64`)
+  `promtool` validation passes all 15 rules and the complete Prometheus
+  configuration. PostgreSQL, Redis, object-store service, and worker
+  CPU/RSS/heap/event-loop metrics remain genuine coverage gaps, and the broad
+  telemetry/dashboard checklist stays unchecked.
+- The final locally reproducible release matrix now passes from fresh Docker
+  volumes. Zero-to-`0066` migration and embedded exact prior-head fixtures pass
+  all 326 PostgreSQL assertions; real S3-compatible artifact I/O passes four
+  assertions while the three explicitly skipped MinIO control-ledger assertions
+  remain incapable of proving AWS policy semantics. The worker matrix passes all
+  24 assertions, including real preview deletion through the maintenance
+  credential/coordinator, provider socket-drop redelivery, duplicate fencing,
+  webhook/schedule reconciliation, schedule contention/saturation/recovery, and
+  drain behavior. The API matrix passes eight assertions for SSE, direct webhook
+  ingress, and real session/workspace behavior. Five process-crash/restart
+  assertions, one SSE Redis-loss reconstruction, one sequential Redis/queue/
+  PostgreSQL loss plus worker-drain assertion, and one additive compatibility
+  rollout assertion pass. The matrix exposed and corrected stale fixtures that
+  expected the removed pre-`0053` preview cleanup outbox, activated registry
+  releases newer than an email-cohort artifact, counted prior test ledger rows,
+  and referenced a nonexistent retained artifact. CI now explicitly enables the
+  direct webhook and schedule-trigger integration gates instead of silently
+  skipping them. Root `pnpm check` again passes all 1,194 unit assertions, and
+  the production image build, UID 10001/read-only-root smoke, dependency audit,
+  fixable-high/critical Grype scan, deterministic deployment render, Prometheus
+  validation, and exercise-contract validation pass. This completes the local
+  release-matrix criterion only; deployed PostgreSQL failover, object-storage
+  outage, real provider outage, pager behavior, AWS rollout, and measured load
+  evidence remain open.
 
 ## Update protocol
 
