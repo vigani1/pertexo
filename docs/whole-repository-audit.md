@@ -25,7 +25,7 @@ TypeScript and SQL lines.
 
 No implementation files were changed as part of the audit. At the audited head,
 `pnpm typecheck` passed across all workspace projects and `pnpm test` passed all
-1,226 unit-level tests. Environment-dependent integration, live load, failover,
+1,227 unit-level tests. Environment-dependent integration, live load, failover,
 and regional recovery exercises were inspected but not rerun for this audit.
 
 ## Overall assessment
@@ -37,10 +37,11 @@ of NestJS, PostgreSQL, Redis, BullMQ, and HTTP. Redis and BullMQ remain transpor
 and coordination mechanisms rather than competing durable authorities.
 
 The implementation is not yet as maintainable or operationally proven as the
-architecture deserves. The highest-value work is to make readiness inexpensive,
-isolate maintenance failures, complete real environment exercises, consolidate
-tenant transaction hygiene, and reduce the responsibility size of several core
-modules without weakening their correctness guarantees.
+architecture deserves. The highest-value work is to enforce the replica-lag
+write-admission fence required by ADR 015, make readiness inexpensive, isolate
+maintenance failures, complete real environment exercises, consolidate tenant
+transaction hygiene, and reduce the responsibility size of several core modules
+without weakening their correctness guarantees.
 
 | Area | Score |
 | --- | ---: |
@@ -63,6 +64,29 @@ No confirmed source defect was found that currently demonstrates tenant escape,
 authorization bypass, duplicate unsafe dispatch, corrupt state transition, or a
 Redis-as-authority violation. Production release should nevertheless remain
 blocked until the following operational work is complete.
+
+### A-00: Enforce the PostgreSQL replica-lag write-admission fence
+
+- **Severity:** High
+- **Category:** durability, regional recovery, and architecture adherence
+- **Files:** `docs/adr/015-production-slo-region-and-recovery.md`, API durable
+  write admission, webhook admission, deployment monitoring configuration
+- **Classification:** missing required implementation; release blocker
+
+ADR 015 requires continuous monitoring of the cross-region PostgreSQL replica
+and requires durable write admission to pause when replay lag reaches five
+minutes, resuming only after lag falls below that bound. The repository does not
+currently expose a replica-lag authority to serving processes or consume such a
+signal in durable API and webhook admission.
+
+Implement one fail-closed admission module with a small interface shared by all
+durable write-entry paths. Its production adapter must consume an authenticated,
+fresh, deployment-owned replica-lag signal; tests should use an in-memory
+adapter. Stale, unavailable, or over-threshold state must reject new durable
+writes without interrupting reads or already-admitted workflow execution. Prove
+threshold, recovery, stale-signal, and dependency-failure behavior before the
+live regional exercise. The exercise is evidence for this control, not a
+substitute for it.
 
 ### A-01: Separate startup compatibility validation from steady readiness
 
@@ -226,10 +250,10 @@ state change and retain the current narrow worker-facing interfaces.
 
 ### A-08: Narrow the database package's public capability surface
 
-- **Severity:** Medium
+- **Severity:** Low
 - **Category:** package structure and coupling
 - **File:** `packages/database/src/index.ts`
-- **Classification:** partially reducible complexity
+- **Classification:** design opportunity; no current dependency violation found
 
 The root database export is broad, and applications import the package root in
 many places. This makes it easier for an API, worker, maintenance, recovery, or
@@ -260,25 +284,26 @@ size. Reuse typed seed/build helpers, but avoid a large general fixture framewor
 Keep process-kill, duplicate-delivery, Redis-loss, and real PostgreSQL scenarios
 intact instead of replacing them with mocks.
 
-### A-10: Reconcile the progress tracker with the implemented Phase 7 state
+### A-10: Improve Phase 7 checklist granularity
 
-- **Severity:** Medium
+- **Severity:** Low
 - **Category:** documentation and architecture governance
 - **File:** `docs/implementation-progress.md`
-- **Classification:** harmless runtime drift; process violation
+- **Classification:** documentation usability opportunity
 
-Phase 7 remains marked in progress, which is appropriate while live drills are
-unfinished. Several individual unchecked items, however, now coexist with
+Phase 7 remains marked in progress, and its combined rows correctly remain
+unchecked while any required implementation or live-evidence clause is
+unfinished. Several individual unchecked items coexist with
 substantial completed implementations: migrations 0044–0068, dedicated
 lifecycle/operator/recovery applications, dual-region ledger and artifact code,
 retention and purge coordinators, dashboards, alerts, autoscaling contracts, and
 deployment validation.
 
-Review every Phase 7 criterion against its exact acceptance language. Mark only
-fully satisfied items complete and add concrete fixed-head evidence. Keep real
-load, failover, PITR, and regional restore work incomplete until it has actually
-run. This reconciliation should happen as its own documentation checkpoint, not
-as an incidental edit during implementation.
+For readability, split combined criteria into implementation and live-evidence
+sub-items where that does not change the authoritative acceptance standard.
+Mark only fully satisfied items complete and add concrete fixed-head evidence.
+Keep real load, failover, PITR, and regional restore work incomplete until it has
+actually run.
 
 ### A-11: Reduce readiness implementation brittleness
 
@@ -292,10 +317,11 @@ function drift, but they also couple application readiness to the exact textual
 form of SQL function bodies. Equivalent formatting or published migration repair
 can require synchronized application changes.
 
-Retain migration checksums as the primary immutable authority. Restrict runtime
-source hashing to explicitly versioned security-critical functions, document the
-update and rollback procedure, and keep prior-head compatibility tests for every
-supported rolling release.
+After A-01 moves the full audit out of recurring probes, retain exact hashes for
+the security- and compatibility-critical functions unless a later ADR explicitly
+reassigns that authority. Document the synchronized update and rollback
+procedure, inventory the intentionally hashed functions, and keep prior-head
+compatibility tests for every supported rolling release.
 
 ### A-12: Replace the remaining production double assertion
 

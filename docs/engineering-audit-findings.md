@@ -2,6 +2,11 @@
 
 Recorded: 2026-08-23
 
+> **Historical snapshot.** This file records the state and corrections of the
+> `fix/audit-findings` branch through 2026-08-23. It is retained as forensic
+> implementation history, not as the current completion authority. Current
+> phase status lives in `docs/implementation-progress.md`.
+
 This document records gaps found while independently auditing the delivered
 implementation against the authoritative plan, and while fixing them on the
 `fix/audit-findings` branch. It follows the tracker's evidence discipline: every
@@ -16,17 +21,33 @@ status in [the implementation progress tracker](./implementation-progress.md).
 | 1 | Compatibility-rollout proof never ran in CI | High | Fixed (`d8b5472`) |
 | 2 | Connection/authoring transactions lacked pool hygiene | High | Fixed (`4c8d492`) |
 | 3 | Repo-wide lint was unrunnable (heap OOM) masking one latent violation | Medium | Fixed (`1b8af29`) |
-| 4 | Shared local database migration-history drift blocks some local suites | Medium | Open (environment) |
+| 4 | Shared local database migration-history drift blocks some local suites | Medium | Resolved later (environment recreated) |
 | 5 | Rollout suite mutates durable release authority without self-provisioning | Medium | Open (constraint documented) |
-| 6 | Tracker assertion-count snapshots have drifted from the working tree | Low | Open (process) |
+| 6 | Tracker assertion-count snapshots have drifted from the working tree | Low | Accepted historical snapshots |
 | 7 | Preview sweep was advertised without a consumer or authorized deletion role | High | Fixed (`dd0d665`) |
 | 8 | Preview worker bypassed the production mapping resolver | Critical | Fixed (`dd0d665`) |
 | 9 | API and worker pinned different compatibility fingerprints | Critical | Fixed (`dd0d665`) |
 | 10 | Unsafe post-dispatch deadlines could be reported as definite timeout | Critical | Fixed (`dd0d665`) |
 | 11 | Production preview composition omitted readiness/capabilities and leaked on startup failure | High | Fixed (`dd0d665`) |
 | 12 | Lease loss could manufacture cancellation; reconciliation ignored side-effect class | Critical | Fixed (`dd0d665`, `5dfb5f0`) |
-| 13 | Production crash-boundary proofs, terminal audit/usage/metrics, and HTTP proofs are incomplete | High | Open (activation blockers) |
+| 13 | Production crash-boundary proofs, terminal audit/usage/metrics, and HTTP proofs are incomplete | High | Resolved by later Phase 4 checkpoints |
 | 14 | Cancellation during preview input mapping could be mislabeled as executor failure | High | Fixed (`d44ce6b`) |
+
+## Current disposition at 2026-08-28
+
+- Findings 1–3, 7–12, and 14 remain valid fixed-history records.
+- Finding 4 was resolved by recreating the shared local database; its migration
+  history now matches the checked-in files through migration 0068.
+- Finding 5 remains an active test-harness constraint: the rollout suite must
+  run last against a disposable database until it provisions its own database.
+- Finding 6 is accepted evidence discipline rather than an open defect; counts
+  remain tied to named fixed heads.
+- Finding 13 was closed by later Phase 4 implementation, real-service evidence,
+  CI activation, and independent fixed-head reviews recorded in the progress
+  tracker.
+- D6 remains design debt because preview retention expiry also acts as its
+  execution deadline. D7 remains documentation debt because preview attempt and
+  invocation identity conventions have not been ratified explicitly.
 
 ## Finding 1 — Compatibility-rollout proof absent from CI (High)
 
@@ -116,7 +137,7 @@ Follow-up worth considering: profile typed-lint memory separately so the
 script documents why the bound exists (typed `projectService` linting across
 the monorepo is the dominant cost).
 
-## Finding 4 — Shared local database drift blocks some suites locally (Open)
+## Finding 4 — Shared local database drift blocked some suites locally (Resolved later)
 
 Evidence:
 
@@ -136,6 +157,10 @@ Recommendation: recreate the local development database from a clean Compose
 volume before the next phase gate, then re-run `pnpm db:migrate` once so the
 shared database matches the checked-in head. Owner: whoever runs the next
 fixed-head review. No repository change required.
+
+Current disposition: the shared development database was subsequently recreated
+and now matches the checked-in migration history through 0068. The description
+above is preserved because it explains the historical checksum failure.
 
 ## Finding 5 — Rollout suite owns no disposable database (Open constraint)
 
@@ -158,7 +183,7 @@ Recommendation: either give the suite self-provisioning like
 or record the "ephemeral-only, run-last" contract beside the env flag. Owner:
 next checkpoint touching node-catalog or CI.
 
-## Finding 6 — Tracker count snapshots drift (Low, process)
+## Finding 6 — Tracker count snapshots drift (Low, accepted historical evidence)
 
 Evidence:
 
@@ -227,7 +252,7 @@ suites, plus the six-scenario real-PostgreSQL preview-worker integration file.
 The corrected-head repository-wide and complete real-service gates are
 recorded below rather than inferred from these focused checks.
 
-## Finding 13 — Preview activation remains incomplete (Open)
+## Finding 13 — Preview activation was incomplete at this snapshot (Resolved later)
 
 The corrected foundations are intentionally still gated. ADR 016 and the Phase
 4 checklist require terminal audit and usage facts, preview metrics,
@@ -252,6 +277,10 @@ matrix and the remaining requirements above remain open.
 Production node-test route activation and the Phase 4 registry release must
 remain disabled until those requirements and the final independent fixed-head
 reviews pass.
+
+Current disposition: later checkpoints completed these requirements, activated
+the Phase 4 release through CI, and received fixed-head Spec and Standards GO.
+See `docs/implementation-progress.md` for the authoritative evidence.
 
 ## Finding 14 — Mapping cancellation lost its canonical outcome (Fixed)
 
@@ -437,7 +466,10 @@ plan.
   were removed with their unsupported consumer claim; `d71564e` reintroduces
   the contract with the complete authorized implementation.
 
-### Remaining before Phase 4 can be marked complete
+### Historical remaining work before Phase 4 completion
+
+The following list was accurate at this audit snapshot. It has since been
+completed; it is retained to explain the work that followed.
 
 1. Prove the pre/post-dispatch and post-outcome/pre-ack SIGKILL boundaries
    through the production handler, provider, and queue consumer for every
