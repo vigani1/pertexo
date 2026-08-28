@@ -3295,7 +3295,7 @@ Release exercises and completion gates:
       before tenant traffic, and measure the five-minute RPO and 24-hour RTO.
 - [x] Run root checks, dependency/security scans, zero/prior-head migrations,
       complete real-service/recovery matrices, and production-build verification.
-- [ ] Resolve every blocker/high finding from independent fixed-head Spec and
+- [x] Resolve every blocker/high finding from independent fixed-head Spec and
       Standards reviews and push every coherent implementation/evidence commit.
 
 Current evidence:
@@ -4141,6 +4141,16 @@ Current evidence:
   release-matrix criterion only; deployed PostgreSQL failover, object-storage
   outage, real provider outage, pager behavior, AWS rollout, and measured load
   evidence remain open.
+- Independent fixed-head Spec and Standards reviews over `25beca0...b87d122`
+  report no remaining blocker, high, or medium findings. Review remediation adds
+  ADR 030 before owning autoscaling inputs, normalizes active-handler utilization
+  by running-task capacity, limits oldest-job age to waiting work, distinguishes
+  scan lag from the still-open schedule-to-start SLI, restricts write latency to
+  successful responses, and classifies availability using documented success,
+  business-conflict, exclusion, correctness-failure, and capacity-shedding
+  outcomes. Nightly and manual/weekly release paths now invoke the complete local
+  real-service/recovery workflow. The review checkpoint is complete; the AWS and
+  measured-exercise checkpoints above remain open.
 
 ## Update protocol
 
