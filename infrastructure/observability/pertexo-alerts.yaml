@@ -171,6 +171,88 @@ groups:
             More than five successful worker compositions were observed in
             fifteen minutes.
           runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexoworkerrestartburst
+      - alert: PertexoDatabasePoolSaturated
+        expr: |
+          max by (pool_role) (pertexo_database_pool_saturation_ratio) > 0.8
+          and
+          sum by (pool_role) (pertexo_database_pool_waiters) > 0
+        for: 10m
+        labels:
+          severity: ticket
+        annotations:
+          summary: PostgreSQL pools are saturated with queued callers
+          description:
+            Repository-owned pools have remained above eighty percent
+            utilization while at least one caller waits for a connection.
+          runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexodatabasepoolsaturated
+      - alert: PertexoDatabaseLockWaits
+        expr: max(pertexo_database_lock_wait_active) > 0
+        for: 10m
+        labels:
+          severity: ticket
+        annotations:
+          summary: PostgreSQL lock waits remain active
+          description:
+            A repository-owned database backend has appeared in consecutive
+            sampled lock-wait observations for ten minutes.
+          runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexodatabaselockwaits
+      - alert: PertexoRedisFailureRateHigh
+        expr: |
+          max(
+            sum by (client_role, operation) (rate(pertexo_redis_operation_count_total{outcome="failure"}[10m]))
+            /
+            clamp_min(sum by (client_role, operation) (rate(pertexo_redis_operation_count_total[10m])), 0.001)
+          )
+          > 0.1
+          and
+          (
+            max(pertexo_transport_queue_oldest_job_age_seconds) > 5
+            or max(pertexo_transport_outbox_oldest_age_seconds) > 5
+            or (
+              sum(rate(pertexo_api_availability_request_count_total{outcome="eligible_failure"}[10m]))
+              / clamp_min(sum(rate(pertexo_api_availability_request_count_total{outcome=~"eligible_success|eligible_failure"}[10m])), 0.001)
+            ) > 0.01
+          )
+        for: 10m
+        labels:
+          severity: ticket
+        annotations:
+          summary: Redis dependency failure rate exceeds ten percent
+          description:
+            Queue or run-event Redis operations are failing at an elevated rate;
+            verify durable PostgreSQL backlog before inferring user impact.
+          runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexoredisfailureratehigh
+      - alert: PertexoObjectStoreSafetyViolation
+        expr:
+          increase(pertexo_object_store_safety_violation_count_total[10m]) > 0
+        labels:
+          severity: page
+        annotations:
+          summary: Object-store integrity or readiness enforcement failed
+          description:
+            An artifact or control-ledger safety check rejected an observed
+            object-store result; preserve the fail-closed behavior.
+          runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexoobjectstoresafetyviolation
+      - alert: PertexoEventLoopDelayHigh
+        expr: |
+          max(nodejs_eventloop_delay_p99_seconds) > 0.2
+          and
+          (
+            max(pertexo_transport_queue_oldest_job_age_seconds) > 5
+            or max(pertexo_transport_outbox_oldest_age_seconds) > 5
+            or histogram_quantile(0.95,
+              sum by (le) (rate(pertexo_api_request_duration_seconds_bucket[5m]))) > 0.5
+          )
+        for: 10m
+        labels:
+          severity: ticket
+        annotations:
+          summary: Node.js event-loop p99 delay exceeds 200 ms
+          description:
+            A serving process has sustained event-loop delay; correlate CPU,
+            memory, queue age, and user-impact signals before scaling or
+            rollback.
+          runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexoeventloopdelayhigh
 
   - name: pertexo-destructive-maintenance
     rules:

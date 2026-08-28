@@ -23,7 +23,7 @@ not complete a phase.
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 5 — orchestration slice | Complete | ADRs 008/017/018/019/020/021/022; implementation through `9d7e071`; migration head `0034_run_failure_notifications.sql`; 862 unit assertions and complete real-service/recovery matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 6 — V1 providers and triggers | Complete | ADRs 012–014 and 023–026; implementation through `0f8a170`; migration head `0043_workflow_run_input_retention.sql`; 1,021 unit and 288 real-service assertions; complete retained recovery and additive-rollout gates; independent fixed-head Spec and Standards completion GO |
-| Phase 7 — production operations | In progress | ADRs 013/015/027/028/029/030; Frankfurt launch and Ireland recovery policy accepted; maintenance, lifecycle-command, and function-only operator credential boundaries, automatic durable dual-ledger/hold-gated 30/90/365-day PostgreSQL and object-store retention plus frozen standard-class dry-run inventory, the complete repository-owned operator command family through migration `0066_operator_maintenance_rerun.sql`, fenced and crash-repairable workspace tenant-row/object-version purge plus minimized completion tombstones through migrations `0056`–`0059`, seven-day preview retention, route-template-only API availability/latency SLIs, non-root read-only ECS container/task contracts with separate roles and release-job migrations, digest-pinned deterministic render validation, declarative separate API/worker autoscaling inputs, production dependency and image scanning plus manual/scheduled local release gates, a bounded secret-free load-evidence harness, expanded emitted-series dashboards and alerts, all-six-command recovery projection plus legal-hold command coordination, durable operation-bound and lease-fenced lifecycle intents, atomic persisted-surface deletion side effects, asynchronous `202 Accepted` lifecycle API operations and direct-mutation revocation, bounded dual-region lifecycle coordinator and standalone command workers, fail-closed dual-region control-ledger facade, bounded restore-before-serve executable, and a two-process MinIO integration harness; MinIO policy incompatibility blocks the full local control proof, while production operator IAM/admission and immutable-invocation evidence, live version-enabled tenant-bucket proof, AWS Object Lock/regional proof, measured load/failure exercises, restore drills, and deployed autoscaling evidence remain open; API-key and connected-subscription entities are explicitly deferred by the V1 plan and are not invented solely for deletion |
+| Phase 7 — production operations | In progress | ADRs 013/015/027/028/029/030; Frankfurt launch and Ireland recovery policy accepted; maintenance, lifecycle-command, and function-only operator credential boundaries, automatic durable dual-ledger/hold-gated 30/90/365-day PostgreSQL and object-store retention plus frozen standard-class dry-run inventory, the complete repository-owned operator command family through migration `0066_operator_maintenance_rerun.sql`, fenced and crash-repairable workspace tenant-row/object-version purge plus minimized completion tombstones through migrations `0056`–`0059`, seven-day preview retention, route-template-only API availability/latency SLIs, complete repository-owned PostgreSQL/Redis/object-store/process telemetry, non-root read-only ECS container/task contracts with separate roles and release-job migrations, digest-pinned deterministic render validation, declarative separate API/worker autoscaling inputs, production dependency and image scanning plus manual/scheduled local release gates, a bounded secret-free load-evidence harness, expanded emitted-series dashboards and alerts, all-six-command recovery projection plus legal-hold command coordination, durable operation-bound and lease-fenced lifecycle intents, atomic persisted-surface deletion side effects, asynchronous `202 Accepted` lifecycle API operations and direct-mutation revocation, bounded dual-region lifecycle coordinator and standalone command workers, fail-closed dual-region control-ledger facade, bounded restore-before-serve executable, and a two-process MinIO integration harness; MinIO policy incompatibility blocks the full local control proof, while production operator IAM/admission and immutable-invocation evidence, live version-enabled tenant-bucket proof, AWS Object Lock/regional proof, measured load/failure exercises, restore drills, deployed telemetry/pager proof, and deployed autoscaling evidence remain open; API-key and connected-subscription entities are explicitly deferred by the V1 plan and are not invented solely for deletion |
 
 The `0A`–`0E` checkpoints are implementation-sized subdivisions of the plan's
 single Phase 0. They do not alter the authoritative scope. Phase 0 is complete
@@ -3275,7 +3275,7 @@ Operator recovery and observability:
       for outbox redispatch, expired-lease reconciliation, due-work resume,
       unknown-outcome evidence, cancellation, replay, trigger reconciliation,
       and retention/purge reruns; support dry-run where safe.
-- [ ] Complete cardinality-safe API, PostgreSQL, queue, worker, trigger, provider,
+- [x] Complete cardinality-safe API, PostgreSQL, queue, worker, trigger, provider,
       artifact, retention, purge, and control-ledger metrics.
 - [ ] Add dashboards and user-impact/backlog-age alerts for API, queues, workers,
       triggers, PostgreSQL, Redis, object storage, and destructive maintenance.
@@ -4131,6 +4131,52 @@ Current evidence:
   all 41 coordinator PostgreSQL assertions prove database-observed measurement
   of at least `4.25s` and replay suppression; `promtool` validates all 17 alerts.
   Root `pnpm check` passes all 1,195 unit assertions.
+- Repository-owned dependency and process telemetry now closes the remaining
+  locally implementable required-metric gaps. A centralized PostgreSQL pool
+  factory replaces every production package/worker pool except migrations,
+  aggregates connection count/saturation/waiters by finite database credential
+  role, absorbs idle-client pool errors, records bounded query and
+  transaction duration/outcome, and shares one uninstrumented `pg_stat_activity`
+  sampler per connection authority for repository-owned lock waits. Its active
+  gauge and completed duration are sampled lower bounds and never expose SQL,
+  connection strings, or backend IDs. Redis producer, consumer, notification
+  publisher, and API subscriber paths emit bounded operation duration/count and
+  lifecycle events; BullMQ-owned command traffic, including duplicated blocking
+  clients, is timed under one finite command class, and API readiness performs a
+  bounded instrumented `PING`.
+  Artifact and control-ledger S3 calls, including presigning, emit request
+  duration/count by finite surface, region role, operation, outcome, and error
+  class, while existing integrity, readiness, and region-isolation failures emit
+  fail-closed safety violations. Worker readiness also checks an enabled artifact
+  store and refreshes a dependency-aware ECS health marker every ten seconds.
+  Workspace-scoped event payload and checkpoint-state count/byte distributions
+  complete the execution-storage growth surface without workspace labels.
+  OpenTelemetry explicitly enables only process CPU/RSS host groups and
+  retains runtime-node heap/event-loop metrics without duplicate polling. Every
+  worker also samples RSS and event-loop p99 against explicit ECS thresholds;
+  three consecutive unhealthy samples mark readiness draining before `SIGTERM`
+  activates the existing bounded queue/application shutdown hooks. Every
+  production process workload now requires a non-secret
+  `OTEL_EXPORTER_OTLP_ENDPOINT` configuration parameter both in its ECS manifest
+  and fail-closed runtime parser. The Collector removes
+  process/host instance identity and command/executable resource attributes before
+  label promotion, preventing restart churn and command-line secret exposure.
+  Telemetry observer failures remain isolated from durable behavior. The Grafana
+  dashboard expands from 15 to 20 panels and the validated Prometheus rules from
+  17 to 22, with exact emitted-series inventory and forbidden-cardinality tests;
+  Redis and event-loop rules require backlog or API-impact corroboration.
+  Focused suites pass 130 database unit assertions plus two real PostgreSQL
+  lock-contention/abandoned-transaction proofs, 129 artifact-store, 39 queue, 266
+  API, 203 worker, and 35 observability assertions; `promtool` validates all 22 rules and
+  Compose rendering passes. A live local SDK -> OTLP HTTP -> Collector ->
+  Prometheus smoke proves the exact database, Redis, object-store, process CPU/RSS,
+  event-loop, and V8 heap series used by the dashboard, including the actual
+  `process_cpu_utilization` and `process_memory_usage` names and absence of
+  process/command identity labels. The complete repository-owned metrics checklist
+  is closed. Root `pnpm check` passes all 1,209 unit assertions. Deployed AWS OTLP
+  ingestion, managed-service/cloud capacity signals, pager
+  routing/fire-clear evidence, and AWS dashboards remain open, so the broader
+  dashboard/alert checklist and Phase 7 remain in progress.
 - The final locally reproducible release matrix now passes from fresh Docker
   volumes. Zero-to-`0066` migration and embedded exact prior-head fixtures pass
   all 326 PostgreSQL assertions; real S3-compatible artifact I/O passes four

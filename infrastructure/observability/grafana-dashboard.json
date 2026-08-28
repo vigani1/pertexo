@@ -90,7 +90,7 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "description": "BullMQ stalls, forced drains, and worker process starts are resource-safety and churn signals; they are not substitutes for CPU or memory telemetry.",
+      "description": "BullMQ stalls, forced drains, and worker process starts expose resource-safety and churn symptoms alongside the dedicated process resource panels.",
       "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
       "gridPos": { "h": 8, "w": 8, "x": 0, "y": 15 },
       "id": 6,
@@ -184,7 +184,7 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "description": "Current artifact metadata count and bytes by finite lifecycle status; this does not claim object-store service health.",
+      "description": "Current artifact inventory plus cardinality-safe per-workspace event/checkpoint storage distributions; workspace identity is never a label.",
       "fieldConfig": { "defaults": {}, "overrides": [] },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 23 },
       "id": 10,
@@ -198,9 +198,19 @@
           "expr": "sum by (status) (pertexo_transport_artifact_bytes)",
           "legendFormat": "bytes {{status}}",
           "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, surface) (rate(pertexo_transport_execution_storage_bytes_bucket[15m])))",
+          "legendFormat": "workspace bytes p95 {{surface}}",
+          "refId": "C"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, surface) (rate(pertexo_transport_execution_storage_count_bucket[15m])))",
+          "legendFormat": "workspace records p95 {{surface}}",
+          "refId": "D"
         }
       ],
-      "title": "Artifact Inventory",
+      "title": "Artifact And Execution Storage",
       "type": "timeseries"
     },
     {
@@ -284,15 +294,144 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "description": "Surfaces intentionally not represented because repository-local emitters or exporters are not yet configured.",
+      "description": "Aggregate saturation, connection waiters, and sampled lock-waiting backends across repository-owned PostgreSQL pools.",
+      "fieldConfig": { "defaults": {}, "overrides": [] },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 39 },
       "id": 15,
-      "options": {
-        "content": "### Open telemetry surfaces\n\nPostgreSQL pool/query/lock metrics, Redis service metrics, object-store service health, and worker CPU/RSS/heap/event-loop metrics are not currently emitted into this stack. See the observability runbook before adding alerts or panels for them.",
-        "mode": "markdown"
-      },
-      "title": "Known Coverage Gaps",
-      "type": "text"
+      "targets": [
+        {
+          "expr": "max by (pool_role) (pertexo_database_pool_saturation_ratio)",
+          "legendFormat": "saturation {{pool_role}}",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (pool_role) (pertexo_database_pool_waiters)",
+          "legendFormat": "waiters {{pool_role}}",
+          "refId": "B"
+        },
+        {
+          "expr": "max(pertexo_database_lock_wait_active)",
+          "legendFormat": "lock waits",
+          "refId": "C"
+        }
+      ],
+      "title": "PostgreSQL Pool And Lock Health",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "PostgreSQL query and transaction p95 duration using only bounded operation and outcome dimensions; SQL text is never a label.",
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 47 },
+      "id": 16,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, operation, outcome) (rate(pertexo_database_query_duration_seconds_bucket[5m])))",
+          "legendFormat": "query {{operation}} {{outcome}}",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, outcome) (rate(pertexo_database_transaction_duration_seconds_bucket[5m])))",
+          "legendFormat": "transaction {{outcome}}",
+          "refId": "B"
+        }
+      ],
+      "title": "PostgreSQL Operation Latency",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Redis operation p95 and failure rate by finite client role and operation; URLs and channels are intentionally excluded.",
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 47 },
+      "id": 17,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, client_role, operation) (rate(pertexo_redis_operation_duration_seconds_bucket[5m])))",
+          "legendFormat": "p95 {{client_role}} {{operation}}",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (client_role, operation) (rate(pertexo_redis_operation_count_total{outcome=\"failure\"}[5m])) / clamp_min(sum by (client_role, operation) (rate(pertexo_redis_operation_count_total[5m])), 0.001)",
+          "legendFormat": "failure ratio {{client_role}} {{operation}}",
+          "refId": "B"
+        },
+        {
+          "expr": "sum by (client_role, event) (increase(pertexo_redis_connection_event_count_total[15m]))",
+          "legendFormat": "connection {{client_role}} {{event}}",
+          "refId": "C"
+        }
+      ],
+      "title": "Redis Dependency Health",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Object-store request latency, failures, and enforced integrity/readiness violations by bounded surface and region role.",
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 55 },
+      "id": 18,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, surface, region_role, operation) (rate(pertexo_object_store_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "p95 {{surface}} {{region_role}} {{operation}}",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (surface, region_role, operation) (rate(pertexo_object_store_request_count_total{outcome=\"error\"}[5m]))",
+          "legendFormat": "errors {{surface}} {{region_role}} {{operation}}",
+          "refId": "B"
+        },
+        {
+          "expr": "sum by (surface, region_role, check) (increase(pertexo_object_store_safety_violation_count_total[15m]))",
+          "legendFormat": "safety {{surface}} {{region_role}} {{check}}",
+          "refId": "C"
+        }
+      ],
+      "title": "Object Store Health And Safety",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Per-process CPU utilization and resident memory from the explicitly enabled OpenTelemetry host process groups.",
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 55 },
+      "id": 19,
+      "targets": [
+        {
+          "expr": "max by (service_name) (process_cpu_utilization)",
+          "legendFormat": "cpu {{service_name}}",
+          "refId": "A"
+        },
+        {
+          "expr": "max by (service_name) (process_memory_usage)",
+          "legendFormat": "rss {{service_name}}",
+          "refId": "B"
+        }
+      ],
+      "title": "Process CPU And RSS",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Node.js event-loop p99 delay and V8 heap use by process, retained from runtime-node instrumentation without custom polling.",
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 63 },
+      "id": 20,
+      "targets": [
+        {
+          "expr": "max by (service_name) (nodejs_eventloop_delay_p99_seconds)",
+          "legendFormat": "event loop p99 {{service_name}}",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (service_name) (v8js_memory_heap_used_bytes)",
+          "legendFormat": "heap {{service_name}}",
+          "refId": "B"
+        }
+      ],
+      "title": "Node Runtime Health",
+      "type": "timeseries"
     }
   ],
   "schemaVersion": 41,
@@ -302,5 +441,5 @@
   "timezone": "utc",
   "title": "Pertexo Production Operations",
   "uid": "pertexo-production-operations",
-  "version": 2
+  "version": 3
 }

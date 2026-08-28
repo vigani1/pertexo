@@ -40,7 +40,11 @@ describe('operations observability assets', () => {
           '../../../apps/worker/src/execution/http-provider-telemetry.ts',
           '../../../apps/worker/src/execution/coordinator-telemetry.ts',
           '../../../apps/worker/src/triggers/trigger-telemetry.ts',
+          '../../artifact-store/src/object-store-telemetry.ts',
+          '../../database/src/postgres-telemetry.ts',
+          '../../queue/src/redis-telemetry.ts',
           '../src/maintenance-metrics.ts',
+          '../src/telemetry.ts',
           '../src/transport-metrics.ts',
         ].map((path) => readFile(new URL(path, import.meta.url), 'utf8')),
       ).then((sources) => sources.join('\n')),
@@ -55,9 +59,9 @@ describe('operations observability assets', () => {
         readonly type: string;
       }[];
     };
-    expect(dashboard.panels).toHaveLength(15);
-    expect(new Set(dashboard.panels.map(({ id }) => id)).size).toBe(15);
-    expect(new Set(dashboard.panels.map(({ title }) => title)).size).toBe(15);
+    expect(dashboard.panels).toHaveLength(20);
+    expect(new Set(dashboard.panels.map(({ id }) => id)).size).toBe(20);
+    expect(new Set(dashboard.panels.map(({ title }) => title)).size).toBe(20);
     for (const panel of dashboard.panels) {
       expect(panel.description?.length).toBeGreaterThan(20);
       if (panel.type !== 'text') {
@@ -68,7 +72,7 @@ describe('operations observability assets', () => {
     }
 
     const alertBlocks = alerts.split('\n      - alert: ').slice(1);
-    expect(alertBlocks).toHaveLength(17);
+    expect(alertBlocks).toHaveLength(22);
     for (const block of alertBlocks) {
       const [alertName = ''] = block.split('\n', 1);
       expect(alertName).toMatch(/^Pertexo[A-Za-z]+$/u);
@@ -97,19 +101,32 @@ describe('operations observability assets', () => {
       'pertexo_api_request_count_total',
       'pertexo_api_request_duration_seconds_bucket',
       'pertexo_control_ledger_reconciliation_count_total',
+      'pertexo_database_lock_wait_active',
+      'pertexo_database_pool_saturation_ratio',
+      'pertexo_database_pool_waiters',
+      'pertexo_database_query_duration_seconds_bucket',
+      'pertexo_database_transaction_duration_seconds_bucket',
       'pertexo_lifecycle_command_process_count_total',
       'pertexo_maintenance_operator_rerun_count_total',
+      'pertexo_object_store_request_count_total',
+      'pertexo_object_store_request_duration_seconds_bucket',
+      'pertexo_object_store_safety_violation_count_total',
       'pertexo_provider_rate_limit_count_total',
       'pertexo_provider_request_count_total',
       'pertexo_purge_batch_count_total',
       'pertexo_purge_batch_duration_seconds_bucket',
       'pertexo_retention_batch_count_total',
       'pertexo_retention_operation_failure_count_total',
+      'pertexo_redis_operation_count_total',
+      'pertexo_redis_operation_duration_seconds_bucket',
+      'pertexo_redis_connection_event_count_total',
       'pertexo_schedule_lag_seconds_bucket',
       'pertexo_schedule_start_count_total',
       'pertexo_schedule_to_start_duration_seconds_bucket',
       'pertexo_transport_artifact_bytes',
       'pertexo_transport_artifact_count',
+      'pertexo_transport_execution_storage_bytes_bucket',
+      'pertexo_transport_execution_storage_count_bucket',
       'pertexo_transport_consumer_lifecycle_total',
       'pertexo_transport_handler_executions_total',
       'pertexo_transport_outbox_oldest_age_seconds',
@@ -119,9 +136,15 @@ describe('operations observability assets', () => {
       'pertexo_webhook_delivery_count_total',
       'pertexo_webhook_health_count_total',
       'pertexo_worker_process_starts_total',
+      'nodejs_eventloop_delay_p99_seconds',
+      'process_cpu_utilization',
+      'process_memory_usage',
+      'v8js_memory_heap_used_bytes',
     ]);
     const referencedSeries = new Set(
-      `${alerts}\n${dashboardText}`.match(/\bpertexo_[a-z0-9_]+/gu) ?? [],
+      `${alerts}\n${dashboardText}`.match(
+        /\b(?:pertexo_[a-z0-9_]+|process_(?:cpu|memory)_[a-z0-9_]+|nodejs_eventloop_[a-z0-9_]+|v8js_memory_[a-z0-9_]+)/gu,
+      ) ?? [],
     );
     expect([...referencedSeries].sort()).toEqual([...allowedSeries].sort());
     for (const emittedMetric of [
@@ -129,19 +152,34 @@ describe('operations observability assets', () => {
       'pertexo.api.request.count',
       'pertexo.api.request.duration',
       'pertexo.control_ledger.reconciliation.count',
+      'pertexo.database.lock_wait.active',
+      'pertexo.database.lock_wait.duration',
+      'pertexo.database.pool.connections',
+      'pertexo.database.pool.saturation',
+      'pertexo.database.pool.waiters',
+      'pertexo.database.query.duration',
+      'pertexo.database.transaction.duration',
       'pertexo.lifecycle_command.process.count',
       'pertexo.maintenance.operator_rerun.count',
+      'pertexo.object_store.request.count',
+      'pertexo.object_store.request.duration',
+      'pertexo.object_store.safety.violation.count',
       'pertexo.provider.rate_limit.count',
       'pertexo.provider.request.count',
       'pertexo.purge.batch.count',
       'pertexo.purge.batch.duration',
       'pertexo.retention.batch.count',
       'pertexo.retention.operation.failure.count',
+      'pertexo.redis.connection.event.count',
+      'pertexo.redis.operation.count',
+      'pertexo.redis.operation.duration',
       'pertexo.schedule.lag',
       'pertexo.schedule.start.count',
       'pertexo.schedule.to_start.duration',
       'pertexo.transport.artifact.bytes',
       'pertexo.transport.artifact.count',
+      'pertexo.transport.execution_storage.bytes',
+      'pertexo.transport.execution_storage.count',
       'pertexo.transport.consumer.lifecycle',
       'pertexo.transport.handler.executions',
       'pertexo.transport.outbox.oldest_age',
@@ -155,6 +193,9 @@ describe('operations observability assets', () => {
       expect(emitters).toContain(emittedMetric);
 
     expect(collector).toContain('memory_limiter');
+    expect(collector).toContain('resource/drop_process_identity');
+    expect(collector).toContain('key: process.pid');
+    expect(collector).toContain('key: process.command_args');
     expect(collector).toContain('prometheus:');
     expect(prometheus).toContain('pertexo-alerts.yaml');
     expect(datasource).toContain('http://prometheus:9090');
@@ -168,16 +209,15 @@ describe('operations observability assets', () => {
       'artifact_id',
       'storage_key',
       'endpoint_key',
+      'process_pid',
     ]) {
       expect(alerts).not.toContain(forbidden);
       expect(dashboardText).not.toContain(forbidden);
     }
-    for (const unsupportedPrefix of [
-      'pertexo_postgresql_',
-      'pertexo_redis_',
-      'pertexo_object_store_',
-      'pertexo_worker_rss_',
-    ])
-      expect(`${alerts}\n${dashboardText}`).not.toContain(unsupportedPrefix);
+    expect(emitters).toContain("'@opentelemetry/instrumentation-host-metrics'");
+    expect(emitters).toContain(
+      "metricGroups: ['process.cpu', 'process.memory']",
+    );
+    expect(emitters).toContain("'@opentelemetry/instrumentation-runtime-node'");
   });
 });

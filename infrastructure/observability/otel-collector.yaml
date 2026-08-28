@@ -13,6 +13,28 @@ processors:
   memory_limiter:
     check_interval: 1s
     limit_mib: 256
+  resource/drop_process_identity:
+    attributes:
+      - action: delete
+        key: process.pid
+      - action: delete
+        key: process.parent_pid
+      - action: delete
+        key: process.command
+      - action: delete
+        key: process.command_args
+      - action: delete
+        key: process.executable.name
+      - action: delete
+        key: process.executable.path
+      - action: delete
+        key: process.owner
+      - action: delete
+        key: host.id
+      - action: delete
+        key: host.name
+      - action: delete
+        key: service.instance.id
 
 exporters:
   debug:
@@ -26,11 +48,11 @@ service:
   pipelines:
     metrics:
       receivers: [otlp]
-      processors: [memory_limiter, batch]
+      processors: [memory_limiter, resource/drop_process_identity, batch]
       exporters: [prometheus]
     traces:
       receivers: [otlp]
-      processors: [memory_limiter, batch]
+      processors: [memory_limiter, resource/drop_process_identity, batch]
       exporters: [debug]
   telemetry:
     logs:

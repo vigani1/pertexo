@@ -30,9 +30,10 @@ unavailable.
 ## PertexoApiWriteLatencyHigh
 
 Identify the affected write route and compare throughput with the admitted-load
-envelope. Inspect database readiness and lock/query evidence through deployment
-telemetry when available. This repository does not yet export PostgreSQL pool,
-query, or lock metrics, so absence of a database panel is not proof of health.
+envelope. Inspect database pool saturation, connection waiters, bounded query and
+transaction latency, and sampled lock waits. SQL text and database identities are
+intentionally absent; use traces and restricted database tooling for a specific
+query only after the aggregate signal identifies the affected window.
 
 ## PertexoWebhookUnavailable
 
@@ -101,8 +102,45 @@ or timeout-envelope issue.
 
 Correlate worker starts with deployments, task health events, and forced drains.
 This counter does not distinguish planned rollout from crash churn by itself.
-Inspect platform CPU, memory, and task-exit telemetry; those resource series are
-not currently exported by this repository-local stack.
+Inspect process CPU, RSS, heap, event-loop delay, and platform task-exit telemetry.
+
+## PertexoDatabasePoolSaturated
+
+Confirm both saturation and waiters are present; high utilization without queued
+callers is not this alert. Compare API latency, durable backlog age, transaction
+duration, and recent traffic or rollout changes. Reduce leaked/long transactions
+before increasing pool capacity, and keep aggregate pool capacity below the
+database connection budget.
+
+## PertexoDatabaseLockWaits
+
+The active value is a sampled observation limited to repository-owned backend
+PIDs, and completed duration is a lower bound. Correlate the alert window with
+transaction latency and PostgreSQL lock inspection. Resolve the owning operation
+through restricted database tooling; never expose SQL or backend IDs as metric
+labels and do not terminate sessions without confirming durable consequences.
+
+## PertexoRedisFailureRateHigh
+
+Split by finite client role, operation, outcome, and error class. Check connection
+lifecycle events and queue/outbox age. Redis loss can delay queue delivery and
+live notifications but PostgreSQL remains authoritative; restore connectivity and
+allow outbox/replay paths to recover rather than fabricating durable state.
+
+## PertexoObjectStoreSafetyViolation
+
+Identify the bounded surface, region role, and check. Preserve integrity,
+readiness, region-isolation, and restore-before-serve failures as fail-closed.
+Inspect restricted object metadata and control-ledger reconciliation evidence;
+never bypass checksum, immutability, or regional-isolation checks to clear the
+alert.
+
+## PertexoEventLoopDelayHigh
+
+Compare p99 delay with process CPU, RSS, V8 heap, queue age, API latency, and
+deployment timing. Identify synchronous work, allocation pressure, or host
+contention before changing concurrency. CPU and memory are diagnostic safety
+signals and are not sufficient by themselves to claim user impact.
 
 ## PertexoRetentionOperationFailure
 
@@ -132,15 +170,15 @@ the PostgreSQL projection high water with both immutable regional ledgers and
 follow `docs/operations/regional-recovery.md`. Do not override reconciliation or
 declare recovery complete from one ledger copy.
 
-## Coverage Gaps
+## Coverage Boundaries
 
-The current local stack does not receive repository-owned PostgreSQL pool,
-transaction, query, or lock-wait metrics; Redis service metrics; object-store
-service health/capacity metrics; or worker CPU, RSS, heap, and event-loop delay
-metrics. Production integrations must add real exporters or bounded emitters,
-record the emitted names, and extend semantic tests before adding corresponding
-panels or alerts. Current artifact panels describe application-observed metadata
-inventory, not object-store availability.
+Repository-owned PostgreSQL, Redis, object-store request/safety, and Node process
+runtime signals are exported through the configured OpenTelemetry pipeline.
+Object-store capacity, managed-service internals, database host capacity, ECS task
+limits/exits, and cloud-provider replication health still require deployment-owned
+AWS integrations. Current artifact inventory describes application metadata;
+object-store request telemetry describes only calls made by this application and
+is not a synthetic provider-availability probe.
 
 Validate local assets with:
 
