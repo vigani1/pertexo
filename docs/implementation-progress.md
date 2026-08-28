@@ -4355,6 +4355,15 @@ Current evidence:
   `advanceWorkflow` remains the sole orchestration interface and transition
   authority. All 121 workflow-engine assertions pass. Branch, loop,
   retry/wait, ready-admission, and terminal-selection extraction remains open.
+- Coordinator-derived control observations are isolated from the main engine
+  operation. One internal module now validates completed-output evidence and
+  derives branch selections, Parallel/Merge join declarations and branch
+  dispositions, bounded For Each declarations, and iteration completion.
+  Recursive executable traversal is shared through its own internal module.
+  `operations.ts` is reduced from 2,134 to 946 lines without changing the
+  `advanceWorkflow` interface or transition authority; all 121 engine
+  assertions remain green. Retry/wait, ready-admission, and terminal-selection
+  extraction remains open.
 
 ## Update protocol
 

@@ -316,6 +316,13 @@ attempt-failure validation. Shared untrusted-JSON helpers moved to
 orchestrator are unchanged. Branch, loop, retry/wait, ready-admission, and
 terminal-selection extraction remains open.
 
+Coordinator-derived branch, Parallel/Merge, and For Each observations now live
+in `coordinator-observations.ts`. The module validates completed-output evidence,
+derives branch selection and disposition facts, declares joins, starts bounded
+loops, and detects iteration completion behind three focused functions. Shared
+recursive executable traversal moved to `executable-graph.ts`. Retry/wait,
+ready-admission, and terminal-selection extraction remains open.
+
 ### A-07: Decompose preview and node-attempt persistence by lifecycle stage
 
 - **Severity:** Medium
