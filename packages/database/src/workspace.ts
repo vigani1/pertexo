@@ -76,6 +76,7 @@ async function runTransaction<T>(
   scope: TenantTransactionScope | undefined,
   operation: (client: PoolClient) => Promise<T>,
   options: WorkspaceTransactionOptions,
+  mode: 'read_write' | 'repeatable_read_only',
   messages: Readonly<{
     abort: string;
     rollback: string;
@@ -86,7 +87,7 @@ async function runTransaction<T>(
   abortError.name = 'AbortError';
   if (options.signal?.aborted) throw abortError;
 
-  const client = await pool.connect();
+  const client = await acquirePoolClient(pool, options.signal, abortError);
   let transactionOpen = false;
   let clientReleased = false;
 
@@ -112,7 +113,11 @@ async function runTransaction<T>(
 
   try {
     await assertNoTenantContext(client);
-    await client.query('begin');
+    await client.query(
+      mode === 'repeatable_read_only'
+        ? 'begin isolation level repeatable read read only'
+        : 'begin',
+    );
     transactionOpen = true;
     if (scope === undefined) {
       // Platform-global transactions deliberately install no tenant context.
@@ -163,6 +168,38 @@ async function runTransaction<T>(
   }
 }
 
+async function acquirePoolClient(
+  pool: Pool,
+  signal: AbortSignal | undefined,
+  abortError: Error,
+): Promise<PoolClient> {
+  const connection = pool.connect();
+  if (signal === undefined) return connection;
+
+  let rejectAbort: ((reason: Error) => void) | undefined;
+  const aborted = new Promise<never>((_resolve, reject) => {
+    rejectAbort = reject;
+  });
+  const onAbort = (): void => rejectAbort?.(abortError);
+  signal.addEventListener('abort', onAbort, { once: true });
+  try {
+    if (signal.aborted) throw abortError;
+    return await Promise.race([connection, aborted]);
+  } catch (error: unknown) {
+    if (signal.aborted) {
+      void connection.then(
+        (client) => {
+          client.release(abortError);
+        },
+        () => undefined,
+      );
+    }
+    throw error;
+  } finally {
+    signal.removeEventListener('abort', onAbort);
+  }
+}
+
 /**
  * Runs one workspace-scoped transaction on a single checked-out pool client
  * with fail-closed hygiene: absent-context proof before use, read-back
@@ -180,11 +217,36 @@ export async function withTenantScopedClient<T>(
     ...scopeInput,
     workspaceId: parseWorkspaceId(scopeInput.workspaceId),
   };
-  return runTransaction(pool, scope, operation, options, {
+  return runTransaction(pool, scope, operation, options, 'read_write', {
     abort: 'Workspace transaction aborted',
     cleanup: 'Tenant context cleanup failed',
     rollback: 'Tenant-scoped transaction rollback failed',
   });
+}
+
+/** Internal worker seam for stable repeatable-read snapshots. */
+export async function withTenantScopedReadClient<T>(
+  pool: Pool,
+  scopeInput: TenantTransactionScope,
+  operation: (client: PoolClient) => Promise<T>,
+  options: WorkspaceTransactionOptions = {},
+): Promise<T> {
+  const scope: TenantTransactionScope = {
+    ...scopeInput,
+    workspaceId: parseWorkspaceId(scopeInput.workspaceId),
+  };
+  return runTransaction(
+    pool,
+    scope,
+    operation,
+    options,
+    'repeatable_read_only',
+    {
+      abort: 'Workspace transaction aborted',
+      cleanup: 'Tenant context cleanup failed',
+      rollback: 'Tenant-scoped transaction rollback failed',
+    },
+  );
 }
 
 /**
@@ -198,7 +260,7 @@ export async function withPlatformTransaction<T>(
   operation: (client: PoolClient) => Promise<T>,
   options: WorkspaceTransactionOptions = {},
 ): Promise<T> {
-  return runTransaction(pool, undefined, operation, options, {
+  return runTransaction(pool, undefined, operation, options, 'read_write', {
     abort: 'Platform transaction aborted',
     cleanup: 'Platform context cleanup failed',
     rollback: 'Platform transaction rollback failed',
