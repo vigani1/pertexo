@@ -389,8 +389,10 @@ Durable outbox validation and scheduling, inbox receipt claim/completion,
 reconciliation-delivery validation, and checksum-mismatch auditing live in
 `preview-execution-delivery.ts`. `preview-execution-claim.ts` owns the complete
 claim transaction, including state validation, fencing, reconciliation wake-up
-intent, and lease reconstruction. Preview heartbeat, dispatch, completion, and
-reconciliation extraction remain open.
+intent, and lease reconstruction. `preview-execution-heartbeat.ts` now owns
+database-clock lease renewal under the run/attempt fence in its original write
+transaction. Preview dispatch, completion, and reconciliation extraction remain
+open.
 
 ### A-08: Narrow the database package's public capability surface
 

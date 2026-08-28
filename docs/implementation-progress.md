@@ -4408,8 +4408,10 @@ Current evidence:
   scheduling, completion, and mismatch auditing share one internal delivery
   module. The complete claim transaction owns state validation, attempt
   fencing, reconciliation wake-up intent, and lease reconstruction behind the
-  unchanged public function. Preview heartbeat, dispatch, completion, and
-  reconciliation extraction remain open.
+  unchanged public function. Preview heartbeat is isolated with database-clock
+  renewal, run expiry, worker identity, and attempt-fence validation in the
+  original write transaction. Preview dispatch, completion, and reconciliation
+  extraction remain open.
 
 ## Update protocol
 
