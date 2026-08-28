@@ -4,7 +4,6 @@ import {
   JOB_NAME,
   QUEUE_NAME,
   Queue,
-  acceptForEachRun,
   apiDatabase,
   cleanupFixture,
   createQueueProducer,
@@ -18,12 +17,15 @@ import {
   setupFixture,
   spawn,
   waitFor,
-  waitForCoordinatorOutbox,
   workerQuery,
   workerUrl,
   workspaceId,
   type ChildProcess,
 } from './coordinator-consumer.fixtures.js';
+import {
+  acceptForEachRun,
+  waitForCoordinatorOutbox,
+} from './support/coordinator-run-fixtures.js';
 
 const describeIntegration = enabled ? describe : describe.skip;
 

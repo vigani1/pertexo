@@ -5,7 +5,6 @@ import {
   PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
   QUEUE_NAME,
   Queue,
-  acceptParallelRun,
   cleanupFixture,
   createCoordinatorRuntime,
   createNodeAttemptRuntime,
@@ -21,12 +20,15 @@ import {
   restoreServices,
   setupFixture,
   waitFor,
-  waitForAttemptOutbox,
-  waitForCoordinatorOutbox,
   workerQuery,
   workerUrl,
   workspaceId,
 } from './coordinator-consumer.fixtures.js';
+import {
+  acceptParallelRun,
+  waitForAttemptOutbox,
+  waitForCoordinatorOutbox,
+} from './support/coordinator-run-fixtures.js';
 
 const describeIntegration = enabled ? describe : describe.skip;
 

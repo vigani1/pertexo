@@ -8,13 +8,11 @@ import {
   SECURE_HTTP_ERROR_CODE,
   SecureHttpError,
   WorkerDrainState,
-  acceptRun,
   actorId,
   adminUrl,
   apiQuery,
   canonicalOutboxPayloadChecksum,
   cleanupFixture,
-  createFailureNotificationDispatcher,
   createFailureNotificationStore,
   createOutboxDispatcherDatabase,
   createPreviewMaintenanceRuntime,
@@ -22,7 +20,6 @@ import {
   createQueueProducer,
   databaseUrl,
   enabled,
-  dispatchFairRounds,
   dispatcherUrl,
   parseDatabaseConfig,
   performance,
@@ -33,13 +30,20 @@ import {
   setupFixture,
   startService,
   stopService,
-  terminalizeFailedRun,
   waitFor,
   workerQuery,
   workerUrl,
   workflowId,
   workspaceId,
 } from './coordinator-consumer.fixtures.js';
+import {
+  createFailureNotificationDispatcher,
+  dispatchFairRounds,
+} from './support/coordinator-dispatch-fixtures.js';
+import {
+  acceptRun,
+  terminalizeFailedRun,
+} from './support/coordinator-run-fixtures.js';
 
 const describeIntegration = enabled ? describe : describe.skip;
 

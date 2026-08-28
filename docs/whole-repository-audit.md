@@ -478,9 +478,16 @@ transport suite is divided into seven scenario-owned files for exact
 redelivery, failure notification, linear execution, Parallel/Merge recovery,
 For Each cancellation, retry/Wait recovery, and identity fencing. Its
 PostgreSQL, BullMQ, Redis-loss, and fresh-worker behavior remains real rather
-than mocked; the complete transport-enabled worker integration run passes 17
-assertions with five unrelated environment-gated scenarios skipped. The full
-repository gate passes all 1,236 unit assertions. A-09 is complete.
+than mocked. The former 1,471-line shared fixture is now divided by ownership:
+the environment/lifecycle facade is 551 lines, typed workflow catalog seeding
+is 405, run and outbox construction is 325, and dispatch construction is 98.
+The former 500-line setup routine now only orchestrates database migration,
+release activation, named workflow seeding, and queue cleanup; scenario suites
+import run and dispatch helpers from their owning modules instead of one general
+fixture surface. All 204 worker unit assertions pass, and the complete
+transport-enabled worker integration run passes 17 assertions with five
+unrelated environment-gated scenarios skipped. The full repository gate passes
+all 1,237 unit assertions. A-09 is complete.
 
 ### A-10: Improve Phase 7 checklist granularity
 
@@ -784,7 +791,7 @@ explicit skip summaries, scenario sharding, and invariant-oriented file splits.
 | 14 | Node SDK registry/release implementation | Partially reducible | Correct generic contract, but registry and release files have accumulated duties |
 | 15 | API/worker runtime composition | Partially reducible | Broad dependency objects and holder classes obscure sub-runtime cohesion |
 | 16 | Giant database integration harness | Unnecessarily difficult to navigate | Confidence is high, but scenarios and seed logic are concentrated |
-| 17 | Giant worker coordinator harness | Unnecessarily difficult to navigate | End-to-end value is real; fixture organization is costly |
+| 17 | Giant worker coordinator harness | Resolved after the audited head | Real end-to-end proofs now use scenario-owned suites and focused lifecycle, workflow-seed, run/outbox, and dispatch fixtures |
 | 18 | Observability facades | Partially reducible | Event ownership is good; repeated interface shapes add noise |
 
 ## Post-Phase 7 refactor portfolio

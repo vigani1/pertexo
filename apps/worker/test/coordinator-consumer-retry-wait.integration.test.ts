@@ -7,12 +7,10 @@ import {
   adminUrl,
   apiQuery,
   cleanupFixture,
-  createCoordinatorDispatcher,
   createCoordinatorRuntime,
   createDueNodeWakeupScanner,
   databaseUrl,
   enabled,
-  dispatchFairRounds,
   engineVersion,
   invocationKey,
   parseCheckpoint,
@@ -31,6 +29,10 @@ import {
   workspaceId,
   type CoordinatorAdvanceEngine,
 } from './coordinator-consumer.fixtures.js';
+import {
+  createCoordinatorDispatcher,
+  dispatchFairRounds,
+} from './support/coordinator-dispatch-fixtures.js';
 
 const describeIntegration = enabled ? describe : describe.skip;
 

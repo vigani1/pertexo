@@ -4,7 +4,6 @@ import {
   JOB_NAME,
   QUEUE_NAME,
   Queue,
-  acceptRun,
   cleanupFixture,
   createCoordinatorRuntime,
   createQueueProducer,
@@ -20,6 +19,7 @@ import {
   workerUrl,
   workspaceId,
 } from './coordinator-consumer.fixtures.js';
+import { acceptRun } from './support/coordinator-run-fixtures.js';
 
 const describeIntegration = enabled ? describe : describe.skip;
 

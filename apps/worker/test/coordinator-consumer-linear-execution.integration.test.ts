@@ -7,7 +7,6 @@ import {
   PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
   QUEUE_NAME,
   Queue,
-  acceptRun,
   cleanupFixture,
   composeExecutableCompatibilityRelease,
   createCoordinatorRuntime,
@@ -25,13 +24,16 @@ import {
   restoreServices,
   setupFixture,
   waitFor,
-  waitForAttemptOutbox,
-  waitForCoordinatorOutbox,
   workerQuery,
   workerUrl,
   workflowVersionId,
   workspaceId,
 } from './coordinator-consumer.fixtures.js';
+import {
+  acceptRun,
+  waitForAttemptOutbox,
+  waitForCoordinatorOutbox,
+} from './support/coordinator-run-fixtures.js';
 
 const describeIntegration = enabled ? describe : describe.skip;
 

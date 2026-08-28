@@ -4465,13 +4465,15 @@ Current evidence:
   replaced by seven scenario-owned suites covering exact redelivery, failure
   notification, linear execution, Parallel/Merge Redis-loss recovery, For Each
   cancellation, retry/Wait outage recovery, and transport identity fencing.
-  The transport-enabled worker integration command retains real PostgreSQL,
-  BullMQ, Redis-loss, and fresh-worker proofs and passes 17 assertions with five
-  unrelated environment-gated scenarios skipped. Root `pnpm check` passes all
-  1,236 unit assertions. The shared development database still contains
-  compatibility/readiness drift from earlier test work: the same 11 unrelated
-  database integration failures reproduce when their four files run alone, so
-  they are not attributed to this test-only decomposition.
+  The former 1,471-line general fixture is divided into a 551-line
+  environment/lifecycle facade, 405-line typed workflow seeding module,
+  325-line run/outbox module, and 98-line dispatch module. The shared setup is
+  now a short lifecycle orchestrator, and scenarios import focused run and
+  dispatch support directly. The transport-enabled worker integration command
+  retains real PostgreSQL, BullMQ, Redis-loss, and fresh-worker proofs and
+  passes 17 assertions with five unrelated environment-gated scenarios skipped;
+  all 204 worker unit assertions, worker test typecheck, and the complete
+  repository gate with 1,237 unit assertions also pass.
 - A-10 Phase 7 progress granularity is complete. Combined implementation/live
   evidence rows are split for the control ledger, deletion and purge,
   dashboards and paging, deployment boundaries, and autoscaling. Repository
