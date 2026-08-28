@@ -51,14 +51,16 @@ async function loadPreviewLease(
       side_effect_class: string;
       traceparent: string | null;
       workflow_id: string;
-    }> & { run_expires_at: Date }
+    }> & { execution_deadline_at: Date; retention_expires_at: Date }
   >(
     `select compatibility_release_epoch,compatibility_release_fingerprint,
             definition_key,definition_version,dry_run,executable_node_json,
             executor_key,executor_version,input_ref,may_contact_provider,
              may_cause_external_side_effect,node_id,operation_key,provider_key,
              side_effect_class,
-            traceparent,workflow_id,expires_at as run_expires_at
+            traceparent,workflow_id,
+            execution_deadline_at,
+            expires_at as retention_expires_at
      from app.preview_runs
      where workspace_id=$1 and id=$2`,
     [input.workspaceId, input.previewRunId],
@@ -101,7 +103,8 @@ async function loadPreviewLease(
     ),
     executorKey: run.executor_key,
     executorVersion: run.executor_version,
-    expiresAt: run.run_expires_at,
+    executionDeadlineAt: run.execution_deadline_at,
+    retentionExpiresAt: run.retention_expires_at,
     input: parseStoredExecutionValueV1(run.input_ref),
     mayContactProvider: run.may_contact_provider,
     mayCauseExternalSideEffect: run.may_cause_external_side_effect,

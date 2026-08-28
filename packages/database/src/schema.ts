@@ -1118,6 +1118,10 @@ export const previewRuns = appSchema.table(
       withTimezone: true,
       mode: 'date',
     }),
+    executionDeadlineAt: timestamp('execution_deadline_at', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
     expiresAt: timestamp('expires_at', {
       withTimezone: true,
       mode: 'date',

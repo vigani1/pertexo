@@ -38,7 +38,8 @@ function leaseFixture(
     executableNode,
     executorKey: 'core.set',
     executorVersion: 1,
-    expiresAt: new Date(Date.now() + 60_000),
+    executionDeadlineAt: new Date(Date.now() + 60_000),
+    retentionExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1_000),
     input: {
       kind: 'inline',
       schemaVersion: 1,

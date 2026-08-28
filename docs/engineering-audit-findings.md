@@ -37,7 +37,8 @@ status in [the implementation progress tracker](./implementation-progress.md).
 
 - Findings 1–3, 7–12, and 14 remain valid fixed-history records.
 - Finding 4 was resolved by recreating the shared local database; its migration
-  history now matches the checked-in files through migration 0068.
+  history was later superseded by disposable-database isolation for the
+  compatibility rollout proof.
 - Finding 5 is resolved: the rollout suite now provisions, migrates, and drops
   its own randomly named database and no longer mutates shared release
   authority.
@@ -46,9 +47,10 @@ status in [the implementation progress tracker](./implementation-progress.md).
 - Finding 13 was closed by later Phase 4 implementation, real-service evidence,
   CI activation, and independent fixed-head reviews recorded in the progress
   tracker.
-- D6 remains design debt because preview retention expiry also acts as its
-  execution deadline. D7 remains documentation debt because preview attempt and
-  invocation identity conventions have not been ratified explicitly.
+- D6 is resolved by the ADR 016 amendment and migration 0070: preview execution
+  deadline and retention expiry are separate immutable fields and authorities.
+- D7 is resolved by the same ADR amendment, which ratifies the V1 single-attempt
+  number and preview invocation/run/node/attempt identity mapping.
 
 ## Finding 1 — Compatibility-rollout proof absent from CI (High)
 
@@ -464,10 +466,19 @@ plan.
   current bounded execution deadline and artifact lifetime. This is an interim
   implementation constraint, not a completed timeout/retention design; a
   separate pinned timeout policy may be required before activation.
+  **Resolved later:** the accepted ADR 016 amendment pins a separate maximum
+  five-minute execution deadline. Migration
+  `0070_preview_execution_deadline.sql` adds and backfills immutable
+  `execution_deadline_at`; claim, heartbeat, timeout, and reconciliation use
+  it, while visibility, prior-preview input, cleanup, and artifact lifetime
+  continue to use seven-day `expires_at`.
 - **D7 — Identity conventions.** Preview runtime maps
   `attemptNumber = 1` and `invocationKey = preview:<nodeId>`; these are new
   conventions introduced by this branch and should be ratified in a follow-up
   ADR note if adopted.
+  **Resolved later:** the ADR 016 amendment ratifies these conventions and
+  records that preview-run and preview-attempt UUIDs adapt the single-node
+  preview to executor contracts without creating production scheduler identity.
 - **D8 — In-test activation.** The transport proof performs a real
   maintenance prepare/probe/preactivate/approve/activate cycle against the
   seeded predecessor. This uses only audited production seams but means the

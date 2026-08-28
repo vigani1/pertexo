@@ -179,6 +179,11 @@ function acceptanceInput(
   overrides: Partial<AcceptPreviewRunInput> = {},
 ): AcceptPreviewRunInput {
   fixtureSequence += 1;
+  const now = Date.now();
+  const expiresAt = overrides.expiresAt ?? new Date(now + 60 * 60 * 1_000);
+  const executionDeadlineAt =
+    overrides.executionDeadlineAt ??
+    new Date(Math.min(now + 5 * 60 * 1_000, expiresAt.getTime()));
   return {
     actorUserId,
     compatibilityReleaseEpoch: PHASE3_COMPATIBILITY_EXPECTATION.epoch,
@@ -192,7 +197,8 @@ function acceptanceInput(
     executableNode: { id: 'node-1', type: 'http.request' },
     executorKey: 'http.request',
     executorVersion: 2,
-    expiresAt: new Date(Date.now() + 60 * 60 * 1_000),
+    executionDeadlineAt,
+    expiresAt,
     input: { kind: 'manual' as const, value: { hello: 'world' } },
     keyHash: createHash('sha256')
       .update(`preview-key-${String(fixtureSequence)}`)
@@ -998,7 +1004,9 @@ describe('worker-side preview execution seam', () => {
     expect(claimed.lease.traceparent).toMatch(
       /^00-[0-9a-f]{32}-[0-9a-f]{16}-01$/u,
     );
-    expect(claimed.lease.expiresAt.getTime()).toBeGreaterThan(Date.now());
+    expect(claimed.lease.executionDeadlineAt.getTime()).toBeGreaterThan(
+      Date.now(),
+    );
 
     const attemptState = await scopedQuery<{
       status: string;
@@ -1260,7 +1268,7 @@ describe('worker-side preview execution seam', () => {
       workerId: second.workerId,
     });
     expect(beat.attemptLeaseExpiresAt.getTime()).toBeGreaterThan(Date.now());
-    expect(beat.runExpiresAt.getTime()).toBeGreaterThan(Date.now());
+    expect(beat.runExecutionDeadlineAt.getTime()).toBeGreaterThan(Date.now());
     const connectionId = randomUUID();
     const secretVersionId = randomUUID();
     const nextSecretVersionId = randomUUID();

@@ -12,7 +12,7 @@ import {
 // their inventory and synchronized rollout/rollback procedure aligned with
 // docs/operations/database-function-readiness.md.
 
-export const EXPECTED_MIGRATION_HEAD = '0069_regional_write_admission.sql';
+export const EXPECTED_MIGRATION_HEAD = '0070_preview_execution_deadline.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -1216,6 +1216,22 @@ export async function checkDatabaseReadiness(
             and pg_get_constraintdef(oid) = 'CHECK ((((provider_key IS NULL) AND (operation_key IS NULL)) OR (((provider_key)::text ~ ''^[a-z][a-z0-9._:-]{0,63}$''::text) AND ((operation_key)::text ~ ''^[a-z][a-z0-9._:-]{0,127}$''::text))))'
         )
         and exists (
+          select 1 from pg_attribute attribute
+          where attribute.attrelid = to_regclass('app.preview_runs')
+            and attribute.attname = 'execution_deadline_at'
+            and attribute.atttypid = 'timestamptz'::regtype
+            and attribute.attnotnull
+            and not attribute.attisdropped
+        )
+        and exists (
+          select 1 from pg_constraint
+          where conrelid = to_regclass('app.preview_runs')
+            and conname = 'preview_runs_execution_deadline_order'
+            and contype = 'c'
+            and convalidated
+            and pg_get_constraintdef(oid) = 'CHECK (((execution_deadline_at > created_at) AND (execution_deadline_at <= expires_at)))'
+        )
+        and exists (
           select 1 from pg_constraint
           where conrelid = to_regclass('app.audit_events')
             and conname = 'audit_events_preview_terminal_uuid_v7'
@@ -1234,7 +1250,7 @@ export async function checkDatabaseReadiness(
         and exists (
           select 1 from pg_proc
           where oid = to_regprocedure('app.reject_preview_run_pin_change()')
-            and md5(prosrc) = 'fd27005cfd2f52a46881a99549bf609c'
+            and md5(prosrc) = 'e3e80198979101aabfc681553bcdbedf'
             and pg_get_userbyid(proowner) = $1
             and prolang = (select oid from pg_language where lanname = 'plpgsql')
             and proconfig = array['search_path=pg_catalog, pg_temp']::text[]

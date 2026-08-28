@@ -345,7 +345,7 @@ export function createPreviewAttemptHandler(
         outboxEventId: delivery.data.outboxEventId,
         payloadChecksum: canonicalOutboxPayloadChecksum(delivery.data),
       };
-      if (Date.now() >= lease.expiresAt.getTime())
+      if (Date.now() >= lease.executionDeadlineAt.getTime())
         return committedTerminal(
           dependencies,
           lease,
@@ -360,7 +360,7 @@ export function createPreviewAttemptHandler(
         );
 
       const capabilityContext = Object.freeze({
-        artifactRetentionDeadline: lease.expiresAt,
+        artifactRetentionDeadline: lease.retentionExpiresAt,
         attemptId: lease.previewAttemptId,
         attemptNumber: 1,
         invocationKey: `preview:${lease.nodeId}`,
@@ -460,7 +460,7 @@ export function createPreviewAttemptHandler(
           executionAbort.abort();
           notifyDeadline?.();
         },
-        Math.max(0, lease.expiresAt.getTime() - Date.now()),
+        Math.max(0, lease.executionDeadlineAt.getTime() - Date.now()),
       );
       type HeartbeatEnd = 'stopped' | 'lease_lost';
       let endHeartbeat: ((end: HeartbeatEnd) => void) | undefined;
@@ -500,7 +500,7 @@ export function createPreviewAttemptHandler(
             endHeartbeat?.('lease_lost');
             return;
           }
-          if (Date.now() >= beat.runExpiresAt.getTime()) {
+          if (Date.now() >= beat.runExecutionDeadlineAt.getTime()) {
             executionAbort.abort();
             notifyDeadline?.();
             endHeartbeat?.('stopped');

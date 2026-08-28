@@ -430,7 +430,7 @@ describe.each([
 describe('database readiness', () => {
   it('verifies migration, PostgreSQL, ownership, RLS, and runtime role compatibility', async () => {
     await expect(database.checkReadiness()).resolves.toEqual({
-      migrationHead: '0069_regional_write_admission.sql',
+      migrationHead: '0070_preview_execution_deadline.sql',
       postgresMajor: 18,
       role: 'pertexo_api',
     });

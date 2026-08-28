@@ -359,6 +359,7 @@ function acceptanceInput(
     },
     executorKey: 'core.set',
     executorVersion: 1,
+    executionDeadlineAt: new Date(Date.now() + 5 * 60 * 1_000),
     expiresAt: new Date(Date.now() + 60 * 60 * 1_000),
     input: { kind: 'manual' as const, value: { hello: 'transport' } },
     keyHash: createHash('sha256')
@@ -697,7 +698,10 @@ describeIntegration('preview execution real transport', () => {
       const previewDeadline = new Date(Date.now() + 2_000);
       const traceparent = validTraceparent(90);
       const accepted = await withTenantAccept(
-        acceptanceInput(traceparent, { expiresAt: previewDeadline }),
+        acceptanceInput(traceparent, {
+          executionDeadlineAt: previewDeadline,
+          expiresAt: previewDeadline,
+        }),
       );
       const capabilities = await createWorkerNodeRuntimeCapabilities({
         artifactStore: artifactConfig,

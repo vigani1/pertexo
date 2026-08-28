@@ -10,7 +10,7 @@ body, and a different `md5(prosrc)` blocks startup.
 
 | Function | Expected MD5 | Security mode | Owning migration |
 | --- | --- | --- | --- |
-| `app.reject_preview_run_pin_change()` | `fd27005cfd2f52a46881a99549bf609c` | invoker, `pg_catalog, pg_temp` | `0028_preview_terminal_fact_corrections.sql` |
+| `app.reject_preview_run_pin_change()` | `e3e80198979101aabfc681553bcdbedf` | invoker, `pg_catalog, pg_temp` | `0070_preview_execution_deadline.sql` |
 | `app.enforce_phase3_core_executor_non_removal()` | `338c35d21e71957aed153ac764b2e450` | invoker, `pg_catalog, app` | `0018_phase3_core_executor_non_removal.sql` |
 | `app.prepare_node_compatibility_release(integer,character varying,jsonb,integer,character varying,character varying,character varying,character varying)` | `cdc8c35b360133824aa9f2722c240934` | definer, `pg_catalog, app` | `0019_node_compatibility_preactivation.sql` |
 | `app.lock_node_compatibility_current_supported(jsonb)` | `f76fa13098d07326e52621ae076882d6` | definer, `pg_catalog, app` | `0019_node_compatibility_preactivation.sql` |

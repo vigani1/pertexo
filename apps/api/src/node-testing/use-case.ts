@@ -33,6 +33,7 @@ import {
 } from './validation.js';
 
 const PREVIEW_RETENTION_MS = 7 * 24 * 60 * 60 * 1_000;
+const PREVIEW_EXECUTION_TIMEOUT_MS = 5 * 60 * 1_000;
 const executableNodeSchema = z.record(z.string(), z.json());
 
 export type NodeTestUseCaseInput = Readonly<{
@@ -181,6 +182,9 @@ export class TestWorkflowNodeUseCase {
             }
           : {}),
         expiresAt: new Date(acceptedAt.getTime() + PREVIEW_RETENTION_MS),
+        executionDeadlineAt: new Date(
+          acceptedAt.getTime() + PREVIEW_EXECUTION_TIMEOUT_MS,
+        ),
         ...(input.requestId === undefined
           ? {}
           : { requestId: input.requestId }),

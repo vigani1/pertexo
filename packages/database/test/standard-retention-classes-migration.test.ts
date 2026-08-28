@@ -11,7 +11,7 @@ const migrationUrl = new URL(
 
 describe('standard retention classes migration', () => {
   it('keeps all destructive retention behind bounded maintenance functions', async () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0069_regional_write_admission.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0070_preview_execution_deadline.sql');
     const migration = await readFile(migrationUrl, 'utf8');
 
     expect(migration).toContain("'execution_detail'");

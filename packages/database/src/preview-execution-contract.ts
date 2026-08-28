@@ -84,7 +84,8 @@ export type PreviewAttemptLease = Readonly<{
   executableNode: Readonly<Record<string, unknown>>;
   executorKey: string;
   executorVersion: number;
-  expiresAt: Date;
+  executionDeadlineAt: Date;
+  retentionExpiresAt: Date;
   input: ReturnType<typeof parseStoredExecutionValueV1>;
   mayContactProvider: boolean;
   mayCauseExternalSideEffect: boolean;

@@ -43,6 +43,12 @@ maintenance failures, complete real environment exercises, consolidate tenant
 transaction hygiene, and reduce the responsibility size of several core modules
 without weakening their correctness guarantees.
 
+Current disposition (2026-08-28): every repository-actionable item A-00 through
+A-12 has been corrected and verified. A-03 remains open because it requires
+measured evidence from an AWS environment representative of production; the
+repository contains the required exercise and evidence-capture machinery, but a
+local or simulated run cannot substitute for that evidence.
+
 | Area | Score |
 | --- | ---: |
 | Architecture | 9/10 |
@@ -177,7 +183,8 @@ and external-I/O sequencing remain inside the existing coordinators.
 - **Files:** `docs/implementation-progress.md`,
   `.github/workflows/release-gate.yml`, `infrastructure/exercises/**`,
   `docs/operations/regional-recovery.md`
-- **Classification:** corrected after the audited head
+- **Classification:** repository support complete; live AWS evidence remains
+  open
 
 The repository contains strong deployment, exercise, recovery, ledger, artifact,
 dashboard, and alert machinery. The current automated gates primarily validate
@@ -443,7 +450,7 @@ repository gate pass. A-08 is complete.
   `packages/database/test/coordinator-run-store.integration.test.ts`,
   `packages/workflow-engine/test/executable-workflow.test.ts`,
   `apps/worker/test/coordinator-consumer.integration.test.ts`
-- **Classification:** should be corrected
+- **Classification:** corrected after the audited head
 
 These files are approximately 6,364, 4,643, and 4,067 lines. They cover many
 behavior families and make test ownership, failure localization, and focused

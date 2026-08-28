@@ -67,6 +67,11 @@ function digest(value: string): string {
 function input(
   overrides: Partial<Parameters<typeof acceptPreviewRun>[1]> = {},
 ) {
+  const now = Date.now();
+  const expiresAt = overrides.expiresAt ?? new Date(now + 60 * 60 * 1_000);
+  const executionDeadlineAt =
+    overrides.executionDeadlineAt ??
+    new Date(Math.min(now + 5 * 60 * 1_000, expiresAt.getTime()));
   return {
     actorUserId: actorId,
     compatibilityReleaseEpoch: releaseEpoch,
@@ -84,7 +89,8 @@ function input(
     },
     executorKey: 'http.request',
     executorVersion: 1,
-    expiresAt: new Date(Date.now() + 60 * 60 * 1_000),
+    executionDeadlineAt,
+    expiresAt,
     input: { kind: 'manual', value: { customerId: 'customer-1' } },
     keyHash,
     mayContactProvider: true,
@@ -256,6 +262,9 @@ describe('durable preview acceptance', () => {
         kind: 'inline',
         value: { customerId: 'customer-1' },
       });
+      expect(runs[0]?.executionDeadlineAt.getTime()).toBeLessThan(
+        runs[0]?.expiresAt.getTime() ?? 0,
+      );
       expect(await db.select({ count: count() }).from(previewAttempts)).toEqual(
         [{ count: 1 }],
       );

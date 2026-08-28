@@ -39,6 +39,7 @@ export const executableNodeSchema = z
   );
 
 export const PREVIEW_RETENTION_MAX_MS = 7 * 24 * 60 * 60 * 1_000;
+export const PREVIEW_EXECUTION_TIMEOUT_MAX_MS = 5 * 60 * 1_000;
 
 export const PREVIEW_STATUS = Object.freeze({
   queued: 'queued',
@@ -75,6 +76,7 @@ const acceptPreviewRunInputSchema = z
     executableNode: executableNodeSchema,
     executorKey: identityKeySchema,
     executorVersion: z.number().int().positive(),
+    executionDeadlineAt: z.date(),
     expiresAt: z.date(),
     input: inputSourceSchema,
     keyHash: sha256Schema,
@@ -163,7 +165,7 @@ export class PreviewAcceptanceCorruptError extends Error {
 
 export class PreviewAdmissionDeniedError extends Error {
   public override readonly name = 'PreviewAdmissionDeniedError';
-  public constructor(reason: 'actor' | 'draft' | 'retention') {
+  public constructor(reason: 'actor' | 'deadline' | 'draft' | 'retention') {
     super(`preview.${reason}_denied`);
   }
 }
@@ -390,6 +392,13 @@ export async function acceptPreviewRun(
     parsed.expiresAt.getTime() - now.getTime() > PREVIEW_RETENTION_MAX_MS
   )
     throw new PreviewAdmissionDeniedError('retention');
+  if (
+    parsed.executionDeadlineAt.getTime() <= now.getTime() ||
+    parsed.executionDeadlineAt.getTime() - now.getTime() >
+      PREVIEW_EXECUTION_TIMEOUT_MAX_MS ||
+    parsed.executionDeadlineAt.getTime() > parsed.expiresAt.getTime()
+  )
+    throw new PreviewAdmissionDeniedError('deadline');
   await assertAdmission(
     transaction,
     parsed.actorUserId,
@@ -451,6 +460,7 @@ export async function acceptPreviewRun(
       definitionVersion: parsed.definitionVersion,
       executorKey: parsed.executorKey,
       executorVersion: parsed.executorVersion,
+      executionDeadlineAt: parsed.executionDeadlineAt,
       compatibilityReleaseEpoch: parsed.compatibilityReleaseEpoch,
       compatibilityReleaseFingerprint: parsed.compatibilityReleaseFingerprint,
       actorUserId: parsed.actorUserId,

@@ -34,7 +34,8 @@ function leaseFixture(): PreviewAttemptLease {
     }),
     executorKey: 'core.set',
     executorVersion: 1,
-    expiresAt: new Date(Date.now() + 60 * 60 * 1_000),
+    executionDeadlineAt: new Date(Date.now() + 60 * 60 * 1_000),
+    retentionExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1_000),
     input: { kind: 'inline', schemaVersion: 1, value: { n: 1 } },
     mayCauseExternalSideEffect: false,
     mayContactProvider: true,
@@ -46,7 +47,7 @@ function leaseFixture(): PreviewAttemptLease {
     sideEffectClass: 'safe',
     workflowId: randomUUID(),
     workspaceId,
-  } as unknown as PreviewAttemptLease;
+  };
 }
 
 function deliveryFixture(): Parameters<
@@ -80,7 +81,7 @@ interface StoreCalls {
 
 function fakeStore(
   overrides: Partial<{
-    beat: { runExpiresAt: Date };
+    beat: { runExecutionDeadlineAt: Date };
     claimKind: 'duplicate';
     heartbeatError: Error;
     lease: PreviewAttemptLease;
@@ -111,11 +112,11 @@ function fakeStore(
       if (overrides.heartbeatError !== undefined)
         return Promise.reject(overrides.heartbeatError);
       const beat = overrides.beat ?? {
-        runExpiresAt: new Date(Date.now() + 60 * 60 * 1_000),
+        runExecutionDeadlineAt: new Date(Date.now() + 60 * 60 * 1_000),
       };
       return Promise.resolve({
         attemptLeaseExpiresAt: new Date(Date.now() + 30 * 1_000),
-        runExpiresAt: beat.runExpiresAt,
+        runExecutionDeadlineAt: beat.runExecutionDeadlineAt,
       });
     },
     markDispatched: ({ connectionFence, providerDispatchBinding }) => {
@@ -183,7 +184,7 @@ describe('preview attempt handler', () => {
     });
   });
 
-  it('passes the durable preview deadline to the artifact capability', async () => {
+  it('passes retained preview expiry to the artifact capability', async () => {
     const lease = leaseFixture();
     const { store } = fakeStore({ lease });
     const artifactFactory = vi.fn(() => ({ write: vi.fn() }));
@@ -201,7 +202,7 @@ describe('preview attempt handler', () => {
 
     expect(artifactFactory).toHaveBeenCalledWith(
       expect.objectContaining({
-        artifactRetentionDeadline: lease.expiresAt,
+        artifactRetentionDeadline: lease.retentionExpiresAt,
         previewAttemptId,
         previewRunId,
       }),
@@ -408,9 +409,9 @@ describe('preview attempt handler', () => {
     });
   });
 
-  it('completes timed_out when the durable retention deadline passes', async () => {
+  it('completes timed_out when the durable execution deadline passes', async () => {
     const { calls, store } = fakeStore({
-      beat: { runExpiresAt: new Date(Date.now() - 1) },
+      beat: { runExecutionDeadlineAt: new Date(Date.now() - 1) },
     });
     const invoker: PreviewNodeInvoker = {
       invoke: ({ signal }) =>
@@ -438,7 +439,7 @@ describe('preview attempt handler', () => {
     const { calls, store } = fakeStore({
       lease: {
         ...leaseFixture(),
-        expiresAt: new Date(Date.now() - 1),
+        executionDeadlineAt: new Date(Date.now() - 1),
       },
     });
     const invoke = vi.fn();
@@ -457,7 +458,7 @@ describe('preview attempt handler', () => {
     const { calls, store } = fakeStore({
       lease: {
         ...leaseFixture(),
-        expiresAt: new Date(Date.now() + 40),
+        executionDeadlineAt: new Date(Date.now() + 40),
         mayCauseExternalSideEffect: true,
         sideEffectClass: 'unsafe',
       },

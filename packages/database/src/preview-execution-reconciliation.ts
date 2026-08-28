@@ -281,7 +281,7 @@ export async function reconcilePreviewDelivery(
                    )
                      as uses_connection,
                    run.status as run_status,
-                  (run.expires_at <= clock_timestamp()) as run_deadline_expired
+                  (run.execution_deadline_at <= clock_timestamp()) as run_deadline_expired
            from app.preview_attempts attempt
            join app.preview_runs run
              on run.workspace_id=attempt.workspace_id

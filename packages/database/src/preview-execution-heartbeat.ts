@@ -10,7 +10,7 @@ import { withTenantScopedClient } from './workspace.js';
 
 export type PreviewHeartbeatResult = Readonly<{
   attemptLeaseExpiresAt: Date;
-  runExpiresAt: Date;
+  runExecutionDeadlineAt: Date;
 }>;
 
 export async function heartbeatPreviewLease(
@@ -62,8 +62,8 @@ export async function heartbeatPreviewLease(
       const row = result.rows[0];
       if (row === undefined)
         throw new PreviewAttemptStateError('heartbeat_lost');
-      const runs = await client.query<{ expires_at: Date }>(
-        `select expires_at from app.preview_runs
+      const runs = await client.query<{ execution_deadline_at: Date }>(
+        `select execution_deadline_at from app.preview_runs
          where workspace_id=$1 and id=$2`,
         [scope.workspaceId, scope.previewRunId],
       );
@@ -72,7 +72,7 @@ export async function heartbeatPreviewLease(
         throw new PreviewAttemptStateError('run_missing');
       return Object.freeze({
         attemptLeaseExpiresAt: row.attempt_lease_expires_at,
-        runExpiresAt: runRow.expires_at,
+        runExecutionDeadlineAt: runRow.execution_deadline_at,
       });
     },
     optionsFor(input.signal),
