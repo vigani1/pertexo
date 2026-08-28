@@ -5,9 +5,9 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import {
-  createArtifactStore,
+  createDualRegionArtifactStore,
   type ArtifactStore,
-  type ArtifactStoreConfig,
+  type DualRegionArtifactStoreConfig,
 } from '@pertexo/artifact-store';
 import {
   artifactStorageKey,
@@ -43,7 +43,7 @@ const DEFAULT_ARTIFACT_RETENTION_MILLIS = 30 * 24 * 60 * 60_000;
 export type WorkerNodeRuntimeCapabilityOptions = Readonly<{
   database: DatabaseConfig;
   connectionEncryption?: AwsConnectionEnvelopeEncryptionConfig;
-  artifactStore?: ArtifactStoreConfig;
+  artifactStore?: DualRegionArtifactStoreConfig;
   artifactRetentionMillis?: number;
 }>;
 
@@ -432,7 +432,10 @@ export async function createWorkerNodeRuntimeCapabilities(
         dependencies.artifactStore ??
         (options.artifactStore === undefined
           ? undefined
-          : (ownedArtifactStore = createArtifactStore(options.artifactStore)));
+          : (ownedArtifactStore = createDualRegionArtifactStore(
+              options.artifactStore.primary,
+              options.artifactStore.recovery,
+            )));
       if (store === undefined)
         throw new Error('Worker artifact capability is incomplete');
       const readiness = store;

@@ -97,6 +97,7 @@ describe('object-store telemetry', () => {
 
     await expect(store.checkReadiness()).resolves.toEqual({
       bucket: 'artifacts',
+      region: 'us-east-1',
     });
     await expect(
       store.put({

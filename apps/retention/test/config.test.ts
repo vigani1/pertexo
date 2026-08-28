@@ -8,6 +8,11 @@ const environment = {
   ARTIFACT_STORE_ENDPOINT: 'https://s3.eu-central-1.amazonaws.com',
   ARTIFACT_STORE_REGION: 'eu-central-1',
   ARTIFACT_STORE_SECRET_ACCESS_KEY: 'artifact-secret',
+  ARTIFACT_STORE_RECOVERY_ACCESS_KEY_ID: 'artifact-recovery-key',
+  ARTIFACT_STORE_RECOVERY_BUCKET: 'pertexo-artifacts-recovery',
+  ARTIFACT_STORE_RECOVERY_ENDPOINT: 'https://s3.eu-west-1.amazonaws.com',
+  ARTIFACT_STORE_RECOVERY_REGION: 'eu-west-1',
+  ARTIFACT_STORE_RECOVERY_SECRET_ACCESS_KEY: 'artifact-recovery-secret',
   CONTROL_LEDGER_ACCESS_KEY_ID: 'primary-key',
   CONTROL_LEDGER_BUCKET: 'pertexo-control-primary',
   CONTROL_LEDGER_ENDPOINT: 'https://s3.eu-central-1.amazonaws.com',
@@ -28,7 +33,10 @@ const environment = {
 describe('retention worker configuration', () => {
   it('uses bounded defaults and only the maintenance database credential', () => {
     expect(parseRetentionWorkerConfig(environment)).toMatchObject({
-      artifactStore: { bucket: 'pertexo-artifacts' },
+      artifactStore: {
+        primary: { bucket: 'pertexo-artifacts' },
+        recovery: { bucket: 'pertexo-artifacts-recovery' },
+      },
       database: { max: 2 },
       expectedMaintenanceRole: 'pertexo_maintenance',
       observability: { serviceName: 'pertexo-retention' },

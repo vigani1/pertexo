@@ -2,7 +2,11 @@ import { createHash, randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 import { describe, expect, it } from 'vitest';
 
-import { parseArtifactStoreConfig } from '../src/config.js';
+import {
+  parseArtifactStoreConfig,
+  parseDualRegionArtifactStoreConfig,
+} from '../src/config.js';
+import { createDualRegionArtifactStore } from '../src/dual-region-artifact-store.js';
 import { createArtifactStore } from '../src/store.js';
 
 const integrationDescribe =
@@ -35,6 +39,7 @@ integrationDescribe('ArtifactStore S3 integration', () => {
     try {
       await expect(store.checkReadiness()).resolves.toEqual({
         bucket: config.bucket,
+        region: config.region,
       });
       await expect(
         store.put({ ...metadata, body: Readable.from([body]) }),
@@ -52,6 +57,34 @@ integrationDescribe('ArtifactStore S3 integration', () => {
       await expect(store.head(identity)).resolves.toBeNull();
     } finally {
       await store.delete(identity).catch(() => undefined);
+      store.close();
+    }
+  });
+
+  it('commits tenant bytes only after both regional stores validate', async () => {
+    const config = parseDualRegionArtifactStoreConfig(process.env);
+    const store = createDualRegionArtifactStore(
+      config.primary,
+      config.recovery,
+    );
+    const body = Buffer.from('dual-region artifact fixture');
+    const metadata = {
+      artifactId: randomUUID(),
+      byteLength: body.byteLength,
+      mediaType: 'application/octet-stream',
+      sha256: createHash('sha256').update(body).digest('hex'),
+      workspaceId: randomUUID(),
+    };
+
+    try {
+      await expect(
+        store.put({ ...metadata, body: Readable.from([body]) }),
+      ).resolves.toEqual(metadata);
+      await expect(store.verifyReplicas(metadata)).resolves.toEqual(metadata);
+      const download = await store.getStream(metadata);
+      await expect(readAll(download.body)).resolves.toEqual(body);
+    } finally {
+      await store.delete(metadata).catch(() => undefined);
       store.close();
     }
   });

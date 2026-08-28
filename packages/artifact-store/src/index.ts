@@ -1,7 +1,13 @@
 import './server-only.js';
 
-export { parseArtifactStoreConfig } from './config.js';
-export type { ArtifactStoreConfig } from './config.js';
+export {
+  parseArtifactStoreConfig,
+  parseDualRegionArtifactStoreConfig,
+} from './config.js';
+export type {
+  ArtifactStoreConfig,
+  DualRegionArtifactStoreConfig,
+} from './config.js';
 export {
   parseControlLedgerConfig,
   parseDualRegionControlLedgerConfig,
@@ -17,6 +23,14 @@ export {
   ControlLedgerReadinessError,
   createControlLedger,
 } from './control-ledger.js';
+export {
+  ArtifactPartialReplicationError,
+  createDualRegionArtifactStore,
+} from './dual-region-artifact-store.js';
+export type {
+  DualRegionArtifactStore,
+  DualRegionArtifactStoreReadiness,
+} from './dual-region-artifact-store.js';
 export {
   ControlLedgerPartialReplicationError,
   createDualRegionControlLedger,

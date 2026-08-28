@@ -104,6 +104,7 @@ export type PutObjectPresigner = (
 
 export interface ArtifactStoreReadiness {
   readonly bucket: string;
+  readonly region: string;
 }
 
 export interface ArtifactStore {
@@ -489,7 +490,10 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
       new HeadBucketCommand({ Bucket: this.config.bucket }),
       { abortSignal: requestSignal(this.config.requestTimeoutMs, signal) },
     );
-    return Object.freeze({ bucket: this.config.bucket });
+    return Object.freeze({
+      bucket: this.config.bucket,
+      region: this.config.region,
+    });
   }
 
   public close(): void {

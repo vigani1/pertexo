@@ -3,7 +3,9 @@ import { createHash, randomUUID } from 'node:crypto';
 import {
   ArtifactIntegrityError,
   createArtifactStore,
+  createDualRegionArtifactStore,
   parseArtifactStoreConfig,
+  parseDualRegionArtifactStoreConfig,
 } from '@pertexo/artifact-store';
 import {
   artifactStorageKey,
@@ -332,7 +334,7 @@ describeIntegration('Phase 0D artifact reference delivery proof', () => {
 
 describeIntegration('Phase 4 worker artifact output capability', () => {
   it('streams a bounded node response through worker metadata and object-store adapters', async () => {
-    const artifactConfig = parseArtifactStoreConfig(process.env);
+    const artifactConfig = parseDualRegionArtifactStoreConfig(process.env);
     const runtime = await createWorkerNodeRuntimeCapabilities({
       database: parseDatabaseConfig({
         connectionString: workerDatabaseUrl,
@@ -340,7 +342,10 @@ describeIntegration('Phase 4 worker artifact output capability', () => {
       }),
       artifactStore: artifactConfig,
     });
-    const verifier = createArtifactStore(artifactConfig);
+    const verifier = createDualRegionArtifactStore(
+      artifactConfig.primary,
+      artifactConfig.recovery,
+    );
     const database = createWorkspaceDatabase(
       parseDatabaseConfig({ connectionString: apiDatabaseUrl, max: 2 }),
     );

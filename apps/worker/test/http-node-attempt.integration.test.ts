@@ -2,8 +2,8 @@ import { spawn } from 'node:child_process';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
 import {
-  createArtifactStore,
-  parseArtifactStoreConfig,
+  createDualRegionArtifactStore,
+  parseDualRegionArtifactStoreConfig,
 } from '@pertexo/artifact-store';
 import {
   acceptWorkflowRun,
@@ -646,8 +646,11 @@ describeIntegration('active HTTP node attempt', () => {
   it('commits artifact, attempt truth, audit, bounded telemetry, and inert exact redelivery without leaking credentials', async () => {
     const encryption = await seedFixture();
     const accepted = await acceptRun();
-    const artifactConfig = parseArtifactStoreConfig(process.env);
-    const artifactVerifier = createArtifactStore(artifactConfig);
+    const artifactConfig = parseDualRegionArtifactStoreConfig(process.env);
+    const artifactVerifier = createDualRegionArtifactStore(
+      artifactConfig.primary,
+      artifactConfig.recovery,
+    );
     const transportRequests: SecureHttpTransportRequest[] = [];
     const slackRequests: {
       botToken: string;

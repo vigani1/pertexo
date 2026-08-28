@@ -49,7 +49,10 @@ async function bootstrap(): Promise<void> {
       config.ledger.primary,
       config.ledger.recovery,
     );
-    artifacts = artifactStore.createArtifactStore(config.artifactStore);
+    artifacts = artifactStore.createDualRegionArtifactStore(
+      config.artifactStore.primary,
+      config.artifactStore.recovery,
+    );
     database = databasePackage.createRetentionDatabase(
       config.database,
       config.options,
@@ -66,7 +69,12 @@ async function bootstrap(): Promise<void> {
       {
         artifactQuiescenceSeconds: Math.min(
           120,
-          Math.ceil(config.artifactStore.requestTimeoutMs / 1_000) + 1,
+          Math.ceil(
+            Math.max(
+              config.artifactStore.primary.requestTimeoutMs,
+              config.artifactStore.recovery.requestTimeoutMs,
+            ) / 1_000,
+          ) + 1,
         ),
         externalOperationTimeoutMs: config.options.externalOperationTimeoutMs,
         lockTimeoutMs: config.options.lockTimeoutMs,

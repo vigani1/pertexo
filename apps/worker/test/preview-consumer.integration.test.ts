@@ -2,8 +2,8 @@ import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 
 import {
-  createArtifactStore,
-  parseArtifactStoreConfig,
+  createDualRegionArtifactStore,
+  parseDualRegionArtifactStoreConfig,
 } from '@pertexo/artifact-store';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
@@ -693,7 +693,7 @@ describeIntegration('preview execution real transport', () => {
   itArtifactIntegration(
     'removes an expired preview and its object through the real maintenance path',
     async () => {
-      const artifactConfig = parseArtifactStoreConfig(process.env);
+      const artifactConfig = parseDualRegionArtifactStoreConfig(process.env);
       const previewDeadline = new Date(Date.now() + 2_000);
       const traceparent = validTraceparent(90);
       const accepted = await withTenantAccept(
@@ -705,7 +705,10 @@ describeIntegration('preview execution real transport', () => {
           connectionString: databaseUrl(workerUrl),
         }),
       });
-      const verifier = createArtifactStore(artifactConfig);
+      const verifier = createDualRegionArtifactStore(
+        artifactConfig.primary,
+        artifactConfig.recovery,
+      );
       const artifacts = capabilities.factories.artifacts?.({
         artifactRetentionDeadline: previewDeadline,
         attemptId: accepted.previewAttemptId,

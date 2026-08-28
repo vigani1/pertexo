@@ -175,6 +175,11 @@ describe('parseWorkerConfig', () => {
       ARTIFACT_STORE_ENDPOINT: 'http://localhost:9090',
       ARTIFACT_STORE_REGION: 'us-east-1',
       ARTIFACT_STORE_SECRET_ACCESS_KEY: 'local-secret',
+      ARTIFACT_STORE_RECOVERY_ACCESS_KEY_ID: 'recovery-access',
+      ARTIFACT_STORE_RECOVERY_BUCKET: 'pertexo-artifacts-recovery',
+      ARTIFACT_STORE_RECOVERY_ENDPOINT: 'http://localhost:9090',
+      ARTIFACT_STORE_RECOVERY_REGION: 'us-west-2',
+      ARTIFACT_STORE_RECOVERY_SECRET_ACCESS_KEY: 'recovery-secret',
     });
 
     expect(config.connectionEncryption).toEqual({
@@ -183,9 +188,16 @@ describe('parseWorkerConfig', () => {
       endpoint: 'http://localhost:4566',
     });
     expect(config.artifactStore).toMatchObject({
-      bucket: 'pertexo-artifacts',
-      endpoint: 'http://localhost:9090',
-      maxObjectBytes: 10_485_760,
+      primary: {
+        bucket: 'pertexo-artifacts',
+        endpoint: 'http://localhost:9090',
+        maxObjectBytes: 10_485_760,
+      },
+      recovery: {
+        bucket: 'pertexo-artifacts-recovery',
+        endpoint: 'http://localhost:9090',
+        maxObjectBytes: 10_485_760,
+      },
     });
     expect(Object.isFrozen(config.connectionEncryption)).toBe(true);
     expect(Object.isFrozen(config.artifactStore)).toBe(true);

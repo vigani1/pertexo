@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import {
-  parseArtifactStoreConfig,
-  type ArtifactStoreConfig,
+  parseDualRegionArtifactStoreConfig,
+  type DualRegionArtifactStoreConfig,
 } from '@pertexo/artifact-store';
 import type { AwsConnectionEnvelopeEncryptionConfig } from '@pertexo/integrations/server';
 import {
@@ -358,7 +358,7 @@ export const workerConfigSchema = z
 
 export type WorkerConfig = Readonly<
   z.output<typeof workerConfigSchema> & {
-    artifactStore?: ArtifactStoreConfig;
+    artifactStore?: DualRegionArtifactStoreConfig;
     connectionEncryption?: AwsConnectionEnvelopeEncryptionConfig;
   }
 >;
@@ -413,7 +413,7 @@ function connectionEncryptionConfig(
 function artifactStoreConfig(
   environment: Readonly<Record<string, string | undefined>>,
   deployed: boolean,
-): ArtifactStoreConfig | undefined {
+): DualRegionArtifactStoreConfig | undefined {
   const names = [
     'ARTIFACT_STORE_ACCESS_KEY_ID',
     'ARTIFACT_STORE_BUCKET',
@@ -422,11 +422,23 @@ function artifactStoreConfig(
     'ARTIFACT_STORE_REGION',
     'ARTIFACT_STORE_REQUEST_TIMEOUT_MS',
     'ARTIFACT_STORE_SECRET_ACCESS_KEY',
+    'ARTIFACT_STORE_RECOVERY_ACCESS_KEY_ID',
+    'ARTIFACT_STORE_RECOVERY_BUCKET',
+    'ARTIFACT_STORE_RECOVERY_ENDPOINT',
+    'ARTIFACT_STORE_RECOVERY_FORCE_PATH_STYLE',
+    'ARTIFACT_STORE_RECOVERY_REGION',
+    'ARTIFACT_STORE_RECOVERY_REQUEST_TIMEOUT_MS',
+    'ARTIFACT_STORE_RECOVERY_SECRET_ACCESS_KEY',
     'ARTIFACT_MAX_BYTES',
   ] as const;
   if (names.every((name) => environment[name] === undefined)) return undefined;
-  const parsed = parseArtifactStoreConfig(environment);
-  if (deployed && new URL(parsed.endpoint).protocol !== 'https:')
+  const parsed = parseDualRegionArtifactStoreConfig(environment);
+  if (
+    deployed &&
+    [parsed.primary, parsed.recovery].some(
+      (store) => new URL(store.endpoint).protocol !== 'https:',
+    )
+  )
     throw new Error('HTTPS artifact store endpoint is required when deployed');
   return parsed;
 }

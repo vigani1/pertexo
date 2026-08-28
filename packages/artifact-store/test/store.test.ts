@@ -741,6 +741,7 @@ describe('ArtifactStore', () => {
     const { store } = createStore();
     await expect(store.checkReadiness()).resolves.toEqual({
       bucket: 'pertexo-artifacts',
+      region: 'us-east-1',
     });
   });
 });
