@@ -3347,8 +3347,14 @@ Current evidence:
   the task health check requires that marker and a live process. Lifecycle and
   retention now share one tested abortable-delay primitive instead of carrying
   separate polling implementations. The focused lifecycle database suite passes
-  six real PostgreSQL assertions; observability, lifecycle, retention, database,
-  deployment, and type checks pass.
+  six real PostgreSQL assertions. The complete repository gate passes formatting,
+  all builds, lint, contract drift, typechecks, and 1,227 unit assertions. A clean
+  disposable-database integration run passes 366 assertions: five S3-compatible
+  artifact/MinIO controls, 330 PostgreSQL assertions through migration `0068`, 24
+  worker assertions, and seven API assertions. Three AWS-only control-ledger
+  assertions and two separately gated API resilience/rollout assertions remain
+  intentionally skipped in that local run. CI now supplies both primary and
+  recovery artifact-store identities and buckets to exercise the dual-region path.
 
 - The first Phase 7 checkpoint exposes `DATABASE_MAINTENANCE_URL` through a
   dedicated conservative pool parser, makes `POSTGRES_MAINTENANCE_USER` an
