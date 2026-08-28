@@ -12,6 +12,8 @@ import {
 } from '@pertexo/queue';
 import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 
+import type { CoordinatorTelemetry } from './coordinator-telemetry.js';
+
 type AdvanceWorkflowDelivery = Extract<
   QueueDelivery,
   { readonly name: 'advance-workflow-run' }
@@ -74,6 +76,7 @@ export type CoordinatorHandlerDependencies = Readonly<{
   notifications?: RunEventNotificationPublisher;
   reader: PublishedWorkflowReader;
   runStore: CoordinatorRunStore;
+  telemetry?: CoordinatorTelemetry;
 }>;
 
 export function createCoordinatorHandler(
@@ -158,6 +161,18 @@ export function createCoordinatorHandler(
       });
       if (committed.kind === 'not_found') {
         throw new CoordinatorHandlerStateError('commit_not_found');
+      }
+      if (
+        committed.kind === 'committed' &&
+        committed.scheduleToStartSeconds !== undefined
+      ) {
+        try {
+          dependencies.telemetry?.scheduleStarted(
+            committed.scheduleToStartSeconds,
+          );
+        } catch {
+          // Diagnostics cannot change durable workflow truth.
+        }
       }
       if (committed.kind === 'committed')
         await publishResync(dependencies.notifications, {

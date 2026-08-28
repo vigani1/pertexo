@@ -47,6 +47,18 @@ age. Restore trigger worker capacity or dependency readiness, then allow durable
 schedule state to drive catch-up. Do not fabricate occurrences or advance
 scheduler timestamps directly.
 
+## PertexoScheduleToStartLatencyHigh
+
+Compare scanner lag with coordinator queue age, active slots, and execution
+admission saturation. The duration begins at the authoritative due occurrence
+and ends only when `run.started` commits; do not treat queue acceptance as start.
+
+## PertexoScheduleStartClockSkew
+
+Compare PostgreSQL and worker host clocks before interpreting latency data. Keep
+the affected observation out of latency percentiles and restore clock
+synchronization; never rewrite durable occurrence or run timestamps.
+
 ## PertexoProviderFailureRateHigh
 
 Split failures by the bounded provider and operation dimensions and inspect rate

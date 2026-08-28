@@ -22,6 +22,14 @@ import {
 } from './stored-execution-value.js';
 
 const identitySchema = z.uuid();
+const scheduleRunInputSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    triggerId: identitySchema,
+    nodeId: z.string().trim().min(1).max(128),
+    scheduledAt: z.iso.datetime({ offset: true }),
+  })
+  .strict();
 const checksumSchema = z.string().regex(/^[0-9a-f]{64}$/u);
 const coordinatorDeliverySchema = z
   .object({
@@ -146,6 +154,7 @@ export type CommitAdvancePlanResult =
         nodeRunId: string;
         attemptId: string;
       }>[];
+      scheduleToStartSeconds?: number;
     }>
   | Readonly<{
       kind: 'already_committed' | 'deferred' | 'stale';
@@ -2455,7 +2464,7 @@ export function createCoordinatorRunStore(
         workflowVersionId,
       });
       try {
-        return await withWorkspaceWriteClient(
+        const transactionResult = await withWorkspaceWriteClient(
           pool,
           workspaceId,
           input.signal,
@@ -2483,6 +2492,7 @@ export function createCoordinatorRunStore(
               failure_notification_destination_config_version: number | null;
               failure_notification_side_effect_class: string | null;
               execution_entitlement_version: number;
+              input_ref: unknown;
             }>(
               `select checkpoint.revision, checkpoint.scheduler_state,
                     checkpoint.last_transition_fingerprint,
@@ -2492,8 +2502,8 @@ export function createCoordinatorRunStore(
                      run.failure_notification_policy_version,
                      run.failure_notification_destination_id,
                      run.failure_notification_destination_config_version,
-                      run.failure_notification_side_effect_class,
-                      run.execution_entitlement_version,
+                     run.failure_notification_side_effect_class,
+                     run.execution_entitlement_version,run.input_ref,
                      run.deadline_at is not null
                       and run.deadline_at <= clock_timestamp() as deadline_expired
              from app.workflow_runs run
@@ -3092,6 +3102,20 @@ export function createCoordinatorRunStore(
             const startedAt = plan.events.find(
               ({ name }) => name === 'run.started',
             )?.occurredAt;
+            let scheduleDueAt: string | undefined;
+            if (startedAt !== undefined && row.trigger_type === 'schedule') {
+              const storedInput = parseStoredExecutionValueV1(row.input_ref);
+              if (storedInput.kind !== 'inline')
+                throw new CoordinatorRunStateCorruptError();
+              const scheduleInput = scheduleRunInputSchema.safeParse(
+                storedInput.value,
+              );
+              if (!scheduleInput.success)
+                throw new CoordinatorRunStateCorruptError();
+              scheduleDueAt = canonicalTimestamp(
+                scheduleInput.data.scheduledAt,
+              );
+            }
             const completedAt = plan.events.find(
               ({ name }) =>
                 name.startsWith('run.') &&
@@ -3130,9 +3154,34 @@ export function createCoordinatorRunStore(
                   });
                 }),
               ),
+              ...(scheduleDueAt === undefined ? {} : { scheduleDueAt }),
             });
           },
         );
+        if (
+          transactionResult.kind !== 'committed' ||
+          !('scheduleDueAt' in transactionResult) ||
+          typeof transactionResult.scheduleDueAt !== 'string'
+        )
+          return transactionResult;
+        const { scheduleDueAt, ...committed } = transactionResult;
+        try {
+          const observed = await pool.query<{ observed_at: Date }>(
+            'select clock_timestamp() observed_at',
+          );
+          const durableStartObservedAt = observed.rows[0]?.observed_at;
+          if (durableStartObservedAt === undefined)
+            return Object.freeze(committed);
+          const scheduleToStartSeconds =
+            (durableStartObservedAt.getTime() - Date.parse(scheduleDueAt)) /
+            1_000;
+          return Object.freeze({
+            ...committed,
+            scheduleToStartSeconds,
+          });
+        } catch {
+          return Object.freeze(committed);
+        }
       } catch (error: unknown) {
         if (error instanceof DeliveryMismatch)
           return auditCoordinatorDeliveryMismatch(

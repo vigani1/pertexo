@@ -477,6 +477,7 @@ async function insertRun(input: {
   workflowVersionId?: string;
   schedulerState?: unknown;
   status?: string;
+  triggerType?: string;
   deadlineAt?: string;
   inputRef?: unknown;
   failureNotificationPolicy?: Readonly<{
@@ -499,7 +500,7 @@ async function insertRun(input: {
            failure_notification_destination_config_version,
            failure_notification_side_effect_class,
            failure_notification_connection_secret_version_id
-          ) values ($1,$2,$3,$4,'manual',$5,$6,$7::jsonb,
+          ) values ($1,$2,$3,$4,$13,$5,$6,$7::jsonb,
             case when $7::jsonb is null then null else now()+interval '30 days' end,
             $8,$9,$10,$11,$12)`,
       [
@@ -515,6 +516,7 @@ async function insertRun(input: {
         input.failureNotificationPolicy?.destinationConfigVersion ?? null,
         input.failureNotificationPolicy?.sideEffectClass ?? null,
         input.failureNotificationPolicy?.connectionSecretVersionId ?? null,
+        input.triggerType ?? 'manual',
       ],
     );
     await client.query(
@@ -745,6 +747,75 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         run_status: 'running',
       },
     ]);
+  });
+
+  it('reports database-observed schedule-to-start only for the CAS winner', async () => {
+    const due = await asOwner(workspaceA, (client) =>
+      client.query<{ scheduled_at: Date }>(
+        "select clock_timestamp()-interval '4.25 seconds' scheduled_at",
+      ),
+    );
+    const scheduledAt = due.rows[0]?.scheduled_at.toISOString();
+    if (scheduledAt === undefined)
+      throw new Error('Database schedule timestamp missing');
+    const startedAt = new Date(Date.parse(scheduledAt) + 4_250).toISOString();
+    const runId = await insertRun({
+      triggerType: 'schedule',
+      inputRef: {
+        schemaVersion: 1,
+        kind: 'inline',
+        value: {
+          schemaVersion: 1,
+          triggerId: randomUUID(),
+          nodeId: 'schedule-start-proof',
+          scheduledAt,
+        },
+      },
+    });
+    const plan = {
+      expectedRevision: 0,
+      expectedNextEventSequence: 2,
+      consumedThroughEventSequence: 1,
+      checkpoint: checkpoint({
+        revision: 1,
+        runStatus: 'running',
+        nextEventSequence: 3,
+      }),
+      events: [
+        {
+          schemaVersion: 1 as const,
+          sequence: 2,
+          name: 'run.started' as const,
+          occurredAt: startedAt,
+        },
+      ],
+      nodeRunAdmissions: [],
+      attempts: [],
+    };
+    const delivery = await testDelivery(workspaceA, runId, 0);
+    const committed = await rawStore.commitAdvancePlan({
+      workspaceId: workspaceA,
+      runId,
+      workflowVersionId: versionA,
+      delivery,
+      plan,
+      signal: new AbortController().signal,
+    });
+    expect(committed).toMatchObject({ kind: 'committed', revision: 1 });
+    if (committed.kind !== 'committed')
+      throw new Error('Schedule start was not committed');
+    expect(committed.scheduleToStartSeconds).toBeGreaterThanOrEqual(4.25);
+    expect(committed.scheduleToStartSeconds).toBeLessThan(6);
+    await expect(
+      rawStore.commitAdvancePlan({
+        workspaceId: workspaceA,
+        runId,
+        workflowVersionId: versionA,
+        delivery,
+        plan,
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({ kind: 'already_committed', revision: 1 });
   });
 
   it('atomically creates one safe failure notification intent and excludes cancellation', async () => {

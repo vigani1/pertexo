@@ -102,6 +102,7 @@ describe('coordinator handler', () => {
         kind: 'committed',
         revision: 1,
         admittedAttempts: [],
+        scheduleToStartSeconds: 4.25,
       }),
     };
     const workflowVersion = projection();
@@ -116,6 +117,9 @@ describe('coordinator handler', () => {
       advance: vi.fn().mockResolvedValue({ kind: 'transition', plan }),
     };
     const resync = vi.fn().mockResolvedValue({ receivers: 1 });
+    const scheduleStarted = vi.fn(() => {
+      throw new Error('metrics unavailable');
+    });
     const handler = createCoordinatorHandler({
       clock: { now: () => '2026-08-21T00:00:00.000Z' },
       engine,
@@ -127,6 +131,7 @@ describe('coordinator handler', () => {
       },
       reader,
       runStore,
+      telemetry: { scheduleStarted },
     });
 
     await expect(handler.handle(delivery(), { signal })).resolves.toEqual({
@@ -169,6 +174,7 @@ describe('coordinator handler', () => {
       workspaceId: WORKSPACE_ID,
       runId: RUN_ID,
     });
+    expect(scheduleStarted).toHaveBeenCalledWith(4.25);
   });
 
   it('fails closed when loaded persistence identity disagrees with the delivery', async () => {

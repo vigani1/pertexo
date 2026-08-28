@@ -55,6 +55,29 @@ groups:
             Due schedule scanning is delayed; inspect downstream queue age to
             determine schedule-to-start impact.
           runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexoschedulescanlaghigh
+      - alert: PertexoScheduleToStartLatencyHigh
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(pertexo_schedule_to_start_duration_seconds_bucket[10m]))) > 5
+        for: 10m
+        labels:
+          severity: page
+        annotations:
+          summary: Schedule-to-start p95 exceeds five seconds
+          description:
+            Accepted scheduled workflows are not reaching a durable running
+            state within the initial user-impact target.
+          runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexoscheduletostartlatencyhigh
+      - alert: PertexoScheduleStartClockSkew
+        expr: |
+          increase(pertexo_schedule_start_count_total{outcome="clock_skew"}[10m]) > 0
+        labels:
+          severity: page
+        annotations:
+          summary: Schedule start timestamps show clock skew
+          description:
+            A durable run start preceded its authoritative due occurrence;
+            investigate worker and database clock synchronization.
+          runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexoschedulestartclockskew
       - alert: PertexoProviderFailureRateHigh
         expr: |
           sum(rate(pertexo_provider_request_count_total{outcome!="succeeded"}[10m]))

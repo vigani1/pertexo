@@ -38,6 +38,7 @@ describe('operations observability assets', () => {
           '../../../apps/api/src/webhooks/telemetry.ts',
           '../../../apps/retention/src/metrics.ts',
           '../../../apps/worker/src/execution/http-provider-telemetry.ts',
+          '../../../apps/worker/src/execution/coordinator-telemetry.ts',
           '../../../apps/worker/src/triggers/trigger-telemetry.ts',
           '../src/maintenance-metrics.ts',
           '../src/transport-metrics.ts',
@@ -67,7 +68,7 @@ describe('operations observability assets', () => {
     }
 
     const alertBlocks = alerts.split('\n      - alert: ').slice(1);
-    expect(alertBlocks).toHaveLength(15);
+    expect(alertBlocks).toHaveLength(17);
     for (const block of alertBlocks) {
       const [alertName = ''] = block.split('\n', 1);
       expect(alertName).toMatch(/^Pertexo[A-Za-z]+$/u);
@@ -105,6 +106,8 @@ describe('operations observability assets', () => {
       'pertexo_retention_batch_count_total',
       'pertexo_retention_operation_failure_count_total',
       'pertexo_schedule_lag_seconds_bucket',
+      'pertexo_schedule_start_count_total',
+      'pertexo_schedule_to_start_duration_seconds_bucket',
       'pertexo_transport_artifact_bytes',
       'pertexo_transport_artifact_count',
       'pertexo_transport_consumer_lifecycle_total',
@@ -135,6 +138,8 @@ describe('operations observability assets', () => {
       'pertexo.retention.batch.count',
       'pertexo.retention.operation.failure.count',
       'pertexo.schedule.lag',
+      'pertexo.schedule.start.count',
+      'pertexo.schedule.to_start.duration',
       'pertexo.transport.artifact.bytes',
       'pertexo.transport.artifact.count',
       'pertexo.transport.consumer.lifecycle',

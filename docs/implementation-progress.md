@@ -4101,7 +4101,7 @@ Current evidence:
   remain excluded. The operations dashboard expands from three to fifteen
   panels covering emitted API impact, durable backlog, worker transport,
   trigger/webhook, provider, artifact inventory, retention/purge, operator
-  rerun, lifecycle-command, and control-ledger signals. Fifteen Prometheus rules
+  rerun, lifecycle-command, and control-ledger signals. Seventeen Prometheus rules
   are grouped by user impact, durable backlog, resource safety, and destructive
   maintenance; every rule has a description and repository runbook URL. Static
   tests require unique described panels, non-empty PromQL, complete alert
@@ -4111,12 +4111,26 @@ Current evidence:
   nine retention assertions pass; observability typechecking and all 34
   observability assertions pass; Compose rendering passes. Prometheus `v3.6.0`
   (`sha256:76947e7ef22f8a698fc638f706685909be425dbe09bd7a2cd7aca849f79b5f64`)
-  `promtool` validation passes all 15 rules and the complete Prometheus
+  `promtool` validation passes all 17 rules and the complete Prometheus
   configuration. PostgreSQL, Redis, object-store service, and worker
   CPU/RSS/heap/event-loop metrics remain genuine coverage gaps, and the broad
-  telemetry/dashboard checklist stays unchecked. The schedule alert is explicitly
-  scan-lag only; a schedule-to-start SLI that joins due occurrence acceptance to
-  workflow start remains an additional open telemetry gap.
+  telemetry/dashboard checklist stays unchecked.
+- Schedule-to-start is now measured separately from scanner lag at the first
+  successful durable `run.started` commit. The coordinator reads the exact
+  canonical `scheduledAt` stored atomically in the schema-validated tagged
+  schedule run input and compares it with a fresh PostgreSQL timestamp only after
+  the transition transaction, receipt write, and WAL commit return. Only the CAS
+  winner emits, so exact replay cannot double-count; as with other in-process
+  OpenTelemetry signals, a process crash after commit but before export can lose
+  a measurement. Nonnegative durations populate the
+  `pertexo.schedule.to_start.duration` histogram; negative durations are excluded
+  from latency and counted as bounded `clock_skew` outcomes. Diagnostics cannot
+  alter durable workflow truth. The trigger dashboard now compares scan lag and
+  schedule-to-start p95, while separate alerts enforce the five-second target and
+  page on clock skew. All 202 worker and 34 observability unit assertions pass;
+  all 41 coordinator PostgreSQL assertions prove database-observed measurement
+  of at least `4.25s` and replay suppression; `promtool` validates all 17 alerts.
+  Root `pnpm check` passes all 1,195 unit assertions.
 - The final locally reproducible release matrix now passes from fresh Docker
   volumes. Zero-to-`0066` migration and embedded exact prior-head fixtures pass
   all 326 PostgreSQL assertions; real S3-compatible artifact I/O passes four
@@ -4134,7 +4148,7 @@ Current evidence:
   releases newer than an email-cohort artifact, counted prior test ledger rows,
   and referenced a nonexistent retained artifact. CI now explicitly enables the
   direct webhook and schedule-trigger integration gates instead of silently
-  skipping them. Root `pnpm check` again passes all 1,194 unit assertions, and
+  skipping them. Root `pnpm check` again passes all 1,195 unit assertions, and
   the production image build, UID 10001/read-only-root smoke, dependency audit,
   fixable-high/critical Grype scan, deterministic deployment render, Prometheus
   validation, and exercise-contract validation pass. This completes the local
@@ -4145,7 +4159,7 @@ Current evidence:
   report no remaining blocker, high, or medium findings. Review remediation adds
   ADR 030 before owning autoscaling inputs, normalizes active-handler utilization
   by running-task capacity, limits oldest-job age to waiting work, distinguishes
-  scan lag from the still-open schedule-to-start SLI, restricts write latency to
+  scan lag from schedule-to-start latency, restricts write latency to
   successful responses, and classifies availability using documented success,
   business-conflict, exclusion, correctness-failure, and capacity-shedding
   outcomes. Nightly and manual/weekly release paths now invoke the complete local

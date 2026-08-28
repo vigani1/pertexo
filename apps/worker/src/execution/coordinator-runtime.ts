@@ -36,6 +36,10 @@ import {
 
 import { createCoordinatorAdvanceEngine } from './coordinator-engine.js';
 import {
+  createCoordinatorTelemetry,
+  type CoordinatorTelemetry,
+} from './coordinator-telemetry.js';
+import {
   createCoordinatorHandler,
   type CoordinatorAdvanceEngine,
   type CoordinatorHandler,
@@ -66,6 +70,7 @@ export type CoordinatorRuntimeDependencies = Readonly<{
   notifications?: RunEventNotificationPublisher;
   reader?: PublishedWorkflowReader;
   runStore?: CoordinatorRunStore;
+  telemetry?: CoordinatorTelemetry;
 }>;
 
 function systemClock(): Readonly<{ now(): string }> {
@@ -188,6 +193,7 @@ export async function createCoordinatorRuntime(
     notifications,
     reader,
     runStore,
+    telemetry: dependencies.telemetry ?? createCoordinatorTelemetry(),
   });
   let consumer: QueueConsumer;
   try {

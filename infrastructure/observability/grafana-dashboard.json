@@ -116,7 +116,7 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "description": "Observed schedule-to-scan lag and trigger reconciliation failures from the trigger runtime.",
+      "description": "Schedule scan lag, durable schedule-to-start latency, and trigger reconciliation failures.",
       "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
       "gridPos": { "h": 8, "w": 8, "x": 8, "y": 15 },
       "id": 7,
@@ -130,6 +130,11 @@
           "expr": "sum(increase(pertexo_trigger_reconciliation_count_total{outcome=\"failed\"}[10m]))",
           "legendFormat": "reconciliation failures",
           "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(pertexo_schedule_to_start_duration_seconds_bucket[10m])))",
+          "legendFormat": "schedule-to-start p95",
+          "refId": "C"
         }
       ],
       "title": "Trigger Lag And Reconciliation",
