@@ -23,6 +23,20 @@ const excludedQuotaProblems = new Set<string>([
   'webhook.rate_limited',
   'workspace.quota_exceeded',
 ]);
+const validBusinessConflicts = new Set<string>([
+  'connection.conflict',
+  'connection.revoked',
+  'request.idempotency_conflict',
+  'run.not_cancelable',
+  'webhook.idempotency_conflict',
+  'workflow.not_published',
+  'workflow.revision_conflict',
+  'workspace.conflict',
+]);
+const correctnessFailures = new Set<string>([
+  'run.outcome_unknown',
+  'workflow.activation_failed',
+]);
 
 function statusClass(statusCode: number): string {
   return `${String(Math.floor(statusCode / 100))}xx`;
@@ -51,13 +65,25 @@ function parseProblemCode(payload: unknown): string {
 }
 
 function eligible(route: string): boolean {
-  return route !== '/health/live' && route !== '/health/ready';
+  return (
+    route !== 'unmatched' &&
+    route !== '/health/live' &&
+    route !== '/health/ready'
+  );
 }
 
 function availabilityOutcome(statusCode: number, problem: string): string {
   if (excludedClientProblems.has(problem)) return 'excluded_client';
   if (excludedQuotaProblems.has(problem)) return 'excluded_tenant_quota';
-  return statusCode < 500 ? 'eligible_success' : 'eligible_failure';
+  if (statusCode >= 200 && statusCode < 300) return 'eligible_success';
+  if (validBusinessConflicts.has(problem)) return 'eligible_success';
+  if (
+    correctnessFailures.has(problem) ||
+    statusCode >= 500 ||
+    statusCode === 429
+  )
+    return 'eligible_failure';
+  return 'excluded_client';
 }
 
 export function registerApiMetrics(

@@ -40,7 +40,7 @@ export type EnqueuedQueueJob = Readonly<{
 
 export interface QueueStateObservation {
   readonly depth: number;
-  /** Age of the oldest waiting or transport-delayed job, zero when empty. */
+  /** Age of the oldest waiting job, excluding delayed work; zero when empty. */
   readonly oldestJobAgeSeconds: number;
   readonly queueName: QueueName;
 }

@@ -82,17 +82,100 @@ describe('API metrics', () => {
         url: '/v1/workspaces/:workspaceId/workflows/:workflowId/runs',
       },
     };
-    hooks.get('onRequest')?.(shedRequest, reply, vi.fn());
+    const shedReply = { statusCode: 429 };
+    hooks.get('onRequest')?.(shedRequest, shedReply, vi.fn());
     hooks.get('onSend')?.(
       shedRequest,
-      reply,
+      shedReply,
       JSON.stringify({ code: 'workspace.quota_exceeded' }),
       vi.fn(),
     );
-    hooks.get('onResponse')?.(shedRequest, reply, vi.fn());
+    hooks.get('onResponse')?.(shedRequest, shedReply, vi.fn());
     expect(eligibleCount).toHaveBeenLastCalledWith(1, {
       outcome: 'excluded_tenant_quota',
       route: '/v1/workspaces/:workspaceId/workflows/:workflowId/runs',
     });
+
+    const invalidRequest = {
+      method: 'POST',
+      routeOptions: { url: '/v1/workspaces' },
+    };
+    const invalidReply = { statusCode: 400 };
+    hooks.get('onSend')?.(
+      invalidRequest,
+      invalidReply,
+      JSON.stringify({ code: 'request.invalid' }),
+      vi.fn(),
+    );
+    hooks.get('onResponse')?.(invalidRequest, invalidReply, vi.fn());
+    expect(eligibleCount).toHaveBeenLastCalledWith(1, {
+      outcome: 'excluded_client',
+      route: '/v1/workspaces',
+    });
+
+    const conflictRequest = {
+      method: 'PUT',
+      routeOptions: {
+        url: '/v1/workspaces/:workspaceId/workflows/:workflowId',
+      },
+    };
+    const conflictReply = { statusCode: 412 };
+    hooks.get('onSend')?.(
+      conflictRequest,
+      conflictReply,
+      JSON.stringify({ code: 'workflow.revision_conflict' }),
+      vi.fn(),
+    );
+    hooks.get('onResponse')?.(conflictRequest, conflictReply, vi.fn());
+    expect(eligibleCount).toHaveBeenLastCalledWith(1, {
+      outcome: 'eligible_success',
+      route: '/v1/workspaces/:workspaceId/workflows/:workflowId',
+    });
+
+    const correctnessFailureRequest = {
+      method: 'POST',
+      routeOptions: {
+        url: '/v1/workspaces/:workspaceId/workflows/:workflowId',
+      },
+    };
+    const correctnessFailureReply = { statusCode: 409 };
+    hooks.get('onSend')?.(
+      correctnessFailureRequest,
+      correctnessFailureReply,
+      JSON.stringify({ code: 'workflow.activation_failed' }),
+      vi.fn(),
+    );
+    hooks.get('onResponse')?.(
+      correctnessFailureRequest,
+      correctnessFailureReply,
+      vi.fn(),
+    );
+    expect(eligibleCount).toHaveBeenLastCalledWith(1, {
+      outcome: 'eligible_failure',
+      route: '/v1/workspaces/:workspaceId/workflows/:workflowId',
+    });
+
+    const backpressureRequest = {
+      method: 'POST',
+      routeOptions: { url: '/v1/node-tests' },
+    };
+    const backpressureReply = { statusCode: 429 };
+    hooks.get('onSend')?.(
+      backpressureRequest,
+      backpressureReply,
+      JSON.stringify({ code: 'provider.rate_limited' }),
+      vi.fn(),
+    );
+    hooks.get('onResponse')?.(backpressureRequest, backpressureReply, vi.fn());
+    expect(eligibleCount).toHaveBeenLastCalledWith(1, {
+      outcome: 'eligible_failure',
+      route: '/v1/node-tests',
+    });
+
+    const unmatchedRequest = { method: 'GET', routeOptions: {} };
+    const unmatchedReply = { statusCode: 404 };
+    const eligibilityCalls = eligibleCount.mock.calls.length;
+    hooks.get('onResponse')?.(unmatchedRequest, unmatchedReply, vi.fn());
+    expect(eligibleCount).toHaveBeenCalledTimes(eligibilityCalls);
   });
 });

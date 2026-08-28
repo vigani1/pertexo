@@ -86,7 +86,7 @@ describe('operations observability assets', () => {
     ])
       expect(alerts).toContain(`name: ${group}`);
     expect(alerts).toContain(
-      'method=~"POST|PUT|PATCH|DELETE",status_class=~"2xx|3xx"',
+      'method=~"POST|PUT|PATCH|DELETE",status_class="2xx"',
     );
     expect(alerts).toContain('alert: PertexoScheduleScanLagHigh');
     expect(alerts).not.toContain('Schedule-to-scan');
