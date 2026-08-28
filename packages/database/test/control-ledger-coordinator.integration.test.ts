@@ -411,10 +411,13 @@ describe('control ledger coordinator exact 0045 to 0047 integration', () => {
       const firstArtifacts = await coordinator.listCommittedArtifacts({
         limit: 1,
       });
+      const firstCommittedArtifactId = committedArtifactIds[0];
+      if (firstCommittedArtifactId === undefined)
+        throw new Error('Committed artifact fixture is empty');
       expect(firstArtifacts).toEqual({
         artifacts: [
           {
-            artifactId: committedArtifactIds[0],
+            artifactId: firstCommittedArtifactId,
             byteLength: 5,
             mediaType: 'text/plain',
             sha256:
@@ -426,7 +429,7 @@ describe('control ledger coordinator exact 0045 to 0047 integration', () => {
       });
       await expect(
         coordinator.listCommittedArtifacts({
-          afterArtifactId: committedArtifactIds[0]!,
+          afterArtifactId: firstCommittedArtifactId,
           afterWorkspaceId: workspaceId,
           limit: 1,
         }),

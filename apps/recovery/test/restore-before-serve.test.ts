@@ -178,14 +178,13 @@ describe('restoreBeforeServe', () => {
     const events: string[] = [];
     const input = resources(events);
 
-    await expect(restoreBeforeServe(input)).resolves.toEqual({
-      artifacts: expect.objectContaining({
-        artifactCount: 1,
-        pageCount: 1,
-        readiness: artifactReadiness,
-      }),
-      inventory,
-      ledger: readiness,
+    const result = await restoreBeforeServe(input);
+    expect(result.inventory).toEqual(inventory);
+    expect(result.ledger).toEqual(readiness);
+    expect(result.artifacts).toMatchObject({
+      artifactCount: 1,
+      pageCount: 1,
+      readiness: artifactReadiness,
     });
     expect(events).toEqual([
       'telemetry-start',

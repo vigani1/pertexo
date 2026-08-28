@@ -45,8 +45,9 @@ class FakeArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
   ) {}
 
   public beginDirectUpload(
-    _request: BeginDirectUploadRequest,
+    request: BeginDirectUploadRequest,
   ): Promise<DirectUpload> {
+    void request;
     return Promise.resolve({
       expiresAt: '2026-08-28T12:00:00.000Z',
       expiresInSeconds: 300,
@@ -64,13 +65,15 @@ class FakeArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
     this.closeCalls += 1;
   }
 
-  public delete(_request: ArtifactRequest): Promise<void> {
+  public delete(request: ArtifactRequest): Promise<void> {
+    void request;
     this.deleteCalls += 1;
     this.stored = undefined;
     return Promise.resolve();
   }
 
-  public getStream(_request: ArtifactRequest): Promise<ArtifactDownload> {
+  public getStream(request: ArtifactRequest): Promise<ArtifactDownload> {
+    void request;
     if (this.stored === undefined) throw new Error('not found');
     return Promise.resolve({
       body: Readable.from([this.stored.body]),
@@ -78,13 +81,15 @@ class FakeArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
     });
   }
 
-  public head(_request: ArtifactRequest): Promise<ArtifactMetadata | null> {
+  public head(request: ArtifactRequest): Promise<ArtifactMetadata | null> {
+    void request;
     return Promise.resolve(this.stored?.metadata ?? null);
   }
 
   public purgeWorkspacePage(
-    _request: PurgeWorkspaceObjectsRequest,
+    request: PurgeWorkspaceObjectsRequest,
   ): Promise<WorkspaceObjectPurgePage> {
+    void request;
     return Promise.resolve(this.purgeResult);
   }
 
@@ -105,8 +110,7 @@ class FakeArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
     expected: ValidateDirectUploadRequest,
   ): Promise<ArtifactMetadata> {
     if (
-      this.stored === undefined ||
-      this.stored.metadata.sha256 !== expected.sha256 ||
+      this.stored?.metadata.sha256 !== expected.sha256 ||
       !this.stored.body.equals(Buffer.from('hello'))
     )
       throw new ArtifactIntegrityError('invalid replica');

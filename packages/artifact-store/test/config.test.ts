@@ -68,16 +68,15 @@ describe('parseDualRegionArtifactStoreConfig', () => {
   } as const;
 
   it('parses isolated primary and recovery stores with shared bounds', () => {
-    expect(parseDualRegionArtifactStoreConfig(dualRegionEnvironment)).toEqual({
-      primary: expect.objectContaining({
-        bucket: 'pertexo-artifacts',
-        region: 'eu-central-1',
-      }),
-      recovery: expect.objectContaining({
-        bucket: 'pertexo-artifacts-recovery',
-        maxObjectBytes: 10 * 1024 * 1024,
-        region: 'eu-west-1',
-      }),
+    const parsed = parseDualRegionArtifactStoreConfig(dualRegionEnvironment);
+    expect(parsed.primary).toMatchObject({
+      bucket: 'pertexo-artifacts',
+      region: 'eu-central-1',
+    });
+    expect(parsed.recovery).toMatchObject({
+      bucket: 'pertexo-artifacts-recovery',
+      maxObjectBytes: 10 * 1024 * 1024,
+      region: 'eu-west-1',
     });
   });
 

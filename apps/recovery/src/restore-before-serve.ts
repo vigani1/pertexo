@@ -68,7 +68,7 @@ async function verifyArtifactInventory(
         signal: resources.signal,
       });
       digest.update(
-        `${artifact.workspaceId}\0${artifact.artifactId}\0${artifact.byteLength}\0${artifact.mediaType}\0${artifact.sha256}\n`,
+        `${artifact.workspaceId}\0${artifact.artifactId}\0${String(artifact.byteLength)}\0${artifact.mediaType}\0${artifact.sha256}\n`,
       );
       artifactCount += 1;
       afterWorkspaceId = artifact.workspaceId;
