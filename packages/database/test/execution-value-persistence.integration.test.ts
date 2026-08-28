@@ -254,7 +254,7 @@ describe('execution value persistence migration', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0066_operator_maintenance_rerun.sql',
+          migrationHead: '0067_reconcile_published_migration_repairs.sql',
           role: expectedRole,
         });
       } finally {

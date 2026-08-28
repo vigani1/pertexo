@@ -11,7 +11,9 @@ const migrationUrl = new URL(
 
 describe('workspace tenant-row purge migration', () => {
   it('keeps pages bounded, fenced, hold-safe, and maintenance-only', async () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0066_operator_maintenance_rerun.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe(
+      '0067_reconcile_published_migration_repairs.sql',
+    );
     const migration = await readFile(migrationUrl, 'utf8');
 
     expect(migration).toContain('p_page_size NOT BETWEEN 1 AND 500');

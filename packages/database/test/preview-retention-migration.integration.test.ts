@@ -244,6 +244,7 @@ describe('preview retention migration', () => {
       '0064_operator_trigger_reconciliation.sql',
       '0065_operator_run_replay.sql',
       '0066_operator_maintenance_rerun.sql',
+      '0067_reconcile_published_migration_repairs.sql',
     ]);
 
     const verification = new Pool({

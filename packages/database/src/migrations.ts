@@ -11,6 +11,22 @@ import type { MigrationConfig } from './config.js';
 const MIGRATION_LOCK_ID = 7_166_118_812;
 const migrationNamePattern = /^\d{4}_[a-z0-9_]+\.sql$/u;
 
+// These checksums were published before corrections were incorrectly folded
+// back into the numbered migration files. They remain accepted only so an
+// affected database can reach the forward-only reconciliation migration.
+const publishedMigrationChecksums: Readonly<
+  Record<string, ReadonlySet<string>>
+> = Object.freeze({
+  '0037_failure_notification_destinations.sql': new Set([
+    '9f76e5fefc3914a808cb000f796760e17902876a4418d006bb82674d7778eede',
+  ]),
+  '0038_execution_admission.sql': new Set([
+    '89117c0311337b655503557f7a66f63c04aa9eb6736be6ddfc4b02dea4eedf95',
+    '0b7c70eee52daefeacbd092e1831852aa4260b60b899832b565ec524e47b2be2',
+    '27ca68dc5e20560d80fbaab2524b3cd0c9fe0361b68792538a69aac30d4f9857',
+  ]),
+});
+
 export const MIGRATIONS_DIRECTORY = fileURLToPath(
   new URL('../migrations/', import.meta.url),
 );
@@ -34,6 +50,17 @@ function renderMigration(sql: string, config: MigrationConfig): string {
       '{{worker_runtime_role}}',
       quoteIdentifier(config.workerRuntimeRole),
     );
+}
+
+export function isCompatibleMigrationChecksum(
+  name: string,
+  expectedChecksum: string,
+  appliedChecksum: string,
+): boolean {
+  return (
+    appliedChecksum === expectedChecksum ||
+    publishedMigrationChecksums[name]?.has(appliedChecksum) === true
+  );
 }
 
 export async function migrateDatabase(
@@ -78,7 +105,13 @@ export async function migrateDatabase(
       );
 
       if (existing.rows[0] !== undefined) {
-        if (existing.rows[0].checksum !== checksum) {
+        if (
+          !isCompatibleMigrationChecksum(
+            name,
+            checksum,
+            existing.rows[0].checksum,
+          )
+        ) {
           throw new Error(`Applied migration checksum changed: ${name}`);
         }
         continue;
