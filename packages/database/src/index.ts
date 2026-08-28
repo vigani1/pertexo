@@ -224,6 +224,7 @@ export type {
 } from './run-artifact-retention.js';
 export type {
   OperatorMaintenanceRerunResult,
+  RegionalReplicaLagObservation,
   RetentionDatabase,
   RetentionDatabaseOptions,
   RetentionDryRunClaim,
@@ -286,6 +287,7 @@ export {
   IDEMPOTENCY_STATUS_VALUES,
   IdempotencyRecordCorruptError,
   IdempotencyRequestConflictError,
+  RegionalWriteAdmissionPausedError,
   RUN_STATUS,
   RUN_STATUS_VALUES,
   WorkspaceRunAdmissionDeniedError,

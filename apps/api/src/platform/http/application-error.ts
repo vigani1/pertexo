@@ -115,6 +115,12 @@ export const APPLICATION_ERROR_CATALOG = {
     severity: 'error',
     exposeDetail: true,
   },
+  'platform.write_paused': {
+    status: 503,
+    title: 'Durable writes temporarily paused',
+    severity: 'error',
+    exposeDetail: true,
+  },
   'webhook.authentication_failed': {
     status: 401,
     title: 'Webhook authentication failed',

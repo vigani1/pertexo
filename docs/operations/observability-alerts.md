@@ -149,6 +149,16 @@ scheduling, dry run, enforcement, preview, run-artifact retention, or workspace
 purge. Inspect the structured error and durable lease/fence state. After fixing
 the cause, use the audited retention or purge rerun command where applicable.
 
+## PertexoRegionalWriteAdmissionPaused
+
+Confirm the retention maintenance task is running and inspect its
+`retention.regional_replica_lag` or `retention.regional_replica_lag_failed`
+events. Verify that the authenticated RDS replica identity is
+`pertexo-eu-west-1`, its state is streaming, and replay lag is below five
+minutes. Do not bypass the database admission fence. Restore a fresh observation
+by repairing monitoring or replication; admission resumes automatically only
+after the persisted lag returns below the bound.
+
 ## PertexoWorkspacePurgeReleasedOrStale
 
 Inspect the purge job's persisted step, lease, fence, legal-hold state, and

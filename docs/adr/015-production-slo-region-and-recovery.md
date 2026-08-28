@@ -114,3 +114,24 @@ disabled.
 The dual-region control-ledger coordinator, regional infrastructure, lifecycle
 inventory, alerting, and measured drills remain implementation gates; choosing
 AWS regions does not by itself prove them.
+
+## Implementation note: regional write admission
+
+Migration `0069_regional_write_admission.sql` implements the PostgreSQL side of
+the recovery-point fence. Production migrations fail unless enforcement is
+explicitly enabled. The maintenance role, which is the only application role
+with `pg_monitor`, samples the configured `pertexo-eu-west-1` streaming replica
+and records a bounded observation through a narrow security-definer function.
+The persisted authority is open only below 300,000 milliseconds; missing,
+non-streaming, null, or observations older than 15 seconds fail closed.
+
+Every manual, webhook, schedule, and operator-replay run start reaches the same
+transactional acceptance seam, which asserts this authority before creating a
+new run. Exact idempotent replay is resolved first and remains available, while
+reads and already-admitted execution are unaffected. Serving roles cannot read
+or mutate the authority table directly. The maintenance process exports bounded
+lag/admission metrics and transition logs, and the repository alert pages when
+admission is blocked or observations disappear. Local integration tests prove
+the exact threshold, recovery, stale/unavailable evidence, replica identity,
+atomic rejection, and replay behavior. The live AWS replica and pager exercise
+remains a separate release gate.

@@ -45,6 +45,13 @@ function resources(outcomes: ('completed' | 'idle' | 'stale')[]) {
     executeDryRunPage: vi.fn(),
     processNext,
     processOperatorRerun: vi.fn(() => Promise.resolve(null)),
+    recordRegionalReplicaLag: vi.fn(() =>
+      Promise.resolve({
+        replayLagMillis: 0,
+        replicationState: 'streaming',
+        status: 'open' as const,
+      }),
+    ),
     scheduleEnforcement: vi.fn(() =>
       Promise.resolve({
         cutoffAt: new Date('2026-08-26T00:00:00.000Z'),
@@ -123,6 +130,7 @@ function resources(outcomes: ('completed' | 'idle' | 'stale')[]) {
     recordFailure: vi.fn(),
     recordOperatorRerun: vi.fn(),
     recordPreview: vi.fn(),
+    recordRegionalReplicaLag: vi.fn(),
     recordRunArtifact: vi.fn(),
     recordSchedule: vi.fn(),
     recordWorkspacePurge: vi.fn(),
@@ -156,6 +164,10 @@ function resources(outcomes: ('completed' | 'idle' | 'stale')[]) {
     metrics,
     pollIntervalMs: 1,
     preview,
+    replicaMonitor: {
+      applicationName: 'pertexo-eu-west-1',
+      sampleIntervalMs: 1_000,
+    },
     processNext,
     runArtifacts,
     workspacePurge,
@@ -278,6 +290,22 @@ describe('retention worker', () => {
       expect.any(Number),
     );
     expect(input.metrics.recordWorkspacePurge).not.toHaveBeenCalled();
+  });
+
+  it('keeps unrelated maintenance running when replica observation fails', async () => {
+    const input = resources(['idle']);
+    input.database.recordRegionalReplicaLag = vi.fn(() =>
+      Promise.reject(new Error('replica observation unavailable')),
+    );
+
+    await expect(runRetentionWorker(input)).resolves.toBeUndefined();
+
+    expect(input.processNext).toHaveBeenCalledOnce();
+    expect(input.logger.error).toHaveBeenCalledWith(
+      'retention.regional_replica_lag_failed',
+      { applicationName: 'pertexo-eu-west-1' },
+      expect.any(Error),
+    );
   });
 
   it('does not claim when readiness fails and still closes resources', async () => {

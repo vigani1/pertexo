@@ -49,6 +49,10 @@ function renderMigration(sql: string, config: MigrationConfig): string {
     .replaceAll(
       '{{worker_runtime_role}}',
       quoteIdentifier(config.workerRuntimeRole),
+    )
+    .replaceAll(
+      '{{regional_write_admission_enforced}}',
+      config.regionalWriteAdmissionEnforced === true ? 'true' : 'false',
     );
 }
 

@@ -254,7 +254,7 @@ describe('execution value persistence migration', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0068_restore_artifact_inventory.sql',
+          migrationHead: '0069_regional_write_admission.sql',
           role: expectedRole,
         });
       } finally {

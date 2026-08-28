@@ -89,6 +89,12 @@ export interface RetentionScheduleResult {
   readonly scheduledCount: number;
 }
 
+export type RegionalReplicaLagObservation = Readonly<{
+  replayLagMillis: number | null;
+  replicationState: string;
+  status: 'open' | 'paused' | 'unavailable';
+}>;
+
 export interface RetentionDatabase {
   checkReadiness(input: {
     readonly expectedMaintenanceRole: string;
@@ -104,6 +110,10 @@ export interface RetentionDatabase {
   processOperatorRerun(
     signal?: AbortSignal,
   ): Promise<OperatorMaintenanceRerunResult | null>;
+  recordRegionalReplicaLag(
+    applicationName: string,
+    signal?: AbortSignal,
+  ): Promise<RegionalReplicaLagObservation>;
   scheduleEnforcement(signal?: AbortSignal): Promise<RetentionScheduleResult>;
   startDryRun(
     input: StartWorkflowRunInputRetentionDryRunInput,
@@ -351,6 +361,9 @@ export function createRetentionDatabase(
           (select name from pertexo_internal.schema_migrations order by name desc limit 1) migration_head,
           current_user=$1
             and not (select rolsuper or rolbypassrls from pg_roles where rolname=current_user)
+            and pg_has_role(current_user,'pg_monitor','member')
+            and has_function_privilege(current_user,
+              'app.record_regional_replica_lag(character varying,character varying,bigint)','EXECUTE')
             and has_function_privilege(current_user,
               'app.process_operator_maintenance_rerun()','EXECUTE')
             and has_function_privilege(current_user,
@@ -431,6 +444,54 @@ export function createRetentionDatabase(
       ) {
         throw new Error('Retention database authority is not ready');
       }
+    },
+    recordRegionalReplicaLag: async (
+      applicationName: string,
+      signal?: AbortSignal,
+    ): Promise<RegionalReplicaLagObservation> => {
+      const expectedApplicationName = boundedText(128).parse(applicationName);
+      const observation = await query<{
+        replay_lag_millis: string | null;
+        replication_state: string;
+      }>(
+        pool,
+        `select coalesce(replica.state,'unavailable') replication_state,
+          case
+            when replica.replay_lsn=pg_current_wal_lsn() then 0
+            when replica.replay_lag is null then null
+            else ceil(extract(epoch from replica.replay_lag)*1000)::bigint
+          end replay_lag_millis
+        from (values(1)) singleton(value)
+        left join lateral (
+          select state,replay_lsn,replay_lag
+          from pg_stat_replication
+          where application_name=$1
+          order by pid
+          limit 1
+        ) replica on true`,
+        [expectedApplicationName],
+        signal,
+      );
+      const row = observation.rows[0];
+      if (row === undefined)
+        throw new Error('Regional replica observation was not returned');
+      const replayLagMillis =
+        row.replay_lag_millis === null
+          ? null
+          : z.coerce.number().int().nonnegative().parse(row.replay_lag_millis);
+      const recorded = await query<{ status: string }>(
+        pool,
+        'select app.record_regional_replica_lag($1,$2,$3) status',
+        [expectedApplicationName, row.replication_state, replayLagMillis],
+        signal,
+      );
+      return Object.freeze({
+        replayLagMillis,
+        replicationState: boundedText(32).parse(row.replication_state),
+        status: z
+          .enum(['open', 'paused', 'unavailable'])
+          .parse(recorded.rows[0]?.status),
+      });
     },
     claimDryRuns: claim,
     close: () => pool.end(),

@@ -19,11 +19,17 @@ describe('retention metrics', () => {
     };
     const meter = {
       createCounter: vi.fn((name: string) => instrument(name)),
+      createGauge: vi.fn((name: string) => instrument(name)),
       createHistogram: vi.fn((name: string) => instrument(name)),
     } as unknown as Meter;
     const metrics = createRetentionMetrics(meter);
 
     metrics.recordFailure('workspace_purge', 0.25);
+    metrics.recordRegionalReplicaLag({
+      replayLagMillis: 300_000,
+      replicationState: 'streaming',
+      status: 'paused',
+    });
     metrics.recordWorkspacePurge(
       { status: 'progressed', jobId: 'ignored', workspaceId: 'ignored' },
       0.5,
@@ -48,6 +54,19 @@ describe('retention metrics', () => {
       instruments.get(RETENTION_METRIC_NAME.failureDuration)?.record,
     ).toHaveBeenCalledWith(0.25, {
       operation: 'workspace_purge',
+    });
+    expect(
+      instruments.get(RETENTION_METRIC_NAME.regionalReplicaAdmissionBlocked)
+        ?.record,
+    ).toHaveBeenCalledWith(1, {
+      replication_state: 'streaming',
+      status: 'paused',
+    });
+    expect(
+      instruments.get(RETENTION_METRIC_NAME.regionalReplicaReplayLag)?.record,
+    ).toHaveBeenCalledWith(300, {
+      replication_state: 'streaming',
+      status: 'paused',
     });
     expect(
       instruments.get(RETENTION_METRIC_NAME.purgeCount)?.add,

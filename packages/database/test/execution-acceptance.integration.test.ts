@@ -11,6 +11,7 @@ import {
   acceptWorkflowRun,
   IDEMPOTENCY_STATUS_VALUES,
   IdempotencyRequestConflictError,
+  RegionalWriteAdmissionPausedError,
   RUN_STATUS_VALUES,
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
@@ -170,6 +171,12 @@ async function resetExecutionFixture(): Promise<void> {
        on conflict (id) do update set status = 'active'`,
       [workspaceCreatorId, `execution-${workspaceCreatorId}@example.test`],
     );
+    await client.query(`
+      update app.regional_write_admission
+         set enforced=false,status='open',replay_lag_millis=null,
+             observed_at=null,updated_at=now()
+       where singleton
+    `);
     await client.query(
       `insert into app.workspaces (id, name, slug, status, created_by)
        values
@@ -410,6 +417,64 @@ afterAll(async () => {
 });
 
 describe('atomic workflow run acceptance', () => {
+  it('fences new runs while preserving exact idempotent replay', async () => {
+    const owner = new Pool({ connectionString: migrationUrl, max: 1 });
+    const setAdmission = async (status: 'open' | 'paused'): Promise<void> => {
+      const client = await owner.connect();
+      try {
+        await client.query('begin');
+        await client.query('set local role pertexo_owner');
+        await client.query(
+          `update app.regional_write_admission
+              set enforced=true,status=$1,replay_lag_millis=$2,
+                  observed_at=now(),updated_at=now()
+            where singleton`,
+          [status, status === 'open' ? 0 : 300_000],
+        );
+        await client.query('commit');
+      } catch (error: unknown) {
+        await client.query('rollback').catch(() => undefined);
+        throw error;
+      } finally {
+        client.release();
+      }
+    };
+    try {
+      await setAdmission('paused');
+      await expect(
+        apiDatabase.withWorkspace(workspaceA, (transaction) =>
+          acceptWorkflowRun(transaction, acceptanceInput()),
+        ),
+      ).rejects.toBeInstanceOf(RegionalWriteAdmissionPausedError);
+      await expectAcceptanceRecordCounts(0);
+
+      await setAdmission('open');
+      const first = await apiDatabase.withWorkspace(workspaceA, (transaction) =>
+        acceptWorkflowRun(transaction, acceptanceInput()),
+      );
+
+      await setAdmission('paused');
+      await expect(
+        apiDatabase.withWorkspace(workspaceA, (transaction) =>
+          acceptWorkflowRun(transaction, acceptanceInput()),
+        ),
+      ).resolves.toEqual({ ...first, duplicate: true });
+      await expect(
+        apiDatabase.withWorkspace(workspaceA, (transaction) =>
+          acceptWorkflowRun(transaction, {
+            ...acceptanceInput(),
+            keyHash: createHash('sha256')
+              .update('regional-fence-new-key')
+              .digest('hex'),
+          }),
+        ),
+      ).rejects.toBeInstanceOf(RegionalWriteAdmissionPausedError);
+      await expectAcceptanceRecordCounts(1);
+    } finally {
+      await owner.end();
+    }
+  });
+
   it('accepts and replays a run under the worker role', async () => {
     const first = await workerDatabase.withWorkspace(
       workspaceA,

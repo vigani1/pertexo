@@ -2087,7 +2087,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0068_restore_artifact_inventory.sql',
+          migrationHead: '0069_regional_write_admission.sql',
           role: 'pertexo_worker',
         });
       } finally {
@@ -2181,6 +2181,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         '0066_operator_maintenance_rerun.sql',
         '0067_reconcile_published_migration_repairs.sql',
         '0068_restore_artifact_inventory.sql',
+        '0069_regional_write_admission.sql',
       ]);
       const workerPool = new Pool({
         connectionString: namedDatabaseUrl(
@@ -2196,7 +2197,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0068_restore_artifact_inventory.sql',
+          migrationHead: '0069_regional_write_admission.sql',
           role: 'pertexo_worker',
         });
         await expect(
@@ -2263,7 +2264,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0068_restore_artifact_inventory.sql',
+        migrationHead: '0069_regional_write_admission.sql',
         role: 'pertexo_worker',
       });
       const catalog = await readinessPool.query<{
@@ -2502,7 +2503,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0068_restore_artifact_inventory.sql',
+        migrationHead: '0069_regional_write_admission.sql',
       });
     } finally {
       await readinessPool.end();
@@ -2688,7 +2689,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         workerRuntimeRole: 'pertexo_worker',
       }),
     ).resolves.toMatchObject({
-      migrationHead: '0068_restore_artifact_inventory.sql',
+      migrationHead: '0069_regional_write_admission.sql',
     });
     await readinessPool.end();
   });

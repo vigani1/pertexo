@@ -569,6 +569,7 @@ describe('connection persistence', () => {
       '0066_operator_maintenance_rerun.sql',
       '0067_reconcile_published_migration_repairs.sql',
       '0068_restore_artifact_inventory.sql',
+      '0069_regional_write_admission.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, priorDatabaseName),
@@ -581,7 +582,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0068_restore_artifact_inventory.sql',
+        migrationHead: '0069_regional_write_admission.sql',
       });
       const bindingSurface = await pool.query<{
         node_column: boolean;
@@ -814,6 +815,7 @@ describe('connection persistence', () => {
       '0066_operator_maintenance_rerun.sql',
       '0067_reconcile_published_migration_repairs.sql',
       '0068_restore_artifact_inventory.sql',
+      '0069_regional_write_admission.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, upgradeDatabaseName),
@@ -826,7 +828,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0068_restore_artifact_inventory.sql',
+        migrationHead: '0069_regional_write_admission.sql',
       });
     } finally {
       await pool.end();
@@ -1813,7 +1815,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0068_restore_artifact_inventory.sql',
+        migrationHead: '0069_regional_write_admission.sql',
       });
       await expect(
         checkDatabaseReadiness(workerReadinessPool, {
@@ -1821,7 +1823,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0068_restore_artifact_inventory.sql',
+        migrationHead: '0069_regional_write_admission.sql',
       });
     } finally {
       await Promise.all([apiReadinessPool.end(), workerReadinessPool.end()]);

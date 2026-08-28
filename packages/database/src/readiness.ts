@@ -8,7 +8,7 @@ import {
   type CompatibilityReleaseExpectationSet,
 } from './compatibility-release.js';
 
-export const EXPECTED_MIGRATION_HEAD = '0068_restore_artifact_inventory.sql';
+export const EXPECTED_MIGRATION_HEAD = '0069_regional_write_admission.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -51,6 +51,7 @@ interface ReadinessRow {
   durable_wait_compatible: boolean;
   failure_notification_compatible: boolean;
   execution_admission_compatible: boolean;
+  regional_write_admission_compatible: boolean;
   webhook_triggers_compatible: boolean;
   schedule_triggers_compatible: boolean;
   due_node_wakeups_compatible: boolean;
@@ -63,6 +64,7 @@ interface ReadinessRow {
 }
 
 export type ReadinessOptions = Readonly<{
+  apiRuntimeRole?: string;
   ownerRole: string;
   workerRuntimeRole?: string;
   expectedCompatibilityRelease?: CompatibilityReleaseExpectation;
@@ -1557,6 +1559,29 @@ export async function checkDatabaseReadiness(
         and has_function_privilege($2,'app.release_workflow_run_active_admission(uuid,uuid)','EXECUTE')
       ) as execution_admission_compatible,
       (
+        to_regclass('app.regional_write_admission') is not null
+        and (select relowner=(select oid from pg_roles where rolname=$1)
+             from pg_class where oid=to_regclass('app.regional_write_admission'))
+        and 2=(select count(*) from pg_proc admission_function
+          join pg_roles admission_owner on admission_owner.oid=admission_function.proowner
+          where admission_function.oid=any(array[
+            to_regprocedure('app.record_regional_replica_lag(character varying,character varying,bigint)'),
+            to_regprocedure('app.assert_regional_write_admission()')
+          ]) and admission_function.prosecdef
+            and admission_owner.rolname=$1
+            and 'row_security=on'=any(admission_function.proconfig)
+            and exists (select 1 from unnest(admission_function.proconfig) setting
+                         where setting like 'search_path=pg_catalog%'))
+        and has_function_privilege($3,
+          'app.assert_regional_write_admission()','EXECUTE')
+        and has_function_privilege($2,
+          'app.assert_regional_write_admission()','EXECUTE')
+        and not has_table_privilege($3,
+          'app.regional_write_admission','SELECT,INSERT,UPDATE,DELETE')
+        and not has_table_privilege($2,
+          'app.regional_write_admission','SELECT,INSERT,UPDATE,DELETE')
+      ) as regional_write_admission_compatible,
+      (
         to_regclass('app.workflow_triggers') is not null
         and to_regclass('app.webhook_trigger_endpoints') is not null
         and to_regclass('app.webhook_trigger_secret_versions') is not null
@@ -1666,7 +1691,11 @@ export async function checkDatabaseReadiness(
     join pg_class table_class on table_class.oid = 'app.rls_probe_records'::regclass
     where role.rolname = current_user
   `,
-    [options.ownerRole, options.workerRuntimeRole ?? 'pertexo_worker'],
+    [
+      options.ownerRole,
+      options.workerRuntimeRole ?? 'pertexo_worker',
+      options.apiRuntimeRole ?? 'pertexo_api',
+    ],
   );
   const row = result.rows[0];
 
@@ -1750,6 +1779,9 @@ export async function checkDatabaseReadiness(
   }
   if (!row.execution_admission_compatible) {
     throw new Error('Execution admission persistence is incompatible');
+  }
+  if (!row.regional_write_admission_compatible) {
+    throw new Error('Regional write admission persistence is incompatible');
   }
   if (!row.webhook_triggers_compatible) {
     throw new Error('Webhook trigger persistence is incompatible');

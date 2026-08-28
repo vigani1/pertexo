@@ -24,6 +24,10 @@ export interface RetentionWorkerResources {
   readonly runArtifacts: RunArtifactRetentionCoordinator;
   readonly workspacePurge: WorkspacePurgeCoordinator;
   readonly pollIntervalMs: number;
+  readonly replicaMonitor: Readonly<{
+    applicationName: string;
+    sampleIntervalMs: number;
+  }>;
   readonly signal: AbortSignal;
   readonly telemetry: TelemetryLifecycle;
 }
@@ -32,6 +36,12 @@ export async function runRetentionWorker(
   resources: RetentionWorkerResources,
 ): Promise<void> {
   let operationError: unknown;
+  const monitorShutdown = new AbortController();
+  const monitorSignal = AbortSignal.any([
+    resources.signal,
+    monitorShutdown.signal,
+  ]);
+  let monitor: Promise<void> | undefined;
   try {
     resources.telemetry.start();
     await resources.database.checkReadiness({
@@ -40,6 +50,7 @@ export async function runRetentionWorker(
     });
     await resources.ledger.checkReadiness(resources.signal);
     await resources.artifacts.checkReadiness();
+    monitor = monitorRegionalReplicaLag(resources, monitorSignal);
     resources.logger.info('retention.ready');
     while (!resources.signal.aborted) {
       let operation: RetentionOperation = 'operator_rerun';
@@ -161,6 +172,11 @@ export async function runRetentionWorker(
     operationError = error;
   }
 
+  monitorShutdown.abort(new Error('Retention worker stopping'));
+  await monitor?.catch((error: unknown) => {
+    if (operationError === undefined) operationError = error;
+  });
+
   const cleanupErrors: unknown[] = [];
   for (const close of [
     () => resources.preview.close(),
@@ -185,5 +201,42 @@ export async function runRetentionWorker(
       [operationError, ...cleanupErrors].filter((error) => error !== undefined),
       'Retention worker did not stop cleanly',
     );
+  }
+}
+
+async function monitorRegionalReplicaLag(
+  resources: RetentionWorkerResources,
+  signal: AbortSignal,
+): Promise<void> {
+  let previousStatus: 'open' | 'paused' | 'unavailable' | undefined;
+  while (!signal.aborted) {
+    try {
+      const observation = await resources.database.recordRegionalReplicaLag(
+        resources.replicaMonitor.applicationName,
+        signal,
+      );
+      resources.metrics.recordRegionalReplicaLag(observation);
+      if (observation.status !== previousStatus) {
+        resources.logger.info('retention.regional_replica_lag', {
+          replayLagMillis: observation.replayLagMillis,
+          replicationState: observation.replicationState,
+          status: observation.status,
+        });
+        previousStatus = observation.status;
+      }
+    } catch (error: unknown) {
+      if (error === signal.reason) return;
+      resources.logger.error(
+        'retention.regional_replica_lag_failed',
+        { applicationName: resources.replicaMonitor.applicationName },
+        error,
+      );
+    }
+    await waitForAbortableDelay(
+      resources.replicaMonitor.sampleIntervalMs,
+      signal,
+    ).catch((error: unknown) => {
+      if (!signal.aborted) throw error;
+    });
   }
 }

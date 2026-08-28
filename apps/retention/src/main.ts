@@ -107,6 +107,7 @@ async function bootstrap(): Promise<void> {
       ledger,
       metrics: createRetentionMetrics(),
       pollIntervalMs: config.pollIntervalMs,
+      replicaMonitor: config.replicaMonitor,
       preview,
       runArtifacts,
       workspacePurge,

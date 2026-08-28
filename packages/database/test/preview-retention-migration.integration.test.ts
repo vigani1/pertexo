@@ -246,6 +246,7 @@ describe('preview retention migration', () => {
       '0066_operator_maintenance_rerun.sql',
       '0067_reconcile_published_migration_repairs.sql',
       '0068_restore_artifact_inventory.sql',
+      '0069_regional_write_admission.sql',
     ]);
 
     const verification = new Pool({

@@ -72,7 +72,7 @@ describe('operations observability assets', () => {
     }
 
     const alertBlocks = alerts.split('\n      - alert: ').slice(1);
-    expect(alertBlocks).toHaveLength(22);
+    expect(alertBlocks).toHaveLength(23);
     for (const block of alertBlocks) {
       const [alertName = ''] = block.split('\n', 1);
       expect(alertName).toMatch(/^Pertexo[A-Za-z]+$/u);
@@ -115,6 +115,8 @@ describe('operations observability assets', () => {
       'pertexo_provider_request_count_total',
       'pertexo_purge_batch_count_total',
       'pertexo_purge_batch_duration_seconds_bucket',
+      'pertexo_regional_replica_admission_blocked',
+      'pertexo_regional_replica_replay_lag_seconds',
       'pertexo_retention_batch_count_total',
       'pertexo_retention_operation_failure_count_total',
       'pertexo_redis_operation_count_total',
@@ -168,6 +170,8 @@ describe('operations observability assets', () => {
       'pertexo.provider.request.count',
       'pertexo.purge.batch.count',
       'pertexo.purge.batch.duration',
+      'pertexo.regional_replica.admission.blocked',
+      'pertexo.regional_replica.replay_lag',
       'pertexo.retention.batch.count',
       'pertexo.retention.operation.failure.count',
       'pertexo.redis.connection.event.count',

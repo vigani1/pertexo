@@ -1,6 +1,7 @@
 import { metrics, type Meter } from '@opentelemetry/api';
 import type {
   OperatorMaintenanceRerunResult,
+  RegionalReplicaLagObservation,
   RetentionDryRunProcessResult,
   RetentionEnforcementProcessResult,
   PreviewRetentionProcessResult,
@@ -17,6 +18,8 @@ export const RETENTION_METRIC_NAME = Object.freeze({
   operatorRerunCount: 'pertexo.maintenance.operator_rerun.count',
   operatorRerunDuration: 'pertexo.maintenance.operator_rerun.duration',
   pageCount: 'pertexo.retention.page.count',
+  regionalReplicaAdmissionBlocked: 'pertexo.regional_replica.admission.blocked',
+  regionalReplicaReplayLag: 'pertexo.regional_replica.replay_lag',
   purgeCount: 'pertexo.purge.batch.count',
   purgeDuration: 'pertexo.purge.batch.duration',
   rowCount: 'pertexo.retention.rows.count',
@@ -34,6 +37,7 @@ export type RetentionOperation =
   | 'workspace_purge';
 
 export interface RetentionMetrics {
+  recordRegionalReplicaLag(result: RegionalReplicaLagObservation): void;
   recordSchedule(
     result: RetentionScheduleResult,
     durationSeconds: number,
@@ -77,6 +81,21 @@ export function createRetentionMetrics(
     description: 'Bounded retention pages processed',
     unit: '{page}',
   });
+  const regionalReplicaAdmissionBlocked = meter.createGauge(
+    RETENTION_METRIC_NAME.regionalReplicaAdmissionBlocked,
+    {
+      description:
+        'Whether durable write admission is blocked by regional replica state',
+      unit: '1',
+    },
+  );
+  const regionalReplicaReplayLag = meter.createGauge(
+    RETENTION_METRIC_NAME.regionalReplicaReplayLag,
+    {
+      description: 'Observed cross-region PostgreSQL replica replay lag',
+      unit: 's',
+    },
+  );
   const duration = meter.createHistogram(RETENTION_METRIC_NAME.batchDuration, {
     description:
       'Duration of one retention operation, excluding other poll work',
@@ -134,6 +153,22 @@ export function createRetentionMetrics(
     },
   );
   const retentionMetrics: RetentionMetrics = {
+    recordRegionalReplicaLag: (result) => {
+      const attributes = {
+        replication_state: result.replicationState,
+        status: result.status,
+      };
+      regionalReplicaAdmissionBlocked.record(
+        result.status === 'open' ? 0 : 1,
+        attributes,
+      );
+      if (result.replayLagMillis !== null) {
+        regionalReplicaReplayLag.record(
+          result.replayLagMillis / 1_000,
+          attributes,
+        );
+      }
+    },
     recordSchedule: (result, durationSeconds) => {
       const attributes = {
         mode: 'schedule',

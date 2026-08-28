@@ -27,6 +27,18 @@ const environmentSchema = z
       .string()
       .regex(/^[a-z_][a-z0-9_]*$/u)
       .default('pertexo_maintenance'),
+    REGIONAL_RECOVERY_REPLICA_APPLICATION_NAME: z
+      .string()
+      .trim()
+      .min(1)
+      .max(128)
+      .default('pertexo-eu-west-1'),
+    REGIONAL_REPLICA_LAG_SAMPLE_INTERVAL_MS: z.coerce
+      .number()
+      .int()
+      .min(1_000)
+      .max(10_000)
+      .default(5_000),
     RETENTION_LEASE_OWNER: z.string().trim().min(1).max(128),
     RETENTION_LEASE_SECONDS: z.coerce
       .number()
@@ -106,6 +118,10 @@ export interface RetentionWorkerConfig {
     statementTimeoutMs: number;
   }>;
   readonly pollIntervalMs: number;
+  readonly replicaMonitor: Readonly<{
+    applicationName: string;
+    sampleIntervalMs: number;
+  }>;
 }
 
 export function parseRetentionWorkerConfig(
@@ -151,5 +167,9 @@ export function parseRetentionWorkerConfig(
       statementTimeoutMs: parsed.RETENTION_DATABASE_STATEMENT_TIMEOUT_MS,
     }),
     pollIntervalMs: parsed.RETENTION_POLL_INTERVAL_MS,
+    replicaMonitor: Object.freeze({
+      applicationName: parsed.REGIONAL_RECOVERY_REPLICA_APPLICATION_NAME,
+      sampleIntervalMs: parsed.REGIONAL_REPLICA_LAG_SAMPLE_INTERVAL_MS,
+    }),
   });
 }

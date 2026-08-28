@@ -256,6 +256,21 @@ groups:
 
   - name: pertexo-destructive-maintenance
     rules:
+      - alert: PertexoRegionalWriteAdmissionPaused
+        expr: |
+          max_over_time(pertexo_regional_replica_admission_blocked[30s]) == 1
+          or max_over_time(pertexo_regional_replica_replay_lag_seconds[30s]) >= 300
+          or absent_over_time(pertexo_regional_replica_admission_blocked[30s]) == 1
+        for: 1m
+        labels:
+          severity: page
+        annotations:
+          summary: Regional replica state has fenced durable writes
+          description:
+            Cross-region replay is unavailable, stale, or outside the
+            five-minute recovery-point bound; new durable run admission must
+            remain paused.
+          runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexoregionalwriteadmissionpaused
       - alert: PertexoRetentionOperationFailure
         expr: increase(pertexo_retention_operation_failure_count_total[15m]) > 0
         for: 1m

@@ -129,6 +129,30 @@ describe('RFC 9457 problem details filter', () => {
     expect(apiProblemSchema.safeParse(response.body).success).toBe(true);
   });
 
+  it('returns Retry-After when the regional recovery-point fence pauses writes', () => {
+    const contexts = new RequestContextStore();
+    const filter = new ProblemDetailsFilter(contexts);
+    const response = responseMock();
+
+    contexts.run('request-regional-fence', () => {
+      filter.catch(
+        applicationError('platform.write_paused', {
+          details: { retryAfterSeconds: 5 },
+        }),
+        hostFor({ url: '/v1/workflows/workflow-a/runs' }, response),
+      );
+    });
+
+    expect(response.status).toHaveBeenCalledWith(503);
+    expect(response.header).toHaveBeenCalledWith('retry-after', '5');
+    expect(response.body).toMatchObject({
+      type: 'urn:pertexo:problem:platform.write_paused',
+      status: 503,
+      code: 'platform.write_paused',
+    });
+    expect(apiProblemSchema.safeParse(response.body).success).toBe(true);
+  });
+
   it('renders identity provider outages as a fixed safe RFC 9457 503 problem', () => {
     const contexts = new RequestContextStore();
     const filter = new ProblemDetailsFilter(contexts);

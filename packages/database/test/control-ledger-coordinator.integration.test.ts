@@ -339,6 +339,10 @@ beforeAll(async () => {
     path.join(MIGRATIONS_DIRECTORY, '0068_restore_artifact_inventory.sql'),
     path.join(priorDirectory, '0068_restore_artifact_inventory.sql'),
   );
+  await copyFile(
+    path.join(MIGRATIONS_DIRECTORY, '0069_regional_write_admission.sql'),
+    path.join(priorDirectory, '0069_regional_write_admission.sql'),
+  );
   await expect(
     migrateDatabase(migrationConfig, priorDirectory),
   ).resolves.toEqual([
@@ -365,6 +369,7 @@ beforeAll(async () => {
     '0066_operator_maintenance_rerun.sql',
     '0067_reconcile_published_migration_repairs.sql',
     '0068_restore_artifact_inventory.sql',
+    '0069_regional_write_admission.sql',
   ]);
   maintenance = new Pool({ connectionString: maintenanceUrl, max: 4 });
 }, 120_000);

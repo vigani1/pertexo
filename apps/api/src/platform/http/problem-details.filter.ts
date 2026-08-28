@@ -161,7 +161,10 @@ function fromApplicationError(error: ApplicationError): NormalizedProblem {
     cause: error.cause,
     ...(issues === undefined ? {} : { errors: issues }),
   };
-  if (error.code === 'workspace.quota_exceeded') {
+  if (
+    error.code === 'workspace.quota_exceeded' ||
+    error.code === 'platform.write_paused'
+  ) {
     const retryAfterSeconds = error.details?.retryAfterSeconds;
     return typeof retryAfterSeconds === 'number' &&
       Number.isSafeInteger(retryAfterSeconds) &&

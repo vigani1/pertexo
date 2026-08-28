@@ -5,6 +5,7 @@ import type {
   WebhookVerificationReference,
 } from '@pertexo/database';
 import {
+  RegionalWriteAdmissionPausedError,
   WebhookDeliveryReplayMismatchError,
   WebhookIngressRateLimitExceededError,
   WorkspaceRunQuotaExceededError,
@@ -207,6 +208,16 @@ describe('generic webhook ingress', () => {
     );
     expect(response.statusCode).toBe(429);
     expect(response.headers['retry-after']).toBe('5');
+
+    const fenced = setup(undefined, new RegionalWriteAdmissionPausedError());
+    const fencedResponse = await fenced.application.inject(
+      request('{}', currentSecret),
+    );
+    expect(fencedResponse.statusCode).toBe(503);
+    expect(fencedResponse.headers['retry-after']).toBe('5');
+    expect(fencedResponse.json<{ code: string }>().code).toBe(
+      'webhook.unavailable',
+    );
   });
 
   it('returns the original run reference for an exact completed replay', async () => {

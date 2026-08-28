@@ -4,6 +4,7 @@ import {
   WebhookDeliveryIneligibleError,
   WebhookDeliveryReplayMismatchError,
   WebhookIngressRateLimitExceededError,
+  RegionalWriteAdmissionPausedError,
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
   type WebhookCheckpointFactory,
@@ -268,6 +269,17 @@ async function acceptWebhook(
         });
         reply.header('retry-after', String(error.retryAfterSeconds));
         problem(reply, 429, 'webhook.rate_limited', requestId);
+        return;
+      }
+      if (error instanceof RegionalWriteAdmissionPausedError) {
+        record(() => {
+          telemetry.delivery('unavailable');
+        });
+        record(() => {
+          telemetry.health('degraded');
+        });
+        reply.header('retry-after', String(error.retryAfterSeconds));
+        problem(reply, 503, 'webhook.unavailable', requestId);
         return;
       }
       if (

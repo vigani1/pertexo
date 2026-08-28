@@ -21,6 +21,7 @@ import {
   createPostgresWorkflowRunPersistence,
 } from '../../src/workflow-runs/postgres-persistence.js';
 import {
+  RegionalWriteAdmissionPausedError,
   parseDatabaseConfig,
   type WorkflowRunDatabase,
 } from '@pertexo/database';
@@ -90,6 +91,37 @@ function run() {
 }
 
 describe('PostgreSQL workflow run persistence adapter', () => {
+  it('maps a regional write fence to a retryable service response', async () => {
+    const database = {
+      start: vi
+        .fn<WorkflowRunDatabase['start']>()
+        .mockRejectedValue(new RegionalWriteAdmissionPausedError()),
+      get: vi.fn<WorkflowRunDatabase['get']>().mockResolvedValue(undefined),
+      cancel: vi.fn<WorkflowRunDatabase['cancel']>(),
+      close: vi.fn<WorkflowRunDatabase['close']>().mockResolvedValue(),
+    } satisfies WorkflowRunDatabase;
+    const adapter = createPostgresWorkflowRunPersistence(
+      parseDatabaseConfig({
+        connectionString: 'postgresql://unused.invalid/pertexo',
+      }),
+      database,
+    );
+
+    await expect(
+      adapter.persistence.start({
+        actorId,
+        workspaceId,
+        workflowId,
+        idempotencyKeyHash: 'a'.repeat(64),
+        requestHash: 'b'.repeat(64),
+        scope: `workflow:${workflowId}:manual`,
+      }),
+    ).rejects.toMatchObject({
+      code: 'platform.write_paused',
+      details: { retryAfterSeconds: 5 },
+    });
+  });
+
   it('initializes checkpoint V2 for a verified Condition executable', () => {
     const release = composeExecutableCompatibilityRelease(
       PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,

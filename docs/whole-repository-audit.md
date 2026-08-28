@@ -71,7 +71,8 @@ blocked until the following operational work is complete.
 - **Category:** durability, regional recovery, and architecture adherence
 - **Files:** `docs/adr/015-production-slo-region-and-recovery.md`, API durable
   write admission, webhook admission, deployment monitoring configuration
-- **Classification:** missing required implementation; release blocker
+- **Classification:** corrected after the audited head; live exercise remains
+  tracked by A-03
 
 ADR 015 requires continuous monitoring of the cross-region PostgreSQL replica
 and requires durable write admission to pause when replay lag reaches five
@@ -87,6 +88,17 @@ writes without interrupting reads or already-admitted workflow execution. Prove
 threshold, recovery, stale-signal, and dependency-failure behavior before the
 live regional exercise. The exercise is evidence for this control, not a
 substitute for it.
+
+**Resolution (2026-08-28):** migration `0069_regional_write_admission.sql`
+adds a production-required, fail-closed PostgreSQL authority. The maintenance
+process samples the authenticated configured replica every five seconds and
+persists only through a narrow function; shared workflow-run acceptance rejects
+new manual, webhook, schedule, and replay starts at or above 300 seconds and on
+missing, unavailable, or 15-second-stale evidence. Exact idempotent replay,
+reads, and already-admitted execution remain available. Fixed-cardinality
+metrics, transition logs, a paging rule, API/webhook retry responses, and real
+PostgreSQL threshold/staleness/replay tests cover the locally provable control.
+The AWS replication and pager exercise is still open under A-03.
 
 ### A-01: Separate startup compatibility validation from steady readiness
 

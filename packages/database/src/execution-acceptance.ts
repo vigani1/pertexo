@@ -128,11 +128,22 @@ export class WorkspaceRunQuotaExceededError extends Error {
   }
 }
 
+export class RegionalWriteAdmissionPausedError extends Error {
+  public override readonly name = 'RegionalWriteAdmissionPausedError';
+  public readonly retryAfterSeconds = 5;
+
+  public constructor() {
+    super('regional.write_admission_paused');
+  }
+}
+
 function admissionError(error: unknown): never {
   let current = error;
   while (current instanceof Error) {
     if ('code' in current && current.code === 'PTA02')
       throw new WorkspaceRunQuotaExceededError();
+    if ('code' in current && current.code === 'PTA03')
+      throw new RegionalWriteAdmissionPausedError();
     if ('code' in current && current.code === 'PTA01')
       throw new WorkspaceRunAdmissionDeniedError();
     current = current.cause;
@@ -369,7 +380,14 @@ export async function acceptWorkflowRun(
   );
   if (existing !== null) return existing;
 
-  await assertWorkspaceAcceptsNewRuns(transaction);
+  try {
+    await transaction.db.execute(
+      sql`select app.assert_regional_write_admission()`,
+    );
+    await assertWorkspaceAcceptsNewRuns(transaction);
+  } catch (error: unknown) {
+    admissionError(error);
+  }
   const failureNotificationPolicy =
     await resolveWorkflowFailureNotificationPolicy(
       transaction,

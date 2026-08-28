@@ -99,7 +99,9 @@
         "CONTROL_LEDGER_RECOVERY_FORCE_PATH_STYLE",
         "CONTROL_LEDGER_RECOVERY_MIN_RETENTION_DAYS",
         "CONTROL_LEDGER_RECOVERY_REGION",
-        "OTEL_EXPORTER_OTLP_ENDPOINT"
+        "OTEL_EXPORTER_OTLP_ENDPOINT",
+        "REGIONAL_RECOVERY_REPLICA_APPLICATION_NAME",
+        "REGIONAL_REPLICA_LAG_SAMPLE_INTERVAL_MS"
       ],
       "secrets": [
         "DATABASE_LIFECYCLE_COMMAND_URL",
@@ -203,7 +205,10 @@
     "migration": {
       "kind": "release-job",
       "command": ["node", "packages/database/dist/migrate.js"],
-      "environment": { "NODE_ENV": "production" },
+      "environment": {
+        "NODE_ENV": "production",
+        "REGIONAL_WRITE_ADMISSION_ENFORCED": "true"
+      },
       "configuration": [],
       "secrets": ["DATABASE_MIGRATION_URL"]
     }

@@ -50,6 +50,10 @@ describe('retention worker configuration', () => {
         statementTimeoutMs: 30_000,
       },
       pollIntervalMs: 1_000,
+      replicaMonitor: {
+        applicationName: 'pertexo-eu-west-1',
+        sampleIntervalMs: 5_000,
+      },
     });
   });
 
