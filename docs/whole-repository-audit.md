@@ -323,6 +323,14 @@ loops, and detects iteration completion behind three focused functions. Shared
 recursive executable traversal moved to `executable-graph.ts`. Retry/wait,
 ready-admission, and terminal-selection extraction remains open.
 
+Bounded ready admission and terminal run selection now live in
+`transition-decisions.ts`. They are pure decision functions over scheduler and
+checkpoint state: the former accounts for already-running Parallel scopes while
+respecting the global admission cap, and the latter applies outcome-unknown,
+cancellation, deadline, failure, and successful-completion precedence. The
+orchestrator remains responsible for applying both decisions. Retry/wait
+observation handling and checkpoint organization remain open.
+
 ### A-07: Decompose preview and node-attempt persistence by lifecycle stage
 
 - **Severity:** Medium

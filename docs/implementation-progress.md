@@ -4364,6 +4364,14 @@ Current evidence:
   `advanceWorkflow` interface or transition authority; all 121 engine
   assertions remain green. Retry/wait, ready-admission, and terminal-selection
   extraction remains open.
+- Bounded ready admission and terminal run selection are now pure internal
+  decision functions. Parallel-scope concurrency accounting and the global
+  admission cap are hidden behind one ready-selection interface; terminal
+  precedence for unknown outcome, cancellation, deadline, failure, and success
+  is hidden behind another. `advanceWorkflowFromSchedulerState` still applies
+  both decisions and remains the canonical transition authority. All 121
+  engine assertions pass. Retry/wait observation handling and checkpoint
+  organization remain open for A-06.
 
 ## Update protocol
 
