@@ -4403,8 +4403,13 @@ Current evidence:
   idempotency resolution, actor/draft/retention admission, prior-preview input
   resolution, and status mapping behind the unchanged public export path. All
   136 database unit assertions and 28 focused real-PostgreSQL preview
-  acceptance/worker assertions pass. Preview claim/heartbeat, dispatch,
-  completion, and reconciliation extraction remain open.
+  acceptance/worker assertions pass. Preview lifecycle vocabulary is now
+  isolated from transport plumbing; durable outbox/receipt validation,
+  scheduling, completion, and mismatch auditing share one internal delivery
+  module. The complete claim transaction owns state validation, attempt
+  fencing, reconciliation wake-up intent, and lease reconstruction behind the
+  unchanged public function. Preview heartbeat, dispatch, completion, and
+  reconciliation extraction remain open.
 
 ## Update protocol
 

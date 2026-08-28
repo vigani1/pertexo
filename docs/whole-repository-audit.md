@@ -383,8 +383,14 @@ composition root, completing the node-attempt half of this finding. The
 preview half is now in progress: immutable preview acceptance, duplicate
 idempotency resolution, actor/draft/retention admission, prior-preview input
 resolution, and status reads live in `preview-execution-acceptance.ts` behind
-the unchanged `preview-execution` export path. Preview claim/heartbeat,
-dispatch, completion, and reconciliation extraction remain open.
+the unchanged `preview-execution` export path. Public lease/result/error
+vocabulary and lifecycle schemas are isolated in `preview-execution-contract.ts`.
+Durable outbox validation and scheduling, inbox receipt claim/completion,
+reconciliation-delivery validation, and checksum-mismatch auditing live in
+`preview-execution-delivery.ts`. `preview-execution-claim.ts` owns the complete
+claim transaction, including state validation, fencing, reconciliation wake-up
+intent, and lease reconstruction. Preview heartbeat, dispatch, completion, and
+reconciliation extraction remain open.
 
 ### A-08: Narrow the database package's public capability surface
 
