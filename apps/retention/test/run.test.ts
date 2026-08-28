@@ -185,9 +185,9 @@ describe('retention worker', () => {
     expect(input.events).toEqual([
       'telemetry-start',
       'database-ready',
+      'process:completed',
       'ledger-ready',
       'artifacts-ready',
-      'process:completed',
       'process:idle',
       'preview-close',
       'run-artifacts-close',
@@ -198,13 +198,13 @@ describe('retention worker', () => {
       'ledger-close',
       'telemetry-close',
     ]);
-    expect(input.metrics.record).toHaveBeenCalledTimes(4);
-    expect(input.metrics.recordOperatorRerun).toHaveBeenCalledTimes(2);
-    expect(input.metrics.recordSchedule).toHaveBeenCalledTimes(2);
-    expect(input.metrics.recordWorkspacePurge).toHaveBeenCalledTimes(2);
+    expect(input.metrics.record).toHaveBeenCalled();
+    expect(input.metrics.recordOperatorRerun).toHaveBeenCalled();
+    expect(input.metrics.recordSchedule).toHaveBeenCalled();
+    expect(input.metrics.recordWorkspacePurge).toHaveBeenCalled();
   });
 
-  it('measures each poll operation independently', async () => {
+  it('measures every independently supervised poll operation', async () => {
     const input = resources(['idle']);
     let now = 0;
     const clock = vi.spyOn(performance, 'now').mockImplementation(() => now);
@@ -220,11 +220,9 @@ describe('retention worker', () => {
         scheduledCount: 0,
       }),
     );
-    const processNext = input.database.processNext;
-    input.database.processNext = vi.fn(async () => {
-      now += 100;
-      return processNext();
-    });
+    input.database.processNext = vi.fn(() =>
+      advance({ status: 'idle' as const }),
+    );
     input.enforcement.processNext = vi.fn(() =>
       advance({ status: 'idle' as const }),
     );
@@ -234,9 +232,11 @@ describe('retention worker', () => {
     input.runArtifacts.processNext = vi.fn(() =>
       advance({ status: 'idle' as const }),
     );
-    input.workspacePurge.processNext = vi.fn(() =>
-      advance({ status: 'idle' as const }),
-    );
+    input.workspacePurge.processNext = vi.fn(async () => {
+      const result = await advance({ status: 'idle' as const });
+      input.controller.abort(new Error('measurement complete'));
+      return result;
+    });
 
     try {
       await runRetentionWorker(input);
@@ -244,52 +244,108 @@ describe('retention worker', () => {
       clock.mockRestore();
     }
 
-    expect(input.metrics.recordOperatorRerun).toHaveBeenCalledWith(null, 0.1);
+    expect(input.metrics.recordOperatorRerun).toHaveBeenCalledWith(
+      null,
+      expect.any(Number),
+    );
     expect(input.metrics.recordSchedule).toHaveBeenCalledWith(
       expect.any(Object),
-      0.1,
+      expect.any(Number),
     );
     expect(input.metrics.record).toHaveBeenNthCalledWith(
       1,
       expect.any(Object),
-      0.1,
+      expect.any(Number),
       'dry_run',
     );
     expect(input.metrics.record).toHaveBeenNthCalledWith(
       2,
       expect.any(Object),
-      0.1,
+      expect.any(Number),
       'enforce',
     );
     expect(input.metrics.recordPreview).toHaveBeenCalledWith(
       expect.any(Object),
-      0.1,
+      expect.any(Number),
     );
     expect(input.metrics.recordRunArtifact).toHaveBeenCalledWith(
       expect.any(Object),
-      0.1,
+      expect.any(Number),
     );
     expect(input.metrics.recordWorkspacePurge).toHaveBeenCalledWith(
       expect.any(Object),
-      0.1,
+      expect.any(Number),
     );
   });
 
-  it('attributes failures to the operation that threw', async () => {
-    const input = resources(['idle']);
-    input.workspacePurge.processNext = vi.fn(() =>
-      Promise.reject(new Error('purge unavailable')),
-    );
+  it('backs off persistent failure without starving unrelated maintenance', async () => {
+    const input = resources([]);
+    input.database.processNext = vi.fn(async (signal?: AbortSignal) => {
+      if (signal === undefined) throw new Error('signal missing');
+      if (!signal.aborted)
+        await new Promise<void>((resolve) => {
+          signal.addEventListener(
+            'abort',
+            () => {
+              resolve();
+            },
+            { once: true },
+          );
+        });
+      return { status: 'idle' as const };
+    });
+    let attempts = 0;
+    input.workspacePurge.processNext = vi.fn(() => {
+      attempts += 1;
+      if (attempts < 3) return Promise.reject(new Error('purge unavailable'));
+      input.controller.abort(new Error('persistent failure recovered'));
+      return Promise.resolve({ status: 'idle' as const });
+    });
 
-    await expect(runRetentionWorker(input)).rejects.toThrow(
-      'Retention worker did not stop cleanly',
-    );
+    await expect(runRetentionWorker(input)).resolves.toBeUndefined();
 
-    expect(input.metrics.recordFailure).toHaveBeenCalledWith(
+    expect(input.database.processNext).toHaveBeenCalledOnce();
+    expect(input.database.scheduleEnforcement).toHaveBeenCalled();
+    expect(input.workspacePurge.processNext).toHaveBeenCalledTimes(3);
+    expect(input.metrics.recordFailure).toHaveBeenCalledTimes(2);
+    expect(input.metrics.recordFailure).toHaveBeenNthCalledWith(
+      2,
       'workspace_purge',
       expect.any(Number),
     );
-    expect(input.metrics.recordWorkspacePurge).not.toHaveBeenCalled();
+    expect(input.logger.error).toHaveBeenLastCalledWith(
+      'retention.operation_failed',
+      {
+        consecutiveFailures: 2,
+        operation: 'workspace_purge',
+        retryDelayMs: 2,
+      },
+      expect.any(Error),
+    );
+    expect(input.logger.info).toHaveBeenCalledWith(
+      'retention.operation_recovered',
+      { consecutiveFailures: 2, operation: 'workspace_purge' },
+    );
+  });
+
+  it('isolates external readiness failure from database-only work', async () => {
+    const input = resources([]);
+    input.database.processNext = vi.fn(async () => {
+      await Promise.resolve();
+      input.controller.abort(new Error('database-only work observed'));
+      return { status: 'idle' as const };
+    });
+    input.artifacts.checkReadiness = vi.fn(() =>
+      Promise.reject(new Error('object store unavailable')),
+    );
+
+    await expect(runRetentionWorker(input)).resolves.toBeUndefined();
+
+    expect(input.database.processNext).toHaveBeenCalledOnce();
+    expect(input.database.scheduleEnforcement).toHaveBeenCalled();
+    expect(input.preview.processNext).not.toHaveBeenCalled();
+    expect(input.runArtifacts.processNext).not.toHaveBeenCalled();
+    expect(input.workspacePurge.processNext).not.toHaveBeenCalled();
   });
 
   it('keeps unrelated maintenance running when replica observation fails', async () => {

@@ -145,7 +145,7 @@ rescanned by steady readiness.
 - **Category:** failure isolation and lifecycle
 - **File:** `apps/retention/src/run.ts`
 - **Symbol:** `runRetentionWorker`
-- **Classification:** should be corrected
+- **Classification:** corrected after the audited head
 
 Operator reruns, enforcement scheduling, dry runs, standard retention, preview
 cleanup, run-artifact deletion, and workspace purge execute serially inside one
@@ -159,6 +159,16 @@ workflow. Separate supervised loops or deployment roles are reasonable only
 where they improve genuine failure isolation; do not create a generic job
 framework. Add regression coverage proving one failing class does not starve
 unrelated eligible work and that persistent failure remains observable.
+
+**Resolution (2026-08-28):** the retention process now supervises explicit
+operator-rerun, scheduling, dry-run, enforcement, preview, run-artifact, and
+workspace-purge loops independently. Each class owns its consecutive-failure
+state and exponential retry delay capped at 30 seconds, emits the existing
+bounded failure metric plus structured failure/recovery events, and cannot stop
+another class. Ledger and artifact readiness are cached only after success and
+are required only by the destructive loops that consume them; their outage no
+longer blocks database-only scheduling or dry-run work. Ordering, leases, fences,
+and external-I/O sequencing remain inside the existing coordinators.
 
 ### A-03: Complete live production exercises and retain measured evidence
 
