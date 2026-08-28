@@ -391,8 +391,10 @@ reconciliation-delivery validation, and checksum-mismatch auditing live in
 claim transaction, including state validation, fencing, reconciliation wake-up
 intent, and lease reconstruction. `preview-execution-heartbeat.ts` now owns
 database-clock lease renewal under the run/attempt fence in its original write
-transaction. Preview dispatch, completion, and reconciliation extraction remain
-open.
+transaction. `preview-execution-dispatch.ts` now owns connection-fence
+validation, provider-binding consistency, and durable dispatch marking under
+the worker/attempt fence in its original write transaction. Preview completion
+and reconciliation extraction remain open.
 
 ### A-08: Narrow the database package's public capability surface
 

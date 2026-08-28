@@ -4410,8 +4410,10 @@ Current evidence:
   fencing, reconciliation wake-up intent, and lease reconstruction behind the
   unchanged public function. Preview heartbeat is isolated with database-clock
   renewal, run expiry, worker identity, and attempt-fence validation in the
-  original write transaction. Preview dispatch, completion, and reconciliation
-  extraction remain open.
+  original write transaction. Preview dispatch is isolated with connection
+  fencing, provider-binding consistency, worker/attempt fencing, and durable
+  dispatch marking in its original transaction. Preview completion and
+  reconciliation extraction remain open.
 
 ## Update protocol
 
