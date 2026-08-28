@@ -621,7 +621,9 @@ beforeAll(async () => {
     await admin.end();
   }
   await migrateDatabase();
-  for (const release of PLATFORM_REGISTRY_RELEASE_HISTORY.slice(1))
+  for (const release of PLATFORM_REGISTRY_RELEASE_HISTORY.slice(1).filter(
+    (candidate) => candidate.epoch <= activeRelease.epoch,
+  ))
     await activateRelease(release);
 }, 60_000);
 
@@ -784,6 +786,16 @@ describeIntegration('active HTTP node attempt', () => {
       },
       { connectionEncryption: encryption },
     );
+    const attemptQueue = new Queue(QUEUE_NAME.nodeAttempts, {
+      connection: redisConnection(),
+    });
+    const coordinatorQueue = new Queue(QUEUE_NAME.workflowCoordinator, {
+      connection: redisConnection(),
+    });
+    await Promise.all([
+      attemptQueue.obliterate({ force: true }),
+      coordinatorQueue.obliterate({ force: true }),
+    ]);
     const coordinator = await createCoordinatorRuntime({
       database: parseDatabaseConfig({
         connectionString: databaseUrl(workerUrl),
@@ -808,12 +820,6 @@ describeIntegration('active HTTP node attempt', () => {
       { registry, runtimeCapabilities: capabilities.factories },
     );
     const producer = createQueueProducer({ redisUrl });
-    const attemptQueue = new Queue(QUEUE_NAME.nodeAttempts, {
-      connection: redisConnection(),
-    });
-    const coordinatorQueue = new Queue(QUEUE_NAME.workflowCoordinator, {
-      connection: redisConnection(),
-    });
     const coordinatorOutboxes = [accepted.outboxEventId];
     let persistedArtifactId: string | undefined;
     try {
@@ -822,11 +828,7 @@ describeIntegration('active HTTP node attempt', () => {
         attempts.consumer.waitUntilReady(5_000),
         producer.waitUntilReady(5_000),
       ]);
-      await Promise.all([
-        attemptQueue.obliterate({ force: true }),
-        coordinatorQueue.obliterate({ force: true }),
-      ]);
-      await producer.publish({
+      const initialCoordinatorJob = await producer.publish({
         name: JOB_NAME.advanceWorkflowRun,
         data: {
           schemaVersion: 1,
@@ -835,6 +837,20 @@ describeIntegration('active HTTP node attempt', () => {
           outboxEventId: accepted.outboxEventId,
         },
       });
+      const persistedInitialJob = await waitFor(
+        () => coordinatorQueue.getJob(initialCoordinatorJob.jobId),
+        (job) => job !== undefined,
+      );
+      if (persistedInitialJob === undefined)
+        throw new Error('Initial coordinator job missing');
+      await waitFor(
+        () => persistedInitialJob.getState(),
+        (state) => state === 'completed' || state === 'failed',
+      );
+      if ((await persistedInitialJob.getState()) === 'failed')
+        throw new Error(
+          `Initial coordinator job failed: ${persistedInitialJob.failedReason}`,
+        );
 
       const manual = await attemptDelivery(accepted.runId, 'manual');
       await producer.publish({

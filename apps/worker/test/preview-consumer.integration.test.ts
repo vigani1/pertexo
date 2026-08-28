@@ -20,6 +20,7 @@ import {
   createCompatibilityReleaseMaintenance,
   createCompatibilityReleaseReadinessProbe,
   createOutboxDispatcherDatabase,
+  createPreviewRetentionCoordinator,
   databaseSchema,
   parseDatabaseConfig,
   parseWorkspaceId,
@@ -27,6 +28,7 @@ import {
   PREVIEW_STATUS,
   withTenantScopedClient,
   type AcceptPreviewRunInput,
+  type ControlLedger,
 } from '@pertexo/database';
 import {
   platformExecutableRegistryHistory,
@@ -68,6 +70,9 @@ const workerUrl =
 const dispatcherUrl =
   process.env.DATABASE_DISPATCHER_URL ??
   'postgresql://pertexo_dispatcher:pertexo-local-dispatcher@localhost:5432/pertexo';
+const maintenanceUrl =
+  process.env.DATABASE_MAINTENANCE_URL ??
+  'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
 const configuredRedisUrl =
   process.env.REDIS_URL ?? 'redis://:pertexo-local-redis@localhost:6379/0';
 const redisUrl = (() => {
@@ -637,7 +642,7 @@ beforeAll(async () => {
     await admin.query(`create database "${databaseName}" owner pertexo_owner`);
     await admin.query(`revoke all on database "${databaseName}" from public`);
     await admin.query(
-      `grant connect on database "${databaseName}" to pertexo_migration, pertexo_api, pertexo_worker, pertexo_dispatcher`,
+      `grant connect on database "${databaseName}" to pertexo_migration, pertexo_api, pertexo_worker, pertexo_dispatcher, pertexo_maintenance`,
     );
   } finally {
     await admin.end();
@@ -759,67 +764,40 @@ describeIntegration('preview execution real transport', () => {
         },
         workerId,
       });
-      const cleanupRuntime = await createPreviewMaintenanceRuntime({
-        database: parseDatabaseConfig({
-          connectionString: databaseUrl(workerUrl),
-        }),
-        redisUrl,
-      });
-      const dispatcher = createOutboxDispatcherDatabase(
+      const ledger: ControlLedger = {
+        append: () => Promise.reject(new Error('cleanup must not append')),
+        reconcile: (request) =>
+          Promise.resolve({
+            hasMore: false,
+            pageEndHash: request.projectedHash,
+            pageEndSequence: request.projectedSequence,
+            reachedHighWater: true,
+            records: [],
+          }),
+      };
+      const cleanup = createPreviewRetentionCoordinator(
         parseDatabaseConfig({
-          connectionString: databaseUrl(dispatcherUrl),
-          ownerRole: 'pertexo_owner',
+          connectionString: databaseUrl(maintenanceUrl),
         }),
+        ledger,
+        verifier,
+        { artifactQuiescenceSeconds: 1 },
       );
-      const producer = createQueueProducer({ redisUrl });
       try {
-        await cleanupRuntime.consumer.waitUntilReady(5_000);
         await expect(
           verifier.head({ artifactId: reference.artifactId, workspaceId }),
         ).resolves.toMatchObject({ artifactId: reference.artifactId });
-        const batch = await waitFor(
-          () =>
-            dispatcher.claimBatch({
-              enabledJobNames: [JOB_NAME.sweepExpiredPreviews],
-              leaseDurationMillis: 5_000,
-              leaseOwner: 'preview-cleanup-integration',
-              leaseToken: randomUUID(),
-              limit: 10,
-              maxAttempts: 3,
-            }),
-          (value) => value.events.length > 0,
+        await new Promise<void>((resolve) =>
+          setTimeout(
+            resolve,
+            Math.max(0, previewDeadline.getTime() - Date.now() + 1_100),
+          ),
         );
-        const event = batch.events.find(
-          (candidate) => candidate.aggregateId === accepted.previewRunId,
-        );
-        if (event === undefined)
-          throw new Error('due preview cleanup outbox missing');
-        await producer.publish(
-          parseQueueJob({ name: event.jobName, data: event.payload }),
-        );
-        await dispatcher.markPublished(event.id, event.leaseToken);
+        const outcomes: string[] = [];
         await waitFor(
           async () => {
-            const due = await dispatcher.claimBatch({
-              enabledJobNames: [JOB_NAME.sweepExpiredPreviews],
-              leaseDurationMillis: 5_000,
-              leaseOwner: 'preview-cleanup-integration',
-              leaseToken: randomUUID(),
-              limit: 10,
-              maxAttempts: 3,
-            });
-            for (const successor of due.events) {
-              await producer.publish(
-                parseQueueJob({
-                  name: successor.jobName,
-                  data: successor.payload,
-                }),
-              );
-              await dispatcher.markPublished(
-                successor.id,
-                successor.leaseToken,
-              );
-            }
+            const result = await cleanup.processNext();
+            outcomes.push(result.status);
             return withTenantScopedClient(
               workerPool,
               { workspaceId },
@@ -833,16 +811,12 @@ describeIntegration('preview execution real transport', () => {
           },
           (count) => count === '0',
         );
+        expect(outcomes).toContain('completed');
         await expect(
           verifier.head({ artifactId: reference.artifactId, workspaceId }),
         ).resolves.toBeNull();
       } finally {
-        await Promise.allSettled([
-          cleanupRuntime.close(),
-          dispatcher.close(),
-          producer.close(),
-          capabilities.close(),
-        ]);
+        await Promise.allSettled([cleanup.close(), capabilities.close()]);
         await verifier
           .delete({ artifactId: reference.artifactId, workspaceId })
           .catch(() => undefined);

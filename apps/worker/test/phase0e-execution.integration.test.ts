@@ -1552,8 +1552,20 @@ describeIntegration('Phase 0E real execution recovery fixture', () => {
 
     const persistenceRunId = await acceptRun();
     await initializeRunCheckpoint(persistenceRunId);
-    await workerDatabase.withWorkspace(WORKSPACE_ID, (transaction) =>
-      commitCoordinatorTransition(transaction, {
+    const retainedArtifactId = '00000000-0000-4000-8000-000000000202';
+    await workerDatabase.withWorkspace(WORKSPACE_ID, async (transaction) => {
+      await transaction.db.execute(sql`
+        insert into app.artifacts (
+          id, workspace_id, purpose, storage_key, media_type, byte_length,
+          sha256, status, expires_at, finalized_at
+        ) values (
+          ${retainedArtifactId}, ${WORKSPACE_ID}, 'node-output',
+          ${`workspaces/${WORKSPACE_ID}/artifacts/${retainedArtifactId}`},
+          'application/octet-stream', 1, ${'a'.repeat(64)}, 'available',
+          clock_timestamp() + interval '1 day', clock_timestamp()
+        )
+      `);
+      await commitCoordinatorTransition(transaction, {
         admissions: [],
         engineVersion: ENGINE_VERSION,
         event: { payload: {}, type: 'run.started' },
@@ -1565,8 +1577,8 @@ describeIntegration('Phase 0E real execution recovery fixture', () => {
           asRetainedV1Checkpoint(firstAdvance.checkpoint),
         ),
         traceparent: TRACEPARENT,
-      }),
-    );
+      });
+    });
     const recoveredTransitionInput = {
       engineVersion: ENGINE_VERSION,
       maximumAdmissions: secondAdvanceInput.maximumAdmissions,

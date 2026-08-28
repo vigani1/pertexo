@@ -81,7 +81,9 @@ jobs:
       CONTROL_LEDGER_INTEGRATION_PROVIDER: minio
       API_SSE_INTEGRATION: 'true'
       API_IDENTITY_INTEGRATION: 'true'
+      API_WEBHOOK_INTEGRATION: 'true'
       WORKER_TRANSPORT_INTEGRATION: 'true'
+      WORKER_TRIGGER_INTEGRATION: 'true'
 
     steps:
       - name: Check out repository

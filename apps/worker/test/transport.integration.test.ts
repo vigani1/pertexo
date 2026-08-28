@@ -219,17 +219,6 @@ function createDispatcher(
   );
 }
 
-async function countLedger(table: string): Promise<number> {
-  return workerDatabase.withWorkspace(workspaceId, async ({ db }) => {
-    const result = await db.execute(
-      sql.raw(
-        `select count(*)::integer as count from app.${table} where workspace_id = '${workspaceId}'::uuid`,
-      ),
-    );
-    return (result.rows[0] as { count: number } | undefined)?.count ?? 0;
-  });
-}
-
 async function consumeProof(
   messageId: string,
   logicalAttemptId: string,
@@ -803,12 +792,32 @@ describeIntegration(
         expect(startedHandlers.length).toBeGreaterThanOrEqual(4);
         expect(finishedHandlers).toHaveLength(startedHandlers.length);
         expect(acceptedProviderEffects).toEqual(new Set([providerKey]));
-        expect(await countLedger('queue_duplicate_probe_attempts')).toBe(1);
-        expect(await countLedger('queue_duplicate_probe_events')).toBe(1);
-        expect(await countLedger('queue_duplicate_probe_usage')).toBe(1);
-        expect(
-          await countLedger('queue_duplicate_probe_provider_effects'),
-        ).toBe(1);
+        const ledger = await workerDatabase.withWorkspace(
+          workspaceId,
+          ({ db }) =>
+            db.execute(sql`
+              select
+                (select count(*)::integer
+                   from app.queue_duplicate_probe_attempts
+                  where workspace_id=${workspaceId}
+                    and logical_attempt_id=${logicalAttemptId}) attempts,
+                (select count(*)::integer
+                   from app.queue_duplicate_probe_events
+                  where workspace_id=${workspaceId}
+                    and logical_attempt_id=${logicalAttemptId}) events,
+                (select count(*)::integer
+                   from app.queue_duplicate_probe_usage
+                  where workspace_id=${workspaceId}
+                    and idempotency_key=${`usage:${logicalAttemptId}`}) usage,
+                (select count(*)::integer
+                   from app.queue_duplicate_probe_provider_effects
+                  where workspace_id=${workspaceId}
+                    and idempotency_key=${providerKey}) provider_effects
+            `),
+        );
+        expect(ledger.rows).toEqual([
+          { attempts: 1, events: 1, provider_effects: 1, usage: 1 },
+        ]);
         const intent = await workerDatabase.withWorkspace(
           workspaceId,
           ({ db }) =>
