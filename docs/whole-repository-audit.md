@@ -307,6 +307,15 @@ ready admission, and terminal selection. Keep a single orchestration entry point
 and one canonical transition vocabulary. Do not distribute transition authority
 among node executors or persistence adapters.
 
+Progress: persisted observation parsing and stale-fact reconciliation now live
+behind the single `parsePersistedObservations` internal interface. The module
+owns bounded normalization, exact-shape checks, event ordering and duplicate
+rules, stale checkpoint matching, cursor advancement, due/deadline facts, and
+attempt-failure validation. Shared untrusted-JSON helpers moved to
+`operation-values.ts`; the external engine interface and canonical transition
+orchestrator are unchanged. Branch, loop, retry/wait, ready-admission, and
+terminal-selection extraction remains open.
+
 ### A-07: Decompose preview and node-attempt persistence by lifecycle stage
 
 - **Severity:** Medium

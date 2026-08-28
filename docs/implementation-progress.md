@@ -4347,6 +4347,14 @@ Current evidence:
   orchestrator remains the single atomic write authority. The former 3,200-line
   file is a 46-line composition root, completing A-05; root `pnpm check` passes
   all 1,234 unit assertions.
+- A-06 engine decomposition has begun with the persisted-observation seam.
+  `parsePersistedObservations` now hides bounded normalization, exact shapes,
+  canonical timestamps, ordering/deduplication, stale-checkpoint matching,
+  cursor advancement, due/deadline facts, and attempt-failure validation in one
+  internal module. Shared untrusted-JSON guards are isolated separately, while
+  `advanceWorkflow` remains the sole orchestration interface and transition
+  authority. All 121 workflow-engine assertions pass. Branch, loop,
+  retry/wait, ready-admission, and terminal-selection extraction remains open.
 
 ## Update protocol
 
