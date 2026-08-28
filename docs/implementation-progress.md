@@ -4499,7 +4499,14 @@ Current evidence:
   29 focused real-PostgreSQL assertions, 27 focused worker assertions, 14
   focused API assertions, the one-assertion disposable compatibility rollout,
   the transport-enabled worker matrix (17 passed, five intentionally gated),
-  and the complete repository gate with 1,237 unit assertions.
+  and the complete repository gate with 1,237 unit assertions. A post-push CI
+  regression exposed that the original `0070` backfill saw no retained rows
+  under forced RLS. The corrected published migration temporarily removes and
+  atomically restores forced RLS under the verified owner role; the runner
+  recognizes only the exact original published checksum because successful
+  empty-database application produced the same final schema. The retained-0023
+  upgrade and four startup-compatibility drift assertions now pass together
+  (34 real-PostgreSQL assertions).
 
 ## Update protocol
 

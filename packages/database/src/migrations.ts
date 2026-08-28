@@ -11,9 +11,10 @@ import type { MigrationConfig } from './config.js';
 const MIGRATION_LOCK_ID = 7_166_118_812;
 const migrationNamePattern = /^\d{4}_[a-z0-9_]+\.sql$/u;
 
-// These checksums were published before corrections were incorrectly folded
-// back into the numbered migration files. They remain accepted only so an
-// affected database can reach the forward-only reconciliation migration.
+// These checksums were published before corrections were folded back into the
+// numbered migration files. They remain accepted only when the corrected file
+// produces the same final schema or lets an affected database reach a
+// forward-only reconciliation migration.
 const publishedMigrationChecksums: Readonly<
   Record<string, ReadonlySet<string>>
 > = Object.freeze({
@@ -24,6 +25,9 @@ const publishedMigrationChecksums: Readonly<
     '89117c0311337b655503557f7a66f63c04aa9eb6736be6ddfc4b02dea4eedf95',
     '0b7c70eee52daefeacbd092e1831852aa4260b60b899832b565ec524e47b2be2',
     '27ca68dc5e20560d80fbaab2524b3cd0c9fe0361b68792538a69aac30d4f9857',
+  ]),
+  '0070_preview_execution_deadline.sql': new Set([
+    'beabac6354d519a98878e57645d74c8afa8c46454bf13fc3886835774da0c914',
   ]),
 });
 

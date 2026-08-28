@@ -427,8 +427,8 @@ describe.each([
   );
 });
 
-describe('database readiness', () => {
-  it('verifies migration, PostgreSQL, ownership, RLS, and runtime role compatibility', async () => {
+describe('database compatibility and readiness', () => {
+  it('verifies bounded steady-state migration, PostgreSQL, and role readiness', async () => {
     await expect(database.checkReadiness()).resolves.toEqual({
       migrationHead: '0070_preview_execution_deadline.sql',
       postgresMajor: 18,
@@ -442,7 +442,7 @@ describe('database readiness', () => {
         'drop policy rls_probe_records_workspace_scope on app.rls_probe_records',
       );
       try {
-        await expect(database.checkReadiness()).rejects.toThrow(
+        await expect(database.checkCompatibility()).rejects.toThrow(
           'Workspace row-level security policy is incompatible',
         );
       } finally {
@@ -468,7 +468,7 @@ describe('database readiness', () => {
         'revoke insert on app.rls_probe_records from pertexo_api',
       );
       try {
-        await expect(database.checkReadiness()).rejects.toThrow(
+        await expect(database.checkCompatibility()).rejects.toThrow(
           'Runtime database grants are incompatible',
         );
       } finally {
@@ -485,7 +485,7 @@ describe('database readiness', () => {
         'alter table app.oidc_login_transactions disable trigger oidc_login_transactions_capacity',
       );
       try {
-        await expect(database.checkReadiness()).rejects.toThrow(
+        await expect(database.checkCompatibility()).rejects.toThrow(
           'OIDC login transaction capacity guard is incompatible',
         );
       } finally {
@@ -502,7 +502,7 @@ describe('database readiness', () => {
         'alter table app.rls_probe_records no force row level security',
       );
       try {
-        await expect(database.checkReadiness()).rejects.toThrow(
+        await expect(database.checkCompatibility()).rejects.toThrow(
           'Protected table does not force row-level security',
         );
       } finally {

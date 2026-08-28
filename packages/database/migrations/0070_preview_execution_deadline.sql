@@ -5,11 +5,18 @@
 ALTER TABLE app.preview_runs
   ADD COLUMN execution_deadline_at timestamptz;
 
+-- Migration connections intentionally carry no tenant context. Temporarily
+-- let the table owner bypass forced RLS so every retained preview is backfilled;
+-- the whole migration is atomic and FORCE is restored before commit.
+ALTER TABLE app.preview_runs NO FORCE ROW LEVEL SECURITY;
+
 UPDATE app.preview_runs
 SET execution_deadline_at = LEAST(
   expires_at,
   created_at + interval '5 minutes'
 );
+
+ALTER TABLE app.preview_runs FORCE ROW LEVEL SECURITY;
 
 ALTER TABLE app.preview_runs
   ALTER COLUMN execution_deadline_at SET NOT NULL,

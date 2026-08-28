@@ -49,6 +49,8 @@ status in [the implementation progress tracker](./implementation-progress.md).
   tracker.
 - D6 is resolved by the ADR 016 amendment and migration 0070: preview execution
   deadline and retention expiry are separate immutable fields and authorities.
+  The populated-upgrade regression discovered after initial publication is
+  corrected under the migration owner with an exact legacy-checksum allowance.
 - D7 is resolved by the same ADR amendment, which ratifies the V1 single-attempt
   number and preview invocation/run/node/attempt identity mapping.
 

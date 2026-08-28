@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { isCompatibleMigrationChecksum } from '../src/migrations.js';
 
 describe('published migration checksum compatibility', () => {
-  it('accepts exact checksums and only the published 0037/0038 variants', () => {
+  it('accepts exact checksums and only known published variants', () => {
     expect(
       isCompatibleMigrationChecksum('0001_example.sql', 'same', 'same'),
     ).toBe(true);
@@ -33,6 +33,13 @@ describe('published migration checksum compatibility', () => {
         '0038_execution_admission.sql',
         'current',
         '27ca68dc5e20560d80fbaab2524b3cd0c9fe0361b68792538a69aac30d4f9857',
+      ),
+    ).toBe(true);
+    expect(
+      isCompatibleMigrationChecksum(
+        '0070_preview_execution_deadline.sql',
+        'current',
+        'beabac6354d519a98878e57645d74c8afa8c46454bf13fc3886835774da0c914',
       ),
     ).toBe(true);
     expect(
