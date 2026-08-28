@@ -328,6 +328,236 @@ Small wrappers that merely rename another interface should not be introduced.
 Timeout and shutdown helpers should be shared only if their abort, cleanup, and
 error-preservation semantics are genuinely identical.
 
+## Overabstraction and indirection audit
+
+The production source contains approximately 327 interfaces, 284 classes, and
+146 `create*` factories. Raw counts do not prove overengineering: this system has
+several genuine boundaries between browser contracts, applications, engines,
+persistence, queues, object storage, providers, and operator roles. The review
+classified the major abstraction families as follows.
+
+| Abstraction family | Assessment | Reason |
+| --- | --- | --- |
+| Engine persistence ports | Justified | Permit pure deterministic decisions and real persistence adapters without infrastructure leakage |
+| Node SDK definition/executor contracts | Justified | Preserve browser/server separation and immutable compatibility |
+| Queue producer/consumer contracts | Justified | Isolate transport from PostgreSQL authority and support failure injection |
+| Provider HTTP, connection, and artifact capabilities | Justified | Own dispatch fencing, SSRF, credentials, and bounded values |
+| Operator, recovery, and lifecycle executables | Justified | Enforce privilege and deployment separation |
+| Telemetry interfaces around each slice | Partially reducible | Some provide useful test seams; others repeat nearly identical counter/histogram/tracer shapes |
+| NestJS runtime holder classes | Partially reducible | Several classes exist primarily to expose a composed runtime through dependency injection |
+| `create*Database` factories returning very large object literals | Unnecessarily deep in hotspots | Factory plus giant object literal hides multiple durable operations inside one lexical scope |
+| Repeated application resource/dependency objects | Partially reducible | Explicit composition is good, but some objects have become broad service locators |
+| Duplicate transaction and cleanup helpers | Unnecessary | They repeat correctness rules and have already drifted semantically |
+
+There is no evidence of a repository-wide generic repository, generic service,
+base-controller hierarchy, speculative provider framework, or inheritance-heavy
+domain model. The dominant abstraction problem is not too many layers between a
+caller and behavior. It is that several factories and dependency objects have
+grown broad while still presenting themselves as one cohesive seam.
+
+The preferred simplification is therefore to deepen cohesive modules and narrow
+their public contracts. It is not to remove the ports that protect the engine,
+tenant boundary, dispatch authority, or operator boundary.
+
+## Symbol-level readability and size
+
+File size alone understates the concentration of logic. A brace-span inventory,
+followed by source inspection of the largest results, found these production
+symbols or returned operation objects:
+
+| Symbol or operation | Approximate span | Assessment |
+| --- | ---: | --- |
+| `createNodeAttemptRunStore` | 1,181 lines | Unnecessarily broad factory; necessary operations need internal modules |
+| `createConnectionDatabase` | 1,129 lines | Broad persistence factory containing several connection lifecycles |
+| `createCoordinatorRunStore` | 1,094 lines | Broad factory with multiple durable transaction responsibilities |
+| `advanceWorkflowFromSchedulerState` | 1,038 lines | Necessary state-machine complexity, but internally reducible |
+| `commitAdvancePlan` implementation | 758 lines | High-risk transaction with too many locally interleaved concerns |
+| `createWorkspacePurgeCoordinator` | 579 lines | Mostly justified destructive workflow; stage organization can improve |
+| `createIdentityWorkspaceDatabase` | 506 lines | Multiple global and tenant responsibilities in one adapter |
+| `createFailureNotificationStore` | 492 lines | Partially reducible persistence lifecycle |
+| `parseObservations` | 432 lines | Pure but difficult to review; split by observation family |
+| node-attempt `complete` operation | 431 lines | High-risk terminal transaction; should be decomposed internally |
+| `createWebhookTriggerDatabase` | 348 lines | Manageable but combines management and ingress concerns |
+| `createNodeAttemptHandler` | 327 lines | Necessary dispatch/heartbeat race logic; extract only pure setup/classification |
+| workflow `publishWorkflow` operation | 325 lines | Necessary transaction with reducible mapping and validation setup |
+| node-attempt `loadInputs` operation | 319 lines | Multiple input-source and control-state responsibilities |
+| `createPreviewAttemptHandler` | 256 lines | Complex but closely mirrors production attempt semantics |
+| `executeNodeAttempt` | 234 lines | Appropriate engine-level orchestration; keep central |
+| secure HTTP `executeWithBody` | about 220 lines | Necessary security-sensitive linear flow; do not fragment excessively |
+
+The approximate spans are navigation evidence rather than a lint threshold. SQL
+template literals and returned object methods make automatic symbol measurement
+imperfect. Each listed hotspot was checked against its actual source structure.
+The problem is clearest in factories returning one enormous frozen object: the
+public API looks small, but the implementation remains a thousand-line closure
+with shared local state and helpers.
+
+No universal maximum function length should be introduced. A 200-line security
+protocol can be easier to verify than ten mutually dependent helpers. Refactoring
+is warranted where a symbol owns several durable transactions, state machines,
+or unrelated lifecycle stages.
+
+## Cross-phase style and pattern drift
+
+Early and late code share the same broad architectural values, but implementation
+style has evolved.
+
+| Concern | Earlier pattern | Later pattern | Assessment |
+| --- | --- | --- | --- |
+| Tenant transactions | Local transaction helpers with ad hoc cleanup | Shared fail-closed client primitive with read-back and abort cancellation | Earlier identity adapter should converge |
+| Runtime validation | Hand-written record parsing mixed with Zod | Strict Zod at transport/config boundaries plus explicit trusted internal types | Both can be valid; ownership should be documented consistently |
+| Composition | Smaller NestJS providers and direct factories | Large immutable dependency/resource objects and runtime holder classes | Later code is explicit but can resemble a service locator |
+| Errors | Many small nominal error classes and string messages | More discriminated outcome unions and bounded error codes | Prefer unions for expected outcomes, classes for exceptional boundaries |
+| Telemetry | Slice-specific meter/tracer facades | Shared observability packages plus additional slice facades | Consolidate repeated facade shapes without centralizing event vocabulary |
+| Compatibility naming | Phase-numbered constants and engine labels | Product/behavior-oriented lifecycle and release vocabulary | Retained names are compatible but increasingly historical |
+| Persistence adapters | One large factory per vertical slice | Dedicated coordinators for retention, purge, ledger, and operator work | Later operation-oriented modules are easier to reason about |
+| Cleanup | Direct sequential close calls | `AggregateError`, bounded cleanup, and preservation of primary failure | Earlier standalone paths should adopt the stronger pattern where semantics match |
+
+This is not a split into two incompatible codebases. Dependency direction,
+immutability, validation, and explicit authority remain consistent. Drift is
+concentrated in transaction hygiene, error/result style, cleanup behavior,
+telemetry facade shape, and phase-coded names.
+
+## Dead, obsolete, and retained compatibility audit
+
+Strict TypeScript and package builds did not expose unreachable imports or unused
+locals. No production abstraction was proven dead strongly enough to recommend
+immediate deletion. A repository-wide exported-symbol reference scan did identify
+review candidates, but an export referenced only once inside the monorepo may be
+an intentional public package contract and is not proof of dead code.
+
+The following areas need explicit retirement decisions:
+
+- phase-coded runtime values such as `phase3-engine-v1` remain in coordinator,
+  node-attempt, trigger, schedule, replay, and retained-fixture paths;
+- comments and constants in `packages/node-catalog/src/registry.ts` still describe
+  Phase 4 cohorts even though later providers and triggers are active;
+- retained workflow V1 parsing and checksum logic is intentionally required for
+  historical immutable rows and must not be deleted without a data inventory and
+  supported-retention decision;
+- compatibility release variants and predecessor cohorts are required for
+  rolling releases, but the supported set should be generated or inventoried so
+  retired cohorts cannot remain accidentally live forever;
+- browser/client contract exports with no internal consumer may be externally
+  supported and require an API compatibility decision before removal; and
+- one-reference exports such as `safeParseWorkflowGraphDraft`,
+  `EMPTY_DEFINITION_CATALOG_FINGERPRINT_V1`, and several HTTP response schemas
+  should be checked against generated artifacts and intended external imports.
+
+Create a compatibility-retirement inventory rather than deleting these items as
+ordinary dead code. For each candidate record its persisted data dependency,
+external package status, last supported release, and removal test. The audit
+classifies current retained compatibility as intentional and justified, with
+documentation and inventory debt rather than confirmed dead machinery.
+
+## TypeScript elegance, not only correctness
+
+The code is strongly typed and usually expressive, but elegance varies by layer.
+
+Strong examples include discriminated queue jobs, attempt outcomes, operator
+commands, engine observations, immutable release descriptions, and Zod-inferred
+boundary values. These types make invalid state difficult to represent and allow
+control flow to narrow naturally. Generic usage in the node SDK earns its cost
+because it connects definition config, input, executor, and output schemas.
+
+Less elegant areas include:
+
+- large dependency and resource objects whose types are accurate but do not
+  reveal smaller cohesive subsystems;
+- long return-object factories where type inference confirms correctness while
+  hiding the implementation's responsibility size;
+- repeated structurally identical telemetry interfaces;
+- some parallel runtime and persisted representations that require mapping code
+  in multiple packages;
+- numerous small nominal error classes where a discriminated expected-error
+  result would sometimes read more directly; and
+- compatibility options with several optional fields whose legal combinations
+  are enforced at runtime instead of represented as a discriminated union.
+
+The implementation is therefore more than merely type-correct, but it is not
+uniformly elegant. The engine and contracts make especially good use of unions
+and readonly data. Persistence composition relies more heavily on broad object
+shapes and runtime checks. Improvements should simplify legal-state modeling and
+module boundaries rather than add advanced conditional or mapped types.
+
+## Test cost and harness assessment
+
+Production source and test size are both large:
+
+| Area | Production lines | Test lines | Observation |
+| --- | ---: | ---: | --- |
+| `packages/database` | about 31,590 | about 32,400 | Test code exceeds production code; strong confidence but high fixture cost |
+| `apps/worker` | about 7,863 | about 20,765 | Process, transport, provider, and recovery matrices dominate maintenance cost |
+| `apps/api` | about 14,120 | about 13,141 | Broad controller/use-case/integration coverage |
+| `packages/workflow-engine` | about 7,697 | about 6,791 | Dense deterministic scenario coverage is justified |
+| `packages/artifact-store` | about 3,215 | about 3,503 | Dual-region and safety behavior justify above-average test volume |
+
+The current unit suite is fast for its size: all 1,226 tests completed locally in
+roughly 16 seconds of wall-clock orchestration, with the API suite around seven
+seconds and worker suite around six seconds. The expensive part is the real
+service and destructive matrix, not unit assertions.
+
+High-cost harness concerns are:
+
+- giant integration files combine many scenarios and repeat SQL seeding;
+- some suites require run-last ordering or disposable database discipline;
+- phase-specific environment flags make it possible to mistake a skipped suite
+  for executed evidence outside CI;
+- process-kill fixtures are valuable but bespoke, increasing change cost;
+- polling helpers and timing tolerances are repeated across worker suites; and
+- assertion counts in the tracker are snapshots rather than generated current
+  evidence.
+
+Do not reduce confidence by replacing real PostgreSQL, Redis, BullMQ, object
+storage, or process-death tests with mocks. Reduce cost through per-suite
+disposable databases, shared typed seed primitives, generated execution reports,
+explicit skip summaries, scenario sharding, and invariant-oriented file splits.
+
+## Ranked complexity hotspots
+
+| Rank | Hotspot | Classification | Why |
+| ---: | --- | --- | --- |
+| 1 | Coordinator persistence and `commitAdvancePlan` | Partially reducible | Central durable transaction mixes many observation and settlement paths |
+| 2 | Workflow advancement state machine | Necessary complexity | Branch, loop, join, retry, wait, cancellation, and terminal truth meet here |
+| 3 | Node-attempt persistence | Partially reducible | Claim, heartbeat, dispatch, output, retry, and completion share one factory |
+| 4 | Node-attempt handler race protocol | Necessary complexity | Must reconcile transport, lease, heartbeat, cancellation, dispatch, and completion |
+| 5 | Compatibility release construction and retirement | Necessary complexity | Immutable execution and rolling release correctness depend on it |
+| 6 | Checkpoint parsing and reconstruction | Necessary complexity | Accepts persisted JSON and protects deterministic recovery |
+| 7 | Workspace purge | Necessary complexity | Ordered database, object, secret, and tombstone deletion must be resumable |
+| 8 | Control-ledger reconciliation and restore gate | Necessary complexity | Dual-region agreement and restore safety are intrinsically difficult |
+| 9 | Connection persistence | Partially reducible | Creation, rotation, testing, secrets, health, and idempotency share a large factory |
+| 10 | Preview persistence and cleanup | Partially reducible | Mirrors production guarantees while remaining isolated and short-retained |
+| 11 | Secure HTTP | Necessary complexity | SSRF, rebinding, redirects, bounds, aborts, and dispatch uncertainty interact |
+| 12 | Database readiness | Unnecessarily complex at probe time | Valuable checks are composed into one recurring catalog audit |
+| 13 | Retention worker orchestration | Unnecessarily coupled | Unrelated maintenance classes share one failure domain |
+| 14 | Node SDK registry/release implementation | Partially reducible | Correct generic contract, but registry and release files have accumulated duties |
+| 15 | API/worker runtime composition | Partially reducible | Broad dependency objects and holder classes obscure sub-runtime cohesion |
+| 16 | Giant database integration harness | Unnecessarily difficult to navigate | Confidence is high, but scenarios and seed logic are concentrated |
+| 17 | Giant worker coordinator harness | Unnecessarily difficult to navigate | End-to-end value is real; fixture organization is costly |
+| 18 | Observability facades | Partially reducible | Event ownership is good; repeated interface shapes add noise |
+
+## Post-Phase 7 refactor portfolio
+
+This order assumes release-blocking operational evidence is completed first.
+
+| Rank | Refactor | Impact | Risk | Effort | Reason |
+| ---: | --- | --- | --- | --- | --- |
+| 1 | Split startup compatibility validation from steady readiness | High | Medium | Medium | Removes probe load and readiness flapping without weakening startup gates |
+| 2 | Isolate retention operation failures | High | Medium–High | Medium | Prevents one dependency outage from stopping unrelated destructive work |
+| 3 | Consolidate tenant transaction hygiene | High | Medium | Medium | Removes security-sensitive duplicated behavior |
+| 4 | Extract coordinator persistence by durable transaction | High | High | High | Reduces the largest maintenance and correctness hotspot |
+| 5 | Extract pure engine observation and settlement units | High | High | High | Makes the central state machine reviewable without distributing authority |
+| 6 | Decompose node-attempt persistence by lifecycle | High | High | High | Separates claim, dispatch, input, and completion invariants |
+| 7 | Decompose connection persistence by lifecycle | Medium–High | Medium–High | Medium | Reduces a thousand-line factory and secret-handling change radius |
+| 8 | Decompose preview persistence by lifecycle | Medium–High | High | Medium | Keeps production-equivalent guarantees understandable |
+| 9 | Narrow database exports by runtime role | Medium–High | Medium | Medium | Prevents accidental cross-role capability coupling |
+| 10 | Split giant integration suites by invariant | Medium | Medium | Medium | Improves ownership and failure localization while preserving real tests |
+| 11 | Create a compatibility-retirement inventory and gate | Medium | Medium | Medium | Prevents historical cohorts and phase-coded paths from becoming permanent |
+| 12 | Normalize expected-error unions versus exceptional classes | Medium | Medium | Medium | Improves TypeScript readability and consistent control flow |
+| 13 | Consolidate truly identical telemetry facade shapes | Medium | Low–Medium | Medium | Removes repeated plumbing while preserving event ownership |
+| 14 | Standardize bounded cleanup and primary-error preservation | Medium | Medium | Low–Medium | Converges early and late lifecycle quality |
+| 15 | Generate test execution and tracker evidence | Medium | Low | Medium | Makes skipped suites, runtimes, counts, and fixed-head evidence mechanical |
+
 ## TypeScript assessment
 
 The TypeScript implementation is strong:
@@ -390,21 +620,6 @@ its line count is not a sufficient reason to change it:
 - dual-region control-ledger agreement;
 - verified object deletion and explicit workspace purge progress; and
 - provider-specific Slack and Resend uncertainty semantics.
-
-## Recommended order of work
-
-1. Complete real environment load, outage, failover, and restore exercises.
-2. Split startup compatibility checks from steady-state readiness.
-3. Isolate retention operation failures and prove non-starvation.
-4. Reconcile the Phase 7 tracker with exact current evidence.
-5. Consolidate identity tenant transaction hygiene.
-6. Split coordinator persistence by existing durable transaction boundaries.
-7. Split engine operations into pure internal decision units.
-8. Decompose preview and attempt persistence by lifecycle stage.
-9. Narrow database exports by runtime responsibility.
-10. Split the largest tests by invariant.
-11. Reduce readiness source-hash brittleness.
-12. Remove the remaining production double assertion.
 
 ## Completion standard
 
