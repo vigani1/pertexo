@@ -239,7 +239,7 @@ absence and commit-path contamination disposal.
 - **Severity:** Medium
 - **Category:** readability, cohesion, and change risk
 - **File:** `packages/database/src/coordinator-run-store.ts`
-- **Classification:** partially reducible complexity
+- **Classification:** corrected after the audited head
 
 At approximately 3,200 lines, the module combines authoritative loading,
 checkpoint reconstruction, observation queries, admission, branch and loop
@@ -273,16 +273,19 @@ path reuses those same invariants. Authoritative loading is now isolated in
 event and output mapping, checkpoint-to-physical-state reconciliation, pending
 failure observation, artifact availability, cancellation/deadline validation,
 and due-wakeup reconstruction inside the unchanged repeatable-read transaction.
-Ready admission, settlement, and terminalization remain to be separated before
-A-05 is complete.
 
 The authoritative write operation now lives in
 `coordinator-run-store-commit.ts`, leaving `coordinator-run-store.ts` as the
 stable public composition root for load, commit, acknowledgement, and close.
-The original single write transaction and call ordering are unchanged. The
-write module still owns ready admission, branch/loop/retry/wait settlement, and
-terminal notification helpers; those internal responsibilities remain the last
-A-05 decomposition work.
+The original single write transaction and call ordering are unchanged. Plan
+parsing, transition validation, fingerprinting, status validation, and output
+ownership are isolated in `coordinator-run-store-plan.ts`; loop-barrier and
+due-ready persistence are in `coordinator-run-store-settlement.ts`; terminal
+failure-notification persistence is in `coordinator-run-store-terminal.ts`.
+The commit module remains the sole atomic write orchestrator instead of
+distributing authority among the extracted units. The original 3,200-line file
+is now a 46-line composition root, and the full 41-assertion real-PostgreSQL
+characterization suite remains green. A-05 is complete.
 
 ### A-06: Split engine operations without splitting the state machine
 

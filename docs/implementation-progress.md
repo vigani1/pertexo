@@ -4329,23 +4329,24 @@ Current evidence:
   one complete durable operation module now owns delivery validation, receipt
   claim/completion, capacity deferral, mismatch auditing, and acknowledgement.
   Commit-time delivery handling reuses the same module. The focused
-  41-assertion real-PostgreSQL characterization suite passes. Loading, ready
-  admission, settlement, and terminalization extraction remains open.
+  41-assertion real-PostgreSQL characterization suite passes.
 - The A-05 authoritative-load operation now lives in a cohesive observation
   module. It retains bounded event paging, canonical fact validation,
   checkpoint/physical-row reconciliation, pending executor failures, artifact
   availability, cancellation/deadline truth, and due wakeups in the original
   repeatable-read transaction. The root coordinator store is reduced from
   approximately 3,200 to 1,892 lines across the completed extractions, and the
-  same 41 real-PostgreSQL characterization assertions remain green. Ready
-  admission, settlement, and terminalization extraction remains open.
+  same 41 real-PostgreSQL characterization assertions remain green.
 - The authoritative coordinator write transaction is isolated behind
   `commitCoordinatorAdvancePlan`; `coordinator-run-store.ts` is now only the
   stable public composition root for load, commit, acknowledgement, and pool
   closure. The transaction ordering and SQL behavior remain unchanged, and all
-  41 real-PostgreSQL coordinator assertions pass. Ready admission,
-  branch/loop/retry/wait settlement, and terminal notification helpers remain
-  to be extracted from the write module before A-05 closes.
+  41 real-PostgreSQL coordinator assertions pass. Plan parsing and transition
+  validation, loop-barrier/due-ready settlement, and terminal failure-
+  notification persistence now have cohesive private modules. The commit
+  orchestrator remains the single atomic write authority. The former 3,200-line
+  file is a 46-line composition root, completing A-05; root `pnpm check` passes
+  all 1,234 unit assertions.
 
 ## Update protocol
 
