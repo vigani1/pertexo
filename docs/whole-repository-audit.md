@@ -349,7 +349,7 @@ complete.
 - **Category:** cohesion and testability
 - **Files:** `packages/database/src/preview-execution.ts`,
   `packages/database/src/node-attempt-run-store.ts`
-- **Classification:** partially reducible complexity
+- **Classification:** corrected after the audited head
 
 These modules each combine claim validation, leases, durable dispatch evidence,
 input/output persistence, artifacts, terminal facts, cleanup, and reconciliation.
@@ -397,7 +397,14 @@ the worker/attempt fence in its original write transaction.
 `preview-execution-completion.ts` now owns stored output/error validation,
 duplicate handling, terminal attempt/run state, terminal audit and usage facts,
 and inbox completion in the original tenant-scoped write transaction. Preview
-reconciliation extraction remains open.
+reconciliation now lives in `preview-execution-reconciliation.ts`; bounded
+stored-output validation, expired-attempt classification, delayed rescheduling,
+safe/stable-key redelivery, unsafe ambiguity, terminal state/facts, and receipt
+completion retain their original transaction scopes. `preview-execution.ts` is
+now a 57-line compatibility export facade. All 136 database unit assertions,
+the focused 24-assertion node-attempt real-PostgreSQL suite, the focused
+28-assertion preview real-PostgreSQL suites, and the full repository gate remain
+green. A-07 is complete.
 
 ### A-08: Narrow the database package's public capability surface
 

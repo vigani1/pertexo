@@ -4415,7 +4415,15 @@ Current evidence:
   dispatch marking in its original transaction. Preview completion is isolated
   without splitting its transaction: stored output/error validation, duplicate
   handling, terminal attempt/run state, terminal audit and usage facts, and
-  inbox completion stay atomic. Preview reconciliation extraction remains open.
+  inbox completion stay atomic. Preview reconciliation now owns bounded stored
+  output validation, expired-attempt classification, delayed rescheduling,
+  safe/stable-key redelivery, unsafe ambiguity, terminal state/facts, and
+  receipt completion under the original transaction scopes. The public
+  `preview-execution.ts` entry point is a 57-line compatibility export facade.
+  All 136 database unit assertions, the focused 24-assertion node-attempt
+  real-PostgreSQL suite, and the focused 28-assertion preview real-PostgreSQL
+  suites pass. Both persistence lifecycles now satisfy every A-07 seam without
+  broadening their worker-facing interfaces, completing A-07.
 
 ## Update protocol
 
