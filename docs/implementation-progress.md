@@ -4484,6 +4484,11 @@ Current evidence:
   declares its optional asynchronous close capability, and node-attempt runtime
   construction binds it without `as unknown as`. Existing startup-failure and
   idempotent runtime cleanup semantics are unchanged.
+- Engineering audit Finding 5 is closed. The additive compatibility-rollout
+  proof now creates, migrates, and drops its own randomly named PostgreSQL
+  database instead of advancing the shared compatibility-release pointer. The
+  complete epoch/cohort rollout assertion passes with the shared development
+  database untouched.
 
 ## Update protocol
 

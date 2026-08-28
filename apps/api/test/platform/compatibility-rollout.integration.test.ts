@@ -8,6 +8,7 @@ import {
   createCompatibilityReleaseReadinessProbe,
   createIdentityWorkspaceDatabase,
   createWorkflowIntegrationUsageDatabase,
+  migrateDatabase,
   parseDatabaseConfig,
   WorkflowDefinitionPlacementError,
 } from '@pertexo/database';
@@ -25,19 +26,83 @@ import {
   createExecutableCompatibilityReleaseSupport,
 } from '@pertexo/workflow-engine';
 import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/graph';
-import { describe, expect, it } from 'vitest';
+import { Pool } from 'pg';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createCoreWorkflowAuthoringDatabase } from '../../src/platform/workflow/workflow-runtime.module.js';
 import { createPostgresWorkflowRunPersistence } from '../../src/workflow-runs/postgres-persistence.js';
+import { dropDisconnectedDatabase } from '../support/disposable-database.js';
 
-const migrationUrl = process.env.DATABASE_MIGRATION_URL;
-const apiUrl = process.env.DATABASE_API_URL;
-const workerUrl = process.env.DATABASE_WORKER_URL;
+const migrationBaseUrl = process.env.DATABASE_MIGRATION_URL;
+const apiBaseUrl = process.env.DATABASE_API_URL;
+const workerBaseUrl = process.env.DATABASE_WORKER_URL;
 const enabled =
   process.env.API_COMPATIBILITY_ROLLOUT_INTEGRATION === 'true' &&
-  migrationUrl !== undefined &&
-  apiUrl !== undefined &&
-  workerUrl !== undefined;
+  migrationBaseUrl !== undefined &&
+  apiBaseUrl !== undefined &&
+  workerBaseUrl !== undefined;
+const adminUrl =
+  process.env.DATABASE_ADMIN_URL ??
+  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+const databaseName = `pertexo_test_compatibility_rollout_${randomUUID().replaceAll('-', '')}`;
+
+function namedDatabaseUrl(base: string, name: string): string {
+  const value = new URL(base);
+  value.pathname = `/${name}`;
+  return value.toString();
+}
+
+const migrationUrl =
+  migrationBaseUrl === undefined
+    ? undefined
+    : namedDatabaseUrl(migrationBaseUrl, databaseName);
+const apiUrl =
+  apiBaseUrl === undefined
+    ? undefined
+    : namedDatabaseUrl(apiBaseUrl, databaseName);
+const workerUrl =
+  workerBaseUrl === undefined
+    ? undefined
+    : namedDatabaseUrl(workerBaseUrl, databaseName);
+
+async function createDisposableDatabase(): Promise<void> {
+  const admin = new Pool({ connectionString: adminUrl, max: 1 });
+  try {
+    await admin.query(`create database "${databaseName}" owner pertexo_owner`);
+    await admin.query(`revoke all on database "${databaseName}" from public`);
+    await admin.query(
+      `grant connect on database "${databaseName}" to pertexo_migration, pertexo_api, pertexo_worker`,
+    );
+  } finally {
+    await admin.end();
+  }
+  if (migrationUrl === undefined)
+    throw new Error('Compatibility rollout migration URL is unavailable');
+  await migrateDatabase({
+    apiRuntimeRole: process.env.POSTGRES_API_RUNTIME_USER ?? 'pertexo_api',
+    connectionString: migrationUrl,
+    dispatcherRole:
+      process.env.POSTGRES_DISPATCHER_USER ?? 'pertexo_dispatcher',
+    lifecycleCommandRole:
+      process.env.POSTGRES_LIFECYCLE_COMMAND_USER ??
+      'pertexo_lifecycle_command',
+    maintenanceRole:
+      process.env.POSTGRES_MAINTENANCE_USER ?? 'pertexo_maintenance',
+    operatorRole: process.env.POSTGRES_OPERATOR_USER ?? 'pertexo_operator',
+    ownerRole: process.env.POSTGRES_OWNER_USER ?? 'pertexo_owner',
+    workerRuntimeRole:
+      process.env.POSTGRES_WORKER_RUNTIME_USER ?? 'pertexo_worker',
+  });
+}
+
+async function dropDisposableDatabase(): Promise<void> {
+  const admin = new Pool({ connectionString: adminUrl, max: 1 });
+  try {
+    await dropDisconnectedDatabase(admin, databaseName);
+  } finally {
+    await admin.end();
+  }
+}
 
 const databaseConfig = (connectionString: string) =>
   parseDatabaseConfig({
@@ -111,6 +176,9 @@ async function activatePreparedRelease(
 }
 
 describe.runIf(enabled)('additive compatibility release rollout', () => {
+  beforeAll(createDisposableDatabase, 60_000);
+  afterAll(dropDisposableDatabase);
+
   it('preactivates the complete API/worker cohort before atomically activating the target', async () => {
     const support = createExecutableCompatibilityReleaseSupport(
       CORE_REGISTRY_RELEASE_SUPPORT.map(composeExecutableCompatibilityRelease),

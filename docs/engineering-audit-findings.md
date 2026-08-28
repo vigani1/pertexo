@@ -22,7 +22,7 @@ status in [the implementation progress tracker](./implementation-progress.md).
 | 2 | Connection/authoring transactions lacked pool hygiene | High | Fixed (`4c8d492`) |
 | 3 | Repo-wide lint was unrunnable (heap OOM) masking one latent violation | Medium | Fixed (`1b8af29`) |
 | 4 | Shared local database migration-history drift blocks some local suites | Medium | Resolved later (environment recreated) |
-| 5 | Rollout suite mutates durable release authority without self-provisioning | Medium | Open (constraint documented) |
+| 5 | Rollout suite mutates durable release authority without self-provisioning | Medium | Fixed after the audited branch |
 | 6 | Tracker assertion-count snapshots have drifted from the working tree | Low | Accepted historical snapshots |
 | 7 | Preview sweep was advertised without a consumer or authorized deletion role | High | Fixed (`dd0d665`) |
 | 8 | Preview worker bypassed the production mapping resolver | Critical | Fixed (`dd0d665`) |
@@ -38,8 +38,9 @@ status in [the implementation progress tracker](./implementation-progress.md).
 - Findings 1–3, 7–12, and 14 remain valid fixed-history records.
 - Finding 4 was resolved by recreating the shared local database; its migration
   history now matches the checked-in files through migration 0068.
-- Finding 5 remains an active test-harness constraint: the rollout suite must
-  run last against a disposable database until it provisions its own database.
+- Finding 5 is resolved: the rollout suite now provisions, migrates, and drops
+  its own randomly named database and no longer mutates shared release
+  authority.
 - Finding 6 is accepted evidence discipline rather than an open defect; counts
   remain tied to named fixed heads.
 - Finding 13 was closed by later Phase 4 implementation, real-service evidence,
@@ -170,7 +171,7 @@ Current disposition: the shared development database was subsequently recreated
 and now matches the checked-in migration history through 0068. The description
 above is preserved because it explains the historical checksum failure.
 
-## Finding 5 — Rollout suite owns no disposable database (Open constraint)
+## Finding 5 — Rollout suite owns no disposable database (Fixed later)
 
 Evidence:
 
@@ -190,6 +191,15 @@ Recommendation: either give the suite self-provisioning like
 `coordinator-run-store.integration.test.ts` (`createDatabase`/`dropDatabase`),
 or record the "ephemeral-only, run-last" contract beside the env flag. Owner:
 next checkpoint touching node-catalog or CI.
+
+Resolution after the audited branch: the suite now derives randomly named
+database URLs from the configured migration, API, and worker connection
+templates; creates the database through the admin credential; migrates
+zero-to-head; and drops it only after every application pool closes. Its
+singleton compatibility pointer and created tenant rows are isolated to that
+database. The transport-gated command passes its one complete rollout assertion
+and leaves the shared development database unchanged, so CI ordering is no
+longer a safety requirement.
 
 ## Finding 6 — Tracker count snapshots drift (Low, accepted historical evidence)
 
