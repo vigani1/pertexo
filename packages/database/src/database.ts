@@ -3,7 +3,10 @@ import { createDatabasePool } from './postgres-telemetry.js';
 import type { DatabaseConfig } from './config.js';
 import type { CompatibilityReleaseExpectation } from './compatibility-release.js';
 import type { CompatibilityReleaseExpectationSet } from './compatibility-release.js';
-import { checkDatabaseReadiness } from './readiness.js';
+import {
+  checkDatabaseReadiness,
+  checkDatabaseServingReadiness,
+} from './readiness.js';
 import type { DatabaseReadiness } from './readiness.js';
 import { withWorkspaceTransaction } from './workspace.js';
 import type {
@@ -17,6 +20,7 @@ export interface WorkspaceDatabase {
     operation: (transaction: WorkspaceTransaction) => Promise<T>,
     options?: WorkspaceTransactionOptions,
   ): Promise<T>;
+  checkCompatibility(): Promise<DatabaseReadiness>;
   checkReadiness(): Promise<DatabaseReadiness>;
   close(): Promise<void>;
 }
@@ -37,6 +41,16 @@ export function createWorkspaceDatabase(
     );
   const pool = createDatabasePool(config);
   pool.on('error', () => undefined);
+  const readinessOptions = {
+    ownerRole: config.ownerRole,
+    workerRuntimeRole: config.workerRuntimeRole,
+    ...(options.compatibilityRelease === undefined
+      ? {}
+      : { expectedCompatibilityRelease: options.compatibilityRelease }),
+    ...(options.compatibilityReleases === undefined
+      ? {}
+      : { expectedCompatibilityReleases: options.compatibilityReleases }),
+  } as const;
 
   return Object.freeze({
     withWorkspace: async <T>(
@@ -45,17 +59,10 @@ export function createWorkspaceDatabase(
       options?: WorkspaceTransactionOptions,
     ): Promise<T> =>
       withWorkspaceTransaction(pool, workspaceId, operation, options),
+    checkCompatibility: async (): Promise<DatabaseReadiness> =>
+      checkDatabaseReadiness(pool, readinessOptions),
     checkReadiness: async (): Promise<DatabaseReadiness> =>
-      checkDatabaseReadiness(pool, {
-        ownerRole: config.ownerRole,
-        workerRuntimeRole: config.workerRuntimeRole,
-        ...(options.compatibilityRelease === undefined
-          ? {}
-          : { expectedCompatibilityRelease: options.compatibilityRelease }),
-        ...(options.compatibilityReleases === undefined
-          ? {}
-          : { expectedCompatibilityReleases: options.compatibilityReleases }),
-      }),
+      checkDatabaseServingReadiness(pool, readinessOptions),
     close: async (): Promise<void> => pool.end(),
   });
 }

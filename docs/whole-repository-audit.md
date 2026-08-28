@@ -108,7 +108,7 @@ The AWS replication and pager exercise is still open under A-03.
   `packages/database/src/database.ts`, `packages/database/src/readiness.ts`
 - **Symbols:** `ReadyController.ready`, `WorkspaceDatabase.checkReadiness`,
   `checkDatabaseReadiness`
-- **Classification:** should be corrected
+- **Classification:** corrected after the audited head
 
 Every API readiness request invokes the complete database compatibility audit.
 That audit checks catalog ownership, roles, ACLs, policies, indexes, triggers,
@@ -128,6 +128,16 @@ Immutable compatibility results may be cached after startup. Live authority
 that can legitimately change while the process is running must still be checked.
 This should preserve behavior, but the change has medium risk because excessive
 caching could hide an incompatible rollout.
+
+**Resolution (2026-08-28):** `WorkspaceDatabase` now exposes separate
+`checkCompatibility` and `checkReadiness` contracts. API and worker bootstrap run
+the complete schema, ownership, RLS, privilege, function, index, migration, and
+release audit before serving or consuming. Recurring API and worker probes use a
+bounded query for connectivity, PostgreSQL version, migration head, and current
+compatibility release, while continuing to check their live Redis, queue,
+trigger, artifact, and drain dependencies. A disposable PostgreSQL regression
+proves that catalog drift still fails the startup audit but is not repeatedly
+rescanned by steady readiness.
 
 ### A-02: Isolate unrelated retention and maintenance failures
 

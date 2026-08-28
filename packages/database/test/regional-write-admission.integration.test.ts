@@ -4,6 +4,10 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { migrateDatabase } from '../src/migrations.js';
+import {
+  checkDatabaseReadiness,
+  checkDatabaseServingReadiness,
+} from '../src/readiness.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';
 
 const adminUrl =
@@ -79,6 +83,42 @@ afterAll(async () => {
 });
 
 describe('regional write admission fence', () => {
+  it('keeps the catalog audit at startup and steady readiness bounded', async () => {
+    await expect(
+      checkDatabaseReadiness(api, {
+        ownerRole: 'pertexo_owner',
+        workerRuntimeRole: 'pertexo_worker',
+      }),
+    ).resolves.toMatchObject({ role: 'pertexo_api' });
+
+    await migration.query('begin');
+    try {
+      await migration.query('set local role pertexo_owner');
+      await migration.query(
+        'alter function app.assert_regional_write_admission() set row_security=off',
+      );
+      await migration.query('commit');
+      await expect(checkDatabaseServingReadiness(api)).resolves.toMatchObject({
+        role: 'pertexo_api',
+      });
+      await expect(checkDatabaseReadiness(api)).rejects.toThrow(
+        'Regional write admission persistence is incompatible',
+      );
+    } finally {
+      await migration.query('rollback').catch(() => undefined);
+      await migration.query('begin').catch(() => undefined);
+      await migration
+        .query('set local role pertexo_owner')
+        .catch(() => undefined);
+      await migration
+        .query(
+          'alter function app.assert_regional_write_admission() set row_security=on',
+        )
+        .catch(() => undefined);
+      await migration.query('commit').catch(() => undefined);
+    }
+  });
+
   it('starts unavailable and opens only below the five-minute bound', async () => {
     await assertPaused();
 

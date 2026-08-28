@@ -1857,6 +1857,54 @@ export async function checkDatabaseReadiness(
   });
 }
 
+export async function checkDatabaseServingReadiness(
+  pool: Pool,
+  options: ReadinessOptions = { ownerRole: 'pertexo_owner' },
+): Promise<DatabaseReadiness> {
+  if (
+    options.expectedCompatibilityRelease !== undefined &&
+    options.expectedCompatibilityReleases !== undefined
+  )
+    throw new Error(
+      'Compatibility release readiness configuration is ambiguous',
+    );
+
+  const result = await pool.query<{
+    current_user: string;
+    migration_head: string;
+    postgres_major: number;
+  }>(`
+    select current_user,
+      current_setting('server_version_num')::integer / 10000 as postgres_major,
+      (select name from pertexo_internal.schema_migrations
+        order by name desc limit 1) as migration_head
+  `);
+  const row = result.rows[0];
+  if (row === undefined)
+    throw new Error('Database serving readiness metadata is unavailable');
+  if (row.postgres_major < MINIMUM_POSTGRES_MAJOR)
+    throw new Error('PostgreSQL major version is unsupported');
+  if (row.migration_head !== EXPECTED_MIGRATION_HEAD)
+    throw new Error('Database migration head is incompatible');
+
+  if (options.expectedCompatibilityRelease !== undefined)
+    await checkExpectedCompatibilityRelease(
+      pool,
+      options.expectedCompatibilityRelease,
+    );
+  if (options.expectedCompatibilityReleases !== undefined)
+    await checkExpectedCompatibilityReleaseSet(
+      pool,
+      options.expectedCompatibilityReleases,
+    );
+
+  return Object.freeze({
+    migrationHead: row.migration_head,
+    postgresMajor: row.postgres_major,
+    role: row.current_user,
+  });
+}
+
 export async function checkDatabasePreactivationReadiness(
   pool: Pool,
   options: ReadinessOptions &

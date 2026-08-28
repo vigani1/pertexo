@@ -30,6 +30,12 @@ const database: WorkspaceDatabase = {
     _workspaceId: string,
     operation: (transaction: never) => Promise<T>,
   ): Promise<T> => operation(undefined as never),
+  checkCompatibility: () =>
+    Promise.resolve({
+      migrationHead: '0000_rls_probe.sql',
+      postgresMajor: 18,
+      role: 'pertexo_worker',
+    }),
   checkReadiness: () =>
     Promise.resolve({
       migrationHead: '0000_rls_probe.sql',
@@ -195,15 +201,27 @@ describe('worker application bootstrap', () => {
     await expect(wrapped.checkReadiness()).rejects.toThrow(
       'Worker database role is incompatible',
     );
+    await expect(wrapped.checkCompatibility()).resolves.toMatchObject({
+      role: 'pertexo_worker',
+    });
   });
 
   it('creates a standalone context without an HTTP server', async () => {
-    const selected = dependencies();
+    const checkCompatibility = vi.fn(() => database.checkCompatibility());
+    const checkReadiness = vi.fn(() => database.checkReadiness());
+    const selectedDatabase: WorkspaceDatabase = {
+      ...database,
+      checkCompatibility,
+      checkReadiness,
+    };
+    const selected = dependencies(selectedDatabase);
     const app = await createWorkerApplication(workerConfig, selected);
 
     try {
       expect('getHttpServer' in app).toBe(false);
       expect(selected.workerProcessStart).toHaveBeenCalledOnce();
+      expect(checkCompatibility).toHaveBeenCalledOnce();
+      expect(checkReadiness).toHaveBeenCalledOnce();
     } finally {
       await app.close();
     }
@@ -419,7 +437,7 @@ describe('worker application bootstrap', () => {
     const close = vi.fn().mockResolvedValue(undefined);
     const unavailableDatabase: WorkspaceDatabase = {
       ...database,
-      checkReadiness: vi
+      checkCompatibility: vi
         .fn()
         .mockRejectedValue(new Error('migration mismatch')),
       close,

@@ -27,6 +27,12 @@ const database: WorkspaceDatabase = {
     _workspaceId: string,
     operation: (transaction: never) => Promise<T>,
   ): Promise<T> => operation(undefined as never),
+  checkCompatibility: () =>
+    Promise.resolve({
+      migrationHead: '0000_rls_probe.sql',
+      postgresMajor: 18,
+      role: 'pertexo_api',
+    }),
   checkReadiness: () =>
     Promise.resolve({
       migrationHead: '0000_rls_probe.sql',
@@ -225,7 +231,17 @@ describe('API bootstrap', () => {
   });
 
   it('reports readiness only after database compatibility passes', async () => {
-    application = await createApiApplication(config, dependencies());
+    const checkCompatibility = vi.fn(() => database.checkCompatibility());
+    const checkReadiness = vi.fn(() => database.checkReadiness());
+    const selectedDatabase: WorkspaceDatabase = {
+      ...database,
+      checkCompatibility,
+      checkReadiness,
+    };
+    application = await createApiApplication(
+      config,
+      dependencies(selectedDatabase),
+    );
     await application.init();
 
     const response = await application.inject({
@@ -235,6 +251,8 @@ describe('API bootstrap', () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({ status: 'ready' });
+    expect(checkCompatibility).toHaveBeenCalledOnce();
+    expect(checkReadiness).toHaveBeenCalledOnce();
   });
 
   it('returns 503 without exposing a database readiness failure', async () => {
@@ -245,9 +263,9 @@ describe('API bootstrap', () => {
     } as const;
     const unavailableDatabase: WorkspaceDatabase = {
       ...database,
+      checkCompatibility: vi.fn().mockResolvedValue(readiness),
       checkReadiness: vi
         .fn()
-        .mockResolvedValueOnce(readiness)
         .mockRejectedValue(new Error('secret database detail')),
     };
     application = await createApiApplication(
@@ -278,7 +296,7 @@ describe('API bootstrap', () => {
     const close = vi.fn().mockResolvedValue(undefined);
     const incompatibleDatabase: WorkspaceDatabase = {
       ...database,
-      checkReadiness: vi
+      checkCompatibility: vi
         .fn()
         .mockRejectedValue(new Error('migration mismatch')),
       close,
@@ -587,7 +605,7 @@ describe('API bootstrap', () => {
     const selectedIdentityRuntime = identityRuntime(identityClose);
     const incompatibleDatabase: WorkspaceDatabase = {
       ...database,
-      checkReadiness: vi
+      checkCompatibility: vi
         .fn()
         .mockRejectedValue(new Error('migration mismatch')),
     };

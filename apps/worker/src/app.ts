@@ -52,6 +52,9 @@ export async function createWorkerApplication(
   application.enableShutdownHooks();
 
   try {
+    await application
+      .get<WorkspaceDatabase>(WORKSPACE_DATABASE)
+      .checkCompatibility();
     await application.get(WorkerReadinessMonitor).check();
     const dispatcher = application.get<OutboxDispatcher>(OUTBOX_DISPATCHER);
     const metrics = application.get<TransportMetrics>(TRANSPORT_METRICS);

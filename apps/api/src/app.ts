@@ -144,7 +144,7 @@ export async function createApiApplication(
     }
     await application
       .get<WorkspaceDatabase>(WORKSPACE_DATABASE)
-      .checkReadiness();
+      .checkCompatibility();
     await scheduleRuntime?.checkReadiness();
   } catch (error: unknown) {
     await application.close();

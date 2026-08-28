@@ -387,6 +387,7 @@ export type {
 export {
   EXPECTED_MIGRATION_HEAD,
   checkDatabaseReadiness,
+  checkDatabaseServingReadiness,
   checkDatabasePreactivationReadiness,
 } from './readiness.js';
 export type { DatabaseReadiness, ReadinessOptions } from './readiness.js';

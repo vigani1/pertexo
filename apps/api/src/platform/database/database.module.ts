@@ -39,6 +39,12 @@ export class NestWorkspaceDatabase
     return this.database.checkReadiness();
   }
 
+  public checkCompatibility(): ReturnType<
+    WorkspaceDatabase['checkCompatibility']
+  > {
+    return this.database.checkCompatibility();
+  }
+
   public close(): ReturnType<WorkspaceDatabase['close']> {
     return this.database.close();
   }

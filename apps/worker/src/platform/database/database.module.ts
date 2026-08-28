@@ -45,6 +45,14 @@ export class NestWorkspaceDatabase
     return readiness;
   }
 
+  public async checkCompatibility(): Promise<DatabaseReadiness> {
+    const readiness = await this.database.checkCompatibility();
+    if (readiness.role !== this.expectedWorkerRole) {
+      throw new Error('Worker database role is incompatible');
+    }
+    return readiness;
+  }
+
   public close(): ReturnType<WorkspaceDatabase['close']> {
     return this.database.close();
   }
