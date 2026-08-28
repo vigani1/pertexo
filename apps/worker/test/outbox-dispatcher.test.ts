@@ -334,8 +334,26 @@ describe('outbox dispatcher', () => {
     await expect(dispatcher.dispatchOnce()).resolves.toMatchObject({
       published: 1,
     });
+    await expect(dispatcher.dispatchOnce()).resolves.toMatchObject({
+      published: 1,
+    });
     expect(observeWorkspaceCapacity).toHaveBeenCalledOnce();
     expect(observeWorkspaceCapacity).toHaveBeenCalledWith(WORKSPACE_ID);
+  });
+
+  it('does not block durable publication on workspace capacity sampling', async () => {
+    const selected = boundaries([event()]);
+    const sample = Promise.withResolvers<undefined>();
+    const observeWorkspaceCapacity = vi.fn(() => sample.promise);
+    const dispatcher = createDispatcher(selected);
+    dispatcher.configureRuntimeHooks({ observeWorkspaceCapacity });
+
+    await expect(dispatcher.dispatchOnce()).resolves.toMatchObject({
+      failed: 0,
+      published: 1,
+    });
+    expect(observeWorkspaceCapacity).toHaveBeenCalledOnce();
+    sample.resolve(undefined);
   });
 
   it('does not change durable publication when artifact sampling fails', async () => {

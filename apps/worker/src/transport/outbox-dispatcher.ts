@@ -100,6 +100,9 @@ class TransportOperationTimeoutError extends Error {
 }
 
 const transportJobNameSchema = z.enum(JOB_NAME);
+const WORKSPACE_CAPACITY_SAMPLE_INTERVAL_MILLIS = 5 * 60_000;
+const MAX_TRACKED_WORKSPACE_CAPACITY_SAMPLES = 1_000;
+const MAX_PENDING_WORKSPACE_CAPACITY_SAMPLES = 100;
 
 function transportJob(job: QueueJob): TransportJob {
   return transportJobForName(job.name);
@@ -206,6 +209,9 @@ export class OutboxDispatcher {
     }
   >;
   private readonly enabledQueueNames: ReadonlySet<string>;
+  private readonly capacitySampledAtByWorkspace = new Map<string, number>();
+  private readonly pendingCapacityWorkspaces = new Set<string>();
+  private capacitySamplerPromise: Promise<void> | undefined;
   private runtimeHooks: OutboxDispatcherRuntimeHooks | undefined;
   private lifecycle: 'idle' | 'running' | 'closed' = 'idle';
   private loopPromise: Promise<void> | undefined;
@@ -306,11 +312,18 @@ export class OutboxDispatcher {
   public async close(): Promise<void> {
     if (this.lifecycle === 'closed') return;
     this.lifecycle = 'closed';
+    this.pendingCapacityWorkspaces.clear();
     this.wakeLoop?.();
     const loopResults = await Promise.allSettled([
       this.loopPromise === undefined
         ? Promise.resolve()
         : bounded(this.loopPromise, this.options.operationTimeoutMillis),
+      this.capacitySamplerPromise === undefined
+        ? Promise.resolve()
+        : bounded(
+            this.capacitySamplerPromise,
+            this.options.operationTimeoutMillis,
+          ),
     ]);
     const closeResults = await Promise.allSettled([
       bounded(this.database.close(), this.options.operationTimeoutMillis),
@@ -366,7 +379,7 @@ export class OutboxDispatcher {
         job.name === JOB_NAME.advanceWorkflowRun ||
         job.name === JOB_NAME.expireArtifacts
       ) {
-        await this.observeWorkspaceCapacity(event.workspaceId);
+        this.scheduleWorkspaceCapacityObservation(event.workspaceId);
       }
       return marked ? 'published' : 'stale';
     } catch (error: unknown) {
@@ -453,6 +466,51 @@ export class OutboxDispatcher {
       );
     } catch {
       // Capacity telemetry cannot alter durable publication acknowledgement.
+    }
+  }
+
+  private scheduleWorkspaceCapacityObservation(workspaceId: string): void {
+    if (this.runtimeHooks === undefined) return;
+    const now = Date.now();
+    const sampledAt = this.capacitySampledAtByWorkspace.get(workspaceId);
+    if (
+      sampledAt !== undefined &&
+      now - sampledAt < WORKSPACE_CAPACITY_SAMPLE_INTERVAL_MILLIS
+    )
+      return;
+    if (
+      this.pendingCapacityWorkspaces.size >=
+      MAX_PENDING_WORKSPACE_CAPACITY_SAMPLES
+    )
+      return;
+
+    if (
+      this.capacitySampledAtByWorkspace.size >=
+      MAX_TRACKED_WORKSPACE_CAPACITY_SAMPLES
+    ) {
+      const oldestWorkspace = this.capacitySampledAtByWorkspace
+        .keys()
+        .next().value;
+      if (oldestWorkspace !== undefined)
+        this.capacitySampledAtByWorkspace.delete(oldestWorkspace);
+    }
+    this.capacitySampledAtByWorkspace.set(workspaceId, now);
+    this.pendingCapacityWorkspaces.add(workspaceId);
+    this.capacitySamplerPromise ??= this.drainWorkspaceCapacitySamples();
+  }
+
+  private async drainWorkspaceCapacitySamples(): Promise<void> {
+    try {
+      while (this.lifecycle !== 'closed') {
+        const workspaceId = this.pendingCapacityWorkspaces
+          .values()
+          .next().value;
+        if (workspaceId === undefined) return;
+        this.pendingCapacityWorkspaces.delete(workspaceId);
+        await this.observeWorkspaceCapacity(workspaceId);
+      }
+    } finally {
+      this.capacitySamplerPromise = undefined;
     }
   }
 

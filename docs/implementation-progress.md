@@ -4150,7 +4150,10 @@ Current evidence:
   fail-closed safety violations. Worker readiness also checks an enabled artifact
   store and refreshes a dependency-aware ECS health marker every ten seconds.
   Workspace-scoped event payload and checkpoint-state count/byte distributions
-  complete the execution-storage growth surface without workspace labels.
+  complete the execution-storage growth surface without workspace labels. The
+  dispatcher samples this surface asynchronously at most once per workspace per
+  five minutes through a bounded, serial queue, so aggregates cannot delay durable
+  publication acknowledgements or create unbounded sampler state.
   OpenTelemetry explicitly enables only process CPU/RSS host groups and
   retains runtime-node heap/event-loop metrics without duplicate polling. Every
   worker also samples RSS and event-loop p99 against explicit ECS thresholds;
@@ -4167,13 +4170,13 @@ Current evidence:
   Redis and event-loop rules require backlog or API-impact corroboration.
   Focused suites pass 130 database unit assertions plus two real PostgreSQL
   lock-contention/abandoned-transaction proofs, 129 artifact-store, 39 queue, 266
-  API, 203 worker, and 35 observability assertions; `promtool` validates all 22 rules and
+  API, 204 worker, and 35 observability assertions; `promtool` validates all 22 rules and
   Compose rendering passes. A live local SDK -> OTLP HTTP -> Collector ->
   Prometheus smoke proves the exact database, Redis, object-store, process CPU/RSS,
   event-loop, and V8 heap series used by the dashboard, including the actual
   `process_cpu_utilization` and `process_memory_usage` names and absence of
   process/command identity labels. The complete repository-owned metrics checklist
-  is closed. Root `pnpm check` passes all 1,209 unit assertions. Deployed AWS OTLP
+  is closed. Root `pnpm check` passes all 1,210 unit assertions. Deployed AWS OTLP
   ingestion, managed-service/cloud capacity signals, pager
   routing/fire-clear evidence, and AWS dashboards remain open, so the broader
   dashboard/alert checklist and Phase 7 remain in progress.
