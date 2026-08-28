@@ -162,6 +162,7 @@ function fromApplicationError(error: ApplicationError): NormalizedProblem {
     ...(issues === undefined ? {} : { errors: issues }),
   };
   if (
+    error.code === 'request.rate_limited' ||
     error.code === 'workspace.quota_exceeded' ||
     error.code === 'platform.write_paused'
   ) {

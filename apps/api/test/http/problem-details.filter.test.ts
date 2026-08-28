@@ -129,6 +129,32 @@ describe('RFC 9457 problem details filter', () => {
     expect(apiProblemSchema.safeParse(response.body).success).toBe(true);
   });
 
+  it('returns a generic bounded Retry-After problem for abuse limits', () => {
+    const contexts = new RequestContextStore();
+    const filter = new ProblemDetailsFilter(contexts);
+    const response = responseMock();
+
+    contexts.run('request-rate-limited', () => {
+      filter.catch(
+        applicationError('request.rate_limited', {
+          details: { retryAfterSeconds: 60, limitedDimension: 'actor' },
+        }),
+        hostFor({ url: '/v1/workspaces/workspace-a/connections' }, response),
+      );
+    });
+
+    expect(response.status).toHaveBeenCalledWith(429);
+    expect(response.header).toHaveBeenCalledWith('retry-after', '60');
+    expect(response.body).toEqual({
+      type: 'urn:pertexo:problem:request.rate_limited',
+      title: 'Request rate limit reached',
+      status: 429,
+      instance: '/v1/workspaces/workspace-a/connections',
+      code: 'request.rate_limited',
+      requestId: 'request-rate-limited',
+    });
+  });
+
   it('returns Retry-After when the regional recovery-point fence pauses writes', () => {
     const contexts = new RequestContextStore();
     const filter = new ProblemDetailsFilter(contexts);
