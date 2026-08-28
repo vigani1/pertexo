@@ -104,3 +104,27 @@ contract rather than widening this single-node mode implicitly.
 - Reusing production runs, checkpoints, trigger state, or published versions
   for mutable-draft previews.
 - Returning full provider bodies or credential-bearing errors for debugging.
+
+## Amendment: separate execution deadline and identity convention
+
+Accepted 2026-08-28.
+
+Preview execution and preview retention are independent policies. Acceptance
+pins an immutable `execution_deadline_at` no more than five minutes after
+acceptance and a separate `expires_at` retention deadline no more than seven
+days after acceptance. The execution deadline must be after `created_at` and
+must not exceed retention expiry. Claim, heartbeat, worker timeout, and
+reconciliation use only `execution_deadline_at` to decide execution truth.
+Status reads, prior-preview eligibility, cleanup discovery, and preview-owned
+artifact lifetime continue to use `expires_at`. An artifact may therefore
+remain available for the retained preview after execution has terminated, but
+it may never outlive that preview.
+
+V1 preview identity is also fixed explicitly. A preview contains one logical
+attempt, so its executor-facing `attemptNumber` is always `1`.
+`invocationKey` is `preview:<nodeId>`; `runId` and `nodeRunId` both use
+the preview-run UUID; and `attemptId` uses the preview-attempt UUID. These
+values adapt the single-node preview to the existing executor and capability
+contracts only. They do not create production workflow-run, node-run, or
+checkpoint identity, and any future multi-node or retrying preview requires a
+new ADR and persisted identity model.
