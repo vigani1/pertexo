@@ -4473,7 +4473,10 @@ Current evidence:
   retains real PostgreSQL, BullMQ, Redis-loss, and fresh-worker proofs and
   passes 17 assertions with five unrelated environment-gated scenarios skipped;
   all 204 worker unit assertions, worker test typecheck, and the complete
-  repository gate with 1,237 unit assertions also pass.
+  repository gate with 1,237 unit assertions also pass. A CI-only race in the
+  For Each redelivery proof is closed by requiring both durable PostgreSQL
+  progress and terminal BullMQ acknowledgement before removing and republishing
+  the completed job; the focused real-transport scenario passes.
 - A-10 Phase 7 progress granularity is complete. Combined implementation/live
   evidence rows are split for the control ledger, deletion and purge,
   dashboards and paging, deployment boundaries, and autoscaling. Repository

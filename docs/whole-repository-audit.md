@@ -487,7 +487,10 @@ import run and dispatch helpers from their owning modules instead of one general
 fixture surface. All 204 worker unit assertions pass, and the complete
 transport-enabled worker integration run passes 17 assertions with five
 unrelated environment-gated scenarios skipped. The full repository gate passes
-all 1,237 unit assertions. A-09 is complete.
+all 1,237 unit assertions. The For Each forced-redelivery proof also waits for
+both the PostgreSQL transition and terminal BullMQ acknowledgement before
+removing a completed job, eliminating a CI-only lock race without weakening the
+duplicate-delivery scenario. A-09 is complete.
 
 ### A-10: Improve Phase 7 checklist granularity
 

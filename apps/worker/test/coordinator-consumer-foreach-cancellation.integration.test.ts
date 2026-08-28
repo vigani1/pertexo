@@ -144,9 +144,11 @@ describeIntegration('For Each cancellation recovery', () => {
             };
           },
           ({ revision, state }) =>
-            revision === expectedRevision || state === 'failed',
+            state === 'failed' ||
+            (revision === expectedRevision &&
+              (state === undefined || state === 'completed')),
         );
-        if (result.revision !== expectedRevision)
+        if (result.state === 'failed' || result.revision !== expectedRevision)
           throw new Error(
             `For Each coordinator failed: ${result.failedReason ?? 'unknown'} ${JSON.stringify(result.stacktrace)}`,
           );
@@ -217,9 +219,12 @@ describeIntegration('For Each cancellation recovery', () => {
               status: nodeRows[0]?.status,
             };
           },
-          ({ state, status }) => status === 'succeeded' || state === 'failed',
+          ({ state, status }) =>
+            state === 'failed' ||
+            (status === 'succeeded' &&
+              (state === undefined || state === 'completed')),
         );
-        if (result.status !== 'succeeded')
+        if (result.state === 'failed' || result.status !== 'succeeded')
           throw new Error(
             `For Each attempt failed: ${result.failedReason ?? 'unknown'}`,
           );
