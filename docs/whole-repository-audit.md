@@ -367,8 +367,11 @@ including run/control validation, row locking, duplicate and reconciliation
 decisions, lease fencing, node/run state changes, and the `node.started` event,
 now lives in `node-attempt-run-store-claim.ts` behind the unchanged worker-facing
 method. The public interface and original single write transaction remain
-unchanged. Input loading, dispatch, heartbeat, and completion operation
-extraction remain open, followed by the equivalent preview lifecycle split.
+unchanged. `node-attempt-run-store-inputs.ts` now owns the complete input-load
+read transaction, including lease/control validation, scoped upstream-output
+resolution, checkpoint join input, nested-loop collection reconstruction, and
+wait-resume output. Dispatch, heartbeat, and completion operation extraction
+remain open, followed by the equivalent preview lifecycle split.
 
 ### A-08: Narrow the database package's public capability surface
 

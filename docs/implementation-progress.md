@@ -4385,10 +4385,13 @@ Current evidence:
   internal module: it owns delivery/run validation, row locking, duplicate and
   reconciliation decisions, lease fencing, state changes, and the started
   event while the public worker-facing method remains unchanged. No SQL
-  transaction scope changed. All 136 database unit assertions and the focused
-  24-assertion real-PostgreSQL execution-runtime suite pass. Input loading,
-  dispatch, heartbeat, completion, and the equivalent preview lifecycle
-  extraction remain open.
+  transaction scope changed. Input loading is also isolated behind its existing
+  method and original repeatable-read transaction; it retains lease/control,
+  invocation-scope, upstream-output, join, nested-loop collection, and
+  wait-resume validation. All 136 database unit assertions and the focused
+  24-assertion real-PostgreSQL execution-runtime suite pass. Dispatch,
+  heartbeat, completion, and the equivalent preview lifecycle extraction
+  remain open.
 
 ## Update protocol
 
