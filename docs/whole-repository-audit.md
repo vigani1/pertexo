@@ -373,8 +373,11 @@ resolution, checkpoint join input, nested-loop collection reconstruction, and
 wait-resume output. `node-attempt-run-store-dispatch.ts` now owns connection
 dispatch-fence
 validation, provider binding compare-and-set semantics, and durable dispatch
-marking in the original write transaction. Heartbeat and completion operation
-extraction remain open, followed by the equivalent preview lifecycle split.
+marking in the original write transaction. `node-attempt-run-store-heartbeat.ts`
+now owns lease renewal plus database-clock cancellation/deadline observation
+under the current-attempt fence and original write transaction. Completion
+operation extraction remains open, followed by the equivalent preview lifecycle
+split.
 
 ### A-08: Narrow the database package's public capability surface
 

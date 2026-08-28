@@ -4390,10 +4390,11 @@ Current evidence:
   invocation-scope, upstream-output, join, nested-loop collection, and
   wait-resume validation. Dispatch persistence is also isolated with its
   connection fence, provider binding compare-and-set, lease fence, and durable
-  dispatch marker inside the original write transaction. All 136 database unit
-  assertions and the focused 24-assertion real-PostgreSQL execution-runtime
-  suite pass. Heartbeat, completion, and the equivalent preview lifecycle
-  extraction remain open.
+  dispatch marker inside the original write transaction. Heartbeat persistence
+  is isolated with current-attempt lease fencing, database-clock renewal, and
+  atomic cancellation/deadline observation. All 136 database unit assertions
+  and the focused 24-assertion real-PostgreSQL execution-runtime suite pass.
+  Completion and the equivalent preview lifecycle extraction remain open.
 
 ## Update protocol
 
