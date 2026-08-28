@@ -4392,9 +4392,14 @@ Current evidence:
   connection fence, provider binding compare-and-set, lease fence, and durable
   dispatch marker inside the original write transaction. Heartbeat persistence
   is isolated with current-attempt lease fencing, database-clock renewal, and
-  atomic cancellation/deadline observation. All 136 database unit assertions
-  and the focused 24-assertion real-PostgreSQL execution-runtime suite pass.
-  Completion and the equivalent preview lifecycle extraction remain open.
+  atomic cancellation/deadline observation. Completion is isolated without
+  splitting its authoritative transaction: output validation, delivery and
+  lease fencing, terminal attempt/node state, retry/reconciliation evidence,
+  run events, coordinator wake-up intent, and receipt completion stay atomic.
+  The public node-attempt store is now a 65-line composition root. All 136
+  database unit assertions and the focused 24-assertion real-PostgreSQL
+  execution-runtime suite pass, completing the node-attempt half of A-07. The
+  equivalent preview lifecycle extraction remains open.
 
 ## Update protocol
 

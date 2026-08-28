@@ -371,13 +371,16 @@ unchanged. `node-attempt-run-store-inputs.ts` now owns the complete input-load
 read transaction, including lease/control validation, scoped upstream-output
 resolution, checkpoint join input, nested-loop collection reconstruction, and
 wait-resume output. `node-attempt-run-store-dispatch.ts` now owns connection
-dispatch-fence
-validation, provider binding compare-and-set semantics, and durable dispatch
+dispatch-fence validation, provider binding compare-and-set semantics, and durable dispatch
 marking in the original write transaction. `node-attempt-run-store-heartbeat.ts`
 now owns lease renewal plus database-clock cancellation/deadline observation
-under the current-attempt fence and original write transaction. Completion
-operation extraction remains open, followed by the equivalent preview lifecycle
-split.
+under the current-attempt fence and original write transaction. Completion now
+lives in `node-attempt-run-store-completion.ts`; output validation, delivery
+and lease fencing, terminal attempt/node facts, retry/reconciliation evidence,
+run events, coordinator wake-up intent, and receipt completion remain atomic in
+the original write transaction. The public node-attempt store is now a 65-line
+composition root, completing the node-attempt half of this finding. The
+equivalent preview lifecycle split remains open.
 
 ### A-08: Narrow the database package's public capability surface
 
