@@ -3253,37 +3253,54 @@ Retention, deletion, and legal hold:
 
 - [x] Wire the dedicated maintenance database credential and migration role
       substitution without granting maintenance ownership or serving-role access.
-- [ ] Add the external append-only control ledger, ordered PostgreSQL projection,
-      exact high-water reconciliation, and restore-before-serve gate.
-- [ ] Add audited legal-hold placement/release and ensure active holds pause only
+- [x] Implement the external append-only control-ledger adapters, ordered
+      PostgreSQL projection, exact high-water reconciliation, and
+      restore-before-serve gate.
+- [ ] Prove the append-only dual-region ledger and restore-before-serve gate
+      against the production AWS accounts, regions, IAM roles, and Object Lock
+      configuration.
+- [x] Add audited legal-hold placement/release and ensure active holds pause only
       covered destructive work without reactivating tenant access.
-- [ ] Implement bounded, idempotent, resumable retention batches with durable
+- [x] Implement bounded, idempotent, resumable retention batches with durable
       progress, lease fencing, dry-run support, and bounded telemetry.
 - [x] Enforce 30-day detailed execution/input/artifact retention, 90-day run and
       trigger-summary retention, seven-day preview retention, and 365-day
       audit/security retention in dependency-safe order.
-- [ ] Rebuild workspace deletion/restore commands around the external ledger,
+- [x] Rebuild workspace deletion/restore commands around the external ledger,
       revoke access and triggers, cancel work, and preserve the 30-day recovery
       window before purge.
-- [ ] Purge tenant rows, object bytes/metadata, secret versions, indexes, and
-      external subscriptions explicitly; persist retryable partial progress and
-      a non-sensitive completion tombstone.
+- [x] Purge every V1 in-scope tenant row, object byte/metadata surface, secret
+      version, and index explicitly; persist retryable partial progress and a
+      non-sensitive completion tombstone. API-key and connected-subscription
+      entities remain plan-deferred and are not invented for deletion.
+- [ ] Prove deletion, legal-hold, recovery-window, purge, and regional object
+      behavior through the production AWS deployment and its immutable
+      invocation evidence.
 
 Operator recovery and observability:
 
-- [ ] Add authenticated, authorized, audited, reason-required operator commands
+- [x] Add authenticated, authorized, audited, reason-required operator commands
       for outbox redispatch, expired-lease reconciliation, due-work resume,
       unknown-outcome evidence, cancellation, replay, trigger reconciliation,
       and retention/purge reruns; support dry-run where safe.
 - [x] Complete cardinality-safe API, PostgreSQL, queue, worker, trigger, provider,
       artifact, retention, purge, and control-ledger metrics.
-- [ ] Add dashboards and user-impact/backlog-age alerts for API, queues, workers,
-      triggers, PostgreSQL, Redis, object storage, and destructive maintenance.
-- [ ] Prove non-root production images, separate API/worker commands and health
-      checks, release-job migrations, read-only filesystems where possible, and
-      secret-manager-only deployed credentials.
-- [ ] Configure separate API and worker autoscaling against admitted load,
-      latency/saturation, oldest-job age, active slots, and resource safety.
+- [x] Add repository-owned dashboards and user-impact/backlog-age alerts for
+      API, queues, workers, triggers, PostgreSQL, Redis, object storage, and
+      destructive maintenance.
+- [ ] Deploy those dashboards and alerts and capture pager-routing evidence for
+      API, queues, workers, triggers, PostgreSQL, Redis, object storage, and
+      destructive maintenance.
+- [x] Encode and deterministically validate non-root production images, separate
+      API/worker commands and health checks, release-job migrations, read-only
+      filesystems where possible, and secret-manager-only credential references.
+- [ ] Prove the rendered image, task-role, filesystem, migration-job, health, and
+      secret-manager boundaries in the production deployment.
+- [x] Configure declarative separate API and worker autoscaling inputs against
+      admitted load, latency/saturation, oldest-job age, active slots, and
+      resource safety.
+- [ ] Deploy and measure the separate API and worker autoscaling policies under
+      representative admitted load and saturation.
 
 Release exercises and completion gates:
 
@@ -4448,6 +4465,13 @@ Current evidence:
   compatibility/readiness drift from earlier test work: the same 11 unrelated
   database integration failures reproduce when their four files run alone, so
   they are not attributed to this test-only decomposition.
+- A-10 Phase 7 progress granularity is complete. Combined implementation/live
+  evidence rows are split for the control ledger, deletion and purge,
+  dashboards and paging, deployment boundaries, and autoscaling. Repository
+  implementation is checked only where the fixed-head evidence below proves
+  it; production AWS, immutable invocation, pager, measured load/failure,
+  backup/PITR, and regional restore evidence remains unchecked. Phase 7 remains
+  in progress.
 
 ## Update protocol
 

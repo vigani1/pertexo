@@ -472,7 +472,7 @@ repository gate passes all 1,236 unit assertions. A-09 is complete.
 - **Severity:** Low
 - **Category:** documentation and architecture governance
 - **File:** `docs/implementation-progress.md`
-- **Classification:** documentation usability opportunity
+- **Classification:** corrected after the audited head
 
 Phase 7 remains marked in progress, and its combined rows correctly remain
 unchecked while any required implementation or live-evidence clause is
@@ -487,6 +487,15 @@ sub-items where that does not change the authoritative acceptance standard.
 Mark only fully satisfied items complete and add concrete fixed-head evidence.
 Keep real load, failover, PITR, and regional restore work incomplete until it has
 actually run.
+
+Resolution: the Phase 7 checklist now separates repository implementation from
+live production evidence for the dual-region control ledger, deletion and purge,
+dashboards/alerts, runtime and credential boundaries, and autoscaling. Completed
+repository work is checked with its scope stated explicitly; AWS deployment,
+pager routing, immutable invocation, measured load/failure, PITR, and regional
+restore proof remain unchecked. Phase 7 therefore remains honestly in progress
+without hiding the substantial implementation already completed. A-10 is
+complete.
 
 ### A-11: Reduce readiness implementation brittleness
 
