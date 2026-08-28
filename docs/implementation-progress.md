@@ -4361,9 +4361,12 @@ Current evidence:
   41 real-PostgreSQL coordinator assertions pass. Plan parsing and transition
   validation, loop-barrier/due-ready settlement, and terminal failure-
   notification persistence now have cohesive private modules. The commit
-  orchestrator remains the single atomic write authority. The former 3,200-line
-  file is a 46-line composition root, completing A-05; root `pnpm check` passes
-  all 1,234 unit assertions.
+  orchestrator remains the single atomic write authority. Its locked-state
+  validation, execution materialization, and run/checkpoint finalization are
+  now deep internal modules; `commitCoordinatorAdvancePlan` is reduced from
+  approximately 740 lines to 156 without exposing those internal seams. The
+  former 3,200-line file remains a 46-line composition root, completing A-05;
+  all 41 real-PostgreSQL coordinator assertions pass.
 - A-06 engine decomposition has begun with the persisted-observation seam.
   `parsePersistedObservations` now hides bounded normalization, exact shapes,
   canonical timestamps, ordering/deduplication, stale-checkpoint matching,

@@ -289,10 +289,16 @@ parsing, transition validation, fingerprinting, status validation, and output
 ownership are isolated in `coordinator-run-store-plan.ts`; loop-barrier and
 due-ready persistence are in `coordinator-run-store-settlement.ts`; terminal
 failure-notification persistence is in `coordinator-run-store-terminal.ts`.
-The commit module remains the sole atomic write orchestrator instead of
-distributing authority among the extracted units. The original 3,200-line file
-is now a 46-line composition root, and the full 41-assertion real-PostgreSQL
-characterization suite remains green. A-05 is complete.
+Locked checkpoint/fact validation and authoritative cancellation/deadline truth
+now live in `coordinator-run-store-commit-state.ts`; failure settlement,
+node/attempt admission, outbox creation, and event persistence live in
+`coordinator-run-store-execution.ts`; checkpoint/run finalization and schedule
+latency input live in `coordinator-run-store-run-transition.ts`. The commit
+module remains the sole atomic write orchestrator instead of distributing
+authority among the extracted units, but its public function is reduced from
+approximately 740 lines to 156. The original 3,200-line file remains a 46-line
+composition root, and the full 41-assertion real-PostgreSQL characterization
+suite remains green. A-05 is complete.
 
 ### A-06: Split engine operations without splitting the state machine
 
