@@ -1,7 +1,7 @@
 import type {
   ConnectionDatabase,
   FailureNotificationDestinationDatabase,
-} from '@pertexo/database';
+} from '@pertexo/database/api';
 import type {
   ConnectionSecretContext,
   SealedConnectionSecret,

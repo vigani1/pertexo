@@ -1,4 +1,4 @@
-import type { OperatorCommandDatabase } from '@pertexo/database';
+import type { OperatorCommandDatabase } from '@pertexo/database/operator';
 import type { StructuredLogger } from '@pertexo/observability/logging';
 import { createTelemetryLifecycle } from '@pertexo/observability/telemetry';
 
@@ -19,7 +19,7 @@ async function bootstrap(): Promise<void> {
   try {
     telemetry.start();
     const [databasePackage, logging, command] = await Promise.all([
-      import('@pertexo/database'),
+      import('@pertexo/database/operator'),
       import('@pertexo/observability/logging'),
       import('./run.js'),
     ]);

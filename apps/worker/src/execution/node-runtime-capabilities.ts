@@ -21,7 +21,7 @@ import {
   type ConnectionDatabase,
   type DatabaseConfig,
   type WorkspaceDatabase,
-} from '@pertexo/database';
+} from '@pertexo/database/execution';
 import {
   createAwsConnectionEnvelopeEncryption,
   type AwsConnectionEnvelopeEncryptionConfig,

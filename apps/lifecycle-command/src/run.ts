@@ -1,5 +1,5 @@
 import type { DualRegionControlLedger } from '@pertexo/artifact-store';
-import type { WorkspaceLifecycleCommandCoordinator } from '@pertexo/database';
+import type { WorkspaceLifecycleCommandCoordinator } from '@pertexo/database/lifecycle';
 import type { StructuredLogger } from '@pertexo/observability/logging';
 import type { MaintenanceMetrics } from '@pertexo/observability';
 import { waitForAbortableDelay } from '@pertexo/observability/runtime';

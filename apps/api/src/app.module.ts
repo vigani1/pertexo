@@ -2,7 +2,7 @@ import 'reflect-metadata';
 
 import type { DynamicModule } from '@nestjs/common';
 import { Module } from '@nestjs/common';
-import type { WorkspaceDatabase } from '@pertexo/database';
+import type { WorkspaceDatabase } from '@pertexo/database/api';
 import type {
   StructuredLogger,
   TelemetryLifecycle,

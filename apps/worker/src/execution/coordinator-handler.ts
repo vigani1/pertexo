@@ -2,8 +2,8 @@ import type {
   CoordinatorRunStore,
   PublishedWorkflowReader,
   PublishedWorkflowV2Projection,
-} from '@pertexo/database';
-import { canonicalOutboxPayloadChecksum } from '@pertexo/database';
+} from '@pertexo/database/execution';
+import { canonicalOutboxPayloadChecksum } from '@pertexo/database/execution';
 import {
   jobIdForOutboxEvent,
   type QueueDelivery,

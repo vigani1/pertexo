@@ -4,7 +4,7 @@ import type {
   ConnectionRecord,
   ConnectionTestOutcome,
   ConnectionTestResult,
-} from '@pertexo/database';
+} from '@pertexo/database/api';
 import {
   ConnectionSecretEncryptionError,
   SECURE_HTTP_ERROR_CODE,

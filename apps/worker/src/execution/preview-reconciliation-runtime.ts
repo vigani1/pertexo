@@ -6,7 +6,7 @@ import {
   type PreviewDeliveryReconciliationResult,
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,
-} from '@pertexo/database';
+} from '@pertexo/database/execution';
 import {
   InvalidQueueDeliveryError,
   jobIdForOutboxEvent,

@@ -5,7 +5,7 @@ import type {
   RedispatchFailedOutboxInput,
   ReplayOperatorRunInput,
   GenericOperatorCommandResult,
-} from '@pertexo/database';
+} from '@pertexo/database/operator';
 import type { StructuredLogger } from '@pertexo/observability/logging';
 import type { TelemetryLifecycle } from '@pertexo/observability/telemetry';
 

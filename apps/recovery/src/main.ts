@@ -4,7 +4,7 @@ import type {
   DualRegionArtifactStore,
   DualRegionControlLedger,
 } from '@pertexo/artifact-store';
-import type { ControlLedgerCoordinator } from '@pertexo/database';
+import type { ControlLedgerCoordinator } from '@pertexo/database/recovery';
 
 import { parseRecoveryConfig } from './config.js';
 
@@ -27,7 +27,7 @@ async function bootstrap(): Promise<void> {
     const [artifactStore, database, observability, logging, recovery] =
       await Promise.all([
         import('@pertexo/artifact-store'),
-        import('@pertexo/database'),
+        import('@pertexo/database/recovery'),
         import('@pertexo/observability'),
         import('@pertexo/observability/logging'),
         import('./restore-before-serve.js'),

@@ -5,7 +5,7 @@ import type { DynamicModule } from '@nestjs/common';
 import type {
   OutboxDispatcherDatabase,
   WorkspaceDatabase,
-} from '@pertexo/database';
+} from '@pertexo/database/execution';
 import type { QueueProducer } from '@pertexo/queue';
 import type {
   StructuredLogger,

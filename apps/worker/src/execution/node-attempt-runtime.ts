@@ -6,7 +6,7 @@ import {
   type NodeAttemptRunStore,
   NodeAttemptStateCorruptError,
   type PublishedWorkflowReader,
-} from '@pertexo/database';
+} from '@pertexo/database/execution';
 import {
   platformExecutableRegistryHistory,
   platformRegistryReleaseSupport,

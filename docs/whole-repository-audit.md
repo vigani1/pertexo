@@ -411,7 +411,7 @@ green. A-07 is complete.
 - **Severity:** Low
 - **Category:** package structure and coupling
 - **File:** `packages/database/src/index.ts`
-- **Classification:** design opportunity; no current dependency violation found
+- **Classification:** corrected after the audited head
 
 The root database export is broad, and applications import the package root in
 many places. This makes it easier for an API, worker, maintenance, recovery, or
@@ -422,6 +422,18 @@ such as authoring, execution, maintenance, recovery, and operator capabilities.
 This is package-surface narrowing, not a request for additional repository or
 service layers. Enforce the intended imports with existing package-boundary lint
 rules.
+
+Resolution: the database package now publishes explicit `api`, `execution`,
+`maintenance`, `lifecycle`, `recovery`, and `operator` subpaths. Each entry point
+re-exports only the capabilities used by that production runtime and resolves
+directly to owning modules rather than the broad compatibility root. API,
+worker, retention, lifecycle-command, recovery, and operator-command production
+imports now use their assigned subpath, including dynamic bootstrap imports.
+Role-specific lint rules reject the root and every cross-role database subpath;
+existing cross-application restrictions remain active for source and tests. New
+package-contract tests fix the six supported paths and prove role entry points
+do not delegate to `index.ts`. All 138 database unit assertions and the full
+repository gate pass. A-08 is complete.
 
 ### A-09: Split giant tests by invariant while retaining real failure proofs
 

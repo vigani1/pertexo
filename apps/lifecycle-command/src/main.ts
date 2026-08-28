@@ -1,5 +1,5 @@
 import type { DualRegionControlLedger } from '@pertexo/artifact-store';
-import type { WorkspaceLifecycleCommandCoordinator } from '@pertexo/database';
+import type { WorkspaceLifecycleCommandCoordinator } from '@pertexo/database/lifecycle';
 import type { StructuredLogger } from '@pertexo/observability/logging';
 import { createTelemetryLifecycle } from '@pertexo/observability/telemetry';
 
@@ -25,7 +25,7 @@ async function bootstrap(): Promise<void> {
     const [artifactStore, database, observability, logging, worker] =
       await Promise.all([
         import('@pertexo/artifact-store'),
-        import('@pertexo/database'),
+        import('@pertexo/database/lifecycle'),
         import('@pertexo/observability'),
         import('@pertexo/observability/logging'),
         import('./run.js'),

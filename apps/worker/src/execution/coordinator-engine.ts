@@ -1,6 +1,6 @@
 import { isDeepStrictEqual } from 'node:util';
 
-import type { PublishedWorkflowV2Projection } from '@pertexo/database';
+import type { PublishedWorkflowV2Projection } from '@pertexo/database/execution';
 import {
   advanceWorkflow,
   parseCheckpoint,

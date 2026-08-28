@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
-import { canonicalOutboxPayloadChecksum } from '@pertexo/database';
+import { canonicalOutboxPayloadChecksum } from '@pertexo/database/execution';
 import type {
   LeasedOutboxEvent,
   OutboxDispatcherDatabase,
-} from '@pertexo/database';
+} from '@pertexo/database/execution';
 import {
   createTransportMetrics,
   type TransportErrorClass,

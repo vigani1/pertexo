@@ -9,7 +9,7 @@ import type {
   PreviewRetentionCoordinator,
   RunArtifactRetentionCoordinator,
   WorkspacePurgeCoordinator,
-} from '@pertexo/database';
+} from '@pertexo/database/maintenance';
 import type { StructuredLogger } from '@pertexo/observability/logging';
 import { createTelemetryLifecycle } from '@pertexo/observability/telemetry';
 
@@ -39,7 +39,7 @@ async function bootstrap(): Promise<void> {
     const [artifactStore, databasePackage, logging, worker] = await Promise.all(
       [
         import('@pertexo/artifact-store'),
-        import('@pertexo/database'),
+        import('@pertexo/database/maintenance'),
         import('@pertexo/observability/logging'),
         import('./run.js'),
       ],

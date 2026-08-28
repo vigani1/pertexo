@@ -7,7 +7,7 @@ import {
 import {
   parseMaintenanceDatabaseConfig,
   type DatabaseConfig,
-} from '@pertexo/database';
+} from '@pertexo/database/recovery';
 import {
   parseObservabilityConfig,
   type ObservabilityConfig,

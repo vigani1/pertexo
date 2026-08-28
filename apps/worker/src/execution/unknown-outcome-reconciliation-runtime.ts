@@ -8,7 +8,7 @@ import {
   type UnknownOutcomeReconciliationResult,
   UnknownOutcomeReconciliationMismatchError,
   UnknownOutcomeReconciliationStateError,
-} from '@pertexo/database';
+} from '@pertexo/database/execution';
 import {
   InvalidQueueDeliveryError,
   jobIdForOutboxEvent,

@@ -8,7 +8,7 @@ import {
   type NodeAttemptRunStore,
   type PublishedWorkflowReader,
   type PublishedWorkflowV2Projection,
-} from '@pertexo/database';
+} from '@pertexo/database/execution';
 import {
   jobIdForOutboxEvent,
   type QueueDelivery,

@@ -4,7 +4,7 @@ import type {
   RetentionEnforcementCoordinator,
   RunArtifactRetentionCoordinator,
   WorkspacePurgeCoordinator,
-} from '@pertexo/database';
+} from '@pertexo/database/maintenance';
 import type { DualRegionControlLedger } from '@pertexo/artifact-store';
 import type { StructuredLogger } from '@pertexo/observability/logging';
 import { waitForAbortableDelay } from '@pertexo/observability/runtime';

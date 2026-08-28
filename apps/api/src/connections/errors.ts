@@ -8,7 +8,7 @@ import {
   FailureNotificationDestinationConflictError,
   FailureNotificationDestinationIdempotencyConflictError,
   FailureNotificationDestinationNotFoundError,
-} from '@pertexo/database';
+} from '@pertexo/database/api';
 import {
   ConnectionSecretEncryptionError,
   SecureHttpError,

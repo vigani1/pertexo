@@ -1,5 +1,5 @@
-import type { FailureNotificationStore } from '@pertexo/database';
-import { canonicalOutboxPayloadChecksum } from '@pertexo/database';
+import type { FailureNotificationStore } from '@pertexo/database/execution';
+import { canonicalOutboxPayloadChecksum } from '@pertexo/database/execution';
 import {
   jobIdForOutboxEvent,
   type QueueDelivery,

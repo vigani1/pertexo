@@ -7,6 +7,30 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./api": {
+      "types": "./dist/api.d.ts",
+      "default": "./dist/api.js"
+    },
+    "./execution": {
+      "types": "./dist/execution.d.ts",
+      "default": "./dist/execution.js"
+    },
+    "./lifecycle": {
+      "types": "./dist/lifecycle.d.ts",
+      "default": "./dist/lifecycle.js"
+    },
+    "./maintenance": {
+      "types": "./dist/maintenance.d.ts",
+      "default": "./dist/maintenance.js"
+    },
+    "./operator": {
+      "types": "./dist/operator.d.ts",
+      "default": "./dist/operator.js"
+    },
+    "./recovery": {
+      "types": "./dist/recovery.d.ts",
+      "default": "./dist/recovery.js"
     }
   },
   "scripts": {

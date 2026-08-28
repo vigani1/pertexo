@@ -4,8 +4,8 @@ import {
   createDatabasePool,
   heartbeatPreviewLease,
   markPreviewDispatched,
-} from '@pertexo/database';
-import type { DatabaseConfig } from '@pertexo/database';
+} from '@pertexo/database/execution';
+import type { DatabaseConfig } from '@pertexo/database/execution';
 import {
   platformExecutableRegistryHistory,
   type PlatformReleaseCohort,

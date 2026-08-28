@@ -1,7 +1,7 @@
 import type { INestApplicationContext } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import type { WorkspaceDatabase } from '@pertexo/database';
-import type { OutboxDispatcherDatabase } from '@pertexo/database';
+import type { WorkspaceDatabase } from '@pertexo/database/execution';
+import type { OutboxDispatcherDatabase } from '@pertexo/database/execution';
 import type { QueueProducer } from '@pertexo/queue';
 import type {
   StructuredLogger,

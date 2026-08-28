@@ -3,7 +3,7 @@ import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import type {
   OidcSecretEncryptionAdapter,
   SealedOidcSecret,
-} from '@pertexo/database';
+} from '@pertexo/database/api';
 
 const AES_KEY_BYTES = 32;
 const AES_GCM_NONCE_BYTES = 12;

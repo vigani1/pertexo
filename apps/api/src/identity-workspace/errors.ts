@@ -2,7 +2,7 @@ import {
   IdentityConflictError,
   IdempotencyRequestConflictError,
   WorkspaceLifecycleConflictError,
-} from '@pertexo/database';
+} from '@pertexo/database/api';
 import {
   applicationError,
   type ApplicationError,

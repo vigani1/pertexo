@@ -1,4 +1,4 @@
-import type { WorkflowAuthoringDatabase } from '@pertexo/database';
+import type { WorkflowAuthoringDatabase } from '@pertexo/database/api';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import type { RegistryRelease } from '@pertexo/node-sdk';
 import type {

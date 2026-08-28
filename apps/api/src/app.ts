@@ -1,4 +1,4 @@
-import type { WorkspaceDatabase } from '@pertexo/database';
+import type { WorkspaceDatabase } from '@pertexo/database/api';
 import type {
   StructuredLogger,
   TelemetryLifecycle,

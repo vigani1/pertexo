@@ -3,7 +3,7 @@ import {
   readExecutionStorageCapacity,
   type ArtifactCapacityObservation,
   type WorkspaceDatabase,
-} from '@pertexo/database';
+} from '@pertexo/database/execution';
 import type { TransportMetrics } from '@pertexo/observability/transport-metrics';
 
 export async function observeWorkspaceArtifactCapacity(

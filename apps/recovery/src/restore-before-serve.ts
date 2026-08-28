@@ -9,7 +9,7 @@ import type {
 import type {
   ControlLedgerCoordinator,
   ControlLedgerInventoryResult,
-} from '@pertexo/database';
+} from '@pertexo/database/recovery';
 import type { StructuredLogger } from '@pertexo/observability/logging';
 import type { MaintenanceMetrics } from '@pertexo/observability';
 import type { TelemetryLifecycle } from '@pertexo/observability/telemetry';

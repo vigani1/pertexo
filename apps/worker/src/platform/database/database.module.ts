@@ -9,8 +9,8 @@ import type {
   DatabaseConfig,
   WorkspaceDatabase,
   WorkspaceTransaction,
-} from '@pertexo/database';
-import { createWorkspaceDatabase } from '@pertexo/database';
+} from '@pertexo/database/execution';
+import { createWorkspaceDatabase } from '@pertexo/database/execution';
 import {
   platformRegistryReleaseSupport,
   type PlatformReleaseCohort,

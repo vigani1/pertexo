@@ -42,11 +42,11 @@ import type {
   WorkflowDraftRecord,
   WorkflowRecord,
   WorkflowVersionRecord,
-} from '@pertexo/database';
+} from '@pertexo/database/api';
 import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
-} from '@pertexo/database';
+} from '@pertexo/database/api';
 
 export type WorkflowDraftResult = Readonly<{
   body: WorkflowDraftResponse;

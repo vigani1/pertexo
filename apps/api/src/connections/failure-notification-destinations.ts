@@ -22,7 +22,7 @@ import {
   workflowFailureNotificationPolicyRequestSchema,
 } from '@pertexo/contracts';
 import { idempotencyKeySchema } from '@pertexo/contracts/identity-workspace';
-import type { FailureNotificationDestinationDatabase } from '@pertexo/database';
+import type { FailureNotificationDestinationDatabase } from '@pertexo/database/api';
 import { z } from 'zod';
 
 import {

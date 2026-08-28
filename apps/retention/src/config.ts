@@ -1,7 +1,7 @@
 import {
   parseMaintenanceDatabaseConfig,
   type DatabaseConfig,
-} from '@pertexo/database';
+} from '@pertexo/database/maintenance';
 import {
   parseDualRegionArtifactStoreConfig,
   parseDualRegionControlLedgerConfig,

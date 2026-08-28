@@ -2,7 +2,7 @@ import type {
   NodeAttemptInputs,
   NodeAttemptLease,
   PublishedWorkflowV2Projection,
-} from '@pertexo/database';
+} from '@pertexo/database/execution';
 import type { NodeExecutionRegistry } from '@pertexo/workflow-engine';
 import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
 import {

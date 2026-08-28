@@ -1,7 +1,7 @@
 import type {
   IdentityWorkspaceDatabase,
   SessionRecord as DatabaseSessionRecord,
-} from '@pertexo/database';
+} from '@pertexo/database/api';
 
 import type { SessionRecord, SessionStorePort } from '../identity/index.js';
 import type {

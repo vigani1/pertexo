@@ -12,7 +12,7 @@ import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
   type WorkflowDraftRecord,
-} from '@pertexo/database';
+} from '@pertexo/database/api';
 import type { RegistryRelease } from '@pertexo/node-sdk';
 import { canonicalJson } from '@pertexo/workflow-model/canonical-json';
 import { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';

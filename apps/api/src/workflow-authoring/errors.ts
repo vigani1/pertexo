@@ -5,7 +5,7 @@ import {
   WorkflowNotFoundError,
   WorkflowPublishIdempotencyConflictError,
   WorkflowRevisionConflictError,
-} from '@pertexo/database';
+} from '@pertexo/database/api';
 import { z } from 'zod';
 
 import {

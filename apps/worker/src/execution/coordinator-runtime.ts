@@ -9,7 +9,7 @@ import {
   type DueNodeWakeupScanner,
   type DeadlineWakeupScanner,
   type PublishedWorkflowReader,
-} from '@pertexo/database';
+} from '@pertexo/database/execution';
 import {
   platformExecutableRegistryHistory,
   platformRegistryReleaseSupport,

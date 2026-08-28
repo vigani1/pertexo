@@ -4,7 +4,7 @@ import {
   WorkflowTriggerStalePublicationError,
   type PublishedWorkflowReader,
   type WorkflowTriggerReconciliationDatabase,
-} from '@pertexo/database';
+} from '@pertexo/database/execution';
 import {
   InvalidQueueDeliveryError,
   jobIdForOutboxEvent,

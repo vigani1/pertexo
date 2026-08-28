@@ -10,7 +10,7 @@ import {
   type WebhookCheckpointFactory,
   type WebhookTriggerDatabase,
   type WebhookVerificationReference,
-} from '@pertexo/database';
+} from '@pertexo/database/api';
 import {
   verifyWebhookSignature,
   type WebhookTriggerEnvelopeEncryption,

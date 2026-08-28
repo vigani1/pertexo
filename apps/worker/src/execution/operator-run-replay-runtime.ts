@@ -8,7 +8,7 @@ import {
   type DatabaseConfig,
   type OperatorRunReplayStore,
   type PublishedWorkflowV2Projection,
-} from '@pertexo/database';
+} from '@pertexo/database/execution';
 import {
   platformExecutableRegistryHistory,
   platformRegistryReleaseSupport,

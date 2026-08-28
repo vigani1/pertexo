@@ -3,7 +3,7 @@ import {
   createScheduleTriggerDatabase,
   type DatabaseConfig,
   type ScheduleTriggerDatabase,
-} from '@pertexo/database';
+} from '@pertexo/database/api';
 
 import { ScheduleManagementService } from '../../schedules/service.js';
 import { createScheduleTelemetry } from '../../schedules/telemetry.js';

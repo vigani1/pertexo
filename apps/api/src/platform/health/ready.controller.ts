@@ -5,7 +5,7 @@ import {
   Optional,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import type { WorkspaceDatabase } from '@pertexo/database';
+import type { WorkspaceDatabase } from '@pertexo/database/api';
 
 import { WORKSPACE_DATABASE } from '../database/database.module.js';
 import { ApiDrainState } from './drain-state.js';

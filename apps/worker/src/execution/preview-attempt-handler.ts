@@ -1,7 +1,7 @@
 import {
   canonicalOutboxPayloadChecksum,
   isValidStoredExecutionOutput,
-} from '@pertexo/database';
+} from '@pertexo/database/execution';
 import {
   jobIdForOutboxEvent,
   type QueueDelivery,
@@ -16,7 +16,7 @@ import type {
   PreviewHeartbeatResult,
   PreviewTerminalOutcome,
   PreviewDelivery,
-} from '@pertexo/database';
+} from '@pertexo/database/execution';
 import type {
   NodeAttemptCapabilityContext,
   NodeAttemptRuntimeCapabilityFactories,

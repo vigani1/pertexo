@@ -7,7 +7,7 @@ import {
   type DatabaseConfig,
   type FailureNotificationStore,
   type OperatorRunReplayStore,
-} from '@pertexo/database';
+} from '@pertexo/database/execution';
 import type { PlatformReleaseCohort } from '@pertexo/node-catalog';
 import { createQueueTraceRunner } from '@pertexo/observability';
 import {

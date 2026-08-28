@@ -5,7 +5,7 @@ import type {
   PreviewRetentionCoordinator,
   RunArtifactRetentionCoordinator,
   WorkspacePurgeCoordinator,
-} from '@pertexo/database';
+} from '@pertexo/database/maintenance';
 import type { StructuredLogger } from '@pertexo/observability/logging';
 import type { TelemetryLifecycle } from '@pertexo/observability/telemetry';
 import { waitForAbortableDelay } from '@pertexo/observability/runtime';

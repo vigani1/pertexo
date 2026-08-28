@@ -5,7 +5,7 @@ import {
   ScheduleTriggerNotFoundError,
   type ScheduleTriggerDatabase,
   type ScheduleTriggerRecord,
-} from '@pertexo/database';
+} from '@pertexo/database/api';
 
 import { applicationError } from '../platform/http/index.js';
 import {

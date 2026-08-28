@@ -8,7 +8,7 @@ import type {
   RetentionScheduleResult,
   RunArtifactRetentionProcessResult,
   WorkspacePurgeProcessResult,
-} from '@pertexo/database';
+} from '@pertexo/database/maintenance';
 
 export const RETENTION_METRIC_NAME = Object.freeze({
   batchCount: 'pertexo.retention.batch.count',

@@ -19,7 +19,7 @@ import {
   type DatabaseConfig,
   type WorkspaceDatabase,
   type WorkflowAuthoringDatabase,
-} from '@pertexo/database';
+} from '@pertexo/database/api';
 
 import type { ApiIdentityRuntime } from '../identity/identity-runtime.module.js';
 import {

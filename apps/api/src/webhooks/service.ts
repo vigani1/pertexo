@@ -5,7 +5,7 @@ import {
   WebhookTriggerNotFoundError,
   type WebhookTriggerDatabase,
   type WorkflowTriggerHealth,
-} from '@pertexo/database';
+} from '@pertexo/database/api';
 import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
 import { applicationError } from '../platform/http/index.js';
 

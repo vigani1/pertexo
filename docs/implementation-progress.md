@@ -4424,6 +4424,14 @@ Current evidence:
   real-PostgreSQL suite, and the focused 28-assertion preview real-PostgreSQL
   suites pass. Both persistence lifecycles now satisfy every A-07 seam without
   broadening their worker-facing interfaces, completing A-07.
+- A-08 database capability narrowing is complete. The package publishes six
+  direct role entry points: `api`, `execution`, `maintenance`, `lifecycle`,
+  `recovery`, and `operator`. Every production application imports its assigned
+  surface for static and dynamic loading; none imports the broad compatibility
+  root. ESLint rejects root and cross-role database imports in production code
+  while preserving the existing API/worker dependency-direction checks. Two
+  package-contract regressions fix the manifest paths and prove role surfaces
+  do not delegate through `index.ts`. All 138 database unit assertions pass.
 
 ## Update protocol
 

@@ -1,5 +1,5 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
-import type { WorkspaceDatabase } from '@pertexo/database';
+import type { WorkspaceDatabase } from '@pertexo/database/execution';
 
 import { WORKSPACE_DATABASE } from '../platform/database/database.module.js';
 import { OUTBOX_DISPATCHER } from '../transport/transport.module.js';

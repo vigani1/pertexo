@@ -7,7 +7,7 @@ import {
   type DatabaseConfig,
   type IdentityWorkspaceDatabase,
   type OidcLoginTransactionStore,
-} from '@pertexo/database';
+} from '@pertexo/database/api';
 
 import {
   GenericOidcProviderAdapter,

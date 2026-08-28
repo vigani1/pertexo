@@ -9,8 +9,8 @@ import type {
   WorkspaceDatabase,
   WorkspaceTransaction,
   WorkspaceTransactionOptions,
-} from '@pertexo/database';
-import { createWorkspaceDatabase } from '@pertexo/database';
+} from '@pertexo/database/api';
+import { createWorkspaceDatabase } from '@pertexo/database/api';
 import {
   platformRegistryReleaseSupport,
   type PlatformReleaseCohort,

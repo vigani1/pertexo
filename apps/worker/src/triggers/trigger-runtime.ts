@@ -7,7 +7,7 @@ import {
   type ScheduleCheckpointFactory,
   type ScheduleTriggerScanner,
   type WorkflowTriggerReconciliationDatabase,
-} from '@pertexo/database';
+} from '@pertexo/database/execution';
 import {
   platformExecutableRegistryHistory,
   platformRegistryReleaseSupport,

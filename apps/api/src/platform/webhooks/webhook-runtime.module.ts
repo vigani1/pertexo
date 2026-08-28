@@ -2,7 +2,7 @@ import {
   createWebhookTriggerDatabase,
   type WebhookCheckpointFactory,
   type WebhookTriggerDatabase,
-} from '@pertexo/database';
+} from '@pertexo/database/api';
 import { createAwsWebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
 import {
   platformExecutableRegistryHistory,

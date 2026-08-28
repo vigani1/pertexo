@@ -8,7 +8,7 @@ import {
   FailureNotificationStateError,
   type FailureNotificationResolvedDestination,
   type FailureNotificationStore,
-} from '@pertexo/database';
+} from '@pertexo/database/execution';
 import type {
   ConnectionEnvelopeEncryption,
   ResendApiResult,

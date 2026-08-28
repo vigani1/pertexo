@@ -6,7 +6,7 @@ import {
   createFailureNotificationDestinationDatabase,
   type ConnectionDatabase,
   type DatabaseConfig,
-} from '@pertexo/database';
+} from '@pertexo/database/api';
 import {
   createAwsConnectionEnvelopeEncryption,
   createNodeSecureHttpClient,

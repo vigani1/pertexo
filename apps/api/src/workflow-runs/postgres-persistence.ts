@@ -11,7 +11,7 @@ import {
   type DatabaseConfig,
   type PublishedWorkflowV2Projection,
   type WorkflowRunDatabase,
-} from '@pertexo/database';
+} from '@pertexo/database/api';
 import {
   platformExecutableRegistryHistory,
   platformRegistryReleaseSupport,

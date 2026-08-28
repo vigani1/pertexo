@@ -9,7 +9,7 @@ import {
   createFailureNotificationStore,
   createOutboxDispatcherDatabase,
   type OutboxDispatcherDatabase,
-} from '@pertexo/database';
+} from '@pertexo/database/execution';
 import {
   createAwsConnectionEnvelopeEncryption,
   createNodeSecureHttpClient,

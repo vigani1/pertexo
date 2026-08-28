@@ -5,7 +5,7 @@ import {
 import {
   parseLifecycleCommandDatabaseConfig,
   type DatabaseConfig,
-} from '@pertexo/database';
+} from '@pertexo/database/lifecycle';
 import {
   parseObservabilityConfig,
   type ObservabilityConfig,
