@@ -28,6 +28,24 @@ export type TelemetrySdkFactory = (
   config: ObservabilityConfig & { readonly otlpHttpEndpoint: string },
 ) => TelemetrySdk;
 
+export type NodeAutoInstrumentationsFactory =
+  typeof getNodeAutoInstrumentations;
+
+export function createNodeAutoInstrumentations(
+  factory: NodeAutoInstrumentationsFactory = getNodeAutoInstrumentations,
+): ReturnType<NodeAutoInstrumentationsFactory> {
+  return factory({
+    '@opentelemetry/instrumentation-host-metrics': {
+      enabled: true,
+      metricGroups: ['process.cpu', 'process.memory'],
+    },
+    '@opentelemetry/instrumentation-runtime-node': {
+      enabled: true,
+      monitoringPrecision: 10,
+    },
+  });
+}
+
 function signalEndpoint(baseEndpoint: string, signalPath: string): string {
   const base = new URL(baseEndpoint);
   base.pathname = `${base.pathname.replace(/\/$/u, '')}/${signalPath}`;
@@ -47,7 +65,7 @@ export function createOpenTelemetrySdk(
   );
 
   return new NodeSDK({
-    instrumentations: [getNodeAutoInstrumentations()],
+    instrumentations: [createNodeAutoInstrumentations()],
     metricReaders: [
       new PeriodicExportingMetricReader({
         exporter: new OTLPMetricExporter({

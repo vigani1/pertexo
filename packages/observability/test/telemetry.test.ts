@@ -2,7 +2,9 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { parseObservabilityConfig } from '../src/config.js';
 import {
+  createNodeAutoInstrumentations,
   createTelemetryLifecycle,
+  type NodeAutoInstrumentationsFactory,
   type TelemetrySdk,
   type TelemetrySdkFactory,
 } from '../src/telemetry.js';
@@ -37,6 +39,27 @@ function sdkHarness(): {
   const factory = vi.fn<TelemetrySdkFactory>(() => sdk);
   return { factory, sdk, shutdown, start };
 }
+
+describe('createNodeAutoInstrumentations', () => {
+  it('enables only process host metrics and configures runtime monitoring', () => {
+    const factory = vi.fn<NodeAutoInstrumentationsFactory>(() => []);
+
+    const instrumentations = createNodeAutoInstrumentations(factory);
+
+    expect(instrumentations).toEqual([]);
+    expect(factory).toHaveBeenCalledOnce();
+    expect(factory).toHaveBeenCalledWith({
+      '@opentelemetry/instrumentation-host-metrics': {
+        enabled: true,
+        metricGroups: ['process.cpu', 'process.memory'],
+      },
+      '@opentelemetry/instrumentation-runtime-node': {
+        enabled: true,
+        monitoringPrecision: 10,
+      },
+    });
+  });
+});
 
 describe('createTelemetryLifecycle', () => {
   it('does not construct or start an SDK when exporting is disabled', async () => {
