@@ -85,6 +85,11 @@ describe('operations observability assets', () => {
       'pertexo-destructive-maintenance',
     ])
       expect(alerts).toContain(`name: ${group}`);
+    expect(alerts).toContain(
+      'method=~"POST|PUT|PATCH|DELETE",status_class=~"2xx|3xx"',
+    );
+    expect(alerts).toContain('alert: PertexoScheduleScanLagHigh');
+    expect(alerts).not.toContain('Schedule-to-scan');
 
     const allowedSeries = new Set([
       'pertexo_api_availability_request_count_total',

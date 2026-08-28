@@ -186,15 +186,15 @@ describe('BullMQ queue producer', () => {
       (queue) => queue.name === QUEUE_NAME.workflowCoordinator,
     );
     coordinator?.getJobCountByTypes.mockResolvedValue(3);
-    coordinator?.getJobs
-      .mockResolvedValueOnce([{ timestamp: Date.now() - 2_000 }])
-      .mockResolvedValueOnce([{ timestamp: Date.now() - 7_500 }]);
+    coordinator?.getJobs.mockResolvedValueOnce([
+      { timestamp: Date.now() - 2_000 },
+    ]);
 
     const observations = await producer.observe();
 
     expect(observations).toContainEqual({
       depth: 3,
-      oldestJobAgeSeconds: 7.5,
+      oldestJobAgeSeconds: 2,
       queueName: QUEUE_NAME.workflowCoordinator,
     });
     expect(coordinator?.getJobCountByTypes).toHaveBeenCalledWith(
@@ -208,13 +208,7 @@ describe('BullMQ queue producer', () => {
       0,
       true,
     );
-    expect(coordinator?.getJobs).toHaveBeenNthCalledWith(
-      2,
-      'delayed',
-      0,
-      0,
-      true,
-    );
+    expect(coordinator?.getJobs).toHaveBeenCalledTimes(1);
     vi.useRealTimers();
   });
 

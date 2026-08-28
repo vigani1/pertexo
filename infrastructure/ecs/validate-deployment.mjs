@@ -118,6 +118,13 @@ for (const [name, expectedSignals] of expectedScalingSignals) {
   ) {
     throw new Error(`${name} autoscaling cooldowns must favor slower scale-in`);
   }
+  if (
+    name === 'worker' &&
+    (!Number.isSafeInteger(service.configuredSlotsPerTask) ||
+      service.configuredSlotsPerTask <= 0)
+  ) {
+    throw new Error('worker autoscaling requires configured slot capacity');
+  }
   if (service.signals.length !== expectedSignals.size)
     throw new Error(
       `${name} must declare exactly the required scaling signals`,
@@ -131,7 +138,7 @@ for (const [name, expectedSignals] of expectedScalingSignals) {
         `${name} has an unexpected ${signal.name} scaling metric`,
       );
     if (
-      !['Average', 'Maximum', 'p95'].includes(signal.statistic) ||
+      !['Average', 'Maximum', 'Sum', 'p95'].includes(signal.statistic) ||
       !Number.isFinite(signal.threshold) ||
       signal.threshold <= 0 ||
       !Number.isSafeInteger(signal.periodSeconds) ||
@@ -140,6 +147,20 @@ for (const [name, expectedSignals] of expectedScalingSignals) {
       signal.evaluationPeriods < 1
     ) {
       throw new Error(`${name} ${signal.name} scaling signal is invalid`);
+    }
+    if (
+      name === 'worker' &&
+      signal.name === 'active-slots' &&
+      (signal.unit !== 'Ratio' ||
+        signal.statistic !== 'Sum' ||
+        signal.normalization !==
+          'metric/(runningTaskCount*configuredSlotsPerTask)' ||
+        signal.threshold <= 0 ||
+        signal.threshold >= 1)
+    ) {
+      throw new Error(
+        'worker active-slot scaling must normalize the summed count by running-task capacity',
+      );
     }
   }
 }

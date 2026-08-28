@@ -1,6 +1,6 @@
 # Backend Implementation Progress
 
-Last updated: 2026-08-27
+Last updated: 2026-08-28
 
 This file tracks delivery against
 [the authoritative backend plan](./workflow-platform-backend-plan.md). A phase
@@ -23,7 +23,7 @@ not complete a phase.
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 5 — orchestration slice | Complete | ADRs 008/017/018/019/020/021/022; implementation through `9d7e071`; migration head `0034_run_failure_notifications.sql`; 862 unit assertions and complete real-service/recovery matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 6 — V1 providers and triggers | Complete | ADRs 012–014 and 023–026; implementation through `0f8a170`; migration head `0043_workflow_run_input_retention.sql`; 1,021 unit and 288 real-service assertions; complete retained recovery and additive-rollout gates; independent fixed-head Spec and Standards completion GO |
-| Phase 7 — production operations | In progress | ADRs 013/015/027/028/029; Frankfurt launch and Ireland recovery policy accepted; maintenance, lifecycle-command, and function-only operator credential boundaries, automatic durable dual-ledger/hold-gated 30/90/365-day PostgreSQL and object-store retention plus frozen standard-class dry-run inventory, the complete repository-owned operator command family through migration `0066_operator_maintenance_rerun.sql`, fenced and crash-repairable workspace tenant-row/object-version purge plus minimized completion tombstones through migrations `0056`–`0059`, seven-day preview retention, route-template-only API availability/latency SLIs, non-root read-only ECS container/task contracts with separate roles and release-job migrations, digest-pinned deterministic render validation, declarative separate API/worker autoscaling inputs, production dependency and image scanning plus manual/scheduled local release gates, a bounded secret-free load-evidence harness, expanded emitted-series dashboards and alerts, all-six-command recovery projection plus legal-hold command coordination, durable operation-bound and lease-fenced lifecycle intents, atomic persisted-surface deletion side effects, asynchronous `202 Accepted` lifecycle API operations and direct-mutation revocation, bounded dual-region lifecycle coordinator and standalone command workers, fail-closed dual-region control-ledger facade, bounded restore-before-serve executable, and a two-process MinIO integration harness; MinIO policy incompatibility blocks the full local control proof, while production operator IAM/admission and immutable-invocation evidence, live version-enabled tenant-bucket proof, AWS Object Lock/regional proof, measured load/failure exercises, restore drills, and deployed autoscaling evidence remain open; API-key and connected-subscription entities are explicitly deferred by the V1 plan and are not invented solely for deletion |
+| Phase 7 — production operations | In progress | ADRs 013/015/027/028/029/030; Frankfurt launch and Ireland recovery policy accepted; maintenance, lifecycle-command, and function-only operator credential boundaries, automatic durable dual-ledger/hold-gated 30/90/365-day PostgreSQL and object-store retention plus frozen standard-class dry-run inventory, the complete repository-owned operator command family through migration `0066_operator_maintenance_rerun.sql`, fenced and crash-repairable workspace tenant-row/object-version purge plus minimized completion tombstones through migrations `0056`–`0059`, seven-day preview retention, route-template-only API availability/latency SLIs, non-root read-only ECS container/task contracts with separate roles and release-job migrations, digest-pinned deterministic render validation, declarative separate API/worker autoscaling inputs, production dependency and image scanning plus manual/scheduled local release gates, a bounded secret-free load-evidence harness, expanded emitted-series dashboards and alerts, all-six-command recovery projection plus legal-hold command coordination, durable operation-bound and lease-fenced lifecycle intents, atomic persisted-surface deletion side effects, asynchronous `202 Accepted` lifecycle API operations and direct-mutation revocation, bounded dual-region lifecycle coordinator and standalone command workers, fail-closed dual-region control-ledger facade, bounded restore-before-serve executable, and a two-process MinIO integration harness; MinIO policy incompatibility blocks the full local control proof, while production operator IAM/admission and immutable-invocation evidence, live version-enabled tenant-bucket proof, AWS Object Lock/regional proof, measured load/failure exercises, restore drills, and deployed autoscaling evidence remain open; API-key and connected-subscription entities are explicitly deferred by the V1 plan and are not invented solely for deletion |
 
 The `0A`–`0E` checkpoints are implementation-sized subdivisions of the plan's
 single Phase 0. They do not alter the authoritative scope. Phase 0 is complete
@@ -3707,7 +3707,8 @@ Current evidence:
   `pnpm security:audit` production dependency gate and composes it with root and
   quality, deployment, and exercise checks in `pnpm release:check`. CI declares
   dependency, deployment, and exercise validation on pull requests and `main`
-  pushes; a manual and weekly workflow declares the complete local gate plus a
+  pushes and nightly runs; the manual and weekly release workflow invokes that
+  complete real-service/recovery matrix plus the local release gate, a
   production-image build, non-root/read-only smoke, and commit-pinned Grype scan.
   A separate commit-pinned CodeQL workflow covers JavaScript/TypeScript on `main`,
   weekly, and by manual dispatch. Task-definition rendering requires a lowercase
@@ -3716,9 +3717,10 @@ Current evidence:
   read-only roots while proving a mutable tag is rejected. Every Node Docker
   stage pins the current Node 24 base digest; the runtime applies current Debian
   fixes and removes unused npm/Corepack binaries. A separately validated
-  autoscaling contract declares independent Frankfurt/Ireland API and worker
-  bounds: API uses p95 request latency and ECS saturation, while workers use the
-  existing oldest-job-age and active-handler signals. Local ARM64 production-image
+  ADR 030 autoscaling-input contract declares independent Frankfurt/Ireland API
+  and worker bounds: API uses p95 request latency and ECS saturation, while
+  workers use oldest-waiting-job age and active-handler utilization normalized by
+  running task count and the explicit 60-slot-per-task capacity. Local ARM64 production-image
   build and UID 10001/read-only-root smoke pass. Grype `v0.97.1` reports no
   fixable high or critical findings; unfixed findings remain visible for release
   risk review. `pnpm release:check` passes the production dependency audit,
@@ -4112,7 +4114,9 @@ Current evidence:
   `promtool` validation passes all 15 rules and the complete Prometheus
   configuration. PostgreSQL, Redis, object-store service, and worker
   CPU/RSS/heap/event-loop metrics remain genuine coverage gaps, and the broad
-  telemetry/dashboard checklist stays unchecked.
+  telemetry/dashboard checklist stays unchecked. The schedule alert is explicitly
+  scan-lag only; a schedule-to-start SLI that joins due occurrence acceptance to
+  workflow start remains an additional open telemetry gap.
 - The final locally reproducible release matrix now passes from fresh Docker
   volumes. Zero-to-`0066` migration and embedded exact prior-head fixtures pass
   all 326 PostgreSQL assertions; real S3-compatible artifact I/O passes four

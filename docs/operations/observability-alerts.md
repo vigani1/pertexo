@@ -40,7 +40,7 @@ Confirm the finite webhook outcome and inspect ingress problem logs. Verify the
 database acceptance path and outbox age. Acknowledge upstream retries; do not
 manually create workflow runs for requests whose durable acceptance is unknown.
 
-## PertexoScheduleLagHigh
+## PertexoScheduleScanLagHigh
 
 Check schedule scan outcomes, deferred occurrences, trigger health, and queue
 age. Restore trigger worker capacity or dependency readiness, then allow durable

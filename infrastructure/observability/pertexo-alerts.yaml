@@ -19,7 +19,7 @@ groups:
       - alert: PertexoApiWriteLatencyHigh
         expr: |
           histogram_quantile(0.95,
-            sum by (le) (rate(pertexo_api_request_duration_seconds_bucket{method=~"POST|PUT|PATCH|DELETE"}[5m])))
+            sum by (le) (rate(pertexo_api_request_duration_seconds_bucket{method=~"POST|PUT|PATCH|DELETE",status_class=~"2xx|3xx"}[5m])))
           > 0.5
         for: 15m
         labels:
@@ -43,18 +43,18 @@ groups:
             At least one webhook delivery was rejected as unavailable during the
             last ten minutes.
           runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexowebhookunavailable
-      - alert: PertexoScheduleLagHigh
+      - alert: PertexoScheduleScanLagHigh
         expr: |
           histogram_quantile(0.95, sum by (le) (rate(pertexo_schedule_lag_seconds_bucket[10m]))) > 5
         for: 10m
         labels:
           severity: page
         annotations:
-          summary: Schedule-to-scan p95 exceeds five seconds
+          summary: Schedule scan lag p95 exceeds five seconds
           description:
-            Accepted scheduled work may be starting later than the initial
-            user-impact target.
-          runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexoschedulelaghigh
+            Due schedule scanning is delayed; inspect downstream queue age to
+            determine schedule-to-start impact.
+          runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexoschedulescanlaghigh
       - alert: PertexoProviderFailureRateHigh
         expr: |
           sum(rate(pertexo_provider_request_count_total{outcome!="succeeded"}[10m]))

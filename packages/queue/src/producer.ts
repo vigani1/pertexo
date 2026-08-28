@@ -274,14 +274,11 @@ export class BullMqQueueProducer implements QueueProducer {
     return this.withPublishTimeout(
       Promise.all(
         Object.entries(this.queues).map(async ([queueName, queue]) => {
-          const [depth, waiting, delayed] = await Promise.all([
+          const [depth, waiting] = await Promise.all([
             queue.getJobCountByTypes('waiting', 'delayed'),
             queue.getJobs('waiting', 0, 0, true),
-            queue.getJobs('delayed', 0, 0, true),
           ]);
-          const oldestTimestamp = [...waiting, ...delayed].reduce<
-            number | undefined
-          >(
+          const oldestTimestamp = waiting.reduce<number | undefined>(
             (oldest, job) =>
               oldest === undefined || job.timestamp < oldest
                 ? job.timestamp
