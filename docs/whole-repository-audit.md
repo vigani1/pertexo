@@ -393,8 +393,11 @@ intent, and lease reconstruction. `preview-execution-heartbeat.ts` now owns
 database-clock lease renewal under the run/attempt fence in its original write
 transaction. `preview-execution-dispatch.ts` now owns connection-fence
 validation, provider-binding consistency, and durable dispatch marking under
-the worker/attempt fence in its original write transaction. Preview completion
-and reconciliation extraction remain open.
+the worker/attempt fence in its original write transaction.
+`preview-execution-completion.ts` now owns stored output/error validation,
+duplicate handling, terminal attempt/run state, terminal audit and usage facts,
+and inbox completion in the original tenant-scoped write transaction. Preview
+reconciliation extraction remains open.
 
 ### A-08: Narrow the database package's public capability surface
 

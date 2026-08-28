@@ -4412,8 +4412,10 @@ Current evidence:
   renewal, run expiry, worker identity, and attempt-fence validation in the
   original write transaction. Preview dispatch is isolated with connection
   fencing, provider-binding consistency, worker/attempt fencing, and durable
-  dispatch marking in its original transaction. Preview completion and
-  reconciliation extraction remain open.
+  dispatch marking in its original transaction. Preview completion is isolated
+  without splitting its transaction: stored output/error validation, duplicate
+  handling, terminal attempt/run state, terminal audit and usage facts, and
+  inbox completion stay atomic. Preview reconciliation extraction remains open.
 
 ## Update protocol
 
