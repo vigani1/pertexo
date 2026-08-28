@@ -2087,7 +2087,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0067_reconcile_published_migration_repairs.sql',
+          migrationHead: '0068_restore_artifact_inventory.sql',
           role: 'pertexo_worker',
         });
       } finally {
@@ -2180,6 +2180,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         '0065_operator_run_replay.sql',
         '0066_operator_maintenance_rerun.sql',
         '0067_reconcile_published_migration_repairs.sql',
+        '0068_restore_artifact_inventory.sql',
       ]);
       const workerPool = new Pool({
         connectionString: namedDatabaseUrl(
@@ -2195,7 +2196,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0067_reconcile_published_migration_repairs.sql',
+          migrationHead: '0068_restore_artifact_inventory.sql',
           role: 'pertexo_worker',
         });
         await expect(
@@ -2262,7 +2263,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0067_reconcile_published_migration_repairs.sql',
+        migrationHead: '0068_restore_artifact_inventory.sql',
         role: 'pertexo_worker',
       });
       const catalog = await readinessPool.query<{
@@ -2501,7 +2502,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0067_reconcile_published_migration_repairs.sql',
+        migrationHead: '0068_restore_artifact_inventory.sql',
       });
     } finally {
       await readinessPool.end();
@@ -2687,7 +2688,7 @@ describe('CoordinatorRunStore on disposable PostgreSQL', () => {
         workerRuntimeRole: 'pertexo_worker',
       }),
     ).resolves.toMatchObject({
-      migrationHead: '0067_reconcile_published_migration_repairs.sql',
+      migrationHead: '0068_restore_artifact_inventory.sql',
     });
     await readinessPool.end();
   });

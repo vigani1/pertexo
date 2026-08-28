@@ -98,6 +98,7 @@ describe('trigger hardening prior-head migration', () => {
       '0065_operator_run_replay.sql',
       '0066_operator_maintenance_rerun.sql',
       '0067_reconcile_published_migration_repairs.sql',
+      '0068_restore_artifact_inventory.sql',
     ]);
   });
 });

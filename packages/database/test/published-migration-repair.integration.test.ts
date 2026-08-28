@@ -100,6 +100,7 @@ describe('published migration repair upgrade', () => {
 
     await expect(migrateDatabase(migrationConfig)).resolves.toEqual([
       '0067_reconcile_published_migration_repairs.sql',
+      '0068_restore_artifact_inventory.sql',
     ]);
     await expect(migrateDatabase(migrationConfig)).resolves.toEqual([]);
 

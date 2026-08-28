@@ -3,6 +3,16 @@ import { describe, expect, it } from 'vitest';
 import { parseRecoveryConfig } from '../src/config.js';
 
 const environment = {
+  ARTIFACT_STORE_ACCESS_KEY_ID: 'artifact-primary-key',
+  ARTIFACT_STORE_BUCKET: 'pertexo-artifacts-primary',
+  ARTIFACT_STORE_ENDPOINT: 'https://s3.eu-central-1.amazonaws.com',
+  ARTIFACT_STORE_REGION: 'eu-central-1',
+  ARTIFACT_STORE_SECRET_ACCESS_KEY: 'artifact-primary-secret',
+  ARTIFACT_STORE_RECOVERY_ACCESS_KEY_ID: 'artifact-recovery-key',
+  ARTIFACT_STORE_RECOVERY_BUCKET: 'pertexo-artifacts-recovery',
+  ARTIFACT_STORE_RECOVERY_ENDPOINT: 'https://s3.eu-west-1.amazonaws.com',
+  ARTIFACT_STORE_RECOVERY_REGION: 'eu-west-1',
+  ARTIFACT_STORE_RECOVERY_SECRET_ACCESS_KEY: 'artifact-recovery-secret',
   CONTROL_LEDGER_ACCESS_KEY_ID: 'primary-key',
   CONTROL_LEDGER_BUCKET: 'pertexo-control-primary',
   CONTROL_LEDGER_ENDPOINT: 'https://s3.eu-central-1.amazonaws.com',
@@ -22,11 +32,17 @@ const environment = {
 describe('parseRecoveryConfig', () => {
   it('applies bounded fail-closed defaults', () => {
     expect(parseRecoveryConfig(environment)).toMatchObject({
+      artifacts: {
+        primary: { bucket: 'pertexo-artifacts-primary' },
+        recovery: { bucket: 'pertexo-artifacts-recovery' },
+      },
       coordinator: {
+        artifactPageSize: 100,
         externalOperationTimeoutMs: 120_000,
         inventoryPageSize: 100,
         lockTimeoutMs: 10_000,
         maxInventoryPages: 10_000,
+        maxArtifactPages: 1_000,
         maxInventorySweeps: 3,
         maxPages: 10,
         maxRecords: 1_000,

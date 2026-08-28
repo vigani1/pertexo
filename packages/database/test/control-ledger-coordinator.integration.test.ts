@@ -54,6 +54,7 @@ const cancellationWorkspaceId = randomUUID();
 const progressWorkspaceId = randomUUID();
 const backlogWorkspaceId = randomUUID();
 const deletionWorkspaceId = randomUUID();
+const committedArtifactIds = [randomUUID(), randomUUID()].toSorted();
 let deletionActorId = '';
 let priorDirectory = '';
 let maintenance: Pool | undefined;
@@ -189,6 +190,30 @@ beforeAll(async () => {
     await createWorkspace(owner, progressWorkspaceId);
     await createWorkspace(owner, backlogWorkspaceId);
     deletionActorId = await createWorkspace(owner, deletionWorkspaceId);
+    await owner.query('begin');
+    await owner.query('set local role pertexo_owner');
+    await owner.query("select set_config('app.workspace_id',$1,true)", [
+      workspaceId,
+    ]);
+    for (const artifactId of committedArtifactIds) {
+      await owner.query(
+        `insert into app.artifacts(
+           id,workspace_id,purpose,storage_key,media_type,byte_length,sha256,
+           status,expires_at,finalized_at
+         ) values($1,$2,'test-fixture',$3,'text/plain',5,$4,'available',
+                  clock_timestamp()+interval '1 day',clock_timestamp())`,
+        [
+          artifactId,
+          workspaceId,
+          `workspaces/${workspaceId}/artifacts/${artifactId}`,
+          '2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824',
+        ],
+      );
+    }
+    await owner.query('commit');
+  } catch (error: unknown) {
+    await owner.query('rollback').catch(() => undefined);
+    throw error;
   } finally {
     await owner.end();
   }
@@ -310,6 +335,10 @@ beforeAll(async () => {
     ),
     path.join(priorDirectory, '0067_reconcile_published_migration_repairs.sql'),
   );
+  await copyFile(
+    path.join(MIGRATIONS_DIRECTORY, '0068_restore_artifact_inventory.sql'),
+    path.join(priorDirectory, '0068_restore_artifact_inventory.sql'),
+  );
   await expect(
     migrateDatabase(migrationConfig, priorDirectory),
   ).resolves.toEqual([
@@ -335,6 +364,7 @@ beforeAll(async () => {
     '0065_operator_run_replay.sql',
     '0066_operator_maintenance_rerun.sql',
     '0067_reconcile_published_migration_repairs.sql',
+    '0068_restore_artifact_inventory.sql',
   ]);
   maintenance = new Pool({ connectionString: maintenanceUrl, max: 4 });
 }, 120_000);
@@ -378,6 +408,34 @@ describe('control ledger coordinator exact 0045 to 0047 integration', () => {
           workspaceCount: 8,
         },
       );
+      const firstArtifacts = await coordinator.listCommittedArtifacts({
+        limit: 1,
+      });
+      expect(firstArtifacts).toEqual({
+        artifacts: [
+          {
+            artifactId: committedArtifactIds[0],
+            byteLength: 5,
+            mediaType: 'text/plain',
+            sha256:
+              '2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824',
+            workspaceId,
+          },
+        ],
+        hasMore: true,
+      });
+      await expect(
+        coordinator.listCommittedArtifacts({
+          afterArtifactId: committedArtifactIds[0]!,
+          afterWorkspaceId: workspaceId,
+          limit: 1,
+        }),
+      ).resolves.toEqual({
+        artifacts: [
+          expect.objectContaining({ artifactId: committedArtifactIds[1] }),
+        ],
+        hasMore: false,
+      });
     } finally {
       await coordinator.close();
     }

@@ -1,5 +1,7 @@
 import {
+  parseDualRegionArtifactStoreConfig,
   parseDualRegionControlLedgerConfig,
+  type DualRegionArtifactStoreConfig,
   type DualRegionControlLedgerConfig,
 } from '@pertexo/artifact-store';
 import {
@@ -49,6 +51,18 @@ const environmentSchema = z
       .min(1)
       .max(100)
       .default(100),
+    RESTORE_ARTIFACT_PAGE_SIZE: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(999)
+      .default(100),
+    RESTORE_ARTIFACT_MAX_PAGES: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(100_000)
+      .default(1_000),
     RESTORE_LEDGER_MAX_PAGES: z.coerce
       .number()
       .int()
@@ -123,11 +137,14 @@ const environmentSchema = z
   });
 
 export interface RecoveryConfig {
+  readonly artifacts: DualRegionArtifactStoreConfig;
   readonly coordinator: Readonly<{
+    artifactPageSize: number;
     externalOperationTimeoutMs: number;
     inventoryPageSize: number;
     lockTimeoutMs: number;
     maxInventoryPages: number;
+    maxArtifactPages: number;
     maxInventorySweeps: number;
     maxPages: number;
     maxRecords: number;
@@ -146,12 +163,29 @@ export function parseRecoveryConfig(
   environment: Readonly<Record<string, string | undefined>> = process.env,
 ): RecoveryConfig {
   const parsed = environmentSchema.parse(environment);
+  const artifacts = parseDualRegionArtifactStoreConfig(environment);
+  const ledger = parseDualRegionControlLedgerConfig(environment);
+  if (
+    [ledger.primary, ledger.recovery].some((control) =>
+      [artifacts.primary, artifacts.recovery].some(
+        (artifact) =>
+          control.accessKeyId === artifact.accessKeyId ||
+          control.bucket === artifact.bucket,
+      ),
+    )
+  )
+    throw new Error(
+      'Tenant artifacts and control ledgers require distinct principals and buckets',
+    );
   return Object.freeze({
+    artifacts,
     coordinator: Object.freeze({
+      artifactPageSize: parsed.RESTORE_ARTIFACT_PAGE_SIZE,
       externalOperationTimeoutMs: parsed.RESTORE_EXTERNAL_OPERATION_TIMEOUT_MS,
       inventoryPageSize: parsed.RESTORE_INVENTORY_PAGE_SIZE,
       lockTimeoutMs: parsed.RESTORE_DATABASE_LOCK_TIMEOUT_MS,
       maxInventoryPages: parsed.RESTORE_MAX_INVENTORY_PAGES,
+      maxArtifactPages: parsed.RESTORE_ARTIFACT_MAX_PAGES,
       maxInventorySweeps: parsed.RESTORE_MAX_INVENTORY_SWEEPS,
       maxPages: parsed.RESTORE_LEDGER_MAX_PAGES,
       maxRecords: parsed.RESTORE_LEDGER_MAX_RECORDS,
@@ -161,7 +195,7 @@ export function parseRecoveryConfig(
       statementTimeoutMs: parsed.RESTORE_DATABASE_STATEMENT_TIMEOUT_MS,
     }),
     database: parseMaintenanceDatabaseConfig(environment),
-    ledger: parseDualRegionControlLedgerConfig(environment),
+    ledger,
     maintenanceRole: parsed.POSTGRES_MAINTENANCE_USER,
     observability: parseObservabilityConfig({
       environment: parsed.NODE_ENV,

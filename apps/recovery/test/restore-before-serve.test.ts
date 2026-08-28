@@ -1,4 +1,6 @@
 import type {
+  DualRegionArtifactStore,
+  DualRegionArtifactStoreReadiness,
   DualRegionControlLedger,
   DualRegionControlLedgerReadiness,
 } from '@pertexo/artifact-store';
@@ -36,6 +38,19 @@ const inventory: ControlLedgerInventoryResult = {
   sweepCount: 3,
   workspaceCount: 4,
 };
+const artifactReadiness: DualRegionArtifactStoreReadiness = {
+  bucket: 'artifacts-primary',
+  primary: { bucket: 'artifacts-primary', region: 'eu-central-1' },
+  recovery: { bucket: 'artifacts-recovery', region: 'eu-west-1' },
+  region: 'eu-central-1',
+};
+const artifact = {
+  artifactId: '018f47a0-7b5c-7e2d-8c3f-12ad4e8b9c02',
+  byteLength: 5,
+  mediaType: 'text/plain',
+  sha256: '2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824',
+  workspaceId: '018f47a0-7b5c-7e2d-8c3f-12ad4e8b9c01',
+};
 
 function resources(events: string[]) {
   const checkRestoreReadiness = vi.fn(() => {
@@ -50,14 +65,42 @@ function resources(events: string[]) {
     events.push('reconcile');
     return Promise.resolve(inventory);
   });
+  const listCommittedArtifacts = vi.fn(() => {
+    events.push('artifact-list');
+    return Promise.resolve({ artifacts: [artifact], hasMore: false });
+  });
   const coordinator = {
     checkRestoreReadiness,
     close: closeCoordinator,
+    listCommittedArtifacts,
     placeLegalHold: vi.fn(),
     reconcileAllWorkspaces,
     reconcileWorkspace: vi.fn(),
     releaseLegalHold: vi.fn(),
   } as ControlLedgerCoordinator;
+  const checkArtifactReadiness = vi.fn(() => {
+    events.push('artifact-ready');
+    return Promise.resolve(artifactReadiness);
+  });
+  const closeArtifacts = vi.fn(() => {
+    events.push('artifact-close');
+  });
+  const verifyReplicas = vi.fn(() => {
+    events.push('artifact-verify');
+    return Promise.resolve(artifact);
+  });
+  const artifacts = {
+    beginDirectUpload: vi.fn(),
+    checkReadiness: checkArtifactReadiness,
+    close: closeArtifacts,
+    delete: vi.fn(),
+    getStream: vi.fn(),
+    head: vi.fn(),
+    purgeWorkspacePage: vi.fn(),
+    put: vi.fn(),
+    validateDirectUpload: vi.fn(),
+    verifyReplicas,
+  } as DualRegionArtifactStore;
   const checkLedgerReadiness = vi.fn(() => {
     events.push('ledger-ready');
     return Promise.resolve(readiness);
@@ -102,22 +145,29 @@ function resources(events: string[]) {
     recordLifecycleCommand: vi.fn(),
   };
   return {
+    artifactPageSize: 100,
+    artifacts,
     coordinator,
     expectedMaintenanceRole: 'pertexo_maintenance',
     ledger,
     logger,
     metrics,
+    maxArtifactPages: 10,
     signal: new AbortController().signal,
     spies: {
       checkLedgerReadiness,
+      checkArtifactReadiness,
       checkRestoreReadiness,
       closeCoordinator,
       closeLedger,
+      closeArtifacts,
+      listCommittedArtifacts,
       logInfo,
       reconcileAllWorkspaces,
       recordControlLedgerReconciliation,
       shutdownTelemetry,
       startTelemetry,
+      verifyReplicas,
     },
     telemetry,
   };
@@ -129,6 +179,11 @@ describe('restoreBeforeServe', () => {
     const input = resources(events);
 
     await expect(restoreBeforeServe(input)).resolves.toEqual({
+      artifacts: expect.objectContaining({
+        artifactCount: 1,
+        pageCount: 1,
+        readiness: artifactReadiness,
+      }),
       inventory,
       ledger: readiness,
     });
@@ -136,9 +191,13 @@ describe('restoreBeforeServe', () => {
       'telemetry-start',
       'database-ready',
       'ledger-ready',
+      'artifact-ready',
       'reconcile',
+      'artifact-list',
+      'artifact-verify',
       'database-close',
       'ledger-close',
+      'artifact-close',
       'telemetry-close',
     ]);
     expect(input.spies.logInfo).toHaveBeenCalledWith(
@@ -158,9 +217,10 @@ describe('restoreBeforeServe', () => {
       'Restore-before-serve recovery did not complete cleanly',
     );
     expect(input.spies.reconcileAllWorkspaces).not.toHaveBeenCalled();
-    expect(events.slice(-3)).toEqual([
+    expect(events.slice(-4)).toEqual([
       'database-close',
       'ledger-close',
+      'artifact-close',
       'telemetry-close',
     ]);
   });
@@ -176,7 +236,40 @@ describe('restoreBeforeServe', () => {
       'Restore-before-serve recovery did not complete cleanly',
     );
     expect(input.spies.closeLedger).toHaveBeenCalledOnce();
+    expect(input.spies.closeArtifacts).toHaveBeenCalledOnce();
     expect(input.spies.shutdownTelemetry).toHaveBeenCalledOnce();
+  });
+
+  it('fails closed when a committed artifact replica cannot be verified', async () => {
+    const events: string[] = [];
+    const input = resources(events);
+    input.spies.verifyReplicas.mockRejectedValueOnce(
+      new Error('recovery object missing'),
+    );
+
+    await expect(restoreBeforeServe(input)).rejects.toThrow(
+      'Restore-before-serve recovery did not complete cleanly',
+    );
+    expect(input.spies.logInfo).not.toHaveBeenCalled();
+    expect(input.spies.recordControlLedgerReconciliation).toHaveBeenCalledWith(
+      'failed',
+      expect.any(Number),
+    );
+  });
+
+  it('fails closed when the artifact inventory exceeds its page bound', async () => {
+    const events: string[] = [];
+    const input = resources(events);
+    input.maxArtifactPages = 1;
+    input.spies.listCommittedArtifacts.mockResolvedValueOnce({
+      artifacts: [artifact],
+      hasMore: true,
+    });
+
+    await expect(restoreBeforeServe(input)).rejects.toThrow(
+      'Restore-before-serve recovery did not complete cleanly',
+    );
+    expect(input.spies.verifyReplicas).toHaveBeenCalledOnce();
   });
 
   it('honors cancellation before any readiness probe', async () => {
@@ -190,6 +283,7 @@ describe('restoreBeforeServe', () => {
     ).rejects.toThrow('Restore-before-serve recovery did not complete cleanly');
     expect(input.spies.checkRestoreReadiness).not.toHaveBeenCalled();
     expect(input.spies.checkLedgerReadiness).not.toHaveBeenCalled();
+    expect(input.spies.checkArtifactReadiness).not.toHaveBeenCalled();
   });
 
   it('cleans up resources when telemetry cannot start', async () => {
@@ -205,6 +299,7 @@ describe('restoreBeforeServe', () => {
     expect(events).toEqual([
       'database-close',
       'ledger-close',
+      'artifact-close',
       'telemetry-close',
     ]);
   });

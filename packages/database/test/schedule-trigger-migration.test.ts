@@ -6,9 +6,7 @@ import { EXPECTED_MIGRATION_HEAD } from '../src/readiness.js';
 
 describe('schedule trigger migration contract', () => {
   it('persists immutable recurrence, unique occurrences, bounded leases, and narrow worker functions', async () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0067_reconcile_published_migration_repairs.sql',
-    );
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0068_restore_artifact_inventory.sql');
     const migration = await readFile(
       new URL('../migrations/0040_schedule_triggers.sql', import.meta.url),
       'utf8',

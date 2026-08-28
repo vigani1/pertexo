@@ -1,6 +1,9 @@
 import { createTelemetryLifecycle } from '@pertexo/observability/telemetry';
 import type { StructuredLogger } from '@pertexo/observability/logging';
-import type { DualRegionControlLedger } from '@pertexo/artifact-store';
+import type {
+  DualRegionArtifactStore,
+  DualRegionControlLedger,
+} from '@pertexo/artifact-store';
 import type { ControlLedgerCoordinator } from '@pertexo/database';
 
 import { parseRecoveryConfig } from './config.js';
@@ -15,6 +18,7 @@ async function bootstrap(): Promise<void> {
   process.once('SIGINT', stop);
   process.once('SIGTERM', stop);
   let logger: StructuredLogger | undefined;
+  let artifacts: DualRegionArtifactStore | undefined;
   let coordinator: ControlLedgerCoordinator | undefined;
   let ledger: DualRegionControlLedger | undefined;
   let recoveryInvoked = false;
@@ -33,6 +37,10 @@ async function bootstrap(): Promise<void> {
       config.ledger.primary,
       config.ledger.recovery,
     );
+    artifacts = artifactStore.createDualRegionArtifactStore(
+      config.artifacts.primary,
+      config.artifacts.recovery,
+    );
     coordinator = database.createControlLedgerCoordinator(
       config.database,
       ledger,
@@ -44,11 +52,14 @@ async function bootstrap(): Promise<void> {
     ]);
     recoveryInvoked = true;
     await recovery.restoreBeforeServe({
+      artifactPageSize: config.coordinator.artifactPageSize,
+      artifacts,
       coordinator,
       expectedMaintenanceRole: config.maintenanceRole,
       ledger,
       logger,
       metrics: observability.createMaintenanceMetrics(),
+      maxArtifactPages: config.coordinator.maxArtifactPages,
       signal,
       telemetry,
     });
@@ -62,6 +73,11 @@ async function bootstrap(): Promise<void> {
       await coordinator?.close().catch(() => undefined);
       try {
         ledger?.close();
+      } catch {
+        // The original bootstrap failure remains authoritative.
+      }
+      try {
+        artifacts?.close();
       } catch {
         // The original bootstrap failure remains authoritative.
       }
