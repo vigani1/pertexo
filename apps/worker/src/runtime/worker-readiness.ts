@@ -3,9 +3,11 @@ import type { WorkspaceDatabase } from '@pertexo/database';
 
 import { WORKSPACE_DATABASE } from '../platform/database/database.module.js';
 import { OUTBOX_DISPATCHER } from '../transport/transport.module.js';
+import { NODE_ATTEMPT_RUNTIME } from '../transport/transport.module.js';
 import { TRIGGER_RUNTIME } from '../transport/transport.module.js';
 import type { TriggerRuntime } from '../triggers/trigger-runtime.js';
 import type { OutboxDispatcher } from '../transport/outbox-dispatcher.js';
+import type { NodeAttemptRuntime } from '../execution/node-attempt-runtime.js';
 import { WorkerDrainState } from './worker-drain-state.js';
 
 export class WorkerDrainingError extends Error {
@@ -26,6 +28,9 @@ export class WorkerReadiness {
     @Optional()
     @Inject(TRIGGER_RUNTIME)
     private readonly triggerRuntime: TriggerRuntime | undefined,
+    @Optional()
+    @Inject(NODE_ATTEMPT_RUNTIME)
+    private readonly nodeAttemptRuntime: NodeAttemptRuntime | undefined,
   ) {}
 
   public assertCanAcceptWork(): void {
@@ -40,6 +45,7 @@ export class WorkerReadiness {
       this.database.checkReadiness(),
       this.dispatcher.checkReadiness(),
       this.triggerRuntime?.checkReadiness(),
+      this.nodeAttemptRuntime?.checkReadiness?.(),
     ]);
   }
 }

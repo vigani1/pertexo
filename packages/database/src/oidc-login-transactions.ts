@@ -1,4 +1,4 @@
-import { Pool } from 'pg';
+import { createDatabasePool } from './postgres-telemetry.js';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from './config.js';
@@ -83,7 +83,7 @@ export function createOidcLoginTransactionStore(
   config: DatabaseConfig,
   encryption: OidcSecretEncryptionAdapter,
 ): OidcLoginTransactionStore {
-  const pool = new Pool(config);
+  const pool = createDatabasePool(config);
 
   return Object.freeze({
     create: async (transaction: OidcLoginTransaction): Promise<void> => {

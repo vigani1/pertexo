@@ -69,6 +69,12 @@ describe('parseWorkerConfig', () => {
         pollIntervalMillis: 250,
       },
       redisUrl: 'redis://:secret@localhost:6379/0',
+      resourceSafety: {
+        maximumEventLoopDelayMillis: 200,
+        maximumRssBytes: 805_306_368,
+        sampleIntervalMillis: 5_000,
+        unhealthySamplesBeforeDrain: 3,
+      },
     });
   });
 
@@ -141,6 +147,12 @@ describe('parseWorkerConfig', () => {
         pollIntervalMillis: 250,
       },
       redisUrl: 'redis://:secret@localhost:6379/0',
+      resourceSafety: {
+        maximumEventLoopDelayMillis: 200,
+        maximumRssBytes: 805_306_368,
+        sampleIntervalMillis: 5_000,
+        unhealthySamplesBeforeDrain: 3,
+      },
     });
     expect(Object.isFrozen(config)).toBe(true);
     expect(Object.isFrozen(config.database)).toBe(true);

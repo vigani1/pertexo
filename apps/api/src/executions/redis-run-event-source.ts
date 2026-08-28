@@ -1,8 +1,15 @@
 import { Buffer } from 'node:buffer';
+import { performance } from 'node:perf_hooks';
 
 import { Redis } from 'ioredis';
 import { runEventChannel } from '@pertexo/queue/run-event-notifications';
 export { runEventChannel } from '@pertexo/queue/run-event-notifications';
+import type {
+  RedisOperation,
+  RedisOperationErrorClass,
+  RedisTelemetryObserver,
+} from '@pertexo/queue';
+import { createProductionRedisTelemetryObserver } from '@pertexo/queue';
 import { z } from 'zod';
 
 import {
@@ -34,7 +41,61 @@ const optionsSchema = z
 export interface RedisRunEventSourceOptions {
   readonly bufferCapacity?: number;
   readonly redisUrl: string;
+  readonly redisTelemetry?: RedisTelemetryObserver;
   readonly subscribeTimeoutMs?: number;
+}
+
+function notifyConnectionEvent(
+  observer: RedisTelemetryObserver | undefined,
+  event: 'close' | 'end' | 'error' | 'ready',
+): void {
+  try {
+    observer?.connectionEvent({
+      clientRole: 'run_event_subscriber',
+      event,
+    });
+  } catch {
+    // Dependency telemetry cannot change subscription behavior.
+  }
+}
+
+async function observeOperation<T>(
+  observer: RedisTelemetryObserver | undefined,
+  operation: RedisOperation,
+  execute: () => Promise<T>,
+): Promise<T> {
+  const startedAt = performance.now();
+  try {
+    const result = await execute();
+    try {
+      observer?.operationFinished({
+        clientRole: 'run_event_subscriber',
+        durationSeconds: (performance.now() - startedAt) / 1_000,
+        operation,
+        outcome: 'success',
+      });
+    } catch {
+      // Dependency telemetry cannot change subscription behavior.
+    }
+    return result;
+  } catch (error: unknown) {
+    let errorClass: RedisOperationErrorClass = 'connection';
+    if (error instanceof RedisRunEventSubscribeError) {
+      errorClass = error.message.includes('aborted') ? 'aborted' : 'timeout';
+    }
+    try {
+      observer?.operationFinished({
+        clientRole: 'run_event_subscriber',
+        durationSeconds: (performance.now() - startedAt) / 1_000,
+        errorClass,
+        operation,
+        outcome: 'failure',
+      });
+    } catch {
+      // Dependency telemetry cannot change subscription behavior.
+    }
+    throw error;
+  }
 }
 
 export class RedisRunEventSourceConfigurationError extends Error {
@@ -161,12 +222,17 @@ export class RedisRunEventSource implements LiveRunEventSource {
   private readonly redisUrl: string;
   private readonly subscribeTimeoutMs: number;
   private readonly createRedis: () => Redis;
+  private readonly redisTelemetry: RedisTelemetryObserver | undefined;
 
   public constructor(
     options: RedisRunEventSourceOptions,
     createRedis?: () => Redis,
   ) {
-    const parsed = optionsSchema.safeParse(options);
+    const parsed = optionsSchema.safeParse({
+      bufferCapacity: options.bufferCapacity,
+      redisUrl: options.redisUrl,
+      subscribeTimeoutMs: options.subscribeTimeoutMs,
+    });
     if (!parsed.success) {
       throw new RedisRunEventSourceConfigurationError(
         'Redis run event source configuration is invalid',
@@ -176,6 +242,8 @@ export class RedisRunEventSource implements LiveRunEventSource {
     this.bufferCapacity = parsed.data.bufferCapacity ?? DEFAULT_BUFFER_CAPACITY;
     this.subscribeTimeoutMs =
       parsed.data.subscribeTimeoutMs ?? DEFAULT_SUBSCRIBE_TIMEOUT_MS;
+    this.redisTelemetry =
+      options.redisTelemetry ?? createProductionRedisTelemetryObserver();
     this.createRedis =
       createRedis ??
       (() =>
@@ -184,6 +252,28 @@ export class RedisRunEventSource implements LiveRunEventSource {
           enableOfflineQueue: true,
           maxRetriesPerRequest: null,
         }));
+  }
+
+  public async checkReadiness(): Promise<void> {
+    const redis = this.createRedis();
+    redis.on('error', () => undefined);
+    let timer: NodeJS.Timeout | undefined;
+    try {
+      await observeOperation(this.redisTelemetry, 'ping', () =>
+        Promise.race([
+          redis.ping().then(() => undefined),
+          new Promise<never>((_resolve, reject) => {
+            timer = setTimeout(() => {
+              reject(new RedisRunEventSubscribeError('Redis ping timed out'));
+            }, this.subscribeTimeoutMs);
+          }),
+        ]),
+      );
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+      redis.removeAllListeners();
+      redis.disconnect(false);
+    }
   }
 
   public async subscribe(input: {
@@ -220,7 +310,9 @@ export class RedisRunEventSource implements LiveRunEventSource {
     };
     const onReady = (): void => {
       if (!subscribed || !disconnectedAfterSubscribe || closed) return;
-      redis.subscribe(channel).then(
+      observeOperation(this.redisTelemetry, 'resubscribe', () =>
+        redis.subscribe(channel).then(() => undefined),
+      ).then(
         () => {
           if (!closed) {
             disconnectedAfterSubscribe = false;
@@ -234,13 +326,24 @@ export class RedisRunEventSource implements LiveRunEventSource {
     };
 
     redis.on('message', onMessage);
-    redis.on('close', onClose);
-    redis.on('end', onClose);
-    redis.on('ready', onReady);
+    redis.on('close', () => {
+      notifyConnectionEvent(this.redisTelemetry, 'close');
+      onClose();
+    });
+    redis.on('end', () => {
+      notifyConnectionEvent(this.redisTelemetry, 'end');
+      onClose();
+    });
+    redis.on('ready', () => {
+      notifyConnectionEvent(this.redisTelemetry, 'ready');
+      onReady();
+    });
     // ioredis requires an error listener to avoid process-level error events.
-    redis.on('error', () => undefined);
+    redis.on('error', () => {
+      notifyConnectionEvent(this.redisTelemetry, 'error');
+    });
 
-    const close = (): Promise<void> => {
+    const performClose = (): Promise<void> => {
       if (closed) return Promise.resolve();
       closed = true;
       input.signal.removeEventListener('abort', onAbort);
@@ -249,17 +352,21 @@ export class RedisRunEventSource implements LiveRunEventSource {
       queue.close();
       return Promise.resolve();
     };
+    const close = (): Promise<void> =>
+      observeOperation(this.redisTelemetry, 'close', performClose);
     const onAbort = (): void => {
       void close();
     };
     input.signal.addEventListener('abort', onAbort, { once: true });
 
     try {
-      await subscribeWithBounds(
-        redis,
-        channel,
-        this.subscribeTimeoutMs,
-        input.signal,
+      await observeOperation(this.redisTelemetry, 'subscribe', () =>
+        subscribeWithBounds(
+          redis,
+          channel,
+          this.subscribeTimeoutMs,
+          input.signal,
+        ),
       );
       subscribed = true;
     } catch (error: unknown) {

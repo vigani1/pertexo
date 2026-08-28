@@ -1,6 +1,7 @@
+import { createDatabasePool } from './postgres-telemetry.js';
 import { createHash, randomUUID } from 'node:crypto';
 
-import { Pool } from 'pg';
+import type { Pool } from 'pg';
 import type { DatabaseError, PoolClient } from 'pg';
 import { z } from 'zod';
 
@@ -595,7 +596,7 @@ const connectionTestClaimSchema = z
 export function createConnectionDatabase(
   config: DatabaseConfig,
 ): ConnectionDatabase {
-  const pool = new Pool(config);
+  const pool = createDatabasePool(config);
   const database: ConnectionDatabase = {
     createConnection: async (input): Promise<ConnectionRecord> => {
       const connectionId = uuidSchema.parse(input.connectionId);

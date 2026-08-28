@@ -1,4 +1,5 @@
-import { Pool, type PoolClient } from 'pg';
+import { createDatabasePool } from './postgres-telemetry.js';
+import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from './config.js';
@@ -79,7 +80,7 @@ function quoteIdentifier(identifier: string): string {
 export function createCompatibilityReleaseMaintenance(
   config: DatabaseConfig,
 ): CompatibilityReleaseMaintenance {
-  const pool = new Pool(config);
+  const pool = createDatabasePool(config);
 
   const transact = async (
     operation: (client: PoolClient) => Promise<void>,

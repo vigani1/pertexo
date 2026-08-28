@@ -5,6 +5,8 @@ import './server-only.js';
 export const TRANSPORT_METRIC_NAME = Object.freeze({
   artifactBytes: 'pertexo.transport.artifact.bytes',
   artifactCount: 'pertexo.transport.artifact.count',
+  executionStorageBytes: 'pertexo.transport.execution_storage.bytes',
+  executionStorageCount: 'pertexo.transport.execution_storage.count',
   activeConcurrency: 'pertexo.transport.handler.active',
   consumerLifecycle: 'pertexo.transport.consumer.lifecycle',
   handlerDuration: 'pertexo.transport.handler.duration',
@@ -116,6 +118,12 @@ export interface ArtifactObservation {
   readonly status: 'available' | 'deleted' | 'deleting' | 'pending';
 }
 
+export interface ExecutionStorageObservation {
+  readonly bytes: number;
+  readonly count: number;
+  readonly surface: 'checkpoint' | 'event';
+}
+
 export interface ConsumerLifecycleMeasurement {
   readonly event: 'drain_forced' | 'drain_graceful' | 'ready';
   readonly queueName: TransportJob['queueName'];
@@ -134,6 +142,7 @@ export type ActiveConcurrencyChange = TransportJob & {
 export interface TransportMetrics {
   addActiveConcurrency(change: ActiveConcurrencyChange): void;
   observeArtifacts(observation: ArtifactObservation): void;
+  observeExecutionStorage?(observation: ExecutionStorageObservation): void;
   observeOutbox(observation: OutboxObservation): void;
   observeQueue(observation: QueueObservation): void;
   recordHandlerFinished(measurement: TransportHandlerMeasurement): void;
@@ -289,6 +298,22 @@ export function createTransportMetrics(
     description: 'Artifact bytes by lifecycle status',
     unit: 'By',
   });
+  const executionStorageCount = meter.createHistogram(
+    TRANSPORT_METRIC_NAME.executionStorageCount,
+    {
+      description:
+        'Distribution of event and checkpoint rows per observed workspace',
+      unit: '{record}',
+    },
+  );
+  const executionStorageBytes = meter.createHistogram(
+    TRANSPORT_METRIC_NAME.executionStorageBytes,
+    {
+      description:
+        'Distribution of event payload and checkpoint state bytes per observed workspace',
+      unit: 'By',
+    },
+  );
   const workerProcessStarts = meter.createCounter(
     TRANSPORT_METRIC_NAME.workerProcessStarts,
     {
@@ -311,6 +336,13 @@ export function createTransportMetrics(
       const attributes = { status: observation.status };
       artifactCount.record(observation.count, attributes);
       artifactBytes.record(observation.bytes, attributes);
+    },
+    observeExecutionStorage(observation: ExecutionStorageObservation): void {
+      requireNonNegativeInteger(observation.count, 'count');
+      requireNonNegativeInteger(observation.bytes, 'bytes');
+      const attributes = { surface: observation.surface };
+      executionStorageCount.record(observation.count, attributes);
+      executionStorageBytes.record(observation.bytes, attributes);
     },
     observeOutbox(observation: OutboxObservation): void {
       requireNonNegativeInteger(observation.backlog, 'backlog');

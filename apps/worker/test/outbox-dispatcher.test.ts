@@ -325,27 +325,17 @@ describe('outbox dispatcher', () => {
     });
   });
 
-  it('samples tenant artifact capacity after durable maintenance publication', async () => {
-    const artifactId = '55555555-5555-4555-8555-555555555555';
-    const payload = { artifactId };
-    const selected = boundaries([
-      event({
-        aggregateId: artifactId,
-        aggregateType: 'artifact',
-        jobName: JOB_NAME.expireArtifacts,
-        payload,
-        payloadChecksum: checksum(payload),
-      }),
-    ]);
-    const observeArtifactCapacity = vi.fn().mockResolvedValue(undefined);
+  it('samples workspace capacity after durable workflow publication', async () => {
+    const selected = boundaries([event()]);
+    const observeWorkspaceCapacity = vi.fn().mockResolvedValue(undefined);
     const dispatcher = createDispatcher(selected);
-    dispatcher.configureRuntimeHooks({ observeArtifactCapacity });
+    dispatcher.configureRuntimeHooks({ observeWorkspaceCapacity });
 
     await expect(dispatcher.dispatchOnce()).resolves.toMatchObject({
       published: 1,
     });
-    expect(observeArtifactCapacity).toHaveBeenCalledOnce();
-    expect(observeArtifactCapacity).toHaveBeenCalledWith(WORKSPACE_ID);
+    expect(observeWorkspaceCapacity).toHaveBeenCalledOnce();
+    expect(observeWorkspaceCapacity).toHaveBeenCalledWith(WORKSPACE_ID);
   });
 
   it('does not change durable publication when artifact sampling fails', async () => {
@@ -362,7 +352,7 @@ describe('outbox dispatcher', () => {
     ]);
     const dispatcher = createDispatcher(selected);
     dispatcher.configureRuntimeHooks({
-      observeArtifactCapacity: vi
+      observeWorkspaceCapacity: vi
         .fn()
         .mockRejectedValue(new Error('metric query failed')),
     });

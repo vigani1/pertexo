@@ -1,6 +1,7 @@
+import { createDatabasePool } from './postgres-telemetry.js';
 import { createHash, randomUUID } from 'node:crypto';
 
-import { Pool } from 'pg';
+import type { Pool } from 'pg';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import { v5 as uuidv5 } from 'uuid';
@@ -2103,7 +2104,7 @@ const allowedRunTransitions: Readonly<Record<string, ReadonlySet<string>>> = {
 export function createCoordinatorRunStore(
   config: DatabaseConfig,
 ): CoordinatorRunStore {
-  const pool = new Pool(config);
+  const pool = createDatabasePool(config);
   return Object.freeze({
     acknowledgeAdvanceDelivery: async (
       input: AcknowledgeAdvanceDeliveryInput,

@@ -99,6 +99,18 @@ export class AppModule {
       dependencies.identityRuntime?.dependencies.authorization;
     const webhookRuntime = dependencies.webhookRuntime;
     const scheduleRuntime = dependencies.scheduleRuntime;
+    const workflowRuntime = dependencies.workflowRuntime;
+    const runtimeReadiness =
+      workflowRuntime === undefined && scheduleRuntime === undefined
+        ? undefined
+        : {
+            checkReadiness: async (): Promise<void> => {
+              await Promise.all([
+                workflowRuntime?.checkReadiness?.(),
+                scheduleRuntime?.checkReadiness(),
+              ]);
+            },
+          };
     const featureModules =
       identityModule === undefined
         ? []
@@ -163,10 +175,12 @@ export class AppModule {
                 },
               },
             ]),
+        ...(runtimeReadiness === undefined
+          ? []
+          : [{ provide: API_RUNTIME_READINESS, useValue: runtimeReadiness }]),
         ...(scheduleRuntime === undefined
           ? []
           : [
-              { provide: API_RUNTIME_READINESS, useValue: scheduleRuntime },
               {
                 provide: Symbol('SCHEDULE_RUNTIME_SHUTDOWN'),
                 useValue: {

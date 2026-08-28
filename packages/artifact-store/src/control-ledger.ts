@@ -19,6 +19,15 @@ import { Readable } from 'node:stream';
 import { z } from 'zod';
 
 import type { ControlLedgerConfig } from './control-ledger-config.js';
+import {
+  createProductionObjectStoreObserver,
+  ObservedS3Client,
+  safelyObserveSafetyViolation,
+} from './object-store-telemetry.js';
+import type {
+  ObjectStoreObserver,
+  ObjectStoreRegionRole,
+} from './object-store-telemetry.js';
 
 const ZERO_HASH = '0'.repeat(64);
 const MAX_RECORD_BYTES = 4 * 1024;
@@ -891,15 +900,73 @@ class AwsControlLedger implements ControlLedger {
   }
 }
 
+class ObservedControlLedger implements ControlLedger {
+  public constructor(
+    private readonly ledger: ControlLedger,
+    private readonly observer: ObjectStoreObserver,
+    private readonly regionRole: ObjectStoreRegionRole,
+  ) {}
+
+  public append(
+    request: AppendControlLedgerRecord,
+  ): Promise<ControlLedgerRecord> {
+    return this.observe(() => this.ledger.append(request));
+  }
+
+  public checkReadiness(signal?: AbortSignal): Promise<ControlLedgerReadiness> {
+    return this.observe(() => this.ledger.checkReadiness(signal));
+  }
+
+  public close(): void {
+    this.ledger.close();
+  }
+
+  public read(
+    request: ControlLedgerReadRequest,
+  ): Promise<ControlLedgerRecord | null> {
+    return this.observe(() => this.ledger.read(request));
+  }
+
+  public reconcile(
+    request: ReconcileControlLedgerRequest,
+  ): Promise<ControlLedgerReconciliation> {
+    return this.observe(() => this.ledger.reconcile(request));
+  }
+
+  private async observe<T>(operation: () => Promise<T>): Promise<T> {
+    try {
+      return await operation();
+    } catch (error: unknown) {
+      const check =
+        error instanceof ControlLedgerReadinessError
+          ? 'control_ledger_readiness'
+          : error instanceof ControlLedgerIntegrityError
+            ? 'control_ledger_integrity'
+            : undefined;
+      if (check !== undefined) {
+        safelyObserveSafetyViolation(this.observer, {
+          check,
+          regionRole: this.regionRole,
+          surface: 'control_ledger',
+        });
+      }
+      throw error;
+    }
+  }
+}
+
 export function createControlLedger(
   config: ControlLedgerConfig,
   options: Readonly<{
     client?: ControlLedgerS3Client;
     clientOwnership?: 'borrowed' | 'owned';
     now?: () => Date;
+    observer?: ObjectStoreObserver;
+    regionRole?: ObjectStoreRegionRole;
   }> = {},
 ): ControlLedger {
-  const client =
+  const observer = options.observer ?? createProductionObjectStoreObserver();
+  const rawClient =
     options.client ??
     new S3Client({
       credentials: {
@@ -910,12 +977,20 @@ export function createControlLedger(
       forcePathStyle: config.forcePathStyle,
       region: config.region,
     });
+  const regionRole = options.regionRole ?? 'primary';
+  const client = new ObservedS3Client(
+    rawClient,
+    observer,
+    'control_ledger',
+    regionRole,
+  );
   const ownsClient =
     options.client === undefined || options.clientOwnership === 'owned';
-  return new AwsControlLedger(
+  const ledger = new AwsControlLedger(
     config,
     client,
     ownsClient,
     options.now ?? (() => new Date()),
   );
+  return new ObservedControlLedger(ledger, observer, regionRole);
 }

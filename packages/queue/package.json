@@ -55,6 +55,7 @@
     "typecheck": "tsc -p tsconfig.test.json --noEmit"
   },
   "dependencies": {
+    "@opentelemetry/api": "1.9.0",
     "bullmq": "6.1.2",
     "ioredis": "6.0.0",
     "zod": "4.4.3"

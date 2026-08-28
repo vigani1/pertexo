@@ -1,5 +1,6 @@
 import {
   readArtifactCapacity,
+  readExecutionStorageCapacity,
   type ArtifactCapacityObservation,
   type WorkspaceDatabase,
 } from '@pertexo/database';
@@ -17,5 +18,11 @@ export async function observeWorkspaceArtifactCapacity(
   for (const observation of observations) {
     metrics.observeArtifacts(observation);
   }
+  const executionStorage = await database.withWorkspace(
+    workspaceId,
+    readExecutionStorageCapacity,
+  );
+  for (const observation of executionStorage)
+    metrics.observeExecutionStorage?.(observation);
   return observations;
 }

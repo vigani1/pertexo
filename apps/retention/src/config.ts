@@ -69,6 +69,15 @@ const environmentSchema = z
   })
   .superRefine((value, context) => {
     if (
+      value.NODE_ENV === 'production' &&
+      value.OTEL_EXPORTER_OTLP_ENDPOINT === undefined
+    )
+      context.addIssue({
+        code: 'custom',
+        message: 'Production retention worker requires OTLP telemetry export',
+        path: ['OTEL_EXPORTER_OTLP_ENDPOINT'],
+      });
+    if (
       value.RETENTION_EXTERNAL_OPERATION_TIMEOUT_MS +
         value.RETENTION_DATABASE_STATEMENT_TIMEOUT_MS >=
       value.RETENTION_LEASE_SECONDS * 1_000

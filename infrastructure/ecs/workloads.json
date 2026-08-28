@@ -24,7 +24,8 @@
         "OIDC_JWKS_URI",
         "OIDC_REDIRECT_URI",
         "OIDC_TOKEN_ENDPOINT",
-        "OIDC_TRANSACTION_KEY_VERSION"
+        "OIDC_TRANSACTION_KEY_VERSION",
+        "OTEL_EXPORTER_OTLP_ENDPOINT"
       ],
       "secrets": [
         "DATABASE_API_URL",
@@ -46,12 +47,19 @@
         "-c",
         "export WORKER_INSTANCE_ID=$HOSTNAME; exec node apps/worker/dist/main.js"
       ],
-      "environment": { "NODE_ENV": "production" },
+      "environment": {
+        "NODE_ENV": "production",
+        "WORKER_MAX_EVENT_LOOP_DELAY_MILLIS": "200",
+        "WORKER_MAX_RSS_BYTES": "805306368",
+        "WORKER_RESOURCE_SAMPLE_MILLIS": "5000",
+        "WORKER_RESOURCE_UNHEALTHY_SAMPLES": "3"
+      },
       "configuration": [
         "ARTIFACT_STORE_BUCKET",
         "ARTIFACT_STORE_ENDPOINT",
         "ARTIFACT_STORE_FORCE_PATH_STYLE",
-        "ARTIFACT_STORE_REGION"
+        "ARTIFACT_STORE_REGION",
+        "OTEL_EXPORTER_OTLP_ENDPOINT"
       ],
       "secrets": [
         "DATABASE_WORKER_URL",
@@ -60,7 +68,10 @@
         "ARTIFACT_STORE_ACCESS_KEY_ID",
         "ARTIFACT_STORE_SECRET_ACCESS_KEY"
       ],
-      "healthCheck": ["CMD-SHELL", "kill -0 1"]
+      "healthCheck": [
+        "CMD-SHELL",
+        "test -f /tmp/pertexo-worker-ready && kill -0 1"
+      ]
     },
     "lifecycle-command": {
       "kind": "service",
@@ -81,7 +92,8 @@
         "CONTROL_LEDGER_RECOVERY_ENDPOINT",
         "CONTROL_LEDGER_RECOVERY_FORCE_PATH_STYLE",
         "CONTROL_LEDGER_RECOVERY_MIN_RETENTION_DAYS",
-        "CONTROL_LEDGER_RECOVERY_REGION"
+        "CONTROL_LEDGER_RECOVERY_REGION",
+        "OTEL_EXPORTER_OTLP_ENDPOINT"
       ],
       "secrets": [
         "DATABASE_LIFECYCLE_COMMAND_URL",
@@ -115,7 +127,8 @@
         "CONTROL_LEDGER_RECOVERY_ENDPOINT",
         "CONTROL_LEDGER_RECOVERY_FORCE_PATH_STYLE",
         "CONTROL_LEDGER_RECOVERY_MIN_RETENTION_DAYS",
-        "CONTROL_LEDGER_RECOVERY_REGION"
+        "CONTROL_LEDGER_RECOVERY_REGION",
+        "OTEL_EXPORTER_OTLP_ENDPOINT"
       ],
       "secrets": [
         "DATABASE_MAINTENANCE_URL",
@@ -142,7 +155,8 @@
         "CONTROL_LEDGER_RECOVERY_ENDPOINT",
         "CONTROL_LEDGER_RECOVERY_FORCE_PATH_STYLE",
         "CONTROL_LEDGER_RECOVERY_MIN_RETENTION_DAYS",
-        "CONTROL_LEDGER_RECOVERY_REGION"
+        "CONTROL_LEDGER_RECOVERY_REGION",
+        "OTEL_EXPORTER_OTLP_ENDPOINT"
       ],
       "secrets": [
         "DATABASE_MAINTENANCE_URL",
@@ -156,7 +170,7 @@
       "kind": "job",
       "command": ["node", "apps/operator-command/dist/main.js"],
       "environment": { "NODE_ENV": "production" },
-      "configuration": [],
+      "configuration": ["OTEL_EXPORTER_OTLP_ENDPOINT"],
       "secrets": ["DATABASE_OPERATOR_URL"]
     },
     "migration": {

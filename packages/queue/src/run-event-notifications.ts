@@ -5,6 +5,12 @@ import { createHash } from 'node:crypto';
 
 import { Redis } from 'ioredis';
 import { z } from 'zod';
+import {
+  notifyRedisConnectionEvent,
+  observeRedisOperation,
+  type RedisTelemetryObserver,
+} from './redis-telemetry-contracts.js';
+import { createProductionRedisTelemetryObserver } from './redis-telemetry.js';
 
 const DEFAULT_PUBLISH_TIMEOUT_MS = 2_000;
 const MAX_LIVE_MESSAGE_BYTES = 512;
@@ -26,6 +32,7 @@ const eventReferenceSchema = identitySchema
 export interface RunEventNotificationPublisherOptions {
   readonly publishTimeoutMs?: number;
   readonly redisUrl: string;
+  readonly redisTelemetry?: RedisTelemetryObserver;
 }
 export interface RunEventIdentity {
   readonly runId: string;
@@ -96,12 +103,16 @@ export class RedisRunEventNotificationPublisher implements RunEventNotificationP
   private closed = false;
   private readonly publishTimeoutMs: number;
   private readonly redis: Redis;
+  private readonly redisTelemetry: RedisTelemetryObserver | undefined;
 
   public constructor(
     options: RunEventNotificationPublisherOptions,
     createRedis?: () => Redis,
   ) {
-    const parsed = optionsSchema.safeParse(options);
+    const parsed = optionsSchema.safeParse({
+      publishTimeoutMs: options.publishTimeoutMs,
+      redisUrl: options.redisUrl,
+    });
     if (!parsed.success)
       throw new RunEventNotificationConfigurationError(
         'Redis run event publisher configuration is invalid',
@@ -109,6 +120,8 @@ export class RedisRunEventNotificationPublisher implements RunEventNotificationP
     const redisUrl = parseRedisUrl(parsed.data.redisUrl);
     this.publishTimeoutMs =
       parsed.data.publishTimeoutMs ?? DEFAULT_PUBLISH_TIMEOUT_MS;
+    this.redisTelemetry =
+      options.redisTelemetry ?? createProductionRedisTelemetryObserver();
     this.redis =
       createRedis?.() ??
       new Redis(redisUrl, {
@@ -116,7 +129,15 @@ export class RedisRunEventNotificationPublisher implements RunEventNotificationP
         enableOfflineQueue: false,
         maxRetriesPerRequest: 1,
       });
-    this.redis.on('error', () => undefined);
+    for (const event of ['ready', 'close', 'end', 'error'] as const) {
+      this.redis.on(event, () => {
+        notifyRedisConnectionEvent(
+          this.redisTelemetry,
+          'run_event_publisher',
+          event,
+        );
+      });
+    }
   }
 
   public close(): Promise<void> {
@@ -124,7 +145,12 @@ export class RedisRunEventNotificationPublisher implements RunEventNotificationP
       this.closed = true;
       this.redis.disconnect(false);
     }
-    return Promise.resolve();
+    return observeRedisOperation(
+      this.redisTelemetry,
+      'run_event_publisher',
+      'close',
+      () => Promise.resolve(),
+    );
   }
 
   public publish(reference: RunEventReference) {
@@ -144,6 +170,15 @@ export class RedisRunEventNotificationPublisher implements RunEventNotificationP
   }
 
   private async publishMessage(channel: string, payload: string) {
+    return observeRedisOperation(
+      this.redisTelemetry,
+      'run_event_publisher',
+      'publish',
+      () => this.performPublishMessage(channel, payload),
+    );
+  }
+
+  private async performPublishMessage(channel: string, payload: string) {
     if (this.closed)
       throw new RunEventNotificationPublishError(
         'Run event publisher is closed',

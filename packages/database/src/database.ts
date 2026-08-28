@@ -1,4 +1,4 @@
-import { Pool } from 'pg';
+import { createDatabasePool } from './postgres-telemetry.js';
 
 import type { DatabaseConfig } from './config.js';
 import type { CompatibilityReleaseExpectation } from './compatibility-release.js';
@@ -35,7 +35,7 @@ export function createWorkspaceDatabase(
     throw new Error(
       'Compatibility release database configuration is ambiguous',
     );
-  const pool = new Pool(config);
+  const pool = createDatabasePool(config);
   pool.on('error', () => undefined);
 
   return Object.freeze({

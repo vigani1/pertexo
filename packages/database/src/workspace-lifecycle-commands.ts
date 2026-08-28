@@ -1,4 +1,6 @@
-import { Pool, type PoolClient, type QueryConfig, type QueryResult } from 'pg';
+import { createDatabasePool } from './postgres-telemetry.js';
+import type { Pool } from 'pg';
+import type { PoolClient, QueryConfig, QueryResult } from 'pg';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from './config.js';
@@ -309,7 +311,7 @@ export function createWorkspaceLifecycleCommandCoordinator(
   input: WorkspaceLifecycleCommandOptions,
 ): WorkspaceLifecycleCommandCoordinator {
   const options = optionsSchema.parse(input);
-  const pool = new Pool({
+  const pool = createDatabasePool({
     connectionString: config.connectionString,
     connectionTimeoutMillis: config.connectionTimeoutMillis,
     idleTimeoutMillis: config.idleTimeoutMillis,

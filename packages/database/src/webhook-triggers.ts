@@ -1,7 +1,8 @@
+import { createDatabasePool } from './postgres-telemetry.js';
 import { createHash, randomUUID } from 'node:crypto';
 
 import { sql } from 'drizzle-orm';
-import { Pool, type PoolClient } from 'pg';
+import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from './config.js';
@@ -315,7 +316,7 @@ export function createWebhookTriggerDatabase(
   compatibilityReleaseInput:
     CompatibilityReleaseExpectation | CompatibilityReleaseExpectationSet,
 ): WebhookTriggerDatabase {
-  const pool = new Pool(config);
+  const pool = createDatabasePool(config);
   const compatibilityReleases = Array.isArray(compatibilityReleaseInput)
     ? parseCompatibilityReleaseExpectationSet(compatibilityReleaseInput)
     : Object.freeze([

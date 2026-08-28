@@ -13,6 +13,13 @@ import {
   type JobName,
   type QueueName,
 } from './names.js';
+import {
+  instrumentRedisCommands,
+  notifyRedisConnectionEvent,
+  observeRedisOperation,
+  type RedisTelemetryObserver,
+} from './redis-telemetry-contracts.js';
+import { createProductionRedisTelemetryObserver } from './redis-telemetry.js';
 
 const DEFAULT_READY_TIMEOUT_MS = 5_000;
 const DEFAULT_PUBLISH_TIMEOUT_MS = 5_000;
@@ -30,6 +37,7 @@ export type QueueProducerOptions = Readonly<{
   readonly redisUrl: string;
   readonly readyTimeoutMs?: number;
   readonly publishTimeoutMs?: number;
+  readonly redisTelemetry?: RedisTelemetryObserver;
 }>;
 
 export type EnqueuedQueueJob = Readonly<{
@@ -102,7 +110,11 @@ function parseProducerOptions(options: QueueProducerOptions): {
   readonly readyTimeoutMs: number;
   readonly publishTimeoutMs: number;
 } {
-  const parsed = queueProducerOptionsSchema.safeParse(options);
+  const parsed = queueProducerOptionsSchema.safeParse({
+    publishTimeoutMs: options.publishTimeoutMs,
+    readyTimeoutMs: options.readyTimeoutMs,
+    redisUrl: options.redisUrl,
+  });
 
   if (!parsed.success) {
     throw new QueueConfigurationError('Redis URL configuration is invalid');
@@ -167,6 +179,7 @@ export class BullMqQueueProducer implements QueueProducer {
   private readonly queues: QueueMap;
   private readonly readyTimeoutMs: number;
   private readonly publishTimeoutMs: number;
+  private readonly redisTelemetry: RedisTelemetryObserver | undefined;
   private lifecycle: 'open' | 'closed' = 'open';
   private redisReady = false;
 
@@ -175,27 +188,49 @@ export class BullMqQueueProducer implements QueueProducer {
 
     this.readyTimeoutMs = parsedOptions.readyTimeoutMs;
     this.publishTimeoutMs = parsedOptions.publishTimeoutMs;
-    this.redis = new Redis(parsedOptions.redisUrl, {
-      connectTimeout: parsedOptions.readyTimeoutMs,
-      enableOfflineQueue: false,
-      // Producers fail fast so an outbox lease can be released/retried. A
-      // Worker uses a separate blocking connection with null retries.
-      maxRetriesPerRequest: 1,
-    });
+    this.redisTelemetry =
+      options.redisTelemetry ?? createProductionRedisTelemetryObserver();
+    this.redis = instrumentRedisCommands(
+      new Redis(parsedOptions.redisUrl, {
+        connectTimeout: parsedOptions.readyTimeoutMs,
+        enableOfflineQueue: false,
+        // Producers fail fast so an outbox lease can be released/retried. A
+        // Worker uses a separate blocking connection with null retries.
+        maxRetriesPerRequest: 1,
+      }),
+      this.redisTelemetry,
+      'queue_producer',
+    );
     this.redisReady = this.redis.status === 'ready';
 
     this.redis.on('ready', () => {
+      notifyRedisConnectionEvent(
+        this.redisTelemetry,
+        'queue_producer',
+        'ready',
+      );
       if (this.lifecycle === 'open') {
         this.redisReady = true;
       }
     });
     this.redis.on('close', () => {
+      notifyRedisConnectionEvent(
+        this.redisTelemetry,
+        'queue_producer',
+        'close',
+      );
       this.redisReady = false;
     });
     this.redis.on('end', () => {
+      notifyRedisConnectionEvent(this.redisTelemetry, 'queue_producer', 'end');
       this.redisReady = false;
     });
     this.redis.on('error', () => {
+      notifyRedisConnectionEvent(
+        this.redisTelemetry,
+        'queue_producer',
+        'error',
+      );
       this.redisReady = false;
     });
 
@@ -212,6 +247,15 @@ export class BullMqQueueProducer implements QueueProducer {
   }
 
   public async waitUntilReady(timeoutMs = this.readyTimeoutMs): Promise<void> {
+    return observeRedisOperation(
+      this.redisTelemetry,
+      'queue_producer',
+      'wait_until_ready',
+      () => this.performWaitUntilReady(timeoutMs),
+    );
+  }
+
+  private async performWaitUntilReady(timeoutMs: number): Promise<void> {
     if (this.lifecycle === 'closed') {
       throw new QueueNotReadyError();
     }
@@ -242,6 +286,15 @@ export class BullMqQueueProducer implements QueueProducer {
   }
 
   public async publish(job: QueueJob): Promise<EnqueuedQueueJob> {
+    return observeRedisOperation(
+      this.redisTelemetry,
+      'queue_producer',
+      'publish',
+      () => this.performPublish(job),
+    );
+  }
+
+  private async performPublish(job: QueueJob): Promise<EnqueuedQueueJob> {
     const parsed = parseQueueJob(job);
     const jobId = jobIdForOutboxEvent(parsed.data.outboxEventId);
     const queueName = QUEUE_FOR_JOB[parsed.name];
@@ -266,6 +319,15 @@ export class BullMqQueueProducer implements QueueProducer {
   }
 
   public async observe(): Promise<readonly QueueStateObservation[]> {
+    return observeRedisOperation(
+      this.redisTelemetry,
+      'queue_producer',
+      'observe',
+      () => this.performObserve(),
+    );
+  }
+
+  private async performObserve(): Promise<readonly QueueStateObservation[]> {
     if (!this.isReady()) {
       throw new QueueNotReadyError();
     }
@@ -307,17 +369,25 @@ export class BullMqQueueProducer implements QueueProducer {
     this.lifecycle = 'closed';
     this.redisReady = false;
 
-    const closeResults = await Promise.allSettled([
-      ...Object.values(this.queues).map((queue) => queue.close()),
-      this.redis.quit(),
-    ]);
-    const rejected = closeResults.find(
-      (result): result is PromiseRejectedResult => result.status === 'rejected',
-    );
+    await observeRedisOperation(
+      this.redisTelemetry,
+      'queue_producer',
+      'close',
+      async () => {
+        const closeResults = await Promise.allSettled([
+          ...Object.values(this.queues).map((queue) => queue.close()),
+          this.redis.quit(),
+        ]);
+        const rejected = closeResults.find(
+          (result): result is PromiseRejectedResult =>
+            result.status === 'rejected',
+        );
 
-    if (rejected !== undefined) {
-      throw rejected.reason;
-    }
+        if (rejected !== undefined) {
+          throw rejected.reason;
+        }
+      },
+    );
   }
 
   private queueFor(job: QueueJob): Queue {

@@ -598,6 +598,7 @@ export class TransportModule {
         metricsProvider,
         observerProvider,
         provider,
+        NODE_ATTEMPT_RUNTIME,
         TRIGGER_RUNTIME,
       ],
     };

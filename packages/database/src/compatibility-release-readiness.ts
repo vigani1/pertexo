@@ -1,4 +1,4 @@
-import { Pool } from 'pg';
+import { createDatabasePool } from './postgres-telemetry.js';
 
 import type { DatabaseConfig } from './config.js';
 import type {
@@ -23,7 +23,7 @@ export function createCompatibilityReleaseReadinessProbe(
   config: DatabaseConfig,
   supported: CompatibilityReleaseExpectationSet,
 ): CompatibilityReleaseReadinessProbe {
-  const pool = new Pool(config);
+  const pool = createDatabasePool(config);
   const options = Object.freeze({
     ownerRole: config.ownerRole,
     workerRuntimeRole: config.workerRuntimeRole,

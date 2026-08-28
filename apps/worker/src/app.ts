@@ -17,7 +17,7 @@ import type { TriggerRuntime } from './triggers/trigger-runtime.js';
 import { WORKSPACE_DATABASE } from './platform/database/database.module.js';
 import { NestLoggerAdapter } from './platform/observability/observability.module.js';
 import { observeWorkspaceArtifactCapacity } from './runtime/artifact-metrics.js';
-import { WorkerReadiness } from './runtime/worker-readiness.js';
+import { WorkerReadinessMonitor } from './runtime/worker-readiness-monitor.js';
 import type { DispatchConsumerCapabilityRegistry } from './transport/dispatch-consumer-capabilities.js';
 import {
   OUTBOX_DISPATCHER,
@@ -52,12 +52,12 @@ export async function createWorkerApplication(
   application.enableShutdownHooks();
 
   try {
-    await application.get(WorkerReadiness).checkReadiness();
+    await application.get(WorkerReadinessMonitor).check();
     const dispatcher = application.get<OutboxDispatcher>(OUTBOX_DISPATCHER);
     const metrics = application.get<TransportMetrics>(TRANSPORT_METRICS);
     const database = application.get<WorkspaceDatabase>(WORKSPACE_DATABASE);
     dispatcher.configureRuntimeHooks({
-      observeArtifactCapacity: async (workspaceId: string): Promise<void> => {
+      observeWorkspaceCapacity: async (workspaceId: string): Promise<void> => {
         await observeWorkspaceArtifactCapacity(database, metrics, workspaceId);
       },
     });

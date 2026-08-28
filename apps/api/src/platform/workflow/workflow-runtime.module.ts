@@ -48,6 +48,7 @@ import {
 export type ApiWorkflowRuntime = Readonly<{
   dependencies: WorkflowAuthoringDependencies;
   runDependencies: WorkflowRunsDependencies;
+  checkReadiness?(): Promise<void>;
   close(): Promise<void>;
 }>;
 
@@ -290,6 +291,13 @@ export function createApiWorkflowRuntime(
       authorization: identityRuntime.dependencies.authorization,
       streamer: runStreamer,
     }),
+    checkReadiness: (): Promise<void> => {
+      if (liveSource === undefined) return Promise.resolve();
+      const readiness = liveSource as LiveRunEventSource & {
+        checkReadiness?: () => Promise<void>;
+      };
+      return readiness.checkReadiness?.() ?? Promise.resolve();
+    },
     close: (): Promise<void> => {
       closePromise ??= closeWorkflowResources(
         database,

@@ -1,4 +1,6 @@
-import { Pool, type PoolClient, type QueryConfig, type QueryResult } from 'pg';
+import { createDatabasePool } from './postgres-telemetry.js';
+import type { Pool } from 'pg';
+import type { PoolClient, QueryConfig, QueryResult } from 'pg';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from './config.js';
@@ -262,7 +264,7 @@ export function createOperatorCommandDatabase(
         .default(30_000),
     })
     .parse(inputOptions);
-  const pool = new Pool({ ...poolConfig, max: 1 });
+  const pool = createDatabasePool({ ...poolConfig, max: 1 });
   pool.on('error', () => undefined);
 
   const executeCommand = async (

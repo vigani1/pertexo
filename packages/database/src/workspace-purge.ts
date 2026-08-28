@@ -1,4 +1,5 @@
-import { Pool, type PoolClient, type QueryResult } from 'pg';
+import { createDatabasePool } from './postgres-telemetry.js';
+import type { PoolClient, QueryResult } from 'pg';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from './config.js';
@@ -218,7 +219,7 @@ export function createWorkspacePurgeCoordinator(
 ): WorkspacePurgeCoordinator {
   const { pool: suppliedPool, ...rawOptions } = inputOptions;
   const options = optionsSchema.parse(rawOptions);
-  const pool = suppliedPool ?? new Pool(config);
+  const pool = suppliedPool ?? createDatabasePool(config);
   const ownsPool = suppliedPool === undefined;
 
   const transaction = async <T>(

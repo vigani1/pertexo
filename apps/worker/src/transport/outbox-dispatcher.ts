@@ -60,7 +60,7 @@ export type OutboxDispatcherOptions = Readonly<
 >;
 
 export type OutboxDispatcherRuntimeHooks = Readonly<{
-  observeArtifactCapacity(workspaceId: string): Promise<void>;
+  observeWorkspaceCapacity(workspaceId: string): Promise<void>;
 }>;
 
 export type OutboxDispatchResult = Readonly<{
@@ -362,8 +362,11 @@ export class OutboxDispatcher {
         this.observeMetrics(() => {
           this.metrics.recordOutboxLeaseEvent('expired');
         });
-      } else if (job.name === JOB_NAME.expireArtifacts) {
-        await this.observeArtifactCapacity(event.workspaceId);
+      } else if (
+        job.name === JOB_NAME.advanceWorkflowRun ||
+        job.name === JOB_NAME.expireArtifacts
+      ) {
+        await this.observeWorkspaceCapacity(event.workspaceId);
       }
       return marked ? 'published' : 'stale';
     } catch (error: unknown) {
@@ -441,15 +444,15 @@ export class OutboxDispatcher {
     }
   }
 
-  private async observeArtifactCapacity(workspaceId: string): Promise<void> {
+  private async observeWorkspaceCapacity(workspaceId: string): Promise<void> {
     if (this.runtimeHooks === undefined) return;
     try {
       await bounded(
-        this.runtimeHooks.observeArtifactCapacity(workspaceId),
+        this.runtimeHooks.observeWorkspaceCapacity(workspaceId),
         this.options.operationTimeoutMillis,
       );
     } catch {
-      // Artifact gauges cannot alter durable publication acknowledgement.
+      // Capacity telemetry cannot alter durable publication acknowledgement.
     }
   }
 

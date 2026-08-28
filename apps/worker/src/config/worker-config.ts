@@ -205,6 +205,27 @@ export const workerConfigSchema = z
     LOG_LEVEL: z.enum(workerLogLevels).default('info'),
     OTEL_EXPORTER_OTLP_ENDPOINT: z.url().optional(),
     SERVICE_VERSION: z.string().trim().min(1).default('0.0.0-dev'),
+    WORKER_MAX_EVENT_LOOP_DELAY_MILLIS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(200),
+    WORKER_MAX_RSS_BYTES: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(805_306_368),
+    WORKER_RESOURCE_SAMPLE_MILLIS: z.coerce
+      .number()
+      .int()
+      .min(100)
+      .default(5_000),
+    WORKER_RESOURCE_UNHEALTHY_SAMPLES: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(12)
+      .default(3),
     POSTGRES_OWNER_USER: z
       .string()
       .regex(/^[a-z_][a-z0-9_]*$/u)
@@ -215,6 +236,15 @@ export const workerConfigSchema = z
       .default('pertexo_worker'),
   })
   .superRefine((value, context) => {
+    if (
+      value.NODE_ENV === 'production' &&
+      value.OTEL_EXPORTER_OTLP_ENDPOINT === undefined
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['OTEL_EXPORTER_OTLP_ENDPOINT'],
+        message: 'Production worker requires OTLP telemetry export',
+      });
     if (
       value.NODE_ATTEMPT_HEARTBEAT_MILLIS >=
       value.NODE_ATTEMPT_LEASE_SECONDS * 1_000
@@ -255,6 +285,10 @@ export const workerConfigSchema = z
       LOG_LEVEL,
       OTEL_EXPORTER_OTLP_ENDPOINT,
       SERVICE_VERSION,
+      WORKER_MAX_EVENT_LOOP_DELAY_MILLIS,
+      WORKER_MAX_RSS_BYTES,
+      WORKER_RESOURCE_SAMPLE_MILLIS,
+      WORKER_RESOURCE_UNHEALTHY_SAMPLES,
       POSTGRES_OWNER_USER,
       POSTGRES_WORKER_RUNTIME_USER,
     }) => ({
@@ -270,6 +304,12 @@ export const workerConfigSchema = z
           ? {}
           : { otlpHttpEndpoint: OTEL_EXPORTER_OTLP_ENDPOINT }),
       }),
+      resourceSafety: {
+        maximumEventLoopDelayMillis: WORKER_MAX_EVENT_LOOP_DELAY_MILLIS,
+        maximumRssBytes: WORKER_MAX_RSS_BYTES,
+        sampleIntervalMillis: WORKER_RESOURCE_SAMPLE_MILLIS,
+        unhealthySamplesBeforeDrain: WORKER_RESOURCE_UNHEALTHY_SAMPLES,
+      },
       database: {
         connectionString: DATABASE_WORKER_URL,
         connectionTimeoutMillis: DATABASE_CONNECTION_TIMEOUT_MILLIS,

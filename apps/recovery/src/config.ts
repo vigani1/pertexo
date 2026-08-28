@@ -94,6 +94,15 @@ const environmentSchema = z
     SERVICE_VERSION: z.string().trim().min(1).default('0.0.0-dev'),
   })
   .superRefine((value, context) => {
+    if (
+      value.NODE_ENV === 'production' &&
+      value.OTEL_EXPORTER_OTLP_ENDPOINT === undefined
+    )
+      context.addIssue({
+        code: 'custom',
+        message: 'Production recovery job requires OTLP telemetry export',
+        path: ['OTEL_EXPORTER_OTLP_ENDPOINT'],
+      });
     if (value.RESTORE_LEDGER_PAGE_SIZE > value.RESTORE_LEDGER_MAX_RECORDS) {
       context.addIssue({
         code: 'custom',

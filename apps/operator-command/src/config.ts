@@ -44,95 +44,113 @@ const baseEnvironmentSchema = z.object({
   SERVICE_VERSION: z.string().trim().min(1).default('0.0.0-dev'),
 });
 
-const environmentSchema = z.discriminatedUnion('OPERATOR_COMMAND_TYPE', [
-  baseEnvironmentSchema.extend({
-    OPERATOR_COMMAND_TYPE: z.literal('outbox.redispatch'),
-    OPERATOR_DRY_RUN: z
-      .enum(['true', 'false'])
-      .transform((value) => value === 'true'),
-    OPERATOR_OUTBOX_EVENT_ID: z.uuid(),
-  }),
-  baseEnvironmentSchema.extend({
-    OPERATOR_COMMAND_TYPE: z.literal('operator.status'),
-  }),
-  baseEnvironmentSchema.extend({
-    OPERATOR_ATTEMPT_ACTION: z.enum(['reclaim', 'outcome_unknown']),
-    OPERATOR_ATTEMPT_ID: z.uuid(),
-    OPERATOR_COMMAND_TYPE: z.literal('attempt.reconcile'),
-    OPERATOR_DRY_RUN: z
-      .enum(['true', 'false'])
-      .transform((value) => value === 'true'),
-    OPERATOR_EXPECTED_FENCE_TOKEN: z.coerce.number().int().positive(),
-  }),
-  baseEnvironmentSchema.extend({
-    OPERATOR_COMMAND_TYPE: z.literal('due-work.resume'),
-    OPERATOR_DRY_RUN: z
-      .enum(['true', 'false'])
-      .transform((value) => value === 'true'),
-    OPERATOR_RUN_ID: z.uuid(),
-  }),
-  baseEnvironmentSchema.extend({
-    OPERATOR_ATTEMPT_ID: z.uuid(),
-    OPERATOR_COMMAND_TYPE: z.literal('unknown-outcome.record-evidence'),
-    OPERATOR_EVIDENCE_KIND: z.string().regex(/^[a-z][a-z0-9_.-]{0,63}$/u),
-    OPERATOR_EVIDENCE_REF: z.string().transform((value, context) => {
-      try {
-        const parsed: unknown = JSON.parse(value);
-        return z.record(z.string(), z.unknown()).parse(parsed);
-      } catch {
-        context.addIssue({ code: 'custom', message: 'Invalid evidence JSON' });
-        return z.NEVER;
-      }
+const environmentSchema = z
+  .discriminatedUnion('OPERATOR_COMMAND_TYPE', [
+    baseEnvironmentSchema.extend({
+      OPERATOR_COMMAND_TYPE: z.literal('outbox.redispatch'),
+      OPERATOR_DRY_RUN: z
+        .enum(['true', 'false'])
+        .transform((value) => value === 'true'),
+      OPERATOR_OUTBOX_EVENT_ID: z.uuid(),
     }),
-  }),
-  baseEnvironmentSchema.extend({
-    OPERATOR_COMMAND_TYPE: z.literal('run.cancel'),
-    OPERATOR_DRY_RUN: z
-      .enum(['true', 'false'])
-      .transform((value) => value === 'true'),
-    OPERATOR_RUN_ID: z.uuid(),
-  }),
-  baseEnvironmentSchema.extend({
-    OPERATOR_COMMAND_TYPE: z.literal('run.replay'),
-    OPERATOR_DRY_RUN: z
-      .enum(['true', 'false'])
-      .transform((value) => value === 'true'),
-    OPERATOR_RUN_INPUT: z.string().transform((value, context) => {
-      try {
-        const parsed = z.json().parse(JSON.parse(value));
-        if (Buffer.byteLength(JSON.stringify(parsed), 'utf8') > 65_536)
-          throw new Error('Input is too large');
-        return parsed;
-      } catch {
-        context.addIssue({ code: 'custom', message: 'Invalid run input JSON' });
-        return z.NEVER;
-      }
+    baseEnvironmentSchema.extend({
+      OPERATOR_COMMAND_TYPE: z.literal('operator.status'),
     }),
-    OPERATOR_RUN_ID: z.uuid(),
-    OPERATOR_WORKFLOW_VERSION_ID: z.uuid(),
-  }),
-  baseEnvironmentSchema.extend({
-    OPERATOR_COMMAND_TYPE: z.literal('trigger.reconcile'),
-    OPERATOR_DRY_RUN: z
-      .enum(['true', 'false'])
-      .transform((value) => value === 'true'),
-    OPERATOR_WORKFLOW_ID: z.uuid(),
-  }),
-  baseEnvironmentSchema.extend({
-    OPERATOR_COMMAND_TYPE: z.literal('retention.rerun'),
-    OPERATOR_DRY_RUN: z
-      .enum(['true', 'false'])
-      .transform((value) => value === 'true'),
-    OPERATOR_RETENTION_BATCH_ID: z.uuid(),
-  }),
-  baseEnvironmentSchema.extend({
-    OPERATOR_COMMAND_TYPE: z.literal('purge.rerun'),
-    OPERATOR_DRY_RUN: z
-      .enum(['true', 'false'])
-      .transform((value) => value === 'true'),
-    OPERATOR_PURGE_JOB_ID: z.uuid(),
-  }),
-]);
+    baseEnvironmentSchema.extend({
+      OPERATOR_ATTEMPT_ACTION: z.enum(['reclaim', 'outcome_unknown']),
+      OPERATOR_ATTEMPT_ID: z.uuid(),
+      OPERATOR_COMMAND_TYPE: z.literal('attempt.reconcile'),
+      OPERATOR_DRY_RUN: z
+        .enum(['true', 'false'])
+        .transform((value) => value === 'true'),
+      OPERATOR_EXPECTED_FENCE_TOKEN: z.coerce.number().int().positive(),
+    }),
+    baseEnvironmentSchema.extend({
+      OPERATOR_COMMAND_TYPE: z.literal('due-work.resume'),
+      OPERATOR_DRY_RUN: z
+        .enum(['true', 'false'])
+        .transform((value) => value === 'true'),
+      OPERATOR_RUN_ID: z.uuid(),
+    }),
+    baseEnvironmentSchema.extend({
+      OPERATOR_ATTEMPT_ID: z.uuid(),
+      OPERATOR_COMMAND_TYPE: z.literal('unknown-outcome.record-evidence'),
+      OPERATOR_EVIDENCE_KIND: z.string().regex(/^[a-z][a-z0-9_.-]{0,63}$/u),
+      OPERATOR_EVIDENCE_REF: z.string().transform((value, context) => {
+        try {
+          const parsed: unknown = JSON.parse(value);
+          return z.record(z.string(), z.unknown()).parse(parsed);
+        } catch {
+          context.addIssue({
+            code: 'custom',
+            message: 'Invalid evidence JSON',
+          });
+          return z.NEVER;
+        }
+      }),
+    }),
+    baseEnvironmentSchema.extend({
+      OPERATOR_COMMAND_TYPE: z.literal('run.cancel'),
+      OPERATOR_DRY_RUN: z
+        .enum(['true', 'false'])
+        .transform((value) => value === 'true'),
+      OPERATOR_RUN_ID: z.uuid(),
+    }),
+    baseEnvironmentSchema.extend({
+      OPERATOR_COMMAND_TYPE: z.literal('run.replay'),
+      OPERATOR_DRY_RUN: z
+        .enum(['true', 'false'])
+        .transform((value) => value === 'true'),
+      OPERATOR_RUN_INPUT: z.string().transform((value, context) => {
+        try {
+          const parsed = z.json().parse(JSON.parse(value));
+          if (Buffer.byteLength(JSON.stringify(parsed), 'utf8') > 65_536)
+            throw new Error('Input is too large');
+          return parsed;
+        } catch {
+          context.addIssue({
+            code: 'custom',
+            message: 'Invalid run input JSON',
+          });
+          return z.NEVER;
+        }
+      }),
+      OPERATOR_RUN_ID: z.uuid(),
+      OPERATOR_WORKFLOW_VERSION_ID: z.uuid(),
+    }),
+    baseEnvironmentSchema.extend({
+      OPERATOR_COMMAND_TYPE: z.literal('trigger.reconcile'),
+      OPERATOR_DRY_RUN: z
+        .enum(['true', 'false'])
+        .transform((value) => value === 'true'),
+      OPERATOR_WORKFLOW_ID: z.uuid(),
+    }),
+    baseEnvironmentSchema.extend({
+      OPERATOR_COMMAND_TYPE: z.literal('retention.rerun'),
+      OPERATOR_DRY_RUN: z
+        .enum(['true', 'false'])
+        .transform((value) => value === 'true'),
+      OPERATOR_RETENTION_BATCH_ID: z.uuid(),
+    }),
+    baseEnvironmentSchema.extend({
+      OPERATOR_COMMAND_TYPE: z.literal('purge.rerun'),
+      OPERATOR_DRY_RUN: z
+        .enum(['true', 'false'])
+        .transform((value) => value === 'true'),
+      OPERATOR_PURGE_JOB_ID: z.uuid(),
+    }),
+  ])
+  .superRefine((value, context) => {
+    if (
+      value.NODE_ENV === 'production' &&
+      value.OTEL_EXPORTER_OTLP_ENDPOINT === undefined
+    )
+      context.addIssue({
+        code: 'custom',
+        message: 'Production operator job requires OTLP telemetry export',
+        path: ['OTEL_EXPORTER_OTLP_ENDPOINT'],
+      });
+  });
 
 export interface OperatorCommandConfig {
   readonly command:

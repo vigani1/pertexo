@@ -1,4 +1,5 @@
-import { Pool } from 'pg';
+import type { Pool } from 'pg';
+import { createDatabasePool } from './postgres-telemetry.js';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from './config.js';
@@ -258,7 +259,7 @@ export function createOutboxDispatcherDatabase(
   config: DatabaseConfig,
 ): OutboxDispatcherDatabase {
   const { ownerRole, ...poolConfig } = config;
-  const pool = new Pool(poolConfig);
+  const pool = createDatabasePool(poolConfig);
   pool.on('error', () => undefined);
 
   return Object.freeze({

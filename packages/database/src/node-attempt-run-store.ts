@@ -1,6 +1,8 @@
+import { createDatabasePool } from './postgres-telemetry.js';
 import { createHash, randomUUID } from 'node:crypto';
 
-import { Pool, type PoolClient } from 'pg';
+import type { Pool } from 'pg';
+import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from './config.js';
@@ -674,7 +676,7 @@ async function appendStartedEvent(
 export function createNodeAttemptRunStore(
   config: DatabaseConfig,
 ): NodeAttemptRunStore {
-  const pool = new Pool(config);
+  const pool = createDatabasePool(config);
   return Object.freeze({
     claimDelivery: async (
       inputValue: Parameters<NodeAttemptRunStore['claimDelivery']>[0],

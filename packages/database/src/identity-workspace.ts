@@ -1,6 +1,7 @@
+import { createDatabasePool } from './postgres-telemetry.js';
 import { createHash, randomUUID } from 'node:crypto';
 
-import { Pool } from 'pg';
+import type { Pool } from 'pg';
 import type { DatabaseError, PoolClient } from 'pg';
 import { z } from 'zod';
 
@@ -628,7 +629,7 @@ async function withTransaction<T>(
 export function createIdentityWorkspaceDatabase(
   config: DatabaseConfig,
 ): IdentityWorkspaceDatabase {
-  const pool = new Pool(config);
+  const pool = createDatabasePool(config);
 
   const database = {
     createUser: async (input: CreateUserInput): Promise<UserRecord> => {

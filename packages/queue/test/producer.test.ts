@@ -68,6 +68,7 @@ import {
   jobIdForOutboxEvent,
 } from '../src/producer.js';
 import { JOB_NAME, QUEUE_NAME } from '../src/names.js';
+import type { RedisTelemetryObserver } from '../src/redis-telemetry-contracts.js';
 
 const IDS = {
   workspaceId: '11111111-1111-4111-8111-111111111111',
@@ -150,6 +151,51 @@ describe('BullMQ queue producer', () => {
     for (const queue of mocks.queueInstances) {
       expect(queue.waitUntilReady).toHaveBeenCalledTimes(1);
     }
+  });
+
+  it('reports bounded Redis operations and isolates telemetry failures', async () => {
+    const redisTelemetry = {
+      connectionEvent: vi.fn(() => {
+        throw new Error('metrics unavailable');
+      }),
+      operationFinished: vi.fn(() => {
+        throw new Error('metrics unavailable');
+      }),
+    } satisfies RedisTelemetryObserver;
+    const producer = createQueueProducer({
+      redisTelemetry,
+      redisUrl: 'redis://localhost:6379/0',
+    });
+
+    mocks.redisClient.emit('ready');
+    await expect(
+      producer.publish({
+        name: JOB_NAME.advanceWorkflowRun,
+        data: {
+          schemaVersion: 1,
+          workspaceId: IDS.workspaceId,
+          runId: IDS.runId,
+          outboxEventId: IDS.outboxEventId,
+        },
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({ jobName: JOB_NAME.advanceWorkflowRun }),
+    );
+
+    expect(redisTelemetry.connectionEvent).toHaveBeenCalledWith({
+      clientRole: 'queue_producer',
+      event: 'ready',
+    });
+    expect(redisTelemetry.operationFinished).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clientRole: 'queue_producer',
+        operation: 'publish',
+        outcome: 'success',
+      }),
+    );
+    expect(
+      JSON.stringify(redisTelemetry.operationFinished.mock.calls),
+    ).not.toContain(IDS.runId);
   });
 
   it('fails fast while Redis is not ready and supports readiness recovery', async () => {

@@ -188,6 +188,7 @@ describe('parseApiConfig', () => {
         DATABASE_API_URL:
           'postgresql://pertexo_api:secret@localhost:5432/pertexo',
         NODE_ENV: 'production',
+        OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otel.example.test',
         OIDC_ISSUER: 'http://identity.example.test',
         OIDC_AUTHORIZATION_ENDPOINT: 'https://identity.example.test/authorize',
         OIDC_TOKEN_ENDPOINT: 'https://identity.example.test/token',
@@ -254,6 +255,7 @@ describe('parseApiConfig', () => {
         DATABASE_API_URL:
           'postgresql://pertexo_api:secret@localhost:5432/pertexo',
         NODE_ENV: 'production',
+        OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otel.example.test',
         OIDC_ISSUER: 'https://identity.example.test',
         OIDC_AUTHORIZATION_ENDPOINT: 'https://identity.example.test/authorize',
         OIDC_TOKEN_ENDPOINT: 'https://identity.example.test/token',

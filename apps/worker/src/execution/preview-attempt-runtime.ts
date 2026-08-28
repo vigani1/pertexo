@@ -1,6 +1,7 @@
 import {
   claimPreviewDelivery,
   completePreviewAttempt,
+  createDatabasePool,
   heartbeatPreviewLease,
   markPreviewDispatched,
 } from '@pertexo/database';
@@ -17,7 +18,6 @@ import {
 import type { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
 import { unrecoverableQueueError } from '@pertexo/queue';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
-import { Pool } from 'pg';
 import { z } from 'zod';
 
 import {
@@ -67,7 +67,7 @@ const previewExecutableNodeSchema = z
 export function createDatabasePreviewAttemptRunStore(
   config: DatabaseConfig,
 ): PreviewAttemptRunStore & { close(): Promise<void> } {
-  const pool = new Pool(config);
+  const pool = createDatabasePool(config);
   const store: PreviewAttemptRunStore = {
     claim: (input) => claimPreviewDelivery(pool, input),
     markDispatched: async ({ lease, signal, workerId }) => {

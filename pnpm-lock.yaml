@@ -244,6 +244,9 @@ importers:
       '@aws-sdk/s3-request-presigner':
         specifier: 3.1111.0
         version: 3.1111.0
+      '@opentelemetry/api':
+        specifier: 1.9.0
+        version: 1.9.0
       zod:
         specifier: 4.4.3
         version: 4.4.3
@@ -259,6 +262,9 @@ importers:
 
   packages/database:
     dependencies:
+      '@opentelemetry/api':
+        specifier: 1.9.0
+        version: 1.9.0
       '@pertexo/workflow-model':
         specifier: workspace:*
         version: link:../workflow-model
@@ -357,6 +363,9 @@ importers:
 
   packages/queue:
     dependencies:
+      '@opentelemetry/api':
+        specifier: 1.9.0
+        version: 1.9.0
       bullmq:
         specifier: 6.1.2
         version: 6.1.2(ioredis@6.0.0(supports-color@7.2.0))(pg@8.23.0)

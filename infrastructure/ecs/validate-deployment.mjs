@@ -26,6 +26,14 @@ const expectedCommands = new Map([
 ]);
 const credentialPattern =
   /(DATABASE_.*_URL|REDIS_URL|SECRET.*KEY|CLIENT_SECRET|TRANSACTION_KEY|ACCESS_KEY_ID)$/u;
+const telemetryWorkloads = new Set([
+  'api',
+  'worker',
+  'lifecycle-command',
+  'retention',
+  'recovery',
+  'operator-command',
+]);
 const expectedScalingSignals = new Map([
   [
     'api',
@@ -76,6 +84,11 @@ for (const [name, expectedEntry] of expectedCommands) {
     throw new Error(`${name} service requires a health check`);
   if (workload.kind !== 'service' && workload.healthCheck)
     throw new Error(`${name} job must report health by exit status`);
+  if (
+    telemetryWorkloads.has(name) &&
+    !workload.configuration.includes('OTEL_EXPORTER_OTLP_ENDPOINT')
+  )
+    throw new Error(`${name} must receive the production OTLP endpoint`);
 }
 
 for (const name of ['api', 'worker']) {

@@ -15,6 +15,11 @@ import type {
   ControlLedgerRecord,
   ReconcileControlLedgerRequest,
 } from './control-ledger.js';
+import {
+  createProductionObjectStoreObserver,
+  safelyObserveSafetyViolation,
+} from './object-store-telemetry.js';
+import type { ObjectStoreObserver } from './object-store-telemetry.js';
 
 export interface DualRegionControlLedgerReadiness extends ControlLedgerReadiness {
   readonly primary: ControlLedgerReadiness;
@@ -130,6 +135,7 @@ class CoordinatedDualRegionControlLedger implements DualRegionControlLedger {
     private readonly primary: ControlLedger,
     private readonly recovery: ControlLedger,
     private readonly ownsLedgers: boolean,
+    private readonly observer?: ObjectStoreObserver,
   ) {}
 
   public async append(
@@ -208,6 +214,11 @@ class CoordinatedDualRegionControlLedger implements DualRegionControlLedger {
       primary.value.bucket === recovery.value.bucket ||
       primary.value.region === recovery.value.region
     ) {
+      safelyObserveSafetyViolation(this.observer, {
+        check: 'region_isolation',
+        regionRole: 'primary',
+        surface: 'control_ledger',
+      });
       throw new ControlLedgerReadinessError(
         'Control ledger primary and recovery regions and buckets must be distinct',
       );
@@ -344,17 +355,25 @@ class CoordinatedDualRegionControlLedger implements DualRegionControlLedger {
 export function createDualRegionControlLedger(
   primary: ControlLedgerConfig,
   recovery: ControlLedgerConfig,
+  options?: Readonly<{ observer?: ObjectStoreObserver }>,
 ): DualRegionControlLedger;
 export function createDualRegionControlLedger(
   primary: ControlLedger,
   recovery: ControlLedger,
-  options: Readonly<{ ledgerOwnership: 'borrowed' | 'owned' }>,
+  options: Readonly<{
+    ledgerOwnership: 'borrowed' | 'owned';
+    observer?: ObjectStoreObserver;
+  }>,
 ): DualRegionControlLedger;
 export function createDualRegionControlLedger(
   primary: ControlLedgerConfig | ControlLedger,
   recovery: ControlLedgerConfig | ControlLedger,
-  options?: Readonly<{ ledgerOwnership: 'borrowed' | 'owned' }>,
+  options?: Readonly<{
+    ledgerOwnership?: 'borrowed' | 'owned';
+    observer?: ObjectStoreObserver;
+  }>,
 ): DualRegionControlLedger {
+  const observer = options?.observer ?? createProductionObjectStoreObserver();
   const suppliedLedgers = 'append' in primary && 'append' in recovery;
   if (suppliedLedgers) {
     if (options === undefined) {
@@ -366,9 +385,14 @@ export function createDualRegionControlLedger(
       primary,
       recovery,
       options.ledgerOwnership === 'owned',
+      observer,
     );
   }
-  if ('append' in primary || 'append' in recovery || options !== undefined) {
+  if (
+    'append' in primary ||
+    'append' in recovery ||
+    options?.ledgerOwnership !== undefined
+  ) {
     throw new TypeError('Primary and recovery must both be configs or ledgers');
   }
   if (
@@ -381,8 +405,15 @@ export function createDualRegionControlLedger(
     );
   }
   return new CoordinatedDualRegionControlLedger(
-    createControlLedger(primary),
-    createControlLedger(recovery),
+    createControlLedger(primary, {
+      observer,
+      regionRole: 'primary',
+    }),
+    createControlLedger(recovery, {
+      observer,
+      regionRole: 'recovery',
+    }),
     true,
+    observer,
   );
 }

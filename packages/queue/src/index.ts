@@ -51,6 +51,20 @@ export {
   unrecoverableQueueError,
 } from './consumer.js';
 export {
+  REDIS_METRIC_NAME,
+  createProductionRedisTelemetryObserver,
+  createRedisTelemetryObserver,
+} from './redis-telemetry.js';
+export type {
+  RedisClientRole,
+  RedisConnectionEvent,
+  RedisOperation,
+  RedisOperationErrorClass,
+  RedisOperationObservation,
+  RedisTelemetryObserver,
+} from './redis-telemetry-contracts.js';
+export { instrumentRedisCommands } from './redis-telemetry-contracts.js';
+export {
   RedisRunEventNotificationPublisher,
   RunEventNotificationConfigurationError,
   RunEventNotificationPublishError,

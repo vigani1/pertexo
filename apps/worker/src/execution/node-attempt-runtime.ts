@@ -70,6 +70,7 @@ import {
 
 export interface NodeAttemptRuntime {
   readonly consumer: QueueConsumer;
+  checkReadiness?(): Promise<void>;
   close(): Promise<void>;
 }
 
@@ -316,6 +317,8 @@ export async function createNodeAttemptRuntime(
   let closePromise: Promise<void> | undefined;
   return Object.freeze({
     consumer,
+    checkReadiness: (): Promise<void> =>
+      capabilityRuntime?.checkReadiness() ?? Promise.resolve(),
     close: (): Promise<void> => {
       closePromise ??= (async (): Promise<void> => {
         const results = await Promise.allSettled([

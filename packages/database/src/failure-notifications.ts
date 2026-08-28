@@ -1,6 +1,8 @@
+import { createDatabasePool } from './postgres-telemetry.js';
 import { createHash } from 'node:crypto';
 
-import { Pool, type PoolClient } from 'pg';
+import type { Pool } from 'pg';
+import type { PoolClient } from 'pg';
 import { v5 as uuidv5 } from 'uuid';
 import { z } from 'zod';
 import {
@@ -238,7 +240,7 @@ async function audit(
 export function createFailureNotificationStore(
   config: DatabaseConfig,
 ): FailureNotificationStore {
-  const pool = new Pool({
+  const pool = createDatabasePool({
     connectionString: config.connectionString,
     max: config.max,
     connectionTimeoutMillis: config.connectionTimeoutMillis,

@@ -21,6 +21,16 @@ import type { TransformCallback } from 'node:stream';
 import { z } from 'zod';
 
 import type { ArtifactStoreConfig } from './config.js';
+import {
+  createProductionObjectStoreObserver,
+  ObservedS3Client,
+  observePresign,
+  safelyObserveSafetyViolation,
+} from './object-store-telemetry.js';
+import type {
+  ObjectStoreObserver,
+  ObjectStoreRegionRole,
+} from './object-store-telemetry.js';
 
 type S3Command =
   | DeleteObjectCommand
@@ -132,6 +142,8 @@ export class ArtifactIntegrityError extends Error {
     this.name = 'ArtifactIntegrityError';
   }
 }
+
+class ArtifactInputIntegrityError extends ArtifactIntegrityError {}
 
 export class ArtifactNotFoundError extends Error {
   public constructor() {
@@ -282,6 +294,7 @@ class VerifyingTransform extends Transform {
     private readonly expectedBytes: number,
     private readonly expectedSha256: string,
     private readonly maximumBytes: number,
+    private readonly source: 'input' | 'stored',
   ) {
     super();
   }
@@ -299,7 +312,7 @@ class VerifyingTransform extends Transform {
       this.bytesSeen > this.expectedBytes ||
       this.bytesSeen > this.maximumBytes
     ) {
-      callback(new ArtifactIntegrityError('Artifact body exceeds its bound'));
+      callback(this.integrityError('Artifact body exceeds its bound'));
       return;
     }
 
@@ -314,7 +327,7 @@ class VerifyingTransform extends Transform {
       actualSha256 !== this.expectedSha256
     ) {
       callback(
-        new ArtifactIntegrityError(
+        this.integrityError(
           'Artifact body does not match its declared length and SHA-256',
         ),
       );
@@ -322,18 +335,26 @@ class VerifyingTransform extends Transform {
     }
     callback();
   }
+
+  private integrityError(message: string): ArtifactIntegrityError {
+    return this.source === 'input'
+      ? new ArtifactInputIntegrityError(message)
+      : new ArtifactIntegrityError(message);
+  }
 }
 
 function verifiedBody(
   body: Readable,
   metadata: ArtifactMetadata,
   maxObjectBytes: number,
+  source: 'input' | 'stored',
   signal?: AbortSignal,
 ): Readable {
   const verifier = new VerifyingTransform(
     metadata.byteLength,
     metadata.sha256,
     maxObjectBytes,
+    source,
   );
   body.once('error', (error: Error) => {
     verifier.destroy(error);
@@ -538,6 +559,7 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
         output.Body,
         expected ?? metadata,
         this.config.maxObjectBytes,
+        'stored',
         signal,
       ),
       metadata,
@@ -582,6 +604,7 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
       request.body,
       metadata,
       this.config.maxObjectBytes,
+      'input',
       signal,
     );
     try {
@@ -743,7 +766,9 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
 
   private assertWithinLimit(metadata: ArtifactMetadata): void {
     if (metadata.byteLength > this.config.maxObjectBytes) {
-      throw new ArtifactIntegrityError('Artifact exceeds the configured limit');
+      throw new ArtifactInputIntegrityError(
+        'Artifact exceeds the configured limit',
+      );
     }
   }
 
@@ -761,14 +786,95 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
   }
 }
 
+class ObservedArtifactStore
+  implements ArtifactStore, WorkspaceObjectPurgeStore
+{
+  public constructor(
+    private readonly store: ArtifactStore & WorkspaceObjectPurgeStore,
+    private readonly observer: ObjectStoreObserver,
+    private readonly regionRole: ObjectStoreRegionRole,
+  ) {}
+
+  public beginDirectUpload(
+    request: BeginDirectUploadRequest,
+  ): Promise<DirectUpload> {
+    return this.observe(() => this.store.beginDirectUpload(request));
+  }
+
+  public checkReadiness(signal?: AbortSignal): Promise<ArtifactStoreReadiness> {
+    return this.observe(() => this.store.checkReadiness(signal));
+  }
+
+  public close(): void {
+    this.store.close();
+  }
+
+  public delete(request: ArtifactRequest): Promise<void> {
+    return this.observe(() => this.store.delete(request));
+  }
+
+  public async getStream(request: ArtifactRequest): Promise<ArtifactDownload> {
+    const download = await this.observe(() => this.store.getStream(request));
+    download.body.once('error', (error: unknown) => {
+      this.report(error);
+    });
+    return download;
+  }
+
+  public head(request: ArtifactRequest): Promise<ArtifactMetadata | null> {
+    return this.observe(() => this.store.head(request));
+  }
+
+  public put(request: PutArtifactRequest): Promise<ArtifactMetadata> {
+    return this.observe(() => this.store.put(request));
+  }
+
+  public purgeWorkspacePage(
+    request: PurgeWorkspaceObjectsRequest,
+  ): Promise<WorkspaceObjectPurgePage> {
+    return this.observe(() => this.store.purgeWorkspacePage(request));
+  }
+
+  public validateDirectUpload(
+    request: ValidateDirectUploadRequest,
+  ): Promise<ArtifactMetadata> {
+    return this.observe(() => this.store.validateDirectUpload(request));
+  }
+
+  private async observe<T>(operation: () => Promise<T>): Promise<T> {
+    try {
+      return await operation();
+    } catch (error: unknown) {
+      this.report(error);
+      throw error;
+    }
+  }
+
+  private report(error: unknown): void {
+    if (
+      !(error instanceof ArtifactIntegrityError) ||
+      error instanceof ArtifactInputIntegrityError
+    )
+      return;
+    safelyObserveSafetyViolation(this.observer, {
+      check: 'artifact_integrity',
+      regionRole: this.regionRole,
+      surface: 'artifact',
+    });
+  }
+}
+
 export function createArtifactStore(
   config: ArtifactStoreConfig,
   options: Readonly<{
     client?: S3ClientLike;
+    observer?: ObjectStoreObserver;
     presignPutObject?: PutObjectPresigner;
+    regionRole?: ObjectStoreRegionRole;
   }> = {},
 ): ArtifactStore & WorkspaceObjectPurgeStore {
-  const client =
+  const observer = options.observer ?? createProductionObjectStoreObserver();
+  const rawClient =
     options.client ??
     new S3Client({
       credentials: {
@@ -779,13 +885,23 @@ export function createArtifactStore(
       forcePathStyle: config.forcePathStyle,
       region: config.region,
     });
-  const presignPutObject: PutObjectPresigner =
+  const regionRole = options.regionRole ?? 'artifact';
+  const client = new ObservedS3Client(
+    rawClient,
+    observer,
+    'artifact',
+    regionRole,
+  );
+  const rawPresignPutObject: PutObjectPresigner =
     options.presignPutObject ??
     (async (request) =>
-      getSignedUrl(client as S3Client, request.command, {
+      getSignedUrl(rawClient as S3Client, request.command, {
         expiresIn: request.expiresInSeconds,
         signableHeaders: new Set(request.signableHeaders),
         unhoistableHeaders: new Set(request.unhoistableHeaders),
       }));
-  return new AwsArtifactStore(config, client, presignPutObject);
+  const presignPutObject: PutObjectPresigner = (request) =>
+    observePresign(observer, regionRole, () => rawPresignPutObject(request));
+  const store = new AwsArtifactStore(config, client, presignPutObject);
+  return new ObservedArtifactStore(store, observer, regionRole);
 }

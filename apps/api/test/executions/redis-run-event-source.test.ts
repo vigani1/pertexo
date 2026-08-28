@@ -1,7 +1,8 @@
 import { EventEmitter } from 'node:events';
 
 import type { Redis } from 'ioredis';
-import { describe, expect, it } from 'vitest';
+import type { RedisTelemetryObserver } from '@pertexo/queue';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   RedisRunEventSource,
@@ -18,6 +19,10 @@ class FakeRedis extends EventEmitter {
 
   public disconnect(): void {
     this.disconnected = true;
+  }
+
+  public ping(): Promise<string> {
+    return Promise.resolve('PONG');
   }
 
   public subscribe(channel: string): Promise<number> {
@@ -58,9 +63,43 @@ describe('Redis run event source', () => {
     ).toThrow(RedisRunEventSourceConfigurationError);
   });
 
+  it('proves Redis connectivity for API readiness without retaining a client', async () => {
+    const fake = new FakeRedis();
+    const redisTelemetry = {
+      connectionEvent: vi.fn(),
+      operationFinished: vi.fn(),
+    } satisfies RedisTelemetryObserver;
+    const source = new RedisRunEventSource(
+      { redisTelemetry, redisUrl: 'redis://localhost:6379' },
+      () => fake as unknown as Redis,
+    );
+
+    await expect(source.checkReadiness()).resolves.toBeUndefined();
+    expect(fake.disconnected).toBe(true);
+    expect(redisTelemetry.operationFinished).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clientRole: 'run_event_subscriber',
+        operation: 'ping',
+        outcome: 'success',
+      }),
+    );
+  });
+
   it('turns reconnect into a durable resync only after resubscription', async () => {
     const fake = new FakeRedis();
-    const subscription = await sourceWithFake(fake).subscribe({
+    const redisTelemetry = {
+      connectionEvent: vi.fn(),
+      operationFinished: vi.fn(),
+    } satisfies RedisTelemetryObserver;
+    const source = new RedisRunEventSource(
+      {
+        bufferCapacity: 4,
+        redisTelemetry,
+        redisUrl: 'redis://localhost:6379',
+      },
+      () => fake as unknown as Redis,
+    );
+    const subscription = await source.subscribe({
       runId: RUN_ID,
       signal: new AbortController().signal,
       workspaceId: WORKSPACE_ID,
@@ -73,7 +112,54 @@ describe('Redis run event source', () => {
 
     expect(fake.subscribedChannels).toHaveLength(2);
     expect(next).toEqual({ done: false, value: { kind: 'resync' } });
+    expect(redisTelemetry.operationFinished).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clientRole: 'run_event_subscriber',
+        operation: 'subscribe',
+        outcome: 'success',
+      }),
+    );
+    expect(redisTelemetry.operationFinished).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clientRole: 'run_event_subscriber',
+        operation: 'resubscribe',
+        outcome: 'success',
+      }),
+    );
+    expect(redisTelemetry.connectionEvent).toHaveBeenCalledWith({
+      clientRole: 'run_event_subscriber',
+      event: 'close',
+    });
+    expect(
+      JSON.stringify(redisTelemetry.operationFinished.mock.calls),
+    ).not.toContain(RUN_ID);
     await subscription.close();
+  });
+
+  it('isolates observer failures from subscribe and close', async () => {
+    const fake = new FakeRedis();
+    const source = new RedisRunEventSource(
+      {
+        redisTelemetry: {
+          connectionEvent: () => {
+            throw new Error('metrics unavailable');
+          },
+          operationFinished: () => {
+            throw new Error('metrics unavailable');
+          },
+        },
+        redisUrl: 'redis://localhost:6379',
+      },
+      () => fake as unknown as Redis,
+    );
+
+    const subscription = await source.subscribe({
+      runId: RUN_ID,
+      signal: new AbortController().signal,
+      workspaceId: WORKSPACE_ID,
+    });
+    await expect(subscription.close()).resolves.toBeUndefined();
+    expect(fake.disconnected).toBe(true);
   });
 
   it('drops malformed payloads and coalesces buffer overflow into resync', async () => {

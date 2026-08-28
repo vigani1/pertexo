@@ -1,5 +1,5 @@
+import { createDatabasePool } from './postgres-telemetry.js';
 import { sql } from 'drizzle-orm';
-import { Pool } from 'pg';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from './config.js';
@@ -87,7 +87,7 @@ export type WorkflowIntegrationUsageDatabase = Readonly<{
 export function createWorkflowIntegrationUsageDatabase(
   config: DatabaseConfig,
 ): WorkflowIntegrationUsageDatabase {
-  const pool = new Pool(config);
+  const pool = createDatabasePool(config);
   return Object.freeze({
     findProviderOperationImpact: async (input) => {
       const providerKey = providerKeySchema.parse(input.providerKey);

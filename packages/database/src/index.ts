@@ -71,6 +71,12 @@ export {
 } from './config.js';
 export type { DatabaseConfig, MigrationConfig } from './config.js';
 export {
+  createDatabasePool,
+  DATABASE_METRIC_NAME,
+  type DatabasePoolOptions,
+  type DatabasePoolRole,
+} from './postgres-telemetry.js';
+export {
   createWorkspaceLifecycleCommandCoordinator,
   type WorkspaceLifecycleCommandCoordinator,
   type WorkspaceLifecycleCommandOutcome,
@@ -179,9 +185,11 @@ export {
   createPendingPreviewArtifact,
   finalizeArtifactUpload,
   readArtifactCapacity,
+  readExecutionStorageCapacity,
 } from './artifacts.js';
 export type {
   ArtifactCapacityObservation,
+  ExecutionStorageObservation,
   ArtifactRecord,
   ArtifactStatus,
   ClaimDueUnfinalizedArtifactInput,

@@ -26,85 +26,97 @@ const OIDC_SIGNING_ALGORITHMS = [
   'RS512',
 ] as const;
 
-const apiEnvironmentSchema = z.object({
-  DATABASE_API_URL: z
-    .url()
-    .refine((value) => value.startsWith('postgresql://'), {
-      message: 'DATABASE_API_URL must be a postgresql:// URL',
-    }),
-  DATABASE_CONNECTION_TIMEOUT_MILLIS: z.coerce
-    .number()
-    .int()
-    .positive()
-    .default(5_000),
-  DATABASE_IDLE_TIMEOUT_MILLIS: z.coerce
-    .number()
-    .int()
-    .positive()
-    .default(30_000),
-  DATABASE_POOL_MAX: z.coerce.number().int().positive().max(20).default(5),
-  CONNECTION_KMS_ENDPOINT: z.url().optional(),
-  CONNECTION_KMS_KEY_REFERENCE: z.string().min(1).max(2_048).optional(),
-  CONNECTION_KMS_REGION: z.string().min(1).max(128).optional(),
-  HOST: z.string().trim().min(1).default('0.0.0.0'),
-  NODE_ENV: z.enum(API_NODE_ENVIRONMENTS).default('development'),
-  NODE_COMPATIBILITY_COHORT: z.enum(PLATFORM_RELEASE_COHORTS).default('core'),
-  LOG_LEVEL: z
-    .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
-    .default('info'),
-  OTEL_EXPORTER_OTLP_ENDPOINT: z.url().optional(),
-  OIDC_ALLOWED_ALGORITHMS: z.string().optional(),
-  OIDC_AUTHORIZATION_ENDPOINT: z.url().optional(),
-  OIDC_CLIENT_ID: z.string().trim().min(1).max(256).optional(),
-  OIDC_CLIENT_SECRET: z.string().min(1).max(512).optional(),
-  OIDC_ISSUER: z.url().optional(),
-  OIDC_JWKS_URI: z.url().optional(),
-  OIDC_REDIRECT_URI: z.url().optional(),
-  OIDC_SCOPES: z.string().optional(),
-  OIDC_TIMEOUT_MILLIS: z.coerce
-    .number()
-    .int()
-    .positive()
-    .max(30_000)
-    .default(5_000),
-  OIDC_TOKEN_ENDPOINT: z.url().optional(),
-  OIDC_TRANSACTION_KEY: z.string().optional(),
-  OIDC_TRANSACTION_KEY_VERSION: z.string().optional(),
-  OIDC_TRANSACTION_PREVIOUS_KEYS: z.string().optional(),
-  OIDC_TRANSACTION_TTL_MILLIS: z.coerce
-    .number()
-    .int()
-    .positive()
-    .max(10 * 60_000)
-    .default(5 * 60_000),
-  PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
-  REDIS_URL: z
-    .url()
-    .refine((value) => {
-      const protocol = new URL(value).protocol;
-      return protocol === 'redis:' || protocol === 'rediss:';
-    }, 'REDIS_URL must use redis:// or rediss://')
-    .optional(),
-  SESSION_COOKIE_SAME_SITE: z.enum(['lax', 'strict', 'none']).default('lax'),
-  SESSION_COOKIE_SECURE: z
-    .enum(['true', 'false'])
-    .transform((value) => value === 'true')
-    .default(true),
-  SESSION_TTL_MILLIS: z.coerce
-    .number()
-    .int()
-    .positive()
-    .default(24 * 60 * 60_000),
-  SERVICE_VERSION: z.string().trim().min(1).default('0.0.0-dev'),
-  POSTGRES_OWNER_USER: z
-    .string()
-    .regex(/^[a-z_][a-z0-9_]*$/u)
-    .default('pertexo_owner'),
-  POSTGRES_WORKER_RUNTIME_USER: z
-    .string()
-    .regex(/^[a-z_][a-z0-9_]*$/u)
-    .default('pertexo_worker'),
-});
+const apiEnvironmentSchema = z
+  .object({
+    DATABASE_API_URL: z
+      .url()
+      .refine((value) => value.startsWith('postgresql://'), {
+        message: 'DATABASE_API_URL must be a postgresql:// URL',
+      }),
+    DATABASE_CONNECTION_TIMEOUT_MILLIS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(5_000),
+    DATABASE_IDLE_TIMEOUT_MILLIS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(30_000),
+    DATABASE_POOL_MAX: z.coerce.number().int().positive().max(20).default(5),
+    CONNECTION_KMS_ENDPOINT: z.url().optional(),
+    CONNECTION_KMS_KEY_REFERENCE: z.string().min(1).max(2_048).optional(),
+    CONNECTION_KMS_REGION: z.string().min(1).max(128).optional(),
+    HOST: z.string().trim().min(1).default('0.0.0.0'),
+    NODE_ENV: z.enum(API_NODE_ENVIRONMENTS).default('development'),
+    NODE_COMPATIBILITY_COHORT: z.enum(PLATFORM_RELEASE_COHORTS).default('core'),
+    LOG_LEVEL: z
+      .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
+      .default('info'),
+    OTEL_EXPORTER_OTLP_ENDPOINT: z.url().optional(),
+    OIDC_ALLOWED_ALGORITHMS: z.string().optional(),
+    OIDC_AUTHORIZATION_ENDPOINT: z.url().optional(),
+    OIDC_CLIENT_ID: z.string().trim().min(1).max(256).optional(),
+    OIDC_CLIENT_SECRET: z.string().min(1).max(512).optional(),
+    OIDC_ISSUER: z.url().optional(),
+    OIDC_JWKS_URI: z.url().optional(),
+    OIDC_REDIRECT_URI: z.url().optional(),
+    OIDC_SCOPES: z.string().optional(),
+    OIDC_TIMEOUT_MILLIS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .max(30_000)
+      .default(5_000),
+    OIDC_TOKEN_ENDPOINT: z.url().optional(),
+    OIDC_TRANSACTION_KEY: z.string().optional(),
+    OIDC_TRANSACTION_KEY_VERSION: z.string().optional(),
+    OIDC_TRANSACTION_PREVIOUS_KEYS: z.string().optional(),
+    OIDC_TRANSACTION_TTL_MILLIS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .max(10 * 60_000)
+      .default(5 * 60_000),
+    PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
+    REDIS_URL: z
+      .url()
+      .refine((value) => {
+        const protocol = new URL(value).protocol;
+        return protocol === 'redis:' || protocol === 'rediss:';
+      }, 'REDIS_URL must use redis:// or rediss://')
+      .optional(),
+    SESSION_COOKIE_SAME_SITE: z.enum(['lax', 'strict', 'none']).default('lax'),
+    SESSION_COOKIE_SECURE: z
+      .enum(['true', 'false'])
+      .transform((value) => value === 'true')
+      .default(true),
+    SESSION_TTL_MILLIS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(24 * 60 * 60_000),
+    SERVICE_VERSION: z.string().trim().min(1).default('0.0.0-dev'),
+    POSTGRES_OWNER_USER: z
+      .string()
+      .regex(/^[a-z_][a-z0-9_]*$/u)
+      .default('pertexo_owner'),
+    POSTGRES_WORKER_RUNTIME_USER: z
+      .string()
+      .regex(/^[a-z_][a-z0-9_]*$/u)
+      .default('pertexo_worker'),
+  })
+  .superRefine((value, context) => {
+    if (
+      value.NODE_ENV === 'production' &&
+      value.OTEL_EXPORTER_OTLP_ENDPOINT === undefined
+    )
+      context.addIssue({
+        code: 'custom',
+        message: 'Production API requires OTLP telemetry export',
+        path: ['OTEL_EXPORTER_OTLP_ENDPOINT'],
+      });
+  });
 
 export type ApiNodeEnvironment = (typeof API_NODE_ENVIRONMENTS)[number];
 

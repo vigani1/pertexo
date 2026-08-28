@@ -1,4 +1,6 @@
-import { Pool, type PoolClient, type QueryResult } from 'pg';
+import { createDatabasePool } from './postgres-telemetry.js';
+import type { Pool } from 'pg';
+import type { PoolClient, QueryResult } from 'pg';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from './config.js';
@@ -207,7 +209,7 @@ export function createRetentionDatabase(
   inputOptions: RetentionDatabaseOptions,
 ): RetentionDatabase {
   const options = optionsSchema.parse(inputOptions);
-  const pool = new Pool({
+  const pool = createDatabasePool({
     connectionString: config.connectionString,
     connectionTimeoutMillis: config.connectionTimeoutMillis,
     idleTimeoutMillis: config.idleTimeoutMillis,
@@ -550,7 +552,7 @@ export function createRetentionEnforcementCoordinator(
   inputOptions: RetentionEnforcementCoordinatorOptions,
 ): RetentionEnforcementCoordinator {
   const options = enforcementOptionsSchema.parse(inputOptions);
-  const pool = new Pool({
+  const pool = createDatabasePool({
     connectionString: config.connectionString,
     connectionTimeoutMillis: config.connectionTimeoutMillis,
     idleTimeoutMillis: config.idleTimeoutMillis,

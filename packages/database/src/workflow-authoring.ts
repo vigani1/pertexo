@@ -1,6 +1,7 @@
+import { createDatabasePool } from './postgres-telemetry.js';
 import { createHash, randomUUID } from 'node:crypto';
 
-import { Pool } from 'pg';
+import type { Pool } from 'pg';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import {
@@ -703,7 +704,7 @@ export function createWorkflowAuthoringDatabase(
     return variant;
   };
   // Runtime import is kept here so the public package remains straightforward to test.
-  const pool = new Pool(config);
+  const pool = createDatabasePool(config);
   return Object.freeze({
     acceptPreview: async ({ workspaceId, ...input }) =>
       withWorkspaceTransaction(pool, workspaceId, (transaction) =>

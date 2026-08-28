@@ -78,6 +78,12 @@ const workerConfig = {
     serviceName: 'pertexo-worker',
     serviceVersion: 'test',
   },
+  resourceSafety: {
+    maximumEventLoopDelayMillis: 200,
+    maximumRssBytes: 805_306_368,
+    sampleIntervalMillis: 5_000,
+    unhealthySamplesBeforeDrain: 3,
+  },
   outboxDispatcher: {
     batchSize: 10,
     enabledJobNames: [],

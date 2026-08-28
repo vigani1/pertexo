@@ -21,6 +21,9 @@ import type { TriggerRuntime } from './triggers/trigger-runtime.js';
 import { DatabaseModule } from './platform/database/database.module.js';
 import { ObservabilityModule } from './platform/observability/observability.module.js';
 import { WorkerReadiness } from './runtime/worker-readiness.js';
+import { WorkerReadinessMonitor } from './runtime/worker-readiness-monitor.js';
+import { WorkerResourceMonitor } from './runtime/worker-resource-monitor.js';
+import { WorkerDrainState } from './runtime/worker-drain-state.js';
 import type { DispatchConsumerCapabilityRegistry } from './transport/dispatch-consumer-capabilities.js';
 import { TransportModule } from './transport/transport.module.js';
 
@@ -96,7 +99,25 @@ export class WorkerModule {
           dependencies.telemetry,
         ),
       ],
-      providers: [WorkerReadiness],
+      providers: [
+        WorkerReadiness,
+        {
+          provide: WorkerReadinessMonitor,
+          inject: [WorkerReadiness],
+          useFactory: (readiness: WorkerReadiness): WorkerReadinessMonitor =>
+            new WorkerReadinessMonitor(readiness, dependencies.logger),
+        },
+        {
+          provide: WorkerResourceMonitor,
+          inject: [WorkerDrainState],
+          useFactory: (drainState: WorkerDrainState): WorkerResourceMonitor =>
+            new WorkerResourceMonitor(
+              config.resourceSafety,
+              drainState,
+              dependencies.logger,
+            ),
+        },
+      ],
     };
   }
 }

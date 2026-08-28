@@ -10,6 +10,13 @@ import { z } from 'zod';
 import { parseQueueJob, type QueueJob } from './contracts.js';
 import { QUEUE_CLASS_DEFAULTS } from './defaults.js';
 import { QUEUE_FOR_JOB, QUEUE_NAME, type QueueName } from './names.js';
+import {
+  instrumentRedisCommands,
+  notifyRedisConnectionEvent,
+  observeRedisOperation,
+  type RedisTelemetryObserver,
+} from './redis-telemetry-contracts.js';
+import { createProductionRedisTelemetryObserver } from './redis-telemetry.js';
 
 const DEFAULT_READY_TIMEOUT_MS = 5_000;
 const MAX_CONFIGURED_TIMEOUT_MS = 60 * 60_000;
@@ -123,6 +130,7 @@ export type QueueConsumerOptions = Readonly<{
   readonly redisUrl: string;
   readonly handler: QueueJobHandler;
   readonly observer?: QueueConsumerObserver;
+  readonly redisTelemetry?: RedisTelemetryObserver;
   readonly traceRunner?: QueueTraceRunner;
   readonly readyTimeoutMs?: number;
   /** Test/deployment override; defaults to the selected queue class. */
@@ -193,6 +201,7 @@ interface ParsedConsumerOptions {
   readonly queueName: QueueName;
   readonly readyTimeoutMs: number;
   readonly redisUrl: string;
+  readonly redisTelemetry: RedisTelemetryObserver | undefined;
   readonly timeoutMs: number;
 }
 
@@ -255,6 +264,8 @@ function parseConsumerOptions(
     redisUrl: parseRedisUrl(parsed.data.redisUrl),
     handler: options.handler,
     observer: options.observer,
+    redisTelemetry:
+      options.redisTelemetry ?? createProductionRedisTelemetryObserver(),
     traceRunner: options.traceRunner,
     readyTimeoutMs: parsed.data.readyTimeoutMs ?? DEFAULT_READY_TIMEOUT_MS,
     timeoutMs: parsed.data.timeoutMs ?? defaults.timeoutMs,
@@ -303,6 +314,7 @@ export class BullMqQueueConsumer implements QueueConsumer {
   private readonly queueName: QueueName;
   private readonly readyTimeoutMs: number;
   private readonly redis: Redis;
+  private readonly redisTelemetry: RedisTelemetryObserver | undefined;
   private readonly timeoutMs: number;
   private readonly traceRunner: QueueTraceRunner | undefined;
   private readonly worker: Worker<unknown, void>;
@@ -320,13 +332,18 @@ export class BullMqQueueConsumer implements QueueConsumer {
     this.queueName = parsed.queueName;
     this.readyTimeoutMs = parsed.readyTimeoutMs;
     this.timeoutMs = parsed.timeoutMs;
+    this.redisTelemetry = parsed.redisTelemetry;
     this.traceRunner = parsed.traceRunner;
-    this.redis = new Redis(parsed.redisUrl, {
-      connectTimeout: parsed.readyTimeoutMs,
-      // A worker must tolerate transient Redis outages. BullMQ also derives a
-      // second, dedicated blocking connection from this consumer-only client.
-      maxRetriesPerRequest: null,
-    });
+    this.redis = instrumentRedisCommands(
+      new Redis(parsed.redisUrl, {
+        connectTimeout: parsed.readyTimeoutMs,
+        // A worker must tolerate transient Redis outages. BullMQ also derives a
+        // second, dedicated blocking connection from this consumer-only client.
+        maxRetriesPerRequest: null,
+      }),
+      this.redisTelemetry,
+      'queue_consumer',
+    );
 
     const processor: Processor<unknown, void> = (job, _token, signal) =>
       this.process(parsed.queueName, job, signal);
@@ -348,6 +365,11 @@ export class BullMqQueueConsumer implements QueueConsumer {
     }
 
     this.worker.on('ready', () => {
+      notifyRedisConnectionEvent(
+        this.redisTelemetry,
+        'queue_consumer',
+        'ready',
+      );
       if (this.lifecycle === 'open') {
         this.ready = true;
         this.notifyObserver(() => {
@@ -359,9 +381,19 @@ export class BullMqQueueConsumer implements QueueConsumer {
       }
     });
     this.worker.on('error', () => {
+      notifyRedisConnectionEvent(
+        this.redisTelemetry,
+        'queue_consumer',
+        'error',
+      );
       this.ready = false;
     });
     this.worker.on('closed', () => {
+      notifyRedisConnectionEvent(
+        this.redisTelemetry,
+        'queue_consumer',
+        'close',
+      );
       this.ready = false;
     });
     this.worker.on('stalled', () => {
@@ -381,6 +413,15 @@ export class BullMqQueueConsumer implements QueueConsumer {
   }
 
   public async waitUntilReady(timeoutMs = this.readyTimeoutMs): Promise<void> {
+    return observeRedisOperation(
+      this.redisTelemetry,
+      'queue_consumer',
+      'wait_until_ready',
+      () => this.performWaitUntilReady(timeoutMs),
+    );
+  }
+
+  private async performWaitUntilReady(timeoutMs: number): Promise<void> {
     if (this.lifecycle !== 'open') {
       throw new QueueConsumerNotReadyError();
     }
@@ -397,7 +438,12 @@ export class BullMqQueueConsumer implements QueueConsumer {
   }
 
   public close(): Promise<QueueConsumerCloseResult> {
-    this.closePromise ??= this.performClose();
+    this.closePromise ??= observeRedisOperation(
+      this.redisTelemetry,
+      'queue_consumer',
+      'close',
+      () => this.performClose(),
+    );
     return this.closePromise;
   }
 

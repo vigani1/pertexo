@@ -1,5 +1,6 @@
 import {
   canonicalOutboxPayloadChecksum,
+  createDatabasePool,
   reconcilePreviewDelivery,
   type DatabaseConfig,
   type PreviewDeliveryReconciliationResult,
@@ -13,7 +14,6 @@ import {
   type QueueDelivery,
   type QueueHandlerContext,
 } from '@pertexo/queue';
-import { Pool } from 'pg';
 import {
   createProductionPreviewTelemetry,
   type PreviewTelemetry,
@@ -50,7 +50,7 @@ export interface PreviewReconciliationHandler {
 export function createDatabasePreviewReconciliationStore(
   config: DatabaseConfig,
 ): PreviewReconciliationStore & { close(): Promise<void> } {
-  const pool = new Pool(config);
+  const pool = createDatabasePool(config);
   return Object.freeze({
     reconcile: (
       input: Parameters<PreviewReconciliationStore['reconcile']>[0],

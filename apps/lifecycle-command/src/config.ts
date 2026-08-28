@@ -56,6 +56,15 @@ const environmentSchema = z
   })
   .superRefine((value, context) => {
     if (
+      value.NODE_ENV === 'production' &&
+      value.OTEL_EXPORTER_OTLP_ENDPOINT === undefined
+    )
+      context.addIssue({
+        code: 'custom',
+        message: 'Production lifecycle worker requires OTLP telemetry export',
+        path: ['OTEL_EXPORTER_OTLP_ENDPOINT'],
+      });
+    if (
       value.LIFECYCLE_COMMAND_EXTERNAL_OPERATION_TIMEOUT_MS +
         value.LIFECYCLE_COMMAND_DATABASE_STATEMENT_TIMEOUT_MS * 4 +
         5_000 >=

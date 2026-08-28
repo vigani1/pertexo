@@ -1,4 +1,4 @@
-import { Pool } from 'pg';
+import { createDatabasePool } from './postgres-telemetry.js';
 
 import type { DatabaseConfig } from './config.js';
 
@@ -10,7 +10,7 @@ export interface DeadlineWakeupScanner {
 export function createDeadlineWakeupScanner(
   config: DatabaseConfig,
 ): DeadlineWakeupScanner {
-  const pool = new Pool(config);
+  const pool = createDatabasePool(config);
   return Object.freeze({
     claimDueWakeups: async (limit: number): Promise<number> => {
       if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100)

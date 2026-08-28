@@ -40,6 +40,23 @@ export {
   ArtifactStoreClosedError,
   createArtifactStore,
 } from './store.js';
+export {
+  createOpenTelemetryObjectStoreObserver,
+  createProductionObjectStoreObserver,
+  OBJECT_STORE_METRIC_NAME,
+  ObservedS3Client,
+} from './object-store-telemetry.js';
+export type {
+  ObjectStoreErrorClass,
+  ObjectStoreObserver,
+  ObjectStoreOperation,
+  ObjectStoreRegionRole,
+  ObjectStoreRequestObservation,
+  ObjectStoreRequestOutcome,
+  ObjectStoreSafetyCheck,
+  ObjectStoreSafetyObservation,
+  ObjectStoreSurface,
+} from './object-store-telemetry.js';
 export type {
   ArtifactDownload,
   ArtifactIdentity,

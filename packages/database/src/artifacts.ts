@@ -1,7 +1,12 @@
 import { and, asc, eq, lte, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
-import { artifactLinks, artifacts } from './schema.js';
+import {
+  artifactLinks,
+  artifacts,
+  runCheckpoints,
+  runEvents,
+} from './schema.js';
 import type { WorkspaceTransaction } from './workspace.js';
 
 export const ARTIFACT_STATUS = {
@@ -18,6 +23,11 @@ export type ArtifactCapacityObservation = Readonly<{
   bytes: number;
   count: number;
   status: ArtifactStatus;
+}>;
+export type ExecutionStorageObservation = Readonly<{
+  bytes: number;
+  count: number;
+  surface: 'checkpoint' | 'event';
 }>;
 
 const metadataSchema = z.object({
@@ -128,6 +138,45 @@ export async function readArtifactCapacity(
         }),
       ),
   );
+}
+
+export async function readExecutionStorageCapacity(
+  transaction: WorkspaceTransaction,
+): Promise<readonly ExecutionStorageObservation[]> {
+  const [eventRows, checkpointRows] = await Promise.all([
+    transaction.db
+      .select({
+        bytes: sql<string>`coalesce(sum(pg_column_size(${runEvents.payload})), 0)::text`,
+        count: sql<string>`count(*)::text`,
+      })
+      .from(runEvents),
+    transaction.db
+      .select({
+        bytes: sql<string>`coalesce(sum(pg_column_size(${runCheckpoints.schedulerState})), 0)::text`,
+        count: sql<string>`count(*)::text`,
+      })
+      .from(runCheckpoints),
+  ]);
+  const event = eventRows[0];
+  const checkpoint = checkpointRows[0];
+  return Object.freeze([
+    Object.freeze({
+      bytes: safeAggregateInteger(event?.bytes ?? '0', 'run event bytes'),
+      count: safeAggregateInteger(event?.count ?? '0', 'run event count'),
+      surface: 'event' as const,
+    }),
+    Object.freeze({
+      bytes: safeAggregateInteger(
+        checkpoint?.bytes ?? '0',
+        'run checkpoint bytes',
+      ),
+      count: safeAggregateInteger(
+        checkpoint?.count ?? '0',
+        'run checkpoint count',
+      ),
+      surface: 'checkpoint' as const,
+    }),
+  ]);
 }
 
 export function artifactStorageKey(

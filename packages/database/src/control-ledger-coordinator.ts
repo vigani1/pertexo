@@ -1,6 +1,7 @@
+import { createDatabasePool } from './postgres-telemetry.js';
 import { createHash } from 'node:crypto';
 
-import { Pool, type PoolClient, type QueryConfig, type QueryResult } from 'pg';
+import type { PoolClient, QueryConfig, QueryResult } from 'pg';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from './config.js';
@@ -320,7 +321,7 @@ async function cancelBackendQuery(
   config: DatabaseConfig,
   processId: number,
 ): Promise<void> {
-  const cancellationPool = new Pool({
+  const cancellationPool = createDatabasePool({
     ...config,
     connectionTimeoutMillis: Math.min(
       config.connectionTimeoutMillis,
@@ -472,7 +473,7 @@ export function createControlLedgerCoordinator(
     parsedOptions.maxPages * parsedOptions.pageSize
   )
     throw new Error('Control ledger record bound cannot exceed page capacity');
-  const pool = options.pool ?? new Pool(config);
+  const pool = options.pool ?? createDatabasePool(config);
   const ownsPool = options.pool === undefined;
 
   const transact = async <T>(

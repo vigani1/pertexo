@@ -1,4 +1,5 @@
-import { Pool, type PoolClient } from 'pg';
+import { createDatabasePool } from './postgres-telemetry.js';
+import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from './config.js';
@@ -183,7 +184,7 @@ async function readHealth(
 export function createWorkflowTriggerReconciliationDatabase(
   config: DatabaseConfig,
 ): WorkflowTriggerReconciliationDatabase {
-  const pool = new Pool(config);
+  const pool = createDatabasePool(config);
   return Object.freeze({
     reconcile: async (
       input: Parameters<WorkflowTriggerReconciliationDatabase['reconcile']>[0],

@@ -54,7 +54,8 @@ export type WorkerNodeRuntimeCapabilityDependencies = Readonly<{
   >;
   connectionEncryption?: Pick<ConnectionEnvelopeEncryption, 'open'>;
   artifactPersistence?: WorkerArtifactPersistence;
-  artifactStore?: Pick<ArtifactStore, 'put'>;
+  artifactStore?: Pick<ArtifactStore, 'put'> &
+    Partial<Pick<ArtifactStore, 'checkReadiness'>>;
   artifactId?: () => string;
   now?: () => Date;
   spoolDirectory?: string;
@@ -62,6 +63,7 @@ export type WorkerNodeRuntimeCapabilityDependencies = Readonly<{
 
 export type WorkerNodeRuntimeCapabilities = Readonly<{
   factories: NodeAttemptRuntimeCapabilityFactories;
+  checkReadiness(): Promise<void>;
   close(): Promise<void>;
 }>;
 
@@ -384,6 +386,7 @@ export async function createWorkerNodeRuntimeCapabilities(
     artifacts?: NonNullable<NodeAttemptRuntimeCapabilityFactories['artifacts']>;
   } = {};
   let closePromise: Promise<void> | undefined;
+  let checkArtifactReadiness: (() => Promise<unknown>) | undefined;
   const closeOwnedResources = (): Promise<void> => {
     closePromise ??= (async (): Promise<void> => {
       const results = await Promise.allSettled([
@@ -432,6 +435,10 @@ export async function createWorkerNodeRuntimeCapabilities(
           : (ownedArtifactStore = createArtifactStore(options.artifactStore)));
       if (store === undefined)
         throw new Error('Worker artifact capability is incomplete');
+      const readiness = store;
+      const checkReadiness = readiness.checkReadiness;
+      if (checkReadiness !== undefined)
+        checkArtifactReadiness = () => checkReadiness.call(readiness);
       factories.artifacts = artifactFactory(
         persistence,
         store,
@@ -448,6 +455,9 @@ export async function createWorkerNodeRuntimeCapabilities(
 
   return Object.freeze({
     factories: Object.freeze(factories),
+    checkReadiness: async (): Promise<void> => {
+      await checkArtifactReadiness?.();
+    },
     close: closeOwnedResources,
   });
 }

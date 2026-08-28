@@ -247,6 +247,11 @@ describe('createTransportMetrics', () => {
       queueName: 'node-attempts',
     });
     metrics.observeArtifacts({ bytes: 4096, count: 3, status: 'available' });
+    metrics.observeExecutionStorage?.({
+      bytes: 8192,
+      count: 12,
+      surface: 'event',
+    });
 
     expect(values(harness.counters, TRANSPORT_METRIC_NAME.queueStalls)).toEqual(
       [{ attributes: { queue_name: 'node-attempts' }, value: 1 }],
@@ -280,6 +285,12 @@ describe('createTransportMetrics', () => {
     expect(values(harness.gauges, TRANSPORT_METRIC_NAME.artifactBytes)).toEqual(
       [{ attributes: { status: 'available' }, value: 4096 }],
     );
+    expect(
+      values(harness.histograms, TRANSPORT_METRIC_NAME.executionStorageCount),
+    ).toEqual([{ attributes: { surface: 'event' }, value: 12 }]);
+    expect(
+      values(harness.histograms, TRANSPORT_METRIC_NAME.executionStorageBytes),
+    ).toEqual([{ attributes: { surface: 'event' }, value: 8192 }]);
     const serialized = JSON.stringify([
       ...harness.counters.values(),
       ...harness.gauges.values(),

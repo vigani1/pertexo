@@ -247,17 +247,20 @@ describe('worker node runtime capabilities', () => {
         sha256: request.sha256,
       };
     });
+    const checkReadiness = vi.fn().mockResolvedValue({ bucket: 'artifacts' });
     const now = new Date('2026-08-22T12:00:00.000Z');
     const runtime = await createWorkerNodeRuntimeCapabilities(
       { database: databaseConfig, artifactRetentionMillis: 60_000 },
       {
         artifactPersistence: { createPending, finalize },
-        artifactStore: { put },
+        artifactStore: { checkReadiness, put },
         artifactId: () => artifactId,
         now: () => now,
         spoolDirectory,
       },
     );
+    await expect(runtime.checkReadiness()).resolves.toBeUndefined();
+    expect(checkReadiness).toHaveBeenCalledOnce();
     const artifacts = runtime.factories.artifacts?.(context);
     if (artifacts === undefined) throw new Error('artifact capability missing');
     const first = new Uint8Array([1, 2]);
