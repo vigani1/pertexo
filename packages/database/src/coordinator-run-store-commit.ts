@@ -1,0 +1,1836 @@
+import { createHash, randomUUID } from 'node:crypto';
+
+import type { Pool, PoolClient } from 'pg';
+import { z } from 'zod';
+import { v5 as uuidv5 } from 'uuid';
+import {
+  FAILURE_NOTIFICATION_CONTEXT_MAX_BYTES,
+  FailureNotificationContextV1Schema,
+} from '@pertexo/workflow-model/failure-notification';
+
+import {
+  CoordinatorPlanInvalidError,
+  CoordinatorRunStateCorruptError,
+  coordinatorDeliverySchema,
+  coordinatorIdentitySchema as identitySchema,
+  type CommitAdvancePlanInput,
+  type CommitAdvancePlanResult,
+  type CoordinatorAdvanceDelivery,
+} from './coordinator-run-store-contract.js';
+import {
+  auditCoordinatorDeliveryMismatch,
+  claimCoordinatorReceipt,
+  completeCoordinatorReceipt,
+  deferCoordinatorForActiveCapacity,
+  DeliveryMismatch,
+  validateAuthoritativeAdvanceDelivery,
+} from './coordinator-run-store-delivery.js';
+import {
+  canonicalTimestamp,
+  mapEvent,
+  maximumPersistedFacts,
+  normalizedJson,
+  persistedFactCapacity,
+  readPersistedFacts,
+  record,
+  terminalStatus,
+  validatePersistedFactBatch,
+} from './coordinator-run-store-observations.js';
+import {
+  assertCoordinatorNotAborted as assertNotAborted,
+  withCoordinatorWriteClient as withWorkspaceWriteClient,
+} from './coordinator-run-store-transactions.js';
+import { canonicalOutboxPayloadChecksum } from './outbox.js';
+import {
+  parsePersistedPhase3Checkpoint,
+  serializePersistedPhase3Checkpoint,
+  type PersistedPhase3Checkpoint,
+} from './phase3-checkpoint.js';
+import {
+  parseStoredExecutionValueV1,
+  serializeStoredExecutionJsonValue,
+} from './stored-execution-value.js';
+
+const scheduleRunInputSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    triggerId: identitySchema,
+    nodeId: z.string().trim().min(1).max(128),
+    scheduledAt: z.iso.datetime({ offset: true }),
+  })
+  .strict();
+const failureNotificationNamespace = '9fe280d8-40ca-4a20-930e-1bf77e48c817';
+const sideEffectClassSchema = z.enum(['safe', 'idempotent_with_key', 'unsafe']);
+const branchScopePartSchema = z
+  .object({
+    nodeId: z.string().min(1).max(128),
+    outputPort: z.string().min(1).max(128),
+  })
+  .strict();
+const iterationScopePartSchema = z
+  .object({
+    loopNodeId: z.string().min(1).max(128),
+    ordinal: z.number().int().nonnegative(),
+  })
+  .strict();
+const nodeRunAdmissionSchema = z
+  .object({
+    invocationKey: z.string().min(1).max(256),
+    nodeId: z.string().min(1).max(128),
+    providerIdempotencyKey: z.string().min(1).max(256).optional(),
+    sideEffectClass: sideEffectClassSchema,
+    branchPath: z.array(branchScopePartSchema).max(1_000).optional(),
+    iterationPath: z.array(iterationScopePartSchema).max(1_000).optional(),
+  })
+  .strict();
+const attemptAdmissionSchema = nodeRunAdmissionSchema
+  .extend({
+    attemptNumber: z.number().int().positive(),
+    admissionKind: z
+      .enum(['execute', 'retry', 'wait_resume'])
+      .default('execute'),
+  })
+  .strict();
+const engineEventSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    sequence: z.number().int().positive(),
+    name: z.enum([
+      'run.started',
+      'run.cancel_requested',
+      'run.waiting',
+      'run.succeeded',
+      'run.failed',
+      'run.canceled',
+      'run.timed_out',
+      'run.outcome_unknown',
+      'node.ready',
+      'node.waiting',
+      'node.retry_scheduled',
+      'node.succeeded',
+      'node.failed',
+      'node.skipped',
+      'node.canceled',
+      'node.timed_out',
+      'node.outcome_unknown',
+    ]),
+    occurredAt: z.iso.datetime(),
+    invocationKey: z.string().min(1).max(256).optional(),
+    nodeId: z.string().min(1).max(128).optional(),
+    attemptNumber: z.number().int().nonnegative().optional(),
+    reasonCode: z.string().min(1).max(128).optional(),
+    dueAt: z.iso.datetime().optional(),
+  })
+  .strict();
+const transitionPlanSchema = z
+  .object({
+    expectedRevision: z.number().int().nonnegative(),
+    expectedNextEventSequence: z.number().int().positive(),
+    consumedThroughEventSequence: z.number().int().nonnegative(),
+    checkpoint: z.unknown(),
+    events: z.array(engineEventSchema).max(512),
+    nodeRunAdmissions: z.array(nodeRunAdmissionSchema).max(10_000),
+    attempts: z.array(attemptAdmissionSchema).max(64),
+  })
+  .strict();
+const traceparentSchema = z
+  .string()
+  .regex(/^00-[\da-f]{32}-[\da-f]{16}-[\da-f]{2}$/u)
+  .optional();
+
+async function persistFailureNotificationIntent(
+  client: PoolClient,
+  input: Readonly<{
+    workspaceId: string;
+    runId: string;
+    workflowId: string;
+    workflowVersionId: string;
+    triggerType: string;
+    startedAt: Date | null;
+    createdAt: Date;
+    policyVersion: number | null;
+    destinationId: string | null;
+    destinationConfigVersion: number | null;
+    sideEffectClass: string | null;
+    cancellationRequested: boolean;
+    plan: ParsedTransitionPlan;
+    traceparent?: string;
+  }>,
+): Promise<void> {
+  const terminalEvent = input.plan.events.find(
+    ({ name }) =>
+      name === `run.${input.plan.checkpoint.runStatus}` &&
+      ['run.failed', 'run.timed_out', 'run.outcome_unknown'].includes(name),
+  );
+  if (
+    terminalEvent === undefined ||
+    input.cancellationRequested ||
+    input.policyVersion !== 1 ||
+    input.destinationId === null ||
+    input.destinationConfigVersion === null ||
+    input.sideEffectClass === null
+  )
+    return;
+
+  const failures = input.plan.checkpoint.invocations
+    .filter(({ status }) =>
+      ['failed', 'timed_out', 'outcome_unknown'].includes(status),
+    )
+    .sort((left, right) => {
+      const severity = { outcome_unknown: 0, timed_out: 1, failed: 2 } as const;
+      const statusOrder =
+        severity[left.status as keyof typeof severity] -
+        severity[right.status as keyof typeof severity];
+      return (
+        statusOrder || left.invocationKey.localeCompare(right.invocationKey)
+      );
+    });
+  const primary = failures[0];
+  if (primary === undefined) throw new CoordinatorRunStateCorruptError();
+  const physical = await client.query<{
+    current_attempt_number: number | null;
+    node_id: string;
+    safe_error_code: string | null;
+    status: string;
+  }>(
+    `select node_id,status,current_attempt_number,safe_error_code
+     from app.node_runs
+     where workspace_id=$1 and workflow_run_id=$2 and invocation_key=$3`,
+    [input.workspaceId, input.runId, primary.invocationKey],
+  );
+  const node = physical.rows[0];
+  if (node?.node_id !== primary.nodeId || node.status !== primary.status)
+    throw new CoordinatorRunStateCorruptError();
+  const context = FailureNotificationContextV1Schema.parse({
+    schemaVersion: 1,
+    runId: input.runId,
+    workflowId: input.workflowId,
+    workflowVersionId: input.workflowVersionId,
+    terminalEventSequence: terminalEvent.sequence,
+    terminalStatus: input.plan.checkpoint.runStatus,
+    triggerType: input.triggerType,
+    startedAt: (input.startedAt ?? input.createdAt).toISOString(),
+    completedAt: terminalEvent.occurredAt,
+    primaryFailure: {
+      nodeId: primary.nodeId,
+      invocationKey: primary.invocationKey,
+      nodeStatus: primary.status,
+      attemptNumber: node.current_attempt_number ?? primary.attemptNumber,
+      safeErrorCode:
+        node.safe_error_code ??
+        terminalEvent.reasonCode ??
+        `execution.${primary.status}`,
+    },
+    totalFailureCount: failures.length,
+  });
+  const contextJson = serializeStoredExecutionJsonValue(context);
+  if (
+    Buffer.byteLength(contextJson, 'utf8') >
+    FAILURE_NOTIFICATION_CONTEXT_MAX_BYTES
+  )
+    throw new CoordinatorRunStateCorruptError();
+  const contextChecksum = createHash('sha256')
+    .update(contextJson)
+    .digest('hex');
+  const intentId = uuidv5(
+    `${input.runId}:${String(terminalEvent.sequence)}:${String(input.policyVersion)}`,
+    failureNotificationNamespace,
+  );
+  const outboxEventId = uuidv5('delivery:1', intentId);
+  const payload = {
+    schemaVersion: 1,
+    workspaceId: input.workspaceId,
+    notificationIntentId: intentId,
+    outboxEventId,
+    ...(input.traceparent === undefined
+      ? {}
+      : { traceparent: input.traceparent }),
+  } as const;
+  const inserted = await client.query(
+    `insert into app.run_failure_notification_intents (
+       id,workspace_id,workflow_run_id,terminal_event_sequence,policy_version,
+       destination_id,destination_config_version,side_effect_class,
+       connection_secret_version_id,context,context_checksum
+      ) select $1,run.workspace_id,run.id,$4,
+               run.failure_notification_policy_version,
+               run.failure_notification_destination_id,
+               run.failure_notification_destination_config_version,
+               run.failure_notification_side_effect_class,
+               run.failure_notification_connection_secret_version_id,$9::jsonb,$10
+        from app.workflow_runs run
+       where run.workspace_id=$2 and run.id=$3
+         and run.failure_notification_policy_version=$5
+         and run.failure_notification_destination_id=$6
+         and run.failure_notification_destination_config_version=$7
+         and run.failure_notification_side_effect_class=$8
+         and run.failure_notification_connection_secret_version_id is not null
+     on conflict (workflow_run_id,terminal_event_sequence,policy_version) do nothing
+     returning id`,
+    [
+      intentId,
+      input.workspaceId,
+      input.runId,
+      terminalEvent.sequence,
+      input.policyVersion,
+      input.destinationId,
+      input.destinationConfigVersion,
+      input.sideEffectClass,
+      contextJson,
+      contextChecksum,
+    ],
+  );
+  if (inserted.rowCount !== 1) throw new CoordinatorRunStateCorruptError();
+  await client.query(
+    `insert into app.outbox_events (
+       id,workspace_id,job_name,schema_version,aggregate_type,aggregate_id,payload,payload_checksum
+     ) values ($1,$2,'deliver-run-failure-notification',1,'run-failure-notification',$3,$4::jsonb,$5)`,
+    [
+      outboxEventId,
+      input.workspaceId,
+      intentId,
+      serializeStoredExecutionJsonValue(payload),
+      canonicalOutboxPayloadChecksum(payload),
+    ],
+  );
+  await client.query(
+    `insert into app.run_failure_notification_audit_facts
+       (id,workspace_id,notification_intent_id,fact_type,attempt_number,possibly_dispatched)
+     values ($1,$2,$3,'intent_created',0,false)`,
+    [randomUUID(), input.workspaceId, intentId],
+  );
+}
+
+type ParsedTransitionPlan = Omit<
+  z.output<typeof transitionPlanSchema>,
+  'checkpoint'
+> & { readonly checkpoint: PersistedPhase3Checkpoint };
+
+function parseTransitionPlan(value: unknown): ParsedTransitionPlan {
+  try {
+    const parsed = transitionPlanSchema.parse(normalizedJson(value));
+    return Object.freeze({
+      ...parsed,
+      checkpoint: parsePersistedPhase3Checkpoint(parsed.checkpoint),
+    });
+  } catch {
+    throw new CoordinatorPlanInvalidError();
+  }
+}
+
+function validateTransitionPlan(
+  plan: ParsedTransitionPlan,
+  workflowVersionId: string,
+): void {
+  const firstDerivedSequence = plan.consumedThroughEventSequence + 1;
+  if (
+    plan.expectedNextEventSequence > firstDerivedSequence ||
+    plan.checkpoint.revision !== plan.expectedRevision + 1 ||
+    plan.checkpoint.workflowVersionId !== workflowVersionId ||
+    plan.checkpoint.nextEventSequence !==
+      firstDerivedSequence + plan.events.length ||
+    plan.events.some(
+      ({ sequence }, index) => sequence !== firstDerivedSequence + index,
+    ) ||
+    plan.events.some(({ name }) => name === 'run.cancel_requested') ||
+    ((plan.checkpoint.cancelRequested || plan.checkpoint.deadlineExpired) &&
+      (plan.attempts.length > 0 || plan.nodeRunAdmissions.length > 0))
+  )
+    throw new CoordinatorPlanInvalidError();
+  const invocations = new Map(
+    plan.checkpoint.invocations.map((invocation) => [
+      invocation.invocationKey,
+      invocation,
+    ]),
+  );
+  if (invocations.size !== plan.checkpoint.invocations.length)
+    throw new CoordinatorPlanInvalidError();
+  if (
+    new Set(plan.checkpoint.admittedInvocationKeys).size !==
+    plan.checkpoint.admittedInvocationKeys.length
+  )
+    throw new CoordinatorPlanInvalidError();
+  const nodeAdmissions = new Map(
+    plan.nodeRunAdmissions.map((admission) => [
+      admission.invocationKey,
+      admission,
+    ]),
+  );
+  if (nodeAdmissions.size !== plan.nodeRunAdmissions.length)
+    throw new CoordinatorPlanInvalidError();
+  const attemptKeys = new Set<string>();
+  for (const attempt of plan.attempts) {
+    const invocation = invocations.get(attempt.invocationKey);
+    const materialized = nodeAdmissions.get(attempt.invocationKey);
+    if (
+      attemptKeys.has(attempt.invocationKey) ||
+      (attempt.sideEffectClass === 'idempotent_with_key') !==
+        (attempt.providerIdempotencyKey !== undefined) ||
+      invocation?.nodeId !== attempt.nodeId ||
+      invocation.status !== 'running' ||
+      invocation.attemptNumber !== attempt.attemptNumber ||
+      !plan.checkpoint.admittedInvocationKeys.includes(attempt.invocationKey) ||
+      (materialized !== undefined &&
+        (materialized.nodeId !== attempt.nodeId ||
+          materialized.sideEffectClass !== attempt.sideEffectClass ||
+          materialized.providerIdempotencyKey !==
+            attempt.providerIdempotencyKey ||
+          serializeStoredExecutionJsonValue(materialized.branchPath ?? []) !==
+            serializeStoredExecutionJsonValue(attempt.branchPath ?? []) ||
+          serializeStoredExecutionJsonValue(
+            materialized.iterationPath ?? [],
+          ) !== serializeStoredExecutionJsonValue(attempt.iterationPath ?? [])))
+    )
+      throw new CoordinatorPlanInvalidError();
+    attemptKeys.add(attempt.invocationKey);
+  }
+  for (const admission of plan.nodeRunAdmissions) {
+    const invocation = invocations.get(admission.invocationKey);
+    if (
+      (admission.sideEffectClass === 'idempotent_with_key') !==
+        (admission.providerIdempotencyKey !== undefined) ||
+      invocation?.nodeId !== admission.nodeId ||
+      serializeStoredExecutionJsonValue(
+        invocationScope(invocation, 'branchPath'),
+      ) !== serializeStoredExecutionJsonValue(admission.branchPath ?? []) ||
+      serializeStoredExecutionJsonValue(
+        invocationScope(invocation, 'iterationPath'),
+      ) !== serializeStoredExecutionJsonValue(admission.iterationPath ?? []) ||
+      (invocation.status !== 'pending' &&
+        invocation.status !== 'ready' &&
+        invocation.status !== 'running' &&
+        invocation.status !== 'skipped')
+    )
+      throw new CoordinatorPlanInvalidError();
+    if (
+      (invocation.status === 'running') !==
+      attemptKeys.has(admission.invocationKey)
+    )
+      throw new CoordinatorPlanInvalidError();
+  }
+  for (const event of plan.events) {
+    const isNodeEvent = event.name.startsWith('node.');
+    if (!isNodeEvent) {
+      if (event.invocationKey !== undefined || event.nodeId !== undefined)
+        throw new CoordinatorPlanInvalidError();
+      continue;
+    }
+    if (event.invocationKey === undefined || event.nodeId === undefined)
+      throw new CoordinatorPlanInvalidError();
+    const invocation = invocations.get(event.invocationKey);
+    const expectedEventAttemptNumber =
+      event.name === 'node.ready' &&
+      invocation?.status === 'running' &&
+      attemptKeys.has(event.invocationKey)
+        ? invocation.attemptNumber - 1
+        : invocation?.attemptNumber;
+    if (
+      invocation?.nodeId !== event.nodeId ||
+      event.attemptNumber !== expectedEventAttemptNumber ||
+      (event.name === 'node.retry_scheduled') !== (event.dueAt !== undefined) ||
+      (event.name === 'node.retry_scheduled' &&
+        event.dueAt !== invocation.resumeAt) ||
+      (event.name === 'node.waiting' && invocation.waitKind !== 'node_wait') ||
+      (event.name === 'node.retry_scheduled' &&
+        invocation.waitKind !== 'retry_backoff')
+    )
+      throw new CoordinatorPlanInvalidError();
+  }
+}
+
+function transitionFingerprint(
+  input: Readonly<{
+    plan: ParsedTransitionPlan;
+    traceparent: string | undefined;
+    workflowVersionId: string;
+  }>,
+): string {
+  return createHash('sha256')
+    .update(
+      serializeStoredExecutionJsonValue({
+        schemaVersion: 1,
+        workflowVersionId: input.workflowVersionId,
+        plan: input.plan,
+        traceparent: input.traceparent ?? null,
+      }),
+    )
+    .digest('hex');
+}
+
+function sameKeys(
+  left: ReadonlySet<string>,
+  right: ReadonlySet<string>,
+): boolean {
+  return left.size === right.size && [...left].every((key) => right.has(key));
+}
+
+function invocationScope(
+  invocation: PersistedPhase3Checkpoint['invocations'][number] | undefined,
+  field: 'branchPath' | 'iterationPath',
+): readonly unknown[] {
+  if (invocation === undefined || !(field in invocation)) return [];
+  return (
+    (
+      invocation as Readonly<
+        Record<'branchPath' | 'iterationPath', readonly unknown[] | undefined>
+      >
+    )[field] ?? []
+  );
+}
+
+function validateTransitionDelta(
+  current: PersistedPhase3Checkpoint,
+  plan: ParsedTransitionPlan,
+): void {
+  const expectedAdmittedKeys = new Set([
+    ...current.admittedInvocationKeys,
+    ...plan.attempts.map(({ invocationKey }) => invocationKey),
+  ]);
+  const currentLoops = new Map(
+    current.loops.map((loop) => [loop.controlInvocationKey, loop]),
+  );
+  const declaredLoops = plan.checkpoint.loops.filter(
+    (loop) => !currentLoops.has(loop.controlInvocationKey),
+  );
+  const reservedIterations = declaredLoops.reduce(
+    (total, loop) => total + loop.collectionSize,
+    0,
+  );
+  if (
+    plan.checkpoint.engineVersion !== current.engineVersion ||
+    plan.checkpoint.remainingIterationBudget !==
+      current.remainingIterationBudget - reservedIterations ||
+    ('initialIterationBudget' in current &&
+      current.initialIterationBudget !== undefined &&
+      (!('initialIterationBudget' in plan.checkpoint) ||
+        plan.checkpoint.initialIterationBudget !==
+          current.initialIterationBudget)) ||
+    !sameKeys(
+      expectedAdmittedKeys,
+      new Set(plan.checkpoint.admittedInvocationKeys),
+    )
+  )
+    throw new CoordinatorPlanInvalidError();
+  const currentInvocations = new Map(
+    current.invocations.map((invocation) => [
+      invocation.invocationKey,
+      invocation,
+    ]),
+  );
+  for (const nextLoop of plan.checkpoint.loops) {
+    const previous = currentLoops.get(nextLoop.controlInvocationKey);
+    if (previous === undefined) continue;
+    const immutable = (loop: typeof nextLoop): unknown => ({
+      controlInvocationKey: loop.controlInvocationKey,
+      loopId: loop.loopId,
+      branchPath: loop.branchPath,
+      iterationPath: loop.iterationPath,
+      bodyRootNodeIds: loop.bodyRootNodeIds,
+      bodySinkNodeId: loop.bodySinkNodeId,
+      collection: loop.collection,
+      collectionChecksum: loop.collectionChecksum,
+      collectionSize: loop.collectionSize,
+      maxConcurrency: loop.maxConcurrency,
+      maxIterations: loop.maxIterations,
+    });
+    if (
+      serializeStoredExecutionJsonValue(immutable(previous)) !==
+      serializeStoredExecutionJsonValue(immutable(nextLoop))
+    )
+      throw new CoordinatorPlanInvalidError();
+  }
+  const nextInvocations = new Map(
+    plan.checkpoint.invocations.map((invocation) => [
+      invocation.invocationKey,
+      invocation,
+    ]),
+  );
+  for (const loop of plan.checkpoint.loops) {
+    for (const ordinal of loop.activeOrdinals) {
+      const iterationPath = [
+        ...loop.iterationPath,
+        { loopNodeId: loop.loopId, ordinal },
+      ];
+      for (const rootNodeId of loop.bodyRootNodeIds) {
+        const root = [...nextInvocations.values()].find(
+          (invocation) =>
+            invocation.nodeId === rootNodeId &&
+            serializeStoredExecutionJsonValue(
+              invocationScope(invocation, 'branchPath'),
+            ) === serializeStoredExecutionJsonValue(loop.branchPath) &&
+            serializeStoredExecutionJsonValue(
+              invocationScope(invocation, 'iterationPath'),
+            ) === serializeStoredExecutionJsonValue(iterationPath),
+        );
+        if (
+          root === undefined ||
+          !['ready', 'running', 'waiting', 'succeeded', 'skipped'].includes(
+            root.status,
+          )
+        )
+          throw new CoordinatorPlanInvalidError();
+      }
+    }
+  }
+  const expectedNodeRunAdmissions = new Set(
+    [...nextInvocations.keys()].filter((key) => !currentInvocations.has(key)),
+  );
+  const actualNodeRunAdmissions = new Set(
+    plan.nodeRunAdmissions.map(({ invocationKey }) => invocationKey),
+  );
+  if (!sameKeys(expectedNodeRunAdmissions, actualNodeRunAdmissions))
+    throw new CoordinatorPlanInvalidError();
+
+  const expectedAttempts = new Set<string>();
+  for (const [key, next] of nextInvocations) {
+    const previous = currentInvocations.get(key);
+    if (next.status !== 'running' || previous?.status === 'running') continue;
+    const expectedAttemptNumber =
+      previous === undefined ? 1 : previous.attemptNumber + 1;
+    if (
+      (previous !== undefined &&
+        previous.status !== 'pending' &&
+        previous.status !== 'ready' &&
+        previous.status !== 'waiting') ||
+      next.attemptNumber !== expectedAttemptNumber
+    )
+      throw new CoordinatorPlanInvalidError();
+    expectedAttempts.add(key);
+  }
+  const actualAttempts = new Set(
+    plan.attempts.map(({ invocationKey }) => invocationKey),
+  );
+  if (!sameKeys(expectedAttempts, actualAttempts))
+    throw new CoordinatorPlanInvalidError();
+}
+
+function validateStatusTransitions(
+  current: PersistedPhase3Checkpoint,
+  plan: ParsedTransitionPlan,
+  persistedFacts: readonly Readonly<{
+    invocationKey: string | null;
+    observation: Readonly<Record<string, unknown>>;
+    type: string;
+  }>[],
+): void {
+  const currentInvocations = new Map(
+    current.invocations.map((invocation) => [
+      invocation.invocationKey,
+      invocation,
+    ]),
+  );
+  const plannedNodeEvents = new Set(
+    plan.events.flatMap((event) =>
+      event.invocationKey === undefined
+        ? []
+        : [`${event.invocationKey}:${event.name}`],
+    ),
+  );
+  const expectedNodeEvents = new Set<string>();
+  const persistedNodeFacts = new Set<string>();
+  const persistedByInvocation = new Map<
+    string,
+    Readonly<Record<string, unknown>>
+  >();
+  for (const fact of persistedFacts) {
+    if (fact.type.startsWith('node.') && fact.invocationKey === null)
+      throw new CoordinatorRunStateCorruptError();
+    if (fact.invocationKey !== null) {
+      persistedNodeFacts.add(`${fact.invocationKey}:${fact.type}`);
+      persistedByInvocation.set(fact.invocationKey, fact.observation);
+    }
+  }
+  const nextInvocations = new Map(
+    plan.checkpoint.invocations.map((invocation) => [
+      invocation.invocationKey,
+      invocation,
+    ]),
+  );
+  if (
+    current.invocations.some(
+      ({ invocationKey }) => !nextInvocations.has(invocationKey),
+    )
+  )
+    throw new CoordinatorPlanInvalidError();
+  for (const fact of persistedFacts) {
+    if (fact.invocationKey === null) continue;
+    const next = nextInvocations.get(fact.invocationKey);
+    const kind = fact.observation.kind;
+    if (kind === 'wait') {
+      if (next?.status !== 'waiting') throw new CoordinatorPlanInvalidError();
+      if (
+        next.attemptNumber !== fact.observation.attemptNumber ||
+        next.resumeAt !== fact.observation.resumeAt
+      )
+        throw new CoordinatorPlanInvalidError();
+    } else if (kind === 'outcome') {
+      if (next === undefined) throw new CoordinatorPlanInvalidError();
+      const declaredLoopBarrier =
+        next.status === 'waiting' &&
+        next.resumeAt === undefined &&
+        fact.observation.status === 'succeeded' &&
+        plan.checkpoint.loops.some(
+          ({ controlInvocationKey }) =>
+            controlInvocationKey === next.invocationKey &&
+            !current.loops.some(
+              (loop) => loop.controlInvocationKey === controlInvocationKey,
+            ),
+        );
+      if (next.status !== fact.observation.status && !declaredLoopBarrier)
+        throw new CoordinatorPlanInvalidError();
+      if (
+        next.attemptNumber !== fact.observation.attemptNumber ||
+        serializeStoredExecutionJsonValue(next.output ?? null) !==
+          serializeStoredExecutionJsonValue(fact.observation.output ?? null)
+      )
+        throw new CoordinatorPlanInvalidError();
+    }
+  }
+  for (const next of plan.checkpoint.invocations) {
+    const previous = currentInvocations.get(next.invocationKey);
+    if (previous === undefined) {
+      if (
+        next.status === 'pending' &&
+        plan.checkpoint.joins.some(({ joinId }) => joinId === next.nodeId)
+      )
+        continue;
+      const eventName =
+        next.status === 'skipped' ? 'node.skipped' : 'node.ready';
+      expectedNodeEvents.add(`${next.invocationKey}:${eventName}`);
+      if (!plannedNodeEvents.has(`${next.invocationKey}:${eventName}`))
+        throw new CoordinatorPlanInvalidError();
+      continue;
+    }
+    if (previous.nodeId !== next.nodeId)
+      throw new CoordinatorPlanInvalidError();
+    if (previous.status === next.status) {
+      if (
+        serializeStoredExecutionJsonValue(previous) !==
+        serializeStoredExecutionJsonValue(next)
+      )
+        throw new CoordinatorPlanInvalidError();
+      continue;
+    }
+    const terminalEvent = `node.${next.status}`;
+    if (previous.status === 'waiting' && next.status === 'ready') {
+      expectedNodeEvents.add(`${next.invocationKey}:node.ready`);
+      if (
+        !plannedNodeEvents.has(`${next.invocationKey}:node.ready`) ||
+        next.attemptNumber !== previous.attemptNumber ||
+        next.resumeAt !== undefined ||
+        serializeStoredExecutionJsonValue(next.output ?? null) !==
+          serializeStoredExecutionJsonValue(previous.output ?? null)
+      )
+        throw new CoordinatorPlanInvalidError();
+      continue;
+    }
+    if (
+      previous.status === 'pending' &&
+      next.status === 'running' &&
+      plan.checkpoint.joins.some(({ joinId }) => joinId === next.nodeId)
+    ) {
+      expectedNodeEvents.add(`${next.invocationKey}:node.ready`);
+      if (
+        !plannedNodeEvents.has(`${next.invocationKey}:node.ready`) ||
+        next.attemptNumber !== previous.attemptNumber + 1
+      )
+        throw new CoordinatorPlanInvalidError();
+      continue;
+    }
+    if (
+      (previous.status === 'ready' || previous.status === 'waiting') &&
+      next.status === 'running'
+    ) {
+      if (previous.status === 'waiting')
+        expectedNodeEvents.add(`${next.invocationKey}:node.ready`);
+      if (
+        next.attemptNumber !== previous.attemptNumber + 1 ||
+        next.resumeAt !== undefined ||
+        serializeStoredExecutionJsonValue(next.output ?? null) !==
+          serializeStoredExecutionJsonValue(previous.output ?? null)
+      )
+        throw new CoordinatorPlanInvalidError();
+      continue;
+    }
+    if (
+      previous.status === 'running' &&
+      (next.status === 'waiting' || terminalStatus(terminalEvent) !== undefined)
+    ) {
+      const pending = persistedByInvocation.get(next.invocationKey);
+      if (pending?.kind === 'attempt_failure') {
+        const expectedEvent =
+          next.status === 'waiting' ? 'node.retry_scheduled' : terminalEvent;
+        expectedNodeEvents.add(`${next.invocationKey}:${expectedEvent}`);
+        if (
+          !plannedNodeEvents.has(`${next.invocationKey}:${expectedEvent}`) ||
+          next.attemptNumber !== previous.attemptNumber ||
+          (next.status === 'waiting' &&
+            (next.resumeAt === undefined ||
+              plan.events.find(
+                (event) =>
+                  event.invocationKey === next.invocationKey &&
+                  event.name === expectedEvent,
+              )?.dueAt !== next.resumeAt))
+        )
+          throw new CoordinatorPlanInvalidError();
+        continue;
+      }
+      const sourceNames =
+        next.status === 'waiting'
+          ? ['node.waiting', 'node.retry_scheduled']
+          : [terminalEvent];
+      const observation = persistedByInvocation.get(next.invocationKey);
+      const declaredLoopBarrier = plan.checkpoint.loops.some(
+        ({ controlInvocationKey }) =>
+          controlInvocationKey === next.invocationKey &&
+          !current.loops.some(
+            (loop) => loop.controlInvocationKey === controlInvocationKey,
+          ),
+      );
+      if (
+        declaredLoopBarrier &&
+        next.status === 'waiting' &&
+        next.resumeAt === undefined &&
+        observation?.kind === 'outcome' &&
+        observation.status === 'succeeded' &&
+        next.attemptNumber === previous.attemptNumber &&
+        serializeStoredExecutionJsonValue(next.output ?? null) ===
+          serializeStoredExecutionJsonValue(observation.output ?? null)
+      )
+        continue;
+      if (
+        sourceNames.some((name) =>
+          persistedNodeFacts.has(`${next.invocationKey}:${name}`),
+        ) &&
+        observation !== undefined &&
+        next.attemptNumber === previous.attemptNumber &&
+        (next.status !== 'waiting' || next.resumeAt === observation.resumeAt) &&
+        (next.status === 'waiting' ||
+          (observation.status === next.status &&
+            serializeStoredExecutionJsonValue(next.output ?? null) ===
+              serializeStoredExecutionJsonValue(observation.output ?? null)))
+      )
+        continue;
+    } else if (
+      (previous.status === 'ready' || previous.status === 'waiting') &&
+      terminalStatus(terminalEvent) !== undefined &&
+      plannedNodeEvents.has(`${next.invocationKey}:${terminalEvent}`)
+    ) {
+      expectedNodeEvents.add(`${next.invocationKey}:${terminalEvent}`);
+      if (
+        next.attemptNumber !== previous.attemptNumber ||
+        next.resumeAt !== undefined ||
+        serializeStoredExecutionJsonValue(next.output ?? null) !==
+          serializeStoredExecutionJsonValue(previous.output ?? null)
+      )
+        throw new CoordinatorPlanInvalidError();
+      continue;
+    }
+    throw new CoordinatorPlanInvalidError();
+  }
+
+  const plannedNodeEventCount = plan.events.filter(({ name }) =>
+    name.startsWith('node.'),
+  ).length;
+  if (
+    plannedNodeEventCount !== expectedNodeEvents.size ||
+    !sameKeys(plannedNodeEvents, expectedNodeEvents)
+  )
+    throw new CoordinatorPlanInvalidError();
+
+  const expectedRunEvents = new Set<string>();
+  if (
+    current.runStatus === 'queued' &&
+    plan.checkpoint.runStatus !== 'canceled' &&
+    plan.checkpoint.runStatus !== 'timed_out'
+  )
+    expectedRunEvents.add('run.started');
+  if (
+    current.runStatus !== 'waiting' &&
+    plan.checkpoint.runStatus === 'waiting'
+  )
+    expectedRunEvents.add('run.waiting');
+  if (terminalRunStatuses.has(plan.checkpoint.runStatus))
+    expectedRunEvents.add(`run.${plan.checkpoint.runStatus}`);
+  const plannedRunEvents = plan.events.filter(({ name }) =>
+    name.startsWith('run.'),
+  );
+  if (
+    plannedRunEvents.length !== expectedRunEvents.size ||
+    plannedRunEvents.some(({ name }) => !expectedRunEvents.has(name))
+  )
+    throw new CoordinatorPlanInvalidError();
+}
+
+async function validateCheckpointOutputOwnership(
+  client: PoolClient,
+  workspaceId: string,
+  runId: string,
+  checkpoint: PersistedPhase3Checkpoint,
+  waitResumeKeys: ReadonlySet<string>,
+): Promise<void> {
+  const expected = checkpoint.invocations.filter(
+    (invocation) => invocation.output !== undefined,
+  );
+  if (expected.length === 0) return;
+  const rows = await client.query<{
+    attempt_id: string | null;
+    attempt_output_ref: unknown;
+    attempt_status: string | null;
+    control_kind: string | null;
+    invocation_key: string;
+    node_output_ref: unknown;
+    node_status: string;
+  }>(
+    `select node.invocation_key, node.status as node_status,node.control_kind,
+            node.output_ref as node_output_ref,
+            attempt.id as attempt_id, attempt.status as attempt_status,
+            attempt.output_ref as attempt_output_ref
+     from app.node_runs node
+     join app.node_attempts attempt
+       on attempt.workspace_id=node.workspace_id
+      and attempt.id=node.current_attempt_id
+     where node.workspace_id=$1 and node.workflow_run_id=$2
+       and node.invocation_key=any($3::varchar[])
+     for share of node, attempt`,
+    [workspaceId, runId, expected.map(({ invocationKey }) => invocationKey)],
+  );
+  const physical = new Map(rows.rows.map((row) => [row.invocation_key, row]));
+  const artifacts = new Set<string>();
+  for (const invocation of expected) {
+    const row = physical.get(invocation.invocationKey);
+    const isLoopControl = checkpoint.loops.some(
+      ({ controlInvocationKey }) =>
+        controlInvocationKey === invocation.invocationKey,
+    );
+    const physicalLoopStatus =
+      isLoopControl && row?.control_kind === 'for_each_barrier'
+        ? 'waiting'
+        : 'succeeded';
+    const isSuspendedNodeWait =
+      invocation.status === 'waiting' && invocation.waitKind === 'node_wait';
+    const isWaitResume =
+      invocation.status === 'running' &&
+      invocation.waitKind === undefined &&
+      waitResumeKeys.has(invocation.invocationKey);
+    const expectedNodeStatus =
+      isSuspendedNodeWait || isWaitResume
+        ? 'waiting'
+        : isLoopControl
+          ? physicalLoopStatus
+          : invocation.status;
+    const expectedAttemptStatus =
+      isSuspendedNodeWait || isWaitResume || isLoopControl
+        ? 'succeeded'
+        : invocation.status;
+    if (
+      row?.attempt_id === undefined ||
+      row.attempt_id === null ||
+      row.node_status !== expectedNodeStatus ||
+      row.attempt_status !== expectedAttemptStatus
+    )
+      throw new CoordinatorRunStateCorruptError();
+    let nodeValue;
+    let attemptValue;
+    try {
+      nodeValue = parseStoredExecutionValueV1(row.node_output_ref);
+      attemptValue = parseStoredExecutionValueV1(row.attempt_output_ref);
+    } catch {
+      throw new CoordinatorRunStateCorruptError();
+    }
+    if (
+      serializeStoredExecutionJsonValue(nodeValue) !==
+      serializeStoredExecutionJsonValue(attemptValue)
+    )
+      throw new CoordinatorRunStateCorruptError();
+    const output = invocation.output;
+    if (output === undefined) throw new CoordinatorRunStateCorruptError();
+    if (output.kind === 'inline') {
+      if (output.attemptId !== row.attempt_id || nodeValue.kind !== 'inline')
+        throw new CoordinatorRunStateCorruptError();
+    } else {
+      if (
+        nodeValue.kind !== 'artifact' ||
+        nodeValue.artifactId !== output.artifactId
+      )
+        throw new CoordinatorRunStateCorruptError();
+      artifacts.add(output.artifactId);
+    }
+  }
+  if (artifacts.size === 0) return;
+  const available = await client.query<{ id: string }>(
+    `select id from app.artifacts
+     where workspace_id=$1 and id=any($2::uuid[])
+       and status='available' and deleted_at is null
+     for share`,
+    [workspaceId, [...artifacts]],
+  );
+  if (available.rows.length !== artifacts.size)
+    throw new CoordinatorRunStateCorruptError();
+}
+
+async function persistLoopBarrierTransitions(
+  client: PoolClient,
+  workspaceId: string,
+  runId: string,
+  current: PersistedPhase3Checkpoint,
+  next: PersistedPhase3Checkpoint,
+): Promise<void> {
+  const currentLoops = new Set(
+    current.loops.map(({ controlInvocationKey }) => controlInvocationKey),
+  );
+  const barriers = next.loops.filter(
+    ({ controlInvocationKey }) => !currentLoops.has(controlInvocationKey),
+  );
+  if (barriers.length === 0) return;
+  const updated = await client.query(
+    `update app.node_runs
+     set status='waiting', control_kind='for_each_barrier', completed_at=null,
+         resume_at=null, retry_due_at=null, due_wakeup_at=null,
+         updated_at=clock_timestamp()
+     where workspace_id=$1 and workflow_run_id=$2
+       and invocation_key=any($3::varchar[]) and status='succeeded'`,
+    [
+      workspaceId,
+      runId,
+      barriers.map(({ controlInvocationKey }) => controlInvocationKey),
+    ],
+  );
+  if (updated.rowCount !== barriers.length)
+    throw new CoordinatorRunStateCorruptError();
+}
+
+async function persistDueReadyTransitions(
+  client: PoolClient,
+  workspaceId: string,
+  runId: string,
+  current: PersistedPhase3Checkpoint,
+  next: PersistedPhase3Checkpoint,
+): Promise<void> {
+  const currentInvocations = new Map(
+    current.invocations.map((invocation) => [
+      invocation.invocationKey,
+      invocation,
+    ]),
+  );
+  const transitions = next.invocations.filter(
+    (invocation) =>
+      invocation.status === 'ready' &&
+      currentInvocations.get(invocation.invocationKey)?.status === 'waiting',
+  );
+  if (transitions.length === 0) return;
+  const rows = await client.query<{
+    current_attempt_number: number | null;
+    invocation_key: string;
+    is_due: boolean;
+  }>(
+    `select invocation_key, current_attempt_number,
+            coalesce(retry_due_at,resume_at) is not null
+              and coalesce(retry_due_at,resume_at) <= clock_timestamp() as is_due
+     from app.node_runs
+     where workspace_id=$1 and workflow_run_id=$2
+       and invocation_key=any($3::varchar[]) and status='waiting'
+     for update`,
+    [workspaceId, runId, transitions.map(({ invocationKey }) => invocationKey)],
+  );
+  const physical = new Map(rows.rows.map((row) => [row.invocation_key, row]));
+  if (
+    transitions.some((transition) => {
+      const row = physical.get(transition.invocationKey);
+      return (
+        row?.is_due !== true ||
+        row.current_attempt_number !== transition.attemptNumber
+      );
+    })
+  )
+    throw new CoordinatorPlanInvalidError();
+  const updated = await client.query(
+    `update app.node_runs
+     set status='ready', resume_at=null, retry_due_at=null, due_wakeup_at=null,
+         wait_kind=null,
+         updated_at=clock_timestamp()
+     where workspace_id=$1 and workflow_run_id=$2
+       and invocation_key=any($3::varchar[]) and status='waiting'`,
+    [workspaceId, runId, transitions.map(({ invocationKey }) => invocationKey)],
+  );
+  if (updated.rowCount !== transitions.length)
+    throw new CoordinatorRunStateCorruptError();
+}
+
+const terminalRunStatuses = new Set([
+  'succeeded',
+  'failed',
+  'canceled',
+  'timed_out',
+  'outcome_unknown',
+]);
+const allowedRunTransitions: Readonly<Record<string, ReadonlySet<string>>> = {
+  queued: new Set([
+    'running',
+    'waiting',
+    'succeeded',
+    'failed',
+    'canceled',
+    'timed_out',
+    'outcome_unknown',
+  ]),
+  running: new Set([
+    'running',
+    'waiting',
+    'succeeded',
+    'failed',
+    'canceled',
+    'timed_out',
+    'outcome_unknown',
+  ]),
+  waiting: new Set([
+    'running',
+    'waiting',
+    'succeeded',
+    'failed',
+    'canceled',
+    'timed_out',
+    'outcome_unknown',
+  ]),
+};
+
+export async function commitCoordinatorAdvancePlan(
+  pool: Pool,
+  input: CommitAdvancePlanInput,
+): Promise<CommitAdvancePlanResult> {
+  if (!(input.signal instanceof AbortSignal))
+    throw new CoordinatorPlanInvalidError();
+  assertNotAborted(input.signal);
+  let workspaceId: string;
+  let runId: string;
+  let workflowVersionId: string;
+  let traceparent: string | undefined;
+  let delivery: CoordinatorAdvanceDelivery;
+  try {
+    workspaceId = identitySchema.parse(input.workspaceId);
+    runId = identitySchema.parse(input.runId);
+    workflowVersionId = identitySchema.parse(input.workflowVersionId);
+    traceparent = traceparentSchema.parse(input.traceparent);
+    delivery = coordinatorDeliverySchema.parse(input.delivery);
+  } catch {
+    throw new CoordinatorPlanInvalidError();
+  }
+  const plan = parseTransitionPlan(input.plan);
+  validateTransitionPlan(plan, workflowVersionId);
+  const checkpointJson = serializePersistedPhase3Checkpoint(plan.checkpoint);
+  const planFingerprint = transitionFingerprint({
+    plan,
+    traceparent,
+    workflowVersionId,
+  });
+  try {
+    const transactionResult = await withWorkspaceWriteClient(
+      pool,
+      workspaceId,
+      input.signal,
+      async (client) => {
+        await validateAuthoritativeAdvanceDelivery(
+          client,
+          workspaceId,
+          runId,
+          delivery,
+        );
+        const locked = await client.query<{
+          revision: number;
+          scheduler_state: unknown;
+          last_transition_fingerprint: string | null;
+          workflow_version_id: string;
+          status: string;
+          cancel_requested_at: Date | null;
+          deadline_expired: boolean;
+          workflow_id: string;
+          trigger_type: string;
+          started_at: Date | null;
+          created_at: Date;
+          failure_notification_policy_version: number | null;
+          failure_notification_destination_id: string | null;
+          failure_notification_destination_config_version: number | null;
+          failure_notification_side_effect_class: string | null;
+          execution_entitlement_version: number;
+          input_ref: unknown;
+        }>(
+          `select checkpoint.revision, checkpoint.scheduler_state,
+                    checkpoint.last_transition_fingerprint,
+                    checkpoint.workflow_version_id, run.status,
+                    run.cancel_requested_at,
+                     run.workflow_id,run.trigger_type,run.started_at,run.created_at,
+                     run.failure_notification_policy_version,
+                     run.failure_notification_destination_id,
+                     run.failure_notification_destination_config_version,
+                     run.failure_notification_side_effect_class,
+                     run.execution_entitlement_version,run.input_ref,
+                     run.deadline_at is not null
+                      and run.deadline_at <= clock_timestamp() as deadline_expired
+             from app.workflow_runs run
+             join app.run_checkpoints checkpoint
+               on checkpoint.workspace_id = run.workspace_id
+              and checkpoint.workflow_run_id = run.id
+             where run.workspace_id = $1 and run.id = $2
+             for update of run, checkpoint`,
+          [workspaceId, runId],
+        );
+        const row = locked.rows[0];
+        if (row === undefined) return Object.freeze({ kind: 'not_found' });
+        if (row.workflow_version_id !== workflowVersionId)
+          throw new CoordinatorPlanInvalidError();
+        if (row.revision !== plan.expectedRevision) {
+          if (
+            row.revision === plan.expectedRevision + 1 &&
+            row.last_transition_fingerprint === planFingerprint &&
+            serializeStoredExecutionJsonValue(row.scheduler_state) ===
+              checkpointJson
+          ) {
+            const receipt = await claimCoordinatorReceipt(
+              client,
+              workspaceId,
+              delivery,
+            );
+            if (receipt === 'new')
+              await completeCoordinatorReceipt(client, workspaceId, delivery);
+            return Object.freeze({
+              kind: 'already_committed',
+              revision: row.revision,
+            });
+          }
+          return Object.freeze({ kind: 'stale', revision: row.revision });
+        }
+        let currentCheckpoint: PersistedPhase3Checkpoint;
+        try {
+          currentCheckpoint = parsePersistedPhase3Checkpoint(
+            row.scheduler_state,
+          );
+        } catch {
+          throw new CoordinatorRunStateCorruptError();
+        }
+        if (
+          currentCheckpoint.workflowVersionId !== workflowVersionId ||
+          currentCheckpoint.revision !== row.revision ||
+          currentCheckpoint.runStatus !== row.status ||
+          currentCheckpoint.nextEventSequence !== plan.expectedNextEventSequence
+        )
+          throw new CoordinatorRunStateCorruptError();
+        validateTransitionDelta(currentCheckpoint, plan);
+        if (
+          !allowedRunTransitions[currentCheckpoint.runStatus]?.has(
+            plan.checkpoint.runStatus,
+          )
+        )
+          throw new CoordinatorPlanInvalidError();
+        const highWaterResult = await client.query<{ high_water: number }>(
+          `select coalesce(max(sequence), 0)::int as high_water
+             from app.run_events
+             where workspace_id = $1 and workflow_run_id = $2`,
+          [workspaceId, runId],
+        );
+        if (
+          highWaterResult.rows[0]?.high_water !==
+          plan.consumedThroughEventSequence
+        )
+          return Object.freeze({ kind: 'stale', revision: row.revision });
+        const expectedPersistedFactCount = Math.max(
+          0,
+          plan.consumedThroughEventSequence -
+            currentCheckpoint.nextEventSequence +
+            1,
+        );
+        const factCapacity = await persistedFactCapacity(
+          client,
+          workspaceId,
+          runId,
+          currentCheckpoint.nextEventSequence,
+          plan.consumedThroughEventSequence,
+        );
+        if (factCapacity.count !== expectedPersistedFactCount)
+          return Object.freeze({ kind: 'stale', revision: row.revision });
+        if (factCapacity.count > maximumPersistedFacts)
+          throw new CoordinatorRunStateCorruptError();
+        const persistedFacts = await readPersistedFacts(client, {
+          count: factCapacity.count,
+          firstSequence: currentCheckpoint.nextEventSequence,
+          lastSequence: plan.consumedThroughEventSequence,
+          runId,
+          workspaceId,
+        });
+        if (persistedFacts.length !== expectedPersistedFactCount)
+          return Object.freeze({ kind: 'stale', revision: row.revision });
+        validatePersistedFactBatch(persistedFacts);
+        const pendingFailures = await client.query<{
+          attempt_id: string;
+          attempt_number: number;
+          executor_error_kind: string;
+          executor_failure_kind: string;
+          executor_possibly_dispatched: boolean;
+          invocation_key: string;
+          safe_error_code: string;
+        }>(
+          `select attempt.id attempt_id,attempt.attempt_number,
+                      attempt.executor_failure_kind,attempt.executor_error_kind,
+                      attempt.executor_possibly_dispatched,attempt.safe_error_code,
+                      node.invocation_key
+               from app.node_attempts attempt
+               join app.node_runs node
+                 on node.workspace_id=attempt.workspace_id
+                and node.id=attempt.node_run_id
+               where attempt.workspace_id=$1 and node.workflow_run_id=$2
+                 and node.current_attempt_id=attempt.id
+                 and node.status='running' and attempt.status='failed'
+                 and attempt.retry_decision='pending'
+               order by node.invocation_key,attempt.id
+               for update of node,attempt`,
+          [workspaceId, runId],
+        );
+        validateStatusTransitions(currentCheckpoint, plan, [
+          ...persistedFacts.map((fact) => ({
+            invocationKey: fact.invocation_key,
+            observation: record(mapEvent(fact)),
+            type: fact.type,
+          })),
+          ...pendingFailures.rows.map((failure) => ({
+            invocationKey: failure.invocation_key,
+            type: 'attempt_failure',
+            observation: record({
+              kind: 'attempt_failure',
+              attemptId: failure.attempt_id,
+              attemptNumber: failure.attempt_number,
+              failureKind: failure.executor_failure_kind,
+              errorKind: failure.executor_error_kind,
+              possiblyDispatched: failure.executor_possibly_dispatched,
+              safeErrorCode: failure.safe_error_code,
+            }),
+          })),
+        ]);
+        if (
+          (currentCheckpoint.cancelRequested &&
+            row.cancel_requested_at === null) ||
+          (currentCheckpoint.deadlineExpired && !row.deadline_expired)
+        )
+          throw new CoordinatorRunStateCorruptError();
+        const authoritativeCancellation =
+          currentCheckpoint.cancelRequested || row.cancel_requested_at !== null;
+        const authoritativeDeadline =
+          currentCheckpoint.deadlineExpired || row.deadline_expired;
+        if (
+          plan.checkpoint.cancelRequested !== authoritativeCancellation ||
+          plan.checkpoint.deadlineExpired !== authoritativeDeadline
+        ) {
+          if (
+            (!plan.checkpoint.cancelRequested && authoritativeCancellation) ||
+            (!plan.checkpoint.deadlineExpired && authoritativeDeadline)
+          )
+            return Object.freeze({ kind: 'stale', revision: row.revision });
+          throw new CoordinatorPlanInvalidError();
+        }
+        if (
+          row.status === 'queued' &&
+          (plan.checkpoint.runStatus === 'running' ||
+            plan.checkpoint.runStatus === 'waiting')
+        ) {
+          const deferred = await deferCoordinatorForActiveCapacity(client, {
+            workspaceId,
+            runId,
+            revision: row.revision,
+            entitlementVersion: row.execution_entitlement_version,
+            delivery,
+            ...(traceparent === undefined ? {} : { traceparent }),
+          });
+          if (deferred !== undefined) return deferred;
+        }
+        await validateCheckpointOutputOwnership(
+          client,
+          workspaceId,
+          runId,
+          plan.checkpoint,
+          new Set(
+            plan.attempts
+              .filter(({ admissionKind }) => admissionKind === 'wait_resume')
+              .map(({ invocationKey }) => invocationKey),
+          ),
+        );
+        await persistLoopBarrierTransitions(
+          client,
+          workspaceId,
+          runId,
+          currentCheckpoint,
+          plan.checkpoint,
+        );
+        await persistDueReadyTransitions(
+          client,
+          workspaceId,
+          runId,
+          currentCheckpoint,
+          plan.checkpoint,
+        );
+        assertNotAborted(input.signal);
+        const receipt = await claimCoordinatorReceipt(
+          client,
+          workspaceId,
+          delivery,
+        );
+        if (receipt === 'duplicate')
+          return Object.freeze({
+            kind: 'already_committed' as const,
+            revision: row.revision,
+          });
+
+        const invocations = new Map(
+          plan.checkpoint.invocations.map((invocation) => [
+            invocation.invocationKey,
+            invocation,
+          ]),
+        );
+        const physical = new Map<
+          string,
+          { nodeRunId: string; attemptId?: string; attemptNumber?: number }
+        >();
+        for (const failure of pendingFailures.rows) {
+          const event = plan.events.find(
+            (candidate) =>
+              candidate.invocationKey === failure.invocation_key &&
+              [
+                'node.retry_scheduled',
+                'node.failed',
+                'node.canceled',
+                'node.timed_out',
+                'node.outcome_unknown',
+              ].includes(candidate.name),
+          );
+          const invocation = invocations.get(failure.invocation_key);
+          if (event === undefined || invocation === undefined)
+            throw new CoordinatorPlanInvalidError();
+          const decision =
+            event.name === 'node.retry_scheduled'
+              ? 'retry'
+              : event.name.slice('node.'.length);
+          if (
+            ![
+              'retry',
+              'failed',
+              'canceled',
+              'timed_out',
+              'outcome_unknown',
+            ].includes(decision)
+          )
+            throw new CoordinatorPlanInvalidError();
+          const finalized = await client.query(
+            `update app.node_attempts set retry_decision=$3,updated_at=clock_timestamp()
+                 where workspace_id=$1 and id=$2 and retry_decision='pending'`,
+            [workspaceId, failure.attempt_id, decision],
+          );
+          if (finalized.rowCount !== 1)
+            throw new CoordinatorRunStateCorruptError();
+          const nodeStatus = decision === 'retry' ? 'waiting' : decision;
+          const updated = await client.query(
+            `update app.node_runs
+                 set status=$4::varchar,retry_due_at=$5,resume_at=null,
+                     wait_kind=case when $4::varchar='waiting' then 'retry_backoff' else null end,
+                     due_wakeup_at=null,
+                     completed_at=case when $4::varchar='waiting' then null else clock_timestamp() end,
+                     safe_error_code=$6,updated_at=clock_timestamp()
+                 where workspace_id=$1 and workflow_run_id=$2
+                   and invocation_key=$3 and current_attempt_id=$7
+                   and status='running'`,
+            [
+              workspaceId,
+              runId,
+              failure.invocation_key,
+              nodeStatus,
+              decision === 'retry' ? event.dueAt : null,
+              failure.safe_error_code,
+              failure.attempt_id,
+            ],
+          );
+          if (updated.rowCount !== 1)
+            throw new CoordinatorRunStateCorruptError();
+        }
+        for (const admission of plan.nodeRunAdmissions) {
+          const invocation = invocations.get(admission.invocationKey);
+          if (invocation === undefined) throw new CoordinatorPlanInvalidError();
+          const attempt = plan.attempts.find(
+            ({ invocationKey }) => invocationKey === admission.invocationKey,
+          );
+          const nodeRunId = randomUUID();
+          const attemptId = attempt === undefined ? undefined : randomUUID();
+          await client.query(
+            `insert into app.node_runs (
+                  id, workspace_id, workflow_run_id, node_id, invocation_key,
+                  branch_context, status, side_effect_class, provider_idempotency_key,
+                  current_attempt_id, current_attempt_number, completed_at
+                ) values (
+                  $1,$2,$3,$4,$5,$6::jsonb,$7::varchar,$8,$9,$10,$11,
+                  case when $7::varchar = 'skipped' then clock_timestamp() else null end
+                )`,
+            [
+              nodeRunId,
+              workspaceId,
+              runId,
+              admission.nodeId,
+              admission.invocationKey,
+              serializeStoredExecutionJsonValue({
+                ...('branchPath' in invocation &&
+                invocation.branchPath !== undefined
+                  ? { branchPath: invocation.branchPath }
+                  : {}),
+                ...('iterationPath' in invocation &&
+                invocation.iterationPath !== undefined
+                  ? { iterationPath: invocation.iterationPath }
+                  : {}),
+              }),
+              invocation.status === 'pending'
+                ? 'pending'
+                : invocation.status === 'skipped'
+                  ? 'skipped'
+                  : 'ready',
+              admission.sideEffectClass,
+              admission.providerIdempotencyKey ?? null,
+              attemptId ?? null,
+              attempt?.attemptNumber ?? null,
+            ],
+          );
+          physical.set(admission.invocationKey, {
+            nodeRunId,
+            ...(attemptId === undefined || attempt === undefined
+              ? {}
+              : { attemptId, attemptNumber: attempt.attemptNumber }),
+          });
+        }
+
+        for (const attempt of plan.attempts) {
+          let ids = physical.get(attempt.invocationKey);
+          if (ids === undefined) {
+            const existing = await client.query<{
+              id: string;
+              current_attempt_number: number | null;
+              provider_idempotency_key: string | null;
+              side_effect_class: string;
+              status: string;
+              is_due: boolean;
+            }>(
+              `select id, current_attempt_number, side_effect_class,
+                        provider_idempotency_key, status,
+                        coalesce(retry_due_at, resume_at) is not null
+                          and coalesce(retry_due_at, resume_at) <= clock_timestamp()
+                          as is_due
+                 from app.node_runs
+                 where workspace_id = $1 and workflow_run_id = $2
+                   and invocation_key = $3
+                 for update`,
+              [workspaceId, runId, attempt.invocationKey],
+            );
+            const node = existing.rows[0];
+            const isFirstReadyAttempt =
+              (node?.status === 'ready' || node?.status === 'pending') &&
+              (node.current_attempt_number === null
+                ? attempt.attemptNumber === 1
+                : node.current_attempt_number === attempt.attemptNumber - 1);
+            const isDueAttempt =
+              node?.status === 'waiting' &&
+              node.is_due &&
+              node.current_attempt_number === attempt.attemptNumber - 1;
+            if (
+              node?.side_effect_class !== attempt.sideEffectClass ||
+              node.provider_idempotency_key !==
+                (attempt.providerIdempotencyKey ?? null) ||
+              (!isFirstReadyAttempt && !isDueAttempt)
+            )
+              throw new CoordinatorPlanInvalidError();
+            ids = {
+              nodeRunId: node.id,
+              attemptId: randomUUID(),
+              attemptNumber: attempt.attemptNumber,
+            };
+            physical.set(attempt.invocationKey, ids);
+            await client.query(
+              `update app.node_runs
+                 set status='ready', current_attempt_id=$1,
+                      current_attempt_number=$2, resume_at=null,
+                       retry_due_at=null, due_wakeup_at=null, wait_kind=null,
+                       updated_at=clock_timestamp()
+                 where workspace_id=$3 and id=$4`,
+              [
+                ids.attemptId,
+                attempt.attemptNumber,
+                workspaceId,
+                ids.nodeRunId,
+              ],
+            );
+          }
+          if (ids.attemptId === undefined)
+            throw new CoordinatorPlanInvalidError();
+          await client.query(
+            `insert into app.node_attempts (
+                   id, workspace_id, node_run_id, attempt_number, status,
+                   side_effect_class, provider_idempotency_key, admission_kind
+                 ) values ($1,$2,$3,$4,'ready',$5,$6,$7)`,
+            [
+              ids.attemptId,
+              workspaceId,
+              ids.nodeRunId,
+              attempt.attemptNumber,
+              attempt.sideEffectClass,
+              attempt.providerIdempotencyKey ?? null,
+              attempt.admissionKind,
+            ],
+          );
+          const outboxEventId = randomUUID();
+          const payload = {
+            schemaVersion: 1,
+            workspaceId,
+            runId,
+            nodeRunId: ids.nodeRunId,
+            attemptId: ids.attemptId,
+            outboxEventId,
+            ...(traceparent === undefined ? {} : { traceparent }),
+          } as const;
+          await client.query(
+            `insert into app.outbox_events (
+                 id, workspace_id, job_name, schema_version, aggregate_type,
+                 aggregate_id, payload, payload_checksum
+               ) values ($1,$2,'execute-node-attempt',1,'node-attempt',$3,$4::jsonb,$5)`,
+            [
+              outboxEventId,
+              workspaceId,
+              ids.attemptId,
+              serializeStoredExecutionJsonValue(payload),
+              canonicalOutboxPayloadChecksum(payload),
+            ],
+          );
+        }
+
+        const missingEventInvocationKeys = [
+          ...new Set(
+            plan.events.flatMap(({ invocationKey }) =>
+              invocationKey === undefined || physical.has(invocationKey)
+                ? []
+                : [invocationKey],
+            ),
+          ),
+        ];
+        if (missingEventInvocationKeys.length > 0) {
+          const existingNodes = await client.query<{
+            id: string;
+            invocation_key: string;
+            current_attempt_id: string | null;
+            current_attempt_number: number | null;
+          }>(
+            `select id, invocation_key, current_attempt_id,
+                      current_attempt_number
+               from app.node_runs
+               where workspace_id=$1 and workflow_run_id=$2
+                 and invocation_key=any($3::varchar[])
+               for update`,
+            [workspaceId, runId, missingEventInvocationKeys],
+          );
+          for (const node of existingNodes.rows)
+            physical.set(node.invocation_key, {
+              nodeRunId: node.id,
+              ...(node.current_attempt_id === null
+                ? {}
+                : {
+                    attemptId: node.current_attempt_id,
+                    ...(node.current_attempt_number === null
+                      ? {}
+                      : { attemptNumber: node.current_attempt_number }),
+                  }),
+            });
+          if (missingEventInvocationKeys.some((key) => !physical.has(key)))
+            throw new CoordinatorRunStateCorruptError();
+        }
+
+        for (const event of plan.events) {
+          const ids =
+            event.invocationKey === undefined
+              ? undefined
+              : physical.get(event.invocationKey);
+          const payload = {
+            schemaVersion: event.schemaVersion,
+            ...(event.invocationKey === undefined
+              ? {}
+              : { invocationKey: event.invocationKey }),
+            ...(event.nodeId === undefined ? {} : { nodeId: event.nodeId }),
+            ...(event.attemptNumber === undefined
+              ? {}
+              : { attemptNumber: event.attemptNumber }),
+            ...(event.reasonCode === undefined
+              ? {}
+              : { reasonCode: event.reasonCode }),
+            ...(event.dueAt === undefined ? {} : { dueAt: event.dueAt }),
+            ...(ids === undefined ? {} : { nodeRunId: ids.nodeRunId }),
+            ...(ids?.attemptId !== undefined &&
+            ids.attemptNumber === event.attemptNumber
+              ? { attemptId: ids.attemptId }
+              : {}),
+          };
+          await client.query(
+            `insert into app.run_events (
+                 workspace_id, workflow_run_id, sequence, type, payload, created_at
+               ) values ($1,$2,$3,$4,$5::jsonb,$6)`,
+            [
+              workspaceId,
+              runId,
+              event.sequence,
+              event.name,
+              serializeStoredExecutionJsonValue(payload),
+              event.occurredAt,
+            ],
+          );
+          const terminalNodeStatus = terminalStatus(event.name);
+          if (
+            terminalNodeStatus !== undefined &&
+            event.invocationKey !== undefined &&
+            !pendingFailures.rows.some(
+              (failure) => failure.invocation_key === event.invocationKey,
+            )
+          ) {
+            const updatedNode = await client.query(
+              `update app.node_runs
+                  set status=$1, completed_at=clock_timestamp(),
+                        safe_error_code=$2, resume_at=null, retry_due_at=null,
+                        due_wakeup_at=null, control_kind=null, wait_kind=null,
+                     updated_at=clock_timestamp()
+                 where workspace_id=$3 and workflow_run_id=$4
+                   and invocation_key=$5
+                   and status in ('pending','ready','waiting')`,
+              [
+                terminalNodeStatus,
+                event.reasonCode ?? null,
+                workspaceId,
+                runId,
+                event.invocationKey,
+              ],
+            );
+            if (updatedNode.rowCount !== 1)
+              throw new CoordinatorRunStateCorruptError();
+          }
+        }
+
+        await persistFailureNotificationIntent(client, {
+          workspaceId,
+          runId,
+          workflowId: row.workflow_id,
+          workflowVersionId,
+          triggerType: row.trigger_type,
+          startedAt: row.started_at,
+          createdAt: row.created_at,
+          policyVersion: row.failure_notification_policy_version,
+          destinationId: row.failure_notification_destination_id,
+          destinationConfigVersion:
+            row.failure_notification_destination_config_version,
+          sideEffectClass: row.failure_notification_side_effect_class,
+          cancellationRequested: authoritativeCancellation,
+          plan,
+          ...(traceparent === undefined ? {} : { traceparent }),
+        });
+
+        const checkpointUpdate = await client.query(
+          `update app.run_checkpoints
+             set revision=$1, engine_version=$2, scheduler_state=$3::jsonb,
+                 last_transition_fingerprint=$7,
+                 resume_at=null, resume_lease_owner=null,
+                 resume_lease_token=null, resume_lease_expires_at=null,
+                 updated_at=clock_timestamp()
+             where workspace_id=$4 and workflow_run_id=$5 and revision=$6`,
+          [
+            plan.checkpoint.revision,
+            plan.checkpoint.engineVersion,
+            checkpointJson,
+            workspaceId,
+            runId,
+            plan.expectedRevision,
+            planFingerprint,
+          ],
+        );
+        if (checkpointUpdate.rowCount !== 1)
+          throw new CoordinatorRunStateCorruptError();
+        const startedAt = plan.events.find(
+          ({ name }) => name === 'run.started',
+        )?.occurredAt;
+        let scheduleDueAt: string | undefined;
+        if (startedAt !== undefined && row.trigger_type === 'schedule') {
+          const storedInput = parseStoredExecutionValueV1(row.input_ref);
+          if (storedInput.kind !== 'inline')
+            throw new CoordinatorRunStateCorruptError();
+          const scheduleInput = scheduleRunInputSchema.safeParse(
+            storedInput.value,
+          );
+          if (!scheduleInput.success)
+            throw new CoordinatorRunStateCorruptError();
+          scheduleDueAt = canonicalTimestamp(scheduleInput.data.scheduledAt);
+        }
+        const completedAt = plan.events.find(
+          ({ name }) =>
+            name.startsWith('run.') && terminalRunStatuses.has(name.slice(4)),
+        )?.occurredAt;
+        await client.query(
+          `update app.workflow_runs
+             set status=$1,
+                 started_at=coalesce(started_at,$2::timestamptz),
+                 completed_at=case when $3::timestamptz is null
+                   then completed_at else $3::timestamptz end,
+                 updated_at=clock_timestamp()
+             where workspace_id=$4 and id=$5`,
+          [
+            plan.checkpoint.runStatus,
+            startedAt ?? null,
+            completedAt ?? null,
+            workspaceId,
+            runId,
+          ],
+        );
+        await completeCoordinatorReceipt(client, workspaceId, delivery);
+        assertNotAborted(input.signal);
+        return Object.freeze({
+          kind: 'committed',
+          revision: plan.checkpoint.revision,
+          admittedAttempts: Object.freeze(
+            plan.attempts.map(({ invocationKey }) => {
+              const ids = physical.get(invocationKey);
+              if (ids?.attemptId === undefined)
+                throw new CoordinatorPlanInvalidError();
+              return Object.freeze({
+                invocationKey,
+                nodeRunId: ids.nodeRunId,
+                attemptId: ids.attemptId,
+              });
+            }),
+          ),
+          ...(scheduleDueAt === undefined ? {} : { scheduleDueAt }),
+        });
+      },
+    );
+    if (
+      transactionResult.kind !== 'committed' ||
+      !('scheduleDueAt' in transactionResult) ||
+      typeof transactionResult.scheduleDueAt !== 'string'
+    )
+      return transactionResult;
+    const { scheduleDueAt, ...committed } = transactionResult;
+    try {
+      const observed = await pool.query<{ observed_at: Date }>(
+        'select clock_timestamp() observed_at',
+      );
+      const durableStartObservedAt = observed.rows[0]?.observed_at;
+      if (durableStartObservedAt === undefined) return Object.freeze(committed);
+      const scheduleToStartSeconds =
+        (durableStartObservedAt.getTime() - Date.parse(scheduleDueAt)) / 1_000;
+      return Object.freeze({
+        ...committed,
+        scheduleToStartSeconds,
+      });
+    } catch {
+      return Object.freeze(committed);
+    }
+  } catch (error: unknown) {
+    if (error instanceof DeliveryMismatch)
+      return auditCoordinatorDeliveryMismatch(
+        pool,
+        workspaceId,
+        delivery,
+        input.signal,
+      );
+    throw error;
+  }
+}

@@ -4339,6 +4339,13 @@ Current evidence:
   approximately 3,200 to 1,892 lines across the completed extractions, and the
   same 41 real-PostgreSQL characterization assertions remain green. Ready
   admission, settlement, and terminalization extraction remains open.
+- The authoritative coordinator write transaction is isolated behind
+  `commitCoordinatorAdvancePlan`; `coordinator-run-store.ts` is now only the
+  stable public composition root for load, commit, acknowledgement, and pool
+  closure. The transaction ordering and SQL behavior remain unchanged, and all
+  41 real-PostgreSQL coordinator assertions pass. Ready admission,
+  branch/loop/retry/wait settlement, and terminal notification helpers remain
+  to be extracted from the write module before A-05 closes.
 
 ## Update protocol
 

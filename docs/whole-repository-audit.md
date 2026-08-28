@@ -276,6 +276,14 @@ and due-wakeup reconstruction inside the unchanged repeatable-read transaction.
 Ready admission, settlement, and terminalization remain to be separated before
 A-05 is complete.
 
+The authoritative write operation now lives in
+`coordinator-run-store-commit.ts`, leaving `coordinator-run-store.ts` as the
+stable public composition root for load, commit, acknowledgement, and close.
+The original single write transaction and call ordering are unchanged. The
+write module still owns ready admission, branch/loop/retry/wait settlement, and
+terminal notification helpers; those internal responsibilities remain the last
+A-05 decomposition work.
+
 ### A-06: Split engine operations without splitting the state machine
 
 - **Severity:** Medium
