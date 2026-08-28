@@ -4331,6 +4331,14 @@ Current evidence:
   Commit-time delivery handling reuses the same module. The focused
   41-assertion real-PostgreSQL characterization suite passes. Loading, ready
   admission, settlement, and terminalization extraction remains open.
+- The A-05 authoritative-load operation now lives in a cohesive observation
+  module. It retains bounded event paging, canonical fact validation,
+  checkpoint/physical-row reconciliation, pending executor failures, artifact
+  availability, cancellation/deadline truth, and due wakeups in the original
+  repeatable-read transaction. The root coordinator store is reduced from
+  approximately 3,200 to 1,892 lines across the completed extractions, and the
+  same 41 real-PostgreSQL characterization assertions remain green. Ready
+  admission, settlement, and terminalization extraction remains open.
 
 ## Update protocol
 

@@ -268,8 +268,13 @@ boundary schemas now live in `coordinator-run-store-contract.ts`, avoiding
 circular ownership as implementations split. Durable delivery validation,
 receipt claim/completion, capacity deferral, mismatch auditing, and delivery
 acknowledgement move together in `coordinator-run-store-delivery.ts`; the commit
-path reuses those same invariants. Authoritative loading, ready admission,
-settlement, and terminalization remain to be separated before A-05 is complete.
+path reuses those same invariants. Authoritative loading is now isolated in
+`coordinator-run-store-observations.ts`: the module owns bounded event paging,
+event and output mapping, checkpoint-to-physical-state reconciliation, pending
+failure observation, artifact availability, cancellation/deadline validation,
+and due-wakeup reconstruction inside the unchanged repeatable-read transaction.
+Ready admission, settlement, and terminalization remain to be separated before
+A-05 is complete.
 
 ### A-06: Split engine operations without splitting the state machine
 
