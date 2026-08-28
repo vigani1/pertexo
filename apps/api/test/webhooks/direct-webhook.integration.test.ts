@@ -39,17 +39,28 @@ import { createCoreWorkflowAuthoringDatabase } from '../../src/platform/workflow
 import { createInitialWorkflowCheckpoint } from '../../src/workflow-runs/postgres-persistence.js';
 import { WebhookManagementService } from '../../src/webhooks/service.js';
 import { dropDisconnectedDatabase } from '../support/disposable-database.js';
+import { assertIntegrationGateConfigured } from '../support/integration-gate.js';
 
 const adminBaseUrl = process.env.DATABASE_ADMIN_URL;
 const migrationBaseUrl = process.env.DATABASE_MIGRATION_URL;
 const apiBaseUrl = process.env.DATABASE_API_URL;
 const workerBaseUrl = process.env.DATABASE_WORKER_URL;
-const enabled =
-  process.env.API_WEBHOOK_INTEGRATION === 'true' &&
-  adminBaseUrl !== undefined &&
-  migrationBaseUrl !== undefined &&
-  apiBaseUrl !== undefined &&
-  workerBaseUrl !== undefined;
+const requested = process.env.API_WEBHOOK_INTEGRATION === 'true';
+assertIntegrationGateConfigured({
+  name: 'direct webhook HTTP integration',
+  requested,
+  required: {
+    DATABASE_ADMIN_URL: adminBaseUrl,
+    DATABASE_MIGRATION_URL: migrationBaseUrl,
+    DATABASE_API_URL: apiBaseUrl,
+    DATABASE_WORKER_URL: workerBaseUrl,
+  },
+});
+if (requested)
+  console.info(
+    '[integration-gate] direct webhook HTTP integration requested and configured; executing the required HTTP assertion',
+  );
+const enabled = requested;
 const databaseName = `pertexo_test_api_webhook_${randomUUID().replaceAll('-', '')}`;
 const databaseUrl = (base: string): string => {
   const url = new URL(base);

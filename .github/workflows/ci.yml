@@ -39,6 +39,7 @@ jobs:
       POSTGRES_WORKER_RUNTIME_PASSWORD: pertexo-local-worker
       POSTGRES_DISPATCHER_RUNTIME_USER: pertexo_dispatcher
       POSTGRES_DISPATCHER_RUNTIME_PASSWORD: pertexo-local-dispatcher
+      DATABASE_ADMIN_URL: postgresql://postgres:pertexo-local-superuser@127.0.0.1:5432/postgres
       DATABASE_MIGRATION_URL: postgresql://pertexo_migration:pertexo-local-migration@127.0.0.1:5432/pertexo
       DATABASE_MAINTENANCE_URL: postgresql://pertexo_maintenance:pertexo-local-maintenance@127.0.0.1:5432/pertexo
       DATABASE_OPERATOR_URL: postgresql://pertexo_operator:pertexo-local-operator@127.0.0.1:5432/pertexo
