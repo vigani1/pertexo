@@ -501,6 +501,7 @@ export {
 export { migrateDatabase, MIGRATIONS_DIRECTORY } from './migrations.js';
 export {
   parseWorkspaceId,
+  withPlatformTransaction,
   withTenantScopedClient,
   withWorkspaceTransaction,
   type WorkspaceTransactionOptions,

@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { migrateDatabase } from '../src/migrations.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';
 import {
+  withPlatformTransaction,
   withTenantScopedClient,
   withWorkspaceTransaction,
 } from '../src/workspace.js';
@@ -96,6 +97,35 @@ afterAll(async () => {
 });
 
 describe('tenant-scoped transaction hygiene', () => {
+  it('keeps platform-global transactions context-free on the shared hardened path', async () => {
+    await expect(
+      withPlatformTransaction(apiPool, async (client) =>
+        currentSettings(client),
+      ),
+    ).resolves.toEqual({ workspaceId: null, actorId: null });
+
+    const leakedWorkspaceId = randomUUID();
+    const error = (await captureRejection(() =>
+      withPlatformTransaction(apiPool, async (client) => {
+        await client.query("select set_config('app.workspace_id', $1, false)", [
+          leakedWorkspaceId,
+        ]);
+      }),
+    )) as AggregateError;
+    expect(error).toBeInstanceOf(AggregateError);
+    expect(error.message).toBe('Platform context cleanup failed');
+
+    const fresh = await apiPool.connect();
+    try {
+      await expect(currentSettings(fresh)).resolves.toEqual({
+        workspaceId: null,
+        actorId: null,
+      });
+    } finally {
+      fresh.release();
+    }
+  });
+
   it('destroys a pooled client that leaks workspace context through the commit path', async () => {
     const workspaceId = randomUUID();
     const error = (await captureRejection(() =>

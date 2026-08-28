@@ -4310,6 +4310,16 @@ Current evidence:
   starving other work, dependency readiness failure remains isolated, and replica
   observation failure remains independent. All 11 retention assertions pass;
   root `pnpm check` passes all 1,234 unit assertions.
+- Identity/workspace persistence no longer owns a divergent transaction helper.
+  Workspace access, creation, and lifecycle operations use the shared
+  `withTenantScopedClient` path with read-back-verified workspace and actor
+  context. Atomic issuer/subject identity resolution uses an explicit
+  platform-global entry point, and both public paths share one fail-closed
+  transaction engine for abort cancellation, rollback error preservation,
+  context cleanup, and poisoned-client destruction. The two focused real-
+  PostgreSQL suites pass all 26 identity and transaction-hygiene assertions;
+  the hygiene suite uses a disposable database and proves context-free global
+  work plus commit-path contamination disposal.
 
 ## Update protocol
 

@@ -1,7 +1,6 @@
 import { createDatabasePool } from './postgres-telemetry.js';
 import { createHash, randomUUID } from 'node:crypto';
 
-import type { Pool } from 'pg';
 import type { DatabaseError, PoolClient } from 'pg';
 import { z } from 'zod';
 
@@ -11,6 +10,10 @@ import {
   IdempotencyRecordCorruptError,
   IdempotencyRequestConflictError,
 } from './execution-acceptance.js';
+import {
+  withPlatformTransaction,
+  withTenantScopedClient,
+} from './workspace.js';
 
 const uuidSchema = z.uuid();
 const digestSchema = z.string().regex(/^[0-9a-f]{64}$/u);
@@ -560,72 +563,6 @@ async function completeWorkspaceCreationCommand(
   if (completed.rowCount !== 1) throw new IdempotencyRecordCorruptError();
 }
 
-async function assertNoPlatformContext(client: PoolClient): Promise<void> {
-  const result = await client.query<{
-    actor_id: string | null;
-    workspace_id: string | null;
-  }>(
-    `select current_setting('app.workspace_id', true) as workspace_id,
-            current_setting('app.actor_id', true) as actor_id`,
-  );
-  const row = result.rows[0];
-  if (
-    [row?.workspace_id, row?.actor_id].some(
-      (value) => value !== undefined && value !== null && value !== '',
-    )
-  ) {
-    throw new Error('Pooled PostgreSQL client retained platform context');
-  }
-}
-
-async function withTransaction<T>(
-  pool: Pool,
-  workspaceId: string | undefined,
-  operation: (client: PoolClient) => Promise<T>,
-  actorId?: string,
-): Promise<T> {
-  const client = await pool.connect();
-  let open = false;
-  let released = false;
-  try {
-    await assertNoPlatformContext(client);
-    await client.query('begin');
-    open = true;
-    if (workspaceId !== undefined) {
-      await client.query("select set_config('app.workspace_id', $1, true)", [
-        parseUuid(workspaceId),
-      ]);
-    }
-    if (actorId !== undefined) {
-      await client.query("select set_config('app.actor_id', $1, true)", [
-        parseUuid(actorId),
-      ]);
-    }
-    const result = await operation(client);
-    await client.query('commit');
-    open = false;
-    await assertNoPlatformContext(client);
-    released = true;
-    client.release();
-    return result;
-  } catch (error: unknown) {
-    if (open) await client.query('rollback').catch(() => undefined);
-    if (!released) {
-      try {
-        await assertNoPlatformContext(client);
-        released = true;
-        client.release();
-      } catch {
-        // A session-level tenant setting is contamination. Remove the client
-        // from the pool rather than returning it to another request.
-        released = true;
-        client.release(true);
-      }
-    }
-    throw error;
-  }
-}
-
 export function createIdentityWorkspaceDatabase(
   config: DatabaseConfig,
 ): IdentityWorkspaceDatabase {
@@ -768,7 +705,7 @@ export function createIdentityWorkspaceDatabase(
         .max(256)
         .parse(input.displayName);
       const profileMetadata = parseMetadata(input.profileMetadata);
-      return withTransaction(pool, undefined, async (client) => {
+      return withPlatformTransaction(pool, async (client) => {
         // Serialize only this issuer/subject pair. This keeps the user insert
         // and identity insert atomic without granting the runtime role delete
         // access for compensating orphan cleanup.
@@ -858,7 +795,7 @@ export function createIdentityWorkspaceDatabase(
     ): Promise<WorkspaceAccessRecord | null> => {
       const actorId = parseUuid(actorIdInput);
       const workspaceId = parseUuid(workspaceIdInput);
-      return withTransaction(pool, workspaceId, async (client) => {
+      return withTenantScopedClient(pool, { workspaceId }, async (client) => {
         const result = await client.query<{
           actor_id: string;
           workspace_id: string;
@@ -990,9 +927,9 @@ export function createIdentityWorkspaceDatabase(
         slug,
       });
       try {
-        return await withTransaction(
+        return await withTenantScopedClient(
           pool,
-          id,
+          { workspaceId: id, actorId: ownerUserId },
           async (client) => {
             const claim = await claimWorkspaceCreationCommand(
               client,
@@ -1040,7 +977,6 @@ export function createIdentityWorkspaceDatabase(
             });
             return workspace;
           },
-          ownerUserId,
         );
       } catch (error: unknown) {
         databaseConflict(
@@ -1068,9 +1004,9 @@ export function createIdentityWorkspaceDatabase(
         workspaceId,
       });
       try {
-        return await withTransaction(
+        return await withTenantScopedClient(
           pool,
-          workspaceId,
+          { workspaceId, actorId: actorUserId },
           async (client) => {
             const result = await client.query(
               `select * from app.request_workspace_lifecycle_operation(
@@ -1092,7 +1028,6 @@ export function createIdentityWorkspaceDatabase(
             }
             return mapWorkspaceLifecycleOperation(row);
           },
-          actorUserId,
         );
       } catch (error: unknown) {
         workspaceLifecycleOperationError(error);
@@ -1108,9 +1043,9 @@ export function createIdentityWorkspaceDatabase(
       const operationId = parseUuid(operationIdInput);
       const actorUserId = parseUuid(actorUserIdInput);
       try {
-        return await withTransaction(
+        return await withTenantScopedClient(
           pool,
-          workspaceId,
+          { workspaceId, actorId: actorUserId },
           async (client) => {
             const result = await client.query(
               `select * from app.read_workspace_lifecycle_operation(
@@ -1122,7 +1057,6 @@ export function createIdentityWorkspaceDatabase(
               ? null
               : mapWorkspaceLifecycleOperation(row);
           },
-          actorUserId,
         );
       } catch (error: unknown) {
         workspaceLifecycleOperationError(error);

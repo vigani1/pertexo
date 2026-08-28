@@ -28,7 +28,7 @@ export function parseWorkspaceId(value: string): WorkspaceId {
   return workspaceIdSchema.parse(value) as WorkspaceId;
 }
 
-async function assertNoWorkspaceContext(client: PoolClient): Promise<void> {
+async function assertNoTenantContext(client: PoolClient): Promise<void> {
   const result = await client.query<{
     workspace_id: string | null;
     actor_id: string | null;
@@ -71,24 +71,18 @@ async function verifyTenantContext(
   }
 }
 
-/**
- * Runs one workspace-scoped transaction on a single checked-out pool client
- * with fail-closed hygiene: absent-context proof before use, read-back
- * verification of every configured setting, wire-level cancellation through
- * the abort signal, and client destruction whenever transaction rollback or
- * context cleanup fails so a contaminated client can never be reused.
- */
-export async function withTenantScopedClient<T>(
+async function runTransaction<T>(
   pool: Pool,
-  scopeInput: TenantTransactionScope,
+  scope: TenantTransactionScope | undefined,
   operation: (client: PoolClient) => Promise<T>,
-  options: WorkspaceTransactionOptions = {},
+  options: WorkspaceTransactionOptions,
+  messages: Readonly<{
+    abort: string;
+    rollback: string;
+    cleanup: string;
+  }>,
 ): Promise<T> {
-  const scope: TenantTransactionScope = {
-    ...scopeInput,
-    workspaceId: parseWorkspaceId(scopeInput.workspaceId),
-  };
-  const abortError = new Error('Workspace transaction aborted');
+  const abortError = new Error(messages.abort);
   abortError.name = 'AbortError';
   if (options.signal?.aborted) throw abortError;
 
@@ -117,10 +111,12 @@ export async function withTenantScopedClient<T>(
   options.signal?.addEventListener('abort', releaseForAbort, { once: true });
 
   try {
-    await assertNoWorkspaceContext(client);
+    await assertNoTenantContext(client);
     await client.query('begin');
     transactionOpen = true;
-    if (scope.actorId === undefined) {
+    if (scope === undefined) {
+      // Platform-global transactions deliberately install no tenant context.
+    } else if (scope.actorId === undefined) {
       await client.query("select set_config('app.workspace_id', $1, true)", [
         scope.workspaceId,
       ]);
@@ -130,12 +126,12 @@ export async function withTenantScopedClient<T>(
         [scope.workspaceId, scope.actorId],
       );
     }
-    await verifyTenantContext(client, scope);
+    if (scope !== undefined) await verifyTenantContext(client, scope);
 
     const result = await operation(client);
     await client.query('commit');
     transactionOpen = false;
-    await assertNoWorkspaceContext(client);
+    await assertNoTenantContext(client);
     clientReleased = true;
     client.release();
     return result;
@@ -148,29 +144,65 @@ export async function withTenantScopedClient<T>(
       } catch (rollbackError: unknown) {
         destroyClient();
         if (options.signal?.aborted) throw abortError;
-        throw new AggregateError(
-          [error, rollbackError],
-          'Tenant-scoped transaction rollback failed',
-        );
+        throw new AggregateError([error, rollbackError], messages.rollback);
       }
     }
 
     try {
-      await assertNoWorkspaceContext(client);
+      await assertNoTenantContext(client);
       clientReleased = true;
       client.release();
     } catch (cleanupError: unknown) {
       destroyClient();
       if (options.signal?.aborted) throw abortError;
-      throw new AggregateError(
-        [error, cleanupError],
-        'Tenant context cleanup failed',
-      );
+      throw new AggregateError([error, cleanupError], messages.cleanup);
     }
     throw error;
   } finally {
     options.signal?.removeEventListener('abort', releaseForAbort);
   }
+}
+
+/**
+ * Runs one workspace-scoped transaction on a single checked-out pool client
+ * with fail-closed hygiene: absent-context proof before use, read-back
+ * verification of every configured setting, wire-level cancellation through
+ * the abort signal, and client destruction whenever transaction rollback or
+ * context cleanup fails so a contaminated client can never be reused.
+ */
+export async function withTenantScopedClient<T>(
+  pool: Pool,
+  scopeInput: TenantTransactionScope,
+  operation: (client: PoolClient) => Promise<T>,
+  options: WorkspaceTransactionOptions = {},
+): Promise<T> {
+  const scope: TenantTransactionScope = {
+    ...scopeInput,
+    workspaceId: parseWorkspaceId(scopeInput.workspaceId),
+  };
+  return runTransaction(pool, scope, operation, options, {
+    abort: 'Workspace transaction aborted',
+    cleanup: 'Tenant context cleanup failed',
+    rollback: 'Tenant-scoped transaction rollback failed',
+  });
+}
+
+/**
+ * Runs a platform-global transaction without installing tenant context while
+ * retaining the same abort, rollback, and pooled-client hygiene guarantees as
+ * tenant-scoped work. This path is intentionally explicit: callers may use it
+ * only for data whose authority is global rather than workspace-owned.
+ */
+export async function withPlatformTransaction<T>(
+  pool: Pool,
+  operation: (client: PoolClient) => Promise<T>,
+  options: WorkspaceTransactionOptions = {},
+): Promise<T> {
+  return runTransaction(pool, undefined, operation, options, {
+    abort: 'Platform transaction aborted',
+    cleanup: 'Platform context cleanup failed',
+    rollback: 'Platform transaction rollback failed',
+  });
 }
 
 export async function withWorkspaceTransaction<T>(

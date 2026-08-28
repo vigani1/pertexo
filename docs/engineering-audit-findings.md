@@ -96,9 +96,13 @@ the hygiene contract in ADR 003 was not uniformly enforced.
 Resolution: commit `4c8d492` extracts one fail-closed primitive,
 `withTenantScopedClient`, into `workspace.ts` and makes both gapped adapters
 delegate to it while preserving their exact validation semantics. The
-drizzle-backed `withWorkspaceTransaction` now shares the same core. The
-identity-workspace variant was intentionally left untouched in this pass;
-consolidating it is follow-up work with its own focused tests.
+drizzle-backed `withWorkspaceTransaction` now shares the same core. Follow-up
+remediation also removes the identity-workspace variant: workspace access,
+creation, and lifecycle commands now use the tenant entry point, while atomic
+issuer/subject identity resolution uses the explicit `withPlatformTransaction`
+entry point for genuinely global authority. Both entry points delegate to one
+private transaction engine, so abort, rollback, context verification, cleanup,
+and poisoned-client disposal cannot drift independently.
 
 New regressions (`packages/database/test/tenant-context-hygiene.integration.test.ts`)
 prove on real PostgreSQL:
@@ -112,7 +116,11 @@ prove on real PostgreSQL:
 - `pg_sleep(5)` aborts in under two seconds through the signal seam and the
   next checkout is clean;
 - both `app.workspace_id` and `app.actor_id` are read-back verified;
-- the drizzle-backed public path behaves identically over the primitive.
+- the drizzle-backed public path behaves identically over the primitive;
+- platform-global transactions install no tenant context and destroy a client
+  that leaks session-level tenant context on commit; and
+- all identity/workspace atomicity and idempotency scenarios remain green on
+  real PostgreSQL, while the hygiene suite uses its own disposable database.
 
 ## Finding 3 — Repo-wide lint OOM masked a latent violation (Medium)
 

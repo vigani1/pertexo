@@ -208,7 +208,7 @@ timings, failure observations, and cleanup evidence.
 - **Files:** `packages/database/src/identity-workspace.ts`,
   `packages/database/src/workspace.ts`
 - **Symbols:** `withTransaction`, `withTenantScopedClient`
-- **Classification:** harmless drift today; should be corrected
+- **Classification:** corrected after the audited head
 
 Most tenant-scoped persistence now uses the hardened `withTenantScopedClient`
 primitive. Identity/workspace persistence retains a separate implementation.
@@ -221,6 +221,18 @@ separate platform-global transaction path only for operations that genuinely
 have no workspace scope. Preserve atomic user, identity, membership, workspace,
 and idempotency semantics. Add focused real-PostgreSQL tests before deleting the
 old helper.
+
+Resolution: identity persistence now delegates workspace access, workspace
+creation, and lifecycle commands to `withTenantScopedClient`, including actor
+context where the operation is actor-authorized. Global issuer/subject identity
+resolution uses the deliberately separate `withPlatformTransaction` entry
+point. Both entry points share one private transaction engine with pre-use and
+post-commit context checks, tenant-setting read-back, abort-driven connection
+cancellation, rollback-error preservation, and contaminated-client destruction.
+The former identity-local transaction helper and its divergent cleanup rules
+have been removed. Focused real-PostgreSQL coverage exercises the identity
+adapter plus tenant and global transaction hygiene, including global context
+absence and commit-path contamination disposal.
 
 ### A-05: Split the coordinator run store by durable operation
 
