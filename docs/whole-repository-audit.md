@@ -362,10 +362,13 @@ store interface, and public errors now live in
 `node-attempt-run-store-contract.ts`. Coordinator-style read/write transaction
 mechanics are isolated in `node-attempt-run-store-transactions.ts`, while
 durable outbox validation, receipt claim/completion, and mismatch auditing are
-cohesive in `node-attempt-run-store-delivery.ts`. The public interface and every
-SQL transaction remain unchanged. Claim, input loading, dispatch, heartbeat,
-and completion operation extraction remains open, followed by the equivalent
-preview lifecycle split.
+cohesive in `node-attempt-run-store-delivery.ts`. The complete claim lifecycle,
+including run/control validation, row locking, duplicate and reconciliation
+decisions, lease fencing, node/run state changes, and the `node.started` event,
+now lives in `node-attempt-run-store-claim.ts` behind the unchanged worker-facing
+method. The public interface and original single write transaction remain
+unchanged. Input loading, dispatch, heartbeat, and completion operation
+extraction remain open, followed by the equivalent preview lifecycle split.
 
 ### A-08: Narrow the database package's public capability surface
 

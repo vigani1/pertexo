@@ -4381,10 +4381,14 @@ Current evidence:
   narrow worker-facing store interface are isolated from implementation.
   Read/write transaction mechanics share a coordinator-private module, while
   outbox validation, inbox receipt claim/completion, and checksum-mismatch audit
-  persistence move together. No SQL transaction scope changed. All 136 database
-  unit assertions and the focused 24-assertion real-PostgreSQL execution-runtime
-  suite pass. Claim, input loading, dispatch, heartbeat, completion, and the
-  equivalent preview lifecycle extraction remain open.
+  persistence move together. The complete claim lifecycle is now a cohesive
+  internal module: it owns delivery/run validation, row locking, duplicate and
+  reconciliation decisions, lease fencing, state changes, and the started
+  event while the public worker-facing method remains unchanged. No SQL
+  transaction scope changed. All 136 database unit assertions and the focused
+  24-assertion real-PostgreSQL execution-runtime suite pass. Input loading,
+  dispatch, heartbeat, completion, and the equivalent preview lifecycle
+  extraction remain open.
 
 ## Update protocol
 
