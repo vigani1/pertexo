@@ -11,6 +11,11 @@ import {
 } from '@pertexo/workflow-model/failure-notification';
 
 import type { DatabaseConfig } from './config.js';
+import {
+  assertCoordinatorNotAborted as assertNotAborted,
+  withCoordinatorReadClient as withWorkspaceClient,
+  withCoordinatorWriteClient as withWorkspaceWriteClient,
+} from './coordinator-run-store-transactions.js';
 import { canonicalOutboxPayloadChecksum } from './outbox.js';
 import {
   parsePersistedPhase3Checkpoint,
@@ -233,125 +238,6 @@ export class CoordinatorDeliveryMismatchError extends Error {
 }
 
 class DeliveryMismatch extends Error {}
-
-function assertNotAborted(signal: AbortSignal): void {
-  if (signal.aborted)
-    throw new DOMException('The operation was aborted', 'AbortError');
-}
-
-async function acquirePoolClient(
-  pool: Pool,
-  signal: AbortSignal,
-  abortFailure: Error,
-): Promise<PoolClient> {
-  const connection = pool.connect();
-  let rejectAbort: ((reason: Error) => void) | undefined;
-  const abort = new Promise<never>((_resolve, reject) => {
-    rejectAbort = reject;
-  });
-  const onAbort = (): void => {
-    rejectAbort?.(abortFailure);
-  };
-  signal.addEventListener('abort', onAbort, { once: true });
-  try {
-    if (signal.aborted) throw abortFailure;
-    const client = await Promise.race([connection, abort]);
-    return client;
-  } catch (error: unknown) {
-    if (signal.aborted)
-      void connection.then(
-        (client) => {
-          client.release(abortFailure);
-        },
-        () => undefined,
-      );
-    throw error;
-  } finally {
-    signal.removeEventListener('abort', onAbort);
-  }
-}
-
-async function withWorkspaceClient<T>(
-  pool: Pool,
-  workspaceId: string,
-  signal: AbortSignal,
-  operation: (client: PoolClient) => Promise<T>,
-): Promise<T> {
-  assertNotAborted(signal);
-  const abortFailure = new Error('Coordinator transaction aborted');
-  abortFailure.name = 'AbortError';
-  const client = await acquirePoolClient(pool, signal, abortFailure);
-  const connectionState = { released: false };
-  const releaseForAbort = (): void => {
-    if (connectionState.released) return;
-    connectionState.released = true;
-    client.release(abortFailure);
-  };
-  signal.addEventListener('abort', releaseForAbort, { once: true });
-  try {
-    assertNotAborted(signal);
-    await client.query('begin isolation level repeatable read read only');
-    await client.query("select set_config('app.workspace_id', $1, true)", [
-      workspaceId,
-    ]);
-    const result = await operation(client);
-    assertNotAborted(signal);
-    await client.query('commit');
-    return result;
-  } catch (error: unknown) {
-    if (signal.aborted) throw abortFailure;
-    if (!connectionState.released)
-      await client.query('rollback').catch(() => undefined);
-    throw error;
-  } finally {
-    signal.removeEventListener('abort', releaseForAbort);
-    if (!connectionState.released) {
-      connectionState.released = true;
-      client.release();
-    }
-  }
-}
-
-async function withWorkspaceWriteClient<T>(
-  pool: Pool,
-  workspaceId: string,
-  signal: AbortSignal,
-  operation: (client: PoolClient) => Promise<T>,
-): Promise<T> {
-  assertNotAborted(signal);
-  const abortFailure = new Error('Coordinator transaction aborted');
-  abortFailure.name = 'AbortError';
-  const client = await acquirePoolClient(pool, signal, abortFailure);
-  const connectionState = { released: false };
-  const releaseForAbort = (): void => {
-    if (connectionState.released) return;
-    connectionState.released = true;
-    client.release(abortFailure);
-  };
-  signal.addEventListener('abort', releaseForAbort, { once: true });
-  try {
-    assertNotAborted(signal);
-    await client.query('begin');
-    await client.query("select set_config('app.workspace_id', $1, true)", [
-      workspaceId,
-    ]);
-    const result = await operation(client);
-    assertNotAborted(signal);
-    await client.query('commit');
-    return result;
-  } catch (error: unknown) {
-    if (signal.aborted) throw abortFailure;
-    if (!connectionState.released)
-      await client.query('rollback').catch(() => undefined);
-    throw error;
-  } finally {
-    signal.removeEventListener('abort', releaseForAbort);
-    if (!connectionState.released) {
-      connectionState.released = true;
-      client.release();
-    }
-  }
-}
 
 async function validateAuthoritativeAdvanceDelivery(
   client: PoolClient,

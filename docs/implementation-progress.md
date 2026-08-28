@@ -4320,6 +4320,13 @@ Current evidence:
   PostgreSQL suites pass all 26 identity and transaction-hygiene assertions;
   the hygiene suite uses a disposable database and proves context-free global
   work plus commit-path contamination disposal.
+- A-05 coordinator-store decomposition has begun at its transaction seam. The
+  read-only repeatable-read and authoritative write wrappers now live in a
+  coordinator-private transaction module and share acquisition, abort,
+  workspace-context, commit/rollback, and release mechanics without changing
+  the public `CoordinatorRunStore` port or SQL transaction boundaries. The
+  focused 41-assertion real-PostgreSQL characterization suite passes. Loading,
+  admission, settlement, and terminalization extraction remains open.
 
 ## Update protocol
 

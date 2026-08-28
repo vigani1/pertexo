@@ -258,6 +258,14 @@ modules around existing transaction boundaries, for example:
 Keep the public behavior-named port stable. Move one operation at a time with
 the current PostgreSQL integration tests as characterization coverage.
 
+Progress: the coordinator-specific read-only repeatable-read and authoritative
+write transaction boundary has moved into
+`coordinator-run-store-transactions.ts`. The public store remains unchanged,
+and both paths share acquisition, abort cancellation, workspace-context setup,
+commit/rollback, and release behavior. This is the first extraction seam for
+the operation modules below; authoritative loading, admission, settlement, and
+terminalization remain to be separated before A-05 is complete.
+
 ### A-06: Split engine operations without splitting the state machine
 
 - **Severity:** Medium
