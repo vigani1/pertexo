@@ -11,7 +11,6 @@
     "test:coverage": "vitest run --config vitest.coverage.config.ts --coverage",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:trigger": "vitest run --config vitest.integration.config.ts test/schedule-trigger.integration.test.ts",
-    "test:phase0e": "vitest run --config vitest.phase0e.config.ts",
     "test:resilience": "vitest run --config vitest.resilience.config.ts",
     "typecheck": "tsc -p tsconfig.test.json --noEmit"
   },

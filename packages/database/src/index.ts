@@ -357,40 +357,19 @@ export type {
 } from './execution-acceptance.js';
 export {
   appendRunEvent,
-  AttemptFenceConflictError,
-  AttemptReconciliationRequiredError,
-  CheckpointRevisionConflictError,
-  claimNodeAttempt,
-  commitDueNodeAdmission,
-  commitCoordinatorTransition,
-  completeNodeAttempt,
-  dispatchDueWorkflowWaits,
-  ExecutionStateConflictError,
-  heartbeatNodeAttempt,
-  markNodeAttemptDispatched,
-  NODE_STATUS,
-  readExpiredAttemptReconciliations,
-  readDueNodeRuns,
   readRunEventsAfter,
-  reconcileExpiredNodeAttempt,
-  requestWorkflowRunCancellation,
   RUN_EVENT_TYPE,
-  RunEventGapError,
-  scheduleNodeAttemptRetry,
-  SIDE_EFFECT_CLASS,
-  suspendNodeAttemptUntil,
-} from './execution-runtime.js';
+} from './run-events.js';
 export type {
-  AttemptLease,
-  CoordinatorTransitionInput,
-  DueNodeRun,
-  ExpiredAttempt,
-  NodeStatus,
   PersistedRunEvent,
   RunEventPage,
   RunEventType,
-  SideEffectClass,
-} from './execution-runtime.js';
+} from './run-events.js';
+export {
+  ExecutionStateConflictError,
+  RunEventGapError,
+} from './execution-state.js';
+export { requestWorkflowRunCancellation } from './workflow-run-cancellation.js';
 export {
   EXPECTED_MIGRATION_HEAD,
   checkDatabaseReadiness,

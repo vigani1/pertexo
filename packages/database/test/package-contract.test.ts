@@ -70,6 +70,23 @@ describe('@pertexo/database package contract', () => {
     expect(maintenance).not.toContain('createControlLedgerCoordinator');
   });
 
+  it('does not republish the retired legacy execution persistence surface', async () => {
+    const root = await readFile(
+      new URL('../src/index.ts', import.meta.url),
+      'utf8',
+    );
+    for (const retiredExport of [
+      'claimNodeAttempt',
+      'commitCoordinatorTransition',
+      'dispatchDueWorkflowWaits',
+      'readExpiredAttemptReconciliations',
+      'reconcileExpiredNodeAttempt',
+      'scheduleNodeAttemptRetry',
+      'suspendNodeAttemptUntil',
+    ])
+      expect(root).not.toContain(retiredExport);
+  });
+
   it('publishes behavior-named connection capabilities instead of the broad store', () => {
     const management: ConnectionManagementDatabase = {
       createConnection: async () => {

@@ -16,7 +16,6 @@ import {
   acceptWorkflowRun,
   readWorkflowRunAcceptanceReplay,
 } from './execution-acceptance.js';
-import { requestWorkflowRunCancellation } from './execution-runtime.js';
 import { canonicalOutboxPayloadChecksum, insertOutboxEvent } from './outbox.js';
 import {
   classifyPublishedWorkflowVersionRow,
@@ -24,6 +23,7 @@ import {
 } from './published-workflow-reader.js';
 import { withWorkspaceTransaction } from './workspace.js';
 import type { WorkspaceTransaction } from './workspace.js';
+import { requestWorkflowRunCancellation } from './workflow-run-cancellation.js';
 
 const digestSchema = z.string().regex(/^[0-9a-f]{64}$/u);
 const traceparentSchema = z

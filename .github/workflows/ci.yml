@@ -306,7 +306,6 @@ jobs:
           control-ledger-primary control-ledger-recovery
       - name: Run destructive crash, outage, and recovery proofs
         env:
-          PHASE0E_EXECUTION_INTEGRATION: 'true'
           API_SSE_RESILIENCE_INTEGRATION: 'true'
           WORKER_TRANSPORT_RESILIENCE: 'true'
         run: |
@@ -314,7 +313,11 @@ jobs:
           mkdir -p artifacts
           {
             pnpm db:migrate
-            pnpm --filter @pertexo/worker test:phase0e
+            pnpm --filter @pertexo/worker exec vitest run --config vitest.integration.config.ts \
+              test/coordinator-consumer-retry-wait.integration.test.ts \
+              test/coordinator-consumer-parallel-recovery.integration.test.ts \
+              test/coordinator-consumer-foreach-cancellation.integration.test.ts \
+              test/http-node-attempt.integration.test.ts
             pnpm --filter @pertexo/api test:sse-resilience
             pnpm --filter @pertexo/worker test:resilience
           } 2>&1 | tee artifacts/recovery.log
