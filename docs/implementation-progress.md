@@ -4594,7 +4594,7 @@ remains open**
       regional restore, RPO/RTO, and deployed autoscaling exercises listed in
       the Phase 7 checklist. No repository-only result can close these rows.
 
-Verification at implementation head `297c328893b99eee637fb7fcb43c482be6409c8a`:
+Verification at implementation head `cfbb4424c4c3c6d68497844b5a333d012c6899e5`:
 
 - `pnpm check`: passed formatting, build, ESLint, generated contracts,
   TypeScript, and 1,312 unit-level assertions;
@@ -4607,10 +4607,12 @@ Verification at implementation head `297c328893b99eee637fb7fcb43c482be6409c8a`:
   assertions, 121 engine assertions, 9 retention assertions, 5 preview
   transport/artifact assertions, and the ordered HTTP execution proof.
 
-GitHub protected-main and final remote CI/CodeQL/release evidence is recorded in
-the governance reconciliation after those controls are installed against the
-final documentation head. Phase 7 remains **In progress** solely because the
-unchecked live-production rows above remain unsatisfied.
+GitHub Actions CI run `33337487368`, CodeQL run `33337487359`, and Release Gate
+run `33337815462` passed at exact implementation head `cfbb442`. Protected-main
+controls are installed; the blocked-merge proof and final protection export are
+recorded by the governance reconciliation pull request. Phase 7 remains **In
+progress** solely because the unchecked live-production rows above remain
+unsatisfied.
 
 ## Update protocol
 

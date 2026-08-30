@@ -1,10 +1,10 @@
 # Whole-Repository Engineering Audit and Improvement Plan
 
-Recorded: 2026-08-30
+Recorded: 2026-08-31
 
-Audited implementation head: `297c328893b99eee637fb7fcb43c482be6409c8a`
+Audited implementation head: `cfbb4424c4c3c6d68497844b5a333d012c6899e5`
 
-Remediation evidence reviewed through implementation commit: `297c328`
+Remediation evidence reviewed through implementation commit: `cfbb442`
 
 Status: current repository audit and sole audit source of truth
 
@@ -158,7 +158,7 @@ finding.
 | F-02 | Resolved | `461c250` through `15f68ee`, plus `1b5e6eb`; atomic Redis policy across origin/address/actor/workspace/connection, API and provider enforcement, telemetry, exact thresholds, recovery, noisy/quiet fairness and measured overhead |
 | F-03 | Resolved | `6496897`, `920d793`; coordinator and attempt stores use the shared hardened tenant transaction engine |
 | F-04 | Resolved | `f29fd11`, `79828cc`; requested configuration fails during discovery and CI rejects zero, skipped, pending, or failed required API gates |
-| F-05 | External installation pending | Versioned governance policy is in `a2c179a`; exact GitHub protection/check/blocked-merge evidence is installed only after the final green head |
+| F-05 | Installation verification in progress | Versioned governance policy is in `a2c179a`; protection is installed on `main` with strict CI and CodeQL requirements, and the blocked-merge proof is being captured in the governance reconciliation pull request |
 | F-06 | Open | Repository exercise profiles and fail-closed evidence schemas exist, but no live AWS, pager, failover, PITR, load, or regional-recovery report has been supplied |
 | F-07 | Resolved | `1f226e5`; migration `0072` binds exact slot/application identity and fails closed on zero or duplicate active sessions |
 | F-08 | Resolved | `0c0facc`; API management/test and worker resolution factories publish separate narrow capabilities with contract tests |
@@ -340,7 +340,7 @@ gate's boolean silently converts missing configuration into a skip.
 ### F-05 — Enforce CI before changes reach `main`
 
 - **Severity:** P1
-- **Status:** Pending final GitHub installation evidence
+- **Status:** Installation verification in progress
 - **Area:** repository governance
 - **Evidence:** GitHub reported no `main` branch protection and no repository
   rulesets at the audit timestamp.
