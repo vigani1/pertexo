@@ -32,12 +32,14 @@
     "release:check": "pnpm security:audit && pnpm check && pnpm deployment:check && pnpm exercise:check",
     "security:audit": "pnpm audit --prod --audit-level high",
     "test": "pnpm --recursive --if-present test",
+    "test:coverage": "pnpm --filter @pertexo/workflow-engine test:coverage && pnpm --filter @pertexo/database test:coverage && pnpm --filter @pertexo/worker test:coverage && pnpm --filter @pertexo/api test:coverage",
     "test:integration": "pnpm --filter @pertexo/artifact-store test:integration && pnpm --filter @pertexo/database test:integration && pnpm --filter @pertexo/worker test:integration && pnpm --filter @pertexo/api test:integration",
     "typecheck": "tsc --build --pretty false && pnpm --recursive --if-present typecheck"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
     "@types/node": "26.2.0",
+    "@vitest/coverage-v8": "4.1.10",
     "eslint": "9.39.5",
     "prettier": "3.9.6",
     "tsx": "4.23.12",

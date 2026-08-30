@@ -8,6 +8,7 @@
     "dev": "tsx watch src/main.ts",
     "start": "node dist/main.js",
     "test": "vitest run",
+    "test:coverage": "vitest run --config vitest.coverage.config.ts --coverage",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:trigger": "vitest run --config vitest.integration.config.ts test/schedule-trigger.integration.test.ts",
     "test:phase0e": "vitest run --config vitest.phase0e.config.ts",

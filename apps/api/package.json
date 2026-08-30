@@ -8,6 +8,7 @@
     "dev": "tsx watch src/main.ts",
     "start": "node dist/main.js",
     "test": "vitest run",
+    "test:coverage": "vitest run --config vitest.coverage.config.ts --coverage",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:compatibility-rollout": "vitest run --config vitest.compatibility-rollout.config.ts",
     "test:sse-resilience": "vitest run --config vitest.sse-resilience.config.ts",
