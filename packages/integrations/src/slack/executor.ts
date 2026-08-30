@@ -3,6 +3,7 @@ import {
   type NodeExecutionInvocation,
   type NodeExecutorRegistration,
   NodeExecutorFailure,
+  ProviderExecutionRateLimitError,
 } from '@pertexo/node-sdk/server';
 
 import {
@@ -144,7 +145,14 @@ async function execute(
       purpose: 'slack.send_message.execute',
       signal: invocation.signal,
     });
-  } catch {
+  } catch (error: unknown) {
+    if (error instanceof ProviderExecutionRateLimitError)
+      throw failure(
+        'retry',
+        'rate_limit',
+        false,
+        error.retryAfterSeconds * 1_000,
+      );
     throw failure('failed', 'authentication', false);
   }
   try {

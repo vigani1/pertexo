@@ -7,6 +7,7 @@ import {
   type NodeExecutorRegistration,
   NodeDispatchEvidenceError,
   NodeExecutorFailure,
+  ProviderExecutionRateLimitError,
 } from '@pertexo/node-sdk/server';
 
 import {
@@ -152,7 +153,14 @@ async function execute(
       purpose: 'email.send_notification.execute',
       signal: invocation.signal,
     });
-  } catch {
+  } catch (error: unknown) {
+    if (error instanceof ProviderExecutionRateLimitError)
+      throw failure(
+        'retry',
+        'rate_limit',
+        false,
+        error.retryAfterSeconds * 1_000,
+      );
     throw credentialFailure(runtime);
   }
   try {

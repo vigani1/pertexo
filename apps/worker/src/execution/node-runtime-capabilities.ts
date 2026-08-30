@@ -32,6 +32,13 @@ import type {
   NodeArtifactRuntime,
   NodeConnectionRuntime,
 } from '@pertexo/node-sdk/server';
+import { ProviderExecutionRateLimitError } from '@pertexo/node-sdk/server';
+import {
+  AbuseRateLimitPolicy,
+  RedisRateLimitRuntime,
+  type DistributedRateLimitResult,
+  type RateLimitDecision,
+} from '@pertexo/rate-limit';
 
 import type {
   NodeAttemptCapabilityContext,
@@ -45,6 +52,7 @@ export type WorkerNodeRuntimeCapabilityOptions = Readonly<{
   connectionEncryption?: AwsConnectionEnvelopeEncryptionConfig;
   artifactStore?: DualRegionArtifactStoreConfig;
   artifactRetentionMillis?: number;
+  redisUrl?: string;
 }>;
 
 export type WorkerNodeRuntimeCapabilityDependencies = Readonly<{
@@ -59,6 +67,9 @@ export type WorkerNodeRuntimeCapabilityDependencies = Readonly<{
   artifactId?: () => string;
   now?: () => Date;
   spoolDirectory?: string;
+  providerRateLimiter?: Readonly<{
+    consume(decision: RateLimitDecision): Promise<DistributedRateLimitResult>;
+  }>;
 }>;
 
 export type WorkerNodeRuntimeCapabilities = Readonly<{
@@ -101,6 +112,9 @@ function connectionFactory(
     'assertConnectionSecretCurrent' | 'resolveConnectionSecret'
   >,
   encryption: Pick<ConnectionEnvelopeEncryption, 'open'>,
+  providerRateLimiter: NonNullable<
+    WorkerNodeRuntimeCapabilityDependencies['providerRateLimiter']
+  >,
 ): (context: NodeAttemptCapabilityContext) => NodeConnectionRuntime {
   return (context) =>
     Object.freeze({
@@ -108,6 +122,16 @@ function connectionFactory(
         input: Parameters<NodeConnectionRuntime['resolve']>[0],
       ) => {
         assertNotAborted(input.signal);
+        const admission = await providerRateLimiter.consume(
+          new AbuseRateLimitPolicy().evaluate('provider_execution', {
+            workspaceId: context.workspaceId,
+            connectionId: input.connectionId,
+          }),
+        );
+        if (!admission.allowed)
+          throw new ProviderExecutionRateLimitError(
+            admission.retryAfterSeconds,
+          );
         const resolved = await database.resolveConnectionSecret({
           workspaceId: context.workspaceId,
           connectionId: input.connectionId,
@@ -369,6 +393,7 @@ export async function createWorkerNodeRuntimeCapabilities(
   let ownedConnectionDatabase: ConnectionDatabase | undefined;
   let ownedArtifactDatabase: WorkspaceDatabase | undefined;
   let ownedArtifactStore: ArtifactStore | undefined;
+  let ownedProviderRateLimiter: RedisRateLimitRuntime | undefined;
 
   const connectionConfigured =
     options.connectionEncryption !== undefined ||
@@ -394,6 +419,7 @@ export async function createWorkerNodeRuntimeCapabilities(
         ownedArtifactDatabase?.close(),
         Promise.resolve(encryptionRuntime?.close()),
         Promise.resolve(ownedArtifactStore?.close()),
+        ownedProviderRateLimiter?.close(),
       ]);
       const failures = results.flatMap((result) =>
         result.status === 'rejected' ? [result.reason as unknown] : [],
@@ -408,6 +434,15 @@ export async function createWorkerNodeRuntimeCapabilities(
   };
   try {
     if (connectionConfigured) {
+      const providerRateLimiter =
+        dependencies.providerRateLimiter ??
+        (options.redisUrl === undefined
+          ? undefined
+          : (ownedProviderRateLimiter = new RedisRateLimitRuntime(
+              options.redisUrl,
+            )));
+      if (providerRateLimiter === undefined)
+        throw new Error('Worker provider rate limiter is incomplete');
       const connectionDatabase =
         dependencies.connectionDatabase ??
         (ownedConnectionDatabase = createConnectionDatabase(options.database));
@@ -420,7 +455,11 @@ export async function createWorkerNodeRuntimeCapabilities(
             )).encryption);
       if (encryption === undefined)
         throw new Error('Worker connection capability is incomplete');
-      factories.connections = connectionFactory(connectionDatabase, encryption);
+      factories.connections = connectionFactory(
+        connectionDatabase,
+        encryption,
+        providerRateLimiter,
+      );
     }
     if (artifactConfigured) {
       const persistence =

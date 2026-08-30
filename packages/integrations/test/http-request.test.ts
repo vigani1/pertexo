@@ -7,6 +7,7 @@ import {
   type NodeExecutionInvocation,
   type NodeExecutionRuntime,
   type ResolvedNodeConnection,
+  ProviderExecutionRateLimitError,
 } from '@pertexo/node-sdk/server';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -501,6 +502,26 @@ describe('http.request@1 server executor', () => {
   });
 
   it('collapses unexpected connection, transport, and artifact failures into safe outcomes', async () => {
+    const limitedState = runtime({
+      connections: {
+        assertCurrent: () => Promise.resolve(),
+        resolve: () => Promise.reject(new ProviderExecutionRateLimitError(7)),
+      },
+    });
+    const noLimitedDispatch =
+      vi.fn<(request: SecureHttpRequest) => Promise<SecureHttpResponse>>();
+    await expect(
+      createHttpRequestExecutorRegistration({
+        httpClient: streamingHttpClient(noLimitedDispatch),
+      }).execute(invocation(limitedState.value)),
+    ).rejects.toEqual(
+      new HttpRequestExecutorError(
+        { kind: 'retry', errorKind: 'rate_limit', reuseProviderKey: false },
+        false,
+      ),
+    );
+    expect(noLimitedDispatch).not.toHaveBeenCalled();
+
     const connectionState = runtime({
       connections: {
         assertCurrent: () => Promise.resolve(),

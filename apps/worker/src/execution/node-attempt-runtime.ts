@@ -229,6 +229,7 @@ export async function createNodeAttemptRuntime(
     )
       capabilityRuntime = await createWorkerNodeRuntimeCapabilities({
         database: options.database,
+        redisUrl: options.redisUrl,
         ...(options.connectionEncryption === undefined
           ? {}
           : { connectionEncryption: options.connectionEncryption }),

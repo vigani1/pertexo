@@ -82,6 +82,19 @@ export class NodeExecutorFailure extends Error {
   }
 }
 
+export class ProviderExecutionRateLimitError extends Error {
+  public override readonly name = 'ProviderExecutionRateLimitError';
+  public constructor(readonly retryAfterSeconds: number) {
+    if (
+      !Number.isSafeInteger(retryAfterSeconds) ||
+      retryAfterSeconds < 1 ||
+      retryAfterSeconds > 60
+    )
+      throw new TypeError('Invalid provider rate-limit retry duration');
+    super('Provider execution rate limit reached');
+  }
+}
+
 export interface NodeExecutionInvocation<Config, Input> {
   readonly config: Config;
   readonly input: Input;

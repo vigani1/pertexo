@@ -5,6 +5,7 @@ import {
   type NodeExecutionInvocation,
   type NodeExecutorRegistration,
   NodeExecutorFailure,
+  ProviderExecutionRateLimitError,
 } from '@pertexo/node-sdk/server';
 import { z } from 'zod';
 
@@ -255,7 +256,16 @@ async function executeHttpRequest(
       purpose: 'http.request.execute',
       signal: invocation.signal,
     });
-  } catch {
+  } catch (error: unknown) {
+    if (error instanceof ProviderExecutionRateLimitError)
+      throw new HttpRequestExecutorError(
+        Object.freeze({
+          kind: 'retry',
+          errorKind: 'rate_limit',
+          reuseProviderKey: false,
+        }),
+        false,
+      );
     throw new HttpRequestExecutorError(
       Object.freeze({ kind: 'failed', errorKind: 'authentication' }),
       false,

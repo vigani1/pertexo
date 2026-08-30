@@ -5,6 +5,7 @@ import path from 'node:path';
 
 import type { PutArtifactRequest } from '@pertexo/artifact-store';
 import type { ConnectionDatabase } from '@pertexo/database';
+import { ProviderExecutionRateLimitError } from '@pertexo/node-sdk/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createWorkerNodeRuntimeCapabilities } from '../src/execution/node-runtime-capabilities.js';
@@ -78,6 +79,9 @@ describe('worker node runtime capabilities', () => {
     const open = vi.fn(() =>
       Promise.resolve(new TextEncoder().encode('secret')),
     );
+    const consumeProviderLimit = vi
+      .fn()
+      .mockResolvedValue({ allowed: true as const });
     const runtime = await createWorkerNodeRuntimeCapabilities(
       { database: databaseConfig },
       {
@@ -89,6 +93,7 @@ describe('worker node runtime capabilities', () => {
           'assertConnectionSecretCurrent' | 'resolveConnectionSecret'
         >,
         connectionEncryption: { open },
+        providerRateLimiter: { consume: consumeProviderLimit },
       },
     );
     const connections = runtime.factories.connections?.(context);
@@ -110,6 +115,15 @@ describe('worker node runtime capabilities', () => {
       workerId: 'worker-1',
       purpose: 'http.request.execute',
     });
+    expect(consumeProviderLimit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        endpointClass: 'provider_execution',
+        dimensions: [
+          { kind: 'workspace', identifier: workspaceId, limit: 300 },
+          { kind: 'connection', identifier: connectionId, limit: 60 },
+        ],
+      }),
+    );
     expect(open).toHaveBeenCalledWith(expect.anything(), {
       workspaceId,
       connectionId,
@@ -133,6 +147,43 @@ describe('worker node runtime capabilities', () => {
       expectedAuthType: 'http_headers',
       secretVersionId,
     });
+    await runtime.close();
+  });
+
+  it('rejects provider execution before secret or provider work when admission is exhausted', async () => {
+    const resolveConnectionSecret = vi.fn();
+    const runtime = await createWorkerNodeRuntimeCapabilities(
+      { database: databaseConfig },
+      {
+        connectionDatabase: {
+          resolveConnectionSecret,
+          assertConnectionSecretCurrent: vi.fn(),
+        },
+        connectionEncryption: { open: vi.fn() },
+        providerRateLimiter: {
+          consume: () =>
+            Promise.resolve({
+              allowed: false as const,
+              retryAfterSeconds: 9,
+              limitedDimension: 'connection' as const,
+            }),
+        },
+      },
+    );
+    const connections = runtime.factories.connections?.(context);
+    if (connections === undefined)
+      throw new Error('connection capability missing');
+
+    await expect(
+      connections.resolve({
+        connectionId,
+        expectedProviderKey: 'http',
+        expectedAuthType: 'http_headers',
+        purpose: 'http.request.execute',
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toEqual(new ProviderExecutionRateLimitError(9));
+    expect(resolveConnectionSecret).not.toHaveBeenCalled();
     await runtime.close();
   });
 
@@ -178,6 +229,9 @@ describe('worker node runtime capabilities', () => {
         >,
         connectionEncryption: {
           open: () => Promise.resolve(new TextEncoder().encode('slack-secret')),
+        },
+        providerRateLimiter: {
+          consume: () => Promise.resolve({ allowed: true as const }),
         },
       },
     );
