@@ -99,10 +99,10 @@ pnpm --filter @pertexo/api test:compatibility-rollout
 `pnpm check` is the static and unit gate: formatting, build, lint, generated
 contract drift, TypeScript, and package unit tests. It does not replace
 `pnpm test:integration`, which requires the local PostgreSQL, Redis, and
-S3-compatible services above. Resilience and compatibility-rollout commands
-are separate destructive or recovery-focused gates. Historical Phase 0E
-invariants now run through the production coordinator, node-attempt, and SSE
-integration suites selected by CI's `recovery` job.
+S3-compatible services above. Resilience and compatibility-rollout commands are
+separate destructive or recovery-focused gates. Historical Phase 0E invariants
+now run through the production coordinator, node-attempt, and SSE integration
+suites selected by CI's `recovery` job.
 
 ## Project Status
 
