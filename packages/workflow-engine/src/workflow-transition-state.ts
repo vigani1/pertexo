@@ -14,8 +14,8 @@ import type {
   OutputReference,
   RunStatus,
   WorkflowCheckpoint,
+  WorkflowObservation,
 } from './types.js';
-import type { WorkflowObservation } from './advance-workflow.js';
 
 export interface MutableWorkflowTransition {
   readonly current: WorkflowCheckpoint;

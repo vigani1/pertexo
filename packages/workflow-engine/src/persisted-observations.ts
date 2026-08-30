@@ -1,11 +1,10 @@
 import type { JsonValue } from '@pertexo/workflow-model/canonical-json';
 
-import type { WorkflowObservation } from './advance-workflow.js';
 import type { parseCheckpoint } from './checkpoint.js';
 import { normalizeBoundedEngineJson } from './executable-workflow.js';
 import { exactKeys, operationError, record } from './operation-values.js';
 import { compareOrdinal } from './ordering.js';
-import type { OutputReference } from './types.js';
+import type { OutputReference, WorkflowObservation } from './types.js';
 
 type OutcomeObservation = Extract<
   WorkflowObservation,

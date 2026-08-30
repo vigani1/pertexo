@@ -5,7 +5,6 @@ import {
   type JsonValue,
 } from '@pertexo/workflow-model/canonical-json';
 
-import type { WorkflowObservation } from './advance-workflow.js';
 import type { parseCheckpoint } from './checkpoint.js';
 import { executableEdges, executableNodes } from './executable-graph.js';
 import {
@@ -25,7 +24,11 @@ import {
 import { compareOrdinal } from './ordering.js';
 import { uuidPattern } from './persisted-observations.js';
 import { invocationKey as createInvocationKey } from './scheduling.js';
-import type { JoinPolicy, OutputReference } from './types.js';
+import type {
+  JoinPolicy,
+  OutputReference,
+  WorkflowObservation,
+} from './types.js';
 
 function completedOutputReference(
   outcome: Readonly<Record<string, JsonValue>>,

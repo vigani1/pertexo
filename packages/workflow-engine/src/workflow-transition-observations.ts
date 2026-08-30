@@ -7,8 +7,11 @@ import {
   recordBranchDisposition,
 } from './scheduling.js';
 import { assertNodeTransition, assertRunTransition } from './transitions.js';
-import type { InvocationState, LoopState } from './types.js';
-import type { WorkflowObservation } from './advance-workflow.js';
+import type {
+  InvocationState,
+  LoopState,
+  WorkflowObservation,
+} from './types.js';
 import {
   declaredJoin,
   isTerminalNodeStatus,

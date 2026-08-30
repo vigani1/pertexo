@@ -16,10 +16,7 @@ import {
   type ValueResolution,
 } from '@pertexo/workflow-model/mapping';
 
-import {
-  advanceWorkflowFromSchedulerState,
-  type WorkflowObservation,
-} from './advance-workflow.js';
+import { advanceWorkflowFromSchedulerState } from './advance-workflow.js';
 import { WorkflowEngineError } from './errors.js';
 import {
   branchSelectionObservations,
@@ -34,6 +31,7 @@ import {
   type WorkflowExecutableNodeV2,
   type WorkflowExecutableGraphV2,
 } from './executable-workflow.js';
+import type { WorkflowObservation } from './types.js';
 import { parseCheckpoint } from './checkpoint.js';
 import {
   configuredParallelOutputPorts,

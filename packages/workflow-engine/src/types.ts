@@ -78,6 +78,102 @@ export type JoinPolicy =
   | { readonly kind: 'any' }
   | { readonly kind: 'count'; readonly count: number };
 
+/** Source facts consumed by the deterministic workflow transition engine. */
+export type WorkflowObservation =
+  | { readonly kind: 'cursor_only' }
+  | {
+      readonly kind: 'ready';
+      readonly invocationKey: string;
+      readonly nodeId: string;
+      readonly branchPath?: readonly BranchScopePart[];
+      readonly iterationPath?: readonly IterationScopePart[];
+    }
+  | {
+      readonly kind: 'outcome';
+      readonly invocationKey: string;
+      readonly status: Extract<
+        NodeStatus,
+        | 'succeeded'
+        | 'failed'
+        | 'canceled'
+        | 'timed_out'
+        | 'outcome_unknown'
+        | 'skipped'
+      >;
+      readonly output?: OutputReference;
+      readonly reasonCode?: string;
+      readonly coordinatorDerived?: boolean;
+    }
+  | {
+      readonly kind: 'wait';
+      readonly invocationKey: string;
+      readonly resumeAt: string;
+      readonly waitKind: 'node_wait' | 'retry_backoff';
+      readonly output?: OutputReference;
+      readonly coordinatorDerived?: boolean;
+    }
+  | { readonly kind: 'resume'; readonly invocationKey: string }
+  | { readonly kind: 'cancel_requested' }
+  | { readonly kind: 'deadline_expired'; readonly occurredAt?: string }
+  | {
+      readonly kind: 'branch_selected';
+      readonly invocationKey: string;
+      readonly nodeId: string;
+      readonly selectedOutputPort: string;
+      readonly coordinatorDerived?: true;
+    }
+  | {
+      readonly kind: 'join_declared';
+      readonly joinId: string;
+      readonly joinInvocationKey?: string;
+      readonly branchPath?: readonly BranchScopePart[];
+      readonly iterationPath?: readonly IterationScopePart[];
+      readonly policy: JoinPolicy;
+      readonly branchIds: readonly string[];
+      readonly coordinatorDerived?: true;
+    }
+  | {
+      readonly kind: 'branch_disposition';
+      readonly joinId: string;
+      readonly joinInvocationKey?: string;
+      readonly branch: BranchLedgerEntry;
+      readonly coordinatorDerived?: true;
+    }
+  | {
+      readonly kind: 'loop_started';
+      readonly loopId: string;
+      readonly controlInvocationKey?: string;
+      readonly branchPath?: readonly BranchScopePart[];
+      readonly iterationPath?: readonly IterationScopePart[];
+      readonly bodyRootNodeIds?: readonly string[];
+      readonly bodySinkNodeId?: string;
+      readonly coordinatorDerived?: true;
+      readonly collection: OutputReference;
+      readonly collectionChecksum: string;
+      readonly collectionSize: number;
+      readonly maxIterations: number;
+      readonly maxConcurrency: number;
+    }
+  | {
+      readonly kind: 'loop_iteration_completed';
+      readonly loopId: string;
+      readonly controlInvocationKey?: string;
+      readonly invocationKey?: string;
+      readonly ordinal: number;
+      readonly status?: Extract<
+        NodeStatus,
+        | 'succeeded'
+        | 'skipped'
+        | 'failed'
+        | 'canceled'
+        | 'timed_out'
+        | 'outcome_unknown'
+      >;
+      readonly output?: OutputReference;
+      readonly reasonCode?: string;
+      readonly coordinatorDerived?: true;
+    };
+
 export interface JoinState {
   readonly joinInvocationKey?: string;
   readonly joinId: string;

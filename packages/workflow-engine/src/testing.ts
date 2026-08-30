@@ -1,13 +1,10 @@
 import './server-only.js';
 
-import {
-  advanceWorkflowFromSchedulerState,
-  type WorkflowObservation,
-} from './advance-workflow.js';
+import { advanceWorkflowFromSchedulerState } from './advance-workflow.js';
 import { parseCheckpoint } from './checkpoint.js';
 import { deriveReadyNodes } from './graph-scheduler.js';
 import { parseSchedulerGraph, type SchedulerGraph } from './testing-graph.js';
-import type { WorkflowTransitionPlan } from './types.js';
+import type { WorkflowObservation, WorkflowTransitionPlan } from './types.js';
 
 export interface AdvanceWorkflowInput {
   readonly checkpoint: unknown;
