@@ -10,9 +10,12 @@ export type { ArtifactCapacityObservation } from './artifacts.js';
 export {
   CONNECTION_AUTH_TYPE,
   ConnectionUnavailableError,
-  createConnectionDatabase,
+  createWorkerConnectionResolutionDatabase,
 } from './connections.js';
-export type { ConnectionDatabase } from './connections.js';
+export type {
+  ConnectionResolutionDatabase,
+  WorkerConnectionResolutionDatabase,
+} from './connections.js';
 export {
   CoordinatorDeliveryMismatchError,
   createCoordinatorRunStore,
@@ -106,5 +109,4 @@ export {
   createWorkflowTriggerReconciliationDatabase,
 } from './workflow-triggers.js';
 export type { WorkflowTriggerReconciliationDatabase } from './workflow-triggers.js';
-export type { WorkspaceTransaction } from './workspace.js';
 export type { DatabaseReadiness } from './readiness.js';

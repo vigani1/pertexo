@@ -6,10 +6,12 @@ export {
   ConnectionSecretVersionConflictError,
   ConnectionTestInProgressError,
   ConnectionUnavailableError,
-  createConnectionDatabase,
+  createApiConnectionDatabase,
 } from './connections.js';
 export type {
-  ConnectionDatabase,
+  ApiConnectionDatabase,
+  ConnectionManagementDatabase,
+  ConnectionTestDatabase,
   ConnectionRecord,
   ConnectionTestOutcome,
   ConnectionTestResult,
@@ -97,7 +99,3 @@ export type { WorkflowRunDatabase } from './workflow-run-api.js';
 export type { WorkflowTriggerHealth } from './workflow-triggers.js';
 export { createWorkspaceDatabase } from './database.js';
 export type { WorkspaceDatabase } from './database.js';
-export type {
-  WorkspaceTransaction,
-  WorkspaceTransactionOptions,
-} from './workspace.js';

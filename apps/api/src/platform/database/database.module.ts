@@ -4,12 +4,7 @@ import type {
   Provider,
 } from '@nestjs/common';
 import { Module } from '@nestjs/common';
-import type {
-  DatabaseConfig,
-  WorkspaceDatabase,
-  WorkspaceTransaction,
-  WorkspaceTransactionOptions,
-} from '@pertexo/database/api';
+import type { DatabaseConfig, WorkspaceDatabase } from '@pertexo/database/api';
 import { createWorkspaceDatabase } from '@pertexo/database/api';
 import {
   platformRegistryReleaseSupport,
@@ -27,13 +22,11 @@ export class NestWorkspaceDatabase
 {
   public constructor(private readonly database: WorkspaceDatabase) {}
 
-  public withWorkspace<T>(
-    workspaceId: string,
-    operation: (transaction: WorkspaceTransaction) => Promise<T>,
-    options?: WorkspaceTransactionOptions,
-  ): Promise<T> {
-    return this.database.withWorkspace(workspaceId, operation, options);
-  }
+  public withWorkspace: WorkspaceDatabase['withWorkspace'] = (
+    workspaceId,
+    operation,
+    options,
+  ) => this.database.withWorkspace(workspaceId, operation, options);
 
   public checkReadiness(): ReturnType<WorkspaceDatabase['checkReadiness']> {
     return this.database.checkReadiness();

@@ -2,9 +2,9 @@ import type { DynamicModule, OnApplicationShutdown } from '@nestjs/common';
 import { Module } from '@nestjs/common';
 import { metrics, trace } from '@opentelemetry/api';
 import {
-  createConnectionDatabase,
+  createApiConnectionDatabase,
   createFailureNotificationDestinationDatabase,
-  type ConnectionDatabase,
+  type ApiConnectionDatabase,
   type DatabaseConfig,
 } from '@pertexo/database/api';
 import {
@@ -34,7 +34,7 @@ export type ApiConnectionRuntime = Readonly<{
 }>;
 
 export type ApiConnectionRuntimeOverrides = Readonly<{
-  database?: ConnectionDatabase;
+  database?: ApiConnectionDatabase;
   encryption?: ConnectionSecretEncryptionPort;
   telemetry?: ConnectionTelemetry;
   httpClient?: ConnectionHttpClient;
@@ -49,7 +49,7 @@ export function createApiConnectionRuntime(
   overrides: ApiConnectionRuntimeOverrides = {},
 ): ApiConnectionRuntime {
   const database =
-    overrides.database ?? createConnectionDatabase(databaseConfig);
+    overrides.database ?? createApiConnectionDatabase(databaseConfig);
   const destinationDatabase =
     createFailureNotificationDestinationDatabase(databaseConfig);
   const encryptionRuntime =
@@ -91,7 +91,7 @@ export function createApiConnectionRuntime(
 }
 
 async function closeResources(
-  database: ConnectionDatabase,
+  database: ApiConnectionDatabase,
   destinationDatabase: ReturnType<
     typeof createFailureNotificationDestinationDatabase
   >,

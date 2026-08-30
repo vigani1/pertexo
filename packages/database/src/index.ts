@@ -130,10 +130,17 @@ export {
   ConnectionTestInProgressError,
   ConnectionUnavailableError,
   createConnectionDatabase,
+  createApiConnectionDatabase,
+  createWorkerConnectionResolutionDatabase,
 } from './connections.js';
 export type {
   ConnectionAuthType,
   ConnectionDatabase,
+  ApiConnectionDatabase,
+  ConnectionManagementDatabase,
+  ConnectionResolutionDatabase,
+  ConnectionTestDatabase,
+  WorkerConnectionResolutionDatabase,
   ConnectionRecord,
   ConnectionStatus,
   ConnectionTestOutcome,

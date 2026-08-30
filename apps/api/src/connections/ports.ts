@@ -1,5 +1,6 @@
 import type {
-  ConnectionDatabase,
+  ConnectionManagementDatabase,
+  ConnectionTestDatabase,
   FailureNotificationDestinationDatabase,
 } from '@pertexo/database/api';
 import type {
@@ -13,23 +14,9 @@ import type {
 import type { WorkspaceAuthorizationSource } from '../identity-workspace/ports.js';
 import type { ConnectionTelemetry } from './telemetry.js';
 
-export type ConnectionCommandPersistence = Pick<
-  ConnectionDatabase,
-  | 'createConnection'
-  | 'findConnectionCreateReplay'
-  | 'findConnectionRotateReplay'
-  | 'rotateConnectionSecret'
-  | 'revokeConnection'
->;
+export type ConnectionCommandPersistence = ConnectionManagementDatabase;
 
-export type ConnectionTestPersistence = Pick<
-  ConnectionDatabase,
-  | 'startConnectionTest'
-  | 'resolveConnectionTestSecret'
-  | 'markConnectionTestDispatched'
-  | 'completeConnectionTest'
-  | 'abandonConnectionTest'
->;
+export type ConnectionTestPersistence = ConnectionTestDatabase;
 
 export type ConnectionPersistence = ConnectionCommandPersistence &
   ConnectionTestPersistence;

@@ -8,7 +8,6 @@ import type {
   DatabaseReadiness,
   DatabaseConfig,
   WorkspaceDatabase,
-  WorkspaceTransaction,
 } from '@pertexo/database/execution';
 import { createWorkspaceDatabase } from '@pertexo/database/execution';
 import {
@@ -30,12 +29,10 @@ export class NestWorkspaceDatabase
     private readonly expectedWorkerRole: string,
   ) {}
 
-  public withWorkspace<T>(
-    workspaceId: string,
-    operation: (transaction: WorkspaceTransaction) => Promise<T>,
-  ): Promise<T> {
-    return this.database.withWorkspace(workspaceId, operation);
-  }
+  public withWorkspace: WorkspaceDatabase['withWorkspace'] = (
+    workspaceId,
+    operation,
+  ) => this.database.withWorkspace(workspaceId, operation);
 
   public async checkReadiness(): Promise<DatabaseReadiness> {
     const readiness = await this.database.checkReadiness();

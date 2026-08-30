@@ -312,6 +312,47 @@ export interface ConnectionDatabase {
   close(): Promise<void>;
 }
 
+/**
+ * API connection commands and their idempotency lookups.
+ *
+ * This view deliberately excludes secret resolution and worker-only health
+ * operations.  The implementation remains shared by the role-specific
+ * factories below, but callers receive only the behavior they own.
+ */
+export type ConnectionManagementDatabase = Pick<
+  ConnectionDatabase,
+  | 'createConnection'
+  | 'findConnectionCreateReplay'
+  | 'findConnectionRotateReplay'
+  | 'rotateConnectionSecret'
+  | 'revokeConnection'
+>;
+
+/** API-owned connection-test state transitions. */
+export type ConnectionTestDatabase = Pick<
+  ConnectionDatabase,
+  | 'startConnectionTest'
+  | 'resolveConnectionTestSecret'
+  | 'markConnectionTestDispatched'
+  | 'completeConnectionTest'
+  | 'abandonConnectionTest'
+>;
+
+/** The only connection behavior required by a worker node executor. */
+export type ConnectionResolutionDatabase = Pick<
+  ConnectionDatabase,
+  'assertConnectionSecretCurrent' | 'resolveConnectionSecret'
+>;
+
+/** API capability plus the lifecycle operation owned by its runtime factory. */
+export type ApiConnectionDatabase = ConnectionManagementDatabase &
+  ConnectionTestDatabase &
+  Pick<ConnectionDatabase, 'close'>;
+
+/** Worker resolution capability plus the lifecycle operation owned by its runtime factory. */
+export type WorkerConnectionResolutionDatabase = ConnectionResolutionDatabase &
+  Pick<ConnectionDatabase, 'close'>;
+
 export class ConnectionNotFoundError extends Error {
   public override readonly name = 'ConnectionNotFoundError';
 }
@@ -1723,4 +1764,44 @@ export function createConnectionDatabase(
     close: () => pool.end(),
   };
   return Object.freeze(database);
+}
+
+/**
+ * Creates the API connection capability.  The returned object contains only
+ * API management/test operations and close; worker secret-resolution methods
+ * remain private to the shared implementation.
+ */
+export function createApiConnectionDatabase(
+  config: DatabaseConfig,
+): ApiConnectionDatabase {
+  const database = createConnectionDatabase(config);
+  return Object.freeze({
+    createConnection: database.createConnection,
+    findConnectionCreateReplay: database.findConnectionCreateReplay,
+    findConnectionRotateReplay: database.findConnectionRotateReplay,
+    rotateConnectionSecret: database.rotateConnectionSecret,
+    revokeConnection: database.revokeConnection,
+    startConnectionTest: database.startConnectionTest,
+    resolveConnectionTestSecret: database.resolveConnectionTestSecret,
+    markConnectionTestDispatched: database.markConnectionTestDispatched,
+    completeConnectionTest: database.completeConnectionTest,
+    abandonConnectionTest: database.abandonConnectionTest,
+    close: database.close,
+  });
+}
+
+/**
+ * Creates the worker node connection-resolution capability.  No management,
+ * rotation, revocation, health, or connection-test operation crosses this
+ * seam.  `close` is retained only so the owning runtime can release its pool.
+ */
+export function createWorkerConnectionResolutionDatabase(
+  config: DatabaseConfig,
+): WorkerConnectionResolutionDatabase {
+  const database = createConnectionDatabase(config);
+  return Object.freeze({
+    assertConnectionSecretCurrent: database.assertConnectionSecretCurrent,
+    resolveConnectionSecret: database.resolveConnectionSecret,
+    close: database.close,
+  });
 }

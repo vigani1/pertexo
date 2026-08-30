@@ -2,6 +2,18 @@ import { readFile } from 'node:fs/promises';
 
 import { describe, expect, it } from 'vitest';
 
+import type {
+  ApiConnectionDatabase,
+  ConnectionManagementDatabase,
+  ConnectionTestDatabase,
+} from '../src/api.js';
+import type {
+  ConnectionResolutionDatabase,
+  WorkerConnectionResolutionDatabase,
+} from '../src/execution.js';
+import { createApiConnectionDatabase } from '../src/connections.js';
+import { createWorkerConnectionResolutionDatabase } from '../src/connections.js';
+
 const supportedSurfaces = [
   'api',
   'execution',
@@ -56,5 +68,115 @@ describe('@pertexo/database package contract', () => {
     expect(api).not.toContain('createCoordinatorRunStore');
     expect(execution).not.toContain('createIdentityWorkspaceDatabase');
     expect(maintenance).not.toContain('createControlLedgerCoordinator');
+  });
+
+  it('publishes behavior-named connection capabilities instead of the broad store', () => {
+    const management: ConnectionManagementDatabase = {
+      createConnection: async () => {
+        throw new Error('not exercised');
+      },
+      findConnectionCreateReplay: async () => null,
+      findConnectionRotateReplay: async () => null,
+      rotateConnectionSecret: async () => {
+        throw new Error('not exercised');
+      },
+      revokeConnection: async () => {
+        throw new Error('not exercised');
+      },
+    };
+    const testing: ConnectionTestDatabase = {
+      startConnectionTest: async () => {
+        throw new Error('not exercised');
+      },
+      resolveConnectionTestSecret: async () => {
+        throw new Error('not exercised');
+      },
+      markConnectionTestDispatched: async () => undefined,
+      completeConnectionTest: async () => {
+        throw new Error('not exercised');
+      },
+      abandonConnectionTest: async () => undefined,
+    };
+    const api: ApiConnectionDatabase = {
+      ...management,
+      ...testing,
+      close: async () => undefined,
+    };
+    const resolution: ConnectionResolutionDatabase = {
+      assertConnectionSecretCurrent: async () => undefined,
+      resolveConnectionSecret: async () => {
+        throw new Error('not exercised');
+      },
+    };
+    const worker: WorkerConnectionResolutionDatabase = {
+      ...resolution,
+      close: async () => undefined,
+    };
+
+    expect(Object.keys(api).sort()).toEqual([
+      'abandonConnectionTest',
+      'close',
+      'completeConnectionTest',
+      'createConnection',
+      'findConnectionCreateReplay',
+      'findConnectionRotateReplay',
+      'markConnectionTestDispatched',
+      'resolveConnectionTestSecret',
+      'revokeConnection',
+      'rotateConnectionSecret',
+      'startConnectionTest',
+    ]);
+    expect(Object.keys(worker).sort()).toEqual([
+      'assertConnectionSecretCurrent',
+      'close',
+      'resolveConnectionSecret',
+    ]);
+  });
+
+  it('does not export role-inappropriate connection methods from source surfaces', async () => {
+    const api = await import('../src/api.js');
+    const execution = await import('../src/execution.js');
+
+    expect(api).not.toHaveProperty('createConnectionDatabase');
+    expect(api).toHaveProperty('createApiConnectionDatabase');
+    expect(execution).not.toHaveProperty('createConnectionDatabase');
+    expect(execution).toHaveProperty(
+      'createWorkerConnectionResolutionDatabase',
+    );
+  });
+
+  it('runtime factories project only the methods owned by each role', async () => {
+    const config = {
+      connectionString: 'postgresql://worker:password@localhost/pertexo',
+      connectionTimeoutMillis: 1_000,
+      idleTimeoutMillis: 1_000,
+      max: 1,
+      ownerRole: 'pertexo_owner',
+      workerRuntimeRole: 'pertexo_worker',
+    } as const;
+    const api = createApiConnectionDatabase(config);
+    const worker = createWorkerConnectionResolutionDatabase(config);
+    try {
+      expect(Object.keys(api).sort()).toEqual([
+        'abandonConnectionTest',
+        'close',
+        'completeConnectionTest',
+        'createConnection',
+        'findConnectionCreateReplay',
+        'findConnectionRotateReplay',
+        'markConnectionTestDispatched',
+        'resolveConnectionTestSecret',
+        'revokeConnection',
+        'rotateConnectionSecret',
+        'startConnectionTest',
+      ]);
+      expect(Object.keys(worker).sort()).toEqual([
+        'assertConnectionSecretCurrent',
+        'close',
+        'resolveConnectionSecret',
+      ]);
+    } finally {
+      await Promise.all([api.close(), worker.close()]);
+    }
   });
 });

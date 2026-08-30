@@ -13,12 +13,13 @@ import {
   artifactStorageKey,
   CONNECTION_AUTH_TYPE,
   ConnectionUnavailableError,
-  createConnectionDatabase,
+  createWorkerConnectionResolutionDatabase,
   createPendingArtifact,
   createPendingPreviewArtifact,
   createWorkspaceDatabase,
   finalizeArtifactUpload,
-  type ConnectionDatabase,
+  type ConnectionResolutionDatabase,
+  type WorkerConnectionResolutionDatabase,
   type DatabaseConfig,
   type WorkspaceDatabase,
 } from '@pertexo/database/execution';
@@ -56,10 +57,7 @@ export type WorkerNodeRuntimeCapabilityOptions = Readonly<{
 }>;
 
 export type WorkerNodeRuntimeCapabilityDependencies = Readonly<{
-  connectionDatabase?: Pick<
-    ConnectionDatabase,
-    'assertConnectionSecretCurrent' | 'resolveConnectionSecret'
-  >;
+  connectionDatabase?: ConnectionResolutionDatabase;
   connectionEncryption?: Pick<ConnectionEnvelopeEncryption, 'open'>;
   artifactPersistence?: WorkerArtifactPersistence;
   artifactStore?: Pick<ArtifactStore, 'put'> &
@@ -107,10 +105,7 @@ function assertNotAborted(signal: AbortSignal): void {
 }
 
 function connectionFactory(
-  database: Pick<
-    ConnectionDatabase,
-    'assertConnectionSecretCurrent' | 'resolveConnectionSecret'
-  >,
+  database: ConnectionResolutionDatabase,
   encryption: Pick<ConnectionEnvelopeEncryption, 'open'>,
   providerRateLimiter: NonNullable<
     WorkerNodeRuntimeCapabilityDependencies['providerRateLimiter']
@@ -390,7 +385,7 @@ export async function createWorkerNodeRuntimeCapabilities(
     throw new TypeError('Node artifact retention is invalid');
 
   let encryptionRuntime: AwsConnectionEnvelopeEncryptionRuntime | undefined;
-  let ownedConnectionDatabase: ConnectionDatabase | undefined;
+  let ownedConnectionDatabase: WorkerConnectionResolutionDatabase | undefined;
   let ownedArtifactDatabase: WorkspaceDatabase | undefined;
   let ownedArtifactStore: ArtifactStore | undefined;
   let ownedProviderRateLimiter: RedisRateLimitRuntime | undefined;
@@ -445,7 +440,9 @@ export async function createWorkerNodeRuntimeCapabilities(
         throw new Error('Worker provider rate limiter is incomplete');
       const connectionDatabase =
         dependencies.connectionDatabase ??
-        (ownedConnectionDatabase = createConnectionDatabase(options.database));
+        (ownedConnectionDatabase = createWorkerConnectionResolutionDatabase(
+          options.database,
+        ));
       const encryption =
         dependencies.connectionEncryption ??
         (options.connectionEncryption === undefined
