@@ -27,6 +27,8 @@ Grype scan every Monday and on manual dispatch. The scan action is commit-pinned
 `.github/workflows/codeql.yml` runs commit-pinned JavaScript/TypeScript CodeQL on
 `main`, weekly, and on manual dispatch. A failed or unavailable advisory/scanner
 query blocks the gate and must be retried; it must not be treated as clean.
+Branch protection, required checks, and the auditable emergency procedure are
+defined in [Repository governance](./repository-governance.md).
 
 ## Image and Deployment Boundary
 
