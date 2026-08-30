@@ -158,7 +158,7 @@ finding.
 | F-02 | Resolved | `461c250` through `15f68ee`, plus `1b5e6eb`; atomic Redis policy across origin/address/actor/workspace/connection, API and provider enforcement, telemetry, exact thresholds, recovery, noisy/quiet fairness and measured overhead |
 | F-03 | Resolved | `6496897`, `920d793`; coordinator and attempt stores use the shared hardened tenant transaction engine |
 | F-04 | Resolved | `f29fd11`, `79828cc`; requested configuration fails during discovery and CI rejects zero, skipped, pending, or failed required API gates |
-| F-05 | Installation verification in progress | Versioned governance policy is in `a2c179a`; protection is installed on `main` with strict CI and CodeQL requirements, and the blocked-merge proof is being captured in the governance reconciliation pull request |
+| F-05 | Resolved | Versioned governance policy is in `a2c179a`; strict protected-main settings require the ten CI/CodeQL contexts, and PR #2 reported `BLOCKED` when the deliberate `audit/protection-proof` context failed at `18fcb8e` |
 | F-06 | Open | Repository exercise profiles and fail-closed evidence schemas exist, but no live AWS, pager, failover, PITR, load, or regional-recovery report has been supplied |
 | F-07 | Resolved | `1f226e5`; migration `0072` binds exact slot/application identity and fails closed on zero or duplicate active sessions |
 | F-08 | Resolved | `0c0facc`; API management/test and worker resolution factories publish separate narrow capabilities with contract tests |
@@ -340,7 +340,7 @@ gate's boolean silently converts missing configuration into a skip.
 ### F-05 — Enforce CI before changes reach `main`
 
 - **Severity:** P1
-- **Status:** Installation verification in progress
+- **Status:** Resolved
 - **Area:** repository governance
 - **Evidence:** GitHub reported no `main` branch protection and no repository
   rulesets at the audit timestamp.
@@ -364,6 +364,19 @@ makes historical evidence difficult to interpret.
 Capture the ruleset export or GitHub API response, prove a failing required check
 blocks merge, and link the evidence in the tracker. This is an external-state
 change and cannot be closed by repository code alone.
+
+#### Resolution evidence
+
+- GitHub's branch-protection API reports strict up-to-date checks, enforced for
+  administrators, with pull requests, stale-review dismissal, linear history,
+  resolved conversations, and force pushes and deletion disabled.
+- The permanent required contexts are `quality`, the three partitioned unit-test
+  jobs, `coverage`, `integration`, `recovery`, `compatibility`,
+  `deployment-security`, and CodeQL `analyze`.
+- Governance reconciliation PR #2 at `18fcb8e` reported merge state `BLOCKED`
+  while a deliberate required `audit/protection-proof` status was `failure`.
+  That temporary proof context was then removed from the permanent rules; it
+  never replaced or weakened a real required check.
 
 ### F-06 — Complete live Phase 7 evidence
 
