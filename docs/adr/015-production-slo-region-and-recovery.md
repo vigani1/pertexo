@@ -117,12 +117,20 @@ AWS regions does not by itself prove them.
 
 ## Implementation note: regional write admission
 
-Migration `0069_regional_write_admission.sql` implements the PostgreSQL side of
+Migrations `0069_regional_write_admission.sql` and
+`0072_regional_replica_identity.sql` implement the PostgreSQL side of
 the recovery-point fence. Production migrations fail unless enforcement is
 explicitly enabled. The maintenance role, which is the only application role
 with `pg_monitor`, samples the configured `pertexo-eu-west-1` streaming replica
 and records a bounded observation through a narrow security-definer function.
-The persisted authority is open only below 300,000 milliseconds; missing,
+The expected application name is deployment-owned and persisted in the
+authority row. The monitor counts every active `pg_stat_replication` session
+with that identity; zero sessions are `missing`, one is `unique`, and more than
+one is `duplicate`. Only the unique case can contribute lag or open admission.
+Physical replication slots may reinforce the deployment identity in production
+but are not required by the application contract, because not every managed
+PostgreSQL environment exposes or permits slot administration. The persisted
+authority is open only below 300,000 milliseconds; missing, duplicate,
 non-streaming, null, or observations older than 15 seconds fail closed.
 
 Every manual, webhook, schedule, and operator-replay run start reaches the same

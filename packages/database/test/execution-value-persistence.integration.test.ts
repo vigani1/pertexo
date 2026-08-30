@@ -254,7 +254,7 @@ describe('execution value persistence migration', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0071_oidc_browser_binding.sql',
+          migrationHead: '0072_regional_replica_identity.sql',
           role: expectedRole,
         });
       } finally {

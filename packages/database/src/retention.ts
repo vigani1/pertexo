@@ -363,7 +363,7 @@ export function createRetentionDatabase(
             and not (select rolsuper or rolbypassrls from pg_roles where rolname=current_user)
             and pg_has_role(current_user,'pg_monitor','member')
             and has_function_privilege(current_user,
-              'app.record_regional_replica_lag(character varying,character varying,bigint)','EXECUTE')
+              'app.record_regional_replica_lag(character varying,character varying,bigint,integer)','EXECUTE')
             and has_function_privilege(current_user,
               'app.process_operator_maintenance_rerun()','EXECUTE')
             and has_function_privilege(current_user,
@@ -453,22 +453,20 @@ export function createRetentionDatabase(
       const observation = await query<{
         replay_lag_millis: string | null;
         replication_state: string;
+        session_count: number;
       }>(
         pool,
-        `select coalesce(replica.state,'unavailable') replication_state,
-          case
-            when replica.replay_lsn=pg_current_wal_lsn() then 0
-            when replica.replay_lag is null then null
-            else ceil(extract(epoch from replica.replay_lag)*1000)::bigint
-          end replay_lag_millis
-        from (values(1)) singleton(value)
-        left join lateral (
-          select state,replay_lsn,replay_lag
-          from pg_stat_replication
-          where application_name=$1
-          order by pid
-          limit 1
-        ) replica on true`,
+        `select count(*)::integer session_count,
+          case when count(*)=1 then max(replica.state) else 'unavailable' end replication_state,
+          case when count(*)=1 then max(
+            case
+              when replica.replay_lsn=pg_current_wal_lsn() then 0
+              when replica.replay_lag is null then null
+              else ceil(extract(epoch from replica.replay_lag)*1000)::bigint
+            end
+          ) else null end replay_lag_millis
+        from pg_stat_replication replica
+        where replica.application_name=$1`,
         [expectedApplicationName],
         signal,
       );
@@ -481,8 +479,13 @@ export function createRetentionDatabase(
           : z.coerce.number().int().nonnegative().parse(row.replay_lag_millis);
       const recorded = await query<{ status: string }>(
         pool,
-        'select app.record_regional_replica_lag($1,$2,$3) status',
-        [expectedApplicationName, row.replication_state, replayLagMillis],
+        'select app.record_regional_replica_lag($1,$2,$3,$4) status',
+        [
+          expectedApplicationName,
+          row.replication_state,
+          replayLagMillis,
+          z.number().int().nonnegative().parse(row.session_count),
+        ],
         signal,
       );
       return Object.freeze({

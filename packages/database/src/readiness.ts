@@ -12,7 +12,7 @@ import {
 // their inventory and synchronized rollout/rollback procedure aligned with
 // docs/operations/database-function-readiness.md.
 
-export const EXPECTED_MIGRATION_HEAD = '0071_oidc_browser_binding.sql';
+export const EXPECTED_MIGRATION_HEAD = '0072_regional_replica_identity.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{
@@ -1585,7 +1585,7 @@ export async function checkDatabaseReadiness(
         and 2=(select count(*) from pg_proc admission_function
           join pg_roles admission_owner on admission_owner.oid=admission_function.proowner
           where admission_function.oid=any(array[
-            to_regprocedure('app.record_regional_replica_lag(character varying,character varying,bigint)'),
+            to_regprocedure('app.record_regional_replica_lag(character varying,character varying,bigint,integer)'),
             to_regprocedure('app.assert_regional_write_admission()')
           ]) and admission_function.prosecdef
             and admission_owner.rolname=$1

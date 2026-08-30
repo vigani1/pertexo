@@ -98,6 +98,7 @@ describe('OIDC browser binding prior-head migration', () => {
 
       expect(await migrateDatabase(migrationConfig)).toEqual([
         '0071_oidc_browser_binding.sql',
+        '0072_regional_replica_identity.sql',
       ]);
 
       const verifier = new Pool({

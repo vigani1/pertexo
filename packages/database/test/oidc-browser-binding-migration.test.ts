@@ -11,7 +11,7 @@ describe('OIDC browser binding migration', () => {
       'utf8',
     );
 
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0071_oidc_browser_binding.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0072_regional_replica_identity.sql');
     expect(sql).toContain('ADD COLUMN browser_binding_digest char(64)');
     expect(sql).toContain("browser_binding_digest = repeat('0', 64)");
     expect(sql).toContain(
