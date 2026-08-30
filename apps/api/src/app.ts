@@ -37,6 +37,7 @@ import {
   createApiScheduleRuntime,
   type ApiScheduleRuntime,
 } from './platform/schedules/schedule-runtime.module.js';
+import type { RateLimitConsumer } from './platform/rate-limit/interceptor.js';
 
 export type ApiApplicationDependencies = Readonly<{
   database?: WorkspaceDatabase;
@@ -48,6 +49,7 @@ export type ApiApplicationDependencies = Readonly<{
   workflowOverrides?: ApiWorkflowRuntimeOverrides;
   webhookRuntime?: ApiWebhookRuntime;
   scheduleRuntime?: ApiScheduleRuntime;
+  rateLimitConsumer?: RateLimitConsumer;
   logger: StructuredLogger;
   telemetry: TelemetryLifecycle;
 }>;
@@ -114,7 +116,7 @@ export async function createApiApplication(
         ...(webhookRuntime === undefined ? {} : { webhookRuntime }),
         ...(scheduleRuntime === undefined ? {} : { scheduleRuntime }),
       }),
-      new FastifyAdapter(),
+      new FastifyAdapter({ trustProxy: config.trustedProxyHops ?? 0 }),
       { abortOnError: false, logger: nestLogger },
     );
   } catch (error: unknown) {

@@ -39,6 +39,8 @@ import type { ApiWebhookRuntime } from './platform/webhooks/webhook-runtime.modu
 import { WebhookModule } from './webhooks/module.js';
 import type { ApiScheduleRuntime } from './platform/schedules/schedule-runtime.module.js';
 import { ScheduleModule } from './schedules/module.js';
+import type { RateLimitConsumer } from './platform/rate-limit/interceptor.js';
+import { RateLimitModule } from './platform/rate-limit/rate-limit.module.js';
 
 export type ApiModuleDependencies = Readonly<{
   database?: WorkspaceDatabase;
@@ -47,6 +49,7 @@ export type ApiModuleDependencies = Readonly<{
   workflowRuntime?: ApiWorkflowRuntime;
   webhookRuntime?: ApiWebhookRuntime;
   scheduleRuntime?: ApiScheduleRuntime;
+  rateLimitConsumer?: RateLimitConsumer;
   logger: StructuredLogger;
   telemetry: TelemetryLifecycle;
 }>;
@@ -161,6 +164,10 @@ export class AppModule {
           dependencies.telemetry,
         ),
         HttpPlatformModule.register(httpErrorLogger),
+        RateLimitModule.register(
+          config.redisUrl,
+          dependencies.rateLimitConsumer,
+        ),
       ],
       controllers: [LiveController, ReadyController],
       providers: [

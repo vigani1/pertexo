@@ -29,6 +29,7 @@ import {
   traceIdentifier,
 } from '../identity-workspace/index.js';
 import { applicationError } from '../platform/http/index.js';
+import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { createActorContext } from '../workspaces/index.js';
 import { throwWorkflowRunError } from './errors.js';
 import {
@@ -63,6 +64,7 @@ export type WorkflowRunsRequest = Readonly<{
 }>;
 
 @Controller('v1/workspaces/:workspaceId')
+@RateLimit('authenticated_read')
 export class WorkflowRunsController {
   public constructor(
     private readonly startWorkflowRun: StartWorkflowRunUseCase,
@@ -72,6 +74,7 @@ export class WorkflowRunsController {
   ) {}
 
   @Post('workflows/:workflowId/runs')
+  @RateLimit('run_admission')
   @HttpCode(202)
   @UseGuards(
     SessionAuthenticationGuard,
@@ -152,6 +155,7 @@ export class WorkflowRunsController {
   }
 
   @Post('runs/:runId/cancel')
+  @RateLimit('ordinary_mutation')
   @HttpCode(200)
   @UseGuards(
     SessionAuthenticationGuard,

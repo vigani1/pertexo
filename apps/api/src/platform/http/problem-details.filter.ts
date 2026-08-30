@@ -163,6 +163,7 @@ function fromApplicationError(error: ApplicationError): NormalizedProblem {
   };
   if (
     error.code === 'request.rate_limited' ||
+    error.code === 'request.rate_limit_unavailable' ||
     error.code === 'workspace.quota_exceeded' ||
     error.code === 'platform.write_paused'
   ) {

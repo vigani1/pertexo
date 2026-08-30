@@ -19,6 +19,7 @@ import {
   traceIdentifier,
 } from '../identity-workspace/index.js';
 import type { IdentityWorkspaceRequest } from '../identity-workspace/types.js';
+import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { parseIdempotencyKey } from '../workflow-authoring/preconditions.js';
 import { applicationError } from '../platform/http/index.js';
 import { ScheduleReadGuard, ScheduleUpdateGuard } from './guards.js';
@@ -29,10 +30,12 @@ const commandRouteSchema = routeSchema.extend({ triggerId: z.uuid() });
 type Request = IdentityWorkspaceRequest;
 
 @Controller('v1/workspaces/:workspaceId/workflows/:workflowId/triggers')
+@RateLimit('trigger_mutation')
 export class ScheduleManagementController {
   public constructor(private readonly service: ScheduleManagementService) {}
 
   @Get('schedules')
+  @RateLimit('authenticated_read')
   @UseGuards(SessionAuthenticationGuard, ScheduleReadGuard)
   public list(@Req() request: Request, @Param() params: unknown) {
     const route = routeSchema.parse(params);

@@ -43,6 +43,12 @@ export const APPLICATION_ERROR_CATALOG = {
     severity: 'warn',
     exposeDetail: false,
   },
+  'request.rate_limit_unavailable': {
+    status: 503,
+    title: 'Request rate limiter unavailable',
+    severity: 'error',
+    exposeDetail: false,
+  },
   'workspace.quota_exceeded': {
     status: 429,
     title: 'Workspace quota exceeded',

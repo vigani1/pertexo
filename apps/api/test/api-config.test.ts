@@ -44,6 +44,7 @@ describe('parseApiConfig', () => {
       },
       port: 3000,
       redisUrl: 'redis://localhost:6379/0',
+      trustedProxyHops: 0,
     });
     expect(Object.isFrozen(config)).toBe(true);
   });
@@ -81,6 +82,7 @@ describe('parseApiConfig', () => {
       },
       port: 4312,
       redisUrl: 'redis://localhost:6379/0',
+      trustedProxyHops: 0,
     });
   });
 
@@ -117,6 +119,7 @@ describe('parseApiConfig', () => {
         'arn:aws:kms:eu-central-1:123456789012:key/example',
       CONNECTION_KMS_REGION: 'eu-central-1',
       REDIS_URL: 'rediss://redis.example.test:6380/0',
+      TRUST_PROXY_HOPS: '1',
     });
 
     expect(config.identity).toMatchObject({
@@ -207,6 +210,23 @@ describe('parseApiConfig', () => {
         DATABASE_API_URL:
           'postgresql://pertexo_api:secret@localhost:5432/pertexo',
         PORT: '70000',
+      }),
+    ).toThrow();
+  });
+
+  it('allows exactly one trusted proxy hop only when explicitly configured', () => {
+    expect(
+      parseApiConfig({
+        DATABASE_API_URL:
+          'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+        TRUST_PROXY_HOPS: '1',
+      }).trustedProxyHops,
+    ).toBe(1);
+    expect(() =>
+      parseApiConfig({
+        DATABASE_API_URL:
+          'postgresql://pertexo_api:secret@localhost:5432/pertexo',
+        TRUST_PROXY_HOPS: '2',
       }),
     ).toThrow();
   });

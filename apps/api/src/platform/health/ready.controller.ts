@@ -8,6 +8,7 @@ import {
 import type { WorkspaceDatabase } from '@pertexo/database/api';
 
 import { WORKSPACE_DATABASE } from '../database/database.module.js';
+import { RateLimitExempt } from '../rate-limit/metadata.js';
 import { ApiDrainState } from './drain-state.js';
 
 type ReadyResponse = Readonly<{
@@ -21,6 +22,7 @@ export interface ApiRuntimeReadiness {
 }
 
 @Controller('health')
+@RateLimitExempt()
 export class ReadyController {
   public constructor(
     @Inject(WORKSPACE_DATABASE)

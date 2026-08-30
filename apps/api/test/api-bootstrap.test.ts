@@ -79,12 +79,20 @@ const telemetry: TelemetryLifecycle = {
   start: vi.fn(),
   shutdown: vi.fn().mockResolvedValue(undefined),
 };
+const rateLimitConsumer = {
+  consume: () => Promise.resolve({ allowed: true as const }),
+};
 
 function dependencies(
   selectedDatabase: WorkspaceDatabase = database,
   selectedTelemetry: TelemetryLifecycle = telemetry,
 ) {
-  return { database: selectedDatabase, logger, telemetry: selectedTelemetry };
+  return {
+    database: selectedDatabase,
+    logger,
+    rateLimitConsumer,
+    telemetry: selectedTelemetry,
+  };
 }
 
 function identityRuntime(

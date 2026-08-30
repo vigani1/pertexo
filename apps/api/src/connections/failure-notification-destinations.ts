@@ -33,6 +33,7 @@ import {
   requestIdentifier,
   traceIdentifier,
 } from '../identity-workspace/index.js';
+import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { throwConnectionApplicationError } from './errors.js';
 import {
   ConnectionManageGuard,
@@ -228,6 +229,7 @@ export class FailureNotificationDestinationUseCases {
 }
 
 @Controller('v1/workspaces/:workspaceId')
+@RateLimit('ordinary_mutation')
 export class FailureNotificationDestinationsController {
   public constructor(
     private readonly useCases: FailureNotificationDestinationUseCases,
@@ -257,6 +259,7 @@ export class FailureNotificationDestinationsController {
     }
   }
   @Get('failure-notification-destinations')
+  @RateLimit('authenticated_read')
   @UseGuards(SessionAuthenticationGuard, FailureNotificationWorkflowEditGuard)
   public async list(
     @Req() request: ConnectionRequest,
@@ -272,6 +275,7 @@ export class FailureNotificationDestinationsController {
     }
   }
   @Get('failure-notification-destinations/:destinationId')
+  @RateLimit('authenticated_read')
   @UseGuards(SessionAuthenticationGuard, FailureNotificationWorkflowEditGuard)
   public async get(
     @Req() request: ConnectionRequest,

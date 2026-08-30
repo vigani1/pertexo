@@ -20,6 +20,7 @@ import {
   traceIdentifier,
 } from '../identity-workspace/index.js';
 import { createActorContext } from '../workspaces/index.js';
+import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { throwConnectionApplicationError } from './errors.js';
 import { ConnectionManageGuard, ConnectionUseGuard } from './guards.js';
 import {
@@ -38,6 +39,7 @@ import {
 } from './types.js';
 
 @Controller('v1/workspaces/:workspaceId/connections')
+@RateLimit('connection_mutation')
 export class ConnectionsController {
   public constructor(
     private readonly createConnection: CreateConnectionUseCase,
@@ -47,6 +49,7 @@ export class ConnectionsController {
   ) {}
 
   @Post()
+  @RateLimit('ordinary_mutation')
   @HttpCode(201)
   @UseGuards(
     SessionAuthenticationGuard,
@@ -124,6 +127,7 @@ export class ConnectionsController {
   }
 
   @Post(':connectionId/test')
+  @RateLimit('provider_test')
   @HttpCode(200)
   @UseGuards(
     SessionAuthenticationGuard,

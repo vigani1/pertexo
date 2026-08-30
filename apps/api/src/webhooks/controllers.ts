@@ -17,6 +17,7 @@ import {
   authenticatedSession,
 } from '../identity-workspace/index.js';
 import type { IdentityWorkspaceRequest } from '../identity-workspace/types.js';
+import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { parseIdempotencyKey } from '../workflow-authoring/preconditions.js';
 import { WebhookReadGuard, WebhookUpdateGuard } from './guards.js';
 import { WebhookManagementService } from './service.js';
@@ -26,10 +27,12 @@ const commandRouteSchema = routeSchema.extend({ triggerId: z.uuid() });
 type Request = IdentityWorkspaceRequest;
 
 @Controller('v1/workspaces/:workspaceId/workflows/:workflowId/triggers')
+@RateLimit('trigger_mutation')
 export class WebhookManagementController {
   public constructor(private readonly service: WebhookManagementService) {}
 
   @Get()
+  @RateLimit('authenticated_read')
   @UseGuards(SessionAuthenticationGuard, WebhookReadGuard)
   public list(@Req() request: Request, @Param() params: unknown) {
     const route = routeSchema.parse(params);

@@ -97,6 +97,7 @@ const apiEnvironmentSchema = z
       .positive()
       .default(24 * 60 * 60_000),
     SERVICE_VERSION: z.string().trim().min(1).default('0.0.0-dev'),
+    TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(1).default(0),
     POSTGRES_OWNER_USER: z
       .string()
       .regex(/^[a-z_][a-z0-9_]*$/u)
@@ -172,6 +173,7 @@ export type ApiConfig = Readonly<{
   observability: ObservabilityConfig;
   port: number;
   redisUrl: string;
+  trustedProxyHops?: number;
 }>;
 
 export function parseApiConfig(
@@ -194,6 +196,9 @@ export function parseApiConfig(
   if (deployed && parsed.REDIS_URL === undefined) {
     throw new Error('REDIS_URL is required when deployed');
   }
+  if (deployed && parsed.TRUST_PROXY_HOPS !== 1) {
+    throw new Error('TRUST_PROXY_HOPS must be 1 when deployed');
+  }
 
   return Object.freeze({
     ...(connections === undefined ? {} : { connections }),
@@ -213,6 +218,7 @@ export function parseApiConfig(
     observability,
     port: parsed.PORT,
     redisUrl: parsed.REDIS_URL ?? 'redis://localhost:6379/0',
+    trustedProxyHops: parsed.TRUST_PROXY_HOPS,
   });
 }
 

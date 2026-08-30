@@ -22,6 +22,7 @@ import {
   requestIdentifier,
   traceIdentifier,
 } from '../identity-workspace/index.js';
+import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { createActorContext } from '../workspaces/index.js';
 import { throwWorkflowApplicationError } from '../workflow-authoring/errors.js';
 import { WorkflowUpdateGuard } from '../workflow-authoring/guards.js';
@@ -38,6 +39,7 @@ interface StatusResponse {
 }
 
 @Controller('v1/workspaces/:workspaceId')
+@RateLimit('preview_test')
 export class NodeTestingController {
   public constructor(
     private readonly testNode: TestWorkflowNodeUseCase,
@@ -45,6 +47,7 @@ export class NodeTestingController {
   ) {}
 
   @Get('previews/:previewRunId')
+  @RateLimit('authenticated_read')
   @UseGuards(SessionAuthenticationGuard, WorkflowUpdateGuard)
   public async status(
     @Req() request: WorkflowAuthoringRequest,

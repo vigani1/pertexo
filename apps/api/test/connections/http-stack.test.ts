@@ -76,6 +76,9 @@ const telemetry: TelemetryLifecycle = {
   start: vi.fn(),
   shutdown: vi.fn().mockResolvedValue(undefined),
 };
+const rateLimitConsumer = {
+  consume: () => Promise.resolve({ allowed: true as const }),
+};
 
 function identityRuntime(): ApiIdentityRuntime {
   const dependencies: IdentityWorkspaceDependencies = {
@@ -331,6 +334,7 @@ describe('connections real Nest HTTP stack', () => {
       workflowRuntime: workflowRuntime(identity.dependencies.authorization),
       connectionRuntime: connection.runtime,
       logger,
+      rateLimitConsumer,
       telemetry,
     });
     await application.init();

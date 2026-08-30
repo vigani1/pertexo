@@ -8,6 +8,7 @@ export const API_PROBLEM_CODES = [
   'request.precondition_required',
   'request.idempotency_conflict',
   'request.rate_limited',
+  'request.rate_limit_unavailable',
   'workspace.quota_exceeded',
   'workspace.conflict',
   'workflow.revision_conflict',

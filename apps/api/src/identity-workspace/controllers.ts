@@ -21,6 +21,7 @@ import {
 } from '../identity/index.js';
 import { createActorContext } from '../workspaces/index.js';
 import { applicationError } from '../platform/http/index.js';
+import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { mapIdentityWorkspaceError } from './errors.js';
 import type { SessionCookiePolicy } from './ports.js';
 import {
@@ -82,6 +83,7 @@ export class OidcController {
   }
 
   @Get('start')
+  @RateLimit('identity_start')
   public async start(
     @Res({ passthrough: true }) response: CookieResponse,
   ): Promise<Readonly<{ authorizationUrl: string; expiresAt: string }>> {
@@ -106,6 +108,7 @@ export class OidcController {
   }
 
   @Get('callback')
+  @RateLimit('identity_callback')
   @HttpCode(204)
   public async callback(
     @Query() query: unknown,
@@ -147,6 +150,7 @@ export class SessionController {
   ) {}
 
   @Post('logout')
+  @RateLimit('ordinary_mutation')
   @HttpCode(204)
   @UseGuards(SessionAuthenticationGuard, CsrfProtectionGuard)
   public async logout(
@@ -181,6 +185,7 @@ export class WorkspaceController {
   ) {}
 
   @Post()
+  @RateLimit('ordinary_mutation')
   @UseGuards(SessionAuthenticationGuard, CsrfProtectionGuard)
   public async create(
     @Req() request: IdentityWorkspaceRequest,
@@ -203,6 +208,7 @@ export class WorkspaceController {
   }
 
   @Post(':workspaceId/deletion')
+  @RateLimit('ordinary_mutation')
   @HttpCode(202)
   @UseGuards(
     SessionAuthenticationGuard,
@@ -241,6 +247,7 @@ export class WorkspaceController {
   }
 
   @Delete(':workspaceId/deletion')
+  @RateLimit('ordinary_mutation')
   @HttpCode(202)
   @UseGuards(
     SessionAuthenticationGuard,
@@ -276,6 +283,7 @@ export class WorkspaceController {
   }
 
   @Get(':workspaceId/lifecycle-operations/:operationId')
+  @RateLimit('authenticated_read')
   @UseGuards(SessionAuthenticationGuard, WorkspaceManageGuard)
   public async readLifecycleOperation(
     @Req() request: IdentityWorkspaceRequest,

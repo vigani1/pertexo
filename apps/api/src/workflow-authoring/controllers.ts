@@ -20,6 +20,7 @@ import {
   traceIdentifier,
 } from '../identity-workspace/index.js';
 import { applicationError } from '../platform/http/index.js';
+import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { createActorContext } from '../workspaces/index.js';
 import { mapWorkflowAuthoringError } from './errors.js';
 import {
@@ -49,6 +50,7 @@ import {
 } from './types.js';
 
 @Controller('v1/workspaces/:workspaceId/workflows')
+@RateLimit('authenticated_read')
 export class WorkflowAuthoringController {
   public constructor(
     private readonly listWorkflows: ListWorkflowsUseCase,
@@ -82,6 +84,7 @@ export class WorkflowAuthoringController {
   }
 
   @Post()
+  @RateLimit('ordinary_mutation')
   @HttpCode(201)
   @UseGuards(
     SessionAuthenticationGuard,
@@ -133,6 +136,7 @@ export class WorkflowAuthoringController {
   }
 
   @Put(':workflowId/draft')
+  @RateLimit('ordinary_mutation')
   @UseGuards(
     SessionAuthenticationGuard,
     WorkflowUpdateGuard,
@@ -163,6 +167,7 @@ export class WorkflowAuthoringController {
   }
 
   @Post(':workflowId/validate')
+  @RateLimit('workflow_compile')
   @HttpCode(200)
   @UseGuards(SessionAuthenticationGuard, WorkflowReadGuard, CsrfProtectionGuard)
   public async validate(
@@ -182,6 +187,7 @@ export class WorkflowAuthoringController {
   }
 
   @Post(':workflowId/publish')
+  @RateLimit('workflow_compile')
   @HttpCode(200)
   @UseGuards(
     SessionAuthenticationGuard,
