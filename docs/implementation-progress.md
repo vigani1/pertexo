@@ -4609,10 +4609,13 @@ Verification at implementation head `cfbb4424c4c3c6d68497844b5a333d012c6899e5`:
 
 GitHub Actions CI run `33337487368`, CodeQL run `33337487359`, and Release Gate
 run `33337815462` passed at exact implementation head `cfbb442`. Protected-main
-controls are installed; the blocked-merge proof and final protection export are
-recorded by the governance reconciliation pull request. Phase 7 remains **In
-progress** solely because the unchecked live-production rows above remain
-unsatisfied.
+controls require the ten current CI/CodeQL contexts with strict up-to-date
+checks, pull requests, administrator enforcement, linear history, resolved
+conversations, and no force pushes or branch deletion. Governance reconciliation
+PR #2 reported `BLOCKED` at `18fcb8e` while the deliberate required
+`audit/protection-proof` status failed; the temporary proof context was removed
+after capture. Phase 7 remains **In progress** solely because the unchecked
+live-production rows above remain unsatisfied.
 
 ## Update protocol
 
