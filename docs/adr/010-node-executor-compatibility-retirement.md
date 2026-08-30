@@ -285,3 +285,8 @@ irrelevant. The cost is additive workflow-version storage, V1/V2 compatibility,
 durable release coordination, retained executor artifacts and fixtures, and a
 serialized retirement process. Retirement becomes an explicit product and
 operational lifecycle rather than ordinary dead-code deletion.
+
+The live per-path ownership, evidence, removal-test, and rollback register is
+`docs/operations/compatibility-retirement-inventory.md`. A compatibility path
+cannot be removed unless its inventory entry contains the durable evidence
+required above and is changed to removal-approved in the same reviewed change.
