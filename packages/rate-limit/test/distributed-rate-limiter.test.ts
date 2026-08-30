@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   DistributedRateLimiter,
+  type RateLimitDecision,
   type RateLimitScriptExecutor,
-} from '../../src/platform/rate-limit/distributed-rate-limiter.js';
-import type { RateLimitDecision } from '../../src/platform/rate-limit/policy.js';
+} from '../src/index.js';
 
 const decision: RateLimitDecision = {
   endpointClass: 'provider_test',

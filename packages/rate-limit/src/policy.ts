@@ -35,7 +35,7 @@ export type RateLimitDimension = Readonly<{
 export type RateLimitDecision = Readonly<{
   endpointClass: RateLimitEndpointClass;
   failureMode: RateLimitFailureMode;
-  windowSeconds: 60;
+  windowSeconds: number;
   dimensions: readonly RateLimitDimension[];
 }>;
 

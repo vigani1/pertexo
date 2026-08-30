@@ -26,6 +26,7 @@
     "@pertexo/nodes-core": "workspace:*",
     "@pertexo/observability": "workspace:*",
     "@pertexo/queue": "workspace:*",
+    "@pertexo/rate-limit": "workspace:*",
     "@pertexo/workflow-engine": "workspace:*",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2",

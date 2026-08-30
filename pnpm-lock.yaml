@@ -68,6 +68,9 @@ importers:
       '@pertexo/queue':
         specifier: workspace:*
         version: link:../../packages/queue
+      '@pertexo/rate-limit':
+        specifier: workspace:*
+        version: link:../../packages/rate-limit
       '@pertexo/workflow-engine':
         specifier: workspace:*
         version: link:../../packages/workflow-engine
@@ -201,6 +204,9 @@ importers:
       '@pertexo/queue':
         specifier: workspace:*
         version: link:../../packages/queue
+      '@pertexo/rate-limit':
+        specifier: workspace:*
+        version: link:../../packages/rate-limit
       '@pertexo/workflow-engine':
         specifier: workspace:*
         version: link:../../packages/workflow-engine
@@ -375,6 +381,12 @@ importers:
       zod:
         specifier: 4.4.3
         version: 4.4.3
+
+  packages/rate-limit:
+    dependencies:
+      ioredis:
+        specifier: 6.0.0
+        version: 6.0.0(supports-color@7.2.0)
 
   packages/workflow-engine:
     dependencies:

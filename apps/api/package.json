@@ -21,6 +21,7 @@
     "@pertexo/nodes-core": "workspace:*",
     "@pertexo/observability": "workspace:*",
     "@pertexo/queue": "workspace:*",
+    "@pertexo/rate-limit": "workspace:*",
     "@pertexo/workflow-engine": "workspace:*",
     "@pertexo/workflow-model": "workspace:*",
     "@nestjs/common": "11.2.1",
