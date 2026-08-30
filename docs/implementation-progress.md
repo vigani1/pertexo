@@ -1,6 +1,6 @@
 # Backend Implementation Progress
 
-Last updated: 2026-08-28
+Last updated: 2026-08-30
 
 This file tracks delivery against
 [the authoritative backend plan](./workflow-platform-backend-plan.md). A phase
@@ -23,7 +23,7 @@ not complete a phase.
 | Phase 4 — first side-effecting integration slice | Complete | ADRs 007/016; implementation through `28ae56b`; migration head `0031_due_node_wakeups.sql`; 248-database-assertion clean CI matrix plus real PostgreSQL/outbox/BullMQ retry-wakeup proof; CI recovery/service-loss matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 5 — orchestration slice | Complete | ADRs 008/017/018/019/020/021/022; implementation through `9d7e071`; migration head `0034_run_failure_notifications.sql`; 862 unit assertions and complete real-service/recovery matrix; independent fixed-head Spec and Standards completion GO |
 | Phase 6 — V1 providers and triggers | Complete | ADRs 012–014 and 023–026; implementation through `0f8a170`; migration head `0043_workflow_run_input_retention.sql`; 1,021 unit and 288 real-service assertions; complete retained recovery and additive-rollout gates; independent fixed-head Spec and Standards completion GO |
-| Phase 7 — production operations | In progress | ADRs 013/015/027/028/029/030 plus the ADR 004 browser-binding and ADR 016 deadline/identity amendments; migration head `0071_oidc_browser_binding.sql`; Frankfurt launch and Ireland recovery policy accepted; fail-closed cross-region replica-lag admission; full fail-closed startup compatibility separated from bounded recurring readiness; independently supervised retention/maintenance classes with bounded backoff; maintenance, readiness-gated lifecycle-command, and function-only operator credential boundaries, synchronous checksum-validated dual-region tenant-artifact writes and coordinated regional deletion, bounded PostgreSQL-authoritative committed-artifact restore inventory plus fail-closed regional byte verification before serve, automatic durable dual-ledger/hold-gated 30/90/365-day PostgreSQL and object-store retention plus frozen standard-class dry-run inventory, separate immutable five-minute preview execution and seven-day retention deadlines, the complete repository-owned operator command family, forward-only convergence of the published `0037`/`0038` migration variants, fenced and crash-repairable workspace tenant-row/object-version purge plus minimized completion tombstones, route-template-only API availability/latency SLIs, complete repository-owned PostgreSQL/Redis/object-store/process telemetry, non-root read-only ECS container/task contracts with separate roles and release-job migrations, digest-pinned deterministic render validation, declarative separate API/worker autoscaling inputs, production dependency and image scanning plus manual/scheduled local release gates, a bounded secret-free load-evidence harness, expanded emitted-series dashboards and alerts, all-six-command recovery projection plus legal-hold command coordination, durable operation-bound and lease-fenced lifecycle intents, atomic persisted-surface deletion side effects, asynchronous `202 Accepted` lifecycle API operations and direct-mutation revocation, bounded dual-region lifecycle coordinator and standalone command workers, fail-closed dual-region control-ledger facade, bounded restore-before-serve executable, and a two-process MinIO integration harness; MinIO policy incompatibility blocks the full local control proof, while production operator IAM/admission and immutable-invocation evidence, live version-enabled tenant-bucket proof, AWS Object Lock/regional proof, measured load/failure exercises, restore drills, deployed telemetry/pager proof, and deployed autoscaling evidence remain open; API-key and connected-subscription entities are explicitly deferred by the V1 plan and are not invented solely for deletion |
+| Phase 7 — production operations | In progress | ADRs 013/015/027/028/029/030 plus the ADR 004 browser-binding and ADR 016 deadline/identity amendments; migration head `0072_regional_replica_identity.sql`; Frankfurt launch and Ireland recovery policy accepted; fail-closed cross-region replica-lag admission; full fail-closed startup compatibility separated from bounded recurring readiness; independently supervised retention/maintenance classes with bounded backoff; maintenance, readiness-gated lifecycle-command, and function-only operator credential boundaries, synchronous checksum-validated dual-region tenant-artifact writes and coordinated regional deletion, bounded PostgreSQL-authoritative committed-artifact restore inventory plus fail-closed regional byte verification before serve, automatic durable dual-ledger/hold-gated 30/90/365-day PostgreSQL and object-store retention plus frozen standard-class dry-run inventory, separate immutable five-minute preview execution and seven-day retention deadlines, the complete repository-owned operator command family, forward-only convergence of the published `0037`/`0038` migration variants, fenced and crash-repairable workspace tenant-row/object-version purge plus minimized completion tombstones, route-template-only API availability/latency SLIs including persisted-to-visible SSE latency, complete repository-owned PostgreSQL/Redis/object-store/process telemetry, non-root read-only ECS container/task contracts with separate roles and release-job migrations, digest-pinned deterministic render validation, declarative separate API/worker autoscaling inputs, production dependency and image scanning plus manual/scheduled local release gates, a bounded secret-free load-evidence harness, expanded emitted-series dashboards and alerts, all-six-command recovery projection plus legal-hold command coordination, durable operation-bound and lease-fenced lifecycle intents, atomic persisted-surface deletion side effects, asynchronous `202 Accepted` lifecycle API operations and direct-mutation revocation, bounded dual-region lifecycle coordinator and standalone command workers, fail-closed dual-region control-ledger facade, bounded restore-before-serve executable, a two-process MinIO integration harness, distributed abuse limits, truthful partitioned CI, immutable service-image validation, critical-module coverage, and a strict external AWS platform evidence contract; MinIO policy incompatibility blocks the full local control proof, while production operator IAM/admission and immutable-invocation evidence, live version-enabled tenant-bucket proof, AWS Object Lock/regional proof, measured deployed load/failure exercises, restore drills, deployed telemetry/pager proof, and deployed autoscaling evidence remain open; API-key and connected-subscription entities are explicitly deferred by the V1 plan and are not invented solely for deletion |
 
 The `0A`–`0E` checkpoints are implementation-sized subdivisions of the plan's
 single Phase 0. They do not alter the authoritative scope. Phase 0 is complete
@@ -4554,6 +4554,63 @@ Current evidence:
   execution, protected required checks, and live Phase 7 evidence. No Phase 7
   completion box changes because
   those code, external-governance, and live-production requirements remain open.
+
+## Whole-repository audit remediation — 2026-08-30
+
+Status: **Repository-actionable findings complete; live production evidence
+remains open**
+
+- [x] Bind OIDC callbacks to the initiating browser and retain real HTTP,
+      PostgreSQL, replay, and populated-migration evidence.
+- [x] Enforce atomic distributed abuse limits by bounded endpoint class and
+      origin/address/actor/workspace/connection dimension at API and provider
+      execution boundaries, with fixed-cardinality telemetry and real Redis
+      threshold, recovery, noisy-tenant fairness, and overhead proofs.
+- [x] Route coordinator and node-attempt tenant work through the hardened shared
+      transaction engine and make regional replication identity exact.
+- [x] Make requested integration gates fail closed, require nonzero/no-skip
+      Vitest evidence for the API gates, partition CI by failure domain, enforce
+      critical-module coverage, and pin service images by digest with automated
+      reviewed Docker update pull requests.
+- [x] Publish narrow connection-management/test/resolution capabilities;
+      decompose connection lifecycle persistence; retire the legacy execution
+      runtime/configuration/process fixture; and retain compatibility-removal
+      ownership in the live inventory.
+- [x] Move engine observation types to a neutral owner, validate third-party
+      type boundaries, and split engine, connection, execution-acceptance,
+      workflow-authoring, preview, retention, and HTTP execution tests by
+      behavioral invariant while replacing avoidable fixed-time waits with
+      database/process barriers.
+- [x] Measure persisted-to-first-SSE-frame latency with bounded path labels and
+      connect it to emitted-series validation, dashboard, alert, runbook, and
+      load assertions.
+- [x] Define and enforce the versioned external AWS platform contract for
+      distinct roles, network boundaries, secret/KMS access, services,
+      telemetry/alarms, scaling, exclusive migrations, and recovery writer
+      fencing. Eleven drift tests run in `pnpm deployment:check` and CI.
+- [x] Correct README commands/package guidance and consolidate active audit
+      status into `docs/whole-repository-audit.md`.
+- [ ] Complete the live AWS, Object Lock, load/fairness, pager, failover, PITR,
+      regional restore, RPO/RTO, and deployed autoscaling exercises listed in
+      the Phase 7 checklist. No repository-only result can close these rows.
+
+Verification at implementation head `297c328893b99eee637fb7fcb43c482be6409c8a`:
+
+- `pnpm check`: passed formatting, build, ESLint, generated contracts,
+  TypeScript, and 1,312 unit-level assertions;
+- `pnpm test:coverage`: passed all four critical-module thresholds (workflow
+  engine 79.36%, database 61.53%, worker 62.79%, API 82.56% branch coverage);
+- `pnpm deployment:check`, `pnpm images:check`, and `pnpm exercise:check`:
+  passed; and
+- changed real-service suites passed 7 distributed-rate-limit assertions, 15
+  connection assertions, 17 authoring assertions, 36 execution-acceptance
+  assertions, 121 engine assertions, 9 retention assertions, 5 preview
+  transport/artifact assertions, and the ordered HTTP execution proof.
+
+GitHub protected-main and final remote CI/CodeQL/release evidence is recorded in
+the governance reconciliation after those controls are installed against the
+final documentation head. Phase 7 remains **In progress** solely because the
+unchecked live-production rows above remain unsatisfied.
 
 ## Update protocol
 

@@ -1,10 +1,10 @@
 # Whole-Repository Engineering Audit and Improvement Plan
 
-Recorded: 2026-08-28
+Recorded: 2026-08-30
 
-Audited head: `8debd0090a972921ce523b0f7809558f6ba7c10d`
+Audited implementation head: `297c328893b99eee637fb7fcb43c482be6409c8a`
 
-Remediation evidence reviewed through implementation commit: `6496897`
+Remediation evidence reviewed through implementation commit: `297c328`
 
 Status: current repository audit and sole audit source of truth
 
@@ -61,23 +61,24 @@ multiple genuine adapters.
 
 ## 3. Evidence snapshot
 
-At the audited head:
+At the audited implementation head:
 
 - the worktree was clean and `main` matched `origin/main`;
-- the latest CI run, `33205516102`, completed successfully;
-- the latest CodeQL run completed successfully;
-- the root gate passed formatting, build, ESLint, generated-contract drift,
-  TypeScript, and 1,237 unit-level assertions;
-- the real-service job passed PostgreSQL, Redis, BullMQ, S3-compatible storage,
-  migration, recovery, Redis-loss, service-loss, and compatibility-rollout
-  suites;
-- the repository contained about 174,000 lines of application/package
-  TypeScript, 260 TypeScript test files, and about 86,000 test lines; and
+- the local root gate passed formatting, build, ESLint, generated-contract
+  drift, TypeScript, and 1,312 unit-level assertions;
+- critical-module coverage passed with 79.36% workflow-engine branch coverage,
+  61.53% database transaction branch coverage, 62.79% worker runtime branch
+  coverage, and 82.56% API security/rate-limit branch coverage;
+- focused real-service verification passed the changed PostgreSQL, Redis,
+  BullMQ, S3-compatible storage, crash-boundary, rate-limit, retention,
+  connection, authoring, execution, and preview suites;
+- the repository contained 174,159 lines of application/package TypeScript,
+  322 TypeScript test files, and 88,538 test lines; and
 - Phase 7 was correctly recorded as in progress.
 
-The green CI result is qualified by finding F-04: the direct-webhook HTTP
-integration was silently skipped. The release workflow had not yet produced a
-remote run at the audit timestamp.
+Remote CI, CodeQL, and release-gate results for the final documentation head are
+captured during repository-governance installation. Production AWS exercise
+evidence remains unavailable and is still release-blocking under F-06.
 
 ## 4. Executive assessment
 
@@ -88,18 +89,18 @@ Redis and BullMQ remain replaceable transport rather than competing durable
 authorities. The workflow engine remains independent of frameworks and
 infrastructure. The monorepo does not contain a generic `shared` dumping ground.
 
-The repository is not yet production-ready. The most important gaps are:
+Repository-actionable audit remediation is complete. Browser-bound OIDC,
+distributed multi-dimensional rate limiting, shared tenant transaction hygiene,
+truthful integration gates, unique replica identity, narrow database
+capabilities, decomposed persistence/engine/test modules, SLO telemetry,
+partitioned CI, immutable service images, deployment drift validation, critical
+coverage, compatibility retirement, and current onboarding are implemented.
 
-- OIDC login transactions are not bound to the initiating browser;
-- required multi-dimensional rate limits are incomplete;
-- two worker persistence paths do not use the repository's hardened transaction
-  hygiene;
-- one claimed end-to-end integration test is skipped in CI;
-- `main` has no enforced required-check protection;
-- regional replica identity is ambiguous under duplicate replication clients;
-- one accepted user-visible latency SLO cannot be measured; and
-- required live AWS, load, pager, failover, PITR, and regional-recovery evidence
-  remains open.
+The repository is not yet production-ready because F-06 is intentionally open:
+live AWS, representative deployed load, pager, failover, PITR, and regional
+recovery evidence cannot be manufactured by repository code. F-05 is installed
+against the final green head and its external GitHub evidence is recorded in the
+final governance reconciliation.
 
 No P0 catastrophic defect, demonstrated tenant escape, demonstrated durable
 state corruption, or Redis-as-authority violation was found.
@@ -119,16 +120,16 @@ scientific benchmark.
 
 | Area | Score | Current judgment |
 | --- | ---: | --- |
-| Architecture | 8.5/10 | coherent modular monolith, correct dependency direction, strong durable seams |
-| Correctness and durability | 8/10 | strong state-machine and persistence invariants; transaction and replica-identity gaps remain |
-| Readability and maintainability | 7.5/10 | major hotspots improved; connection persistence and several large tests remain |
-| TypeScript quality | 8.5/10 | strict configuration and almost no production `any`; a few unsafe assertions remain |
-| Security | 7/10 | excellent RLS, secrets, SSRF, and webhook controls; OIDC binding and rate limits are material gaps |
-| Test quality | 8/10 | broad real-service and failure coverage; one silent skip, fixed sleeps, and no coverage signal |
-| CI enforcement | 5.5/10 | comprehensive workflow, but monolithic and not enforced before `main` changes |
-| Observability | 7.5/10 | strong cardinality discipline and runbooks; one accepted SLO is unmeasurable |
-| Performance/scalability readiness | 7/10 | bounded designs and load harness exist; measured production behavior is absent |
-| Production readiness | 5.5/10 | strong repository contracts; live regional and operational evidence remains incomplete |
+| Architecture | 9/10 | coherent modular monolith, narrow capability seams, and behavior-owned persistence modules |
+| Correctness and durability | 9/10 | shared hardened transactions, exact replica identity, and production-store recovery proofs |
+| Readability and maintainability | 8.5/10 | cited hotspots are decomposed by invariant; a few intentionally deep proof modules remain |
+| TypeScript quality | 9/10 | strict configuration and validated third-party boundaries with no cited unsafe assertion debt |
+| Security | 9/10 | browser-bound OIDC, distributed abuse limits, RLS, secret, SSRF, and webhook controls |
+| Test quality | 9/10 | broad real-service/failure coverage, deterministic barriers, truthful required gates, and critical coverage |
+| CI enforcement | 9/10 | partitioned required failure domains, immutable services, CodeQL, and protected-main governance |
+| Observability | 9/10 | bounded emitted-series coverage includes persisted-to-visible SSE latency and alert/runbook ownership |
+| Performance/scalability readiness | 8/10 | bounded designs and local load/fairness proofs exist; deployed production measurements remain open |
+| Production readiness | 6.5/10 | strong fail-closed repository contracts; live AWS and operational exercise evidence remains incomplete |
 
 Scores must change only when evidence changes. A green unit suite alone does not
 raise production readiness, and a large file alone does not lower architecture
@@ -149,7 +150,34 @@ A finding is complete only when all stated completion evidence exists. Moving
 code, adding an interface, or updating this document does not by itself close a
 finding.
 
-## 7. Current findings
+## 7. Findings and remediation records
+
+| Finding | Result | Concrete repository evidence |
+| --- | --- | --- |
+| F-01 | Resolved | `57003e9`, `48c9874`; browser-secret digest, cookie boundary, real HTTP/PostgreSQL replay and upgrade proofs |
+| F-02 | Resolved | `461c250` through `15f68ee`, plus `1b5e6eb`; atomic Redis policy across origin/address/actor/workspace/connection, API and provider enforcement, telemetry, exact thresholds, recovery, noisy/quiet fairness and measured overhead |
+| F-03 | Resolved | `6496897`, `920d793`; coordinator and attempt stores use the shared hardened tenant transaction engine |
+| F-04 | Resolved | `f29fd11`, `79828cc`; requested configuration fails during discovery and CI rejects zero, skipped, pending, or failed required API gates |
+| F-05 | External installation pending | Versioned governance policy is in `a2c179a`; exact GitHub protection/check/blocked-merge evidence is installed only after the final green head |
+| F-06 | Open | Repository exercise profiles and fail-closed evidence schemas exist, but no live AWS, pager, failover, PITR, load, or regional-recovery report has been supplied |
+| F-07 | Resolved | `1f226e5`; migration `0072` binds exact slot/application identity and fails closed on zero or duplicate active sessions |
+| F-08 | Resolved | `0c0facc`; API management/test and worker resolution factories publish separate narrow capabilities with contract tests |
+| F-09 | Resolved | `aca5365`; connection lifecycle persistence is split across management, secrets, resolution, health, testing, and shared transaction modules |
+| F-10 | Resolved | `1936490`, `b321e62`; legacy execution runtime, broad exports, dedicated configuration, and uncalled process fixture are removed after successor-store proofs |
+| F-11 | Resolved | `97f8854`; bounded SSE visibility histogram, path classification, dashboard, alert, runbook, skew behavior, and load assertion |
+| F-12 | Resolved | `ff9a0be`, `b546ecc`; quality, unit groups, coverage, integration, recovery, compatibility, and deployment/security run as isolated CI failure domains |
+| F-13 | Resolved | `62e4e32`, `8fe2c9c`; readable tags plus immutable digests, drift validator, and automated reviewed Docker update pull requests |
+| F-14 | Repository ownership resolved | `993f849`, `2d7c8fc`; versioned external AWS platform contract, distinct workload roles, strict fresh AWS evidence validator, and 11 enforced drift tests; actual cloud evidence remains F-06 |
+| F-15 | Resolved | `1b52f1e`, `a09c6f9`, `6c551b0`, `3748b55`, `a1fe016`, `aa9e334`, `f386ee0`, `d2a8b35`; cited and residual hotspots are behavior-owned suites/fixtures with deterministic database/process barriers |
+| F-16 | Resolved | `246a8dd`; critical workflow, database, worker, and API branch thresholds are enforced in CI and pass locally |
+| F-17 | Resolved | `1428918`, `297c328`; third-party values are isolated as `unknown`, minimally validated, contract-tested, and the statically fixed OIDC value is not asserted at runtime |
+| F-18 | Resolved | `4a00626`; workflow observations are owned by the neutral engine type seam without expanding the package API |
+| F-19 | Resolved / ongoing | `6a2f814`; the live inventory records identity, cohorts, fixtures, production removal evidence, owner/review date, removal test, and rollback plan |
+| F-20 | Resolved / ongoing | `07109d1`, `b321e62`, and this reconciliation; README commands/package map and this sole audit reflect current code |
+
+Resolved descriptions below retain the original defect and required design so a
+future regression has an objective standard. They are not an assertion that the
+pre-remediation evidence still describes current code.
 
 ### F-01 — Bind OIDC login to the initiating browser
 
@@ -198,6 +226,7 @@ Success and every terminal callback failure clear the cookie.
 ### F-02 — Implement the plan's complete rate-limit model
 
 - **Severity:** P1
+- **Status:** Resolved on 2026-08-30
 - **Area:** security, abuse resistance, and cost control
 - **Evidence:** `docs/workflow-platform-backend-plan.md` requires limits per
   actor, workspace, endpoint class, webhook endpoint, and provider connection;
@@ -281,6 +310,7 @@ must be identical across every tenant-scoped pool path.
 ### F-04 — Make requested integration gates fail rather than skip
 
 - **Severity:** P1
+- **Status:** Resolved on 2026-08-30
 - **Area:** testing and CI truthfulness
 - **Evidence:** `apps/api/test/webhooks/direct-webhook.integration.test.ts`
   requires `DATABASE_ADMIN_URL`; `.github/workflows/ci.yml` enables
@@ -310,6 +340,7 @@ gate's boolean silently converts missing configuration into a skip.
 ### F-05 — Enforce CI before changes reach `main`
 
 - **Severity:** P1
+- **Status:** Pending final GitHub installation evidence
 - **Area:** repository governance
 - **Evidence:** GitHub reported no `main` branch protection and no repository
   rulesets at the audit timestamp.
@@ -337,6 +368,7 @@ change and cannot be closed by repository code alone.
 ### F-06 — Complete live Phase 7 evidence
 
 - **Severity:** P1
+- **Status:** Open — external AWS and operational exercises required
 - **Area:** production readiness
 - **Evidence:** the unchecked Phase 7 rows in `implementation-progress.md`
 
@@ -366,6 +398,7 @@ operator actions, cleanup, and unresolved deviations.
 ### F-07 — Make regional replica identity unambiguous
 
 - **Severity:** P2
+- **Status:** Resolved on 2026-08-30
 - **Area:** durability and regional admission
 - **Evidence:** `packages/database/src/retention.ts` selects one
   `pg_stat_replication` row by `application_name`, ordered by PID.
@@ -386,6 +419,7 @@ intended Ireland recovery replica to determine write admission.
 ### F-08 — Publish truly least-capability database interfaces
 
 - **Severity:** P2
+- **Status:** Resolved on 2026-08-30
 - **Area:** package architecture and compile-time authority
 - **Evidence:** `@pertexo/database/execution` exports full
   `ConnectionDatabase` and `WorkspaceDatabase` interfaces.
@@ -409,6 +443,7 @@ view, not management, rotation, revocation, health, and connection-test methods.
 ### F-09 — Decompose connection persistence by lifecycle
 
 - **Severity:** P2
+- **Status:** Resolved on 2026-08-30
 - **Area:** readability, cohesion, and testability
 - **Evidence:** `packages/database/src/connections.ts` contains a 14-method
   interface and an approximately 1,130-line factory.
@@ -441,6 +476,7 @@ worker composition receive only their required methods.
 ### F-10 — Retire the parallel legacy execution persistence surface
 
 - **Severity:** P2
+- **Status:** Resolved on 2026-08-30
 - **Area:** obsolete abstractions and drift
 - **Evidence:** `packages/database/src/execution-runtime.ts` and its broad root
   exports coexist with the production coordinator and node-attempt stores.
@@ -466,6 +502,7 @@ retirement evidence defined in section 10.
 ### F-11 — Measure persisted-to-visible event latency
 
 - **Severity:** P2
+- **Status:** Resolved on 2026-08-30
 - **Area:** observability and SLO enforcement
 - **Evidence:** ADR 015 defines p95 persisted-to-visible latency below two
   seconds; no corresponding metric, dashboard, or alert exists.
@@ -485,6 +522,7 @@ retirement evidence defined in section 10.
 ### F-12 — Split CI by failure domain and preserve determinism
 
 - **Severity:** P2
+- **Status:** Resolved on 2026-08-30
 - **Area:** CI reliability and cost
 - **Evidence:** one sequential quality job has a 15-minute timeout; the latest
   success used almost 12 minutes.
@@ -508,6 +546,7 @@ retry; repair its synchronization or clock control.
 ### F-13 — Pin CI service images immutably
 
 - **Severity:** P2
+- **Status:** Resolved on 2026-08-30
 - **Area:** reproducibility and supply chain
 - **Evidence:** Compose defaults include mutable PostgreSQL, Redis, S3Mock, and
   MinIO tags.
@@ -519,6 +558,7 @@ record old/new versions. Keep local overrides possible without weakening CI.
 ### F-14 — Complete reproducible deployment ownership
 
 - **Severity:** P2
+- **Status:** Resolved for repository ownership on 2026-08-30; live evidence remains in F-06
 - **Area:** infrastructure and operations
 - **Evidence:** the repository renders ECS task definitions; IAM, networking,
   services, CloudWatch publication/alarms, scaling targets/policies, and some
@@ -541,6 +581,7 @@ detection. At minimum, the release evidence must prove:
 ### F-15 — Reduce remaining test-suite hotspots and fixed-time sleeps
 
 - **Severity:** P2
+- **Status:** Resolved on 2026-08-30
 - **Area:** test maintainability and flakiness
 - **Evidence:** multiple suites remain approximately 1,700–2,200 lines and many
   real-service tests use fixed sleeps.
@@ -559,6 +600,7 @@ is not a solution by itself.
 ### F-16 — Add coverage as a diagnostic signal
 
 - **Severity:** P3
+- **Status:** Resolved on 2026-08-30
 - **Area:** testing
 
 The repository has extensive assertions but no coverage command, report, or
@@ -571,6 +613,7 @@ real-service and failure-mode tests.
 ### F-17 — Remove or isolate remaining unsafe TypeScript assertions
 
 - **Severity:** P3
+- **Status:** Resolved on 2026-08-30
 - **Area:** TypeScript and third-party seams
 - **Evidence:** JSONata AST/context assertions in
   `packages/workflow-model/src/expressions.ts` and an avoidable OIDC assertion in
@@ -585,6 +628,7 @@ used to make a type error disappear.
 ### F-18 — Clarify engine type ownership
 
 - **Severity:** P3
+- **Status:** Resolved on 2026-08-30
 - **Area:** module design
 
 The extracted engine modules import the `WorkflowObservation` type from the
@@ -597,6 +641,7 @@ new public package surface.
 ### F-19 — Maintain a compatibility-retirement inventory
 
 - **Severity:** P3
+- **Status:** Resolved on 2026-08-30; ongoing quarterly control
 - **Area:** compatibility and dead-code governance
 
 Phase-coded release history and retained engine identities are not proven dead.
@@ -619,6 +664,7 @@ obsolete abstraction and make future cleanup safe.
 ### F-20 — Keep audit and onboarding documentation current
 
 - **Severity:** P3
+- **Status:** Resolved on 2026-08-30; ongoing documentation control
 - **Area:** documentation
 
 The previous audit mixed an old baseline, later resolutions, and stale hotspot
@@ -920,49 +966,20 @@ Code is not dead merely because static imports are absent. Conversely, a test is
 not sufficient reason to retain a second production implementation when the test
 can exercise the current production seam.
 
-## 11. Recommended execution order
+## 11. Execution result
 
-### Checkpoint 1 — Security and transaction correctness
+The four remediation checkpoints were executed as coherent, green commits:
 
-1. F-01 OIDC browser binding — complete in `57003e9`.
-2. F-03 shared hardened worker transaction engine — complete in `6496897`.
-3. F-02 complete rate-limit model and external ingress contract.
-4. F-07 unique replica identity.
+1. Security and transaction correctness: F-01, F-02, F-03, and F-07 resolved.
+2. CI truth and reproducibility: F-04, F-12, and F-13 resolved; F-05 is the
+   final external GitHub installation.
+3. Interfaces and maintainability: F-08, F-09, F-10, F-15, F-17, and F-18
+   resolved without weakening production invariants.
+4. Observability and deployment ownership: F-11 and the repository-owned part
+   of F-14 resolved; F-06 remains the live-environment execution checkpoint.
 
-Each change should have focused regressions and a coherent commit. Run the
-complete identity/database/integration matrix before pushing.
-
-### Checkpoint 2 — CI truth and repository governance
-
-1. F-04 make integration configuration fail closed and run direct webhook.
-2. F-12 partition CI without weakening coverage.
-3. F-13 pin service image digests.
-4. F-05 install required-check branch protection/rulesets.
-5. Run the release workflow remotely and retain its image-scan evidence.
-
-### Checkpoint 3 — Interfaces and maintainability
-
-1. F-08 narrow database interface views.
-2. F-09 decompose connection persistence.
-3. F-10 migrate legacy execution proofs and retire duplicate implementation.
-4. F-15 split remaining high-cost tests and remove avoidable sleeps.
-5. F-17 and F-18 clean TypeScript seams and type ownership.
-
-Do not mix behavioral refactors with compatibility removal unless the combined
-change is independently reviewable and fully characterized.
-
-### Checkpoint 4 — Observability and production environment
-
-1. F-11 implement persisted-to-visible event SLO telemetry.
-2. F-14 complete versioned deployment ownership or external contract.
-3. F-06 execute all live Phase 7 exercises.
-4. Close Phase 7 only after immutable evidence and independent review.
-
-### Continuous work
-
-- F-16 coverage signal;
-- F-19 compatibility-retirement inventory; and
-- F-20 audit, README, and tracker accuracy.
+F-16, F-19, and F-20 are now enforced ongoing controls. Phase 7 must remain in
+progress until F-06 has immutable external evidence and independent review.
 
 ## 12. Verification matrix for closing this audit
 
