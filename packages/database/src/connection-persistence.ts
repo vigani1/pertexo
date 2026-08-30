@@ -387,7 +387,9 @@ export function keyDigest(value: string): string {
     .digest('hex');
 }
 
-export function safeOptionalIdentifier(value: string | undefined): string | null {
+export function safeOptionalIdentifier(
+  value: string | undefined,
+): string | null {
   return value === undefined ? null : requestIdentifierSchema.parse(value);
 }
 
@@ -505,7 +507,10 @@ export async function selectConnection(
   return result.rows[0] === undefined ? null : mapConnection(result.rows[0]);
 }
 
-export function databaseConstraint(error: unknown, constraint: string): boolean {
+export function databaseConstraint(
+  error: unknown,
+  constraint: string,
+): boolean {
   return (
     error !== null &&
     typeof error === 'object' &&
@@ -542,7 +547,9 @@ export const durableConnectionSnapshotSchema = z
   })
   .strict();
 
-export function durableConnectionSnapshot(value: unknown): ConnectionRecord | null {
+export function durableConnectionSnapshot(
+  value: unknown,
+): ConnectionRecord | null {
   const parsed = durableConnectionSnapshotSchema.safeParse(value);
   if (!parsed.success) return null;
   return Object.freeze({
@@ -597,7 +604,9 @@ export const durableConnectionTestResultSchema = z
   })
   .strict();
 
-export function parseConnectionTestResult(value: unknown): ConnectionTestResult {
+export function parseConnectionTestResult(
+  value: unknown,
+): ConnectionTestResult {
   const parsed = durableConnectionTestResultSchema.parse(value);
   const connection = durableConnectionSnapshot(parsed.connection);
   if (connection === null)
@@ -615,7 +624,10 @@ export function serializeConnectionTestResult(
   });
 }
 
-export function connectionTestScope(actorId: string, connectionId: string): string {
+export function connectionTestScope(
+  actorId: string,
+  connectionId: string,
+): string {
   return `${uuidSchema.parse(actorId)}:${uuidSchema.parse(connectionId)}`;
 }
 
