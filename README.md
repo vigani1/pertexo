@@ -91,7 +91,6 @@ pnpm dev:worker
 pnpm test
 pnpm check
 pnpm test:integration
-pnpm --filter @pertexo/worker test:phase0e
 pnpm --filter @pertexo/api test:sse-resilience
 pnpm --filter @pertexo/worker test:resilience
 pnpm --filter @pertexo/api test:compatibility-rollout
@@ -100,8 +99,10 @@ pnpm --filter @pertexo/api test:compatibility-rollout
 `pnpm check` is the static and unit gate: formatting, build, lint, generated
 contract drift, TypeScript, and package unit tests. It does not replace
 `pnpm test:integration`, which requires the local PostgreSQL, Redis, and
-S3-compatible services above. Phase 0E, resilience, and compatibility rollout
-commands are separate destructive or recovery-focused gates.
+S3-compatible services above. Resilience and compatibility-rollout commands
+are separate destructive or recovery-focused gates. Historical Phase 0E
+invariants now run through the production coordinator, node-attempt, and SSE
+integration suites selected by CI's `recovery` job.
 
 ## Project Status
 

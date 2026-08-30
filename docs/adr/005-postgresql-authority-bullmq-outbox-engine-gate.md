@@ -223,6 +223,12 @@ and migration head `0007_execution_runtime.sql`. The final command matrix was:
 - `WORKER_TRANSPORT_RESILIENCE=true pnpm --filter @pertexo/worker
   test:resilience`.
 
+This command list is retained as the historical decision evidence. On
+2026-08-30 the parallel legacy execution persistence surface, its dedicated
+Vitest configuration, and its process fixture were retired after these crash
+and recovery invariants moved to the production coordinator, node-attempt, run
+event, and SSE suites. CI's `recovery` job is the current executable gate.
+
 The process fixture passed five destructive assertions in 41.16 seconds. It
 SIGKILLed coordinator processes after immutable-version/checkpoint recovery and
 on both sides of checkpoint CAS, then proved exact fresh-process reconstruction
