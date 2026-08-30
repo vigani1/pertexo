@@ -16,6 +16,7 @@
     "dev:api": "pnpm --filter @pertexo/api dev",
     "dev:worker": "pnpm --filter @pertexo/worker dev",
     "deployment:check": "node infrastructure/ecs/validate-deployment.mjs && node infrastructure/ecs/validate-render.mjs",
+    "deployment:evidence:check": "node infrastructure/ecs/validate-external-platform-evidence.mjs",
     "deployment:render": "node infrastructure/ecs/render-task-definitions.mjs",
     "db:migrate": "pnpm --filter @pertexo/database db:migrate",
     "db:provision-operator": "node infrastructure/postgres/provision-operator-role.mjs",

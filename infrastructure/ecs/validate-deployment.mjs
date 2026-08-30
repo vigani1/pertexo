@@ -10,6 +10,12 @@ const manifest = JSON.parse(
 const autoscaling = JSON.parse(
   await readFile(resolve(root, 'infrastructure/ecs/autoscaling.json'), 'utf8'),
 );
+const externalPlatform = JSON.parse(
+  await readFile(
+    resolve(root, 'infrastructure/ecs/external-platform-contract.json'),
+    'utf8',
+  ),
+);
 const dockerfile = await readFile(resolve(root, 'Dockerfile'), 'utf8');
 const releaseJob = await readFile(
   resolve(root, 'infrastructure/ecs/run-release-job.sh'),
@@ -54,6 +60,91 @@ const readinessMarkers = new Map([
   ['worker', '/tmp/pertexo-worker-ready'],
   ['lifecycle-command', '/tmp/pertexo-lifecycle-command-ready'],
 ]);
+const expectedExternalWorkloads = [...expectedCommands.keys()];
+const expectedTelemetryWorkloads = [...telemetryWorkloads];
+const expectedRegionalEndpoints = [
+  'container-registry',
+  'identity-provider',
+  'kms',
+  'logs',
+  'object-storage',
+  'otel',
+  'postgresql',
+  'provider-api',
+  'redis',
+  'secrets-manager',
+];
+
+if (
+  externalPlatform.schemaVersion !== 1 ||
+  externalPlatform.provider !== 'aws' ||
+  externalPlatform.computePlatform !== 'ecs-fargate'
+)
+  throw new Error('unsupported external platform contract');
+if (
+  externalPlatform.primaryRegion !== 'eu-central-1' ||
+  externalPlatform.recoveryRegion !== 'eu-west-1'
+)
+  throw new Error('external platform regions must match ADR 015');
+if (
+  externalPlatform.evidence.source !== 'aws-api' ||
+  !externalPlatform.evidence.requireDistinctTaskRoles ||
+  !externalPlatform.evidence.requireDistinctExecutionRoles ||
+  !externalPlatform.evidence.forbidWildcardIamActions ||
+  !externalPlatform.evidence.forbidSensitiveResourceWildcards
+)
+  throw new Error('external platform IAM evidence must fail closed');
+if (
+  externalPlatform.network.assignPublicIp ||
+  externalPlatform.network.minimumPrimaryAvailabilityZones < 2 ||
+  externalPlatform.network.publicIngress.workload !== 'api' ||
+  externalPlatform.network.publicIngress.containerPort !== 3000 ||
+  externalPlatform.network.publicIngress.sourceClass !== 'trusted-ingress'
+)
+  throw new Error('external platform network contract is unsafe');
+if (
+  JSON.stringify(
+    Object.keys(externalPlatform.network.egressByWorkload).sort(),
+  ) !== JSON.stringify(expectedExternalWorkloads.sort()) ||
+  JSON.stringify(
+    [...externalPlatform.network.requiredRegionalEndpoints].sort(),
+  ) !== JSON.stringify(expectedRegionalEndpoints)
+)
+  throw new Error('external platform egress inventory is incomplete');
+if (
+  JSON.stringify([...externalPlatform.telemetry.requiredWorkloads].sort()) !==
+    JSON.stringify(expectedTelemetryWorkloads.sort()) ||
+  !externalPlatform.telemetry.requireMetricPublication ||
+  !externalPlatform.telemetry.requireAlarmActions
+)
+  throw new Error('external platform telemetry contract is incomplete');
+if (
+  externalPlatform.migration.workload !== 'migration' ||
+  externalPlatform.migration.maximumConcurrentTasks !== 1 ||
+  !externalPlatform.migration.mustCompleteBeforeServiceUpdate
+)
+  throw new Error('external platform migration contract is unsafe');
+if (
+  externalPlatform.recoveryWriterFence.region !== 'eu-west-1' ||
+  !externalPlatform.recoveryWriterFence.requiredClosedIngress ||
+  externalPlatform.recoveryWriterFence.requiredWriterDesiredCount !== 0
+)
+  throw new Error('external platform recovery writer fence is unsafe');
+if (
+  JSON.stringify(
+    [...externalPlatform.recoveryWriterFence.writerWorkloads].sort(),
+  ) !==
+  JSON.stringify(
+    [
+      'api',
+      'worker',
+      'lifecycle-command',
+      'retention',
+      'operator-command',
+    ].sort(),
+  )
+)
+  throw new Error('external platform recovery writer inventory is incomplete');
 
 if (!dockerfile.includes('USER 10001:10001'))
   throw new Error('runtime image must be non-root');

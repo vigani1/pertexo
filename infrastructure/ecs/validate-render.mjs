@@ -21,7 +21,8 @@ const renderEnvironment = {
   AWS_REGION: 'eu-central-1',
   ECS_CONFIG_PREFIX_ARN:
     'arn:aws:ssm:eu-central-1:000000000000:parameter/pertexo',
-  ECS_EXECUTION_ROLE_ARN: 'arn:aws:iam::000000000000:role/pertexo-execution',
+  ECS_EXECUTION_ROLE_ARN_PREFIX:
+    'arn:aws:iam::000000000000:role/pertexo-execution',
   ECS_IMAGE_URI: image,
   ECS_LOG_GROUP: '/pertexo/application',
   ECS_SECRET_PREFIX_ARN:
@@ -75,6 +76,13 @@ try {
       `${renderEnvironment.ECS_TASK_ROLE_ARN_PREFIX}/${container.name}`
     )
       throw new Error(`${file} does not use its workload-specific task role`);
+    if (
+      task.executionRoleArn !==
+      `${renderEnvironment.ECS_EXECUTION_ROLE_ARN_PREFIX}/${container.name}`
+    )
+      throw new Error(
+        `${file} does not use its workload-specific execution role`,
+      );
   }
 
   try {

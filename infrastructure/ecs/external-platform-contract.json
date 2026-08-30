@@ -1,0 +1,132 @@
+{
+  "schemaVersion": 1,
+  "provider": "aws",
+  "computePlatform": "ecs-fargate",
+  "primaryRegion": "eu-central-1",
+  "recoveryRegion": "eu-west-1",
+  "evidence": {
+    "source": "aws-api",
+    "maximumAgeMinutes": 60,
+    "requireImmutableImage": true,
+    "requireDistinctTaskRoles": true,
+    "requireDistinctExecutionRoles": true,
+    "forbidWildcardIamActions": true,
+    "forbidSensitiveResourceWildcards": true
+  },
+  "network": {
+    "assignPublicIp": false,
+    "minimumPrimaryAvailabilityZones": 2,
+    "requiredRegionalEndpoints": [
+      "container-registry",
+      "identity-provider",
+      "kms",
+      "logs",
+      "object-storage",
+      "otel",
+      "postgresql",
+      "provider-api",
+      "redis",
+      "secrets-manager"
+    ],
+    "egressByWorkload": {
+      "api": [
+        "container-registry",
+        "identity-provider",
+        "kms",
+        "logs",
+        "otel",
+        "postgresql",
+        "redis",
+        "secrets-manager"
+      ],
+      "worker": [
+        "container-registry",
+        "kms",
+        "logs",
+        "object-storage",
+        "otel",
+        "postgresql",
+        "provider-api",
+        "redis",
+        "secrets-manager"
+      ],
+      "lifecycle-command": [
+        "container-registry",
+        "logs",
+        "object-storage",
+        "otel",
+        "postgresql",
+        "secrets-manager"
+      ],
+      "retention": [
+        "container-registry",
+        "logs",
+        "object-storage",
+        "otel",
+        "postgresql",
+        "secrets-manager"
+      ],
+      "recovery": [
+        "container-registry",
+        "logs",
+        "object-storage",
+        "otel",
+        "postgresql",
+        "secrets-manager"
+      ],
+      "operator-command": [
+        "container-registry",
+        "logs",
+        "otel",
+        "postgresql",
+        "secrets-manager"
+      ],
+      "migration": [
+        "container-registry",
+        "logs",
+        "postgresql",
+        "secrets-manager"
+      ]
+    },
+    "publicIngress": {
+      "workload": "api",
+      "containerPort": 3000,
+      "sourceClass": "trusted-ingress"
+    }
+  },
+  "services": {
+    "minimumHealthyPercent": 100,
+    "maximumPercent": 200,
+    "healthCheckGracePeriodSeconds": 60,
+    "drainSeconds": 120
+  },
+  "telemetry": {
+    "requiredWorkloads": [
+      "api",
+      "worker",
+      "lifecycle-command",
+      "retention",
+      "recovery",
+      "operator-command"
+    ],
+    "requireMetricPublication": true,
+    "requireAlarmActions": true
+  },
+  "migration": {
+    "workload": "migration",
+    "maximumConcurrentTasks": 1,
+    "mustCompleteBeforeServiceUpdate": true
+  },
+  "recoveryWriterFence": {
+    "region": "eu-west-1",
+    "requiredClosedIngress": true,
+    "requiredWriterDesiredCount": 0,
+    "writerWorkloads": [
+      "api",
+      "worker",
+      "lifecycle-command",
+      "retention",
+      "operator-command"
+    ]
+  }
+}

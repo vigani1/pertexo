@@ -9,7 +9,7 @@ const manifest = JSON.parse(
 );
 const outputDirectory = resolve(process.argv[2] ?? 'dist/ecs-task-definitions');
 const requiredEnvironment = [
-  'ECS_EXECUTION_ROLE_ARN',
+  'ECS_EXECUTION_ROLE_ARN_PREFIX',
   'ECS_CONFIG_PREFIX_ARN',
   'ECS_IMAGE_URI',
   'ECS_LOG_GROUP',
@@ -85,7 +85,7 @@ for (const [name, workload] of Object.entries(manifest.workloads).sort(
     networkMode: manifest.platform.networkMode,
     cpu: manifest.platform.cpu,
     memory: manifest.platform.memory,
-    executionRoleArn: process.env.ECS_EXECUTION_ROLE_ARN,
+    executionRoleArn: `${process.env.ECS_EXECUTION_ROLE_ARN_PREFIX}/${name}`,
     taskRoleArn: `${process.env.ECS_TASK_ROLE_ARN_PREFIX}/${name}`,
     runtimePlatform: {
       cpuArchitecture: manifest.platform.architecture,

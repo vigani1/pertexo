@@ -10,8 +10,13 @@ deployment evidence.
   vulnerabilities in production dependencies. Registry errors fail the gate;
   they are not treated as a clean audit.
 - `pnpm deployment:check` validates the Docker/ECS source contract, independent
-  API and worker autoscaling declarations, and two byte-identical task-definition
-  renders. It also proves that a mutable image tag is rejected.
+  API and worker autoscaling declarations, the external-platform evidence
+  contract, and two byte-identical task-definition renders. It also proves that
+  a mutable image tag is rejected.
+- `pnpm deployment:evidence:check -- /absolute/path/to/aws-evidence.json`
+  validates a fresh AWS-API snapshot against that exact reviewed contract. This
+  command is a production release gate and intentionally fails when no snapshot
+  is supplied.
 - `pnpm release:check` runs the dependency audit, the full root quality gate,
   deployment validation, and exercise-contract validation in that order.
 
@@ -38,7 +43,9 @@ deployment must retain it alongside the exact deployed image digest.
 The release migration remains a one-off ECS task. Deployment automation must
 wait for its successful exit before updating serving tasks. The local gate does
 not prove AWS IAM, networking, Secrets Manager delivery, service rollout,
-autoscaling alarms/policies, or migration execution against production.
+autoscaling alarms/policies, or migration execution against production. The
+versioned handoff and exact live evidence requirements are documented in
+[External platform deployment contract](./external-platform-contract.md).
 
 Changes to readiness-hashed PostgreSQL functions follow the synchronized
 forward-migration, startup, and rollback procedure in
