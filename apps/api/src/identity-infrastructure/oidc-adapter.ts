@@ -145,8 +145,7 @@ export class GenericOidcProviderAdapter implements OidcProviderPort {
 
   authorizationUrl(request: OidcAuthorizationRequest): string {
     if (
-      (request as unknown as { codeChallengeMethod: string })
-        .codeChallengeMethod !== 'S256' ||
+      request.codeChallengeMethod !== 'S256' ||
       request.state.length < 16 ||
       request.state.length > 512 ||
       request.nonce.length < 16 ||

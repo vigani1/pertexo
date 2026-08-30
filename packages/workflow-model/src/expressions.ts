@@ -134,12 +134,43 @@ const FORBIDDEN_ROOT_NAMES = new Set([
   'globalThis',
   'module',
 ]);
-type Ast = Record<string, unknown> & {
-  type?: string;
-  value?: unknown;
-  procedure?: Ast;
-  steps?: Ast[];
-};
+type JsonataAst = Readonly<Record<string, unknown>>;
+
+function isRecord(value: unknown): value is JsonataAst {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isJsonObject(
+  value: JsonValue,
+): value is Readonly<Record<string, JsonValue>> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isUnknownArray(value: unknown): value is readonly unknown[] {
+  return Array.isArray(value);
+}
+
+/**
+ * JSONata's public AST type is permissive and has changed shape between
+ * releases. Keep the dependency conversion here, validate what the policy
+ * walker consumes, and let the caller classify malformed dependency output as
+ * an invalid expression.
+ */
+function readJsonataAst(value: unknown): JsonataAst {
+  if (!isRecord(value))
+    throw new TypeError('JSONata returned a non-object AST');
+  if (value.type !== undefined && typeof value.type !== 'string')
+    throw new TypeError('JSONata returned an invalid AST node type');
+  if (value.procedure !== undefined && !isRecord(value.procedure))
+    throw new TypeError('JSONata returned an invalid AST procedure');
+  if (
+    value.steps !== undefined &&
+    (!Array.isArray(value.steps) || value.steps.some((step) => !isRecord(step)))
+  )
+    throw new TypeError('JSONata returned invalid AST path steps');
+  return value;
+}
+
 function error(
   code: Extract<ExpressionResult, { kind: 'error' }>['code'],
   message: string,
@@ -149,7 +180,7 @@ function error(
     ? { kind: 'error', code, message }
     : { kind: 'error', code, message, limit };
 }
-function astSize(root: Ast): {
+function astSize(root: JsonataAst): {
   nodes: number;
   depth: number;
   disallowed?: string;
@@ -163,14 +194,17 @@ function astSize(root: Ast): {
       return;
     }
     if (value === null || typeof value !== 'object') return;
-    const node = value as Ast;
-    if (typeof node.type === 'string') {
+    if (!isRecord(value)) return;
+    const type = value.type;
+    if (typeof type === 'string') {
       nodes += 1;
       depth = Math.max(depth, level);
-      if (DISALLOWED_TYPES.has(node.type) || !ALLOWED_TYPES.has(node.type))
-        disallowed = node.type;
-      if (node.type === 'function') {
-        const procedure = node.procedure;
+      if (DISALLOWED_TYPES.has(type) || !ALLOWED_TYPES.has(type))
+        disallowed = type;
+      if (type === 'function') {
+        const procedure = isRecord(value.procedure)
+          ? value.procedure
+          : undefined;
         if (
           procedure?.type !== 'variable' ||
           typeof procedure.value !== 'string' ||
@@ -179,27 +213,30 @@ function astSize(root: Ast): {
           disallowed = 'callable';
       }
       if (
-        (node.type === 'path' || node.type === 'name') &&
-        (Object.hasOwn(node, 'group') ||
-          Object.hasOwn(node, 'focus') ||
-          Object.hasOwn(node, 'index') ||
-          Object.hasOwn(node, 'tuple'))
+        (type === 'path' || type === 'name') &&
+        (Object.hasOwn(value, 'group') ||
+          Object.hasOwn(value, 'focus') ||
+          Object.hasOwn(value, 'index') ||
+          Object.hasOwn(value, 'tuple'))
       )
         disallowed = 'path_metadata';
       if (
-        node.type === 'variable' &&
+        type === 'variable' &&
         parentKey !== 'procedure' &&
-        node.value !== ''
+        value.value !== ''
       )
         disallowed = 'variable';
+      const steps = isUnknownArray(value.steps) ? value.steps : undefined;
+      const firstStep = steps?.[0];
       if (
-        node.type === 'path' &&
-        node.steps?.[0]?.type === 'name' &&
-        FORBIDDEN_ROOT_NAMES.has(String(node.steps[0].value))
+        type === 'path' &&
+        isRecord(firstStep) &&
+        firstStep.type === 'name' &&
+        FORBIDDEN_ROOT_NAMES.has(String(firstStep.value))
       )
         disallowed = 'host_identifier';
     }
-    for (const [key, child] of Object.entries(node))
+    for (const [key, child] of Object.entries(value))
       if (!['value', 'position', 'type'].includes(key))
         visit(child, level + 1, key);
   };
@@ -224,7 +261,7 @@ export function validateExpression(
       'expression_bytes',
     );
   try {
-    const ast = jsonata(source).ast() as unknown as Ast;
+    const ast = readJsonataAst(jsonata(source).ast());
     const size = astSize(ast);
     if (size.depth > EXPRESSION_POLICY_V1.astDepth)
       return error('limit_exceeded', 'AST depth exceeds policy', 'ast_depth');
@@ -284,10 +321,31 @@ function projectExpressionContext(value: unknown): ExpressionContextV1 {
     !Object.hasOwn(context, 'nodeOutputs')
   )
     throw new TypeError('expression context requires runInput and nodeOutputs');
-  return canonicalizeJson({
+  const canonical = canonicalizeJson({
     runInput: context.runInput,
     nodeOutputs: context.nodeOutputs,
-  }) as unknown as ExpressionContextV1;
+  });
+  if (!isJsonObject(canonical))
+    throw new TypeError('expression context must be an object');
+  if (
+    !Object.hasOwn(canonical, 'runInput') ||
+    !Object.hasOwn(canonical, 'nodeOutputs')
+  )
+    throw new TypeError('expression context requires runInput and nodeOutputs');
+  const runInput = canonical.runInput;
+  const nodeOutputs = canonical.nodeOutputs;
+  if (
+    runInput === undefined ||
+    nodeOutputs === undefined ||
+    !isJsonObject(nodeOutputs)
+  )
+    throw new TypeError(
+      'expression context requires JSON runInput and nodeOutputs',
+    );
+  return {
+    runInput,
+    nodeOutputs,
+  };
 }
 export class JsonataEvaluator {
   readonly #maxActive: number;

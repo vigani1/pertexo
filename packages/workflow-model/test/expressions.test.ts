@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import jsonata from 'jsonata';
 import { afterEach, describe, expect, it } from 'vitest';
 import { canonicalJson, type JsonValue } from '../src/canonical-json.js';
 import {
@@ -14,6 +15,23 @@ afterEach(async () => {
 });
 
 describe('restricted JSONata policy v1', () => {
+  it('keeps the pinned JSONata AST contract behind the policy boundary', () => {
+    expect(JSONATA_EVALUATOR_DIAGNOSTICS.libraryVersion).toBe('2.2.2');
+    expect(jsonata('runInput.name').ast()).toMatchObject({
+      type: 'path',
+      steps: [
+        { type: 'name', value: 'runInput' },
+        { type: 'name', value: 'name' },
+      ],
+    });
+    expect(jsonata('$uppercase(runInput.name)').ast()).toMatchObject({
+      type: 'function',
+      procedure: { type: 'variable', value: 'uppercase' },
+      arguments: [{ type: 'path' }],
+    });
+    expect(validateExpression('runInput.name', 1)).toEqual({ kind: 'valid' });
+  });
+
   it('accepts navigation/construction/pure built-ins and rejects capabilities before execution', () => {
     expect(
       validateExpression(
