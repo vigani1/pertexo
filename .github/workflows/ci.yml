@@ -172,6 +172,8 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Build workspace dependencies
+        run: pnpm build
       - name: Run ${{ matrix.group }} unit tests
         run: |
           set -o pipefail
@@ -204,6 +206,8 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Build workspace dependencies
+        run: pnpm build
       - name: Enforce critical-module coverage baselines
         run: pnpm test:coverage
       - name: Upload coverage summaries
