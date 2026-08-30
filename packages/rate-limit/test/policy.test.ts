@@ -53,6 +53,17 @@ describe('abuse rate-limit policy', () => {
     });
   });
 
+  it('limits authenticated mutations that do not yet have a workspace by actor', () => {
+    expect(
+      policy.evaluate('actor_mutation', subject({ workspaceId: undefined })),
+    ).toEqual({
+      endpointClass: 'actor_mutation',
+      failureMode: 'closed',
+      windowSeconds: 60,
+      dimensions: [{ kind: 'actor', identifier: actorId, limit: 120 }],
+    });
+  });
+
   it('fails policy evaluation when a required authoritative subject is absent', () => {
     expect(() =>
       policy.evaluate('workflow_compile', subject({ actorId: undefined })),

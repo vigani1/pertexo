@@ -150,7 +150,7 @@ export class SessionController {
   ) {}
 
   @Post('logout')
-  @RateLimit('ordinary_mutation')
+  @RateLimit('actor_mutation')
   @HttpCode(204)
   @UseGuards(SessionAuthenticationGuard, CsrfProtectionGuard)
   public async logout(
@@ -185,7 +185,7 @@ export class WorkspaceController {
   ) {}
 
   @Post()
-  @RateLimit('ordinary_mutation')
+  @RateLimit('actor_mutation')
   @UseGuards(SessionAuthenticationGuard, CsrfProtectionGuard)
   public async create(
     @Req() request: IdentityWorkspaceRequest,

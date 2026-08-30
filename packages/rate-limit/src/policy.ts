@@ -2,6 +2,7 @@ export const RATE_LIMIT_ENDPOINT_CLASSES = [
   'identity_start',
   'identity_callback',
   'authenticated_read',
+  'actor_mutation',
   'ordinary_mutation',
   'workflow_compile',
   'run_admission',
@@ -71,6 +72,10 @@ const RULES: Readonly<Record<RateLimitEndpointClass, EndpointRule>> = {
       { kind: 'actor', subject: 'actorId', limit: 600 },
       { kind: 'workspace', subject: 'workspaceId', limit: 1_200 },
     ],
+  },
+  actor_mutation: {
+    failureMode: 'closed',
+    dimensions: [{ kind: 'actor', subject: 'actorId', limit: 120 }],
   },
   ordinary_mutation: {
     failureMode: 'closed',

@@ -31,8 +31,8 @@ const routes: readonly (readonly [
 ])[] = [
   [OidcController, 'start', 'identity_start'],
   [OidcController, 'callback', 'identity_callback'],
-  [SessionController, 'logout', 'ordinary_mutation'],
-  [WorkspaceController, 'create', 'ordinary_mutation'],
+  [SessionController, 'logout', 'actor_mutation'],
+  [WorkspaceController, 'create', 'actor_mutation'],
   [WorkspaceController, 'requestDeletion', 'ordinary_mutation'],
   [WorkspaceController, 'restore', 'ordinary_mutation'],
   [WorkspaceController, 'readLifecycleOperation', 'authenticated_read'],
