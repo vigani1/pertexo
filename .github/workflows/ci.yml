@@ -262,6 +262,14 @@ jobs:
           set -o pipefail
           mkdir -p artifacts
           { pnpm db:migrate; pnpm test:integration; } 2>&1 | tee artifacts/integration.log
+      - name: Prove required API integration gates executed
+        run: |
+          pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts \
+            test/webhooks/direct-webhook.integration.test.ts \
+            test/rate-limit/distributed-rate-limiter.integration.test.ts \
+            --reporter=json --outputFile=artifacts/required-api-gates.json
+          node infrastructure/validate-vitest-gate-report.mjs \
+            artifacts/required-api-gates.json 'required API integration gates'
       - name: Capture integration logs
         if: failure()
         run: |
