@@ -178,6 +178,7 @@ describe('run event SSE reconstruction', () => {
       data: JSON.stringify(event(2)),
       event: 'run.progressed',
       id: 2,
+      visibilityPath: 'reconnect_backfill',
     });
     expect(reader.calls).toEqual([1, 3]);
     await iterator.return(undefined);
@@ -201,8 +202,12 @@ describe('run event SSE reconstruction', () => {
     expect((await nextFrame(iterator)).id).toBe(1);
     reader.events.push(event(2), event(3));
     subscription.push(ref(3));
-    expect((await nextFrame(iterator)).id).toBe(2);
-    expect((await nextFrame(iterator)).id).toBe(3);
+    const liveFirst = await nextFrame(iterator);
+    const liveSecond = await nextFrame(iterator);
+    expect(liveFirst.id).toBe(2);
+    expect(liveFirst.visibilityPath).toBe('live_wakeup');
+    expect(liveSecond.id).toBe(3);
+    expect(liveSecond.visibilityPath).toBe('live_wakeup');
 
     subscription.push(ref(2));
     reader.events.push(event(4));
@@ -255,8 +260,12 @@ describe('run event SSE reconstruction', () => {
     expect((await nextFrame(iterator)).id).toBe(1);
     reader.events.push(event(2), event(3));
     subscription.push({ kind: 'resync' });
-    expect((await nextFrame(iterator)).id).toBe(2);
-    expect((await nextFrame(iterator)).id).toBe(3);
+    const recoveredFirst = await nextFrame(iterator);
+    const recoveredSecond = await nextFrame(iterator);
+    expect(recoveredFirst.id).toBe(2);
+    expect(recoveredFirst.visibilityPath).toBe('recovery_backfill');
+    expect(recoveredSecond.id).toBe(3);
+    expect(recoveredSecond.visibilityPath).toBe('recovery_backfill');
     await iterator.return(undefined);
   });
 

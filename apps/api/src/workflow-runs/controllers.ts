@@ -3,8 +3,10 @@ import {
   Controller,
   Get,
   HttpCode,
+  Inject,
   Param,
   Post,
+  Optional,
   Req,
   Sse,
   UseGuards,
@@ -29,6 +31,12 @@ import {
   traceIdentifier,
 } from '../identity-workspace/index.js';
 import { applicationError } from '../platform/http/index.js';
+import {
+  createSseVisibilityMetrics,
+  SSE_VISIBILITY_METRICS,
+  type SseVisibilityMetrics,
+  type SseVisibilityPath,
+} from '../platform/observability/sse-visibility-metrics.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { createActorContext } from '../workspaces/index.js';
 import { throwWorkflowRunError } from './errors.js';
@@ -71,6 +79,9 @@ export class WorkflowRunsController {
     private readonly getWorkflowRun: GetWorkflowRunUseCase,
     private readonly streamEvents: StreamRunEventsUseCase,
     private readonly cancelWorkflowRun: CancelWorkflowRunUseCase,
+    @Optional()
+    @Inject(SSE_VISIBILITY_METRICS)
+    private readonly visibilityMetrics: SseVisibilityMetrics = createSseVisibilityMetrics(),
   ) {}
 
   @Post('workflows/:workflowId/runs')
@@ -137,16 +148,23 @@ export class WorkflowRunsController {
     request.raw?.once('close', onClose);
     try {
       const route = workflowRunParamsSchema.parse(params);
+      const requestedLastEventId = lastEventId(request);
       const frames = await this.streamEvents.execute({
         actor: actorFrom(request, route.workspaceId),
         routeWorkspaceId: route.workspaceId,
         runId: route.runId,
-        lastEventId: lastEventId(request),
+        lastEventId: requestedLastEventId,
         signal: controller.signal,
       });
-      return frameObservable(frames, controller, () => {
-        request.raw?.off('close', onClose);
-      });
+      return frameObservable(
+        frames,
+        controller,
+        () => {
+          request.raw?.off('close', onClose);
+        },
+        this.visibilityMetrics,
+        routeLastEventPath(requestedLastEventId),
+      );
     } catch (error: unknown) {
       request.raw?.off('close', onClose);
       controller.abort();
@@ -188,9 +206,12 @@ function frameObservable(
   frames: AsyncIterable<WorkflowRunEventFrame>,
   controller: AbortController,
   detach: () => unknown,
+  visibilityMetrics: SseVisibilityMetrics,
+  fallbackPath: SseVisibilityPath,
 ): Observable<MessageEvent> {
   return new Observable<MessageEvent>((subscriber) => {
     const iterator = frames[Symbol.asyncIterator]();
+    const emittedSequences = new Set<number>();
     void (async (): Promise<void> => {
       try {
         while (!controller.signal.aborted) {
@@ -199,11 +220,19 @@ function frameObservable(
           const event = workflowRunEventSchema.parse(
             JSON.parse(next.value.data),
           );
+          if (subscriber.closed) break;
           subscriber.next({
             id: String(next.value.id),
             type: next.value.event,
             data: event,
           });
+          if (!emittedSequences.has(event.sequence)) {
+            emittedSequences.add(event.sequence);
+            visibilityMetrics.recordFirstEligibleFrame({
+              createdAt: new Date(event.createdAt),
+              path: next.value.visibilityPath ?? fallbackPath,
+            });
+          }
         }
         subscriber.complete();
       } catch (error: unknown) {
@@ -218,6 +247,10 @@ function frameObservable(
       void iterator.return?.();
     };
   });
+}
+
+function routeLastEventPath(lastEventId: number): SseVisibilityPath {
+  return lastEventId === 0 ? 'initial_backfill' : 'reconnect_backfill';
 }
 
 function requiredIdempotencyKey(request: WorkflowRunsRequest): string {

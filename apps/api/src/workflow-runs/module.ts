@@ -10,6 +10,11 @@ import {
   SessionAuthenticationGuard,
 } from '../identity-workspace/guards.js';
 import { RequestContextStore } from '../platform/http/index.js';
+import {
+  createSseVisibilityMetrics,
+  SSE_VISIBILITY_METRICS,
+  type SseVisibilityMetrics,
+} from '../platform/observability/sse-visibility-metrics.js';
 import type { WorkspaceAuthorizationSource } from '../identity-workspace/ports.js';
 import { WorkflowRunsController } from './controllers.js';
 import {
@@ -33,6 +38,7 @@ export type WorkflowRunsDependencies = Readonly<{
   persistence: WorkflowRunPersistence;
   authorization: WorkspaceAuthorizationSource;
   streamer: WorkflowRunEventStreamer;
+  visibilityMetrics?: SseVisibilityMetrics;
 }>;
 
 @Module({})
@@ -47,6 +53,11 @@ export class WorkflowRunsModule {
       {
         provide: WORKFLOW_RUN_AUTHORIZATION,
         useValue: dependencies.authorization,
+      },
+      {
+        provide: SSE_VISIBILITY_METRICS,
+        useValue:
+          dependencies.visibilityMetrics ?? createSseVisibilityMetrics(),
       },
       WorkflowRunReadGuard,
       WorkflowRunStartGuard,

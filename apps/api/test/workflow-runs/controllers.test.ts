@@ -130,6 +130,57 @@ describe('workflow runs controller public seam', () => {
     });
   });
 
+  it('records visibility only after the first successful emission for a sequence', async () => {
+    const visibilityMetrics = { recordFirstEligibleFrame: vi.fn() };
+    const stream = {
+      execute: vi.fn().mockResolvedValue({
+        *[Symbol.asyncIterator]() {
+          const frame = {
+            id: 2,
+            event: 'run.started',
+            data: JSON.stringify({
+              sequence: 2,
+              type: 'run.started',
+              createdAt: '2026-08-21T12:00:00.000Z',
+              payload: { schemaVersion: 1 },
+            }),
+            visibilityPath: 'live_wakeup' as const,
+          };
+          yield frame;
+          yield frame;
+        },
+      }),
+    };
+    const instance = new WorkflowRunsController(
+      { execute: vi.fn() } as never,
+      { execute: vi.fn() } as never,
+      stream as never,
+      { execute: vi.fn() } as never,
+      visibilityMetrics,
+    );
+
+    const observable = await instance.streamRunEvents(request(), {
+      workspaceId,
+      runId,
+    });
+    const messages: unknown[] = [];
+    await new Promise<void>((resolve, reject) => {
+      const subscription = observable.subscribe({
+        next: (value) => messages.push(value),
+        error: reject,
+        complete: resolve,
+      });
+      void subscription;
+    });
+
+    expect(messages).toHaveLength(2);
+    expect(visibilityMetrics.recordFirstEligibleFrame).toHaveBeenCalledTimes(1);
+    expect(visibilityMetrics.recordFirstEligibleFrame).toHaveBeenCalledWith({
+      createdAt: new Date('2026-08-21T12:00:00.000Z'),
+      path: 'live_wakeup',
+    });
+  });
+
   it('forwards durable cancellation actor, reason, and trace context', async () => {
     const fixture = controller();
     await fixture.instance.cancelRun(

@@ -91,6 +91,12 @@ export interface SseRunEventFrame {
   readonly data: string;
   readonly event: string;
   readonly id: number;
+  /** Why persistence was read before this frame was emitted. */
+  readonly visibilityPath:
+    | 'initial_backfill'
+    | 'reconnect_backfill'
+    | 'live_wakeup'
+    | 'recovery_backfill';
 }
 
 export class RunEventStreamInvariantError extends Error {
@@ -118,14 +124,17 @@ function parsePageSize(value: number | undefined): number {
   return pageSize;
 }
 
-function frameForEvent(event: PersistedRunEvent): SseRunEventFrame {
+function frameForEvent(
+  event: PersistedRunEvent,
+  visibilityPath: SseRunEventFrame['visibilityPath'],
+): SseRunEventFrame {
   const data = JSON.stringify(event);
   if (Buffer.byteLength(data, 'utf8') > MAX_SSE_DATA_BYTES) {
     throw new RunEventStreamInvariantError(
       'Persisted run event exceeds the bounded SSE data limit',
     );
   }
-  return { data, event: event.type, id: event.sequence };
+  return { data, event: event.type, id: event.sequence, visibilityPath };
 }
 
 async function nextOrAbort<T>(
@@ -201,6 +210,8 @@ export async function* streamRunEventFrames(
 
   try {
     let shouldBackfill = true;
+    let backfillPath: SseRunEventFrame['visibilityPath'] =
+      identity.lastEventId === 0 ? 'initial_backfill' : 'reconnect_backfill';
     while (!input.signal.aborted) {
       if (shouldBackfill) {
         let page: readonly PersistedRunEvent[];
@@ -219,7 +230,7 @@ export async function* streamRunEventFrames(
               );
             }
             cursor = event.sequence;
-            yield frameForEvent(event);
+            yield frameForEvent(event, backfillPath);
           }
         } while (page.length === pageSize);
         shouldBackfill = false;
@@ -236,6 +247,7 @@ export async function* streamRunEventFrames(
       }
       if (notification.kind === 'resync') {
         shouldBackfill = true;
+        backfillPath = 'recovery_backfill';
         continue;
       }
       if (
@@ -249,6 +261,7 @@ export async function* streamRunEventFrames(
       // A notification for a later sequence deliberately triggers a complete
       // bounded-page read after the cursor, repairing every intervening gap.
       shouldBackfill = true;
+      backfillPath = 'live_wakeup';
     }
   } finally {
     await subscription.close();

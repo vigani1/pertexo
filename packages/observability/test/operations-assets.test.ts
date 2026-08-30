@@ -35,6 +35,7 @@ describe('operations observability assets', () => {
       Promise.all(
         [
           '../../../apps/api/src/platform/observability/api-metrics.ts',
+          '../../../apps/api/src/platform/observability/sse-visibility-metrics.ts',
           '../../../apps/api/src/webhooks/telemetry.ts',
           '../../../apps/retention/src/metrics.ts',
           '../../../apps/worker/src/execution/http-provider-telemetry.ts',
@@ -59,9 +60,9 @@ describe('operations observability assets', () => {
         readonly type: string;
       }[];
     };
-    expect(dashboard.panels).toHaveLength(20);
-    expect(new Set(dashboard.panels.map(({ id }) => id)).size).toBe(20);
-    expect(new Set(dashboard.panels.map(({ title }) => title)).size).toBe(20);
+    expect(dashboard.panels).toHaveLength(21);
+    expect(new Set(dashboard.panels.map(({ id }) => id)).size).toBe(21);
+    expect(new Set(dashboard.panels.map(({ title }) => title)).size).toBe(21);
     for (const panel of dashboard.panels) {
       expect(panel.description?.length).toBeGreaterThan(20);
       if (panel.type !== 'text') {
@@ -72,7 +73,7 @@ describe('operations observability assets', () => {
     }
 
     const alertBlocks = alerts.split('\n      - alert: ').slice(1);
-    expect(alertBlocks).toHaveLength(23);
+    expect(alertBlocks).toHaveLength(24);
     for (const block of alertBlocks) {
       const [alertName = ''] = block.split('\n', 1);
       expect(alertName).toMatch(/^Pertexo[A-Za-z]+$/u);
@@ -100,6 +101,8 @@ describe('operations observability assets', () => {
       'pertexo_api_availability_request_count_total',
       'pertexo_api_request_count_total',
       'pertexo_api_request_duration_seconds_bucket',
+      'pertexo_api_sse_persisted_to_visible_duration_seconds_bucket',
+      'pertexo_api_sse_persisted_to_visible_skew_count_total',
       'pertexo_control_ledger_reconciliation_count_total',
       'pertexo_database_lock_wait_active',
       'pertexo_database_pool_saturation_ratio',
@@ -153,6 +156,8 @@ describe('operations observability assets', () => {
       'pertexo.api.availability_request.count',
       'pertexo.api.request.count',
       'pertexo.api.request.duration',
+      'pertexo.api.sse.persisted_to_visible.duration',
+      'pertexo.api.sse.persisted_to_visible.skew.count',
       'pertexo.control_ledger.reconciliation.count',
       'pertexo.database.lock_wait.active',
       'pertexo.database.lock_wait.duration',

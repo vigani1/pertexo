@@ -30,6 +30,20 @@ groups:
             Sufficient write traffic has remained above the initial latency
             objective for fifteen minutes.
           runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexoapiwritelatencyhigh
+      - alert: PertexoSsePersistedToVisibleLatencyHigh
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le, path) (rate(pertexo_api_sse_persisted_to_visible_duration_seconds_bucket[10m])))
+          > 2
+        for: 10m
+        labels:
+          severity: page
+        annotations:
+          summary: Persisted run events are slow to become visible over SSE
+          description:
+            The p95 from the PostgreSQL-created timestamp to the first
+            successful eligible SSE frame has exceeded the two-second objective.
+          runbook_url: https://github.com/vigani1/pertexo/blob/main/docs/operations/observability-alerts.md#pertexossepersistedtovisiblelatencyhigh
       - alert: PertexoWebhookUnavailable
         expr:
           increase(pertexo_webhook_delivery_count_total{outcome="unavailable"}[10m])

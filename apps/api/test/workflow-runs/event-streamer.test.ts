@@ -66,6 +66,7 @@ describe('public workflow run event streamer', () => {
     expect(value).toEqual({
       id: 1,
       event: 'run.cancel_requested',
+      visibilityPath: 'initial_backfill',
       data: JSON.stringify({
         sequence: 1,
         type: 'run.cancel_requested',

@@ -432,6 +432,27 @@
       ],
       "title": "Node Runtime Health",
       "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "p95 seconds from the PostgreSQL-created timestamp to the first successful eligible SSE frame, grouped only by the bounded reconstruction path.",
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 63 },
+      "id": 21,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, path) (rate(pertexo_api_sse_persisted_to_visible_duration_seconds_bucket[10m])))",
+          "legendFormat": "{{path}}",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (path) (increase(pertexo_api_sse_persisted_to_visible_skew_count_total[10m]))",
+          "legendFormat": "clock skew {{path}}",
+          "refId": "B"
+        }
+      ],
+      "title": "Persisted To Visible SSE Latency",
+      "type": "timeseries"
     }
   ],
   "schemaVersion": 41,

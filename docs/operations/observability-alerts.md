@@ -35,6 +35,20 @@ transaction latency, and sampled lock waits. SQL text and database identities ar
 intentionally absent; use traces and restricted database tooling for a specific
 query only after the aggregate signal identifies the affected window.
 
+## PertexoSsePersistedToVisibleLatencyHigh
+
+Confirm that the histogram has current samples and identify only the bounded
+reconstruction path (`initial_backfill`, `reconnect_backfill`, `live_wakeup`, or
+`recovery_backfill`). Compare live wake-up latency with PostgreSQL backfill and
+Redis connection events. Check database query duration, pool waiters, and the
+run-event subscriber health before changing page size or connection limits.
+The observation starts at the authoritative PostgreSQL `created_at` and ends
+after the API successfully calls the SSE subscriber; it is not a client receipt
+timestamp. Future database timestamps are excluded and counted as clock skew.
+Check NTP/database clock alignment and correct the clock source before treating
+skew observations as user-visible latency. Never add workspace, run, event,
+actor, or URL identifiers to the metric.
+
 ## PertexoWebhookUnavailable
 
 Confirm the finite webhook outcome and inspect ingress problem logs. Verify the

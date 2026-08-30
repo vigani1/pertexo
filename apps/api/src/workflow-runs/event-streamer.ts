@@ -71,6 +71,7 @@ async function* publicFrames(
       id: event.sequence,
       event: event.type,
       data: JSON.stringify(event),
+      visibilityPath: frame.visibilityPath,
     });
   }
 }

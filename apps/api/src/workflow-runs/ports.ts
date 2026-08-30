@@ -101,6 +101,11 @@ export type WorkflowRunEventFrame = Readonly<{
   id: number;
   event: string;
   data: string;
+  visibilityPath?:
+    | 'initial_backfill'
+    | 'reconnect_backfill'
+    | 'live_wakeup'
+    | 'recovery_backfill';
 }>;
 
 export interface WorkflowRunEventStreamer {
