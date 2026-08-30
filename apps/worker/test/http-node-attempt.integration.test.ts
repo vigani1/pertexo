@@ -786,6 +786,7 @@ describeIntegration('active HTTP node attempt', () => {
           connectionString: databaseUrl(workerUrl),
           max: 3,
         }),
+        redisUrl,
       },
       { connectionEncryption: encryption },
     );
@@ -1099,7 +1100,6 @@ describeIntegration('active HTTP node attempt', () => {
         () => replay.getState(),
         (state) => state === 'completed',
       );
-      await new Promise<void>((resolve) => setTimeout(resolve, 100));
       await expect(
         workerQuery<{ fact: string }>(
           `select concat_ws('|',attempt.status,attempt.fence_token,

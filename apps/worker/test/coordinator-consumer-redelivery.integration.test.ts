@@ -133,7 +133,6 @@ describeIntegration('Coordinator exact redelivery resilience', () => {
         () => replay.getState(),
         (state) => state === 'completed',
       );
-      await new Promise<void>((resolve) => setTimeout(resolve, 50));
 
       await expect(
         workerQuery<{ attempts: string; events: string; revision: number }>(

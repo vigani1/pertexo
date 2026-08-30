@@ -908,11 +908,31 @@ describeIntegration('preview execution real transport', () => {
       // Exact redelivery of the published job must not re-execute: the
       // durable outcome, fence, and receipt stay untouched.
       const before = await previewState(delivery.accepted.previewRunId);
-      await producer.publish({
+      const completedJob = await waitFor(
+        () => queue.getJob(job.jobId),
+        (value) => value !== undefined,
+      );
+      if (completedJob === undefined)
+        throw new Error('completed preview job missing');
+      await waitFor(
+        () => completedJob.getState(),
+        (state) => state === 'completed',
+      );
+      await completedJob.remove();
+      const replayed = await producer.publish({
         data: delivery.job.data,
         name: delivery.job.name,
       });
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      const replayedJob = await waitFor(
+        () => queue.getJob(replayed.jobId),
+        (value) => value !== undefined,
+      );
+      if (replayedJob === undefined)
+        throw new Error('redelivered preview job missing');
+      await waitFor(
+        () => replayedJob.getState(),
+        (state) => state === 'completed',
+      );
       const after = await previewState(delivery.accepted.previewRunId);
       expect(after).toEqual(before);
       expect(after?.attempt_fence).toBe('1');

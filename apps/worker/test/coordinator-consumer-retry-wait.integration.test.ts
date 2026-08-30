@@ -302,6 +302,8 @@ describeIntegration('Retry and Wait outage recovery', () => {
     });
     try {
       await beforeDue.consumer.waitUntilReady(5_000);
+      // This real-clock interval is the proof that the periodic scanner does
+      // not claim a wake-up before its durable due_at timestamp.
       await new Promise<void>((resolve) => setTimeout(resolve, 150));
       await expect(
         workerQuery<{ attempts: string; wakeups: string }>(
@@ -319,6 +321,8 @@ describeIntegration('Retry and Wait outage recovery', () => {
       await beforeDue.close();
     }
 
+    // Advancing to the database-owned due timestamp is intentionally real
+    // time; a fake clock would not exercise PostgreSQL clock_timestamp().
     await new Promise<void>((resolve) =>
       setTimeout(resolve, Math.max(0, Date.parse(dueAt) - Date.now() + 25)),
     );
@@ -362,7 +366,17 @@ describeIntegration('Retry and Wait outage recovery', () => {
       await unavailableDispatcher.close().catch(() => undefined);
       redisError.mockRestore();
     }
-    await new Promise<void>((resolve) => setTimeout(resolve, 50));
+    await waitFor(
+      () =>
+        workerQuery<{ available: string }>(
+          `select count(*) filter (where available_at <= clock_timestamp())::text as available
+             from app.outbox_events
+             where aggregate_id=$1 and job_name='advance-workflow-run'
+               and published_at is null and failed_at is null`,
+          [runId],
+        ),
+      (rows) => rows[0]?.available === '2',
+    );
 
     const dispatcher = createCoordinatorDispatcher(afterClaim.consumer);
     try {
@@ -436,7 +450,6 @@ describeIntegration('Retry and Wait outage recovery', () => {
         provider_keys: [providerKeys[0], providerKeys[0], null, null],
         retry_events: '0',
       });
-      await new Promise<void>((resolve) => setTimeout(resolve, 100));
       const verificationScanner = createDueNodeWakeupScanner(
         runtimeOptions.database,
       );
