@@ -87,14 +87,17 @@ describeIntegration('distributed abuse rate limit integration', () => {
         { kind: 'workspace', identifier: noisyWorkspace, limit: 50 },
       ],
     };
-    const quietDecisions = Array.from({ length: 50 }, () => ({
-      endpointClass: 'run_admission',
-      failureMode: 'closed',
-      windowSeconds: 60,
-      dimensions: [
-        { kind: 'workspace' as const, identifier: randomUUID(), limit: 1 },
-      ],
-    }));
+    const quietDecisions: RateLimitDecision[] = Array.from(
+      { length: 50 },
+      () => ({
+        endpointClass: 'run_admission',
+        failureMode: 'closed',
+        windowSeconds: 60,
+        dimensions: [
+          { kind: 'workspace' as const, identifier: randomUUID(), limit: 1 },
+        ],
+      }),
+    );
 
     const startedAt = performance.now();
     const [noisyResults, quietResults] = await Promise.all([

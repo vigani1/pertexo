@@ -89,45 +89,32 @@ describe('@pertexo/database package contract', () => {
 
   it('publishes behavior-named connection capabilities instead of the broad store', () => {
     const management: ConnectionManagementDatabase = {
-      createConnection: async () => {
-        throw new Error('not exercised');
-      },
-      findConnectionCreateReplay: async () => null,
-      findConnectionRotateReplay: async () => null,
-      rotateConnectionSecret: async () => {
-        throw new Error('not exercised');
-      },
-      revokeConnection: async () => {
-        throw new Error('not exercised');
-      },
+      createConnection: () => Promise.reject(new Error('not exercised')),
+      findConnectionCreateReplay: () => Promise.resolve(null),
+      findConnectionRotateReplay: () => Promise.resolve(null),
+      rotateConnectionSecret: () => Promise.reject(new Error('not exercised')),
+      revokeConnection: () => Promise.reject(new Error('not exercised')),
     };
     const testing: ConnectionTestDatabase = {
-      startConnectionTest: async () => {
-        throw new Error('not exercised');
-      },
-      resolveConnectionTestSecret: async () => {
-        throw new Error('not exercised');
-      },
-      markConnectionTestDispatched: async () => undefined,
-      completeConnectionTest: async () => {
-        throw new Error('not exercised');
-      },
-      abandonConnectionTest: async () => undefined,
+      startConnectionTest: () => Promise.reject(new Error('not exercised')),
+      resolveConnectionTestSecret: () =>
+        Promise.reject(new Error('not exercised')),
+      markConnectionTestDispatched: () => Promise.resolve(undefined),
+      completeConnectionTest: () => Promise.reject(new Error('not exercised')),
+      abandonConnectionTest: () => Promise.resolve(undefined),
     };
     const api: ApiConnectionDatabase = {
       ...management,
       ...testing,
-      close: async () => undefined,
+      close: () => Promise.resolve(undefined),
     };
     const resolution: ConnectionResolutionDatabase = {
-      assertConnectionSecretCurrent: async () => undefined,
-      resolveConnectionSecret: async () => {
-        throw new Error('not exercised');
-      },
+      assertConnectionSecretCurrent: () => Promise.resolve(undefined),
+      resolveConnectionSecret: () => Promise.reject(new Error('not exercised')),
     };
     const worker: WorkerConnectionResolutionDatabase = {
       ...resolution,
-      close: async () => undefined,
+      close: () => Promise.resolve(undefined),
     };
 
     expect(Object.keys(api).sort()).toEqual([
