@@ -1,6 +1,7 @@
 services:
   postgres:
-    image: ${POSTGRES_IMAGE:-postgres:18}
+    # postgres:18; manifest digest resolved 2026-08-30
+    image: ${POSTGRES_IMAGE:-postgres:18@sha256:4ef4dbc939d61acea57712655ddb4b4ab27419c913f94cca0cd57cb3ea3c2280}
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-pertexo}
@@ -37,7 +38,8 @@ services:
     stop_grace_period: 1m
 
   redis:
-    image: ${REDIS_IMAGE:-redis:8.2.8-alpine}
+    # redis:8.2.8-alpine; manifest digest resolved 2026-08-30
+    image: ${REDIS_IMAGE:-redis:8.2.8-alpine@sha256:a7859ed111db3c1f5404a973a4747505d559fb5ca32d37e447afc0ef845a2103}
     restart: unless-stopped
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-pertexo-local-redis}
@@ -69,7 +71,8 @@ services:
     stop_grace_period: 30s
 
   artifact-store:
-    image: ${S3MOCK_IMAGE:-adobe/s3mock:5.1.0}
+    # adobe/s3mock:5.1.0; manifest digest resolved 2026-08-30
+    image: ${S3MOCK_IMAGE:-adobe/s3mock:5.1.0@sha256:65cf60155a2e235fe7d5bf6c633747d6fc7ed93f9f5a6727d86470026b83c2a2}
     restart: unless-stopped
     environment:
       COM_ADOBE_TESTING_S3MOCK_STORE_ROOT: /data
@@ -94,7 +97,8 @@ services:
     stop_grace_period: 30s
 
   control-ledger-primary:
-    image: ${MINIO_IMAGE:-minio/minio:RELEASE.2025-09-07T16-13-09Z}
+    # minio/minio:RELEASE.2025-09-07T16-13-09Z; manifest digest resolved 2026-08-30
+    image: ${MINIO_IMAGE:-minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e}
     restart: unless-stopped
     command:
       - server
@@ -123,7 +127,7 @@ services:
     stop_grace_period: 30s
 
   control-ledger-primary-bootstrap:
-    image: ${MINIO_IMAGE:-minio/minio:RELEASE.2025-09-07T16-13-09Z}
+    image: ${MINIO_IMAGE:-minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e}
     restart: 'no'
     depends_on:
       control-ledger-primary:
@@ -142,7 +146,7 @@ services:
       - ./infrastructure/minio:/bootstrap:ro
 
   control-ledger-recovery:
-    image: ${MINIO_IMAGE:-minio/minio:RELEASE.2025-09-07T16-13-09Z}
+    image: ${MINIO_IMAGE:-minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e}
     restart: unless-stopped
     command:
       - server
@@ -171,7 +175,7 @@ services:
     stop_grace_period: 30s
 
   control-ledger-recovery-bootstrap:
-    image: ${MINIO_IMAGE:-minio/minio:RELEASE.2025-09-07T16-13-09Z}
+    image: ${MINIO_IMAGE:-minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e}
     restart: 'no'
     depends_on:
       control-ledger-recovery:
