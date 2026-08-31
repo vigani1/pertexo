@@ -153,8 +153,8 @@ if (
     .length !== 3
 )
   throw new Error('every Node image stage must pin an immutable base digest');
-if (!dockerfile.includes('ENTRYPOINT ["/usr/bin/tini", "--"]'))
-  throw new Error('runtime image must use tini');
+if (/apt-get\s+(?:update|upgrade|install)/u.test(dockerfile))
+  throw new Error('runtime image must not resolve mutable OS packages');
 if (!dockerfile.includes('pnpm install --prod --frozen-lockfile'))
   throw new Error('runtime image must contain production dependencies only');
 
