@@ -6,6 +6,9 @@ import {
   nodeValidationResponseSchema,
   previewRunResponseSchema,
   type NodeTestRequest,
+  type NodeTestExecuteAcceptedResponse,
+  type NodeValidationResponse,
+  type PreviewRunResponse,
 } from '@pertexo/contracts/node-testing';
 import {
   PreviewIdempotencyConflictError,
@@ -82,7 +85,9 @@ export class TestWorkflowNodeUseCase {
     private readonly now: () => Date = () => new Date(),
   ) {}
 
-  public async execute(input: NodeTestUseCaseInput): Promise<unknown> {
+  public async execute(
+    input: NodeTestUseCaseInput,
+  ): Promise<NodeValidationResponse | NodeTestExecuteAcceptedResponse> {
     const request = nodeTestRequestSchema.parse(input.request);
     await this.authorize(input, 'workflow:update');
     const draft = await this.currentDraft(input);
@@ -259,7 +264,7 @@ export class GetPreviewRunUseCase {
       routeWorkspaceId: string;
       previewRunId: string;
     }>,
-  ): Promise<unknown> {
+  ): Promise<PreviewRunResponse> {
     await authorizeWorkspace({
       actor: input.actor,
       routeWorkspaceId: input.routeWorkspaceId,

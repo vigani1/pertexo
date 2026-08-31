@@ -33,6 +33,9 @@ import {
   type WorkflowDraftResponse,
   type WorkflowPublishResponse,
   type WorkflowSummary,
+  type WorkflowValidateResponse,
+  type WorkflowVersionResponse,
+  type WorkflowVersionsResponse,
 } from './types.js';
 import type {
   WorkflowAuthoringPersistence,
@@ -265,7 +268,9 @@ export class ValidateWorkflowDraftUseCase {
     private readonly telemetry: WorkflowAuthoringTelemetry = NOOP_WORKFLOW_AUTHORING_TELEMETRY,
   ) {}
 
-  public execute(input: WorkflowResourceInput): Promise<unknown> {
+  public execute(
+    input: WorkflowResourceInput,
+  ): Promise<WorkflowValidateResponse> {
     return this.telemetry.measure(
       WORKFLOW_AUTHORING_OPERATION.validate,
       async () => {
@@ -345,7 +350,9 @@ export class ListWorkflowVersionsUseCase {
     private readonly telemetry: WorkflowAuthoringTelemetry = NOOP_WORKFLOW_AUTHORING_TELEMETRY,
   ) {}
 
-  public execute(input: ListWorkflowVersionsInput): Promise<unknown> {
+  public execute(
+    input: ListWorkflowVersionsInput,
+  ): Promise<WorkflowVersionsResponse> {
     return this.telemetry.measure(
       WORKFLOW_AUTHORING_OPERATION.versionsList,
       async () => {
@@ -407,7 +414,7 @@ function toWorkflowSummary(workflow: WorkflowRecord): WorkflowSummary {
   };
 }
 
-function toVersion(version: WorkflowVersionRecord): unknown {
+function toVersion(version: WorkflowVersionRecord): WorkflowVersionResponse {
   return workflowVersionResponseSchema.parse({
     id: version.id,
     workflowId: version.workflowId,

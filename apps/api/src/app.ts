@@ -105,6 +105,9 @@ export async function createApiApplication(
     (identityRuntime === undefined || dependencies.database !== undefined
       ? undefined
       : createApiScheduleRuntime(config.database));
+  const fastifyAdapter = new FastifyAdapter({
+    trustProxy: config.trustedProxyHops ?? 0,
+  });
   let application: NestFastifyApplication;
   try {
     application = await NestFactory.create<NestFastifyApplication>(
@@ -116,7 +119,7 @@ export async function createApiApplication(
         ...(webhookRuntime === undefined ? {} : { webhookRuntime }),
         ...(scheduleRuntime === undefined ? {} : { scheduleRuntime }),
       }),
-      new FastifyAdapter({ trustProxy: config.trustedProxyHops ?? 0 }),
+      fastifyAdapter,
       { abortOnError: false, logger: nestLogger },
     );
   } catch (error: unknown) {
@@ -132,17 +135,11 @@ export async function createApiApplication(
 
   application.enableShutdownHooks();
   try {
-    registerApiMetrics(
-      application.getHttpAdapter().getInstance() as unknown as FastifyInstance,
-    );
+    const fastifyInstance: FastifyInstance = fastifyAdapter.getInstance();
+    registerApiMetrics(fastifyInstance);
     await application.init();
     if (webhookRuntime !== undefined) {
-      registerWebhookIngress(
-        application
-          .getHttpAdapter()
-          .getInstance() as unknown as FastifyInstance,
-        webhookRuntime.ingress,
-      );
+      registerWebhookIngress(fastifyInstance, webhookRuntime.ingress);
     }
     await application
       .get<WorkspaceDatabase>(WORKSPACE_DATABASE)

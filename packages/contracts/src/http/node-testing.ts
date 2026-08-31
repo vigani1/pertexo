@@ -137,3 +137,4 @@ export type PreviewRunSummary = z.output<typeof previewRunSummarySchema>;
 export type NodeTestExecuteAcceptedResponse = z.output<
   typeof nodeTestExecuteAcceptedResponseSchema
 >;
+export type PreviewRunResponse = z.output<typeof previewRunResponseSchema>;
