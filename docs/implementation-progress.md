@@ -1,6 +1,6 @@
 # Backend Implementation Progress
 
-Last updated: 2026-08-30
+Last updated: 2026-09-01
 
 This file tracks delivery against
 [the authoritative backend plan](./workflow-platform-backend-plan.md). A phase
@@ -4555,67 +4555,58 @@ Current evidence:
   completion box changes because
   those code, external-governance, and live-production requirements remain open.
 
-## Whole-repository audit remediation — 2026-08-30
+## Current whole-repository audit — 2026-09-01
 
-Status: **Repository-actionable findings complete; live production evidence
-remains open**
+Status: **Audit refreshed at implementation head `9e42637`; current
+repository and live-production findings remain open**
 
-- [x] Bind OIDC callbacks to the initiating browser and retain real HTTP,
-      PostgreSQL, replay, and populated-migration evidence.
-- [x] Enforce atomic distributed abuse limits by bounded endpoint class and
-      origin/address/actor/workspace/connection dimension at API and provider
-      execution boundaries, with fixed-cardinality telemetry and real Redis
-      threshold, recovery, noisy-tenant fairness, and overhead proofs.
-- [x] Route coordinator and node-attempt tenant work through the hardened shared
-      transaction engine and make regional replication identity exact.
-- [x] Make requested integration gates fail closed, require nonzero/no-skip
-      Vitest evidence for the API gates, partition CI by failure domain, enforce
-      critical-module coverage, and pin service images by digest with automated
-      reviewed Docker update pull requests.
-- [x] Publish narrow connection-management/test/resolution capabilities;
-      decompose connection lifecycle persistence; retire the legacy execution
-      runtime/configuration/process fixture; and retain compatibility-removal
-      ownership in the live inventory.
-- [x] Move engine observation types to a neutral owner, validate third-party
-      type boundaries, and split engine, connection, execution-acceptance,
-      workflow-authoring, preview, retention, and HTTP execution tests by
-      behavioral invariant while replacing avoidable fixed-time waits with
-      database/process barriers.
-- [x] Measure persisted-to-first-SSE-frame latency with bounded path labels and
-      connect it to emitted-series validation, dashboard, alert, runbook, and
-      load assertions.
-- [x] Define and enforce the versioned external AWS platform contract for
-      distinct roles, network boundaries, secret/KMS access, services,
-      telemetry/alarms, scaling, exclusive migrations, and recovery writer
-      fencing. Eleven drift tests run in `pnpm deployment:check` and CI.
-- [x] Correct README commands/package guidance and consolidate active audit
-      status into `docs/whole-repository-audit.md`.
-- [ ] Complete the live AWS, Object Lock, load/fairness, pager, failover, PITR,
-      regional restore, RPO/RTO, and deployed autoscaling exercises listed in
-      the Phase 7 checklist. No repository-only result can close these rows.
+The sole current audit is
+[`docs/whole-repository-audit.md`](./whole-repository-audit.md). It contains
+only findings verified against the present code rather than the resolved
+history from the prior remediation branch.
 
-Verification at implementation head `cfbb4424c4c3c6d68497844b5a333d012c6899e5`:
+The refreshed review covers architecture, functions and classes, imports and
+exports, readability, repetition and reuse, TypeScript, NestJS, all twelve
+packages, PostgreSQL/data lifecycle, security and privacy, testing and test
+layout, CI/CodeQL/branch protection, dependencies, images, observability,
+performance, deployment, operations, and documentation.
 
-- `pnpm check`: passed formatting, build, ESLint, generated contracts,
-  TypeScript, and 1,312 unit-level assertions;
-- `pnpm test:coverage`: passed all four critical-module thresholds (workflow
-  engine 79.36%, database 61.53%, worker 62.79%, API 82.56% branch coverage);
-- `pnpm deployment:check`, `pnpm images:check`, and `pnpm exercise:check`:
-  passed; and
-- changed real-service suites passed 7 distributed-rate-limit assertions, 15
-  connection assertions, 17 authoring assertions, 36 execution-acceptance
-  assertions, 121 engine assertions, 9 retention assertions, 5 preview
-  transport/artifact assertions, and the ordered HTTP execution proof.
+Current audit state:
 
-GitHub Actions CI run `33337487368`, CodeQL run `33337487359`, and Release Gate
-run `33337815462` passed at exact implementation head `cfbb442`. Protected-main
-controls require the ten current CI/CodeQL contexts with strict up-to-date
-checks, pull requests, administrator enforcement, linear history, resolved
-conversations, and no force pushes or branch deletion. Governance reconciliation
-PR #2 reported `BLOCKED` at `18fcb8e` while the deliberate required
-`audit/protection-proof` status failed; the temporary proof context was removed
-after capture. Phase 7 remains **In progress** solely because the unchecked
-live-production rows above remain unsatisfied.
+- [ ] Complete live AWS, Object Lock, load/fairness, pager, failover, PITR,
+      regional restore, RPO/RTO, deployed autoscaling, and aggregate PostgreSQL
+      connection-capacity evidence.
+- [ ] Enable public-repository secret scanning, push protection, and Dependabot
+      security updates.
+- [ ] Add bounded retention/reaping for affected idempotency records and
+      expired/revoked sessions.
+- [ ] Make every requested real-service/compatibility/recovery cohort prove a
+      nonzero run with no unexpected skips, and protect the production-image
+      scan per change or immutable promotion.
+- [ ] Refactor the measured readiness/publication complexity hotspots without
+      weakening transactions, fail-closed behavior, or public interfaces.
+- [ ] Correct sibling-feature internal imports and API results that erase exact
+      response types to `unknown`.
+- [ ] Make container OS inputs reproducible, complete pnpm dependency update
+      automation, and install a measured complexity ratchet.
+- [ ] Retire or minimize the database compatibility root, replace avoidable
+      test sleeps, consolidate justified local clones, isolate Fastify casts,
+      and strengthen review ownership/current-status documentation.
+
+Verification at implementation head `9e4263794715d273e8660c0dd4efa67c5032e940`:
+
+- `pnpm check` passed formatting, build, ESLint, generated contracts,
+  TypeScript, and 1,312 unit-level tests;
+- `pnpm test:coverage` passed the four critical-module branch thresholds
+  (workflow engine 79.36%, database 61.53%, worker 62.79%, API 82.56%);
+- `pnpm audit --prod --audit-level high` reported no known vulnerabilities;
+- `pnpm deployment:check`, `pnpm images:check`, and
+  `pnpm exercise:check` passed; and
+- GitHub Actions CI run `33374292338` and Release Gate run `33378998330`
+  passed at the implementation head; CodeQL was green.
+
+No Phase 7 completion box changes in this documentation-only audit. The current
+P1 findings and the existing live-production checklist remain release blockers.
 
 ## Update protocol
 
