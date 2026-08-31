@@ -1,0 +1,283 @@
+{
+  "budgets": {
+    "fileLines": 500,
+    "functionBranches": 40,
+    "functionLines": 200
+  },
+  "fileHotspots": {
+    "apps/api/src/connections/use-cases.ts": 561,
+    "apps/api/src/identity-infrastructure/oidc-adapter.ts": 509,
+    "apps/api/src/workflow-authoring/use-cases.ts": 534,
+    "apps/worker/src/execution/failure-notification-delivery.ts": 502,
+    "apps/worker/src/execution/node-attempt-handler.ts": 513,
+    "apps/worker/src/execution/node-runtime-capabilities.ts": 503,
+    "apps/worker/src/execution/preview-attempt-handler.ts": 563,
+    "apps/worker/src/transport/outbox-dispatcher.ts": 551,
+    "apps/worker/src/transport/transport.module.ts": 607,
+    "packages/artifact-store/src/control-ledger.ts": 997,
+    "packages/artifact-store/src/store.ts": 912,
+    "packages/database/src/connection-persistence.ts": 652,
+    "packages/database/src/control-ledger-coordinator.ts": 1048,
+    "packages/database/src/coordinator-run-store-observations.ts": 918,
+    "packages/database/src/coordinator-run-store-plan.ts": 816,
+    "packages/database/src/dispatcher.ts": 547,
+    "packages/database/src/execution-acceptance.ts": 547,
+    "packages/database/src/failure-notification-destinations.ts": 637,
+    "packages/database/src/failure-notifications.ts": 734,
+    "packages/database/src/identity-workspace.ts": 1071,
+    "packages/database/src/index.ts": 569,
+    "packages/database/src/operator-commands.ts": 673,
+    "packages/database/src/postgres-telemetry.ts": 541,
+    "packages/database/src/preview-cleanup.ts": 548,
+    "packages/database/src/preview-execution-acceptance.ts": 563,
+    "packages/database/src/readiness.ts": 2139,
+    "packages/database/src/retention.ts": 804,
+    "packages/database/src/schedule-triggers.ts": 664,
+    "packages/database/src/schema.ts": 1952,
+    "packages/database/src/webhook-triggers.ts": 666,
+    "packages/database/src/workflow-authoring.ts": 1381,
+    "packages/database/src/workflow-run-api.ts": 518,
+    "packages/database/src/workflow-triggers.ts": 503,
+    "packages/database/src/workspace-lifecycle-commands.ts": 559,
+    "packages/database/src/workspace-purge.ts": 798,
+    "packages/integrations/src/http/secure-http.ts": 808,
+    "packages/node-catalog/src/registry.ts": 767,
+    "packages/node-sdk/src/release.ts": 846,
+    "packages/node-sdk/src/server.ts": 954,
+    "packages/queue/src/consumer.ts": 685,
+    "packages/workflow-engine/src/checkpoint.ts": 1356,
+    "packages/workflow-engine/src/coordinator-observations.ts": 540,
+    "packages/workflow-engine/src/executable-workflow.ts": 1340,
+    "packages/workflow-engine/src/operations.ts": 934,
+    "packages/workflow-engine/src/persisted-observations.ts": 646,
+    "packages/workflow-engine/src/workflow-transition-observations.ts": 528,
+    "packages/workflow-model/src/expressions.ts": 611,
+    "packages/workflow-model/src/graph.ts": 1126
+  },
+  "functionHotspots": {
+    "apps/api/src/webhooks/ingress.ts#acceptWebhook": {
+      "branches": 32,
+      "lines": 214
+    },
+    "apps/worker/src/execution/node-attempt-handler.ts#createNodeAttemptHandler": {
+      "branches": 3,
+      "lines": 329
+    },
+    "apps/worker/src/execution/node-attempt-handler.ts#handle": {
+      "branches": 31,
+      "lines": 314
+    },
+    "apps/worker/src/execution/preview-attempt-handler.ts#createPreviewAttemptHandler": {
+      "branches": 3,
+      "lines": 258
+    },
+    "apps/worker/src/execution/preview-attempt-handler.ts#handle": {
+      "branches": 11,
+      "lines": 243
+    },
+    "packages/database/src/connection-management-persistence.ts#createConnectionManagementPersistence": {
+      "branches": 0,
+      "lines": 284
+    },
+    "packages/database/src/connection-secret-persistence.ts#createConnectionSecretPersistence": {
+      "branches": 0,
+      "lines": 269
+    },
+    "packages/database/src/connection-test-persistence.ts#createConnectionTestPersistence": {
+      "branches": 0,
+      "lines": 430
+    },
+    "packages/database/src/control-ledger-coordinator.ts#createControlLedgerCoordinator": {
+      "branches": 4,
+      "lines": 578
+    },
+    "packages/database/src/coordinator-run-store-commit-state.ts#lockCoordinatorCommitState": {
+      "branches": 34,
+      "lines": 208
+    },
+    "packages/database/src/coordinator-run-store-observations.ts#validateLoadedCheckpointPhysicalState": {
+      "branches": 65,
+      "lines": 153
+    },
+    "packages/database/src/coordinator-run-store-observations.ts#loadCoordinatorAdvanceState": {
+      "branches": 0,
+      "lines": 276
+    },
+    "packages/database/src/coordinator-run-store-observations.ts#<ArrowFunction:4>": {
+      "branches": 37,
+      "lines": 263
+    },
+    "packages/database/src/coordinator-run-store-plan.ts#validateTransitionPlan": {
+      "branches": 60,
+      "lines": 119
+    },
+    "packages/database/src/coordinator-run-store-plan.ts#validateStatusTransitions": {
+      "branches": 102,
+      "lines": 257
+    },
+    "packages/database/src/dispatcher.ts#createOutboxDispatcherDatabase": {
+      "branches": 0,
+      "lines": 289
+    },
+    "packages/database/src/execution-acceptance.ts#acceptWorkflowRun": {
+      "branches": 16,
+      "lines": 203
+    },
+    "packages/database/src/failure-notification-destinations.ts#createFailureNotificationDestinationDatabase": {
+      "branches": 0,
+      "lines": 287
+    },
+    "packages/database/src/failure-notifications.ts#createFailureNotificationStore": {
+      "branches": 0,
+      "lines": 494
+    },
+    "packages/database/src/identity-workspace.ts#createIdentityWorkspaceDatabase": {
+      "branches": 0,
+      "lines": 505
+    },
+    "packages/database/src/node-attempt-run-store-claim.ts#claimNodeAttemptDelivery": {
+      "branches": 3,
+      "lines": 219
+    },
+    "packages/database/src/node-attempt-run-store-completion.ts#completeNodeAttempt": {
+      "branches": 6,
+      "lines": 430
+    },
+    "packages/database/src/node-attempt-run-store-completion.ts#<ArrowFunction:1>": {
+      "branches": 53,
+      "lines": 387
+    },
+    "packages/database/src/node-attempt-run-store-inputs.ts#loadNodeAttemptInputs": {
+      "branches": 2,
+      "lines": 303
+    },
+    "packages/database/src/node-attempt-run-store-inputs.ts#<ArrowFunction:3>": {
+      "branches": 43,
+      "lines": 264
+    },
+    "packages/database/src/operator-commands.ts#createOperatorCommandDatabase": {
+      "branches": 0,
+      "lines": 437
+    },
+    "packages/database/src/phase3-checkpoint.ts#<ArrowFunction:16>": {
+      "branches": 44,
+      "lines": 142
+    },
+    "packages/database/src/preview-execution-reconciliation.ts#reconcilePreviewDelivery": {
+      "branches": 4,
+      "lines": 277
+    },
+    "packages/database/src/preview-execution-reconciliation.ts#<ArrowFunction:4>": {
+      "branches": 22,
+      "lines": 236
+    },
+    "packages/database/src/readiness.ts#checkDatabaseReadiness": {
+      "branches": 67,
+      "lines": 1798
+    },
+    "packages/database/src/retention.ts#createRetentionDatabase": {
+      "branches": 0,
+      "lines": 370
+    },
+    "packages/database/src/schedule-triggers.ts#createScheduleTriggerDatabase": {
+      "branches": 0,
+      "lines": 218
+    },
+    "packages/database/src/webhook-triggers.ts#createWebhookTriggerDatabase": {
+      "branches": 1,
+      "lines": 352
+    },
+    "packages/database/src/workflow-authoring.ts#createWorkflowAuthoringDatabase": {
+      "branches": 21,
+      "lines": 817
+    },
+    "packages/database/src/workflow-authoring.ts#publishWorkflow": {
+      "branches": 0,
+      "lines": 331
+    },
+    "packages/database/src/workflow-authoring.ts#<ArrowFunction:21>": {
+      "branches": 27,
+      "lines": 325
+    },
+    "packages/database/src/workflow-triggers.ts#createWorkflowTriggerReconciliationDatabase": {
+      "branches": 0,
+      "lines": 317
+    },
+    "packages/database/src/workflow-triggers.ts#reconcile": {
+      "branches": 2,
+      "lines": 279
+    },
+    "packages/database/src/workflow-triggers.ts#<ArrowFunction:1>": {
+      "branches": 33,
+      "lines": 265
+    },
+    "packages/database/src/workspace-lifecycle-commands.ts#createWorkspaceLifecycleCommandCoordinator": {
+      "branches": 0,
+      "lines": 243
+    },
+    "packages/database/src/workspace-purge.ts#createWorkspacePurgeCoordinator": {
+      "branches": 1,
+      "lines": 584
+    },
+    "packages/database/src/workspace-purge.ts#processNext": {
+      "branches": 19,
+      "lines": 533
+    },
+    "packages/node-sdk/src/server.ts#createNodeRegistry": {
+      "branches": 22,
+      "lines": 287
+    },
+    "packages/observability/src/transport-metrics.ts#createTransportMetrics": {
+      "branches": 1,
+      "lines": 216
+    },
+    "packages/workflow-engine/src/checkpoint.ts#parseJoin": {
+      "branches": 41,
+      "lines": 201
+    },
+    "packages/workflow-engine/src/checkpoint.ts#parseLoop": {
+      "branches": 25,
+      "lines": 219
+    },
+    "packages/workflow-engine/src/checkpoint.ts#parseCheckpointV1Boundary": {
+      "branches": 39,
+      "lines": 270
+    },
+    "packages/workflow-engine/src/coordinator-observations.ts#forEachCoordinatorObservations": {
+      "branches": 44,
+      "lines": 220
+    },
+    "packages/workflow-engine/src/graph-scheduler.ts#deriveReadyNodes": {
+      "branches": 35,
+      "lines": 202
+    },
+    "packages/workflow-engine/src/operations.ts#assertCheckpointMatchesExecutable": {
+      "branches": 42,
+      "lines": 178
+    },
+    "packages/workflow-engine/src/operations.ts#executeNodeAttempt": {
+      "branches": 54,
+      "lines": 236
+    },
+    "packages/workflow-engine/src/persisted-observations.ts#parsePersistedObservations": {
+      "branches": 36,
+      "lines": 435
+    },
+    "packages/workflow-engine/src/persisted-observations.ts#<ArrowFunction:6>": {
+      "branches": 82,
+      "lines": 275
+    },
+    "packages/workflow-engine/src/workflow-transition-derived.ts#deriveWorkflowTransitions": {
+      "branches": 47,
+      "lines": 241
+    },
+    "packages/workflow-model/src/graph.ts#validateWorkflowGraph": {
+      "branches": 10,
+      "lines": 256
+    },
+    "packages/workflow-model/src/graph.ts#validate": {
+      "branches": 52,
+      "lines": 198
+    }
+  }
+}
