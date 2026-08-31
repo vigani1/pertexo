@@ -250,6 +250,7 @@ describe('preview retention migration', () => {
       '0070_preview_execution_deadline.sql',
       '0071_oidc_browser_binding.sql',
       '0072_regional_replica_identity.sql',
+      '0073_transient_data_retention.sql',
     ]);
 
     const verification = new Pool({

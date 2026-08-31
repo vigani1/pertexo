@@ -18,6 +18,7 @@ export type {
   RetentionEnforcementProcessResult,
   RetentionScheduleResult,
 } from './retention.js';
+export type { TransientDataReapResult } from './transient-data-retention.js';
 export { createRunArtifactRetentionCoordinator } from './run-artifact-retention.js';
 export type {
   RunArtifactRetentionCoordinator,

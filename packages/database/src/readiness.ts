@@ -12,7 +12,7 @@ import {
 // their inventory and synchronized rollout/rollback procedure aligned with
 // docs/operations/database-function-readiness.md.
 
-export const EXPECTED_MIGRATION_HEAD = '0072_regional_replica_identity.sql';
+export const EXPECTED_MIGRATION_HEAD = '0073_transient_data_retention.sql';
 export const MINIMUM_POSTGRES_MAJOR = 18;
 
 export type DatabaseReadiness = Readonly<{

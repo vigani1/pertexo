@@ -105,6 +105,7 @@ describe('published migration repair upgrade', () => {
       '0070_preview_execution_deadline.sql',
       '0071_oidc_browser_binding.sql',
       '0072_regional_replica_identity.sql',
+      '0073_transient_data_retention.sql',
     ]);
     await expect(migrateDatabase(migrationConfig)).resolves.toEqual([]);
 

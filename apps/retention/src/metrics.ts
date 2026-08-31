@@ -8,6 +8,7 @@ import type {
   RetentionScheduleResult,
   RunArtifactRetentionProcessResult,
   WorkspacePurgeProcessResult,
+  TransientDataReapResult,
 } from '@pertexo/database/maintenance';
 
 export const RETENTION_METRIC_NAME = Object.freeze({
@@ -25,6 +26,7 @@ export const RETENTION_METRIC_NAME = Object.freeze({
   rowCount: 'pertexo.retention.rows.count',
   scheduleScanCount: 'pertexo.retention.schedule.scan.count',
   scheduleWorkspaceCount: 'pertexo.retention.schedule.workspace.count',
+  transientDataReapCount: 'pertexo.retention.transient_data_reap.count',
 } as const);
 
 export type RetentionOperation =
@@ -34,12 +36,17 @@ export type RetentionOperation =
   | 'enforce'
   | 'preview'
   | 'run_artifact'
-  | 'workspace_purge';
+  | 'workspace_purge'
+  | 'transient_data_reap';
 
 export interface RetentionMetrics {
   recordRegionalReplicaLag(result: RegionalReplicaLagObservation): void;
   recordSchedule(
     result: RetentionScheduleResult,
+    durationSeconds: number,
+  ): void;
+  recordTransientDataReap(
+    result: TransientDataReapResult,
     durationSeconds: number,
   ): void;
   record(
@@ -66,6 +73,68 @@ export interface RetentionMetrics {
   ): void;
 }
 
+function createTransientDataReapRecorder(
+  meter: Meter,
+  duration: ReturnType<Meter['createHistogram']>,
+): RetentionMetrics['recordTransientDataReap'] {
+  const reaps = meter.createCounter(
+    RETENTION_METRIC_NAME.transientDataReapCount,
+    {
+      description: 'Expired transient rows physically removed by data class',
+      unit: '{row}',
+    },
+  );
+  return (result, durationSeconds) => {
+    reaps.add(result.idempotencyRecordsDeleted, {
+      data_class: 'idempotency_record',
+    });
+    reaps.add(result.workspaceCreationRecordsDeleted, {
+      data_class: 'workspace_creation_idempotency_record',
+    });
+    reaps.add(result.sessionsDeleted, { data_class: 'session' });
+    duration.record(durationSeconds, {
+      mode: 'transient_data_reap',
+      outcome:
+        result.idempotencyRecordsDeleted +
+          result.workspaceCreationRecordsDeleted +
+          result.sessionsDeleted >
+        0
+          ? 'deleted'
+          : 'idle',
+      retention_kind: 'transient_data',
+    });
+  };
+}
+
+function createRegionalReplicaRecorder(
+  meter: Meter,
+): RetentionMetrics['recordRegionalReplicaLag'] {
+  const admissionBlocked = meter.createGauge(
+    RETENTION_METRIC_NAME.regionalReplicaAdmissionBlocked,
+    {
+      description:
+        'Whether durable write admission is blocked by regional replica state',
+      unit: '1',
+    },
+  );
+  const replayLag = meter.createGauge(
+    RETENTION_METRIC_NAME.regionalReplicaReplayLag,
+    {
+      description: 'Observed cross-region PostgreSQL replica replay lag',
+      unit: 's',
+    },
+  );
+  return (result) => {
+    const attributes = {
+      replication_state: result.replicationState,
+      status: result.status,
+    };
+    admissionBlocked.record(result.status === 'open' ? 0 : 1, attributes);
+    if (result.replayLagMillis !== null)
+      replayLag.record(result.replayLagMillis / 1_000, attributes);
+  };
+}
+
 export function createRetentionMetrics(
   meter: Meter = metrics.getMeter('@pertexo/retention', '0.0.0'),
 ): RetentionMetrics {
@@ -81,21 +150,6 @@ export function createRetentionMetrics(
     description: 'Bounded retention pages processed',
     unit: '{page}',
   });
-  const regionalReplicaAdmissionBlocked = meter.createGauge(
-    RETENTION_METRIC_NAME.regionalReplicaAdmissionBlocked,
-    {
-      description:
-        'Whether durable write admission is blocked by regional replica state',
-      unit: '1',
-    },
-  );
-  const regionalReplicaReplayLag = meter.createGauge(
-    RETENTION_METRIC_NAME.regionalReplicaReplayLag,
-    {
-      description: 'Observed cross-region PostgreSQL replica replay lag',
-      unit: 's',
-    },
-  );
   const duration = meter.createHistogram(RETENTION_METRIC_NAME.batchDuration, {
     description:
       'Duration of one retention operation, excluding other poll work',
@@ -153,22 +207,7 @@ export function createRetentionMetrics(
     },
   );
   const retentionMetrics: RetentionMetrics = {
-    recordRegionalReplicaLag: (result) => {
-      const attributes = {
-        replication_state: result.replicationState,
-        status: result.status,
-      };
-      regionalReplicaAdmissionBlocked.record(
-        result.status === 'open' ? 0 : 1,
-        attributes,
-      );
-      if (result.replayLagMillis !== null) {
-        regionalReplicaReplayLag.record(
-          result.replayLagMillis / 1_000,
-          attributes,
-        );
-      }
-    },
+    recordRegionalReplicaLag: createRegionalReplicaRecorder(meter),
     recordSchedule: (result, durationSeconds) => {
       const attributes = {
         mode: 'schedule',
@@ -186,6 +225,7 @@ export function createRetentionMetrics(
       });
       duration.record(durationSeconds, attributes);
     },
+    recordTransientDataReap: createTransientDataReapRecorder(meter, duration),
     record: (
       result: RetentionDryRunProcessResult | RetentionEnforcementProcessResult,
       durationSeconds: number,

@@ -16,7 +16,7 @@ const integrationUsageMigrationUrl = new URL(
 
 describe('workflow authoring migration contract', () => {
   it('advances the reviewed migration head', () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0072_regional_replica_identity.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0073_transient_data_retention.sql');
   });
 
   it('emits the identifier-only trigger-reconciliation payload', () => {

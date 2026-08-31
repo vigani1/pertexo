@@ -11,7 +11,7 @@ const migrationUrl = new URL(
 
 describe('restore artifact inventory migration', () => {
   it('exposes only a bounded finalized-artifact inventory to maintenance', async () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0072_regional_replica_identity.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0073_transient_data_retention.sql');
     const migration = await readFile(migrationUrl, 'utf8');
 
     expect(migration).toContain(

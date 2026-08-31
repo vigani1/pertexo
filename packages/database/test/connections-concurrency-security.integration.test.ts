@@ -182,7 +182,7 @@ describe('connection concurrency and security', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0072_regional_replica_identity.sql',
+        migrationHead: '0073_transient_data_retention.sql',
       });
       await expect(
         checkDatabaseReadiness(workerReadinessPool, {
@@ -190,7 +190,7 @@ describe('connection concurrency and security', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0072_regional_replica_identity.sql',
+        migrationHead: '0073_transient_data_retention.sql',
       });
     } finally {
       await Promise.all([apiReadinessPool.end(), workerReadinessPool.end()]);
