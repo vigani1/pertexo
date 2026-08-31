@@ -37,6 +37,7 @@ for (const [name, workload] of Object.entries(manifest.workloads).sort(
     name,
     image: process.env.ECS_IMAGE_URI,
     essential: true,
+    linuxParameters: { initProcessEnabled: true },
     readonlyRootFilesystem: true,
     user: '10001:10001',
     command: workload.command,

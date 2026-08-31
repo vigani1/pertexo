@@ -71,6 +71,8 @@ try {
       throw new Error(
         `${file} weakens the runtime filesystem or user boundary`,
       );
+    if (container.linuxParameters?.initProcessEnabled !== true)
+      throw new Error(`${file} must enable the ECS init process`);
     if (
       task.taskRoleArn !==
       `${renderEnvironment.ECS_TASK_ROLE_ARN_PREFIX}/${container.name}`

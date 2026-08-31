@@ -15,11 +15,7 @@ RUN pnpm install --prod --frozen-lockfile \
 FROM node:24.18.1-bookworm-slim@sha256:235600a8101ab264e117b1768e925532262668dc9b581ef1dd7d96ced463b8e7 AS runtime
 ENV NODE_ENV=production
 WORKDIR /workspace
-RUN apt-get update \
-  && apt-get upgrade --yes \
-  && apt-get install --no-install-recommends --yes tini \
-  && rm -rf /var/lib/apt/lists/* \
-  && rm -rf /usr/local/lib/node_modules/corepack /usr/local/lib/node_modules/npm \
+RUN rm -rf /usr/local/lib/node_modules/corepack /usr/local/lib/node_modules/npm \
   && rm -f /usr/local/bin/corepack /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/pnpm /usr/local/bin/pnpx \
   && groupadd --gid 10001 pertexo \
   && useradd --uid 10001 --gid pertexo --no-create-home --shell /usr/sbin/nologin pertexo
@@ -44,5 +40,4 @@ COPY --from=build --chown=10001:10001 /workspace/packages/queue/dist ./packages/
 COPY --from=build --chown=10001:10001 /workspace/packages/workflow-engine/dist ./packages/workflow-engine/dist
 COPY --from=build --chown=10001:10001 /workspace/packages/workflow-model/dist ./packages/workflow-model/dist
 USER 10001:10001
-ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["node", "apps/api/dist/main.js"]
