@@ -165,6 +165,48 @@ async function runScheduleLoop(
   }
 }
 
+async function runTransientDataReapLoop(
+  resources: RetentionMaintenanceResources,
+  signal: AbortSignal,
+): Promise<void> {
+  const state: OperationState = { consecutiveFailures: 0 };
+  while (!signal.aborted) {
+    const startedAt = performance.now();
+    try {
+      const result = await resources.database.reapTransientData(signal);
+      resources.metrics.recordTransientDataReap(
+        result,
+        (performance.now() - startedAt) / 1_000,
+      );
+      recordRecovery(resources, 'transient_data_reap', state);
+      const deletedCount =
+        result.idempotencyRecordsDeleted +
+        result.workspaceCreationRecordsDeleted +
+        result.sessionsDeleted;
+      if (deletedCount > 0)
+        resources.logger.info('retention.transient_data_reaped', {
+          deletedCount,
+          idempotencyRecordsDeleted: result.idempotencyRecordsDeleted,
+          sessionsDeleted: result.sessionsDeleted,
+          workspaceCreationRecordsDeleted:
+            result.workspaceCreationRecordsDeleted,
+        });
+      if (deletedCount === 0)
+        await waitForAbortableDelay(resources.pollIntervalMs, signal);
+    } catch (error: unknown) {
+      if (error === signal.reason) return;
+      await recordFailure(
+        resources,
+        'transient_data_reap',
+        state,
+        startedAt,
+        error,
+        signal,
+      );
+    }
+  }
+}
+
 async function runDryRunLoop(
   resources: RetentionMaintenanceResources,
   signal: AbortSignal,
@@ -367,6 +409,7 @@ export async function runMaintenanceLoops(
   await Promise.all([
     runOperatorRerunLoop(resources, signal),
     runScheduleLoop(resources, signal),
+    runTransientDataReapLoop(resources, signal),
     runDryRunLoop(resources, signal),
     runEnforcementLoop(resources, ledgerReady, signal),
     runPreviewLoop(resources, artifactsReady, ledgerReady, signal),

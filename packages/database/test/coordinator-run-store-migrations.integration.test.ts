@@ -56,7 +56,7 @@ describe('Coordinator migration and identity invariants', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0072_regional_replica_identity.sql',
+          migrationHead: '0073_transient_data_retention.sql',
           role: 'pertexo_worker',
         });
       } finally {
@@ -154,6 +154,7 @@ describe('Coordinator migration and identity invariants', () => {
         '0070_preview_execution_deadline.sql',
         '0071_oidc_browser_binding.sql',
         '0072_regional_replica_identity.sql',
+        '0073_transient_data_retention.sql',
       ]);
       const workerPool = new Pool({
         connectionString: namedDatabaseUrl(
@@ -169,7 +170,7 @@ describe('Coordinator migration and identity invariants', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0072_regional_replica_identity.sql',
+          migrationHead: '0073_transient_data_retention.sql',
           role: 'pertexo_worker',
         });
         await expect(
@@ -236,7 +237,7 @@ describe('Coordinator migration and identity invariants', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0072_regional_replica_identity.sql',
+        migrationHead: '0073_transient_data_retention.sql',
         role: 'pertexo_worker',
       });
       const catalog = await readinessPool.query<{
@@ -475,7 +476,7 @@ describe('Coordinator migration and identity invariants', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0072_regional_replica_identity.sql',
+        migrationHead: '0073_transient_data_retention.sql',
       });
     } finally {
       await readinessPool.end();

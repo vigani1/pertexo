@@ -231,6 +231,7 @@ describe('connection persistence', () => {
       '0070_preview_execution_deadline.sql',
       '0071_oidc_browser_binding.sql',
       '0072_regional_replica_identity.sql',
+      '0073_transient_data_retention.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, priorDatabaseName),
@@ -243,7 +244,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0072_regional_replica_identity.sql',
+        migrationHead: '0073_transient_data_retention.sql',
       });
       const bindingSurface = await pool.query<{
         node_column: boolean;
@@ -480,6 +481,7 @@ describe('connection persistence', () => {
       '0070_preview_execution_deadline.sql',
       '0071_oidc_browser_binding.sql',
       '0072_regional_replica_identity.sql',
+      '0073_transient_data_retention.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, upgradeDatabaseName),
@@ -492,7 +494,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0072_regional_replica_identity.sql',
+        migrationHead: '0073_transient_data_retention.sql',
       });
     } finally {
       await pool.end();

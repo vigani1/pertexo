@@ -30,9 +30,9 @@
     "packages/database/src/preview-cleanup.ts": 548,
     "packages/database/src/preview-execution-acceptance.ts": 563,
     "packages/database/src/readiness.ts": 2139,
-    "packages/database/src/retention.ts": 804,
+    "packages/database/src/retention.ts": 813,
     "packages/database/src/schedule-triggers.ts": 664,
-    "packages/database/src/schema.ts": 1952,
+    "packages/database/src/schema.ts": 1961,
     "packages/database/src/testing.ts": 571,
     "packages/database/src/webhook-triggers.ts": 666,
     "packages/database/src/workflow-authoring.ts": 1381,
@@ -177,7 +177,7 @@
     },
     "packages/database/src/retention.ts#createRetentionDatabase": {
       "branches": 0,
-      "lines": 370
+      "lines": 374
     },
     "packages/database/src/schedule-triggers.ts#createScheduleTriggerDatabase": {
       "branches": 0,

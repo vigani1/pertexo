@@ -16,7 +16,21 @@ V1 defaults retain detailed node attempts, events, and logs for 30 days; run
 summaries for 90 days; preview runs for seven days; run artifacts for 30 days
 unless referenced by a longer-retained record; and audit/security events for
 365 days, subject to legal policy. Idempotency records are operation-specific
-and never expire before the corresponding retry or replay window.
+and never expire before the corresponding retry or replay window. V1 request
+idempotency for connection management/testing, secret rotation, workflow
+publication, notification destinations, schedules, generic webhooks, and
+workspace creation uses a 24-hour replay window. A bounded maintenance reaper
+removes only terminal records after that window. It never removes an
+`in_progress` claim: operations whose provider outcome may be unknown retain
+the claim until their operation-specific recovery path safely reaches a
+terminal state. Once a terminal record is reaped, reuse of the same key begins
+a new claim and no longer replays or conflicts with the expired request.
+
+Authentication sessions remain logically invalid immediately after expiry or
+revocation. Their token digest and bounded user-agent/IP metadata are retained
+for a 30-day security-audit grace period after that invalidation event, then a
+bounded maintenance reaper physically removes them. Row-lock skipping makes
+cleanup safe with concurrent logout; cleanup cannot make a session active.
 
 Generic webhook raw bytes, signature headers, authorization material, and
 request headers are never persisted. The parsed bounded payload is stored once
@@ -24,7 +38,9 @@ as run input and follows the 30-day detailed-run retention period. Trigger
 delivery metadata and its safe run reference follow the 90-day run-summary
 period. Raw-fingerprint replay records expire after five minutes; keyed webhook
 idempotency records expire after 24 hours. Legal hold covers the retained parsed
-payload, delivery metadata, and replay/idempotency facts in its scope.
+payload, delivery metadata, and workspace-scoped replay/idempotency facts in
+its scope. Session metadata is identity access state rather than workspace
+evidence and follows its 30-day grace policy.
 
 Retention and purge maintenance uses bounded, idempotent, resumable batches
 with durable progress and metrics. A legal hold prevents destruction of the

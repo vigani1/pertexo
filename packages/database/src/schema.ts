@@ -1258,7 +1258,9 @@ export const idempotencyRecords = appSchema.table(
     status: varchar('status', { length: 16 }).notNull(),
     resourceId: uuid('resource_id').notNull(),
     resultRef: jsonb('result_ref').notNull(),
-    expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'date' }),
+    expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'date' })
+      .default(sql`clock_timestamp() + interval '24 hours'`)
+      .notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
       .notNull(),
@@ -1292,6 +1294,9 @@ export const workspaceCreationIdempotencyRecords = appSchema.table(
     status: varchar('status', { length: 16 }).notNull(),
     resourceId: uuid('resource_id'),
     resultRef: jsonb('result_ref').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'date' })
+      .default(sql`clock_timestamp() + interval '24 hours'`)
+      .notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
       .notNull(),
@@ -1304,6 +1309,10 @@ export const workspaceCreationIdempotencyRecords = appSchema.table(
       table.actorUserId,
       table.operation,
       table.keyHash,
+    ),
+    index('workspace_creation_idempotency_expiry_idx').on(
+      table.expiresAt,
+      table.id,
     ),
   ],
 );

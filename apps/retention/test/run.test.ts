@@ -52,6 +52,13 @@ function resources(outcomes: ('completed' | 'idle' | 'stale')[]) {
         status: 'open' as const,
       }),
     ),
+    reapTransientData: vi.fn(() =>
+      Promise.resolve({
+        idempotencyRecordsDeleted: 0,
+        sessionsDeleted: 0,
+        workspaceCreationRecordsDeleted: 0,
+      }),
+    ),
     scheduleEnforcement: vi.fn(() =>
       Promise.resolve({
         cutoffAt: new Date('2026-08-26T00:00:00.000Z'),
@@ -133,6 +140,7 @@ function resources(outcomes: ('completed' | 'idle' | 'stale')[]) {
     recordRegionalReplicaLag: vi.fn(),
     recordRunArtifact: vi.fn(),
     recordSchedule: vi.fn(),
+    recordTransientDataReap: vi.fn(),
     recordWorkspacePurge: vi.fn(),
   } satisfies RetentionMetrics;
   const telemetry = {

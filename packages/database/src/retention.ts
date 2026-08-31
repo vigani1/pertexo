@@ -6,6 +6,10 @@ import { z } from 'zod';
 import type { DatabaseConfig } from './config.js';
 import type { ControlLedger } from './control-ledger-coordinator.js';
 import { EXPECTED_MIGRATION_HEAD } from './readiness.js';
+import {
+  reapTransientData,
+  type TransientDataReapResult,
+} from './transient-data-retention.js';
 
 const uuidSchema = z.uuid();
 const boundedText = (maximum: number) => z.string().trim().min(1).max(maximum);
@@ -114,6 +118,7 @@ export interface RetentionDatabase {
     applicationName: string,
     signal?: AbortSignal,
   ): Promise<RegionalReplicaLagObservation>;
+  reapTransientData(signal?: AbortSignal): Promise<TransientDataReapResult>;
   scheduleEnforcement(signal?: AbortSignal): Promise<RetentionScheduleResult>;
   startDryRun(
     input: StartWorkflowRunInputRetentionDryRunInput,
@@ -367,6 +372,8 @@ export function createRetentionDatabase(
             and has_function_privilege(current_user,
               'app.process_operator_maintenance_rerun()','EXECUTE')
             and has_function_privilege(current_user,
+              'app.reap_transient_data(integer)','EXECUTE')
+            and has_function_privilege(current_user,
               'app.start_retention_batch(uuid,uuid,character varying,character varying,timestamp with time zone,boolean,character varying,character varying)','EXECUTE')
             and has_function_privilege(current_user,
               'app.claim_retention_dry_run_batches(character varying,integer,integer)','EXECUTE')
@@ -521,6 +528,8 @@ export function createRetentionDatabase(
         workspaceId: uuidSchema.parse(row.workspace_id),
       });
     },
+    reapTransientData: (signal?: AbortSignal) =>
+      reapTransientData(pool, options.pageSize, signal),
     processNext: async (signal?: AbortSignal) => {
       const claimed = (await claim(signal))[0];
       if (claimed === undefined) return { status: 'idle' as const };
