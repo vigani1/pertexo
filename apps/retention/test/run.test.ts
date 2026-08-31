@@ -1,9 +1,9 @@
-import type { RetentionDatabase } from '@pertexo/database';
+import type { RetentionDatabase } from '@pertexo/database/testing';
 import type { DualRegionControlLedger } from '@pertexo/artifact-store';
-import type { RetentionEnforcementCoordinator } from '@pertexo/database';
-import type { PreviewRetentionCoordinator } from '@pertexo/database';
-import type { RunArtifactRetentionCoordinator } from '@pertexo/database';
-import type { WorkspacePurgeCoordinator } from '@pertexo/database';
+import type { RetentionEnforcementCoordinator } from '@pertexo/database/testing';
+import type { PreviewRetentionCoordinator } from '@pertexo/database/testing';
+import type { RunArtifactRetentionCoordinator } from '@pertexo/database/testing';
+import type { WorkspacePurgeCoordinator } from '@pertexo/database/testing';
 import type { StructuredLogger } from '@pertexo/observability/logging';
 import type { TelemetryLifecycle } from '@pertexo/observability/telemetry';
 import { describe, expect, it, vi } from 'vitest';

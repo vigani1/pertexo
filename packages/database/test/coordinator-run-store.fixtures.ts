@@ -22,7 +22,7 @@ import {
   NodeAttemptDispatchBindingMismatchError,
   NodeAttemptStateCorruptError,
   parseDatabaseConfig,
-} from '../src/index.js';
+} from '../src/testing.js';
 import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../src/migrations.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';
 

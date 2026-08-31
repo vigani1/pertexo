@@ -4,7 +4,7 @@ import {
   ConnectionNotFoundError,
   ConnectionTestInProgressError,
   ConnectionUnavailableError,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import {
   ConnectionSecretEncryptionError,
   SecureHttpError,

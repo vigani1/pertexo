@@ -17,8 +17,8 @@ import type {
   WorkflowDraftRecord,
   WorkflowRecord,
   WorkflowVersionRecord,
-} from '@pertexo/database';
-import { WorkflowRevisionConflictError } from '@pertexo/database';
+} from '@pertexo/database/testing';
+import { WorkflowRevisionConflictError } from '@pertexo/database/testing';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const sessionId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';

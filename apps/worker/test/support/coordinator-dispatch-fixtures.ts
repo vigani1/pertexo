@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import {
   createOutboxDispatcherDatabase,
   parseDatabaseConfig,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue';
 
 import type { createCoordinatorRuntime } from '../../src/execution/coordinator-runtime.js';

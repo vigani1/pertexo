@@ -11,7 +11,7 @@ import {
   migrateDatabase,
   parseDatabaseConfig,
   WorkflowDefinitionPlacementError,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import {
   HTTP_REQUEST_CONNECTION_SLOT,
   HTTP_REQUEST_DEFINITION,

@@ -4,7 +4,7 @@ import {
   createDualRegionArtifactStore,
   parseDualRegionArtifactStoreConfig,
 } from '@pertexo/artifact-store';
-import { parseDatabaseConfig } from '@pertexo/database';
+import { parseDatabaseConfig } from '@pertexo/database/testing';
 import {
   SecureHttpClient,
   type ConnectionEnvelopeEncryption,

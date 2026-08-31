@@ -4,7 +4,7 @@ import {
   createNodeAttemptRunStore,
   NodeAttemptDeliveryMismatchError,
   parseDatabaseConfig,
-} from '../src/index.js';
+} from '../src/testing.js';
 
 describe('NodeAttemptRunStore', () => {
   it('honors an already-aborted claim without opening PostgreSQL work', async () => {

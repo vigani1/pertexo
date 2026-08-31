@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { IdentityWorkspaceDatabase } from '@pertexo/database';
+import type { IdentityWorkspaceDatabase } from '@pertexo/database/testing';
 
 import { DatabaseIdentityWorkspaceAdapter } from '../../src/identity-workspace/index.js';
 

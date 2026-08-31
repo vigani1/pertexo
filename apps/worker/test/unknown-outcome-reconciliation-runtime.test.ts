@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { canonicalOutboxPayloadChecksum } from '@pertexo/database';
+import { canonicalOutboxPayloadChecksum } from '@pertexo/database/testing';
 import { jobIdForOutboxEvent, JOB_NAME } from '@pertexo/queue';
 import { describe, expect, it, vi } from 'vitest';
 

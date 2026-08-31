@@ -1,11 +1,11 @@
 import type {
   PublishedWorkflowReader,
   WorkflowTriggerReconciliationDatabase,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import {
   WorkflowTriggerReconciliationMismatchError,
   WorkflowTriggerStalePublicationError,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import { JOB_NAME, type QueueHandlerContext } from '@pertexo/queue';
 import { describe, expect, it, vi } from 'vitest';
 

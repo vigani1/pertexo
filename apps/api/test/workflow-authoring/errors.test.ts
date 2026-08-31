@@ -4,7 +4,7 @@ import {
   WorkflowDefinitionPlacementError,
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 
 import {
   mapWorkflowAuthoringError,

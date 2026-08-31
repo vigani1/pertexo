@@ -1,7 +1,7 @@
 import type {
   IdentityWorkspaceDatabase,
   OidcLoginTransactionStore,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { ApiIdentityConfig } from '../../src/platform/config/api-config.js';

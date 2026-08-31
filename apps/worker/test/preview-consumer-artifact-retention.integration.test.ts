@@ -11,7 +11,7 @@ import {
   PREVIEW_STATUS,
   withTenantScopedClient,
   type ControlLedger,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import { describe, expect, it } from 'vitest';
 
 import { createWorkerNodeRuntimeCapabilities } from '../src/execution/node-runtime-capabilities.js';

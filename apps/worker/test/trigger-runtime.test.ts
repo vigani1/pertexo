@@ -2,7 +2,7 @@ import type {
   PublishedWorkflowReader,
   ScheduleTriggerScanner,
   WorkflowTriggerReconciliationDatabase,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import {
   JOB_NAME,
   QUEUE_NAME,

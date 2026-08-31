@@ -3,7 +3,7 @@ import {
   type FailureNotificationDestinationDatabase,
   FailureNotificationDestinationIdempotencyConflictError,
   FailureNotificationDestinationNotFoundError,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import { describe, expect, it, vi } from 'vitest';
 
 import {

@@ -4,7 +4,7 @@ import type {
   PublishedWorkflowReader,
   ScheduleTriggerScanner,
   WorkflowTriggerReconciliationDatabase,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import { createQueueProducer, JOB_NAME, QUEUE_NAME } from '@pertexo/queue';
 import { Queue } from 'bullmq';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';

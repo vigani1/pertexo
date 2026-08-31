@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { FailureNotificationStore } from '@pertexo/database';
+import type { FailureNotificationStore } from '@pertexo/database/testing';
 import {
   ConnectionSecretEncryptionError,
   SECURE_HTTP_ERROR_CODE,
@@ -136,9 +136,9 @@ describe('provider failure notification delivery', () => {
     async (kind) => {
       const persistence = store(kind);
       vi.mocked(persistence.loadDestination).mockRejectedValue(
-        new (await import('@pertexo/database')).FailureNotificationStateError(
-          'destination disabled',
-        ),
+        new (
+          await import('@pertexo/database/testing')
+        ).FailureNotificationStateError('destination disabled'),
       );
       const sendMessage = vi.fn();
       const sendNotification = vi.fn();
@@ -575,9 +575,9 @@ describe('provider failure notification delivery', () => {
       const persistence = store(kind);
       const providerCalls: string[] = [];
       vi.mocked(persistence.fenceDispatch).mockRejectedValue(
-        new (await import('@pertexo/database')).FailureNotificationStateError(
-          'fence rejected',
-        ),
+        new (
+          await import('@pertexo/database/testing')
+        ).FailureNotificationStateError('fence rejected'),
       );
       const delivery = createProviderFailureNotificationDelivery({
         store: persistence,
@@ -640,9 +640,9 @@ describe('provider failure notification delivery', () => {
   it('uses persisted unresolved dispatch truth rather than binding presence', async () => {
     const persistence = store('email');
     vi.mocked(persistence.fenceDispatch).mockRejectedValue(
-      new (await import('@pertexo/database')).FailureNotificationStateError(
-        'fence rejected',
-      ),
+      new (
+        await import('@pertexo/database/testing')
+      ).FailureNotificationStateError('fence rejected'),
     );
     const delivery = createProviderFailureNotificationDelivery({
       store: persistence,

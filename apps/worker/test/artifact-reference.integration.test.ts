@@ -16,7 +16,7 @@ import {
   createWorkspaceDatabase,
   finalizeArtifactUpload,
   parseDatabaseConfig,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import type { TransportMetrics } from '@pertexo/observability/transport-metrics';
 import {
   createQueueConsumer,

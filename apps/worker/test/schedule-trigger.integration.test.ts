@@ -11,7 +11,7 @@ import {
   migrateDatabase,
   parseDatabaseConfig,
   type DatabaseConfig,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import {
   platformExecutableRegistryHistory,
   platformRegistryReleaseSupport,

@@ -3,13 +3,13 @@ import { createHmac } from 'node:crypto';
 import type {
   WebhookTriggerDatabase,
   WebhookVerificationReference,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import {
   RegionalWriteAdmissionPausedError,
   WebhookDeliveryReplayMismatchError,
   WebhookIngressRateLimitExceededError,
   WorkspaceRunQuotaExceededError,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';

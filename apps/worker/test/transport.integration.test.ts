@@ -12,7 +12,7 @@ import {
   insertOutboxEvent,
   outboxEvents,
   parseDatabaseConfig,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import type { TransportMetrics } from '@pertexo/observability/transport-metrics';
 import { createQueueTraceRunner } from '@pertexo/observability/queue-tracing';
 import {

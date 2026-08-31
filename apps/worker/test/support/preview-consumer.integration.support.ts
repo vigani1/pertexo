@@ -17,7 +17,7 @@ import {
   parseWorkspaceId,
   withTenantScopedClient,
   type AcceptPreviewRunInput,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import { platformExecutableRegistryHistory } from '@pertexo/node-catalog';
 import {
   composeExecutableCompatibilityRelease,
@@ -525,7 +525,13 @@ beforeAll(async () => {
   await new Promise<void>((resolve, reject) => {
     const child = spawn(
       'pnpm',
-      ['--filter', '@pertexo/database', 'exec', 'tsx', 'src/migrate.ts'],
+      [
+        '--filter',
+        '@pertexo/database/testing',
+        'exec',
+        'tsx',
+        'src/migrate.ts',
+      ],
       {
         stdio: 'inherit',
         cwd: new URL('../../../../', import.meta.url).pathname,

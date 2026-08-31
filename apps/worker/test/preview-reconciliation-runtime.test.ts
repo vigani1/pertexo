@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import {
   canonicalOutboxPayloadChecksum,
   parseDatabaseConfig,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import { jobIdForOutboxEvent, JOB_NAME } from '@pertexo/queue';
 import { describe, expect, it, vi } from 'vitest';
 

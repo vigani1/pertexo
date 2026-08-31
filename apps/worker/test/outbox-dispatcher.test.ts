@@ -1,9 +1,9 @@
-import { canonicalOutboxPayloadChecksum } from '@pertexo/database';
+import { canonicalOutboxPayloadChecksum } from '@pertexo/database/testing';
 import type {
   LeasedOutboxEvent,
   OutboxDispatcherDatabase,
   ReleaseOutboxResult,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import type { TransportMetrics } from '@pertexo/observability/transport-metrics';
 import { JOB_NAME, type QueueJob, type QueueProducer } from '@pertexo/queue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';

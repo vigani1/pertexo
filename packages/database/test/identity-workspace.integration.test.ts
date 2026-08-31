@@ -16,7 +16,7 @@ import {
   parseDatabaseConfig,
   auditEvents,
   workspaceMemberships,
-} from '../src/index.js';
+} from '../src/testing.js';
 import { migrateDatabase } from '../src/migrations.js';
 
 const migrationUrl =

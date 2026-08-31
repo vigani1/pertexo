@@ -9,7 +9,7 @@ import {
   createWorkspaceDatabase,
   parseDatabaseConfig,
   type ConnectionDatabase,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import {
   ConnectionEnvelopeEncryption,
   type ConnectionSecretContext,
@@ -170,7 +170,13 @@ async function migrateDatabase(): Promise<void> {
   await new Promise<void>((resolve, reject) => {
     const child = spawn(
       'pnpm',
-      ['--filter', '@pertexo/database', 'exec', 'tsx', 'src/migrate.ts'],
+      [
+        '--filter',
+        '@pertexo/database/testing',
+        'exec',
+        'tsx',
+        'src/migrate.ts',
+      ],
       {
         cwd: new URL('../../../', import.meta.url).pathname,
         env: {

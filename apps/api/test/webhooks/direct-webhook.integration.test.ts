@@ -11,7 +11,7 @@ import {
   migrateDatabase,
   parseDatabaseConfig,
   type WebhookTriggerDatabase,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import {
   WebhookTriggerEnvelopeEncryption,
   type WebhookEnvelopeKeyProvider,

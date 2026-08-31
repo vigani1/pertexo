@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 
-import type { PreviewAttemptLease } from '@pertexo/database';
+import type { PreviewAttemptLease } from '@pertexo/database/testing';
 import {
   SLACK_BOT_TOKEN_CONNECTION_SLOT,
   SLACK_SEND_MESSAGE_DEFINITION,
