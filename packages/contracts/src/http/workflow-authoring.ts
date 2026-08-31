@@ -157,6 +157,15 @@ export type WorkflowDraftResponse = z.output<
 export type WorkflowPublishResponse = z.output<
   typeof workflowPublishResponseSchema
 >;
+export type WorkflowValidateResponse = z.output<
+  typeof workflowValidateResponseSchema
+>;
+export type WorkflowVersionResponse = z.output<
+  typeof workflowVersionResponseSchema
+>;
+export type WorkflowVersionsResponse = z.output<
+  typeof workflowVersionsResponseSchema
+>;
 export type WorkflowRevisionConflictProblem = z.output<
   typeof workflowRevisionConflictProblemSchema
 >;

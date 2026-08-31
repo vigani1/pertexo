@@ -17,6 +17,9 @@ import {
   type WorkflowCreateResponse,
   type WorkflowDraftResponse,
   type WorkflowPublishResponse,
+  type WorkflowValidateResponse,
+  type WorkflowVersionResponse,
+  type WorkflowVersionsResponse,
   type WorkflowSummary,
   type WorkflowGraphContract,
 } from '@pertexo/contracts';
@@ -45,6 +48,9 @@ export type {
   WorkflowCreateResponse,
   WorkflowDraftResponse,
   WorkflowPublishResponse,
+  WorkflowValidateResponse,
+  WorkflowVersionResponse,
+  WorkflowVersionsResponse,
   WorkflowSummary,
   WorkflowGraphContract,
 };
