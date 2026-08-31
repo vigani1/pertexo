@@ -7,7 +7,7 @@ import {
   createWorkspaceDatabase,
   parseDatabaseConfig,
   type WorkspaceDatabase,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import { Redis } from 'ioredis';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 

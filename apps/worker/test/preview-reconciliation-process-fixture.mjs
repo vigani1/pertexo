@@ -7,7 +7,7 @@ import {
   parseDatabaseConfig,
   PREVIEW_STATUS,
   withTenantScopedClient,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import { Pool } from 'pg';
 
 import { createNodeAttemptRuntime } from '../src/execution/node-attempt-runtime.ts';

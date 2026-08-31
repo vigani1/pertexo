@@ -24,7 +24,7 @@ import {
   RegionalWriteAdmissionPausedError,
   parseDatabaseConfig,
   type WorkflowRunDatabase,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 
 const workspaceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workflowId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';

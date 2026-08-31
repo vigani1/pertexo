@@ -34,8 +34,8 @@ describe('@pertexo/database package contract', () => {
     };
 
     expect(Object.keys(packageJson.exports).sort()).toEqual([
-      '.',
       ...supportedSurfaces.map((surface) => `./${surface}`),
+      './testing',
     ]);
     for (const surface of supportedSurfaces)
       expect(packageJson.exports[`./${surface}`]).toEqual({
@@ -44,13 +44,13 @@ describe('@pertexo/database package contract', () => {
       });
   });
 
-  it('keeps role surfaces independent from the broad compatibility root', async () => {
+  it('keeps role surfaces independent from the broad testing surface', async () => {
     for (const surface of supportedSurfaces) {
       const source = await readFile(
         new URL(`../src/${surface}.ts`, import.meta.url),
         'utf8',
       );
-      expect(source).not.toContain("from './index.js'");
+      expect(source).not.toContain("from './testing.js'");
     }
 
     const api = await readFile(
@@ -70,9 +70,9 @@ describe('@pertexo/database package contract', () => {
     expect(maintenance).not.toContain('createControlLedgerCoordinator');
   });
 
-  it('does not republish the retired legacy execution persistence surface', async () => {
-    const root = await readFile(
-      new URL('../src/index.ts', import.meta.url),
+  it('confines broad fixture capabilities to the explicit testing subpath', async () => {
+    const testing = await readFile(
+      new URL('../src/testing.ts', import.meta.url),
       'utf8',
     );
     for (const retiredExport of [
@@ -84,7 +84,7 @@ describe('@pertexo/database package contract', () => {
       'scheduleNodeAttemptRetry',
       'suspendNodeAttemptUntil',
     ])
-      expect(root).not.toContain(retiredExport);
+      expect(testing).not.toContain(retiredExport);
   });
 
   it('publishes behavior-named connection capabilities instead of the broad store', () => {

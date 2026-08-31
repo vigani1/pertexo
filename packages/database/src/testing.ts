@@ -1,3 +1,5 @@
+// Broad test and migration-fixture surface. Production code must use one of
+// the role-owned package subpaths instead.
 export {
   createOperatorRunReplayStore,
   OperatorRunReplayMismatchError,

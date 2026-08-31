@@ -2,7 +2,7 @@ import {
   IdentityConflictError,
   IdempotencyRequestConflictError,
   WorkspaceLifecycleConflictError,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import { describe, expect, it } from 'vitest';
 
 import { IdentityError } from '../../src/identity/index.js';

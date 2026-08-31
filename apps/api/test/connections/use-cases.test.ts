@@ -1,4 +1,4 @@
-import type { ConnectionRecord } from '@pertexo/database';
+import type { ConnectionRecord } from '@pertexo/database/testing';
 import {
   SECURE_HTTP_ERROR_CODE,
   SecureHttpError,

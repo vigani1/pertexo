@@ -1,7 +1,7 @@
 import type {
   WorkflowAuthoringDatabase,
   WorkspaceDatabase,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import type {
   StructuredLogger,
   TelemetryLifecycle,

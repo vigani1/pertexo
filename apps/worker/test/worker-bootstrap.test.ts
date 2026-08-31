@@ -1,7 +1,7 @@
 import type {
   OutboxDispatcherDatabase,
   WorkspaceDatabase,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import {
   JOB_NAME,
   type QueueConsumer,

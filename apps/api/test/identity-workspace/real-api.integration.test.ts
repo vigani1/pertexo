@@ -13,7 +13,7 @@ import {
   workspaceMemberships,
   workspaces,
   type WorkspaceDatabase,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import type {
   StructuredLogger,
   TelemetryLifecycle,

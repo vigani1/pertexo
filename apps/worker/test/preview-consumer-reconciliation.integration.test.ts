@@ -6,7 +6,7 @@ import {
   createOutboxDispatcherDatabase,
   markPreviewDispatched,
   parseDatabaseConfig,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import { createQueueProducer, JOB_NAME, parseQueueJob } from '@pertexo/queue';
 import { describe, expect, it } from 'vitest';
 

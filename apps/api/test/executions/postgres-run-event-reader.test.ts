@@ -1,7 +1,7 @@
 import type {
   WorkspaceDatabase,
   WorkspaceTransaction,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createPostgresRunEventReader } from '../../src/executions/postgres-run-event-reader.js';

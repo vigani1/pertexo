@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import type { PutArtifactRequest } from '@pertexo/artifact-store';
-import type { ConnectionDatabase } from '@pertexo/database';
+import type { ConnectionDatabase } from '@pertexo/database/testing';
 import { ProviderExecutionRateLimitError } from '@pertexo/node-sdk/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 

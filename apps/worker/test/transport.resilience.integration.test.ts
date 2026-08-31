@@ -12,7 +12,7 @@ import {
   EXPECTED_MIGRATION_HEAD,
   insertOutboxEvent,
   parseDatabaseConfig,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import {
   createQueueConsumer,
   createQueueProducer,

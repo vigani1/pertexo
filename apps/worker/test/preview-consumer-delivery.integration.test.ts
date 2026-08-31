@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import {
   canonicalOutboxPayloadChecksum,
   parseDatabaseConfig,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import { platformServingRegistryRelease } from '@pertexo/node-catalog';
 import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
 import { createQueueProducer } from '@pertexo/queue';

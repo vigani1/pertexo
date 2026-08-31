@@ -1,4 +1,7 @@
-import type { ConnectionRecord, WorkspaceDatabase } from '@pertexo/database';
+import type {
+  ConnectionRecord,
+  WorkspaceDatabase,
+} from '@pertexo/database/testing';
 import { connectionResponseSchema } from '@pertexo/contracts/connections';
 import type {
   StructuredLogger,

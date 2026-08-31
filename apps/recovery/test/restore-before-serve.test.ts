@@ -7,7 +7,7 @@ import type {
 import type {
   ControlLedgerCoordinator,
   ControlLedgerInventoryResult,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import type { StructuredLogger } from '@pertexo/observability/logging';
 import type { TelemetryLifecycle } from '@pertexo/observability/telemetry';
 import { describe, expect, it, vi } from 'vitest';

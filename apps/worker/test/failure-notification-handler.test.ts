@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { FailureNotificationStore } from '@pertexo/database';
+import type { FailureNotificationStore } from '@pertexo/database/testing';
 
 import { createFailureNotificationHandler } from '../src/execution/failure-notification-handler.js';
 

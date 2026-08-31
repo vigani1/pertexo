@@ -1,8 +1,8 @@
 import type {
   CoordinatorRunStore,
   PublishedWorkflowReader,
-} from '@pertexo/database';
-import { CoordinatorDeliveryMismatchError } from '@pertexo/database';
+} from '@pertexo/database/testing';
+import { CoordinatorDeliveryMismatchError } from '@pertexo/database/testing';
 import {
   JOB_NAME,
   QUEUE_NAME,

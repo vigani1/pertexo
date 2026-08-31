@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { parseDatabaseConfig } from '@pertexo/database';
+import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE } from '@pertexo/node-catalog';
 import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
 

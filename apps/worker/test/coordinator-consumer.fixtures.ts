@@ -13,7 +13,7 @@ import {
   createWorkspaceDatabase,
   parseDatabaseConfig,
   requestWorkflowRunCancellation,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import {
   PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_CONDITION_STAGED,
@@ -156,7 +156,13 @@ async function migrateDatabase(): Promise<void> {
   await new Promise<void>((resolve, reject) => {
     const child = spawn(
       'pnpm',
-      ['--filter', '@pertexo/database', 'exec', 'tsx', 'src/migrate.ts'],
+      [
+        '--filter',
+        '@pertexo/database/testing',
+        'exec',
+        'tsx',
+        'src/migrate.ts',
+      ],
       {
         cwd: new URL('../../../', import.meta.url).pathname,
         env: {

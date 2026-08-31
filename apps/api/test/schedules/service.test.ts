@@ -2,7 +2,7 @@ import {
   ScheduleTriggerIdempotencyConflictError,
   ScheduleTriggerNotFoundError,
   type ScheduleTriggerDatabase,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ScheduleManagementService } from '../../src/schedules/service.js';

@@ -2,7 +2,7 @@ import { PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE } from '@pertexo/node-catalog';
 import type {
   AcceptedPreviewRun,
   WorkflowDraftRecord,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import { describe, expect, it, vi } from 'vitest';
 
 import { NodeTestingController } from '../../src/node-testing/controller.js';

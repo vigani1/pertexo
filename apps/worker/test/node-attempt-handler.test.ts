@@ -3,7 +3,7 @@ import type {
   NodeAttemptRunStore,
   PublishedWorkflowReader,
   PublishedWorkflowV2Projection,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import { JOB_NAME, type QueueDelivery } from '@pertexo/queue';
 import { HttpRequestExecutorError } from '@pertexo/integrations/server';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';

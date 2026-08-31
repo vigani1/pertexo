@@ -4,7 +4,7 @@ import {
   acceptWorkflowRun,
   createCoordinatorRunStore,
   parseDatabaseConfig,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import {
   createCheckpoint,
   createCheckpointV2,

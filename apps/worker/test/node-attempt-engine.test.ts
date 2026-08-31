@@ -1,7 +1,7 @@
 import type {
   NodeAttemptLease,
   PublishedWorkflowV2Projection,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import {
   CORE_REGISTRY_RELEASE,
   CORE_REGISTRY_RELEASE_SUCCESSOR,

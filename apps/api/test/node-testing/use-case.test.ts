@@ -5,7 +5,7 @@ import { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine'
 import type {
   AcceptedPreviewRun,
   WorkflowDraftRecord,
-} from '@pertexo/database';
+} from '@pertexo/database/testing';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
