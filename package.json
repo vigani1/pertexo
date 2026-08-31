@@ -10,7 +10,8 @@
   },
   "scripts": {
     "build": "pnpm --recursive --if-present build",
-    "check": "pnpm format:check && pnpm build && pnpm lint && pnpm contracts:check && pnpm typecheck && pnpm test",
+    "check": "pnpm format:check && pnpm build && pnpm lint && pnpm complexity:check && pnpm contracts:check && pnpm typecheck && pnpm test",
+    "complexity:check": "node infrastructure/validate-complexity.mjs && node --test infrastructure/validate-complexity.test.mjs",
     "contracts:check": "pnpm --filter @pertexo/contracts contracts:check",
     "contracts:generate": "pnpm --filter @pertexo/contracts contracts:generate",
     "dev:api": "pnpm --filter @pertexo/api dev",
