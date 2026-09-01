@@ -10,8 +10,11 @@ production load or latency claim.
 
 - Baseline: `e3d173fe9573107c1cc9551ca2e007fbfc824e18`, immediately before the
   refreshed-audit implementation.
-- Candidate: `c6530ddb801abab2209d87181f57396c64bdf087`, including the complexity
-  decomposition and private coordinator-validation consolidation.
+- Candidate: `4f38585d4746a86c59bcd1fd88de1ebce4425205`, including the complexity
+  decomposition and private coordinator-validation consolidation. Its tree is
+  identical to the measured pre-merge revision
+  `c6530ddb801abab2209d87181f57396c64bdf087`; GitHub assigned the candidate SHA
+  during the required linear-history rebase.
 - Runtime: Node 24.15.0, pnpm 11.22.0, macOS 26.5.2 on the same host with the
   same dependency store.
 
