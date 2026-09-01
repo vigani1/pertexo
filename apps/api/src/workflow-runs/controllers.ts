@@ -277,7 +277,7 @@ function requiredIdempotencyKey(request: WorkflowRunsRequest): string {
 }
 
 function lastEventId(request: WorkflowRunsRequest): number {
-  const value = headerString(request, 'last-event-id');
+  const value = singleRequestHeader(request.headers, 'last-event-id');
   if (value === undefined) return 0;
   return Number(lastRunEventIdHeaderSchema.parse(value));
 }
