@@ -55,3 +55,51 @@ test('rejects an engine range that spans more than one major', () => {
     /single Node major/,
   );
 });
+
+test('rejects a dynamic setup-node selector even when another literal matches', () => {
+  assert.throws(
+    () =>
+      validateRuntimeMajorSurfaces({
+        ...validSurfaces,
+        workflows: new Map([
+          [
+            'ci.yml',
+            'node-version: 24\nnode-version: ${{ matrix.node-version }}\n',
+          ],
+        ]),
+      }),
+    /literal Node major/,
+  );
+});
+
+test('rejects node-version-file selectors that the gate cannot resolve', () => {
+  assert.throws(
+    () =>
+      validateRuntimeMajorSurfaces({
+        ...validSurfaces,
+        workflows: new Map([
+          ['ci.yml', 'node-version: 24\nnode-version-file: .nvmrc\n'],
+        ]),
+      }),
+    /node-version-file/,
+  );
+});
+
+test('rejects a setup-node step without a selector beside a valid step', () => {
+  assert.throws(
+    () =>
+      validateRuntimeMajorSurfaces({
+        ...validSurfaces,
+        workflows: new Map([
+          [
+            'ci.yml',
+            '- uses: actions/setup-node@v6\n' +
+              '  with:\n' +
+              '    node-version: 24\n' +
+              '- uses: actions/setup-node@v6\n',
+          ],
+        ]),
+      }),
+    /each setup-node step/,
+  );
+});
