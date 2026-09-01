@@ -11,6 +11,35 @@ function requiredMajor(value, pattern, label) {
   return Number(match[1]);
 }
 
+function workflowNodeMajors(file, contents) {
+  const majors = [];
+  const setupNodeUses = contents.match(/\buses:\s*actions\/setup-node@/gu) ?? [];
+  for (const line of contents.split('\n')) {
+    if (/^\s*node-version-file\s*:/u.test(line)) {
+      throw new Error(
+        `${file} node-version-file is unsupported; CI must declare a literal Node major`,
+      );
+    }
+    const selector = /^\s*node-version\s*:\s*(.*?)\s*$/u.exec(line)?.[1];
+    if (selector === undefined) continue;
+    const withoutComment = selector.replace(/\s+#.*$/u, '').trim();
+    const unquoted = (
+      /^(['"]).*\1$/u.test(withoutComment)
+        ? withoutComment.slice(1, -1)
+        : withoutComment
+    ).trim();
+    const match = /^(\d+)(?:\.\d+(?:\.\d+)?)?$/u.exec(unquoted);
+    if (match === null) {
+      throw new Error(`${file} setup-node must use a literal Node major`);
+    }
+    majors.push(Number(match[1]));
+  }
+  if (setupNodeUses.length > 0 && majors.length !== setupNodeUses.length) {
+    throw new Error(`${file} must give each setup-node step one literal selector`);
+  }
+  return majors;
+}
+
 export function validateRuntimeMajorSurfaces({
   packageJson,
   workflows,
@@ -35,8 +64,8 @@ export function validateRuntimeMajorSurfaces({
 
   const workflowMajors = [];
   for (const [file, contents] of workflows) {
-    for (const match of contents.matchAll(/node-version:\s*["']?(\d+)/g)) {
-      workflowMajors.push([file, Number(match[1])]);
+    for (const major of workflowNodeMajors(file, contents)) {
+      workflowMajors.push([file, major]);
     }
   }
   if (workflowMajors.length === 0) {
