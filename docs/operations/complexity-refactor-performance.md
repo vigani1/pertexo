@@ -15,16 +15,20 @@ production load or latency claim.
   identical to the measured pre-merge revision
   `c6530ddb801abab2209d87181f57396c64bdf087`; GitHub assigned the candidate SHA
   during the required linear-history rebase.
-- Runtime: Node 24.15.0, pnpm 11.22.0, macOS 26.5.2 on the same host with the
-  same dependency store.
+- Runtime: Node 24.15.0, pnpm 11.22.0, macOS 26.5.2 on the same host, using the
+  same local pnpm content-addressable store.
 
 The isolated baseline worktree received a frozen offline install and full
-workspace build. The candidate workspace used the same lockfile and dependency
-store and was fully built before measurement. Each package command then ran
-five times through `/usr/bin/time -lp`; the table reports median wall-clock
-time and median maximum resident set size as a coarse allocation/peak-memory
-proxy. Tests ran through the package interface rather than importing the new
-private modules.
+workspace build. The candidate workspace used its own frozen lockfile and was
+fully built before measurement. The lockfiles are not identical: the candidate
+aligns `@types/node` from 26.2.0 to 24.13.3 and consequently resolves
+`undici-types` 7.18.2 instead of 8.3.0. Production runtime dependencies are
+otherwise unchanged by that lockfile diff, but the type-package difference is
+a minor test-harness confounder and this is not a dependency-identical
+microbenchmark. Each package command then ran five times through `/usr/bin/time
+-lp`; the table reports median wall-clock time and median maximum resident set
+size as a coarse allocation/peak-memory proxy. Tests ran through the package
+interface rather than importing the new private modules.
 
 | Owning package seam | Baseline tests | Candidate tests | Baseline median | Candidate median | Time delta | Baseline median max RSS | Candidate median max RSS | RSS delta |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
