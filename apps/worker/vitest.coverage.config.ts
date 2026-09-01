@@ -15,7 +15,7 @@ export default defineConfig({
     exclude: ['dist/**', 'node_modules/**', '**/*.integration.test.ts'],
     coverage: {
       provider: 'v8',
-      reporter: ['text-summary', 'json-summary'],
+      reporter: ['text-summary', 'json-summary', 'json'],
       reportsDirectory: '../../coverage/worker',
       include: [
         'src/execution/{node-attempt-handler,node-runtime-capabilities,preview-attempt-runtime}.ts',
@@ -24,10 +24,10 @@ export default defineConfig({
       // them requires tests for additional failure branches; integration-only
       // provider and persistence behavior remains covered by real services.
       thresholds: {
-        branches: 60,
-        functions: 65,
-        lines: 70,
-        statements: 70,
+        branches: 62.5,
+        functions: 67.5,
+        lines: 72.5,
+        statements: 71.5,
       },
     },
   },
