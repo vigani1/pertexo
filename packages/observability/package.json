@@ -38,6 +38,11 @@
       "types": "./dist/runtime.d.ts",
       "node": "./dist/runtime.js",
       "default": "./dist/runtime.js"
+    },
+    "./nest-runtime": {
+      "types": "./dist/nest-runtime.d.ts",
+      "node": "./dist/nest-runtime.js",
+      "default": "./dist/nest-runtime.js"
     }
   },
   "browser": {
@@ -47,7 +52,8 @@
     "./dist/telemetry.js": false,
     "./dist/transport-metrics.js": false,
     "./dist/queue-tracing.js": false,
-    "./dist/runtime.js": false
+    "./dist/runtime.js": false,
+    "./dist/nest-runtime.js": false
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
