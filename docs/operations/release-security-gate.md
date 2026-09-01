@@ -42,6 +42,16 @@ remain visible in scanner output and require release risk review rather than an
 unmaintainable repository ignore. The report is CI evidence; production
 deployment must retain it alongside the exact deployed image digest.
 
+The production-image job retains BuildKit metadata, the CycloneDX SBOM, the
+Grype JSON report, and `production-image.provenance.json`. The provenance
+manifest records the BuildKit image digest and cryptographic hashes of both
+reports, so substitution inside the CI evidence bundle is detectable. Its
+`external-registry-required` promotion mode is intentional: registry
+publication, CI-identity signing, and digest-preserving promotion still require
+the production registry and cloud identity selected during the live rollout.
+The local manifest is not a registry attestation and must not be presented as
+one.
+
 The release migration remains a one-off ECS task. Deployment automation must
 wait for its successful exit before updating serving tasks. The local gate does
 not prove AWS IAM, networking, Secrets Manager delivery, service rollout,
