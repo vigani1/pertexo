@@ -510,6 +510,8 @@ describeResilience(
         ).toBeUndefined();
 
         const queueRecoveryStartedAt = performance.now();
+        // Measure recovery after the real PostgreSQL outbox lease expires while
+        // Redis has lost the corresponding queue job.
         await new Promise<void>((resolve) => setTimeout(resolve, 1_100));
         await redisDispatcher.dispatchOnce();
         await waitForJob(queue, queueLossEventId);

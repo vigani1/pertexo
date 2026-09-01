@@ -753,6 +753,8 @@ describeIntegration(
         await waitForRemovableJob(queue, `outbox-${id}`);
         await firstCoordinator.close();
         await queue.getJob(`outbox-${id}`).then((job) => job?.remove());
+        // This proves BullMQ/PostgreSQL lease recovery across two live workers;
+        // neither boundary accepts an injected application clock.
         await new Promise((resolve) => setTimeout(resolve, 1_100));
         await Promise.all([
           secondCoordinator.waitUntilReady(),
@@ -1029,6 +1031,8 @@ describeIntegration(
         await coordinatorCompleted.promise;
         await dispatchFairRounds([dispatcher], 1);
         await ambiguityPersisted.promise;
+        // Observe the real BullMQ retry window to prove an ambiguous provider
+        // outcome is not retried by the transport.
         await new Promise((resolve) => setTimeout(resolve, 1_200));
         expect(providerDeliveries).toBe(1);
         expect(providerRequests).toBe(1);

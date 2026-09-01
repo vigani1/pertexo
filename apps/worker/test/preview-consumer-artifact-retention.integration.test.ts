@@ -138,6 +138,8 @@ describeIntegration('preview artifact retention transport', () => {
         await expect(
           verifier.head({ artifactId: reference.artifactId, workspaceId }),
         ).resolves.toMatchObject({ artifactId: reference.artifactId });
+        // The cleanup process and artifact ledger use independent real clocks;
+        // this wait proves the cross-process quiescence deadline.
         await new Promise<void>((resolve) =>
           setTimeout(
             resolve,

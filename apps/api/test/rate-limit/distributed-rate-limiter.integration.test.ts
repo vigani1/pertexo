@@ -52,6 +52,8 @@ describeIntegration('distributed abuse rate limit integration', () => {
     expect(results.filter(({ allowed }) => allowed)).toHaveLength(10);
     expect(results.filter(({ allowed }) => !allowed)).toHaveLength(15);
 
+    // Exercise Redis's real expiry boundary, which is the distributed source
+    // of truth rather than an application-injected clock.
     await new Promise((resolve) => setTimeout(resolve, 1_100));
     await expect(limiter.consume(decision)).resolves.toEqual({ allowed: true });
   });

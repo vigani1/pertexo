@@ -4589,11 +4589,13 @@ Current audit state:
       transactions, failure behavior, or public interfaces.
 - [x] Correct sibling-feature internal imports and API results that erase exact
       response types to `unknown`.
-- [ ] Make container OS inputs reproducible, complete pnpm dependency update
+- [x] Make container OS inputs reproducible, complete pnpm dependency update
       automation, and install a measured complexity ratchet.
-- [ ] Retire or minimize the database compatibility root, replace avoidable
-      test sleeps, consolidate justified local clones, isolate Fastify casts,
-      and strengthen review ownership/current-status documentation.
+- [x] Retire the database compatibility root.
+- [x] Replace avoidable test sleeps and document retained external-clock proofs.
+- [ ] Consolidate the justified local implementation clones.
+- [x] Isolate Fastify integration casts behind a checked adapter capability.
+- [ ] Strengthen review ownership and current-status documentation.
 
 Repository-controlled remediation evidence:
 
@@ -4632,6 +4634,12 @@ Repository-controlled remediation evidence:
   lives at the HTTP boundary. A static boundary suite rejects all corrected
   sibling crossings. All 332 API unit assertions, API typecheck/build, and the
   relevant ESLint and complexity gates pass.
+- Identity integration accepts an injected clock, replacing the 5.1-second
+  session-expiry sleep with deterministic advancement; the schedule recovery
+  fixture advances its mutable PostgreSQL lease timestamps. Long waits retained
+  for immutable entitlement/preview facts, Redis expiry, BullMQ lease/retry,
+  and cross-process artifact quiescence are documented as real boundary proofs.
+  Six real identity API assertions and 28 focused PostgreSQL assertions pass.
 
 Verification at implementation head `9e4263794715d273e8660c0dd4efa67c5032e940`:
 

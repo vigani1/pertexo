@@ -314,6 +314,8 @@ describe('workflow run capacity admission', () => {
       workspaceA,
       (transaction) => acceptWorkflowRun(transaction, acceptanceInput()),
     );
+    // The accepted run pins an immutable entitlement version whose expiry is
+    // evaluated by PostgreSQL, so this intentionally crosses the database clock.
     await new Promise((resolve) => setTimeout(resolve, 1_100));
     await expect(
       workerDatabase.withWorkspace(workspaceA, ({ db }) =>
