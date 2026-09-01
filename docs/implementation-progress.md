@@ -4699,6 +4699,11 @@ The refreshed audit contains only current findings and score-improvement work:
       failure-injection or mutation evidence before raising coverage thresholds.
 - [ ] Keep grouped dependency updates actionable by isolating incompatible
       packages and recording intentional deferrals.
+- [ ] Align `@types/node` with the supported Node 24 runtime and add a gate that
+      keeps engines, CI, Docker, and ambient types on the same approved major.
+- [ ] Consolidate the same-owner HTTP header and artifact metadata equality
+      helpers without creating a generic shared package or widening public
+      interfaces.
 - [ ] Require independent approval/code-owner review and verified provenance
       when a second maintainer and signing identities exist; retain the
       documented solo exception until then.
@@ -4717,13 +4722,23 @@ correct.
 
 Current local verification at `e3d173fe9573107c1cc9551ca2e007fbfc824e18`:
 
-- `pnpm check`: passed;
+- `pnpm check`: passed, including 1,328 unit tests across all 18 workspace
+  projects;
 - `pnpm test:coverage`: passed at 79.36% workflow-engine, 61.53% database,
   62.79% worker, and 82.56% API branch coverage;
 - `pnpm security:audit`: no known production dependency vulnerabilities;
 - `pnpm deployment:check`, `pnpm images:check`, and
   `pnpm exercise:check`: passed; and
 - the exact local worker transport recovery cohort passed 1/1 with no skip.
+
+The research-calibrated source inspection covered 86,564 production/config
+TypeScript lines and 89,450 test/support lines. It confirmed the acyclic package
+graph, feature-owned Nest modules, constructor injection, strict trust-boundary
+parsing, role-scoped PostgreSQL surfaces, and package-local test layout. It also
+added two current code findings: Node 26 ambient types against the required Node
+24 runtime, and two bounded same-owner helper clone groups. The corrected score
+arithmetic is 8.6/10 for the first ten code-related rows and 8.3/10 across all
+fourteen audit rows.
 
 No phase status changes. Phase 7 remains **In progress**, and current
 `main` must not be described as fully green until the required recovery
