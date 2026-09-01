@@ -1,5 +1,7 @@
 import { readFile, readdir } from 'node:fs/promises';
-import { pathToFileURL } from 'node:url';
+import console from 'node:console';
+import process from 'node:process';
+import { URL, pathToFileURL } from 'node:url';
 
 function requiredMajor(value, pattern, label) {
   const match = pattern.exec(value);

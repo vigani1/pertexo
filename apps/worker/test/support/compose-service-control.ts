@@ -35,11 +35,27 @@ function oneContainerId(output: string, service: ComposeService): string {
     .split('\n')
     .map((value) => value.trim())
     .filter((value) => value.length > 0);
-  if (ids.length !== 1)
+  const [containerId] = ids;
+  if (containerId === undefined || ids.length !== 1)
     throw new Error(
       `Compose service ${service} must resolve to exactly one container`,
     );
-  return ids[0] as string;
+  return containerId;
+}
+
+function isContainerStatus(value: unknown): value is ContainerStatus {
+  return (
+    typeof value === 'string' &&
+    ['created', 'exited', 'restarting', 'running'].includes(value)
+  );
+}
+
+function isContainerHealth(value: unknown): value is ContainerHealth {
+  return (
+    value === null ||
+    (typeof value === 'string' &&
+      ['healthy', 'starting', 'unhealthy'].includes(value))
+  );
 }
 
 export function createComposeServiceController(
@@ -160,18 +176,15 @@ export function createDockerComposeServiceController(options: {
       const exitCode = parsed.ExitCode;
       const health = parsed.Health?.Status ?? null;
       if (
-        !['created', 'exited', 'restarting', 'running'].includes(
-          String(status),
-        ) ||
+        !isContainerStatus(status) ||
         typeof exitCode !== 'number' ||
-        (health !== null &&
-          !['healthy', 'starting', 'unhealthy'].includes(String(health)))
+        !isContainerHealth(health)
       )
         throw new Error('Docker returned an invalid Compose container state');
       return {
         exitCode,
-        health: health as ContainerHealth,
-        status: status as ContainerStatus,
+        health,
+        status,
       };
     },
     now: () => performance.now(),
