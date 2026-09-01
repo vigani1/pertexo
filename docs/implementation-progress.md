@@ -4593,7 +4593,7 @@ Current audit state:
       automation, and install a measured complexity ratchet.
 - [x] Retire the database compatibility root.
 - [x] Replace avoidable test sleeps and document retained external-clock proofs.
-- [ ] Consolidate the justified local implementation clones.
+- [x] Consolidate the justified local implementation clones.
 - [x] Isolate Fastify integration casts behind a checked adapter capability.
 - [ ] Strengthen review ownership and current-status documentation.
 
@@ -4640,6 +4640,13 @@ Repository-controlled remediation evidence:
   for immutable entitlement/preview facts, Redis expiry, BullMQ lease/retry,
   and cross-process artifact quiescence are documented as real boundary proofs.
   Six real identity API assertions and 28 focused PostgreSQL assertions pass.
+- API and worker observability modules now delegate identical logger adaptation,
+  provider registration, and telemetry shutdown to one framework-neutral
+  observability capability. Slack and email execution telemetry delegate their
+  identical bounded metric/span lifecycle to one typed worker factory while
+  retaining provider-specific error classification. All 39 observability, 205
+  worker, and 332 API unit assertions pass, including provider failure and
+  lifecycle coverage.
 
 Verification at implementation head `9e4263794715d273e8660c0dd4efa67c5032e940`:
 
