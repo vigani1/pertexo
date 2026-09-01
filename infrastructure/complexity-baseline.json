@@ -18,7 +18,7 @@
     "packages/artifact-store/src/store.ts": 903,
     "packages/database/src/connection-persistence.ts": 652,
     "packages/database/src/control-ledger-coordinator.ts": 1048,
-    "packages/database/src/coordinator-run-store-observations.ts": 918,
+    "packages/database/src/coordinator-run-store-observations.ts": 729,
     "packages/database/src/dispatcher.ts": 547,
     "packages/database/src/execution-acceptance.ts": 547,
     "packages/database/src/failure-notification-destinations.ts": 637,
@@ -93,15 +93,11 @@
       "branches": 34,
       "lines": 208
     },
-    "packages/database/src/coordinator-run-store-observations.ts#validateLoadedCheckpointPhysicalState": {
-      "branches": 65,
-      "lines": 153
-    },
     "packages/database/src/coordinator-run-store-observations.ts#loadCoordinatorAdvanceState": {
       "branches": 0,
       "lines": 276
     },
-    "packages/database/src/coordinator-run-store-observations.ts#<ArrowFunction:4>": {
+    "packages/database/src/coordinator-run-store-observations.ts#<ArrowFunction:1>": {
       "branches": 37,
       "lines": 263
     },
