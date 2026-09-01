@@ -19,7 +19,6 @@
     "packages/database/src/connection-persistence.ts": 652,
     "packages/database/src/control-ledger-coordinator.ts": 1048,
     "packages/database/src/coordinator-run-store-observations.ts": 918,
-    "packages/database/src/coordinator-run-store-plan.ts": 687,
     "packages/database/src/dispatcher.ts": 547,
     "packages/database/src/execution-acceptance.ts": 547,
     "packages/database/src/failure-notification-destinations.ts": 637,
@@ -105,10 +104,6 @@
     "packages/database/src/coordinator-run-store-observations.ts#<ArrowFunction:4>": {
       "branches": 37,
       "lines": 263
-    },
-    "packages/database/src/coordinator-run-store-plan.ts#validateStatusTransitions": {
-      "branches": 102,
-      "lines": 257
     },
     "packages/database/src/dispatcher.ts#createOutboxDispatcherDatabase": {
       "branches": 0,
