@@ -124,14 +124,6 @@
       "branches": 3,
       "lines": 219
     },
-    "packages/database/src/node-attempt-run-store-completion.ts#completeNodeAttempt": {
-      "branches": 6,
-      "lines": 430
-    },
-    "packages/database/src/node-attempt-run-store-completion.ts#<ArrowFunction:1>": {
-      "branches": 53,
-      "lines": 387
-    },
     "packages/database/src/node-attempt-run-store-inputs.ts#loadNodeAttemptInputs": {
       "branches": 2,
       "lines": 303
