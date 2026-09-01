@@ -26,3 +26,4 @@ export {
   type PersistedRunEventReader,
   type SseRunEventFrame,
 } from './run-event-stream.js';
+export * from './initial-workflow-checkpoint.js';
