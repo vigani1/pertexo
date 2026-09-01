@@ -4557,8 +4557,8 @@ Current evidence:
 
 ## Current whole-repository audit — 2026-09-01
 
-Status: **Audit refreshed at implementation head `9e42637`; current
-repository and live-production findings remain open**
+Status: **Remediation in progress from audited implementation head `9e42637`;
+live-production findings remain open**
 
 The sole current audit is
 [`docs/whole-repository-audit.md`](./whole-repository-audit.md). It contains
@@ -4578,11 +4578,11 @@ Current audit state:
       connection-capacity evidence.
 - [ ] Enable public-repository secret scanning, push protection, and Dependabot
       security updates.
-- [ ] Add bounded retention/reaping for affected idempotency records and
+- [x] Add bounded retention/reaping for affected idempotency records and
       expired/revoked sessions.
-- [ ] Make every requested real-service/compatibility/recovery cohort prove a
-      nonzero run with no unexpected skips, and protect the production-image
-      scan per change or immutable promotion.
+- [x] Make every requested real-service/compatibility/recovery cohort prove a
+      reviewed minimum run with no unexpected skips or todos.
+- [ ] Protect the production-image scan per change or immutable promotion.
 - [ ] Refactor the measured readiness/publication complexity hotspots without
       weakening transactions, fail-closed behavior, or public interfaces.
 - [ ] Correct sibling-feature internal imports and API results that erase exact
@@ -4592,6 +4592,23 @@ Current audit state:
 - [ ] Retire or minimize the database compatibility root, replace avoidable
       test sleeps, consolidate justified local clones, isolate Fastify casts,
       and strengthen review ownership/current-status documentation.
+
+Repository-controlled remediation evidence:
+
+- Commits `042dc35`, `9e2b7c2`, `4e556cf`, and `a7cb42d` preserve exact API
+  response types, remove Fastify double assertions, make the production image
+  reproducible and scanned with an SBOM, add bounded dependency automation and
+  a complexity ratchet, and retire the database production root export.
+- Commit `787d220` adds migration `0073_transient_data_retention.sql`, a
+  maintenance-only operated reaper, 24-hour terminal replay retention, a
+  30-day invalid-session metadata grace period, legal-hold protection, indexed
+  bounded deletion, and lock-safe PostgreSQL tests. All 320 database integration
+  assertions and 151 database unit assertions passed.
+- Required CI cohorts now emit machine-readable reports with reviewed minimum
+  counts, exact provider-specific pending counts, and zero unexpected skips or
+  todos. Validator tests prove an unset required flag fails the gate; the local
+  API cohort passed 15/15 and the MinIO artifact cohort passed its five required
+  assertions with exactly three reviewed AWS-policy-only scenarios pending.
 
 Verification at implementation head `9e4263794715d273e8660c0dd4efa67c5032e940`:
 

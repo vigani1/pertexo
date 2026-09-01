@@ -294,17 +294,31 @@ jobs:
           test "$(docker compose exec -T redis redis-cli --raw --no-auth-warning -a "$REDIS_PASSWORD" ping)" = PONG
       - name: Run real PostgreSQL, Redis, and object-store integration suites
         run: |
-          set -o pipefail
+          set -euo pipefail
           mkdir -p artifacts
-          { pnpm db:migrate; pnpm test:integration; } 2>&1 | tee artifacts/integration.log
-      - name: Prove required API integration gates executed
-        run: |
+          pnpm db:migrate
+          pnpm --filter @pertexo/artifact-store exec vitest run --config vitest.integration.config.ts \
+            --reporter=json --outputFile=../../artifacts/artifact-store-gates.json
+          pnpm --filter @pertexo/database exec vitest run --config vitest.integration.config.ts \
+            --reporter=json --outputFile=../../artifacts/database-gates.json
+          pnpm --filter @pertexo/worker exec vitest run --config vitest.integration.config.ts \
+            --reporter=json --outputFile=../../artifacts/worker-gates.json
           pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts \
+            test/executions/run-event-stream.integration.test.ts \
+            test/identity-workspace/real-api.integration.test.ts \
             test/webhooks/direct-webhook.integration.test.ts \
             test/rate-limit/distributed-rate-limiter.integration.test.ts \
-            --reporter=json --outputFile=../../artifacts/required-api-gates.json
+            --reporter=json --outputFile=../../artifacts/api-gates.json
+      - name: Prove every required integration cohort executed
+        run: |
           node infrastructure/validate-vitest-gate-report.mjs \
-            artifacts/required-api-gates.json 'required API integration gates'
+            artifacts/artifact-store-gates.json 'artifact-store integration gates' 5 3
+          node infrastructure/validate-vitest-gate-report.mjs \
+            artifacts/database-gates.json 'database integration gates' 288
+          node infrastructure/validate-vitest-gate-report.mjs \
+            artifacts/worker-gates.json 'worker integration gates' 21
+          node infrastructure/validate-vitest-gate-report.mjs \
+            artifacts/api-gates.json 'API integration gates' 10
       - name: Capture integration logs
         if: failure()
         run: |
@@ -352,18 +366,25 @@ jobs:
           API_SSE_RESILIENCE_INTEGRATION: 'true'
           WORKER_TRANSPORT_RESILIENCE: 'true'
         run: |
-          set -o pipefail
+          set -euo pipefail
           mkdir -p artifacts
-          {
-            pnpm db:migrate
-            pnpm --filter @pertexo/worker exec vitest run --config vitest.integration.config.ts \
-              test/coordinator-consumer-retry-wait.integration.test.ts \
-              test/coordinator-consumer-parallel-recovery.integration.test.ts \
-              test/coordinator-consumer-foreach-cancellation.integration.test.ts \
-              test/http-node-attempt.integration.test.ts
-            pnpm --filter @pertexo/api test:sse-resilience
-            pnpm --filter @pertexo/worker test:resilience
-          } 2>&1 | tee artifacts/recovery.log
+          pnpm db:migrate
+          pnpm --filter @pertexo/worker exec vitest run --config vitest.integration.config.ts \
+            test/coordinator-consumer-retry-wait.integration.test.ts \
+            test/coordinator-consumer-parallel-recovery.integration.test.ts \
+            test/coordinator-consumer-foreach-cancellation.integration.test.ts \
+            test/http-node-attempt.integration.test.ts \
+            --reporter=json --outputFile=../../artifacts/recovery-worker-gates.json
+          pnpm --filter @pertexo/api exec vitest run --config vitest.sse-resilience.config.ts \
+            --reporter=json --outputFile=../../artifacts/recovery-api-gates.json
+          pnpm --filter @pertexo/worker exec vitest run --config vitest.resilience.config.ts \
+            --reporter=json --outputFile=../../artifacts/transport-resilience-gates.json
+          node infrastructure/validate-vitest-gate-report.mjs \
+            artifacts/recovery-worker-gates.json 'worker recovery gates' 4
+          node infrastructure/validate-vitest-gate-report.mjs \
+            artifacts/recovery-api-gates.json 'API SSE recovery gates' 1
+          node infrastructure/validate-vitest-gate-report.mjs \
+            artifacts/transport-resilience-gates.json 'worker transport recovery gates' 1
       - name: Capture recovery service logs
         if: failure()
         run: |
@@ -407,12 +428,17 @@ jobs:
         run: docker compose up -d --wait postgres
       - name: Run additive rollout and prior-head migration proofs
         run: |
-          set -o pipefail
+          set -euo pipefail
           mkdir -p artifacts
-          {
-            pnpm --filter @pertexo/api test:compatibility-rollout
-            pnpm --filter @pertexo/database exec vitest run --config vitest.integration.config.ts test/oidc-browser-binding-migration.integration.test.ts
-          } 2>&1 | tee artifacts/compatibility.log
+          pnpm --filter @pertexo/api exec vitest run --config vitest.compatibility-rollout.config.ts \
+            --reporter=json --outputFile=../../artifacts/api-compatibility-gates.json
+          pnpm --filter @pertexo/database exec vitest run --config vitest.integration.config.ts \
+            test/oidc-browser-binding-migration.integration.test.ts \
+            --reporter=json --outputFile=../../artifacts/database-compatibility-gates.json
+          node infrastructure/validate-vitest-gate-report.mjs \
+            artifacts/api-compatibility-gates.json 'API compatibility gates' 1
+          node infrastructure/validate-vitest-gate-report.mjs \
+            artifacts/database-compatibility-gates.json 'database compatibility gates' 1
       - name: Capture compatibility database logs
         if: failure()
         run: |
