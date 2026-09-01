@@ -29,7 +29,6 @@
     "packages/database/src/postgres-telemetry.ts": 541,
     "packages/database/src/preview-cleanup.ts": 548,
     "packages/database/src/preview-execution-acceptance.ts": 563,
-    "packages/database/src/readiness.ts": 2139,
     "packages/database/src/retention.ts": 813,
     "packages/database/src/schedule-triggers.ts": 664,
     "packages/database/src/schema.ts": 1961,
@@ -170,10 +169,6 @@
     "packages/database/src/preview-execution-reconciliation.ts#<ArrowFunction:4>": {
       "branches": 22,
       "lines": 236
-    },
-    "packages/database/src/readiness.ts#checkDatabaseReadiness": {
-      "branches": 67,
-      "lines": 1798
     },
     "packages/database/src/retention.ts#createRetentionDatabase": {
       "branches": 0,

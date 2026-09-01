@@ -4583,8 +4583,10 @@ Current audit state:
 - [x] Make every requested real-service/compatibility/recovery cohort prove a
       reviewed minimum run with no unexpected skips or todos.
 - [ ] Protect the production-image scan per change or immutable promotion.
-- [ ] Refactor the measured readiness/publication complexity hotspots without
-      weakening transactions, fail-closed behavior, or public interfaces.
+- [x] Refactor the measured readiness complexity hotspot without weakening its
+      single-snapshot, fail-closed behavior or public interface.
+- [ ] Refactor the measured publication complexity hotspot without weakening
+      transactions, failure behavior, or public interfaces.
 - [ ] Correct sibling-feature internal imports and API results that erase exact
       response types to `unknown`.
 - [ ] Make container OS inputs reproducible, complete pnpm dependency update
@@ -4609,6 +4611,12 @@ Repository-controlled remediation evidence:
   todos. Validator tests prove an unset required flag fails the gate; the local
   API cohort passed 15/15 and the MinIO artifact cohort passed its five required
   assertions with exactly three reviewed AWS-policy-only scenarios pending.
+- Database readiness now retains one public startup probe and one internally
+  consistent SQL snapshot, while capability inventories are split into four
+  sub-500-line modules and typed descriptors preserve owner-specific failures.
+  The former 1,798-line function and its file/function hotspot baselines are
+  removed; 154 unit assertions and 51 real drift assertions pass, including
+  policy, grant, function, RLS, role, and migration incompatibilities.
 
 Verification at implementation head `9e4263794715d273e8660c0dd4efa67c5032e940`:
 
