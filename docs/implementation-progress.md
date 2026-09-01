@@ -4674,7 +4674,7 @@ Verification at implementation head `9e4263794715d273e8660c0dd4efa67c5032e940`:
 No Phase 7 completion box changes in this documentation-only audit. The current
 P1 findings and the existing live-production checklist remain release blockers.
 
-## Current whole-repository audit — implementation head `68752e7`
+## Current whole-repository audit — implementation head `0865633`
 
 Status: **Repository remediation implemented; protected CI and external
 production/control evidence remain open**
@@ -4708,8 +4708,8 @@ Repository-controlled remediation:
 
 Still open:
 
-- [ ] Replace historical failed run `33458288161` with a fully green protected
-      run for this implementation.
+- [x] Replace historical failed run `33458288161` with fully green protected
+      pull request #7 run `33465359665`; recovery job `99723971025` passed.
 - [ ] Complete live AWS, Object Lock, pager, load/fairness, failover, failback,
       PITR, regional restore, RPO/RTO, autoscaling, and aggregate PostgreSQL
       connection-capacity evidence.
@@ -4734,7 +4734,7 @@ judgments with documented arithmetic, not industry percentiles or claims that a
 particular file size, package count, or coverage percentage is universally
 correct.
 
-Verification at `68752e7abe961588100f61fd4d9c05793d468a6f`:
+Verification at `086563348d20c88f242b68f22609a64ed762d195`:
 
 - `pnpm check` passed formatting, the Node 24 compatibility gate, all builds,
   ESLint, complexity, generated contracts, TypeScript, and 1,336 unit tests
@@ -4748,9 +4748,13 @@ Verification at `68752e7abe961588100f61fd4d9c05793d468a6f`:
 - three destructive transport-recovery runs passed before the final lint-only
   correction, whose controller fixtures and full unit suite also pass;
 - `pnpm security:audit`, `pnpm deployment:check`, `pnpm exercise:check`, and
-  `pnpm images:check` passed; and
+  `pnpm images:check` passed;
 - a real BuildKit production-image build emitted and bound digest
-  `sha256:fda47b1215439a714ac7d0042fe41b4f8adfe62a7bc0c43c711cd029cb436bce`.
+  `sha256:fda47b1215439a714ac7d0042fe41b4f8adfe62a7bc0c43c711cd029cb436bce`;
+  and
+- pull request #7 merged to `main` after CI run `33465359665` passed all 11
+  protected contexts, including recovery and integration; CodeQL run
+  `33465359620` also passed.
 
 No phase status changes. Phase 7 remains **In progress**. Repository work must
 not be mistaken for the live deployment evidence required by the plan.

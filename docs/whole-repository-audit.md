@@ -2,7 +2,7 @@
 
 Recorded: 2026-09-01
 
-Audited implementation head: `68752e7abe961588100f61fd4d9c05793d468a6f`
+Audited implementation head: `086563348d20c88f242b68f22609a64ed762d195`
 
 Status: current findings, remediation state, and remaining external evidence
 
@@ -18,13 +18,13 @@ implemented and locally verified.
 The project is still not production-ready. Live AWS, provider-control,
 independent-review, registry-signing, load, failover, pager, backup/PITR, and
 regional-recovery evidence cannot be manufactured by repository tests. The
-previous red `main` recovery run is historical evidence; the replacement
-implementation still needs protected remote CI before its C-02 acceptance is
-fully closed.
+previous red `main` recovery run is historical evidence. Pull request #7's
+replacement run `33465359665` passed every protected context, including the
+recovery and integration jobs, so C-02 is closed.
 
 - Continue development: **GO**
 - Claim local repository checks are green: **GO**
-- Claim protected remote checks for this implementation: **NO-GO until run**
+- Claim protected remote checks for this implementation: **GO**
 - Claim Phase 7 or production readiness: **NO-GO**
 
 ## 2. Review method and external calibration
@@ -85,9 +85,9 @@ proof.
 | PostgreSQL and data integrity | 9.0/10 | Live capacity, backup, failover, and scale behavior unproved |
 | Application security | 9.0/10 | No current application exploit found |
 | Repository and supply-chain security | 8.7/10 | External canaries, signed registry provenance, and independent review absent |
-| Testing | 9.0/10 | Critical coverage is risk-selected rather than repository-wide |
-| CI and change governance | 8.8/10 | Replacement implementation still requires protected remote CI |
-| Reliability and durability | 9.0/10 | Recovery control is deterministic locally; deployed failure proof remains open |
+| Testing | 9.1/10 | Critical coverage is risk-selected rather than repository-wide |
+| CI and change governance | 9.1/10 | Protected checks are green; solo review remains an accepted constraint |
+| Reliability and durability | 9.1/10 | Recovery control is green locally and remotely; deployed failure proof remains open |
 | Observability and operability | 8.5/10 | No deployed pager/operator proof |
 | Performance and scalability | 7.5/10 | No representative deployed load or aggregate DB capacity proof |
 | Documentation and governance | 9.0/10 | External evidence and solo-maintainer exceptions remain explicit |
@@ -116,6 +116,9 @@ Overall state including production readiness: **8.6/10**.
   vulnerability alerts, Dependabot security updates, and automated fixes.
 - Protected `main` requires 11 strict contexts, including CodeQL and
   `production-image`.
+- Pull request #7 CI run `33465359665` passed quality, compatibility, coverage,
+  integration, recovery, deployment-security, production-image, and all three
+  unit-test partitions; CodeQL run `33465359620` passed.
 - The preceding audit-remediation pull request passed every protected context.
 - Historical push CI run `33458288161` on the preceding `main` failed only in
   `recovery`. Its worker and API recovery reports passed, but the transport
@@ -273,11 +276,11 @@ The external evidence validator accepts fresh reports, every open Phase 7 row
 links to observed evidence, recovery objectives are measured, and maximum-scale
 database capacity remains inside its safe budget.
 
-### C-02 — Replacement PostgreSQL restart control needs protected CI proof
+### C-02 — PostgreSQL restart control is deterministic
 
 **P1 — CI/release evidence blocker**
 
-Status: **Repository fix complete; protected remote confirmation pending.**
+Status: **Resolved.**
 
 GitHub Actions run `33458288161` failed in the destructive recovery job. The
 transport resilience test calls:
@@ -295,13 +298,10 @@ seam records the stopped container, validates the intended clean exit, uses
 `docker compose start`, retries only the documented transition race twice,
 waits for health with a deadline, and rejects a changed container, unhealthy
 state, or nonzero exit. Its negative fixtures and three consecutive destructive
-local runs pass. The historical red run is not erased; protected CI must now
-confirm the replacement.
+local runs pass. The historical red run is not erased; replacement recovery job
+`99723971025` passed in protected CI run `33465359665`.
 
-**Remaining work**
-
-Run the exact replacement cohort on GitHub-hosted runners and retain its green
-required-context evidence. No blanket job retry was added.
+No blanket job retry was added.
 
 **Accept when**
 
@@ -495,9 +495,9 @@ Status: **Resolved by this fixed-ancestor publication.**
 
 The current status, tracker, and audit are now separated into implementation
 state, historical evidence, and external evidence. This audit pins the fixed
-ancestor `68752e7`; Phase 7 remains in progress. The preceding red recovery run
-is retained as historical evidence and cannot be mistaken for the replacement
-implementation's pending protected run.
+ancestor `0865633`; Phase 7 remains in progress. The preceding red recovery run
+is retained as historical evidence and is explicitly superseded by green pull
+request #7 run `33465359665`.
 
 **Maintenance rule**
 
@@ -584,7 +584,8 @@ this audit or a narrow code comment.
 
 Repository-controlled remediation at the audited implementation ancestor:
 
-- [x] Stabilize the recovery service-control seam (C-02 implementation).
+- [x] Stabilize the recovery service-control seam and pass protected recovery
+      CI (C-02).
 - [x] Bind local image, SBOM, and scan evidence to the BuildKit digest (C-04
       repository portion).
 - [x] Reduce all eight named complexity hotspots without widening public
@@ -599,14 +600,13 @@ Repository-controlled remediation at the audited implementation ancestor:
 
 Remaining ordered work:
 
-1. Obtain a fully green protected run for the replacement recovery seam (C-02).
-2. Complete live Phase 7 evidence and aggregate capacity proof (C-01).
-3. Execute safe provider canaries (C-03).
-4. Select the registry and signing identities, publish the already digest-bound
+1. Complete live Phase 7 evidence and aggregate capacity proof (C-01).
+2. Execute safe provider canaries (C-03).
+3. Select the registry and signing identities, publish the already digest-bound
    evidence, promote by digest, and verify deployment identity (C-04).
-5. Continue consequential failure-branch/mutation coverage from the generated
+4. Continue consequential failure-branch/mutation coverage from the generated
    inventory and observe the new dependency groups in operation (C-06/C-07).
-6. Apply multi-maintainer review and signing enforcement when the required
+5. Apply multi-maintainer review and signing enforcement when the required
    people and identities exist (C-08).
 
 ## 9. Closure rule
