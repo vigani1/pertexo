@@ -13,7 +13,8 @@ function requiredMajor(value, pattern, label) {
 
 function workflowNodeMajors(file, contents) {
   const majors = [];
-  const setupNodeUses = contents.match(/\buses:\s*actions\/setup-node@/gu) ?? [];
+  const setupNodeUses =
+    contents.match(/\buses:\s*actions\/setup-node@/gu) ?? [];
   for (const line of contents.split('\n')) {
     if (/^\s*node-version-file\s*:/u.test(line)) {
       throw new Error(
@@ -35,7 +36,9 @@ function workflowNodeMajors(file, contents) {
     majors.push(Number(match[1]));
   }
   if (setupNodeUses.length > 0 && majors.length !== setupNodeUses.length) {
-    throw new Error(`${file} must give each setup-node step one literal selector`);
+    throw new Error(
+      `${file} must give each setup-node step one literal selector`,
+    );
   }
   return majors;
 }
