@@ -224,14 +224,17 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Prepare image provenance output
+        run: mkdir -p artifacts
       - name: Build production image
-        run: docker build --tag pertexo-ci:${{ github.sha }} .
+        run: |
+          docker buildx build --load \
+            --tag pertexo-ci:${{ github.sha }} \
+            --metadata-file artifacts/production-image.build.json .
       - name: Prove non-root read-only runtime
         run: |
           test "$(docker run --rm --read-only --tmpfs /tmp --entrypoint id pertexo-ci:${{ github.sha }} -u)" = 10001
           docker run --rm --read-only --tmpfs /tmp --entrypoint node pertexo-ci:${{ github.sha }} --version
-      - name: Prepare image provenance output
-        run: mkdir -p artifacts
       - name: Generate CycloneDX SBOM
         uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
         with:
@@ -246,7 +249,17 @@ jobs:
           fail-build: true
           severity-cutoff: high
           only-fixed: true
-          output-format: table
+          output-format: json
+          output-file: artifacts/production-image.scan.json
+      - name: Bind image evidence to the built digest
+        run: |
+          node infrastructure/create-image-provenance.mjs \
+            artifacts/production-image.build.json \
+            artifacts/production-image.sbom.json \
+            artifacts/production-image.scan.json \
+            "${{ github.sha }}" \
+            "pertexo-ci:${{ github.sha }}" \
+            artifacts/production-image.provenance.json
       - name: Upload image provenance
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
