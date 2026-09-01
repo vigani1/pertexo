@@ -2,7 +2,7 @@
 
 Recorded: 2026-09-01
 
-Audited implementation head: `dea8f7e`
+Audited implementation head: `a19492d`
 
 Status: repository-controlled remediation complete; external production evidence
 remains open
@@ -145,7 +145,7 @@ and automation identity has a provisioned signing path.
 | A-03 idempotency retention | 24-hour terminal replay expiry, legal-hold-aware bounded reaper, indexed and lock-safe PostgreSQL proofs |
 | A-04 session retention | 30-day expired/revoked metadata grace and bounded maintenance-only reaping |
 | A-05 green skips | Every required cohort emits a reviewed machine-readable count and fails closed on missing configuration, unexpected skip, or todo |
-| A-06 image gate | Per-change `production-image` job added and required on protected `main`; exact image, runtime hardening, SBOM, and scan are one context |
+| A-06 image gate | Per-change `production-image` job added and required on protected `main`; exact image, runtime hardening, prepared SBOM output, and scan are one context |
 | A-07 readiness monolith | One public/snapshot owner retained; typed capability descriptors and four bounded SQL projections replace the 1,798-line probe |
 | A-08 publication monolith | One transaction retained; named claim, lock/compile, version, projection, and finalization steps replace the 331-line lexical block |
 | A-09 sibling internals | Node testing owns its module/port/guard/errors; execution owns checkpoint creation; static tests reject corrected crossings |
@@ -153,7 +153,7 @@ and automation identity has a provisioned signing path.
 | A-11 mutable image inputs | Broad OS upgrade removed, reviewed init copied from a digest-pinned source, deterministic build inputs and SBOM recorded |
 | A-12 dependency automation | Bounded grouped pnpm updates and Node 24 Docker policy added; incompatible Node 26 bot work closed |
 | A-13 complexity regression | CI ratchets reviewed file/function line and branch baselines; new or worsened hotspots fail |
-| A-14 database root | Production root export removed; explicit capability subpaths remain |
+| A-14 database root | Production root export removed; explicit capability subpaths remain; worker fixtures filter the package name (not an export path) and fail on a missing match |
 | A-15 avoidable sleeps | Session expiry uses an injected clock and mutable schedule leases advance through PostgreSQL; immutable/external-clock waits are documented |
 | A-16 local clones | API/worker Nest observability behavior and Slack/email provider telemetry share narrow stable helpers with lifecycle/failure tests |
 | A-17 Fastify assertions | Repeated double assertions replaced by one named runtime-checked adapter boundary |
