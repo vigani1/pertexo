@@ -11,36 +11,105 @@ function requiredMajor(value, pattern, label) {
   return Number(match[1]);
 }
 
-function workflowNodeMajors(file, contents) {
-  const majors = [];
-  const setupNodeUses =
-    contents.match(/\buses:\s*actions\/setup-node@/gu) ?? [];
-  for (const line of contents.split('\n')) {
+function leadingSpaces(line) {
+  return /^ */u.exec(line)?.[0].length ?? 0;
+}
+
+function setupNodeStepRanges(file, lines) {
+  const ranges = [];
+  for (const [usesIndex, line] of lines.entries()) {
+    const uses = /^( *)(-\s*)?uses:\s*actions\/setup-node@/u.exec(line);
+    if (uses === null) continue;
+
+    const usesIndent = uses[1].length;
+    let stepStart = uses[2] === undefined ? -1 : usesIndex;
+    if (stepStart === -1) {
+      for (let index = usesIndex - 1; index >= 0; index -= 1) {
+        const item = /^( *)-\s+/u.exec(lines[index]);
+        if (item !== null && item[1].length < usesIndent) {
+          stepStart = index;
+          break;
+        }
+      }
+    }
+    if (stepStart === -1) {
+      throw new Error(`${file} setup-node must be declared in a workflow step`);
+    }
+
+    const stepIndent = leadingSpaces(lines[stepStart]);
+    let stepEnd = lines.length;
+    for (let index = stepStart + 1; index < lines.length; index += 1) {
+      const item = /^( *)-\s+/u.exec(lines[index]);
+      if (item !== null && item[1].length === stepIndent) {
+        stepEnd = index;
+        break;
+      }
+    }
+    ranges.push({ stepStart, stepEnd });
+  }
+  return ranges;
+}
+
+function setupNodeMajor(file, lines, { stepStart, stepEnd }) {
+  let withIndex;
+  let withIndent;
+  for (let index = stepStart; index < stepEnd; index += 1) {
+    if (/^\s*with\s*:\s*(?:#.*)?$/u.test(lines[index])) {
+      withIndex = index;
+      withIndent = leadingSpaces(lines[index]);
+      break;
+    }
+  }
+  if (withIndex === undefined || withIndent === undefined) {
+    throw new Error(
+      `${file} must give each setup-node step one literal selector`,
+    );
+  }
+
+  let selector;
+  for (let index = withIndex + 1; index < stepEnd; index += 1) {
+    const line = lines[index];
+    if (/^\s*(?:#.*)?$/u.test(line)) continue;
+    if (leadingSpaces(line) <= withIndent) break;
     if (/^\s*node-version-file\s*:/u.test(line)) {
       throw new Error(
         `${file} node-version-file is unsupported; CI must declare a literal Node major`,
       );
     }
-    const selector = /^\s*node-version\s*:\s*(.*?)\s*$/u.exec(line)?.[1];
-    if (selector === undefined) continue;
-    const withoutComment = selector.replace(/\s+#.*$/u, '').trim();
-    const unquoted = (
-      /^(['"]).*\1$/u.test(withoutComment)
-        ? withoutComment.slice(1, -1)
-        : withoutComment
-    ).trim();
-    const match = /^(\d+)(?:\.\d+(?:\.\d+)?)?$/u.exec(unquoted);
-    if (match === null) {
-      throw new Error(`${file} setup-node must use a literal Node major`);
+    const candidate = /^\s*node-version\s*:\s*(.*?)\s*$/u.exec(line)?.[1];
+    if (candidate !== undefined) {
+      if (selector !== undefined) {
+        throw new Error(
+          `${file} must give each setup-node step one literal selector`,
+        );
+      }
+      selector = candidate;
     }
-    majors.push(Number(match[1]));
   }
-  if (setupNodeUses.length > 0 && majors.length !== setupNodeUses.length) {
+  if (selector === undefined) {
     throw new Error(
       `${file} must give each setup-node step one literal selector`,
     );
   }
-  return majors;
+
+  const withoutComment = selector.replace(/\s+#.*$/u, '').trim();
+  const unquoted = (
+    /^(['"]).*\1$/u.test(withoutComment)
+      ? withoutComment.slice(1, -1)
+      : withoutComment
+  ).trim();
+  const match = /^(\d+)(?:\.\d+(?:\.\d+)?)?$/u.exec(unquoted);
+  if (match === null) {
+    throw new Error(`${file} setup-node must use a literal Node major`);
+  }
+  return Number(match[1]);
+}
+
+function workflowNodeMajors(file, contents) {
+  const lines = contents.split('\n');
+  return setupNodeStepRanges(file, lines).map((range) =>
+    setupNodeMajor(file, lines, range),
+  );
 }
 
 export function validateRuntimeMajorSurfaces({
