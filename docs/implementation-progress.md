@@ -4674,7 +4674,7 @@ Verification at implementation head `9e4263794715d273e8660c0dd4efa67c5032e940`:
 No Phase 7 completion box changes in this documentation-only audit. The current
 P1 findings and the existing live-production checklist remain release blockers.
 
-## Current whole-repository audit — implementation head `7034758`
+## Current whole-repository audit — implementation head `d0baa0d`
 
 Status: **Repository remediation implemented; protected CI and external
 production/control evidence remain open**
@@ -4700,8 +4700,10 @@ Repository-controlled remediation:
       telemetry, queue, and routine compatibility groups and document owner,
       triage, isolation, and bounded-deferral SLAs.
 - [x] Align `@types/node` 24.13.3 with Node 24 engines, CI, and Docker stages;
-      eight fixtures also reject dynamic selectors, `node-version-file`, and a
-      setup-node step without its own literal selector.
+      ten fixtures also reject dynamic selectors, `node-version-file`, and a
+      setup-node step without its own literal selector. Selector ownership is
+      checked against that step's `with` mapping, so unrelated or sibling keys
+      cannot mask missing configuration.
 - [x] Consolidate request-header policies in the private HTTP platform and
       artifact metadata equality in the private artifact-store implementation
       without adding public exports. The later coordinator validation
