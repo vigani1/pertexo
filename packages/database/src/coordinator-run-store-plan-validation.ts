@@ -75,9 +75,10 @@ function validateAttempt(
     (attempt.sideEffectClass === 'idempotent_with_key') ===
       (attempt.providerIdempotencyKey !== undefined),
   );
-  assertPlan(invocation?.nodeId === attempt.nodeId);
-  assertPlan(invocation?.status === 'running');
-  assertPlan(invocation?.attemptNumber === attempt.attemptNumber);
+  assertPlan(invocation !== undefined);
+  assertPlan(invocation.nodeId === attempt.nodeId);
+  assertPlan(invocation.status === 'running');
+  assertPlan(invocation.attemptNumber === attempt.attemptNumber);
   assertPlan(admittedInvocationKeys.has(attempt.invocationKey));
   if (materialized === undefined) return;
   assertPlan(materialized.nodeId === attempt.nodeId);
@@ -127,7 +128,8 @@ function validateAdmission(
     (admission.sideEffectClass === 'idempotent_with_key') ===
       (admission.providerIdempotencyKey !== undefined),
   );
-  assertPlan(invocation?.nodeId === admission.nodeId);
+  assertPlan(invocation !== undefined);
+  assertPlan(invocation.nodeId === admission.nodeId);
   assertPlan(
     sameStoredValue(
       invocationScope(invocation, 'branchPath'),
@@ -141,12 +143,12 @@ function validateAdmission(
     ),
   );
   assertPlan(
-    invocation?.status === 'pending' ||
-      invocation?.status === 'ready' ||
-      invocation?.status === 'running' ||
-      invocation?.status === 'skipped',
+    invocation.status === 'pending' ||
+      invocation.status === 'ready' ||
+      invocation.status === 'running' ||
+      invocation.status === 'skipped',
   );
-  assertPlan((invocation?.status === 'running') === hasAttempt);
+  assertPlan((invocation.status === 'running') === hasAttempt);
 }
 
 function validateAdmissions(
@@ -174,23 +176,22 @@ function validateEvent(
     return;
   }
   assertPlan(event.invocationKey !== undefined && event.nodeId !== undefined);
+  assertPlan(invocation !== undefined);
   const expectedAttemptNumber =
-    event.name === 'node.ready' &&
-    invocation?.status === 'running' &&
-    hasAttempt
+    event.name === 'node.ready' && invocation.status === 'running' && hasAttempt
       ? invocation.attemptNumber - 1
-      : invocation?.attemptNumber;
-  assertPlan(invocation?.nodeId === event.nodeId);
+      : invocation.attemptNumber;
+  assertPlan(invocation.nodeId === event.nodeId);
   assertPlan(event.attemptNumber === expectedAttemptNumber);
   assertPlan(
     (event.name === 'node.retry_scheduled') === (event.dueAt !== undefined),
   );
   if (event.name === 'node.retry_scheduled') {
-    assertPlan(event.dueAt === invocation?.resumeAt);
-    assertPlan(invocation?.waitKind === 'retry_backoff');
+    assertPlan(event.dueAt === invocation.resumeAt);
+    assertPlan(invocation.waitKind === 'retry_backoff');
   }
   if (event.name === 'node.waiting') {
-    assertPlan(invocation?.waitKind === 'node_wait');
+    assertPlan(invocation.waitKind === 'node_wait');
   }
 }
 

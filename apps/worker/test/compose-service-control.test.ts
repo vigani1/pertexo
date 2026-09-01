@@ -50,8 +50,9 @@ describe('Compose service control', () => {
       now: () => now,
       pollIntervalMillis: 10,
       startDeadlineMillis: 100,
-      wait: async (millis) => {
+      wait: (millis) => {
         now += millis;
+        return Promise.resolve();
       },
     });
 
@@ -103,7 +104,7 @@ describe('Compose service control', () => {
       now: () => 0,
       pollIntervalMillis: 10,
       startDeadlineMillis: 100,
-      wait: async () => undefined,
+      wait: () => Promise.resolve(),
     });
 
     const stopped = await controller.stop('postgres');

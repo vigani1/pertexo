@@ -164,7 +164,7 @@ function parseCursorOnly(
   }
   return {
     kind: 'cursor_only',
-    eventName: observation.eventName as 'node.started' | 'node.progress',
+    eventName: observation.eventName,
     sequence: observation.sequence as number,
     occurredAt: observation.occurredAt as string,
     invocationKey: observation.invocationKey,
@@ -327,7 +327,7 @@ function parseOutcome(
     ...(output === undefined ? {} : { output }),
     ...(observation.reasonCode === undefined
       ? {}
-      : { reasonCode: observation.reasonCode as string }),
+      : { reasonCode: observation.reasonCode }),
   };
 }
 

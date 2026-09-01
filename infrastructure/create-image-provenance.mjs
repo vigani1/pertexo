@@ -2,6 +2,7 @@
 
 import { createHash } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
+import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 
 const digestPattern = /^sha256:[a-f0-9]{64}$/u;
