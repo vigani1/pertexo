@@ -67,6 +67,8 @@ const databaseUrl = (base: string): string => {
   url.pathname = `/${databaseName}`;
   return url.toString();
 };
+const configuredDatabaseUrl = (base: string | undefined): string =>
+  databaseUrl(base ?? 'postgresql://integration-disabled@127.0.0.1:1/unused');
 const ownerRole = process.env.POSTGRES_OWNER_USER ?? 'pertexo_owner';
 const migrationRole =
   process.env.POSTGRES_MIGRATION_USER ?? 'pertexo_migration';
@@ -133,15 +135,15 @@ function contextBytes(context: {
 describe.runIf(enabled)('direct webhook HTTP integration', () => {
   const admin = new Pool({ connectionString: adminBaseUrl, max: 1 });
   const owner = new Pool({
-    connectionString: databaseUrl(migrationBaseUrl ?? ''),
+    connectionString: configuredDatabaseUrl(migrationBaseUrl),
     max: 1,
   });
   const apiPool = new Pool({
-    connectionString: databaseUrl(apiBaseUrl ?? ''),
+    connectionString: configuredDatabaseUrl(apiBaseUrl),
     max: 1,
   });
   const apiConfig = parseDatabaseConfig({
-    connectionString: databaseUrl(apiBaseUrl ?? ''),
+    connectionString: configuredDatabaseUrl(apiBaseUrl),
     connectionTimeoutMillis: 2_000,
     idleTimeoutMillis: 2_000,
     max: 12,
@@ -202,7 +204,7 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
       `grant connect on database "${databaseName}" to ${migrationRole},${apiRole},${workerRole},${dispatcherRole}`,
     );
     await migrateDatabase({
-      connectionString: databaseUrl(migrationBaseUrl ?? ''),
+      connectionString: configuredDatabaseUrl(migrationBaseUrl),
       ownerRole,
       apiRuntimeRole: apiRole,
       workerRuntimeRole: workerRole,
@@ -574,7 +576,7 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
     const descriptions = releaseHistory.descriptions;
     const maintenance = createCompatibilityReleaseMaintenance(
       parseDatabaseConfig({
-        connectionString: databaseUrl(migrationBaseUrl ?? ''),
+        connectionString: configuredDatabaseUrl(migrationBaseUrl),
         max: 1,
         ownerRole,
         workerRuntimeRole: workerRole,
@@ -589,7 +591,7 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
         const pair = [predecessor, target] as const;
         const apiProbe = createCompatibilityReleaseReadinessProbe(
           parseDatabaseConfig({
-            connectionString: databaseUrl(apiBaseUrl ?? ''),
+            connectionString: configuredDatabaseUrl(apiBaseUrl),
             max: 1,
             ownerRole,
             workerRuntimeRole: workerRole,
@@ -598,7 +600,7 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
         );
         const workerProbe = createCompatibilityReleaseReadinessProbe(
           parseDatabaseConfig({
-            connectionString: databaseUrl(workerBaseUrl ?? ''),
+            connectionString: configuredDatabaseUrl(workerBaseUrl),
             max: 1,
             ownerRole,
             workerRuntimeRole: workerRole,
