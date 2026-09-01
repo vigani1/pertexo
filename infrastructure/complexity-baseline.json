@@ -15,11 +15,11 @@
     "apps/worker/src/transport/outbox-dispatcher.ts": 551,
     "apps/worker/src/transport/transport.module.ts": 607,
     "packages/artifact-store/src/control-ledger.ts": 997,
-    "packages/artifact-store/src/store.ts": 912,
+    "packages/artifact-store/src/store.ts": 903,
     "packages/database/src/connection-persistence.ts": 652,
     "packages/database/src/control-ledger-coordinator.ts": 1048,
     "packages/database/src/coordinator-run-store-observations.ts": 918,
-    "packages/database/src/coordinator-run-store-plan.ts": 816,
+    "packages/database/src/coordinator-run-store-plan.ts": 687,
     "packages/database/src/dispatcher.ts": 547,
     "packages/database/src/execution-acceptance.ts": 547,
     "packages/database/src/failure-notification-destinations.ts": 637,
@@ -106,10 +106,6 @@
       "branches": 37,
       "lines": 263
     },
-    "packages/database/src/coordinator-run-store-plan.ts#validateTransitionPlan": {
-      "branches": 60,
-      "lines": 119
-    },
     "packages/database/src/coordinator-run-store-plan.ts#validateStatusTransitions": {
       "branches": 102,
       "lines": 257
@@ -184,7 +180,7 @@
     },
     "packages/database/src/workflow-authoring.ts#createWorkflowAuthoringDatabase": {
       "branches": 21,
-      "lines": 500
+      "lines": 498
     },
     "packages/database/src/workflow-triggers.ts#createWorkflowTriggerReconciliationDatabase": {
       "branches": 0,

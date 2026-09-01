@@ -13,6 +13,11 @@ import {
   terminalStatus,
 } from './coordinator-run-store-observations.js';
 import {
+  assertTransitionPlanValid,
+  invocationScope,
+  sameKeys,
+} from './coordinator-run-store-plan-validation.js';
+import {
   parsePersistedPhase3Checkpoint,
   type PersistedPhase3Checkpoint,
 } from './phase3-checkpoint.js';
@@ -128,120 +133,7 @@ export function validateTransitionPlan(
   plan: ParsedTransitionPlan,
   workflowVersionId: string,
 ): void {
-  const firstDerivedSequence = plan.consumedThroughEventSequence + 1;
-  if (
-    plan.expectedNextEventSequence > firstDerivedSequence ||
-    plan.checkpoint.revision !== plan.expectedRevision + 1 ||
-    plan.checkpoint.workflowVersionId !== workflowVersionId ||
-    plan.checkpoint.nextEventSequence !==
-      firstDerivedSequence + plan.events.length ||
-    plan.events.some(
-      ({ sequence }, index) => sequence !== firstDerivedSequence + index,
-    ) ||
-    plan.events.some(({ name }) => name === 'run.cancel_requested') ||
-    ((plan.checkpoint.cancelRequested || plan.checkpoint.deadlineExpired) &&
-      (plan.attempts.length > 0 || plan.nodeRunAdmissions.length > 0))
-  )
-    throw new CoordinatorPlanInvalidError();
-  const invocations = new Map(
-    plan.checkpoint.invocations.map((invocation) => [
-      invocation.invocationKey,
-      invocation,
-    ]),
-  );
-  if (invocations.size !== plan.checkpoint.invocations.length)
-    throw new CoordinatorPlanInvalidError();
-  if (
-    new Set(plan.checkpoint.admittedInvocationKeys).size !==
-    plan.checkpoint.admittedInvocationKeys.length
-  )
-    throw new CoordinatorPlanInvalidError();
-  const nodeAdmissions = new Map(
-    plan.nodeRunAdmissions.map((admission) => [
-      admission.invocationKey,
-      admission,
-    ]),
-  );
-  if (nodeAdmissions.size !== plan.nodeRunAdmissions.length)
-    throw new CoordinatorPlanInvalidError();
-  const attemptKeys = new Set<string>();
-  for (const attempt of plan.attempts) {
-    const invocation = invocations.get(attempt.invocationKey);
-    const materialized = nodeAdmissions.get(attempt.invocationKey);
-    if (
-      attemptKeys.has(attempt.invocationKey) ||
-      (attempt.sideEffectClass === 'idempotent_with_key') !==
-        (attempt.providerIdempotencyKey !== undefined) ||
-      invocation?.nodeId !== attempt.nodeId ||
-      invocation.status !== 'running' ||
-      invocation.attemptNumber !== attempt.attemptNumber ||
-      !plan.checkpoint.admittedInvocationKeys.includes(attempt.invocationKey) ||
-      (materialized !== undefined &&
-        (materialized.nodeId !== attempt.nodeId ||
-          materialized.sideEffectClass !== attempt.sideEffectClass ||
-          materialized.providerIdempotencyKey !==
-            attempt.providerIdempotencyKey ||
-          serializeStoredExecutionJsonValue(materialized.branchPath ?? []) !==
-            serializeStoredExecutionJsonValue(attempt.branchPath ?? []) ||
-          serializeStoredExecutionJsonValue(
-            materialized.iterationPath ?? [],
-          ) !== serializeStoredExecutionJsonValue(attempt.iterationPath ?? [])))
-    )
-      throw new CoordinatorPlanInvalidError();
-    attemptKeys.add(attempt.invocationKey);
-  }
-  for (const admission of plan.nodeRunAdmissions) {
-    const invocation = invocations.get(admission.invocationKey);
-    if (
-      (admission.sideEffectClass === 'idempotent_with_key') !==
-        (admission.providerIdempotencyKey !== undefined) ||
-      invocation?.nodeId !== admission.nodeId ||
-      serializeStoredExecutionJsonValue(
-        invocationScope(invocation, 'branchPath'),
-      ) !== serializeStoredExecutionJsonValue(admission.branchPath ?? []) ||
-      serializeStoredExecutionJsonValue(
-        invocationScope(invocation, 'iterationPath'),
-      ) !== serializeStoredExecutionJsonValue(admission.iterationPath ?? []) ||
-      (invocation.status !== 'pending' &&
-        invocation.status !== 'ready' &&
-        invocation.status !== 'running' &&
-        invocation.status !== 'skipped')
-    )
-      throw new CoordinatorPlanInvalidError();
-    if (
-      (invocation.status === 'running') !==
-      attemptKeys.has(admission.invocationKey)
-    )
-      throw new CoordinatorPlanInvalidError();
-  }
-  for (const event of plan.events) {
-    const isNodeEvent = event.name.startsWith('node.');
-    if (!isNodeEvent) {
-      if (event.invocationKey !== undefined || event.nodeId !== undefined)
-        throw new CoordinatorPlanInvalidError();
-      continue;
-    }
-    if (event.invocationKey === undefined || event.nodeId === undefined)
-      throw new CoordinatorPlanInvalidError();
-    const invocation = invocations.get(event.invocationKey);
-    const expectedEventAttemptNumber =
-      event.name === 'node.ready' &&
-      invocation?.status === 'running' &&
-      attemptKeys.has(event.invocationKey)
-        ? invocation.attemptNumber - 1
-        : invocation?.attemptNumber;
-    if (
-      invocation?.nodeId !== event.nodeId ||
-      event.attemptNumber !== expectedEventAttemptNumber ||
-      (event.name === 'node.retry_scheduled') !== (event.dueAt !== undefined) ||
-      (event.name === 'node.retry_scheduled' &&
-        event.dueAt !== invocation.resumeAt) ||
-      (event.name === 'node.waiting' && invocation.waitKind !== 'node_wait') ||
-      (event.name === 'node.retry_scheduled' &&
-        invocation.waitKind !== 'retry_backoff')
-    )
-      throw new CoordinatorPlanInvalidError();
-  }
+  assertTransitionPlanValid(plan, workflowVersionId);
 }
 
 export function transitionFingerprint(
@@ -261,27 +153,6 @@ export function transitionFingerprint(
       }),
     )
     .digest('hex');
-}
-
-function sameKeys(
-  left: ReadonlySet<string>,
-  right: ReadonlySet<string>,
-): boolean {
-  return left.size === right.size && [...left].every((key) => right.has(key));
-}
-
-function invocationScope(
-  invocation: PersistedPhase3Checkpoint['invocations'][number] | undefined,
-  field: 'branchPath' | 'iterationPath',
-): readonly unknown[] {
-  if (invocation === undefined || !(field in invocation)) return [];
-  return (
-    (
-      invocation as Readonly<
-        Record<'branchPath' | 'iterationPath', readonly unknown[] | undefined>
-      >
-    )[field] ?? []
-  );
 }
 
 export function validateTransitionDelta(
