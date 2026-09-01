@@ -2,6 +2,7 @@
 
 import console from 'node:console';
 import { readFile, writeFile } from 'node:fs/promises';
+import path from 'node:path';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 
@@ -20,7 +21,7 @@ export function uncoveredBranches(report, cohort) {
           branchType: metadata.type,
           line: location?.start?.line ?? 0,
           column: location?.start?.column ?? 0,
-          classification: 'testable',
+          reviewStatus: 'unreviewed',
         });
       }
     }
@@ -33,27 +34,60 @@ export function uncoveredBranches(report, cohort) {
   );
 }
 
-async function main() {
-  const cohorts = ['workflow-engine', 'database', 'worker', 'api'];
-  const branches = [];
-  for (const cohort of cohorts) {
-    const report = JSON.parse(
-      await readFile(`coverage/${cohort}/coverage-final.json`, 'utf8'),
-    );
-    branches.push(...uncoveredBranches(report, cohort));
-  }
-  const output = {
-    schemaVersion: 1,
-    scope:
-      'security, transaction, recovery, parser, and state-transition coverage cohorts',
-    generatedAt: new Date().toISOString(),
+export function createRiskCoverageReport(
+  reports,
+  rootDirectory,
+  generatedAt = new Date(),
+) {
+  const selections = [...reports.entries()]
+    .map(([cohort, report]) => ({
+      cohort,
+      files: Object.keys(report)
+        .map((file) => path.relative(rootDirectory, file))
+        .sort(),
+    }))
+    .sort((left, right) => left.cohort.localeCompare(right.cohort));
+  const branches = [...reports.entries()].flatMap(([cohort, report]) =>
+    uncoveredBranches(report, cohort),
+  );
+  return {
+    schemaVersion: 2,
+    scope: {
+      kind: 'selected-critical-module-files',
+      cohorts: selections,
+    },
+    classification: {
+      status: 'unreviewed',
+      reviewedCount: 0,
+    },
+    generatedAt: generatedAt.toISOString(),
     uncoveredBranches: branches,
   };
+}
+
+async function main() {
+  const cohorts = ['workflow-engine', 'database', 'worker', 'api'];
+  const reports = new Map();
+  for (const cohort of cohorts) {
+    reports.set(
+      cohort,
+      JSON.parse(
+        await readFile(`coverage/${cohort}/coverage-final.json`, 'utf8'),
+      ),
+    );
+  }
+  const output = createRiskCoverageReport(reports, process.cwd());
   await writeFile(
     'coverage/risk-uncovered-branches.json',
     `${JSON.stringify(output, null, 2)}\n`,
   );
-  console.log(`Recorded ${branches.length} testable uncovered risk branches.`);
+  const fileCount = output.scope.cohorts.reduce(
+    (total, cohort) => total + cohort.files.length,
+    0,
+  );
+  console.log(
+    `Recorded ${output.uncoveredBranches.length} unreviewed uncovered branches across ${fileCount} selected files.`,
+  );
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) await main();
