@@ -8,7 +8,7 @@ type Attempt = ParsedTransitionPlan['attempts'][number];
 type Admission = ParsedTransitionPlan['nodeRunAdmissions'][number];
 type EngineEvent = ParsedTransitionPlan['events'][number];
 
-function assertPlan(condition: boolean): void {
+function assertPlan(condition: boolean): asserts condition {
   if (!condition) throw new CoordinatorPlanInvalidError();
 }
 
