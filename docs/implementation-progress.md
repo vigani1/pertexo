@@ -4674,41 +4674,55 @@ Verification at implementation head `9e4263794715d273e8660c0dd4efa67c5032e940`:
 No Phase 7 completion box changes in this documentation-only audit. The current
 P1 findings and the existing live-production checklist remain release blockers.
 
-## Current whole-repository audit — implementation head `e3d173f`
+## Current whole-repository audit — implementation head `68752e7`
 
-Status: **Most original findings resolved; current CI and production evidence
-remain open**
+Status: **Repository remediation implemented; protected CI and external
+production/control evidence remain open**
 
-The refreshed audit contains only current findings and score-improvement work:
+Repository-controlled remediation:
 
-- [ ] Stabilize the destructive recovery test's PostgreSQL restart seam and
-      replace failed main CI run `33458288161` with a fully green protected
-      run. The uploaded functional reports passed and an exact local
-      reproduction passed 1/1, but the remote Compose restart remains
-      nondeterministic.
-- [ ] Complete the live AWS, Object Lock, pager, load/fairness, failover,
-      failback, PITR, regional restore, RPO/RTO, autoscaling, and aggregate
-      PostgreSQL connection-capacity evidence.
-- [ ] Execute controlled non-production push-protection, vulnerable-dependency,
-      and vulnerable-image rejection canaries.
-- [ ] Bind the production-image SBOM, scan, registry provenance, and deployment
-      to one promoted immutable digest.
-- [ ] Reduce ratcheted high-risk complexity hotspots through private
-      invariant-owned seams without widening public interfaces.
-- [ ] Review uncovered high-risk failure branches and add focused
-      failure-injection or mutation evidence before raising coverage thresholds.
-- [ ] Keep grouped dependency updates actionable by isolating incompatible
-      packages and recording intentional deferrals.
-- [ ] Align `@types/node` with the supported Node 24 runtime and add a gate that
-      keeps engines, CI, Docker, and ambient types on the same approved major.
-- [ ] Consolidate the same-owner HTTP header and artifact metadata equality
-      helpers without creating a generic shared package or widening public
-      interfaces.
+- [x] Stabilize destructive PostgreSQL restart control with exact container
+      identity, bounded documented-race retry, health deadline, and negative
+      failure fixtures. Three consecutive clean local destructive cohorts pass.
+- [x] Bind the production image digest and commit to the hashes of its SBOM and
+      scanner report. The manifest explicitly refuses to claim registry
+      attestation; publish/sign/promote-by-digest remains external.
+- [x] Remove all eight specifically named branch-heavy functions from the
+      complexity baseline through private invariant-owned modules. The current
+      leading hotspot is 220 lines/44 branches, down from 257/102, with no new
+      or worsened ratchet entry.
+- [x] Raise critical coverage floors, emit a machine-readable uncovered
+      risk-branch inventory, and add exhaustive workflow-status mutation
+      canaries. The 361 remaining uncovered sites stay visible as testable
+      follow-up rather than being bulk-justified or excluded.
+- [x] Split production dependency updates into HTTP, validation, AWS,
+      telemetry, queue, and routine compatibility groups and document owner,
+      triage, isolation, and bounded-deferral SLAs.
+- [x] Align `@types/node` 24.13.3 with Node 24 engines, CI, and Docker stages;
+      five drift fixtures enforce the cross-surface runtime gate.
+- [x] Consolidate request-header policies in the private HTTP platform and
+      artifact metadata equality in the private artifact-store implementation
+      without adding public exports.
+- [x] Refresh README/current-status/audit/tracker semantics at a fixed
+      implementation ancestor while preserving the historical red CI evidence.
+
+Still open:
+
+- [ ] Replace historical failed run `33458288161` with a fully green protected
+      run for this implementation.
+- [ ] Complete live AWS, Object Lock, pager, load/fairness, failover, failback,
+      PITR, regional restore, RPO/RTO, autoscaling, and aggregate PostgreSQL
+      connection-capacity evidence.
+- [ ] Execute controlled provider-approved push-protection,
+      vulnerable-dependency, and vulnerable-image rejection canaries.
+- [ ] Select registry/signing identities, publish signed provenance, promote the
+      scanned image by digest, and prove the deployment consumes that digest.
+- [ ] Continue consequential failure-injection/mutation cases from the emitted
+      risk inventory and observe the new dependency groups in the next
+      automation cycle.
 - [ ] Require independent approval/code-owner review and verified provenance
       when a second maintainer and signing identities exist; retain the
       documented solo exception until then.
-- [ ] Reconcile README/current status/audit/tracker wording and current CI
-      evidence after the recovery gate is green.
 
 Audit calibration now records its method explicitly. Architecture uses the
 repository's deep-module/interface/seam criteria. Security is cross-checked
@@ -4720,29 +4734,26 @@ judgments with documented arithmetic, not industry percentiles or claims that a
 particular file size, package count, or coverage percentage is universally
 correct.
 
-Current local verification at `e3d173fe9573107c1cc9551ca2e007fbfc824e18`:
+Verification at `68752e7abe961588100f61fd4d9c05793d468a6f`:
 
-- `pnpm check`: passed, including 1,328 unit tests across all 18 workspace
-  projects;
-- `pnpm test:coverage`: passed at 79.36% workflow-engine, 61.53% database,
-  62.79% worker, and 82.56% API branch coverage;
-- `pnpm security:audit`: no known production dependency vulnerabilities;
-- `pnpm deployment:check`, `pnpm images:check`, and
-  `pnpm exercise:check`: passed; and
-- the exact local worker transport recovery cohort passed 1/1 with no skip.
+- `pnpm check` passed formatting, the Node 24 compatibility gate, all builds,
+  ESLint, complexity, generated contracts, TypeScript, and 1,336 unit tests
+  across all 18 workspace projects;
+- `pnpm test:coverage` passed at 79.34% workflow-engine, 61.53% database,
+  62.79% worker, and 84.45% API branch coverage and recorded 361 visible
+  uncovered risk-branch sites;
+- the full configured real-service matrix passed 5 artifact-store, 320
+  database, 22 worker, and 15 API integration tests, with provider-specific
+  skips remaining explicit;
+- three destructive transport-recovery runs passed before the final lint-only
+  correction, whose controller fixtures and full unit suite also pass;
+- `pnpm security:audit`, `pnpm deployment:check`, `pnpm exercise:check`, and
+  `pnpm images:check` passed; and
+- a real BuildKit production-image build emitted and bound digest
+  `sha256:fda47b1215439a714ac7d0042fe41b4f8adfe62a7bc0c43c711cd029cb436bce`.
 
-The research-calibrated source inspection covered 86,564 production/config
-TypeScript lines and 89,450 test/support lines. It confirmed the acyclic package
-graph, feature-owned Nest modules, constructor injection, strict trust-boundary
-parsing, role-scoped PostgreSQL surfaces, and package-local test layout. It also
-added two current code findings: Node 26 ambient types against the required Node
-24 runtime, and two bounded same-owner helper clone groups. The corrected score
-arithmetic is 8.6/10 for the first ten code-related rows and 8.3/10 across all
-fourteen audit rows.
-
-No phase status changes. Phase 7 remains **In progress**, and current
-`main` must not be described as fully green until the required recovery
-context passes.
+No phase status changes. Phase 7 remains **In progress**. Repository work must
+not be mistaken for the live deployment evidence required by the plan.
 
 ## Update protocol
 

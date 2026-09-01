@@ -2,24 +2,29 @@
 
 Recorded: 2026-09-01
 
-Audited implementation head: `e3d173fe9573107c1cc9551ca2e007fbfc824e18`
+Audited implementation head: `68752e7abe961588100f61fd4d9c05793d468a6f`
 
-Status: current open findings and improvement plan only
+Status: current findings, remediation state, and remaining external evidence
 
 ## 1. Executive conclusion
 
-The repository-controlled implementation is strong. The original code-quality,
-package, data-retention, type-safety, test-truthfulness, image, and dependency
-findings were materially corrected. This document intentionally omits their
-resolved history and records only work that remains.
+The repository-controlled implementation is strong. This audit refresh was
+followed by focused remediation at the fixed implementation ancestor above.
+The PostgreSQL recovery control seam, Node runtime/type alignment, the eight
+named complexity hotspots, the two same-owner helper clones, digest-bound local
+image evidence, dependency grouping, and risk-coverage ratchets are now
+implemented and locally verified.
 
-The project is not production-ready. Live AWS evidence remains absent and the
-latest CI run on current `main` is red because the destructive recovery test
-raced while restarting PostgreSQL. A local reproduction passed, which makes the
-problem intermittent rather than disproved.
+The project is still not production-ready. Live AWS, provider-control,
+independent-review, registry-signing, load, failover, pager, backup/PITR, and
+regional-recovery evidence cannot be manufactured by repository tests. The
+previous red `main` recovery run is historical evidence; the replacement
+implementation still needs protected remote CI before its C-02 acceptance is
+fully closed.
 
 - Continue development: **GO**
-- Claim all repository checks are green: **NO-GO**
+- Claim local repository checks are green: **GO**
+- Claim protected remote checks for this implementation: **NO-GO until run**
 - Claim Phase 7 or production readiness: **NO-GO**
 
 ## 2. Review method and external calibration
@@ -59,8 +64,8 @@ rubric:
 | Below 5 | Foundational correctness, security, or maintainability weakness |
 
 Intermediate decimals express position inside a band; they are not statistical
-precision. **8.6 codebase engineering quality** is the arithmetic mean of the
-first ten code, data, security, test, CI, and reliability rows below. **8.3
+precision. **9.0 codebase engineering quality** is the arithmetic mean of the
+first ten code, data, security, test, CI, and reliability rows below. **8.6
 overall state** is the arithmetic mean of all fourteen rows. Neither number is
 an industry percentile, and future audits must retain the same rows and rubric
 for trend comparisons.
@@ -73,33 +78,37 @@ proof.
 
 | Area | Score | What prevents a higher score |
 | --- | ---: | --- |
-| Architecture and domain ownership | 9.0/10 | Remaining branch-heavy internal functions |
-| Readability and maintainability | 8.2/10 | Ratcheted hotspots still require costly reasoning |
-| TypeScript and runtime contracts | 8.6/10 | Node 26 ambient types do not match the required Node 24 runtime |
-| Reuse and package design | 8.5/10 | Two bounded same-owner helper clones remain; no package removal is indicated |
+| Architecture and domain ownership | 9.2/10 | Secondary large closures remain characterization candidates |
+| Readability and maintainability | 8.8/10 | Complexity is reduced and ratcheted, not eliminated |
+| TypeScript and runtime contracts | 9.2/10 | Runtime-major drift is now rejected automatically |
+| Reuse and package design | 9.0/10 | Same-owner clones are consolidated without widening packages |
 | PostgreSQL and data integrity | 9.0/10 | Live capacity, backup, failover, and scale behavior unproved |
 | Application security | 9.0/10 | No current application exploit found |
-| Repository and supply-chain security | 8.5/10 | Canaries, signed provenance, and independent review absent |
-| Testing | 8.7/10 | Recovery restart flake; critical coverage remains selective |
-| CI and change governance | 8.0/10 | Current `main` recovery job is red |
-| Reliability and durability | 8.8/10 | Local recovery passes, but remote restart orchestration is unstable |
+| Repository and supply-chain security | 8.7/10 | External canaries, signed registry provenance, and independent review absent |
+| Testing | 9.0/10 | Critical coverage is risk-selected rather than repository-wide |
+| CI and change governance | 8.8/10 | Replacement implementation still requires protected remote CI |
+| Reliability and durability | 9.0/10 | Recovery control is deterministic locally; deployed failure proof remains open |
 | Observability and operability | 8.5/10 | No deployed pager/operator proof |
 | Performance and scalability | 7.5/10 | No representative deployed load or aggregate DB capacity proof |
-| Documentation and governance | 7.8/10 | Current-status wording and audit anchoring drifted |
+| Documentation and governance | 9.0/10 | External evidence and solo-maintainer exceptions remain explicit |
 | Production readiness | 5.5/10 | Phase 7 live evidence remains incomplete |
 
-Overall codebase engineering quality: **8.6/10**.
+Overall codebase engineering quality: **9.0/10**.
 
-Overall state including production readiness: **8.3/10**.
+Overall state including production readiness: **8.6/10**.
 
 ## 4. Evidence checked at this head
 
-- `pnpm check`: passed formatting, build, ESLint, complexity ratchet,
-  generated contracts, TypeScript, and 1,328 unit tests across all 18
-  workspace projects.
+- `pnpm check` passed formatting, runtime compatibility, build, ESLint,
+  complexity, generated contracts, TypeScript, and 1,336 unit tests across all
+  18 workspace projects.
 - `pnpm test:coverage`: passed all current critical-module thresholds:
-  workflow engine 79.36%, database 61.53%, worker 62.79%, API 82.56% branch
-  coverage.
+  workflow engine 79.34%, database 61.53%, worker 62.79%, and API 84.45%
+  branch coverage. The generated risk report records 361 uncovered branch
+  sites for explicit follow-up rather than hiding them.
+- The configured real-service matrix passed 5 artifact-store, 320 database, 22
+  worker, and 15 API integration tests. Provider-specific skips remained
+  explicit.
 - `pnpm security:audit`: no known production dependency vulnerability.
 - `pnpm deployment:check`, `pnpm images:check`, and
   `pnpm exercise:check`: passed.
@@ -107,13 +116,15 @@ Overall state including production readiness: **8.3/10**.
   vulnerability alerts, Dependabot security updates, and automated fixes.
 - Protected `main` requires 11 strict contexts, including CodeQL and
   `production-image`.
-- The audit-remediation pull request passed every protected context.
-- The latest push CI run on current `main`, `33458288161`, failed only in
+- The preceding audit-remediation pull request passed every protected context.
+- Historical push CI run `33458288161` on the preceding `main` failed only in
   `recovery`. Its worker and API recovery reports passed, but the transport
   resilience suite failed while `docker compose up --wait postgres` observed
   the restarting container exit with status zero.
-- The same transport resilience cohort was reproduced locally and passed 1/1
-  with no skip.
+- The replacement transport resilience cohort passed three consecutive clean
+  local Compose projects with no skip. It records container identity, permits
+  only the documented clean-exit race retry, polls health to a deadline, and
+  rejects unhealthy, nonzero-exit, or identity-changing failures.
 - The worktree was clean before this documentation update.
 
 ## 5. Actual source-code review results
@@ -125,7 +136,7 @@ repository configuration or prior audit prose.
 
 - 18 workspace projects: six runnable applications and twelve capability
   packages.
-- 86,564 TypeScript lines in production/configuration sources and 89,450 in
+- 86,749 TypeScript lines in production/configuration sources and 89,557 in
   package-local tests and test support.
 - 3,419 functions or methods, 279 classes, and 317 declared interfaces.
 - 48 functions span more than 200 lexical lines and 10 span more than 400.
@@ -135,9 +146,9 @@ repository configuration or prior audit prose.
 - 10 classes span more than 200 lines. The largest are concrete AWS, BullMQ,
   dispatcher, expression, OIDC, and secure-HTTP adapters with cohesive external
   responsibilities; none is a cross-domain god class.
-- Exact normalized-body scanning found 12 repeated function groups of at least
-  12 lines. Most are intentional adapter shells or parallel feature-owned
-  behavior. The two same-owner consolidation candidates are recorded in C-11.
+- The two same-owner consolidation candidates from the normalized-body scan
+  are now owned by private HTTP-platform and artifact-store helpers. Other
+  repeated adapter shells remain local intentionally.
 
 ### 5.2 Architecture, packages, and imports
 
@@ -168,9 +179,9 @@ repository configuration or prior audit prose.
 - Inline ESLint suppressions are confined to documented Nest module marker
   classes, frozen application-error values, and preserved rejection-value
   semantics. No blanket source-directory suppression was found.
-- The ambient Node type package is `@types/node` 26.2.0 while engines, CI, and
-  every Docker stage require Node 24. This is the current type/runtime defect in
-  C-10.
+- The ambient Node type package, engines range, CI jobs, and every Docker stage
+  now resolve to Node 24. A fixture-backed compatibility gate rejects drift on
+  any one surface.
 
 ### 5.4 NestJS and HTTP implementation
 
@@ -217,18 +228,22 @@ repository configuration or prior audit prose.
   isolated in explicit integration/resilience configurations.
 - Required service cohorts emit machine-readable reports and fail on zero
   tests, failures, unexpected skips, pending tests, or todos.
-- Coverage is deliberately risk-selected rather than repository-wide; the open
-  improvement is C-06, not a cosmetic demand for 100%.
+- Coverage is deliberately risk-selected rather than repository-wide. CI emits
+  the uncovered risk-branch inventory, and authorization and workflow status
+  policies have exhaustive mutation canaries.
 - CI actions and service images are digest-pinned, permissions are narrow,
   CodeQL and dependency scanning run, and production images are non-root and
-  read-only compatible. Remaining CI, canary, provenance, and governance gaps
-  are C-02 through C-04 and C-08.
+  read-only compatible. The local provenance manifest binds the image digest,
+  commit, SBOM hash, and scanner-report hash. External canary, registry-signing,
+  deployment-identity, and governance evidence remains under C-01/C-03/C-04/C-08.
 
 ## 6. Current findings
 
 ### C-01 — Live production, recovery, and scale evidence is incomplete
 
 **P1 — Production release blocker**
+
+Status: **Open; external deployment evidence required.**
 
 The target AWS environment still lacks retained evidence for:
 
@@ -258,9 +273,11 @@ The external evidence validator accepts fresh reports, every open Phase 7 row
 links to observed evidence, recovery objectives are measured, and maximum-scale
 database capacity remains inside its safe budget.
 
-### C-02 — Current `main` has an intermittent PostgreSQL restart failure
+### C-02 — Replacement PostgreSQL restart control needs protected CI proof
 
 **P1 — CI/release evidence blocker**
+
+Status: **Repository fix complete; protected remote confirmation pending.**
 
 GitHub Actions run `33458288161` failed in the destructive recovery job. The
 transport resilience test calls:
@@ -273,23 +290,18 @@ The uploaded report shows the functional assertion failed at service
 orchestration rather than at state recovery. A local exact reproduction passed,
 so the test is nondeterministic.
 
-This does not show durable-state corruption, but it means current `main` is red
-and the recovery proof is not reliable enough.
+This did not show durable-state corruption. The replacement service-control
+seam records the stopped container, validates the intended clean exit, uses
+`docker compose start`, retries only the documented transition race twice,
+waits for health with a deadline, and rejects a changed container, unhealthy
+state, or nonzero exit. Its negative fixtures and three consecutive destructive
+local runs pass. The historical red run is not erased; protected CI must now
+confirm the replacement.
 
-**Required work**
+**Remaining work**
 
-Make the test's service-control seam explicitly wait through the stop/start
-transition:
-
-1. establish the intended stopped state and container identity;
-2. issue a start/recreate operation with bounded retry only for the documented
-   Docker transition race;
-3. poll the PostgreSQL health/readiness condition with a deadline;
-4. fail immediately for unexpected exit codes, unhealthy state, or a different
-   container failure; and
-5. keep product readiness and dispatcher recovery assertions unchanged.
-
-Do not hide the problem with a blanket job retry.
+Run the exact replacement cohort on GitHub-hosted runners and retain its green
+required-context evidence. No blanket job retry was added.
 
 **Accept when**
 
@@ -300,6 +312,8 @@ negative fixture still proves a genuinely unavailable PostgreSQL instance fails.
 ### C-03 — Security and image rejection canaries are not recorded
 
 **P2 — External control evidence**
+
+Status: **Open; GitHub/provider-side canary execution required.**
 
 Secret scanning, push protection, dependency alerts/updates, and the protected
 image scanner are enabled. However, there is no retained evidence that:
@@ -319,23 +333,25 @@ the exact control that acted.
 All three controlled canaries produce the expected rejection or alert and leave
 no credential, vulnerable dependency, image, or bypass behind.
 
-### C-04 — Image provenance does not yet bind a promoted immutable digest
+### C-04 — Digest binding exists; signed promotion proof does not
 
 **P2 — Supply-chain evidence**
 
-The production-image job builds the exact commit, verifies non-root/read-only
-execution, generates a CycloneDX SBOM, and scans the local tag. It uploads an
-artifact named `production-image-provenance`, but the job does not currently
-record a content digest, sign an attestation, or prove that a later promoted
-image is byte-identical to the scanned image.
+Status: **Repository binding complete; registry signing and promotion open.**
+
+The production-image job now builds with BuildKit metadata, records the content
+digest, and creates a provenance manifest binding that digest and commit to the
+SHA-256 hashes of the CycloneDX SBOM and Grype JSON report. Fixture tests reject
+substitution. A real local production-image build emitted
+`sha256:fda47b1215439a714ac7d0042fe41b4f8adfe62a7bc0c43c711cd029cb436bce`.
+The manifest deliberately says `external-registry-required`: it is not a signed
+registry attestation and does not claim deployment promotion.
 
 Mutable Debian upgrades were correctly removed; this finding is about closing
 the build-to-deployment identity chain.
 
-**Required work**
+**Remaining work**
 
-- Record the built image digest.
-- Bind the SBOM and scan result to that digest.
 - Publish/sign provenance through the chosen registry and CI identity.
 - Promote by digest rather than rebuilding from the commit.
 - Verify the deployment manifest references the scanned digest.
@@ -347,25 +363,29 @@ that exact digest, verification rejects substitution, and rebuild equivalence is
 either demonstrated or explicitly not relied upon because promotion reuses the
 original immutable artifact.
 
-### C-05 — Complexity is prevented from worsening but not yet reduced
+### C-05 — Named complexity hotspots were reduced
 
 **P3 — Maintainability improvement**
 
-The ratchet is valuable and passes. Current high-branch functions still include:
+Status: **The eight named hotspots are remediated. Secondary candidates remain
+under the ratchet as ordinary improvement work.**
 
-| Function | Current measured shape |
-| --- | ---: |
-| `coordinator-run-store-plan.ts#validateStatusTransitions` | 257 lines / 102 branches |
-| persisted-observation parser arrow function | 275 / 82 |
-| `validateLoadedCheckpointPhysicalState` | 153 / 65 |
-| `validateTransitionPlan` | 119 / 60 |
-| `operations.ts#executeNodeAttempt` | 236 / 54 |
-| node-attempt completion arrow function | 387 / 53 |
-| `workflow-model/graph.ts#validate` | 198 / 52 |
-| `deriveWorkflowTransitions` | 241 / 47 |
+The audit named eight branch-heavy functions. All eight were decomposed behind
+private invariant-owned seams without widening their package interfaces:
 
-These are not defects by line count alone. They are future change-cost and
-review-risk concentrations.
+| Former hotspot | Result |
+| --- | --- |
+| status and transition-plan validation | private status/policy and plan-validator modules |
+| persisted-observation parsing | private parser dispatch module |
+| loaded-checkpoint physical validation | private physical-state module |
+| node-attempt execution input proof | private input-proof module |
+| node-attempt completion outcomes | private outcome-policy module |
+| workflow graph validation | private graph-validation policies |
+| derived workflow transitions | named transition policies |
+
+None of those eight remains in the complexity baseline. The current highest
+measured source function is 220 lines/44 branches, down from 257/102 for the
+former leader, and the ratchet reports no new or worsened hotspot.
 
 The longest lexical factory functions also include workspace purge (584 lines),
 control-ledger coordination (578), identity/workspace persistence (505),
@@ -374,12 +394,11 @@ workflow authoring persistence (498), and failure-notification persistence
 invariant still requires navigating a large closure. Treat them as secondary
 characterization candidates after the branch-heavy functions above.
 
-**Required work**
+**Follow-up rule**
 
-Refactor only after characterization. Prefer discriminant-to-validator/parser
-tables, state-specific handlers, named transition policies, and indexed lookup
-state. Keep one deep public interface and make internal seams private. Preserve
-transaction, authorization, and exhaustive-failure ownership.
+Treat the remaining large lexical factories as characterization candidates,
+not defects by size. Continue one invariant at a time only when change cost or
+failure ownership justifies it.
 
 **Accept when**
 
@@ -391,20 +410,21 @@ measurements do not regress.
 
 **P3 — Test-confidence improvement**
 
-Current coverage correctly targets critical modules; it must not be described as
-whole-repository coverage. Database and worker branch thresholds are 61.53% and
-62.79%. The percentages are not automatically inadequate, but unexecuted
-failure branches in transaction, recovery, parser, and security code deserve
-risk-based review.
+Status: **Materially improved; uncovered risk branches remain a visible
+follow-up inventory.**
 
-**Required work**
+Coverage remains deliberately critical-module coverage, not whole-repository
+coverage. Thresholds were raised to current meaningful floors and CI now emits
+`coverage/risk-uncovered-branches.json`. The current 361 uncovered sites are
+classified as testable backlog rather than silently excluded. Exhaustive
+workflow-status mutation canaries and the existing exhaustive role/capability
+matrix prove that consequential policy changes fail tests.
 
-- Generate an uncovered-branch report for security, transaction, recovery, and
-  parser modules.
-- Classify each uncovered branch as unreachable, defensive, or testable.
+**Remaining work**
+
 - Add failure-injection or mutation tests for consequential testable branches.
-- Exclude generated/declarative code explicitly rather than lowering the signal.
-- Raise thresholds only after meaningful coverage exists.
+- Reclassify individual sites as unreachable or defensive only with a durable
+  justification; do not bulk-label them to manufacture closure.
 
 **Accept when**
 
@@ -416,6 +436,9 @@ logic, and thresholds ratchet upward without a vanity 100% target.
 
 **P3 — Dependency operations**
 
+Status: **Repository policy complete; the next Dependabot cycle supplies
+operational confirmation.**
+
 The Node 26 proposal was closed, Node is constrained to the supported 24 line,
 and bounded npm groups exist. At audit time:
 
@@ -424,14 +447,17 @@ and bounded npm groups exist. At audit time:
 - the production update group bundled 12 updates and had several failed
   contexts.
 
-A failing update PR is not itself a product defect, but large groups can make
-the incompatible dependency difficult to identify.
+A failing update PR is not itself a product defect, but the former twelve-item
+production group hid the incompatible boundary. Production updates are now
+split into HTTP, validation, AWS, telemetry, queue, and routine groups. The
+owner/SLA policy defines same-day security triage, 72-hour security disposition,
+seven-day green-update review, two-business-day failing-boundary isolation, and
+bounded documented deferral.
 
-**Required work**
+**Remaining work**
 
-Triage the production group, split packages with independent compatibility risk,
-retain useful patch/minor grouping, and define an owner/SLA for green updates,
-security updates, and intentionally deferred versions.
+Observe the next automation cycle and record any intentional deferral with its
+reason and review date.
 
 **Accept when**
 
@@ -442,6 +468,8 @@ a recorded reason and review date.
 ### C-08 — Independent review and signed provenance remain unavailable
 
 **P3 — Accepted solo-maintainer risk**
+
+Status: **Open external governance constraint; documented and accepted.**
 
 CODEOWNERS covers critical paths, but GitHub reports one collaborator. Requiring
 one approval or code-owner review would deadlock every author-owned PR. Required
@@ -463,19 +491,18 @@ and protected merge commits/provenance are verifiably attributable.
 
 **P3 — Documentation accuracy**
 
-`docs/current-implementation-status.md` says audit remediation is active on a
-review branch even though it is merged. The preceding audit pinned a commit not
-on current `main` ancestry, although its implementation tree was equivalent to
-the merged commit. The detailed progress section still cites older head/run
-evidence and previously claimed strengthened current-status documentation.
+Status: **Resolved by this fixed-ancestor publication.**
 
-**Required work**
+The current status, tracker, and audit are now separated into implementation
+state, historical evidence, and external evidence. This audit pins the fixed
+ancestor `68752e7`; Phase 7 remains in progress. The preceding red recovery run
+is retained as historical evidence and cannot be mistaken for the replacement
+implementation's pending protected run.
 
-- Describe remediation as merged with the current remaining findings.
-- Pin audits to an ancestor of the branch on which they are published.
-- Separate current status from historical commit evidence.
-- Record the current red recovery run and its eventual green replacement.
-- Keep Phase 7 in progress.
+**Maintenance rule**
+
+Record the eventual replacement remote run without rewriting the historical
+failure, and keep deployment evidence distinct from repository verification.
 
 **Accept when**
 
@@ -487,20 +514,17 @@ linked but cannot be mistaken for current status.
 
 **P2 — Type/runtime compatibility**
 
-`package.json` constrains Node to `>=24 <25`, every GitHub job selects Node 24,
-and every Docker stage uses Node 24. The root development dependency is
-`@types/node` 26.2.0. TypeScript can therefore accept a Node 26-only global,
-module export, option, or overload that is absent from the production runtime.
-Existing tests reduce but do not eliminate the risk because unexecuted paths can
-still compile against the newer ambient interface.
+Status: **Resolved.**
 
-**Required work**
+`@types/node` is pinned to 24.13.3. The root compatibility check parses the
+engines range, every workflow Node selection, every Docker stage, and the
+ambient type major, requiring all of them to resolve to Node 24. Five drift
+fixtures prove each supported surface fails closed.
 
-- Pin `@types/node` to the supported Node 24 major.
-- Add an automated compatibility assertion tying engines, CI, Docker, and the
-  ambient Node types to one approved major.
-- Keep the assertion compatible with intentional staged upgrades so the runtime
-  and types advance in the same change.
+**Maintenance rule**
+
+Advance runtime and ambient types in one intentional change; do not bypass the
+fixture-backed compatibility gate.
 
 **Accept when**
 
@@ -508,29 +532,29 @@ The installed ambient types, engines range, CI runtime, and production image all
 resolve to Node 24, and a fixture proves that drifting any one surface fails the
 compatibility gate.
 
-### C-11 — Two bounded same-owner helper clones remain
+### C-11 — Two bounded same-owner helper clones were consolidated
 
 **P3 — Readability and locality**
+
+Status: **Resolved.**
 
 Exact function-body comparison found 12 repeated groups of at least 12 lines.
 Most should remain local: Nest module registration shells, feature-owned
 authorization/current-draft behavior, cross-package UTF-8 calculations, and
 small query wrappers do not justify wider interfaces.
 
-Two groups do have one natural owner:
+The two groups with one natural owner were consolidated:
 
 - request-header extraction and normalization are repeated across API request
   identifiers, rate limiting, and workflow controllers even though the HTTP
   platform module already owns request adaptation; and
 - `metadataMatches` is duplicated inside the artifact-store package.
 
-**Required work**
-
-Centralize request-header normalization in the private HTTP platform with
-explicit strict-single-value and first-value policies, and move artifact
-metadata equality behind one private artifact-store helper. Keep both internal;
-do not create a generic shared package or expose new public subpaths. Delete the
-replaced local copies and test through their owning interfaces.
+The private HTTP-platform helper now exposes raw, first-value, and
+strict-single-value policies, while the webhook ingress deliberately retains raw
+Fastify handling for duplicate/comma-folding security semantics. Artifact
+metadata equality has one private artifact-store implementation. Neither change
+adds a public subpath or generic shared package.
 
 **Accept when**
 
@@ -558,18 +582,32 @@ this audit or a narrow code comment.
 
 ## 8. Ordered improvement plan
 
-1. Stabilize the recovery service-control seam and restore green `main` (C-02).
-2. Complete live Phase 7 evidence and capacity proof (C-01).
-3. Execute safe control canaries and bind image evidence to the promoted digest
-   (C-03, C-04).
-4. Align Node ambient types and add the cross-surface major-version assertion
-   (C-10).
-5. Correct current-status and audit evidence drift (C-09).
-6. Deepen the highest-risk complexity hotspots one invariant at a time (C-05).
-7. Consolidate only the two same-owner helper clones (C-11).
-8. Expand failure-branch and mutation confidence based on risk (C-06).
-9. Keep dependency PRs actionable and apply multi-maintainer governance when
-   people and signing identities exist (C-07, C-08).
+Repository-controlled remediation at the audited implementation ancestor:
+
+- [x] Stabilize the recovery service-control seam (C-02 implementation).
+- [x] Bind local image, SBOM, and scan evidence to the BuildKit digest (C-04
+      repository portion).
+- [x] Reduce all eight named complexity hotspots without widening public
+      interfaces (C-05).
+- [x] Emit a risk-branch inventory, raise critical thresholds, and add selected
+      mutation canaries (C-06 repository portion).
+- [x] Split dependency compatibility boundaries and define owner/SLAs (C-07).
+- [x] Correct fixed-ancestor/current-status evidence drift (C-09).
+- [x] Align Node ambient types and enforce cross-surface runtime compatibility
+      (C-10).
+- [x] Consolidate the two same-owner helper clones (C-11).
+
+Remaining ordered work:
+
+1. Obtain a fully green protected run for the replacement recovery seam (C-02).
+2. Complete live Phase 7 evidence and aggregate capacity proof (C-01).
+3. Execute safe provider canaries (C-03).
+4. Select the registry and signing identities, publish the already digest-bound
+   evidence, promote by digest, and verify deployment identity (C-04).
+5. Continue consequential failure-branch/mutation coverage from the generated
+   inventory and observe the new dependency groups in operation (C-06/C-07).
+6. Apply multi-maintainer review and signing enforcement when the required
+   people and identities exist (C-08).
 
 ## 9. Closure rule
 
