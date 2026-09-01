@@ -17,8 +17,8 @@ import {
   authenticatedSession,
 } from '../identity-workspace/index.js';
 import type { IdentityWorkspaceRequest } from '../identity-workspace/types.js';
+import { parseIdempotencyKey } from '../platform/http/index.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
-import { parseIdempotencyKey } from '../workflow-authoring/preconditions.js';
 import { WebhookReadGuard, WebhookUpdateGuard } from './guards.js';
 import { WebhookManagementService } from './service.js';
 

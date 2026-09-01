@@ -18,6 +18,10 @@ import {
 } from '@pertexo/database/api';
 import type { RegistryRelease } from '@pertexo/node-sdk';
 import { canonicalJson } from '@pertexo/workflow-model/canonical-json';
+import {
+  parseWorkflowGraphDraft,
+  workflowDraftRepresentationTag,
+} from '@pertexo/workflow-model/graph';
 import { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';
 import { z } from 'zod';
 
@@ -27,13 +31,13 @@ import type {
   WorkspaceAuthorizationPort,
 } from '../workspaces/index.js';
 import type { WorkspaceAuthorizationSource } from '../identity-workspace/ports.js';
-import type { NodeTestingPersistence } from '../workflow-authoring/ports.js';
-import { parseWorkflowGraphDraft } from '../workflow-authoring/graph.js';
-import { toDraft } from '../workflow-authoring/use-cases.js';
 import {
-  prepareNodeValidation,
-  type NodeValidationIssue,
-} from './validation.js';
+  NodeTestIdempotencyConflictError,
+  NodeTestIdempotencyRequiredError,
+  NodeTestInvalidError,
+} from './errors.js';
+import type { NodeTestingPersistence } from './ports.js';
+import { prepareNodeValidation } from './validation.js';
 
 const PREVIEW_RETENTION_MS = 7 * 24 * 60 * 60 * 1_000;
 const PREVIEW_EXECUTION_TIMEOUT_MS = 5 * 60 * 1_000;
@@ -50,27 +54,6 @@ export type NodeTestUseCaseInput = Readonly<{
   traceId?: string;
   traceparent?: string;
 }>;
-
-export class NodeTestIdempotencyRequiredError extends Error {
-  public override readonly name = 'NodeTestIdempotencyRequiredError';
-  public constructor() {
-    super('Idempotency-Key is required for test_execute');
-  }
-}
-
-export class NodeTestInvalidError extends Error {
-  public override readonly name = 'NodeTestInvalidError';
-  public constructor(public readonly issues: readonly NodeValidationIssue[]) {
-    super('Selected node is not valid for preview');
-  }
-}
-
-export class NodeTestIdempotencyConflictError extends Error {
-  public override readonly name = 'NodeTestIdempotencyConflictError';
-  public constructor() {
-    super('request.idempotency_conflict');
-  }
-}
 
 type Authorization = WorkspaceAuthorizationSource | WorkspaceAuthorizationPort;
 
@@ -94,7 +77,12 @@ export class TestWorkflowNodeUseCase {
     if (draft.revision !== request.expectedRevision)
       throw new WorkflowRevisionConflictError(
         draft.revision,
-        toDraft(draft).representationTag,
+        workflowDraftRepresentationTag({
+          workflowId: draft.workflowId,
+          revision: draft.revision,
+          graph: draft.graphJson,
+          compatibilityFingerprint: draft.compatibility.fingerprint,
+        }),
       );
     const graph = parseWorkflowGraphDraft(draft.graphJson);
     const prepared = await prepareNodeValidation({

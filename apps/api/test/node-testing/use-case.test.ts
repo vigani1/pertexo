@@ -8,12 +8,10 @@ import type {
 } from '@pertexo/database/testing';
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-  NodeTestIdempotencyRequiredError,
-  TestWorkflowNodeUseCase,
-} from '../../src/node-testing/use-case.js';
+import { NodeTestIdempotencyRequiredError } from '../../src/node-testing/errors.js';
+import { TestWorkflowNodeUseCase } from '../../src/node-testing/use-case.js';
 import { createActorContext } from '../../src/workspaces/index.js';
-import type { NodeTestingPersistence } from '../../src/workflow-authoring/ports.js';
+import type { NodeTestingPersistence } from '../../src/node-testing/ports.js';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';

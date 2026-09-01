@@ -38,6 +38,10 @@ import {
   type WorkflowAuthoringTracer,
 } from '../../workflow-authoring/index.js';
 import {
+  NodeTestingModule,
+  type NodeTestingDependencies,
+} from '../../node-testing/index.js';
+import {
   createPostgresWorkflowRunPersistence,
   createWorkflowRunEventStreamer,
   WorkflowRunsModule,
@@ -47,6 +51,7 @@ import {
 
 export type ApiWorkflowRuntime = Readonly<{
   dependencies: WorkflowAuthoringDependencies;
+  nodeTestingDependencies?: NodeTestingDependencies;
   runDependencies: WorkflowRunsDependencies;
   checkReadiness?(): Promise<void>;
   close(): Promise<void>;
@@ -280,11 +285,14 @@ export function createApiWorkflowRuntime(
   return Object.freeze({
     dependencies: Object.freeze({
       persistence: database,
-      nodeTestingPersistence: database,
       authorization: identityRuntime.dependencies.authorization,
       definitionCatalog,
-      nodeTestingRelease: platformServingRegistryRelease(releaseCohort),
       telemetry,
+    }),
+    nodeTestingDependencies: Object.freeze({
+      persistence: database,
+      authorization: identityRuntime.dependencies.authorization,
+      release: platformServingRegistryRelease(releaseCohort),
     }),
     runDependencies: Object.freeze({
       persistence: runPersistence,
@@ -398,6 +406,14 @@ export class WorkflowRuntimeModule {
       module: WorkflowRuntimeModule,
       imports: [
         WorkflowAuthoringModule.register(runtime.dependencies, identityModule),
+        ...(runtime.nodeTestingDependencies === undefined
+          ? []
+          : [
+              NodeTestingModule.register(
+                runtime.nodeTestingDependencies,
+                identityModule,
+              ),
+            ]),
         WorkflowRunsModule.register(runtime.runDependencies, identityModule),
       ],
       providers: [
