@@ -2,7 +2,7 @@
 
 Recorded: 2026-09-01
 
-Audited implementation head: `086563348d20c88f242b68f22609a64ed762d195`
+Audited implementation head: `c6530ddb801abab2209d87181f57396c64bdf087`
 
 Status: current findings, remediation state, and remaining external evidence
 
@@ -104,8 +104,9 @@ Overall state including production readiness: **8.6/10**.
   18 workspace projects.
 - `pnpm test:coverage`: passed all current critical-module thresholds:
   workflow engine 79.34%, database 61.53%, worker 62.79%, and API 84.45%
-  branch coverage. The generated risk report records 361 uncovered branch
-  sites for explicit follow-up rather than hiding them.
+  branch coverage. The generated report names the 23 exact selected files and
+  records 361 uncovered branch sites as unreviewed; it makes no generated risk
+  classification.
 - The configured real-service matrix passed 5 artifact-store, 320 database, 22
   worker, and 15 API integration tests. Provider-specific skips remained
   explicit.
@@ -387,6 +388,14 @@ None of those eight remains in the complexity baseline. The current highest
 measured source function is 220 lines/44 branches, down from 257/102 for the
 former leader, and the ratchet reports no new or worsened hotspot.
 
+The fixed-revision comparison in
+[`docs/operations/complexity-refactor-performance.md`](./operations/complexity-refactor-performance.md)
+runs each owning package suite five times at the pre-refactor and candidate
+revisions. Median elapsed deltas were +0.36% database, +3.13% workflow engine
+(with three additional tests), and 0.00% workflow model; median maximum-RSS
+deltas were +1.18%, +0.26%, and +0.23%. Query-call inventory decreased from 215
+to 213, and diff review found relocated statements but no new SQL or round trip.
+
 The longest lexical factory functions also include workspace purge (584 lines),
 control-ledger coordination (578), identity/workspace persistence (505),
 workflow authoring persistence (498), and failure-notification persistence
@@ -413,12 +422,14 @@ measurements do not regress.
 Status: **Materially improved; uncovered risk branches remain a visible
 follow-up inventory.**
 
-Coverage remains deliberately critical-module coverage, not whole-repository
-coverage. Thresholds were raised to current meaningful floors and CI now emits
-`coverage/risk-uncovered-branches.json`. The current 361 uncovered sites are
-classified as testable backlog rather than silently excluded. Exhaustive
-workflow-status mutation canaries and the existing exhaustive role/capability
-matrix prove that consequential policy changes fail tests.
+Coverage remains deliberately selected critical-module coverage, not
+whole-repository or whole-risk-surface coverage. Thresholds were raised to
+current meaningful floors and CI emits
+`coverage/risk-uncovered-branches.json`. Schema V2 lists the 23 exact measured
+files and marks all 361 uncovered sites `unreviewed`; generation does not
+classify them as testable, defensive, unreachable, high risk, or low risk.
+Exhaustive workflow-status mutation canaries and the existing exhaustive
+role/capability matrix prove that consequential policy changes fail tests.
 
 **Remaining work**
 
@@ -518,8 +529,10 @@ Status: **Resolved.**
 
 `@types/node` is pinned to 24.13.3. The root compatibility check parses the
 engines range, every workflow Node selection, every Docker stage, and the
-ambient type major, requiring all of them to resolve to Node 24. Five drift
-fixtures prove each supported surface fails closed.
+ambient type major, requiring all of them to resolve to Node 24. It rejects
+dynamic/matrix expressions, `node-version-file`, and setup-node steps without
+their own literal selector even when another literal Node 24 entry exists.
+Eight fixtures prove the supported surfaces fail closed.
 
 **Maintenance rule**
 
@@ -556,6 +569,11 @@ Fastify handling for duplicate/comma-folding security semantics. Artifact
 metadata equality has one private artifact-store implementation. Neither change
 adds a public subpath or generic shared package.
 
+The later complexity decomposition briefly duplicated `assertPlan` and
+`sameStoredValue` across coordinator plan/status validation. Both now live once
+in the private database-owned `coordinator-run-store-validation-values` module;
+no package export was added.
+
 **Accept when**
 
 Each header policy and artifact metadata comparison has one owned
@@ -591,7 +609,8 @@ Repository-controlled remediation at the audited implementation ancestor:
 - [x] Reduce all eight named complexity hotspots without widening public
       interfaces (C-05).
 - [x] Emit a risk-branch inventory, raise critical thresholds, and add selected
-      mutation canaries (C-06 repository portion).
+      mutation canaries without generating an unreviewed classification (C-06
+      repository portion).
 - [x] Split dependency compatibility boundaries and define owner/SLAs (C-07).
 - [x] Correct fixed-ancestor/current-status evidence drift (C-09).
 - [x] Align Node ambient types and enforce cross-surface runtime compatibility
@@ -605,7 +624,8 @@ Remaining ordered work:
 3. Select the registry and signing identities, publish the already digest-bound
    evidence, promote by digest, and verify deployment identity (C-04).
 4. Continue consequential failure-branch/mutation coverage from the generated
-   inventory and observe the new dependency groups in operation (C-06/C-07).
+   unreviewed inventory and observe the new dependency groups in operation
+   (C-06/C-07).
 5. Apply multi-maintainer review and signing enforcement when the required
    people and identities exist (C-08).
 
