@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { uncoveredBranches } from './report-risk-coverage.mjs';
+import {
+  createRiskCoverageReport,
+  uncoveredBranches,
+} from './report-risk-coverage.mjs';
 
 test('reports each uncovered branch location with its risk cohort', () => {
   const report = {
@@ -25,7 +28,35 @@ test('reports each uncovered branch location with its risk cohort', () => {
       branchType: 'if',
       line: 12,
       column: 2,
-      classification: 'testable',
+      reviewStatus: 'unreviewed',
     },
   ]);
+});
+
+test('describes only the exact selected files without claiming classification', () => {
+  const report = createRiskCoverageReport(
+    new Map([
+      [
+        'database',
+        {
+          '/repo/packages/database/src/workspace.ts': {
+            branchMap: {},
+            b: {},
+          },
+        },
+      ],
+    ]),
+    '/repo',
+  );
+  assert.deepEqual(report.scope, {
+    kind: 'selected-critical-module-files',
+    cohorts: [
+      {
+        cohort: 'database',
+        files: ['packages/database/src/workspace.ts'],
+      },
+    ],
+  });
+  assert.equal(report.classification.status, 'unreviewed');
+  assert.equal(report.classification.reviewedCount, 0);
 });
