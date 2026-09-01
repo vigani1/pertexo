@@ -2,7 +2,7 @@
 
 Recorded: 2026-09-01
 
-Audited implementation head: `70347582394a8766bc1179da0395889d0a69081d`
+Audited implementation head: `d0baa0d3d743fd8c7f690a59b6b5acdf9711f2d1`
 
 Status: current findings, remediation state, and remaining external evidence
 
@@ -531,8 +531,9 @@ Status: **Resolved.**
 engines range, every workflow Node selection, every Docker stage, and the
 ambient type major, requiring all of them to resolve to Node 24. It rejects
 dynamic/matrix expressions, `node-version-file`, and setup-node steps without
-their own literal selector even when another literal Node 24 entry exists.
-Eight fixtures prove the supported surfaces fail closed.
+their own literal selector. Selectors must belong to that exact step's `with`
+mapping, so unrelated or sibling `node-version` keys cannot mask drift. Ten
+fixtures prove the supported surfaces fail closed.
 
 **Maintenance rule**
 
