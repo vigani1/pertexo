@@ -7,11 +7,50 @@ updates:
       day: monday
       time: '03:30'
       timezone: Europe/Belgrade
-    open-pull-requests-limit: 6
+    open-pull-requests-limit: 12
     versioning-strategy: increase-if-necessary
     groups:
-      production-minor-patch:
+      production-http-stack:
         dependency-type: production
+        patterns:
+          - '@nestjs/*'
+          - fastify
+        update-types:
+          - minor
+          - patch
+      production-validation:
+        dependency-type: production
+        patterns:
+          - zod
+        update-types:
+          - minor
+          - patch
+      production-aws:
+        dependency-type: production
+        patterns:
+          - '@aws-sdk/*'
+        update-types:
+          - minor
+          - patch
+      production-telemetry:
+        dependency-type: production
+        patterns:
+          - '@opentelemetry/*'
+        update-types:
+          - minor
+          - patch
+      production-queue:
+        dependency-type: production
+        patterns:
+          - bullmq
+        update-types:
+          - minor
+          - patch
+      production-routine:
+        dependency-type: production
+        patterns:
+          - jose
+          - uuid
         update-types:
           - minor
           - patch

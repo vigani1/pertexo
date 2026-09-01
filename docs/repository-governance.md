@@ -11,6 +11,8 @@ are required alongside quality, unit, coverage, integration, recovery,
 compatibility, deployment/security, and CodeQL checks.
 
 Critical paths have explicit owners in `.github/CODEOWNERS`.
+Dependency automation follows the grouping, triage, and deferral policy in
+[Dependency update operations](./operations/dependency-updates.md).
 
 ## Solo-maintainer review exception
 
