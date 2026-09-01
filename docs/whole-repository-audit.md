@@ -22,7 +22,50 @@ problem intermittent rather than disproved.
 - Claim all repository checks are green: **NO-GO**
 - Claim Phase 7 or production readiness: **NO-GO**
 
-## 2. Current scores
+## 2. Review method and external calibration
+
+This is a repository assessment, not an industry percentile or a certification.
+No authoritative engineering standard defines a universally correct repository
+size, package count, function length, abstraction count, or coverage percentage.
+Those values are useful only when they expose change cost, unclear ownership,
+weak verification, or operational risk.
+
+The review combines direct evidence from this repository with these established
+frameworks:
+
+| Review dimension | External calibration | How it was applied here |
+| --- | --- | --- |
+| Module and interface design | The local codebase-design framework: deep modules, narrow interfaces, locality, and real seams | Reviewed package purpose, dependency direction, public exports, sibling-internal imports, abstraction depth, and complexity hotspots; did not classify code as defective from line count alone |
+| Code health and reviewability | Google's [code-review standard](https://google.github.io/eng-practices/review/reviewer/standard.html), [review checklist](https://google.github.io/eng-practices/review/reviewer/looking-for.html), and [small-change guidance](https://google.github.io/eng-practices/review/developer/small-cls.html) | Reviewed design, functionality, complexity, naming, comments, documentation, tests, style, change focus, and whether the ratchet makes code health improve rather than decay |
+| Type safety | TypeScript's official [`strict` guarantees](https://www.typescriptlang.org/tsconfig/strict) plus runtime trust-boundary validation | Verified strict compilation, exact response contracts, generated-contract checks, runtime parsing, and localized assertions; did not treat static types as validation of untrusted input |
+| Secure development lifecycle | [NIST SSDF SP 800-218](https://csrc.nist.gov/pubs/sp/800/218/final) and the [OWASP SAMM model](https://owaspsamm.org/model/) | Checked governance, secure design/build/deployment, dependency handling, architecture and security verification, defect response, and operational controls |
+| Repository security | [OpenSSF Scorecard](https://github.com/ossf/scorecard) and GitHub's [protected-branch controls](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches) | Checked branch protection, review policy, automated dependency updates, scanning, workflow permissions, and pinned/reviewed build inputs |
+| Artifact integrity | [SLSA build provenance](https://slsa.dev/spec/v1.2/build-provenance) and [GitHub artifact attestations](https://docs.github.com/en/actions/concepts/security/artifact-attestations) | Distinguished an SBOM and vulnerability scan from cryptographically verifiable, digest-bound provenance and deployment identity |
+| Test design and signal | Google's [test-size model](https://testing.googleblog.com/2010/12/test-sizes.html) and [flaky-test evidence](https://testing.googleblog.com/2017/04/where-do-our-flaky-tests-come-from.html) | Reviewed small, integration, and destructive-system cohorts separately; treated nondeterminism as a reliability defect even when an immediate local rerun passed |
+| Delivery performance | [DORA](https://dora.dev/) | Used CI stability and change controls where repository evidence exists; did not claim an industry delivery ranking because deployment frequency, change lead time, failed-deployment recovery time, change-failure rate, and rework telemetry are not available |
+| Production readiness | Google's [SRE production-readiness review model](https://sre.google/sre-book/evolving-sre-engagement-model/) | Required observed evidence for architecture dependencies, monitoring, emergency response, capacity, change management, availability, latency, and efficiency rather than accepting repository contracts as production proof |
+
+The external frameworks influenced what was checked and what constitutes
+evidence. They do not supply the numeric scores below. The scores use this audit
+rubric:
+
+| Score | Meaning in this audit |
+| ---: | --- |
+| 10 | Strong implementation, automated regression protection, and current operational proof; no material known gap |
+| 9 | Strong implementation and verification with only bounded or external evidence gaps |
+| 8 | Sound engineering with at least one material maintainability, CI, governance, or proof gap |
+| 7 | Functional foundation with important risk concentration or incomplete verification |
+| 5–6 | Substantial release or operational blockers despite useful foundations |
+| Below 5 | Foundational correctness, security, or maintainability weakness |
+
+Intermediate decimals express position inside a band; they are not statistical
+precision. **8.7 codebase engineering quality** is the arithmetic mean of the
+first ten code, data, security, test, CI, and reliability rows below. **8.2
+overall state** is the arithmetic mean of all fourteen rows. Neither number is
+an industry percentile, and future audits must retain the same rows and rubric
+for trend comparisons.
+
+## 3. Current scores
 
 Scores are evidence-based engineering judgments, not a universal formula. A 10
 requires both a strong implementation and convincing automated or operational
@@ -49,7 +92,7 @@ Overall codebase engineering quality: **8.7/10**.
 
 Overall state including production readiness: **8.2/10**.
 
-## 3. Evidence checked at this head
+## 4. Evidence checked at this head
 
 - `pnpm check`: passed formatting, build, ESLint, complexity ratchet,
   generated contracts, TypeScript, and unit tests.
@@ -72,7 +115,7 @@ Overall state including production readiness: **8.2/10**.
   with no skip.
 - The worktree was clean before this documentation update.
 
-## 4. Current findings
+## 5. Current findings
 
 ### C-01 — Live production, recovery, and scale evidence is incomplete
 
@@ -324,7 +367,7 @@ README, current status, this audit, and the tracker agree on branch state,
 current head, current CI, and open production work; historical evidence remains
 linked but cannot be mistaken for current status.
 
-## 5. Areas with no current corrective finding
+## 6. Areas with no current corrective finding
 
 - The twelve-package modular-monolith structure remains justified.
 - No generic `shared`, `common`, or `utils` package is needed.
@@ -341,7 +384,7 @@ linked but cannot be mistaken for current status.
 - Remaining real-time waits reviewed by the prior remediation are tied to actual
   database, Redis, queue, process, cancellation, or external-clock behavior.
 
-## 6. Ordered improvement plan
+## 7. Ordered improvement plan
 
 1. Stabilize the recovery service-control seam and restore green `main` (C-02).
 2. Complete live Phase 7 evidence and capacity proof (C-01).
@@ -353,7 +396,7 @@ linked but cannot be mistaken for current status.
 7. Keep dependency PRs actionable and apply multi-maintainer governance when
    people and signing identities exist (C-07, C-08).
 
-## 7. Closure rule
+## 8. Closure rule
 
 A finding closes only when the stated change exists, its acceptance evidence
 passes, failure paths remain tested, the implementation tracker links current

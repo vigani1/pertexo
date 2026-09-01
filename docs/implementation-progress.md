@@ -4705,6 +4705,16 @@ The refreshed audit contains only current findings and score-improvement work:
 - [ ] Reconcile README/current status/audit/tracker wording and current CI
       evidence after the recovery gate is green.
 
+Audit calibration now records its method explicitly. Architecture uses the
+repository's deep-module/interface/seam criteria. Security is cross-checked
+against NIST SSDF, OWASP SAMM, OpenSSF Scorecard, SLSA, and GitHub artifact
+attestation guidance. Testing, delivery, and production readiness are
+cross-checked against Google's test-size/flakiness evidence, DORA, and Google's
+SRE production-readiness model. The numeric scores are rubric-based engineering
+judgments with documented arithmetic, not industry percentiles or claims that a
+particular file size, package count, or coverage percentage is universally
+correct.
+
 Current local verification at `e3d173fe9573107c1cc9551ca2e007fbfc824e18`:
 
 - `pnpm check`: passed;
