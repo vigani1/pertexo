@@ -18,9 +18,12 @@ isolation, and observable API and worker processes.
 - Contract drift checks plus unit, integration, recovery, outage, and rollout
   verification.
 
-The orchestration slice is under active development. See
-[`docs/implementation-progress.md`](./docs/implementation-progress.md) for the
-current, evidence-backed status rather than relying on a roadmap claim.
+Phases 0–6 are complete and Phase 7 production operations are in progress. See
+the concise
+[`current implementation status`](./docs/current-implementation-status.md) for
+current blockers and
+[`implementation progress`](./docs/implementation-progress.md) for detailed
+evidence and history.
 
 ## Architecture
 
@@ -108,4 +111,7 @@ suites selected by CI's `recovery` job.
 
 Pertexo is a personal engineering project in active development, not a hosted
 commercial service. Completed phases and their verification evidence are tracked
-in [`docs/implementation-progress.md`](./docs/implementation-progress.md).
+in
+[`docs/current-implementation-status.md`](./docs/current-implementation-status.md),
+with the full evidence journal in
+[`docs/implementation-progress.md`](./docs/implementation-progress.md).

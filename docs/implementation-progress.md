@@ -4576,13 +4576,13 @@ Current audit state:
 - [ ] Complete live AWS, Object Lock, load/fairness, pager, failover, PITR,
       regional restore, RPO/RTO, deployed autoscaling, and aggregate PostgreSQL
       connection-capacity evidence.
-- [ ] Enable public-repository secret scanning, push protection, and Dependabot
+- [x] Enable public-repository secret scanning, push protection, and Dependabot
       security updates.
 - [x] Add bounded retention/reaping for affected idempotency records and
       expired/revoked sessions.
 - [x] Make every requested real-service/compatibility/recovery cohort prove a
       reviewed minimum run with no unexpected skips or todos.
-- [ ] Protect the production-image scan per change or immutable promotion.
+- [x] Protect the production-image scan per change or immutable promotion.
 - [x] Refactor the measured readiness complexity hotspot without weakening its
       single-snapshot, fail-closed behavior or public interface.
 - [x] Refactor the measured publication complexity hotspot without weakening
@@ -4595,7 +4595,7 @@ Current audit state:
 - [x] Replace avoidable test sleeps and document retained external-clock proofs.
 - [x] Consolidate the justified local implementation clones.
 - [x] Isolate Fastify integration casts behind a checked adapter capability.
-- [ ] Strengthen review ownership and current-status documentation.
+- [x] Strengthen review ownership and current-status documentation.
 
 Repository-controlled remediation evidence:
 
@@ -4647,6 +4647,18 @@ Repository-controlled remediation evidence:
   retaining provider-specific error classification. All 39 observability, 205
   worker, and 332 API unit assertions pass, including provider failure and
   lifecycle coverage.
+- `docs/current-implementation-status.md` now provides a concise phase/blocker
+  view linked from README, while this file remains the detailed evidence
+  journal. Critical paths have explicit CODEOWNERS. The protected-branch policy
+  and documented solo-maintainer exception preserve mergeability until a second
+  reviewer exists; at that point one approval and code-owner review become
+  mandatory.
+- GitHub reports secret scanning, push protection, vulnerability alerts,
+  Dependabot security updates, and automated security fixes enabled. Validity
+  checks and non-provider patterns remain unavailable on the current plan. Main
+  now requires `production-image` in addition to its ten prior strict contexts;
+  the job builds the exact commit image, proves non-root/read-only execution,
+  emits a CycloneDX SBOM, and fails on fixed high/critical vulnerabilities.
 
 Verification at implementation head `9e4263794715d273e8660c0dd4efa67c5032e940`:
 
