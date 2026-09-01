@@ -4585,7 +4585,7 @@ Current audit state:
 - [ ] Protect the production-image scan per change or immutable promotion.
 - [x] Refactor the measured readiness complexity hotspot without weakening its
       single-snapshot, fail-closed behavior or public interface.
-- [ ] Refactor the measured publication complexity hotspot without weakening
+- [x] Refactor the measured publication complexity hotspot without weakening
       transactions, failure behavior, or public interfaces.
 - [ ] Correct sibling-feature internal imports and API results that erase exact
       response types to `unknown`.
@@ -4617,6 +4617,14 @@ Repository-controlled remediation evidence:
   The former 1,798-line function and its file/function hotspot baselines are
   removed; 154 unit assertions and 51 real drift assertions pass, including
   policy, grant, function, RLS, role, and migration incompatibilities.
+- Workflow publication now retains one author-scoped transaction while named
+  internal steps own idempotency claim/replay, locked compilation, immutable
+  version persistence, integration/trigger projections, and ordered
+  pointer/outbox/audit/completion writes. The authoring factory fell from 817
+  to 500 lines and the former 331-line publication function was removed from
+  the complexity baseline. All 154 database unit assertions, all 320 database
+  integration assertions, and the 17 focused publication/atomicity assertions
+  pass.
 
 Verification at implementation head `9e4263794715d273e8660c0dd4efa67c5032e940`:
 

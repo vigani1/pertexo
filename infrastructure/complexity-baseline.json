@@ -34,7 +34,7 @@
     "packages/database/src/schema.ts": 1961,
     "packages/database/src/testing.ts": 571,
     "packages/database/src/webhook-triggers.ts": 666,
-    "packages/database/src/workflow-authoring.ts": 1381,
+    "packages/database/src/workflow-authoring.ts": 1011,
     "packages/database/src/workflow-run-api.ts": 518,
     "packages/database/src/workflow-triggers.ts": 503,
     "packages/database/src/workspace-lifecycle-commands.ts": 559,
@@ -184,15 +184,7 @@
     },
     "packages/database/src/workflow-authoring.ts#createWorkflowAuthoringDatabase": {
       "branches": 21,
-      "lines": 817
-    },
-    "packages/database/src/workflow-authoring.ts#publishWorkflow": {
-      "branches": 0,
-      "lines": 331
-    },
-    "packages/database/src/workflow-authoring.ts#<ArrowFunction:21>": {
-      "branches": 27,
-      "lines": 325
+      "lines": 500
     },
     "packages/database/src/workflow-triggers.ts#createWorkflowTriggerReconciliationDatabase": {
       "branches": 0,

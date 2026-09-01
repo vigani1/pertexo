@@ -8,11 +8,8 @@ import {
   EMPTY_DEFINITION_CATALOG_V1,
   EMPTY_WORKFLOW_GRAPH_V1,
   parseWorkflowGraphDraft,
-  parseWorkflowGraphForPublish,
   workflowCompatibilityReport,
   workflowDraftRepresentationTag,
-  workflowExecutableChecksum,
-  workflowIntegrationUsage,
   workflowRetainedExecutableChecksum,
   type WorkflowDefinitionCatalogV1,
   type WorkflowGraph,
@@ -27,8 +24,13 @@ import {
   parseCompatibilityReleaseExpectationSet,
   type CompatibilityReleaseExpectation,
 } from './compatibility-release.js';
+import {
+  WorkflowCreateIdempotencyConflictError,
+  WorkflowNotFoundError,
+  WorkflowRevisionConflictError,
+} from './workflow-authoring-errors.js';
 import { canonicalOutboxPayloadChecksum } from './outbox.js';
-import { workflowTriggerProjection } from './workflow-trigger-projection.js';
+import { createWorkflowPublisher } from './workflow-publication.js';
 import {
   acceptPreviewRun,
   readPreviewRun,
@@ -50,7 +52,6 @@ const checksumSchema = z.union([
   retainedChecksumSchema,
   executableChecksumSchema,
 ]);
-const digestSchema = z.string().regex(/^[0-9a-f]{64}$/u);
 const nameSchema = z.string().trim().min(1).max(128);
 const idempotencyKeySchema = z
   .string()
@@ -58,46 +59,13 @@ const idempotencyKeySchema = z
   .max(128)
   .regex(/^[\x21-\x7e]+$/u)
   .refine((value) => !value.includes(','));
-const traceparentSchema = z
-  .string()
-  .regex(/^00-[\da-f]{32}-[\da-f]{16}-[\da-f]{2}$/u)
-  .refine((value) => value.slice(3, 35) !== '0'.repeat(32))
-  .refine((value) => value.slice(36, 52) !== '0'.repeat(16));
-const workflowDraftTagSchema = z
-  .string()
-  .regex(/^"draft-v1\.[A-Za-z0-9_-]{43}"$/u);
-const integrationProviderKeySchema = z
-  .string()
-  .min(1)
-  .max(64)
-  .regex(/^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u);
-const integrationOperationKeySchema = z
-  .string()
-  .min(1)
-  .max(128)
-  .regex(/^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u);
 
-export class WorkflowNotFoundError extends Error {
-  public override readonly name = 'WorkflowNotFoundError';
-}
-
-export class WorkflowRevisionConflictError extends Error {
-  public override readonly name = 'WorkflowRevisionConflictError';
-  public constructor(
-    public readonly currentRevision: number,
-    public readonly currentEtag: string,
-  ) {
-    super('Workflow draft revision does not match');
-  }
-}
-
-export class WorkflowPublishIdempotencyConflictError extends Error {
-  public override readonly name = 'WorkflowPublishIdempotencyConflictError';
-}
-
-export class WorkflowCreateIdempotencyConflictError extends Error {
-  public override readonly name = 'WorkflowCreateIdempotencyConflictError';
-}
+export {
+  WorkflowCreateIdempotencyConflictError,
+  WorkflowNotFoundError,
+  WorkflowPublishIdempotencyConflictError,
+  WorkflowRevisionConflictError,
+} from './workflow-authoring-errors.js';
 
 export type WorkflowDefinitionPlacementIssue = Readonly<{
   code: 'definition_not_placeable';
@@ -221,26 +189,7 @@ export type PublishWorkflowResult = Readonly<{
   replayed: boolean;
 }>;
 
-export function reconcileWorkflowTriggersPayload(
-  input: Readonly<{
-    workspaceId: string;
-    outboxEventId: string;
-    workflowId: string;
-    publishedVersionId: string;
-    traceparent?: string;
-  }>,
-): Record<string, unknown> {
-  return Object.freeze({
-    schemaVersion: 1,
-    workspaceId: uuidSchema.parse(input.workspaceId),
-    outboxEventId: uuidSchema.parse(input.outboxEventId),
-    workflowId: uuidSchema.parse(input.workflowId),
-    publishedVersionId: uuidSchema.parse(input.publishedVersionId),
-    ...(input.traceparent === undefined
-      ? {}
-      : { traceparent: traceparentSchema.parse(input.traceparent) }),
-  });
-}
+export { reconcileWorkflowTriggersPayload } from './workflow-publication.js';
 
 export type WorkflowAuthoringDatabase = Readonly<{
   acceptPreview(
@@ -705,6 +654,17 @@ export function createWorkflowAuthoringDatabase(
   };
   // Runtime import is kept here so the public package remains straightforward to test.
   const pool = createDatabasePool(config);
+  const publishWorkflow = createWorkflowPublisher({
+    durableResult: durablePublishResult,
+    keyDigest,
+    mapDraft,
+    mapVersion,
+    requireAuthor: requireWorkspaceAuthor,
+    selectVariant: selectCompatibilityVariant,
+    testHooks: options.testHooks,
+    transact: (workspaceId, actorId, operation) =>
+      withAuthorTransaction(pool, workspaceId, actorId, operation),
+  });
   return Object.freeze({
     acceptPreview: async ({ workspaceId, ...input }) =>
       withWorkspaceTransaction(pool, workspaceId, (transaction) =>
@@ -1044,337 +1004,7 @@ export function createWorkflowAuthoringDatabase(
           return saved;
         },
       ),
-    publishWorkflow: async (input) =>
-      withAuthorTransaction(
-        pool,
-        input.workspaceId,
-        input.actorId,
-        async (client) => {
-          await requireWorkspaceAuthor(
-            client,
-            input.workspaceId,
-            input.actorId,
-          );
-          const workflowId = uuidSchema.parse(input.workflowId);
-          const requestHash = digestSchema.parse(input.requestHash);
-          const scope = `${input.actorId}:${workflowId}`;
-          const digest = keyDigest(input.idempotencyKey);
-          await client.query(
-            `insert into app.idempotency_records (id, workspace_id, operation, scope, key_hash, request_hash, status, resource_id, result_ref)
-         values ($1, $2, 'workflow.publish', $3, $4, $5, 'in_progress', $6, '{}'::jsonb)
-         on conflict (workspace_id, operation, scope, key_hash) do nothing`,
-            [
-              randomUUID(),
-              input.workspaceId,
-              scope,
-              digest,
-              requestHash,
-              workflowId,
-            ],
-          );
-          const claim = await client.query<{
-            request_hash: string;
-            status: string;
-            result_ref: unknown;
-          }>(
-            `select request_hash, status, result_ref from app.idempotency_records
-         where workspace_id = $1 and operation = 'workflow.publish' and scope = $2 and key_hash = $3 for update`,
-            [input.workspaceId, scope, digest],
-          );
-          const claimed = claim.rows[0];
-          if (claimed === undefined)
-            throw new Error('Publish idempotency claim is unavailable');
-          if (claimed.request_hash !== requestHash)
-            throw new WorkflowPublishIdempotencyConflictError(
-              'Idempotency key request mismatch',
-            );
-          if (claimed.status === 'completed') {
-            const replay = durablePublishResult(claimed.result_ref);
-            return Object.freeze({ ...replay, replayed: true });
-          }
-          const variant = await selectCompatibilityVariant(client);
-          const {
-            compatibilityRelease: lockedCompatibilityRelease,
-            definitionCatalog,
-            executableCompiler,
-          } = variant;
-          if (lockedCompatibilityRelease !== undefined) {
-            await options.testHooks?.afterCompatibilityReleaseLock?.();
-          }
-          const workflow = await client.query(
-            "select id from app.workflows where workspace_id = $1 and id = $2 and lifecycle_status = 'active' for update",
-            [input.workspaceId, workflowId],
-          );
-          if (workflow.rows[0] === undefined)
-            throw new WorkflowNotFoundError('Workflow is not visible');
-          const draftResult = await client.query<Record<string, unknown>>(
-            'select * from app.workflow_drafts where workspace_id = $1 and workflow_id = $2 for update',
-            [input.workspaceId, workflowId],
-          );
-          const draft =
-            draftResult.rows[0] === undefined
-              ? null
-              : mapDraft(draftResult.rows[0], definitionCatalog);
-          if (draft === null)
-            throw new Error('Workflow is missing its required draft');
-          await options.testHooks?.afterPublishDraftLock?.();
-          const currentEtag = workflowDraftRepresentationTag({
-            workflowId,
-            revision: draft.revision,
-            graph: draft.graphJson,
-            compatibilityFingerprint: workflowCompatibilityReport(
-              draft.graphJson,
-              definitionCatalog,
-            ).fingerprint,
-          });
-          if (
-            currentEtag !==
-            workflowDraftTagSchema.parse(input.representationTag)
-          )
-            throw new WorkflowRevisionConflictError(
-              draft.revision,
-              currentEtag,
-            );
-          const graph = parseWorkflowGraphForPublish(
-            draft.graphJson,
-            definitionCatalog,
-          );
-          const schemaVersion = graph.schemaVersion;
-          const compiled = executableCompiler?.(graph);
-          const executable =
-            compiled === undefined
-              ? undefined
-              : z
-                  .object({
-                    checksum: executableChecksumSchema,
-                    executableSchemaVersion: z.literal(2),
-                    executableJson: z.record(z.string(), z.unknown()),
-                    compatibilityReleaseEpoch: z.number().int().positive(),
-                    compatibilityReleaseFingerprint: z
-                      .string()
-                      .regex(/^node-compat:v1:sha256:[0-9a-f]{64}$/u),
-                  })
-                  .strict()
-                  .parse(compiled);
-          if (executable !== undefined) {
-            if (lockedCompatibilityRelease === undefined)
-              throw new Error(
-                'Compiled workflow compatibility release has no locked authority',
-              );
-            if (
-              executable.compatibilityReleaseEpoch !==
-                lockedCompatibilityRelease.epoch ||
-              executable.compatibilityReleaseFingerprint !==
-                lockedCompatibilityRelease.fingerprint ||
-              executable.executableJson.compatibilityReleaseEpoch !==
-                lockedCompatibilityRelease.epoch ||
-              executable.executableJson.compatibilityReleaseFingerprint !==
-                lockedCompatibilityRelease.fingerprint
-            ) {
-              throw new Error(
-                'Compiled workflow compatibility release does not match the locked authority',
-              );
-            }
-          }
-          const checksum = checksumSchema.parse(
-            executable?.checksum ??
-              workflowExecutableChecksum(graph, definitionCatalog),
-          );
-          const retainedResult = await client.query<Record<string, unknown>>(
-            `select * from app.workflow_versions
-             where workspace_id = $1 and workflow_id = $2
-             order by version_number`,
-            [input.workspaceId, workflowId],
-          );
-          const retainedVersions = retainedResult.rows.map((row) =>
-            mapVersion(row),
-          );
-          const retainedVersion = retainedVersions.find(
-            (version) => version.checksum === checksum,
-          );
-          let versionRow =
-            retainedVersion === undefined
-              ? undefined
-              : retainedResult.rows.find(
-                  (row) => row.id === retainedVersion.id,
-                );
-          const reused = versionRow !== undefined;
-          if (!reused) {
-            const versionId = randomUUID();
-            const inserted = await client.query<Record<string, unknown>>(
-              `insert into app.workflow_versions (
-                 id, workspace_id, workflow_id, version_number, schema_version,
-                 graph_json, checksum, executable_schema_version,
-                 executable_json, compatibility_release_epoch, published_by
-               )
-           select $1, $2, $3, coalesce(max(version_number), 0) + 1, $4,
-                  $5::jsonb, $6, $7, $8::jsonb, $9, $10
-           from app.workflow_versions where workspace_id = $2 and workflow_id = $3 returning *`,
-              [
-                versionId,
-                input.workspaceId,
-                workflowId,
-                schemaVersion,
-                JSON.stringify(graph),
-                checksum,
-                executable?.executableSchemaVersion ?? null,
-                executable === undefined
-                  ? null
-                  : JSON.stringify(executable.executableJson),
-                executable?.compatibilityReleaseEpoch ?? null,
-                input.actorId,
-              ],
-            );
-            versionRow = inserted.rows[0];
-          }
-          if (versionRow === undefined) {
-            throw new Error('Workflow publication returned no version');
-          }
-          const version = mapVersion(versionRow);
-          await options.testHooks?.afterPublishStep?.('version');
-          const integrationUsage = workflowIntegrationUsage(
-            version.graphJson,
-            definitionCatalog,
-          ).map((usage) => ({
-            providerKey: integrationProviderKeySchema.parse(usage.providerKey),
-            operationKey: integrationOperationKeySchema.parse(
-              usage.operationKey,
-            ),
-            connectionId: uuidSchema.parse(usage.connectionId),
-          }));
-          await client.query(
-            `delete from app.workflow_integration_usage
-             where workspace_id = $1 and workflow_version_id = $2`,
-            [input.workspaceId, version.id],
-          );
-          if (integrationUsage.length > 0) {
-            await client.query(
-              `insert into app.workflow_integration_usage (
-                 workspace_id, workflow_version_id, provider_key,
-                 operation_key, connection_id
-               )
-               select $1, $2, usage.provider_key, usage.operation_key,
-                      usage.connection_id
-               from jsonb_to_recordset($3::jsonb) as usage(
-                 provider_key varchar(64), operation_key varchar(128),
-                 connection_id uuid
-               )`,
-              [
-                input.workspaceId,
-                version.id,
-                JSON.stringify(
-                  integrationUsage.map(
-                    ({ providerKey, operationKey, connectionId }) => ({
-                      provider_key: providerKey,
-                      operation_key: operationKey,
-                      connection_id: connectionId,
-                    }),
-                  ),
-                ),
-              ],
-            );
-          }
-          await options.testHooks?.afterPublishStep?.('integration_usage');
-          const triggerProjection = workflowTriggerProjection(
-            version.graphJson,
-          );
-          await client.query(
-            `delete from app.workflow_triggers
-             where workspace_id = $1 and workflow_version_id = $2
-               and not (node_id = any($3::varchar[]))`,
-            [
-              input.workspaceId,
-              version.id,
-              triggerProjection.map(({ nodeId }) => nodeId),
-            ],
-          );
-          for (const trigger of triggerProjection) {
-            await client.query(
-              `insert into app.workflow_triggers (
-                 id, workspace_id, workflow_id, workflow_version_id, node_id,
-                 kind, desired_config, config_fingerprint, status
-               ) values ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,'desired')
-               on conflict (workflow_version_id,node_id) do update set
-                 desired_config=excluded.desired_config,
-                 config_fingerprint=excluded.config_fingerprint
-               where app.workflow_triggers.workspace_id=excluded.workspace_id
-                 and app.workflow_triggers.workflow_id=excluded.workflow_id
-                 and app.workflow_triggers.kind=excluded.kind`,
-              [
-                randomUUID(),
-                input.workspaceId,
-                workflowId,
-                version.id,
-                trigger.nodeId,
-                trigger.kind,
-                JSON.stringify(trigger.config),
-                trigger.configFingerprint,
-              ],
-            );
-          }
-          await options.testHooks?.afterPublishStep?.('trigger_projection');
-          await client.query(
-            "update app.workflows set published_version_id = $1, activation_status = 'inactive', updated_at = transaction_timestamp() where workspace_id = $2 and id = $3",
-            [version.id, input.workspaceId, workflowId],
-          );
-          await options.testHooks?.afterPublishStep?.('pointer');
-          const eventId = randomUUID();
-          const payload = reconcileWorkflowTriggersPayload({
-            workspaceId: input.workspaceId,
-            outboxEventId: eventId,
-            workflowId,
-            publishedVersionId: version.id,
-            ...(input.traceparent === undefined
-              ? {}
-              : { traceparent: input.traceparent }),
-          });
-          await client.query(
-            `insert into app.outbox_events (id, workspace_id, job_name, schema_version, aggregate_type, aggregate_id, payload, payload_checksum)
-         values ($1, $2, 'reconcile-workflow-triggers', 1, 'workflow', $3, $4::jsonb, $5)`,
-            [
-              eventId,
-              input.workspaceId,
-              workflowId,
-              JSON.stringify(payload),
-              canonicalOutboxPayloadChecksum(payload),
-            ],
-          );
-          await options.testHooks?.afterPublishStep?.('outbox');
-          await client.query(
-            `insert into app.audit_events (id, workspace_id, actor_user_id, action, target_type, target_id, request_id, trace_id, metadata)
-         values ($1, $2, $3, 'workflow.published', 'workflow', $4, $5, $6, $7::jsonb)`,
-            [
-              randomUUID(),
-              input.workspaceId,
-              input.actorId,
-              workflowId,
-              input.requestId ?? null,
-              input.traceId ?? null,
-              JSON.stringify({
-                checksum,
-                reused,
-                versionId: version.id,
-                versionNumber: version.versionNumber,
-              }),
-            ],
-          );
-          await options.testHooks?.afterPublishStep?.('audit');
-          const durable = {
-            version: {
-              ...version,
-              publishedAt: version.publishedAt.toISOString(),
-            },
-            reused,
-          };
-          await client.query(
-            `update app.idempotency_records set status = 'completed', result_ref = $1::jsonb, updated_at = transaction_timestamp()
-         where workspace_id = $2 and operation = 'workflow.publish' and scope = $3 and key_hash = $4`,
-            [JSON.stringify(durable), input.workspaceId, scope, digest],
-          );
-          await options.testHooks?.afterPublishStep?.('idempotency');
-          return Object.freeze({ version, reused, replayed: false });
-        },
-      ),
+    publishWorkflow,
     close: async () => pool.end(),
   });
 }
