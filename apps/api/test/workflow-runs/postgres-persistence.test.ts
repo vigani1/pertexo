@@ -16,10 +16,10 @@ import {
 import { describe, expect, it, vi } from 'vitest';
 
 import {
-  PHASE3_API_ENGINE_VERSION,
+  API_ENGINE_VERSION,
   createInitialWorkflowCheckpoint,
-  createPostgresWorkflowRunPersistence,
-} from '../../src/workflow-runs/postgres-persistence.js';
+} from '../../src/executions/index.js';
+import { createPostgresWorkflowRunPersistence } from '../../src/workflow-runs/postgres-persistence.js';
 import {
   RegionalWriteAdmissionPausedError,
   parseDatabaseConfig,
@@ -311,11 +311,11 @@ describe('PostgreSQL workflow run persistence adapter', () => {
             composeExecutableCompatibilityRelease(nodeRelease),
           ),
         );
-        expect(initial.engineVersion).toBe(PHASE3_API_ENGINE_VERSION);
+        expect(initial.engineVersion).toBe(API_ENGINE_VERSION);
         expect(parseCheckpoint(initial.checkpoint)).toMatchObject({
           schemaVersion: 1,
           workflowVersionId,
-          engineVersion: PHASE3_API_ENGINE_VERSION,
+          engineVersion: API_ENGINE_VERSION,
           revision: 0,
           nextEventSequence: 2,
           runStatus: 'queued',

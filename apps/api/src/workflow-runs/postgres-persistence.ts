@@ -7,9 +7,7 @@ import {
   WorkflowRunNotExecutableError as DatabaseWorkflowRunNotExecutableError,
   WorkflowRunNotFoundError as DatabaseWorkflowRunNotFoundError,
   createWorkflowRunDatabase,
-  type CompatibilityReleaseExpectation,
   type DatabaseConfig,
-  type PublishedWorkflowV2Projection,
   type WorkflowRunDatabase,
 } from '@pertexo/database/api';
 import {
@@ -18,14 +16,9 @@ import {
   type PlatformReleaseCohort,
 } from '@pertexo/node-catalog';
 import {
-  WorkflowEngineError,
   composeExecutableCompatibilityRelease,
-  createCheckpoint,
-  createCheckpointV2,
   createExecutableCompatibilityReleaseHistory,
   createExecutableCompatibilityReleaseSupport,
-  type ExecutableCompatibilityReleaseSupport,
-  verifyWorkflowExecutableV2,
 } from '@pertexo/workflow-engine';
 
 import {
@@ -41,10 +34,11 @@ import type {
   WorkflowRunPersistence,
 } from './ports.js';
 import { WorkflowRunNotFoundError } from './use-cases.js';
-import type { RunEventNotificationPublisher } from '../executions/index.js';
-
-export const PHASE3_API_ENGINE_VERSION = 'phase3-engine-v1';
-export const PHASE3_API_ITERATION_BUDGET = 1_000;
+import {
+  createInitialWorkflowCheckpoint,
+  InitialWorkflowCheckpointError,
+  type RunEventNotificationPublisher,
+} from '../executions/index.js';
 
 export type PostgresWorkflowRunPersistence = Readonly<{
   persistence: WorkflowRunPersistence;
@@ -139,65 +133,12 @@ async function publishHint(
   }
 }
 
-export function createInitialWorkflowCheckpoint(
-  projection: PublishedWorkflowV2Projection,
-  releaseSupport: ExecutableCompatibilityReleaseSupport,
-  currentCompatibilityRelease: CompatibilityReleaseExpectation,
-) {
-  try {
-    const admissionDescription = releaseSupport.descriptions.find(
-      ({ epoch }) => epoch === projection.compatibilityReleaseEpoch,
-    );
-    if (admissionDescription === undefined)
-      throw new WorkflowRunNotExecutableError();
-    const admissionRelease = releaseSupport.resolve(
-      admissionDescription.epoch,
-      admissionDescription.fingerprint,
-    );
-    const currentRelease = releaseSupport.resolve(
-      currentCompatibilityRelease.epoch,
-      currentCompatibilityRelease.fingerprint,
-    );
-    const executable = verifyWorkflowExecutableV2({
-      envelope: projection.executableJson,
-      checksum: projection.checksum,
-      admissionRelease,
-      currentRelease,
-    });
-    if (
-      executable.envelope.compatibilityReleaseEpoch !==
-      projection.compatibilityReleaseEpoch
-    )
-      throw new WorkflowRunNotExecutableError();
-    return Object.freeze({
-      engineVersion: PHASE3_API_ENGINE_VERSION,
-      checkpoint: (executable.envelope.graph.nodes.some(
-        ({ definition }) =>
-          (definition.key === 'core.condition' ||
-            definition.key === 'core.switch' ||
-            definition.key === 'core.parallel') &&
-          definition.version === 1,
-      )
-        ? createCheckpointV2
-        : createCheckpoint)({
-        engineVersion: PHASE3_API_ENGINE_VERSION,
-        workflowVersionId: projection.id,
-        iterationBudget: PHASE3_API_ITERATION_BUDGET,
-        nextEventSequence: 2,
-      }),
-    });
-  } catch (error: unknown) {
-    if (error instanceof WorkflowRunNotExecutableError) throw error;
-    if (error instanceof WorkflowEngineError)
-      throw new WorkflowRunNotExecutableError();
-    throw error;
-  }
-}
-
 function mapPersistenceError(error: unknown): never {
   if (error instanceof DatabaseWorkflowRunNotFoundError)
     throw new WorkflowRunNotFoundError();
   if (error instanceof DatabaseWorkflowRunNotExecutableError)
+    throw new WorkflowRunNotExecutableError();
+  if (error instanceof InitialWorkflowCheckpointError)
     throw new WorkflowRunNotExecutableError();
   if (error instanceof IdempotencyRequestConflictError)
     throw new WorkflowRunIdempotencyConflictError();

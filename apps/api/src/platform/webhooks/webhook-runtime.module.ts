@@ -16,7 +16,7 @@ import {
 } from '@pertexo/workflow-engine';
 
 import type { ApiConfig } from '../config/api-config.js';
-import { createInitialWorkflowCheckpoint } from '../../workflow-runs/postgres-persistence.js';
+import { createInitialWorkflowCheckpoint } from '../../executions/index.js';
 import { WebhookManagementService } from '../../webhooks/service.js';
 import type { WebhookIngressDependencies } from '../../webhooks/ingress.js';
 

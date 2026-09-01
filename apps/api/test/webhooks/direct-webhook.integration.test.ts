@@ -34,9 +34,9 @@ import { Pool, type QueryResultRow } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createApiApplication } from '../../src/app.js';
+import { createInitialWorkflowCheckpoint } from '../../src/executions/index.js';
 import type { ApiConfig } from '../../src/platform/config/api-config.js';
 import { createCoreWorkflowAuthoringDatabase } from '../../src/platform/workflow/workflow-runtime.module.js';
-import { createInitialWorkflowCheckpoint } from '../../src/workflow-runs/postgres-persistence.js';
 import { WebhookManagementService } from '../../src/webhooks/service.js';
 import { dropDisconnectedDatabase } from '../support/disposable-database.js';
 import { assertIntegrationGateConfigured } from '../support/integration-gate.js';
