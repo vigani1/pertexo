@@ -158,7 +158,8 @@ async function migrateDatabase(): Promise<void> {
       'pnpm',
       [
         '--filter',
-        '@pertexo/database/testing',
+        '@pertexo/database',
+        '--fail-if-no-match',
         'exec',
         'tsx',
         'src/migrate.ts',
