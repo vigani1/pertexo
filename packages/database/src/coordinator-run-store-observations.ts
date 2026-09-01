@@ -10,6 +10,7 @@ import {
   assertCoordinatorNotAborted,
   withCoordinatorReadClient,
 } from './coordinator-run-store-transactions.js';
+import { validateLoadedCheckpointPhysicalState } from './coordinator-run-store-physical-state.js';
 import {
   parsePersistedPhase3Checkpoint,
   type PersistedPhase3Checkpoint,
@@ -151,24 +152,6 @@ type EventRow = Readonly<{
   resume_at: Date | null;
   retry_due_at: Date | null;
   retry_decision: string | null;
-  wait_kind: 'node_wait' | 'retry_backoff' | null;
-}>;
-
-type PhysicalInvocationRow = Readonly<{
-  attempt_id: string | null;
-  attempt_number: number | null;
-  attempt_output_ref: unknown;
-  attempt_status: string | null;
-  current_attempt_id: string | null;
-  current_attempt_number: number | null;
-  invocation_key: string;
-  branch_context: unknown;
-  control_kind: string | null;
-  node_id: string;
-  node_output_ref: unknown;
-  node_status: string;
-  resume_at: Date | null;
-  retry_due_at: Date | null;
   wait_kind: 'node_wait' | 'retry_backoff' | null;
 }>;
 
@@ -449,79 +432,10 @@ function completedInlineOutput(row: EventRow): readonly unknown[] {
     : [];
 }
 
-function parsedPhysicalOutput(
-  row: PhysicalInvocationRow,
-  expected: PersistedPhase3Checkpoint['invocations'][number]['output'],
-): string | undefined {
-  if (expected === undefined) {
-    if (row.node_output_ref !== null || row.attempt_output_ref !== null)
-      throw new CoordinatorRunStateCorruptError();
-    return undefined;
-  }
-  if (row.attempt_id === null) throw new CoordinatorRunStateCorruptError();
-  let nodeValue;
-  let attemptValue;
-  try {
-    nodeValue = parseStoredExecutionValueV1(row.node_output_ref);
-    attemptValue = parseStoredExecutionValueV1(row.attempt_output_ref);
-  } catch {
-    throw new CoordinatorRunStateCorruptError();
-  }
-  if (
-    serializeStoredExecutionJsonValue(nodeValue) !==
-    serializeStoredExecutionJsonValue(attemptValue)
-  )
-    throw new CoordinatorRunStateCorruptError();
-  if (expected.kind === 'inline') {
-    if (nodeValue.kind !== 'inline' || expected.attemptId !== row.attempt_id)
-      throw new CoordinatorRunStateCorruptError();
-    return undefined;
-  }
-  if (
-    nodeValue.kind !== 'artifact' ||
-    nodeValue.artifactId !== expected.artifactId
-  )
-    throw new CoordinatorRunStateCorruptError();
-  return expected.artifactId;
-}
-
-async function validateLoadedCheckpointPhysicalState(
-  client: PoolClient,
-  workspaceId: string,
-  runId: string,
-  checkpoint: PersistedPhase3Checkpoint,
+function freshSemanticFacts(
   observations: readonly unknown[],
-): Promise<void> {
-  const result = await client.query<PhysicalInvocationRow>(
-    `select node.invocation_key, node.node_id, node.branch_context,
-             node.control_kind,
-            node.status as node_status,
-            node.current_attempt_id, node.current_attempt_number,
-             node.resume_at, node.retry_due_at, node.wait_kind,
-            node.output_ref as node_output_ref,
-            attempt.id as attempt_id, attempt.attempt_number,
-            attempt.status as attempt_status,
-            attempt.output_ref as attempt_output_ref
-     from app.node_runs node
-     left join app.node_attempts attempt
-       on attempt.workspace_id=node.workspace_id
-      and attempt.id=node.current_attempt_id
-     where node.workspace_id=$1 and node.workflow_run_id=$2`,
-    [workspaceId, runId],
-  );
-  const rows = new Map(
-    result.rows.map((row) => [row.invocation_key, row] as const),
-  );
-  if (
-    rows.size !== result.rows.length ||
-    rows.size !== checkpoint.invocations.length
-  )
-    throw new CoordinatorRunStateCorruptError();
-
-  const freshSemanticFacts = new Map<
-    string,
-    Readonly<Record<string, unknown>>
-  >();
+): ReadonlyMap<string, Readonly<Record<string, unknown>>> {
+  const facts = new Map<string, Readonly<Record<string, unknown>>>();
   for (const observation of observations) {
     const value = record(observation);
     if (
@@ -529,114 +443,11 @@ async function validateLoadedCheckpointPhysicalState(
         value.kind === 'outcome' ||
         value.kind === 'attempt_failure') &&
       typeof value.invocationKey === 'string'
-    )
-      freshSemanticFacts.set(value.invocationKey, value);
-  }
-
-  const artifactIds = new Set<string>();
-  for (const invocation of checkpoint.invocations) {
-    const row = rows.get(invocation.invocationKey);
-    const expectedBranchContext = {
-      ...('branchPath' in invocation && invocation.branchPath !== undefined
-        ? { branchPath: invocation.branchPath }
-        : {}),
-      ...('iterationPath' in invocation &&
-      invocation.iterationPath !== undefined
-        ? { iterationPath: invocation.iterationPath }
-        : {}),
-    };
-    if (
-      row?.node_id !== invocation.nodeId ||
-      serializeStoredExecutionJsonValue(row.branch_context) !==
-        serializeStoredExecutionJsonValue(expectedBranchContext)
-    )
-      throw new CoordinatorRunStateCorruptError();
-    if (invocation.attemptNumber === 0) {
-      if (
-        row.current_attempt_id !== null ||
-        row.current_attempt_number !== null ||
-        row.attempt_id !== null ||
-        row.attempt_number !== null ||
-        row.attempt_status !== null
-      )
-        throw new CoordinatorRunStateCorruptError();
-    } else if (
-      row.current_attempt_id === null ||
-      row.current_attempt_id !== row.attempt_id ||
-      row.current_attempt_number !== invocation.attemptNumber ||
-      row.attempt_number !== invocation.attemptNumber ||
-      row.attempt_status === null
     ) {
-      throw new CoordinatorRunStateCorruptError();
-    }
-
-    const freshFact = freshSemanticFacts.get(invocation.invocationKey);
-    if (invocation.status === 'running') {
-      const physicalInFlight =
-        (row.node_status === 'ready' && row.attempt_status === 'ready') ||
-        (row.node_status === 'running' && row.attempt_status === 'running');
-      const physicalAheadWithFact =
-        freshFact?.attemptNumber === invocation.attemptNumber &&
-        (freshFact.kind === 'wait' ||
-          freshFact.kind === 'outcome' ||
-          (freshFact.kind === 'attempt_failure' &&
-            row.node_status === 'running' &&
-            row.attempt_status === 'failed'));
-      if (!physicalInFlight && !physicalAheadWithFact)
-        throw new CoordinatorRunStateCorruptError();
-    } else if (invocation.status === 'waiting') {
-      const dueAt = row.retry_due_at ?? row.resume_at;
-      const isLoopBarrier = checkpoint.loops.some(
-        ({ controlInvocationKey }) =>
-          controlInvocationKey === invocation.invocationKey,
-      );
-      if (
-        row.node_status !== 'waiting' ||
-        (isLoopBarrier
-          ? row.control_kind !== 'for_each_barrier'
-          : row.control_kind !== null) ||
-        (row.attempt_status !== 'succeeded' &&
-          row.attempt_status !== 'failed') ||
-        (isLoopBarrier
-          ? invocation.resumeAt !== undefined || dueAt !== null
-          : invocation.resumeAt === undefined ||
-            dueAt?.toISOString() !== invocation.resumeAt) ||
-        (!isLoopBarrier && row.wait_kind !== invocation.waitKind)
-      )
-        throw new CoordinatorRunStateCorruptError();
-    } else if (invocation.status === 'ready') {
-      if (
-        row.node_status !== 'ready' ||
-        row.resume_at !== null ||
-        row.retry_due_at !== null ||
-        (invocation.attemptNumber > 0 &&
-          row.attempt_status !== 'succeeded' &&
-          row.attempt_status !== 'failed')
-      )
-        throw new CoordinatorRunStateCorruptError();
-    } else if (invocation.status === 'pending') {
-      if (row.node_status !== 'pending' || invocation.attemptNumber !== 0)
-        throw new CoordinatorRunStateCorruptError();
-    } else if (row.node_status !== invocation.status) {
-      throw new CoordinatorRunStateCorruptError();
-    }
-
-    if (!(invocation.status === 'running' && freshFact !== undefined)) {
-      const artifactId = parsedPhysicalOutput(row, invocation.output);
-      if (artifactId !== undefined) artifactIds.add(artifactId);
+      facts.set(value.invocationKey, value);
     }
   }
-
-  if (artifactIds.size === 0) return;
-  const available = await client.query<{ id: string }>(
-    `select id from app.artifacts
-     where workspace_id=$1 and id=any($2::uuid[])
-       and status='available' and deleted_at is null
-     for share`,
-    [workspaceId, [...artifactIds]],
-  );
-  if (new Set(available.rows.map(({ id }) => id)).size !== artifactIds.size)
-    throw new CoordinatorRunStateCorruptError();
+  return facts;
 }
 
 export async function loadCoordinatorAdvanceState(
@@ -812,7 +623,7 @@ export async function loadCoordinatorAdvanceState(
         workspaceId,
         runId,
         checkpoint,
-        observations,
+        freshSemanticFacts(observations),
       );
       const hasFreshCancellation = observations.some(
         (observation) => record(observation).kind === 'cancel_requested',
