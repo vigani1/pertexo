@@ -47,7 +47,6 @@
     "packages/workflow-engine/src/coordinator-observations.ts": 540,
     "packages/workflow-engine/src/executable-workflow.ts": 1340,
     "packages/workflow-engine/src/operations.ts": 934,
-    "packages/workflow-engine/src/persisted-observations.ts": 646,
     "packages/workflow-engine/src/workflow-transition-observations.ts": 528,
     "packages/workflow-model/src/expressions.ts": 611,
     "packages/workflow-model/src/graph.ts": 1126
@@ -232,14 +231,6 @@
     "packages/workflow-engine/src/operations.ts#executeNodeAttempt": {
       "branches": 54,
       "lines": 236
-    },
-    "packages/workflow-engine/src/persisted-observations.ts#parsePersistedObservations": {
-      "branches": 36,
-      "lines": 435
-    },
-    "packages/workflow-engine/src/persisted-observations.ts#<ArrowFunction:6>": {
-      "branches": 82,
-      "lines": 275
     },
     "packages/workflow-engine/src/workflow-transition-derived.ts#deriveWorkflowTransitions": {
       "branches": 47,
