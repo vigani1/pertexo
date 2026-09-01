@@ -1,6 +1,5 @@
 import type { WorkflowAuthoringDatabase } from '@pertexo/database/api';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
-import type { RegistryRelease } from '@pertexo/node-sdk';
 import type {
   WorkspaceAuthorizationPort,
   ActorContext,
@@ -20,20 +19,13 @@ export type WorkflowAuthoringPersistence = Pick<
   | 'publishWorkflow'
 >;
 
-export type NodeTestingPersistence = Pick<
-  WorkflowAuthoringDatabase,
-  'acceptPreview' | 'getDraft' | 'readPreview'
->;
-
 export type WorkflowAuthoringDependencies = Readonly<{
   persistence: WorkflowAuthoringPersistence;
-  nodeTestingPersistence?: NodeTestingPersistence;
   authorization: WorkspaceAuthorizationSource | WorkspaceAuthorizationPort;
   definitionCatalog?: Readonly<{
     schemaVersion: 1;
     definitions: readonly Readonly<{ key: string; version: number }>[];
   }>;
-  nodeTestingRelease?: RegistryRelease;
   telemetry?: WorkflowAuthoringTelemetry;
 }>;
 

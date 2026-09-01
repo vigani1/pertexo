@@ -4587,7 +4587,7 @@ Current audit state:
       single-snapshot, fail-closed behavior or public interface.
 - [x] Refactor the measured publication complexity hotspot without weakening
       transactions, failure behavior, or public interfaces.
-- [ ] Correct sibling-feature internal imports and API results that erase exact
+- [x] Correct sibling-feature internal imports and API results that erase exact
       response types to `unknown`.
 - [ ] Make container OS inputs reproducible, complete pnpm dependency update
       automation, and install a measured complexity ratchet.
@@ -4625,6 +4625,13 @@ Repository-controlled remediation evidence:
   the complexity baseline. All 154 database unit assertions, all 320 database
   integration assertions, and the 17 focused publication/atomicity assertions
   pass.
+- API node testing now owns its Nest module, persistence port, authorization
+  guard, errors, and routes; workflow authoring no longer imports or re-exports
+  the sibling feature. Workflow-run and webhook ingress share checkpoint
+  creation through the execution capability, and generic command-header parsing
+  lives at the HTTP boundary. A static boundary suite rejects all corrected
+  sibling crossings. All 332 API unit assertions, API typecheck/build, and the
+  relevant ESLint and complexity gates pass.
 
 Verification at implementation head `9e4263794715d273e8660c0dd4efa67c5032e940`:
 

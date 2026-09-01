@@ -20,8 +20,10 @@ import {
 } from '../identity-workspace/index.js';
 import type { IdentityWorkspaceRequest } from '../identity-workspace/types.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
-import { parseIdempotencyKey } from '../workflow-authoring/preconditions.js';
-import { applicationError } from '../platform/http/index.js';
+import {
+  applicationError,
+  parseIdempotencyKey,
+} from '../platform/http/index.js';
 import { ScheduleReadGuard, ScheduleUpdateGuard } from './guards.js';
 import { ScheduleManagementService } from './service.js';
 

@@ -1,5 +1,4 @@
 import {
-  PriorPreviewInputUnavailableError,
   WorkflowCreateIdempotencyConflictError,
   WorkflowDefinitionPlacementError,
   WorkflowNotFoundError,
@@ -8,11 +7,6 @@ import {
 } from '@pertexo/database/api';
 import { z } from 'zod';
 
-import {
-  NodeTestIdempotencyConflictError,
-  NodeTestIdempotencyRequiredError,
-  NodeTestInvalidError,
-} from '../node-testing/use-case.js';
 import {
   applicationError,
   isApplicationError,
@@ -42,10 +36,6 @@ export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
     return applicationError('request.precondition_required', {
       safeDetail: 'If-Match is required for this operation.',
     });
-  if (error instanceof NodeTestIdempotencyRequiredError)
-    return applicationError('request.precondition_required', {
-      safeDetail: 'Idempotency-Key is required for test_execute.',
-    });
   if (error instanceof InvalidWorkflowHeaderError)
     return applicationError('request.invalid', {
       safeDetail: error.message,
@@ -62,8 +52,7 @@ export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
     return applicationError('resource.not_found');
   if (
     error instanceof WorkflowCreateIdempotencyConflictError ||
-    error instanceof WorkflowPublishIdempotencyConflictError ||
-    error instanceof NodeTestIdempotencyConflictError
+    error instanceof WorkflowPublishIdempotencyConflictError
   )
     return applicationError('request.idempotency_conflict', {
       safeDetail: 'The idempotency key was already used for another request.',
@@ -81,15 +70,6 @@ export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
       safeDetail:
         'The workflow contains a definition that can no longer be added.',
       details: { issues: error.issues },
-    });
-  if (error instanceof NodeTestInvalidError)
-    return applicationError('workflow.invalid', {
-      safeDetail: 'The selected node is not valid for preview.',
-      details: { issues: error.issues },
-    });
-  if (error instanceof PriorPreviewInputUnavailableError)
-    return applicationError('workflow.invalid', {
-      safeDetail: 'The selected prior preview output is unavailable.',
     });
   if (error instanceof InvalidWorkflowGraphError)
     return applicationError('workflow.invalid', {

@@ -26,11 +26,6 @@ import {
   WorkflowUpdateGuard,
 } from './guards.js';
 import { WorkflowAuthoringController } from './controllers.js';
-import { NodeTestingController } from '../node-testing/controller.js';
-import {
-  GetPreviewRunUseCase,
-  TestWorkflowNodeUseCase,
-} from '../node-testing/use-case.js';
 import type { WorkflowAuthoringDependencies } from './ports.js';
 import { NOOP_WORKFLOW_AUTHORING_TELEMETRY } from './telemetry.js';
 import {
@@ -48,36 +43,11 @@ export class WorkflowAuthoringModule {
     dependencies: WorkflowAuthoringDependencies,
     identityModule: DynamicModule,
   ): DynamicModule {
-    const nodeTestingProviders: Provider[] = [];
-    if (
-      dependencies.nodeTestingPersistence !== undefined &&
-      dependencies.nodeTestingRelease !== undefined
-    ) {
-      nodeTestingProviders.push(
-        {
-          provide: TestWorkflowNodeUseCase,
-          useValue: new TestWorkflowNodeUseCase(
-            dependencies.nodeTestingPersistence,
-            dependencies.authorization,
-            dependencies.nodeTestingRelease,
-          ),
-        },
-        {
-          provide: GetPreviewRunUseCase,
-          useValue: new GetPreviewRunUseCase(
-            dependencies.nodeTestingPersistence,
-            dependencies.authorization,
-          ),
-        },
-      );
-    }
-    const nodeTestingEnabled = nodeTestingProviders.length > 0;
     const providers: Provider[] = [
       {
         provide: WORKFLOW_AUTHORING_PERSISTENCE,
         useValue: dependencies.persistence,
       },
-      ...nodeTestingProviders,
       {
         provide: WORKFLOW_AUTHORING_AUTHORIZATION,
         useValue: dependencies.authorization,
@@ -172,10 +142,7 @@ export class WorkflowAuthoringModule {
     return {
       module: WorkflowAuthoringModule,
       imports: [identityModule],
-      controllers: [
-        WorkflowAuthoringController,
-        ...(nodeTestingEnabled ? [NodeTestingController] : []),
-      ],
+      controllers: [WorkflowAuthoringController],
       providers,
       exports: [
         ListWorkflowsUseCase,
@@ -185,9 +152,6 @@ export class WorkflowAuthoringModule {
         ValidateWorkflowDraftUseCase,
         PublishWorkflowUseCase,
         ListWorkflowVersionsUseCase,
-        ...(nodeTestingEnabled
-          ? [TestWorkflowNodeUseCase, GetPreviewRunUseCase]
-          : []),
       ],
     };
   }

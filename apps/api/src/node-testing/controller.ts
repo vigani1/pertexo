@@ -22,17 +22,16 @@ import {
   requestIdentifier,
   traceIdentifier,
 } from '../identity-workspace/index.js';
+import type { IdentityWorkspaceRequest } from '../identity-workspace/types.js';
+import { parseIdempotencyKey } from '../platform/http/index.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { createActorContext } from '../workspaces/index.js';
-import { throwWorkflowApplicationError } from '../workflow-authoring/errors.js';
-import { WorkflowUpdateGuard } from '../workflow-authoring/guards.js';
-import { parseIdempotencyKey } from '../workflow-authoring/preconditions.js';
-import type { WorkflowAuthoringRequest } from '../workflow-authoring/types.js';
 import {
   NodeTestIdempotencyRequiredError,
-  GetPreviewRunUseCase,
-  TestWorkflowNodeUseCase,
-} from './use-case.js';
+  throwNodeTestingApplicationError,
+} from './errors.js';
+import { NodeTestingUpdateGuard } from './guards.js';
+import { GetPreviewRunUseCase, TestWorkflowNodeUseCase } from './use-case.js';
 
 interface StatusResponse {
   status(code: number): unknown;
@@ -48,9 +47,9 @@ export class NodeTestingController {
 
   @Get('previews/:previewRunId')
   @RateLimit('authenticated_read')
-  @UseGuards(SessionAuthenticationGuard, WorkflowUpdateGuard)
+  @UseGuards(SessionAuthenticationGuard, NodeTestingUpdateGuard)
   public async status(
-    @Req() request: WorkflowAuthoringRequest,
+    @Req() request: IdentityWorkspaceRequest,
     @Param() params: unknown,
   ) {
     try {
@@ -61,7 +60,7 @@ export class NodeTestingController {
         previewRunId: route.previewRunId,
       });
     } catch (error: unknown) {
-      return throwWorkflowApplicationError(error);
+      return throwNodeTestingApplicationError(error);
     }
   }
 
@@ -69,11 +68,11 @@ export class NodeTestingController {
   @HttpCode(200)
   @UseGuards(
     SessionAuthenticationGuard,
-    WorkflowUpdateGuard,
+    NodeTestingUpdateGuard,
     CsrfProtectionGuard,
   )
   public async test(
-    @Req() request: WorkflowAuthoringRequest,
+    @Req() request: IdentityWorkspaceRequest,
     @Param() params: unknown,
     @Body() body: unknown,
     @Res({ passthrough: true }) response: StatusResponse,
@@ -101,12 +100,12 @@ export class NodeTestingController {
       if (command.mode === 'test_execute') response.status(202);
       return result;
     } catch (error: unknown) {
-      return throwWorkflowApplicationError(error);
+      return throwNodeTestingApplicationError(error);
     }
   }
 }
 
-function actorFrom(request: WorkflowAuthoringRequest, workspaceId: string) {
+function actorFrom(request: IdentityWorkspaceRequest, workspaceId: string) {
   const session = authenticatedSession(request);
   const traceId = traceIdentifier(request);
   return createActorContext({
@@ -118,14 +117,14 @@ function actorFrom(request: WorkflowAuthoringRequest, workspaceId: string) {
   });
 }
 
-function requiredIdempotencyKey(request: WorkflowAuthoringRequest): string {
+function requiredIdempotencyKey(request: IdentityWorkspaceRequest): string {
   const value = header(request, 'idempotency-key');
   if (value === undefined) throw new NodeTestIdempotencyRequiredError();
   return parseIdempotencyKey(value);
 }
 
 function singleHeader(
-  request: WorkflowAuthoringRequest,
+  request: IdentityWorkspaceRequest,
   name: string,
 ): string | undefined {
   const value = header(request, name);
@@ -137,7 +136,7 @@ function singleHeader(
   return undefined;
 }
 
-function header(request: WorkflowAuthoringRequest, name: string): unknown {
+function header(request: IdentityWorkspaceRequest, name: string): unknown {
   const headers = request.headers;
   if (headers === undefined) return undefined;
   const key = Object.keys(headers).find(

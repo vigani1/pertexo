@@ -34,3 +34,4 @@ export type {
   RequestId,
   WorkspaceId,
 } from './request-context.js';
+export * from './idempotency-key.js';
