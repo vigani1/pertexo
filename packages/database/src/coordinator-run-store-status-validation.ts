@@ -5,8 +5,11 @@ import {
 import { terminalStatus } from './coordinator-run-store-observations.js';
 import type { ParsedTransitionPlan } from './coordinator-run-store-plan.js';
 import { sameKeys } from './coordinator-run-store-plan-validation.js';
+import {
+  assertPlan,
+  sameStoredValue,
+} from './coordinator-run-store-validation-values.js';
 import type { PersistedPhase3Checkpoint } from './phase3-checkpoint.js';
-import { serializeStoredExecutionJsonValue } from './stored-execution-value.js';
 
 type Invocation = PersistedPhase3Checkpoint['invocations'][number];
 type PersistedFact = Readonly<{
@@ -26,17 +29,6 @@ type TransitionContext = Readonly<{
   persisted: PersistedState;
   plannedNodeEvents: ReadonlySet<string>;
 }>;
-
-function assertPlan(condition: boolean): asserts condition {
-  if (!condition) throw new CoordinatorPlanInvalidError();
-}
-
-function sameStoredValue(left: unknown, right: unknown): boolean {
-  return (
-    serializeStoredExecutionJsonValue(left) ===
-    serializeStoredExecutionJsonValue(right)
-  );
-}
 
 function nodeEventKey(invocation: Invocation, name: string): string {
   return `${invocation.invocationKey}:${name}`;
