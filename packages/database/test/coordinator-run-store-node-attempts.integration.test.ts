@@ -658,7 +658,7 @@ describe('Coordinator node-attempt persistence invariants', () => {
       outcome: {
         status: 'suspended',
         output: { held: true },
-        durationSeconds: 2,
+        durationSeconds: 1,
       },
       signal: new AbortController().signal,
     });
@@ -669,7 +669,7 @@ describe('Coordinator node-attempt persistence invariants', () => {
         outcome: {
           status: 'suspended',
           output: { held: true },
-          durationSeconds: 2,
+          durationSeconds: 1,
         },
         signal: new AbortController().signal,
       }),
@@ -771,7 +771,9 @@ describe('Coordinator node-attempt persistence invariants', () => {
         },
       }),
     ).resolves.toMatchObject({ kind: 'committed', revision: 2 });
-    await new Promise((resolve) => setTimeout(resolve, 2_050));
+    // The persisted wait is derived from PostgreSQL time and duplicated inside
+    // the immutable checkpoint, so this intentionally crosses the real clock.
+    await new Promise((resolve) => setTimeout(resolve, 1_050));
     const dueScanner = createDueNodeWakeupScanner(
       parseDatabaseConfig({
         connectionString: databaseUrl(workerBaseUrl),

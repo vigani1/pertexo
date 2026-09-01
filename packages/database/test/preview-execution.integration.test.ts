@@ -500,6 +500,8 @@ describe('durable preview acceptance', () => {
         where id = $1`,
       [expiring.previewRunId],
     );
+    // Expiry is an immutable PostgreSQL acceptance fact, so this intentionally
+    // crosses the database clock instead of mutating the protected identity.
     await new Promise((resolve) => setTimeout(resolve, 1_100));
     await expect(
       apiDatabase.withWorkspace(workspaceA, (transaction) =>

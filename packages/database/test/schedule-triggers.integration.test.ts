@@ -620,7 +620,7 @@ describe('schedule trigger PostgreSQL slice', () => {
       migrationHead: '0073_transient_data_retention.sql',
       role: 'pertexo_worker',
     });
-    const crashed = await worker.query(
+    const crashed = await worker.query<{ trigger_id: string }>(
       'select * from app.claim_due_trigger_schedules($1,1,1)',
       ['crashed-scanner'],
     );
@@ -633,7 +633,13 @@ describe('schedule trigger PostgreSQL slice', () => {
         checkpointFactory,
       }),
     ).resolves.toMatchObject({ claimed: 1, skipped: 1 });
-    await new Promise((resolve) => setTimeout(resolve, 1_100));
+    await ownerQuery(
+      `update app.trigger_schedules
+          set lease_acquired_at=clock_timestamp()-interval '2 seconds',
+              lease_expires_at=clock_timestamp()-interval '1 second'
+        where trigger_id=$1`,
+      [crashed.rows[0]?.trigger_id],
+    );
     const results = await Promise.all([
       scannerOne.scanDue({
         leaseOwner: 'scanner-one',

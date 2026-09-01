@@ -21,6 +21,7 @@ import {
   type IdentityWorkspaceDependencies,
 } from '../../identity-workspace/index.js';
 import type { OidcProviderPort } from '../../identity/index.js';
+import type { IdentityClock } from '../../identity/index.js';
 import type { ApiIdentityConfig } from '../config/api-config.js';
 
 export type ApiIdentityRuntime = Readonly<{
@@ -31,6 +32,7 @@ export type ApiIdentityRuntime = Readonly<{
 export type ApiIdentityRuntimeOverrides = Readonly<{
   provider?: OidcProviderPort;
   database?: IdentityWorkspaceDatabase;
+  clock?: IdentityClock;
   transactions?: OidcLoginTransactionStore;
   telemetry?: IdentityWorkspaceTelemetry;
 }>;
@@ -92,6 +94,7 @@ export function createApiIdentityRuntime(
       transactions,
       persistence,
       authorization: persistence,
+      ...(overrides.clock === undefined ? {} : { clock: overrides.clock }),
       telemetry,
     }),
     close: (): Promise<void> => {

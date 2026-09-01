@@ -125,6 +125,7 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
   let application: Awaited<ReturnType<typeof createApiApplication>>;
   let workspaceDatabase: WorkspaceDatabase;
   let primaryWorkspaceId: string;
+  let identityNow = new Date();
 
   beforeAll(async () => {
     workspaceDatabase = createWorkspaceDatabase(databaseConfig);
@@ -134,6 +135,7 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
         provider,
         database: identityDatabase,
         transactions: transactionStore,
+        clock: { now: () => new Date(identityNow.getTime()) },
       },
       logger,
       telemetry,
@@ -698,7 +700,7 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     expect(afterLogout.payload).not.toContain(logoutCookies.rawSession);
 
     const expiringCookies = await login();
-    await new Promise((resolve) => setTimeout(resolve, 5_100));
+    identityNow = new Date(identityNow.getTime() + 5_100);
     const expired = await authenticatedMutation(expiringCookies);
     expectProblem(expired, 401, 'auth.unauthenticated');
     expect(expired.payload).not.toContain(expiringCookies.rawSession);

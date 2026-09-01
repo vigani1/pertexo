@@ -548,6 +548,8 @@ describe('retention control foundation exact prior-head upgrade', () => {
       reason: 'inspect due run inputs',
       requested_by: 'operator:test',
     });
+    // Claim eligibility is an owner-only PostgreSQL function over the real
+    // fenced lease; exercise its database-clock boundary without bypassing it.
     await new Promise((resolve) => setTimeout(resolve, 1_100));
     const second = await maintenance.query<{
       lease_fence: string;
