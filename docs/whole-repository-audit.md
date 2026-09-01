@@ -2,7 +2,7 @@
 
 Recorded: 2026-09-01
 
-Audited implementation head: `c6530ddb801abab2209d87181f57396c64bdf087`
+Audited implementation head: `70347582394a8766bc1179da0395889d0a69081d`
 
 Status: current findings, remediation state, and remaining external evidence
 
