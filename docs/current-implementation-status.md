@@ -35,17 +35,18 @@ tests. The exact report schema and validator already live under
 
 ## Current engineering remediation
 
-The 2026-09-01 audit refresh is implemented at fixed ancestor `68752e7`. It
+The 2026-09-01 audit refresh is implemented at fixed ancestor `0865633` and
+merged to `main` through pull request #7. It
 stabilizes destructive PostgreSQL service control, aligns Node 24 ambient and
 runtime surfaces, reduces all eight named complexity hotspots, centralizes the
 two same-owner helpers, binds local image evidence to its digest, splits
 dependency compatibility groups, and strengthens risk-coverage evidence.
 
-Local repository verification is green. The replacement implementation still
-requires its protected remote CI run before the historical red recovery run can
-be superseded. Live-production, provider-canary, registry-signing, promotion,
-and independent-review findings remain open until observed externally; they are
-not repository implementation defects disguised as completed evidence.
+Local repository verification and all protected contexts in CI run
+`33465359665` are green, including recovery. Live-production, provider-canary,
+registry-signing, promotion, and independent-review findings remain open until
+observed externally; they are not repository implementation defects disguised
+as completed evidence.
 
 ## Sources of truth
 
