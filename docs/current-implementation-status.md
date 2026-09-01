@@ -35,10 +35,17 @@ tests. The exact report schema and validator already live under
 
 ## Current engineering remediation
 
-The 2026-09-01 whole-repository audit remediation is active on its review
-branch. Repository-controlled findings are closed only after implementation,
-focused failure-path verification, the full relevant suite, and refreshed audit
-evidence. Live-production findings remain open until observed externally.
+The 2026-09-01 audit refresh is implemented at fixed ancestor `68752e7`. It
+stabilizes destructive PostgreSQL service control, aligns Node 24 ambient and
+runtime surfaces, reduces all eight named complexity hotspots, centralizes the
+two same-owner helpers, binds local image evidence to its digest, splits
+dependency compatibility groups, and strengthens risk-coverage evidence.
+
+Local repository verification is green. The replacement implementation still
+requires its protected remote CI run before the historical red recovery run can
+be superseded. Live-production, provider-canary, registry-signing, promotion,
+and independent-review findings remain open until observed externally; they are
+not repository implementation defects disguised as completed evidence.
 
 ## Sources of truth
 
