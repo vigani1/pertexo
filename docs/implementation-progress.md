@@ -4555,15 +4555,14 @@ Current evidence:
   completion box changes because
   those code, external-governance, and live-production requirements remain open.
 
-## Current whole-repository audit — 2026-09-01
+## Historical whole-repository audit remediation — 2026-09-01
 
-Status: **Remediation in progress from audited implementation head `9e42637`;
-live-production findings remain open**
+Status: **Historical remediation record; superseded by the current-head audit
+below**
 
-The sole current audit is
-[`docs/whole-repository-audit.md`](./whole-repository-audit.md). It contains
-only findings verified against the present code rather than the resolved
-history from the prior remediation branch.
+This section preserves the evidence recorded while the original audit findings
+were being remediated. It is not the current findings register. The sole current
+audit is [`docs/whole-repository-audit.md`](./whole-repository-audit.md).
 
 The refreshed review covers architecture, functions and classes, imports and
 exports, readability, repetition and reuse, TypeScript, NestJS, all twelve
@@ -4674,6 +4673,51 @@ Verification at implementation head `9e4263794715d273e8660c0dd4efa67c5032e940`:
 
 No Phase 7 completion box changes in this documentation-only audit. The current
 P1 findings and the existing live-production checklist remain release blockers.
+
+## Current whole-repository audit — implementation head `e3d173f`
+
+Status: **Most original findings resolved; current CI and production evidence
+remain open**
+
+The refreshed audit contains only current findings and score-improvement work:
+
+- [ ] Stabilize the destructive recovery test's PostgreSQL restart seam and
+      replace failed main CI run `33458288161` with a fully green protected
+      run. The uploaded functional reports passed and an exact local
+      reproduction passed 1/1, but the remote Compose restart remains
+      nondeterministic.
+- [ ] Complete the live AWS, Object Lock, pager, load/fairness, failover,
+      failback, PITR, regional restore, RPO/RTO, autoscaling, and aggregate
+      PostgreSQL connection-capacity evidence.
+- [ ] Execute controlled non-production push-protection, vulnerable-dependency,
+      and vulnerable-image rejection canaries.
+- [ ] Bind the production-image SBOM, scan, registry provenance, and deployment
+      to one promoted immutable digest.
+- [ ] Reduce ratcheted high-risk complexity hotspots through private
+      invariant-owned seams without widening public interfaces.
+- [ ] Review uncovered high-risk failure branches and add focused
+      failure-injection or mutation evidence before raising coverage thresholds.
+- [ ] Keep grouped dependency updates actionable by isolating incompatible
+      packages and recording intentional deferrals.
+- [ ] Require independent approval/code-owner review and verified provenance
+      when a second maintainer and signing identities exist; retain the
+      documented solo exception until then.
+- [ ] Reconcile README/current status/audit/tracker wording and current CI
+      evidence after the recovery gate is green.
+
+Current local verification at `e3d173fe9573107c1cc9551ca2e007fbfc824e18`:
+
+- `pnpm check`: passed;
+- `pnpm test:coverage`: passed at 79.36% workflow-engine, 61.53% database,
+  62.79% worker, and 82.56% API branch coverage;
+- `pnpm security:audit`: no known production dependency vulnerabilities;
+- `pnpm deployment:check`, `pnpm images:check`, and
+  `pnpm exercise:check`: passed; and
+- the exact local worker transport recovery cohort passed 1/1 with no skip.
+
+No phase status changes. Phase 7 remains **In progress**, and current
+`main` must not be described as fully green until the required recovery
+context passes.
 
 ## Update protocol
 
