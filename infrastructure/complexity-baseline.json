@@ -49,7 +49,7 @@
     "packages/workflow-engine/src/operations.ts": 731,
     "packages/workflow-engine/src/workflow-transition-observations.ts": 528,
     "packages/workflow-model/src/expressions.ts": 611,
-    "packages/workflow-model/src/graph.ts": 1126
+    "packages/workflow-model/src/graph.ts": 927
   },
   "functionHotspots": {
     "apps/api/src/webhooks/ingress.ts#acceptWebhook": {
@@ -227,14 +227,6 @@
     "packages/workflow-engine/src/operations.ts#assertCheckpointMatchesExecutable": {
       "branches": 42,
       "lines": 178
-    },
-    "packages/workflow-model/src/graph.ts#validateWorkflowGraph": {
-      "branches": 10,
-      "lines": 256
-    },
-    "packages/workflow-model/src/graph.ts#validate": {
-      "branches": 52,
-      "lines": 198
     }
   }
 }

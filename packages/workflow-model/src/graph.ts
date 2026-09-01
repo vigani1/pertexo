@@ -21,6 +21,7 @@ import {
   inspectJsonValue,
   type JsonValue,
 } from './canonical-json.js';
+import { validateGraphStructure } from './graph-validation.js';
 
 export type {
   ForEachStructure,
@@ -435,14 +436,6 @@ export type GraphValidationResult =
       readonly worstCaseLoopIterations: number;
     };
 
-function isForEachStructure(value: unknown): value is ForEachStructure {
-  return (
-    value !== null &&
-    typeof value === 'object' &&
-    (value as { readonly kind?: unknown }).kind === 'for_each'
-  );
-}
-
 export function validateWorkflowGraph(
   graph: WorkflowGraph,
   overrides: Partial<WorkflowGraphLimits> = {},
@@ -465,210 +458,18 @@ export function validateWorkflowGraph(
   const issue = (code: GraphIssueCode, path: string, message: string): void => {
     issues.push({ code, path, message });
   };
-  const validate = (
-    current: WorkflowGraph,
-    path: string,
-    structuredInputPorts?: ReadonlySet<string>,
-  ): { readonly expanded: number; readonly iterations: number } => {
-    if (current.schemaVersion !== 1)
-      issue(
-        'invalid_graph',
-        `${path}.schemaVersion`,
-        'schemaVersion must be exactly 1',
-      );
-    aggregate.nodes += current.nodes.length;
-    aggregate.edges += current.edges.length;
-    if (aggregate.nodes > limits.nodes || aggregate.edges > limits.edges)
-      issue('graph_limit', path, 'node or edge count exceeds the graph limit');
-    const localIds = new Set<string>();
-    const edgeIds = new Set<string>();
-    for (const currentNode of current.nodes) {
-      if (localIds.has(currentNode.id) || globalNodeIds.has(currentNode.id))
-        issue(
-          'duplicate_node_id',
-          `${path}.nodes`,
-          `duplicate node ${currentNode.id}`,
-        );
-      localIds.add(currentNode.id);
-      globalNodeIds.add(currentNode.id);
-    }
-    for (const currentNode of current.nodes) {
-      for (const [mappingKey, source] of Object.entries(
-        currentNode.inputMappings,
-      )) {
-        if (
-          source.kind === 'structured_input' &&
-          !structuredInputPorts?.has(source.port)
-        )
-          issue(
-            'invalid_structured_body',
-            `${path}.nodes.${currentNode.id}.inputMappings.${mappingKey}`,
-            'structured input must reference a port on the nearest body',
-          );
-        if (
-          source.kind === 'node_output' &&
-          !localIds.has(source.nodeId) &&
-          allNodeIds.has(source.nodeId)
-        )
-          issue(
-            'invalid_structured_body',
-            `${path}.nodes.${currentNode.id}.inputMappings.${mappingKey}`,
-            'node output mappings cannot cross a structured-body seam',
-          );
-      }
-    }
-    const adjacency = new Map<string, string[]>();
-    for (const id of localIds) adjacency.set(id, []);
-    for (const edge of current.edges) {
-      if (edgeIds.has(edge.id))
-        issue(
-          'duplicate_edge_id',
-          `${path}.edges`,
-          `duplicate edge ${edge.id}`,
-        );
-      edgeIds.add(edge.id);
-      if (
-        !localIds.has(edge.source.nodeId) ||
-        !localIds.has(edge.target.nodeId)
-      )
-        issue(
-          'dangling_edge',
-          `${path}.edges.${edge.id}`,
-          'ordinary edges cannot cross a structured-body seam',
-        );
-      else adjacency.get(edge.source.nodeId)?.push(edge.target.nodeId);
-    }
-    const visiting = new Set<string>();
-    const visited = new Set<string>();
-    const visit = (id: string): void => {
-      if (visiting.has(id)) {
-        issue('cycle', path, `cycle contains ${id}`);
-        return;
-      }
-      if (visited.has(id)) return;
-      visiting.add(id);
-      for (const next of adjacency.get(id) ?? []) visit(next);
-      visiting.delete(id);
-      visited.add(id);
-    };
-    for (const id of [...localIds].sort()) visit(id);
-    let expansion = 0;
-    let iterations = 0;
-    for (const currentNode of current.nodes) {
-      expansion += 1;
-      const ownsForEach =
-        currentNode.definition.key === 'core.foreach' &&
-        currentNode.definition.version === 1;
-      if (ownsForEach !== (currentNode.structured !== undefined))
-        issue(
-          'invalid_structured_body',
-          `${path}.nodes.${currentNode.id}.structured`,
-          'core.foreach@1 must own exactly one For Each body and no other definition may own one',
-        );
-      if (!currentNode.structured) continue;
-      const structured: unknown = currentNode.structured;
-      if (!isForEachStructure(structured)) {
-        issue(
-          'invalid_structured_body',
-          `${path}.nodes.${currentNode.id}.structured.kind`,
-          'structured nodes must use kind for_each',
-        );
-        continue;
-      }
-      const loop = structured;
-      if (
-        !Number.isInteger(loop.maxIterations) ||
-        loop.maxIterations < 1 ||
-        loop.maxIterations > limits.maxLoopIterations ||
-        !Number.isInteger(loop.maxConcurrency) ||
-        loop.maxConcurrency < 1 ||
-        loop.maxConcurrency > loop.maxIterations ||
-        loop.maxConcurrency > limits.maxLoopConcurrency
-      )
-        issue(
-          'invalid_loop_limit',
-          `${path}.nodes.${currentNode.id}.structured`,
-          'For Each limits must be positive, bounded, and concurrency cannot exceed iterations',
-        );
-      if (
-        canonicalJson(loop.body.inputPorts) !==
-          canonicalJson(['item', 'ordinal']) ||
-        canonicalJson(loop.body.outputPorts) !== canonicalJson(['result'])
-      )
-        issue(
-          'invalid_structured_body',
-          `${path}.nodes.${currentNode.id}.structured.body`,
-          'For Each body ports must be exactly item, ordinal, and result',
-        );
-      if (loop.body.nodes.length === 0)
-        issue(
-          'invalid_structured_body',
-          `${path}.nodes.${currentNode.id}.structured.body.nodes`,
-          'For Each body must not be empty',
-        );
-      const bodyIds = new Set(loop.body.nodes.map(({ id }) => id));
-      const incoming = new Map([...bodyIds].map((id) => [id, 0]));
-      const outgoing = new Map([...bodyIds].map((id) => [id, [] as string[]]));
-      for (const edge of loop.body.edges) {
-        if (
-          !bodyIds.has(edge.source.nodeId) ||
-          !bodyIds.has(edge.target.nodeId)
-        )
-          continue;
-        incoming.set(
-          edge.target.nodeId,
-          (incoming.get(edge.target.nodeId) ?? 0) + 1,
-        );
-        outgoing.get(edge.source.nodeId)?.push(edge.target.nodeId);
-      }
-      const roots = [...bodyIds].filter((id) => incoming.get(id) === 0);
-      const sinks = [...bodyIds].filter((id) => outgoing.get(id)?.length === 0);
-      const reachable = new Set<string>();
-      const pending = [...roots];
-      while (pending.length > 0) {
-        const id = pending.pop();
-        if (id === undefined || reachable.has(id)) continue;
-        reachable.add(id);
-        pending.push(...(outgoing.get(id) ?? []));
-      }
-      const reverse = new Map([...bodyIds].map((id) => [id, [] as string[]]));
-      for (const [source, targets] of outgoing)
-        for (const target of targets) reverse.get(target)?.push(source);
-      const reachesSink = new Set<string>();
-      const reversePending = sinks.length === 1 ? [...sinks] : [];
-      while (reversePending.length > 0) {
-        const id = reversePending.pop();
-        if (id === undefined || reachesSink.has(id)) continue;
-        reachesSink.add(id);
-        reversePending.push(...(reverse.get(id) ?? []));
-      }
-      if (
-        sinks.length !== 1 ||
-        reachable.size !== bodyIds.size ||
-        reachesSink.size !== bodyIds.size
-      )
-        issue(
-          'invalid_structured_body',
-          `${path}.nodes.${currentNode.id}.structured.body`,
-          'For Each body requires one sink with every node root-reachable and sink-reachable',
-        );
-      const body = validate(
-        loop.body,
-        `${path}.nodes.${currentNode.id}.structured.body`,
-        new Set(loop.body.inputPorts),
-      );
-      const maxIterations = Math.max(0, loop.maxIterations);
-      expansion += maxIterations * body.expanded;
-      iterations += maxIterations * (1 + body.iterations);
-    }
-    return { expanded: expansion, iterations };
-  };
   let expandedInvocations = 0;
   let worstCaseLoopIterations = 0;
   try {
     if (inspectJsonValue(graph).bytes > limits.graphBytes)
       issue('graph_limit', '$', 'canonical graph bytes exceed the limit');
-    const totals = validate(graph, '$');
+    const totals = validateGraphStructure(graph, '$', {
+      aggregate,
+      allNodeIds,
+      globalNodeIds,
+      issue,
+      limits,
+    });
     expandedInvocations = totals.expanded;
     worstCaseLoopIterations = totals.iterations;
   } catch (error) {
