@@ -1,4 +1,5 @@
 import type { ArtifactStoreConfig } from './config.js';
+import { artifactMetadataMatches } from './artifact-metadata.js';
 import {
   ArtifactIntegrityError,
   ArtifactStoreClosedError,
@@ -40,19 +41,6 @@ export class ArtifactPartialReplicationError extends Error {
     );
     this.name = 'ArtifactPartialReplicationError';
   }
-}
-
-function metadataMatches(
-  actual: ArtifactMetadata,
-  expected: ArtifactMetadata,
-): boolean {
-  return (
-    actual.artifactId === expected.artifactId &&
-    actual.workspaceId === expected.workspaceId &&
-    actual.byteLength === expected.byteLength &&
-    actual.mediaType === expected.mediaType &&
-    actual.sha256 === expected.sha256
-  );
 }
 
 function isArtifactStore(value: unknown): value is ArtifactStoreWithPurge {
@@ -172,7 +160,7 @@ class CoordinatedDualRegionArtifactStore implements DualRegionArtifactStore {
       await this.primary.put(request);
     } else {
       request.body.destroy();
-      if (!metadataMatches(existing, expected))
+      if (!artifactMetadataMatches(existing, expected))
         throw new ArtifactIntegrityError(
           'Primary artifact conflicts with the requested immutable artifact',
         );
@@ -202,7 +190,7 @@ class CoordinatedDualRegionArtifactStore implements DualRegionArtifactStore {
       throw new ArtifactIntegrityError(
         'Artifact replicas could not both be checksum-validated',
       );
-    if (!metadataMatches(verified[0].value, verified[1].value))
+    if (!artifactMetadataMatches(verified[0].value, verified[1].value))
       throw new ArtifactIntegrityError('Artifact replica metadata differs');
     return verified[0].value;
   }
@@ -221,7 +209,7 @@ class CoordinatedDualRegionArtifactStore implements DualRegionArtifactStore {
       ...(signal === undefined ? {} : { signal }),
     });
     if (existing !== null) {
-      if (!metadataMatches(existing, metadata))
+      if (!artifactMetadataMatches(existing, metadata))
         throw new ArtifactIntegrityError(
           'Recovery artifact conflicts with the primary artifact',
         );

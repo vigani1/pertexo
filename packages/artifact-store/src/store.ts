@@ -20,6 +20,7 @@ import { Readable, Transform } from 'node:stream';
 import type { TransformCallback } from 'node:stream';
 import { z } from 'zod';
 
+import { artifactMetadataMatches } from './artifact-metadata.js';
 import type { ArtifactStoreConfig } from './config.js';
 import {
   createProductionObjectStoreObserver,
@@ -386,19 +387,6 @@ function abortError(signal: AbortSignal | undefined): Error {
     : new Error('Artifact transfer aborted');
 }
 
-function metadataMatches(
-  actual: ArtifactMetadata,
-  expected: ArtifactMetadata,
-): boolean {
-  return (
-    actual.artifactId === expected.artifactId &&
-    actual.workspaceId === expected.workspaceId &&
-    actual.byteLength === expected.byteLength &&
-    actual.mediaType === expected.mediaType &&
-    actual.sha256 === expected.sha256
-  );
-}
-
 async function consume(body: Readable): Promise<void> {
   for await (const chunk of body) {
     // Integrity is enforced by the verifier while bytes are discarded.
@@ -549,7 +537,10 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
     let metadata: ArtifactMetadata;
     try {
       metadata = metadataFromHead(identity, output, this.config.maxObjectBytes);
-      if (expected !== undefined && !metadataMatches(metadata, expected)) {
+      if (
+        expected !== undefined &&
+        !artifactMetadataMatches(metadata, expected)
+      ) {
         throw new ArtifactIntegrityError(
           'Stored artifact metadata does not match the expected upload',
         );
@@ -738,7 +729,7 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
       output,
       this.config.maxObjectBytes,
     );
-    if (!metadataMatches(actual, expected)) {
+    if (!artifactMetadataMatches(actual, expected)) {
       throw new ArtifactIntegrityError(
         'Stored artifact metadata does not match the expected upload',
       );

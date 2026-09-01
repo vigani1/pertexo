@@ -25,6 +25,7 @@ import {
   RequestContextStore,
   setResponseHeader,
 } from './request-context.js';
+import { firstRequestHeader } from './request-headers.js';
 
 export const HTTP_ERROR_LOGGER = Symbol('HTTP_ERROR_LOGGER');
 
@@ -274,22 +275,6 @@ function instanceFrom(request: HttpRequestLike): string | undefined {
   }
 }
 
-function requestHeader(
-  request: HttpRequestLike,
-  name: string,
-): string | undefined {
-  const headers = request.headers;
-  if (headers === undefined) {
-    return undefined;
-  }
-
-  const key = Object.keys(headers).find(
-    (candidate) => candidate.toLowerCase() === name,
-  );
-  const value = key === undefined ? undefined : headers[key];
-  return typeof value === 'string' ? value : value?.[0];
-}
-
 function contextFor(
   contexts: RequestContextStore,
   request: HttpRequestLike,
@@ -298,7 +283,7 @@ function contextFor(
     return contexts.get();
   } catch {
     return createRequestContext(
-      requestHeader(request, 'x-request-id') ?? randomUUID(),
+      firstRequestHeader(request.headers, 'x-request-id') ?? randomUUID(),
     );
   }
 }

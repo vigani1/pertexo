@@ -16,6 +16,7 @@ import {
 
 import { RATE_LIMIT_EXEMPT, RATE_LIMIT_METADATA } from './metadata.js';
 import { applicationError } from '../http/application-error.js';
+import { firstRequestHeader } from '../http/request-headers.js';
 
 export type RateLimitConsumer = Readonly<{
   consume(
@@ -40,21 +41,10 @@ type RateLimitRequest = Readonly<{
   authorizedWorkspace?: unknown;
 }>;
 
-function firstHeader(
-  request: RateLimitRequest,
-  name: string,
-): string | undefined {
-  const headers = request.headers;
-  if (headers === undefined) return undefined;
-  const key = Object.keys(headers).find(
-    (candidate) => candidate.toLowerCase() === name,
-  );
-  const value = key === undefined ? undefined : headers[key];
-  return typeof value === 'string' ? value : value?.[0];
-}
-
 function origin(request: RateLimitRequest): string {
-  const raw = firstHeader(request, 'origin') ?? firstHeader(request, 'referer');
+  const raw =
+    firstRequestHeader(request.headers, 'origin') ??
+    firstRequestHeader(request.headers, 'referer');
   if (raw === undefined) return 'unknown-origin';
   try {
     return new URL(raw).origin;

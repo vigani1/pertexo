@@ -4,6 +4,8 @@ import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { z } from 'zod';
 
+import { firstRequestHeader } from './request-headers.js';
+
 const requestIdPattern = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
 const actorKindSchema = z.enum([
   'user',
@@ -69,23 +71,6 @@ function parseActor(value: unknown): ActorContext {
       ? {}
       : { credentialId: actor.credentialId }),
   });
-}
-
-function headerValue(
-  headers:
-    | Readonly<Record<string, string | readonly string[] | undefined>>
-    | undefined,
-  name: string,
-): string | undefined {
-  if (headers === undefined) {
-    return undefined;
-  }
-
-  const key = Object.keys(headers).find(
-    (candidate) => candidate.toLowerCase() === name,
-  );
-  const value = key === undefined ? undefined : headers[key];
-  return typeof value === 'string' ? value : value?.[0];
 }
 
 export interface HttpRequestLike {
@@ -192,7 +177,7 @@ export class RequestContextMiddleware {
     response: HttpResponseLike,
     next: RequestContextNext,
   ): void | Promise<void> {
-    const requestId = headerValue(request.headers, 'x-request-id');
+    const requestId = firstRequestHeader(request.headers, 'x-request-id');
     const context = createRequestContext(requestId);
     request.requestId = context.requestId;
     setResponseHeader(response, 'x-request-id', context.requestId);
