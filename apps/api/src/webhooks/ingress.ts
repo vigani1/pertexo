@@ -320,6 +320,8 @@ async function openSecret(
 }
 
 function headerPresent(request: FastifyRequest, name: string): boolean {
+  // Webhook verification reads raw headers intentionally: unlike ordinary HTTP
+  // adaptation, duplicate or comma-folded signature inputs must be rejected.
   return request.raw.rawHeaders.some(
     (value, index) => index % 2 === 0 && value.toLowerCase() === name,
   );

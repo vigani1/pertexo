@@ -24,6 +24,11 @@ import { idempotencyKeySchema } from '@pertexo/contracts/identity-workspace';
 import { Observable } from 'rxjs';
 
 import {
+  requestHeaderValue,
+  singleRequestHeader,
+} from '../platform/http/request-headers.js';
+
+import {
   CsrfProtectionGuard,
   SessionAuthenticationGuard,
   authenticatedSession,
@@ -254,7 +259,7 @@ function routeLastEventPath(lastEventId: number): SseVisibilityPath {
 }
 
 function requiredIdempotencyKey(request: WorkflowRunsRequest): string {
-  const raw = header(request, 'idempotency-key');
+  const raw = requestHeaderValue(request.headers, 'idempotency-key');
   if (raw === undefined)
     return throwWorkflowRunError(
       applicationError('request.precondition_required', {
@@ -313,30 +318,6 @@ function requestIdentifiers(request: WorkflowRunsRequest): Readonly<{
 function traceparent(
   request: WorkflowRunsRequest,
 ): Readonly<{ traceparent?: string }> {
-  const value = headerString(request, 'traceparent');
+  const value = singleRequestHeader(request.headers, 'traceparent');
   return value === undefined ? {} : { traceparent: value };
-}
-
-function header(request: WorkflowRunsRequest, name: string): unknown {
-  const headers = request.headers;
-  if (headers === undefined) return undefined;
-  const key = Object.keys(headers).find(
-    (candidate) => candidate.toLowerCase() === name.toLowerCase(),
-  );
-  return key === undefined ? undefined : headers[key];
-}
-
-function headerString(
-  request: WorkflowRunsRequest,
-  name: string,
-): string | undefined {
-  const value = header(request, name);
-  if (typeof value === 'string') return value;
-  if (
-    Array.isArray(value) &&
-    value.length === 1 &&
-    typeof value[0] === 'string'
-  )
-    return value[0];
-  return undefined;
 }

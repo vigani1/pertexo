@@ -24,6 +24,10 @@ import {
 } from '../identity-workspace/index.js';
 import type { IdentityWorkspaceRequest } from '../identity-workspace/types.js';
 import { parseIdempotencyKey } from '../platform/http/index.js';
+import {
+  requestHeaderValue,
+  singleRequestHeader,
+} from '../platform/http/request-headers.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { createActorContext } from '../workspaces/index.js';
 import {
@@ -118,7 +122,7 @@ function actorFrom(request: IdentityWorkspaceRequest, workspaceId: string) {
 }
 
 function requiredIdempotencyKey(request: IdentityWorkspaceRequest): string {
-  const value = header(request, 'idempotency-key');
+  const value = requestHeaderValue(request.headers, 'idempotency-key');
   if (value === undefined) throw new NodeTestIdempotencyRequiredError();
   return parseIdempotencyKey(value);
 }
@@ -127,20 +131,5 @@ function singleHeader(
   request: IdentityWorkspaceRequest,
   name: string,
 ): string | undefined {
-  const value = header(request, name);
-  if (typeof value === 'string') return value;
-  if (Array.isArray(value) && value.length === 1) {
-    const first: unknown = value[0];
-    if (typeof first === 'string') return first;
-  }
-  return undefined;
-}
-
-function header(request: IdentityWorkspaceRequest, name: string): unknown {
-  const headers = request.headers;
-  if (headers === undefined) return undefined;
-  const key = Object.keys(headers).find(
-    (candidate) => candidate.toLowerCase() === name.toLowerCase(),
-  );
-  return key === undefined ? undefined : headers[key];
+  return singleRequestHeader(request.headers, name);
 }

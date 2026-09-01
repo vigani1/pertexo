@@ -20,6 +20,10 @@ import {
   traceIdentifier,
 } from '../identity-workspace/index.js';
 import { applicationError } from '../platform/http/index.js';
+import {
+  requestHeaderValue,
+  singleRequestHeader,
+} from '../platform/http/request-headers.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { createActorContext } from '../workspaces/index.js';
 import { mapWorkflowAuthoringError } from './errors.js';
@@ -104,7 +108,9 @@ export class WorkflowAuthoringController {
         actor: actorFrom(request, workspaceId),
         routeWorkspaceId: workspaceId,
         name: input.name,
-        idempotencyKey: parseIdempotencyKey(header(request, 'idempotency-key')),
+        idempotencyKey: parseIdempotencyKey(
+          requestHeaderValue(request.headers, 'idempotency-key'),
+        ),
         ...requestIdentifiers(request),
       });
       response.header('ETag', result.representationTag);
@@ -155,7 +161,9 @@ export class WorkflowAuthoringController {
         actor: actorFrom(request, route.workspaceId),
         routeWorkspaceId: route.workspaceId,
         workflowId: route.workflowId,
-        representationTag: parseStrongIfMatch(header(request, 'if-match')),
+        representationTag: parseStrongIfMatch(
+          requestHeaderValue(request.headers, 'if-match'),
+        ),
         graph: input.graph,
         ...requestIdentifiers(request),
       });
@@ -204,8 +212,12 @@ export class WorkflowAuthoringController {
         actor: actorFrom(request, route.workspaceId),
         routeWorkspaceId: route.workspaceId,
         workflowId: route.workflowId,
-        representationTag: parseStrongIfMatch(header(request, 'if-match')),
-        idempotencyKey: parseIdempotencyKey(header(request, 'idempotency-key')),
+        representationTag: parseStrongIfMatch(
+          requestHeaderValue(request.headers, 'if-match'),
+        ),
+        idempotencyKey: parseIdempotencyKey(
+          requestHeaderValue(request.headers, 'idempotency-key'),
+        ),
         ...requestIdentifiers(request),
         ...traceparent(request),
       });
@@ -289,32 +301,8 @@ function requestIdentifiers(request: WorkflowAuthoringRequest): Readonly<{
 function traceparent(
   request: WorkflowAuthoringRequest,
 ): Readonly<{ traceparent?: string }> {
-  const value = headerString(request, 'traceparent');
+  const value = singleRequestHeader(request.headers, 'traceparent');
   return value === undefined ? {} : { traceparent: value };
-}
-
-function header(request: WorkflowAuthoringRequest, name: string): unknown {
-  const headers = request.headers;
-  if (headers === undefined) return undefined;
-  const key = Object.keys(headers).find(
-    (candidate) => candidate.toLowerCase() === name.toLowerCase(),
-  );
-  return key === undefined ? undefined : headers[key];
-}
-
-function headerString(
-  request: WorkflowAuthoringRequest,
-  name: string,
-): string | undefined {
-  const value = header(request, name);
-  if (typeof value === 'string') return value;
-  if (
-    Array.isArray(value) &&
-    value.length === 1 &&
-    typeof value[0] === 'string'
-  )
-    return value[0];
-  return undefined;
 }
 
 function throwWorkflowApplicationError(error: unknown): never {
