@@ -228,10 +228,6 @@
       "branches": 42,
       "lines": 178
     },
-    "packages/workflow-engine/src/workflow-transition-derived.ts#deriveWorkflowTransitions": {
-      "branches": 47,
-      "lines": 241
-    },
     "packages/workflow-model/src/graph.ts#validateWorkflowGraph": {
       "branches": 10,
       "lines": 256
