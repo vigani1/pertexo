@@ -4674,7 +4674,7 @@ Verification at implementation head `9e4263794715d273e8660c0dd4efa67c5032e940`:
 No Phase 7 completion box changes in this documentation-only audit. The current
 P1 findings and the existing live-production checklist remain release blockers.
 
-## Current whole-repository audit — implementation head `0865633`
+## Current whole-repository audit — implementation head `c6530dd`
 
 Status: **Repository remediation implemented; protected CI and external
 production/control evidence remain open**
@@ -4693,16 +4693,26 @@ Repository-controlled remediation:
       or worsened ratchet entry.
 - [x] Raise critical coverage floors, emit a machine-readable uncovered
       risk-branch inventory, and add exhaustive workflow-status mutation
-      canaries. The 361 remaining uncovered sites stay visible as testable
-      follow-up rather than being bulk-justified or excluded.
+      canaries. Schema V2 names the 23 exact selected files and marks all 361
+      remaining uncovered sites unreviewed rather than generating a risk
+      classification or bulk justification.
 - [x] Split production dependency updates into HTTP, validation, AWS,
       telemetry, queue, and routine compatibility groups and document owner,
       triage, isolation, and bounded-deferral SLAs.
 - [x] Align `@types/node` 24.13.3 with Node 24 engines, CI, and Docker stages;
-      five drift fixtures enforce the cross-surface runtime gate.
+      eight fixtures also reject dynamic selectors, `node-version-file`, and a
+      setup-node step without its own literal selector.
 - [x] Consolidate request-header policies in the private HTTP platform and
       artifact metadata equality in the private artifact-store implementation
-      without adding public exports.
+      without adding public exports. The later coordinator validation
+      `assertPlan`/`sameStoredValue` duplicate is likewise centralized in one
+      private database module.
+- [x] Compare the pre-refactor and candidate database, workflow-engine, and
+      workflow-model package seams across five rounds. Median wall-clock deltas
+      are +0.36%, +3.13% (with three extra tests), and 0.00%; median maximum-RSS
+      deltas are +1.18%, +0.26%, and +0.23%. Query-call inventory falls from 215
+      to 213 with no new SQL/round trip. See
+      `docs/operations/complexity-refactor-performance.md`.
 - [x] Refresh README/current-status/audit/tracker semantics at a fixed
       implementation ancestor while preserving the historical red CI evidence.
 
@@ -4717,9 +4727,9 @@ Still open:
       vulnerable-dependency, and vulnerable-image rejection canaries.
 - [ ] Select registry/signing identities, publish signed provenance, promote the
       scanned image by digest, and prove the deployment consumes that digest.
-- [ ] Continue consequential failure-injection/mutation cases from the emitted
-      risk inventory and observe the new dependency groups in the next
-      automation cycle.
+- [ ] Review and classify consequential uncovered sites from the emitted
+      inventory, add corresponding failure-injection/mutation cases, and
+      observe the new dependency groups in the next automation cycle.
 - [ ] Require independent approval/code-owner review and verified provenance
       when a second maintainer and signing identities exist; retain the
       documented solo exception until then.
