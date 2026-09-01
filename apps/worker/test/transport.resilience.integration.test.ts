@@ -29,6 +29,7 @@ import { z } from 'zod';
 import { WorkerDrainState } from '../src/runtime/worker-drain-state.js';
 import { createDispatchConsumerCapabilityRegistry } from '../src/transport/dispatch-consumer-capabilities.js';
 import { OutboxDispatcher } from '../src/transport/outbox-dispatcher.js';
+import { createDockerComposeServiceController } from './support/compose-service-control.js';
 
 const execFileAsync = promisify(execFile);
 const enabled = process.env.WORKER_TRANSPORT_RESILIENCE === 'true';
@@ -37,6 +38,10 @@ const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
 const REDIS_PROOF_DATABASE = 15;
 const SERVICE_OPERATION_TIMEOUT_MS = 120_000;
 const PROOF_OPERATION_TIMEOUT_MS = 10_000;
+const serviceController = createDockerComposeServiceController({
+  cwd: repositoryRoot,
+  operationTimeoutMillis: SERVICE_OPERATION_TIMEOUT_MS,
+});
 
 const migrationUrl =
   process.env.DATABASE_MIGRATION_URL ??
@@ -141,16 +146,6 @@ async function compose(...arguments_: readonly string[]): Promise<string> {
     timeout: SERVICE_OPERATION_TIMEOUT_MS,
   });
   return result.stdout.trim();
-}
-
-async function stopService(service: 'postgres' | 'redis'): Promise<void> {
-  await compose('stop', '--timeout', '10', service);
-}
-
-async function startService(service: 'postgres' | 'redis'): Promise<number> {
-  const startedAt = performance.now();
-  await compose('up', '-d', '--wait', service);
-  return performance.now() - startedAt;
 }
 
 async function restoreServices(): Promise<void> {
@@ -526,7 +521,7 @@ describeResilience(
         // Failure point: Redis is fully stopped while a durable outbox row is
         // waiting. Publishing fails closed and releases the PostgreSQL lease.
         await insertProofEvent(workspaceId, redisLossEventId);
-        await stopService('redis');
+        const stoppedRedis = await serviceController.stop('redis');
         const redisDetectionStartedAt = performance.now();
         await expect(redisDispatcher.checkReadiness()).rejects.toThrow();
         measurements.redisFailureDetectionMs =
@@ -558,7 +553,7 @@ describeResilience(
         });
 
         const redisRecoveryStartedAt = performance.now();
-        await startService('redis');
+        await serviceController.start(stoppedRedis);
         await withDeadline(
           redisDispatcher.checkReadiness(),
           'Redis readiness recovery',
@@ -584,7 +579,7 @@ describeResilience(
         // Create the authority record while PostgreSQL is healthy, close its
         // serving connection, then start a dispatcher while PostgreSQL is down.
         await insertProofEvent(workspaceId, postgresLossEventId);
-        await stopService('postgres');
+        const stoppedPostgres = await serviceController.stop('postgres');
         const postgresBoundaries = createDispatcher(
           new WorkerDrainState(),
           'resilience-postgres',
@@ -605,7 +600,7 @@ describeResilience(
         ).toBeUndefined();
 
         const postgresRecoveryStartedAt = performance.now();
-        await startService('postgres');
+        await serviceController.start(stoppedPostgres);
         await withDeadline(
           postgresDispatcher.checkReadiness(),
           'PostgreSQL readiness recovery',
