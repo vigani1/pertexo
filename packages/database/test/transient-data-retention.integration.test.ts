@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 
+import type { QueryResultRow } from 'pg';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -13,14 +14,17 @@ import {
 const digest = (value: string) =>
   createHash('sha256').update(value).digest('hex');
 
-async function asOwner(text: string, values: readonly unknown[] = []) {
+async function asOwner<Row extends QueryResultRow = QueryResultRow>(
+  text: string,
+  values: readonly unknown[] = [],
+) {
   await owner.query('begin');
   try {
     await owner.query('set local role pertexo_owner');
     await owner.query("select set_config('app.workspace_id',$1,true)", [
       workspaceId,
     ]);
-    const result = await owner.query(text, [...values]);
+    const result = await owner.query<Row>(text, [...values]);
     await owner.query('commit');
     return result;
   } catch (error: unknown) {
@@ -49,7 +53,7 @@ describe('transient data retention', () => {
           randomUUID(),
           workspaceId,
           keyHash,
-          digest(`request-${index}`),
+          digest(`request-${String(index)}`),
           index === 3 ? 'in_progress' : 'completed',
           randomUUID(),
         ],
@@ -129,7 +133,7 @@ describe('transient data retention', () => {
       throw error;
     }
 
-    const retained = await asOwner(
+    const retained = await asOwner<{ id: string; revoked: boolean }>(
       `select id,revoked_at is not null revoked
        from app.sessions where id=any($1::uuid[]) order by id`,
       [[activeId, concurrentLogoutId]],
