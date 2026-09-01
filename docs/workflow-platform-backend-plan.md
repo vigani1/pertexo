@@ -2365,8 +2365,8 @@ Status values are `proposed`, `accepted`, `superseded`, or `rejected`.
 | 026 | Generic webhook signature and replay contract                                    | Webhook trigger          |
 | 027 | Workspace lifecycle command dispatch and credential boundary                     | deletion API migration   |
 | 028 | ECS deployment manifest and workload-role contracts                              | production deployment    |
-| 029 | Dependency operations, autoscaling, and observability contracts                   | production operations    |
-| 030 | Dual-region artifact replication and recovery verification                       | regional recovery        |
+| 029 | Operator command execution boundary                                               | production operations    |
+| 030 | Repository-owned autoscaling input contract                                       | production operations    |
 
 Deferred features receive new ADRs when promoted. Do not pre-author detailed
 ADRs for custom code, approvals, forms, nested workflows, synchronous webhooks,

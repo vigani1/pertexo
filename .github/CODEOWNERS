@@ -1,0 +1,12 @@
+# Default ownership and explicit security-critical review routing.
+* @vigani1
+
+/.github/ @vigani1
+/apps/api/src/identity/ @vigani1
+/apps/api/src/identity-infrastructure/ @vigani1
+/apps/api/src/identity-workspace/ @vigani1
+/infrastructure/ @vigani1
+/packages/database/migrations/ @vigani1
+/packages/database/src/ @vigani1
+/packages/integrations/src/credentials/ @vigani1
+/docs/adr/ @vigani1
