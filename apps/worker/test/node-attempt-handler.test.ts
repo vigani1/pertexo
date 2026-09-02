@@ -4,6 +4,11 @@ import type {
   PublishedWorkflowReader,
   PublishedWorkflowV2Projection,
 } from '@pertexo/database/testing';
+import {
+  NodeAttemptConnectionFenceError,
+  NodeAttemptDispatchBindingMismatchError,
+  NodeAttemptOutputInvalidError,
+} from '@pertexo/database/testing';
 import { JOB_NAME, type QueueDelivery } from '@pertexo/queue';
 import { HttpRequestExecutorError } from '@pertexo/integrations/server';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
@@ -26,8 +31,11 @@ const ATTEMPT_ID = '44444444-4444-4444-8444-444444444444';
 const OUTBOX_EVENT_ID = '55555555-5555-4555-8555-555555555555';
 const VERSION_ID = '66666666-6666-4666-8666-666666666666';
 const WORKFLOW_ID = '77777777-7777-4777-8777-777777777777';
+const TRACEPARENT = '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01';
 
-function delivery(): Extract<QueueDelivery, { name: 'execute-node-attempt' }> {
+function delivery(
+  traceparent?: string,
+): Extract<QueueDelivery, { name: 'execute-node-attempt' }> {
   return {
     name: JOB_NAME.executeNodeAttempt,
     data: {
@@ -37,6 +45,7 @@ function delivery(): Extract<QueueDelivery, { name: 'execute-node-attempt' }> {
       nodeRunId: NODE_RUN_ID,
       attemptId: ATTEMPT_ID,
       outboxEventId: OUTBOX_EVENT_ID,
+      ...(traceparent === undefined ? {} : { traceparent }),
     },
     transport: { attemptsMade: 0, jobId: `outbox-${OUTBOX_EVENT_ID}` },
   };
@@ -79,6 +88,74 @@ function lease(): NodeAttemptLease {
   };
 }
 
+function registryPreparedAttempt(): PreparedNodeAttempt {
+  return {
+    upstreamNodeOutputs: [],
+    execute: async ({ registry, signal }) => {
+      const result = await registry.execute({
+        config: {},
+        definition: { key: 'core.manual', version: 1 },
+        executor: { key: 'core.manual', version: 1 },
+        input: null,
+        signal,
+      });
+      return {
+        runId: RUN_ID,
+        nodeRunId: NODE_RUN_ID,
+        attemptId: ATTEMPT_ID,
+        invocationKey: lease().invocationKey,
+        nodeId: 'manual',
+        kind: result.kind,
+        output: result.output,
+      };
+    },
+  };
+}
+
+function executionStore(
+  overrides: Partial<NodeAttemptRunStore> = {},
+): NodeAttemptRunStore {
+  return {
+    claimDelivery: vi
+      .fn()
+      .mockResolvedValue({ kind: 'claimed', lease: lease() }),
+    close: vi.fn(),
+    complete: vi
+      .fn<NodeAttemptRunStore['complete']>()
+      .mockResolvedValue({ kind: 'committed', outboxEventId: WORKFLOW_ID }),
+    heartbeat: vi.fn(),
+    loadInputs: vi.fn().mockResolvedValue({
+      abortRequested: false,
+      completedNodeOutputs: {},
+      runInput: null,
+    }),
+    markDispatched: vi
+      .fn<NodeAttemptRunStore['markDispatched']>()
+      .mockResolvedValue({ dispatchedAt: new Date() }),
+    ...overrides,
+  };
+}
+
+function executionHandler(runStore: NodeAttemptRunStore) {
+  return createNodeAttemptHandler({
+    engine: { prepare: vi.fn().mockReturnValue(registryPreparedAttempt()) },
+    heartbeatIntervalMillis: 1_000,
+    leaseDurationSeconds: 30,
+    reader: {
+      close: vi.fn(),
+      readForExecution: vi.fn().mockResolvedValue({
+        kind: 'v2_projection',
+        workflowVersion: projection(),
+      }),
+    },
+    registry: {
+      execute: vi.fn().mockResolvedValue({ kind: 'succeeded', output: null }),
+    },
+    runStore,
+    workerId: 'worker-1',
+  });
+}
+
 describe('NodeAttemptHandler', () => {
   it.each([9, 1_000.5, 30_000])(
     'rejects invalid heartbeat interval %s',
@@ -107,7 +184,7 @@ describe('NodeAttemptHandler', () => {
   it('rejects transport identity before claiming durable state', async () => {
     const claimDelivery = vi.fn();
     const handler = createNodeAttemptHandler({
-      engine: { prepare: vi.fn() },
+      engine: { prepare: vi.fn().mockReturnValue(registryPreparedAttempt()) },
       heartbeatIntervalMillis: 1_000,
       leaseDurationSeconds: 30,
       reader: { close: vi.fn(), readForExecution: vi.fn() },
@@ -265,6 +342,54 @@ describe('NodeAttemptHandler', () => {
     ).rejects.toMatchObject({ code: 'wait_resume_output_missing' });
   });
 
+  it('commits a resumed Wait output with its trace context', async () => {
+    const complete = vi
+      .fn<NodeAttemptRunStore['complete']>()
+      .mockResolvedValue({ kind: 'committed', outboxEventId: WORKFLOW_ID });
+    const handler = createNodeAttemptHandler({
+      engine: { prepare: vi.fn().mockReturnValue(registryPreparedAttempt()) },
+      heartbeatIntervalMillis: 1_000,
+      leaseDurationSeconds: 30,
+      reader: {
+        close: vi.fn(),
+        readForExecution: vi.fn().mockResolvedValue({
+          kind: 'v2_projection',
+          workflowVersion: projection(),
+        }),
+      },
+      registry: { execute: vi.fn() },
+      runStore: {
+        claimDelivery: vi.fn().mockResolvedValue({
+          kind: 'claimed',
+          lease: { ...lease(), admissionKind: 'wait_resume' },
+        }),
+        close: vi.fn(),
+        complete,
+        heartbeat: vi.fn(),
+        loadInputs: vi.fn().mockResolvedValue({
+          abortRequested: false,
+          completedNodeOutputs: {},
+          resumeOutput: { resumed: true },
+          runInput: null,
+        }),
+        markDispatched: vi.fn(),
+      },
+      workerId: 'worker-1',
+    });
+
+    await expect(
+      handler.handle(delivery(TRACEPARENT), {
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({ kind: 'committed' });
+    expect(complete).toHaveBeenCalledWith(
+      expect.objectContaining({
+        outcome: { status: 'succeeded', output: { resumed: true } },
+        traceparent: TRACEPARENT,
+      }),
+    );
+  });
+
   it('treats an exact completed delivery as a no-op before loading workflow state', async () => {
     const claimDelivery = vi.fn().mockResolvedValue({ kind: 'duplicate' });
     const store = {
@@ -377,7 +502,9 @@ describe('NodeAttemptHandler', () => {
     });
     const signal = new AbortController().signal;
 
-    await expect(handler.handle(delivery(), { signal })).resolves.toEqual({
+    await expect(
+      handler.handle(delivery(TRACEPARENT), { signal }),
+    ).resolves.toEqual({
       kind: 'committed',
     });
     expect(markDispatched).toHaveBeenCalledOnce();
@@ -537,6 +664,53 @@ describe('NodeAttemptHandler', () => {
   });
 
   it.each([
+    [new NodeAttemptConnectionFenceError(), 'provider_connection_fence_failed'],
+    [
+      new NodeAttemptDispatchBindingMismatchError(),
+      'provider_dispatch_binding_mismatch',
+    ],
+  ] as const)(
+    'maps durable dispatch evidence failures to %s',
+    async (error, code) => {
+      const runStore = executionStore({
+        markDispatched: vi.fn().mockRejectedValue(error),
+      });
+
+      await expect(
+        executionHandler(runStore).handle(delivery(), {
+          signal: new AbortController().signal,
+        }),
+      ).rejects.toMatchObject({ code });
+    },
+  );
+
+  it('converts invalid persisted output to a traced safe failure', async () => {
+    const complete = vi
+      .fn<NodeAttemptRunStore['complete']>()
+      .mockRejectedValueOnce(new NodeAttemptOutputInvalidError())
+      .mockResolvedValueOnce({
+        kind: 'committed',
+        outboxEventId: WORKFLOW_ID,
+      });
+    const runStore = executionStore({ complete });
+
+    await expect(
+      executionHandler(runStore).handle(delivery(TRACEPARENT), {
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({ kind: 'committed' });
+    expect(complete).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        outcome: {
+          status: 'failed',
+          safeErrorCode: 'execution.output_invalid',
+        },
+        traceparent: TRACEPARENT,
+      }),
+    );
+  });
+
+  it.each([
     ['canceled', 'execution.canceled'],
     ['timed_out', 'execution.deadline_exceeded'],
   ] as const)(
@@ -584,7 +758,9 @@ describe('NodeAttemptHandler', () => {
       });
 
       await expect(
-        handler.handle(delivery(), { signal: new AbortController().signal }),
+        handler.handle(delivery(TRACEPARENT), {
+          signal: new AbortController().signal,
+        }),
       ).resolves.toEqual({ kind: 'committed' });
       expect(execute).not.toHaveBeenCalled();
       expect(store.markDispatched).not.toHaveBeenCalled();
@@ -643,7 +819,9 @@ describe('NodeAttemptHandler', () => {
     });
 
     await expect(
-      handler.handle(delivery(), { signal: new AbortController().signal }),
+      handler.handle(delivery(TRACEPARENT), {
+        signal: new AbortController().signal,
+      }),
     ).resolves.toEqual({ kind: 'committed' });
     expect(complete).toHaveBeenCalledOnce();
     expect(complete.mock.calls[0]?.[0]).toMatchObject({
@@ -704,7 +882,9 @@ describe('NodeAttemptHandler', () => {
     });
 
     await expect(
-      handler.handle(delivery(), { signal: new AbortController().signal }),
+      handler.handle(delivery(TRACEPARENT), {
+        signal: new AbortController().signal,
+      }),
     ).resolves.toEqual({ kind: 'committed' });
     expect(complete).toHaveBeenCalledWith(
       expect.objectContaining({

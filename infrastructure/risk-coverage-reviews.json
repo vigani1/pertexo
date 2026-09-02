@@ -3,160 +3,6 @@
   "integrationEvidence": {},
   "reviewGroups": [
     {
-      "cohort": "api",
-      "file": "apps/api/src/platform/http/problem-details.filter.ts",
-      "reviews": [
-        {
-          "branchId": "55",
-          "locationIndex": 0,
-          "branchType": "cond-expr",
-          "line": 313,
-          "column": 7,
-          "sourceFingerprint": "sha256:ba5ec51d07a4ac0e951608704431d59a02b21a4e951acc10505a8dc407c501ee",
-          "classification": "generated",
-          "justification": "TypeScript emits an uncallable fallback while lowering the parameterless Nest Catch decorator; application control flow cannot select it."
-        }
-      ]
-    },
-    {
-      "cohort": "database",
-      "file": "packages/database/src/workspace.ts",
-      "reviews": [
-        {
-          "branchId": "8",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 95,
-          "column": 4,
-          "sourceFingerprint": "sha256:fffaa2ba6fe1e19f0959b5eb3e16d895990998d6f821d56c484235d970f9ff23",
-          "classification": "unreachable",
-          "justification": "The abort listener is registered with once semantics and removed in finally; no asynchronous boundary exists between marking the client released and removing that listener, so it cannot re-enter after release."
-        },
-        {
-          "branchId": "10",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 108,
-          "column": 2,
-          "sourceFingerprint": "sha256:7ede135bb0d2c775f48d97f6aba055192d1e802452e2cfd7ce890e36c044e8eb",
-          "classification": "defensive",
-          "justification": "This closes the narrow abort race after acquisition resolves and before transaction setup resumes; the public abort contract is covered before acquisition, during acquisition, and during active work."
-        },
-        {
-          "branchId": "21",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 186,
-          "column": 4,
-          "sourceFingerprint": "sha256:f16ae90d29e2acb2efc6e5f13668f5d06c7ca6aef89af73d46ac4d2d76eb9df6",
-          "classification": "defensive",
-          "justification": "This closes the event-loop race between abort-listener registration and entering Promise.race; acquisition cancellation and late connection settlement are exercised through the public transaction seam."
-        }
-      ]
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-attempt-handler.ts",
-      "reviews": [
-        {
-          "branchId": "19",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:1114bfd1245f8e4b39be1648817c3ee3cadcdf8bc8c8bf75672c04f3542fd691",
-          "classification": "generated",
-          "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
-        },
-        {
-          "branchId": "21",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:8983a67b00387e375d5f6b960bd3353737bc4db86a535bb8ffb3edb96f9f2e3c",
-          "classification": "generated",
-          "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
-        },
-        {
-          "branchId": "33",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:1a55cc94d74c40fe6c251dd1f7420c061bed4131ee4988ab7076643ee6ffd60c",
-          "classification": "generated",
-          "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
-        },
-        {
-          "branchId": "34",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:5c1ef8a5c9faf5373c29eb4a456ce82849674336764278ba495c8a6e756cb57e",
-          "classification": "generated",
-          "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
-        },
-        {
-          "branchId": "42",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:4a01fff28ac099146bbff5ddecefbb71533fc1f41659df091cb819846984eb71",
-          "classification": "generated",
-          "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
-        },
-        {
-          "branchId": "0",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 123,
-          "column": 4,
-          "sourceFingerprint": "sha256:5c23ecd8a82966d3c2077425c06c736efd04020482ecee527393291e0a2482b1",
-          "classification": "defensive",
-          "justification": "The abort-aware wait rejects immediately when its signal is already aborted, closing the listener-registration race."
-        },
-        {
-          "branchId": "40",
-          "locationIndex": 1,
-          "branchType": "cond-expr",
-          "line": 415,
-          "column": 18,
-          "sourceFingerprint": "sha256:f0628839d2a71529f668303282caba2d2b508d220b3d5792748a9da8b4899146",
-          "classification": "defensive",
-          "justification": "A completed executor result becomes suspended only when the prepared attempt includes a suspension duration; otherwise it succeeds."
-        },
-        {
-          "branchId": "46",
-          "locationIndex": 1,
-          "branchType": "cond-expr",
-          "line": 462,
-          "column": 14,
-          "sourceFingerprint": "sha256:346c2aa718161b5077dd88d91af69ff3dbc33a49c9a50a9311ed0819640c741e",
-          "classification": "defensive",
-          "justification": "A non-Error heartbeat rejection is converted into a stable Error before leaving the handler."
-        }
-      ]
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-runtime-capabilities.ts",
-      "reviews": [
-        {
-          "branchId": "7",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 200,
-          "column": 4,
-          "sourceFingerprint": "sha256:eeaa41071aba0d4b923723eeee6c1daa00f9646150f4641cc1f72b44469c898e",
-          "classification": "defensive",
-          "justification": "A spool write reporting zero or negative progress fails immediately, preventing an infinite artifact-write loop."
-        }
-      ]
-    },
-    {
       "cohort": "workflow-engine",
       "file": "packages/workflow-engine/src/advance-workflow.ts",
       "reviews": [
@@ -1019,6 +865,130 @@
           "sourceFingerprint": "sha256:60f4aabc02d9cd027d3d8f2980d04dea7f75f524b90d240c3a9264ceb530bd8b",
           "classification": "defensive",
           "justification": "Terminal invocation lookup compares an absent iterationPath as the empty root path before applying terminal-status filtering."
+        }
+      ]
+    },
+    {
+      "cohort": "database",
+      "file": "packages/database/src/workspace.ts",
+      "reviews": [
+        {
+          "branchId": "8",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 95,
+          "column": 4,
+          "sourceFingerprint": "sha256:fffaa2ba6fe1e19f0959b5eb3e16d895990998d6f821d56c484235d970f9ff23",
+          "classification": "unreachable",
+          "justification": "The abort listener is registered with once semantics and removed in finally; no asynchronous boundary exists between marking the client released and removing that listener, so it cannot re-enter after release."
+        },
+        {
+          "branchId": "10",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 108,
+          "column": 2,
+          "sourceFingerprint": "sha256:7ede135bb0d2c775f48d97f6aba055192d1e802452e2cfd7ce890e36c044e8eb",
+          "classification": "defensive",
+          "justification": "This closes the narrow abort race after acquisition resolves and before transaction setup resumes; the public abort contract is covered before acquisition, during acquisition, and during active work."
+        },
+        {
+          "branchId": "21",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 186,
+          "column": 4,
+          "sourceFingerprint": "sha256:f16ae90d29e2acb2efc6e5f13668f5d06c7ca6aef89af73d46ac4d2d76eb9df6",
+          "classification": "defensive",
+          "justification": "This closes the event-loop race between abort-listener registration and entering Promise.race; acquisition cancellation and late connection settlement are exercised through the public transaction seam."
+        }
+      ]
+    },
+    {
+      "cohort": "worker",
+      "file": "apps/worker/src/execution/node-attempt-handler.ts",
+      "reviews": [
+        {
+          "branchId": "21",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:8983a67b00387e375d5f6b960bd3353737bc4db86a535bb8ffb3edb96f9f2e3c",
+          "classification": "generated",
+          "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
+        },
+        {
+          "branchId": "34",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:5c1ef8a5c9faf5373c29eb4a456ce82849674336764278ba495c8a6e756cb57e",
+          "classification": "generated",
+          "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
+        },
+        {
+          "branchId": "0",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 123,
+          "column": 4,
+          "sourceFingerprint": "sha256:5c23ecd8a82966d3c2077425c06c736efd04020482ecee527393291e0a2482b1",
+          "classification": "defensive",
+          "justification": "The abort-aware wait rejects immediately when its signal is already aborted, closing the listener-registration race."
+        },
+        {
+          "branchId": "40",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 415,
+          "column": 18,
+          "sourceFingerprint": "sha256:f0628839d2a71529f668303282caba2d2b508d220b3d5792748a9da8b4899146",
+          "classification": "defensive",
+          "justification": "A completed executor result becomes suspended only when the prepared attempt includes a suspension duration; otherwise it succeeds."
+        },
+        {
+          "branchId": "46",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 462,
+          "column": 14,
+          "sourceFingerprint": "sha256:346c2aa718161b5077dd88d91af69ff3dbc33a49c9a50a9311ed0819640c741e",
+          "classification": "defensive",
+          "justification": "A non-Error heartbeat rejection is converted into a stable Error before leaving the handler."
+        }
+      ]
+    },
+    {
+      "cohort": "worker",
+      "file": "apps/worker/src/execution/node-runtime-capabilities.ts",
+      "reviews": [
+        {
+          "branchId": "7",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 200,
+          "column": 4,
+          "sourceFingerprint": "sha256:eeaa41071aba0d4b923723eeee6c1daa00f9646150f4641cc1f72b44469c898e",
+          "classification": "defensive",
+          "justification": "A spool write reporting zero or negative progress fails immediately, preventing an infinite artifact-write loop."
+        }
+      ]
+    },
+    {
+      "cohort": "api",
+      "file": "apps/api/src/platform/http/problem-details.filter.ts",
+      "reviews": [
+        {
+          "branchId": "55",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 313,
+          "column": 7,
+          "sourceFingerprint": "sha256:ba5ec51d07a4ac0e951608704431d59a02b21a4e951acc10505a8dc407c501ee",
+          "classification": "generated",
+          "justification": "TypeScript emits an uncallable fallback while lowering the parameterless Nest Catch decorator; application control flow cannot select it."
         }
       ]
     }
