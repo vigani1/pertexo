@@ -1,9 +1,11 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "reviews": [
     {
       "cohort": "api",
       "file": "apps/api/src/platform/http/problem-details.filter.ts",
+      "branchId": "55",
+      "locationIndex": 0,
       "branchType": "cond-expr",
       "line": 313,
       "column": 7,
@@ -13,6 +15,8 @@
     {
       "cohort": "database",
       "file": "packages/database/src/workspace.ts",
+      "branchId": "8",
+      "locationIndex": 0,
       "branchType": "if",
       "line": 95,
       "column": 4,
@@ -22,6 +26,8 @@
     {
       "cohort": "database",
       "file": "packages/database/src/workspace.ts",
+      "branchId": "10",
+      "locationIndex": 0,
       "branchType": "if",
       "line": 108,
       "column": 2,
@@ -31,6 +37,8 @@
     {
       "cohort": "database",
       "file": "packages/database/src/workspace.ts",
+      "branchId": "21",
+      "locationIndex": 0,
       "branchType": "if",
       "line": 186,
       "column": 4,

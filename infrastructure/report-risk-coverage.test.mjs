@@ -25,6 +25,8 @@ test('reports each uncovered branch location with its risk cohort', () => {
     {
       cohort: 'security',
       file: '/repo/security.ts',
+      branchId: '0',
+      locationIndex: 1,
       branchType: 'if',
       line: 12,
       column: 2,
@@ -82,6 +84,8 @@ test('attaches exact durable reviews and rejects stale review locations', () => 
   const review = {
     cohort: 'api',
     file: 'apps/api/src/generated.ts',
+    branchId: '0',
+    locationIndex: 0,
     branchType: 'cond-expr',
     line: 12,
     column: 4,
@@ -107,4 +111,45 @@ test('attaches exact durable reviews and rejects stale review locations', () => 
       ]),
     /Stale risk-coverage reviews/u,
   );
+});
+
+test('reviews distinct instrumentation branches at the same source location', () => {
+  const reports = new Map([
+    [
+      'worker',
+      {
+        '/repo/apps/worker/src/generated.ts': {
+          branchMap: {
+            7: {
+              type: 'branch',
+              locations: [{ start: { line: 0, column: 0 } }],
+            },
+            8: {
+              type: 'branch',
+              locations: [{ start: { line: 0, column: 0 } }],
+            },
+          },
+          b: { 7: [0], 8: [0] },
+        },
+      },
+    ],
+  ]);
+  const sharedReview = {
+    cohort: 'worker',
+    file: 'apps/worker/src/generated.ts',
+    branchType: 'branch',
+    line: 0,
+    column: 0,
+    locationIndex: 0,
+    classification: 'generated',
+    justification: 'V8 emitted this branch without a source-level decision.',
+  };
+
+  const report = createRiskCoverageReport(reports, '/repo', new Date(0), [
+    { ...sharedReview, branchId: '7' },
+    { ...sharedReview, branchId: '8' },
+  ]);
+
+  assert.equal(report.classification.reviewedCount, 2);
+  assert.equal(report.classification.unreviewedCount, 0);
 });
