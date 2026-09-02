@@ -35,7 +35,7 @@ tests. The exact report schema and validator already live under
 
 ## Current engineering remediation
 
-Audited implementation head: `eb2cd1d317b00d20c9f1ca2a44411341cc337cb6`
+Audited implementation head: `e9aa0f2a8dcb34502a4b9e47b9e993cc03f079ff`
 
 The 2026-09-01 audit refresh is implemented at fixed ancestor `0865633` and
 merged to `main` through pull request #7. It
@@ -57,8 +57,10 @@ The subsequent evidence correction structurally parses workflow YAML, fails
 closed on dynamic or file-based Node selectors, and binds each selector to its
 exact `setup-node` step, including case-insensitive GitHub repository identity
 matching. The CI action pins now use immutable v6 releases that declare Node
-24. Documentation CI now structurally validates local targets and anchors plus
-the shared audited implementation SHA. Risk coverage now reports 23 exact
+24. The repository documentation command now structurally validates local
+targets and anchors plus the shared audited implementation SHA, but protected
+CI does not yet invoke that command; the audit records this open C-12 gap. Risk
+coverage now reports 23 exact
 selected files with repository-relative paths, 317 explicitly unreviewed sites,
 and one durable compiler-generated review that fails closed if it becomes
 stale. Critical API boundary coverage is 99.64% branches after adding negative
