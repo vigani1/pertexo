@@ -4674,7 +4674,7 @@ Verification at implementation head `9e4263794715d273e8660c0dd4efa67c5032e940`:
 No Phase 7 completion box changes in this documentation-only audit. The current
 P1 findings and the existing live-production checklist remain release blockers.
 
-## Current whole-repository audit — implementation tree `4d3c24f`
+## Current whole-repository audit — implementation tree `6ca7eba`
 
 Status: **Repository remediation complete; external production/control evidence
 remains open**
@@ -4762,7 +4762,7 @@ judgments with documented arithmetic, not industry percentiles or claims that a
 particular file size, package count, or coverage percentage is universally
 correct.
 
-Verification for implementation tree `4d3c24f10a8b501fb0f0f9b5afdf7a650a5d9125`
+Verification for implementation tree `6ca7ebaae1d4628d3e6abb5484396552cb12b726`
 and its audit publication branch:
 
 - `pnpm docs:check` validated 25 repository-local links across 49 Markdown

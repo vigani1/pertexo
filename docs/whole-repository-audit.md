@@ -2,7 +2,7 @@
 
 Recorded: 2026-09-03
 
-Audited implementation tree: `4d3c24f10a8b501fb0f0f9b5afdf7a650a5d9125`
+Audited implementation tree: `6ca7ebaae1d4628d3e6abb5484396552cb12b726`
 
 Status: current findings, remediation state, and remaining external evidence
 
@@ -193,7 +193,7 @@ Phase 7 criteria.
 
 ## 4. Evidence checked for this implementation and publication
 
-- On this publication branch at audited implementation tree `4d3c24f`,
+- On this publication branch at audited implementation tree `6ca7eba`,
   `pnpm check` passed formatting, documentation validation, runtime
   compatibility, build, ESLint,
   complexity, generated contracts, TypeScript, and 1,529 unit tests across all
