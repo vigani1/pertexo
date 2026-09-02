@@ -186,9 +186,9 @@ Phase 7 criteria.
   branch coverage. The generated report names the 23 exact selected files and
   records 317 uncovered branch sites as unreviewed and one exact reviewed
   compiler-generated branch; it makes no generated risk classification.
-- The configured real-service matrix passed 5 artifact-store, 320 database, 22
-  worker, and 15 API integration tests. Provider-specific skips remained
-  explicit.
+- The configured real-service matrix passed 5 artifact-store, 320 database, 21
+  worker, and 14 API integration tests. The 3 artifact-store, 1 worker, and 2
+  API provider-specific skips remained explicit.
 - `pnpm security:audit`: no known production dependency vulnerability.
 - `pnpm deployment:check`, `pnpm images:check`, and
   `pnpm exercise:check`: passed.
