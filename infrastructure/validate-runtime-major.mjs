@@ -2,6 +2,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import console from 'node:console';
 import process from 'node:process';
 import { URL, pathToFileURL } from 'node:url';
+import { parse } from 'yaml';
 
 function requiredMajor(value, pattern, label) {
   const match = pattern.exec(value);
@@ -11,94 +12,50 @@ function requiredMajor(value, pattern, label) {
   return Number(match[1]);
 }
 
-function leadingSpaces(line) {
-  return /^ */u.exec(line)?.[0].length ?? 0;
+function isRecord(value) {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function setupNodeStepRanges(file, lines) {
-  const ranges = [];
-  for (const [usesIndex, line] of lines.entries()) {
-    const uses = /^( *)(-\s*)?uses:\s*actions\/setup-node@/u.exec(line);
-    if (uses === null) continue;
-
-    const usesIndent = uses[1].length;
-    let stepStart = uses[2] === undefined ? -1 : usesIndex;
-    if (stepStart === -1) {
-      for (let index = usesIndex - 1; index >= 0; index -= 1) {
-        const item = /^( *)-\s+/u.exec(lines[index]);
-        if (item !== null && item[1].length < usesIndent) {
-          stepStart = index;
-          break;
-        }
-      }
+function parseWorkflow(file, contents) {
+  try {
+    const workflow = parse(contents);
+    if (!isRecord(workflow)) {
+      throw new Error('workflow root must be a mapping');
     }
-    if (stepStart === -1) {
-      throw new Error(`${file} setup-node must be declared in a workflow step`);
-    }
-
-    const stepIndent = leadingSpaces(lines[stepStart]);
-    let stepEnd = lines.length;
-    for (let index = stepStart + 1; index < lines.length; index += 1) {
-      const item = /^( *)-\s+/u.exec(lines[index]);
-      if (item !== null && item[1].length === stepIndent) {
-        stepEnd = index;
-        break;
-      }
-    }
-    ranges.push({ stepStart, stepEnd });
+    return workflow;
+  } catch (error) {
+    throw new Error(`${file} must contain valid workflow YAML`, {
+      cause: error,
+    });
   }
-  return ranges;
 }
 
-function setupNodeMajor(file, lines, { stepStart, stepEnd }) {
-  let withIndex;
-  let withIndent;
-  for (let index = stepStart; index < stepEnd; index += 1) {
-    if (/^\s*with\s*:\s*(?:#.*)?$/u.test(lines[index])) {
-      withIndex = index;
-      withIndent = leadingSpaces(lines[index]);
-      break;
-    }
+function workflowSteps(workflow) {
+  if (!isRecord(workflow.jobs)) return [];
+  return Object.values(workflow.jobs).flatMap((job) =>
+    isRecord(job) && Array.isArray(job.steps) ? job.steps : [],
+  );
+}
+
+function setupNodeMajor(file, step) {
+  if (!isRecord(step.with)) {
+    throw new Error(
+      `${file} must give each setup-node step one literal selector`,
+    );
   }
-  if (withIndex === undefined || withIndent === undefined) {
+  if (Object.hasOwn(step.with, 'node-version-file')) {
+    throw new Error(
+      `${file} node-version-file is unsupported; CI must declare a literal Node major`,
+    );
+  }
+  if (!Object.hasOwn(step.with, 'node-version')) {
     throw new Error(
       `${file} must give each setup-node step one literal selector`,
     );
   }
 
-  let selector;
-  for (let index = withIndex + 1; index < stepEnd; index += 1) {
-    const line = lines[index];
-    if (/^\s*(?:#.*)?$/u.test(line)) continue;
-    if (leadingSpaces(line) <= withIndent) break;
-    if (/^\s*node-version-file\s*:/u.test(line)) {
-      throw new Error(
-        `${file} node-version-file is unsupported; CI must declare a literal Node major`,
-      );
-    }
-    const candidate = /^\s*node-version\s*:\s*(.*?)\s*$/u.exec(line)?.[1];
-    if (candidate !== undefined) {
-      if (selector !== undefined) {
-        throw new Error(
-          `${file} must give each setup-node step one literal selector`,
-        );
-      }
-      selector = candidate;
-    }
-  }
-  if (selector === undefined) {
-    throw new Error(
-      `${file} must give each setup-node step one literal selector`,
-    );
-  }
-
-  const withoutComment = selector.replace(/\s+#.*$/u, '').trim();
-  const unquoted = (
-    /^(['"]).*\1$/u.test(withoutComment)
-      ? withoutComment.slice(1, -1)
-      : withoutComment
-  ).trim();
-  const match = /^(\d+)(?:\.\d+(?:\.\d+)?)?$/u.exec(unquoted);
+  const selector = step.with['node-version'];
+  const match = /^(\d+)(?:\.\d+(?:\.\d+)?)?$/u.exec(String(selector));
   if (match === null) {
     throw new Error(`${file} setup-node must use a literal Node major`);
   }
@@ -106,10 +63,15 @@ function setupNodeMajor(file, lines, { stepStart, stepEnd }) {
 }
 
 function workflowNodeMajors(file, contents) {
-  const lines = contents.split('\n');
-  return setupNodeStepRanges(file, lines).map((range) =>
-    setupNodeMajor(file, lines, range),
-  );
+  const workflow = parseWorkflow(file, contents);
+  return workflowSteps(workflow)
+    .filter(
+      (step) =>
+        isRecord(step) &&
+        typeof step.uses === 'string' &&
+        step.uses.startsWith('actions/setup-node@'),
+    )
+    .map((step) => setupNodeMajor(file, step));
 }
 
 export function validateRuntimeMajorSurfaces({

@@ -11,12 +11,30 @@ function setupNodeStep(selector) {
   );
 }
 
+function workflow(...steps) {
+  const indentedSteps = steps
+    .join('')
+    .trimEnd()
+    .split('\n')
+    .map((line) => `      ${line}`)
+    .join('\n');
+  return (
+    'jobs:\n' +
+    '  test:\n' +
+    '    runs-on: ubuntu-latest\n' +
+    '    steps:\n' +
+    `${indentedSteps}\n`
+  );
+}
+
 const validSurfaces = {
   packageJson: {
     engines: { node: '>=24.0.0 <25.0.0' },
     devDependencies: { '@types/node': '24.13.3' },
   },
-  workflows: new Map([['ci.yml', setupNodeStep('24') + setupNodeStep("'24'")]]),
+  workflows: new Map([
+    ['ci.yml', workflow(setupNodeStep('24'), setupNodeStep("'24'"))],
+  ]),
   dockerfile:
     'FROM node:24.18.1-bookworm-slim@sha256:abc AS build\n' +
     'FROM node:24.18.1-bookworm-slim@sha256:def AS runtime\n',
@@ -36,7 +54,10 @@ for (const [surface, update] of [
       },
     },
   ],
-  ['CI setup-node', { workflows: new Map([['ci.yml', setupNodeStep('25')]]) }],
+  [
+    'CI setup-node',
+    { workflows: new Map([['ci.yml', workflow(setupNodeStep('25'))]]) },
+  ],
   [
     'container base image',
     { dockerfile: 'FROM node:25.1.0-bookworm-slim@sha256:abc AS runtime\n' },
@@ -72,11 +93,69 @@ test('rejects a dynamic setup-node selector even when another literal matches', 
         workflows: new Map([
           [
             'ci.yml',
-            setupNodeStep('24') + setupNodeStep('${{ matrix.node-version }}'),
+            workflow(
+              setupNodeStep('24'),
+              setupNodeStep('${{ matrix.node-version }}'),
+            ),
           ],
         ]),
       }),
     /literal Node major/,
+  );
+});
+
+test('rejects a drifting selector on a quoted setup-node action', () => {
+  assert.throws(
+    () =>
+      validateRuntimeMajorSurfaces({
+        ...validSurfaces,
+        workflows: new Map([
+          [
+            'ci.yml',
+            workflow(
+              setupNodeStep('24'),
+              '- uses: "actions/setup-node@v6"\n' +
+                '  with:\n' +
+                '    node-version: 25\n',
+            ),
+          ],
+        ]),
+      }),
+    /Node 24/,
+  );
+});
+
+test('ignores setup-node-like text inside a run block scalar', () => {
+  assert.equal(
+    validateRuntimeMajorSurfaces({
+      ...validSurfaces,
+      workflows: new Map([
+        [
+          'ci.yml',
+          workflow(
+            setupNodeStep('24'),
+            '- run: |\n' +
+              '    echo preparing fixture\n' +
+              '    uses: actions/setup-node@v6\n',
+          ),
+        ],
+      ]),
+    }),
+    24,
+  );
+});
+
+test('rejects syntactically invalid workflow YAML', () => {
+  assert.throws(
+    () =>
+      validateRuntimeMajorSurfaces({
+        ...validSurfaces,
+        workflows: new Map([
+          ...validSurfaces.workflows,
+          ['invalid.yml', 'jobs:\n  test: [\n'],
+        ]),
+      }),
+    /valid workflow YAML/,
   );
 });
 
@@ -88,10 +167,12 @@ test('rejects node-version-file selectors that the gate cannot resolve', () => {
         workflows: new Map([
           [
             'ci.yml',
-            '- uses: actions/setup-node@v6\n' +
-              '  with:\n' +
-              '    node-version: 24\n' +
-              '    node-version-file: .nvmrc\n',
+            workflow(
+              '- uses: actions/setup-node@v6\n' +
+                '  with:\n' +
+                '    node-version: 24\n' +
+                '    node-version-file: .nvmrc\n',
+            ),
           ],
         ]),
       }),
@@ -107,10 +188,7 @@ test('rejects a setup-node step without a selector beside a valid step', () => {
         workflows: new Map([
           [
             'ci.yml',
-            '- uses: actions/setup-node@v6\n' +
-              '  with:\n' +
-              '    node-version: 24\n' +
-              '- uses: actions/setup-node@v6\n',
+            workflow(setupNodeStep('24'), '- uses: actions/setup-node@v6\n'),
           ],
         ]),
       }),
@@ -128,8 +206,7 @@ test('rejects a setup-node step masked by an unrelated node-version key', () => 
             'ci.yml',
             'env:\n' +
               '  node-version: 24\n' +
-              'steps:\n' +
-              '  - uses: actions/setup-node@v6\n',
+              workflow('- uses: actions/setup-node@v6\n'),
           ],
         ]),
       }),
@@ -145,11 +222,13 @@ test('rejects a setup-node step masked by a sibling node-version key', () => {
         workflows: new Map([
           [
             'ci.yml',
-            '- uses: actions/setup-node@v6\n' +
-              '  with:\n' +
-              '    cache: pnpm\n' +
-              '  env:\n' +
-              '    node-version: 24\n',
+            workflow(
+              '- uses: actions/setup-node@v6\n' +
+                '  with:\n' +
+                '    cache: pnpm\n' +
+                '  env:\n' +
+                '    node-version: 24\n',
+            ),
           ],
         ]),
       }),
