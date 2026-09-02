@@ -12,10 +12,10 @@ export default defineConfig({
       // gate covers the security-critical shared transaction engine.
       include: ['src/workspace.ts'],
       thresholds: {
-        branches: 61.5,
-        functions: 75,
-        lines: 85.3,
-        statements: 79,
+        branches: 94,
+        functions: 100,
+        lines: 97.5,
+        statements: 96,
       },
     },
   },

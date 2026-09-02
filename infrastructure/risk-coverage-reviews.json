@@ -9,6 +9,33 @@
       "column": 7,
       "classification": "generated",
       "justification": "TypeScript emits an uncallable fallback while lowering the parameterless Nest Catch decorator; application control flow cannot select it."
+    },
+    {
+      "cohort": "database",
+      "file": "packages/database/src/workspace.ts",
+      "branchType": "if",
+      "line": 95,
+      "column": 4,
+      "classification": "unreachable",
+      "justification": "The abort listener is registered with once semantics and removed in finally; no asynchronous boundary exists between marking the client released and removing that listener, so it cannot re-enter after release."
+    },
+    {
+      "cohort": "database",
+      "file": "packages/database/src/workspace.ts",
+      "branchType": "if",
+      "line": 108,
+      "column": 2,
+      "classification": "defensive",
+      "justification": "This closes the narrow abort race after acquisition resolves and before transaction setup resumes; the public abort contract is covered before acquisition, during acquisition, and during active work."
+    },
+    {
+      "cohort": "database",
+      "file": "packages/database/src/workspace.ts",
+      "branchType": "if",
+      "line": 186,
+      "column": 4,
+      "classification": "defensive",
+      "justification": "This closes the event-loop race between abort-listener registration and entering Promise.race; acquisition cancellation and late connection settlement are exercised through the public transaction seam."
     }
   ]
 }
