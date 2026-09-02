@@ -28,7 +28,7 @@
           "branchType": "cond-expr",
           "line": 92,
           "column": 12,
-          "sourceFingerprint": "sha256:b38b435123331cc1e27b2eecc2c3e08767c6945adbf6c7b53b2daf5258831c2b",
+          "sourceFingerprint": "sha256:ec2f4e2818fedb2ac495c7d38f4e2fd51f86013b33004e783b2b9c828012317c",
           "classification": "defensive",
           "justification": "Legacy checkpoints may carry the root join id instead of its canonical invocation key; this fallback normalizes only that validated root-compatible representation."
         }
@@ -44,7 +44,7 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:fd4b1c2422da1ee5368653b0d28efe7bb84a4f0c58c2b1e1fad6167cd4c224ba",
+          "sourceFingerprint": "sha256:886abe631956c59edfd9b3f00dd2febb093c57078a6b3d8e8689887763b0d857",
           "classification": "generated",
           "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
         },
@@ -54,7 +54,7 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:2e52b883d27b3e3425fd3d94187e64952cc1e2a0c512f37a19d8b68a41f1aea7",
+          "sourceFingerprint": "sha256:fc45ffe554e1a9904dd64247756b9d0cbfc3f1dfacf27902d8f9f27d44c982f8",
           "classification": "generated",
           "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
         },
@@ -64,7 +64,7 @@
           "branchType": "if",
           "line": 140,
           "column": 4,
-          "sourceFingerprint": "sha256:5cc5a1f186a29fedb64541c2520092df52f3cf43f15c1368576b766ad1c75641",
+          "sourceFingerprint": "sha256:25001e2c3b16a98d3d11b37482f97f38e7775d119f9e05de3b1a2f2aa4e1ba7c",
           "classification": "unreachable",
           "justification": "The synchronous traversal proves the stack is non-empty immediately before pop, with no intervening mutation or asynchronous boundary."
         },
@@ -74,7 +74,7 @@
           "branchType": "binary-expr",
           "line": 543,
           "column": 32,
-          "sourceFingerprint": "sha256:b72930b8345440f2b0e5c3320697031ce0a934022c3a546234a94508bb7e6fbf",
+          "sourceFingerprint": "sha256:b199718f29dd88ea28850f264b3a0c4a15c11fce90499a43363344193921c76b",
           "classification": "unreachable",
           "justification": "Positive integer count-policy validation has already established that count is present."
         },
@@ -84,7 +84,7 @@
           "branchType": "cond-expr",
           "line": 602,
           "column": 14,
-          "sourceFingerprint": "sha256:f1ab6b1fa3e07be02cdd3816ad1c1c0f6a540c262e4c805f208a901850e5dde0",
+          "sourceFingerprint": "sha256:603dad40bbed7f327ebe9e1a1bf608cbfc80799f92f3a064fdb86f5b80201840",
           "classification": "unreachable",
           "justification": "Policy parsing has already restricted kind to all, any, or count, so the final fallback cannot be selected."
         },
@@ -94,7 +94,7 @@
           "branchType": "cond-expr",
           "line": 641,
           "column": 22,
-          "sourceFingerprint": "sha256:d52bea8fe3af01c979272d9cc4dfb9743e53ab4ebbcf2c4238992f74ef1c11a6",
+          "sourceFingerprint": "sha256:732e056337436bfbd775a457f711fa34d256b8662fb6088b3a6412eaa6caf876",
           "classification": "unreachable",
           "justification": "Policy parsing has already restricted kind to all, any, or count, so the final fallback cannot be selected."
         },
@@ -104,7 +104,7 @@
           "branchType": "if",
           "line": 883,
           "column": 2,
-          "sourceFingerprint": "sha256:f17ee43a59920ead4abcd663bdd6d89bf85a3bcd724d9c76a8c3e20fd9f8f2da",
+          "sourceFingerprint": "sha256:4bc55de71c8cf9348cdb5d6f87950070ae9d2edce1cb125011fd8c9a54a35492",
           "classification": "unreachable",
           "justification": "The public dispatcher enters the V1 parser only after proving schemaVersion is exactly 1."
         },
@@ -114,7 +114,7 @@
           "branchType": "binary-expr",
           "line": 1018,
           "column": 12,
-          "sourceFingerprint": "sha256:4d296dbb34b0b270e6395c5317e7840ee2ecd2715e207ac5be8979058967140b",
+          "sourceFingerprint": "sha256:e0a82e973936c3c242cfad7622ec43803af058842f859b1c57d7c758b8bd2865",
           "classification": "unreachable",
           "justification": "Join parsing always materializes joinInvocationKey from the explicit key or joinId before consistency validation."
         },
@@ -124,7 +124,7 @@
           "branchType": "binary-expr",
           "line": 1205,
           "column": 6,
-          "sourceFingerprint": "sha256:7bd3963045de260fd3b12bf993f51905cc5e543c95277a2d508fc4d6025e16f8",
+          "sourceFingerprint": "sha256:81a5efb90fe6ffbbc64fe89da216637e7abdfa91ff634cdc8487061bd5145721",
           "classification": "unreachable",
           "justification": "Equal invocation keys identify the same node; duplicate selections are coalesced or rejected before sorting."
         },
@@ -134,7 +134,7 @@
           "branchType": "cond-expr",
           "line": 1295,
           "column": 31,
-          "sourceFingerprint": "sha256:f9e460e9c3e9ba391535df0bb201dc350ee7727b9020c3999901b5053914b69f",
+          "sourceFingerprint": "sha256:6ff8067e3be8cce00a01a3a0bc0d6be1e8b39259aafee94f8037e872e51c1d4c",
           "classification": "defensive",
           "justification": "When checkpoint parsing throws an Error, this branch preserves its sanitized message in the stable checkpoint_invalid boundary."
         },
@@ -144,7 +144,7 @@
           "branchType": "cond-expr",
           "line": 1295,
           "column": 47,
-          "sourceFingerprint": "sha256:d4896f65dc31d2ee72ab19d2d44776f36d558e51bbf408cb7c66b91c07ded0cd",
+          "sourceFingerprint": "sha256:b4a9d0a060754134a8502bf3bf2a04ffe29e934dc8749f6c796ba776ab135270",
           "classification": "defensive",
           "justification": "When a dependency throws a non-Error value, this fallback prevents it escaping and emits the stable checkpoint parsing failed message."
         }
@@ -160,7 +160,7 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:d889ed84f4bbffcbcca98eb6b6c854c83692dec282c5141a9b5d0f2b45f9b83d",
+          "sourceFingerprint": "sha256:aadb3b6ea1675724e099a7594e7e954e93b3cf6dad28098aa8883d6fe2c70c82",
           "classification": "generated",
           "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
         },
@@ -170,7 +170,7 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:d889ed84f4bbffcbcca98eb6b6c854c83692dec282c5141a9b5d0f2b45f9b83d",
+          "sourceFingerprint": "sha256:aadb3b6ea1675724e099a7594e7e954e93b3cf6dad28098aa8883d6fe2c70c82",
           "classification": "generated",
           "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
         },
@@ -180,7 +180,7 @@
           "branchType": "if",
           "line": 32,
           "column": 4,
-          "sourceFingerprint": "sha256:e41e5040a524bafc9228d1a8336ec4ab27796a8393b33608ca1859073f6f616d",
+          "sourceFingerprint": "sha256:ec9a120d4a9fa99f7a785b7c101deba22ceb567562a9b273ca39d5f0c9ba24ec",
           "classification": "defensive",
           "justification": "Graph traversal skips nodes without a structured body; nested lookup success and not-found behavior are covered without manufacturing a body for leaf nodes."
         },
@@ -190,7 +190,7 @@
           "branchType": "if",
           "line": 64,
           "column": 2,
-          "sourceFingerprint": "sha256:80df0c3b92f8433169b013d624c221f49116e3946ec8a3fd6f17c28de914b38d",
+          "sourceFingerprint": "sha256:a69a835e3092ef6d452afc185cf352ec0661158d4f5acd79307fd14522ab5625",
           "classification": "defensive",
           "justification": "This rejects an attempt whose iteration ancestry length or node ids differ from the executable graph ancestry before any input is resolved."
         },
@@ -200,7 +200,7 @@
           "branchType": "binary-expr",
           "line": 122,
           "column": 4,
-          "sourceFingerprint": "sha256:f7d792b2b1f829984cafc852f8ebc43155c2a38956044e26870edc39742e46c4",
+          "sourceFingerprint": "sha256:14a41b3890be9a747c18ce255d4937acd7fbf49a68eac8a699800bf81e803a9a",
           "classification": "defensive",
           "justification": "The optional nearest branch must exist before its node and output port can justify removing one branch scope from an upstream descriptor."
         },
@@ -210,7 +210,7 @@
           "branchType": "cond-expr",
           "line": 123,
           "column": 8,
-          "sourceFingerprint": "sha256:b9e308ae04d0a3970a220bb62b2c2c73c5ab875406c0f77840aef3aee40f8bcf",
+          "sourceFingerprint": "sha256:0b8bc3d13326802e05f5e2fd27eb95ad5e8c188c546c3299999d775f78ac15fe",
           "classification": "defensive",
           "justification": "Only an upstream descriptor sourced from the nearest matching branch uses its parent scope; all other descriptors retain the complete branch path."
         },
@@ -220,7 +220,7 @@
           "branchType": "if",
           "line": 151,
           "column": 2,
-          "sourceFingerprint": "sha256:a3f50be9fc23dbb556a925123b7097469e589c643faa076c1cbed149044cd025",
+          "sourceFingerprint": "sha256:8b0d456e48d96a3b1a9991873d1350fa59596cf7531cdcaf9ac48c195cba1e82",
           "classification": "unreachable",
           "justification": "Canonical JSON rejects undefined and exactKeys requires the descriptor value member."
         },
@@ -230,7 +230,7 @@
           "branchType": "if",
           "line": 178,
           "column": 2,
-          "sourceFingerprint": "sha256:5735aa0bf7968043eff690b5b8d2393f8b1459b335ec43265c8814f70bc5b77b",
+          "sourceFingerprint": "sha256:7935cc245440e0a9f4f3aecc63e8879602f4ea27a5b95c25a91b017135054ce3",
           "classification": "defensive",
           "justification": "Iteration-scoped attempts cannot fall back to the root input object when no explicit descriptor resolves, preventing cross-iteration input leakage."
         },
@@ -240,7 +240,7 @@
           "branchType": "if",
           "line": 230,
           "column": 2,
-          "sourceFingerprint": "sha256:ffb0c3fc52ac87e65c377430b372eb5dc01333a2477348de6ecd3fef6de348f5",
+          "sourceFingerprint": "sha256:d9793db0f6bb75a0969c54880bd8e4e119ae119fac2285c9abaf9ba25139eb54",
           "classification": "unreachable",
           "justification": "Normalized JSON arrays are dense and the preceding proof bounds the ordinal below array length."
         },
@@ -250,7 +250,7 @@
           "branchType": "cond-expr",
           "line": 247,
           "column": 31,
-          "sourceFingerprint": "sha256:d6fe66e8bf0ba46cde28aa30cd0d08905cb1909105c65c66359e42ba00677701",
+          "sourceFingerprint": "sha256:6701f4175666dae6e37149c11bdb590bc2292be46521ebe5e4027be2e970903e",
           "classification": "defensive",
           "justification": "An Error thrown while validating attempt input contributes its sanitized message to the stable attempt_invalid operation error."
         },
@@ -260,7 +260,7 @@
           "branchType": "cond-expr",
           "line": 247,
           "column": 47,
-          "sourceFingerprint": "sha256:7880a6970c0c49a49f141f4d44bb5d7e3a7a9e3c14e6958f8170ed40b6cd535d",
+          "sourceFingerprint": "sha256:f004286ec297d19aec64fe45df560f4ed7a51704539ce3b80796225dd901532f",
           "classification": "defensive",
           "justification": "A non-Error thrown while validating attempt input is converted to the stable attempt input is invalid fallback instead of escaping."
         },
@@ -270,7 +270,7 @@
           "branchType": "if",
           "line": 267,
           "column": 2,
-          "sourceFingerprint": "sha256:cdd0cb460f7874562f52b700dbb0a7bb1eccfae26f849995bb2bba32d2491f40",
+          "sourceFingerprint": "sha256:b80a64cf232bf066997f85fbe2944d9315bb521322ee386d0ea0050f3cf95f5c",
           "classification": "unreachable",
           "justification": "The node was obtained from executableNodes over the same recursively traversed graph immediately beforehand."
         }
@@ -286,7 +286,7 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:b91e7930c7583a87e5c53ae84e9852e338df3673f3f5c797032d6f4c6fe611ff",
+          "sourceFingerprint": "sha256:91a4f41f0dcf5dc00e822b4d834b0e66aed021dd5d9b21bc89fcdd0c88cdfa20",
           "classification": "generated",
           "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
         },
@@ -296,7 +296,7 @@
           "branchType": "binary-expr",
           "line": 117,
           "column": 71,
-          "sourceFingerprint": "sha256:44f67d2883ed24b790fdde92e52b55ea1f2522d0956db6e7862f85f693dc7ad1",
+          "sourceFingerprint": "sha256:3acdb7757e4ed094b070a83f7a3a2ebddaea7d73f13c7716bf4967c72b4cbf81",
           "classification": "unreachable",
           "justification": "Recursive scheduler projection always materializes structuredBodies as an array."
         },
@@ -306,7 +306,7 @@
           "branchType": "cond-expr",
           "line": 148,
           "column": 10,
-          "sourceFingerprint": "sha256:96e45a1f8b5b2175c1b98f9c4bde8e5bf7426af2741787f517f2d113bc9350b7",
+          "sourceFingerprint": "sha256:337362b1b82016b9b8a2413f259b691c2de3e8fbe0f1d4ca0aae05a1a19c6dfd",
           "classification": "defensive",
           "justification": "A checkpoint join whose paired Parallel id is absent or non-string resolves to no executable Parallel and is rejected by the following identity guard."
         },
@@ -316,7 +316,7 @@
           "branchType": "cond-expr",
           "line": 151,
           "column": 10,
-          "sourceFingerprint": "sha256:eb045d78d273107348b0300c01d29b7552d622abbc6faf81b3ec55359aa9950c",
+          "sourceFingerprint": "sha256:ae7fd32f9ed6d96f9c1afeaf100fcd7c4069c3e49c06c2e7568af842167990b9",
           "classification": "defensive",
           "justification": "A missing paired Parallel produces no configured branch-id set, allowing the following identity guard to fail closed."
         },
@@ -326,7 +326,7 @@
           "branchType": "if",
           "line": 153,
           "column": 4,
-          "sourceFingerprint": "sha256:0eb9c0947a6748bf31d074a6103467938cc09157773a6d797a9b3a032b226402",
+          "sourceFingerprint": "sha256:d4b0a882e957e16263772fc0fcf46c244f3352413b4960f6ff8d6fefbc7d685f",
           "classification": "defensive",
           "justification": "This rejects a checkpoint join when its paired Parallel is absent or has no valid configured output-port set."
         },
@@ -336,7 +336,7 @@
           "branchType": "if",
           "line": 158,
           "column": 4,
-          "sourceFingerprint": "sha256:d3bea83ee54bf084c19e185e099bed1ae81369f09a6c561da1803d9fc2a76994",
+          "sourceFingerprint": "sha256:f89d05f959b3e92b3e5daf0da3e9158ba9935dfcc77eac09c4a745b544fd1d88",
           "classification": "defensive",
           "justification": "This rejects a join ledger whose size or branch identifiers disagree with the paired Parallel definition."
         },
@@ -346,7 +346,7 @@
           "branchType": "binary-expr",
           "line": 169,
           "column": 38,
-          "sourceFingerprint": "sha256:6fb9edb4d6d391abd06d8baf343433a5a6b4ab693dfaad0317179222c81a57c3",
+          "sourceFingerprint": "sha256:ea52fc2bd514a0bb9cd45fe9d293926776f33a37aeb42573f74ba9b8658e792d",
           "classification": "defensive",
           "justification": "A legacy join without branchPath is normalized to the empty root scope solely for canonical invocation-key comparison."
         },
@@ -356,7 +356,7 @@
           "branchType": "cond-expr",
           "line": 173,
           "column": 10,
-          "sourceFingerprint": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "sourceFingerprint": "sha256:ca6fce5021782fe070c1734bf7941a7d1af4f502ac26d5a0d71b6b8017a80238",
           "classification": "defensive",
           "justification": "The canonical join-key input omits iterationPath only when the checkpoint join is not iteration scoped."
         },
@@ -366,7 +366,7 @@
           "branchType": "if",
           "line": 176,
           "column": 4,
-          "sourceFingerprint": "sha256:93b5d482da4e5ed7b3af09f0a74a20fd9a4f8d89e8eb75b6220f60cc19edc8cd",
+          "sourceFingerprint": "sha256:8e6c93f32e064e32926f995cfc33a6a023a886e364fc2fb6952248429ac093d5",
           "classification": "defensive",
           "justification": "This rejects a join invocation key that is neither canonical nor the narrowly accepted legacy root join id."
         },
@@ -376,7 +376,7 @@
           "branchType": "binary-expr",
           "line": 178,
           "column": 6,
-          "sourceFingerprint": "sha256:2f509d7b11371271d854326518c7c2f680904a03582047878bf3cdac9946ad2b",
+          "sourceFingerprint": "sha256:faa4bf35de3d9e3b5a201046a66e5045b9b28c3eb28c601b58a5203419cdd720",
           "classification": "defensive",
           "justification": "The legacy join-id exception is considered only after the canonical join invocation key comparison fails."
         },
@@ -386,7 +386,7 @@
           "branchType": "binary-expr",
           "line": 179,
           "column": 8,
-          "sourceFingerprint": "sha256:5559515cc8d1a35f15a01e75fe600650d1d542d000cce31bdba261b046a7b39b",
+          "sourceFingerprint": "sha256:20606a986f6d1283cfa3755644de3e06e6615a280efd8db6af198a5eb967a0b9",
           "classification": "defensive",
           "justification": "The legacy root exception requires the stored invocation key to equal the join id."
         },
@@ -396,7 +396,7 @@
           "branchType": "binary-expr",
           "line": 179,
           "column": 40,
-          "sourceFingerprint": "sha256:c83aeecc88358217e06c0baf2f37ff2f56b71a5affb7022573a9ce9a02ffb9a0",
+          "sourceFingerprint": "sha256:a55651f78f6cb14005cc4a785f4212a32dd390c5cdc23bc62dba25156806277b",
           "classification": "defensive",
           "justification": "The legacy root exception requires an absent or empty branch path."
         },
@@ -406,7 +406,7 @@
           "branchType": "binary-expr",
           "line": 180,
           "column": 43,
-          "sourceFingerprint": "sha256:8f50d3cea546e838cc7c140b4ebcdd9855f3ef45585654fd3ae9fb9c0d54af24",
+          "sourceFingerprint": "sha256:7035ebd7869c7ccf8deec9cbb581db674e713762d60d48a60b253029f3af080d",
           "classification": "defensive",
           "justification": "An absent branch path is treated as empty only while checking the legacy root-join exception."
         },
@@ -416,7 +416,7 @@
           "branchType": "binary-expr",
           "line": 181,
           "column": 9,
-          "sourceFingerprint": "sha256:36e039a828528956a2a4e2a56195aa955bcac4a723bb5c90bf79e0b58f1f1dda",
+          "sourceFingerprint": "sha256:5bc71f8f5f4162328ca84eb59780960b5370a4fda3b4d9a83925f741c173ce2a",
           "classification": "defensive",
           "justification": "The legacy root exception also requires an absent or empty iteration path."
         },
@@ -426,7 +426,7 @@
           "branchType": "binary-expr",
           "line": 181,
           "column": 39,
-          "sourceFingerprint": "sha256:2eca9a5c6bfba4b46a051049832b088e7e7c794bf8a7487baf87106b7089da07",
+          "sourceFingerprint": "sha256:7b586d52aa6181a7059861cb504ab615bcdbdc87bd42960fb5b8edd9c5d09b9b",
           "classification": "defensive",
           "justification": "An absent iteration path is treated as empty only while checking the legacy root-join exception."
         },
@@ -436,7 +436,7 @@
           "branchType": "binary-expr",
           "line": 226,
           "column": 73,
-          "sourceFingerprint": "sha256:5cf66bebf1fb0b89cac117a893f10a67a2c1c46c1a4b3eda723fae0c8cf9c008",
+          "sourceFingerprint": "sha256:80cecf52c5765ef0600d8c961d9271437183ba3ffb160d5c35e79f48a398b90a",
           "classification": "unreachable",
           "justification": "This expression runs only while iterating a defined iterationPath, so slicing it cannot need an undefined fallback."
         },
@@ -446,7 +446,7 @@
           "branchType": "binary-expr",
           "line": 235,
           "column": 14,
-          "sourceFingerprint": "sha256:4331573762b09b00921fabe398d8351c9ba316c416d5744a217dc6be128155fd",
+          "sourceFingerprint": "sha256:9fbcde1efe3fdec87b74e12d596e732f8f1a45591532187a63bebf15d47fa19c",
           "classification": "defensive",
           "justification": "A missing checkpoint branch-path element fails the optional node-id comparison and prevents an invalid scoped invocation match."
         },
@@ -456,7 +456,7 @@
           "branchType": "binary-expr",
           "line": 236,
           "column": 14,
-          "sourceFingerprint": "sha256:23158286faeef8aa5df31957a6092acf834070e6df5506e67bb99d0846dad545",
+          "sourceFingerprint": "sha256:263a7ddbc1bf7fb5a727c0aaa7ce0eee6f754b91f92bb89899e4af05bf81cb6e",
           "classification": "defensive",
           "justification": "A scoped invocation matches only when both its branch node id and output port equal the requested branch path."
         },
@@ -466,7 +466,7 @@
           "branchType": "if",
           "line": 355,
           "column": 6,
-          "sourceFingerprint": "sha256:22a4691a34a60f309c4e2cb6fccc22cf066a7fe6287ef4ade5701de26ac7c30d",
+          "sourceFingerprint": "sha256:92be537c97cc0132ddc83bcc5df9b80f2ef2370c48d20d4766a061c24475e328",
           "classification": "defensive",
           "justification": "A stale node-failure observation is ignored unless the matching invocation is still running at the same attempt number."
         },
@@ -476,7 +476,7 @@
           "branchType": "if",
           "line": 363,
           "column": 6,
-          "sourceFingerprint": "sha256:906f30b4054dc0eb7171bcb1f2d8337ba0c29e9ebaca569feb4e7c5a0be4d034",
+          "sourceFingerprint": "sha256:d89bd2680012bb32263be2b53bcc2d8ed7da84d85bbdab2dda9e17ff3b84b074",
           "classification": "defensive",
           "justification": "Cancellation or deadline control diverts a running failure into a coordinator-derived terminal outcome before retry policy is considered."
         },
@@ -486,7 +486,7 @@
           "branchType": "cond-expr",
           "line": 368,
           "column": 14,
-          "sourceFingerprint": "sha256:31fcdb65d8dad320bc0671fbc23f113d0942ad4455c97c316399f7e9b0ee13d5",
+          "sourceFingerprint": "sha256:a2be8e7182bb9c4771ba3114c85c1eaf1d4cf365bc1bdc292fd70ee2f71befdf",
           "classification": "defensive",
           "justification": "Possibly dispatched non-safe work becomes outcome_unknown during cancellation or deadline handling."
         },
@@ -496,7 +496,7 @@
           "branchType": "cond-expr",
           "line": 369,
           "column": 14,
-          "sourceFingerprint": "sha256:313100d1eff89b74467b3b0ec278690d0ad990e132c2c427374b6544d70234f4",
+          "sourceFingerprint": "sha256:f37727a18cf91e833b50e66adc706617e9051654dbd7420faa1576b1ea556a1a",
           "classification": "defensive",
           "justification": "When the outcome is knowable, cancellation and deadline select their distinct terminal statuses."
         },
@@ -506,7 +506,7 @@
           "branchType": "cond-expr",
           "line": 370,
           "column": 16,
-          "sourceFingerprint": "sha256:78bcfdb9d539d6ff5da7f8d9e0af31cf88431ffdc14643c602a32c5f10045168",
+          "sourceFingerprint": "sha256:1e091b977b54ccf56ad96bdc6a2d90bde19af2cdd895e713287b12d3f254b36f",
           "classification": "defensive",
           "justification": "A knowable control-terminal failure becomes canceled only when cancellation, rather than deadline expiry, was requested."
         },
@@ -516,7 +516,7 @@
           "branchType": "cond-expr",
           "line": 371,
           "column": 16,
-          "sourceFingerprint": "sha256:4767faa49854f13bb99ed3c02b20069b51f4d1b0c103c87a1d13ce41c775df0a",
+          "sourceFingerprint": "sha256:b5dd82152582218188ece09af68e7f659416971809c2b2c486141d4da60c1e56",
           "classification": "defensive",
           "justification": "A knowable control-terminal failure defaults to timed_out after the cancellation alternative is excluded."
         },
@@ -526,7 +526,7 @@
           "branchType": "cond-expr",
           "line": 421,
           "column": 48,
-          "sourceFingerprint": "sha256:62375429a14244c6b15970d653a3393770be134e3e4d73f8065cde3c1dcfab2d",
+          "sourceFingerprint": "sha256:191e2806d6232caa29042cb22305600a5d9a671c2f643beb18c1fdd1e77d68b0",
           "classification": "defensive",
           "justification": "A retry-policy outcome_unknown decision is preserved; every other exhausted retry decision maps to failed."
         },
@@ -536,7 +536,7 @@
           "branchType": "if",
           "line": 582,
           "column": 4,
-          "sourceFingerprint": "sha256:d16aa7faf03d4ba561cb6bbb31a3820249d72e84ccdd8b129fbab145c411eb0b",
+          "sourceFingerprint": "sha256:ff04e687e301a34ea65ad95563d564648fa6b11e087821f8195475653ee5fb83",
           "classification": "unreachable",
           "justification": "Object.keys enumerates present own keys on an immutable canonical executable mapping."
         },
@@ -546,7 +546,7 @@
           "branchType": "if",
           "line": 605,
           "column": 6,
-          "sourceFingerprint": "sha256:b91e7930c7583a87e5c53ae84e9852e338df3673f3f5c797032d6f4c6fe611ff",
+          "sourceFingerprint": "sha256:44a3cddc4464df2df56c7ed5875b7cf061b6d5b0bc477f57dc4b3a390c2b7c3f",
           "classification": "defensive",
           "justification": "Mapping exceptions are translated at the operation boundary, with abort-like exceptions receiving the distinct attempt_aborted code."
         },
@@ -556,7 +556,7 @@
           "branchType": "binary-expr",
           "line": 605,
           "column": 10,
-          "sourceFingerprint": "sha256:0ad026528db325d26dfe6693bd0712aa869a5762a2f8286d4240b25d14999ed1",
+          "sourceFingerprint": "sha256:389c17d98e6bcbe2bf357937c27b99b8775bf3aba607c3f33707da1fa54e72b3",
           "classification": "defensive",
           "justification": "An already-aborted signal classifies a thrown mapping failure as attempt_aborted even if the dependency did not create an AbortError."
         },
@@ -566,7 +566,7 @@
           "branchType": "binary-expr",
           "line": 605,
           "column": 28,
-          "sourceFingerprint": "sha256:6964c6c2c4a32dd230ff3c3b1eb3908cc54777e690ad61d28f42335e2a3020c2",
+          "sourceFingerprint": "sha256:fea4c6d8287d4b7176e9e3e621e0cc10ec61bd32dc69759fd9a703d14d1377f4",
           "classification": "defensive",
           "justification": "A dependency AbortError classifies mapping failure as attempt_aborted even when signal observation races behind the throw."
         },
@@ -576,7 +576,7 @@
           "branchType": "if",
           "line": 609,
           "column": 4,
-          "sourceFingerprint": "sha256:3a24b48a2dda5b13ca3ce14281da5b04d6c349eda5e0c007f1bac3a42de8eb7f",
+          "sourceFingerprint": "sha256:acd603a7799070a8d114407305941d02df83b392463319bc0d098f61711fd34b",
           "classification": "defensive",
           "justification": "A mapping result with error kind is inspected for cancellation before generic attempt_invalid conversion."
         },
@@ -586,7 +586,7 @@
           "branchType": "binary-expr",
           "line": 611,
           "column": 7,
-          "sourceFingerprint": "sha256:a24feec3c8f4f70d605e1b19cd5d1dca2289936887bf934502ebb0a0847e4fc3",
+          "sourceFingerprint": "sha256:8c9e19850af183ceab8c7f4e816cc6331a257650a8ee7b13317ee48bac931522",
           "classification": "defensive",
           "justification": "A mapping error carrying the canceled expression code is converted to attempt_aborted."
         },
@@ -596,7 +596,7 @@
           "branchType": "binary-expr",
           "line": 611,
           "column": 53,
-          "sourceFingerprint": "sha256:08952b2b722a6f791bdffccd733fa3d2838e1192a9e38ffd5cc0d256665d4a69",
+          "sourceFingerprint": "sha256:1d41563e3967d194265ddd3915a27812bf3402ebaa0040a2414a9465947d3013",
           "classification": "defensive",
           "justification": "An aborted signal converts an otherwise generic mapping error result to attempt_aborted."
         },
@@ -606,7 +606,7 @@
           "branchType": "if",
           "line": 614,
           "column": 4,
-          "sourceFingerprint": "sha256:547445ada5edc49c8ab592293b1bb4bd590be72736a3c6d54181e4e65d894e15",
+          "sourceFingerprint": "sha256:3c2792c3a157d77d667caeb6bf2c7c0db4d186dbde0edea4a599388f54d64c5e",
           "classification": "defensive",
           "justification": "A non-cancellation mapping error result is converted to the stable attempt_invalid boundary."
         },
@@ -616,7 +616,7 @@
           "branchType": "if",
           "line": 648,
           "column": 4,
-          "sourceFingerprint": "sha256:3cbddb274e3315da12643477977d99ad334642850a2ec52684e81bc6b1e6159b",
+          "sourceFingerprint": "sha256:540ca0518f88a44c83dd08dd7dc605ed1be1ca381c7296078b524cd82accffa7",
           "classification": "unreachable",
           "justification": "The parser receives exactly one preview node and either returns it or throws validation."
         },
@@ -626,7 +626,7 @@
           "branchType": "cond-expr",
           "line": 655,
           "column": 47,
-          "sourceFingerprint": "sha256:082273ed1e37ddbfc4747408d62c82cf6c5f0f057f526ed914d1ed3abb04d588",
+          "sourceFingerprint": "sha256:3c0c60242b082e6e9f43843719e026b62c69cf74e18b7a938cd58b1ec9ff5611",
           "classification": "defensive",
           "justification": "A non-Error thrown while parsing preview input uses the stable preview input is invalid fallback message."
         },
@@ -636,7 +636,7 @@
           "branchType": "if",
           "line": 695,
           "column": 4,
-          "sourceFingerprint": "sha256:7ce4ac89321f5394a84845d6c3b9be91e699c6ba229fb2ef9a4e70b742916211",
+          "sourceFingerprint": "sha256:e4a28860ec38f190320754fd8e13c841fe768a674f599cb8990ccedc8597f45f",
           "classification": "defensive",
           "justification": "A Merge node without coordinator-settled input is rejected before executing the merge definition."
         }
@@ -652,7 +652,7 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:78fcd5f36165b42254bd633a0baa46f4b033519a6940567aa656fc2f4926a821",
+          "sourceFingerprint": "sha256:1476e80860fc002a09102aaf6550e687caaf773ee898a5d836e390aad59c6bfd",
           "classification": "generated",
           "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
         },
@@ -662,7 +662,7 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:d8cdc7fbb82af5ce3beda8ee73b567b142bdbebbc6b3f1639d581977391bbf9a",
+          "sourceFingerprint": "sha256:86e85272b1cbece31f0f6f58a403d4cf6b703008a6b592ede5eeb9de10cb778b",
           "classification": "generated",
           "justification": "V8 emitted this implicit fallthrough branch without a source coordinate; the adjacent executable decision is covered through the public workflow transition interface."
         },
@@ -672,7 +672,7 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:482b9d088e6da694a2584c4b91e4ffd8e996229b6cdc33a39465f82db7af1071",
+          "sourceFingerprint": "sha256:f687b6f73a7b11c1859effc4913ad4f9698d8aac114ab755dc6871fc28e1a1f2",
           "classification": "generated",
           "justification": "V8 emitted this implicit fallthrough branch without a source coordinate; the adjacent executable decision is covered through the public workflow transition interface."
         },
@@ -682,7 +682,7 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:f3781a17d3fb94d5020b1a545c71f66705512c36fe90b644e3b3eedb6bc18d45",
+          "sourceFingerprint": "sha256:e4efdf920a5d1b6f2dba876d895c339de56e63656154a251aa40fe14274be8c7",
           "classification": "generated",
           "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
         },
@@ -692,7 +692,7 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:e61fd333c8e021341b937dcb7dbcc603f45b936843e3a10365049beeb72f73b1",
+          "sourceFingerprint": "sha256:ec1e5be6584099513792901053b25d7ebf47fd368ccfac88e275b9eb2011581f",
           "classification": "generated",
           "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
         },
@@ -702,7 +702,7 @@
           "branchType": "cond-expr",
           "line": 81,
           "column": 8,
-          "sourceFingerprint": "sha256:eca064612d38bfd470e71e4490dec3e0d6f7a67134e025fb2df492a79e670289",
+          "sourceFingerprint": "sha256:9a41edbcebea808518db731420c8edb32c918abea1605785621b344c47a87906",
           "classification": "unreachable",
           "justification": "declaredJoin always materializes joinInvocationKey before branch dispositions can be applied."
         },
@@ -712,7 +712,7 @@
           "branchType": "binary-expr",
           "line": 130,
           "column": 6,
-          "sourceFingerprint": "sha256:33e75765a56f28e0586a12c5c92c788d3565f4bdd8a0264ae4288b84615fc8fc",
+          "sourceFingerprint": "sha256:104824a140ea6e35464deec3ed6ba39a4a5cffe9c4eeba4b0289ac4b650f2816",
           "classification": "unreachable",
           "justification": "A valid invocation key identifies one node and duplicate selection pairs return or reject before sorting."
         },
@@ -722,7 +722,7 @@
           "branchType": "binary-expr",
           "line": 131,
           "column": 6,
-          "sourceFingerprint": "sha256:7bd3963045de260fd3b12bf993f51905cc5e543c95277a2d508fc4d6025e16f8",
+          "sourceFingerprint": "sha256:81a5efb90fe6ffbbc64fe89da216637e7abdfa91ff634cdc8487061bd5145721",
           "classification": "unreachable",
           "justification": "The node comparator requires equal invocation keys, which necessarily refer to the same validated node."
         },
@@ -732,7 +732,7 @@
           "branchType": "binary-expr",
           "line": 155,
           "column": 4,
-          "sourceFingerprint": "sha256:b7ae579d54023e6e4b336b52a8d48bc5db5ea563968ac5c03c6358c231a536ca",
+          "sourceFingerprint": "sha256:a1e746b3c0fa72257fdeb18a4fe7b7d977d4e355fe4498627227ad7393bef50b",
           "classification": "defensive",
           "justification": "A loop declaration that omits controlInvocationKey derives the canonical root control key from workflow version and loop id."
         },
@@ -742,7 +742,7 @@
           "branchType": "if",
           "line": 181,
           "column": 4,
-          "sourceFingerprint": "sha256:15c390eb402c5b9958369f78f711b89d8dbf7b6e3ea08324a62b9e8a1b4e255e",
+          "sourceFingerprint": "sha256:2e886f59faf3f4e42a73775bbee3924222f51060adf470472411f63c497ab4fc",
           "classification": "defensive",
           "justification": "Only loop_limit_exceeded is converted into loop terminal state; every other WorkflowEngineError and foreign exception is rethrown."
         },
@@ -752,7 +752,7 @@
           "branchType": "if",
           "line": 187,
           "column": 4,
-          "sourceFingerprint": "sha256:666bcf385316000310700d60b26479058b76844719b3bf58f49a018f2ef7820f",
+          "sourceFingerprint": "sha256:addc85f6a49912ba7e47ee94519987fb99d3eee6444b167d6528f9fb93eb8cdf",
           "classification": "defensive",
           "justification": "A loop-limit observation requires an existing running control invocation before it may mark that controller failed."
         },
@@ -762,7 +762,7 @@
           "branchType": "if",
           "line": 276,
           "column": 7,
-          "sourceFingerprint": "sha256:804b149563bd326c86d4db061c866ef1656772d5aff55df0d01651cda33fcac2",
+          "sourceFingerprint": "sha256:5a98cd452fdf6331bd23e587a88f76245378a9f7845a86a89e7d7421aa6dcfe1",
           "classification": "defensive",
           "justification": "A repeated loop completion with a conflicting terminal status is rejected through the normal node-transition invariant."
         },
@@ -772,7 +772,7 @@
           "branchType": "cond-expr",
           "line": 281,
           "column": 48,
-          "sourceFingerprint": "sha256:53cc9a42fab14502b6be334f32c4b54fd0291e339ba49e64942367d75724594c",
+          "sourceFingerprint": "sha256:645348e79be1928cdfef0add495586059b681debbb21ccd2cc3e82dab833ddd3",
           "classification": "defensive",
           "justification": "Loop completion omits the output property when the observation carries no output, preserving absent-versus-present state semantics."
         },
@@ -782,7 +782,7 @@
           "branchType": "if",
           "line": 300,
           "column": 4,
-          "sourceFingerprint": "sha256:2bbb31585f4be43920bd81b35240dc1612681621a6cd8caae49d50374a087607",
+          "sourceFingerprint": "sha256:afbce997ea1af01708aadd1adbd5a6ed51fb6ff152f194a70112c61c38b3f77c",
           "classification": "defensive",
           "justification": "Completing all loop iterations requires an existing non-terminal control invocation; missing or already-terminal control state fails closed."
         },
@@ -792,7 +792,7 @@
           "branchType": "binary-expr",
           "line": 310,
           "column": 33,
-          "sourceFingerprint": "sha256:2a44ca9912283c7f1dd68e094fc1d3c9572d25eacd8697e9c577d0e18dcc7544",
+          "sourceFingerprint": "sha256:f587d46af4f74e2652beb86409be94735278c6f56c81692e5bcc5a20d2f68c62",
           "classification": "unreachable",
           "justification": "Every admitted non-success loop terminal status has a node event mapping."
         },
@@ -802,7 +802,7 @@
           "branchType": "if",
           "line": 318,
           "column": 2,
-          "sourceFingerprint": "sha256:51cacbd2b95f2f5971cd59ebcc0279f46bd67ad31ca49eda926e6835325c0ee5",
+          "sourceFingerprint": "sha256:e84cf8c3ac3dbde099af2cd45cd8f811d9405ffae85d5a4fea9283f46a4ea96f",
           "classification": "unreachable",
           "justification": "The closed WorkflowObservation terminal-status union has a nodeEventName entry for every member."
         },
@@ -812,7 +812,7 @@
           "branchType": "cond-expr",
           "line": 347,
           "column": 10,
-          "sourceFingerprint": "sha256:c8e14adf94ea3eb31b276dbba7a1b3ee0e5c4f3ad680012e2caa2b26fbc20482",
+          "sourceFingerprint": "sha256:2a267e0fac363563cfab59e18fa0c9397acdd56673965d1c624847fc0d1a0c73",
           "classification": "defensive",
           "justification": "A node-ready observation that omits branchPath preserves omission instead of materializing an empty scope."
         },
@@ -822,7 +822,7 @@
           "branchType": "cond-expr",
           "line": 350,
           "column": 10,
-          "sourceFingerprint": "sha256:b23f73bc630b7720f4918cd53f8b5df681f0a3e45919a20431e386577be3f0c8",
+          "sourceFingerprint": "sha256:c33176602aa1ff6f99e1b52e04f5904dc8ea88dbc1b3bd6658aa56236d1cb3a0",
           "classification": "defensive",
           "justification": "A node-ready observation that omits iterationPath preserves omission instead of materializing an empty iteration scope."
         },
@@ -832,7 +832,7 @@
           "branchType": "cond-expr",
           "line": 371,
           "column": 10,
-          "sourceFingerprint": "sha256:53cc9a42fab14502b6be334f32c4b54fd0291e339ba49e64942367d75724594c",
+          "sourceFingerprint": "sha256:645348e79be1928cdfef0add495586059b681debbb21ccd2cc3e82dab833ddd3",
           "classification": "defensive",
           "justification": "A successful node observation without output leaves the output property absent rather than storing undefined."
         },
@@ -842,7 +842,7 @@
           "branchType": "if",
           "line": 423,
           "column": 2,
-          "sourceFingerprint": "sha256:f0eafb17cb7ed7855a9076491c3f3fa94617126c50a987d2d72b5d2afed97fbf",
+          "sourceFingerprint": "sha256:cb347ac3dda5b391c44ca61cc0a1cdbd1f09ac7ce0391a22c84011cb3879b548",
           "classification": "unreachable",
           "justification": "The closed WorkflowObservation terminal-status union has a nodeEventName entry for every member."
         }
@@ -858,7 +858,7 @@
           "branchType": "if",
           "line": 65,
           "column": 2,
-          "sourceFingerprint": "sha256:2ba1cd4cb97e7be6520d3922835e03cfe2292be4ffba2b87900180124873d328",
+          "sourceFingerprint": "sha256:4e63a722f1d5e8c983df85338102c77676b497c642b3c634b2de7f950a62d08a",
           "classification": "defensive",
           "justification": "Terminal-loop replay compares output kinds first and rejects a replay that changes inline versus artifact identity."
         },
@@ -868,7 +868,7 @@
           "branchType": "if",
           "line": 66,
           "column": 2,
-          "sourceFingerprint": "sha256:fd54df7a857ab4873c89381e9b7bf4f5d4d148148facb1825239ea248853e25e",
+          "sourceFingerprint": "sha256:38333aa4d74d408771314ce45d1412e8480f3d9654375222414cb5000c1d6769",
           "classification": "defensive",
           "justification": "Terminal-loop replay treats two omitted outputs as equal only after their kinds have already matched."
         },
@@ -878,7 +878,7 @@
           "branchType": "cond-expr",
           "line": 71,
           "column": 8,
-          "sourceFingerprint": "sha256:72371ba06c39032d1a2acebf630184dcb072254fb05443788af8aabca3430171",
+          "sourceFingerprint": "sha256:1a6d88a469dc28baffdd44ae95fd34bdd67488a8e32db6d4bf57a55e1adf323b",
           "classification": "unreachable",
           "justification": "After equal output kinds are established, the closed union permits only inline-inline or artifact-artifact pairs."
         },
@@ -888,7 +888,7 @@
           "branchType": "binary-expr",
           "line": 132,
           "column": 56,
-          "sourceFingerprint": "sha256:ba0859346a4969a80fb32d4e3028ae1c8be635f760dd2aca286eae58c6fe8971",
+          "sourceFingerprint": "sha256:f626d5e3b72b2ccb44c111275c0be61e33072b7b0fe9097ed911e7b795db857d",
           "classification": "defensive",
           "justification": "A scoped join may supply an explicit invocation key; otherwise the validated root join identifier is the compatibility default."
         },
@@ -898,7 +898,7 @@
           "branchType": "if",
           "line": 192,
           "column": 2,
-          "sourceFingerprint": "sha256:8096dc4f65b4fd24c671f70a1eb3a1bf9674ead18a58f687bb2037d468e8c8a0",
+          "sourceFingerprint": "sha256:aacf3b10538ecc5fb428a4a9e30e6d24e5cb2d75fd8e5362ceba79616366c470",
           "classification": "defensive",
           "justification": "Attempt admission fails closed when a ready node is absent from the supplied scheduler graph."
         },
@@ -908,7 +908,7 @@
           "branchType": "if",
           "line": 204,
           "column": 2,
-          "sourceFingerprint": "sha256:b48a2aaace5a32d054a78d53b7341644b5576ce994e7e8496143fa62d8e10ac2",
+          "sourceFingerprint": "sha256:34fe775e2046e6ee95d8438c5e4ea04a76ba1e5561deb089c5ac2574d384356d",
           "classification": "defensive",
           "justification": "Without scheduler state, disabled-node lookup deliberately returns false while later admission requires the graph and fails closed."
         },
@@ -918,7 +918,7 @@
           "branchType": "binary-expr",
           "line": 208,
           "column": 76,
-          "sourceFingerprint": "sha256:44f67d2883ed24b790fdde92e52b55ea1f2522d0956db6e7862f85f693dc7ad1",
+          "sourceFingerprint": "sha256:14e36df9d4b901dbc97e78812c9f38d0361ec70f1b1abad12c8a388c9c1d2cd2",
           "classification": "defensive",
           "justification": "Scheduler states without structuredBodies search only root nodes; the optional collection fallback prevents iteration over absent nested bodies."
         },
@@ -928,7 +928,7 @@
           "branchType": "binary-expr",
           "line": 244,
           "column": 54,
-          "sourceFingerprint": "sha256:60f4aabc02d9cd027d3d8f2980d04dea7f75f524b90d240c3a9264ceb530bd8b",
+          "sourceFingerprint": "sha256:c931d809c8150cc7d6718b3639f82fd7142cd1a42b5f78e61b0be5a0f76bcd30",
           "classification": "defensive",
           "justification": "Invocation lookup compares an absent iterationPath as the empty root path when resolving a scoped node identity."
         },
@@ -938,7 +938,7 @@
           "branchType": "if",
           "line": 247,
           "column": 4,
-          "sourceFingerprint": "sha256:cb77914394f44f413ad0918a4725aa1d6cda7feb7eec4012b7f2dd0cd5b15520",
+          "sourceFingerprint": "sha256:24e82bf96f5824129590be3769dcf3eb0cd5ef9f3e14ca7928678a2dca7c0c82",
           "classification": "unreachable",
           "justification": "The public checkpoint parser verifies every active loop ordinal has a matching invocation before transition state reaches this secondary invariant check."
         },
@@ -948,7 +948,7 @@
           "branchType": "binary-expr",
           "line": 272,
           "column": 56,
-          "sourceFingerprint": "sha256:60f4aabc02d9cd027d3d8f2980d04dea7f75f524b90d240c3a9264ceb530bd8b",
+          "sourceFingerprint": "sha256:c931d809c8150cc7d6718b3639f82fd7142cd1a42b5f78e61b0be5a0f76bcd30",
           "classification": "defensive",
           "justification": "Terminal invocation lookup compares an absent iterationPath as the empty root path before applying terminal-status filtering."
         },
@@ -958,7 +958,7 @@
           "branchType": "if",
           "line": 276,
           "column": 4,
-          "sourceFingerprint": "sha256:2a682b5a348ab5b0337f085f854b5cb5ca5a6a0201ff58c4eebf57ce593a74d9",
+          "sourceFingerprint": "sha256:44473cb0e57a2bb7ade1950fdcdf762eb0ff2ba5e8aa5b98f86a6d8066c848f0",
           "classification": "unreachable",
           "justification": "The public checkpoint parser verifies every terminal loop ordinal has a terminal invocation before transition state reaches this secondary invariant check."
         }
@@ -974,7 +974,7 @@
           "branchType": "if",
           "line": 95,
           "column": 4,
-          "sourceFingerprint": "sha256:fffaa2ba6fe1e19f0959b5eb3e16d895990998d6f821d56c484235d970f9ff23",
+          "sourceFingerprint": "sha256:839a6a0377923381d5271c337b3854ad19362454c1802c6779eaa7c2baa5ccfc",
           "classification": "unreachable",
           "justification": "The abort listener is registered with once semantics and removed in finally; no asynchronous boundary exists between marking the client released and removing that listener, so it cannot re-enter after release."
         },
@@ -984,7 +984,7 @@
           "branchType": "if",
           "line": 108,
           "column": 2,
-          "sourceFingerprint": "sha256:7ede135bb0d2c775f48d97f6aba055192d1e802452e2cfd7ce890e36c044e8eb",
+          "sourceFingerprint": "sha256:1798999cd26ccb506b266bc453d9c925e9324df69dea0b7517cedc7b4654b9a6",
           "classification": "defensive",
           "justification": "This closes the narrow abort race after acquisition resolves and before transaction setup resumes; the public abort contract is covered before acquisition, during acquisition, and during active work."
         },
@@ -994,7 +994,7 @@
           "branchType": "if",
           "line": 186,
           "column": 4,
-          "sourceFingerprint": "sha256:f16ae90d29e2acb2efc6e5f13668f5d06c7ca6aef89af73d46ac4d2d76eb9df6",
+          "sourceFingerprint": "sha256:fedcb74fd4ed754648c80b2dc2ef07819910c69a2505ffa8b49715fa5f1b1217",
           "classification": "defensive",
           "justification": "This closes the event-loop race between abort-listener registration and entering Promise.race; acquisition cancellation and late connection settlement are exercised through the public transaction seam."
         }
@@ -1010,7 +1010,7 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:8983a67b00387e375d5f6b960bd3353737bc4db86a535bb8ffb3edb96f9f2e3c",
+          "sourceFingerprint": "sha256:f404a3e2cd18075a3bd5e1a2ac898f788b20e6fca76fa8634435499847feb8a5",
           "classification": "generated",
           "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
         },
@@ -1020,7 +1020,7 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:5c1ef8a5c9faf5373c29eb4a456ce82849674336764278ba495c8a6e756cb57e",
+          "sourceFingerprint": "sha256:bf0c1f574999d6d1d66b74fe6300444f9155b9f3b64be4bbf4a41d61417855cb",
           "classification": "generated",
           "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
         },
@@ -1030,7 +1030,7 @@
           "branchType": "if",
           "line": 123,
           "column": 4,
-          "sourceFingerprint": "sha256:5c23ecd8a82966d3c2077425c06c736efd04020482ecee527393291e0a2482b1",
+          "sourceFingerprint": "sha256:8a616ac3ff057a429ba671e1bd8e848bfa48d852b457e398414c58184a2d0e04",
           "classification": "defensive",
           "justification": "The abort-aware wait rejects immediately when its signal is already aborted, closing the listener-registration race."
         },
@@ -1040,7 +1040,7 @@
           "branchType": "cond-expr",
           "line": 415,
           "column": 18,
-          "sourceFingerprint": "sha256:f0628839d2a71529f668303282caba2d2b508d220b3d5792748a9da8b4899146",
+          "sourceFingerprint": "sha256:14869c9bb64e3cebcd070a49dff92ffdc49a602005fb3edaa25d827837219e48",
           "classification": "defensive",
           "justification": "A completed executor result becomes suspended only when the prepared attempt includes a suspension duration; otherwise it succeeds."
         },
@@ -1050,7 +1050,7 @@
           "branchType": "cond-expr",
           "line": 462,
           "column": 14,
-          "sourceFingerprint": "sha256:346c2aa718161b5077dd88d91af69ff3dbc33a49c9a50a9311ed0819640c741e",
+          "sourceFingerprint": "sha256:8fae89634ad7816606332bc998d5e627bc2884ef1497d0f0b44d12955cf6ffcd",
           "classification": "defensive",
           "justification": "A non-Error heartbeat rejection is converted into a stable Error before leaving the handler."
         }
@@ -1066,7 +1066,7 @@
           "branchType": "if",
           "line": 200,
           "column": 4,
-          "sourceFingerprint": "sha256:eeaa41071aba0d4b923723eeee6c1daa00f9646150f4641cc1f72b44469c898e",
+          "sourceFingerprint": "sha256:5436fbf2f84969cb70958d9aeb05d70035c9f787c1f21348350a6e843dde9a5a",
           "classification": "defensive",
           "justification": "A spool write reporting zero or negative progress fails immediately, preventing an infinite artifact-write loop."
         },
@@ -1076,7 +1076,7 @@
           "branchType": "cond-expr",
           "line": 332,
           "column": 14,
-          "sourceFingerprint": "sha256:b94d209a969b65e297c8dc0a571fe7ba4f62daad37e242117f1c9e06dbd78607",
+          "sourceFingerprint": "sha256:9e7fd57dfe0b1f0dd46e096683dc73dc6c0c7254e96503d8151214cac2337b2d",
           "classification": "integration",
           "justification": "The named artifact-reference integration streams a normal node output through the database-backed pending-artifact persistence adapter.",
           "evidenceId": "worker-artifact-reference"
@@ -1087,7 +1087,7 @@
           "branchType": "cond-expr",
           "line": 341,
           "column": 14,
-          "sourceFingerprint": "sha256:ba546740709f2382093c7e549aa8067acf40a989f60b307f58b3fae1351a3cd3",
+          "sourceFingerprint": "sha256:52ec9fcee52f59b026c3a6453362d065e76c4fca58c59ffe63398b7168d440f7",
           "classification": "defensive",
           "justification": "Preview artifact persistence is retained for artifact-producing preview executors; the current supported preview cohort produces inline output only."
         },
@@ -1097,7 +1097,7 @@
           "branchType": "cond-expr",
           "line": 420,
           "column": 39,
-          "sourceFingerprint": "sha256:4dabd02404464582070d185802cdd63892e202ef7dfb7175fbe69f89846b12cc",
+          "sourceFingerprint": "sha256:b0e968e4e36570defe761fc39933064702941821c79669842a9dc51f0fe53784",
           "classification": "defensive",
           "justification": "Owned-resource shutdown collects rejected close results so every resource is attempted before reporting the aggregate failure."
         },
@@ -1107,7 +1107,7 @@
           "branchType": "if",
           "line": 422,
           "column": 6,
-          "sourceFingerprint": "sha256:72f52b0c710ee55d4f78e6396746898916ae03664d0738313d2cc792d93e737c",
+          "sourceFingerprint": "sha256:6d9a26249b0da37f29f7fe5b69e4386af37a8cfc841afd9fb307ff1d6af3e4b4",
           "classification": "defensive",
           "justification": "The aggregate shutdown error is emitted only when one or more owned adapters reject during cleanup."
         },
@@ -1117,7 +1117,7 @@
           "branchType": "cond-expr",
           "line": 436,
           "column": 13,
-          "sourceFingerprint": "sha256:f7be0a38f1edca807734e1aceaa08d1403ea39e783adec753b493921dc0123ca",
+          "sourceFingerprint": "sha256:e2c9573990310f9abc95794b972d4ffa1ad205f164c8957db1046cbffcb1acf4",
           "classification": "integration",
           "justification": "The named HTTP node-attempt integration composes and uses the owned Redis provider-rate limiter against the real transport service.",
           "evidenceId": "worker-http-node-attempt"
@@ -1128,7 +1128,7 @@
           "branchType": "binary-expr",
           "line": 443,
           "column": 9,
-          "sourceFingerprint": "sha256:8327c98c3822e5e8b6632e9fdbd48fdcd8aaf974618f6c122e408cb79d344911",
+          "sourceFingerprint": "sha256:5a201269584f76f7c180c776aa793cd4eb39a739f90833540971cb44260dbeab",
           "classification": "integration",
           "justification": "The named HTTP node-attempt integration composes the owned connection-resolution database and resolves provider credentials for execution.",
           "evidenceId": "worker-http-node-attempt"
@@ -1139,7 +1139,7 @@
           "branchType": "cond-expr",
           "line": 449,
           "column": 12,
-          "sourceFingerprint": "sha256:2bbd5e3c77972649f476a033e61587bfd6208742af17da441f5877fc27ecefd4",
+          "sourceFingerprint": "sha256:d7af0ccf30a7a09b448cd0ff421acee7c018ad7616e29bd97410337975218ea8",
           "classification": "defensive",
           "justification": "Production AWS envelope-encryption construction is configuration selected; unit tests inject the encryption port and live KMS evidence remains external."
         },
@@ -1149,7 +1149,7 @@
           "branchType": "binary-expr",
           "line": 464,
           "column": 8,
-          "sourceFingerprint": "sha256:14284168600ab7e30a738c36f0474086b310d9940fa51ca7bd6379c253e90489",
+          "sourceFingerprint": "sha256:4658c83ac31faf8b9fc8f7fbab905e285e8df4c50f5e21f0aa8c1d81a58a1228",
           "classification": "integration",
           "justification": "The named HTTP node-attempt integration composes database-backed artifact persistence and commits streamed node-output metadata.",
           "evidenceId": "worker-http-node-attempt"
@@ -1160,7 +1160,7 @@
           "branchType": "cond-expr",
           "line": 471,
           "column": 13,
-          "sourceFingerprint": "sha256:3495a9b458259eb1369b1d17c8eafb4553d2fedc160559b0ab19e84fbaefcb09",
+          "sourceFingerprint": "sha256:5fc1d333425582dbe5970718e544330e63929cc4f8112173248fb664b21daed8",
           "classification": "integration",
           "justification": "The named HTTP node-attempt integration composes the dual-region artifact store and verifies the persisted streamed response.",
           "evidenceId": "worker-http-node-attempt"
@@ -1177,7 +1177,7 @@
           "branchType": "cond-expr",
           "line": 83,
           "column": 35,
-          "sourceFingerprint": "sha256:bb0f2a9fea1fd32d1f690e8ef39f84229e9fb58db6837b3b75981e0854110c75",
+          "sourceFingerprint": "sha256:feb6deb521149a3c0cd0dcdc9f12b748c3e03736317d600784534192138b2f87",
           "classification": "unreachable",
           "justification": "Production preview handling always supplies its queue abort signal to the dispatch operation; omission remains only for the general store port."
         },
@@ -1187,7 +1187,7 @@
           "branchType": "cond-expr",
           "line": 83,
           "column": 40,
-          "sourceFingerprint": "sha256:19349498744f095154bb0952a432281a98efbd1d35353a6f09959434b96abb42",
+          "sourceFingerprint": "sha256:a45f26ce2dd0b4081fcac58c5e33501dd4bdcb9b0d530eec30121ecc54ebd7c2",
           "classification": "integration",
           "justification": "The named preview-delivery integration passes the worker abort signal through the database-backed dispatch operation.",
           "evidenceId": "worker-preview-delivery"
@@ -1198,7 +1198,7 @@
           "branchType": "cond-expr",
           "line": 98,
           "column": 35,
-          "sourceFingerprint": "sha256:bb0f2a9fea1fd32d1f690e8ef39f84229e9fb58db6837b3b75981e0854110c75",
+          "sourceFingerprint": "sha256:feb6deb521149a3c0cd0dcdc9f12b748c3e03736317d600784534192138b2f87",
           "classification": "unreachable",
           "justification": "Production preview handling always supplies its queue abort signal to the heartbeat operation; omission remains only for the general store port."
         },
@@ -1208,7 +1208,7 @@
           "branchType": "cond-expr",
           "line": 98,
           "column": 40,
-          "sourceFingerprint": "sha256:19349498744f095154bb0952a432281a98efbd1d35353a6f09959434b96abb42",
+          "sourceFingerprint": "sha256:a45f26ce2dd0b4081fcac58c5e33501dd4bdcb9b0d530eec30121ecc54ebd7c2",
           "classification": "integration",
           "justification": "The named preview-delivery integration passes the worker abort signal through the database-backed heartbeat operation.",
           "evidenceId": "worker-preview-delivery"
@@ -1219,7 +1219,7 @@
           "branchType": "cond-expr",
           "line": 114,
           "column": 35,
-          "sourceFingerprint": "sha256:bb0f2a9fea1fd32d1f690e8ef39f84229e9fb58db6837b3b75981e0854110c75",
+          "sourceFingerprint": "sha256:feb6deb521149a3c0cd0dcdc9f12b748c3e03736317d600784534192138b2f87",
           "classification": "unreachable",
           "justification": "Production preview handling always supplies its queue abort signal to the completion operation; omission remains only for the general store port."
         },
@@ -1229,7 +1229,7 @@
           "branchType": "cond-expr",
           "line": 114,
           "column": 40,
-          "sourceFingerprint": "sha256:19349498744f095154bb0952a432281a98efbd1d35353a6f09959434b96abb42",
+          "sourceFingerprint": "sha256:a45f26ce2dd0b4081fcac58c5e33501dd4bdcb9b0d530eec30121ecc54ebd7c2",
           "classification": "integration",
           "justification": "The named preview-delivery integration passes the worker abort signal through the database-backed completion operation.",
           "evidenceId": "worker-preview-delivery"
@@ -1246,7 +1246,7 @@
           "branchType": "cond-expr",
           "line": 313,
           "column": 7,
-          "sourceFingerprint": "sha256:ba5ec51d07a4ac0e951608704431d59a02b21a4e951acc10505a8dc407c501ee",
+          "sourceFingerprint": "sha256:469d030abc4c305474e261565eec30598de2a41ee4cb4b73294b0c9e9e5e943a",
           "classification": "generated",
           "justification": "TypeScript emits an uncallable fallback while lowering the parameterless Nest Catch decorator; application control flow cannot select it."
         }

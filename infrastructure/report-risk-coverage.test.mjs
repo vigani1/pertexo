@@ -324,26 +324,30 @@ test('rejects a review after source semantics change at the same location', () =
         '/repo/apps/api/src/policy.ts': {
           branchMap: {
             0: {
-              type: 'if',
+              type: 'cond-expr',
               loc: {
                 start: { line: 1, column: 0 },
-                end: { line: 1, column: 28 },
+                end: { line: 1, column: 21 },
               },
               locations: [
                 {
-                  start: { line: 1, column: 0 },
-                  end: { line: 1, column: 28 },
+                  start: { line: 1, column: 12 },
+                  end: { line: 1, column: 15 },
+                },
+                {
+                  start: { line: 1, column: 18 },
+                  end: { line: 1, column: 20 },
                 },
               ],
             },
           },
-          b: { 0: [0] },
+          b: { 0: [0, 1] },
         },
       },
     ],
   ]);
   const originalSources = new Map([
-    ['/repo/apps/api/src/policy.ts', 'if (isAllowed) return value;\n'],
+    ['/repo/apps/api/src/policy.ts', 'isAllowed ? yes : no;\n'],
   ]);
   const initial = createRiskCoverageReport(
     reports,
@@ -388,7 +392,7 @@ test('rejects a review after source semantics change at the same location', () =
         [review],
         {},
         new Map([
-          ['/repo/apps/api/src/policy.ts', 'if (isDenied) return value;\n'],
+          ['/repo/apps/api/src/policy.ts', 'isBlocked ? yes : no;\n'],
         ]),
       ),
     /Stale risk-coverage source fingerprint/u,
