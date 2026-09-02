@@ -1,6 +1,6 @@
 # Current Backend Implementation Status
 
-Updated: 2026-09-01
+Updated: 2026-09-02
 
 ## Delivery state
 
@@ -35,7 +35,7 @@ tests. The exact report schema and validator already live under
 
 ## Current engineering remediation
 
-Audited implementation head: `1c6b6aac6e5d6900721a3e8a9e7f469b2b871386`
+Audited implementation head: `eb2cd1d317b00d20c9f1ca2a44411341cc337cb6`
 
 The 2026-09-01 audit refresh is implemented at fixed ancestor `0865633` and
 merged to `main` through pull request #7. It
@@ -58,9 +58,14 @@ closed on dynamic or file-based Node selectors, and binds each selector to its
 exact `setup-node` step, including case-insensitive GitHub repository identity
 matching. The CI action pins now use immutable v6 releases that declare Node
 24. Documentation CI now structurally validates local targets and anchors plus
-the shared audited implementation SHA. It also reports coverage for 23 exact
-selected files with every uncovered site explicitly unreviewed, centralizes the
-coordinator validation primitives privately, and records the fixed-revision
+the shared audited implementation SHA. Risk coverage now reports 23 exact
+selected files with repository-relative paths, 317 explicitly unreviewed sites,
+and one durable compiler-generated review that fails closed if it becomes
+stale. Critical API boundary coverage is 99.64% branches after adding negative
+authorization, session, HTTP sanitization, header, and rate-limit evidence; UUID
+generation now rejects malformed random-source output. The remediation also
+centralizes the coordinator validation primitives privately and records the
+fixed-revision
 latency/memory/query comparison in
 [`docs/operations/complexity-refactor-performance.md`](./operations/complexity-refactor-performance.md).
 
