@@ -16,6 +16,8 @@ function branchKey(branch) {
   return [
     branch.cohort,
     branch.file,
+    branch.branchId,
+    branch.locationIndex,
     branch.branchType,
     branch.line,
     branch.column,
@@ -27,6 +29,9 @@ function validatedReviews(reviews) {
   for (const review of reviews) {
     if (
       !REVIEW_CLASSIFICATIONS.has(review.classification) ||
+      typeof review.branchId !== 'string' ||
+      !Number.isInteger(review.locationIndex) ||
+      review.locationIndex < 0 ||
       typeof review.justification !== 'string' ||
       review.justification.trim().length < 20
     ) {
@@ -56,6 +61,8 @@ export function uncoveredBranches(report, cohort, rootDirectory) {
             rootDirectory === undefined
               ? file
               : path.relative(rootDirectory, file),
+          branchId,
+          locationIndex: index,
           branchType: metadata.type,
           line: location?.start?.line ?? 0,
           column: location?.start?.column ?? 0,
@@ -68,7 +75,11 @@ export function uncoveredBranches(report, cohort, rootDirectory) {
     (left, right) =>
       left.file.localeCompare(right.file) ||
       left.line - right.line ||
-      left.column - right.column,
+      left.column - right.column ||
+      left.branchId.localeCompare(right.branchId, undefined, {
+        numeric: true,
+      }) ||
+      left.locationIndex - right.locationIndex,
   );
 }
 
@@ -112,7 +123,7 @@ export function createRiskCoverageReport(
   const reviewedCount = reviewedBranches.size;
   const unreviewedCount = classifiedBranches.length - reviewedCount;
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     scope: {
       kind: 'selected-critical-module-files',
       cohorts: selections,
@@ -147,10 +158,10 @@ async function main() {
     await readFile('infrastructure/risk-coverage-reviews.json', 'utf8'),
   );
   if (
-    reviewManifest.schemaVersion !== 1 ||
+    reviewManifest.schemaVersion !== 2 ||
     !Array.isArray(reviewManifest.reviews)
   ) {
-    throw new Error('Risk-coverage review manifest must use schema version 1');
+    throw new Error('Risk-coverage review manifest must use schema version 2');
   }
   const output = createRiskCoverageReport(
     reports,
