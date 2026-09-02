@@ -1,12 +1,23 @@
 # Backend Implementation Progress
 
-Last updated: 2026-09-01
+Last updated: 2026-09-03
 
 This file tracks delivery against
 [the authoritative backend plan](./workflow-platform-backend-plan.md). A phase
 is marked complete only when all of its plan requirements and applicable
 vertical-slice completion criteria have passed. Commits or scaffolding alone do
 not complete a phase.
+
+Current audit note: the fresh whole-repository review at implementation tree
+`200e9c5a4a2fd2772e37c06ad2ada6bc2b64e996` is recorded in
+[the engineering audit](./whole-repository-audit.md). It does not change the
+completed status of Phases 0–6. It confirms that Phase 7 remains **In progress**
+and records four immediate pre-release code/security blockers: the worker's
+misclassified runtime dependency, an unowned worker keepalive that can prevent
+clean shutdown, one open high-severity CodeQL logger alert, and two unique
+moderate Fastify runtime advisories. These findings must be closed with the
+audit's acceptance evidence; green analysis/test execution by itself is not
+evidence that the security or production-deployment state is clear.
 
 ## Status summary
 
@@ -4674,10 +4685,10 @@ Verification at implementation head `9e4263794715d273e8660c0dd4efa67c5032e940`:
 No Phase 7 completion box changes in this documentation-only audit. The current
 P1 findings and the existing live-production checklist remain release blockers.
 
-## Current whole-repository audit — implementation tree `5c32211`
+## Current whole-repository audit — implementation tree `200e9c5a4a2fd2772e37c06ad2ada6bc2b64e996`
 
-Status: **Repository remediation complete; external production/control evidence
-remains open**
+Status: **Fresh audit has open repository blockers; external production/control
+evidence also remains open**
 
 Repository-controlled remediation:
 
@@ -4730,6 +4741,23 @@ Repository-controlled remediation:
       bounded review date.
 - [x] Run the documentation command from protected quality CI with complete Git
       history and cover candidate recreation on another parent with a fixture.
+
+Fresh audit findings at the implementation tree named above:
+
+- [ ] Correct the worker's runtime dependency on `@pertexo/workflow-model`,
+      which is currently declared only as a development dependency, and add an
+      isolated production-install/image role-load smoke.
+- [ ] Own and stop/unreference the worker process keepalive, then prove a
+      disabled-consumer process exits cleanly within the ECS SIGTERM budget.
+- [ ] Replace the polynomial-time logger redaction path, add bounded adversarial
+      tests, close the open high-severity CodeQL alert, and make high-severity
+      code-scanning results merge-blocking.
+- [ ] Resolve both the direct Fastify 5.12.0 and Nest-transitive 5.11.3 paths to
+      a fixed release, retain the proxy/validation regression behavior, and
+      make unaccepted moderate production advisories fail admission.
+- [ ] Carry out the P2/P3 maintainability, selected-coverage, provenance,
+      package-surface, test-organization, and public-governance improvements in
+      `docs/whole-repository-audit.md` without weakening existing invariants.
 
 Still open:
 
