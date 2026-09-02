@@ -1,8 +1,8 @@
 # Current Whole-Repository Engineering Audit
 
-Recorded: 2026-09-01
+Recorded: 2026-09-02
 
-Audited implementation head: `a62c1d497526ffad0e8e92234ee83d807faf8671`
+Audited implementation head: `1c6b6aac6e5d6900721a3e8a9e7f469b2b871386`
 
 Status: current findings, remediation state, and remaining external evidence
 
@@ -535,7 +535,12 @@ their own literal selector. Selectors must belong to that exact step's `with`
 mapping, so unrelated or sibling `node-version` keys cannot mask drift.
 Workflow files are parsed structurally with pinned `yaml` 2.9.0: quoted action
 values are recognized, block-scalar text is not treated as a step, and invalid
-YAML fails closed. Thirteen fixtures prove the supported surfaces.
+YAML fails closed. The `actions/setup-node` repository identity is compared
+case-insensitively to match GitHub semantics. Fourteen fixtures prove the
+supported surfaces. CI action pins for checkout, pnpm setup, Node setup, and
+artifact upload now use immutable v6 releases whose action manifests declare
+the Node 24 runtime; protected pull request #23 run `33625443334` completed
+without the former Node.js 20 deprecation annotations.
 
 **Maintenance rule**
 

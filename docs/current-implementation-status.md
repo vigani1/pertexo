@@ -43,17 +43,21 @@ two same-owner helpers, binds local image evidence to its digest, splits
 dependency compatibility groups, and strengthens risk-coverage evidence.
 
 Local repository verification and all protected contexts in CI run
-`33465359665` are green, including recovery. Live-production, provider-canary,
-registry-signing, promotion, and independent-review findings remain open until
-observed externally; they are not repository implementation defects disguised
-as completed evidence.
+`33465359665` are green, including recovery. The later runtime-compatibility
+pull request #23 run `33625443334` is also fully green after one retry of an
+existing timing-sensitive integration assertion; its successful checks contain
+no Node.js 20 action-runtime deprecation annotations. Live-production,
+provider-canary, registry-signing, promotion, and independent-review findings
+remain open until observed externally; they are not repository implementation
+defects disguised as completed evidence.
 
 The subsequent evidence correction structurally parses workflow YAML, fails
 closed on dynamic or file-based Node selectors, and binds each selector to its
-exact `setup-node` step. It also reports coverage for 23 exact selected files
-with every uncovered site explicitly unreviewed, centralizes the coordinator
-validation primitives privately, and records the fixed-revision
-latency/memory/query comparison in
+exact `setup-node` step, including case-insensitive GitHub repository identity
+matching. The CI action pins now use immutable v6 releases that declare Node
+24. It also reports coverage for 23 exact selected files with every uncovered
+site explicitly unreviewed, centralizes the coordinator validation primitives
+privately, and records the fixed-revision latency/memory/query comparison in
 [`docs/operations/complexity-refactor-performance.md`](./operations/complexity-refactor-performance.md).
 
 ## Sources of truth
