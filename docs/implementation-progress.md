@@ -4674,10 +4674,10 @@ Verification at implementation head `9e4263794715d273e8660c0dd4efa67c5032e940`:
 No Phase 7 completion box changes in this documentation-only audit. The current
 P1 findings and the existing live-production checklist remain release blockers.
 
-## Current whole-repository audit — implementation head `eb2cd1d`
+## Current whole-repository audit — implementation head `e9aa0f2`
 
-Status: **Repository remediation and protected CI complete; external
-production/control evidence remains open**
+Status: **Repository remediation complete; documentation-gate CI enforcement
+and external production/control evidence remain open**
 
 Repository-controlled remediation:
 
@@ -4724,7 +4724,7 @@ Repository-controlled remediation:
       `docs/operations/complexity-refactor-performance.md`.
 - [x] Refresh README/current-status/audit/tracker semantics at a fixed
       implementation ancestor while preserving the historical red CI evidence.
-- [x] Gate repository-local Markdown targets and heading anchors, synchronize
+- [x] Add a repository command for local Markdown targets and heading anchors, synchronize
       the fixed audit SHA across the audit/tracker/current-status documents,
       prove that SHA is an ancestor of publication, and give the solo-maintainer
       exception an owner and bounded review date.
@@ -4746,6 +4746,8 @@ Still open:
 - [ ] Require independent approval/code-owner review and verified provenance
       when a second maintainer and signing identities exist; retain the
       documented solo exception until then.
+- [ ] Run the documentation validator in a protected context with history or
+      identity handling compatible with the supported rebase-style merge.
 
 Audit calibration now records its method explicitly. Architecture uses the
 repository's deep-module/interface/seam criteria. Security is cross-checked
@@ -4757,7 +4759,8 @@ judgments with documented arithmetic, not industry percentiles or claims that a
 particular file size, package count, or coverage percentage is universally
 correct.
 
-Verification at `eb2cd1d317b00d20c9f1ca2a44411341cc337cb6`:
+Verification for implementation head `e9aa0f2a8dcb34502a4b9e47b9e993cc03f079ff`
+and its audit publication branch:
 
 - `pnpm docs:check` validated 25 repository-local links across 49 Markdown
   files, synchronized the three audit-head claims, and proved the audited head
@@ -4781,6 +4784,11 @@ Verification at `eb2cd1d317b00d20c9f1ca2a44411341cc337cb6`:
 - pull request #7 merged to `main` after CI run `33465359665` passed all 11
   protected contexts, including recovery and integration; CodeQL run
   `33465359620` also passed.
+- Exact-main CI run `33635957948` and CodeQL run `33635958168` passed the
+  configured protected jobs, but the quality job omitted `pnpm docs:check` and
+  therefore did not catch the rewritten candidate SHA that made canonical
+  `pnpm check` fail on merged `main`; the publication corrects the shared audit
+  head while protected enforcement remains open.
 
 No phase status changes. Phase 7 remains **In progress**. Repository work must
 not be mistaken for the live deployment evidence required by the plan.
