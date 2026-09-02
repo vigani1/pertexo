@@ -35,7 +35,7 @@ tests. The exact report schema and validator already live under
 
 ## Current engineering remediation
 
-Audited implementation tree: `8d009f59bf43a53e678b4e81ad3b5cfd18330097`
+Audited implementation tree: `640cbea4d5fcc6972bf30ad09466dcb9e818409e`
 
 The 2026-09-01 audit refresh is implemented at fixed ancestor `0865633` and
 merged to `main` through pull request #7. It
@@ -58,8 +58,11 @@ closed on dynamic or file-based Node selectors, and binds each selector to its
 exact `setup-node` step, including case-insensitive GitHub repository identity
 matching. The CI action pins now use immutable v6 releases that declare Node
 24. The repository documentation command now structurally validates local
-targets and anchors plus the shared audited implementation SHA, but protected
-CI does not yet invoke that command; the audit records this open C-12 gap. Risk
+targets and anchors plus a shared merge-stable implementation tree. Protected
+quality CI invokes it with complete history, and a fixture recreates the
+candidate on a different parent to prove the supported rebase-style flow.
+Protected execution of the updated job remains to be observed before C-12
+closes. Risk
 coverage now reports 23 exact
 selected files with repository-relative paths, 317 explicitly unreviewed sites,
 and one durable compiler-generated review that fails closed if it becomes

@@ -4674,10 +4674,10 @@ Verification at implementation head `9e4263794715d273e8660c0dd4efa67c5032e940`:
 No Phase 7 completion box changes in this documentation-only audit. The current
 P1 findings and the existing live-production checklist remain release blockers.
 
-## Current whole-repository audit — implementation tree `8d009f5`
+## Current whole-repository audit — implementation tree `640cbea`
 
-Status: **Repository remediation complete; documentation-gate CI enforcement
-and external production/control evidence remain open**
+Status: **Repository remediation complete; protected documentation-gate
+execution and external production/control evidence remain open**
 
 Repository-controlled remediation:
 
@@ -4723,11 +4723,14 @@ Repository-controlled remediation:
       to 213 with no new SQL/round trip. See
       `docs/operations/complexity-refactor-performance.md`.
 - [x] Refresh README/current-status/audit/tracker semantics at a fixed
-      implementation ancestor while preserving the historical red CI evidence.
-- [x] Add a repository command for local Markdown targets and heading anchors, synchronize
-      the fixed audit SHA across the audit/tracker/current-status documents,
-      prove that SHA is an ancestor of publication, and give the solo-maintainer
-      exception an owner and bounded review date.
+      implementation snapshot while preserving the historical red CI evidence.
+- [x] Add a repository command for local Markdown targets and heading anchors,
+      synchronize the audited implementation tree across the
+      audit/tracker/current-status documents, prove that tree occurs in the
+      publication ancestry, and give the solo-maintainer exception an owner and
+      bounded review date.
+- [x] Run the documentation command from protected quality CI with complete Git
+      history and cover candidate recreation on another parent with a fixture.
 
 Still open:
 
@@ -4746,8 +4749,8 @@ Still open:
 - [ ] Require independent approval/code-owner review and verified provenance
       when a second maintainer and signing identities exist; retain the
       documented solo exception until then.
-- [ ] Run the documentation validator in a protected context with history or
-      identity handling compatible with the supported rebase-style merge.
+- [ ] Observe the documentation validator pass in protected pull-request CI and
+      again on exact `main` after the supported rebase-style merge.
 
 Audit calibration now records its method explicitly. Architecture uses the
 repository's deep-module/interface/seam criteria. Security is cross-checked
@@ -4759,12 +4762,12 @@ judgments with documented arithmetic, not industry percentiles or claims that a
 particular file size, package count, or coverage percentage is universally
 correct.
 
-Verification for implementation head `e9aa0f2a8dcb34502a4b9e47b9e993cc03f079ff`
+Verification for implementation tree `640cbea4d5fcc6972bf30ad09466dcb9e818409e`
 and its audit publication branch:
 
 - `pnpm docs:check` validated 25 repository-local links across 49 Markdown
-  files, synchronized the three audit-head claims, and proved the audited head
-  is an ancestor of the publication branch;
+  files, synchronized the three audit-tree claims, proved the audited tree
+  occurs in publication ancestry, and passed a rebase-style recreation fixture;
 - `pnpm check` passed formatting, the Node 24 compatibility gate, all builds,
   ESLint, complexity, generated contracts, TypeScript, and 1,372 unit tests
   across all 18 workspace projects;
