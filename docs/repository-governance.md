@@ -1,6 +1,6 @@
 # Repository Governance
 
-Updated: 2026-09-01
+Updated: 2026-09-02
 
 ## Main-branch policy
 
@@ -15,6 +15,10 @@ Dependency automation follows the grouping, triage, and deferral policy in
 [Dependency update operations](./operations/dependency-updates.md).
 
 ## Solo-maintainer review exception
+
+- Owner: repository administrator (`vigani1`)
+- Next review: 2026-12-01, or immediately when a second maintainer receives
+  review permission or signing is provisioned for every merge identity
 
 GitHub currently reports one repository collaborator: `vigani1`. GitHub does
 not allow a pull-request author to satisfy their own required approval. A

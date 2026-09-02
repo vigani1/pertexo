@@ -594,6 +594,11 @@ implementation ancestor `1c6b6aa`; Phase 7 remains in progress. The preceding
 red recovery run is retained as historical evidence and is explicitly
 superseded by green pull request #7 run `33465359665`; later runtime-remediation
 pull requests are recorded separately rather than rewriting that history.
+`pnpm docs:check` now parses the repository Markdown, rejects missing local
+targets or heading anchors, synchronizes the audit implementation SHA across
+the audit, progress tracker, and current-status document, and proves that SHA
+is an ancestor of the publication. The solo-maintainer exception names its
+owner and a bounded next-review date.
 
 **Maintenance rule**
 
@@ -706,6 +711,9 @@ Repository-controlled remediation at the audited implementation ancestor:
       repository portion).
 - [x] Split dependency compatibility boundaries and define owner/SLAs (C-07).
 - [x] Correct fixed-ancestor/current-status evidence drift (C-09).
+- [x] Automate repository-local documentation link/anchor validation and
+      cross-document audit-head drift detection; bound the solo-maintainer
+      exception with an owner and review date (C-09/C-08 repository policy).
 - [x] Align Node ambient types and enforce cross-surface runtime compatibility
       (C-10).
 - [x] Consolidate the two same-owner helper clones (C-11).
