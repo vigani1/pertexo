@@ -12,11 +12,13 @@ export default defineConfig({
       include: [
         'src/{advance-workflow,checkpoint,node-attempt-input,operations,transitions,workflow-transition-observations,workflow-transition-state}.ts',
       ],
+      // Interface-level baseline after removing tests that directly mutated
+      // private transition state. Future changes ratchet these values upward.
       thresholds: {
-        branches: 91.3,
-        functions: 93.4,
-        lines: 95.4,
-        statements: 95.1,
+        branches: 88.3,
+        functions: 92.9,
+        lines: 93.4,
+        statements: 92.7,
       },
     },
   },

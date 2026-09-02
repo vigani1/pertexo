@@ -13,6 +13,11 @@ export interface AdvanceWorkflowInput {
   readonly observations?: readonly WorkflowObservation[];
   readonly occurredAt: string;
   readonly maximumAdmissions: number;
+  /** Durable observation-window facts supplied by the coordinator adapter. */
+  readonly persistedObservationCursor?: Readonly<{
+    readonly expectedNextEventSequence: number;
+    readonly consumedThroughEventSequence: number;
+  }>;
 }
 
 export function advanceWorkflow(
@@ -32,6 +37,9 @@ export function advanceWorkflow(
       : { observations: input.observations }),
     occurredAt: input.occurredAt,
     maximumAdmissions: input.maximumAdmissions,
+    ...(input.persistedObservationCursor === undefined
+      ? {}
+      : { persistedObservationCursor: input.persistedObservationCursor }),
   });
 }
 

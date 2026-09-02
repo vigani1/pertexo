@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import console from 'node:console';
+import { createHash } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
@@ -25,6 +26,78 @@ function branchKey(branch) {
   ].join(':');
 }
 
+function normalizedSourceSpan(source, location) {
+  const startLine = location?.start?.line;
+  const endLine = location?.end?.line;
+  if (
+    !Number.isInteger(startLine) ||
+    startLine < 1 ||
+    !Number.isInteger(endLine) ||
+    endLine < startLine
+  )
+    return source;
+  const lines = source.split('\n');
+  const selected = lines.slice(startLine - 1, endLine);
+  if (selected.length === 0) return source;
+  const startColumn = location.start.column;
+  const endColumn = location.end.column;
+  if (Number.isInteger(startColumn) && startColumn > 0)
+    selected[0] = selected[0]?.slice(startColumn) ?? '';
+  if (Number.isInteger(endColumn) && endColumn >= 0)
+    selected[selected.length - 1] =
+      selected[selected.length - 1]?.slice(0, endColumn) ?? '';
+  return selected.join('\n').replace(/\s+/gu, ' ').trim();
+}
+
+function sourceFingerprint(source, metadata, locationIndex) {
+  const location =
+    metadata.locations?.[locationIndex]?.start?.line === undefined
+      ? metadata.loc
+      : metadata.locations[locationIndex];
+  return `sha256:${createHash('sha256')
+    .update(normalizedSourceSpan(source, location))
+    .digest('hex')}`;
+}
+
+function validatedIntegrationEvidence(evidence) {
+  const entries = new Map();
+  for (const [id, item] of Object.entries(evidence)) {
+    if (
+      !/^[a-z0-9][a-z0-9-]*$/u.test(id) ||
+      typeof item?.command !== 'string' ||
+      !item.command.includes('test:integration') ||
+      typeof item.testFile !== 'string' ||
+      !item.testFile.endsWith('.integration.test.ts') ||
+      typeof item.testName !== 'string' ||
+      item.testName.trim().length < 5
+    )
+      throw new Error(`Invalid integration evidence: ${id}`);
+    entries.set(id, item);
+  }
+  return entries;
+}
+
+export function flattenRiskCoverageReviewGroups(groups) {
+  const seen = new Set();
+  return groups.flatMap((group) => {
+    if (
+      typeof group?.cohort !== 'string' ||
+      typeof group.file !== 'string' ||
+      !Array.isArray(group.reviews)
+    )
+      throw new Error('Invalid risk-coverage review group');
+    const key = `${group.cohort}:${group.file}`;
+    if (seen.has(key))
+      throw new Error(`Duplicate risk-coverage review group: ${key}`);
+    seen.add(key);
+    return group.reviews.map((review) => ({
+      cohort: group.cohort,
+      file: group.file,
+      ...review,
+    }));
+  });
+}
+
 function validatedReviews(reviews) {
   const byKey = new Map();
   for (const review of reviews) {
@@ -33,6 +106,7 @@ function validatedReviews(reviews) {
       typeof review.branchId !== 'string' ||
       !Number.isInteger(review.locationIndex) ||
       review.locationIndex < 0 ||
+      !/^sha256:[\da-f]{64}$/u.test(review.sourceFingerprint) ||
       typeof review.justification !== 'string' ||
       review.justification.trim().length < 20
     ) {
@@ -47,7 +121,12 @@ function validatedReviews(reviews) {
   return byKey;
 }
 
-export function uncoveredBranches(report, cohort, rootDirectory) {
+export function uncoveredBranches(
+  report,
+  cohort,
+  rootDirectory,
+  sourceByFile = new Map(),
+) {
   const uncovered = [];
   for (const [file, coverage] of Object.entries(report)) {
     for (const [branchId, hits] of Object.entries(coverage.b ?? {})) {
@@ -56,6 +135,7 @@ export function uncoveredBranches(report, cohort, rootDirectory) {
       for (const [index, hitCount] of hits.entries()) {
         if (hitCount !== 0) continue;
         const location = metadata.locations?.[index] ?? metadata.loc;
+        const source = sourceByFile.get(file);
         uncovered.push({
           cohort,
           file:
@@ -67,6 +147,11 @@ export function uncoveredBranches(report, cohort, rootDirectory) {
           branchType: metadata.type,
           line: location?.start?.line ?? 0,
           column: location?.start?.column ?? 0,
+          ...(source === undefined
+            ? {}
+            : {
+                sourceFingerprint: sourceFingerprint(source, metadata, index),
+              }),
           reviewStatus: 'unreviewed',
         });
       }
@@ -89,6 +174,8 @@ export function createRiskCoverageReport(
   rootDirectory,
   generatedAt = new Date(),
   reviews = [],
+  integrationEvidence = {},
+  sourceByFile = new Map(),
 ) {
   const selections = [...reports.entries()]
     .map(([cohort, report]) => ({
@@ -99,20 +186,33 @@ export function createRiskCoverageReport(
     }))
     .sort((left, right) => left.cohort.localeCompare(right.cohort));
   const reviewByKey = validatedReviews(reviews);
+  const integrationEvidenceById =
+    validatedIntegrationEvidence(integrationEvidence);
   const branches = [...reports.entries()].flatMap(([cohort, report]) =>
-    uncoveredBranches(report, cohort, rootDirectory),
+    uncoveredBranches(report, cohort, rootDirectory, sourceByFile),
   );
   const reviewedBranches = new Set();
   const classifiedBranches = branches.map((branch) => {
     const key = branchKey(branch);
     const review = reviewByKey.get(key);
     if (review === undefined) return branch;
+    if (branch.sourceFingerprint !== review.sourceFingerprint)
+      throw new Error(`Stale risk-coverage source fingerprint: ${key}`);
+    const evidence =
+      review.classification === 'integration'
+        ? integrationEvidenceById.get(review.evidenceId)
+        : undefined;
+    if (review.classification === 'integration' && evidence === undefined)
+      throw new Error(`Missing integration evidence: ${key}`);
     reviewedBranches.add(key);
     return {
       ...branch,
       reviewStatus: 'reviewed',
       classification: review.classification,
       justification: review.justification,
+      ...(evidence === undefined
+        ? {}
+        : { evidenceId: review.evidenceId, evidence }),
     };
   });
   const staleReviews = [...reviewByKey.keys()].filter(
@@ -124,7 +224,7 @@ export function createRiskCoverageReport(
   const reviewedCount = reviewedBranches.size;
   const unreviewedCount = classifiedBranches.length - reviewedCount;
   return {
-    schemaVersion: 5,
+    schemaVersion: 6,
     scope: {
       kind: 'selected-critical-module-files',
       cohorts: selections,
@@ -147,28 +247,45 @@ export function createRiskCoverageReport(
 async function main() {
   const cohorts = ['workflow-engine', 'database', 'worker', 'api'];
   const reports = new Map();
+  const sourceByFile = new Map();
   for (const cohort of cohorts) {
-    reports.set(
-      cohort,
-      JSON.parse(
-        await readFile(`coverage/${cohort}/coverage-final.json`, 'utf8'),
-      ),
+    const report = JSON.parse(
+      await readFile(`coverage/${cohort}/coverage-final.json`, 'utf8'),
+    );
+    reports.set(cohort, report);
+    await Promise.all(
+      Object.keys(report).map(async (file) => {
+        sourceByFile.set(file, await readFile(file, 'utf8'));
+      }),
     );
   }
   const reviewManifest = JSON.parse(
     await readFile('infrastructure/risk-coverage-reviews.json', 'utf8'),
   );
   if (
-    reviewManifest.schemaVersion !== 3 ||
-    !Array.isArray(reviewManifest.reviews)
+    reviewManifest.schemaVersion !== 4 ||
+    !Array.isArray(reviewManifest.reviewGroups) ||
+    reviewManifest.integrationEvidence === null ||
+    typeof reviewManifest.integrationEvidence !== 'object'
   ) {
-    throw new Error('Risk-coverage review manifest must use schema version 3');
+    throw new Error('Risk-coverage review manifest must use schema version 4');
   }
+  await Promise.all(
+    Object.values(reviewManifest.integrationEvidence).map(async (evidence) => {
+      const contents = await readFile(evidence.testFile, 'utf8');
+      if (!contents.includes(evidence.testName))
+        throw new Error(
+          `Integration evidence test name is stale: ${evidence.testFile}`,
+        );
+    }),
+  );
   const output = createRiskCoverageReport(
     reports,
     process.cwd(),
     new Date(),
-    reviewManifest.reviews,
+    flattenRiskCoverageReviewGroups(reviewManifest.reviewGroups),
+    reviewManifest.integrationEvidence,
+    sourceByFile,
   );
   await writeFile(
     'coverage/risk-uncovered-branches.json',
@@ -183,4 +300,8 @@ async function main() {
   );
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) await main();
+if (
+  process.argv[1] !== undefined &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+)
+  await main();

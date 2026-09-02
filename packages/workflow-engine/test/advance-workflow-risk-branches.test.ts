@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { advanceWorkflowFromSchedulerState } from '../src/advance-workflow.js';
-import { createCheckpoint } from '../src/index.js';
+import { advanceWorkflow, createCheckpoint } from '../src/testing.js';
 
 const occurredAt = '2026-08-20T10:00:00.000Z';
 
@@ -18,19 +17,19 @@ function input() {
   };
 }
 
-describe('workflow advance risk branches', () => {
+describe('workflow advance public risk behavior', () => {
   it.each([-1, 0.5])(
     'rejects invalid maximum admissions %s',
     (maximumAdmissions) => {
-      expect(() =>
-        advanceWorkflowFromSchedulerState({ ...input(), maximumAdmissions }),
-      ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
+      expect(() => advanceWorkflow({ ...input(), maximumAdmissions })).toThrow(
+        expect.objectContaining({ code: 'checkpoint_invalid' }),
+      );
     },
   );
 
   it('rejects a persisted cursor from another checkpoint position', () => {
     expect(() =>
-      advanceWorkflowFromSchedulerState({
+      advanceWorkflow({
         ...input(),
         persistedObservationCursor: {
           expectedNextEventSequence: 3,
@@ -43,22 +42,19 @@ describe('workflow advance risk branches', () => {
   it.each([
     { expectedNextEventSequence: 2, consumedThroughEventSequence: 0 },
     { expectedNextEventSequence: 2, consumedThroughEventSequence: 2 },
-  ])(
-    'rejects an inconsistent persisted cursor %#',
-    (persistedObservationCursor) => {
-      expect(() =>
-        advanceWorkflowFromSchedulerState({
-          ...input(),
-          observations: [],
-          persistedObservationCursor,
-        }),
-      ).toThrow(expect.objectContaining({ code: 'observation_invalid' }));
-    },
-  );
+  ])('rejects an inconsistent persisted cursor %#', (cursor) => {
+    expect(() =>
+      advanceWorkflow({
+        ...input(),
+        observations: [],
+        persistedObservationCursor: cursor,
+      }),
+    ).toThrow(expect.objectContaining({ code: 'observation_invalid' }));
+  });
 
-  it('accepts an empty persisted observation window without an observations field', () => {
+  it('accepts an empty durable observation window', () => {
     expect(
-      advanceWorkflowFromSchedulerState({
+      advanceWorkflow({
         ...input(),
         persistedObservationCursor: {
           expectedNextEventSequence: 2,

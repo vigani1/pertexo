@@ -1,13 +1,11 @@
 import type { Pool, PoolClient, QueryResult } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
-import { withCoordinatorReadClient } from '../src/coordinator-run-store-transactions.js';
-import { withWorkspaceWriteClient } from '../src/node-attempt-run-store-transactions.js';
 import {
   withPlatformTransaction,
   withTenantScopedClient,
   withWorkspaceTransaction,
-} from '../src/workspace.js';
+} from '../src/testing.js';
 
 const workspaceId = '11111111-1111-4111-8111-111111111111';
 
@@ -501,53 +499,5 @@ describe('shared workspace transaction engine', () => {
 
     rejectConnection?.(new Error('late pool failure'));
     await expect(connection).rejects.toThrow('late pool failure');
-  });
-
-  it('retains behavior-named read/write facades over the shared modes', async () => {
-    const beginStatements: string[] = [];
-    const makeClient = (): Pick<PoolClient, 'query' | 'release'> => {
-      let transactionActive = false;
-      return {
-        query: vi.fn((statement: string) => {
-          if (statement.startsWith('begin')) {
-            beginStatements.push(statement);
-            transactionActive = true;
-          }
-          if (statement === 'commit' || statement === 'rollback')
-            transactionActive = false;
-          if (statement.includes("current_setting('app.workspace_id'")) {
-            return Promise.resolve(
-              result([
-                {
-                  workspace_id: transactionActive ? workspaceId : null,
-                  actor_id: null,
-                },
-              ]),
-            );
-          }
-          return Promise.resolve(result());
-        }) as unknown as PoolClient['query'],
-        release: vi.fn(),
-      };
-    };
-    const signal = new AbortController().signal;
-
-    await withCoordinatorReadClient(
-      poolWith(makeClient()),
-      workspaceId,
-      signal,
-      () => Promise.resolve(),
-    );
-    await withWorkspaceWriteClient(
-      poolWith(makeClient()),
-      workspaceId,
-      signal,
-      () => Promise.resolve(),
-    );
-
-    expect(beginStatements).toEqual([
-      'begin isolation level repeatable read read only',
-      'begin',
-    ]);
   });
 });

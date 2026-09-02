@@ -1,1424 +1,1026 @@
 {
-  "schemaVersion": 3,
-  "reviews": [
+  "schemaVersion": 4,
+  "integrationEvidence": {},
+  "reviewGroups": [
     {
       "cohort": "api",
       "file": "apps/api/src/platform/http/problem-details.filter.ts",
-      "branchId": "55",
-      "locationIndex": 0,
-      "branchType": "cond-expr",
-      "line": 313,
-      "column": 7,
-      "classification": "generated",
-      "justification": "TypeScript emits an uncallable fallback while lowering the parameterless Nest Catch decorator; application control flow cannot select it."
+      "reviews": [
+        {
+          "branchId": "55",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 313,
+          "column": 7,
+          "sourceFingerprint": "sha256:ba5ec51d07a4ac0e951608704431d59a02b21a4e951acc10505a8dc407c501ee",
+          "classification": "generated",
+          "justification": "TypeScript emits an uncallable fallback while lowering the parameterless Nest Catch decorator; application control flow cannot select it."
+        }
+      ]
     },
     {
       "cohort": "database",
       "file": "packages/database/src/workspace.ts",
-      "branchId": "8",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 95,
-      "column": 4,
-      "classification": "unreachable",
-      "justification": "The abort listener is registered with once semantics and removed in finally; no asynchronous boundary exists between marking the client released and removing that listener, so it cannot re-enter after release."
+      "reviews": [
+        {
+          "branchId": "8",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 95,
+          "column": 4,
+          "sourceFingerprint": "sha256:fffaa2ba6fe1e19f0959b5eb3e16d895990998d6f821d56c484235d970f9ff23",
+          "classification": "unreachable",
+          "justification": "The abort listener is registered with once semantics and removed in finally; no asynchronous boundary exists between marking the client released and removing that listener, so it cannot re-enter after release."
+        },
+        {
+          "branchId": "10",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 108,
+          "column": 2,
+          "sourceFingerprint": "sha256:7ede135bb0d2c775f48d97f6aba055192d1e802452e2cfd7ce890e36c044e8eb",
+          "classification": "defensive",
+          "justification": "This closes the narrow abort race after acquisition resolves and before transaction setup resumes; the public abort contract is covered before acquisition, during acquisition, and during active work."
+        },
+        {
+          "branchId": "21",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 186,
+          "column": 4,
+          "sourceFingerprint": "sha256:f16ae90d29e2acb2efc6e5f13668f5d06c7ca6aef89af73d46ac4d2d76eb9df6",
+          "classification": "defensive",
+          "justification": "This closes the event-loop race between abort-listener registration and entering Promise.race; acquisition cancellation and late connection settlement are exercised through the public transaction seam."
+        }
+      ]
     },
     {
-      "cohort": "database",
-      "file": "packages/database/src/workspace.ts",
-      "branchId": "10",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 108,
-      "column": 2,
-      "classification": "defensive",
-      "justification": "This closes the narrow abort race after acquisition resolves and before transaction setup resumes; the public abort contract is covered before acquisition, during acquisition, and during active work."
+      "cohort": "worker",
+      "file": "apps/worker/src/execution/node-attempt-handler.ts",
+      "reviews": [
+        {
+          "branchId": "19",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:1114bfd1245f8e4b39be1648817c3ee3cadcdf8bc8c8bf75672c04f3542fd691",
+          "classification": "generated",
+          "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
+        },
+        {
+          "branchId": "21",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:8983a67b00387e375d5f6b960bd3353737bc4db86a535bb8ffb3edb96f9f2e3c",
+          "classification": "generated",
+          "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
+        },
+        {
+          "branchId": "33",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:1a55cc94d74c40fe6c251dd1f7420c061bed4131ee4988ab7076643ee6ffd60c",
+          "classification": "generated",
+          "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
+        },
+        {
+          "branchId": "34",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:5c1ef8a5c9faf5373c29eb4a456ce82849674336764278ba495c8a6e756cb57e",
+          "classification": "generated",
+          "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
+        },
+        {
+          "branchId": "42",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:4a01fff28ac099146bbff5ddecefbb71533fc1f41659df091cb819846984eb71",
+          "classification": "generated",
+          "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
+        },
+        {
+          "branchId": "0",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 123,
+          "column": 4,
+          "sourceFingerprint": "sha256:5c23ecd8a82966d3c2077425c06c736efd04020482ecee527393291e0a2482b1",
+          "classification": "defensive",
+          "justification": "The abort-aware wait rejects immediately when its signal is already aborted, closing the listener-registration race."
+        },
+        {
+          "branchId": "40",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 415,
+          "column": 18,
+          "sourceFingerprint": "sha256:f0628839d2a71529f668303282caba2d2b508d220b3d5792748a9da8b4899146",
+          "classification": "defensive",
+          "justification": "A completed executor result becomes suspended only when the prepared attempt includes a suspension duration; otherwise it succeeds."
+        },
+        {
+          "branchId": "46",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 462,
+          "column": 14,
+          "sourceFingerprint": "sha256:346c2aa718161b5077dd88d91af69ff3dbc33a49c9a50a9311ed0819640c741e",
+          "classification": "defensive",
+          "justification": "A non-Error heartbeat rejection is converted into a stable Error before leaving the handler."
+        }
+      ]
     },
     {
-      "cohort": "database",
-      "file": "packages/database/src/workspace.ts",
-      "branchId": "21",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 186,
-      "column": 4,
-      "classification": "defensive",
-      "justification": "This closes the event-loop race between abort-listener registration and entering Promise.race; acquisition cancellation and late connection settlement are exercised through the public transaction seam."
+      "cohort": "worker",
+      "file": "apps/worker/src/execution/node-runtime-capabilities.ts",
+      "reviews": [
+        {
+          "branchId": "7",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 200,
+          "column": 4,
+          "sourceFingerprint": "sha256:eeaa41071aba0d4b923723eeee6c1daa00f9646150f4641cc1f72b44469c898e",
+          "classification": "defensive",
+          "justification": "A spool write reporting zero or negative progress fails immediately, preventing an infinite artifact-write loop."
+        }
+      ]
     },
     {
       "cohort": "workflow-engine",
       "file": "packages/workflow-engine/src/advance-workflow.ts",
-      "branchId": "7",
-      "locationIndex": 0,
-      "branchType": "cond-expr",
-      "line": 92,
-      "column": 12,
-      "classification": "defensive",
-      "justification": "Legacy checkpoints may carry the root join id instead of its canonical invocation key; this fallback normalizes only that validated root-compatible representation."
+      "reviews": [
+        {
+          "branchId": "7",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 92,
+          "column": 12,
+          "sourceFingerprint": "sha256:b38b435123331cc1e27b2eecc2c3e08767c6945adbf6c7b53b2daf5258831c2b",
+          "classification": "defensive",
+          "justification": "Legacy checkpoints may carry the root join id instead of its canonical invocation key; this fallback normalizes only that validated root-compatible representation."
+        }
+      ]
     },
     {
       "cohort": "workflow-engine",
       "file": "packages/workflow-engine/src/checkpoint.ts",
-      "branchId": "39",
-      "locationIndex": 1,
-      "branchType": "if",
-      "line": 0,
-      "column": 0,
-      "classification": "generated",
-      "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/checkpoint.ts",
-      "branchId": "169",
-      "locationIndex": 1,
-      "branchType": "if",
-      "line": 0,
-      "column": 0,
-      "classification": "generated",
-      "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/checkpoint.ts",
-      "branchId": "20",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 140,
-      "column": 4,
-      "classification": "unreachable",
-      "justification": "The synchronous traversal proves the stack is non-empty immediately before pop, with no intervening mutation or asynchronous boundary."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/checkpoint.ts",
-      "branchId": "82",
-      "locationIndex": 1,
-      "branchType": "binary-expr",
-      "line": 543,
-      "column": 32,
-      "classification": "unreachable",
-      "justification": "Positive integer count-policy validation has already established that count is present."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/checkpoint.ts",
-      "branchId": "92",
-      "locationIndex": 1,
-      "branchType": "cond-expr",
-      "line": 602,
-      "column": 14,
-      "classification": "unreachable",
-      "justification": "Policy parsing has already restricted kind to all, any, or count, so the final fallback cannot be selected."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/checkpoint.ts",
-      "branchId": "105",
-      "locationIndex": 1,
-      "branchType": "cond-expr",
-      "line": 641,
-      "column": 22,
-      "classification": "unreachable",
-      "justification": "Policy parsing has already restricted kind to all, any, or count, so the final fallback cannot be selected."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/checkpoint.ts",
-      "branchId": "129",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 883,
-      "column": 2,
-      "classification": "unreachable",
-      "justification": "The public dispatcher enters the V1 parser only after proving schemaVersion is exactly 1."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/checkpoint.ts",
-      "branchId": "139",
-      "locationIndex": 1,
-      "branchType": "binary-expr",
-      "line": 1018,
-      "column": 12,
-      "classification": "unreachable",
-      "justification": "Join parsing always materializes joinInvocationKey from the explicit key or joinId before consistency validation."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/checkpoint.ts",
-      "branchId": "159",
-      "locationIndex": 1,
-      "branchType": "binary-expr",
-      "line": 1205,
-      "column": 6,
-      "classification": "unreachable",
-      "justification": "Equal invocation keys identify the same node; duplicate selections are coalesced or rejected before sorting."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/checkpoint.ts",
-      "branchId": "170",
-      "locationIndex": 0,
-      "branchType": "cond-expr",
-      "line": 1295,
-      "column": 31,
-      "classification": "defensive",
-      "justification": "When checkpoint parsing throws an Error, this branch preserves its sanitized message in the stable checkpoint_invalid boundary."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/checkpoint.ts",
-      "branchId": "170",
-      "locationIndex": 1,
-      "branchType": "cond-expr",
-      "line": 1295,
-      "column": 47,
-      "classification": "defensive",
-      "justification": "When a dependency throws a non-Error value, this fallback prevents it escaping and emits the stable checkpoint parsing failed message."
+      "reviews": [
+        {
+          "branchId": "39",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:fd4b1c2422da1ee5368653b0d28efe7bb84a4f0c58c2b1e1fad6167cd4c224ba",
+          "classification": "generated",
+          "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
+        },
+        {
+          "branchId": "169",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:2e52b883d27b3e3425fd3d94187e64952cc1e2a0c512f37a19d8b68a41f1aea7",
+          "classification": "generated",
+          "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
+        },
+        {
+          "branchId": "20",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 140,
+          "column": 4,
+          "sourceFingerprint": "sha256:5cc5a1f186a29fedb64541c2520092df52f3cf43f15c1368576b766ad1c75641",
+          "classification": "unreachable",
+          "justification": "The synchronous traversal proves the stack is non-empty immediately before pop, with no intervening mutation or asynchronous boundary."
+        },
+        {
+          "branchId": "82",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 543,
+          "column": 32,
+          "sourceFingerprint": "sha256:b72930b8345440f2b0e5c3320697031ce0a934022c3a546234a94508bb7e6fbf",
+          "classification": "unreachable",
+          "justification": "Positive integer count-policy validation has already established that count is present."
+        },
+        {
+          "branchId": "92",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 602,
+          "column": 14,
+          "sourceFingerprint": "sha256:f1ab6b1fa3e07be02cdd3816ad1c1c0f6a540c262e4c805f208a901850e5dde0",
+          "classification": "unreachable",
+          "justification": "Policy parsing has already restricted kind to all, any, or count, so the final fallback cannot be selected."
+        },
+        {
+          "branchId": "105",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 641,
+          "column": 22,
+          "sourceFingerprint": "sha256:d52bea8fe3af01c979272d9cc4dfb9743e53ab4ebbcf2c4238992f74ef1c11a6",
+          "classification": "unreachable",
+          "justification": "Policy parsing has already restricted kind to all, any, or count, so the final fallback cannot be selected."
+        },
+        {
+          "branchId": "129",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 883,
+          "column": 2,
+          "sourceFingerprint": "sha256:f17ee43a59920ead4abcd663bdd6d89bf85a3bcd724d9c76a8c3e20fd9f8f2da",
+          "classification": "unreachable",
+          "justification": "The public dispatcher enters the V1 parser only after proving schemaVersion is exactly 1."
+        },
+        {
+          "branchId": "139",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 1018,
+          "column": 12,
+          "sourceFingerprint": "sha256:4d296dbb34b0b270e6395c5317e7840ee2ecd2715e207ac5be8979058967140b",
+          "classification": "unreachable",
+          "justification": "Join parsing always materializes joinInvocationKey from the explicit key or joinId before consistency validation."
+        },
+        {
+          "branchId": "159",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 1205,
+          "column": 6,
+          "sourceFingerprint": "sha256:7bd3963045de260fd3b12bf993f51905cc5e543c95277a2d508fc4d6025e16f8",
+          "classification": "unreachable",
+          "justification": "Equal invocation keys identify the same node; duplicate selections are coalesced or rejected before sorting."
+        },
+        {
+          "branchId": "170",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 1295,
+          "column": 31,
+          "sourceFingerprint": "sha256:f9e460e9c3e9ba391535df0bb201dc350ee7727b9020c3999901b5053914b69f",
+          "classification": "defensive",
+          "justification": "When checkpoint parsing throws an Error, this branch preserves its sanitized message in the stable checkpoint_invalid boundary."
+        },
+        {
+          "branchId": "170",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 1295,
+          "column": 47,
+          "sourceFingerprint": "sha256:d4896f65dc31d2ee72ab19d2d44776f36d558e51bbf408cb7c66b91c07ded0cd",
+          "classification": "defensive",
+          "justification": "When a dependency throws a non-Error value, this fallback prevents it escaping and emits the stable checkpoint parsing failed message."
+        }
+      ]
     },
     {
       "cohort": "workflow-engine",
       "file": "packages/workflow-engine/src/node-attempt-input.ts",
-      "branchId": "2",
-      "locationIndex": 1,
-      "branchType": "if",
-      "line": 0,
-      "column": 0,
-      "classification": "generated",
-      "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/node-attempt-input.ts",
-      "branchId": "6",
-      "locationIndex": 1,
-      "branchType": "if",
-      "line": 0,
-      "column": 0,
-      "classification": "generated",
-      "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/node-attempt-input.ts",
-      "branchId": "1",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 32,
-      "column": 4,
-      "classification": "defensive",
-      "justification": "Graph traversal skips nodes without a structured body; nested lookup success and not-found behavior are covered without manufacturing a body for leaf nodes."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/node-attempt-input.ts",
-      "branchId": "7",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 64,
-      "column": 2,
-      "classification": "defensive",
-      "justification": "This rejects an attempt whose iteration ancestry length or node ids differ from the executable graph ancestry before any input is resolved."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/node-attempt-input.ts",
-      "branchId": "15",
-      "locationIndex": 2,
-      "branchType": "binary-expr",
-      "line": 122,
-      "column": 4,
-      "classification": "defensive",
-      "justification": "The optional nearest branch must exist before its node and output port can justify removing one branch scope from an upstream descriptor."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/node-attempt-input.ts",
-      "branchId": "14",
-      "locationIndex": 0,
-      "branchType": "cond-expr",
-      "line": 123,
-      "column": 8,
-      "classification": "defensive",
-      "justification": "Only an upstream descriptor sourced from the nearest matching branch uses its parent scope; all other descriptors retain the complete branch path."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/node-attempt-input.ts",
-      "branchId": "20",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 151,
-      "column": 2,
-      "classification": "unreachable",
-      "justification": "Canonical JSON rejects undefined and exactKeys requires the descriptor value member."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/node-attempt-input.ts",
-      "branchId": "22",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 178,
-      "column": 2,
-      "classification": "defensive",
-      "justification": "Iteration-scoped attempts cannot fall back to the root input object when no explicit descriptor resolves, preventing cross-iteration input leakage."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/node-attempt-input.ts",
-      "branchId": "31",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 230,
-      "column": 2,
-      "classification": "unreachable",
-      "justification": "Normalized JSON arrays are dense and the preceding proof bounds the ordinal below array length."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/node-attempt-input.ts",
-      "branchId": "32",
-      "locationIndex": 0,
-      "branchType": "cond-expr",
-      "line": 247,
-      "column": 31,
-      "classification": "defensive",
-      "justification": "An Error thrown while validating attempt input contributes its sanitized message to the stable attempt_invalid operation error."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/node-attempt-input.ts",
-      "branchId": "32",
-      "locationIndex": 1,
-      "branchType": "cond-expr",
-      "line": 247,
-      "column": 47,
-      "classification": "defensive",
-      "justification": "A non-Error thrown while validating attempt input is converted to the stable attempt input is invalid fallback instead of escaping."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/node-attempt-input.ts",
-      "branchId": "36",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 267,
-      "column": 2,
-      "classification": "unreachable",
-      "justification": "The node was obtained from executableNodes over the same recursively traversed graph immediately beforehand."
+      "reviews": [
+        {
+          "branchId": "2",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:d889ed84f4bbffcbcca98eb6b6c854c83692dec282c5141a9b5d0f2b45f9b83d",
+          "classification": "generated",
+          "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
+        },
+        {
+          "branchId": "6",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:d889ed84f4bbffcbcca98eb6b6c854c83692dec282c5141a9b5d0f2b45f9b83d",
+          "classification": "generated",
+          "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
+        },
+        {
+          "branchId": "1",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 32,
+          "column": 4,
+          "sourceFingerprint": "sha256:e41e5040a524bafc9228d1a8336ec4ab27796a8393b33608ca1859073f6f616d",
+          "classification": "defensive",
+          "justification": "Graph traversal skips nodes without a structured body; nested lookup success and not-found behavior are covered without manufacturing a body for leaf nodes."
+        },
+        {
+          "branchId": "7",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 64,
+          "column": 2,
+          "sourceFingerprint": "sha256:80df0c3b92f8433169b013d624c221f49116e3946ec8a3fd6f17c28de914b38d",
+          "classification": "defensive",
+          "justification": "This rejects an attempt whose iteration ancestry length or node ids differ from the executable graph ancestry before any input is resolved."
+        },
+        {
+          "branchId": "15",
+          "locationIndex": 2,
+          "branchType": "binary-expr",
+          "line": 122,
+          "column": 4,
+          "sourceFingerprint": "sha256:f7d792b2b1f829984cafc852f8ebc43155c2a38956044e26870edc39742e46c4",
+          "classification": "defensive",
+          "justification": "The optional nearest branch must exist before its node and output port can justify removing one branch scope from an upstream descriptor."
+        },
+        {
+          "branchId": "14",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 123,
+          "column": 8,
+          "sourceFingerprint": "sha256:b9e308ae04d0a3970a220bb62b2c2c73c5ab875406c0f77840aef3aee40f8bcf",
+          "classification": "defensive",
+          "justification": "Only an upstream descriptor sourced from the nearest matching branch uses its parent scope; all other descriptors retain the complete branch path."
+        },
+        {
+          "branchId": "20",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 151,
+          "column": 2,
+          "sourceFingerprint": "sha256:a3f50be9fc23dbb556a925123b7097469e589c643faa076c1cbed149044cd025",
+          "classification": "unreachable",
+          "justification": "Canonical JSON rejects undefined and exactKeys requires the descriptor value member."
+        },
+        {
+          "branchId": "22",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 178,
+          "column": 2,
+          "sourceFingerprint": "sha256:5735aa0bf7968043eff690b5b8d2393f8b1459b335ec43265c8814f70bc5b77b",
+          "classification": "defensive",
+          "justification": "Iteration-scoped attempts cannot fall back to the root input object when no explicit descriptor resolves, preventing cross-iteration input leakage."
+        },
+        {
+          "branchId": "31",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 230,
+          "column": 2,
+          "sourceFingerprint": "sha256:ffb0c3fc52ac87e65c377430b372eb5dc01333a2477348de6ecd3fef6de348f5",
+          "classification": "unreachable",
+          "justification": "Normalized JSON arrays are dense and the preceding proof bounds the ordinal below array length."
+        },
+        {
+          "branchId": "32",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 247,
+          "column": 31,
+          "sourceFingerprint": "sha256:d6fe66e8bf0ba46cde28aa30cd0d08905cb1909105c65c66359e42ba00677701",
+          "classification": "defensive",
+          "justification": "An Error thrown while validating attempt input contributes its sanitized message to the stable attempt_invalid operation error."
+        },
+        {
+          "branchId": "32",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 247,
+          "column": 47,
+          "sourceFingerprint": "sha256:7880a6970c0c49a49f141f4d44bb5d7e3a7a9e3c14e6958f8170ed40b6cd535d",
+          "classification": "defensive",
+          "justification": "A non-Error thrown while validating attempt input is converted to the stable attempt input is invalid fallback instead of escaping."
+        },
+        {
+          "branchId": "36",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 267,
+          "column": 2,
+          "sourceFingerprint": "sha256:cdd0cb460f7874562f52b700dbb0a7bb1eccfae26f849995bb2bba32d2491f40",
+          "classification": "unreachable",
+          "justification": "The node was obtained from executableNodes over the same recursively traversed graph immediately beforehand."
+        }
+      ]
     },
     {
       "cohort": "workflow-engine",
       "file": "packages/workflow-engine/src/operations.ts",
-      "branchId": "60",
-      "locationIndex": 1,
-      "branchType": "if",
-      "line": 0,
-      "column": 0,
-      "classification": "generated",
-      "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/operations.ts",
-      "branchId": "3",
-      "locationIndex": 1,
-      "branchType": "binary-expr",
-      "line": 117,
-      "column": 71,
-      "classification": "unreachable",
-      "justification": "Recursive scheduler projection always materializes structuredBodies as an array."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/operations.ts",
-      "branchId": "6",
-      "locationIndex": 1,
-      "branchType": "cond-expr",
-      "line": 148,
-      "column": 10,
-      "classification": "defensive",
-      "justification": "A checkpoint join whose paired Parallel id is absent or non-string resolves to no executable Parallel and is rejected by the following identity guard."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/operations.ts",
-      "branchId": "7",
-      "locationIndex": 0,
-      "branchType": "cond-expr",
-      "line": 151,
-      "column": 10,
-      "classification": "defensive",
-      "justification": "A missing paired Parallel produces no configured branch-id set, allowing the following identity guard to fail closed."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/operations.ts",
-      "branchId": "8",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 153,
-      "column": 4,
-      "classification": "defensive",
-      "justification": "This rejects a checkpoint join when its paired Parallel is absent or has no valid configured output-port set."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/operations.ts",
-      "branchId": "9",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 158,
-      "column": 4,
-      "classification": "defensive",
-      "justification": "This rejects a join ledger whose size or branch identifiers disagree with the paired Parallel definition."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/operations.ts",
-      "branchId": "11",
-      "locationIndex": 1,
-      "branchType": "binary-expr",
-      "line": 169,
-      "column": 38,
-      "classification": "defensive",
-      "justification": "A legacy join without branchPath is normalized to the empty root scope solely for canonical invocation-key comparison."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/operations.ts",
-      "branchId": "12",
-      "locationIndex": 0,
-      "branchType": "cond-expr",
-      "line": 173,
-      "column": 10,
-      "classification": "defensive",
-      "justification": "The canonical join-key input omits iterationPath only when the checkpoint join is not iteration scoped."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/operations.ts",
-      "branchId": "13",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 176,
-      "column": 4,
-      "classification": "defensive",
-      "justification": "This rejects a join invocation key that is neither canonical nor the narrowly accepted legacy root join id."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/operations.ts",
-      "branchId": "14",
-      "locationIndex": 1,
-      "branchType": "binary-expr",
-      "line": 178,
-      "column": 6,
-      "classification": "defensive",
-      "justification": "The legacy join-id exception is considered only after the canonical join invocation key comparison fails."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/operations.ts",
-      "branchId": "15",
-      "locationIndex": 0,
-      "branchType": "binary-expr",
-      "line": 179,
-      "column": 8,
-      "classification": "defensive",
-      "justification": "The legacy root exception requires the stored invocation key to equal the join id."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/operations.ts",
-      "branchId": "15",
-      "locationIndex": 1,
-      "branchType": "binary-expr",
-      "line": 179,
-      "column": 40,
-      "classification": "defensive",
-      "justification": "The legacy root exception requires an absent or empty branch path."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/operations.ts",
-      "branchId": "15",
-      "locationIndex": 2,
-      "branchType": "binary-expr",
-      "line": 180,
-      "column": 43,
-      "classification": "defensive",
-      "justification": "An absent branch path is treated as empty only while checking the legacy root-join exception."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/operations.ts",
-      "branchId": "16",
-      "locationIndex": 0,
-      "branchType": "binary-expr",
-      "line": 181,
-      "column": 9,
-      "classification": "defensive",
-      "justification": "The legacy root exception also requires an absent or empty iteration path."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/operations.ts",
-      "branchId": "16",
-      "locationIndex": 1,
-      "branchType": "binary-expr",
-      "line": 181,
-      "column": 39,
-      "classification": "defensive",
-      "justification": "An absent iteration path is treated as empty only while checking the legacy root-join exception."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/operations.ts",
-      "branchId": "22",
-      "locationIndex": 1,
-      "branchType": "binary-expr",
-      "line": 226,
-      "column": 73,
-      "classification": "unreachable",
-      "justification": "This expression runs only while iterating a defined iterationPath, so slicing it cannot need an undefined fallback."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/operations.ts",
-      "branchId": "24",
-      "locationIndex": 0,
-      "branchType": "binary-expr",
-      "line": 235,
-      "column": 14,
-      "classification": "defensive",
-      "justification": "A missing checkpoint branch-path element fails the optional node-id comparison and prevents an invalid scoped invocation match."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/operations.ts",
-      "branchId": "24",
-      "locationIndex": 1,
-      "branchType": "binary-expr",
-      "line": 236,
-      "column": 14,
-      "classification": "defensive",
-      "justification": "A scoped invocation matches only when both its branch node id and output port equal the requested branch path."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/operations.ts",
-      "branchId": "35",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 355,
-      "column": 6,
-      "classification": "defensive",
-      "justification": "A stale node-failure observation is ignored unless the matching invocation is still running at the same attempt number."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/operations.ts",
-      "branchId": "38",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 363,
-      "column": 6,
-      "classification": "defensive",
-      "justification": "Cancellation or deadline control diverts a running failure into a coordinator-derived terminal outcome before retry policy is considered."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/operations.ts",
-      "branchId": "40",
-      "locationIndex": 0,
-      "branchType": "cond-expr",
-      "line": 368,
-      "column": 14,
-      "classification": "defensive",
-      "justification": "Possibly dispatched non-safe work becomes outcome_unknown during cancellation or deadline handling."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/operations.ts",
-      "branchId": "40",
-      "locationIndex": 1,
-      "branchType": "cond-expr",
-      "line": 369,
-      "column": 14,
-      "classification": "defensive",
-      "justification": "When the outcome is knowable, cancellation and deadline select their distinct terminal statuses."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/operations.ts",
-      "branchId": "41",
-      "locationIndex": 0,
-      "branchType": "cond-expr",
-      "line": 370,
-      "column": 16,
-      "classification": "defensive",
-      "justification": "A knowable control-terminal failure becomes canceled only when cancellation, rather than deadline expiry, was requested."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/operations.ts",
-      "branchId": "41",
-      "locationIndex": 1,
-      "branchType": "cond-expr",
-      "line": 371,
-      "column": 16,
-      "classification": "defensive",
-      "justification": "A knowable control-terminal failure defaults to timed_out after the cancellation alternative is excluded."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/operations.ts",
-      "branchId": "46",
-      "locationIndex": 0,
-      "branchType": "cond-expr",
-      "line": 421,
-      "column": 48,
-      "classification": "defensive",
-      "justification": "A retry-policy outcome_unknown decision is preserved; every other exhausted retry decision maps to failed."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/operations.ts",
-      "branchId": "56",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 582,
-      "column": 4,
-      "classification": "unreachable",
-      "justification": "Object.keys enumerates present own keys on an immutable canonical executable mapping."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/operations.ts",
-      "branchId": "60",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 605,
-      "column": 6,
-      "classification": "defensive",
-      "justification": "Mapping exceptions are translated at the operation boundary, with abort-like exceptions receiving the distinct attempt_aborted code."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/operations.ts",
-      "branchId": "61",
-      "locationIndex": 0,
-      "branchType": "binary-expr",
-      "line": 605,
-      "column": 10,
-      "classification": "defensive",
-      "justification": "An already-aborted signal classifies a thrown mapping failure as attempt_aborted even if the dependency did not create an AbortError."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/operations.ts",
-      "branchId": "61",
-      "locationIndex": 1,
-      "branchType": "binary-expr",
-      "line": 605,
-      "column": 28,
-      "classification": "defensive",
-      "justification": "A dependency AbortError classifies mapping failure as attempt_aborted even when signal observation races behind the throw."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/operations.ts",
-      "branchId": "62",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 609,
-      "column": 4,
-      "classification": "defensive",
-      "justification": "A mapping result with error kind is inspected for cancellation before generic attempt_invalid conversion."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/operations.ts",
-      "branchId": "63",
-      "locationIndex": 1,
-      "branchType": "binary-expr",
-      "line": 611,
-      "column": 7,
-      "classification": "defensive",
-      "justification": "A mapping error carrying the canceled expression code is converted to attempt_aborted."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/operations.ts",
-      "branchId": "63",
-      "locationIndex": 2,
-      "branchType": "binary-expr",
-      "line": 611,
-      "column": 53,
-      "classification": "defensive",
-      "justification": "An aborted signal converts an otherwise generic mapping error result to attempt_aborted."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/operations.ts",
-      "branchId": "64",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 614,
-      "column": 4,
-      "classification": "defensive",
-      "justification": "A non-cancellation mapping error result is converted to the stable attempt_invalid boundary."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/operations.ts",
-      "branchId": "66",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 648,
-      "column": 4,
-      "classification": "unreachable",
-      "justification": "The parser receives exactly one preview node and either returns it or throws validation."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/operations.ts",
-      "branchId": "68",
-      "locationIndex": 1,
-      "branchType": "cond-expr",
-      "line": 655,
-      "column": 47,
-      "classification": "defensive",
-      "justification": "A non-Error thrown while parsing preview input uses the stable preview input is invalid fallback message."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/operations.ts",
-      "branchId": "73",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 695,
-      "column": 4,
-      "classification": "defensive",
-      "justification": "A Merge node without coordinator-settled input is rejected before executing the merge definition."
+      "reviews": [
+        {
+          "branchId": "60",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:b91e7930c7583a87e5c53ae84e9852e338df3673f3f5c797032d6f4c6fe611ff",
+          "classification": "generated",
+          "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
+        },
+        {
+          "branchId": "3",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 117,
+          "column": 71,
+          "sourceFingerprint": "sha256:44f67d2883ed24b790fdde92e52b55ea1f2522d0956db6e7862f85f693dc7ad1",
+          "classification": "unreachable",
+          "justification": "Recursive scheduler projection always materializes structuredBodies as an array."
+        },
+        {
+          "branchId": "6",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 148,
+          "column": 10,
+          "sourceFingerprint": "sha256:96e45a1f8b5b2175c1b98f9c4bde8e5bf7426af2741787f517f2d113bc9350b7",
+          "classification": "defensive",
+          "justification": "A checkpoint join whose paired Parallel id is absent or non-string resolves to no executable Parallel and is rejected by the following identity guard."
+        },
+        {
+          "branchId": "7",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 151,
+          "column": 10,
+          "sourceFingerprint": "sha256:eb045d78d273107348b0300c01d29b7552d622abbc6faf81b3ec55359aa9950c",
+          "classification": "defensive",
+          "justification": "A missing paired Parallel produces no configured branch-id set, allowing the following identity guard to fail closed."
+        },
+        {
+          "branchId": "8",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 153,
+          "column": 4,
+          "sourceFingerprint": "sha256:0eb9c0947a6748bf31d074a6103467938cc09157773a6d797a9b3a032b226402",
+          "classification": "defensive",
+          "justification": "This rejects a checkpoint join when its paired Parallel is absent or has no valid configured output-port set."
+        },
+        {
+          "branchId": "9",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 158,
+          "column": 4,
+          "sourceFingerprint": "sha256:d3bea83ee54bf084c19e185e099bed1ae81369f09a6c561da1803d9fc2a76994",
+          "classification": "defensive",
+          "justification": "This rejects a join ledger whose size or branch identifiers disagree with the paired Parallel definition."
+        },
+        {
+          "branchId": "11",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 169,
+          "column": 38,
+          "sourceFingerprint": "sha256:6fb9edb4d6d391abd06d8baf343433a5a6b4ab693dfaad0317179222c81a57c3",
+          "classification": "defensive",
+          "justification": "A legacy join without branchPath is normalized to the empty root scope solely for canonical invocation-key comparison."
+        },
+        {
+          "branchId": "12",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 173,
+          "column": 10,
+          "sourceFingerprint": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "classification": "defensive",
+          "justification": "The canonical join-key input omits iterationPath only when the checkpoint join is not iteration scoped."
+        },
+        {
+          "branchId": "13",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 176,
+          "column": 4,
+          "sourceFingerprint": "sha256:93b5d482da4e5ed7b3af09f0a74a20fd9a4f8d89e8eb75b6220f60cc19edc8cd",
+          "classification": "defensive",
+          "justification": "This rejects a join invocation key that is neither canonical nor the narrowly accepted legacy root join id."
+        },
+        {
+          "branchId": "14",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 178,
+          "column": 6,
+          "sourceFingerprint": "sha256:2f509d7b11371271d854326518c7c2f680904a03582047878bf3cdac9946ad2b",
+          "classification": "defensive",
+          "justification": "The legacy join-id exception is considered only after the canonical join invocation key comparison fails."
+        },
+        {
+          "branchId": "15",
+          "locationIndex": 0,
+          "branchType": "binary-expr",
+          "line": 179,
+          "column": 8,
+          "sourceFingerprint": "sha256:5559515cc8d1a35f15a01e75fe600650d1d542d000cce31bdba261b046a7b39b",
+          "classification": "defensive",
+          "justification": "The legacy root exception requires the stored invocation key to equal the join id."
+        },
+        {
+          "branchId": "15",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 179,
+          "column": 40,
+          "sourceFingerprint": "sha256:c83aeecc88358217e06c0baf2f37ff2f56b71a5affb7022573a9ce9a02ffb9a0",
+          "classification": "defensive",
+          "justification": "The legacy root exception requires an absent or empty branch path."
+        },
+        {
+          "branchId": "15",
+          "locationIndex": 2,
+          "branchType": "binary-expr",
+          "line": 180,
+          "column": 43,
+          "sourceFingerprint": "sha256:8f50d3cea546e838cc7c140b4ebcdd9855f3ef45585654fd3ae9fb9c0d54af24",
+          "classification": "defensive",
+          "justification": "An absent branch path is treated as empty only while checking the legacy root-join exception."
+        },
+        {
+          "branchId": "16",
+          "locationIndex": 0,
+          "branchType": "binary-expr",
+          "line": 181,
+          "column": 9,
+          "sourceFingerprint": "sha256:36e039a828528956a2a4e2a56195aa955bcac4a723bb5c90bf79e0b58f1f1dda",
+          "classification": "defensive",
+          "justification": "The legacy root exception also requires an absent or empty iteration path."
+        },
+        {
+          "branchId": "16",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 181,
+          "column": 39,
+          "sourceFingerprint": "sha256:2eca9a5c6bfba4b46a051049832b088e7e7c794bf8a7487baf87106b7089da07",
+          "classification": "defensive",
+          "justification": "An absent iteration path is treated as empty only while checking the legacy root-join exception."
+        },
+        {
+          "branchId": "22",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 226,
+          "column": 73,
+          "sourceFingerprint": "sha256:5cf66bebf1fb0b89cac117a893f10a67a2c1c46c1a4b3eda723fae0c8cf9c008",
+          "classification": "unreachable",
+          "justification": "This expression runs only while iterating a defined iterationPath, so slicing it cannot need an undefined fallback."
+        },
+        {
+          "branchId": "24",
+          "locationIndex": 0,
+          "branchType": "binary-expr",
+          "line": 235,
+          "column": 14,
+          "sourceFingerprint": "sha256:4331573762b09b00921fabe398d8351c9ba316c416d5744a217dc6be128155fd",
+          "classification": "defensive",
+          "justification": "A missing checkpoint branch-path element fails the optional node-id comparison and prevents an invalid scoped invocation match."
+        },
+        {
+          "branchId": "24",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 236,
+          "column": 14,
+          "sourceFingerprint": "sha256:23158286faeef8aa5df31957a6092acf834070e6df5506e67bb99d0846dad545",
+          "classification": "defensive",
+          "justification": "A scoped invocation matches only when both its branch node id and output port equal the requested branch path."
+        },
+        {
+          "branchId": "35",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 355,
+          "column": 6,
+          "sourceFingerprint": "sha256:22a4691a34a60f309c4e2cb6fccc22cf066a7fe6287ef4ade5701de26ac7c30d",
+          "classification": "defensive",
+          "justification": "A stale node-failure observation is ignored unless the matching invocation is still running at the same attempt number."
+        },
+        {
+          "branchId": "38",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 363,
+          "column": 6,
+          "sourceFingerprint": "sha256:906f30b4054dc0eb7171bcb1f2d8337ba0c29e9ebaca569feb4e7c5a0be4d034",
+          "classification": "defensive",
+          "justification": "Cancellation or deadline control diverts a running failure into a coordinator-derived terminal outcome before retry policy is considered."
+        },
+        {
+          "branchId": "40",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 368,
+          "column": 14,
+          "sourceFingerprint": "sha256:31fcdb65d8dad320bc0671fbc23f113d0942ad4455c97c316399f7e9b0ee13d5",
+          "classification": "defensive",
+          "justification": "Possibly dispatched non-safe work becomes outcome_unknown during cancellation or deadline handling."
+        },
+        {
+          "branchId": "40",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 369,
+          "column": 14,
+          "sourceFingerprint": "sha256:313100d1eff89b74467b3b0ec278690d0ad990e132c2c427374b6544d70234f4",
+          "classification": "defensive",
+          "justification": "When the outcome is knowable, cancellation and deadline select their distinct terminal statuses."
+        },
+        {
+          "branchId": "41",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 370,
+          "column": 16,
+          "sourceFingerprint": "sha256:78bcfdb9d539d6ff5da7f8d9e0af31cf88431ffdc14643c602a32c5f10045168",
+          "classification": "defensive",
+          "justification": "A knowable control-terminal failure becomes canceled only when cancellation, rather than deadline expiry, was requested."
+        },
+        {
+          "branchId": "41",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 371,
+          "column": 16,
+          "sourceFingerprint": "sha256:4767faa49854f13bb99ed3c02b20069b51f4d1b0c103c87a1d13ce41c775df0a",
+          "classification": "defensive",
+          "justification": "A knowable control-terminal failure defaults to timed_out after the cancellation alternative is excluded."
+        },
+        {
+          "branchId": "46",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 421,
+          "column": 48,
+          "sourceFingerprint": "sha256:62375429a14244c6b15970d653a3393770be134e3e4d73f8065cde3c1dcfab2d",
+          "classification": "defensive",
+          "justification": "A retry-policy outcome_unknown decision is preserved; every other exhausted retry decision maps to failed."
+        },
+        {
+          "branchId": "56",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 582,
+          "column": 4,
+          "sourceFingerprint": "sha256:d16aa7faf03d4ba561cb6bbb31a3820249d72e84ccdd8b129fbab145c411eb0b",
+          "classification": "unreachable",
+          "justification": "Object.keys enumerates present own keys on an immutable canonical executable mapping."
+        },
+        {
+          "branchId": "60",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 605,
+          "column": 6,
+          "sourceFingerprint": "sha256:b91e7930c7583a87e5c53ae84e9852e338df3673f3f5c797032d6f4c6fe611ff",
+          "classification": "defensive",
+          "justification": "Mapping exceptions are translated at the operation boundary, with abort-like exceptions receiving the distinct attempt_aborted code."
+        },
+        {
+          "branchId": "61",
+          "locationIndex": 0,
+          "branchType": "binary-expr",
+          "line": 605,
+          "column": 10,
+          "sourceFingerprint": "sha256:0ad026528db325d26dfe6693bd0712aa869a5762a2f8286d4240b25d14999ed1",
+          "classification": "defensive",
+          "justification": "An already-aborted signal classifies a thrown mapping failure as attempt_aborted even if the dependency did not create an AbortError."
+        },
+        {
+          "branchId": "61",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 605,
+          "column": 28,
+          "sourceFingerprint": "sha256:6964c6c2c4a32dd230ff3c3b1eb3908cc54777e690ad61d28f42335e2a3020c2",
+          "classification": "defensive",
+          "justification": "A dependency AbortError classifies mapping failure as attempt_aborted even when signal observation races behind the throw."
+        },
+        {
+          "branchId": "62",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 609,
+          "column": 4,
+          "sourceFingerprint": "sha256:3a24b48a2dda5b13ca3ce14281da5b04d6c349eda5e0c007f1bac3a42de8eb7f",
+          "classification": "defensive",
+          "justification": "A mapping result with error kind is inspected for cancellation before generic attempt_invalid conversion."
+        },
+        {
+          "branchId": "63",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 611,
+          "column": 7,
+          "sourceFingerprint": "sha256:a24feec3c8f4f70d605e1b19cd5d1dca2289936887bf934502ebb0a0847e4fc3",
+          "classification": "defensive",
+          "justification": "A mapping error carrying the canceled expression code is converted to attempt_aborted."
+        },
+        {
+          "branchId": "63",
+          "locationIndex": 2,
+          "branchType": "binary-expr",
+          "line": 611,
+          "column": 53,
+          "sourceFingerprint": "sha256:08952b2b722a6f791bdffccd733fa3d2838e1192a9e38ffd5cc0d256665d4a69",
+          "classification": "defensive",
+          "justification": "An aborted signal converts an otherwise generic mapping error result to attempt_aborted."
+        },
+        {
+          "branchId": "64",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 614,
+          "column": 4,
+          "sourceFingerprint": "sha256:547445ada5edc49c8ab592293b1bb4bd590be72736a3c6d54181e4e65d894e15",
+          "classification": "defensive",
+          "justification": "A non-cancellation mapping error result is converted to the stable attempt_invalid boundary."
+        },
+        {
+          "branchId": "66",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 648,
+          "column": 4,
+          "sourceFingerprint": "sha256:3cbddb274e3315da12643477977d99ad334642850a2ec52684e81bc6b1e6159b",
+          "classification": "unreachable",
+          "justification": "The parser receives exactly one preview node and either returns it or throws validation."
+        },
+        {
+          "branchId": "68",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 655,
+          "column": 47,
+          "sourceFingerprint": "sha256:082273ed1e37ddbfc4747408d62c82cf6c5f0f057f526ed914d1ed3abb04d588",
+          "classification": "defensive",
+          "justification": "A non-Error thrown while parsing preview input uses the stable preview input is invalid fallback message."
+        },
+        {
+          "branchId": "73",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 695,
+          "column": 4,
+          "sourceFingerprint": "sha256:7ce4ac89321f5394a84845d6c3b9be91e699c6ba229fb2ef9a4e70b742916211",
+          "classification": "defensive",
+          "justification": "A Merge node without coordinator-settled input is rejected before executing the merge definition."
+        }
+      ]
     },
     {
       "cohort": "workflow-engine",
       "file": "packages/workflow-engine/src/workflow-transition-observations.ts",
-      "branchId": "4",
-      "locationIndex": 1,
-      "branchType": "if",
-      "line": 0,
-      "column": 0,
-      "classification": "generated",
-      "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/workflow-transition-observations.ts",
-      "branchId": "63",
-      "locationIndex": 1,
-      "branchType": "if",
-      "line": 0,
-      "column": 0,
-      "classification": "generated",
-      "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/workflow-transition-observations.ts",
-      "branchId": "64",
-      "locationIndex": 1,
-      "branchType": "if",
-      "line": 0,
-      "column": 0,
-      "classification": "generated",
-      "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/workflow-transition-observations.ts",
-      "branchId": "9",
-      "locationIndex": 0,
-      "branchType": "cond-expr",
-      "line": 81,
-      "column": 8,
-      "classification": "unreachable",
-      "justification": "declaredJoin always materializes joinInvocationKey before branch dispositions can be applied."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/workflow-transition-observations.ts",
-      "branchId": "11",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 94,
-      "column": 2,
-      "classification": "defensive",
-      "justification": "A branch-selected observation becomes a no-op after workflow cancellation, preventing new branch admission during terminal control."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/workflow-transition-observations.ts",
-      "branchId": "18",
-      "locationIndex": 0,
-      "branchType": "binary-expr",
-      "line": 130,
-      "column": 6,
-      "classification": "unreachable",
-      "justification": "A valid invocation key identifies one node and duplicate selection pairs return or reject before sorting."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/workflow-transition-observations.ts",
-      "branchId": "18",
-      "locationIndex": 1,
-      "branchType": "binary-expr",
-      "line": 131,
-      "column": 6,
-      "classification": "unreachable",
-      "justification": "The node comparator requires equal invocation keys, which necessarily refer to the same validated node."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/workflow-transition-observations.ts",
-      "branchId": "22",
-      "locationIndex": 1,
-      "branchType": "binary-expr",
-      "line": 155,
-      "column": 4,
-      "classification": "defensive",
-      "justification": "A loop declaration that omits controlInvocationKey derives the canonical root control key from workflow version and loop id."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/workflow-transition-observations.ts",
-      "branchId": "25",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 181,
-      "column": 4,
-      "classification": "defensive",
-      "justification": "Only loop_limit_exceeded is converted into loop terminal state; every other WorkflowEngineError and foreign exception is rethrown."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/workflow-transition-observations.ts",
-      "branchId": "27",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 187,
-      "column": 4,
-      "classification": "defensive",
-      "justification": "A loop-limit observation requires an existing running control invocation before it may mark that controller failed."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/workflow-transition-observations.ts",
-      "branchId": "39",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 276,
-      "column": 7,
-      "classification": "defensive",
-      "justification": "A repeated loop completion with a conflicting terminal status is rejected through the normal node-transition invariant."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/workflow-transition-observations.ts",
-      "branchId": "40",
-      "locationIndex": 1,
-      "branchType": "cond-expr",
-      "line": 281,
-      "column": 48,
-      "classification": "defensive",
-      "justification": "Loop completion omits the output property when the observation carries no output, preserving absent-versus-present state semantics."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/workflow-transition-observations.ts",
-      "branchId": "46",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 300,
-      "column": 4,
-      "classification": "defensive",
-      "justification": "Completing all loop iterations requires an existing non-terminal control invocation; missing or already-terminal control state fails closed."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/workflow-transition-observations.ts",
-      "branchId": "48",
-      "locationIndex": 1,
-      "branchType": "binary-expr",
-      "line": 310,
-      "column": 33,
-      "classification": "unreachable",
-      "justification": "Every admitted non-success loop terminal status has a node event mapping."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/workflow-transition-observations.ts",
-      "branchId": "49",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 318,
-      "column": 2,
-      "classification": "unreachable",
-      "justification": "The closed WorkflowObservation terminal-status union has a nodeEventName entry for every member."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/workflow-transition-observations.ts",
-      "branchId": "54",
-      "locationIndex": 1,
-      "branchType": "cond-expr",
-      "line": 347,
-      "column": 10,
-      "classification": "defensive",
-      "justification": "A node-ready observation that omits branchPath preserves omission instead of materializing an empty scope."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/workflow-transition-observations.ts",
-      "branchId": "55",
-      "locationIndex": 1,
-      "branchType": "cond-expr",
-      "line": 350,
-      "column": 10,
-      "classification": "defensive",
-      "justification": "A node-ready observation that omits iterationPath preserves omission instead of materializing an empty iteration scope."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/workflow-transition-observations.ts",
-      "branchId": "58",
-      "locationIndex": 1,
-      "branchType": "cond-expr",
-      "line": 371,
-      "column": 10,
-      "classification": "defensive",
-      "justification": "A successful node observation without output leaves the output property absent rather than storing undefined."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/workflow-transition-observations.ts",
-      "branchId": "71",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 423,
-      "column": 2,
-      "classification": "unreachable",
-      "justification": "The closed WorkflowObservation terminal-status union has a nodeEventName entry for every member."
+      "reviews": [
+        {
+          "branchId": "4",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:78fcd5f36165b42254bd633a0baa46f4b033519a6940567aa656fc2f4926a821",
+          "classification": "generated",
+          "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
+        },
+        {
+          "branchId": "63",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:f3781a17d3fb94d5020b1a545c71f66705512c36fe90b644e3b3eedb6bc18d45",
+          "classification": "generated",
+          "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
+        },
+        {
+          "branchId": "64",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:e61fd333c8e021341b937dcb7dbcc603f45b936843e3a10365049beeb72f73b1",
+          "classification": "generated",
+          "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
+        },
+        {
+          "branchId": "9",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 81,
+          "column": 8,
+          "sourceFingerprint": "sha256:eca064612d38bfd470e71e4490dec3e0d6f7a67134e025fb2df492a79e670289",
+          "classification": "unreachable",
+          "justification": "declaredJoin always materializes joinInvocationKey before branch dispositions can be applied."
+        },
+        {
+          "branchId": "11",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 94,
+          "column": 2,
+          "sourceFingerprint": "sha256:05eb8d649362da086d833f74b98c12a97cc8ea659bb813babe0262840a6536ff",
+          "classification": "defensive",
+          "justification": "A branch-selected observation becomes a no-op after workflow cancellation, preventing new branch admission during terminal control."
+        },
+        {
+          "branchId": "18",
+          "locationIndex": 0,
+          "branchType": "binary-expr",
+          "line": 130,
+          "column": 6,
+          "sourceFingerprint": "sha256:33e75765a56f28e0586a12c5c92c788d3565f4bdd8a0264ae4288b84615fc8fc",
+          "classification": "unreachable",
+          "justification": "A valid invocation key identifies one node and duplicate selection pairs return or reject before sorting."
+        },
+        {
+          "branchId": "18",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 131,
+          "column": 6,
+          "sourceFingerprint": "sha256:7bd3963045de260fd3b12bf993f51905cc5e543c95277a2d508fc4d6025e16f8",
+          "classification": "unreachable",
+          "justification": "The node comparator requires equal invocation keys, which necessarily refer to the same validated node."
+        },
+        {
+          "branchId": "22",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 155,
+          "column": 4,
+          "sourceFingerprint": "sha256:b7ae579d54023e6e4b336b52a8d48bc5db5ea563968ac5c03c6358c231a536ca",
+          "classification": "defensive",
+          "justification": "A loop declaration that omits controlInvocationKey derives the canonical root control key from workflow version and loop id."
+        },
+        {
+          "branchId": "25",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 181,
+          "column": 4,
+          "sourceFingerprint": "sha256:15c390eb402c5b9958369f78f711b89d8dbf7b6e3ea08324a62b9e8a1b4e255e",
+          "classification": "defensive",
+          "justification": "Only loop_limit_exceeded is converted into loop terminal state; every other WorkflowEngineError and foreign exception is rethrown."
+        },
+        {
+          "branchId": "27",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 187,
+          "column": 4,
+          "sourceFingerprint": "sha256:666bcf385316000310700d60b26479058b76844719b3bf58f49a018f2ef7820f",
+          "classification": "defensive",
+          "justification": "A loop-limit observation requires an existing running control invocation before it may mark that controller failed."
+        },
+        {
+          "branchId": "39",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 276,
+          "column": 7,
+          "sourceFingerprint": "sha256:804b149563bd326c86d4db061c866ef1656772d5aff55df0d01651cda33fcac2",
+          "classification": "defensive",
+          "justification": "A repeated loop completion with a conflicting terminal status is rejected through the normal node-transition invariant."
+        },
+        {
+          "branchId": "40",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 281,
+          "column": 48,
+          "sourceFingerprint": "sha256:53cc9a42fab14502b6be334f32c4b54fd0291e339ba49e64942367d75724594c",
+          "classification": "defensive",
+          "justification": "Loop completion omits the output property when the observation carries no output, preserving absent-versus-present state semantics."
+        },
+        {
+          "branchId": "46",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 300,
+          "column": 4,
+          "sourceFingerprint": "sha256:2bbb31585f4be43920bd81b35240dc1612681621a6cd8caae49d50374a087607",
+          "classification": "defensive",
+          "justification": "Completing all loop iterations requires an existing non-terminal control invocation; missing or already-terminal control state fails closed."
+        },
+        {
+          "branchId": "48",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 310,
+          "column": 33,
+          "sourceFingerprint": "sha256:2a44ca9912283c7f1dd68e094fc1d3c9572d25eacd8697e9c577d0e18dcc7544",
+          "classification": "unreachable",
+          "justification": "Every admitted non-success loop terminal status has a node event mapping."
+        },
+        {
+          "branchId": "49",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 318,
+          "column": 2,
+          "sourceFingerprint": "sha256:51cacbd2b95f2f5971cd59ebcc0279f46bd67ad31ca49eda926e6835325c0ee5",
+          "classification": "unreachable",
+          "justification": "The closed WorkflowObservation terminal-status union has a nodeEventName entry for every member."
+        },
+        {
+          "branchId": "54",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 347,
+          "column": 10,
+          "sourceFingerprint": "sha256:c8e14adf94ea3eb31b276dbba7a1b3ee0e5c4f3ad680012e2caa2b26fbc20482",
+          "classification": "defensive",
+          "justification": "A node-ready observation that omits branchPath preserves omission instead of materializing an empty scope."
+        },
+        {
+          "branchId": "55",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 350,
+          "column": 10,
+          "sourceFingerprint": "sha256:b23f73bc630b7720f4918cd53f8b5df681f0a3e45919a20431e386577be3f0c8",
+          "classification": "defensive",
+          "justification": "A node-ready observation that omits iterationPath preserves omission instead of materializing an empty iteration scope."
+        },
+        {
+          "branchId": "58",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 371,
+          "column": 10,
+          "sourceFingerprint": "sha256:53cc9a42fab14502b6be334f32c4b54fd0291e339ba49e64942367d75724594c",
+          "classification": "defensive",
+          "justification": "A successful node observation without output leaves the output property absent rather than storing undefined."
+        },
+        {
+          "branchId": "71",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 423,
+          "column": 2,
+          "sourceFingerprint": "sha256:f0eafb17cb7ed7855a9076491c3f3fa94617126c50a987d2d72b5d2afed97fbf",
+          "classification": "unreachable",
+          "justification": "The closed WorkflowObservation terminal-status union has a nodeEventName entry for every member."
+        }
+      ]
     },
     {
       "cohort": "workflow-engine",
       "file": "packages/workflow-engine/src/workflow-transition-state.ts",
-      "branchId": "5",
-      "locationIndex": 1,
-      "branchType": "cond-expr",
-      "line": 71,
-      "column": 8,
-      "classification": "unreachable",
-      "justification": "After equal output kinds are established, the closed union permits only inline-inline or artifact-artifact pairs."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/workflow-transition-state.ts",
-      "branchId": "25",
-      "locationIndex": 1,
-      "branchType": "binary-expr",
-      "line": 208,
-      "column": 76,
-      "classification": "defensive",
-      "justification": "Scheduler states without structuredBodies search only root nodes; the optional collection fallback prevents iteration over absent nested bodies."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/workflow-transition-state.ts",
-      "branchId": "28",
-      "locationIndex": 1,
-      "branchType": "binary-expr",
-      "line": 244,
-      "column": 54,
-      "classification": "defensive",
-      "justification": "Invocation lookup compares an absent iterationPath as the empty root path when resolving a scoped node identity."
-    },
-    {
-      "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/workflow-transition-state.ts",
-      "branchId": "32",
-      "locationIndex": 1,
-      "branchType": "binary-expr",
-      "line": 272,
-      "column": 56,
-      "classification": "defensive",
-      "justification": "Terminal invocation lookup compares an absent iterationPath as the empty root path before applying terminal-status filtering."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-attempt-handler.ts",
-      "branchId": "19",
-      "locationIndex": 1,
-      "branchType": "if",
-      "line": 0,
-      "column": 0,
-      "classification": "generated",
-      "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-attempt-handler.ts",
-      "branchId": "21",
-      "locationIndex": 1,
-      "branchType": "if",
-      "line": 0,
-      "column": 0,
-      "classification": "generated",
-      "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-attempt-handler.ts",
-      "branchId": "33",
-      "locationIndex": 1,
-      "branchType": "if",
-      "line": 0,
-      "column": 0,
-      "classification": "generated",
-      "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-attempt-handler.ts",
-      "branchId": "34",
-      "locationIndex": 1,
-      "branchType": "if",
-      "line": 0,
-      "column": 0,
-      "classification": "generated",
-      "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-attempt-handler.ts",
-      "branchId": "42",
-      "locationIndex": 1,
-      "branchType": "if",
-      "line": 0,
-      "column": 0,
-      "classification": "generated",
-      "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-attempt-handler.ts",
-      "branchId": "49",
-      "locationIndex": 1,
-      "branchType": "if",
-      "line": 0,
-      "column": 0,
-      "classification": "generated",
-      "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-attempt-handler.ts",
-      "branchId": "0",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 123,
-      "column": 4,
-      "classification": "defensive",
-      "justification": "The abort-aware wait rejects immediately when its signal is already aborted, closing the listener-registration race."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-attempt-handler.ts",
-      "branchId": "5",
-      "locationIndex": 1,
-      "branchType": "cond-expr",
-      "line": 160,
-      "column": 8,
-      "classification": "integration",
-      "justification": "This trace, database fence, binding, or output-validation adapter path is exercised by queue-to-database node-attempt integration tests outside the unit coverage cohort."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-attempt-handler.ts",
-      "branchId": "20",
-      "locationIndex": 0,
-      "branchType": "cond-expr",
-      "line": 265,
-      "column": 14,
-      "classification": "integration",
-      "justification": "This trace, database fence, binding, or output-validation adapter path is exercised by queue-to-database node-attempt integration tests outside the unit coverage cohort."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-attempt-handler.ts",
-      "branchId": "20",
-      "locationIndex": 1,
-      "branchType": "cond-expr",
-      "line": 266,
-      "column": 14,
-      "classification": "integration",
-      "justification": "This trace, database fence, binding, or output-validation adapter path is exercised by queue-to-database node-attempt integration tests outside the unit coverage cohort."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-attempt-handler.ts",
-      "branchId": "22",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 296,
-      "column": 14,
-      "classification": "defensive",
-      "justification": "An abort request without a durable reason is rejected as control_reason_missing before worker execution can acknowledge it."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-attempt-handler.ts",
-      "branchId": "23",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 306,
-      "column": 10,
-      "classification": "defensive",
-      "justification": "Heartbeat failures are captured only while neither the heartbeat controller nor attempt context is already aborting."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-attempt-handler.ts",
-      "branchId": "24",
-      "locationIndex": 1,
-      "branchType": "binary-expr",
-      "line": 306,
-      "column": 47,
-      "classification": "defensive",
-      "justification": "A context abort suppresses a concurrent heartbeat exception because attempt cancellation already owns the terminal outcome."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-attempt-handler.ts",
-      "branchId": "33",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 370,
-      "column": 12,
-      "classification": "integration",
-      "justification": "This trace, database fence, binding, or output-validation adapter path is exercised by queue-to-database node-attempt integration tests outside the unit coverage cohort."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-attempt-handler.ts",
-      "branchId": "34",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 374,
-      "column": 12,
-      "classification": "integration",
-      "justification": "This trace, database fence, binding, or output-validation adapter path is exercised by queue-to-database node-attempt integration tests outside the unit coverage cohort."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-attempt-handler.ts",
-      "branchId": "38",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 397,
-      "column": 10,
-      "classification": "defensive",
-      "justification": "Executor-controlled nodes must record dispatch evidence before returning; otherwise the handler fails closed with dispatch_evidence_missing."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-attempt-handler.ts",
-      "branchId": "40",
-      "locationIndex": 1,
-      "branchType": "cond-expr",
-      "line": 415,
-      "column": 18,
-      "classification": "defensive",
-      "justification": "A completed executor result becomes suspended only when the prepared attempt includes a suspension duration; otherwise it succeeds."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-attempt-handler.ts",
-      "branchId": "41",
-      "locationIndex": 1,
-      "branchType": "cond-expr",
-      "line": 422,
-      "column": 16,
-      "classification": "integration",
-      "justification": "This trace, database fence, binding, or output-validation adapter path is exercised by queue-to-database node-attempt integration tests outside the unit coverage cohort."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-attempt-handler.ts",
-      "branchId": "42",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 431,
-      "column": 10,
-      "classification": "integration",
-      "justification": "This trace, database fence, binding, or output-validation adapter path is exercised by queue-to-database node-attempt integration tests outside the unit coverage cohort."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-attempt-handler.ts",
-      "branchId": "43",
-      "locationIndex": 0,
-      "branchType": "cond-expr",
-      "line": 439,
-      "column": 16,
-      "classification": "integration",
-      "justification": "This trace, database fence, binding, or output-validation adapter path is exercised by queue-to-database node-attempt integration tests outside the unit coverage cohort."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-attempt-handler.ts",
-      "branchId": "43",
-      "locationIndex": 1,
-      "branchType": "cond-expr",
-      "line": 440,
-      "column": 16,
-      "classification": "integration",
-      "justification": "This trace, database fence, binding, or output-validation adapter path is exercised by queue-to-database node-attempt integration tests outside the unit coverage cohort."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-attempt-handler.ts",
-      "branchId": "45",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 459,
-      "column": 8,
-      "classification": "defensive",
-      "justification": "A captured heartbeat failure takes precedence over executor error classification so transport liveness loss cannot be hidden."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-attempt-handler.ts",
-      "branchId": "46",
-      "locationIndex": 0,
-      "branchType": "cond-expr",
-      "line": 461,
-      "column": 14,
-      "classification": "defensive",
-      "justification": "An Error heartbeat failure is rethrown with its original type and message."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-attempt-handler.ts",
-      "branchId": "46",
-      "locationIndex": 1,
-      "branchType": "cond-expr",
-      "line": 462,
-      "column": 14,
-      "classification": "defensive",
-      "justification": "A non-Error heartbeat rejection is converted into a stable Error before leaving the handler."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-attempt-handler.ts",
-      "branchId": "48",
-      "locationIndex": 1,
-      "branchType": "cond-expr",
-      "line": 475,
-      "column": 16,
-      "classification": "integration",
-      "justification": "This trace, database fence, binding, or output-validation adapter path is exercised by queue-to-database node-attempt integration tests outside the unit coverage cohort."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-attempt-handler.ts",
-      "branchId": "51",
-      "locationIndex": 1,
-      "branchType": "cond-expr",
-      "line": 496,
-      "column": 16,
-      "classification": "integration",
-      "justification": "This trace, database fence, binding, or output-validation adapter path is exercised by queue-to-database node-attempt integration tests outside the unit coverage cohort."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-runtime-capabilities.ts",
-      "branchId": "7",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 200,
-      "column": 4,
-      "classification": "defensive",
-      "justification": "A spool write reporting zero or negative progress fails immediately, preventing an infinite artifact-write loop."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-runtime-capabilities.ts",
-      "branchId": "19",
-      "locationIndex": 0,
-      "branchType": "cond-expr",
-      "line": 332,
-      "column": 14,
-      "classification": "integration",
-      "justification": "This owned database, Redis, encryption, object-store, or preview-artifact lifecycle path is exercised by provider-backed worker integration and release checks; unit tests inject deterministic dependencies."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-runtime-capabilities.ts",
-      "branchId": "19",
-      "locationIndex": 1,
-      "branchType": "cond-expr",
-      "line": 341,
-      "column": 14,
-      "classification": "integration",
-      "justification": "This owned database, Redis, encryption, object-store, or preview-artifact lifecycle path is exercised by provider-backed worker integration and release checks; unit tests inject deterministic dependencies."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-runtime-capabilities.ts",
-      "branchId": "26",
-      "locationIndex": 0,
-      "branchType": "cond-expr",
-      "line": 420,
-      "column": 39,
-      "classification": "integration",
-      "justification": "This owned database, Redis, encryption, object-store, or preview-artifact lifecycle path is exercised by provider-backed worker integration and release checks; unit tests inject deterministic dependencies."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-runtime-capabilities.ts",
-      "branchId": "27",
-      "locationIndex": 0,
-      "branchType": "if",
-      "line": 422,
-      "column": 6,
-      "classification": "integration",
-      "justification": "This owned database, Redis, encryption, object-store, or preview-artifact lifecycle path is exercised by provider-backed worker integration and release checks; unit tests inject deterministic dependencies."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-runtime-capabilities.ts",
-      "branchId": "30",
-      "locationIndex": 1,
-      "branchType": "cond-expr",
-      "line": 436,
-      "column": 13,
-      "classification": "integration",
-      "justification": "This owned database, Redis, encryption, object-store, or preview-artifact lifecycle path is exercised by provider-backed worker integration and release checks; unit tests inject deterministic dependencies."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-runtime-capabilities.ts",
-      "branchId": "32",
-      "locationIndex": 1,
-      "branchType": "binary-expr",
-      "line": 443,
-      "column": 9,
-      "classification": "integration",
-      "justification": "This owned database, Redis, encryption, object-store, or preview-artifact lifecycle path is exercised by provider-backed worker integration and release checks; unit tests inject deterministic dependencies."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-runtime-capabilities.ts",
-      "branchId": "34",
-      "locationIndex": 1,
-      "branchType": "cond-expr",
-      "line": 449,
-      "column": 12,
-      "classification": "integration",
-      "justification": "This owned database, Redis, encryption, object-store, or preview-artifact lifecycle path is exercised by provider-backed worker integration and release checks; unit tests inject deterministic dependencies."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-runtime-capabilities.ts",
-      "branchId": "37",
-      "locationIndex": 1,
-      "branchType": "binary-expr",
-      "line": 464,
-      "column": 8,
-      "classification": "integration",
-      "justification": "This owned database, Redis, encryption, object-store, or preview-artifact lifecycle path is exercised by provider-backed worker integration and release checks; unit tests inject deterministic dependencies."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/node-runtime-capabilities.ts",
-      "branchId": "39",
-      "locationIndex": 1,
-      "branchType": "cond-expr",
-      "line": 471,
-      "column": 13,
-      "classification": "integration",
-      "justification": "This owned database, Redis, encryption, object-store, or preview-artifact lifecycle path is exercised by provider-backed worker integration and release checks; unit tests inject deterministic dependencies."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/preview-attempt-runtime.ts",
-      "branchId": "0",
-      "locationIndex": 0,
-      "branchType": "cond-expr",
-      "line": 83,
-      "column": 35,
-      "classification": "integration",
-      "justification": "This optional-signal database adapter path is exercised by the durable preview delivery and reconciliation integration suites, which are intentionally excluded from the unit coverage cohort."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/preview-attempt-runtime.ts",
-      "branchId": "0",
-      "locationIndex": 1,
-      "branchType": "cond-expr",
-      "line": 83,
-      "column": 40,
-      "classification": "integration",
-      "justification": "This optional-signal database adapter path is exercised by the durable preview delivery and reconciliation integration suites, which are intentionally excluded from the unit coverage cohort."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/preview-attempt-runtime.ts",
-      "branchId": "1",
-      "locationIndex": 0,
-      "branchType": "cond-expr",
-      "line": 98,
-      "column": 35,
-      "classification": "integration",
-      "justification": "This optional-signal database adapter path is exercised by the durable preview delivery and reconciliation integration suites, which are intentionally excluded from the unit coverage cohort."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/preview-attempt-runtime.ts",
-      "branchId": "1",
-      "locationIndex": 1,
-      "branchType": "cond-expr",
-      "line": 98,
-      "column": 40,
-      "classification": "integration",
-      "justification": "This optional-signal database adapter path is exercised by the durable preview delivery and reconciliation integration suites, which are intentionally excluded from the unit coverage cohort."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/preview-attempt-runtime.ts",
-      "branchId": "2",
-      "locationIndex": 0,
-      "branchType": "cond-expr",
-      "line": 114,
-      "column": 35,
-      "classification": "integration",
-      "justification": "This optional-signal database adapter path is exercised by the durable preview delivery and reconciliation integration suites, which are intentionally excluded from the unit coverage cohort."
-    },
-    {
-      "cohort": "worker",
-      "file": "apps/worker/src/execution/preview-attempt-runtime.ts",
-      "branchId": "2",
-      "locationIndex": 1,
-      "branchType": "cond-expr",
-      "line": 114,
-      "column": 40,
-      "classification": "integration",
-      "justification": "This optional-signal database adapter path is exercised by the durable preview delivery and reconciliation integration suites, which are intentionally excluded from the unit coverage cohort."
+      "reviews": [
+        {
+          "branchId": "5",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 71,
+          "column": 8,
+          "sourceFingerprint": "sha256:72371ba06c39032d1a2acebf630184dcb072254fb05443788af8aabca3430171",
+          "classification": "unreachable",
+          "justification": "After equal output kinds are established, the closed union permits only inline-inline or artifact-artifact pairs."
+        },
+        {
+          "branchId": "25",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 208,
+          "column": 76,
+          "sourceFingerprint": "sha256:44f67d2883ed24b790fdde92e52b55ea1f2522d0956db6e7862f85f693dc7ad1",
+          "classification": "defensive",
+          "justification": "Scheduler states without structuredBodies search only root nodes; the optional collection fallback prevents iteration over absent nested bodies."
+        },
+        {
+          "branchId": "28",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 244,
+          "column": 54,
+          "sourceFingerprint": "sha256:60f4aabc02d9cd027d3d8f2980d04dea7f75f524b90d240c3a9264ceb530bd8b",
+          "classification": "defensive",
+          "justification": "Invocation lookup compares an absent iterationPath as the empty root path when resolving a scoped node identity."
+        },
+        {
+          "branchId": "32",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 272,
+          "column": 56,
+          "sourceFingerprint": "sha256:60f4aabc02d9cd027d3d8f2980d04dea7f75f524b90d240c3a9264ceb530bd8b",
+          "classification": "defensive",
+          "justification": "Terminal invocation lookup compares an absent iterationPath as the empty root path before applying terminal-status filtering."
+        }
+      ]
     }
   ]
 }
