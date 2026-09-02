@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   withPlatformTransaction,
+  withTenantScopedReadClient,
   withTenantScopedClient,
   withWorkspaceTransaction,
 } from '../src/testing.js';
@@ -22,6 +23,37 @@ function poolWith(
 }
 
 describe('shared workspace transaction engine', () => {
+  it('uses a repeatable-read snapshot through the worker read seam', async () => {
+    const statements: string[] = [];
+    let transactionActive = false;
+    const query = vi.fn((statement: string) => {
+      statements.push(statement);
+      if (statement.startsWith('begin')) transactionActive = true;
+      if (statement === 'commit') transactionActive = false;
+      if (statement.includes("current_setting('app.workspace_id'"))
+        return Promise.resolve(
+          result([
+            {
+              workspace_id: transactionActive ? workspaceId : null,
+              actor_id: null,
+            },
+          ]),
+        );
+      return Promise.resolve(result());
+    });
+
+    await expect(
+      withTenantScopedReadClient(
+        poolWith({ query, release: vi.fn() }),
+        { workspaceId },
+        () => Promise.resolve('snapshot'),
+      ),
+    ).resolves.toBe('snapshot');
+    expect(statements).toContain(
+      'begin isolation level repeatable read read only',
+    );
+  });
+
   it('rejects and destroys a client contaminated before checkout use', async () => {
     const release = vi.fn();
     const client = {

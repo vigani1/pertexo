@@ -342,52 +342,68 @@ describe('NodeAttemptHandler', () => {
     ).rejects.toMatchObject({ code: 'wait_resume_output_missing' });
   });
 
-  it('commits a resumed Wait output with its trace context', async () => {
-    const complete = vi
-      .fn<NodeAttemptRunStore['complete']>()
-      .mockResolvedValue({ kind: 'committed', outboxEventId: WORKFLOW_ID });
-    const handler = createNodeAttemptHandler({
-      engine: { prepare: vi.fn().mockReturnValue(registryPreparedAttempt()) },
-      heartbeatIntervalMillis: 1_000,
-      leaseDurationSeconds: 30,
-      reader: {
-        close: vi.fn(),
-        readForExecution: vi.fn().mockResolvedValue({
-          kind: 'v2_projection',
-          workflowVersion: projection(),
+  it.each([undefined, TRACEPARENT])(
+    'commits a resumed Wait output with optional trace context %s',
+    async (traceparent) => {
+      const complete = vi
+        .fn<NodeAttemptRunStore['complete']>()
+        .mockResolvedValue({ kind: 'committed', outboxEventId: WORKFLOW_ID });
+      const handler = createNodeAttemptHandler({
+        engine: { prepare: vi.fn().mockReturnValue(registryPreparedAttempt()) },
+        heartbeatIntervalMillis: 1_000,
+        leaseDurationSeconds: 30,
+        reader: {
+          close: vi.fn(),
+          readForExecution: vi.fn().mockResolvedValue({
+            kind: 'v2_projection',
+            workflowVersion: projection(),
+          }),
+        },
+        registry: { execute: vi.fn() },
+        runStore: {
+          claimDelivery: vi.fn().mockResolvedValue({
+            kind: 'claimed',
+            lease: { ...lease(), admissionKind: 'wait_resume' },
+          }),
+          close: vi.fn(),
+          complete,
+          heartbeat: vi.fn(),
+          loadInputs: vi.fn().mockResolvedValue({
+            abortRequested: false,
+            completedNodeOutputs: {},
+            resumeOutput: { resumed: true },
+            runInput: null,
+          }),
+          markDispatched: vi.fn(),
+        },
+        workerId: 'worker-1',
+      });
+
+      await expect(
+        handler.handle(delivery(traceparent), {
+          signal: new AbortController().signal,
         }),
-      },
-      registry: { execute: vi.fn() },
-      runStore: {
-        claimDelivery: vi.fn().mockResolvedValue({
-          kind: 'claimed',
-          lease: { ...lease(), admissionKind: 'wait_resume' },
+      ).resolves.toEqual({ kind: 'committed' });
+      expect(complete).toHaveBeenCalledWith(
+        expect.objectContaining({
+          outcome: { status: 'succeeded', output: { resumed: true } },
+          ...(traceparent === undefined ? {} : { traceparent }),
         }),
-        close: vi.fn(),
-        complete,
-        heartbeat: vi.fn(),
-        loadInputs: vi.fn().mockResolvedValue({
-          abortRequested: false,
-          completedNodeOutputs: {},
-          resumeOutput: { resumed: true },
-          runInput: null,
-        }),
-        markDispatched: vi.fn(),
-      },
-      workerId: 'worker-1',
+      );
+    },
+  );
+
+  it('rethrows a non-output persistence failure unchanged', async () => {
+    const persistenceError = new Error('database unavailable');
+    const runStore = executionStore({
+      complete: vi.fn().mockRejectedValue(persistenceError),
     });
 
     await expect(
-      handler.handle(delivery(TRACEPARENT), {
+      executionHandler(runStore).handle(delivery(), {
         signal: new AbortController().signal,
       }),
-    ).resolves.toEqual({ kind: 'committed' });
-    expect(complete).toHaveBeenCalledWith(
-      expect.objectContaining({
-        outcome: { status: 'succeeded', output: { resumed: true } },
-        traceparent: TRACEPARENT,
-      }),
-    );
+    ).rejects.toBe(persistenceError);
   });
 
   it('treats an exact completed delivery as a no-op before loading workflow state', async () => {
@@ -684,31 +700,34 @@ describe('NodeAttemptHandler', () => {
     },
   );
 
-  it('converts invalid persisted output to a traced safe failure', async () => {
-    const complete = vi
-      .fn<NodeAttemptRunStore['complete']>()
-      .mockRejectedValueOnce(new NodeAttemptOutputInvalidError())
-      .mockResolvedValueOnce({
-        kind: 'committed',
-        outboxEventId: WORKFLOW_ID,
-      });
-    const runStore = executionStore({ complete });
+  it.each([undefined, TRACEPARENT])(
+    'converts invalid persisted output to a safe failure with optional trace %s',
+    async (traceparent) => {
+      const complete = vi
+        .fn<NodeAttemptRunStore['complete']>()
+        .mockRejectedValueOnce(new NodeAttemptOutputInvalidError())
+        .mockResolvedValueOnce({
+          kind: 'committed',
+          outboxEventId: WORKFLOW_ID,
+        });
+      const runStore = executionStore({ complete });
 
-    await expect(
-      executionHandler(runStore).handle(delivery(TRACEPARENT), {
-        signal: new AbortController().signal,
-      }),
-    ).resolves.toEqual({ kind: 'committed' });
-    expect(complete).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        outcome: {
-          status: 'failed',
-          safeErrorCode: 'execution.output_invalid',
-        },
-        traceparent: TRACEPARENT,
-      }),
-    );
-  });
+      await expect(
+        executionHandler(runStore).handle(delivery(traceparent), {
+          signal: new AbortController().signal,
+        }),
+      ).resolves.toEqual({ kind: 'committed' });
+      expect(complete).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          outcome: {
+            status: 'failed',
+            safeErrorCode: 'execution.output_invalid',
+          },
+          ...(traceparent === undefined ? {} : { traceparent }),
+        }),
+      );
+    },
+  );
 
   it.each([
     ['canceled', 'execution.canceled'],
@@ -773,66 +792,69 @@ describe('NodeAttemptHandler', () => {
     },
   );
 
-  it('fails a typed invalid attempt without exposing internal details', async () => {
-    const attemptLease = lease();
-    const complete = vi
-      .fn<NodeAttemptRunStore['complete']>()
-      .mockResolvedValue({ kind: 'committed', outboxEventId: WORKFLOW_ID });
-    const store = {
-      claimDelivery: vi
-        .fn()
-        .mockResolvedValue({ kind: 'claimed', lease: attemptLease }),
-      close: vi.fn().mockResolvedValue(undefined),
-      complete,
-      heartbeat: vi.fn(),
-      loadInputs: vi.fn().mockResolvedValue({
-        abortRequested: false,
-        completedNodeOutputs: {},
-        runInput: null,
-      }),
-      markDispatched: vi.fn(),
-    } satisfies NodeAttemptRunStore;
-    const reader = {
-      close: vi.fn().mockResolvedValue(undefined),
-      readForExecution: vi.fn().mockResolvedValue({
-        kind: 'v2_projection',
-        workflowVersion: projection(),
-      }),
-    } satisfies PublishedWorkflowReader;
-    const handler = createNodeAttemptHandler({
-      engine: {
-        prepare: vi.fn().mockReturnValue({
-          upstreamNodeOutputs: [],
-          execute: vi
-            .fn()
-            .mockRejectedValue(
-              new WorkflowEngineError('attempt_invalid', 'secret detail'),
-            ),
+  it.each([undefined, TRACEPARENT])(
+    'fails a typed invalid attempt without exposing details for trace %s',
+    async (traceparent) => {
+      const attemptLease = lease();
+      const complete = vi
+        .fn<NodeAttemptRunStore['complete']>()
+        .mockResolvedValue({ kind: 'committed', outboxEventId: WORKFLOW_ID });
+      const store = {
+        claimDelivery: vi
+          .fn()
+          .mockResolvedValue({ kind: 'claimed', lease: attemptLease }),
+        close: vi.fn().mockResolvedValue(undefined),
+        complete,
+        heartbeat: vi.fn(),
+        loadInputs: vi.fn().mockResolvedValue({
+          abortRequested: false,
+          completedNodeOutputs: {},
+          runInput: null,
         }),
-      },
-      heartbeatIntervalMillis: 1_000,
-      leaseDurationSeconds: 30,
-      reader,
-      registry: { execute: vi.fn() },
-      runStore: store,
-      workerId: 'worker-1',
-    });
+        markDispatched: vi.fn(),
+      } satisfies NodeAttemptRunStore;
+      const reader = {
+        close: vi.fn().mockResolvedValue(undefined),
+        readForExecution: vi.fn().mockResolvedValue({
+          kind: 'v2_projection',
+          workflowVersion: projection(),
+        }),
+      } satisfies PublishedWorkflowReader;
+      const handler = createNodeAttemptHandler({
+        engine: {
+          prepare: vi.fn().mockReturnValue({
+            upstreamNodeOutputs: [],
+            execute: vi
+              .fn()
+              .mockRejectedValue(
+                new WorkflowEngineError('attempt_invalid', 'secret detail'),
+              ),
+          }),
+        },
+        heartbeatIntervalMillis: 1_000,
+        leaseDurationSeconds: 30,
+        reader,
+        registry: { execute: vi.fn() },
+        runStore: store,
+        workerId: 'worker-1',
+      });
 
-    await expect(
-      handler.handle(delivery(TRACEPARENT), {
-        signal: new AbortController().signal,
-      }),
-    ).resolves.toEqual({ kind: 'committed' });
-    expect(complete).toHaveBeenCalledOnce();
-    expect(complete.mock.calls[0]?.[0]).toMatchObject({
-      lease: attemptLease,
-      outcome: {
-        status: 'failed',
-        safeErrorCode: 'execution.attempt_invalid',
-      },
-    });
-    expect(complete.mock.calls[0]?.[0].signal).toBeInstanceOf(AbortSignal);
-  });
+      await expect(
+        handler.handle(delivery(traceparent), {
+          signal: new AbortController().signal,
+        }),
+      ).resolves.toEqual({ kind: 'committed' });
+      expect(complete).toHaveBeenCalledOnce();
+      expect(complete.mock.calls[0]?.[0]).toMatchObject({
+        lease: attemptLease,
+        outcome: {
+          status: 'failed',
+          safeErrorCode: 'execution.attempt_invalid',
+        },
+      });
+      expect(complete.mock.calls[0]?.[0].signal).toBeInstanceOf(AbortSignal);
+    },
+  );
 
   it('persists a typed unsafe provider ambiguity as outcome_unknown', async () => {
     const attemptLease = { ...lease(), sideEffectClass: 'unsafe' as const };

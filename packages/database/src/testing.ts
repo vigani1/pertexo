@@ -1,5 +1,4 @@
-// Broad test and migration-fixture surface. Production code must use one of
-// the role-owned package subpaths instead.
+// Broad test and migration-fixture surface; production code must use role-owned package subpaths instead.
 export {
   createOperatorRunReplayStore,
   OperatorRunReplayMismatchError,
@@ -490,6 +489,7 @@ export { migrateDatabase, MIGRATIONS_DIRECTORY } from './migrations.js';
 export {
   parseWorkspaceId,
   withPlatformTransaction,
+  withTenantScopedReadClient,
   withTenantScopedClient,
   withWorkspaceTransaction,
   type WorkspaceTransactionOptions,
