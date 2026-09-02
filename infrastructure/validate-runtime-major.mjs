@@ -72,11 +72,7 @@ function setupNodeMajor(file, step) {
 function workflowNodeMajors(file, contents) {
   const workflow = parseWorkflow(file, contents);
   return workflowSteps(workflow)
-    .filter(
-      (step) =>
-        isRecord(step) &&
-        isSetupNodeAction(step.uses),
-    )
+    .filter((step) => isRecord(step) && isSetupNodeAction(step.uses))
     .map((step) => setupNodeMajor(file, step));
 }
 
