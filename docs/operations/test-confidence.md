@@ -8,10 +8,12 @@ every security, transaction, recovery, parser, or state-transition surface.
 Generated and declarative files are excluded by positive `include` lists, not by
 lowering thresholds. Every generated branch entry starts with review status
 `unreviewed`; generation performs no risk classification. A reviewer may later
-classify a site as testable, unreachable, or deliberately defensive only with
-the corresponding test or narrow written justification. The generated report
-remains a CI artifact and is not committed because locations change with source
-edits.
+classify an exact site as unreachable, compiler-generated, deliberately
+defensive, or covered by a named integration cohort only with a narrow written
+justification. Testable unit paths are exercised instead of classified. The
+generated report remains a CI artifact and is not committed because locations
+change with source edits. Exact reviews live in the committed manifest, and
+missing, duplicate, malformed, or stale identities fail the report.
 
 The workflow transition matrix and workspace role-capability matrix are
 mutation canaries: the tests enumerate their complete allowed/denied spaces, so

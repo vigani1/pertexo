@@ -54,7 +54,7 @@
       "line": 92,
       "column": 12,
       "classification": "defensive",
-      "justification": "This legacy root join-key normalization is retained defensively; root/scoped join checkpoint and transition behavior is covered by checkpoint and branching suites."
+      "justification": "Legacy checkpoints may carry the root join id instead of its canonical invocation key; this fallback normalizes only that validated root-compatible representation."
     },
     {
       "cohort": "workflow-engine",
@@ -164,7 +164,7 @@
       "line": 1295,
       "column": 31,
       "classification": "defensive",
-      "justification": "This is a fail-closed checkpoint parser fallback for unexpected dependency failure; canonical, malformed, boundary-size, hostile-object, join, loop, and scope behavior is covered through parseCheckpoint."
+      "justification": "When checkpoint parsing throws an Error, this branch preserves its sanitized message in the stable checkpoint_invalid boundary."
     },
     {
       "cohort": "workflow-engine",
@@ -175,7 +175,7 @@
       "line": 1295,
       "column": 47,
       "classification": "defensive",
-      "justification": "This is a fail-closed checkpoint parser fallback for unexpected dependency failure; canonical, malformed, boundary-size, hostile-object, join, loop, and scope behavior is covered through parseCheckpoint."
+      "justification": "When a dependency throws a non-Error value, this fallback prevents it escaping and emits the stable checkpoint parsing failed message."
     },
     {
       "cohort": "workflow-engine",
@@ -208,7 +208,7 @@
       "line": 32,
       "column": 4,
       "classification": "defensive",
-      "justification": "This guard preserves exact graph ancestry, scoped upstream identity, and structured collection proof invariants; accepted and tampered attempts are covered through executeNodeAttempt."
+      "justification": "Graph traversal skips nodes without a structured body; nested lookup success and not-found behavior are covered without manufacturing a body for leaf nodes."
     },
     {
       "cohort": "workflow-engine",
@@ -219,7 +219,7 @@
       "line": 64,
       "column": 2,
       "classification": "defensive",
-      "justification": "This guard preserves exact graph ancestry, scoped upstream identity, and structured collection proof invariants; accepted and tampered attempts are covered through executeNodeAttempt."
+      "justification": "This rejects an attempt whose iteration ancestry length or node ids differ from the executable graph ancestry before any input is resolved."
     },
     {
       "cohort": "workflow-engine",
@@ -230,7 +230,7 @@
       "line": 122,
       "column": 4,
       "classification": "defensive",
-      "justification": "This guard preserves exact graph ancestry, scoped upstream identity, and structured collection proof invariants; accepted and tampered attempts are covered through executeNodeAttempt."
+      "justification": "The optional nearest branch must exist before its node and output port can justify removing one branch scope from an upstream descriptor."
     },
     {
       "cohort": "workflow-engine",
@@ -241,7 +241,7 @@
       "line": 123,
       "column": 8,
       "classification": "defensive",
-      "justification": "This guard preserves exact graph ancestry, scoped upstream identity, and structured collection proof invariants; accepted and tampered attempts are covered through executeNodeAttempt."
+      "justification": "Only an upstream descriptor sourced from the nearest matching branch uses its parent scope; all other descriptors retain the complete branch path."
     },
     {
       "cohort": "workflow-engine",
@@ -263,7 +263,7 @@
       "line": 178,
       "column": 2,
       "classification": "defensive",
-      "justification": "This guard preserves exact graph ancestry, scoped upstream identity, and structured collection proof invariants; accepted and tampered attempts are covered through executeNodeAttempt."
+      "justification": "Iteration-scoped attempts cannot fall back to the root input object when no explicit descriptor resolves, preventing cross-iteration input leakage."
     },
     {
       "cohort": "workflow-engine",
@@ -285,7 +285,7 @@
       "line": 247,
       "column": 31,
       "classification": "defensive",
-      "justification": "This guard preserves exact graph ancestry, scoped upstream identity, and structured collection proof invariants; accepted and tampered attempts are covered through executeNodeAttempt."
+      "justification": "An Error thrown while validating attempt input contributes its sanitized message to the stable attempt_invalid operation error."
     },
     {
       "cohort": "workflow-engine",
@@ -296,7 +296,7 @@
       "line": 247,
       "column": 47,
       "classification": "defensive",
-      "justification": "This guard preserves exact graph ancestry, scoped upstream identity, and structured collection proof invariants; accepted and tampered attempts are covered through executeNodeAttempt."
+      "justification": "A non-Error thrown while validating attempt input is converted to the stable attempt input is invalid fallback instead of escaping."
     },
     {
       "cohort": "workflow-engine",
@@ -340,7 +340,7 @@
       "line": 148,
       "column": 10,
       "classification": "defensive",
-      "justification": "This checkpoint-to-executable identity guard rejects coordinator, branch, or iteration scope drift; representative invocation, join, loop, and admission drift is covered at the public advance seam."
+      "justification": "A checkpoint join whose paired Parallel id is absent or non-string resolves to no executable Parallel and is rejected by the following identity guard."
     },
     {
       "cohort": "workflow-engine",
@@ -351,7 +351,7 @@
       "line": 151,
       "column": 10,
       "classification": "defensive",
-      "justification": "This checkpoint-to-executable identity guard rejects coordinator, branch, or iteration scope drift; representative invocation, join, loop, and admission drift is covered at the public advance seam."
+      "justification": "A missing paired Parallel produces no configured branch-id set, allowing the following identity guard to fail closed."
     },
     {
       "cohort": "workflow-engine",
@@ -362,7 +362,7 @@
       "line": 153,
       "column": 4,
       "classification": "defensive",
-      "justification": "This checkpoint-to-executable identity guard rejects coordinator, branch, or iteration scope drift; representative invocation, join, loop, and admission drift is covered at the public advance seam."
+      "justification": "This rejects a checkpoint join when its paired Parallel is absent or has no valid configured output-port set."
     },
     {
       "cohort": "workflow-engine",
@@ -373,7 +373,7 @@
       "line": 158,
       "column": 4,
       "classification": "defensive",
-      "justification": "This checkpoint-to-executable identity guard rejects coordinator, branch, or iteration scope drift; representative invocation, join, loop, and admission drift is covered at the public advance seam."
+      "justification": "This rejects a join ledger whose size or branch identifiers disagree with the paired Parallel definition."
     },
     {
       "cohort": "workflow-engine",
@@ -384,7 +384,7 @@
       "line": 169,
       "column": 38,
       "classification": "defensive",
-      "justification": "This checkpoint-to-executable identity guard rejects coordinator, branch, or iteration scope drift; representative invocation, join, loop, and admission drift is covered at the public advance seam."
+      "justification": "A legacy join without branchPath is normalized to the empty root scope solely for canonical invocation-key comparison."
     },
     {
       "cohort": "workflow-engine",
@@ -395,7 +395,7 @@
       "line": 173,
       "column": 10,
       "classification": "defensive",
-      "justification": "This checkpoint-to-executable identity guard rejects coordinator, branch, or iteration scope drift; representative invocation, join, loop, and admission drift is covered at the public advance seam."
+      "justification": "The canonical join-key input omits iterationPath only when the checkpoint join is not iteration scoped."
     },
     {
       "cohort": "workflow-engine",
@@ -406,7 +406,7 @@
       "line": 176,
       "column": 4,
       "classification": "defensive",
-      "justification": "This checkpoint-to-executable identity guard rejects coordinator, branch, or iteration scope drift; representative invocation, join, loop, and admission drift is covered at the public advance seam."
+      "justification": "This rejects a join invocation key that is neither canonical nor the narrowly accepted legacy root join id."
     },
     {
       "cohort": "workflow-engine",
@@ -417,7 +417,7 @@
       "line": 178,
       "column": 6,
       "classification": "defensive",
-      "justification": "This checkpoint-to-executable identity guard rejects coordinator, branch, or iteration scope drift; representative invocation, join, loop, and admission drift is covered at the public advance seam."
+      "justification": "The legacy join-id exception is considered only after the canonical join invocation key comparison fails."
     },
     {
       "cohort": "workflow-engine",
@@ -428,7 +428,7 @@
       "line": 179,
       "column": 8,
       "classification": "defensive",
-      "justification": "This checkpoint-to-executable identity guard rejects coordinator, branch, or iteration scope drift; representative invocation, join, loop, and admission drift is covered at the public advance seam."
+      "justification": "The legacy root exception requires the stored invocation key to equal the join id."
     },
     {
       "cohort": "workflow-engine",
@@ -439,7 +439,7 @@
       "line": 179,
       "column": 40,
       "classification": "defensive",
-      "justification": "This checkpoint-to-executable identity guard rejects coordinator, branch, or iteration scope drift; representative invocation, join, loop, and admission drift is covered at the public advance seam."
+      "justification": "The legacy root exception requires an absent or empty branch path."
     },
     {
       "cohort": "workflow-engine",
@@ -450,7 +450,7 @@
       "line": 180,
       "column": 43,
       "classification": "defensive",
-      "justification": "This checkpoint-to-executable identity guard rejects coordinator, branch, or iteration scope drift; representative invocation, join, loop, and admission drift is covered at the public advance seam."
+      "justification": "An absent branch path is treated as empty only while checking the legacy root-join exception."
     },
     {
       "cohort": "workflow-engine",
@@ -461,7 +461,7 @@
       "line": 181,
       "column": 9,
       "classification": "defensive",
-      "justification": "This checkpoint-to-executable identity guard rejects coordinator, branch, or iteration scope drift; representative invocation, join, loop, and admission drift is covered at the public advance seam."
+      "justification": "The legacy root exception also requires an absent or empty iteration path."
     },
     {
       "cohort": "workflow-engine",
@@ -472,7 +472,7 @@
       "line": 181,
       "column": 39,
       "classification": "defensive",
-      "justification": "This checkpoint-to-executable identity guard rejects coordinator, branch, or iteration scope drift; representative invocation, join, loop, and admission drift is covered at the public advance seam."
+      "justification": "An absent iteration path is treated as empty only while checking the legacy root-join exception."
     },
     {
       "cohort": "workflow-engine",
@@ -494,7 +494,7 @@
       "line": 235,
       "column": 14,
       "classification": "defensive",
-      "justification": "This checkpoint-to-executable identity guard rejects coordinator, branch, or iteration scope drift; representative invocation, join, loop, and admission drift is covered at the public advance seam."
+      "justification": "A missing checkpoint branch-path element fails the optional node-id comparison and prevents an invalid scoped invocation match."
     },
     {
       "cohort": "workflow-engine",
@@ -505,7 +505,7 @@
       "line": 236,
       "column": 14,
       "classification": "defensive",
-      "justification": "This checkpoint-to-executable identity guard rejects coordinator, branch, or iteration scope drift; representative invocation, join, loop, and admission drift is covered at the public advance seam."
+      "justification": "A scoped invocation matches only when both its branch node id and output port equal the requested branch path."
     },
     {
       "cohort": "workflow-engine",
@@ -516,7 +516,7 @@
       "line": 355,
       "column": 6,
       "classification": "defensive",
-      "justification": "This stale-failure or terminal-control classification guard is fail-closed; retry, cancellation, deadline, safe, idempotent, unsafe, and outcome-unknown behavior is covered through production operations."
+      "justification": "A stale node-failure observation is ignored unless the matching invocation is still running at the same attempt number."
     },
     {
       "cohort": "workflow-engine",
@@ -527,7 +527,7 @@
       "line": 363,
       "column": 6,
       "classification": "defensive",
-      "justification": "This stale-failure or terminal-control classification guard is fail-closed; retry, cancellation, deadline, safe, idempotent, unsafe, and outcome-unknown behavior is covered through production operations."
+      "justification": "Cancellation or deadline control diverts a running failure into a coordinator-derived terminal outcome before retry policy is considered."
     },
     {
       "cohort": "workflow-engine",
@@ -538,7 +538,7 @@
       "line": 368,
       "column": 14,
       "classification": "defensive",
-      "justification": "This stale-failure or terminal-control classification guard is fail-closed; retry, cancellation, deadline, safe, idempotent, unsafe, and outcome-unknown behavior is covered through production operations."
+      "justification": "Possibly dispatched non-safe work becomes outcome_unknown during cancellation or deadline handling."
     },
     {
       "cohort": "workflow-engine",
@@ -549,7 +549,7 @@
       "line": 369,
       "column": 14,
       "classification": "defensive",
-      "justification": "This stale-failure or terminal-control classification guard is fail-closed; retry, cancellation, deadline, safe, idempotent, unsafe, and outcome-unknown behavior is covered through production operations."
+      "justification": "When the outcome is knowable, cancellation and deadline select their distinct terminal statuses."
     },
     {
       "cohort": "workflow-engine",
@@ -560,7 +560,7 @@
       "line": 370,
       "column": 16,
       "classification": "defensive",
-      "justification": "This stale-failure or terminal-control classification guard is fail-closed; retry, cancellation, deadline, safe, idempotent, unsafe, and outcome-unknown behavior is covered through production operations."
+      "justification": "A knowable control-terminal failure becomes canceled only when cancellation, rather than deadline expiry, was requested."
     },
     {
       "cohort": "workflow-engine",
@@ -571,7 +571,7 @@
       "line": 371,
       "column": 16,
       "classification": "defensive",
-      "justification": "This stale-failure or terminal-control classification guard is fail-closed; retry, cancellation, deadline, safe, idempotent, unsafe, and outcome-unknown behavior is covered through production operations."
+      "justification": "A knowable control-terminal failure defaults to timed_out after the cancellation alternative is excluded."
     },
     {
       "cohort": "workflow-engine",
@@ -582,7 +582,7 @@
       "line": 421,
       "column": 48,
       "classification": "defensive",
-      "justification": "This stale-failure or terminal-control classification guard is fail-closed; retry, cancellation, deadline, safe, idempotent, unsafe, and outcome-unknown behavior is covered through production operations."
+      "justification": "A retry-policy outcome_unknown decision is preserved; every other exhausted retry decision maps to failed."
     },
     {
       "cohort": "workflow-engine",
@@ -604,7 +604,7 @@
       "line": 605,
       "column": 6,
       "classification": "defensive",
-      "justification": "This mapping, preview, or Merge boundary converts dependency drift and cancellation races to stable attempt outcomes; public preview and execution tests cover accepted, invalid, and aborted behavior."
+      "justification": "Mapping exceptions are translated at the operation boundary, with abort-like exceptions receiving the distinct attempt_aborted code."
     },
     {
       "cohort": "workflow-engine",
@@ -615,7 +615,7 @@
       "line": 605,
       "column": 10,
       "classification": "defensive",
-      "justification": "This mapping, preview, or Merge boundary converts dependency drift and cancellation races to stable attempt outcomes; public preview and execution tests cover accepted, invalid, and aborted behavior."
+      "justification": "An already-aborted signal classifies a thrown mapping failure as attempt_aborted even if the dependency did not create an AbortError."
     },
     {
       "cohort": "workflow-engine",
@@ -626,7 +626,7 @@
       "line": 605,
       "column": 28,
       "classification": "defensive",
-      "justification": "This mapping, preview, or Merge boundary converts dependency drift and cancellation races to stable attempt outcomes; public preview and execution tests cover accepted, invalid, and aborted behavior."
+      "justification": "A dependency AbortError classifies mapping failure as attempt_aborted even when signal observation races behind the throw."
     },
     {
       "cohort": "workflow-engine",
@@ -637,7 +637,7 @@
       "line": 609,
       "column": 4,
       "classification": "defensive",
-      "justification": "This mapping, preview, or Merge boundary converts dependency drift and cancellation races to stable attempt outcomes; public preview and execution tests cover accepted, invalid, and aborted behavior."
+      "justification": "A mapping result with error kind is inspected for cancellation before generic attempt_invalid conversion."
     },
     {
       "cohort": "workflow-engine",
@@ -648,7 +648,7 @@
       "line": 611,
       "column": 7,
       "classification": "defensive",
-      "justification": "This mapping, preview, or Merge boundary converts dependency drift and cancellation races to stable attempt outcomes; public preview and execution tests cover accepted, invalid, and aborted behavior."
+      "justification": "A mapping error carrying the canceled expression code is converted to attempt_aborted."
     },
     {
       "cohort": "workflow-engine",
@@ -659,7 +659,7 @@
       "line": 611,
       "column": 53,
       "classification": "defensive",
-      "justification": "This mapping, preview, or Merge boundary converts dependency drift and cancellation races to stable attempt outcomes; public preview and execution tests cover accepted, invalid, and aborted behavior."
+      "justification": "An aborted signal converts an otherwise generic mapping error result to attempt_aborted."
     },
     {
       "cohort": "workflow-engine",
@@ -670,7 +670,7 @@
       "line": 614,
       "column": 4,
       "classification": "defensive",
-      "justification": "This mapping, preview, or Merge boundary converts dependency drift and cancellation races to stable attempt outcomes; public preview and execution tests cover accepted, invalid, and aborted behavior."
+      "justification": "A non-cancellation mapping error result is converted to the stable attempt_invalid boundary."
     },
     {
       "cohort": "workflow-engine",
@@ -692,7 +692,7 @@
       "line": 655,
       "column": 47,
       "classification": "defensive",
-      "justification": "This mapping, preview, or Merge boundary converts dependency drift and cancellation races to stable attempt outcomes; public preview and execution tests cover accepted, invalid, and aborted behavior."
+      "justification": "A non-Error thrown while parsing preview input uses the stable preview input is invalid fallback message."
     },
     {
       "cohort": "workflow-engine",
@@ -703,7 +703,7 @@
       "line": 695,
       "column": 4,
       "classification": "defensive",
-      "justification": "This mapping, preview, or Merge boundary converts dependency drift and cancellation races to stable attempt outcomes; public preview and execution tests cover accepted, invalid, and aborted behavior."
+      "justification": "A Merge node without coordinator-settled input is rejected before executing the merge definition."
     },
     {
       "cohort": "workflow-engine",
@@ -758,7 +758,7 @@
       "line": 94,
       "column": 2,
       "classification": "defensive",
-      "justification": "This transition guard prevents canceled admissions, conflicting replay, invalid loop control, or optional scope/output drift; direct state tests cover declarations, replay, cancellation, loops, and resumptions."
+      "justification": "A branch-selected observation becomes a no-op after workflow cancellation, preventing new branch admission during terminal control."
     },
     {
       "cohort": "workflow-engine",
@@ -791,7 +791,7 @@
       "line": 155,
       "column": 4,
       "classification": "defensive",
-      "justification": "This transition guard prevents canceled admissions, conflicting replay, invalid loop control, or optional scope/output drift; direct state tests cover declarations, replay, cancellation, loops, and resumptions."
+      "justification": "A loop declaration that omits controlInvocationKey derives the canonical root control key from workflow version and loop id."
     },
     {
       "cohort": "workflow-engine",
@@ -802,7 +802,7 @@
       "line": 181,
       "column": 4,
       "classification": "defensive",
-      "justification": "This transition guard prevents canceled admissions, conflicting replay, invalid loop control, or optional scope/output drift; direct state tests cover declarations, replay, cancellation, loops, and resumptions."
+      "justification": "Only loop_limit_exceeded is converted into loop terminal state; every other WorkflowEngineError and foreign exception is rethrown."
     },
     {
       "cohort": "workflow-engine",
@@ -813,7 +813,7 @@
       "line": 187,
       "column": 4,
       "classification": "defensive",
-      "justification": "This transition guard prevents canceled admissions, conflicting replay, invalid loop control, or optional scope/output drift; direct state tests cover declarations, replay, cancellation, loops, and resumptions."
+      "justification": "A loop-limit observation requires an existing running control invocation before it may mark that controller failed."
     },
     {
       "cohort": "workflow-engine",
@@ -824,7 +824,7 @@
       "line": 276,
       "column": 7,
       "classification": "defensive",
-      "justification": "This transition guard prevents canceled admissions, conflicting replay, invalid loop control, or optional scope/output drift; direct state tests cover declarations, replay, cancellation, loops, and resumptions."
+      "justification": "A repeated loop completion with a conflicting terminal status is rejected through the normal node-transition invariant."
     },
     {
       "cohort": "workflow-engine",
@@ -835,7 +835,7 @@
       "line": 281,
       "column": 48,
       "classification": "defensive",
-      "justification": "This transition guard prevents canceled admissions, conflicting replay, invalid loop control, or optional scope/output drift; direct state tests cover declarations, replay, cancellation, loops, and resumptions."
+      "justification": "Loop completion omits the output property when the observation carries no output, preserving absent-versus-present state semantics."
     },
     {
       "cohort": "workflow-engine",
@@ -846,7 +846,7 @@
       "line": 300,
       "column": 4,
       "classification": "defensive",
-      "justification": "This transition guard prevents canceled admissions, conflicting replay, invalid loop control, or optional scope/output drift; direct state tests cover declarations, replay, cancellation, loops, and resumptions."
+      "justification": "Completing all loop iterations requires an existing non-terminal control invocation; missing or already-terminal control state fails closed."
     },
     {
       "cohort": "workflow-engine",
@@ -879,7 +879,7 @@
       "line": 347,
       "column": 10,
       "classification": "defensive",
-      "justification": "This transition guard prevents canceled admissions, conflicting replay, invalid loop control, or optional scope/output drift; direct state tests cover declarations, replay, cancellation, loops, and resumptions."
+      "justification": "A node-ready observation that omits branchPath preserves omission instead of materializing an empty scope."
     },
     {
       "cohort": "workflow-engine",
@@ -890,7 +890,7 @@
       "line": 350,
       "column": 10,
       "classification": "defensive",
-      "justification": "This transition guard prevents canceled admissions, conflicting replay, invalid loop control, or optional scope/output drift; direct state tests cover declarations, replay, cancellation, loops, and resumptions."
+      "justification": "A node-ready observation that omits iterationPath preserves omission instead of materializing an empty iteration scope."
     },
     {
       "cohort": "workflow-engine",
@@ -901,7 +901,7 @@
       "line": 371,
       "column": 10,
       "classification": "defensive",
-      "justification": "This transition guard prevents canceled admissions, conflicting replay, invalid loop control, or optional scope/output drift; direct state tests cover declarations, replay, cancellation, loops, and resumptions."
+      "justification": "A successful node observation without output leaves the output property absent rather than storing undefined."
     },
     {
       "cohort": "workflow-engine",
@@ -934,7 +934,7 @@
       "line": 208,
       "column": 76,
       "classification": "defensive",
-      "justification": "This lookup fallback fails closed on missing structured invocation evidence; root, nested, active, terminal, and missing scheduler/loop states are directly tested."
+      "justification": "Scheduler states without structuredBodies search only root nodes; the optional collection fallback prevents iteration over absent nested bodies."
     },
     {
       "cohort": "workflow-engine",
@@ -945,7 +945,7 @@
       "line": 244,
       "column": 54,
       "classification": "defensive",
-      "justification": "This lookup fallback fails closed on missing structured invocation evidence; root, nested, active, terminal, and missing scheduler/loop states are directly tested."
+      "justification": "Invocation lookup compares an absent iterationPath as the empty root path when resolving a scoped node identity."
     },
     {
       "cohort": "workflow-engine",
@@ -956,7 +956,7 @@
       "line": 272,
       "column": 56,
       "classification": "defensive",
-      "justification": "This lookup fallback fails closed on missing structured invocation evidence; root, nested, active, terminal, and missing scheduler/loop states are directly tested."
+      "justification": "Terminal invocation lookup compares an absent iterationPath as the empty root path before applying terminal-status filtering."
     },
     {
       "cohort": "worker",
@@ -1033,7 +1033,7 @@
       "line": 123,
       "column": 4,
       "classification": "defensive",
-      "justification": "This handler guard fails closed on heartbeat, dispatch-evidence, suspension, or dependency-contract drift; transport, control, provider, and duplicate-dispatch behavior is covered."
+      "justification": "The abort-aware wait rejects immediately when its signal is already aborted, closing the listener-registration race."
     },
     {
       "cohort": "worker",
@@ -1077,7 +1077,7 @@
       "line": 296,
       "column": 14,
       "classification": "defensive",
-      "justification": "This handler guard fails closed on heartbeat, dispatch-evidence, suspension, or dependency-contract drift; transport, control, provider, and duplicate-dispatch behavior is covered."
+      "justification": "An abort request without a durable reason is rejected as control_reason_missing before worker execution can acknowledge it."
     },
     {
       "cohort": "worker",
@@ -1088,7 +1088,7 @@
       "line": 306,
       "column": 10,
       "classification": "defensive",
-      "justification": "This handler guard fails closed on heartbeat, dispatch-evidence, suspension, or dependency-contract drift; transport, control, provider, and duplicate-dispatch behavior is covered."
+      "justification": "Heartbeat failures are captured only while neither the heartbeat controller nor attempt context is already aborting."
     },
     {
       "cohort": "worker",
@@ -1099,7 +1099,7 @@
       "line": 306,
       "column": 47,
       "classification": "defensive",
-      "justification": "This handler guard fails closed on heartbeat, dispatch-evidence, suspension, or dependency-contract drift; transport, control, provider, and duplicate-dispatch behavior is covered."
+      "justification": "A context abort suppresses a concurrent heartbeat exception because attempt cancellation already owns the terminal outcome."
     },
     {
       "cohort": "worker",
@@ -1132,7 +1132,7 @@
       "line": 397,
       "column": 10,
       "classification": "defensive",
-      "justification": "This handler guard fails closed on heartbeat, dispatch-evidence, suspension, or dependency-contract drift; transport, control, provider, and duplicate-dispatch behavior is covered."
+      "justification": "Executor-controlled nodes must record dispatch evidence before returning; otherwise the handler fails closed with dispatch_evidence_missing."
     },
     {
       "cohort": "worker",
@@ -1143,7 +1143,7 @@
       "line": 415,
       "column": 18,
       "classification": "defensive",
-      "justification": "This handler guard fails closed on heartbeat, dispatch-evidence, suspension, or dependency-contract drift; transport, control, provider, and duplicate-dispatch behavior is covered."
+      "justification": "A completed executor result becomes suspended only when the prepared attempt includes a suspension duration; otherwise it succeeds."
     },
     {
       "cohort": "worker",
@@ -1198,7 +1198,7 @@
       "line": 459,
       "column": 8,
       "classification": "defensive",
-      "justification": "This handler guard fails closed on heartbeat, dispatch-evidence, suspension, or dependency-contract drift; transport, control, provider, and duplicate-dispatch behavior is covered."
+      "justification": "A captured heartbeat failure takes precedence over executor error classification so transport liveness loss cannot be hidden."
     },
     {
       "cohort": "worker",
@@ -1209,7 +1209,7 @@
       "line": 461,
       "column": 14,
       "classification": "defensive",
-      "justification": "This handler guard fails closed on heartbeat, dispatch-evidence, suspension, or dependency-contract drift; transport, control, provider, and duplicate-dispatch behavior is covered."
+      "justification": "An Error heartbeat failure is rethrown with its original type and message."
     },
     {
       "cohort": "worker",
@@ -1220,7 +1220,7 @@
       "line": 462,
       "column": 14,
       "classification": "defensive",
-      "justification": "This handler guard fails closed on heartbeat, dispatch-evidence, suspension, or dependency-contract drift; transport, control, provider, and duplicate-dispatch behavior is covered."
+      "justification": "A non-Error heartbeat rejection is converted into a stable Error before leaving the handler."
     },
     {
       "cohort": "worker",
@@ -1253,7 +1253,7 @@
       "line": 200,
       "column": 4,
       "classification": "defensive",
-      "justification": "This filesystem progress guard prevents an infinite spool loop if a platform write reports zero bytes; real multi-chunk writes, bounds, cleanup, and metadata verification are tested."
+      "justification": "A spool write reporting zero or negative progress fails immediately, preventing an infinite artifact-write loop."
     },
     {
       "cohort": "worker",

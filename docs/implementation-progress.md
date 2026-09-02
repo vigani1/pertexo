@@ -4674,7 +4674,7 @@ Verification at implementation head `9e4263794715d273e8660c0dd4efa67c5032e940`:
 No Phase 7 completion box changes in this documentation-only audit. The current
 P1 findings and the existing live-production checklist remain release blockers.
 
-## Current whole-repository audit — implementation tree `640cbea`
+## Current whole-repository audit — implementation tree `6039235`
 
 Status: **Repository remediation complete; external production/control evidence
 remains open**
@@ -4693,12 +4693,12 @@ Repository-controlled remediation:
       or worsened ratchet entry.
 - [x] Raise critical coverage floors, emit a machine-readable uncovered
       risk-branch inventory, and add exhaustive workflow-status mutation
-      canaries. Schema V3 names the 23 exact selected files with portable paths,
-      leaves 317 sites unreviewed, and accepts only exact durable reviews that
-      fail the report when malformed, duplicated, or stale. Critical API
-      boundary tests now cover authorization, sessions, safe HTTP errors,
-      headers, rate limits, and malformed UUID randomness; API branch coverage
-      is 99.64% with a 99% floor.
+      canaries. Report schema V5 names the 23 exact selected files with portable
+      paths; manifest schema V3 binds all 129 remaining uncovered sites to exact
+      durable reviews that fail the report when malformed, duplicated, or stale.
+      Targeted public-behavior tests raised branch coverage to 91.46% workflow
+      engine, 94.23% database, 83.72% worker, and 99.64% API, leaving zero
+      selected-file sites unreviewed.
 - [x] Split production dependency updates into HTTP, validation, AWS,
       telemetry, queue, and routine compatibility groups and document owner,
       triage, isolation, and bounded-deferral SLAs.
@@ -4763,18 +4763,18 @@ judgments with documented arithmetic, not industry percentiles or claims that a
 particular file size, package count, or coverage percentage is universally
 correct.
 
-Verification for implementation tree `640cbea4d5fcc6972bf30ad09466dcb9e818409e`
+Verification for implementation tree `603923526c3f9632b1aa3ee0b699bdd00b7893eb`
 and its audit publication branch:
 
 - `pnpm docs:check` validated 25 repository-local links across 49 Markdown
   files, synchronized the three audit-tree claims, proved the audited tree
   occurs in publication ancestry, and passed a rebase-style recreation fixture;
 - `pnpm check` passed formatting, the Node 24 compatibility gate, all builds,
-  ESLint, complexity, generated contracts, TypeScript, and 1,372 unit tests
+  ESLint, complexity, generated contracts, TypeScript, and 1,525 unit tests
   across all 18 workspace projects;
-- `pnpm test:coverage` passed at 79.34% workflow-engine, 61.53% database,
-  62.79% worker, and 99.64% API branch coverage and recorded 317 unreviewed
-  plus one individually justified generated risk-branch site;
+- `pnpm test:coverage` passed at 91.46% workflow-engine, 94.23% database,
+  83.72% worker, and 99.64% API branch coverage and recorded zero unreviewed
+  plus 129 exactly identified, individually justified risk-branch sites;
 - the full configured real-service matrix passed 5 artifact-store, 320
   database, 21 worker, and 14 API integration tests; the 3 artifact-store, 1
   worker, and 2 API provider-specific skips remained explicit;
