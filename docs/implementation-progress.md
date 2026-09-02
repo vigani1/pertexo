@@ -4674,7 +4674,7 @@ Verification at implementation head `9e4263794715d273e8660c0dd4efa67c5032e940`:
 No Phase 7 completion box changes in this documentation-only audit. The current
 P1 findings and the existing live-production checklist remain release blockers.
 
-## Current whole-repository audit — implementation tree `355998d`
+## Current whole-repository audit — implementation tree `6bf15c1`
 
 Status: **Repository remediation continuing; C-06 and external
 production/control evidence remain open**
@@ -4696,8 +4696,8 @@ Repository-controlled remediation:
       manifest schema V4 groups reviews by file and binds all retained reviews
       to semantic source fingerprints. Private-state tests and 26 unsupported
       generic integration claims were removed. Public replacements currently
-      measure 88.38% workflow engine, 92.30% database, 86.43% worker, and 99.64%
-      API branch coverage, with 96 reviewed and 57 explicitly unreviewed sites.
+      measure 88.38% workflow engine, 92.30% database, 90.31% worker, and 99.64%
+      API branch coverage, with 93 reviewed and 50 explicitly unreviewed sites.
 - [x] Split production dependency updates into HTTP, validation, AWS,
       telemetry, queue, and routine compatibility groups and document owner,
       triage, isolation, and bounded-deferral SLAs.
@@ -4762,18 +4762,18 @@ judgments with documented arithmetic, not industry percentiles or claims that a
 particular file size, package count, or coverage percentage is universally
 correct.
 
-Verification for implementation tree `355998d2410701645d617c30d53450bb6d398ca7`
+Verification for implementation tree `6bf15c1f3cac56e226dc923aea7f62cb67a3d810`
 and its audit publication branch:
 
 - `pnpm docs:check` validated 25 repository-local links across 49 Markdown
   files, synchronized the three audit-tree claims, proved the audited tree
   occurs in publication ancestry, and passed a rebase-style recreation fixture;
 - `pnpm check` passed formatting, the Node 24 compatibility gate, all builds,
-  ESLint, complexity, generated contracts, TypeScript, and 1,512 unit tests
+  ESLint, complexity, generated contracts, TypeScript, and 1,516 unit tests
   across all 18 workspace projects;
 - `pnpm test:coverage` passed at 88.38% workflow-engine, 92.30% database,
-  86.43% worker, and 99.64% API branch coverage and recorded 96 exact
-  source-fingerprinted reviews plus 57 explicitly unreviewed sites;
+  90.31% worker, and 99.64% API branch coverage and recorded 93 exact
+  source-fingerprinted reviews plus 50 explicitly unreviewed sites;
 - the full configured real-service matrix passed 5 artifact-store, 320
   database, 21 worker, and 14 API integration tests; the 3 artifact-store, 1
   worker, and 2 API provider-specific skips remained explicit;

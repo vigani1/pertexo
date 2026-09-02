@@ -2,7 +2,7 @@
 
 Recorded: 2026-09-03
 
-Audited implementation tree: `355998d2410701645d617c30d53450bb6d398ca7`
+Audited implementation tree: `6bf15c1f3cac56e226dc923aea7f62cb67a3d810`
 
 Status: current findings, remediation state, and remaining external evidence
 
@@ -17,9 +17,9 @@ implemented and locally verified.
 
 After removing implementation-coupled coverage tests, public-interface tests
 produce 88.38% branch coverage for the workflow engine, 92.30% for the
-database, 86.43% for the worker, and 99.64% for the API. All 1,512 unit tests
-pass. The selected-file inventory now reports 96 source-fingerprinted reviews
-and exposes 57 sites as unreviewed instead of retaining unsupported generic
+database, 90.31% for the worker, and 99.64% for the API. All 1,516 unit tests
+pass. The selected-file inventory now reports 93 source-fingerprinted reviews
+and exposes 50 sites as unreviewed instead of retaining unsupported generic
 integration claims. The documentation
 gate added during that work exposed a merge-governance defect recorded as C-12:
 the rebase-style merge rewrote the recorded audit commit, and protected CI did
@@ -100,7 +100,7 @@ proof.
 | PostgreSQL and data integrity | 9.0/10 | Live capacity, backup, failover, and scale behavior unproved |
 | Application security | 9.0/10 | No current application exploit was found; provider-control canaries and deployed adversarial evidence remain absent |
 | Repository and supply-chain security | 8.7/10 | External canaries, signed registry provenance, and independent review absent |
-| Testing | 8.4/10 | Fifty-seven selected-file branches still need public-interface tests or narrow durable review |
+| Testing | 8.4/10 | Fifty selected-file branches still need public-interface tests or narrow durable review |
 | CI and change governance | 9.0/10 | Required checks are green before and after rebase merge; continued flake/dependency-cycle observation and future independent review remain |
 | Reliability and durability | 9.1/10 | Recovery control is green locally and remotely; deployed failure proof remains open |
 | Observability and operability | 8.5/10 | No deployed pager/operator proof |
@@ -115,7 +115,7 @@ Overall state including production readiness: **8.5/10**.
 ### 3.1 What passing tests and coverage mean
 
 `pnpm check` passing means every configured build, static check, contract check,
-complexity check, type check, and all 1,512 currently defined unit tests
+complexity check, type check, and all 1,516 currently defined unit tests
 completed successfully. The protected CI result adds the configured real-service,
 compatibility, recovery, deployment-security, and production-image cohorts. This
 is strong evidence that the behaviors exercised by those checks still work. It
@@ -127,11 +127,11 @@ were executed by a particular test command. This repository intentionally gates
 23 selected critical files rather than claiming whole-repository coverage.
 Branch coverage is the most useful headline here because it measures alternative
 decisions, not merely whether a line was touched. The current 88.38% workflow
-engine, 92.30% database, 86.43% worker, and 99.64% API branch results pass
-honestly recalibrated floors after private-state tests were removed. Of 153
-uncovered instrumentation branches, 96 are bound to exact identities and
-semantic source fingerprints: 60 defensive, 22 unreachable, and 14
-compiler-generated. The other 57 remain visibly unreviewed. The 26 former
+engine, 92.30% database, 90.31% worker, and 99.64% API branch results pass
+honestly recalibrated floors after private-state tests were removed. Of 143
+uncovered instrumentation branches, 93 are bound to exact identities and
+semantic source fingerprints: 60 defensive, 22 unreachable, and 11
+compiler-generated. The other 50 remain visibly unreviewed. The 26 former
 integration classifications were withdrawn because their repeated generic
 explanations did not identify exact branch evidence. Neither a green test
 command nor a passing threshold creates a review.
@@ -195,16 +195,16 @@ Phase 7 criteria.
 
 ## 4. Evidence checked for this implementation and publication
 
-- On this publication branch at audited implementation tree `355998d`,
+- On this publication branch at audited implementation tree `6bf15c1`,
   `pnpm check` passed formatting, documentation validation, runtime
   compatibility, build, ESLint,
-  complexity, generated contracts, TypeScript, and 1,512 unit tests across all
+  complexity, generated contracts, TypeScript, and 1,516 unit tests across all
   18 workspace projects.
 - `pnpm test:coverage`: passed all current critical-module thresholds:
-  workflow engine 88.38%, database 92.30%, worker 86.43%, and API 99.64%
+  workflow engine 88.38%, database 92.30%, worker 90.31%, and API 99.64%
   branch coverage. The generated report names the 23 exact selected files and
-  records 57 unreviewed branches plus 96 source-fingerprinted reviews: 60
-  defensive, 22 unreachable, and 14 compiler-generated. Generation performs no
+  records 50 unreviewed branches plus 93 source-fingerprinted reviews: 60
+  defensive, 22 unreachable, and 11 compiler-generated. Generation performs no
   automatic risk classification.
 - The configured real-service matrix passed 5 artifact-store, 320 database, 21
   worker, and 14 API integration tests. The 3 artifact-store, 1 worker, and 2
@@ -550,7 +550,7 @@ meet that standard.
 Public-interface replacements cover the heartbeat missing-reason and dispatch
 evidence guards and recover many workflow transition paths without mutable
 private state. Removing the remaining implementation-coupled tests lowered the
-honest workflow/database measurements and exposed 57 unreviewed sites. C-06
+honest workflow/database measurements and exposed 50 unreviewed sites. C-06
 must remain open until each is exercised through a public module interface or
 receives a narrow, source-bound justification. Generation does not classify any
 site automatically.
