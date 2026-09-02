@@ -155,7 +155,7 @@ function requiredMatch(contents, pattern, label) {
   return match[1];
 }
 
-async function validateAuditHead(rootDirectory, contentsByFile) {
+async function validateAuditTree(rootDirectory, contentsByFile) {
   const auditFile = path.join(rootDirectory, 'docs/whole-repository-audit.md');
   const progressFile = path.join(
     rootDirectory,
@@ -165,46 +165,44 @@ async function validateAuditHead(rootDirectory, contentsByFile) {
     rootDirectory,
     'docs/current-implementation-status.md',
   );
-  const auditedHead = requiredMatch(
+  const auditedTree = requiredMatch(
     contentsByFile.get(auditFile),
-    /^Audited implementation head: `([\da-f]{40})`$/mu,
-    'whole-repository-audit.md audited implementation head',
+    /^Audited implementation tree: `([\da-f]{40,64})`$/mu,
+    'whole-repository-audit.md audited implementation tree',
   );
-  const progressHead = requiredMatch(
+  const progressTree = requiredMatch(
     contentsByFile.get(progressFile),
-    /^## Current whole-repository audit — implementation head `([\da-f]{7,40})`$/mu,
-    'implementation-progress.md current audit head',
+    /^## Current whole-repository audit — implementation tree `([\da-f]{7,64})`$/mu,
+    'implementation-progress.md current audit tree',
   );
-  const statusHead = requiredMatch(
+  const statusTree = requiredMatch(
     contentsByFile.get(statusFile),
-    /^Audited implementation head: `([\da-f]{40})`$/mu,
-    'current-implementation-status.md audited implementation head',
+    /^Audited implementation tree: `([\da-f]{40,64})`$/mu,
+    'current-implementation-status.md audited implementation tree',
   );
-  if (!auditedHead.startsWith(progressHead)) {
+  if (!auditedTree.startsWith(progressTree)) {
     throw new Error(
-      'implementation-progress.md audit head must match whole-repository-audit.md',
+      'implementation-progress.md audit tree must match whole-repository-audit.md',
     );
   }
-  if (statusHead !== auditedHead) {
+  if (statusTree !== auditedTree) {
     throw new Error(
-      'current-implementation-status.md audit head must match whole-repository-audit.md',
+      'current-implementation-status.md audit tree must match whole-repository-audit.md',
     );
   }
-  try {
-    await execute('git', [
-      '-C',
-      rootDirectory,
-      'merge-base',
-      '--is-ancestor',
-      auditedHead,
-      'HEAD',
-    ]);
-  } catch {
+  const { stdout: ancestorTrees } = await execute('git', [
+    '-C',
+    rootDirectory,
+    'log',
+    '--format=%T',
+    'HEAD',
+  ]);
+  if (!ancestorTrees.split(/\r?\n/u).includes(auditedTree)) {
     throw new Error(
-      'audited implementation head must resolve to an ancestor of the publication',
+      'audited implementation tree must occur in the publication ancestry',
     );
   }
-  return auditedHead;
+  return auditedTree;
 }
 
 export async function validateDocumentationRepository(rootDirectory) {
@@ -225,14 +223,14 @@ export async function validateDocumentationRepository(rootDirectory) {
       `Documentation validation failed:\n- ${errors.join('\n- ')}`,
     );
   }
-  const auditedHead = await validateAuditHead(absoluteRoot, contentsByFile);
-  return { auditedHead, filesChecked: files.length, localLinksChecked };
+  const auditedTree = await validateAuditTree(absoluteRoot, contentsByFile);
+  return { auditedTree, filesChecked: files.length, localLinksChecked };
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const rootDirectory = fileURLToPath(new URL('../', import.meta.url));
   const result = await validateDocumentationRepository(rootDirectory);
   console.log(
-    `Validated ${result.localLinksChecked} local documentation links across ${result.filesChecked} files at audited head ${result.auditedHead.slice(0, 7)}.`,
+    `Validated ${result.localLinksChecked} local documentation links across ${result.filesChecked} files at audited tree ${result.auditedTree.slice(0, 7)}.`,
   );
 }

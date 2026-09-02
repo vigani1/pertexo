@@ -35,7 +35,7 @@ tests. The exact report schema and validator already live under
 
 ## Current engineering remediation
 
-Audited implementation head: `e9aa0f2a8dcb34502a4b9e47b9e993cc03f079ff`
+Audited implementation tree: `8d009f59bf43a53e678b4e81ad3b5cfd18330097`
 
 The 2026-09-01 audit refresh is implemented at fixed ancestor `0865633` and
 merged to `main` through pull request #7. It
