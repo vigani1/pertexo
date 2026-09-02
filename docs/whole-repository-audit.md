@@ -22,8 +22,9 @@ gate added during that work exposed a merge-governance defect recorded as C-12:
 the rebase-style merge rewrote the recorded audit commit, and protected CI did
 not execute the new documentation command. The gate now binds the audit to a
 merge-stable Git tree, has a rebase-style regression fixture, and runs from the
-protected quality job with complete history. Protected execution of that updated
-job remains to be observed before C-12 closes.
+protected quality job with complete history. Pull request and exact-main runs
+now prove the updated gate before and after the supported rebase merge, closing
+C-12.
 
 The project is still not production-ready. Live AWS, provider-control,
 independent-review, registry-signing, load, failover, pager, backup/PITR, and
@@ -35,8 +36,7 @@ recovery and integration jobs, so C-02 is closed.
 - Continue development: **GO**
 - Claim local repository checks are green: **GO**
 - Claim protected remote checks for this implementation: **GO**
-- Claim protected CI has executed the updated canonical documentation gate:
-  **NO-GO pending this pull request's run**
+- Claim protected CI executes the canonical documentation gate: **GO**
 - Claim Phase 7 or production readiness: **NO-GO**
 
 ## 2. Review method and external calibration
@@ -98,11 +98,11 @@ proof.
 | Application security | 9.0/10 | No current application exploit was found; provider-control canaries and deployed adversarial evidence remain absent |
 | Repository and supply-chain security | 8.7/10 | External canaries, signed registry provenance, and independent review absent |
 | Testing | 9.1/10 | Critical coverage is risk-selected rather than repository-wide |
-| CI and change governance | 8.7/10 | The quality job now includes the canonical documentation gate, but its first protected pull-request and post-merge executions remain to be observed |
+| CI and change governance | 9.0/10 | Required checks are green before and after rebase merge; continued flake/dependency-cycle observation and future independent review remain |
 | Reliability and durability | 9.1/10 | Recovery control is green locally and remotely; deployed failure proof remains open |
 | Observability and operability | 8.5/10 | No deployed pager/operator proof |
 | Performance and scalability | 7.5/10 | No representative deployed load or aggregate DB capacity proof |
-| Documentation and governance | 8.7/10 | The validator exists, but its first publication exposed rebase-merge identity and CI-enforcement gaps |
+| Documentation and governance | 9.0/10 | Merge-stable validation is protected and proven; external operational evidence and future multi-maintainer governance remain |
 | Production readiness | 5.5/10 | Phase 7 live evidence remains incomplete |
 
 Overall codebase engineering quality: **9.0/10**.
@@ -162,7 +162,7 @@ release criteria.
 | Application security | Add a focused adversarial test only when review identifies a missing authentication, authorization, tenancy, replay, abuse, payload, artifact, or lifecycle-command behavior. Existing negative matrices remain regression evidence. | The named gap has a negative unit/integration case, and a deployed security review finds no unresolved material exploit path. |
 | Repository and supply-chain security | Complete the optional assurance hardening recorded canonically in C-03, C-04, and C-08: provider-control canaries, signed digest promotion, and independent review/signing identities when available. | CI, registry attestation, deployment manifest, and running task identify the same immutable digest; substitution tests fail; provider canaries are retained; future multi-maintainer controls reject unreviewed critical changes. |
 | Testing | Review the 317 unreviewed selected-file branches and expand selection toward every critical policy module. Add mutation or failure-injection tests for high-consequence decisions, while retaining distinct unit, integration, compatibility, recovery, and production-image cohorts. | Every high-risk uncovered branch is exercised or individually justified; mutation canaries prove suites detect authorization/state-machine changes; thresholds ratchet upward; flake, duration, retry, and skip trends remain visible and bounded. |
-| CI and change governance | Observe the updated protected quality job before and after its first rebase-style merge; then keep all required jobs reproducible and independently diagnosable, monitor action/runtime drift, observe Dependabot groups through real cycles, and remove the solo-review exception when another maintainer exists. | A fixture covers the supported merge strategy, repeated exact-tree runs execute the documentation gate and keep all 11 strict contexts green without blanket retries, failures retain useful artifacts, dependency updates are isolated and actionable, and a non-author approval/code-owner review protects critical paths when a second maintainer exists. |
+| CI and change governance | Keep all required jobs reproducible and independently diagnosable, monitor action/runtime drift, observe Dependabot groups through real cycles, and remove the solo-review exception when another maintainer exists. | Repeated exact-tree runs execute the documentation gate and keep all 11 strict contexts green without blanket retries, failures retain useful artifacts, dependency updates are isolated and actionable, and a non-author approval/code-owner review protects critical paths when a second maintainer exists. |
 | Reliability and durability | Run the existing crash, dependency-outage, backpressure, failover, restore, regional-loss, and replay exercises against immutable deployed versions under realistic concurrency. | Repeated reports demonstrate fencing, idempotency, no acknowledged-data loss outside the stated RPO, bounded recovery inside the RTO, correct degraded behavior, and successful cleanup with no unexplained intermittent failures. |
 | Observability and operability | Deploy dashboards and alerts for the repository-defined SLIs, validate cardinality and trace correlation, exercise every operator command, and test pager routing plus escalation. | Synthetic incidents produce the expected metrics, traces, logs, alert, page, runbook action, ownership trail, and resolution timing; telemetry remains usable under load and during dependency failure. |
 | Performance and scalability | Establish representative workload models and budgets for API latency, persisted-to-visible SSE latency, worker throughput, queue delay, artifact traffic, noisy-tenant fairness, autoscaling, and total PostgreSQL connections. | Repeatable deployed load reports record workload and versions, meet SLO/budget targets at expected and peak scale, demonstrate API/worker scaling independently, and identify a safe saturation and backpressure envelope. |
@@ -171,23 +171,21 @@ release criteria.
 
 ### 3.3 Recommended order of work
 
-Step 2 is the authoritative backend-plan release blocker. Steps 1 and 3–7 are
-repository repair, audit hardening, or conditional maintenance and must not be
-reported as unfinished Phase 7 criteria.
+Step 1 is the authoritative backend-plan release blocker. Steps 2–6 are audit
+hardening or conditional maintenance and must not be reported as unfinished
+Phase 7 criteria.
 
-1. Confirm the configured documentation gate in protected pull-request and
-   post-rebase `main` runs, closing C-12.
-2. Complete live capacity, load, backup/PITR, failure, and regional-recovery
+1. Complete live capacity, load, backup/PITR, failure, and regional-recovery
    evidence because these are the release-blocking unknowns in C-01.
-3. Close the digest/signing/promotion chain and run the safe provider-control
+2. Close the digest/signing/promotion chain and run the safe provider-control
    canaries in C-03/C-04.
-4. Triage the 317 unreviewed branches by consequence, then add mutation and
+3. Triage the 317 unreviewed branches by consequence, then add mutation and
    failure-injection tests before raising coverage floors.
-5. Observe CI flake, duration, skip, retry, and Dependabot-group behavior over
+4. Observe CI flake, duration, skip, retry, and Dependabot-group behavior over
    multiple real runs; fix trends rather than optimizing a single snapshot.
-6. Refactor secondary complexity candidates only when characterization tests
+5. Refactor secondary complexity candidates only when characterization tests
    exist and the change demonstrably improves module depth or locality.
-7. Add independent review and signing controls when the necessary second
+6. Add independent review and signing controls when the necessary second
    maintainer and identities exist; do not create a branch-protection deadlock.
 
 ## 4. Evidence checked for this implementation and publication
@@ -711,12 +709,11 @@ implementation, callers retain their current behavior, package/public
 interfaces do not grow, and the remaining intentional groups are documented by
 this audit or a narrow code comment.
 
-### C-12 — The documentation gate is not merge-safe or protected
+### C-12 — The documentation gate was not merge-safe or protected
 
 **P1 — CI and audit-evidence integrity**
 
-Status: **Implemented locally; protected pull-request and post-merge execution
-evidence remains open.**
+Status: **Resolved.**
 
 The documentation validator was added to root `pnpm check` and correctly
 rejects missing local targets, missing anchors, cross-document audit-tree drift,
@@ -743,12 +740,14 @@ still accepted. Missing trees and synchronized-document drift remain negative
 cases. This preserves a narrow validator interface and avoids merge-policy
 exceptions.
 
-**Remaining evidence**
+**Evidence**
 
-- Observe `pnpm docs:check` pass in the protected quality job for this pull
-  request.
-- After rebase merge, confirm the exact-main quality job resolves the same
-  audited tree from full history.
+- Pull request #26 CI run `33642321558` passed all protected contexts; its
+  quality log explicitly records `pnpm docs:check`, the rebase fixture, and
+  audited tree `640cbea`.
+- Rebase-merged `main` recreated implementation commit `f3ca694` from candidate
+  `78c0e4e`. Local exact-main validation and quality job `100291244127` in run
+  `33643208313` both resolved the original audited tree and passed.
 
 **Accept when**
 
@@ -803,20 +802,18 @@ Repository-controlled remediation at the audited implementation snapshot:
 
 Remaining ordered work:
 
-1. Observe the updated documentation validator in protected pull-request and
-   post-rebase `main` CI (C-12).
-2. Complete live Phase 7 evidence and aggregate capacity proof (C-01).
-3. Execute safe provider canaries (C-03).
-4. Select the registry and signing identities, publish the already digest-bound
+1. Complete live Phase 7 evidence and aggregate capacity proof (C-01).
+2. Execute safe provider canaries (C-03).
+3. Select the registry and signing identities, publish the already digest-bound
    evidence, promote by digest, and verify deployment identity (C-04).
-5. Continue consequential failure-branch/mutation coverage from the generated
+4. Continue consequential failure-branch/mutation coverage from the generated
    unreviewed inventory and observe the new dependency groups in operation
    (C-06/C-07).
-6. Apply multi-maintainer review and signing enforcement when the required
+5. Apply multi-maintainer review and signing enforcement when the required
    people and identities exist (C-08).
 
-Only item 2 is an authoritative Phase 7 release blocker. Items 1 and 3–6 are
-repository repair, audit-assurance improvements, or externally conditional work.
+Only item 1 is an authoritative Phase 7 release blocker. Items 2–5 are
+audit-assurance improvements or externally conditional work.
 
 ## 9. Closure rule
 
