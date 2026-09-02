@@ -4674,10 +4674,10 @@ Verification at implementation head `9e4263794715d273e8660c0dd4efa67c5032e940`:
 No Phase 7 completion box changes in this documentation-only audit. The current
 P1 findings and the existing live-production checklist remain release blockers.
 
-## Current whole-repository audit — implementation tree `6039235`
+## Current whole-repository audit — implementation tree `355998d`
 
-Status: **Repository remediation complete; external production/control evidence
-remains open**
+Status: **Repository remediation continuing; C-06 and external
+production/control evidence remain open**
 
 Repository-controlled remediation:
 
@@ -4691,14 +4691,13 @@ Repository-controlled remediation:
       complexity baseline through private invariant-owned modules. The current
       leading hotspot is 220 lines/44 branches, down from 257/102, with no new
       or worsened ratchet entry.
-- [x] Raise critical coverage floors, emit a machine-readable uncovered
-      risk-branch inventory, and add exhaustive workflow-status mutation
-      canaries. Report schema V5 names the 23 exact selected files with portable
-      paths; manifest schema V3 binds all 129 remaining uncovered sites to exact
-      durable reviews that fail the report when malformed, duplicated, or stale.
-      Targeted public-behavior tests raised branch coverage to 91.46% workflow
-      engine, 94.23% database, 83.72% worker, and 99.64% API, leaving zero
-      selected-file sites unreviewed.
+- [ ] Complete the selected-file risk review through public module interfaces.
+      Report schema V6 names the 23 exact selected files with portable paths;
+      manifest schema V4 groups reviews by file and binds all retained reviews
+      to semantic source fingerprints. Private-state tests and 26 unsupported
+      generic integration claims were removed. Public replacements currently
+      measure 88.38% workflow engine, 92.30% database, 86.43% worker, and 99.64%
+      API branch coverage, with 96 reviewed and 57 explicitly unreviewed sites.
 - [x] Split production dependency updates into HTTP, validation, AWS,
       telemetry, queue, and routine compatibility groups and document owner,
       triage, isolation, and bounded-deferral SLAs.
@@ -4763,25 +4762,26 @@ judgments with documented arithmetic, not industry percentiles or claims that a
 particular file size, package count, or coverage percentage is universally
 correct.
 
-Verification for implementation tree `603923526c3f9632b1aa3ee0b699bdd00b7893eb`
+Verification for implementation tree `355998d2410701645d617c30d53450bb6d398ca7`
 and its audit publication branch:
 
 - `pnpm docs:check` validated 25 repository-local links across 49 Markdown
   files, synchronized the three audit-tree claims, proved the audited tree
   occurs in publication ancestry, and passed a rebase-style recreation fixture;
 - `pnpm check` passed formatting, the Node 24 compatibility gate, all builds,
-  ESLint, complexity, generated contracts, TypeScript, and 1,525 unit tests
+  ESLint, complexity, generated contracts, TypeScript, and 1,512 unit tests
   across all 18 workspace projects;
-- `pnpm test:coverage` passed at 91.46% workflow-engine, 94.23% database,
-  83.72% worker, and 99.64% API branch coverage and recorded zero unreviewed
-  plus 129 exactly identified, individually justified risk-branch sites;
+- `pnpm test:coverage` passed at 88.38% workflow-engine, 92.30% database,
+  86.43% worker, and 99.64% API branch coverage and recorded 96 exact
+  source-fingerprinted reviews plus 57 explicitly unreviewed sites;
 - the full configured real-service matrix passed 5 artifact-store, 320
   database, 21 worker, and 14 API integration tests; the 3 artifact-store, 1
   worker, and 2 API provider-specific skips remained explicit;
 - three destructive transport-recovery runs passed before the final lint-only
   correction, whose controller fixtures and full unit suite also pass;
-- `pnpm security:audit`, `pnpm deployment:check`, `pnpm exercise:check`, and
-  `pnpm images:check` passed;
+- `pnpm security:audit` passed at the high threshold after transitive
+  `fast-uri` patch overrides; `pnpm deployment:check`, `pnpm exercise:check`,
+  and `pnpm images:check` passed;
 - a real BuildKit production-image build emitted and bound digest
   `sha256:fda47b1215439a714ac7d0042fe41b4f8adfe62a7bc0c43c711cd029cb436bce`;
   and

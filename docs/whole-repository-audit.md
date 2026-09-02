@@ -1,8 +1,8 @@
 # Current Whole-Repository Engineering Audit
 
-Recorded: 2026-09-02
+Recorded: 2026-09-03
 
-Audited implementation tree: `603923526c3f9632b1aa3ee0b699bdd00b7893eb`
+Audited implementation tree: `355998d2410701645d617c30d53450bb6d398ca7`
 
 Status: current findings, remediation state, and remaining external evidence
 
@@ -15,11 +15,12 @@ named complexity hotspots, the two same-owner helper clones, digest-bound local
 image evidence, dependency grouping, and risk-coverage ratchets are now
 implemented and locally verified.
 
-Critical failure-branch remediation raised branch coverage to 91.46% for the
-workflow engine, 94.23% for the database, 83.72% for the worker, and 99.64% for
-the API. It increased the unit suite from 1,336 to 1,525 assertions, eliminated
-the 361-site unreviewed selected-file inventory, and individually recorded the
-129 instrumentation branches that remain uncovered. The documentation
+After removing implementation-coupled coverage tests, public-interface tests
+produce 88.38% branch coverage for the workflow engine, 92.30% for the
+database, 86.43% for the worker, and 99.64% for the API. All 1,512 unit tests
+pass. The selected-file inventory now reports 96 source-fingerprinted reviews
+and exposes 57 sites as unreviewed instead of retaining unsupported generic
+integration claims. The documentation
 gate added during that work exposed a merge-governance defect recorded as C-12:
 the rebase-style merge rewrote the recorded audit commit, and protected CI did
 not execute the new documentation command. The gate now binds the audit to a
@@ -78,8 +79,8 @@ rubric:
 | Below 5 | Foundational correctness, security, or maintainability weakness |
 
 Intermediate decimals express position inside a band; they are not statistical
-precision. **9.0 codebase engineering quality** is the arithmetic mean of the
-first ten code, data, security, test, CI, and reliability rows below. **8.6
+precision. **8.9 codebase engineering quality** is the arithmetic mean of the
+first ten code, data, security, test, CI, and reliability rows below. **8.5
 overall state** is the arithmetic mean of all fourteen rows. Neither number is
 an industry percentile, and future audits must retain the same rows and rubric
 for trend comparisons.
@@ -93,28 +94,28 @@ proof.
 | Area | Score | What prevents a higher score |
 | --- | ---: | --- |
 | Architecture and domain ownership | 9.2/10 | Secondary large closures remain characterization candidates |
-| Readability and maintainability | 8.8/10 | Complexity is reduced and ratcheted, not eliminated |
+| Readability and maintainability | 8.7/10 | Complexity is reduced and ratcheted; the remaining coverage review is still sizable |
 | TypeScript and runtime contracts | 9.2/10 | Repository-owned contracts are strong; third-party and deployed-provider compatibility still require maintained runtime schemas and observed evidence |
 | Reuse and package design | 9.0/10 | Current package interfaces are disciplined, but their ongoing depth and ownership still need change-history evidence |
 | PostgreSQL and data integrity | 9.0/10 | Live capacity, backup, failover, and scale behavior unproved |
 | Application security | 9.0/10 | No current application exploit was found; provider-control canaries and deployed adversarial evidence remain absent |
 | Repository and supply-chain security | 8.7/10 | External canaries, signed registry provenance, and independent review absent |
-| Testing | 9.1/10 | Critical coverage is risk-selected rather than repository-wide |
+| Testing | 8.4/10 | Fifty-seven selected-file branches still need public-interface tests or narrow durable review |
 | CI and change governance | 9.0/10 | Required checks are green before and after rebase merge; continued flake/dependency-cycle observation and future independent review remain |
 | Reliability and durability | 9.1/10 | Recovery control is green locally and remotely; deployed failure proof remains open |
 | Observability and operability | 8.5/10 | No deployed pager/operator proof |
 | Performance and scalability | 7.5/10 | No representative deployed load or aggregate DB capacity proof |
-| Documentation and governance | 9.0/10 | Merge-stable validation is protected and proven; external operational evidence and future multi-maintainer governance remain |
+| Documentation and governance | 8.7/10 | Merge-stable validation is protected; C-06 is accurately reopened and external operational evidence remains |
 | Production readiness | 5.5/10 | Phase 7 live evidence remains incomplete |
 
-Overall codebase engineering quality: **9.0/10**.
+Overall codebase engineering quality: **8.9/10**.
 
-Overall state including production readiness: **8.6/10**.
+Overall state including production readiness: **8.5/10**.
 
 ### 3.1 What passing tests and coverage mean
 
 `pnpm check` passing means every configured build, static check, contract check,
-complexity check, type check, and all 1,525 currently defined unit assertions
+complexity check, type check, and all 1,512 currently defined unit tests
 completed successfully. The protected CI result adds the configured real-service,
 compatibility, recovery, deployment-security, and production-image cohorts. This
 is strong evidence that the behaviors exercised by those checks still work. It
@@ -125,13 +126,15 @@ Coverage answers a narrower question: which instrumented implementation paths
 were executed by a particular test command. This repository intentionally gates
 23 selected critical files rather than claiming whole-repository coverage.
 Branch coverage is the most useful headline here because it measures alternative
-decisions, not merely whether a line was touched. The current 91.46% workflow
-engine, 94.23% database, 83.72% worker, and 99.64% API branch results pass raised
-floors while preserving useful defensive checks. The generated inventory has no
-unreviewed selected-file sites. Its 129 remaining uncovered instrumentation
-branches are individually bound to durable exact identities: 66 defensive, 22
-unreachable, 15 compiler-generated, and 26 exercised by named integration
-cohorts. Neither a green test command nor a passing threshold creates a review.
+decisions, not merely whether a line was touched. The current 88.38% workflow
+engine, 92.30% database, 86.43% worker, and 99.64% API branch results pass
+honestly recalibrated floors after private-state tests were removed. Of 153
+uncovered instrumentation branches, 96 are bound to exact identities and
+semantic source fingerprints: 60 defensive, 22 unreachable, and 14
+compiler-generated. The other 57 remain visibly unreviewed. The 26 former
+integration classifications were withdrawn because their repeated generic
+explanations did not identify exact branch evidence. Neither a green test
+command nor a passing threshold creates a review.
 
 Coverage percentage alone must not drive test work. Exercise consequential
 authorization, tenancy, state-transition, retry, rollback, lease/fencing,
@@ -192,21 +195,22 @@ Phase 7 criteria.
 
 ## 4. Evidence checked for this implementation and publication
 
-- On this publication branch at audited implementation tree `6039235`,
+- On this publication branch at audited implementation tree `355998d`,
   `pnpm check` passed formatting, documentation validation, runtime
   compatibility, build, ESLint,
-  complexity, generated contracts, TypeScript, and 1,525 unit tests across all
+  complexity, generated contracts, TypeScript, and 1,512 unit tests across all
   18 workspace projects.
 - `pnpm test:coverage`: passed all current critical-module thresholds:
-  workflow engine 91.46%, database 94.23%, worker 83.72%, and API 99.64%
+  workflow engine 88.38%, database 92.30%, worker 86.43%, and API 99.64%
   branch coverage. The generated report names the 23 exact selected files and
-  records zero unreviewed branches plus 129 exact durable reviews: 66 defensive,
-  22 unreachable, 15 compiler-generated, and 26 integration-covered. Generation
-  performs no automatic risk classification.
+  records 57 unreviewed branches plus 96 source-fingerprinted reviews: 60
+  defensive, 22 unreachable, and 14 compiler-generated. Generation performs no
+  automatic risk classification.
 - The configured real-service matrix passed 5 artifact-store, 320 database, 21
   worker, and 14 API integration tests. The 3 artifact-store, 1 worker, and 2
   API provider-specific skips remained explicit.
-- `pnpm security:audit`: no known production dependency vulnerability.
+- `pnpm security:audit`: passes at the high threshold after pinning transitive
+  `fast-uri` 3.1.6 and 4.1.3; two moderate advisories remain below the gate.
 - `pnpm deployment:check`, `pnpm images:check`, and
   `pnpm exercise:check`: passed.
 - GitHub security controls are enabled: secret scanning, push protection,
@@ -518,10 +522,10 @@ measurements do not regress.
 
 ### C-06 — Coverage proof is selective rather than repository-wide
 
-**P3 — Test-confidence improvement**
+**P2 — Test-confidence improvement**
 
-Status: **Resolved for the current selected-file cohort; broader selection
-remains an ongoing assurance activity.**
+Status: **Partially remediated; unsupported evidence was removed and the
+remaining selected-file review is explicit.**
 
 Coverage remains deliberately selected critical-module coverage, not
 whole-repository or whole-risk-surface coverage. The API critical-boundary
@@ -533,17 +537,23 @@ returns the wrong UUID byte count now fails closed. API branch coverage rose
 from 84.45% to 99.64%, and its thresholds ratcheted to 99% branches, statements,
 and lines and 98% functions.
 
-CI emits `coverage/risk-uncovered-branches.json`. Schema V5 lists the 23 exact
-measured files using repository-relative paths. Public-behavior tests reduced
-the uncovered inventory from 318 to 129 while raising the workflow-engine,
-database, and worker branch floors. Manifest schema V3 binds every remaining
-site to its branch id, location index, source coordinate, classification, and
-narrow justification: 66 defensive, 22 unreachable, 15 compiler-generated,
-and 26 exercised by named integration cohorts. Missing, duplicate, malformed,
-or stale review entries fail the report, so a source change cannot preserve an
-obsolete justification. Generation does not classify any site automatically.
-Exhaustive workflow-status mutation canaries and the existing exhaustive
-role/capability matrix prove that consequential policy changes fail tests.
+CI emits `coverage/risk-uncovered-branches.json`. Report schema V6 lists the 23
+exact measured files using repository-relative paths. Manifest schema V4 groups
+reviews by source file and binds each review to its branch identity, source
+coordinate, and a SHA-256 fingerprint of the instrumented source span. A
+same-location semantic change therefore invalidates its review. Missing,
+duplicate, malformed, or stale entries fail the report. Integration
+classifications additionally require a named command, test file, and test name;
+the previous 26 generic integration claims were withdrawn because they did not
+meet that standard.
+
+Public-interface replacements cover the heartbeat missing-reason and dispatch
+evidence guards and recover many workflow transition paths without mutable
+private state. Removing the remaining implementation-coupled tests lowered the
+honest workflow/database measurements and exposed 57 unreviewed sites. C-06
+must remain open until each is exercised through a public module interface or
+receives a narrow, source-bound justification. Generation does not classify any
+site automatically.
 
 **Ongoing assurance**
 
@@ -563,6 +573,12 @@ logic, and thresholds ratchet upward without a vanity 100% target.
 
 Status: **Repository policy complete; the next Dependabot cycle supplies
 operational confirmation.**
+
+On 2026-09-03 the current advisory database exposed high-severity findings in
+transitive `fast-uri` 3.1.5 and 4.1.2 after the preceding CI run had completed.
+The workspace now overrides those ranges to patched 3.1.6 and 4.1.3. The
+production audit passes its high-severity gate and reports two remaining
+moderate findings. A fresh protected run is still required as remote evidence.
 
 The Node 26 proposal was closed, Node is constrained to the supported 24 line,
 and bounded npm groups exist. At audit time:
