@@ -4674,10 +4674,10 @@ Verification at implementation head `9e4263794715d273e8660c0dd4efa67c5032e940`:
 No Phase 7 completion box changes in this documentation-only audit. The current
 P1 findings and the existing live-production checklist remain release blockers.
 
-## Current whole-repository audit — implementation head `a62c1d4`
+## Current whole-repository audit — implementation head `1c6b6aa`
 
-Status: **Repository remediation implemented; protected CI and external
-production/control evidence remain open**
+Status: **Repository remediation and protected CI complete; external
+production/control evidence remains open**
 
 Repository-controlled remediation:
 
@@ -4700,11 +4700,14 @@ Repository-controlled remediation:
       telemetry, queue, and routine compatibility groups and document owner,
       triage, isolation, and bounded-deferral SLAs.
 - [x] Align `@types/node` 24.13.3 with Node 24 engines, CI, and Docker stages;
-      thirteen fixtures also reject dynamic selectors, `node-version-file`, a
-      setup-node step without its own literal selector, and malformed workflow
-      YAML. Pinned `yaml` 2.9.0 parsing recognizes quoted actions, ignores
-      block-scalar text, and checks selector ownership against the exact parsed
-      step's `with` mapping.
+      fourteen fixtures also reject dynamic selectors, `node-version-file`, a
+      setup-node step without its own literal selector, malformed workflow
+      YAML, and case-variant `actions/setup-node` drift. Pinned `yaml` 2.9.0
+      parsing recognizes quoted actions, ignores block-scalar text, checks
+      selector ownership against the exact parsed step's `with` mapping, and
+      compares the GitHub repository identity case-insensitively. Checkout,
+      pnpm setup, Node setup, and artifact-upload actions are pinned to
+      immutable v6 releases that declare the Node 24 action runtime.
 - [x] Consolidate request-header policies in the private HTTP platform and
       artifact metadata equality in the private artifact-store implementation
       without adding public exports. The later coordinator validation
@@ -4747,7 +4750,7 @@ judgments with documented arithmetic, not industry percentiles or claims that a
 particular file size, package count, or coverage percentage is universally
 correct.
 
-Verification at `086563348d20c88f242b68f22609a64ed762d195`:
+Verification at `1c6b6aac6e5d6900721a3e8a9e7f469b2b871386`:
 
 - `pnpm check` passed formatting, the Node 24 compatibility gate, all builds,
   ESLint, complexity, generated contracts, TypeScript, and 1,336 unit tests
