@@ -35,7 +35,7 @@ tests. The exact report schema and validator already live under
 
 ## Current engineering remediation
 
-Audited implementation tree: `640cbea4d5fcc6972bf30ad09466dcb9e818409e`
+Audited implementation tree: `603923526c3f9632b1aa3ee0b699bdd00b7893eb`
 
 The 2026-09-01 audit refresh is implemented at fixed ancestor `0865633` and
 merged to `main` through pull request #7. It
@@ -62,13 +62,14 @@ targets and anchors plus a shared merge-stable implementation tree. Protected
 quality CI invokes it with complete history, and a fixture recreates the
 candidate on a different parent to prove the supported rebase-style flow.
 Pull request #26 and exact-main CI both executed that protected gate
-successfully, closing C-12. Risk
-coverage now reports 23 exact
-selected files with repository-relative paths, 317 explicitly unreviewed sites,
-and one durable compiler-generated review that fails closed if it becomes
-stale. Critical API boundary coverage is 99.64% branches after adding negative
-authorization, session, HTTP sanitization, header, and rate-limit evidence; UUID
-generation now rejects malformed random-source output. The remediation also
+successfully, closing C-12. Risk coverage still names 23 exact selected files
+with repository-relative paths, but targeted public-behavior tests have raised
+branch coverage to 91.46% for the workflow engine, 94.23% for the database,
+83.72% for the worker, and 99.64% for the API. The remaining 129 uncovered
+instrumentation branches are all tied to exact durable reviews: 66 defensive,
+22 unreachable, 15 compiler-generated, and 26 exercised by named integration
+cohorts. The report fails closed if a review is malformed, duplicated, or stale;
+no selected-file branch remains unreviewed. The remediation also
 centralizes the coordinator validation primitives privately and records the
 fixed-revision
 latency/memory/query comparison in
