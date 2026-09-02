@@ -23,7 +23,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   createPlatformPreviewNodeInvoker,
   mapPreviewHandlerError,
-} from '../src/execution/preview-attempt-runtime.js';
+} from '../src/testing.js';
 
 function leaseFixture(
   executableNode: PreviewAttemptLease['executableNode'],

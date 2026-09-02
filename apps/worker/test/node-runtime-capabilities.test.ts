@@ -8,7 +8,7 @@ import type { ConnectionDatabase } from '@pertexo/database/testing';
 import { ProviderExecutionRateLimitError } from '@pertexo/node-sdk/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createWorkerNodeRuntimeCapabilities } from '../src/execution/node-runtime-capabilities.js';
+import { createWorkerNodeRuntimeCapabilities } from '../src/testing.js';
 
 const workspaceId = '11111111-1111-4111-8111-111111111111';
 const connectionId = '22222222-2222-4222-8222-222222222222';
