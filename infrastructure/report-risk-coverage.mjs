@@ -50,12 +50,14 @@ function normalizedSourceSpan(source, location) {
 }
 
 function sourceFingerprint(source, metadata, locationIndex) {
-  const location =
-    metadata.locations?.[locationIndex]?.start?.line === undefined
-      ? metadata.loc
-      : metadata.locations[locationIndex];
+  const location = metadata.locations?.[locationIndex] ?? metadata.loc;
   return `sha256:${createHash('sha256')
-    .update(normalizedSourceSpan(source, location))
+    .update(
+      JSON.stringify({
+        decision: normalizedSourceSpan(source, metadata.loc),
+        branch: normalizedSourceSpan(source, location),
+      }),
+    )
     .digest('hex')}`;
 }
 
