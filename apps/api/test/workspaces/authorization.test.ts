@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   AUTHORIZATION_CAPABILITIES,
@@ -218,6 +218,79 @@ describe('workspace authorization policy', () => {
         access: () => Promise.resolve(undefined),
       }),
     ).rejects.toMatchObject({ code: 'resource.not_found' });
+  });
+
+  it('rejects malformed authorization inputs before consulting access data', async () => {
+    const lookup = vi.fn(() => Promise.resolve(access()));
+    const malformedActor = {
+      ...actor(),
+      actorId: 'not-a-uuid',
+    };
+
+    await expect(
+      authorizeWorkspace({
+        actor: malformedActor,
+        routeWorkspaceId: workspaceId,
+        capability: 'workflow:read',
+        access: lookup,
+      }),
+    ).rejects.toMatchObject({ code: 'request.invalid' });
+    await expect(
+      authorizeWorkspace({
+        actor: actor(),
+        routeWorkspaceId: 'not-a-uuid',
+        capability: 'workflow:read',
+        access: lookup,
+      }),
+    ).rejects.toMatchObject({ code: 'request.invalid' });
+    await expect(
+      authorizeWorkspace({
+        actor: actor(),
+        routeWorkspaceId: workspaceId,
+        capability: 'unknown' as 'workflow:read',
+        access: lookup,
+      }),
+    ).rejects.toMatchObject({ code: 'request.invalid' });
+
+    expect(lookup).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { actorId: 'not-a-uuid' },
+    { workspaceId: 'not-a-uuid' },
+    { role: 'unknown' },
+    { membershipStatus: 'unknown' },
+    { workspaceStatus: 'unknown' },
+  ] as const)(
+    'rejects malformed persisted access data: %j',
+    async (override) => {
+      await expect(
+        authorizeWorkspace({
+          actor: actor(),
+          routeWorkspaceId: workspaceId,
+          capability: 'workflow:read',
+          access: () =>
+            Promise.resolve({
+              ...access(),
+              ...override,
+            } as WorkspaceAccess),
+        }),
+      ).rejects.toMatchObject({ code: 'request.invalid' });
+    },
+  );
+
+  it('rejects a valid access record belonging to another actor', async () => {
+    await expect(
+      authorizeWorkspace({
+        actor: actor(),
+        routeWorkspaceId: workspaceId,
+        capability: 'workflow:read',
+        access: () =>
+          Promise.resolve(
+            access({ actorId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' }),
+          ),
+      }),
+    ).rejects.toMatchObject({ code: 'auth.forbidden' });
   });
 
   it('uses stable typed errors for missing actor and denied capabilities', async () => {

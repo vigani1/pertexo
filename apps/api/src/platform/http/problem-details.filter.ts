@@ -263,7 +263,7 @@ function instanceFrom(request: HttpRequestLike): string | undefined {
     return undefined;
   }
 
-  const withoutQuery = url.split(/[?#]/u, 1)[0] ?? '';
+  const withoutQuery = url.replace(/[?#].*$/u, '');
   if (withoutQuery.startsWith('/')) {
     return withoutQuery;
   }
@@ -307,6 +307,9 @@ function writeProblem(
   }
 }
 
+// The emitted decorator helper contains a compiler-generated fallback that
+// application code cannot invoke; exclude that synthetic branch from V8 data.
+/* v8 ignore next */
 @Catch()
 export class ProblemDetailsFilter implements ExceptionFilter {
   public constructor(
