@@ -4674,7 +4674,7 @@ Verification at implementation head `9e4263794715d273e8660c0dd4efa67c5032e940`:
 No Phase 7 completion box changes in this documentation-only audit. The current
 P1 findings and the existing live-production checklist remain release blockers.
 
-## Current whole-repository audit — implementation head `1c6b6aa`
+## Current whole-repository audit — implementation head `eb2cd1d`
 
 Status: **Repository remediation and protected CI complete; external
 production/control evidence remains open**
@@ -4693,9 +4693,12 @@ Repository-controlled remediation:
       or worsened ratchet entry.
 - [x] Raise critical coverage floors, emit a machine-readable uncovered
       risk-branch inventory, and add exhaustive workflow-status mutation
-      canaries. Schema V2 names the 23 exact selected files and marks all 361
-      remaining uncovered sites unreviewed rather than generating a risk
-      classification or bulk justification.
+      canaries. Schema V3 names the 23 exact selected files with portable paths,
+      leaves 317 sites unreviewed, and accepts only exact durable reviews that
+      fail the report when malformed, duplicated, or stale. Critical API
+      boundary tests now cover authorization, sessions, safe HTTP errors,
+      headers, rate limits, and malformed UUID randomness; API branch coverage
+      is 99.64% with a 99% floor.
 - [x] Split production dependency updates into HTTP, validation, AWS,
       telemetry, queue, and routine compatibility groups and document owner,
       triage, isolation, and bounded-deferral SLAs.
@@ -4754,17 +4757,17 @@ judgments with documented arithmetic, not industry percentiles or claims that a
 particular file size, package count, or coverage percentage is universally
 correct.
 
-Verification at `1c6b6aac6e5d6900721a3e8a9e7f469b2b871386`:
+Verification at `eb2cd1d317b00d20c9f1ca2a44411341cc337cb6`:
 
 - `pnpm docs:check` validated 25 repository-local links across 49 Markdown
   files, synchronized the three audit-head claims, and proved the audited head
   is an ancestor of the publication branch;
 - `pnpm check` passed formatting, the Node 24 compatibility gate, all builds,
-  ESLint, complexity, generated contracts, TypeScript, and 1,336 unit tests
+  ESLint, complexity, generated contracts, TypeScript, and 1,372 unit tests
   across all 18 workspace projects;
 - `pnpm test:coverage` passed at 79.34% workflow-engine, 61.53% database,
-  62.79% worker, and 84.45% API branch coverage and recorded 361 visible
-  uncovered risk-branch sites;
+  62.79% worker, and 99.64% API branch coverage and recorded 317 unreviewed
+  plus one individually justified generated risk-branch site;
 - the full configured real-service matrix passed 5 artifact-store, 320
   database, 22 worker, and 15 API integration tests, with provider-specific
   skips remaining explicit;

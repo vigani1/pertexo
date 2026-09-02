@@ -2,7 +2,7 @@
 
 Recorded: 2026-09-02
 
-Audited implementation head: `1c6b6aac6e5d6900721a3e8a9e7f469b2b871386`
+Audited implementation head: `eb2cd1d317b00d20c9f1ca2a44411341cc337cb6`
 
 Status: current findings, remediation state, and remaining external evidence
 
@@ -112,11 +112,12 @@ were executed by a particular test command. This repository intentionally gates
 23 selected critical files rather than claiming whole-repository coverage.
 Branch coverage is the most useful headline here because it measures alternative
 decisions, not merely whether a line was touched. The current 79.34% workflow
-engine, 61.53% database, 62.79% worker, and 84.45% API branch results therefore
+engine, 61.53% database, 62.79% worker, and 99.64% API branch results therefore
 mean that the configured floors pass while meaningful paths remain unexecuted.
-The generated inventory records 361 uncovered branch sites as `unreviewed`.
-Neither a green test command nor a passing threshold silently classifies those
-sites as safe.
+The generated inventory records 317 uncovered branch sites as `unreviewed` and
+one compiler-generated decorator branch as individually reviewed. Neither a
+green test command nor a passing threshold silently classifies other sites as
+safe.
 
 Coverage percentage alone must not drive test work. Exercise consequential
 authorization, tenancy, state-transition, retry, rollback, lease/fencing,
@@ -148,7 +149,7 @@ release criteria.
 | PostgreSQL and data integrity | Prove worst-case connection budgets, pooler behavior, migration concurrency, backup/PITR, failover/failback, replica lag, tenant isolation, retention, and regional restore in the target environment. | Fresh reports bind database version, migration head, roles, workload, capacity arithmetic, recovery timings, integrity checks, and cleanup to the reviewed deployment; RPO/RTO and headroom meet the plan. |
 | Application security | Add a focused adversarial test only when review identifies a missing authentication, authorization, tenancy, replay, abuse, payload, artifact, or lifecycle-command behavior. Existing negative matrices remain regression evidence. | The named gap has a negative unit/integration case, and a deployed security review finds no unresolved material exploit path. |
 | Repository and supply-chain security | Complete the optional assurance hardening recorded canonically in C-03, C-04, and C-08: provider-control canaries, signed digest promotion, and independent review/signing identities when available. | CI, registry attestation, deployment manifest, and running task identify the same immutable digest; substitution tests fail; provider canaries are retained; future multi-maintainer controls reject unreviewed critical changes. |
-| Testing | Review the 361 uncovered selected-file branches and expand selection toward every critical policy module. Add mutation or failure-injection tests for high-consequence decisions, while retaining distinct unit, integration, compatibility, recovery, and production-image cohorts. | Every high-risk uncovered branch is exercised or individually justified; mutation canaries prove suites detect authorization/state-machine changes; thresholds ratchet upward; flake, duration, retry, and skip trends remain visible and bounded. |
+| Testing | Review the 317 unreviewed selected-file branches and expand selection toward every critical policy module. Add mutation or failure-injection tests for high-consequence decisions, while retaining distinct unit, integration, compatibility, recovery, and production-image cohorts. | Every high-risk uncovered branch is exercised or individually justified; mutation canaries prove suites detect authorization/state-machine changes; thresholds ratchet upward; flake, duration, retry, and skip trends remain visible and bounded. |
 | CI and change governance | Keep all required jobs reproducible and independently diagnosable, monitor action/runtime drift, observe Dependabot groups through real cycles, and remove the solo-review exception when another maintainer exists. | Repeated exact-head runs keep all 11 strict contexts green without blanket retries; failures retain useful artifacts; dependency updates are isolated and actionable; a non-author approval and code-owner review protect critical paths. |
 | Reliability and durability | Run the existing crash, dependency-outage, backpressure, failover, restore, regional-loss, and replay exercises against immutable deployed versions under realistic concurrency. | Repeated reports demonstrate fencing, idempotency, no acknowledged-data loss outside the stated RPO, bounded recovery inside the RTO, correct degraded behavior, and successful cleanup with no unexplained intermittent failures. |
 | Observability and operability | Deploy dashboards and alerts for the repository-defined SLIs, validate cardinality and trace correlation, exercise every operator command, and test pager routing plus escalation. | Synthetic incidents produce the expected metrics, traces, logs, alert, page, runbook action, ownership trail, and resolution timing; telemetry remains usable under load and during dependency failure. |
@@ -166,7 +167,7 @@ Phase 7 criteria.
    evidence because these are the release-blocking unknowns in C-01.
 2. Close the digest/signing/promotion chain and run the safe provider-control
    canaries in C-03/C-04.
-3. Triage the 361 uncovered branches by consequence, then add mutation and
+3. Triage the 317 unreviewed branches by consequence, then add mutation and
    failure-injection tests before raising coverage floors.
 4. Observe CI flake, duration, skip, retry, and Dependabot-group behavior over
    multiple real runs; fix trends rather than optimizing a single snapshot.
@@ -178,13 +179,13 @@ Phase 7 criteria.
 ## 4. Evidence checked at this head
 
 - `pnpm check` passed formatting, runtime compatibility, build, ESLint,
-  complexity, generated contracts, TypeScript, and 1,336 unit tests across all
+  complexity, generated contracts, TypeScript, and 1,372 unit tests across all
   18 workspace projects.
 - `pnpm test:coverage`: passed all current critical-module thresholds:
-  workflow engine 79.34%, database 61.53%, worker 62.79%, and API 84.45%
+  workflow engine 79.34%, database 61.53%, worker 62.79%, and API 99.64%
   branch coverage. The generated report names the 23 exact selected files and
-  records 361 uncovered branch sites as unreviewed; it makes no generated risk
-  classification.
+  records 317 uncovered branch sites as unreviewed and one exact reviewed
+  compiler-generated branch; it makes no generated risk classification.
 - The configured real-service matrix passed 5 artifact-store, 320 database, 22
   worker, and 15 API integration tests. Provider-specific skips remained
   explicit.
@@ -501,13 +502,23 @@ Status: **Materially improved; uncovered risk branches remain a visible
 follow-up inventory.**
 
 Coverage remains deliberately selected critical-module coverage, not
-whole-repository or whole-risk-surface coverage. Thresholds were raised to
-current meaningful floors and CI emits
-`coverage/risk-uncovered-branches.json`. Schema V2 lists the 23 exact measured
-files and marks all 361 uncovered sites `unreviewed`; generation does not
-classify them as testable, defensive, unreachable, high risk, or low risk.
-Exhaustive workflow-status mutation canaries and the existing exhaustive
-role/capability matrix prove that consequential policy changes fail tests.
+whole-repository or whole-risk-surface coverage. The API critical-boundary
+cohort now exercises authorization input and persisted-record rejection,
+session clock/store/metadata failures, HTTP sanitization and response adapters,
+request-header policies, and rate-limit allow, deny, fail-open, fail-closed,
+classification, origin, and scope behavior. A cryptographic random source that
+returns the wrong UUID byte count now fails closed. API branch coverage rose
+from 84.45% to 99.64%, and its thresholds ratcheted to 99% branches, statements,
+and lines and 98% functions.
+
+CI emits `coverage/risk-uncovered-branches.json`. Schema V3 lists the 23 exact
+measured files using repository-relative paths, keeps 317 sites `unreviewed`,
+and attaches one exact `generated` review from the committed manifest. Missing,
+duplicate, malformed, or stale review entries fail the report, so a source-line
+change cannot preserve an obsolete justification. Generation does not classify
+any site automatically. Exhaustive workflow-status mutation canaries and the
+existing exhaustive role/capability matrix prove that consequential policy
+changes fail tests.
 
 **Remaining work**
 
@@ -590,7 +601,7 @@ Status: **Resolved by this fixed-ancestor publication.**
 
 The current status, tracker, and audit are now separated into implementation
 state, historical evidence, and external evidence. This audit pins merged
-implementation ancestor `1c6b6aa`; Phase 7 remains in progress. The preceding
+implementation ancestor `eb2cd1d`; Phase 7 remains in progress. The preceding
 red recovery run is retained as historical evidence and is explicitly
 superseded by green pull request #7 run `33465359665`; later runtime-remediation
 pull requests are recorded separately rather than rewriting that history.
