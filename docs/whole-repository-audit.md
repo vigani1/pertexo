@@ -1,846 +1,1071 @@
-# Current Whole-Repository Engineering Audit
+# Whole-Repository Engineering Audit
 
 Recorded: 2026-09-03
 
-Audited implementation tree: `5c32211ac3e33794826b07a340ad25e8ed91a2ef`
+Audited implementation tree: `200e9c5a4a2fd2772e37c06ad2ada6bc2b64e996`
 
-Status: current findings, remediation state, and remaining external evidence
+Status: current findings and improvement plan
 
-## 1. Executive conclusion
+## 1. Executive verdict
 
-The repository-controlled implementation is strong. This audit refresh was
-followed by focused remediation at the fixed implementation snapshot above.
-The PostgreSQL recovery control seam, Node runtime/type alignment, the eight
-named complexity hotspots, the two same-owner helper clones, digest-bound local
-image evidence, dependency grouping, and risk-coverage ratchets are now
-implemented and locally verified.
+This is a strong, serious backend codebase with several current defects and
+maintainability debts. It is not a careless collection of code, and it is not
+overabstracted at the package level. The modular-monolith direction is sound;
+the workspace dependency graph is acyclic; package export maps are deliberate;
+the TypeScript baseline is strict; runtime trust boundaries are usually parsed;
+tenant isolation and transactional behavior receive unusually strong real
+PostgreSQL coverage; and source duplication is low.
 
-After removing implementation-coupled coverage tests, public-interface tests
-produce 90.64% branch coverage for the workflow engine, 94.23% for the
-database, 91.86% for the worker, and 99.64% for the API. All 1,529 unit tests
-pass. The selected-file inventory now reports 116 source-fingerprinted reviews
-and zero unreviewed sites. Its eight integration classifications each name an
-exact command, test file, and test name. The documentation
-gate added during that work exposed a merge-governance defect recorded as C-12:
-the rebase-style merge rewrote the recorded audit commit, and protected CI did
-not execute the new documentation command. The gate now binds the audit to a
-merge-stable Git tree, has a rebase-style regression fixture, and runs from the
-protected quality job with complete history. Pull request and exact-main runs
-now prove the updated gate before and after the supported rebase merge, closing
-C-12.
+The previous audit overstated the present quality by allowing green checks and
+historical remediation to dominate the score. A fresh review found two
+security conditions that the green badges do not fail on: an open high-severity
+CodeQL regular-expression denial-of-service alert in the structured logger and
+two unique Fastify advisories with a fixed release available. It also found a
+production packaging defect: worker output imports `@pertexo/workflow-model` at
+runtime, but the worker declares that workspace package only as a development
+dependency even though the runtime image installs production dependencies only.
+The current dependency gate intentionally fails only at `high`, and a
+successful CodeQL upload is required without code-scanning merge protection.
+Therefore “CI is green” currently means the configured jobs executed
+successfully; it does not mean the security backlog is empty or that an
+isolated production worker has been proven loadable.
 
-The project is still not production-ready. Live AWS, provider-control,
-independent-review, registry-signing, load, failover, pager, backup/PITR, and
-regional-recovery evidence cannot be manufactured by repository tests. The
-previous red `main` recovery run is historical evidence. Pull request #7's
-replacement run `33465359665` passed every protected context, including the
-recovery and integration jobs, so C-02 is closed.
+The largest engineering debt is concentration. Forty-five production files
+exceed the repository's own 500-line file budget, 42 functions exceed its
+function line/branch budget, the database package has 104 TypeScript source
+files in one flat directory, and `schema.ts` is 1,961 lines. The complexity
+ratchet prevents new or worsened hotspots, which is valuable, but preserves a
+large existing baseline. Several individual persistence factories are 430–584
+lines and combine validation, SQL, transaction sequencing, mapping, and error
+policy in one lexical unit.
 
-- Continue development: **GO**
-- Claim local repository checks are green: **GO**
-- Claim protected remote checks for this implementation: **GO**
-- Claim protected CI executes the canonical documentation gate: **GO**
-- Claim Phase 7 or production readiness: **NO-GO**
+Testing is broad in behavior and strong in failure scenarios, but the reported
+coverage percentages are intentionally narrow. They instrument 23 selected
+files containing 6,560 lines—about 7.6% of the 86,429 TypeScript source lines
+under `apps/*/src` and `packages/*/src`. Those percentages must never be
+described as package-wide or repository-wide coverage. The selected branch
+inventory is now well controlled: 116 uncovered branches have semantic source
+fingerprints and individual reviews, with zero unreviewed sites.
 
-## 2. Review method and external calibration
+Current decision:
 
-This is a repository assessment, not an industry percentile or a certification.
-No authoritative engineering standard defines a universally correct repository
-size, package count, function length, abstraction count, or coverage percentage.
-Those values are useful only when they expose change cost, unclear ownership,
-weak verification, or operational risk.
+- Continue development: **GO**.
+- Treat the architecture as a sound foundation: **GO**.
+- Describe local quality checks and the exact-head GitHub CI run as green:
+  **GO**, with the security caveat above.
+- Call the code finished, perfectly clean, or fully covered: **NO-GO**.
+- Claim Phase 7 or production readiness: **NO-GO**.
 
-The review combines direct evidence from this repository with these established
-frameworks:
+The code is good overall. It is readable at local boundaries, highly defensive,
+and carefully tested. It is not yet as easy to navigate or change as it should
+be for its size, and its security gates currently provide a misleadingly green
+top-level signal.
 
-| Review dimension | External calibration | How it was applied here |
+## 2. Scope, method, and scoring
+
+### 2.1 What was reviewed
+
+The review covered the repository rather than one phase or feature branch:
+
+- the authoritative backend plan, supporting research, ADRs, implementation
+  tracker, runbooks, and existing audit;
+- all 6 applications and 12 packages, their dependency directions, manifests,
+  export maps, TypeScript project references, and test configurations;
+- representative API controllers, use cases, modules, guards, exception
+  handling, identity boundaries, worker composition, workflow engine parsers
+  and transitions, database transactions, raw SQL, schemas, migrations, RLS,
+  object storage, queueing, telemetry, and operator processes;
+- all production-file and function complexity measurements, source and test
+  clone detection, unused file/export/dependency analysis, unsafe TypeScript
+  escape-hatch searches, trust-boundary parsing, generic-folder naming, and
+  package-internal import checks;
+- unit, critical-file coverage, risk-coverage, deployment, image, exercise,
+  dependency, GitHub Actions, CodeQL, Dependabot, branch-protection, and
+  exact-main CI evidence;
+- operational readiness, recovery, capacity, observability, deployment
+  identity, artifact provenance, external-provider verification, ownership,
+  review policy, and public-repository governance.
+
+This was a static and executable repository audit. It was not a penetration
+test, a live AWS review, a production load test, a backup restoration, or a
+review of unavailable business/product telemetry.
+
+### 2.2 External calibration
+
+No credible standard defines a universally correct package count, file length,
+function length, or coverage percentage. The numerical scores in this document
+are review judgments under the fixed rubric below, not percentiles. External
+guidance was used to choose questions and evidence:
+
+| Dimension | Primary guidance | Application in this review |
 | --- | --- | --- |
-| Module and interface design | The local codebase-design framework: deep modules, narrow interfaces, locality, and real seams | Reviewed package purpose, dependency direction, public exports, sibling-internal imports, abstraction depth, and complexity hotspots; did not classify code as defective from line count alone |
-| Code health and reviewability | Google's [code-review standard](https://google.github.io/eng-practices/review/reviewer/standard.html), [review checklist](https://google.github.io/eng-practices/review/reviewer/looking-for.html), and [small-change guidance](https://google.github.io/eng-practices/review/developer/small-cls.html) | Reviewed design, functionality, complexity, naming, comments, documentation, tests, style, change focus, and whether the ratchet makes code health improve rather than decay |
-| Type safety | TypeScript's official [`strict` guarantees](https://www.typescriptlang.org/tsconfig/strict) plus runtime trust-boundary validation | Verified strict compilation, exact response contracts, generated-contract checks, runtime parsing, and localized assertions; did not treat static types as validation of untrusted input |
-| Secure development lifecycle | [NIST SSDF SP 800-218](https://csrc.nist.gov/pubs/sp/800/218/final) and the [OWASP SAMM model](https://owaspsamm.org/model/) | Checked governance, secure design/build/deployment, dependency handling, architecture and security verification, defect response, and operational controls |
-| Repository security | [OpenSSF Scorecard](https://github.com/ossf/scorecard) and GitHub's [protected-branch controls](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches) | Checked branch protection, review policy, automated dependency updates, scanning, workflow permissions, and pinned/reviewed build inputs |
-| Artifact integrity | [SLSA build provenance](https://slsa.dev/spec/v1.2/build-provenance) and [GitHub artifact attestations](https://docs.github.com/en/actions/concepts/security/artifact-attestations) | Distinguished an SBOM and vulnerability scan from cryptographically verifiable, digest-bound provenance and deployment identity |
-| Test design and signal | Google's [test-size model](https://testing.googleblog.com/2010/12/test-sizes.html) and [flaky-test evidence](https://testing.googleblog.com/2017/04/where-do-our-flaky-tests-come-from.html) | Reviewed small, integration, and destructive-system cohorts separately; treated nondeterminism as a reliability defect even when an immediate local rerun passed |
-| Delivery performance | [DORA](https://dora.dev/) | Used CI stability and change controls where repository evidence exists; did not claim an industry delivery ranking because deployment frequency, change lead time, failed-deployment recovery time, change-failure rate, and rework telemetry are not available |
-| Production readiness | Google's [SRE production-readiness review model](https://sre.google/sre-book/evolving-sre-engagement-model/) | Required observed evidence for architecture dependencies, monitoring, emergency response, capacity, change management, availability, latency, and efficiency rather than accepting repository contracts as production proof |
+| Code health | Google's [code-review checklist](https://google.github.io/eng-practices/review/reviewer/looking-for.html), [review standard](https://google.github.io/eng-practices/review/reviewer/standard.html), and [small-change guidance](https://google.github.io/eng-practices/review/developer/small-cls.html) | Checked design, functionality, naming, comments, tests, complexity, future-proofing, and whether each change can improve rather than merely preserve code health |
+| TypeScript scale | TypeScript [project references](https://www.typescriptlang.org/docs/handbook/project-references) | Checked that the monorepo is divided into independently compiled projects with declared logical dependencies and build ordering |
+| Package APIs | Node.js [package exports](https://nodejs.org/api/packages.html) | Checked explicit public entry points and prevention of accidental consumer access to package internals |
+| NestJS architecture | NestJS [modules](https://docs.nestjs.com/modules) and [providers](https://docs.nestjs.com/providers) | Checked feature ownership, exported provider surfaces, constructor injection, controller thinness, and global-module use |
+| API security | [OWASP ASVS](https://owasp.org/www-project-application-security-verification-standard/) and the [OWASP API Security project](https://owasp.org/www-project-api-security/) | Checked authentication, object/function authorization, validation, resource limits, SSRF/provider consumption, logging, and security verification |
+| PostgreSQL | PostgreSQL documentation for [row security](https://www.postgresql.org/docs/current/ddl-rowsecurity.html), [indexes](https://www.postgresql.org/docs/current/indexes.html), and [transaction isolation](https://www.postgresql.org/docs/current/transaction-iso.html) | Checked forced RLS, role separation, transaction-local tenant context, concurrency, constraints, index intent, and the boundary between repository proof and live workload proof |
+| CI security | GitHub's [secure-use reference](https://docs.github.com/en/actions/reference/security/secure-use), [dependency review](https://docs.github.com/en/code-security/concepts/supply-chain-security/dependency-review), and [code-scanning merge protection](https://docs.github.com/en/code-security/concepts/code-scanning/merge-protection) | Checked immutable action references, token permissions, dependency admission, and whether security findings actually block merges |
+| Supply chain | SLSA [provenance](https://slsa.dev/spec/v1.2/provenance) and [build levels](https://slsa.dev/spec/v1.2/build-track-basics) | Distinguished repository-generated metadata from hosted, signed, verified build provenance |
+| Production readiness | Google's [production-readiness review model](https://sre.google/sre-book/evolving-sre-engagement-model/) and [capacity guidance](https://sre.google/sre-book/introduction/) | Required observed dependency, monitoring, emergency-response, capacity, change-management, latency, and efficiency evidence |
 
-The external frameworks influenced what was checked and what constitutes
-evidence. They do not supply the numeric scores below. The scores use this audit
-rubric:
+The local codebase-design guidance added four tests: interface depth, leverage,
+locality, and deletion value. Similar-looking code was not automatically called
+duplication, and a large function was not called defective solely because of
+line count. The question was whether the shape increases change cost, obscures
+an invariant, or expands the public surface without leverage.
 
-| Score | Meaning in this audit |
+### 2.3 Score rubric
+
+| Score | Meaning |
 | ---: | --- |
-| 10 | Strong implementation, automated regression protection, and current operational proof; no material known gap |
-| 9 | Strong implementation and verification with only bounded or external evidence gaps |
-| 8 | Sound engineering with at least one material maintainability, CI, governance, or proof gap |
-| 7 | Functional foundation with important risk concentration or incomplete verification |
-| 5–6 | Substantial release or operational blockers despite useful foundations |
+| 9–10 | Strong design, automated regression protection, no material known repository defect; 10 also requires current operational proof |
+| 8–8.9 | Sound implementation with bounded but material maintainability, assurance, or evidence gaps |
+| 7–7.9 | Good foundation with a significant current defect, debt concentration, or incomplete verification surface |
+| 5–6.9 | Important release or operational blockers despite useful foundations |
 | Below 5 | Foundational correctness, security, or maintainability weakness |
 
-Intermediate decimals express position inside a band; they are not statistical
-precision. **9.0 codebase engineering quality** is the arithmetic mean of the
-first ten code, data, security, test, CI, and reliability rows below. **8.6
-overall state** is the arithmetic mean of all fourteen rows. Neither number is
-an industry percentile, and future audits must retain the same rows and rubric
-for trend comparisons.
+Scores are deliberately lower than the previous audit because this review
+scores current unresolved conditions, separates selected-file coverage from
+whole-repository coverage, and treats an open security finding as a finding
+even when its analysis workflow is green. That recalibration is not evidence
+that the implementation itself regressed.
 
-## 3. Current scores
+## 3. Current scorecard
 
-Scores are evidence-based engineering judgments, not a universal formula. A 10
-requires both a strong implementation and convincing automated or operational
-proof.
-
-| Area | Score | What prevents a higher score |
+| Area | Score | Current reason |
 | --- | ---: | --- |
-| Architecture and domain ownership | 9.2/10 | Secondary large closures remain characterization candidates |
-| Readability and maintainability | 8.8/10 | Complexity is reduced and ratcheted, not eliminated |
-| TypeScript and runtime contracts | 9.2/10 | Repository-owned contracts are strong; third-party and deployed-provider compatibility still require maintained runtime schemas and observed evidence |
-| Reuse and package design | 9.0/10 | Current package interfaces are disciplined, but their ongoing depth and ownership still need change-history evidence |
-| PostgreSQL and data integrity | 9.0/10 | Live capacity, backup, failover, and scale behavior unproved |
-| Application security | 9.0/10 | No current application exploit was found; provider-control canaries and deployed adversarial evidence remain absent |
-| Repository and supply-chain security | 8.7/10 | External canaries, signed registry provenance, and independent review absent |
-| Testing | 9.1/10 | Critical coverage is risk-selected rather than repository-wide |
-| CI and change governance | 9.0/10 | Required checks are green before and after rebase merge; continued flake/dependency-cycle observation and future independent review remain |
-| Reliability and durability | 9.1/10 | Recovery control is green locally and remotely; deployed failure proof remains open |
-| Observability and operability | 8.5/10 | No deployed pager/operator proof |
-| Performance and scalability | 7.5/10 | No representative deployed load or aggregate DB capacity proof |
-| Documentation and governance | 9.0/10 | Merge-stable validation and exact coverage evidence are protected; external operational evidence remains |
-| Production readiness | 5.5/10 | Phase 7 live evidence remains incomplete |
-
-Overall codebase engineering quality: **9.0/10**.
-
-Overall state including production readiness: **8.6/10**.
-
-### 3.1 What passing tests and coverage mean
-
-`pnpm check` passing means every configured build, static check, contract check,
-complexity check, type check, and all 1,529 currently defined unit tests
-completed successfully. The protected CI result adds the configured real-service,
-compatibility, recovery, deployment-security, and production-image cohorts. This
-is strong evidence that the behaviors exercised by those checks still work. It
-does **not** mean that every source line, decision, failure mode, provider
-interaction, or deployed operating condition was exercised.
-
-Coverage answers a narrower question: which instrumented implementation paths
-were executed by a particular test command. This repository intentionally gates
-23 selected critical files rather than claiming whole-repository coverage.
-Branch coverage is the most useful headline here because it measures alternative
-decisions, not merely whether a line was touched. The current 90.64% workflow
-engine, 94.23% database, 91.86% worker, and 99.64% API branch results pass
-ratcheted floors after private-state tests were removed. All 116 remaining
-uncovered instrumentation branches are bound to exact identities and semantic
-source fingerprints: 68 defensive, 27 unreachable, 13 compiler-generated, and
-8 exercised by specifically named integration tests. Neither a green test
-command nor a passing threshold creates a review.
-
-Coverage percentage alone must not drive test work. Exercise consequential
-authorization, tenancy, state-transition, retry, rollback, lease/fencing,
-concurrency, timeout, idempotency, corruption, and provider-failure paths first.
-Classify defensive or unreachable branches individually with durable evidence.
-Do not add implementation-coupled assertions merely to increase a percentage,
-and do not set a vanity 100% target that rewards deleting useful defensive
-checks or testing private statements instead of module interfaces.
-
-### 3.2 Evidence required to raise each score
-
-Scores rise only after the relevant implementation and regression or operational
-evidence exist. Completing a task without proving its effect does not by itself
-raise a score. A 10 additionally requires current operational proof and no
-material known gap, so several areas cannot reach 10 through repository-only
-changes. This table is score-calibration guidance, not a second findings
-register: Section 6 remains the canonical source for required work. “Preserve”
-and “conditional” rows are regression or future-change rules, not current
-implementation defects. C-03, the external portion of C-04, and C-08 are audit
-assurance hardening; they do not silently extend the authoritative Phase 7
-release criteria.
-
-| Area | Best next improvement | Evidence required before raising the score |
-| --- | --- | --- |
-| Architecture and domain ownership | **Conditional:** characterize a remaining large persistence or coordination closure only after concrete change cost or unclear failure ownership is observed. Extract a private internal seam only where it improves locality; preserve the owning module's small external interface and do not add a hypothetical adapter. | Focused behavior and failure-path tests stay green; package dependency direction and public exports do not widen; complexity falls without extra queries, allocations, or latency. |
-| Readability and maintainability | Work down the current complexity baseline when a hotspot creates real review or change cost. Prefer named policy/parser functions, explicit domain terms, short orchestration, and comments that explain invariants or reasons rather than restating code. | The ratchet records a lower hotspot, reviewers can trace success and failure paths locally, and focused tests plus the fixed-revision performance comparison show unchanged behavior and no material regression. |
-| TypeScript and runtime contracts | **Preserve:** keep untrusted HTTP, queue, database, checkpoint, environment, and provider data behind runtime parsers. Add work only for a named unparsed trust seam; advance Node runtime and ambient types together. | Strict production/test type checks, generated-contract drift checks, negative parser fixtures, consumer compatibility tests, and deployed/provider compatibility evidence pass for the same versioned contracts. |
-| Reuse and package design | **Preserve:** consolidate only same-owner behavior that shares an invariant and changes together. Keep cross-owner similarities local; remove pass-through exports or obsolete interfaces only when the deletion test shows they add no leverage. | No undeclared or circular dependencies, no sibling-internal imports, and bounded public export surfaces. A concrete shared change is fixed once without coupling unrelated packages. |
-| PostgreSQL and data integrity | Prove worst-case connection budgets, pooler behavior, migration concurrency, backup/PITR, failover/failback, replica lag, tenant isolation, retention, and regional restore in the target environment. | Fresh reports bind database version, migration head, roles, workload, capacity arithmetic, recovery timings, integrity checks, and cleanup to the reviewed deployment; RPO/RTO and headroom meet the plan. |
-| Application security | Add a focused adversarial test only when review identifies a missing authentication, authorization, tenancy, replay, abuse, payload, artifact, or lifecycle-command behavior. Existing negative matrices remain regression evidence. | The named gap has a negative unit/integration case, and a deployed security review finds no unresolved material exploit path. |
-| Repository and supply-chain security | Complete the optional assurance hardening recorded canonically in C-03, C-04, and C-08: provider-control canaries, signed digest promotion, and independent review/signing identities when available. | CI, registry attestation, deployment manifest, and running task identify the same immutable digest; substitution tests fail; provider canaries are retained; future multi-maintainer controls reject unreviewed critical changes. |
-| Testing | Preserve the exact reviewed inventory and expand selection toward every critical policy module. Add mutation or failure-injection tests when new high-consequence decisions enter scope, while retaining distinct unit, integration, compatibility, recovery, and production-image cohorts. | Every high-risk uncovered branch is exercised or individually justified; mutation canaries prove suites detect authorization/state-machine changes; thresholds ratchet upward; flake, duration, retry, and skip trends remain visible and bounded. |
-| CI and change governance | Keep all required jobs reproducible and independently diagnosable, monitor action/runtime drift, observe Dependabot groups through real cycles, and remove the solo-review exception when another maintainer exists. | Repeated exact-tree runs execute the documentation gate and keep all 11 strict contexts green without blanket retries, failures retain useful artifacts, dependency updates are isolated and actionable, and a non-author approval/code-owner review protects critical paths when a second maintainer exists. |
-| Reliability and durability | Run the existing crash, dependency-outage, backpressure, failover, restore, regional-loss, and replay exercises against immutable deployed versions under realistic concurrency. | Repeated reports demonstrate fencing, idempotency, no acknowledged-data loss outside the stated RPO, bounded recovery inside the RTO, correct degraded behavior, and successful cleanup with no unexplained intermittent failures. |
-| Observability and operability | Deploy dashboards and alerts for the repository-defined SLIs, validate cardinality and trace correlation, exercise every operator command, and test pager routing plus escalation. | Synthetic incidents produce the expected metrics, traces, logs, alert, page, runbook action, ownership trail, and resolution timing; telemetry remains usable under load and during dependency failure. |
-| Performance and scalability | Establish representative workload models and budgets for API latency, persisted-to-visible SSE latency, worker throughput, queue delay, artifact traffic, noisy-tenant fairness, autoscaling, and total PostgreSQL connections. | Repeatable deployed load reports record workload and versions, meet SLO/budget targets at expected and peak scale, demonstrate API/worker scaling independently, and identify a safe saturation and backpressure envelope. |
-| Documentation and governance | Make fixed-audit identity compatible with the repository's rebase-style merge policy, keep the plan, ADRs, progress tracker, audit, runbooks, ownership, exceptions, and evidence links synchronized, and record measured delivery/incident evidence rather than inferred maturity. | The documentation validator passes before and after the supported merge flow, runs as a protected check with sufficient history, a fresh maintainer can reproduce the checks and operate a drill, and exceptions have owners and review dates. |
-| Production readiness | Complete C-01 and close or explicitly accept every authoritative Phase 7 criterion using evidence from the immutable release candidate. C-03, C-04, and C-08 can raise audit assurance but are not backend-plan Phase 7 gates. | A production-readiness review links current capacity, availability, latency, telemetry, pager, backup/PITR, failover, regional recovery, runbook, rollback, and ownership evidence to one deployable version. |
-
-### 3.3 Recommended order of work
-
-Step 1 is the authoritative backend-plan release blocker. Steps 2–6 are audit
-hardening or conditional maintenance and must not be reported as unfinished
-Phase 7 criteria.
-
-1. Complete live capacity, load, backup/PITR, failure, and regional-recovery
-   evidence because these are the release-blocking unknowns in C-01.
-2. Close the digest/signing/promotion chain and run the safe provider-control
-   canaries in C-03/C-04.
-3. Expand the selected critical-module cohort by consequence, preserving exact
-   reviews and adding mutation or failure-injection tests before raising floors.
-4. Observe CI flake, duration, skip, retry, and Dependabot-group behavior over
-   multiple real runs; fix trends rather than optimizing a single snapshot.
-5. Refactor secondary complexity candidates only when characterization tests
-   exist and the change demonstrably improves module depth or locality.
-6. Add independent review and signing controls when the necessary second
-   maintainer and identities exist; do not create a branch-protection deadlock.
-
-## 4. Evidence checked for this implementation and publication
-
-- On this publication branch at audited implementation tree `5c32211`,
-  `pnpm check` passed formatting, documentation validation, runtime
-  compatibility, build, ESLint,
-  complexity, generated contracts, TypeScript, and 1,529 unit tests across all
-  18 workspace projects.
-- `pnpm test:coverage`: passed all current critical-module thresholds:
-  workflow engine 90.64%, database 94.23%, worker 91.86%, and API 99.64%
-  branch coverage. The generated report names the 23 exact selected files and
-  records zero unreviewed branches plus 116 source-fingerprinted reviews: 68
-  defensive, 27 unreachable, 13 compiler-generated, and 8 tied to exact named
-  integration tests. Generation performs no automatic risk classification.
-- The configured real-service matrix passed 5 artifact-store, 320 database, 21
-  worker, and 14 API integration tests. The 3 artifact-store, 1 worker, and 2
-  API provider-specific skips remained explicit.
-- `pnpm security:audit`: passes at the high threshold after pinning transitive
-  `fast-uri` 3.1.6 and 4.1.3; two moderate advisories remain below the gate.
-- `pnpm deployment:check`, `pnpm images:check`, and
-  `pnpm exercise:check`: passed.
-- GitHub security controls are enabled: secret scanning, push protection,
-  vulnerability alerts, Dependabot security updates, and automated fixes.
-- Protected `main` requires 11 strict contexts, including CodeQL and
-  `production-image`.
-- Exact-main CI run `33635957948` and CodeQL run `33635958168` passed, including
-  5/8 artifact-store tests with three provider-specific cases pending and all
-  320 database, 22 worker, and 15 API integration tests. The protected quality
-  job did not execute `pnpm docs:check`, which is the open C-12 escape rather
-  than evidence that the stale pre-publication audit head was valid.
-- Pull request #7 CI run `33465359665` passed quality, compatibility, coverage,
-  integration, recovery, deployment-security, production-image, and all three
-  unit-test partitions; CodeQL run `33465359620` passed.
-- The preceding audit-remediation pull request passed every protected context.
-- Historical push CI run `33458288161` on the preceding `main` failed only in
-  `recovery`. Its worker and API recovery reports passed, but the transport
-  resilience suite failed while `docker compose up --wait postgres` observed
-  the restarting container exit with status zero.
-- The replacement transport resilience cohort passed three consecutive clean
-  local Compose projects with no skip. It records container identity, permits
-  only the documented clean-exit race retry, polls health to a deadline, and
-  rejects unhealthy, nonzero-exit, or identity-changing failures.
-- The worktree was clean before this documentation update.
-
-## 5. Actual source-code review results
-
-The research criteria were applied to production code and tests, not only to
-repository configuration or prior audit prose.
-
-### 5.1 Scope and structural statistics
-
-- 18 workspace projects: six runnable applications and twelve capability
-  packages.
-- 86,749 TypeScript lines in production/configuration sources and 89,557 in
-  package-local tests and test support.
-- 3,419 functions or methods, 279 classes, and 317 declared interfaces.
-- 48 functions span more than 200 lexical lines and 10 span more than 400.
-  Many are deep factory functions whose span includes private returned methods;
-  the branch ratchet, interface size, and invariant ownership determine whether
-  they need refactoring.
-- 10 classes span more than 200 lines. The largest are concrete AWS, BullMQ,
-  dispatcher, expression, OIDC, and secure-HTTP adapters with cohesive external
-  responsibilities; none is a cross-domain god class.
-- The two same-owner consolidation candidates from the normalized-body scan
-  are now owned by private HTTP-platform and artifact-store helpers. Other
-  repeated adapter shells remain local intentionally.
-
-### 5.2 Architecture, packages, and imports
-
-- The workspace package dependency graph is acyclic.
-- Each package owns a deployable capability, security role, deterministic
-  model, or external adapter. Removing a package would move its complexity into
-  several callers; no package currently fails the deletion test.
-- There is no generic `shared`, `common`, or `utils` package.
-- Database consumers import explicit `api`, `execution`, `lifecycle`,
-  `maintenance`, `operator`, or `recovery` capability surfaces. ESLint rejects
-  the broad database root and cross-runtime API/worker imports.
-- API features are organized by business capability. Platform modules compose
-  those features. The reused workspace-capability guard is a real security seam
-  with multiple feature-specific adapters, not incidental sibling coupling.
-- No production `forwardRef`, `ModuleRef` service locator, request-scoped
-  provider, property injection, or direct package `src`/`dist` import was found.
-
-### 5.3 TypeScript and runtime boundaries
-
-- `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`,
-  `useUnknownInCatchVariables`, `noImplicitOverride`, `noFallthroughCasesInSwitch`,
-  and `noImplicitReturns` are enabled.
-- Production source contains no explicit `any`, `as any`, `@ts-ignore`, or
-  `@ts-expect-error` escape.
-- Runtime inputs enter as `unknown` and are parsed with Zod contracts. API
-  outputs are validated against exact response schemas; generated contract
-  drift fails CI.
-- Inline ESLint suppressions are confined to documented Nest module marker
-  classes, frozen application-error values, and preserved rejection-value
-  semantics. No blanket source-directory suppression was found.
-- The ambient Node type package, engines range, CI jobs, and every Docker stage
-  now resolve to Node 24. A fixture-backed compatibility gate rejects drift on
-  any one surface.
-
-### 5.4 NestJS and HTTP implementation
-
-- Feature modules, constructor injection, symbol tokens, guards, and explicit
-  ports/adapters are used consistently.
-- Authentication, CSRF, workspace authorization, rate limiting, and error
-  normalization are centralized. Controllers do not manually invent response
-  error formats.
-- Request bodies, parameters, queries, headers, and untrusted persisted/event
-  values are parsed at their trust seams. Zod is used instead of
-  `class-validator`; this provides the same required runtime validation without
-  duplicating transport classes.
-- Fastify application tests exercise routing, guards, parsing, cookies,
-  serialization, and error behavior through the real application adapter.
-- Configuration parsers fail fast, structured logging redacts sensitive
-  context, readiness is separate from liveness, and API/worker bootstraps enable
-  shutdown hooks and clean up failed initialization.
-
-### 5.5 PostgreSQL implementation
-
-- Seventy-four ordered SQL migrations are checksum-verified and protected by a
-  transaction advisory lock. Dynamic role identifiers are escaped; business
-  values use query parameters.
-- The schema uses primary, foreign, unique, check, and index constraints. Tenant
-  tables enable and force RLS, and real-role integration suites verify isolation
-  and pooled-client context hygiene.
-- Multi-step state changes use explicit transactions, row/advisory locking,
-  compare-and-swap or lease fencing, rollback, and bounded lock/statement
-  deadlines. The design uses explicit locks rather than `SERIALIZABLE`; absence
-  of that isolation level is therefore not itself a finding.
-- Pool sizes, connection/idle timeouts, PostgreSQL telemetry, compatibility
-  checks, migration roles, runtime roles, and maintenance roles are explicit.
-- `SELECT *` is primarily used for typed PostgreSQL composite-function results
-  or complete persisted records. It was not treated as an automatic defect.
-  Live query plans, index usage, bloat, autovacuum, WAL, replication, memory,
-  and aggregate connection behavior still require deployed evidence under C-01.
-
-### 5.6 Tests, CI, security, and operations
-
-- Tests remain beside their owning workspace. A separate repository-wide test
-  package would weaken ownership and is not recommended.
-- Unit suites are fast and deterministic locally. Real PostgreSQL, Redis,
-  object-store, HTTP, process-crash, compatibility, and recovery cohorts are
-  isolated in explicit integration/resilience configurations.
-- Required service cohorts emit machine-readable reports and fail on zero
-  tests, failures, unexpected skips, pending tests, or todos.
-- Coverage is deliberately risk-selected rather than repository-wide. CI emits
-  the uncovered risk-branch inventory, and authorization and workflow status
-  policies have exhaustive mutation canaries.
-- CI actions and service images are digest-pinned, permissions are narrow,
-  CodeQL and dependency scanning run, and production images are non-root and
-  read-only compatible. The local provenance manifest binds the image digest,
-  commit, SBOM hash, and scanner-report hash. External canary, registry-signing,
-  deployment-identity, and governance evidence remains under C-01/C-03/C-04/C-08.
-
-## 6. Current findings
-
-### C-01 — Live production, recovery, and scale evidence is incomplete
-
-**P1 — Production release blocker**
-
-Status: **Open; external deployment evidence required.**
-
-The target AWS environment still lacks retained evidence for:
-
-- IAM admission and immutable task/image invocation;
-- bucket versioning, Object Lock, replication, legal hold, and deletion;
-- pager delivery and operator response;
-- writer fencing, failover, failback, PITR, and regional restore;
-- measured five-minute RPO and 24-hour RTO;
-- representative load, provider failure, backpressure, and noisy-tenant
-  fairness;
-- separate API and worker autoscaling behavior; and
-- worst-case PostgreSQL connection capacity across API, worker, dispatch,
-  maintenance, migrations, operational jobs, pooler mode, and headroom.
-
-Repository contracts prove expected shape, not deployed behavior.
-
-**Required work**
-
-Run the existing exercises against immutable deployed versions. Each report
-must identify environment, image/task revision, data/storage version, workload,
-expected result, observed result, timings, operator actions, cleanup, and
-deviations. Keep reports secret-free and reject stale evidence.
-
-**Accept when**
-
-The external evidence validator accepts fresh reports, every open Phase 7 row
-links to observed evidence, recovery objectives are measured, and maximum-scale
-database capacity remains inside its safe budget.
-
-### C-02 — PostgreSQL restart control is deterministic
-
-**P1 — CI/release evidence blocker**
-
-Status: **Resolved.**
-
-GitHub Actions run `33458288161` failed in the destructive recovery job. The
-transport resilience test calls:
-
-`docker compose up -d --wait postgres`
-
-after intentionally stopping PostgreSQL. Docker Compose sometimes observes the
-old container exit before the restart reaches healthy state and returns failure.
-The uploaded report shows the functional assertion failed at service
-orchestration rather than at state recovery. A local exact reproduction passed,
-so the test is nondeterministic.
-
-This did not show durable-state corruption. The replacement service-control
-seam records the stopped container, validates the intended clean exit, uses
-`docker compose start`, retries only the documented transition race twice,
-waits for health with a deadline, and rejects a changed container, unhealthy
-state, or nonzero exit. Its negative fixtures and three consecutive destructive
-local runs pass. The historical red run is not erased; replacement recovery job
-`99723971025` passed in protected CI run `33465359665`.
-
-No blanket job retry was added.
-
-**Accept when**
-
-The exact recovery cohort passes repeatedly from clean Compose projects on
-GitHub-hosted runners, current `main` has all 11 required contexts green, and a
-negative fixture still proves a genuinely unavailable PostgreSQL instance fails.
-
-### C-03 — Security and image rejection canaries are not recorded
-
-**P2 — External control evidence**
-
-Status: **Open; GitHub/provider-side canary execution required.**
-
-Secret scanning, push protection, dependency alerts/updates, and the protected
-image scanner are enabled. However, there is no retained evidence that:
-
-- a recognized non-production test secret is rejected before push;
-- a controlled vulnerable dependency generates the expected alert/update; or
-- a disposable vulnerable image causes the protected image context to fail.
-
-**Required work**
-
-Use provider-approved test tokens and disposable branches/fixtures. Never insert
-a real secret or merge a vulnerable dependency. Record rejection, cleanup, and
-the exact control that acted.
-
-**Accept when**
-
-All three controlled canaries produce the expected rejection or alert and leave
-no credential, vulnerable dependency, image, or bypass behind.
-
-### C-04 — Digest binding exists; signed promotion proof does not
-
-**P2 — Supply-chain evidence**
-
-Status: **Repository binding complete; registry signing and promotion open.**
-
-The production-image job now builds with BuildKit metadata, records the content
-digest, and creates a provenance manifest binding that digest and commit to the
-SHA-256 hashes of the CycloneDX SBOM and Grype JSON report. Fixture tests reject
-substitution. A real local production-image build emitted
-`sha256:fda47b1215439a714ac7d0042fe41b4f8adfe62a7bc0c43c711cd029cb436bce`.
-The manifest deliberately says `external-registry-required`: it is not a signed
-registry attestation and does not claim deployment promotion.
-
-Mutable Debian upgrades were correctly removed; this finding is about closing
-the build-to-deployment identity chain.
-
-**Remaining work**
-
-- Publish/sign provenance through the chosen registry and CI identity.
-- Promote by digest rather than rebuilding from the commit.
-- Verify the deployment manifest references the scanned digest.
-
-**Accept when**
-
-The CI artifact and registry attestation identify one digest, deployment uses
-that exact digest, verification rejects substitution, and rebuild equivalence is
-either demonstrated or explicitly not relied upon because promotion reuses the
-original immutable artifact.
-
-### C-05 — Named complexity hotspots were reduced
-
-**P3 — Maintainability improvement**
-
-Status: **The eight named hotspots are remediated. Secondary candidates remain
-under the ratchet as ordinary improvement work.**
-
-The audit named eight branch-heavy functions. All eight were decomposed behind
-private invariant-owned seams without widening their package interfaces:
-
-| Former hotspot | Result |
-| --- | --- |
-| status and transition-plan validation | private status/policy and plan-validator modules |
-| persisted-observation parsing | private parser dispatch module |
-| loaded-checkpoint physical validation | private physical-state module |
-| node-attempt execution input proof | private input-proof module |
-| node-attempt completion outcomes | private outcome-policy module |
-| workflow graph validation | private graph-validation policies |
-| derived workflow transitions | named transition policies |
-
-None of those eight remains in the complexity baseline. The current highest
-measured source function is 220 lines/44 branches, down from 257/102 for the
-former leader, and the ratchet reports no new or worsened hotspot.
-
-The fixed-revision comparison in
-[`docs/operations/complexity-refactor-performance.md`](./operations/complexity-refactor-performance.md)
-runs each owning package suite five times at the pre-refactor and candidate
-revisions. Median elapsed deltas were +0.36% database, +3.13% workflow engine
-(with three additional tests), and 0.00% workflow model; median maximum-RSS
-deltas were +1.18%, +0.26%, and +0.23%. Query-call inventory decreased from 215
-to 213, and diff review found relocated statements but no new SQL or round trip.
-
-The longest lexical factory functions also include workspace purge (584 lines),
-control-ledger coordination (578), identity/workspace persistence (505),
-workflow authoring persistence (498), and failure-notification persistence
-(494). Their public interfaces remain comparatively deep, but changing an
-invariant still requires navigating a large closure. Treat them as secondary
-characterization candidates after the branch-heavy functions above.
-
-**Follow-up rule**
-
-Treat the remaining large lexical factories as characterization candidates,
-not defects by size. Continue one invariant at a time only when change cost or
-failure ownership justifies it.
-
-**Accept when**
-
-Each focused change lowers the relevant ratchet baseline, public interface size
-does not grow, failure-path tests remain exhaustive, and query/allocation/latency
-measurements do not regress.
-
-### C-06 — Coverage proof is selective rather than repository-wide
-
-**P2 — Test-confidence improvement**
-
-Status: **Resolved for the current selected-file cohort; broader selection
-remains an ongoing assurance activity.**
-
-Coverage remains deliberately selected critical-module coverage, not
-whole-repository or whole-risk-surface coverage. The API critical-boundary
-cohort now exercises authorization input and persisted-record rejection,
-session clock/store/metadata failures, HTTP sanitization and response adapters,
-request-header policies, and rate-limit allow, deny, fail-open, fail-closed,
-classification, origin, and scope behavior. A cryptographic random source that
-returns the wrong UUID byte count now fails closed. API branch coverage rose
-from 84.45% to 99.64%, and its thresholds ratcheted to 99% branches, statements,
-and lines and 98% functions.
-
-CI emits `coverage/risk-uncovered-branches.json`. Report schema V6 lists the 23
-exact measured files using repository-relative paths. Manifest schema V4 groups
-reviews by source file and binds each review to its branch identity, source
-coordinate, and a SHA-256 fingerprint of the instrumented source span. A
-same-location semantic change therefore invalidates its review. Missing,
-duplicate, malformed, or stale entries fail the report. Integration
-classifications additionally require a named command, test file, and test name;
-the previous 26 generic integration claims were withdrawn because they did not
-meet that standard.
-
-Public-interface replacements cover the heartbeat missing-reason, dispatch
-evidence, transaction isolation, observation ordering, branch selection,
-due-resumption, and terminal-loop replay paths without mutable private state.
-The remaining defensive, generated, unreachable, and integration-only sites
-carry narrow source-bound evidence. Generation does not classify any site
-automatically.
-
-**Ongoing assurance**
-
-- Expand positive selection when another critical policy module is identified.
-- Exercise newly exposed consequential branches and require an exact durable
-  justification for any branch that remains uncovered.
-
-**Accept when**
-
-High-risk uncovered branches have tests or documented justification, selected
-mutation tests prove the suites detect changed authorization/state-transition
-logic, and thresholds ratchet upward without a vanity 100% target.
-
-### C-07 — Dependency automation is enabled but not consistently actionable
-
-**P3 — Dependency operations**
-
-Status: **Repository policy complete; the next Dependabot cycle supplies
-operational confirmation.**
-
-On 2026-09-03 the current advisory database exposed high-severity findings in
-transitive `fast-uri` 3.1.5 and 4.1.2 after the preceding CI run had completed.
-The workspace now overrides those ranges to patched 3.1.6 and 4.1.3. The
-production audit passes its high-severity gate and reports two remaining
-moderate findings. A fresh protected run is still required as remote evidence.
-
-The Node 26 proposal was closed, Node is constrained to the supported 24 line,
-and bounded npm groups exist. At audit time:
-
-- the Node 24 Docker update PR was fully green;
-- the development update group was still running; and
-- the production update group bundled 12 updates and had several failed
-  contexts.
-
-A failing update PR is not itself a product defect, but the former twelve-item
-production group hid the incompatible boundary. Production updates are now
-split into HTTP, validation, AWS, telemetry, queue, and routine groups. The
-owner/SLA policy defines same-day security triage, 72-hour security disposition,
-seven-day green-update review, two-business-day failing-boundary isolation, and
-bounded documented deferral.
-
-**Remaining work**
-
-Observe the next automation cycle and record any intentional deferral with its
-reason and review date.
-
-**Accept when**
-
-Routine supported updates become reviewable green PRs, a single incompatible
-package can be isolated without disabling automation, and deferred updates have
-a recorded reason and review date.
-
-### C-08 — Independent review and signed provenance remain unavailable
-
-**P3 — Accepted solo-maintainer risk**
-
-Status: **Open external governance constraint; documented and accepted.**
-
-CODEOWNERS covers critical paths, but GitHub reports one collaborator. Requiring
-one approval or code-owner review would deadlock every author-owned PR. Required
-approvals and signatures therefore remain disabled.
-
-**Required work**
-
-Keep the documented solo exception. When a second maintainer with review
-permission exists, require one non-author approval and code-owner review for
-critical paths. Provision signing for human and automation identities before
-requiring verified commits or merge signatures.
-
-**Accept while solo**
-
-The exception names the sole-maintainer condition, protected checks remain
-mandatory, and no approval rule is enabled that deadlocks legitimate work.
-
-**Accept after a second maintainer and signing identities exist**
-
-An unreviewed critical-path PR cannot merge, one non-author approval and
-code-owner review are required, and protected merge commits/provenance are
-verifiably attributable.
-
-### C-09 — Current-status and audit evidence have drifted
-
-**P3 — Documentation accuracy**
-
-Status: **Resolved by this fixed-snapshot publication.**
-
-The current status, tracker, and audit are now separated into implementation
-state, historical evidence, and external evidence. This audit pins a merged
-implementation snapshot; Phase 7 remains in progress. The preceding
-red recovery run is retained as historical evidence and is explicitly
-superseded by green pull request #7 run `33465359665`; later runtime-remediation
-pull requests are recorded separately rather than rewriting that history.
-`pnpm docs:check` now parses the repository Markdown, rejects missing local
-targets or heading anchors, synchronizes the audited implementation tree across
-the audit, progress tracker, and current-status document, and proves that tree
-occurs in the publication ancestry. The solo-maintainer exception names its
-owner and a bounded next-review date.
-
-**Maintenance rule**
-
-Record the eventual replacement remote run without rewriting the historical
-failure, and keep deployment evidence distinct from repository verification.
-
-**Accept when**
-
-README, current status, this audit, and the tracker agree on branch state,
-current head, current CI, and open production work; historical evidence remains
-linked but cannot be mistaken for current status.
-
-### C-10 — Node ambient types exceed the supported runtime major
-
-**P2 — Type/runtime compatibility**
-
-Status: **Resolved.**
-
-`@types/node` is pinned to 24.13.3. The root compatibility check parses the
-engines range, every workflow Node selection, every Docker stage, and the
-ambient type major, requiring all of them to resolve to Node 24. It rejects
-dynamic/matrix expressions, `node-version-file`, and setup-node steps without
-their own literal selector. Selectors must belong to that exact step's `with`
-mapping, so unrelated or sibling `node-version` keys cannot mask drift.
-Workflow files are parsed structurally with pinned `yaml` 2.9.0: quoted action
-values are recognized, block-scalar text is not treated as a step, and invalid
-YAML fails closed. The `actions/setup-node` repository identity is compared
-case-insensitively to match GitHub semantics. Fourteen fixtures prove the
-supported surfaces. CI action pins for checkout, pnpm setup, Node setup, and
-artifact upload now use immutable v6 releases whose action manifests declare
-the Node 24 runtime; protected pull request #23 run `33625443334` completed
-without the former Node.js 20 deprecation annotations.
-
-**Maintenance rule**
-
-Advance runtime and ambient types in one intentional change; do not bypass the
-fixture-backed compatibility gate.
-
-**Accept when**
-
-The installed ambient types, engines range, CI runtime, and production image all
-resolve to Node 24, and a fixture proves that drifting any one surface fails the
-compatibility gate.
-
-### C-11 — Two bounded same-owner helper clones were consolidated
-
-**P3 — Readability and locality**
-
-Status: **Resolved.**
-
-Exact function-body comparison found 12 repeated groups of at least 12 lines.
-Most should remain local: Nest module registration shells, feature-owned
-authorization/current-draft behavior, cross-package UTF-8 calculations, and
-small query wrappers do not justify wider interfaces.
-
-The two groups with one natural owner were consolidated:
-
-- request-header extraction and normalization are repeated across API request
-  identifiers, rate limiting, and workflow controllers even though the HTTP
-  platform module already owns request adaptation; and
-- `metadataMatches` is duplicated inside the artifact-store package.
-
-The private HTTP-platform helper now exposes raw, first-value, and
-strict-single-value policies, while the webhook ingress deliberately retains raw
-Fastify handling for duplicate/comma-folding security semantics. Artifact
-metadata equality has one private artifact-store implementation. Neither change
-adds a public subpath or generic shared package.
-
-The later complexity decomposition briefly duplicated `assertPlan` and
-`sameStoredValue` across coordinator plan/status validation. Both now live once
-in the private database-owned `coordinator-run-store-validation-values` module;
-no package export was added.
-
-**Accept when**
-
-Each header policy and artifact metadata comparison has one owned
-implementation, callers retain their current behavior, package/public
-interfaces do not grow, and the remaining intentional groups are documented by
-this audit or a narrow code comment.
-
-### C-12 — The documentation gate was not merge-safe or protected
-
-**P1 — CI and audit-evidence integrity**
-
-Status: **Resolved.**
-
-The documentation validator was added to root `pnpm check` and correctly
-rejects missing local targets, missing anchors, cross-document audit-tree drift,
-and an audited tree that does not occur in publication ancestry. Critical API
-coverage remediation was originally audited at candidate commit `eb2cd1d`.
-GitHub's rebase-style merge recreated that implementation as merged commit
-`59a14c7` with the same Git tree, so `eb2cd1d` was not an ancestor of resulting
-main commit `e9aa0f2`. On a full local clone, `pnpm docs:check` therefore failed
-and made canonical `pnpm check` red.
-
-Protected main CI run `33635957948` nevertheless passed because the quality job
-manually invoked formatting, build, lint, contracts, and type checking instead
-of root `pnpm check` and omitted `pnpm docs:check`. Its checkout also used
-`fetch-depth: 1`, which is insufficient for a general ancestor proof. The green
-protected contexts prove the code, coverage, integration, recovery, security,
-and image cohorts that actually ran; they do not prove documentation validation.
-
-The validator now records the full Git tree for the reviewed implementation
-snapshot. Rebase merging may recreate commits, but it preserves their trees.
-The protected quality job fetches complete history and explicitly runs
-`pnpm docs:check`, and a temporary-repository fixture proves that a candidate
-commit can be replaced on another parent while the matching reviewed tree is
-still accepted. Missing trees and synchronized-document drift remain negative
-cases. This preserves a narrow validator interface and avoids merge-policy
-exceptions.
-
-**Evidence**
-
-- Pull request #26 CI run `33642321558` passed all protected contexts; its
-  quality log explicitly records `pnpm docs:check`, the rebase fixture, and
-  audited tree `640cbea`.
-- Rebase-merged `main` recreated implementation commit `f3ca694` from candidate
-  `78c0e4e`. Local exact-main validation and quality job `100291244127` in run
-  `33643208313` both resolved the original audited tree and passed.
-
-**Accept when**
-
-The documentation command passes on the publication branch and after the
-supported merge flow; changing any synchronized audit tree, breaking a local
-target/anchor, or recording a non-accepted implementation identity fails a
-required protected context.
-
-## 7. Areas with no current corrective finding
-
-- The twelve-package modular-monolith structure remains justified.
-- No generic `shared`, `common`, or `utils` package is needed.
-- Runtime database roles use explicit capability subpaths; the broad root export
-  is retired.
-- Source dependency direction remains acyclic.
-- Exact API response types and runtime schema validation are preserved.
-- Feature modules no longer depend on the corrected sibling internals.
-- Idempotency and invalid-session data now have bounded operated retention.
-- Observability and provider telemetry clones use narrow owned modules.
-- Fastify access is localized at a checked adapter seam.
-- Test directories remain correctly package-local; no top-level test package is
-  recommended.
-- Remaining real-time waits reviewed by the prior remediation are tied to actual
-  database, Redis, queue, process, cancellation, or external-clock behavior.
-
-## 8. Ordered improvement plan
-
-Repository-controlled remediation at the audited implementation snapshot:
-
-- [x] Stabilize the recovery service-control seam and pass protected recovery
-      CI (C-02).
-- [x] Bind local image, SBOM, and scan evidence to the BuildKit digest (C-04
-      repository portion).
-- [x] Reduce all eight named complexity hotspots without widening public
-      interfaces (C-05).
-- [x] Exercise consequential selected-file branches, raise critical thresholds,
-      and bind every remaining uncovered branch to an exact durable review
-      without automatic classification (C-06 repository portion).
-- [x] Split dependency compatibility boundaries and define owner/SLAs (C-07).
-- [x] Correct fixed-snapshot/current-status evidence drift (C-09).
-- [x] Automate repository-local documentation link/anchor validation and
-      cross-document audit-tree drift detection; bound the solo-maintainer
-      exception with an owner and review date (C-09/C-08 repository policy).
-- [x] Align Node ambient types and enforce cross-surface runtime compatibility
-      (C-10).
-- [x] Consolidate the two same-owner helper clones (C-11).
-- [x] Correct the unreachable pre-rebase audit reference without erasing the
-      escaped failure evidence (C-12 publication portion).
-- [x] Bind audits to merge-stable Git trees, cover rebase-style recreation, and
-      run the documentation gate with complete history in protected quality CI
-      (C-12 implementation portion).
-
-Remaining ordered work:
-
-1. Complete live Phase 7 evidence and aggregate capacity proof (C-01).
-2. Execute safe provider canaries (C-03).
-3. Select the registry and signing identities, publish the already digest-bound
-   evidence, promote by digest, and verify deployment identity (C-04).
-4. Expand critical-module selection as risk warrants and observe the new
-   dependency groups in operation (C-06/C-07).
-5. Apply multi-maintainer review and signing enforcement when the required
-   people and identities exist (C-08).
-
-Only item 1 is an authoritative Phase 7 release blocker. Items 2–5 are
-audit-assurance improvements or externally conditional work.
-
-## 9. Closure rule
-
-A finding closes only when the stated change exists, its acceptance evidence
-passes, failure paths remain tested, the implementation tracker links current
-proof, and the audit is refreshed at a fixed implementation snapshot represented
-by a Git tree in its publication ancestry.
-
-The goal is not a cosmetic 10/10. It is a repository whose remaining risk is
-explicit, whose tests cannot pass without running, whose modules preserve
-leverage and locality, and whose production claims are backed by observed
-immutable evidence.
+| Architecture and domain ownership | 8.5/10 | Correct modular-monolith and dependency direction; source topology has not converged on the plan's bounded-context layout |
+| Repository and file structure | 7.4/10 | Clear top-level ownership, but 104 flat database source files and many very large files impose navigation and review cost |
+| Readability and maintainability | 7.8/10 | Strong naming and explicit invariants; 45 file and 42 function hotspots remain in the accepted baseline |
+| Abstraction, reuse, and package design | 8.1/10 | Packages are justified and duplication is low; one runtime dependency is misclassified and public/internal export surfaces can be narrowed |
+| TypeScript and runtime contracts | 8.8/10 | Strict compiler baseline, typed tests, explicit exports, and extensive runtime parsing; emitted runtime/declaration dependencies are not fully checked against manifests |
+| NestJS/API design | 7.9/10 | Feature modules, guards, use cases, and DI are good; error mapping is repeated, rate-limit I/O is unbounded, and native webhook handlers detach reply promises |
+| PostgreSQL and data integrity | 8.0/10 | Excellent transaction and tenancy machinery; persisted identifier, typed-schema ownership, and one maintenance-table RLS convention have drifted from the plan |
+| Application and dependency security | 7.1/10 | Strong defensive design, but one open high CodeQL alert and two patchable runtime dependency advisories are current |
+| Test behavior and failure confidence | 8.7/10 | 1,529 unit tests plus strong real-service/recovery cohorts; some suites are too large to review cheaply |
+| Coverage breadth and mutation confidence | 7.0/10 | Excellent controls over selected critical files, but only 23 files/6,560 lines are instrumented and no broad mutation score exists |
+| CI and change governance | 7.8/10 | Exact-head CI is comprehensive and green; dependency severity policy, code-scanning merge protection, and independent approval are incomplete |
+| Reliability and durability | 8.1/10 | Strong crash, redelivery, fencing, idempotency, compatibility, and recovery design; worker shutdown and non-canceling publish timeouts need correction |
+| Observability and operability | 7.7/10 | Broad telemetry and runbooks exist; the logger has a ReDoS alert and pager/dashboard behavior is not proven in deployment |
+| Performance and scalability | 6.8/10 | Bounded local harnesses and index-aware tests exist, but representative load, saturation, fairness, pool budgets, and DB plans are not evidenced |
+| Documentation and governance | 8.3/10 | Exceptionally detailed plan/ADRs/progress; the public repository lacks basic contribution/security/license policy and the prior audit mixed history with current state |
+| Production readiness | 5.2/10 | Repository-controlled runtime blockers plus authoritative Phase 7 external AWS, load, capacity, pager, backup/PITR, failover, and regional recovery evidence remain open |
+
+Overall codebase engineering quality: **7.8/10**.
+
+Overall project state including production readiness: **7.4/10**.
+
+These are not mathematical claims of “81% good.” They are a compact summary
+of the evidence and priorities below.
+
+## 4. Repository facts
+
+- 6 applications and 12 reusable packages; 18 referenced workspace projects.
+- 448 production TypeScript source files and 340 TypeScript test/support files.
+- 86,429 production source lines and 92,827 test/support lines.
+- 3,685 production function-like declarations, 279 classes, and 322
+  interfaces under `apps/*/src` and `packages/*/src`.
+- 45 source files over the repository's 500-line budget.
+- 42 functions over the repository's 200-line or 40-branch budget.
+- 40 production functions over 200 lexical lines; 8 exceed 400 lines.
+- 35 source clone groups at a 12-line/80-token threshold: 855 duplicated lines,
+  **1.12%** of the analyzed source.
+- 11 test clone groups at an 18-line/130-token threshold: 347 duplicated lines,
+  **0.42%** of the analyzed test corpus.
+- Static unused-code analysis found no unused files. It reported one unused
+  worker development dependency, 111 candidate unused value exports, and 92
+  candidate unused type exports. Export reports are candidates, not automatic
+  deletion instructions.
+- No production `any`, `as unknown as`, `@ts-ignore`, or `@ts-expect-error`
+  escape hatch was found. Test adapters use localized assertions to model
+  foreign interfaces and invalid runtime input.
+- No Nest `forwardRef` or `ModuleRef` service locator was found. There is one
+  deliberate global HTTP platform module.
+- No production import from another workspace's `src` or `dist` internals was
+  found; package export maps and ESLint direction rules guard those boundaries.
+- The package dependency graph is acyclic.
+
+## 5. Current findings register
+
+Priority meanings: **P0** immediate correctness/data-loss/exploit emergency;
+**P1** fix before production or the next release candidate; **P2** planned
+engineering work; **P3** maintainability/hygiene improvement. No P0 issue was
+found.
+
+| ID | Priority | Finding | Required outcome |
+| --- | --- | --- | --- |
+| A-01 | P1 | Open high-severity CodeQL polynomial-ReDoS alert in structured log redaction | Bound input before regex work, remove ambiguous matching, add adversarial timing/regression tests, close the alert, and make high security alerts merge-blocking |
+| A-02 | P1 | Two Fastify runtime advisories remain although 5.12.1 is available; dependency CI fails only at high | Resolve direct and Nest-transitive Fastify versions, test proxy/validation behavior, and adopt an explicit medium-or-risk-accepted dependency policy |
+| A-03 | P1 | Worker production output imports a workspace package declared only as a development dependency | Move the runtime dependency to `dependencies` and prove an isolated production install/image can load every role entry point |
+| A-14 | P1 | Worker's process-keepalive interval is never owned, cleared, or unreferenced | Tie keepalive lifetime to application shutdown and prove SIGTERM exits within the ECS drain budget with consumers disabled |
+| A-04 | P1 | Phase 7 production evidence is incomplete | Produce immutable-release-bound live AWS, load, capacity, backup/PITR, failover, regional recovery, dashboard, alert, pager, and runbook evidence |
+| A-05 | P2 | Coverage headlines describe 23 selected files, not the repository | Publish scope with every percentage, expand selection by consequence, add mutation canaries, and trend skips/retries/duration/flake |
+| A-06 | P2 | Complexity and directory concentration make changes expensive | Reorganize database/engine internals by capability and reduce named hotspots behind unchanged public interfaces and characterization tests |
+| A-07 | P2 | API controllers repeat per-endpoint error mapping | Move feature-owned mapping to a filter/interceptor composition so controllers retain parsing, authorization metadata, and use-case delegation without repeated catches |
+| A-08 | P2 | Image evidence is digest-bound metadata, not signed hosted provenance; live provider canaries are absent | Generate and verify signed hosted provenance and run safe credentialed provider contracts for the exact promoted digest |
+| A-09 | P2 | Required CodeQL status proves analysis completion, not absence of alerts; branch protection requires zero approvals | Add code-scanning merge protection and, when a second maintainer exists, non-author/code-owner approval for critical paths |
+| A-15 | P2 | Publish timeouts reject without canceling or reconciling the underlying operation | Introduce cancellation or an explicit unknown-outcome reconciliation state before releasing ownership and retrying |
+| A-16 | P2 | Persistence conventions have drifted from the authoritative plan | Enforce UUIDv7 for persisted identifiers, account for all migration-owned tables in typed schema/registry checks, and resolve the retention-scheduler RLS exception |
+| A-17 | P2 | Redis rate-limit calls are not end-to-end bounded and webhook reply promises are detached | Bound connection/command time and return/await native Fastify replies with stalled-backend and send-failure tests |
+| A-10 | P3 | Internal exports are wider than observed consumers need; manifest/type surfaces need cleanup | Configure dependency/export validation, correct the API's declaration dependency, remove verified dead exports and the unused worker telemetry dev dependency, and preserve intentional entry points explicitly |
+| A-11 | P3 | Several test files and top-level suites exceed 1,000 lines | Split by behavior/failure mode and reuse owner-local fixtures without hiding scenario setup or assertions |
+| A-12 | P3 | Four repository tools exceed 300 lines while `.mjs` typed linting is disabled | Keep small Node tools in `.mjs`; convert or add checked types to large domain-shaped tools when touched |
+| A-13 | P3 | Public-repository and workflow hygiene is incomplete | Add `SECURITY.md`, `CONTRIBUTING.md`, make an explicit license decision, remove the duplicate YAML key, and document security triage expectations |
+| A-18 | P3 | Similar credential schemas and metadata/runtime imports create semantic and startup coupling | Name and test wire-versus-resolved credential semantics; split metadata-only loading only if measurement shows value |
+| A-19 | P3 | The backend plan names `apps/web`, but this checkout is backend-only | State explicitly whether the web application is deferred, external, or removed from this repository's delivery scope |
+
+### A-01 — Logger redaction can consume polynomial time
+
+GitHub CodeQL alert 2 is open on
+`packages/observability/src/logger.ts:89`. The first `redactText` expression
+contains ambiguous repeated character classes and processes logger input without
+a maximum string length. CodeQL traces that input from every public logger
+method. Because request/provider/error material can reach logging, this is a
+credible availability risk even though no exploit was demonstrated during this
+audit.
+
+Required change:
+
+1. Put a small, named maximum on every string before expensive redaction. Keep
+   an explicit truncation marker and apply the same rule to error messages and
+   stacks.
+2. Replace the ambiguous URL-userinfo expression with a linear parser or a
+   demonstrably linear expression. Do not weaken secret removal to silence the
+   alert.
+3. Add adversarial tests using long matching prefixes and non-matching suffixes;
+   assert bounded output and a conservative time budget without making the test
+   hardware-fragile.
+4. Re-run CodeQL and close only after the fixed commit is analyzed.
+5. Add a GitHub ruleset requiring CodeQL with at least “high or higher” security
+   alerts. The ordinary `analyze` status check alone is insufficient.
+
+Acceptance evidence: focused logger tests, `pnpm check`, CodeQL on the exact
+commit, zero open high/critical alerts attributable to current code, and an
+active code-scanning merge-protection rule.
+
+### A-02 — Patchable Fastify advisories are allowed by the gate
+
+`pnpm audit --prod --audit-level high` exits successfully while reporting two
+moderate advisories:
+
+- schema-validation bypass through root primitive coercion mismatch;
+- `X-Forwarded-*` spoofing with hop-count `trustProxy` configuration.
+
+The API directly pins Fastify 5.12.0 and configures `trustProxy` from
+`trustedProxyHops`; Nest's Fastify platform dependency resolves another 5.11.3
+copy. Both advisories identify 5.12.1 as fixed. GitHub currently represents the
+two unique advisories as four open Dependabot alerts because direct-manifest and
+lockfile paths are tracked separately.
+
+Required change:
+
+1. Resolve both direct and transitive copies to a fixed version through a
+   compatible Nest/Fastify upgrade or a reviewed workspace override.
+2. Add regression cases for primitive request roots and the deployed proxy-hop
+   model, including attacker-controlled forwarded headers.
+3. Change dependency admission to fail for medium-or-higher production
+   vulnerabilities, or maintain a machine-readable, owner/date/justification-
+   bound exception process. A permanently high-only gate is too permissive for
+   an internet-facing API.
+4. Add dependency review to pull requests so a vulnerable version is rejected
+   before it reaches `main`, not only discovered afterward.
+
+Accept the pending direct Fastify upgrade only after verifying the lockfile no
+longer contains the Nest-transitive 5.11.3 copy. The current upgrade attempt is
+not sufficient: its trusted-proxy regression receives loopback rather than the
+forwarded client address and its test code no longer satisfies the changed
+Fastify `trustProxy` type contract.
+
+Acceptance evidence: `pnpm audit --prod --audit-level moderate` exits zero,
+`pnpm why fastify --recursive` shows only fixed versions, Dependabot alerts
+close on the exact lockfile, and proxy/validation regressions pass locally and
+in CI.
+
+### A-03 — Worker runtime dependency is classified as development-only
+
+The emitted worker JavaScript imports `@pertexo/workflow-model` from the failure
+notification delivery and handler modules. `apps/worker/package.json` lists the
+package only in `devDependencies`. The production image deliberately runs
+`pnpm install --prod`, so an isolated production dependency graph is not
+contractually required to install or link that package. A full developer
+workspace can conceal this because development installation hoists/links the
+missing edge. pnpm's [production install contract](https://pnpm.io/cli/install)
+explicitly omits development dependencies under `--prod`.
+
+The API has a related but lower-risk declaration-surface mismatch:
+`apps/api/src/node-testing` exports types that refer to `@pertexo/node-sdk`, but
+that package is also declared only as a development dependency. Type-only
+imports disappear from JavaScript, so this is not the same runtime failure, but
+the generated declarations retain a consumer-visible package reference.
+
+Required change:
+
+1. Move `@pertexo/workflow-model` to worker `dependencies` and update the
+   lockfile. Do not rely on workspace hoisting as an undeclared runtime edge.
+2. Either make `@pertexo/node-sdk` an API production dependency or remove it
+   from the API's emitted public declaration surface.
+3. Add a manifest/dependency check that distinguishes runtime, declaration-
+   only, development, test, and intentionally optional edges.
+4. Build an isolated production dependency tree—the same shape copied into the
+   final image—and load every compiled process entry point before publishing.
+
+Acceptance evidence: the worker model edge appears under production
+dependencies, an isolated `--prod` install resolves it without a root
+development install, all compiled role entry points load, and the production
+image smoke runs in CI.
+
+### A-14 — Worker keepalive outlives application shutdown
+
+`apps/worker/src/main.ts` creates a referenced interval with the maximum Node
+timer delay so the process stays alive when every consumer is disabled. The
+handle is not stored, cleared, or unreferenced. Once shutdown hooks install
+signal handlers, closing the Nest application and queue connections does not
+remove this event-loop reference. A disabled-consumer worker can therefore
+remain alive after SIGTERM until ECS exhausts its 120-second drain window and
+forcibly terminates it. Node documents that a referenced timer keeps the event
+loop active and exposes [`unref()`](https://nodejs.org/api/timers.html#timeoutunref)
+for the opposite behavior; Nest separately documents the lifecycle-hook
+boundary in its [shutdown guidance](https://docs.nestjs.com/fundamentals/lifecycle-events).
+
+Required change:
+
+1. Give the keepalive handle an owner with an explicit start/stop lifecycle, or
+   call `unref()` if the remaining owned resources should determine lifetime.
+2. Make process shutdown a single idempotent path that closes the application,
+   keepalive, telemetry, and outstanding dispatcher work in a documented order.
+3. Add a compiled-process test that starts with every dispatch capability
+   disabled, sends SIGTERM, and asserts clean exit well inside the deployment
+   drain budget. Repeat it with one active consumer and during bootstrap
+   failure.
+
+Acceptance evidence: no anonymous referenced timer survives shutdown, the
+compiled process exits zero within the bounded test, and the image-level drain
+exercise passes under the ECS stop-timeout contract.
+
+### A-04 — Repository readiness is not deployed readiness
+
+The repository contains detailed ECS contracts, digest pins, recovery programs,
+dashboards, alerts, operator commands, and evidence schemas. These are strong
+preconditions, not proof that the target environment behaves as designed.
+Phase 7 remains incomplete in the authoritative progress tracker.
+
+Required evidence for one immutable release candidate:
+
+- target AWS account/region/VPC/service/task/IAM/KMS/S3/RDS/Redis identities and
+  the exact running image digest;
+- total API, worker, dispatcher, maintenance, migration, recovery, and operator
+  PostgreSQL connection arithmetic with pooler behavior and emergency headroom;
+- representative API, webhook, SSE, worker, queue, artifact, fan-out,
+  noisy-tenant, and maintenance load at expected and peak demand;
+- query plans and `pg_stat_statements` evidence for the hot paths, index usage,
+  lock waits, deadlocks, temp I/O, WAL, autovacuum, bloat, XID age, disk, and
+  replica lag under that workload;
+- successful backup integrity verification, point-in-time restore, failover,
+  failback, regional artifact/control-ledger recovery, and measured RPO/RTO;
+- AWS-reported region, versioning, Object Lock/legal-hold, lifecycle,
+  replication, checksum, and deletion behavior for both tenant buckets; the
+  current tenant store readiness check only proves `HeadBucket`, while stronger
+  control-ledger checks and configured-value comparisons do not prove these
+  live tenant-bucket controls; validate this against AWS's actual
+  [Object Lock](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html)
+  and replication state rather than configuration intent;
+- synthetic incidents that produce the intended logs, metrics, traces,
+  dashboard signal, alert, page, owner response, and runbook outcome;
+- rollback/progressive-rollout evidence and cleanup after every exercise.
+
+Repository fixtures must not be relabeled as this evidence. Keep the current
+Phase 7 `In progress` status until the plan's criteria are satisfied.
+
+### A-05 — Coverage is strong but narrow
+
+The selected coverage gates currently report:
+
+| Cohort | Statements | Branches | Functions | Lines |
+| --- | ---: | ---: | ---: | ---: |
+| Workflow engine | 94.30% | 90.64% | 93.47% | 94.79% |
+| Database | 96.00% | 94.23% | 100.00% | 97.75% |
+| Worker | 91.43% | 91.86% | 77.35% | 91.60% |
+| API | 99.38% | 99.64% | 98.59% | 99.35% |
+
+Those are valid results for 23 selected files. In particular, “database
+94.23% branch coverage” currently means `packages/database/src/workspace.ts`,
+not all 104 database source files. The risk report is now correctly labeled
+`selected-critical-module-files`. Its 116 remaining uncovered branches are 68
+defensive, 27 unreachable, 13 generated, and 8 tied to exact integration tests.
+
+Required change:
+
+- always publish the selected files and line denominator next to percentages;
+- expand by risk: authentication/authorization/tenancy, state transitions,
+  checkpoint parsing, fencing/leases, idempotency, retries, unknown outcomes,
+  lifecycle deletion, retention/holds, provider error policy, and recovery;
+- do not chase a repository-wide vanity threshold or test private statements;
+- add mutation canaries to prove high-consequence tests fail when authorization,
+  transition, retry, or fencing decisions are deliberately inverted;
+- record duration, skipped tests, retries, and flakes per cohort over time;
+- keep unit, real-service integration, compatibility, recovery, provider, load,
+  and deployed drills distinct so one kind of test cannot impersonate another.
+
+Acceptance evidence: every selected risk decision is executed or individually
+reviewed; selection grows without implementation-private imports; mutation
+canaries are killed; and thresholds only ratchet upward after real behavior is
+covered.
+
+### A-06 — Complexity is prevented from worsening, not yet resolved
+
+The ratchet is well designed: a new file over 500 lines or function over 200
+lines/40 branches fails unless the baseline changes, and existing hotspots
+cannot grow. Current debt is still substantial: 45 file hotspots and 42 function
+hotspots.
+
+Largest files include:
+
+- `packages/database/src/schema.ts` — 1,961 lines;
+- `packages/workflow-engine/src/checkpoint.ts` — 1,356 lines;
+- `packages/workflow-engine/src/executable-workflow.ts` — 1,340 lines;
+- `packages/database/src/identity-workspace.ts` — 1,071 lines;
+- `packages/database/src/control-ledger-coordinator.ts` — 1,048 lines;
+- `packages/database/src/workflow-authoring.ts` — 1,011 lines;
+- `packages/artifact-store/src/control-ledger.ts` — 997 lines;
+- `packages/node-sdk/src/server.ts` — 954 lines.
+
+Largest lexical factories include `createWorkspacePurgeCoordinator` (584
+lines), `createControlLedgerCoordinator` (578), the identity/workspace database
+factory (505), workflow-authoring database factory (498), failure-notification
+store factory (494), operator-command factory (437), and connection-test
+persistence factory (430). The worst measured decision hotspots remain
+coordinator observations, checkpoint parsing, node-attempt input loading,
+checkpoint/executable consistency, and worker attempt runtime composition.
+
+This is not a recommendation to create more packages or generic repositories.
+It is a locality refactor:
+
+1. Converge `packages/database/src` on capability subdirectories from the
+   authoritative plan: schema, transactions, execution, authoring, identity,
+   triggers, connections, lifecycle/retention, operator, and recovery.
+2. Split `schema.ts` by bounded context and re-export one internal
+   `databaseSchema` aggregate. Preserve foreign-key visibility and migration
+   review; do not change generated SQL as part of the move.
+3. Extract pure validation, row mapping, and SQL statement ownership from the
+   named long factories. Keep transaction sequencing in one short orchestrator
+   where atomicity is the invariant.
+4. Split checkpoint/executable parsers by versioned grammar section while
+   retaining one public parse/serialize boundary and golden compatibility
+   fixtures.
+5. Lower the baseline only after each focused refactor. Never rewrite the
+   baseline upward to admit a feature.
+
+Acceptance evidence: unchanged public package exports, no dependency cycle or
+extra query, characterization and integration tests green, lower ratchet counts,
+and a reviewer can trace each success/failure path in one local unit.
+
+### A-07 — Repeated controller catches obscure endpoint intent
+
+API feature controllers contain 27 `catch (error: unknown)` sites. Most wrap a
+whole endpoint only to call a feature mapper such as
+`throwWorkflowApplicationError`. Feature-owned error maps are good; repeating
+the same transport plumbing in every route is not.
+
+Move mapper selection to a feature-scoped exception filter or a small global
+composition registered by the owning feature. Do not create a universal
+reflection-heavy command bus. Controllers should visibly own route parsing,
+headers, guard metadata, response metadata, and delegation; feature mappers
+should own domain-to-application error translation; the global RFC 9457 filter
+should own serialization and safe logging.
+
+Acceptance evidence: identical status/problem bodies/headers for every existing
+negative contract test, fewer endpoint catch blocks, no vendor error class in a
+controller, and no widened cross-feature dependency.
+
+### A-08 — Provenance and provider proof stop before the live boundary
+
+The production-image job builds as non-root/read-only, generates an SBOM,
+scans the image, and writes digest-bound provenance metadata. Actions are pinned
+to full SHAs. These are strong controls. The generated JSON is not a signature
+from a hosted builder and no deploy-time verifier proves that the promoted and
+running digest satisfies a signed policy. Safe credentialed Slack/Resend and
+target object-store/control-plane canaries are also absent from the scheduled
+release workflow.
+
+Required change:
+
+- emit hosted, signed provenance/attestation for the image;
+- verify issuer, repository, workflow identity, source revision, parameters,
+  and subject digest before promotion and deployment;
+- bind deployment evidence and the running task digest to the same subject;
+- add secret-safe, bounded provider contract canaries with cleanup and a kill
+  switch; never send real user data;
+- retain the existing fake-provider tests because live canaries complement,
+  rather than replace, deterministic failure testing.
+
+### A-09 — Merge governance proves execution, not review or security state
+
+`main` protection is strict and requires 11 current checks, linear history,
+conversation resolution, admin enforcement, and no force pushes/deletion.
+Every external action is SHA-pinned and workflow token permissions are narrow.
+The repository settings nevertheless allow all actions and do not require SHA
+pinning, so this safe state is convention rather than an enforced admission
+rule.
+However, required approving reviews are set to zero, code-owner review is not
+required, commit signatures are not required, and there is no ruleset requiring
+CodeQL alert thresholds. `CODEOWNERS` maps all paths to the same sole owner.
+
+For a solo project, inventing a fake reviewer is worse than recording the
+limitation. Enable CodeQL merge protection now. When a real second maintainer
+exists, require one non-author approval and code-owner review for workflows,
+identity, database migrations, integrations/credentials, infrastructure, and
+ADRs. For releases, use a separate signing/deployment identity rather than the
+source author. Document temporary exceptions with owner, reason, expiry, and
+compensating checks.
+
+### A-10 — Remove verified dead surface, not every static-analysis candidate
+
+Static analysis found no unused files, which is important evidence against
+wholesale obsolete modules. It did identify:
+
+- unused `@opentelemetry/sdk-node` in `apps/worker` development dependencies;
+- the API's type-only `@pertexo/node-sdk` public declaration edge described in
+  A-03;
+- broad application barrels such as `apps/api/src/executions/index.ts`,
+  identity/workspace, identity, and HTTP platform exports with no observed
+  consumer;
+- constants and helper types exported from their defining files even when only
+  used locally;
+- three duplicate-export aliases that require human review.
+
+Do not delete all 203 export candidates mechanically. Entry points, generated
+contracts, test-only seams, and future public wire surfaces can look unused to a
+workspace analyzer. Configure the analyzer with explicit production, test, and
+generated entry points; then remove only verified exports with no supported
+consumer. Application-internal files should default to non-exported symbols.
+Package exports should be tested as contracts.
+
+### A-11 — Tests are strong code and should be reviewed like code
+
+The repository has more test/support lines than production lines, but measured
+test duplication is only 0.42%. The problem is navigation, not excessive copy-
+paste. Several files exceed 1,000 lines, including workflow `foreach`, database
+transport/control-ledger, artifact control-ledger, and worker node-attempt and
+transport suites. Some top-level `describe` callbacks span 700–1,300 lines.
+
+Keep the package-level `test/` directories: they correctly separate production
+build inputs, make real-service configuration explicit, and fit this monorepo.
+Reorganize large directories and suites by behavior (`claim`, `complete`,
+`fencing`, `corruption`, `recovery`, `authorization`) and use owner-local
+fixture builders. A fixture should expose domain actions, not dozens of raw
+mocks that hide what a test proves. Preserve simple assertions and scenario
+names that state the failure being prevented.
+
+### A-12 — `.mjs` is appropriate until a tool becomes an application
+
+The repository's `.mjs` files are executable Node/ESM tooling, validators, and
+process fixtures. That extension is correct: Node can run them directly without
+a build, and they should not be renamed merely for consistency with application
+TypeScript. Most are small and have dedicated `node:test` coverage.
+
+The tradeoff is that ESLint disables type-aware TypeScript rules for `.mjs`.
+Four tools now exceed 300 lines: the HTTP exercise runner (481), external
+platform evidence validator (401), risk-coverage test (398), and risk-coverage
+reporter (309). When materially changing these tools, either add checked JSDoc
+and `checkJs` coverage or convert the domain-shaped core to TypeScript while
+keeping a tiny executable wrapper. Keep small dependency-light validators as
+`.mjs`.
+
+### A-13 — Public repository policy and workflow hygiene
+
+The repository is public, has secret scanning and push protection enabled, and
+has Dependabot/CodeQL automation. It has no license, `SECURITY.md`, or
+`CONTRIBUTING.md`. That leaves external users unclear about legal reuse,
+responsible vulnerability disclosure, supported versions, development setup,
+and review expectations. Make an explicit license choice; “no license” can be
+intentional, but it should be conscious. Add concise contribution and security
+policies. Consider enabling non-provider secret patterns and validity checks if
+their noise and plan availability are acceptable.
+
+`.github/workflows/ci.yml` also contains the identical
+`name: coverage-summaries` key twice in one artifact step. It is functionally harmless
+because both values match, but duplicate YAML keys are exactly the kind of
+configuration ambiguity that should be rejected. Remove it and consider a YAML
+duplicate-key lint/parser gate.
+
+### A-15 — A timeout does not settle queue publication truth
+
+The worker outbox dispatcher and queue producer use a timeout race that rejects
+the caller while the underlying BullMQ or database promise continues. Timeout
+therefore means “the caller stopped waiting,” not “the operation did not
+happen.” A late publish can complete after a lease is released or a retry has
+started, and a late database update can change truth after the timeout path has
+selected a different outcome. Deterministic job identifiers reduce duplicate
+execution but do not make this ownership race explicit.
+
+Required change: prefer an operation that accepts `AbortSignal` and confirms
+cancellation. Where the client cannot cancel authoritatively, keep ownership
+until the operation settles or persist a `publish_unknown`/reconciliation state
+that a dedicated recovery path resolves before republishing. Add deterministic
+tests for completion just before, at, and after the deadline, lease expiry, and
+process termination. Acceptance requires one authoritative state transition
+for every timing and no retry while the previous publish can still complete
+unobserved. BullMQ's [job-ID guidance](https://docs.bullmq.io/guide/jobs/job-ids)
+supports deduplication but does not turn an abandoned client promise into a
+confirmed non-publication.
+
+### A-16 — Persistence implementation has drifted from plan conventions
+
+The authoritative plan says application-generated persisted identifiers use
+UUIDv7 and that Drizzle definitions plus reviewed migrations are the schema
+source of truth. Current production write paths still call `randomUUID()` for
+runs, node runs, attempts, outbox events, publication records, and several
+identity/workspace entities, while preview acceptance already uses `uuidv7()`.
+If UUIDv7 is still the intended locality and ordering contract, this is an
+implementation inconsistency rather than a style preference. PostgreSQL's
+current [UUID type documentation](https://www.postgresql.org/docs/current/datatype-uuid.html)
+recognizes UUIDv7 values, but generation policy remains an application design
+decision that this repository's plan already made.
+
+A static table inventory found 67 application tables created by migrations and
+48 Drizzle table declarations. Raw-SQL-only operational tables are not
+automatically wrong, but their ownership is invisible to a typed-schema-only
+drift check. In addition, `retention_schedule_state` is keyed by workspace and
+lacks both `ENABLE` and `FORCE ROW LEVEL SECURITY`; privileges are tightly
+revoked and access is mediated by hardened maintenance functions, so no direct
+runtime exposure was proved, but it is an undocumented exception to the plan's
+forced-RLS rule for tenant tables.
+
+Required change:
+
+1. Inventory persisted ID columns and centrally generate UUIDv7 for entity/event
+   identifiers; explicitly classify random tokens, nonces, and secrets that are
+   not sortable IDs.
+2. Add version/locality tests for generated persisted IDs and migration defaults.
+3. Represent every application-owned table in Drizzle or maintain a CI-checked
+   raw-SQL ownership registry containing owner, access roles, RLS status, and
+   reason it is outside the typed schema.
+4. Either add forced RLS and the required maintenance policy/tests to
+   `retention_schedule_state`, or document and test why it is global
+   maintenance metadata despite carrying `workspace_id`.
+
+### A-17 — Two HTTP-path promises are not bounded or joined correctly
+
+`RedisRateLimitRuntime` disables the offline queue and limits retries, but sets
+no repository-owned connection or command deadline. The API interceptor awaits
+the limiter, so a stalled connect or `EVAL` can occupy an inbound request until
+library/network timeouts decide the outcome. Configure bounded connection and
+command latency, make the intended fail-open/fail-closed policy explicit per
+route class, and test a backend that accepts a connection but never replies.
+
+The native Fastify webhook handler also uses `void reply.send(...)` in its
+success and problem paths. An async Fastify handler should return or await the
+reply so serialization and send failures stay attached to route completion and
+telemetry. Change the helper contract to return the reply/promise, await it from
+the handler, and test serialization failure and early socket close. Preserve
+the existing rule that telemetry failures cannot change webhook acceptance
+truth. This follows Fastify's official
+[async reply contract](https://fastify.dev/docs/latest/Reference/Routes/#async-await).
+
+### A-18 — Similar schemas need explicit semantic ownership
+
+HTTP, Slack, and Resend credential shapes appear in public connection contracts
+and again in server integration validation. Some differences—such as mailbox
+length and resolved-secret/header rules—reflect distinct wire, encrypted, and
+resolved-runtime boundaries; others may be drift. Do not force them into one
+schema merely to reduce lines. Give each representation a boundary-specific
+name, document transformations, and add equivalence plus negative tests for the
+fields that intentionally overlap.
+
+The node-catalog server entry also imports executor/integration modules for a
+metadata-only validation path. This is not a proven boundary violation, but it
+couples metadata startup to the server execution graph. Measure cold-start,
+bundle, and import cost before splitting a metadata-only entry point; keep the
+current deeper module if the measured gain is negligible.
+
+### A-19 — Clarify where the web application belongs
+
+The authoritative backend plan illustrates an `apps/web` workspace, while this
+checkout and README are backend-only. That can be a valid repository boundary,
+but the plan should state whether web is deliberately deferred, maintained in a
+different repository, or removed from this delivery scope. Do not create an
+empty web package merely to match a diagram.
+
+## 6. Detailed assessment by engineering area
+
+### 6.1 Architecture and topology
+
+What is good:
+
+- The modular monolith is the right level of distribution. API, worker,
+  retention, recovery, lifecycle, and operator processes are deployable roles,
+  while core logic stays in repository packages.
+- Dependency direction matches the plan: model/SDK foundations do not depend
+  on Nest, Redis, BullMQ, or Drizzle; the API does not import worker consumers;
+  workers consume engine and persistence capabilities.
+- The graph is acyclic and does not rely on Nest circular-dependency escape
+  hatches.
+- Runtime wiring is explicit, mostly constructor/factory injected, and tests can
+  substitute capability ports without a service locator.
+
+What should improve:
+
+- Converge internal folder structure on the plan. The top-level packages are
+  correct, but large flat internal directories now hide capability ownership.
+- Add a small automated architecture report or dependency-cycle gate rather
+  than relying only on ESLint import zones. It should report package nodes,
+  runtime/browser edges, and cycles without becoming a build orchestrator.
+- Record an ADR before any change that moves a public seam or deployment
+  boundary. Internal file moves behind existing exports do not require a new
+  service or package.
+
+What not to do:
+
+- Do not split this into microservices per feature.
+- Do not add a generic `shared`, `common`, `utils`, base service, universal
+  repository, or command bus.
+- Do not introduce interfaces around deterministic local functions solely to
+  make diagrams look layered.
+
+### 6.2 Package-by-package necessity
+
+All 12 packages have a current architectural reason to exist:
+
+| Package | Production consumers | Verdict |
+| --- | ---: | --- |
+| `artifact-store` | 4 | Necessary boundary around S3/control-ledger durability and dual-region behavior |
+| `contracts` | 1 current API consumer | Keep: owns public/generated wire schemas and the planned browser contract; ensure it never becomes a domain dumping ground |
+| `database` | 6 | Necessary; its capability subpath exports are valuable, but internals need structural decomposition |
+| `integrations` | 3 | Necessary provider ownership with browser-safe/server split |
+| `node-catalog` | 2 | Necessary composition/compatibility registry; keep it declarative |
+| `node-sdk` | 5 | Necessary stable definition/executor contract used across engine and nodes |
+| `nodes-core` | 3 | Necessary core-node implementation owner |
+| `observability` | 6 | Necessary cross-process logging/metrics/tracing owner; fix A-01 |
+| `queue` | 2 | Necessary queue contracts/adapters shared by API and worker |
+| `rate-limit` | 2 | Necessary distributed policy shared by API and worker ingress/admission |
+| `workflow-engine` | 2 | Necessary pure scheduler/interpreter boundary |
+| `workflow-model` | 4 | Necessary canonical graph/expression/value model |
+
+The number of packages is not the problem. The main opportunity is to deepen
+their internal modules and narrow exports. Deleting a package only to move its
+files into an application would weaken reuse and boundary enforcement.
+
+### 6.3 Readability, naming, functions, and classes
+
+Positive evidence:
+
+- Filenames generally use domain vocabulary rather than vague helper names.
+- Constants and discriminated unions express statuses and policies; no
+  TypeScript enum sprawl was found.
+- Guards, use cases, stores, and pure engine policies have recognizable roles.
+- Comments usually explain concurrency, atomicity, compatibility, or security
+  reasons rather than narrating syntax.
+- Classes are used mainly for Nest DI/lifecycle or stateful adapters; pure
+  engine/model code uses functions.
+- Production unsafe casts and `any` are absent.
+
+Improvement rules:
+
+- Keep orchestration short: validate, acquire/authorize, transact, map, return.
+- Name pure sub-policies for corrupt-state checks and versioned parsing instead
+  of growing a single conditional tree.
+- Keep SQL next to the capability that owns it, but move reusable transaction
+  mechanics—not domain use cases—into transaction modules.
+- Prefer one options object when arguments share one lifecycle, but do not grow
+  generic option bags with unrelated booleans.
+- Avoid adding a class when a plain function and explicit dependencies are
+  enough.
+- For long factories returning several methods, measure locality and decision
+  count, not only lexical span; extract only coherent invariants.
+
+### 6.4 Reuse, duplication, and abstraction depth
+
+At 1.12% measured source duplication, broad DRY refactoring would likely make
+the code worse. Similar public contract schemas, API/worker bootstrap modules,
+and provider executors often have different owners or change pressures.
+
+Review these same-owner clone families when the next related change occurs:
+
+- preview and run-artifact retention claim/ledger/page mechanics;
+- repeated sections inside preview cleanup and failure-notification delivery;
+- workspace purge and lifecycle-command coordination mechanics;
+- node SDK `release.ts` and `server.ts` schema/validation fragments;
+- API/worker observability and database module bootstraps.
+
+Extract only if the callers share the same invariant and are expected to change
+together. The correct reusable unit is a named policy or transaction primitive,
+not an untyped callback template.
+
+### 6.5 TypeScript and import quality
+
+The TypeScript setup is excellent: `strict`, `noUncheckedIndexedAccess`,
+`exactOptionalPropertyTypes`, unknown catches, override/return/fallthrough
+checks, isolated modules, and verbatim module syntax are centralized. Root
+project references cover all workspaces. Tests receive their own typecheck.
+
+Imports consistently use ESM `.js` specifiers for TypeScript sources, which is
+correct for Node ESM output. Export maps prevent unsupported package deep
+imports. Type-only imports are used. Runtime Zod schemas cover HTTP,
+configuration, queues, persisted JSON/checkpoints, node/provider contracts, and
+many database boundaries.
+
+Continue to reject advanced type cleverness that only moves runtime complexity
+into the compiler. Add a generic only when it preserves a real relation between
+positions or powers a reused registry. Keep test-only seams in explicit
+`./testing` exports and never expose them from production roots.
+
+### 6.6 NestJS and HTTP API
+
+The API is organized by feature, not global technical layers. Controllers use
+guards and call use cases; application logic is not embedded in decorators.
+DI uses explicit providers/tokens and no service locator. HTTP problems are
+bounded, typed, correlated, and secret-conscious. Sessions, CSRF, OIDC, proxy
+configuration, distributed rate limits, idempotency, and workspace capability
+checks are extensively tested.
+
+The one `@Global` HTTP platform module is defensible for the request-context and
+problem-details substrate, but its exports should remain minimal. A feature
+should not silently acquire business dependencies through it. Address A-07 so
+controller bodies become easier to scan without centralizing domain policy in
+the transport layer.
+
+### 6.7 PostgreSQL and persistence
+
+This is one of the repository's strongest areas. Forced RLS, separate
+owner/migration/API/worker/dispatcher/maintenance/lifecycle/operator roles,
+transaction-local workspace context, checked-out-client scoping, cleanup after
+commit/rollback, fencing tokens, compare-and-swap updates, idempotency,
+append-only facts, compatibility migrations, and real concurrency tests are all
+substantive controls.
+
+Raw SQL is appropriate for the complex transactional behavior. Drizzle is used
+where its schema/typed query leverage is useful; forcing every stored function
+or lock sequence through an ORM would reduce clarity. `SELECT *` calls to
+stable, repository-owned functions are not equivalent to an unbounded table
+query, but direct table reads should continue to select explicit columns unless
+the full typed row is intentionally the contract.
+
+Repository review cannot prove live index usefulness or capacity. Before
+production, inspect actual plans and statistics. Verify every foreign-key
+access path, write amplification on heavily indexed state tables, hot-update
+behavior, autovacuum/XID age, long or idle transactions, statement/lock
+timeouts, replication slots/lag, WAL archiving, and pool totals. Never remove an
+index because a short-lived test environment reports zero scans.
+
+### 6.8 Security model
+
+Positive evidence includes deny-by-default authorization, object/workspace
+checks, forced RLS, CSRF/session protections, secret encryption and redaction,
+SSRF/address policy, bounded HTTP behavior, webhook replay controls, distributed
+abuse limits, least-privilege database roles, non-root/read-only containers,
+immutable action/image inputs, secret scanning, push protection, Dependabot,
+CodeQL, and many negative tests.
+
+Current security is nevertheless **not green** until A-01 and A-02 are fixed or
+formally risk-accepted. Add ASVS/API-Security traceability for internet-facing
+routes so authentication, object/function authorization, property validation,
+resource consumption, business-flow abuse, SSRF, inventory/versioning, and
+unsafe provider consumption each point to code and executable evidence. This
+need not become a huge compliance document; a route/control/test matrix is
+enough.
+
+### 6.9 Testing architecture
+
+The package-level `test/` layout is appropriate. Unit tests stay independent of
+external services; PostgreSQL, Redis, BullMQ, object stores, API HTTP, process
+crash, compatibility, and recovery cohorts are separate. Integration jobs use
+disposable Compose projects and assert minimum executed test counts so skipped
+cohorts cannot silently pass. The tests cover negative security and concurrency
+behavior, not only happy paths.
+
+`pnpm check` excludes integration tests by design; GitHub's protected jobs add
+them. Therefore a local `pnpm check` pass and a full protected CI pass are
+different claims. Keep both commands and document that distinction. Improve
+suite organization and coverage truth through A-05/A-11 rather than moving
+every test beside its source file.
+
+### 6.10 CI/CD and supply chain
+
+The exact audited HEAD has a successful GitHub CI run with quality, three unit
+partitions, coverage, production image, integration, recovery, compatibility,
+and deployment-security jobs. CodeQL also completed successfully. Actions are
+pinned to immutable SHAs, permissions are explicit/minimal, jobs have timeouts,
+service failures upload logs, image scans and SBOMs are retained, and branch
+protection requires 11 strict contexts.
+
+Weaknesses are policy rather than missing automation: security analysis upload
+does not block on alerts, dependency scanning permits moderate findings,
+dependency review is absent, approvals are zero, and provenance is unsigned.
+Resolve A-01/A-02/A-03/A-08/A-09/A-14 before interpreting the green suite as a
+release security/readiness gate.
+
+### 6.11 Reliability, observability, and performance
+
+Durability design is strong: PostgreSQL is authoritative, queue payloads are
+identifiers, outbox/inbox flows handle duplicates, leases are fenced, unknown
+provider outcomes are explicit, checkpoints are versioned, and recovery tests
+kill processes and remove dependencies at important boundaries.
+
+That model is weakened at two edges: the worker keepalive is not joined to
+shutdown, and timeout wrappers can abandon a still-running publish operation.
+Resolve A-14/A-15 before relying on drain and retry behavior under production
+latency. Bound the Redis rate-limit path in A-17 for the same reason.
+
+Telemetry is broad and fixed-cardinality by design. Logs, traces, metrics,
+health/readiness, drain behavior, queue depth/age, outbox, database, retention,
+artifact, provider, SSE visibility, and lifecycle operations have repository
+representations. Fix the logger ReDoS without weakening redaction.
+
+Performance claims remain limited. Passing local integration tests says little
+about peak throughput or saturation. Use the existing evidence harness to
+measure per-role CPU/memory, event-loop delay, heap, queue lag, DB connections,
+query/lock latency, Redis and object-store latency, SSE fan-out, backpressure,
+and tenant fairness at expected, peak, and dependency-degraded load. Establish
+budgets first; optimize only measured bottlenecks.
+
+### 6.12 Documentation and maintainability process
+
+The plan, ADR index, and progress tracker are unusually comprehensive and
+provide real design constraints. Continue updating the tracker only when the
+plan's evidence changes. The audit should remain a current-state document; do
+not turn it back into a chronological branch diary. Git history already records
+what was fixed.
+
+For every audit remediation:
+
+1. reproduce the finding and add characterization/regression evidence;
+2. make one coherent implementation change;
+3. run the narrowest relevant checks, then the root gate when appropriate;
+4. lower a ratchet or close an alert only after evidence exists;
+5. update this audit and the progress tracker if a plan checkpoint changed;
+6. commit and review the change independently from unrelated refactors.
+
+## 7. Prioritized improvement plan
+
+### Stage 1 — Security truth before new release work
+
+1. Fix A-01 and close the current CodeQL alert.
+2. Upgrade/override both vulnerable Fastify paths and close all four associated
+   Dependabot alerts.
+3. Correct the worker's production dependency graph and add an isolated
+   production role-load smoke.
+4. Own and clear the worker keepalive and prove bounded SIGTERM exit.
+5. Add CodeQL merge protection, dependency review, and a medium-or-explicit-
+   exception runtime audit policy.
+6. Re-run unit, API integration, proxy/header, logger adversarial, dependency,
+   CodeQL, and full protected CI checks.
+
+Exit: no unaccepted high/critical code alert or patchable medium-or-higher
+runtime advisory; future equivalents block admission.
+
+### Stage 2 — Make coverage and CI claims exact
+
+1. Publish selected file count/lines with coverage summaries.
+2. Expand risk selection to the next highest-consequence state, auth, lifecycle,
+   and provider-policy modules.
+3. Add small mutation canaries and trend flake/skip/retry/duration.
+4. Remove the duplicate YAML key and add configuration linting.
+5. Make publish-timeout outcomes explicit, bound Redis I/O, and join webhook
+   reply promises to their async handlers.
+
+Exit: a reader cannot confuse selected coverage with whole-repo coverage, and
+security/configuration outcomes—not only tool execution—are gated.
+
+### Stage 3 — Reduce change-locality cost
+
+1. Resolve UUIDv7, typed/raw schema ownership, and retention-scheduler RLS
+   convention drift before moving persistence files.
+2. Split database schema and source layout by bounded context behind unchanged
+   subpath exports.
+3. Refactor one named factory/hotspot at a time with characterization tests.
+4. Split the largest test suites by scenario and move only owner-local fixture
+   mechanics.
+5. Re-run dependency, clone, unused-surface, complexity, unit, and integration
+   analysis; lower baselines where earned.
+
+Exit: fewer file/function hotspots, no new package or query edge, and improved
+review locality.
+
+### Stage 4 — Narrow surface and tooling debt
+
+1. Configure static entry points and remove the verified unused worker
+   dependency and internal exports.
+2. Review same-owner clone families; extract only shared invariants.
+3. Add types to the large `.mjs` tools when they next change.
+4. Document/test credential-schema semantics and measure metadata import cost.
+5. Add public contribution/security policy, make a license decision, and
+   clarify the web application's repository boundary.
+
+Exit: smaller supported surface, no known unused dependency, and no speculative
+abstraction added to achieve it.
+
+### Stage 5 — Complete authoritative Phase 7
+
+Run the live, immutable-release-bound workload, recovery, security, provider,
+observability, and operational evidence listed in A-04/A-08. This is the only
+stage that can raise production readiness materially. Repository refactors do
+not substitute for it.
+
+## 8. Verification evidence from this audit
+
+Local commands at the audited implementation tree:
+
+- `pnpm check` — passed; build, formatting, documentation, runtime alignment,
+  lint, complexity ratchet, generated contracts, project/test typechecks, and
+  all 1,529 configured non-integration tests passed.
+- `pnpm test:coverage` — passed for the 23 selected critical files; percentages
+  are recorded in A-05; 116 reviewed and zero unreviewed uncovered branches.
+- `pnpm security:audit` — exited zero under the configured high threshold while
+  reporting two moderate Fastify advisories.
+- `pnpm deployment:check`, `pnpm images:check`, and `pnpm exercise:check` —
+  passed.
+- `pnpm dlx knip@5.80.0` — no unused files; one unused dev dependency; 111 value
+  and 92 type export candidates; three duplicate-export candidates.
+- `pnpm dlx jscpd@4.0.5 ...` — 1.12% source and 0.42% test duplication under the
+  stated thresholds.
+- `gh api` security inspection — four open Dependabot alerts representing two
+  unique Fastify advisories; one open high CodeQL alert at the audited HEAD.
+- branch-protection inspection — 11 strict required contexts, zero required
+  approvals, no code-owner review requirement, no signature requirement, and
+  no repository ruleset.
+
+Remote evidence:
+
+- GitHub CI run
+  [33693414862](https://github.com/vigani1/pertexo/actions/runs/33693414862)
+  succeeded for exact commit
+  `76d0aaa2bdd6f1fc5f77566d47fa3bac3b8ecef8`, including all ten CI jobs.
+- GitHub CodeQL run
+  [33693414866](https://github.com/vigani1/pertexo/actions/runs/33693414866)
+  completed successfully for that commit, but its uploaded results still
+  contain the open high alert in A-01.
+
+## 9. Final answer to the practical questions
+
+Is the actual code good? **Yes, overall.** It is unusually explicit about
+invariants, runtime validation, tenancy, failures, and durability. Its current
+weakness is not amateurish syntax; it is that robust behavior accumulated in
+large files and long factories that now cost too much to navigate and review.
+
+Is it reusable without being overabstracted? **Mostly yes.** The package seams
+are justified, the dependency graph is clean, and duplication is low. The
+repository should narrow exports and extract a few same-owner mechanics, not add
+a generic shared layer.
+
+Are all packages needed? **Yes, given the current architecture.** `contracts`
+has only one current production consumer but owns the deliberate public wire
+boundary and planned browser consumption. The rest have multiple current
+consumers or a clear runtime/domain responsibility.
+
+Are tests good? **Yes in behavioral depth; incomplete as a coverage claim.**
+The separation into package `test/` directories is appropriate. Large suites
+need decomposition, and critical-file coverage must expand and remain honestly
+labeled.
+
+Does it run in GitHub CI? **Yes.** Exact-head CI is green and comprehensive.
+But the current green result does not fail for the open high CodeQL alert or the
+moderate dependency advisories, so it is not yet a trustworthy single release
+security signal.
+
+Are `.mjs` files wrong? **No.** They are appropriate for directly executable
+Node tooling. Only the largest, domain-shaped tools have grown enough that
+TypeScript or checked JSDoc would now provide worthwhile safety.
+
+Is it production-ready? **No.** Fix the current security findings and complete
+the authoritative Phase 7 live evidence before making that claim.
