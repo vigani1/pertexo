@@ -4769,8 +4769,8 @@ Verification at `eb2cd1d317b00d20c9f1ca2a44411341cc337cb6`:
   62.79% worker, and 99.64% API branch coverage and recorded 317 unreviewed
   plus one individually justified generated risk-branch site;
 - the full configured real-service matrix passed 5 artifact-store, 320
-  database, 22 worker, and 15 API integration tests, with provider-specific
-  skips remaining explicit;
+  database, 21 worker, and 14 API integration tests; the 3 artifact-store, 1
+  worker, and 2 API provider-specific skips remained explicit;
 - three destructive transport-recovery runs passed before the final lint-only
   correction, whose controller fixtures and full unit suite also pass;
 - `pnpm security:audit`, `pnpm deployment:check`, `pnpm exercise:check`, and
