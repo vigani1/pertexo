@@ -35,8 +35,11 @@ function responseMock(): ResponseMock {
 }
 
 function hostFor(
-  request: Readonly<{ url?: string }>,
-  response: ResponseMock,
+  request: Readonly<{
+    url?: string;
+    headers?: Readonly<Record<string, string | readonly string[] | undefined>>;
+  }>,
+  response: ResponseMock | object,
 ): ArgumentsHost {
   return {
     switchToHttp: () => ({
@@ -47,6 +50,22 @@ function hostFor(
 }
 
 describe('RFC 9457 problem details filter', () => {
+  it('rejects oversized safe details before they can reach the response boundary', () => {
+    expect(() =>
+      applicationError('request.invalid', { safeDetail: 'x'.repeat(2_001) }),
+    ).toThrow(/too long/u);
+  });
+
+  it('drops blank safe detail instead of emitting an empty detail field', () => {
+    const response = responseMock();
+    new ProblemDetailsFilter(new RequestContextStore()).catch(
+      applicationError('request.invalid', { safeDetail: '\r\n  ' }),
+      hostFor({ url: '/v1/resource' }, response),
+    );
+
+    expect(response.body).not.toHaveProperty('detail');
+  });
+
   it('maps a known application error to a safe problem document', () => {
     const contexts = new RequestContextStore();
     const filter = new ProblemDetailsFilter(contexts);
@@ -246,6 +265,22 @@ describe('RFC 9457 problem details filter', () => {
     expect(JSON.stringify(response.body)).not.toContain('token=secret');
   });
 
+  it('uses a safe fallback when a validation issue has a blank message', () => {
+    const response = responseMock();
+    const error = new z.ZodError([
+      { code: 'custom', path: ['unsafe/key'], message: '\n' },
+    ]);
+
+    new ProblemDetailsFilter(new RequestContextStore()).catch(
+      error,
+      hostFor({ url: '/v1/profile' }, response),
+    );
+
+    expect(response.body).toMatchObject({
+      errors: [{ path: '/unsafe~1key', message: 'Invalid value' }],
+    });
+  });
+
   it('maps Nest validation exceptions without trusting arbitrary response fields', () => {
     const contexts = new RequestContextStore();
     const logger = { log: vi.fn() };
@@ -277,6 +312,16 @@ describe('RFC 9457 problem details filter', () => {
         cause: undefined,
       }),
     );
+  });
+
+  it('omits a Nest validation issue list containing no safe strings', () => {
+    const response = responseMock();
+    new ProblemDetailsFilter(new RequestContextStore()).catch(
+      new BadRequestException({ message: [42, '\r\n'] }),
+      hostFor({ url: '/v1/users' }, response),
+    );
+
+    expect(response.body).not.toHaveProperty('errors');
   });
 
   it('returns a generic safe 500 and logs the unknown cause', () => {
@@ -338,6 +383,40 @@ describe('RFC 9457 problem details filter', () => {
     },
   );
 
+  it.each([
+    [401, 'auth.unauthenticated'],
+    [403, 'auth.forbidden'],
+    [404, 'resource.not_found'],
+  ] as const)(
+    'maps Nest status %i to %s without exposing its message',
+    (status, code) => {
+      const response = responseMock();
+      new ProblemDetailsFilter(new RequestContextStore()).catch(
+        new HttpException('unsafe framework detail', status),
+        hostFor({ url: '/v1/resource' }, response),
+      );
+
+      expect(response.body).toMatchObject({ status, code });
+      expect(response.body).not.toHaveProperty('errors');
+      expect(JSON.stringify(response.body)).not.toContain(
+        'unsafe framework detail',
+      );
+    },
+  );
+
+  it('normalizes invalid framework status codes to a safe 500', () => {
+    const response = responseMock();
+    new ProblemDetailsFilter(new RequestContextStore()).catch(
+      new HttpException('unsafe', 200),
+      hostFor({ url: '/v1/resource' }, response),
+    );
+
+    expect(response.body).toMatchObject({
+      status: 500,
+      code: 'internal.unexpected',
+    });
+  });
+
   it('renders typed revision conflicts with the current strong validator', () => {
     const contexts = new RequestContextStore();
     const logger = { log: vi.fn() };
@@ -382,6 +461,22 @@ describe('RFC 9457 problem details filter', () => {
     });
   });
 
+  it('fails malformed revision-conflict metadata closed as an internal error', () => {
+    const response = responseMock();
+    new ProblemDetailsFilter(new RequestContextStore()).catch(
+      applicationError('workflow.revision_conflict', {
+        details: { currentRevision: 0, currentEtag: 'weak' },
+      }),
+      hostFor({ url: '/v1/workflows/workflow-1' }, response),
+    );
+
+    expect(response.body).toMatchObject({
+      status: 500,
+      code: 'internal.unexpected',
+    });
+    expect(response.header).not.toHaveBeenCalledWith('etag', expect.anything());
+  });
+
   it('exposes only bounded typed workflow validation issues', () => {
     const contexts = new RequestContextStore();
     const filter = new ProblemDetailsFilter(contexts);
@@ -417,5 +512,95 @@ describe('RFC 9457 problem details filter', () => {
       ],
     });
     expect(JSON.stringify(response.body)).not.toContain('must-not-leak');
+  });
+
+  it('omits invalid retry and validation metadata instead of reflecting it', () => {
+    const retryResponse = responseMock();
+    const validationResponse = responseMock();
+    const filter = new ProblemDetailsFilter(new RequestContextStore());
+
+    filter.catch(
+      applicationError('request.rate_limited', {
+        details: { retryAfterSeconds: 301 },
+      }),
+      hostFor({ url: '/v1/workflows' }, retryResponse),
+    );
+    filter.catch(
+      applicationError('workflow.invalid', { details: { issues: 'unsafe' } }),
+      hostFor({ url: '/v1/workflows' }, validationResponse),
+    );
+
+    expect(retryResponse.header).not.toHaveBeenCalledWith(
+      'retry-after',
+      expect.anything(),
+    );
+    expect(retryResponse.body).not.toHaveProperty('errors');
+    expect(validationResponse.body).not.toHaveProperty('errors');
+  });
+
+  it('drops malformed workflow issue objects field by field', () => {
+    const response = responseMock();
+    new ProblemDetailsFilter(new RequestContextStore()).catch(
+      applicationError('workflow.invalid', {
+        details: {
+          issues: [
+            null,
+            { code: 'cycle', message: 'missing path' },
+            { path: '/edges/0', message: 'missing code' },
+            { path: '/edges/0', code: 'cycle' },
+          ],
+        },
+      }),
+      hostFor({ url: '/v1/workflows' }, response),
+    );
+
+    expect(response.body).not.toHaveProperty('errors');
+  });
+
+  it('omits an instance when the request URL is unavailable', () => {
+    const response = responseMock();
+    const logger = { log: vi.fn() };
+    new ProblemDetailsFilter(new RequestContextStore(), logger).catch(
+      new Error('private failure'),
+      hostFor({}, response),
+    );
+
+    expect(response.body).not.toHaveProperty('instance');
+    expect(logger.log).toHaveBeenCalledWith(
+      // Vitest's asymmetric matcher is intentionally dynamic at this boundary.
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      expect.not.objectContaining({ instance: expect.anything() }),
+    );
+  });
+
+  it('supports Fastify-style response methods and safe fallback context', async () => {
+    const code = vi.fn();
+    const header = vi.fn();
+    const json = vi.fn();
+    const logger = {
+      log: vi.fn(() => Promise.reject(new Error('logger down'))),
+    };
+    const response = { code, header, json };
+
+    new ProblemDetailsFilter(new RequestContextStore(), logger).catch(
+      new Error('private failure'),
+      hostFor(
+        {
+          url: 'https://api.example.test/v1/health?secret=yes',
+          headers: { 'x-request-id': 'fallback-request' },
+        },
+        response,
+      ),
+    );
+
+    expect(code).toHaveBeenCalledWith(500);
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestId: 'fallback-request',
+        instance: '/v1/health',
+      }),
+    );
+    await Promise.resolve();
+    expect(logger.log).toHaveBeenCalledOnce();
   });
 });

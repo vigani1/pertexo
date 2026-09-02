@@ -238,12 +238,70 @@ describe('opaque browser sessions', () => {
       IdentityError,
     );
     await expect(
+      service.issue({ userId: 'not-a-uuid' }, new CookieSink()),
+    ).rejects.toMatchObject({
+      code: 'identity.invalid_input',
+    });
+    await expect(
       service.issue(
         { userId, clientMetadata: { requestId: 'bad id' } },
         new CookieSink(),
       ),
     ).rejects.toMatchObject({
       code: 'identity.invalid_input',
+    });
+  });
+
+  it('rejects invalid boundary clocks when issuing or authenticating', async () => {
+    const invalidClock = { now: (): Date => new Date('invalid') };
+    const service = new OpaqueSessionService(new FakeSessions(), {
+      clock: invalidClock,
+    });
+    await expect(
+      service.issue({ userId }, new CookieSink()),
+    ).rejects.toMatchObject({ code: 'identity.invalid_input' });
+
+    const store = new FakeSessions();
+    const cookie = new CookieSink();
+    await new OpaqueSessionService(store).issue({ userId }, cookie);
+    await expect(
+      new OpaqueSessionService(store, { clock: invalidClock }).authenticate(
+        defined(cookie.token),
+      ),
+    ).rejects.toMatchObject({ code: 'identity.session_invalid' });
+  });
+
+  it('preserves validated client metadata during explicit rotation', async () => {
+    const service = new OpaqueSessionService(new FakeSessions());
+    const firstCookie = new CookieSink();
+    const rotatedCookie = new CookieSink();
+    await service.issue({ userId }, firstCookie);
+    await service.rotate(defined(firstCookie.token), rotatedCookie, {
+      ipAddress: '203.0.113.4',
+    });
+
+    await expect(
+      service.authenticate(defined(rotatedCookie.token)),
+    ).resolves.toMatchObject({ clientMetadata: { ipAddress: '203.0.113.4' } });
+  });
+
+  it('normalizes store failures without leaking adapter errors', async () => {
+    const failure = new Error('database password=secret');
+    const store: SessionStorePort = {
+      create: () => Promise.reject(failure),
+      findByDigest: () => Promise.reject(failure),
+      revokeByDigest: () => Promise.reject(failure),
+    };
+    const service = new OpaqueSessionService(store);
+
+    await expect(
+      service.issue({ userId }, new CookieSink()),
+    ).rejects.toMatchObject({ code: 'identity.session_invalid' });
+    await expect(service.authenticate('a'.repeat(43))).rejects.toMatchObject({
+      code: 'identity.session_invalid',
+    });
+    await expect(service.revoke('a'.repeat(43))).rejects.toMatchObject({
+      code: 'identity.session_invalid',
     });
   });
 });
