@@ -24,7 +24,7 @@ export default defineConfig({
       // them requires tests for additional failure branches; integration-only
       // provider and persistence behavior remains covered by real services.
       thresholds: {
-        branches: 90.3,
+        branches: 91.8,
         functions: 77.3,
         lines: 91.6,
         statements: 91,

@@ -15,10 +15,10 @@ export default defineConfig({
       // Interface-level baseline after removing tests that directly mutated
       // private transition state. Future changes ratchet these values upward.
       thresholds: {
-        branches: 88.3,
-        functions: 92.9,
-        lines: 93.4,
-        statements: 92.7,
+        branches: 90.6,
+        functions: 93.4,
+        lines: 94.7,
+        statements: 94.2,
       },
     },
   },

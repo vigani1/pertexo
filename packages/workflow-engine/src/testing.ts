@@ -18,6 +18,10 @@ export interface AdvanceWorkflowInput {
     readonly expectedNextEventSequence: number;
     readonly consumedThroughEventSequence: number;
   }>;
+  readonly dueResumptions?: readonly Readonly<{
+    readonly invocationKey: string;
+    readonly occurredAt: string;
+  }>[];
 }
 
 export function advanceWorkflow(
@@ -40,6 +44,9 @@ export function advanceWorkflow(
     ...(input.persistedObservationCursor === undefined
       ? {}
       : { persistedObservationCursor: input.persistedObservationCursor }),
+    ...(input.dueResumptions === undefined
+      ? {}
+      : { dueResumptions: input.dueResumptions }),
   });
 }
 

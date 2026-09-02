@@ -1,6 +1,22 @@
 {
   "schemaVersion": 4,
-  "integrationEvidence": {},
+  "integrationEvidence": {
+    "worker-artifact-reference": {
+      "command": "pnpm --filter @pertexo/worker test:integration -- artifact-reference.integration.test.ts",
+      "testFile": "apps/worker/test/artifact-reference.integration.test.ts",
+      "testName": "streams a bounded node response through worker metadata and object-store adapters"
+    },
+    "worker-http-node-attempt": {
+      "command": "pnpm --filter @pertexo/worker test:integration -- http-node-attempt.integration.test.ts",
+      "testFile": "apps/worker/test/http-node-attempt.integration.test.ts",
+      "testName": "commits artifact, attempt truth, audit, bounded telemetry, and inert exact redelivery without leaking credentials"
+    },
+    "worker-preview-delivery": {
+      "command": "pnpm --filter @pertexo/worker test:integration -- preview-consumer-delivery.integration.test.ts",
+      "testFile": "apps/worker/test/preview-consumer-delivery.integration.test.ts",
+      "testName": "executes an accepted preview through BullMQ once and duplicates safely"
+    }
+  },
   "reviewGroups": [
     {
       "cohort": "workflow-engine",
@@ -641,6 +657,26 @@
           "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
         },
         {
+          "branchId": "17",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:d8cdc7fbb82af5ce3beda8ee73b567b142bdbebbc6b3f1639d581977391bbf9a",
+          "classification": "generated",
+          "justification": "V8 emitted this implicit fallthrough branch without a source coordinate; the adjacent executable decision is covered through the public workflow transition interface."
+        },
+        {
+          "branchId": "36",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:482b9d088e6da694a2584c4b91e4ffd8e996229b6cdc33a39465f82db7af1071",
+          "classification": "generated",
+          "justification": "V8 emitted this implicit fallthrough branch without a source coordinate; the adjacent executable decision is covered through the public workflow transition interface."
+        },
+        {
           "branchId": "63",
           "locationIndex": 1,
           "branchType": "if",
@@ -669,16 +705,6 @@
           "sourceFingerprint": "sha256:eca064612d38bfd470e71e4490dec3e0d6f7a67134e025fb2df492a79e670289",
           "classification": "unreachable",
           "justification": "declaredJoin always materializes joinInvocationKey before branch dispositions can be applied."
-        },
-        {
-          "branchId": "11",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 94,
-          "column": 2,
-          "sourceFingerprint": "sha256:05eb8d649362da086d833f74b98c12a97cc8ea659bb813babe0262840a6536ff",
-          "classification": "defensive",
-          "justification": "A branch-selected observation becomes a no-op after workflow cancellation, preventing new branch admission during terminal control."
         },
         {
           "branchId": "18",
@@ -827,6 +853,26 @@
       "file": "packages/workflow-engine/src/workflow-transition-state.ts",
       "reviews": [
         {
+          "branchId": "0",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 65,
+          "column": 2,
+          "sourceFingerprint": "sha256:2ba1cd4cb97e7be6520d3922835e03cfe2292be4ffba2b87900180124873d328",
+          "classification": "defensive",
+          "justification": "Terminal-loop replay compares output kinds first and rejects a replay that changes inline versus artifact identity."
+        },
+        {
+          "branchId": "1",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 66,
+          "column": 2,
+          "sourceFingerprint": "sha256:fd54df7a857ab4873c89381e9b7bf4f5d4d148148facb1825239ea248853e25e",
+          "classification": "defensive",
+          "justification": "Terminal-loop replay treats two omitted outputs as equal only after their kinds have already matched."
+        },
+        {
           "branchId": "5",
           "locationIndex": 1,
           "branchType": "cond-expr",
@@ -835,6 +881,36 @@
           "sourceFingerprint": "sha256:72371ba06c39032d1a2acebf630184dcb072254fb05443788af8aabca3430171",
           "classification": "unreachable",
           "justification": "After equal output kinds are established, the closed union permits only inline-inline or artifact-artifact pairs."
+        },
+        {
+          "branchId": "16",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 132,
+          "column": 56,
+          "sourceFingerprint": "sha256:ba0859346a4969a80fb32d4e3028ae1c8be635f760dd2aca286eae58c6fe8971",
+          "classification": "defensive",
+          "justification": "A scoped join may supply an explicit invocation key; otherwise the validated root join identifier is the compatibility default."
+        },
+        {
+          "branchId": "23",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 192,
+          "column": 2,
+          "sourceFingerprint": "sha256:8096dc4f65b4fd24c671f70a1eb3a1bf9674ead18a58f687bb2037d468e8c8a0",
+          "classification": "defensive",
+          "justification": "Attempt admission fails closed when a ready node is absent from the supplied scheduler graph."
+        },
+        {
+          "branchId": "24",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 204,
+          "column": 2,
+          "sourceFingerprint": "sha256:b48a2aaace5a32d054a78d53b7341644b5576ce994e7e8496143fa62d8e10ac2",
+          "classification": "defensive",
+          "justification": "Without scheduler state, disabled-node lookup deliberately returns false while later admission requires the graph and fails closed."
         },
         {
           "branchId": "25",
@@ -857,6 +933,16 @@
           "justification": "Invocation lookup compares an absent iterationPath as the empty root path when resolving a scoped node identity."
         },
         {
+          "branchId": "29",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 247,
+          "column": 4,
+          "sourceFingerprint": "sha256:cb77914394f44f413ad0918a4725aa1d6cda7feb7eec4012b7f2dd0cd5b15520",
+          "classification": "unreachable",
+          "justification": "The public checkpoint parser verifies every active loop ordinal has a matching invocation before transition state reaches this secondary invariant check."
+        },
+        {
           "branchId": "32",
           "locationIndex": 1,
           "branchType": "binary-expr",
@@ -865,6 +951,16 @@
           "sourceFingerprint": "sha256:60f4aabc02d9cd027d3d8f2980d04dea7f75f524b90d240c3a9264ceb530bd8b",
           "classification": "defensive",
           "justification": "Terminal invocation lookup compares an absent iterationPath as the empty root path before applying terminal-status filtering."
+        },
+        {
+          "branchId": "33",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 276,
+          "column": 4,
+          "sourceFingerprint": "sha256:2a682b5a348ab5b0337f085f854b5cb5ca5a6a0201ff58c4eebf57ce593a74d9",
+          "classification": "unreachable",
+          "justification": "The public checkpoint parser verifies every terminal loop ordinal has a terminal invocation before transition state reaches this secondary invariant check."
         }
       ]
     },
@@ -973,6 +1069,170 @@
           "sourceFingerprint": "sha256:eeaa41071aba0d4b923723eeee6c1daa00f9646150f4641cc1f72b44469c898e",
           "classification": "defensive",
           "justification": "A spool write reporting zero or negative progress fails immediately, preventing an infinite artifact-write loop."
+        },
+        {
+          "branchId": "19",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 332,
+          "column": 14,
+          "sourceFingerprint": "sha256:b94d209a969b65e297c8dc0a571fe7ba4f62daad37e242117f1c9e06dbd78607",
+          "classification": "integration",
+          "justification": "The named artifact-reference integration streams a normal node output through the database-backed pending-artifact persistence adapter.",
+          "evidenceId": "worker-artifact-reference"
+        },
+        {
+          "branchId": "19",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 341,
+          "column": 14,
+          "sourceFingerprint": "sha256:ba546740709f2382093c7e549aa8067acf40a989f60b307f58b3fae1351a3cd3",
+          "classification": "defensive",
+          "justification": "Preview artifact persistence is retained for artifact-producing preview executors; the current supported preview cohort produces inline output only."
+        },
+        {
+          "branchId": "26",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 420,
+          "column": 39,
+          "sourceFingerprint": "sha256:4dabd02404464582070d185802cdd63892e202ef7dfb7175fbe69f89846b12cc",
+          "classification": "defensive",
+          "justification": "Owned-resource shutdown collects rejected close results so every resource is attempted before reporting the aggregate failure."
+        },
+        {
+          "branchId": "27",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 422,
+          "column": 6,
+          "sourceFingerprint": "sha256:72f52b0c710ee55d4f78e6396746898916ae03664d0738313d2cc792d93e737c",
+          "classification": "defensive",
+          "justification": "The aggregate shutdown error is emitted only when one or more owned adapters reject during cleanup."
+        },
+        {
+          "branchId": "30",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 436,
+          "column": 13,
+          "sourceFingerprint": "sha256:f7be0a38f1edca807734e1aceaa08d1403ea39e783adec753b493921dc0123ca",
+          "classification": "integration",
+          "justification": "The named HTTP node-attempt integration composes and uses the owned Redis provider-rate limiter against the real transport service.",
+          "evidenceId": "worker-http-node-attempt"
+        },
+        {
+          "branchId": "32",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 443,
+          "column": 9,
+          "sourceFingerprint": "sha256:8327c98c3822e5e8b6632e9fdbd48fdcd8aaf974618f6c122e408cb79d344911",
+          "classification": "integration",
+          "justification": "The named HTTP node-attempt integration composes the owned connection-resolution database and resolves provider credentials for execution.",
+          "evidenceId": "worker-http-node-attempt"
+        },
+        {
+          "branchId": "34",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 449,
+          "column": 12,
+          "sourceFingerprint": "sha256:2bbd5e3c77972649f476a033e61587bfd6208742af17da441f5877fc27ecefd4",
+          "classification": "defensive",
+          "justification": "Production AWS envelope-encryption construction is configuration selected; unit tests inject the encryption port and live KMS evidence remains external."
+        },
+        {
+          "branchId": "37",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 464,
+          "column": 8,
+          "sourceFingerprint": "sha256:14284168600ab7e30a738c36f0474086b310d9940fa51ca7bd6379c253e90489",
+          "classification": "integration",
+          "justification": "The named HTTP node-attempt integration composes database-backed artifact persistence and commits streamed node-output metadata.",
+          "evidenceId": "worker-http-node-attempt"
+        },
+        {
+          "branchId": "39",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 471,
+          "column": 13,
+          "sourceFingerprint": "sha256:3495a9b458259eb1369b1d17c8eafb4553d2fedc160559b0ab19e84fbaefcb09",
+          "classification": "integration",
+          "justification": "The named HTTP node-attempt integration composes the dual-region artifact store and verifies the persisted streamed response.",
+          "evidenceId": "worker-http-node-attempt"
+        }
+      ]
+    },
+    {
+      "cohort": "worker",
+      "file": "apps/worker/src/execution/preview-attempt-runtime.ts",
+      "reviews": [
+        {
+          "branchId": "0",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 83,
+          "column": 35,
+          "sourceFingerprint": "sha256:bb0f2a9fea1fd32d1f690e8ef39f84229e9fb58db6837b3b75981e0854110c75",
+          "classification": "unreachable",
+          "justification": "Production preview handling always supplies its queue abort signal to the dispatch operation; omission remains only for the general store port."
+        },
+        {
+          "branchId": "0",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 83,
+          "column": 40,
+          "sourceFingerprint": "sha256:19349498744f095154bb0952a432281a98efbd1d35353a6f09959434b96abb42",
+          "classification": "integration",
+          "justification": "The named preview-delivery integration passes the worker abort signal through the database-backed dispatch operation.",
+          "evidenceId": "worker-preview-delivery"
+        },
+        {
+          "branchId": "1",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 98,
+          "column": 35,
+          "sourceFingerprint": "sha256:bb0f2a9fea1fd32d1f690e8ef39f84229e9fb58db6837b3b75981e0854110c75",
+          "classification": "unreachable",
+          "justification": "Production preview handling always supplies its queue abort signal to the heartbeat operation; omission remains only for the general store port."
+        },
+        {
+          "branchId": "1",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 98,
+          "column": 40,
+          "sourceFingerprint": "sha256:19349498744f095154bb0952a432281a98efbd1d35353a6f09959434b96abb42",
+          "classification": "integration",
+          "justification": "The named preview-delivery integration passes the worker abort signal through the database-backed heartbeat operation.",
+          "evidenceId": "worker-preview-delivery"
+        },
+        {
+          "branchId": "2",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 114,
+          "column": 35,
+          "sourceFingerprint": "sha256:bb0f2a9fea1fd32d1f690e8ef39f84229e9fb58db6837b3b75981e0854110c75",
+          "classification": "unreachable",
+          "justification": "Production preview handling always supplies its queue abort signal to the completion operation; omission remains only for the general store port."
+        },
+        {
+          "branchId": "2",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 114,
+          "column": 40,
+          "sourceFingerprint": "sha256:19349498744f095154bb0952a432281a98efbd1d35353a6f09959434b96abb42",
+          "classification": "integration",
+          "justification": "The named preview-delivery integration passes the worker abort signal through the database-backed completion operation.",
+          "evidenceId": "worker-preview-delivery"
         }
       ]
     },

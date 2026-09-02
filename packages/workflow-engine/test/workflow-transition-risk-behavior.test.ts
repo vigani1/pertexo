@@ -4,6 +4,7 @@ import {
   advanceWorkflow,
   createCheckpoint,
   createCheckpointV2,
+  invocationKey,
   type WorkflowCheckpoint,
   type WorkflowObservation,
 } from '../src/testing.js';
@@ -15,16 +16,21 @@ const inline = (attemptId: string) => ({ kind: 'inline' as const, attemptId });
 function advance(
   checkpoint: WorkflowCheckpoint,
   observations: readonly WorkflowObservation[],
+  dueResumptions?: readonly Readonly<{
+    invocationKey: string;
+    occurredAt: string;
+  }>[],
 ) {
   return advanceWorkflow({
     checkpoint,
     observations,
     occurredAt,
     maximumAdmissions: 0,
+    ...(dueResumptions === undefined ? {} : { dueResumptions }),
   });
 }
 
-function checkpoint(): WorkflowCheckpoint {
+function checkpoint(): ReturnType<typeof createCheckpointV2> {
   return createCheckpointV2({
     engineVersion: 'engine-v2',
     workflowVersionId: 'version-1',
@@ -177,5 +183,256 @@ describe('workflow transition public risk behavior', () => {
         { kind: 'outcome', invocationKey: 'missing', status: 'failed' },
       ]),
     ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
+  });
+
+  it('validates branch selection through persisted public checkpoint state', () => {
+    const succeeded = {
+      ...checkpoint(),
+      invocations: [
+        {
+          invocationKey: 'condition',
+          nodeId: 'condition',
+          status: 'succeeded' as const,
+          attemptNumber: 1,
+          output: inline(ATTEMPT_ID),
+        },
+      ],
+    };
+    const observation = {
+      kind: 'branch_selected' as const,
+      invocationKey: 'condition',
+      nodeId: 'condition',
+      selectedOutputPort: 'true',
+    };
+    expect(advance(succeeded, [observation]).checkpoint).toMatchObject({
+      branchSelections: [
+        {
+          invocationKey: 'condition',
+          nodeId: 'condition',
+          selectedOutputPort: 'true',
+        },
+      ],
+    });
+    expect(() =>
+      advance(
+        {
+          ...succeeded,
+          branchSelections: [
+            {
+              invocationKey: 'condition',
+              nodeId: 'condition',
+              selectedOutputPort: 'false',
+            },
+          ],
+        },
+        [observation],
+      ),
+    ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
+  });
+
+  it('rejects branch selection without an output-bearing matching invocation', () => {
+    expect(() =>
+      advance(checkpoint(), [
+        {
+          kind: 'branch_selected',
+          invocationKey: 'missing',
+          nodeId: 'condition',
+          selectedOutputPort: 'true',
+        },
+      ]),
+    ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
+  });
+
+  it('rejects unknown due resumptions and suppresses them after cancellation', () => {
+    const due = [{ invocationKey: 'missing', occurredAt }];
+    expect(() => advance(checkpoint(), [], due)).toThrow(
+      expect.objectContaining({ code: 'checkpoint_invalid' }),
+    );
+    expect(
+      advance(checkpoint(), [{ kind: 'cancel_requested' }], due).checkpoint
+        .cancelRequested,
+    ).toBe(true);
+  });
+
+  it('orders every public observation family before applying terminal control', () => {
+    const observations: WorkflowObservation[] = [
+      { kind: 'cursor_only' },
+      { kind: 'cancel_requested' },
+      { kind: 'deadline_expired' },
+      {
+        kind: 'join_declared',
+        joinId: 'join',
+        branchIds: ['a'],
+        policy: { kind: 'all' },
+      },
+      {
+        kind: 'branch_disposition',
+        joinId: 'join',
+        branch: { branchId: 'a', disposition: 'arrived' },
+      },
+      {
+        kind: 'branch_selected',
+        invocationKey: 'condition',
+        nodeId: 'condition',
+        selectedOutputPort: 'true',
+      },
+      {
+        kind: 'loop_started',
+        loopId: 'loop',
+        collection: inline(ATTEMPT_ID),
+        collectionChecksum: 'sum',
+        collectionSize: 0,
+        maxConcurrency: 1,
+        maxIterations: 1,
+      },
+      { kind: 'loop_iteration_completed', loopId: 'loop', ordinal: 0 },
+      { kind: 'ready', invocationKey: 'ready', nodeId: 'ready' },
+    ];
+
+    expect(() => advance(checkpoint(), observations)).toThrow(
+      expect.objectContaining({ code: 'join_invalid' }),
+    );
+  });
+
+  it('accepts an identical terminal loop replay through checkpoint state', () => {
+    const iterationInvocationKey = invocationKey({
+      workflowVersionId: 'version-1',
+      nodeId: 'body',
+      branchPath: [],
+      iterationPath: [{ loopNodeId: 'loop', ordinal: 0 }],
+    });
+    const iteration = {
+      invocationKey: iterationInvocationKey,
+      nodeId: 'body',
+      status: 'succeeded' as const,
+      attemptNumber: 1,
+      iterationPath: [{ loopNodeId: 'loop', ordinal: 0 }],
+      output: inline(ATTEMPT_ID),
+    };
+    const persisted = {
+      ...checkpoint(),
+      remainingIterationBudget: 99,
+      invocations: [
+        {
+          invocationKey: 'loop-control',
+          nodeId: 'loop',
+          status: 'succeeded' as const,
+          attemptNumber: 1,
+        },
+        iteration,
+      ],
+      loops: [
+        {
+          loopId: 'loop',
+          controlInvocationKey: 'loop-control',
+          branchPath: [],
+          iterationPath: [],
+          bodyRootNodeIds: ['body'],
+          bodySinkNodeId: 'body',
+          collection: inline(ATTEMPT_ID),
+          collectionChecksum: 'sum',
+          collectionSize: 1,
+          maxConcurrency: 1,
+          maxIterations: 1,
+          nextOrdinal: 1,
+          activeOrdinals: [],
+          terminalOrdinals: [0],
+        },
+      ],
+    };
+
+    expect(
+      advance(persisted, [
+        {
+          kind: 'loop_iteration_completed',
+          loopId: 'loop',
+          controlInvocationKey: 'loop-control',
+          invocationKey: iterationInvocationKey,
+          ordinal: 0,
+          status: 'succeeded',
+          output: inline(ATTEMPT_ID),
+        },
+      ]).checkpoint.invocations,
+    ).toContainEqual(expect.objectContaining(iteration));
+
+    expect(
+      advance(persisted, [
+        {
+          kind: 'loop_iteration_completed',
+          loopId: 'loop',
+          controlInvocationKey: 'loop-control',
+          invocationKey: iterationInvocationKey,
+          ordinal: 0,
+          output: inline(ATTEMPT_ID),
+        },
+      ]).checkpoint.invocations,
+    ).toContainEqual(expect.objectContaining(iteration));
+
+    expect(() =>
+      advance(persisted, [
+        {
+          kind: 'loop_iteration_completed',
+          loopId: 'loop',
+          controlInvocationKey: 'loop-control',
+          ordinal: 1,
+        },
+      ]),
+    ).toThrow(expect.objectContaining({ code: 'loop_state_invalid' }));
+  });
+
+  it('rejects branch selection against a V1 checkpoint', () => {
+    expect(() =>
+      advance(
+        createCheckpoint({
+          engineVersion: 'engine-v1',
+          workflowVersionId: 'version-1',
+          iterationBudget: 100,
+        }),
+        [
+          {
+            kind: 'branch_selected',
+            invocationKey: 'condition',
+            nodeId: 'condition',
+            selectedOutputPort: 'true',
+          },
+        ],
+      ),
+    ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
+  });
+
+  it('rejects a loop declaration whose existing control is not running', () => {
+    const persisted = {
+      ...checkpoint(),
+      invocations: [
+        {
+          invocationKey: 'loop-control',
+          nodeId: 'loop',
+          status: 'pending' as const,
+          attemptNumber: 0,
+        },
+      ],
+    };
+    expect(() =>
+      advance(persisted, [
+        {
+          kind: 'loop_started',
+          loopId: 'loop',
+          controlInvocationKey: 'loop-control',
+          collection: inline(ATTEMPT_ID),
+          collectionChecksum: 'sum',
+          collectionSize: 1,
+          maxConcurrency: 1,
+          maxIterations: 1,
+        },
+      ]),
+    ).toThrow(expect.objectContaining({ code: 'loop_state_invalid' }));
+  });
+
+  it('rejects completion for an undeclared loop', () => {
+    expect(() =>
+      advance(checkpoint(), [
+        { kind: 'loop_iteration_completed', loopId: 'missing', ordinal: 0 },
+      ]),
+    ).toThrow(expect.objectContaining({ code: 'loop_state_invalid' }));
   });
 });
