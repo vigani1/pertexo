@@ -4674,10 +4674,10 @@ Verification at implementation head `9e4263794715d273e8660c0dd4efa67c5032e940`:
 No Phase 7 completion box changes in this documentation-only audit. The current
 P1 findings and the existing live-production checklist remain release blockers.
 
-## Current whole-repository audit — implementation tree `6bf15c1`
+## Current whole-repository audit — implementation tree `4d3c24f`
 
-Status: **Repository remediation continuing; C-06 and external
-production/control evidence remain open**
+Status: **Repository remediation complete; external production/control evidence
+remains open**
 
 Repository-controlled remediation:
 
@@ -4691,13 +4691,13 @@ Repository-controlled remediation:
       complexity baseline through private invariant-owned modules. The current
       leading hotspot is 220 lines/44 branches, down from 257/102, with no new
       or worsened ratchet entry.
-- [ ] Complete the selected-file risk review through public module interfaces.
+- [x] Complete the selected-file risk review through public module interfaces.
       Report schema V6 names the 23 exact selected files with portable paths;
       manifest schema V4 groups reviews by file and binds all retained reviews
       to semantic source fingerprints. Private-state tests and 26 unsupported
       generic integration claims were removed. Public replacements currently
-      measure 88.38% workflow engine, 92.30% database, 90.31% worker, and 99.64%
-      API branch coverage, with 93 reviewed and 50 explicitly unreviewed sites.
+      measure 90.64% workflow engine, 94.23% database, 91.86% worker, and 99.64%
+      API branch coverage, with 116 reviewed and zero unreviewed sites.
 - [x] Split production dependency updates into HTTP, validation, AWS,
       telemetry, queue, and routine compatibility groups and document owner,
       triage, isolation, and bounded-deferral SLAs.
@@ -4762,18 +4762,18 @@ judgments with documented arithmetic, not industry percentiles or claims that a
 particular file size, package count, or coverage percentage is universally
 correct.
 
-Verification for implementation tree `6bf15c1f3cac56e226dc923aea7f62cb67a3d810`
+Verification for implementation tree `4d3c24f10a8b501fb0f0f9b5afdf7a650a5d9125`
 and its audit publication branch:
 
 - `pnpm docs:check` validated 25 repository-local links across 49 Markdown
   files, synchronized the three audit-tree claims, proved the audited tree
   occurs in publication ancestry, and passed a rebase-style recreation fixture;
 - `pnpm check` passed formatting, the Node 24 compatibility gate, all builds,
-  ESLint, complexity, generated contracts, TypeScript, and 1,516 unit tests
+  ESLint, complexity, generated contracts, TypeScript, and 1,529 unit tests
   across all 18 workspace projects;
-- `pnpm test:coverage` passed at 88.38% workflow-engine, 92.30% database,
-  90.31% worker, and 99.64% API branch coverage and recorded 93 exact
-  source-fingerprinted reviews plus 50 explicitly unreviewed sites;
+- `pnpm test:coverage` passed at 90.64% workflow-engine, 94.23% database,
+  91.86% worker, and 99.64% API branch coverage and recorded 116 exact
+  source-fingerprinted reviews plus zero unreviewed sites;
 - the full configured real-service matrix passed 5 artifact-store, 320
   database, 21 worker, and 14 API integration tests; the 3 artifact-store, 1
   worker, and 2 API provider-specific skips remained explicit;
