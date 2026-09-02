@@ -4676,8 +4676,8 @@ P1 findings and the existing live-production checklist remain release blockers.
 
 ## Current whole-repository audit — implementation tree `640cbea`
 
-Status: **Repository remediation complete; protected documentation-gate
-execution and external production/control evidence remain open**
+Status: **Repository remediation complete; external production/control evidence
+remains open**
 
 Repository-controlled remediation:
 
@@ -4749,8 +4749,9 @@ Still open:
 - [ ] Require independent approval/code-owner review and verified provenance
       when a second maintainer and signing identities exist; retain the
       documented solo exception until then.
-- [ ] Observe the documentation validator pass in protected pull-request CI and
-      again on exact `main` after the supported rebase-style merge.
+- [x] Observe the documentation validator pass in pull request #26 CI run
+      `33642321558` and exact-main CI run `33643208313` after the supported
+      rebase-style merge.
 
 Audit calibration now records its method explicitly. Architecture uses the
 repository's deep-module/interface/seam criteria. Security is cross-checked
@@ -4791,7 +4792,14 @@ and its audit publication branch:
   configured protected jobs, but the quality job omitted `pnpm docs:check` and
   therefore did not catch the rewritten candidate SHA that made canonical
   `pnpm check` fail on merged `main`; the publication corrects the shared audit
-  head while protected enforcement remains open.
+  head. Protected enforcement was still open at that point.
+- Pull request #26 CI run `33642321558` passed every protected context. Its
+  quality job explicitly executed `pnpm docs:check`, resolved audited tree
+  `640cbea`, and passed the rebase-style fixture.
+- Rebase-merged `main` recreated candidate implementation commit `78c0e4e` as
+  `f3ca694` while preserving tree `640cbea`. Local exact-main documentation
+  validation and quality job `100291244127` in CI run `33643208313` passed;
+  CodeQL run `33643208280` passed.
 
 No phase status changes. Phase 7 remains **In progress**. Repository work must
 not be mistaken for the live deployment evidence required by the plan.

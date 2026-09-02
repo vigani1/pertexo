@@ -61,8 +61,8 @@ matching. The CI action pins now use immutable v6 releases that declare Node
 targets and anchors plus a shared merge-stable implementation tree. Protected
 quality CI invokes it with complete history, and a fixture recreates the
 candidate on a different parent to prove the supported rebase-style flow.
-Protected execution of the updated job remains to be observed before C-12
-closes. Risk
+Pull request #26 and exact-main CI both executed that protected gate
+successfully, closing C-12. Risk
 coverage now reports 23 exact
 selected files with repository-relative paths, 317 explicitly unreviewed sites,
 and one durable compiler-generated review that fails closed if it becomes
