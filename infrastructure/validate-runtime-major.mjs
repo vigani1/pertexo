@@ -37,6 +37,13 @@ function workflowSteps(workflow) {
   );
 }
 
+function isSetupNodeAction(value) {
+  return (
+    typeof value === 'string' &&
+    value.toLowerCase().startsWith('actions/setup-node@')
+  );
+}
+
 function setupNodeMajor(file, step) {
   if (!isRecord(step.with)) {
     throw new Error(
@@ -68,8 +75,7 @@ function workflowNodeMajors(file, contents) {
     .filter(
       (step) =>
         isRecord(step) &&
-        typeof step.uses === 'string' &&
-        step.uses.startsWith('actions/setup-node@'),
+        isSetupNodeAction(step.uses),
     )
     .map((step) => setupNodeMajor(file, step));
 }

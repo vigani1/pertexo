@@ -125,6 +125,27 @@ test('rejects a drifting selector on a quoted setup-node action', () => {
   );
 });
 
+test('rejects a drifting selector on a case-variant setup-node action', () => {
+  assert.throws(
+    () =>
+      validateRuntimeMajorSurfaces({
+        ...validSurfaces,
+        workflows: new Map([
+          [
+            'ci.yml',
+            workflow(
+              setupNodeStep('24'),
+              '- uses: Actions/setup-node@v6\n' +
+                '  with:\n' +
+                '    node-version: 25\n',
+            ),
+          ],
+        ]),
+      }),
+    /Node 24/,
+  );
+});
+
 test('ignores setup-node-like text inside a run block scalar', () => {
   assert.equal(
     validateRuntimeMajorSurfaces({
