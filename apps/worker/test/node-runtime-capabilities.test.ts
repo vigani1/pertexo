@@ -46,6 +46,57 @@ afterEach(async () => {
 });
 
 describe('worker node runtime capabilities', () => {
+  it.each([59_999, 60_000.5, 365 * 24 * 60 * 60_000 + 1])(
+    'rejects invalid artifact retention %s',
+    async (artifactRetentionMillis) => {
+      await expect(
+        createWorkerNodeRuntimeCapabilities({
+          database: databaseConfig,
+          artifactRetentionMillis,
+        }),
+      ).rejects.toBeInstanceOf(TypeError);
+    },
+  );
+
+  it('fails closed for partially configured runtime capabilities', async () => {
+    await expect(
+      createWorkerNodeRuntimeCapabilities(
+        { database: databaseConfig },
+        {
+          connectionDatabase: {
+            resolveConnectionSecret: vi.fn(),
+            assertConnectionSecretCurrent: vi.fn(),
+          },
+        },
+      ),
+    ).rejects.toThrow('Worker provider rate limiter is incomplete');
+    await expect(
+      createWorkerNodeRuntimeCapabilities(
+        { database: databaseConfig },
+        {
+          connectionDatabase: {
+            resolveConnectionSecret: vi.fn(),
+            assertConnectionSecretCurrent: vi.fn(),
+          },
+          providerRateLimiter: {
+            consume: vi.fn().mockResolvedValue({ allowed: true }),
+          },
+        },
+      ),
+    ).rejects.toThrow('Worker connection capability is incomplete');
+    await expect(
+      createWorkerNodeRuntimeCapabilities(
+        { database: databaseConfig },
+        {
+          artifactPersistence: {
+            createPending: vi.fn(),
+            finalize: vi.fn(),
+          },
+        },
+      ),
+    ).rejects.toThrow('Worker artifact capability is incomplete');
+  });
+
   it('binds JIT connection resolution and pre-dispatch currency checks to the attempt workspace', async () => {
     const resolveConnectionSecret = vi.fn(() =>
       Promise.resolve({
@@ -270,6 +321,152 @@ describe('worker node runtime capabilities', () => {
     await runtime.close();
   });
 
+  it('checks cancellation before lookup and zeroes a secret canceled after decryption', async () => {
+    const secret = new TextEncoder().encode('secret');
+    const controller = new AbortController();
+    const abortAfterOpen: { current?: AbortController } = {};
+    const resolveConnectionSecret = vi.fn(() =>
+      Promise.resolve({
+        connection: {
+          id: connectionId,
+          workspaceId,
+          providerKey: 'http',
+          authType: 'http_headers' as const,
+        },
+        secretVersionId,
+        sealed: {} as never,
+      }),
+    );
+    const runtime = await createWorkerNodeRuntimeCapabilities(
+      { database: databaseConfig },
+      {
+        connectionDatabase: {
+          resolveConnectionSecret: resolveConnectionSecret as never,
+          assertConnectionSecretCurrent: vi.fn(),
+        },
+        connectionEncryption: {
+          open: () => {
+            abortAfterOpen.current?.abort();
+            return Promise.resolve(secret);
+          },
+        },
+        providerRateLimiter: {
+          consume: () => Promise.resolve({ allowed: true as const }),
+        },
+      },
+    );
+    const connections = runtime.factories.connections?.(context);
+    if (connections === undefined)
+      throw new Error('connection capability missing');
+    const request = {
+      connectionId,
+      expectedProviderKey: 'http',
+      expectedAuthType: 'http_headers' as const,
+      purpose: 'http.request.execute',
+      signal: controller.signal,
+    };
+    controller.abort();
+    await expect(connections.resolve(request)).rejects.toMatchObject({
+      name: 'AbortError',
+    });
+    expect(resolveConnectionSecret).not.toHaveBeenCalled();
+
+    const secondController = new AbortController();
+    abortAfterOpen.current = secondController;
+    await expect(
+      connections.resolve({ ...request, signal: secondController.signal }),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    expect(secret.every((byte) => byte === 0)).toBe(true);
+    await runtime.close();
+  });
+
+  it.each([
+    { authType: 'slack_bot_token', id: connectionId, workspaceId },
+    { authType: 'http_headers', id: 'wrong', workspaceId },
+    { authType: 'http_headers', id: connectionId, workspaceId: 'wrong' },
+  ] as const)(
+    'rejects mismatched resolved connection identity %#',
+    async (connection) => {
+      const open = vi.fn();
+      const runtime = await createWorkerNodeRuntimeCapabilities(
+        { database: databaseConfig },
+        {
+          connectionDatabase: {
+            resolveConnectionSecret: () =>
+              Promise.resolve({
+                connection: { ...connection, providerKey: 'http' } as never,
+                secretVersionId,
+                sealed: {} as never,
+              }),
+            assertConnectionSecretCurrent: vi.fn(),
+          },
+          connectionEncryption: { open },
+          providerRateLimiter: {
+            consume: () => Promise.resolve({ allowed: true as const }),
+          },
+        },
+      );
+      const connections = runtime.factories.connections?.(context);
+      if (connections === undefined)
+        throw new Error('connection capability missing');
+      await expect(
+        connections.resolve({
+          connectionId,
+          expectedProviderKey: 'http',
+          expectedAuthType: 'http_headers',
+          purpose: 'http.request.execute',
+          signal: new AbortController().signal,
+        }),
+      ).rejects.toThrow('Connection is not compatible');
+      expect(open).not.toHaveBeenCalled();
+      await runtime.close();
+    },
+  );
+
+  it('rejects unsupported connection currency auth and post-check cancellation', async () => {
+    const controller = new AbortController();
+    const assertConnectionSecretCurrent = vi.fn(() => {
+      controller.abort();
+      return Promise.resolve();
+    });
+    const runtime = await createWorkerNodeRuntimeCapabilities(
+      { database: databaseConfig },
+      {
+        connectionDatabase: {
+          resolveConnectionSecret: vi.fn(),
+          assertConnectionSecretCurrent,
+        },
+        connectionEncryption: { open: vi.fn() },
+        providerRateLimiter: {
+          consume: () => Promise.resolve({ allowed: true as const }),
+        },
+      },
+    );
+    const assertCurrent =
+      runtime.factories.connections?.(context).assertCurrent;
+    if (assertCurrent === undefined)
+      throw new Error('connection capability missing');
+    await expect(
+      assertCurrent({
+        connectionId,
+        expectedProviderKey: 'http',
+        expectedAuthType: 'unsupported',
+        secretVersionId,
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow('Connection auth type is not supported');
+    await expect(
+      assertCurrent({
+        connectionId,
+        expectedProviderKey: 'http',
+        expectedAuthType: 'http_headers',
+        secretVersionId,
+        signal: controller.signal,
+      }),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    await runtime.close();
+  });
+
   it('spools a bounded stream, persists pending metadata before upload, finalizes after verification, and cleans up', async () => {
     const spoolDirectory = await mkdtemp(
       path.join(tmpdir(), 'pertexo-capability-test-'),
@@ -445,6 +642,113 @@ describe('worker node runtime capabilities', () => {
         previewRunId,
       }),
     );
+    await runtime.close();
+  });
+
+  it.each([0, 1.5, 10_485_761])(
+    'rejects invalid artifact byte limit %s',
+    async (maxBytes) => {
+      const runtime = await createWorkerNodeRuntimeCapabilities(
+        { database: databaseConfig },
+        {
+          artifactPersistence: { createPending: vi.fn(), finalize: vi.fn() },
+          artifactStore: { put: vi.fn() },
+        },
+      );
+      const artifacts = runtime.factories.artifacts?.(context);
+      if (artifacts === undefined)
+        throw new Error('artifact capability missing');
+      await expect(
+        artifacts.write({
+          body: (async function* (): AsyncGenerator<Uint8Array> {
+            await Promise.resolve();
+            yield new Uint8Array();
+          })(),
+          maxBytes,
+          mediaType: 'text/plain',
+          purpose: 'test',
+          signal: new AbortController().signal,
+        }),
+      ).rejects.toBeInstanceOf(TypeError);
+      await runtime.close();
+    },
+  );
+
+  it.each([new Date(Number.NaN), new Date('2026-08-22T11:59:59.000Z')])(
+    'rejects invalid artifact deadline %s',
+    async (artifactRetentionDeadline) => {
+      const now = new Date('2026-08-22T12:00:00.000Z');
+      const runtime = await createWorkerNodeRuntimeCapabilities(
+        { database: databaseConfig },
+        {
+          artifactPersistence: { createPending: vi.fn(), finalize: vi.fn() },
+          artifactStore: { put: vi.fn() },
+          now: () => now,
+        },
+      );
+      const artifacts = runtime.factories.artifacts?.({
+        ...context,
+        artifactRetentionDeadline,
+      });
+      if (artifacts === undefined)
+        throw new Error('artifact capability missing');
+      await expect(
+        artifacts.write({
+          body: (async function* (): AsyncGenerator<Uint8Array> {
+            await Promise.resolve();
+            yield new Uint8Array();
+          })(),
+          maxBytes: 1,
+          mediaType: 'text/plain',
+          purpose: 'test',
+          signal: new AbortController().signal,
+        }),
+      ).rejects.toBeInstanceOf(
+        artifactRetentionDeadline.getTime() <= now.getTime()
+          ? RangeError
+          : TypeError,
+      );
+      await runtime.close();
+    },
+  );
+
+  it('rejects incompatible artifact-store metadata and keeps readiness optional', async () => {
+    const runtime = await createWorkerNodeRuntimeCapabilities(
+      { database: databaseConfig },
+      {
+        artifactPersistence: {
+          createPending: vi.fn(() => Promise.resolve()),
+          finalize: vi.fn(),
+        },
+        artifactStore: {
+          put: (request) =>
+            Promise.resolve({
+              artifactId: 'wrong',
+              workspaceId: request.workspaceId,
+              byteLength: request.byteLength,
+              mediaType: request.mediaType,
+              sha256: request.sha256,
+            }),
+        },
+        artifactId: () => artifactId,
+      },
+    );
+    await expect(runtime.checkReadiness()).resolves.toBeUndefined();
+    const artifacts = runtime.factories.artifacts?.(context);
+    if (artifacts === undefined) throw new Error('artifact capability missing');
+    await expect(
+      artifacts.write({
+        body: (async function* (): AsyncGenerator<Uint8Array> {
+          await Promise.resolve();
+          yield new Uint8Array([1]);
+        })(),
+        maxBytes: 1,
+        mediaType: 'text/plain',
+        purpose: 'test',
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow('Artifact store returned incompatible metadata');
+    await runtime.close();
     await runtime.close();
   });
 });

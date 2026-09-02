@@ -80,6 +80,191 @@ function lease(): NodeAttemptLease {
 }
 
 describe('NodeAttemptHandler', () => {
+  it.each([9, 1_000.5, 30_000])(
+    'rejects invalid heartbeat interval %s',
+    (heartbeatIntervalMillis) => {
+      expect(() =>
+        createNodeAttemptHandler({
+          engine: { prepare: vi.fn() },
+          heartbeatIntervalMillis,
+          leaseDurationSeconds: 30,
+          reader: { close: vi.fn(), readForExecution: vi.fn() },
+          registry: { execute: vi.fn() },
+          runStore: {
+            claimDelivery: vi.fn(),
+            close: vi.fn(),
+            complete: vi.fn(),
+            heartbeat: vi.fn(),
+            loadInputs: vi.fn(),
+            markDispatched: vi.fn(),
+          },
+          workerId: 'worker-1',
+        }),
+      ).toThrow(TypeError);
+    },
+  );
+
+  it('rejects transport identity before claiming durable state', async () => {
+    const claimDelivery = vi.fn();
+    const handler = createNodeAttemptHandler({
+      engine: { prepare: vi.fn() },
+      heartbeatIntervalMillis: 1_000,
+      leaseDurationSeconds: 30,
+      reader: { close: vi.fn(), readForExecution: vi.fn() },
+      registry: { execute: vi.fn() },
+      runStore: {
+        claimDelivery,
+        close: vi.fn(),
+        complete: vi.fn(),
+        heartbeat: vi.fn(),
+        loadInputs: vi.fn(),
+        markDispatched: vi.fn(),
+      },
+      workerId: 'worker-1',
+    });
+    const original = delivery();
+    const mismatched = {
+      ...original,
+      transport: { ...original.transport, jobId: 'wrong' },
+    };
+    await expect(
+      handler.handle(mismatched, { signal: new AbortController().signal }),
+    ).rejects.toMatchObject({ code: 'transport_identity_mismatch' });
+    expect(claimDelivery).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [{ kind: 'not_found' as const }, 'workflow_not_found'],
+    [
+      { kind: 'v1_projection' as const, workflowVersion: {} as never },
+      'workflow_non_executable',
+    ],
+  ])(
+    'rejects an unavailable published workflow as %s',
+    async (published, code) => {
+      const handler = createNodeAttemptHandler({
+        engine: { prepare: vi.fn() },
+        heartbeatIntervalMillis: 1_000,
+        leaseDurationSeconds: 30,
+        reader: {
+          close: vi.fn(),
+          readForExecution: vi.fn().mockResolvedValue(published),
+        },
+        registry: { execute: vi.fn() },
+        runStore: {
+          claimDelivery: vi
+            .fn()
+            .mockResolvedValue({ kind: 'claimed', lease: lease() }),
+          close: vi.fn(),
+          complete: vi.fn(),
+          heartbeat: vi.fn(),
+          loadInputs: vi.fn(),
+          markDispatched: vi.fn(),
+        },
+        workerId: 'worker-1',
+      });
+      await expect(
+        handler.handle(delivery(), { signal: new AbortController().signal }),
+      ).rejects.toMatchObject({ code });
+    },
+  );
+
+  it('rejects published identity drift and missing durable control reasons', async () => {
+    const runStore = {
+      claimDelivery: vi
+        .fn()
+        .mockResolvedValue({ kind: 'claimed', lease: lease() }),
+      close: vi.fn(),
+      complete: vi.fn(),
+      heartbeat: vi.fn(),
+      loadInputs: vi.fn().mockResolvedValue({
+        abortRequested: true,
+        completedNodeOutputs: {},
+        runInput: null,
+      }),
+      markDispatched: vi.fn(),
+    };
+    const dependencies = {
+      engine: {
+        prepare: vi
+          .fn()
+          .mockReturnValue({ upstreamNodeOutputs: [], execute: vi.fn() }),
+      },
+      heartbeatIntervalMillis: 1_000,
+      leaseDurationSeconds: 30,
+      reader: {
+        close: vi.fn(),
+        readForExecution: vi.fn().mockResolvedValue({
+          kind: 'v2_projection',
+          workflowVersion: projection(),
+        }),
+      },
+      registry: { execute: vi.fn() },
+      runStore,
+      workerId: 'worker-1',
+    } satisfies Parameters<typeof createNodeAttemptHandler>[0];
+
+    const drifted = {
+      ...dependencies,
+      reader: {
+        ...dependencies.reader,
+        readForExecution: vi.fn().mockResolvedValue({
+          kind: 'v2_projection',
+          workflowVersion: { ...projection(), workspaceId: ATTEMPT_ID },
+        }),
+      },
+    };
+    await expect(
+      createNodeAttemptHandler(drifted).handle(delivery(), {
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toMatchObject({ code: 'identity_mismatch' });
+    await expect(
+      createNodeAttemptHandler(dependencies).handle(delivery(), {
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toMatchObject({ code: 'control_reason_missing' });
+  });
+
+  it('requires output for a resumed Wait admission', async () => {
+    const handler = createNodeAttemptHandler({
+      engine: {
+        prepare: vi
+          .fn()
+          .mockReturnValue({ upstreamNodeOutputs: [], execute: vi.fn() }),
+      },
+      heartbeatIntervalMillis: 1_000,
+      leaseDurationSeconds: 30,
+      reader: {
+        close: vi.fn(),
+        readForExecution: vi.fn().mockResolvedValue({
+          kind: 'v2_projection',
+          workflowVersion: projection(),
+        }),
+      },
+      registry: { execute: vi.fn() },
+      runStore: {
+        claimDelivery: vi.fn().mockResolvedValue({
+          kind: 'claimed',
+          lease: { ...lease(), admissionKind: 'wait_resume' },
+        }),
+        close: vi.fn(),
+        complete: vi.fn(),
+        heartbeat: vi.fn(),
+        loadInputs: vi.fn().mockResolvedValue({
+          abortRequested: false,
+          completedNodeOutputs: {},
+          runInput: null,
+        }),
+        markDispatched: vi.fn(),
+      },
+      workerId: 'worker-1',
+    });
+    await expect(
+      handler.handle(delivery(), { signal: new AbortController().signal }),
+    ).rejects.toMatchObject({ code: 'wait_resume_output_missing' });
+  });
+
   it('treats an exact completed delivery as a no-op before loading workflow state', async () => {
     const claimDelivery = vi.fn().mockResolvedValue({ kind: 'duplicate' });
     const store = {
@@ -218,6 +403,7 @@ describe('NodeAttemptHandler', () => {
       ...lease(),
       sideEffectClass: 'idempotent_with_key' as const,
       providerIdempotencyKey: 'provider-attempt-key',
+      providerDispatchBinding: 'email:v1:sha256:' + 'b'.repeat(64),
       providerDispatchUnresolved: true as const,
     };
     const order: string[] = [];
@@ -275,6 +461,7 @@ describe('NodeAttemptHandler', () => {
       },
     );
     const connections = { assertCurrent: vi.fn(), resolve: vi.fn() };
+    const artifacts = { write: vi.fn() };
     const registryExecute = vi.fn<NodeExecutionRegistry['execute']>(
       async (request) => {
         order.push('executor-start');
@@ -286,8 +473,10 @@ describe('NodeAttemptHandler', () => {
           attemptNumber: 1,
           sideEffectClass: 'idempotent_with_key',
           providerIdempotencyKey: 'provider-attempt-key',
+          providerDispatchBinding: 'email:v1:sha256:' + 'b'.repeat(64),
           providerDispatchUnresolved: true,
           connections,
+          artifacts,
         });
         await request.runtime?.beforeDispatch({
           connectionFence: {
@@ -297,6 +486,9 @@ describe('NodeAttemptHandler', () => {
             secretVersionId: '22222222-2222-4222-8222-222222222222',
           },
           providerDispatchBinding: 'email:v1:sha256:' + 'a'.repeat(64),
+        });
+        await expect(request.runtime?.beforeDispatch()).rejects.toMatchObject({
+          code: 'duplicate_dispatch',
         });
         order.push('provider-io');
         return { kind: 'succeeded', output: { status: 204 } };
@@ -314,7 +506,10 @@ describe('NodeAttemptHandler', () => {
         execute: registryExecute,
       },
       runStore: store,
-      runtimeCapabilities: { connections: () => connections },
+      runtimeCapabilities: {
+        connections: () => connections,
+        artifacts: () => artifacts,
+      },
       workerId: 'worker-1',
     });
 
