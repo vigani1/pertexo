@@ -4674,7 +4674,7 @@ Verification at implementation head `9e4263794715d273e8660c0dd4efa67c5032e940`:
 No Phase 7 completion box changes in this documentation-only audit. The current
 P1 findings and the existing live-production checklist remain release blockers.
 
-## Current whole-repository audit — implementation head `e9aa0f2`
+## Current whole-repository audit — implementation tree `8d009f5`
 
 Status: **Repository remediation complete; documentation-gate CI enforcement
 and external production/control evidence remain open**
