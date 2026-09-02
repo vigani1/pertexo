@@ -59,4 +59,52 @@ test('describes only the exact selected files without claiming classification', 
   });
   assert.equal(report.classification.status, 'unreviewed');
   assert.equal(report.classification.reviewedCount, 0);
+  assert.equal(report.classification.unreviewedCount, 0);
+});
+
+test('attaches exact durable reviews and rejects stale review locations', () => {
+  const reports = new Map([
+    [
+      'api',
+      {
+        '/repo/apps/api/src/generated.ts': {
+          branchMap: {
+            0: {
+              type: 'cond-expr',
+              locations: [{ start: { line: 12, column: 4 } }],
+            },
+          },
+          b: { 0: [0] },
+        },
+      },
+    ],
+  ]);
+  const review = {
+    cohort: 'api',
+    file: 'apps/api/src/generated.ts',
+    branchType: 'cond-expr',
+    line: 12,
+    column: 4,
+    classification: 'generated',
+    justification: 'Compiler-generated decorator fallback is not callable.',
+  };
+
+  const report = createRiskCoverageReport(reports, '/repo', new Date(0), [
+    review,
+  ]);
+  assert.equal(report.classification.status, 'reviewed');
+  assert.equal(report.classification.reviewedCount, 1);
+  assert.equal(report.classification.unreviewedCount, 0);
+  assert.deepEqual(report.uncoveredBranches[0], {
+    ...review,
+    reviewStatus: 'reviewed',
+  });
+
+  assert.throws(
+    () =>
+      createRiskCoverageReport(reports, '/repo', new Date(0), [
+        { ...review, line: 13 },
+      ]),
+    /Stale risk-coverage reviews/u,
+  );
 });

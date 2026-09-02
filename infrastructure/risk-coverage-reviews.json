@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "reviews": [
+    {
+      "cohort": "api",
+      "file": "apps/api/src/platform/http/problem-details.filter.ts",
+      "branchType": "cond-expr",
+      "line": 313,
+      "column": 7,
+      "classification": "generated",
+      "justification": "TypeScript emits an uncallable fallback while lowering the parameterless Nest Catch decorator; application control flow cannot select it."
+    }
+  ]
+}
