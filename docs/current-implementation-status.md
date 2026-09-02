@@ -35,7 +35,7 @@ tests. The exact report schema and validator already live under
 
 ## Current engineering remediation
 
-Audited implementation tree: `603923526c3f9632b1aa3ee0b699bdd00b7893eb`
+Audited implementation tree: `355998d2410701645d617c30d53450bb6d398ca7`
 
 The 2026-09-01 audit refresh is implemented at fixed ancestor `0865633` and
 merged to `main` through pull request #7. It
@@ -63,13 +63,14 @@ quality CI invokes it with complete history, and a fixture recreates the
 candidate on a different parent to prove the supported rebase-style flow.
 Pull request #26 and exact-main CI both executed that protected gate
 successfully, closing C-12. Risk coverage still names 23 exact selected files
-with repository-relative paths, but targeted public-behavior tests have raised
-branch coverage to 91.46% for the workflow engine, 94.23% for the database,
-83.72% for the worker, and 99.64% for the API. The remaining 129 uncovered
-instrumentation branches are all tied to exact durable reviews: 66 defensive,
-22 unreachable, 15 compiler-generated, and 26 exercised by named integration
-cohorts. The report fails closed if a review is malformed, duplicated, or stale;
-no selected-file branch remains unreviewed. The remediation also
+with repository-relative paths. After removing tests coupled to mutable private
+state, public-interface tests measure 88.38% workflow-engine, 92.30% database,
+86.43% worker, and 99.64% API branch coverage. Of 153 uncovered instrumentation
+branches, 96 have exact source-fingerprinted reviews and 57 remain explicitly
+unreviewed. The former 26 generic integration classifications were withdrawn.
+The report rejects malformed, duplicate, stale-source, and unsupported
+integration evidence; C-06 is therefore partially remediated rather than
+closed. The remediation also
 centralizes the coordinator validation primitives privately and records the
 fixed-revision
 latency/memory/query comparison in
