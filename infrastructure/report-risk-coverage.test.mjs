@@ -391,9 +391,7 @@ test('rejects a review after source semantics change at the same location', () =
         new Date(0),
         [review],
         {},
-        new Map([
-          ['/repo/apps/api/src/policy.ts', 'isBlocked ? yes : no;\n'],
-        ]),
+        new Map([['/repo/apps/api/src/policy.ts', 'isBlocked ? yes : no;\n']]),
       ),
     /Stale risk-coverage source fingerprint/u,
   );
