@@ -80,10 +80,10 @@ proof.
 | --- | ---: | --- |
 | Architecture and domain ownership | 9.2/10 | Secondary large closures remain characterization candidates |
 | Readability and maintainability | 8.8/10 | Complexity is reduced and ratcheted, not eliminated |
-| TypeScript and runtime contracts | 9.2/10 | Runtime-major drift is now rejected automatically |
-| Reuse and package design | 9.0/10 | Same-owner clones are consolidated without widening packages |
+| TypeScript and runtime contracts | 9.2/10 | Repository-owned contracts are strong; third-party and deployed-provider compatibility still require maintained runtime schemas and observed evidence |
+| Reuse and package design | 9.0/10 | Current package interfaces are disciplined, but their ongoing depth and ownership still need change-history evidence |
 | PostgreSQL and data integrity | 9.0/10 | Live capacity, backup, failover, and scale behavior unproved |
-| Application security | 9.0/10 | No current application exploit found |
+| Application security | 9.0/10 | No current application exploit was found; provider-control canaries and deployed adversarial evidence remain absent |
 | Repository and supply-chain security | 8.7/10 | External canaries, signed registry provenance, and independent review absent |
 | Testing | 9.1/10 | Critical coverage is risk-selected rather than repository-wide |
 | CI and change governance | 9.1/10 | Protected checks are green; solo review remains an accepted constraint |
@@ -96,6 +96,75 @@ proof.
 Overall codebase engineering quality: **9.0/10**.
 
 Overall state including production readiness: **8.6/10**.
+
+### 3.1 What passing tests and coverage mean
+
+`pnpm check` passing means every configured build, static check, contract check,
+complexity check, type check, and all 1,336 currently defined unit assertions
+completed successfully. The protected CI result adds the configured real-service,
+compatibility, recovery, deployment-security, and production-image cohorts. This
+is strong evidence that the behaviors exercised by those checks still work. It
+does **not** mean that every source line, decision, failure mode, provider
+interaction, or deployed operating condition was exercised.
+
+Coverage answers a narrower question: which instrumented implementation paths
+were executed by a particular test command. This repository intentionally gates
+23 selected critical files rather than claiming whole-repository coverage.
+Branch coverage is the most useful headline here because it measures alternative
+decisions, not merely whether a line was touched. The current 79.34% workflow
+engine, 61.53% database, 62.79% worker, and 84.45% API branch results therefore
+mean that the configured floors pass while meaningful paths remain unexecuted.
+The generated inventory records 361 uncovered branch sites as `unreviewed`.
+Neither a green test command nor a passing threshold silently classifies those
+sites as safe.
+
+Coverage percentage alone must not drive test work. Exercise consequential
+authorization, tenancy, state-transition, retry, rollback, lease/fencing,
+concurrency, timeout, idempotency, corruption, and provider-failure paths first.
+Classify defensive or unreachable branches individually with durable evidence.
+Do not add implementation-coupled assertions merely to increase a percentage,
+and do not set a vanity 100% target that rewards deleting useful defensive
+checks or testing private statements instead of module interfaces.
+
+### 3.2 Evidence required to raise each score
+
+Scores rise only after the relevant implementation and regression or operational
+evidence exist. Completing a task without proving its effect does not by itself
+raise a score. A 10 additionally requires current operational proof and no
+material known gap, so several areas cannot reach 10 through repository-only
+changes.
+
+| Area | Best next improvement | Evidence required before raising the score |
+| --- | --- | --- |
+| Architecture and domain ownership | Characterize the remaining large persistence and coordination closures one invariant at a time. Extract a private internal seam only where it improves locality; preserve the owning module's small external interface and do not add a hypothetical adapter. | Focused behavior and failure-path tests stay green; package dependency direction and public exports do not widen; complexity falls without extra queries, allocations, or latency. Repeated change history should show that an invariant can be changed in one owning module. |
+| Readability and maintainability | Work down the current complexity baseline when a hotspot creates real review or change cost. Prefer named policy/parser functions, explicit domain terms, short orchestration, and comments that explain invariants or reasons rather than restating code. | The ratchet records a lower hotspot, reviewers can trace success and failure paths locally, and focused tests plus the fixed-revision performance comparison show unchanged behavior and no material regression. |
+| TypeScript and runtime contracts | Keep untrusted HTTP, queue, database, checkpoint, environment, and provider data behind runtime parsers. Remove assertions only when a parser or construction rule proves the fact; advance Node runtime and ambient types together. | Strict production/test type checks, generated-contract drift checks, negative parser fixtures, consumer compatibility tests, and deployed/provider compatibility evidence pass for the same versioned contracts. |
+| Reuse and package design | Continue exact-clone and dependency-graph review, but consolidate only same-owner behavior. Keep cross-owner similarities local unless they share an invariant and change together. Remove pass-through exports or obsolete interfaces when the deletion test shows they add no leverage. | No undeclared or circular dependencies, no sibling-internal imports, bounded public export surfaces, and change-history evidence that shared behavior is fixed once for multiple callers without coupling unrelated packages. |
+| PostgreSQL and data integrity | Prove worst-case connection budgets, pooler behavior, migration concurrency, backup/PITR, failover/failback, replica lag, tenant isolation, retention, and regional restore in the target environment. | Fresh reports bind database version, migration head, roles, workload, capacity arithmetic, recovery timings, integrity checks, and cleanup to the reviewed deployment; RPO/RTO and headroom meet the plan. |
+| Application security | Add controlled adversarial tests for authentication/session binding, authorization, tenant isolation, webhook replay, abuse limits, unsafe payloads, artifact access, and lifecycle commands; execute provider-approved secret and vulnerable-dependency canaries. | Negative unit/integration cases pass, provider controls visibly reject disposable canaries, findings are triaged, and a deployed security review finds no unresolved material exploit path. |
+| Repository and supply-chain security | Close the build-to-deployment identity chain: create signed provenance, publish one scanned digest, promote that digest without rebuilding, verify it at admission, and establish independent review/signing identities. | CI, registry attestation, deployment manifest, and running task all identify the same immutable digest; substitution tests fail; branch and review controls operate without the solo-maintainer exception. |
+| Testing | Review the 361 uncovered selected-file branches and expand selection toward every critical policy module. Add mutation or failure-injection tests for high-consequence decisions, while retaining distinct unit, integration, compatibility, recovery, and production-image cohorts. | Every high-risk uncovered branch is exercised or individually justified; mutation canaries prove suites detect authorization/state-machine changes; thresholds ratchet upward; flake, duration, retry, and skip trends remain visible and bounded. |
+| CI and change governance | Keep all required jobs reproducible and independently diagnosable, monitor action/runtime drift, observe Dependabot groups through real cycles, and remove the solo-review exception when another maintainer exists. | Repeated exact-head runs keep all 11 strict contexts green without blanket retries; failures retain useful artifacts; dependency updates are isolated and actionable; a non-author approval and code-owner review protect critical paths. |
+| Reliability and durability | Run the existing crash, dependency-outage, backpressure, failover, restore, regional-loss, and replay exercises against immutable deployed versions under realistic concurrency. | Repeated reports demonstrate fencing, idempotency, no acknowledged-data loss outside the stated RPO, bounded recovery inside the RTO, correct degraded behavior, and successful cleanup with no unexplained intermittent failures. |
+| Observability and operability | Deploy dashboards and alerts for the repository-defined SLIs, validate cardinality and trace correlation, exercise every operator command, and test pager routing plus escalation. | Synthetic incidents produce the expected metrics, traces, logs, alert, page, runbook action, ownership trail, and resolution timing; telemetry remains usable under load and during dependency failure. |
+| Performance and scalability | Establish representative workload models and budgets for API latency, persisted-to-visible SSE latency, worker throughput, queue delay, artifact traffic, noisy-tenant fairness, autoscaling, and total PostgreSQL connections. | Repeatable deployed load reports record workload and versions, meet SLO/budget targets at expected and peak scale, demonstrate API/worker scaling independently, and identify a safe saturation and backpressure envelope. |
+| Documentation and governance | Keep the plan, ADRs, progress tracker, audit, runbooks, ownership, exceptions, and evidence links synchronized. Add decision expiry/review dates and record actual delivery/incident measures rather than inferred maturity. | Automated link/drift checks pass, a fresh maintainer can reproduce the documented checks and operate a drill, exceptions have owners and review dates, and DORA/incident evidence is measured from real delivery history. |
+| Production readiness | Complete C-01, C-03, the external portion of C-04, and C-08; close or explicitly accept every Phase 7 criterion using evidence from the immutable release candidate. | A production-readiness review links current capacity, security, supply-chain, availability, latency, telemetry, pager, backup/PITR, failover, regional recovery, runbook, rollback, and ownership evidence to one deployable version. |
+
+### 3.3 Recommended order of work
+
+1. Complete live capacity, load, backup/PITR, failure, and regional-recovery
+   evidence because these are the release-blocking unknowns in C-01.
+2. Close the digest/signing/promotion chain and run the safe provider-control
+   canaries in C-03/C-04.
+3. Triage the 361 uncovered branches by consequence, then add mutation and
+   failure-injection tests before raising coverage floors.
+4. Observe CI flake, duration, skip, retry, and Dependabot-group behavior over
+   multiple real runs; fix trends rather than optimizing a single snapshot.
+5. Refactor secondary complexity candidates only when characterization tests
+   exist and the change demonstrably improves module depth or locality.
+6. Add independent review and signing controls when the necessary second
+   maintainer and identities exist; do not create a branch-protection deadlock.
 
 ## 4. Evidence checked at this head
 
