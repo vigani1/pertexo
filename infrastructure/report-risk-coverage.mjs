@@ -10,6 +10,7 @@ const REVIEW_CLASSIFICATIONS = new Set([
   'defensive',
   'unreachable',
   'generated',
+  'integration',
 ]);
 
 function branchKey(branch) {
@@ -123,7 +124,7 @@ export function createRiskCoverageReport(
   const reviewedCount = reviewedBranches.size;
   const unreviewedCount = classifiedBranches.length - reviewedCount;
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     scope: {
       kind: 'selected-critical-module-files',
       cohorts: selections,
@@ -158,10 +159,10 @@ async function main() {
     await readFile('infrastructure/risk-coverage-reviews.json', 'utf8'),
   );
   if (
-    reviewManifest.schemaVersion !== 2 ||
+    reviewManifest.schemaVersion !== 3 ||
     !Array.isArray(reviewManifest.reviews)
   ) {
-    throw new Error('Risk-coverage review manifest must use schema version 2');
+    throw new Error('Risk-coverage review manifest must use schema version 3');
   }
   const output = createRiskCoverageReport(
     reports,
