@@ -37,3 +37,9 @@ Release evidence retains the protection API response, the exact required-check
 contexts, and a pull request showing that GitHub refused merge while one
 required check was failing. Repository-local tests cannot substitute for that
 external evidence.
+
+`pnpm docs:check` validates repository-local Markdown targets and heading
+anchors, keeps the audit implementation SHA synchronized across the audit,
+tracker, and current-status documents, and proves that SHA is an ancestor of
+the publication commit. It intentionally does not make network-dependent
+external-link availability part of deterministic CI.

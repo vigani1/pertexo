@@ -4721,6 +4721,10 @@ Repository-controlled remediation:
       `docs/operations/complexity-refactor-performance.md`.
 - [x] Refresh README/current-status/audit/tracker semantics at a fixed
       implementation ancestor while preserving the historical red CI evidence.
+- [x] Gate repository-local Markdown targets and heading anchors, synchronize
+      the fixed audit SHA across the audit/tracker/current-status documents,
+      prove that SHA is an ancestor of publication, and give the solo-maintainer
+      exception an owner and bounded review date.
 
 Still open:
 
@@ -4752,6 +4756,9 @@ correct.
 
 Verification at `1c6b6aac6e5d6900721a3e8a9e7f469b2b871386`:
 
+- `pnpm docs:check` validated 25 repository-local links across 49 Markdown
+  files, synchronized the three audit-head claims, and proved the audited head
+  is an ancestor of the publication branch;
 - `pnpm check` passed formatting, the Node 24 compatibility gate, all builds,
   ESLint, complexity, generated contracts, TypeScript, and 1,336 unit tests
   across all 18 workspace projects;

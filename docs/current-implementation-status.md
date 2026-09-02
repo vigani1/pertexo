@@ -35,6 +35,8 @@ tests. The exact report schema and validator already live under
 
 ## Current engineering remediation
 
+Audited implementation head: `1c6b6aac6e5d6900721a3e8a9e7f469b2b871386`
+
 The 2026-09-01 audit refresh is implemented at fixed ancestor `0865633` and
 merged to `main` through pull request #7. It
 stabilizes destructive PostgreSQL service control, aligns Node 24 ambient and
@@ -55,9 +57,11 @@ The subsequent evidence correction structurally parses workflow YAML, fails
 closed on dynamic or file-based Node selectors, and binds each selector to its
 exact `setup-node` step, including case-insensitive GitHub repository identity
 matching. The CI action pins now use immutable v6 releases that declare Node
-24. It also reports coverage for 23 exact selected files with every uncovered
-site explicitly unreviewed, centralizes the coordinator validation primitives
-privately, and records the fixed-revision latency/memory/query comparison in
+24. Documentation CI now structurally validates local targets and anchors plus
+the shared audited implementation SHA. It also reports coverage for 23 exact
+selected files with every uncovered site explicitly unreviewed, centralizes the
+coordinator validation primitives privately, and records the fixed-revision
+latency/memory/query comparison in
 [`docs/operations/complexity-refactor-performance.md`](./operations/complexity-refactor-performance.md).
 
 ## Sources of truth
