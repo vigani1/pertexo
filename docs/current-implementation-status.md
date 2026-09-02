@@ -48,11 +48,12 @@ registry-signing, promotion, and independent-review findings remain open until
 observed externally; they are not repository implementation defects disguised
 as completed evidence.
 
-The subsequent evidence correction fails closed on dynamic or file-based Node
-selectors and binds each selector to its exact `setup-node` step, reports
-coverage for 23 exact selected files with every uncovered site explicitly
-unreviewed, centralizes the coordinator validation primitives privately, and
-records the fixed-revision latency/memory/query comparison in
+The subsequent evidence correction structurally parses workflow YAML, fails
+closed on dynamic or file-based Node selectors, and binds each selector to its
+exact `setup-node` step. It also reports coverage for 23 exact selected files
+with every uncovered site explicitly unreviewed, centralizes the coordinator
+validation primitives privately, and records the fixed-revision
+latency/memory/query comparison in
 [`docs/operations/complexity-refactor-performance.md`](./operations/complexity-refactor-performance.md).
 
 ## Sources of truth

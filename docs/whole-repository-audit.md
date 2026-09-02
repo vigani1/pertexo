@@ -2,7 +2,7 @@
 
 Recorded: 2026-09-01
 
-Audited implementation head: `d0baa0d3d743fd8c7f690a59b6b5acdf9711f2d1`
+Audited implementation head: `a62c1d497526ffad0e8e92234ee83d807faf8671`
 
 Status: current findings, remediation state, and remaining external evidence
 
@@ -532,8 +532,10 @@ engines range, every workflow Node selection, every Docker stage, and the
 ambient type major, requiring all of them to resolve to Node 24. It rejects
 dynamic/matrix expressions, `node-version-file`, and setup-node steps without
 their own literal selector. Selectors must belong to that exact step's `with`
-mapping, so unrelated or sibling `node-version` keys cannot mask drift. Ten
-fixtures prove the supported surfaces fail closed.
+mapping, so unrelated or sibling `node-version` keys cannot mask drift.
+Workflow files are parsed structurally with pinned `yaml` 2.9.0: quoted action
+values are recognized, block-scalar text is not treated as a step, and invalid
+YAML fails closed. Thirteen fixtures prove the supported surfaces.
 
 **Maintenance rule**
 
