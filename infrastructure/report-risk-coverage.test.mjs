@@ -153,3 +153,38 @@ test('reviews distinct instrumentation branches at the same source location', ()
   assert.equal(report.classification.reviewedCount, 2);
   assert.equal(report.classification.unreviewedCount, 0);
 });
+
+test('accepts an exact integration-covered branch review', () => {
+  const reports = new Map([
+    [
+      'worker',
+      {
+        '/repo/apps/worker/src/adapter.ts': {
+          branchMap: {
+            3: {
+              type: 'cond-expr',
+              locations: [{ start: { line: 20, column: 4 } }],
+            },
+          },
+          b: { 3: [0] },
+        },
+      },
+    ],
+  ]);
+  const report = createRiskCoverageReport(reports, '/repo', new Date(0), [
+    {
+      cohort: 'worker',
+      file: 'apps/worker/src/adapter.ts',
+      branchId: '3',
+      locationIndex: 0,
+      branchType: 'cond-expr',
+      line: 20,
+      column: 4,
+      classification: 'integration',
+      justification:
+        'The database-backed adapter path is exercised by the named integration suite.',
+    },
+  ]);
+  assert.equal(report.classification.reviewedCount, 1);
+  assert.equal(report.classification.unreviewedCount, 0);
+});

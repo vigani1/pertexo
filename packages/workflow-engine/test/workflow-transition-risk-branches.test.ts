@@ -498,6 +498,35 @@ describe('workflow transition risk branches', () => {
     }).toThrow(expect.objectContaining({ code: 'transition_invalid' }));
   });
 
+  it('defaults loop completion to succeeded and preserves an omitted output', () => {
+    const control: InvocationState = {
+      invocationKey: 'loop-control',
+      nodeId: 'loop',
+      status: 'waiting',
+      attemptNumber: 1,
+    };
+    const iteration: InvocationState = {
+      invocationKey: 'body-0',
+      nodeId: 'body',
+      status: 'running',
+      attemptNumber: 1,
+    };
+    const state = transitionState({ invocations: [control, iteration] });
+    state.loops.set('loop-control', loopState());
+    apply(state, [
+      {
+        kind: 'loop_iteration_completed',
+        loopId: 'loop',
+        controlInvocationKey: 'loop-control',
+        invocationKey: 'body-0',
+        ordinal: 0,
+      },
+    ]);
+    expect(state.invocations.get('body-0')).toMatchObject({
+      status: 'succeeded',
+    });
+  });
+
   it('rejects unknown invocation observations and due resumptions', () => {
     expect(() => {
       apply(transitionState(), [
