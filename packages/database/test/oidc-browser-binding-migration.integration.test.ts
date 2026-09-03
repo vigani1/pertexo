@@ -7,7 +7,7 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../src/migrations.js';
-import { dropDisconnectedDatabase } from './support/disposable-database.js';
+import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 
 const adminUrl =
   process.env.DATABASE_ADMIN_URL ??
@@ -17,11 +17,13 @@ const migrationBaseUrl =
   'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
 const databaseName = `pertexo_test_0071_oidc_binding_${randomUUID().replaceAll('-', '')}`;
 
-function databaseUrl(base: string): string {
-  const value = new URL(base);
-  value.pathname = `/${databaseName}`;
-  return value.toString();
-}
+const database = createDisposableDatabaseFixture({
+  adminUrl,
+  connectRoles: ['pertexo_migration', 'pertexo_api'],
+  databaseName,
+  ownerRole: 'pertexo_owner',
+});
+const { databaseUrl } = database;
 
 const migrationConfig = {
   apiRuntimeRole: 'pertexo_api',
@@ -34,27 +36,8 @@ const migrationConfig = {
   workerRuntimeRole: 'pertexo_worker',
 } as const;
 
-beforeAll(async () => {
-  const admin = new Pool({ connectionString: adminUrl, max: 1 });
-  try {
-    await admin.query(`create database "${databaseName}" owner pertexo_owner`);
-    await admin.query(`revoke all on database "${databaseName}" from public`);
-    await admin.query(
-      `grant connect on database "${databaseName}" to pertexo_migration, pertexo_api`,
-    );
-  } finally {
-    await admin.end();
-  }
-}, 30_000);
-
-afterAll(async () => {
-  const admin = new Pool({ connectionString: adminUrl, max: 1 });
-  try {
-    await dropDisconnectedDatabase(admin, databaseName);
-  } finally {
-    await admin.end();
-  }
-});
+beforeAll(database.create, 30_000);
+afterAll(database.drop);
 
 describe('OIDC browser binding prior-head migration', () => {
   it('upgrades populated 0070 transactions without leaving them reusable', async () => {
