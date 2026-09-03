@@ -36,7 +36,7 @@
     },
     {
       "cohort": "workflow-engine",
-      "file": "packages/workflow-engine/src/checkpoint.ts",
+      "file": "packages/workflow-engine/src/checkpoint-shared.ts",
       "reviews": [
         {
           "branchId": "39",
@@ -44,17 +44,7 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:886abe631956c59edfd9b3f00dd2febb093c57078a6b3d8e8689887763b0d857",
-          "classification": "generated",
-          "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
-        },
-        {
-          "branchId": "169",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:fc45ffe554e1a9904dd64247756b9d0cbfc3f1dfacf27902d8f9f27d44c982f8",
+          "sourceFingerprint": "sha256:1774518536547904e2f2a8b5526794cdc4f6ad79cb104387f489fe949f8cd64f",
           "classification": "generated",
           "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
         },
@@ -62,91 +52,125 @@
           "branchId": "20",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 140,
+          "line": 134,
           "column": 4,
           "sourceFingerprint": "sha256:25001e2c3b16a98d3d11b37482f97f38e7775d119f9e05de3b1a2f2aa4e1ba7c",
           "classification": "unreachable",
           "justification": "The synchronous traversal proves the stack is non-empty immediately before pop, with no intervening mutation or asynchronous boundary."
-        },
+        }
+      ]
+    },
+    {
+      "cohort": "workflow-engine",
+      "file": "packages/workflow-engine/src/checkpoint.ts",
+      "reviews": [
         {
-          "branchId": "82",
+          "branchId": "5",
           "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 543,
-          "column": 32,
-          "sourceFingerprint": "sha256:b199718f29dd88ea28850f264b3a0c4a15c11fce90499a43363344193921c76b",
-          "classification": "unreachable",
-          "justification": "Positive integer count-policy validation has already established that count is present."
-        },
-        {
-          "branchId": "92",
-          "locationIndex": 1,
-          "branchType": "cond-expr",
-          "line": 602,
-          "column": 14,
-          "sourceFingerprint": "sha256:603dad40bbed7f327ebe9e1a1bf608cbfc80799f92f3a064fdb86f5b80201840",
-          "classification": "unreachable",
-          "justification": "Policy parsing has already restricted kind to all, any, or count, so the final fallback cannot be selected."
-        },
-        {
-          "branchId": "105",
-          "locationIndex": 1,
-          "branchType": "cond-expr",
-          "line": 641,
-          "column": 22,
-          "sourceFingerprint": "sha256:732e056337436bfbd775a457f711fa34d256b8662fb6088b3a6412eaa6caf876",
-          "classification": "unreachable",
-          "justification": "Policy parsing has already restricted kind to all, any, or count, so the final fallback cannot be selected."
-        },
-        {
-          "branchId": "129",
-          "locationIndex": 0,
           "branchType": "if",
-          "line": 883,
-          "column": 2,
-          "sourceFingerprint": "sha256:4bc55de71c8cf9348cdb5d6f87950070ae9d2edce1cb125011fd8c9a54a35492",
-          "classification": "unreachable",
-          "justification": "The public dispatcher enters the V1 parser only after proving schemaVersion is exactly 1."
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:025e02af5825befa866b6166a5ecbc9b4e4ce7e69d8375e6fb6f2866a44c5dae",
+          "classification": "generated",
+          "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
         },
         {
-          "branchId": "139",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 1018,
-          "column": 12,
-          "sourceFingerprint": "sha256:e0a82e973936c3c242cfad7622ec43803af058842f859b1c57d7c758b8bd2865",
-          "classification": "unreachable",
-          "justification": "Join parsing always materializes joinInvocationKey from the explicit key or joinId before consistency validation."
-        },
-        {
-          "branchId": "159",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 1205,
-          "column": 6,
-          "sourceFingerprint": "sha256:81a5efb90fe6ffbbc64fe89da216637e7abdfa91ff634cdc8487061bd5145721",
-          "classification": "unreachable",
-          "justification": "Equal invocation keys identify the same node; duplicate selections are coalesced or rejected before sorting."
-        },
-        {
-          "branchId": "170",
+          "branchId": "6",
           "locationIndex": 0,
           "branchType": "cond-expr",
-          "line": 1295,
+          "line": 30,
           "column": 31,
           "sourceFingerprint": "sha256:6ff8067e3be8cce00a01a3a0bc0d6be1e8b39259aafee94f8037e872e51c1d4c",
           "classification": "defensive",
           "justification": "When checkpoint parsing throws an Error, this branch preserves its sanitized message in the stable checkpoint_invalid boundary."
         },
         {
-          "branchId": "170",
+          "branchId": "6",
           "locationIndex": 1,
           "branchType": "cond-expr",
-          "line": 1295,
+          "line": 30,
           "column": 47,
           "sourceFingerprint": "sha256:b4a9d0a060754134a8502bf3bf2a04ffe29e934dc8749f6c796ba776ab135270",
           "classification": "defensive",
           "justification": "When a dependency throws a non-Error value, this fallback prevents it escaping and emits the stable checkpoint parsing failed message."
+        }
+      ]
+    },
+    {
+      "cohort": "workflow-engine",
+      "file": "packages/workflow-engine/src/checkpoint-v1-join.ts",
+      "reviews": [
+        {
+          "branchId": "14",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 95,
+          "column": 32,
+          "sourceFingerprint": "sha256:b199718f29dd88ea28850f264b3a0c4a15c11fce90499a43363344193921c76b",
+          "classification": "unreachable",
+          "justification": "Positive integer count-policy validation has already established that count is present."
+        },
+        {
+          "branchId": "24",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 154,
+          "column": 14,
+          "sourceFingerprint": "sha256:603dad40bbed7f327ebe9e1a1bf608cbfc80799f92f3a064fdb86f5b80201840",
+          "classification": "unreachable",
+          "justification": "Policy parsing has already restricted kind to all, any, or count, so the final fallback cannot be selected."
+        },
+        {
+          "branchId": "37",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 193,
+          "column": 22,
+          "sourceFingerprint": "sha256:732e056337436bfbd775a457f711fa34d256b8662fb6088b3a6412eaa6caf876",
+          "classification": "unreachable",
+          "justification": "Policy parsing has already restricted kind to all, any, or count, so the final fallback cannot be selected."
+        }
+      ]
+    },
+    {
+      "cohort": "workflow-engine",
+      "file": "packages/workflow-engine/src/checkpoint-v1.ts",
+      "reviews": [
+        {
+          "branchId": "0",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 22,
+          "column": 2,
+          "sourceFingerprint": "sha256:4bc55de71c8cf9348cdb5d6f87950070ae9d2edce1cb125011fd8c9a54a35492",
+          "classification": "unreachable",
+          "justification": "The public dispatcher enters the V1 parser only after proving schemaVersion is exactly 1."
+        },
+        {
+          "branchId": "10",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 157,
+          "column": 12,
+          "sourceFingerprint": "sha256:e0a82e973936c3c242cfad7622ec43803af058842f859b1c57d7c758b8bd2865",
+          "classification": "unreachable",
+          "justification": "Join parsing always materializes joinInvocationKey from the explicit key or joinId before consistency validation."
+        }
+      ]
+    },
+    {
+      "cohort": "workflow-engine",
+      "file": "packages/workflow-engine/src/checkpoint-v2.ts",
+      "reviews": [
+        {
+          "branchId": "5",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 70,
+          "column": 6,
+          "sourceFingerprint": "sha256:81a5efb90fe6ffbbc64fe89da216637e7abdfa91ff634cdc8487061bd5145721",
+          "classification": "unreachable",
+          "justification": "Equal invocation keys identify the same node; duplicate selections are coalesced or rejected before sorting."
         }
       ]
     },

@@ -10,6 +10,10 @@ const migrationsDirectory = path.join(
   'packages/database/migrations',
 );
 const schemaPath = path.join(repositoryRoot, 'packages/database/src/schema.ts');
+const schemaDirectory = path.join(
+  repositoryRoot,
+  'packages/database/src/schema',
+);
 const registryPath = path.join(
   repositoryRoot,
   'packages/database/raw-sql-table-registry.json',
@@ -26,7 +30,17 @@ export async function validateDatabaseSchemaOwnership() {
       ),
     )
   ).join('\n');
-  const schemaSource = await readFile(schemaPath, 'utf8');
+  const schemaNames = (await readdir(schemaDirectory))
+    .filter((name) => name.endsWith('.ts'))
+    .sort();
+  const schemaSource = (
+    await Promise.all([
+      readFile(schemaPath, 'utf8'),
+      ...schemaNames.map((name) =>
+        readFile(path.join(schemaDirectory, name), 'utf8'),
+      ),
+    ])
+  ).join('\n');
   const registry = JSON.parse(await readFile(registryPath, 'utf8'));
 
   const migrationTables = matches(
