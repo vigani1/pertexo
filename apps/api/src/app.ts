@@ -39,14 +39,8 @@ import {
 } from './platform/schedules/schedule-runtime.module.js';
 import type { RateLimitConsumer } from './platform/rate-limit/interceptor.js';
 
-export type ApiApplicationDependencies = Readonly<{
+type ApiApplicationDependencyCore = Readonly<{
   database?: WorkspaceDatabase;
-  identityRuntime?: ApiIdentityRuntime;
-  identityOverrides?: ApiIdentityRuntimeOverrides;
-  connectionRuntime?: ApiConnectionRuntime;
-  connectionOverrides?: ApiConnectionRuntimeOverrides;
-  workflowRuntime?: ApiWorkflowRuntime;
-  workflowOverrides?: ApiWorkflowRuntimeOverrides;
   webhookRuntime?: ApiWebhookRuntime;
   scheduleRuntime?: ApiScheduleRuntime;
   rateLimitConsumer?: RateLimitConsumer;
@@ -54,10 +48,46 @@ export type ApiApplicationDependencies = Readonly<{
   telemetry: TelemetryLifecycle;
 }>;
 
+type IdentityRuntimeSource =
+  | Readonly<{
+      identityRuntime: ApiIdentityRuntime;
+      identityOverrides?: never;
+    }>
+  | Readonly<{
+      identityRuntime?: undefined;
+      identityOverrides?: ApiIdentityRuntimeOverrides;
+    }>;
+
+type ConnectionRuntimeSource =
+  | Readonly<{
+      connectionRuntime: ApiConnectionRuntime;
+      connectionOverrides?: never;
+    }>
+  | Readonly<{
+      connectionRuntime?: undefined;
+      connectionOverrides?: ApiConnectionRuntimeOverrides;
+    }>;
+
+type WorkflowRuntimeSource =
+  | Readonly<{
+      workflowRuntime: ApiWorkflowRuntime;
+      workflowOverrides?: never;
+    }>
+  | Readonly<{
+      workflowRuntime?: undefined;
+      workflowOverrides?: ApiWorkflowRuntimeOverrides;
+    }>;
+
+export type ApiApplicationDependencies = ApiApplicationDependencyCore &
+  IdentityRuntimeSource &
+  ConnectionRuntimeSource &
+  WorkflowRuntimeSource;
+
 export async function createApiApplication(
   config: ApiConfig,
   dependencies: ApiApplicationDependencies,
 ): Promise<NestFastifyApplication> {
+  assertValidRuntimeSources(config, dependencies);
   const nestLogger = new NestLoggerAdapter(dependencies.logger);
   const identityRuntime =
     dependencies.identityRuntime ??
@@ -112,7 +142,14 @@ export async function createApiApplication(
   try {
     application = await NestFactory.create<NestFastifyApplication>(
       AppModule.register(config, {
-        ...dependencies,
+        logger: dependencies.logger,
+        telemetry: dependencies.telemetry,
+        ...(dependencies.database === undefined
+          ? {}
+          : { database: dependencies.database }),
+        ...(dependencies.rateLimitConsumer === undefined
+          ? {}
+          : { rateLimitConsumer: dependencies.rateLimitConsumer }),
         ...(identityRuntime === undefined ? {} : { identityRuntime }),
         ...(workflowRuntime === undefined ? {} : { workflowRuntime }),
         ...(connectionRuntime === undefined ? {} : { connectionRuntime }),
@@ -151,4 +188,75 @@ export async function createApiApplication(
   }
 
   return application;
+}
+
+function assertValidRuntimeSources(
+  config: ApiConfig,
+  dependencies: ApiApplicationDependencies,
+): void {
+  const unchecked = dependencies as ApiApplicationDependencyCore & {
+    identityRuntime?: ApiIdentityRuntime;
+    identityOverrides?: ApiIdentityRuntimeOverrides;
+    connectionRuntime?: ApiConnectionRuntime;
+    connectionOverrides?: ApiConnectionRuntimeOverrides;
+    workflowRuntime?: ApiWorkflowRuntime;
+    workflowOverrides?: ApiWorkflowRuntimeOverrides;
+  };
+  assertExclusiveRuntime(
+    'identity',
+    unchecked.identityRuntime,
+    unchecked.identityOverrides,
+  );
+  assertExclusiveRuntime(
+    'connection',
+    unchecked.connectionRuntime,
+    unchecked.connectionOverrides,
+  );
+  assertExclusiveRuntime(
+    'workflow',
+    unchecked.workflowRuntime,
+    unchecked.workflowOverrides,
+  );
+
+  const identityAvailable =
+    unchecked.identityRuntime !== undefined || config.identity !== undefined;
+  if (
+    unchecked.identityOverrides !== undefined &&
+    config.identity === undefined
+  )
+    throw new TypeError(
+      'identity overrides require configured identity runtime creation',
+    );
+  if (
+    unchecked.connectionOverrides !== undefined &&
+    (config.connections === undefined || !identityAvailable)
+  )
+    throw new TypeError(
+      'connection overrides require configured connection runtime creation',
+    );
+  if (unchecked.workflowOverrides !== undefined && !identityAvailable)
+    throw new TypeError(
+      'workflow overrides require available identity runtime creation',
+    );
+  if (
+    !identityAvailable &&
+    (unchecked.connectionRuntime !== undefined ||
+      unchecked.workflowRuntime !== undefined ||
+      unchecked.webhookRuntime !== undefined ||
+      unchecked.scheduleRuntime !== undefined)
+  )
+    throw new TypeError(
+      'feature runtimes require an available identity runtime',
+    );
+}
+
+function assertExclusiveRuntime(
+  feature: string,
+  runtime: unknown,
+  overrides: unknown,
+): void {
+  if (runtime !== undefined && overrides !== undefined)
+    throw new TypeError(
+      `${feature} runtime cannot be provided with ${feature} overrides`,
+    );
 }

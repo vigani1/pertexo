@@ -472,6 +472,23 @@ making the architecture plan even larger.
 ### C-09 — API composition types permit contradictory combinations
 
 - **Severity:** medium.
+- **Remediation status:** complete on 2026-09-03.
+- **Repository-wide affected locations:** every `createApiApplication` call and
+  all runtime/override property uses were inspected. The ambiguous pairs were
+  confined to identity, workflow, and connection composition in
+  `apps/api/src/app.ts`; production and test callers otherwise use valid
+  injected-database, injected-runtime, or create-with-overrides combinations.
+- **Remediation:** each ambiguous pair is now an exclusive TypeScript union, so
+  a provided runtime cannot be expressed together with its creation
+  overrides. The bootstrap boundary also validates untyped callers before
+  allocating resources and rejects all three contradictory pairs, overrides
+  that cannot participate because their feature/configuration is absent, and
+  supplied feature runtimes with no available identity runtime. The Nest module
+  receives a deliberately projected dependency object rather than the broad
+  bootstrap bag.
+- **Verification:** red/green contradictory-source characterization followed
+  by the API bootstrap suite (15 tests), API typecheck, focused lint,
+  complexity ratchet, and documentation checks.
 - **Location:** `apps/api/src/app.ts#ApiApplicationDependencies`.
 - **Issue:** callers can provide both a runtime and its overrides, or related
   persistence/runtime combinations whose precedence is implicit.
