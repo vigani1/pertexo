@@ -650,6 +650,16 @@ Package exports should be tested as contracts.
 
 ### A-11 — Tests are strong code and should be reviewed like code
 
+**Remediation status (2026-09-03): complete.** A repository-wide line-count
+inventory found seven test files above 1,000 lines. Each was split at scenario
+boundaries while retaining the scenario's setup and assertions in the same
+file: workflow foreach, database transport, database control-ledger
+coordination, database schedule triggers, artifact control ledger, worker node
+attempts, and worker transport. No giant fixture or registration module was
+introduced; the largest remaining test file is exactly 1,000 lines and no test
+file exceeds the limit. The affected unit scenarios pass, all split integration
+files collect their original scenario names, and package typechecks pass.
+
 The repository has more test/support lines than production lines, but measured
 test duplication is only 0.42%. The problem is navigation, not excessive copy-
 paste. Several files exceed 1,000 lines, including workflow `foreach`, database
