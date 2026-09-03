@@ -471,6 +471,24 @@ making the architecture plan even larger.
 ### C-13 — Compatibility catalog construction repeats its projection
 
 - **Severity:** medium.
+- **Remediation status:** complete on 2026-09-03.
+- **Repository-wide affected locations:** only
+  `coreWorkflowCompatibility` built supported and placeable authoring catalogs
+  from the same platform manifests. The workflow-engine admission mappings are
+  intentionally different boundary catalogs used to validate an executable
+  against its pinned release; the nodes-core successor mapping constructs a new
+  release; node-catalog executor matching performs registry lookup. Database
+  code consumes the two catalogs but does not reconstruct them.
+- **Remediation:** active executor identities are indexed once, each executable
+  definition manifest is projected and deeply frozen once, and supported and
+  placeable catalogs are derived with named lifecycle predicates. Deprecated
+  definitions remain supported for reads while only active definitions remain
+  placeable.
+- **Verification:** API typecheck and build; node-catalog suite (15 tests). The
+  public PostgreSQL compatibility-rollout integration suite was invoked but
+  skipped because its database test environment was unavailable; it remains the
+  live characterization for deprecated-read/blocked-placement behavior and is
+  included by the repository integration gate.
 - **Location:** `apps/api/src/platform/workflow/workflow-runtime.module.ts`
   `#coreWorkflowCompatibility`.
 - **Issue:** supported and placeable catalogs repeat executor matching,

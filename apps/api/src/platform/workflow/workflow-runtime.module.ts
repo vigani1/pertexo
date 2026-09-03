@@ -68,6 +68,99 @@ export type ApiWorkflowRuntimeOverrides = Readonly<{
   telemetry?: WorkflowAuthoringDependencies['telemetry'];
 }>;
 
+type PlatformRegistryRelease = ReturnType<
+  typeof platformExecutableRegistryHistory
+>[number];
+type PlatformDefinitionManifest =
+  PlatformRegistryRelease['definitions'][number];
+type ProjectedDefinition = ReturnType<typeof projectDefinition>;
+
+function registryIdentity(value: {
+  readonly key: string;
+  readonly version: number;
+}): string {
+  return `${value.key}\u0000${String(value.version)}`;
+}
+
+function projectDefinition(manifest: PlatformDefinitionManifest) {
+  return Object.freeze({
+    lifecycle: manifest.lifecycle,
+    definition: Object.freeze({
+      ...manifest.definition,
+      ...(manifest.integration === undefined
+        ? {}
+        : {
+            integration: Object.freeze({
+              ...manifest.integration,
+              connectionSlots: Object.freeze([
+                ...manifest.connectionRequirements,
+              ]),
+            }),
+          }),
+    }),
+  });
+}
+
+function isSupportedDefinition(definition: ProjectedDefinition): boolean {
+  return (
+    definition.lifecycle === 'active' || definition.lifecycle === 'deprecated'
+  );
+}
+
+function isPlaceableDefinition(definition: ProjectedDefinition): boolean {
+  return definition.lifecycle === 'active';
+}
+
+function projectExecutableDefinitions(
+  release: PlatformRegistryRelease,
+): readonly ProjectedDefinition[] {
+  const activeExecutors = new Set(
+    release.executors
+      .filter((executor) => executor.lifecycle === 'active')
+      .map((executor) => registryIdentity(executor.executor)),
+  );
+  return Object.freeze(
+    release.definitions.flatMap((manifest) =>
+      activeExecutors.has(registryIdentity(manifest.executor))
+        ? [projectDefinition(manifest)]
+        : [],
+    ),
+  );
+}
+
+function definitionCatalog(
+  releaseFingerprint: string,
+  definitions: readonly ProjectedDefinition[],
+  include: (definition: ProjectedDefinition) => boolean,
+) {
+  return Object.freeze({
+    schemaVersion: 1 as const,
+    releaseFingerprint,
+    definitions: Object.freeze(
+      definitions.filter(include).map(({ definition }) => definition),
+    ),
+  });
+}
+
+function projectDefinitionCatalogs(
+  release: PlatformRegistryRelease,
+  releaseFingerprint: string,
+) {
+  const definitions = projectExecutableDefinitions(release);
+  return Object.freeze({
+    definitionCatalog: definitionCatalog(
+      releaseFingerprint,
+      definitions,
+      isSupportedDefinition,
+    ),
+    placementDefinitionCatalog: definitionCatalog(
+      releaseFingerprint,
+      definitions,
+      isPlaceableDefinition,
+    ),
+  });
+}
+
 function coreWorkflowCompatibility(
   releaseCohort: PlatformReleaseCohort = 'core',
 ) {
@@ -91,71 +184,8 @@ function coreWorkflowCompatibility(
     );
     if (compatibilityReleaseDescription === undefined)
       throw new Error('Core compatibility release description is missing');
-    const definitionCatalog = Object.freeze({
-      schemaVersion: 1 as const,
-      releaseFingerprint: compatibilityRelease.fingerprint,
-      definitions: Object.freeze(
-        nodeRelease.definitions
-          .filter(
-            (manifest) =>
-              (manifest.lifecycle === 'active' ||
-                manifest.lifecycle === 'deprecated') &&
-              nodeRelease.executors.some(
-                (executor) =>
-                  executor.lifecycle === 'active' &&
-                  executor.executor.key === manifest.executor.key &&
-                  executor.executor.version === manifest.executor.version,
-              ),
-          )
-          .map(({ definition, integration, connectionRequirements }) =>
-            Object.freeze({
-              ...definition,
-              ...(integration === undefined
-                ? {}
-                : {
-                    integration: Object.freeze({
-                      ...integration,
-                      connectionSlots: Object.freeze([
-                        ...connectionRequirements,
-                      ]),
-                    }),
-                  }),
-            }),
-          ),
-      ),
-    });
-    const placementDefinitionCatalog = Object.freeze({
-      schemaVersion: 1 as const,
-      releaseFingerprint: compatibilityRelease.fingerprint,
-      definitions: Object.freeze(
-        nodeRelease.definitions
-          .filter(
-            (manifest) =>
-              manifest.lifecycle === 'active' &&
-              nodeRelease.executors.some(
-                (executor) =>
-                  executor.lifecycle === 'active' &&
-                  executor.executor.key === manifest.executor.key &&
-                  executor.executor.version === manifest.executor.version,
-              ),
-          )
-          .map(({ definition, integration, connectionRequirements }) =>
-            Object.freeze({
-              ...definition,
-              ...(integration === undefined
-                ? {}
-                : {
-                    integration: Object.freeze({
-                      ...integration,
-                      connectionSlots: Object.freeze([
-                        ...connectionRequirements,
-                      ]),
-                    }),
-                  }),
-            }),
-          ),
-      ),
-    });
+    const { definitionCatalog, placementDefinitionCatalog } =
+      projectDefinitionCatalogs(nodeRelease, compatibilityRelease.fingerprint);
     return Object.freeze({
       compatibilityRelease,
       compatibilityReleaseDescription,
