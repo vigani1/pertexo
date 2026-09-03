@@ -6,16 +6,16 @@ import {
   parseCompatibilityReleaseExpectationSet,
   type CompatibilityReleaseExpectation,
   type CompatibilityReleaseExpectationSet,
-} from './compatibility/compatibility-release.js';
-import type { DatabaseConfig } from './config.js';
-import { createWorkspaceDatabase } from './database.js';
-import { acceptWorkflowRun } from './execution-acceptance.js';
-import { consumeInboxMessage } from './inbox.js';
-import { canonicalOutboxPayloadChecksum } from './outbox.js';
+} from '../compatibility/compatibility-release.js';
+import type { DatabaseConfig } from '../config.js';
+import { createWorkspaceDatabase } from '../database.js';
+import { acceptWorkflowRun } from '../execution-acceptance.js';
+import { consumeInboxMessage } from '../inbox.js';
+import { canonicalOutboxPayloadChecksum } from '../outbox.js';
 import {
   classifyPublishedWorkflowVersionRow,
   type PublishedWorkflowV2Projection,
-} from './published-workflow-reader.js';
+} from '../published-workflow-reader.js';
 
 const inputSchema = z
   .object({

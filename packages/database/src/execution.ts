@@ -63,8 +63,8 @@ export {
   OperatorRunReplayMismatchError,
   OperatorRunReplayNotExecutableError,
   createOperatorRunReplayStore,
-} from './operator-run-replay.js';
-export type { OperatorRunReplayStore } from './operator-run-replay.js';
+} from './operator/operator-run-replay.js';
+export type { OperatorRunReplayStore } from './operator/operator-run-replay.js';
 export { canonicalOutboxPayloadChecksum } from './outbox.js';
 export { createDatabasePool } from './postgres-telemetry.js';
 export {
