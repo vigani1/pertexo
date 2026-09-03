@@ -251,6 +251,23 @@ describe('generic webhook ingress', () => {
     expect(database.acceptVerifiedDelivery).not.toHaveBeenCalled();
   });
 
+  it('propagates accepted-reply serialization failures through the scoped error handler', async () => {
+    const { application } = setup();
+    let failAcceptedReply = true;
+    application.addHook('onSend', (_request, reply, payload) => {
+      if (reply.statusCode === 202 && failAcceptedReply) {
+        failAcceptedReply = false;
+        throw new Error('simulated reply failure');
+      }
+      return Promise.resolve(payload);
+    });
+
+    const response = await application.inject(request('{}', currentSecret));
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json<{ code: string }>().code).toBe('webhook.unavailable');
+  });
+
   function setup(
     reference = verification,
     acceptanceError?: Error,

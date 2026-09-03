@@ -412,6 +412,20 @@ making the architecture plan even larger.
 ### C-07 — Native webhook replies are detached
 
 - **Severity:** medium.
+- **Remediation status:** complete on 2026-09-03.
+- **Repository-wide affected locations:** the webhook ingress success response
+  and its `problem` helper were the only production Fastify reply sends whose
+  thenable was explicitly discarded. Repository-wide detached `.send()` and
+  reply-chain searches found no other occurrence. The synchronous
+  `ProblemDetailsFilter` response write is intentionally adapter-shaped around
+  both Fastify and Express response interfaces and is not a detached promise.
+- **Remediation:** all native webhook success, authentication, validation,
+  admission, and scoped-error responses now await the Fastify reply. The
+  authentication and problem helpers return `Promise<void>`, and the scoped
+  error handler awaits the same response boundary.
+- **Verification:** red/green-style response-failure characterization routes a
+  simulated accepted-response serialization failure through the scoped safe
+  503 handler; focused webhook ingress suite (12 tests), API typecheck.
 - **Location:** `apps/api/src/webhooks/ingress.ts#acceptWebhook` and `#problem`.
 - **Issue:** `void reply.code(...).send(...)` discards the reply promise.
 - **Why it matters:** serialization and transport failures do not propagate
