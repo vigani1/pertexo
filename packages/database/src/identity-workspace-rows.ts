@@ -79,6 +79,9 @@ const lifecycleOperationRowSchema = z
   })
   .strict();
 
+export const workspaceLifecycleOperationRowSelection =
+  'operation_id,workspace_id,command_type,status,occurred_at,error_code,updated_at,completed_at';
+
 export function mapUser(row: Record<string, unknown>): UserRecord {
   const parsed = userRowSchema.parse(row);
   return Object.freeze({

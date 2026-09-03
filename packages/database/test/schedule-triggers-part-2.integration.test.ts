@@ -271,6 +271,15 @@ beforeAll(async () => {
      where id=$1`,
     [replaySourceRunId],
   );
+  const initialScan = await scannerOne.scanDue({
+    leaseOwner: 'initial-state-scanner',
+    limit: 10,
+    leaseSeconds: 30,
+    checkpointFactory,
+  });
+  if (initialScan.accepted !== 1 || initialScan.skipped !== 1) {
+    throw new Error('Schedule prerequisite occurrences were not established');
+  }
 }, 60_000);
 
 afterAll(async () => {
