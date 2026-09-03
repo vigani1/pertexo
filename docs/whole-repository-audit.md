@@ -42,7 +42,7 @@ capability is changed.
 
 Testing is broad in behavior and strong in failure scenarios, but the reported
 coverage percentages are intentionally narrow. They instrument 30 selected
-files containing 1,743 coverable lines. Those percentages must never be
+files containing 1,736 coverable lines. Those percentages must never be
 described as package-wide or repository-wide coverage. The selected branch
 inventory is now well controlled: 116 uncovered branches have semantic source
 fingerprints and individual reviews, with zero unreviewed sites.
@@ -144,7 +144,7 @@ that the implementation itself regressed.
 | PostgreSQL and data integrity | 8.0/10 | Excellent transaction and tenancy machinery; persisted identifier, typed-schema ownership, and one maintenance-table RLS convention have drifted from the plan |
 | Application and dependency security | 7.1/10 | Strong defensive design, but one open high CodeQL alert and two patchable runtime dependency advisories are current |
 | Test behavior and failure confidence | 8.7/10 | 1,529 unit tests plus strong real-service/recovery cohorts; some suites are too large to review cheaply |
-| Coverage breadth and mutation confidence | 7.2/10 | Excellent controls over 30 selected critical files/1,743 coverable lines, but this is intentionally not repository-wide coverage and no broad mutation score exists |
+| Coverage breadth and mutation confidence | 7.2/10 | Excellent controls over 30 selected critical files/1,736 coverable lines, but this is intentionally not repository-wide coverage and no broad mutation score exists |
 | CI and change governance | 7.8/10 | Exact-head CI is comprehensive and green; dependency severity policy, code-scanning merge protection, and independent approval are incomplete |
 | Reliability and durability | 8.1/10 | Strong crash, redelivery, fencing, idempotency, compatibility, and recovery design; worker shutdown and non-canceling publish timeouts need correction |
 | Observability and operability | 7.7/10 | Broad telemetry and runbooks exist; the logger has a ReDoS alert and pager/dashboard behavior is not proven in deployment |
@@ -459,9 +459,9 @@ The selected coverage gates currently report:
 | Workflow engine | 13 | 963 | 94.43% | 91.02% | 93.58% | 94.91% |
 | Database | 1 | 99 | 96.36% | 95.38% | 100.00% | 97.98% |
 | Worker | 4 | 357 | 93.18% | 93.14% | 80.00% | 93.27% |
-| API | 12 | 324 | 99.41% | 100.00% | 98.63% | 99.38% |
+| API | 12 | 317 | 100.00% | 100.00% | 100.00% | 100.00% |
 
-Those are valid results for 30 selected files and 1,743 coverable lines. In
+Those are valid results for 30 selected files and 1,736 coverable lines. In
 particular, “database 95.38% branch coverage” currently means
 `packages/database/src/workspace.ts`,
 not all 104 database source files. The risk report is now correctly labeled
@@ -521,7 +521,7 @@ typecheck, lint, dependency/export analysis, schema ownership, full `pnpm
 check`, and critical-file coverage pass. Coverage provenance for moved
 checkpoint branches was rebound by exact semantic source fingerprint: all 116
 uncovered branches remain reviewed and zero are unreviewed across 30 files and
-1,743 coverable lines. The real PostgreSQL suite was attempted but could not
+1,736 coverable lines. The real PostgreSQL suite was attempted but could not
 start because no service was listening on local port 5432; it is not claimed as
 passing evidence.
 

@@ -72,10 +72,10 @@ targets and anchors plus a shared merge-stable implementation tree. Protected
 quality CI invokes it with complete history, and a fixture recreates the
 candidate on a different parent to prove the supported rebase-style flow.
 Pull request #26 and exact-main CI both executed that protected gate
-successfully, closing C-12. Risk coverage still names 23 exact selected files
-with repository-relative paths. After removing tests coupled to mutable private
-state, public-interface tests measure 90.64% workflow-engine, 94.23% database,
-91.86% worker, and 99.64% API branch coverage. All 116 uncovered instrumentation
+successfully, closing C-12. Risk coverage names 30 exact selected files with
+repository-relative paths. Public-interface tests measure 91.02% workflow-
+engine, 95.38% database, 93.14% worker, and 100% API branch coverage across
+1,736 coverable lines. All 116 uncovered instrumentation
 branches have exact source-fingerprinted reviews; the eight integration-only
 reviews each bind an exact command, file, and test name. The former 26 generic
 integration classifications were withdrawn. The report rejects malformed,
