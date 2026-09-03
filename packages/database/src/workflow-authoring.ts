@@ -1,15 +1,12 @@
 import { createDatabasePool } from './postgres-telemetry.js';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
 
 import type { Pool } from 'pg';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import {
   EMPTY_DEFINITION_CATALOG_V1,
-  EMPTY_WORKFLOW_GRAPH_V1,
-  parseWorkflowGraphDraft,
   type workflowCompatibilityReport,
-  workflowDraftRepresentationTag,
   type WorkflowDefinitionCatalogV1,
   type WorkflowGraph,
 } from '@pertexo/workflow-model/graph';
@@ -23,19 +20,14 @@ import {
   parseCompatibilityReleaseExpectationSet,
   type CompatibilityReleaseExpectation,
 } from './compatibility-release.js';
-import {
-  WorkflowCreateIdempotencyConflictError,
-  WorkflowNotFoundError,
-  WorkflowRevisionConflictError,
-} from './workflow-authoring-errors.js';
-import { canonicalOutboxPayloadChecksum } from './outbox.js';
+import { WorkflowNotFoundError } from './workflow-authoring-errors.js';
 import { createWorkflowPublisher } from './workflow-publication.js';
+import { createWorkflowAuthoringReadStore } from './workflow-authoring-reads.js';
+import { createWorkflowAuthoringDraftStore } from './workflow-authoring-drafts.js';
 import {
   checksumSchema,
-  createdWorkflowRowSchema,
   mapDraft,
   mapVersion,
-  mapWorkflow,
 } from './workflow-authoring-rows.js';
 import {
   acceptPreviewRun,
@@ -50,7 +42,6 @@ import {
 } from './workspace.js';
 
 const uuidSchema = z.uuid();
-const nameSchema = z.string().trim().min(1).max(128);
 const idempotencyKeySchema = z
   .string()
   .min(1)
@@ -609,327 +600,24 @@ export function createWorkflowAuthoringDatabase(
       withWorkspaceTransaction(pool, workspaceId, (transaction) =>
         readPreviewRun(transaction, input),
       ),
-    createWorkflow: async (input) =>
-      withAuthorTransaction(
-        pool,
-        input.workspaceId,
-        input.actorId,
-        async (client) => {
-          const workflowId = uuidSchema.parse(input.id ?? randomUUID());
-          const graph = parseWorkflowGraphDraft(input.emptyGraph);
-          const schemaVersion = graph.schemaVersion;
-          await requireWorkspaceAuthor(
-            client,
-            input.workspaceId,
-            input.actorId,
-          );
-          const { definitionCatalog, placementDefinitionCatalog } =
-            await selectCompatibilityVariant(client);
-          requirePlaceableDefinitionAdditions(
-            EMPTY_WORKFLOW_GRAPH_V1,
-            graph,
-            placementDefinitionCatalog,
-          );
-          const requestHash = canonicalOutboxPayloadChecksum({
-            actorId: input.actorId,
-            graph,
-            name: nameSchema.parse(input.name),
-            requestedWorkflowId: input.id ?? null,
-            schemaVersion,
-            workspaceId: input.workspaceId,
-          });
-          let createdId: string;
-          try {
-            const creation = await client.query<{ workflow_id: string }>(
-              `select app.create_workflow_with_draft(
-                 $1, $2, $3::varchar, $4, $5, $6::jsonb, $7::char(64),
-                 $8::char(64), $9::varchar, $10::varchar
-               ) as workflow_id`,
-              [
-                workflowId,
-                input.workspaceId,
-                nameSchema.parse(input.name),
-                input.actorId,
-                schemaVersion,
-                JSON.stringify(graph),
-                keyDigest(input.idempotencyKey),
-                requestHash,
-                input.requestId ?? null,
-                input.traceId ?? null,
-              ],
-            );
-            createdId = uuidSchema.parse(creation.rows[0]?.workflow_id);
-          } catch (error: unknown) {
-            if (
-              error instanceof Error &&
-              (error as Error & { code?: string }).code === '23505'
-            ) {
-              throw new WorkflowCreateIdempotencyConflictError(
-                'Workflow create idempotency key request mismatch',
-              );
-            }
-            throw error;
-          }
-          const created = await client.query<Record<string, unknown>>(
-            `select row_to_json(workflow.*) as workflow,
-                    row_to_json(draft.*) as draft
-             from app.workflows workflow
-             join app.workflow_drafts draft
-               on draft.workspace_id = workflow.workspace_id
-              and draft.workflow_id = workflow.id
-             where workflow.workspace_id = $1 and workflow.id = $2`,
-            [input.workspaceId, createdId],
-          );
-          const row = createdWorkflowRowSchema.parse(created.rows[0]);
-          return Object.freeze({
-            workflowId: createdId,
-            workflow: mapWorkflow(row.workflow),
-            draft: mapDraft(row.draft, definitionCatalog),
-          });
-        },
-      ),
-    listWorkflows: async (input) =>
-      withAuthorTransaction(
-        pool,
-        input.workspaceId,
-        input.actorId,
-        async (client) => {
-          await requireWorkspaceReader(
-            client,
-            input.workspaceId,
-            input.actorId,
-          );
-          const limit = z
-            .number()
-            .int()
-            .positive()
-            .max(100)
-            .parse(input.limit ?? 50);
-          const afterCreatedAt = input.after?.createdAt ?? null;
-          if (
-            afterCreatedAt !== null &&
-            (!(afterCreatedAt instanceof Date) ||
-              !Number.isFinite(afterCreatedAt.getTime()))
-          ) {
-            throw new Error('Invalid workflow list cursor time');
-          }
-          const afterId =
-            input.after === undefined ? null : uuidSchema.parse(input.after.id);
-          const result = await client.query<Record<string, unknown>>(
-            `select * from app.workflows where workspace_id = $1
-             and ($2::timestamptz is null or (created_at, id) > ($2::timestamptz, $3::uuid))
-           order by created_at, id limit $4`,
-            [input.workspaceId, afterCreatedAt, afterId, limit + 1],
-          );
-          const hasMore = result.rows.length > limit;
-          const items = Object.freeze(
-            result.rows.slice(0, limit).map((row) => mapWorkflow(row)),
-          );
-          const last = items.at(-1);
-          return Object.freeze({
-            items,
-            ...(hasMore && last !== undefined
-              ? {
-                  nextCursor: Object.freeze({
-                    createdAt: last.createdAt,
-                    id: last.id,
-                  }),
-                }
-              : {}),
-          });
-        },
-      ),
-    getDraft: async (workspaceId, workflowId, actorId) =>
-      withAuthorTransaction(pool, workspaceId, actorId, async (client) => {
-        await requireWorkspaceReader(client, workspaceId, actorId);
-        const { definitionCatalog } = await selectCompatibilityVariant(client);
-        const result = await client.query<Record<string, unknown>>(
-          'select * from app.workflow_drafts where workspace_id = $1 and workflow_id = $2',
-          [workspaceId, uuidSchema.parse(workflowId)],
-        );
-        return result.rows[0] === undefined
-          ? null
-          : mapDraft(result.rows[0], definitionCatalog);
-      }),
-    getVersion: async (workspaceId, workflowId, versionId, actorId) =>
-      withAuthorTransaction(pool, workspaceId, actorId, async (client) => {
-        await requireWorkspaceReader(client, workspaceId, actorId);
-        const result = await client.query<Record<string, unknown>>(
-          'select * from app.workflow_versions where workspace_id = $1 and workflow_id = $2 and id = $3',
-          [
-            workspaceId,
-            uuidSchema.parse(workflowId),
-            uuidSchema.parse(versionId),
-          ],
-        );
-        return result.rows[0] === undefined ? null : mapVersion(result.rows[0]);
-      }),
-    listVersions: async (input) =>
-      withAuthorTransaction(
-        pool,
-        input.workspaceId,
-        input.actorId,
-        async (client) => {
-          await requireWorkspaceReader(
-            client,
-            input.workspaceId,
-            input.actorId,
-          );
-          const workflowId = uuidSchema.parse(input.workflowId);
-          const visible = await client.query(
-            'select 1 from app.workflows where workspace_id = $1 and id = $2',
-            [input.workspaceId, workflowId],
-          );
-          if (visible.rowCount !== 1) {
-            throw new WorkflowNotFoundError('Workflow is not visible');
-          }
-          const limit = z
-            .number()
-            .int()
-            .positive()
-            .max(100)
-            .parse(input.limit ?? 50);
-          const beforeVersionNumber =
-            input.beforeVersionNumber === undefined
-              ? null
-              : z.number().int().positive().parse(input.beforeVersionNumber);
-          const result = await client.query<Record<string, unknown>>(
-            `select * from app.workflow_versions
-             where workspace_id = $1 and workflow_id = $2
-               and ($3::integer is null or version_number < $3)
-             order by version_number desc limit $4`,
-            [input.workspaceId, workflowId, beforeVersionNumber, limit + 1],
-          );
-          const hasMore = result.rows.length > limit;
-          const items = Object.freeze(
-            result.rows.slice(0, limit).map((row) => mapVersion(row)),
-          );
-          const last = items.at(-1);
-          return Object.freeze({
-            items,
-            ...(hasMore && last !== undefined
-              ? {
-                  nextCursor: Object.freeze({
-                    beforeVersionNumber: last.versionNumber,
-                  }),
-                }
-              : {}),
-          });
-        },
-      ),
-    saveDraft: async (input) =>
-      withAuthorTransaction(
-        pool,
-        input.workspaceId,
-        input.actorId,
-        async (client) => {
-          await requireWorkspaceAuthor(
-            client,
-            input.workspaceId,
-            input.actorId,
-          );
-          const { definitionCatalog, placementDefinitionCatalog } =
-            await selectCompatibilityVariant(client);
-          const graph = parseWorkflowGraphDraft(input.graphJson);
-          const expected = z
-            .number()
-            .int()
-            .positive()
-            .parse(input.expectedRevision);
-          const workflowId = uuidSchema.parse(input.workflowId);
-          const current = await client.query<Record<string, unknown>>(
-            `select draft.* from app.workflow_drafts draft
-             join app.workflows workflow
-               on workflow.workspace_id = draft.workspace_id
-              and workflow.id = draft.workflow_id
-             where draft.workspace_id = $1 and draft.workflow_id = $2
-               and workflow.lifecycle_status = 'active'`,
-            [input.workspaceId, workflowId],
-          );
-          const currentRow = current.rows[0];
-          if (currentRow === undefined)
-            throw new WorkflowNotFoundError('Workflow is not visible');
-          const currentDraft = mapDraft(currentRow, definitionCatalog);
-          if (currentDraft.revision !== expected)
-            throw new WorkflowRevisionConflictError(
-              currentDraft.revision,
-              workflowDraftRepresentationTag({
-                workflowId,
-                revision: currentDraft.revision,
-                graph: currentDraft.graphJson,
-                compatibilityFingerprint:
-                  currentDraft.compatibility.fingerprint,
-              }),
-            );
-          requirePlaceableDefinitionAdditions(
-            currentDraft.graphJson,
-            graph,
-            placementDefinitionCatalog,
-          );
-          const result = await client.query<Record<string, unknown>>(
-            `update app.workflow_drafts set graph_json = $1::jsonb, schema_version = $2,
-           revision = revision + 1, updated_by = $3, updated_at = transaction_timestamp()
-         where workspace_id = $4 and workflow_id = $5 and revision = $6
-           and exists (
-             select 1 from app.workflows workflow
-             where workflow.workspace_id = $4 and workflow.id = $5
-               and workflow.lifecycle_status = 'active'
-           )
-         returning *`,
-            [
-              JSON.stringify(graph),
-              graph.schemaVersion,
-              input.actorId,
-              input.workspaceId,
-              workflowId,
-              expected,
-            ],
-          );
-          if (result.rows[0] === undefined) {
-            const latest = await client.query<Record<string, unknown>>(
-              `select draft.* from app.workflow_drafts draft
-               join app.workflows workflow
-                 on workflow.workspace_id = draft.workspace_id
-                and workflow.id = draft.workflow_id
-               where draft.workspace_id = $1 and draft.workflow_id = $2
-                 and workflow.lifecycle_status = 'active'`,
-              [input.workspaceId, workflowId],
-            );
-            const latestRow = latest.rows[0];
-            if (latestRow === undefined)
-              throw new WorkflowNotFoundError('Workflow is not visible');
-            const latestDraft = mapDraft(latestRow, definitionCatalog);
-            throw new WorkflowRevisionConflictError(
-              latestDraft.revision,
-              workflowDraftRepresentationTag({
-                workflowId,
-                revision: latestDraft.revision,
-                graph: latestDraft.graphJson,
-                compatibilityFingerprint: latestDraft.compatibility.fingerprint,
-              }),
-            );
-          }
-          const saved = mapDraft(result.rows[0], definitionCatalog);
-          await options.testHooks?.afterSaveCas?.();
-          await client.query(
-            `insert into app.audit_events (id, workspace_id, actor_user_id, action, target_type, target_id, request_id, trace_id, metadata)
-         values ($1, $2, $3, 'workflow.draft_saved', 'workflow', $4, $5, $6, $7::jsonb)`,
-            [
-              randomUUID(),
-              input.workspaceId,
-              input.actorId,
-              input.workflowId,
-              input.requestId ?? null,
-              input.traceId ?? null,
-              JSON.stringify({
-                previousRevision: expected,
-                revision: saved.revision,
-              }),
-            ],
-          );
-          return saved;
-        },
-      ),
+    ...createWorkflowAuthoringDraftStore({
+      keyDigest,
+      requireAuthor: requireWorkspaceAuthor,
+      requirePlaceable: requirePlaceableDefinitionAdditions,
+      selectCatalogs: selectCompatibilityVariant,
+      ...(options.testHooks === undefined
+        ? {}
+        : { testHooks: options.testHooks }),
+      transact: (workspaceId, actorId, operation) =>
+        withAuthorTransaction(pool, workspaceId, actorId, operation),
+    }),
+    ...createWorkflowAuthoringReadStore({
+      requireReader: requireWorkspaceReader,
+      selectDefinitionCatalog: async (client) =>
+        (await selectCompatibilityVariant(client)).definitionCatalog,
+      transact: (workspaceId, actorId, operation) =>
+        withAuthorTransaction(pool, workspaceId, actorId, operation),
+    }),
     publishWorkflow,
     close: async () => pool.end(),
   });

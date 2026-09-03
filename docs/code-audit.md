@@ -566,9 +566,9 @@ making the architecture plan even larger.
 ### C-11 — Database factories act as large source-level namespaces
 
 - **Severity:** medium.
-- **Remediation status:** in progress on 2026-09-03; operator-command and
-  identity/session capability extraction complete, workflow-authoring and
-  failure-notification factories remain.
+- **Remediation status:** in progress on 2026-09-03; operator-command,
+  identity/session, and workflow-authoring capability extraction complete;
+  the failure-notification factory remains.
 - **Verified affected locations:** a repository-wide factory/file-size and
   nested-operation inventory confirmed the four named factories remain the
   database sources that combine multiple independently changing capability
@@ -589,6 +589,14 @@ making the architecture plan even larger.
   154-line row, 78-line validation, and 33-line error owners. Workspace
   creation/lifecycle remains together because transaction and idempotency order
   are correctness behavior, not incidental duplication.
+- **Workflow-authoring checkpoint:** preserved `WorkflowAuthoringDatabase` and
+  the compatibility/publication lock authority while extracting a 169-line
+  read/query capability and a 248-line draft mutation capability with
+  top-level create/save operations. The original 936-line namespace is now a
+  624-line contract/compatibility/publication facade plus those operation
+  owners and the existing 131-line strict row mapper. Authorization,
+  compatibility selection, placement validation, CAS order, audit order, and
+  transaction ownership are unchanged.
 - **Checkpoint verification:** database unit suite (170 tests), database
   typecheck and build, focused lint, and complexity ratchet.
 - **Locations:** `createIdentityWorkspaceDatabase`,
