@@ -122,6 +122,7 @@ describe('BullMQ queue producer', () => {
     expect(enqueued).toEqual({
       jobId: `outbox-${IDS.outboxEventId}`,
       jobName: JOB_NAME.advanceWorkflowRun,
+      outcome: 'published',
       queueName: QUEUE_NAME.workflowCoordinator,
     });
     expect(mocks.queueInstances).toHaveLength(4);
@@ -258,7 +259,7 @@ describe('BullMQ queue producer', () => {
     vi.useRealTimers();
   });
 
-  it('bounds a Redis publish so the outbox lease can be released', async () => {
+  it('reports an explicit unknown outcome and retains late settlement truth', async () => {
     const producer = createQueueProducer({
       publishTimeoutMs: 1,
       redisUrl: 'redis://localhost:6379/0',
@@ -266,19 +267,28 @@ describe('BullMQ queue producer', () => {
     const coordinator = mocks.queueInstances.find(
       (queue) => queue.name === QUEUE_NAME.workflowCoordinator,
     );
-    coordinator?.add.mockReturnValue(new Promise<unknown>(() => undefined));
-
-    await expect(
-      producer.publish({
-        name: JOB_NAME.advanceWorkflowRun,
-        data: {
-          schemaVersion: 1,
-          workspaceId: IDS.workspaceId,
-          runId: IDS.runId,
-          outboxEventId: IDS.outboxEventId,
-        },
+    let settle: ((value: unknown) => void) | undefined;
+    coordinator?.add.mockReturnValue(
+      new Promise<unknown>((resolve) => {
+        settle = resolve;
       }),
-    ).rejects.toThrow(/bounded timeout/i);
+    );
+
+    const result = await producer.publish({
+      name: JOB_NAME.advanceWorkflowRun,
+      data: {
+        schemaVersion: 1,
+        workspaceId: IDS.workspaceId,
+        runId: IDS.runId,
+        outboxEventId: IDS.outboxEventId,
+      },
+    });
+
+    expect(result).toMatchObject({ outcome: 'outcome_unknown' });
+    if (result.outcome !== 'outcome_unknown')
+      throw new Error('Expected an unknown publication outcome');
+    settle?.({ id: result.jobId });
+    await expect(result.settlement).resolves.toBe('published');
   });
 
   it('surfaces an immediate Redis command failure to the outbox caller', async () => {

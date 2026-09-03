@@ -85,6 +85,7 @@ function boundaries(events: readonly LeasedOutboxEvent[] = [event()]): {
       publish: vi.fn().mockResolvedValue({
         jobId: `outbox-${EVENT_ID}`,
         jobName: JOB_NAME.advanceWorkflowRun,
+        outcome: 'published',
         queueName: 'workflow-coordinator',
       }),
       waitUntilReady: vi.fn().mockResolvedValue(undefined),
@@ -197,6 +198,7 @@ describe('outbox dispatcher', () => {
     await expect(dispatcher.dispatchOnce()).resolves.toEqual({
       claimed: 0,
       failed: 0,
+      outcomeUnknown: 0,
       published: 0,
       stale: 0,
     });
@@ -243,6 +245,7 @@ describe('outbox dispatcher', () => {
     await expect(dispatcher.dispatchOnce()).resolves.toEqual({
       claimed: 1,
       failed: 0,
+      outcomeUnknown: 0,
       published: 1,
       stale: 0,
     });
@@ -293,6 +296,69 @@ describe('outbox dispatcher', () => {
     expect(selected.database.observeBacklog).toHaveBeenCalledWith({
       enabledJobNames: [JOB_NAME.advanceWorkflowRun, JOB_NAME.expireArtifacts],
     });
+  });
+
+  it('retains the lease and records a late success after an unknown publish outcome', async () => {
+    const selected = boundaries();
+    const metrics = transportMetrics();
+    let settle: ((value: 'failed' | 'published') => void) | undefined;
+    const settlement = new Promise<'failed' | 'published'>((resolve) => {
+      settle = resolve;
+    });
+    vi.mocked(selected.producer.publish).mockResolvedValue({
+      jobId: `outbox-${EVENT_ID}`,
+      jobName: JOB_NAME.advanceWorkflowRun,
+      outcome: 'outcome_unknown',
+      queueName: 'workflow-coordinator',
+      settlement,
+    });
+
+    await expect(
+      createDispatcher(
+        selected,
+        new WorkerDrainState(),
+        metrics,
+      ).dispatchOnce(),
+    ).resolves.toEqual({
+      claimed: 1,
+      failed: 0,
+      outcomeUnknown: 1,
+      published: 0,
+      stale: 0,
+    });
+    expect(selected.database.releaseOrFail).not.toHaveBeenCalled();
+    expect(selected.database.markPublished).not.toHaveBeenCalled();
+    expect(metrics.recordOutboxPublish).toHaveBeenCalledWith({
+      errorClass: 'timeout',
+      jobName: JOB_NAME.advanceWorkflowRun,
+      outcome: 'outcome_unknown',
+      queueName: 'workflow-coordinator',
+    });
+
+    settle?.('published');
+    await vi.waitFor(() => {
+      expect(selected.database.markPublished).toHaveBeenCalledWith(
+        EVENT_ID,
+        LEASE_TOKEN,
+      );
+    });
+  });
+
+  it('retains the lease for expiry when an unknown publish settles as failed', async () => {
+    const selected = boundaries();
+    vi.mocked(selected.producer.publish).mockResolvedValue({
+      jobId: `outbox-${EVENT_ID}`,
+      jobName: JOB_NAME.advanceWorkflowRun,
+      outcome: 'outcome_unknown',
+      queueName: 'workflow-coordinator',
+      settlement: Promise.resolve('failed'),
+    });
+
+    await createDispatcher(selected).dispatchOnce();
+    await vi.waitFor(() => {
+      expect(selected.database.markPublished).not.toHaveBeenCalled();
+    });
+    expect(selected.database.releaseOrFail).not.toHaveBeenCalled();
   });
 
   it('observes queue metrics only for enabled dispatch capabilities', async () => {
@@ -486,6 +552,7 @@ describe('outbox dispatcher', () => {
     await expect(dispatcher.dispatchOnce()).resolves.toEqual({
       claimed: 1,
       failed: 1,
+      outcomeUnknown: 0,
       published: 0,
       stale: 0,
     });
@@ -533,6 +600,7 @@ describe('outbox dispatcher', () => {
     await expect(dispatcher.dispatchOnce()).resolves.toEqual({
       claimed: 0,
       failed: 0,
+      outcomeUnknown: 0,
       published: 0,
       stale: 0,
     });

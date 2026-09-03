@@ -212,8 +212,36 @@ making the architecture plan even larger.
 ### C-01 — Bounded operations do not cancel the underlying publication
 
 - **Severity:** high.
-- **Locations:** `apps/worker/src/transport/outbox-dispatcher.ts#bounded` and
-  `packages/queue/src/producer.ts#withTimeout`.
+- **Remediation status:** complete on 2026-09-03.
+- **Repository-wide affected locations:** all production `Promise.race`,
+  timeout-rejection, and `bounded` helpers were inspected. The unsafe
+  publication pair was confined to BullMQ enqueue in
+  `packages/queue/src/producer.ts` and its caller-side timeout in
+  `apps/worker/src/transport/outbox-dispatcher.ts`. Redis run-event publication
+  and subscription are intentionally lossy wake-up hints over PostgreSQL
+  reconstruction; queue-consumer and preview races propagate cancellation into
+  their handlers; database connection races destroy a late connection; and
+  cleanup/observation bounds do not classify an external side effect as
+  failed. Those semantically different occurrences remain.
+- **Remediation:** `QueueProducer.publish` now returns a discriminated
+  `published` or `outcome_unknown` result. The unknown result carries a
+  non-rejecting settlement promise for the already-started BullMQ command.
+  The dispatcher no longer adds a second publication timeout, never releases
+  an uncertain lease as a definite failure, exposes `outcomeUnknown` in its
+  bounded result, and records an `outcome_unknown` timeout metric. It owns late
+  settlement until shutdown: a late success conditionally marks the original
+  lease published, while a late failure leaves that lease to expire and be
+  retried. The existing outbox-derived deterministic BullMQ job ID makes that
+  retry deduplicating rather than a second logical delivery.
+- **Verification:** red/green queue timeout/late-settlement characterization;
+  late-success and late-failure dispatcher regressions; queue suite (39 tests),
+  worker suite (257 tests), and the full `pnpm check` suite (1,567 tests plus
+  formatting, documentation, runtime, build, lint, complexity, contracts, and
+  repository typecheck gates).
+- **Original locations:** `apps/worker/src/transport/outbox-dispatcher.ts#bounded`
+  and `packages/queue/src/producer.ts#withTimeout`; publication outcome
+  ownership now lives in `BullMqQueueProducer#performPublish` and
+  `OutboxPublicationSettlements`.
 - **Issue:** the timeout rejects the caller while the publication operation
   continues in the background.
 - **Why it matters:** a caller can observe failure even though the message is
