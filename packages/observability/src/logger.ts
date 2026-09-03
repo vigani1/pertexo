@@ -32,6 +32,7 @@ const RESERVED_FIELDS = new Set([
 
 const MAX_SANITIZE_DEPTH = 12;
 const MAX_SANITIZE_ENTRIES = 100;
+const MAX_REDACT_TEXT_LENGTH = 16_384;
 const REDACTED = '[Redacted]';
 const TRUNCATED = '[Truncated]';
 const eventNamePattern = /^[a-z][a-z0-9_.:-]{0,127}$/u;
@@ -84,9 +85,87 @@ const REDACT_PATHS = [
 
 type LogMethod = 'debug' | 'error' | 'fatal' | 'info' | 'trace' | 'warn';
 
+function isSchemeCharacter(character: string): boolean {
+  const code = character.codePointAt(0);
+  return (
+    code !== undefined &&
+    ((code >= 48 && code <= 57) ||
+      (code >= 65 && code <= 90) ||
+      (code >= 97 && code <= 122) ||
+      character === '+' ||
+      character === '-' ||
+      character === '.')
+  );
+}
+
+function isAsciiLetter(character: string): boolean {
+  const code = character.codePointAt(0);
+  return (
+    code !== undefined &&
+    ((code >= 65 && code <= 90) || (code >= 97 && code <= 122))
+  );
+}
+
+function isAuthorityBoundary(character: string): boolean {
+  return (
+    character === '/' ||
+    character === '?' ||
+    character === '#' ||
+    character === ' ' ||
+    character === '\t' ||
+    character === '\r' ||
+    character === '\n'
+  );
+}
+
+function redactUrlUserInfo(value: string): string {
+  let copyFrom = 0;
+  let searchFrom = 0;
+  let result = '';
+  while (searchFrom < value.length) {
+    const separator = value.indexOf('://', searchFrom);
+    if (separator === -1) break;
+    let schemeStart = separator;
+    while (schemeStart > 0 && isSchemeCharacter(value[schemeStart - 1] ?? ''))
+      schemeStart -= 1;
+    if (!isAsciiLetter(value[schemeStart] ?? '')) {
+      searchFrom = separator + 3;
+      continue;
+    }
+    const authorityStart = separator + 3;
+    let authorityEnd = authorityStart;
+    while (
+      authorityEnd < value.length &&
+      !isAuthorityBoundary(value[authorityEnd] ?? '')
+    )
+      authorityEnd += 1;
+    const at = value.indexOf('@', authorityStart);
+    const colon = value.indexOf(':', authorityStart);
+    if (at >= authorityStart && at < authorityEnd && colon >= 0 && colon < at) {
+      result += `${value.slice(copyFrom, colon + 1)}${REDACTED}`;
+      copyFrom = at;
+      searchFrom = at + 1;
+    } else {
+      searchFrom = authorityEnd + 1;
+    }
+  }
+  return result + value.slice(copyFrom);
+}
+
+function boundText(value: string): string {
+  if (value.length <= MAX_REDACT_TEXT_LENGTH) return value;
+  const prefix = value.slice(0, MAX_REDACT_TEXT_LENGTH);
+  const safeEnd = Math.max(
+    prefix.lastIndexOf(' '),
+    prefix.lastIndexOf('\t'),
+    prefix.lastIndexOf('\r'),
+    prefix.lastIndexOf('\n'),
+  );
+  return `${safeEnd < 0 ? '' : prefix.slice(0, safeEnd + 1)}${TRUNCATED}`;
+}
+
 function redactText(value: string): string {
-  return value
-    .replace(/([a-z][a-z0-9+.-]*:\/\/[^/\s:@]+:)[^@\s/]+@/giu, `$1${REDACTED}@`)
+  return redactUrlUserInfo(boundText(value))
     .replace(
       /(authorization\s*[:=]\s*(?:(?:basic|bearer)\s+)?)[^\s,;]+/giu,
       `$1${REDACTED}`,
