@@ -217,6 +217,19 @@ found.
 
 ### A-01 — Logger redaction can consume polynomial time
 
+**Remediation status (2026-09-03): repository implementation complete; remote
+CodeQL/ruleset evidence pending.** `redactText` now bounds every string to
+16,384 characters before pattern matching, drops an incomplete trailing token,
+and appends an explicit truncation marker. URL-userinfo redaction is a
+monotonic scanner rather than the ambiguous repeated-character expression.
+The same path sanitizes ordinary fields, error messages, stacks, and causes.
+Two adversarial regressions reproduce the former five-second scan, constrain
+output size, cover messages/stacks, and now complete with the full 41-test
+observability suite in under 300 ms; observability typecheck and the unchanged
+complexity ratchet pass. The high alert remains open against `main` until this
+commit is analyzed there or in a pull request, and code-scanning merge
+protection remains A-09 governance work.
+
 GitHub CodeQL alert 2 is open on
 `packages/observability/src/logger.ts:89`. The first `redactText` expression
 contains ambiguous repeated character classes and processes logger input without

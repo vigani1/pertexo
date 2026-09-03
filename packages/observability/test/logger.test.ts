@@ -171,6 +171,37 @@ describe('createStructuredLogger', () => {
     });
   });
 
+  it('bounds adversarial redaction input before scanning secret patterns', () => {
+    const capture = captureDestination();
+    const logger = createStructuredLogger(testConfig(), capture.destination);
+    const secretPrefix = 'postgresql://runtime:';
+    const adversarial = `${'context '.repeat(2_100)}${secretPrefix}${'a'.repeat(100_000)}!`;
+    const startedAt = performance.now();
+
+    logger.warn('provider.failed', { detail: adversarial });
+
+    expect(performance.now() - startedAt).toBeLessThan(1_000);
+    const serialized = JSON.stringify(capture.records[0]);
+    expect(serialized.length).toBeLessThan(20_000);
+    expect(serialized).toContain('[Truncated]');
+    expect(serialized).not.toContain(secretPrefix);
+  });
+
+  it('applies the same text bound to error messages and stacks', () => {
+    const capture = captureDestination();
+    const logger = createStructuredLogger(testConfig(), capture.destination);
+    const oversized = `${'safe context '.repeat(2_000)}Bearer secret-after-boundary`;
+    const error = new Error(oversized);
+    error.stack = oversized;
+
+    logger.error('provider.failed', {}, error);
+
+    const serialized = JSON.stringify(capture.records[0]);
+    expect(serialized).toContain('[Truncated]');
+    expect(serialized).not.toContain('secret-after-boundary');
+    expect(serialized.length).toBeLessThan(40_000);
+  });
+
   it('correlates records with the active valid span', () => {
     const manager = new AsyncLocalStorageContextManager().enable();
     expect(context.setGlobalContextManager(manager)).toBe(true);
