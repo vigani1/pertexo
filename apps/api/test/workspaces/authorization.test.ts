@@ -6,7 +6,9 @@ import {
   ROLES,
   WORKSPACE_STATUSES,
   AuthorizationError,
+  assertAuthorizedWorkspaceContext,
   authorizeWorkspace,
+  authorizeWorkspaceOperation,
   capabilitiesForRole,
   createActorContext,
   hasCapability,
@@ -177,6 +179,62 @@ describe('workspace authorization policy', () => {
     });
     expect(Object.isFrozen(authorized)).toBe(true);
     expect(Object.isFrozen(authorized.actor)).toBe(true);
+
+    expect(
+      assertAuthorizedWorkspaceContext({
+        context: authorized,
+        actor: authorized.actor,
+        routeWorkspaceId: workspaceId,
+        capability: 'workflow:read',
+      }),
+    ).toBe(authorized);
+  });
+
+  it('rejects fabricated and mismatched guard authorization contexts', async () => {
+    const authorized = await authorizeWorkspace({
+      actor: actor(),
+      routeWorkspaceId: workspaceId,
+      capability: 'workflow:read',
+      access: () => Promise.resolve(access()),
+    });
+
+    expect(() =>
+      assertAuthorizedWorkspaceContext({
+        context: { ...authorized },
+        actor: authorized.actor,
+        routeWorkspaceId: workspaceId,
+        capability: 'workflow:read',
+      }),
+    ).toThrow('authorization context was not established by the guard seam');
+    expect(() =>
+      assertAuthorizedWorkspaceContext({
+        context: authorized,
+        actor: authorized.actor,
+        routeWorkspaceId: workspaceId,
+        capability: 'workflow:update',
+      }),
+    ).toThrow('authorization context does not match the operation');
+  });
+
+  it('reuses a matching guard authorization without a second access lookup', async () => {
+    const lookup = vi.fn(() => Promise.resolve(access()));
+    const authorized = await authorizeWorkspace({
+      actor: actor(),
+      routeWorkspaceId: workspaceId,
+      capability: 'workflow:read',
+      access: lookup,
+    });
+
+    await expect(
+      authorizeWorkspaceOperation({
+        actor: authorized.actor,
+        routeWorkspaceId: workspaceId,
+        capability: 'workflow:read',
+        access: lookup,
+        authorizedWorkspace: authorized,
+      }),
+    ).resolves.toBe(authorized);
+    expect(lookup).toHaveBeenCalledTimes(1);
   });
 
   it('re-freezes a structurally valid actor supplied by an untrusted adapter', async () => {
