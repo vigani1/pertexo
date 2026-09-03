@@ -35,7 +35,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createApiApplication } from '../../src/app.js';
 import { createInitialWorkflowCheckpoint } from '../../src/executions/index.js';
+import { DatabaseIdentityWorkspaceAdapter } from '../../src/identity-workspace/index.js';
 import type { ApiConfig } from '../../src/platform/config/api-config.js';
+import type { ApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
 import { createCoreWorkflowAuthoringDatabase } from '../../src/platform/workflow/workflow-runtime.module.js';
 import { WebhookManagementService } from '../../src/webhooks/service.js';
 import { dropDisconnectedDatabase } from '../support/disposable-database.js';
@@ -161,6 +163,32 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
     ),
   );
   const identity = createIdentityWorkspaceDatabase(apiConfig);
+  const identityPersistence = new DatabaseIdentityWorkspaceAdapter(identity);
+  const identityRuntime = Object.freeze({
+    dependencies: Object.freeze({
+      config: Object.freeze({
+        oidc: Object.freeze({
+          issuer: 'https://identity.example.test',
+          authorizationEndpoint: 'https://identity.example.test/authorize',
+          clientId: 'webhook-integration',
+          redirectUri: 'https://api.example.test/v1/auth/oidc/callback',
+          scopes: Object.freeze(['openid']),
+          transactionTtlMillis: 300_000,
+        }),
+      }),
+      provider: Object.freeze({
+        authorizationUrl: () => 'https://identity.example.test/authorize',
+        exchangeCode: () => Promise.reject(new Error('not used')),
+      }),
+      transactions: Object.freeze({
+        create: () => Promise.resolve(),
+        consume: () => Promise.resolve(undefined),
+      }),
+      persistence: identityPersistence,
+      authorization: identityPersistence,
+    }),
+    close: () => Promise.resolve(),
+  }) satisfies ApiIdentityRuntime;
   const authoring = createCoreWorkflowAuthoringDatabase(
     apiConfig,
     'webhook_activation',
@@ -361,6 +389,7 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
     };
     application = await createApiApplication(config, {
       database: workspaceDatabase,
+      identityRuntime,
       webhookRuntime: {
         service,
         ingress: {
