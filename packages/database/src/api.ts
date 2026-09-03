@@ -78,13 +78,13 @@ export {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
   createWorkflowAuthoringDatabase,
-} from './workflow-authoring.js';
+} from './authoring/workflow-authoring.js';
 export type {
   WorkflowAuthoringDatabase,
   WorkflowDraftRecord,
   WorkflowRecord,
   WorkflowVersionRecord,
-} from './workflow-authoring.js';
+} from './authoring/workflow-authoring.js';
 export {
   WorkflowRunNotExecutableError,
   WorkflowRunNotFoundError,

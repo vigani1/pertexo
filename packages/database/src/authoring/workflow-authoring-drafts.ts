@@ -1,4 +1,4 @@
-import { generatePersistedId } from './persisted-id.js';
+import { generatePersistedId } from '../persisted-id.js';
 
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
@@ -10,7 +10,7 @@ import {
   type WorkflowGraph,
 } from '@pertexo/workflow-model/graph';
 
-import { canonicalOutboxPayloadChecksum } from './outbox.js';
+import { canonicalOutboxPayloadChecksum } from '../outbox.js';
 import {
   WorkflowIdempotencyConflictError,
   WorkflowNotFoundError,

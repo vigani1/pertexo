@@ -25,7 +25,7 @@ import {
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
   type WorkflowAuthoringDatabase,
-} from '../../src/workflow-authoring.js';
+} from '../../src/authoring/workflow-authoring.js';
 import { createWorkflowIntegrationUsageDatabase } from '../../src/connections/workflow-integration-usage.js';
 
 export const migrationUrl =

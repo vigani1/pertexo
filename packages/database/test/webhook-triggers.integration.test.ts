@@ -10,7 +10,7 @@ import { canonicalOutboxPayloadChecksum } from '../src/outbox.js';
 import {
   createWorkflowAuthoringDatabase,
   type WorkflowAuthoringDatabase,
-} from '../src/workflow-authoring.js';
+} from '../src/authoring/workflow-authoring.js';
 import {
   workflowCompatibilityReport,
   workflowDraftRepresentationTag,

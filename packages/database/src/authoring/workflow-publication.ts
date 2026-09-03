@@ -1,4 +1,4 @@
-import { generatePersistedId } from './persisted-id.js';
+import { generatePersistedId } from '../persisted-id.js';
 
 import {
   parseWorkflowGraphForPublish,
@@ -12,8 +12,8 @@ import {
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
-import type { CompatibilityReleaseExpectation } from './compatibility/compatibility-release.js';
-import { canonicalOutboxPayloadChecksum } from './outbox.js';
+import type { CompatibilityReleaseExpectation } from '../compatibility/compatibility-release.js';
+import { canonicalOutboxPayloadChecksum } from '../outbox.js';
 import {
   WorkflowNotFoundError,
   WorkflowIdempotencyConflictError,
@@ -28,7 +28,7 @@ import type {
   WorkflowVersionRecord,
 } from './workflow-authoring.js';
 import { workflowVersionRowSelection } from './workflow-authoring-rows.js';
-import { workflowTriggerProjection } from './triggers/workflow-trigger-projection.js';
+import { workflowTriggerProjection } from '../triggers/workflow-trigger-projection.js';
 
 const uuidSchema = z.uuid();
 const digestSchema = z.string().regex(/^[0-9a-f]{64}$/u);
