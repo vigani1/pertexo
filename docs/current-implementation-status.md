@@ -52,6 +52,15 @@ while late publication marks settle, and proves compiled workers exit cleanly
 after SIGTERM with consumers disabled or active and during bootstrap failure.
 The signal owner handles SIGINT through the same idempotent path, without
 overstating the exercised process matrix.
+
+The code audit now formalizes all currently evidenced residual implementation
+work as C-21 through C-28. C-21/A-11 and C-28 are directly open; C-22 tracks
+incremental database source locality; C-23 is ratcheted complexity debt; C-24 is
+continuous risk-based coverage expansion; C-25 is mutation/profiling-gated;
+C-26 is compatibility-sensitive terminology cleanup; and C-27 activates when a
+large domain-shaped `.mjs` tool changes materially. These do not change the
+completed status of Phases 0–6 or turn evidence-gated/conditional cleanup into
+an instruction for a mechanical repository-wide rewrite.
 The exact findings and evidence are in `docs/whole-repository-audit.md`. These
 do not change Phases 0–6; Phase 7 remains in progress only because its live
 external evidence has not been executed.

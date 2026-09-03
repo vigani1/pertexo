@@ -14,9 +14,12 @@ Current audit note: the whole-repository review at implementation tree
 completed status of Phases 0–6. It confirms that Phase 7 remains **In progress**
 because live AWS, provider, provenance, load, pager, backup, failover, and
 regional-recovery evidence requires external accounts and deployed
-infrastructure. Every repository-controlled audit finding is complete at the
-named implementation tree; green repository checks are not represented as a
-substitute for that live production evidence.
+infrastructure. Repository-controlled correctness, security, and runtime
+findings are complete at the named implementation tree. Whole-audit A-06/A-11
+and code-audit C-21 through C-28 now make the remaining maintainability,
+locality, complexity, coverage, terminology, tooling-type, and reproducibility
+work explicit; green repository checks are not represented as a substitute for
+either that work or live production evidence.
 
 ## Status summary
 
@@ -4794,6 +4797,17 @@ Fresh audit findings at the implementation tree named above:
       exact full-corpus clone scan, and lower its current 25-group/1,977-line
       (2.08%) baseline without weakening independent collection or integration
       isolation.
+- [ ] Implement code-audit C-22 through focused capability-local database
+      source moves that preserve package entry points, transaction ordering,
+      migration behavior, and real-PostgreSQL evidence; do not perform one
+      repository-wide relocation.
+- [ ] Complete code-audit C-28 by pinning reproducible source/test clone scans,
+      classifying retained semantic clones, and enforcing a no-new-or-worsened
+      baseline in protected CI. C-21 shares the test-side implementation.
+
+Code-audit C-23 through C-27 are controlled, continuous, evidence-gated, or
+conditional work rather than unconditional completion checkboxes. Their
+activation and acceptance evidence are recorded in `docs/code-audit.md`.
 
 Still open:
 
