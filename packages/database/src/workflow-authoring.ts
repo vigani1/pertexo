@@ -39,7 +39,7 @@ import {
 import {
   withTenantScopedClient,
   withWorkspaceTransaction,
-} from './workspace.js';
+} from './tenant-access/workspace.js';
 
 const uuidSchema = z.uuid();
 const idempotencyKeySchema = z

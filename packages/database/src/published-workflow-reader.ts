@@ -10,7 +10,7 @@ import {
   type CompatibilityReleaseExpectation,
   type CompatibilityReleaseExpectationSet,
 } from './compatibility/compatibility-release.js';
-import { withWorkspaceTransaction } from './workspace.js';
+import { withWorkspaceTransaction } from './tenant-access/workspace.js';
 
 const readInputSchema = z
   .object({

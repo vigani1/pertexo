@@ -7,7 +7,7 @@ import {
   PreviewDeliveryMismatchError,
   type PreviewDelivery,
 } from './preview-execution.js';
-import { withTenantScopedClient } from './workspace.js';
+import { withTenantScopedClient } from './tenant-access/workspace.js';
 
 const previewCleanupConsumerName = 'preview-retention-cleaner';
 const traceparentSchema = z

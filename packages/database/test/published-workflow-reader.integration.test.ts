@@ -5,7 +5,7 @@ import type { DatabaseError } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '../src/config.js';
-import { createIdentityWorkspaceDatabase } from '../src/identity-workspace.js';
+import { createIdentityWorkspaceDatabase } from '../src/tenant-access/identity-workspace.js';
 import { migrateDatabase } from '../src/migrations.js';
 import { createPublishedWorkflowReader } from '../src/published-workflow-reader.js';
 import { checkDatabaseReadiness } from '../src/readiness.js';

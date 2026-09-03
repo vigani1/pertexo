@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import { generatePersistedId } from './persisted-id.js';
+import { generatePersistedId } from '../persisted-id.js';
 
 import type { DatabaseError, Pool } from 'pg';
 import { z } from 'zod';

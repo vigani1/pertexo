@@ -9,7 +9,7 @@ import {
   resolveScheduleObservation,
   type ScheduleRecurrence,
 } from './schedule-recurrence.js';
-import { withTenantScopedClient } from '../workspace.js';
+import { withTenantScopedClient } from '../tenant-access/workspace.js';
 
 const uuidSchema = z.uuid();
 const digestSchema = z.string().regex(/^[0-9a-f]{64}$/u);

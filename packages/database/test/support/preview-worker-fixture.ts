@@ -19,7 +19,7 @@ import { databaseSchema } from '../../src/schema.js';
 import {
   parseWorkspaceId,
   withTenantScopedClient,
-} from '../../src/workspace.js';
+} from '../../src/tenant-access/workspace.js';
 import { dropDisconnectedDatabase } from './disposable-database.js';
 
 const adminUrl =

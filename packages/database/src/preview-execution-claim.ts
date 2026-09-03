@@ -20,7 +20,7 @@ import {
   validatePreviewDelivery,
 } from './preview-execution-delivery.js';
 import { parseStoredExecutionValueV1 } from './stored-execution-value.js';
-import { withTenantScopedClient } from './workspace.js';
+import { withTenantScopedClient } from './tenant-access/workspace.js';
 
 async function loadPreviewLease(
   client: Parameters<Parameters<typeof withTenantScopedClient>[2]>[0],

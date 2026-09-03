@@ -1,12 +1,12 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { createDatabasePool } from './postgres-telemetry.js';
+import { createDatabasePool } from '../postgres-telemetry.js';
 
-import { generatePersistedId } from './persisted-id.js';
+import { generatePersistedId } from '../persisted-id.js';
 
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
-import type { DatabaseConfig } from './config.js';
+import type { DatabaseConfig } from '../config.js';
 export {
   IdentityConflictError,
   IdentityNotFoundError,
@@ -18,7 +18,7 @@ import {
   IDEMPOTENCY_STATUS,
   IdempotencyRecordCorruptError,
   IdempotencyRequestConflictError,
-} from './execution-acceptance.js';
+} from '../execution-acceptance.js';
 import {
   mapWorkspace,
   mapWorkspaceLifecycleOperation,

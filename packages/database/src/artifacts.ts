@@ -7,7 +7,7 @@ import {
   runCheckpoints,
   runEvents,
 } from './schema.js';
-import type { WorkspaceTransaction } from './workspace.js';
+import type { WorkspaceTransaction } from './tenant-access/workspace.js';
 
 export const ARTIFACT_STATUS = {
   available: 'available',

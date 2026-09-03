@@ -27,7 +27,7 @@ import {
   withTenantScopedClient,
   withWorkspaceTransaction,
   type WorkspaceTransaction,
-} from '../workspace.js';
+} from '../tenant-access/workspace.js';
 
 const uuidSchema = z.uuid();
 const digestSchema = z.string().regex(/^[0-9a-f]{64}$/u);

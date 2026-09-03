@@ -35,17 +35,17 @@ export {
   IdentityConflictError,
   WorkspaceLifecycleConflictError,
   createIdentityWorkspaceDatabase,
-} from './identity-workspace.js';
+} from './tenant-access/identity-workspace.js';
 export type {
   IdentityWorkspaceDatabase,
   SessionRecord,
-} from './identity-workspace.js';
-export { createOidcLoginTransactionStore } from './oidc-login-transactions.js';
+} from './tenant-access/identity-workspace.js';
+export { createOidcLoginTransactionStore } from './tenant-access/oidc-login-transactions.js';
 export type {
   OidcLoginTransactionStore,
   OidcSecretEncryptionAdapter,
   SealedOidcSecret,
-} from './oidc-login-transactions.js';
+} from './tenant-access/oidc-login-transactions.js';
 export {
   PreviewIdempotencyConflictError,
   PriorPreviewInputUnavailableError,

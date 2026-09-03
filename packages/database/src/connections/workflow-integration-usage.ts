@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from '../config.js';
-import { withWorkspaceTransaction } from '../workspace.js';
+import { withWorkspaceTransaction } from '../tenant-access/workspace.js';
 
 const uuidSchema = z.uuid();
 const integrationKeySchema = z

@@ -3,7 +3,7 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
-import { databaseSchema } from './schema.js';
+import { databaseSchema } from '../schema.js';
 
 const workspaceIdSchema = z.uuid();
 

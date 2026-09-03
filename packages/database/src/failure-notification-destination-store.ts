@@ -12,7 +12,7 @@ import type {
   FailureNotificationResolvedDestination,
   FailureNotificationStore,
 } from './failure-notifications.js';
-import { withTenantScopedClient } from './workspace.js';
+import { withTenantScopedClient } from './tenant-access/workspace.js';
 
 type DestinationStore = Pick<
   FailureNotificationStore,

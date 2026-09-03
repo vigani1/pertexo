@@ -4,7 +4,7 @@ import type { Pool } from 'pg';
 import type { DatabaseError, PoolClient } from 'pg';
 import { z } from 'zod';
 
-import { withTenantScopedClient } from '../workspace.js';
+import { withTenantScopedClient } from '../tenant-access/workspace.js';
 
 /**
  * Shared connection persistence vocabulary and transaction mechanics.

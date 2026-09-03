@@ -10,7 +10,7 @@ import {
   withPlatformTransaction,
   withTenantScopedClient,
   withWorkspaceTransaction,
-} from '../src/workspace.js';
+} from '../src/tenant-access/workspace.js';
 
 const adminUrl =
   process.env.DATABASE_ADMIN_URL ??

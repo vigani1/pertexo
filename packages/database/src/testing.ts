@@ -252,7 +252,7 @@ export {
   USER_STATUS,
   WORKSPACE_STATUS,
   WorkspaceLifecycleConflictError,
-} from './identity-workspace.js';
+} from './tenant-access/identity-workspace.js';
 export type {
   AuthIdentityRecord,
   CreateAuthIdentityInput,
@@ -273,19 +273,19 @@ export type {
   WorkspaceRecord,
   WorkspaceStatus,
   WorkspaceWithOwnerInput,
-} from './identity-workspace.js';
+} from './tenant-access/identity-workspace.js';
 export {
   createOidcLoginTransactionStore,
   OidcTransactionCapacityError,
   OidcTransactionSealingError,
-} from './oidc-login-transactions.js';
+} from './tenant-access/oidc-login-transactions.js';
 export type {
   OidcLoginTransaction,
   OidcLoginTransactionStore,
   OidcSecretEncryptionAdapter,
   OidcTransactionConsumeResult,
   SealedOidcSecret,
-} from './oidc-login-transactions.js';
+} from './tenant-access/oidc-login-transactions.js';
 export {
   acceptWorkflowRun,
   IDEMPOTENCY_STATUS,
@@ -490,7 +490,7 @@ export {
   withTenantScopedClient,
   withWorkspaceTransaction,
   type WorkspaceTransactionOptions,
-} from './workspace.js';
+} from './tenant-access/workspace.js';
 export {
   createWorkflowAuthoringDatabase,
   reconcileWorkflowTriggersPayload,
@@ -529,7 +529,7 @@ export type {
   WorkspaceDrizzle,
   WorkspaceId,
   WorkspaceTransaction,
-} from './workspace.js';
+} from './tenant-access/workspace.js';
 export {
   createNodeAttemptRunStore,
   NodeAttemptConnectionFenceError,
