@@ -10,7 +10,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { NodeTestIdempotencyRequiredError } from '../../src/node-testing/errors.js';
 import { TestWorkflowNodeUseCase } from '../../src/node-testing/use-case.js';
-import { createActorContext } from '../../src/workspaces/index.js';
+import {
+  authorizeWorkspace,
+  createActorContext,
+} from '../../src/workspaces/index.js';
 import type { NodeTestingPersistence } from '../../src/node-testing/ports.js';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -125,6 +128,13 @@ describe('node test application use case', () => {
   it('returns pure bounded validation and never accepts execution', async () => {
     const store = persistence();
     const access = authorization();
+    const authorizedWorkspace = await authorizeWorkspace({
+      actor,
+      routeWorkspaceId: workspaceId,
+      capability: 'workflow:update',
+      access,
+      disclosure: 'not_found',
+    });
     const useCase = new TestWorkflowNodeUseCase(
       store,
       access,
@@ -133,6 +143,7 @@ describe('node test application use case', () => {
     await expect(
       useCase.execute({
         ...requestInput(),
+        authorizedWorkspace,
         request: {
           mode: 'validate',
           expectedRevision: 3,
@@ -154,6 +165,9 @@ describe('node test application use case', () => {
       },
     });
     expect(store.acceptPreview).not.toHaveBeenCalled();
+    // One guard lookup plus the distinct connection:use check; the duplicate
+    // workflow:update use-case lookup is gone.
+    expect(access.findAccess).toHaveBeenCalledTimes(2);
     expect(access.findAccess).toHaveBeenCalledTimes(2);
   });
 

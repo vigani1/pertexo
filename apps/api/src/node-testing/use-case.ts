@@ -25,9 +25,13 @@ import {
 import { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';
 import { z } from 'zod';
 
-import { authorizeWorkspace } from '../workspaces/index.js';
+import {
+  authorizeWorkspace,
+  authorizeWorkspaceOperation,
+} from '../workspaces/index.js';
 import type {
   ActorContext,
+  AuthorizedWorkspaceContext,
   WorkspaceAuthorizationPort,
 } from '../workspaces/index.js';
 import type { WorkspaceAuthorizationSource } from '../identity-workspace/ports.js';
@@ -46,6 +50,7 @@ const executableNodeSchema = z.record(z.string(), z.json());
 export type NodeTestUseCaseInput = Readonly<{
   actor: ActorContext;
   routeWorkspaceId: string;
+  authorizedWorkspace?: AuthorizedWorkspaceContext;
   workflowId: string;
   nodeId: string;
   request: NodeTestRequest;
@@ -229,13 +234,21 @@ export class TestWorkflowNodeUseCase {
     input: NodeTestUseCaseInput,
     capability: 'workflow:update' | 'connection:use',
   ): Promise<void> {
-    await authorizeWorkspace({
+    const authorize =
+      capability === 'workflow:update'
+        ? authorizeWorkspaceOperation
+        : authorizeWorkspace;
+    await authorize({
       actor: input.actor,
       routeWorkspaceId: input.routeWorkspaceId,
       capability,
       access: this.authorization,
       disclosure: 'not_found',
       allowedWorkspaceStatuses: ['active'],
+      ...(capability === 'workflow:update' &&
+      input.authorizedWorkspace !== undefined
+        ? { authorizedWorkspace: input.authorizedWorkspace }
+        : {}),
     });
   }
 }
@@ -250,16 +263,20 @@ export class GetPreviewRunUseCase {
     input: Readonly<{
       actor: ActorContext;
       routeWorkspaceId: string;
+      authorizedWorkspace?: AuthorizedWorkspaceContext;
       previewRunId: string;
     }>,
   ): Promise<PreviewRunResponse> {
-    await authorizeWorkspace({
+    await authorizeWorkspaceOperation({
       actor: input.actor,
       routeWorkspaceId: input.routeWorkspaceId,
       capability: 'workflow:update',
       access: this.authorization,
       disclosure: 'not_found',
       allowedWorkspaceStatuses: ['active'],
+      ...(input.authorizedWorkspace === undefined
+        ? {}
+        : { authorizedWorkspace: input.authorizedWorkspace }),
     });
     const preview = await this.persistence.readPreview({
       workspaceId: input.routeWorkspaceId,

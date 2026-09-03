@@ -61,6 +61,7 @@ export class NodeTestingController {
       return await this.getPreview.execute({
         actor: actorFrom(request, route.workspaceId),
         routeWorkspaceId: route.workspaceId,
+        ...guardAuthorization(request),
         previewRunId: route.previewRunId,
       });
     } catch (error: unknown) {
@@ -93,6 +94,7 @@ export class NodeTestingController {
       const result = await this.testNode.execute({
         actor: actorFrom(request, route.workspaceId),
         routeWorkspaceId: route.workspaceId,
+        ...guardAuthorization(request),
         workflowId: route.workflowId,
         nodeId: route.nodeId,
         request: command,
@@ -107,6 +109,14 @@ export class NodeTestingController {
       return throwNodeTestingApplicationError(error);
     }
   }
+}
+
+function guardAuthorization(
+  request: IdentityWorkspaceRequest,
+): Pick<IdentityWorkspaceRequest, 'authorizedWorkspace'> {
+  return request.authorizedWorkspace === undefined
+    ? {}
+    : { authorizedWorkspace: request.authorizedWorkspace };
 }
 
 function actorFrom(request: IdentityWorkspaceRequest, workspaceId: string) {
