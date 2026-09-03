@@ -27,6 +27,7 @@ import type {
   WorkflowExecutableCompiler,
   WorkflowVersionRecord,
 } from './workflow-authoring.js';
+import { workflowVersionRowSelection } from './workflow-authoring-rows.js';
 import { workflowTriggerProjection } from './workflow-trigger-projection.js';
 
 const uuidSchema = z.uuid();
@@ -242,7 +243,7 @@ async function persistVersion(
   dependencies: WorkflowPublicationDependencies,
 ): Promise<Readonly<{ reused: boolean; version: WorkflowVersionRecord }>> {
   const retained = await client.query<Record<string, unknown>>(
-    `select * from app.workflow_versions
+    `select ${workflowVersionRowSelection} from app.workflow_versions
      where workspace_id=$1 and workflow_id=$2 order by version_number`,
     [input.workspaceId, workflowId],
   );
@@ -262,7 +263,8 @@ async function persistVersion(
          compatibility_release_epoch,published_by)
        select $1,$2,$3,coalesce(max(version_number),0)+1,$4,$5::jsonb,$6,
          $7,$8::jsonb,$9,$10 from app.workflow_versions
-       where workspace_id=$2 and workflow_id=$3 returning *`,
+       where workspace_id=$2 and workflow_id=$3
+       returning ${workflowVersionRowSelection}`,
       [
         generatePersistedId(),
         input.workspaceId,

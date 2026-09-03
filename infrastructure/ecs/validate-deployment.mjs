@@ -1,6 +1,6 @@
 /* global process */
 
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '../..');
@@ -74,6 +74,44 @@ const expectedRegionalEndpoints = [
   'redis',
   'secrets-manager',
 ];
+
+async function workspaceManifestDirectories(parent) {
+  return (await readdir(resolve(root, parent), { withFileTypes: true }))
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => `${parent}/${entry.name}`);
+}
+
+const workspaceDirectories = [
+  ...(await workspaceManifestDirectories('apps')),
+  ...(await workspaceManifestDirectories('packages')),
+];
+const workspaceByName = new Map();
+for (const directory of workspaceDirectories) {
+  const packageManifest = JSON.parse(
+    await readFile(resolve(root, directory, 'package.json'), 'utf8'),
+  );
+  workspaceByName.set(packageManifest.name, { directory, packageManifest });
+}
+
+const runtimeRoots = [
+  ...Object.keys(expectedCommands)
+    .filter((name) => name !== 'migration')
+    .map((name) => workspaceByName.get(`@pertexo/${name}`)),
+  workspaceByName.get('@pertexo/database'),
+];
+const runtimeWorkspaces = new Map();
+const pendingRuntimeWorkspaces = runtimeRoots.filter(Boolean);
+while (pendingRuntimeWorkspaces.length > 0) {
+  const workspace = pendingRuntimeWorkspaces.pop();
+  if (runtimeWorkspaces.has(workspace.packageManifest.name)) continue;
+  runtimeWorkspaces.set(workspace.packageManifest.name, workspace);
+  for (const dependencyName of Object.keys(
+    workspace.packageManifest.dependencies ?? {},
+  )) {
+    const dependency = workspaceByName.get(dependencyName);
+    if (dependency !== undefined) pendingRuntimeWorkspaces.push(dependency);
+  }
+}
 
 if (
   externalPlatform.schemaVersion !== 1 ||
@@ -157,6 +195,14 @@ if (/apt-get\s+(?:update|upgrade|install)/u.test(dockerfile))
   throw new Error('runtime image must not resolve mutable OS packages');
 if (!dockerfile.includes('pnpm install --prod --frozen-lockfile'))
   throw new Error('runtime image must contain production dependencies only');
+for (const { directory, packageManifest } of runtimeWorkspaces.values()) {
+  if (packageManifest.scripts?.build === undefined) continue;
+  const expectedCopy = `/workspace/${directory}/dist ./${directory}/dist`;
+  if (!dockerfile.includes(expectedCopy))
+    throw new Error(
+      `runtime image is missing built workspace dependency ${packageManifest.name}`,
+    );
+}
 
 for (const [name, expectedEntry] of expectedCommands) {
   const workload = manifest.workloads[name];
