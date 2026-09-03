@@ -123,6 +123,68 @@ function validatedReviews(reviews) {
   return byKey;
 }
 
+function ratio(covered, total) {
+  return {
+    covered,
+    total,
+    percent: total === 0 ? 100 : Math.round((covered / total) * 10_000) / 100,
+  };
+}
+
+export function coverageMetrics(report) {
+  let coveredStatements = 0;
+  let totalStatements = 0;
+  let coveredBranches = 0;
+  let totalBranches = 0;
+  let coveredFunctions = 0;
+  let totalFunctions = 0;
+  let coveredLines = 0;
+  let totalLines = 0;
+  for (const coverage of Object.values(report)) {
+    const statements = Object.entries(coverage.s ?? {});
+    coveredStatements += statements.filter(([, hits]) => hits > 0).length;
+    totalStatements += statements.length;
+    const branches = Object.values(coverage.b ?? {}).flat();
+    coveredBranches += branches.filter((hits) => hits > 0).length;
+    totalBranches += branches.length;
+    const functions = Object.values(coverage.f ?? {});
+    coveredFunctions += functions.filter((hits) => hits > 0).length;
+    totalFunctions += functions.length;
+    const lines = new Map();
+    for (const [statementId, hits] of statements) {
+      const line = coverage.statementMap?.[statementId]?.start?.line;
+      if (!Number.isInteger(line)) continue;
+      lines.set(line, (lines.get(line) ?? 0) + hits);
+    }
+    coveredLines += [...lines.values()].filter((hits) => hits > 0).length;
+    totalLines += lines.size;
+  }
+  return {
+    statements: ratio(coveredStatements, totalStatements),
+    branches: ratio(coveredBranches, totalBranches),
+    functions: ratio(coveredFunctions, totalFunctions),
+    lines: ratio(coveredLines, totalLines),
+  };
+}
+
+export function summarizeVitestResult(result) {
+  const endTime = Math.max(
+    result.startTime,
+    ...result.testResults.map((testResult) => testResult.endTime),
+  );
+  return {
+    durationMs: Math.round((endTime - result.startTime) * 100) / 100,
+    totalTests: result.numTotalTests,
+    passedTests: result.numPassedTests,
+    failedTests: result.numFailedTests,
+    skippedTests: result.numPendingTests,
+    todoTests: result.numTodoTests,
+    retryPolicy: 'disabled',
+    retryAttempts: 0,
+    flakyTests: 0,
+  };
+}
+
 export function uncoveredBranches(
   report,
   cohort,
@@ -178,14 +240,20 @@ export function createRiskCoverageReport(
   reviews = [],
   integrationEvidence = {},
   sourceByFile = new Map(),
+  testHealthByCohort = new Map(),
 ) {
   const selections = [...reports.entries()]
-    .map(([cohort, report]) => ({
-      cohort,
-      files: Object.keys(report)
-        .map((file) => path.relative(rootDirectory, file))
-        .sort(),
-    }))
+    .map(([cohort, report]) => {
+      const testHealth = testHealthByCohort.get(cohort);
+      return {
+        cohort,
+        files: Object.keys(report)
+          .map((file) => path.relative(rootDirectory, file))
+          .sort(),
+        metrics: coverageMetrics(report),
+        ...(testHealth === undefined ? {} : { testHealth }),
+      };
+    })
     .sort((left, right) => left.cohort.localeCompare(right.cohort));
   const reviewByKey = validatedReviews(reviews);
   const integrationEvidenceById =
@@ -250,11 +318,20 @@ async function main() {
   const cohorts = ['workflow-engine', 'database', 'worker', 'api'];
   const reports = new Map();
   const sourceByFile = new Map();
+  const testHealthByCohort = new Map();
   for (const cohort of cohorts) {
     const report = JSON.parse(
       await readFile(`coverage/${cohort}/coverage-final.json`, 'utf8'),
     );
     reports.set(cohort, report);
+    testHealthByCohort.set(
+      cohort,
+      summarizeVitestResult(
+        JSON.parse(
+          await readFile(`coverage/${cohort}/test-results.json`, 'utf8'),
+        ),
+      ),
+    );
     await Promise.all(
       Object.keys(report).map(async (file) => {
         sourceByFile.set(file, await readFile(file, 'utf8'));
@@ -288,6 +365,7 @@ async function main() {
     flattenRiskCoverageReviewGroups(reviewManifest.reviewGroups),
     reviewManifest.integrationEvidence,
     sourceByFile,
+    testHealthByCohort,
   );
   await writeFile(
     'coverage/risk-uncovered-branches.json',
@@ -298,7 +376,7 @@ async function main() {
     0,
   );
   console.log(
-    `Recorded ${String(output.classification.unreviewedCount)} unreviewed and ${String(output.classification.reviewedCount)} reviewed uncovered branches across ${String(fileCount)} selected files.`,
+    `Recorded ${String(output.classification.unreviewedCount)} unreviewed and ${String(output.classification.reviewedCount)} reviewed uncovered branches across ${String(fileCount)} selected files and ${String(output.scope.cohorts.reduce((total, cohort) => total + cohort.metrics.lines.total, 0))} coverable lines.`,
   );
 }
 

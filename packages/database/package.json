@@ -37,7 +37,7 @@
     "build": "tsc -p tsconfig.json",
     "db:migrate": "tsx src/migrate.ts",
     "test": "vitest run --exclude '**/*.integration.test.ts'",
-    "test:coverage": "vitest run --config vitest.coverage.config.ts --coverage",
+    "test:coverage": "vitest run --config vitest.coverage.config.ts --coverage --reporter=default --reporter=json --outputFile.json=../../coverage/database/test-results.json",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "typecheck": "tsc -p tsconfig.test.json --noEmit"
   },

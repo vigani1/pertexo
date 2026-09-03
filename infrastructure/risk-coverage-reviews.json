@@ -969,30 +969,30 @@
       "file": "packages/database/src/workspace.ts",
       "reviews": [
         {
-          "branchId": "8",
+          "branchId": "13",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 95,
+          "line": 118,
           "column": 4,
           "sourceFingerprint": "sha256:839a6a0377923381d5271c337b3854ad19362454c1802c6779eaa7c2baa5ccfc",
           "classification": "unreachable",
           "justification": "The abort listener is registered with once semantics and removed in finally; no asynchronous boundary exists between marking the client released and removing that listener, so it cannot re-enter after release."
         },
         {
-          "branchId": "10",
+          "branchId": "15",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 108,
+          "line": 131,
           "column": 2,
           "sourceFingerprint": "sha256:1798999cd26ccb506b266bc453d9c925e9324df69dea0b7517cedc7b4654b9a6",
           "classification": "defensive",
           "justification": "This closes the narrow abort race after acquisition resolves and before transaction setup resumes; the public abort contract is covered before acquisition, during acquisition, and during active work."
         },
         {
-          "branchId": "21",
+          "branchId": "27",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 186,
+          "line": 215,
           "column": 4,
           "sourceFingerprint": "sha256:fedcb74fd4ed754648c80b2dc2ef07819910c69a2505ffa8b49715fa5f1b1217",
           "classification": "defensive",
@@ -1002,53 +1002,69 @@
     },
     {
       "cohort": "worker",
+      "file": "apps/worker/src/execution/failure-notification-delivery.ts",
+      "reviews": [
+        {
+          "branchId": "1",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:63a3f76c0dc927475dfbe5dd2911853febb5ddc41d8c9e905d83d4d652ae94c0",
+          "classification": "generated",
+          "justification": "V8 reports this implicit SecureHttpError fallthrough branch without a source location; both possibly-dispatched and predispatch policies are exercised at their source-level decisions."
+        },
+        {
+          "branchId": "28",
+          "locationIndex": 2,
+          "branchType": "switch",
+          "line": 492,
+          "column": 8,
+          "sourceFingerprint": "sha256:3f276d01d060fb4a2352f1be6625e844cf8a079ef3e8696fabdf0cfd09c45d78",
+          "classification": "unreachable",
+          "justification": "The validated destination store port returns the closed Slack-or-email union, so TypeScript's assertNever default cannot be selected by a conforming adapter."
+        }
+      ]
+    },
+    {
+      "cohort": "worker",
       "file": "apps/worker/src/execution/node-attempt-handler.ts",
       "reviews": [
         {
-          "branchId": "21",
+          "branchId": "20",
           "locationIndex": 1,
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:f404a3e2cd18075a3bd5e1a2ac898f788b20e6fca76fa8634435499847feb8a5",
+          "sourceFingerprint": "sha256:fe152473febe152925c6523d5e3f65a94f1d80a2d2f26798d5feafb128009a5e",
           "classification": "generated",
-          "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
+          "justification": "V8 reports this implicit fallthrough without a source location; the surrounding heartbeat decision is exercised at its concrete source coordinates."
         },
         {
-          "branchId": "34",
+          "branchId": "33",
           "locationIndex": 1,
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:bf0c1f574999d6d1d66b74fe6300444f9155b9f3b64be4bbf4a41d61417855cb",
+          "sourceFingerprint": "sha256:178278723de94c4c53d2535e8cdf1454cddc74adeb39d62067972a7e4ccee567",
           "classification": "generated",
-          "justification": "V8 reports this empty-location branch for an implicit fallthrough without a source location; the executable decision is tracked separately at its real source coordinate."
+          "justification": "V8 reports this implicit fallthrough without a source location; the executor failure policy is exercised at its concrete source coordinates."
         },
         {
-          "branchId": "0",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 123,
-          "column": 4,
-          "sourceFingerprint": "sha256:8a616ac3ff057a429ba671e1bd8e848bfa48d852b457e398414c58184a2d0e04",
-          "classification": "defensive",
-          "justification": "The abort-aware wait rejects immediately when its signal is already aborted, closing the listener-registration race."
-        },
-        {
-          "branchId": "40",
+          "branchId": "39",
           "locationIndex": 1,
           "branchType": "cond-expr",
-          "line": 415,
+          "line": 391,
           "column": 18,
           "sourceFingerprint": "sha256:14869c9bb64e3cebcd070a49dff92ffdc49a602005fb3edaa25d827837219e48",
           "classification": "defensive",
           "justification": "A completed executor result becomes suspended only when the prepared attempt includes a suspension duration; otherwise it succeeds."
         },
         {
-          "branchId": "46",
+          "branchId": "45",
           "locationIndex": 1,
           "branchType": "cond-expr",
-          "line": 462,
+          "line": 438,
           "column": 14,
           "sourceFingerprint": "sha256:8fae89634ad7816606332bc998d5e627bc2884ef1497d0f0b44d12955cf6ffcd",
           "classification": "defensive",
@@ -1175,7 +1191,7 @@
           "branchId": "0",
           "locationIndex": 0,
           "branchType": "cond-expr",
-          "line": 83,
+          "line": 75,
           "column": 35,
           "sourceFingerprint": "sha256:feb6deb521149a3c0cd0dcdc9f12b748c3e03736317d600784534192138b2f87",
           "classification": "unreachable",
@@ -1185,7 +1201,7 @@
           "branchId": "0",
           "locationIndex": 1,
           "branchType": "cond-expr",
-          "line": 83,
+          "line": 75,
           "column": 40,
           "sourceFingerprint": "sha256:a45f26ce2dd0b4081fcac58c5e33501dd4bdcb9b0d530eec30121ecc54ebd7c2",
           "classification": "integration",
@@ -1196,7 +1212,7 @@
           "branchId": "1",
           "locationIndex": 0,
           "branchType": "cond-expr",
-          "line": 98,
+          "line": 90,
           "column": 35,
           "sourceFingerprint": "sha256:feb6deb521149a3c0cd0dcdc9f12b748c3e03736317d600784534192138b2f87",
           "classification": "unreachable",
@@ -1206,7 +1222,7 @@
           "branchId": "1",
           "locationIndex": 1,
           "branchType": "cond-expr",
-          "line": 98,
+          "line": 90,
           "column": 40,
           "sourceFingerprint": "sha256:a45f26ce2dd0b4081fcac58c5e33501dd4bdcb9b0d530eec30121ecc54ebd7c2",
           "classification": "integration",
@@ -1217,7 +1233,7 @@
           "branchId": "2",
           "locationIndex": 0,
           "branchType": "cond-expr",
-          "line": 114,
+          "line": 106,
           "column": 35,
           "sourceFingerprint": "sha256:feb6deb521149a3c0cd0dcdc9f12b748c3e03736317d600784534192138b2f87",
           "classification": "unreachable",
@@ -1227,28 +1243,12 @@
           "branchId": "2",
           "locationIndex": 1,
           "branchType": "cond-expr",
-          "line": 114,
+          "line": 106,
           "column": 40,
           "sourceFingerprint": "sha256:a45f26ce2dd0b4081fcac58c5e33501dd4bdcb9b0d530eec30121ecc54ebd7c2",
           "classification": "integration",
           "justification": "The named preview-delivery integration passes the worker abort signal through the database-backed completion operation.",
           "evidenceId": "worker-preview-delivery"
-        }
-      ]
-    },
-    {
-      "cohort": "api",
-      "file": "apps/api/src/platform/http/problem-details.filter.ts",
-      "reviews": [
-        {
-          "branchId": "55",
-          "locationIndex": 0,
-          "branchType": "cond-expr",
-          "line": 313,
-          "column": 7,
-          "sourceFingerprint": "sha256:469d030abc4c305474e261565eec30598de2a41ee4cb4b73294b0c9e9e5e943a",
-          "classification": "generated",
-          "justification": "TypeScript emits an uncallable fallback while lowering the parameterless Nest Catch decorator; application control flow cannot select it."
         }
       ]
     }

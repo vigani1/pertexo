@@ -18,16 +18,16 @@ export default defineConfig({
       reporter: ['text-summary', 'json-summary', 'json'],
       reportsDirectory: '../../coverage/worker',
       include: [
-        'src/execution/{node-attempt-handler,node-runtime-capabilities,preview-attempt-runtime}.ts',
+        'src/execution/{failure-notification-delivery,node-attempt-handler,node-runtime-capabilities,preview-attempt-runtime}.ts',
       ],
       // These gates establish the measured critical-runtime baseline. Raising
       // them requires tests for additional failure branches; integration-only
       // provider and persistence behavior remains covered by real services.
       thresholds: {
-        branches: 91.8,
-        functions: 77.3,
-        lines: 91.6,
-        statements: 91,
+        branches: 93.1,
+        functions: 80,
+        lines: 93.2,
+        statements: 93.1,
       },
     },
   },

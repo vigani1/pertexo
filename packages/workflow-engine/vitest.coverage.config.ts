@@ -10,15 +10,15 @@ export default defineConfig({
       reporter: ['text-summary', 'json-summary', 'json'],
       reportsDirectory: '../../coverage/workflow-engine',
       include: [
-        'src/{advance-workflow,checkpoint,node-attempt-input,operations,transitions,workflow-transition-observations,workflow-transition-state}.ts',
+        'src/{advance-workflow,checkpoint,node-attempt-input,operations,retries,transitions,workflow-transition-observations,workflow-transition-state}.ts',
       ],
       // Interface-level baseline after removing tests that directly mutated
       // private transition state. Future changes ratchet these values upward.
       thresholds: {
-        branches: 90.6,
-        functions: 93.4,
-        lines: 94.7,
-        statements: 94.2,
+        branches: 91,
+        functions: 93.5,
+        lines: 94.9,
+        statements: 94.4,
       },
     },
   },

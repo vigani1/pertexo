@@ -439,20 +439,32 @@ Phase 7 `In progress` status until the plan's criteria are satisfied.
 
 ### A-05 — Coverage is strong but narrow
 
+**Remediation status (2026-09-03): complete for repository evidence.** The
+machine-readable report now publishes exact files, covered/total counts,
+percentages, and test-health data per cohort. Selection grew from 23 to 25 files
+by adding retry policy and provider failure-delivery policy through public
+behavior tests. Exhaustive transition, authorization, retry, and dispatch-fence
+canaries pin the high-consequence decision spaces. All 116 remaining uncovered
+instrumentation branches are individually reviewed with source fingerprints;
+none are unreviewed. CI retains per-run duration/skip/todo/failure JSON, and
+retries remain disabled so flakes cannot be masked by automatic reruns.
+
 The selected coverage gates currently report:
 
-| Cohort | Statements | Branches | Functions | Lines |
-| --- | ---: | ---: | ---: | ---: |
-| Workflow engine | 94.30% | 90.64% | 93.47% | 94.79% |
-| Database | 96.00% | 94.23% | 100.00% | 97.75% |
-| Worker | 91.43% | 91.86% | 77.35% | 91.60% |
-| API | 99.38% | 99.64% | 98.59% | 99.35% |
+| Cohort | Selected files | Coverable lines | Statements | Branches | Functions | Lines |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Workflow engine | 8 | 963 | 94.43% | 91.03% | 93.58% | 94.91% |
+| Database | 1 | 99 | 96.36% | 95.38% | 100.00% | 97.98% |
+| Worker | 4 | 357 | 93.19% | 93.15% | 80.00% | 93.28% |
+| API | 12 | 324 | 99.42% | 100.00% | 98.63% | 99.39% |
 
-Those are valid results for 23 selected files. In particular, “database
-94.23% branch coverage” currently means `packages/database/src/workspace.ts`,
+Those are valid results for 25 selected files and 1,743 coverable lines. In
+particular, “database 95.38% branch coverage” currently means
+`packages/database/src/workspace.ts`,
 not all 104 database source files. The risk report is now correctly labeled
-`selected-critical-module-files`. Its 116 remaining uncovered branches are 68
-defensive, 27 unreachable, 13 generated, and 8 tied to exact integration tests.
+`selected-critical-module-files`. Its remaining uncovered branches are reviewed
+individually rather than automatically labeled testable or presented as whole-
+repository coverage.
 
 Required change:
 
