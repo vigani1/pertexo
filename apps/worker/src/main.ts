@@ -2,6 +2,7 @@ import { createTelemetryLifecycle } from '@pertexo/observability/telemetry';
 import type { StructuredLogger } from '@pertexo/observability/logging';
 
 import { parseWorkerConfig } from './config/worker-config.js';
+import { WorkerProcessShutdown } from './runtime/worker-process-shutdown.js';
 
 interface CloseableApplication {
   close(): Promise<void>;
@@ -22,6 +23,7 @@ async function bootstrap(): Promise<void> {
       ]);
     logger = createStructuredLogger(config.observability);
     application = await createWorkerApplication(config, { logger, telemetry });
+    new WorkerProcessShutdown(application, logger).install();
     logger.info('worker.started');
   } catch (error: unknown) {
     if (logger === undefined) {

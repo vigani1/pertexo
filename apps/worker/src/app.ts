@@ -49,8 +49,6 @@ export async function createWorkerApplication(
     { abortOnError: false, logger: new NestLoggerAdapter(dependencies.logger) },
   );
 
-  application.enableShutdownHooks();
-
   try {
     await application
       .get<WorkspaceDatabase>(WORKSPACE_DATABASE)
