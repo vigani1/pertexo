@@ -312,6 +312,20 @@ in CI.
 
 ### A-03 — Worker runtime dependency is classified as development-only
 
+**Remediation status (2026-09-03): repository implementation complete; image
+execution pending CI.** `@pertexo/workflow-model` is now a worker production
+dependency, the API's declaration-visible `@pertexo/node-sdk` edge is likewise
+declared in production dependencies, and the worker's verified-unused
+`@opentelemetry/sdk-node` development dependency was removed. Root
+`dependencies:check` pins Knip 5.80.0 and is part of `pnpm check`; it reports no
+unused or unlisted manifest dependency. The production-image job now imports
+the side-effect-free composition module for every runtime role plus database
+migrations from the final `--prod` image, so a missing workspace/runtime edge
+fails CI before publication. Local API and worker typechecks pass. The local
+Docker daemon was unavailable for duplicating that final-stage import check;
+the repository change is complete, while the hosted image result must not be
+claimed until CI runs this commit.
+
 The emitted worker JavaScript imports `@pertexo/workflow-model` from the failure
 notification delivery and handler modules. `apps/worker/package.json` lists the
 package only in `devDependencies`. The production image deliberately runs
@@ -548,6 +562,14 @@ source author. Document temporary exceptions with owner, reason, expiry, and
 compensating checks.
 
 ### A-10 — Remove verified dead surface, not every static-analysis candidate
+
+**Remediation status (2026-09-03): partially complete.** The manifest/type
+surface portion is complete: dependency analysis is pinned, runs in the root
+gate, the API declaration edge is correctly classified, and the worker's sole
+verified-unused dependency is removed. Candidate value/type exports still
+require the repository-wide supported-entry-point review described below; they
+are not treated as dead merely because a static analyzer cannot observe a
+consumer.
 
 Static analysis found no unused files, which is important evidence against
 wholesale obsolete modules. It did identify:
