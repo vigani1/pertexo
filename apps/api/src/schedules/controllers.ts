@@ -27,8 +27,12 @@ import {
 import { ScheduleReadGuard, ScheduleUpdateGuard } from './guards.js';
 import { ScheduleManagementService } from './service.js';
 
-const routeSchema = z.object({ workspaceId: z.uuid(), workflowId: z.uuid() });
-const commandRouteSchema = routeSchema.extend({ triggerId: z.uuid() });
+const routeShape = { workspaceId: z.uuid(), workflowId: z.uuid() };
+const routeSchema = z.object(routeShape).strict().readonly();
+const commandRouteSchema = z
+  .object({ ...routeShape, triggerId: z.uuid() })
+  .strict()
+  .readonly();
 type Request = IdentityWorkspaceRequest;
 
 @Controller('v1/workspaces/:workspaceId/workflows/:workflowId/triggers')

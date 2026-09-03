@@ -189,4 +189,18 @@ describe('workflow authoring controller public seam', () => {
       ),
     ).rejects.toMatchObject({ code: 'request.invalid' });
   });
+
+  it('rejects route fields outside the workflow collection contract', async () => {
+    const { controller, createWorkflow } = makeController();
+
+    await expect(
+      controller.create(
+        request({ 'idempotency-key': 'create-42' }),
+        { workspaceId, unexpected: 'route-value' },
+        { name: 'Operations' },
+        { header: vi.fn() },
+      ),
+    ).rejects.toMatchObject({ code: 'request.invalid' });
+    expect(createWorkflow.execute).not.toHaveBeenCalled();
+  });
 });

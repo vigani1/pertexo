@@ -17,6 +17,13 @@ import {
   type DraftRepresentation,
 } from './etag.js';
 import {
+  decodeVersionCursor,
+  decodeWorkflowCursor,
+  encodeVersionCursor,
+  encodeWorkflowCursor,
+  InvalidWorkflowCursorError,
+} from './cursor.js';
+import {
   WORKFLOW_AUTHORING_OPERATION,
   NOOP_WORKFLOW_AUTHORING_TELEMETRY,
   type WorkflowAuthoringTelemetry,
@@ -90,12 +97,7 @@ export type PublishWorkflowInput = WorkflowResourceInput &
 export type ListWorkflowVersionsInput = WorkflowResourceInput &
   Readonly<{ limit?: number; after?: string }>;
 
-export class InvalidWorkflowCursorError extends TypeError {
-  public override readonly name = 'InvalidWorkflowCursorError';
-  public constructor() {
-    super('workflow cursor is invalid');
-  }
-}
+export { InvalidWorkflowCursorError };
 
 const ACTIVE_WORKFLOW_CAPABILITY = 'workflow:read' as const;
 
@@ -440,73 +442,4 @@ function publishRequestHash(input: PublishWorkflowInput): string {
       }),
     )
     .digest('hex');
-}
-
-function encodeWorkflowCursor(
-  cursor: Readonly<{ createdAt: Date; id: string }>,
-): string {
-  return Buffer.from(
-    JSON.stringify({
-      kind: 'workflow',
-      createdAt: cursor.createdAt.toISOString(),
-      id: cursor.id,
-    }),
-    'utf8',
-  ).toString('base64url');
-}
-
-function decodeWorkflowCursor(
-  value: string,
-): Readonly<{ createdAt: Date; id: string }> {
-  try {
-    const parsed: unknown = JSON.parse(
-      Buffer.from(value, 'base64url').toString('utf8'),
-    );
-    if (
-      typeof parsed !== 'object' ||
-      parsed === null ||
-      !('kind' in parsed) ||
-      parsed.kind !== 'workflow' ||
-      !('createdAt' in parsed) ||
-      typeof parsed.createdAt !== 'string' ||
-      !('id' in parsed) ||
-      typeof parsed.id !== 'string'
-    )
-      throw new Error('invalid workflow cursor');
-    const createdAt = new Date(parsed.createdAt);
-    if (!Number.isFinite(createdAt.getTime()))
-      throw new Error('invalid workflow cursor');
-    return { createdAt, id: parsed.id };
-  } catch {
-    throw new InvalidWorkflowCursorError();
-  }
-}
-
-function encodeVersionCursor(versionNumber: number): string {
-  return Buffer.from(
-    JSON.stringify({ kind: 'versions', beforeVersionNumber: versionNumber }),
-    'utf8',
-  ).toString('base64url');
-}
-
-function decodeVersionCursor(value: string): number {
-  try {
-    const parsed: unknown = JSON.parse(
-      Buffer.from(value, 'base64url').toString('utf8'),
-    );
-    if (
-      typeof parsed !== 'object' ||
-      parsed === null ||
-      !('kind' in parsed) ||
-      parsed.kind !== 'versions' ||
-      !('beforeVersionNumber' in parsed) ||
-      typeof parsed.beforeVersionNumber !== 'number' ||
-      !Number.isInteger(parsed.beforeVersionNumber) ||
-      parsed.beforeVersionNumber < 1
-    )
-      throw new Error('invalid version cursor');
-    return parsed.beforeVersionNumber;
-  } catch {
-    throw new InvalidWorkflowCursorError();
-  }
 }

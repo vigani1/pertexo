@@ -303,6 +303,89 @@ describe('workflow authoring application seams', () => {
     expect(access.findAccess).toHaveBeenCalledWith({ actorId, workspaceId });
   });
 
+  it('round-trips the opaque workflow list cursor through the public use case', async () => {
+    const cursor = {
+      createdAt: new Date('2026-08-20T12:00:00.000Z'),
+      id: workflowId,
+    };
+    const listWorkflows = vi
+      .fn()
+      .mockResolvedValueOnce({ items: [workflow()], nextCursor: cursor })
+      .mockResolvedValueOnce({ items: [] });
+    const useCase = new ListWorkflowsUseCase(
+      persistence({ listWorkflows }),
+      authorization(),
+    );
+
+    const first = await useCase.execute({
+      actor,
+      routeWorkspaceId: workspaceId,
+    });
+    expect(first.nextCursor).not.toBeNull();
+    await useCase.execute({
+      actor,
+      routeWorkspaceId: workspaceId,
+      after: first.nextCursor ?? '',
+    });
+
+    expect(listWorkflows).toHaveBeenLastCalledWith(
+      expect.objectContaining({ after: cursor }),
+    );
+  });
+
+  it('rejects cursor payload fields outside the feature-private contract', async () => {
+    const listWorkflows = vi.fn();
+    const useCase = new ListWorkflowsUseCase(
+      persistence({ listWorkflows }),
+      authorization(),
+    );
+    const cursor = Buffer.from(
+      JSON.stringify({
+        kind: 'workflow',
+        createdAt: '2026-08-20T12:00:00.000Z',
+        id: workflowId,
+        unexpected: true,
+      }),
+      'utf8',
+    ).toString('base64url');
+
+    await expect(
+      useCase.execute({ actor, routeWorkspaceId: workspaceId, after: cursor }),
+    ).rejects.toMatchObject({ name: 'InvalidWorkflowCursorError' });
+    expect(listWorkflows).not.toHaveBeenCalled();
+  });
+
+  it('keeps workflow and version cursor variants distinct', async () => {
+    const listVersions = vi
+      .fn()
+      .mockResolvedValueOnce({
+        items: [version()],
+        nextCursor: { beforeVersionNumber: 2 },
+      })
+      .mockResolvedValueOnce({ items: [] });
+    const useCase = new ListWorkflowVersionsUseCase(
+      persistence({ listVersions }),
+      authorization(),
+    );
+
+    const first = await useCase.execute({
+      actor,
+      routeWorkspaceId: workspaceId,
+      workflowId,
+    });
+    expect(first.nextCursor).not.toBeNull();
+    await useCase.execute({
+      actor,
+      routeWorkspaceId: workspaceId,
+      workflowId,
+      after: first.nextCursor ?? '',
+    });
+
+    expect(listVersions).toHaveBeenLastCalledWith(
+      expect.objectContaining({ beforeVersionNumber: 2 }),
+    );
+  });
+
   it('creates the atomic workflow plus empty draft returned by persistence', async () => {
     const store = persistence();
     const result = await new CreateWorkflowUseCase(

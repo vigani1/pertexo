@@ -563,6 +563,27 @@ making the architecture plan even larger.
 ### C-18 — Cursor and route parsing use multiple local styles
 
 - **Severity:** low.
+- **Remediation status:** complete on 2026-09-03.
+- **Repository-wide affected locations:** the workflow collection route used a
+  manual object/string check; schedule and webhook routes used non-strict local
+  Zod objects; failure-notification destinations used one loose object with two
+  optional identifiers and reparsed those identifiers; workflow and version
+  cursors manually decoded JSON fields. Identity/workspace, connection,
+  workflow-run, node-testing, and workflow-resource routes already use strict
+  feature-owned schemas and are intentionally retained. Header preconditions
+  and the numeric SSE event cursor have separate HTTP contracts and are not
+  opaque pagination cursors.
+- **Remediation:** all affected routes now use strict, readonly schemas with a
+  distinct required shape for each route family. Workflow pagination now has
+  one feature-private codec backed by a strict discriminated union for
+  `workflow` and `versions` payloads; dates, UUIDs, positive version numbers,
+  discriminator mismatches, and unknown fields are validated at decode.
+- **Verification:** red/green public controller regression for unknown route
+  fields and public use-case regressions for cursor strictness and round trips;
+  targeted workflow-authoring, schedule, webhook, and failure-notification
+  controller suites (46 tests); API typecheck; post-change search found no
+  manual controller route object checks, loose route schemas, or second opaque
+  cursor codec.
 - **Locations:** workflow authoring cursor functions and controller route
   helpers.
 - **Issue:** some routes use strict schemas, others manually inspect unknown

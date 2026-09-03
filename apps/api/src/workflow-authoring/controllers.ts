@@ -53,6 +53,11 @@ import {
   type WorkflowResponse,
 } from './types.js';
 
+const workflowWorkspaceParamSchema = workflowIdParamSchema
+  .pick({ workspaceId: true })
+  .strict()
+  .readonly();
+
 @Controller('v1/workspaces/:workspaceId/workflows')
 @RateLimit('authenticated_read')
 export class WorkflowAuthoringController {
@@ -250,12 +255,7 @@ export class WorkflowAuthoringController {
 }
 
 function workspaceParams(value: unknown): Readonly<{ workspaceId: string }> {
-  if (typeof value !== 'object' || value === null || !('workspaceId' in value))
-    return throwWorkflowApplicationError(applicationError('request.invalid'));
-  const workspaceId = (value as { workspaceId?: unknown }).workspaceId;
-  if (typeof workspaceId !== 'string')
-    return throwWorkflowApplicationError(applicationError('request.invalid'));
-  return { workspaceId };
+  return workflowWorkspaceParamSchema.parse(value);
 }
 
 function workflowParams(value: unknown): Readonly<{
