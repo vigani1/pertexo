@@ -249,6 +249,22 @@ making the architecture plan even larger.
 ### C-03 — Worker keepalive has no lifecycle owner
 
 - **Severity:** high.
+- **Remediation status:** complete on 2026-09-03.
+- **Repository-wide affected locations:** the discarded interval in
+  `apps/worker/src/main.ts` was the only unowned production interval. The
+  intervals in `WorkerResourceMonitor`, `WorkerReadinessMonitor`, and database
+  PostgreSQL telemetry already retain handles, unreference background sampling,
+  and clear on shutdown. Remaining production timeouts are bounded operation
+  deadlines or awaited delays rather than process-lifetime resources; their
+  cancellation behavior is assessed separately by C-01 and C-06.
+- **Remediation:** moved the intentionally referenced fallback keepalive into
+  `WorkerProcessKeepalive`, a Nest lifecycle provider that creates the timer on
+  application bootstrap and clears it before shutdown. Its referenced behavior
+  is retained so a worker with every dispatch capability disabled remains alive.
+- **Verification:** red/green lifecycle regression in
+  `apps/worker/test/worker-process-keepalive.test.ts`; `pnpm --filter
+  @pertexo/worker exec vitest run test/worker-process-keepalive.test.ts
+  test/worker-bootstrap.test.ts` (15 tests).
 - **Location:** `apps/worker/src/main.ts#bootstrap`.
 - **Issue:** the worker creates a `setInterval` and discards its handle.
 - **Why it matters:** the interval can retain the process and cannot be cleared

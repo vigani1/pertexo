@@ -24,6 +24,7 @@ import { WorkerReadiness } from './runtime/worker-readiness.js';
 import { WorkerReadinessMonitor } from './runtime/worker-readiness-monitor.js';
 import { WorkerResourceMonitor } from './runtime/worker-resource-monitor.js';
 import { WorkerDrainState } from './runtime/worker-drain-state.js';
+import { WorkerProcessKeepalive } from './runtime/worker-process-keepalive.js';
 import type { DispatchConsumerCapabilityRegistry } from './transport/dispatch-consumer-capabilities.js';
 import { TransportModule } from './transport/transport.module.js';
 
@@ -101,6 +102,7 @@ export class WorkerModule {
       ],
       providers: [
         WorkerReadiness,
+        WorkerProcessKeepalive,
         {
           provide: WorkerReadinessMonitor,
           inject: [WorkerReadiness],
