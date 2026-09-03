@@ -661,6 +661,25 @@ making the architecture plan even larger.
 ### C-16 — Some HTTP request values are parsed twice
 
 - **Severity:** low.
+- **Remediation status:** complete on 2026-09-03.
+- **Repository-wide affected locations:** request-schema ownership was traced
+  from every API controller into its invoked application/domain service. Real
+  duplicate parsing covered workflow creation, workspace creation, connection
+  creation/rotation/testing, OIDC callback completion, and node testing.
+  Response schemas, persistence-row schemas, nested JSON decoding, cursor
+  codecs, and graph/executable parsing remain because they validate different
+  representations or separate trust boundaries rather than the same value.
+- **Remediation:** workflow, workspace, and connection use cases now exclusively
+  own their `unknown` command-body parsing and controllers forward the original
+  body. The identity/workspace application service is the sole parser before
+  handing a typed callback to the OIDC domain service. Node testing remains
+  controller-owned because
+  the controller must inspect the parsed mode to require idempotency and select
+  HTTP 202, while its use-case input is explicitly the parsed contract type.
+- **Verification:** added a public connection-use-case regression proving
+  invalid unknown bodies fail before encryption or dispatch; API suite (394
+  tests), API typecheck. A post-change schema-call inventory found one owning
+  parse for each affected input flow.
 - **Locations:** workflow creation controller and
   `CreateWorkflowUseCase.execute`; similar boundary choices occur elsewhere.
 - **Issue:** the controller parses `workflowCreateRequestSchema`, extracts the

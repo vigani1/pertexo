@@ -72,7 +72,7 @@ export type ListWorkflowsInput = WorkflowApplicationInput &
   Readonly<{ limit?: number; after?: string }>;
 export type CreateWorkflowInput = WorkflowApplicationInput &
   Readonly<{
-    name: string;
+    request: unknown;
     idempotencyKey: string;
     requestId?: string;
     traceId?: string;
@@ -149,7 +149,7 @@ export class CreateWorkflowUseCase {
       WORKFLOW_AUTHORING_OPERATION.create,
       async () => {
         await authorize(input, 'workflow:create', this.authorization);
-        const request = workflowCreateRequestSchema.parse({ name: input.name });
+        const request = workflowCreateRequestSchema.parse(input.request);
         const created = await this.persistence.createWorkflow({
           workspaceId: input.routeWorkspaceId,
           actorId: input.actor.actorId,

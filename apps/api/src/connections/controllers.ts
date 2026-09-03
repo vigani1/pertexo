@@ -29,10 +29,7 @@ import {
   TestConnectionUseCase,
 } from './use-cases.js';
 import {
-  connectionCreateRequestSchema,
   connectionIdParamSchema,
-  connectionRotateSecretRequestSchema,
-  connectionTestRequestSchema,
   connectionWorkspaceParamSchema,
   type ConnectionRequest,
 } from './types.js';
@@ -65,7 +62,7 @@ export class ConnectionsController {
       actor: actorFrom(request, workspaceId),
       routeWorkspaceId: workspaceId,
       ...guardAuthorization(request),
-      request: connectionCreateRequestSchema.parse(body),
+      request: body,
       idempotencyKey: idempotencyKey(request),
       ...requestMetadata(request),
     });
@@ -89,7 +86,7 @@ export class ConnectionsController {
       routeWorkspaceId: route.workspaceId,
       ...guardAuthorization(request),
       connectionId: route.connectionId,
-      request: connectionRotateSecretRequestSchema.parse(body),
+      request: body,
       idempotencyKey: idempotencyKey(request),
       ...requestMetadata(request),
     });
@@ -135,7 +132,7 @@ export class ConnectionsController {
       routeWorkspaceId: route.workspaceId,
       ...guardAuthorization(request),
       connectionId: route.connectionId,
-      request: connectionTestRequestSchema.parse(body),
+      request: body,
       idempotencyKey: idempotencyKey(request),
       ...requestMetadata(request),
     });

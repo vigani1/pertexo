@@ -147,6 +147,43 @@ const sealed = Object.freeze({
 });
 
 describe('connection application use cases', () => {
+  it('rejects invalid unknown command bodies at the use-case boundary', async () => {
+    const store = persistence();
+    const encryption = { seal: vi.fn() };
+    await expect(
+      new CreateConnectionUseCase(store, authorization(), encryption).execute({
+        actor,
+        routeWorkspaceId: workspaceId,
+        idempotencyKey: 'create-invalid',
+        request: {
+          providerKey: 'http',
+          name: 'Operations API',
+          credential: {
+            schemaVersion: 1,
+            type: 'http_headers',
+            headers: { Host: 'metadata.internal' },
+          },
+        },
+      }),
+    ).rejects.toMatchObject({ name: 'ZodError' });
+    expect(encryption.seal).not.toHaveBeenCalled();
+
+    await expect(
+      new TestConnectionUseCase(
+        testPersistence(),
+        authorization(),
+        { open: vi.fn(), seal: vi.fn() },
+        { execute: vi.fn() },
+      ).execute({
+        actor,
+        routeWorkspaceId: workspaceId,
+        connectionId,
+        idempotencyKey: 'test-invalid',
+        request: { url: 'http://provider.example.test/health' },
+      }),
+    ).rejects.toMatchObject({ name: 'ZodError' });
+  });
+
   it('reuses guard authorization without repeating a command access lookup', async () => {
     const access = authorization();
     const authorizedWorkspace = await authorizeWorkspace({

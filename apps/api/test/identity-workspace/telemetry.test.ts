@@ -23,8 +23,7 @@ describe('identity/workspace telemetry', () => {
     await useCase.execute({
       actorId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
       idempotencyKey: 'telemetry-workspace-command',
-      name: 'Operations',
-      slug: 'operations',
+      request: { name: 'Operations', slug: 'operations' },
       requestId: 'request-that-must-not-be-a-label',
       traceId: 'trace-that-must-not-be-a-label',
       metadata: { private: 'must-not-be-a-label' },
