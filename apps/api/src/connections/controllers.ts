@@ -66,6 +66,7 @@ export class ConnectionsController {
       return await this.createConnection.execute({
         actor: actorFrom(request, workspaceId),
         routeWorkspaceId: workspaceId,
+        ...guardAuthorization(request),
         request: connectionCreateRequestSchema.parse(body),
         idempotencyKey: idempotencyKey(request),
         ...requestMetadata(request),
@@ -92,6 +93,7 @@ export class ConnectionsController {
       return await this.rotateSecret.execute({
         actor: actorFrom(request, route.workspaceId),
         routeWorkspaceId: route.workspaceId,
+        ...guardAuthorization(request),
         connectionId: route.connectionId,
         request: connectionRotateSecretRequestSchema.parse(body),
         idempotencyKey: idempotencyKey(request),
@@ -118,6 +120,7 @@ export class ConnectionsController {
       return await this.revokeConnection.execute({
         actor: actorFrom(request, route.workspaceId),
         routeWorkspaceId: route.workspaceId,
+        ...guardAuthorization(request),
         connectionId: route.connectionId,
         ...requestMetadata(request),
       });
@@ -144,6 +147,7 @@ export class ConnectionsController {
       return await this.testConnection.execute({
         actor: actorFrom(request, route.workspaceId),
         routeWorkspaceId: route.workspaceId,
+        ...guardAuthorization(request),
         connectionId: route.connectionId,
         request: connectionTestRequestSchema.parse(body),
         idempotencyKey: idempotencyKey(request),
@@ -153,6 +157,14 @@ export class ConnectionsController {
       return throwConnectionApplicationError(error);
     }
   }
+}
+
+function guardAuthorization(
+  request: ConnectionRequest,
+): Pick<ConnectionRequest, 'authorizedWorkspace'> {
+  return request.authorizedWorkspace === undefined
+    ? {}
+    : { authorizedWorkspace: request.authorizedWorkspace };
 }
 
 function workspaceParams(value: unknown): Readonly<{ workspaceId: string }> {

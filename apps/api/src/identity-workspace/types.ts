@@ -14,6 +14,7 @@ export {
   type WorkspaceLifecycleOperationResponse,
   type WorkspaceResponse,
 } from '@pertexo/contracts/identity-workspace';
+import type { AuthorizedWorkspaceContext } from '../workspaces/index.js';
 
 export interface CookieResponse {
   header(name: string, value: string | readonly string[]): unknown;
@@ -27,7 +28,7 @@ export interface IdentityWorkspaceRequest {
   traceId?: string;
   params?: unknown;
   identitySession?: AuthenticatedRequestSession;
-  authorizedWorkspace?: unknown;
+  authorizedWorkspace?: AuthorizedWorkspaceContext;
 }
 
 export interface AuthenticatedRequestSession {
