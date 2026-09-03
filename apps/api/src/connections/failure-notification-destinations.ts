@@ -46,11 +46,19 @@ import {
 } from './telemetry.js';
 import type { ConnectionRequest } from './types.js';
 
-const paramsSchema = z.looseObject({
-  workspaceId: z.uuid(),
-  destinationId: z.uuid().optional(),
-  workflowId: z.uuid().optional(),
-});
+const workspaceParamsShape = { workspaceId: z.uuid() };
+const workspaceParamsSchema = z
+  .object(workspaceParamsShape)
+  .strict()
+  .readonly();
+const destinationParamsSchema = z
+  .object({ ...workspaceParamsShape, destinationId: z.uuid() })
+  .strict()
+  .readonly();
+const workflowPolicyParamsSchema = z
+  .object({ ...workspaceParamsShape, workflowId: z.uuid() })
+  .strict()
+  .readonly();
 
 function command(request: ConnectionRequest, workspaceId: string) {
   const traceId = traceIdentifier(request);
@@ -248,7 +256,7 @@ export class FailureNotificationDestinationsController {
     @Body() body: unknown,
   ) {
     try {
-      const route = paramsSchema.parse(params);
+      const route = workspaceParamsSchema.parse(params);
       return await this.useCases.create({
         request,
         workspaceId: route.workspaceId,
@@ -268,7 +276,7 @@ export class FailureNotificationDestinationsController {
     try {
       return await this.useCases.list({
         request,
-        workspaceId: paramsSchema.parse(params).workspaceId,
+        workspaceId: workspaceParamsSchema.parse(params).workspaceId,
       });
     } catch (error: unknown) {
       return throwConnectionApplicationError(error);
@@ -282,11 +290,11 @@ export class FailureNotificationDestinationsController {
     @Param() params: unknown,
   ) {
     try {
-      const route = paramsSchema.parse(params);
+      const route = destinationParamsSchema.parse(params);
       return await this.useCases.get({
         request,
         workspaceId: route.workspaceId,
-        destinationId: z.uuid().parse(route.destinationId),
+        destinationId: route.destinationId,
       });
     } catch (error: unknown) {
       return throwConnectionApplicationError(error);
@@ -304,11 +312,11 @@ export class FailureNotificationDestinationsController {
     @Body() body: unknown,
   ) {
     try {
-      const route = paramsSchema.parse(params);
+      const route = destinationParamsSchema.parse(params);
       return await this.useCases.append({
         request,
         workspaceId: route.workspaceId,
-        destinationId: z.uuid().parse(route.destinationId),
+        destinationId: route.destinationId,
         body: failureNotificationDestinationAppendVersionRequestSchema.parse(
           body,
         ),
@@ -329,11 +337,11 @@ export class FailureNotificationDestinationsController {
     @Body() body: unknown,
   ) {
     try {
-      const route = paramsSchema.parse(params);
+      const route = destinationParamsSchema.parse(params);
       return await this.useCases.status({
         request,
         workspaceId: route.workspaceId,
-        destinationId: z.uuid().parse(route.destinationId),
+        destinationId: route.destinationId,
         body: failureNotificationDestinationStatusRequestSchema.parse(body),
       });
     } catch (error: unknown) {
@@ -353,11 +361,11 @@ export class FailureNotificationDestinationsController {
     @Body() body: unknown,
   ) {
     try {
-      const route = paramsSchema.parse(params);
+      const route = workflowPolicyParamsSchema.parse(params);
       await this.useCases.setPolicy({
         request,
         workspaceId: route.workspaceId,
-        workflowId: z.uuid().parse(route.workflowId),
+        workflowId: route.workflowId,
         body: workflowFailureNotificationPolicyRequestSchema.parse(body),
       });
     } catch (error: unknown) {
@@ -376,11 +384,11 @@ export class FailureNotificationDestinationsController {
     @Param() params: unknown,
   ) {
     try {
-      const route = paramsSchema.parse(params);
+      const route = workflowPolicyParamsSchema.parse(params);
       await this.useCases.clearPolicy({
         request,
         workspaceId: route.workspaceId,
-        workflowId: z.uuid().parse(route.workflowId),
+        workflowId: route.workflowId,
       });
     } catch (error: unknown) {
       return throwConnectionApplicationError(error);
