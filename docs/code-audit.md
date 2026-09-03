@@ -262,6 +262,21 @@ making the architecture plan even larger.
 ### C-04 — A worker runtime dependency is development-only
 
 - **Severity:** high.
+- **Remediation status:** complete on 2026-09-03.
+- **Repository-wide affected locations:** runtime imports occur in
+  `apps/worker/src/execution/failure-notification-delivery.ts` and
+  `apps/worker/src/execution/failure-notification-handler.ts`; the incorrect
+  declaration was in `apps/worker/package.json` and its importer snapshot in
+  `pnpm-lock.yaml`. An AST inventory of production imports for all 19 workspace
+  projects found no other runtime package that was missing from `dependencies`.
+- **Remediation:** moved `@pertexo/workflow-model` from worker
+  `devDependencies` to `dependencies`. Both imports are intentionally retained:
+  they use the workflow-model package's canonical failure-notification contract
+  and exhaustive assertion at runtime.
+- **Verification:** `pnpm --filter @pertexo/worker build`; isolated
+  `pnpm --filter @pertexo/worker deploy --legacy --prod <temporary-directory>`
+  and verified that the deployed production tree contains
+  `@pertexo/workflow-model`.
 - **Locations:** `apps/worker/src/execution/failure-notification-delivery.ts`
   and `apps/worker/package.json`.
 - **Issue:** emitted runtime code imports `@pertexo/workflow-model/assert-never`,

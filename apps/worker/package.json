@@ -28,13 +28,13 @@
     "@pertexo/queue": "workspace:*",
     "@pertexo/rate-limit": "workspace:*",
     "@pertexo/workflow-engine": "workspace:*",
+    "@pertexo/workflow-model": "workspace:*",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2",
     "zod": "4.4.3"
   },
   "devDependencies": {
     "@opentelemetry/sdk-node": "0.221.0",
-    "@pertexo/workflow-model": "workspace:*",
     "@types/pg": "8.21.0",
     "bullmq": "6.1.2",
     "drizzle-orm": "0.45.2",

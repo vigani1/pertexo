@@ -226,6 +226,9 @@ importers:
       '@pertexo/workflow-engine':
         specifier: workspace:*
         version: link:../../packages/workflow-engine
+      '@pertexo/workflow-model':
+        specifier: workspace:*
+        version: link:../../packages/workflow-model
       reflect-metadata:
         specifier: 0.2.2
         version: 0.2.2
@@ -239,9 +242,6 @@ importers:
       '@opentelemetry/sdk-node':
         specifier: 0.221.0
         version: 0.221.0(@opentelemetry/api@1.9.0)(supports-color@7.2.0)
-      '@pertexo/workflow-model':
-        specifier: workspace:*
-        version: link:../../packages/workflow-model
       '@types/pg':
         specifier: 8.21.0
         version: 8.21.0
