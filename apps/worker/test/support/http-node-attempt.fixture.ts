@@ -30,6 +30,7 @@ import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll } from 'vitest';
 
 import { dropDisconnectedDatabase } from './disposable-database.js';
+import { queryAsWorkspaceRole } from './workspace-query.js';
 
 export const httpNodeAttemptIntegrationEnabled =
   process.env.WORKER_TRANSPORT_INTEGRATION === 'true' &&
@@ -133,21 +134,12 @@ export async function workerQuery<T extends Record<string, unknown>>(
   statement: string,
   parameters: readonly unknown[] = [],
 ): Promise<readonly T[]> {
-  const client = await workerPool.connect();
-  try {
-    await client.query('begin');
-    await client.query("select set_config('app.workspace_id', $1, true)", [
-      workspaceId,
-    ]);
-    const result = await client.query<T>(statement, [...parameters]);
-    await client.query('commit');
-    return result.rows;
-  } catch (error: unknown) {
-    await client.query('rollback').catch(() => undefined);
-    throw error;
-  } finally {
-    client.release();
-  }
+  return queryAsWorkspaceRole<T>(
+    workerPool,
+    workspaceId,
+    statement,
+    parameters,
+  );
 }
 
 export async function waitFor<T>(
