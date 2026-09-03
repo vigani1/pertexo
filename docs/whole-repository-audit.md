@@ -811,8 +811,13 @@ confirmed non-publication.
 write path was classified. Persisted entity, event, version, attempt, intent,
 and idempotency-row identities now use the database-owned UUIDv7 generator;
 request correlation, lease, dispatch-capability, and hashed idempotency tokens
-remain UUIDv4 by design. Tests prove UUIDv7 version, uniqueness, and monotonic
-order, while the schema gate rejects UUID-generating column defaults. All 67
+remain UUIDv4 by design. The final repository-wide UUIDv4 assertion search
+also found `OpaqueSessionService`: persisted browser-session identities now use
+the same UUIDv7 generator, while the bearer token retains independent
+cryptographic randomness; the unused private UUIDv4 helper and its tests were
+removed. Session and durable worker-attempt regressions assert UUIDv7. Tests
+prove UUIDv7 version, uniqueness, and monotonic order, while the schema gate
+rejects UUID-generating column defaults. All 67
 migration-owned application tables are now CI-accounted: 48 Drizzle tables and
 19 reviewed raw-SQL tables with owner, access roles, RLS status, and ownership
 reason. Forward-only migration `0074` enables and forces RLS on

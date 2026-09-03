@@ -4770,7 +4770,9 @@ Fresh audit findings at the implementation tree named above:
       make unaccepted moderate production advisories fail admission.
 - [x] Enforce UUIDv7 for application-owned persisted IDs, account for all 67
       migration-owned application tables, and force RLS on the workspace-keyed
-      retention scheduler state through forward-only migration `0074`.
+      retention scheduler state through forward-only migration `0074`. A final
+      UUIDv4 assertion sweep moved persisted browser-session IDs to the central
+      UUIDv7 generator and retained independent randomness for bearer tokens.
 - [x] Carry out the repository-controlled P2/P3 maintainability,
       selected-coverage, package-surface, test-organization, and public-
       governance improvements in `docs/whole-repository-audit.md` without
