@@ -1,7 +1,6 @@
 import { createDatabasePool } from './postgres-telemetry.js';
 import { createHash } from 'node:crypto';
 
-import type { Pool } from 'pg';
 import type { PoolClient } from 'pg';
 import { v5 as uuidv5 } from 'uuid';
 import { z } from 'zod';
@@ -16,6 +15,7 @@ import {
 import type { DatabaseConfig } from './config.js';
 import { canonicalOutboxPayloadChecksum } from './outbox.js';
 import { serializeStoredExecutionJsonValue } from './stored-execution-value.js';
+import { withTenantScopedClient } from './workspace.js';
 
 const identitySchema = z.uuid();
 const checksumSchema = z.string().regex(/^[0-9a-f]{64}$/u);
@@ -102,74 +102,6 @@ export interface FailureNotificationStore {
 
 export class FailureNotificationStateError extends Error {
   public override readonly name = 'FailureNotificationStateError';
-}
-
-function isAborted(signal: AbortSignal): boolean {
-  return signal.aborted;
-}
-
-async function transaction<T>(
-  pool: Pool,
-  workspaceId: string,
-  operation: (client: PoolClient) => Promise<T>,
-): Promise<T> {
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    await client.query("select set_config('app.workspace_id',$1,true)", [
-      workspaceId,
-    ]);
-    const result = await operation(client);
-    await client.query('commit');
-    return result;
-  } catch (error: unknown) {
-    await client.query('rollback').catch(() => undefined);
-    throw error;
-  } finally {
-    client.release();
-  }
-}
-
-async function abortableTransaction<T>(
-  pool: Pool,
-  workspaceId: string,
-  signal: AbortSignal,
-  operation: (client: PoolClient) => Promise<T>,
-): Promise<T> {
-  const abortError = new Error('Failure notification transaction aborted');
-  abortError.name = 'AbortError';
-  if (isAborted(signal)) throw abortError;
-  const client = await pool.connect();
-  const connectionState = { released: false };
-  const releaseForAbort = (): void => {
-    if (connectionState.released) return;
-    connectionState.released = true;
-    client.release(abortError);
-  };
-  signal.addEventListener('abort', releaseForAbort, { once: true });
-  try {
-    if (isAborted(signal)) throw abortError;
-    await client.query('begin');
-    await client.query("select set_config('app.workspace_id',$1,true)", [
-      workspaceId,
-    ]);
-    await client.query("select set_config('statement_timeout','30000',true)");
-    const result = await operation(client);
-    if (isAborted(signal)) throw abortError;
-    await client.query('commit');
-    return result;
-  } catch (error: unknown) {
-    if (isAborted(signal)) throw abortError;
-    if (!connectionState.released)
-      await client.query('rollback').catch(() => undefined);
-    throw error;
-  } finally {
-    signal.removeEventListener('abort', releaseForAbort);
-    if (!connectionState.released) {
-      connectionState.released = true;
-      client.release();
-    }
-  }
 }
 
 function retryOutboxId(intentId: string, attemptNumber: number): string {
@@ -269,7 +201,7 @@ export function createFailureNotificationStore(
         raw.recoverySeconds > 3600
       )
         throw new FailureNotificationStateError('Invalid recovery timeout');
-      return transaction(pool, workspaceId, async (client) => {
+      return withTenantScopedClient(pool, { workspaceId }, async (client) => {
         const authoritative = await client.query<{
           aggregate_id: string;
           aggregate_type: string;
@@ -422,10 +354,9 @@ export function createFailureNotificationStore(
       const workspaceId = identitySchema.parse(raw.workspaceId);
       const intentId = identitySchema.parse(raw.intentId);
       const workerId = z.string().min(1).max(128).parse(raw.workerId);
-      return abortableTransaction(
+      return withTenantScopedClient(
         pool,
-        workspaceId,
-        raw.signal,
+        { workspaceId },
         async (client) => {
           const result = await client.query<Record<string, unknown>>(
             `select version.kind, version.config, intent.connection_secret_version_id,
@@ -511,6 +442,7 @@ export function createFailureNotificationStore(
                 toEmail: config.toEmail,
               });
         },
+        { signal: raw.signal, statementTimeoutMillis: 30_000 },
       );
     },
     fenceDispatch: async (
@@ -519,7 +451,7 @@ export function createFailureNotificationStore(
       const workspaceId = identitySchema.parse(raw.workspaceId);
       const intentId = identitySchema.parse(raw.intentId);
       const binding = raw.deliveryBinding;
-      await transaction(pool, workspaceId, async (client) => {
+      await withTenantScopedClient(pool, { workspaceId }, async (client) => {
         const parsedBinding =
           binding === undefined
             ? null
@@ -590,7 +522,7 @@ export function createFailureNotificationStore(
       const result = FailureNotificationDeliveryResultV1Schema.parse(
         raw.result,
       );
-      return transaction(pool, workspaceId, async (client) => {
+      return withTenantScopedClient(pool, { workspaceId }, async (client) => {
         const locked = await client.query<{
           delivery_attempts: number;
           possibly_dispatched: boolean | null;

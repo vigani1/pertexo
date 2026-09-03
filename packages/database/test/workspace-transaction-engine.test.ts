@@ -180,6 +180,74 @@ describe('shared workspace transaction engine', () => {
     expect(release).toHaveBeenCalledWith();
   });
 
+  it('installs and verifies a transaction-local statement timeout', async () => {
+    let transactionActive = false;
+    let statementTimeoutMillis = 0;
+    const release = vi.fn();
+    const query = vi.fn((statement: string, values?: readonly unknown[]) => {
+      if (statement === 'begin') transactionActive = true;
+      if (statement.includes("set_config('statement_timeout'"))
+        statementTimeoutMillis = Number.parseInt(String(values?.[0]), 10);
+      if (statement === 'commit') transactionActive = false;
+      if (statement.includes("current_setting('app.workspace_id'"))
+        return Promise.resolve(
+          result([
+            {
+              workspace_id: transactionActive ? workspaceId : null,
+              actor_id: null,
+              statement_timeout_millis: statementTimeoutMillis,
+            },
+          ]),
+        );
+      return Promise.resolve(result());
+    });
+
+    await expect(
+      withTenantScopedClient(
+        poolWith({ query, release }),
+        { workspaceId },
+        () => Promise.resolve('bounded'),
+        { statementTimeoutMillis: 30_000 },
+      ),
+    ).resolves.toBe('bounded');
+    expect(query).toHaveBeenCalledWith(
+      "select set_config('statement_timeout', $1, true)",
+      ['30000ms'],
+    );
+  });
+
+  it('fails a statement-timeout read-back mismatch before domain work', async () => {
+    let transactionActive = false;
+    const operation = vi.fn();
+    const release = vi.fn();
+    const query = vi.fn((statement: string) => {
+      if (statement === 'begin') transactionActive = true;
+      if (statement === 'rollback') transactionActive = false;
+      if (statement.includes("current_setting('app.workspace_id'"))
+        return Promise.resolve(
+          result([
+            {
+              workspace_id: transactionActive ? workspaceId : null,
+              actor_id: null,
+              statement_timeout_millis: 1,
+            },
+          ]),
+        );
+      return Promise.resolve(result());
+    });
+
+    await expect(
+      withTenantScopedClient(
+        poolWith({ query, release }),
+        { workspaceId },
+        operation,
+        { statementTimeoutMillis: 30_000 },
+      ),
+    ).rejects.toThrow('PostgreSQL transaction timeout verification failed');
+    expect(operation).not.toHaveBeenCalled();
+    expect(release).toHaveBeenCalledWith();
+  });
+
   it('runs platform-global work without installing tenant context', async () => {
     let transactionActive = false;
     const release = vi.fn();
