@@ -91,4 +91,4 @@ This register accounts for every occurrence accepted by `infrastructure/complexi
 
 ## Verification
 
-`node infrastructure/validate-complexity.mjs` re-inventories all production TypeScript and fails for a new or worsened hotspot. At this register revision it reports 35 file and 40 function hotspots with no regression. The database testing entry point fell from 567 to 82 lines after its exact exports were delegated to capability-owned testing barrels.
+`node infrastructure/validate-complexity.mjs` re-inventories all production TypeScript and fails for a new or worsened hotspot. At this register revision it reports 35 file and 40 function hotspots with no regression. The database testing entry point fell from 567 to 85 physical lines after its exact exports were delegated to capability-owned testing barrels.

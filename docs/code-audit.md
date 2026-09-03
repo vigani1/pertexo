@@ -1424,7 +1424,7 @@ pnpm dlx jscpd@4.0.5 apps/*/test packages/*/test \
   12 public/composition entry points. Internals now have obvious owners under
   `authoring`, `compatibility`, `connections`, `execution`, `lifecycle`,
   `operator`, `platform`, `schema`, `tenant-access`, and `triggers`. The public
-  testing entry point fell from 567 to 82 lines and delegates exact seams to
+  testing entry point fell from 567 to 85 physical lines and delegates exact seams to
   capability-local testing barrels.
 - **Why it matters:** maintainers must reconstruct ownership from filenames and
   imports, and a capability change frequently navigates a large unrelated file
