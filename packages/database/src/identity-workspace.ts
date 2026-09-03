@@ -1,33 +1,36 @@
 import { createDatabasePool } from './postgres-telemetry.js';
 import { createHash, randomUUID } from 'node:crypto';
 
-import type { DatabaseError, PoolClient } from 'pg';
+import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from './config.js';
+export {
+  IdentityConflictError,
+  IdentityNotFoundError,
+  WorkspaceLifecycleConflictError,
+  type IdentityConflictReason,
+  type WorkspaceLifecycleConflictReason,
+} from './identity-workspace-errors.js';
 import {
   IDEMPOTENCY_STATUS,
   IdempotencyRecordCorruptError,
   IdempotencyRequestConflictError,
 } from './execution-acceptance.js';
 import {
-  mapAuthIdentity,
-  mapSession,
-  mapUser,
   mapWorkspace,
   mapWorkspaceLifecycleOperation,
 } from './identity-workspace-rows.js';
+import { createIdentityWorkspaceSessionStore } from './identity-workspace-session-store.js';
+import { createIdentityWorkspaceIdentityStore } from './identity-workspace-identity-store.js';
 import {
-  withPlatformTransaction,
-  withTenantScopedClient,
-} from './workspace.js';
+  parseIdentityMetadata as parseMetadata,
+  parseIdentityUuid as parseUuid,
+  throwIdentityDatabaseConflict as databaseConflict,
+  throwWorkspaceLifecycleError as workspaceLifecycleOperationError,
+} from './identity-workspace-support.js';
+import { withTenantScopedClient } from './workspace.js';
 
-const uuidSchema = z.uuid();
-const digestSchema = z.string().regex(/^[0-9a-f]{64}$/u);
-const metadataSchema = z
-  .record(z.string(), z.json())
-  .refine((value) => Buffer.byteLength(JSON.stringify(value), 'utf8') <= 8192);
-const issuerSchema = z.url().max(2048);
 const idempotencyKeySchema = z
   .string()
   .min(1)
@@ -61,41 +64,6 @@ export const MEMBERSHIP_ROLE = {
 } as const;
 export type MembershipRole =
   (typeof MEMBERSHIP_ROLE)[keyof typeof MEMBERSHIP_ROLE];
-
-export type IdentityConflictReason = 'identity' | 'workspace_slug';
-
-export class IdentityConflictError extends Error {
-  public override readonly name = 'IdentityConflictError';
-
-  public readonly reason: IdentityConflictReason;
-
-  public constructor(
-    message: string,
-    options: ErrorOptions & Readonly<{ reason?: IdentityConflictReason }> = {},
-  ) {
-    super(message, options);
-    this.reason = options.reason ?? 'identity';
-  }
-}
-
-export class IdentityNotFoundError extends Error {
-  public override readonly name = 'IdentityNotFoundError';
-}
-
-export type WorkspaceLifecycleConflictReason =
-  'actor_inactive' | 'invalid_state';
-
-export class WorkspaceLifecycleConflictError extends Error {
-  public override readonly name = 'WorkspaceLifecycleConflictError';
-
-  public constructor(
-    public readonly reason: WorkspaceLifecycleConflictReason,
-    message: string,
-    options?: ErrorOptions,
-  ) {
-    super(message, options);
-  }
-}
 
 export type UserRecord = Readonly<{
   id: string;
@@ -252,75 +220,6 @@ export type IdentityWorkspaceDatabase = Readonly<{
   ): Promise<WorkspaceLifecycleOperation | null>;
   close(): Promise<void>;
 }>;
-
-function parseUuid(value: string): string {
-  return uuidSchema.parse(value);
-}
-
-const unsafeMetadataKey =
-  /(?:password|secret|token|credential|verifier|nonce|private[_-]?key|authorization|cookie)/iu;
-
-function assertSafeMetadata(value: unknown): void {
-  if (Array.isArray(value)) {
-    for (const item of value) assertSafeMetadata(item);
-    return;
-  }
-  if (value !== null && typeof value === 'object') {
-    for (const [key, item] of Object.entries(value)) {
-      if (
-        key === '__proto__' ||
-        key === 'prototype' ||
-        key === 'constructor' ||
-        unsafeMetadataKey.test(key)
-      ) {
-        throw new Error('Unsafe audit metadata key');
-      }
-      assertSafeMetadata(item);
-    }
-  }
-}
-
-function parseMetadata(
-  value: Record<string, unknown> | undefined,
-): Record<string, unknown> {
-  const parsed = metadataSchema.parse(value ?? {});
-  assertSafeMetadata(parsed);
-  return parsed;
-}
-
-function databaseConflict(
-  error: unknown,
-  message: string,
-  reason: IdentityConflictReason = 'identity',
-): never {
-  const code =
-    error instanceof Error ? (error as DatabaseError).code : undefined;
-  if (code === '23505' || code === '23503' || code === '23514') {
-    throw new IdentityConflictError(message, { cause: error, reason });
-  }
-  throw error;
-}
-
-function workspaceLifecycleOperationError(error: unknown): never {
-  const code =
-    error instanceof Error ? (error as DatabaseError).code : undefined;
-  if (code === '23505') throw new IdempotencyRequestConflictError();
-  if (code === '42501') {
-    throw new WorkspaceLifecycleConflictError(
-      'actor_inactive',
-      'Workspace lifecycle actor is not authorized',
-      { cause: error },
-    );
-  }
-  if (code === '55000' || code === '23503') {
-    throw new WorkspaceLifecycleConflictError(
-      'invalid_state',
-      'Workspace lifecycle transition is not valid',
-      { cause: error },
-    );
-  }
-  throw error;
-}
 
 const durableWorkspaceResultSchema = z
   .object({
@@ -483,225 +382,7 @@ export function createIdentityWorkspaceDatabase(
   const pool = createDatabasePool(config);
 
   const database = {
-    createUser: async (input: CreateUserInput): Promise<UserRecord> => {
-      const id = parseUuid(input.id ?? randomUUID());
-      if (input.email.trim() !== input.email || input.email.length < 3) {
-        throw new Error('Invalid user email');
-      }
-      if (input.displayName.trim().length === 0) {
-        throw new Error('Invalid user display name');
-      }
-      try {
-        const result = await pool.query(
-          `insert into app.users (id, email, display_name, status)
-           values ($1, $2, $3, 'active')
-           returning id, email, display_name, status, created_at, updated_at`,
-          [id, input.email, input.displayName],
-        );
-        return mapUser(result.rows[0] as Record<string, unknown>);
-      } catch (error: unknown) {
-        databaseConflict(
-          error,
-          'User identity conflicts with an existing record',
-        );
-      }
-    },
-
-    findUserById: async (userId: string): Promise<UserRecord | null> => {
-      const result = await pool.query(
-        `select id, email, display_name, status, created_at, updated_at
-         from app.users where id = $1`,
-        [parseUuid(userId)],
-      );
-      const row = result.rows[0] as Record<string, unknown> | undefined;
-      return row === undefined ? null : mapUser(row);
-    },
-
-    linkAuthIdentity: async (
-      input: CreateAuthIdentityInput,
-    ): Promise<AuthIdentityRecord> => {
-      const id = parseUuid(input.id ?? randomUUID());
-      const userId = parseUuid(input.userId);
-      const issuer = issuerSchema.parse(input.issuer);
-      const providerSubject = z
-        .string()
-        .min(1)
-        .max(255)
-        .parse(input.providerSubject);
-      const profileMetadata = parseMetadata(input.profileMetadata);
-      const existing = await pool.query(
-        `select id, user_id, issuer, provider_subject, profile_metadata,
-                created_at, updated_at
-         from app.auth_identities
-         where issuer = $1 and provider_subject = $2`,
-        [issuer, providerSubject],
-      );
-      if (existing.rows[0] !== undefined) {
-        const row = existing.rows[0] as Record<string, unknown>;
-        if (uuidSchema.parse(row.user_id) !== userId) {
-          throw new IdentityConflictError(
-            'Authentication identity is linked to another user',
-          );
-        }
-        return mapAuthIdentity(row);
-      }
-      try {
-        const result = await pool.query(
-          `insert into app.auth_identities
-             (id, user_id, issuer, provider_subject, profile_metadata)
-           values ($1, $2, $3, $4, $5::jsonb)
-           returning id, user_id, issuer, provider_subject, profile_metadata,
-                     created_at, updated_at`,
-          [
-            id,
-            userId,
-            issuer,
-            providerSubject,
-            JSON.stringify(profileMetadata),
-          ],
-        );
-        return mapAuthIdentity(result.rows[0] as Record<string, unknown>);
-      } catch (error: unknown) {
-        const code =
-          error instanceof Error ? (error as DatabaseError).code : undefined;
-        if (code === '23505') {
-          const raced = await pool.query(
-            `select id, user_id, issuer, provider_subject, profile_metadata,
-                    created_at, updated_at
-             from app.auth_identities
-             where issuer = $1 and provider_subject = $2`,
-            [issuer, providerSubject],
-          );
-          const row = raced.rows[0] as Record<string, unknown> | undefined;
-          if (row !== undefined && uuidSchema.parse(row.user_id) === userId) {
-            return mapAuthIdentity(row);
-          }
-        }
-        databaseConflict(
-          error,
-          'Authentication identity conflicts with an existing record',
-        );
-      }
-    },
-
-    findAuthIdentity: async (
-      issuerInput: string,
-      providerSubjectInput: string,
-    ): Promise<AuthIdentityRecord | null> => {
-      const result = await pool.query(
-        `select id, user_id, issuer, provider_subject, profile_metadata,
-                created_at, updated_at
-         from app.auth_identities
-         where issuer = $1 and provider_subject = $2`,
-        [
-          issuerSchema.parse(issuerInput),
-          z.string().min(1).max(255).parse(providerSubjectInput),
-        ],
-      );
-      const row = result.rows[0] as Record<string, unknown> | undefined;
-      return row === undefined ? null : mapAuthIdentity(row);
-    },
-
-    resolveOrCreateIdentity: async (
-      input: ResolveOrCreateIdentityInput,
-    ): Promise<ResolvedIdentity> => {
-      const issuer = issuerSchema.parse(input.issuer);
-      const providerSubject = z
-        .string()
-        .min(1)
-        .max(255)
-        .parse(input.providerSubject);
-      const email = z.string().trim().min(3).max(320).parse(input.email);
-      const displayName = z
-        .string()
-        .trim()
-        .min(1)
-        .max(256)
-        .parse(input.displayName);
-      const profileMetadata = parseMetadata(input.profileMetadata);
-      return withPlatformTransaction(pool, async (client) => {
-        // Serialize only this issuer/subject pair. This keeps the user insert
-        // and identity insert atomic without granting the runtime role delete
-        // access for compensating orphan cleanup.
-        await client.query(
-          'select pg_advisory_xact_lock(hashtextextended($1, 0))',
-          [
-            createHash('sha256')
-              .update(issuer)
-              .update('\u0000')
-              .update(providerSubject)
-              .digest('hex'),
-          ],
-        );
-        const existing = await client.query(
-          `select
-             u.id as user_id, u.email as user_email, u.display_name as user_display_name,
-             u.status as user_status, u.created_at as user_created_at,
-             u.updated_at as user_updated_at,
-             i.id as identity_id, i.issuer, i.provider_subject, i.profile_metadata,
-             i.created_at as identity_created_at, i.updated_at as identity_updated_at
-           from app.auth_identities i
-           join app.users u on u.id = i.user_id
-           where i.issuer = $1 and i.provider_subject = $2`,
-          [issuer, providerSubject],
-        );
-        const existingRow = existing.rows[0] as
-          Record<string, unknown> | undefined;
-        if (existingRow !== undefined) {
-          if (existingRow.user_status !== USER_STATUS.active) {
-            throw new IdentityNotFoundError(
-              'Authentication identity is not available',
-            );
-          }
-          return {
-            user: mapUser({
-              id: existingRow.user_id,
-              email: existingRow.user_email,
-              display_name: existingRow.user_display_name,
-              status: existingRow.user_status,
-              created_at: existingRow.user_created_at,
-              updated_at: existingRow.user_updated_at,
-            }),
-            identity: mapAuthIdentity({
-              id: existingRow.identity_id,
-              user_id: existingRow.user_id,
-              issuer: existingRow.issuer,
-              provider_subject: existingRow.provider_subject,
-              profile_metadata: existingRow.profile_metadata,
-              created_at: existingRow.identity_created_at,
-              updated_at: existingRow.identity_updated_at,
-            }),
-          };
-        }
-        const userResult = await client.query(
-          `insert into app.users (id, email, display_name, status)
-           values ($1, $2, $3, 'active')
-           returning id, email, display_name, status, created_at, updated_at`,
-          [randomUUID(), email, displayName],
-        );
-        const user = mapUser(userResult.rows[0] as Record<string, unknown>);
-        const identityResult = await client.query(
-          `insert into app.auth_identities
-             (id, user_id, issuer, provider_subject, profile_metadata)
-           values ($1, $2, $3, $4, $5::jsonb)
-           returning id, user_id, issuer, provider_subject, profile_metadata,
-                     created_at, updated_at`,
-          [
-            randomUUID(),
-            user.id,
-            issuer,
-            providerSubject,
-            JSON.stringify(profileMetadata),
-          ],
-        );
-        return {
-          user,
-          identity: mapAuthIdentity(
-            identityResult.rows[0] as Record<string, unknown>,
-          ),
-        };
-      });
-    },
+    ...createIdentityWorkspaceIdentityStore(pool),
 
     findWorkspaceAccess: async (
       actorIdInput: string,
@@ -739,85 +420,7 @@ export function createIdentityWorkspaceDatabase(
       });
     },
 
-    createSession: async (
-      input: CreateSessionInput,
-    ): Promise<SessionRecord> => {
-      const id = parseUuid(input.id ?? randomUUID());
-      const tokenDigest = digestSchema.parse(input.tokenDigest);
-      if (
-        !(input.expiresAt instanceof Date) ||
-        input.expiresAt.getTime() <= Date.now()
-      ) {
-        throw new Error('Session expiry must be in the future');
-      }
-      try {
-        const result = await pool.query(
-          `insert into app.sessions
-             (id, user_id, token_digest, expires_at, user_agent, ip_address)
-           select $1, u.id, $3, $4, $5, $6
-           from app.users u
-           where u.id = $2 and u.status = 'active'
-           returning id, user_id, token_digest, expires_at, revoked_at,
-                     user_agent, ip_address, created_at`,
-          [
-            id,
-            parseUuid(input.userId),
-            tokenDigest,
-            input.expiresAt,
-            input.userAgent ?? null,
-            input.ipAddress ?? null,
-          ],
-        );
-        const row = result.rows[0] as Record<string, unknown> | undefined;
-        if (row === undefined) {
-          throw new IdentityNotFoundError('User is not available');
-        }
-        return mapSession(row);
-      } catch (error: unknown) {
-        databaseConflict(
-          error,
-          'Session conflicts with an existing identity record',
-        );
-      }
-    },
-
-    findActiveSessionByDigest: async (
-      tokenDigestInput: string,
-    ): Promise<SessionRecord | null> => {
-      const result = await pool.query(
-        `select s.id, s.user_id, s.token_digest, s.expires_at, s.revoked_at,
-                s.user_agent, s.ip_address, s.created_at
-         from app.sessions s
-         join app.users u on u.id = s.user_id and u.status = 'active'
-         where s.token_digest = $1 and s.revoked_at is null
-           and s.expires_at > clock_timestamp()`,
-        [digestSchema.parse(tokenDigestInput)],
-      );
-      const row = result.rows[0] as Record<string, unknown> | undefined;
-      return row === undefined ? null : mapSession(row);
-    },
-
-    revokeSession: async (sessionIdInput: string): Promise<boolean> => {
-      const result = await pool.query(
-        `update app.sessions
-         set revoked_at = coalesce(revoked_at, clock_timestamp())
-         where id = $1 and revoked_at is null`,
-        [parseUuid(sessionIdInput)],
-      );
-      return result.rowCount === 1;
-    },
-
-    revokeSessionByDigest: async (
-      tokenDigestInput: string,
-    ): Promise<boolean> => {
-      const result = await pool.query(
-        `update app.sessions
-         set revoked_at = clock_timestamp()
-         where token_digest = $1 and revoked_at is null`,
-        [digestSchema.parse(tokenDigestInput)],
-      );
-      return result.rowCount === 1;
-    },
+    ...createIdentityWorkspaceSessionStore(pool),
 
     createWorkspaceWithOwner: async (
       input: WorkspaceWithOwnerInput,
