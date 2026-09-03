@@ -5,7 +5,7 @@ import {
   type SessionIssueResult,
 } from '../identity/index.js';
 import {
-  authorizeWorkspace,
+  authorizeWorkspaceOperation,
   type ActorContext,
   type AuthorizedWorkspaceContext,
   type AuthorizationCapability,
@@ -145,6 +145,7 @@ export class CreateWorkspaceUseCase {
 
 export type WorkspaceLifecycleInput = Readonly<{
   actor: ActorContext;
+  authorizedWorkspace?: AuthorizedWorkspaceContext;
   idempotencyKey: string;
   routeWorkspaceId: string;
   requestId?: string;
@@ -157,6 +158,7 @@ export type RequestDeletionInput = WorkspaceLifecycleInput &
 
 export type ReadWorkspaceLifecycleOperationInput = Readonly<{
   actor: ActorContext;
+  authorizedWorkspace?: AuthorizedWorkspaceContext;
   routeWorkspaceId: string;
   operationId: string;
 }>;
@@ -235,17 +237,24 @@ export class WorkspaceLifecycleUseCase {
   }
 
   private authorize(
-    input: Readonly<{ actor: ActorContext; routeWorkspaceId: string }>,
+    input: Readonly<{
+      actor: ActorContext;
+      authorizedWorkspace?: AuthorizedWorkspaceContext;
+      routeWorkspaceId: string;
+    }>,
     capability: AuthorizationCapability,
     allowedWorkspaceStatuses: readonly WorkspaceStatus[],
   ): Promise<AuthorizedWorkspaceContext> {
-    return authorizeWorkspace({
+    return authorizeWorkspaceOperation({
       actor: input.actor,
       routeWorkspaceId: input.routeWorkspaceId,
       capability,
       access: this.authorization,
       disclosure: 'forbidden',
       allowedWorkspaceStatuses,
+      ...(input.authorizedWorkspace === undefined
+        ? {}
+        : { authorizedWorkspace: input.authorizedWorkspace }),
     });
   }
 }

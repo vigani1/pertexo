@@ -235,6 +235,7 @@ export class WorkspaceController {
       });
       return await this.lifecycle.requestDeletion({
         actor,
+        ...guardAuthorization(request),
         idempotencyKey: requestIdempotencyKey(request),
         routeWorkspaceId: workspaceId,
         reason: deletion.reason,
@@ -272,6 +273,7 @@ export class WorkspaceController {
       });
       return await this.lifecycle.restore({
         actor,
+        ...guardAuthorization(request),
         idempotencyKey: requestIdempotencyKey(request),
         routeWorkspaceId: workspaceId,
         requestId,
@@ -304,6 +306,7 @@ export class WorkspaceController {
       });
       return await this.lifecycle.readOperation({
         actor,
+        ...guardAuthorization(request),
         routeWorkspaceId: workspaceId,
         operationId,
       });
@@ -311,6 +314,14 @@ export class WorkspaceController {
       return throwApplicationError(mapIdentityWorkspaceError(error));
     }
   }
+}
+
+function guardAuthorization(
+  request: IdentityWorkspaceRequest,
+): Pick<IdentityWorkspaceRequest, 'authorizedWorkspace'> {
+  return request.authorizedWorkspace === undefined
+    ? {}
+    : { authorizedWorkspace: request.authorizedWorkspace };
 }
 
 function requestIdempotencyKey(request: IdentityWorkspaceRequest): string {
