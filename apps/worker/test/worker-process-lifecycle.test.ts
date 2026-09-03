@@ -1,5 +1,4 @@
-import { spawn } from 'node:child_process';
-import { once } from 'node:events';
+import { spawn, type ChildProcess } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
@@ -16,6 +15,22 @@ async function waitForOutput(
   await expect
     .poll(output, { timeout: PROCESS_EXIT_TIMEOUT_MILLIS })
     .toContain(expected);
+}
+
+async function waitForExit(
+  child: ChildProcess,
+  output: () => string,
+): Promise<{ code: number | null; signal: NodeJS.Signals | null }> {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error(`worker did not exit: ${output()}`));
+    }, PROCESS_EXIT_TIMEOUT_MILLIS);
+    timeout.unref();
+    child.once('exit', (code, signal) => {
+      clearTimeout(timeout);
+      resolve({ code, signal });
+    });
+  });
 }
 
 describe('compiled worker process lifecycle', () => {
@@ -38,15 +53,7 @@ describe('compiled worker process lifecycle', () => {
       await waitForOutput(() => output, 'worker.ready');
       const signaledAt = performance.now();
       child.kill('SIGTERM');
-      const [code, signal] = await Promise.race([
-        once(child, 'exit'),
-        new Promise<never>((_resolve, reject) => {
-          setTimeout(
-            () => reject(new Error(`worker did not exit: ${output}`)),
-            PROCESS_EXIT_TIMEOUT_MILLIS,
-          ).unref();
-        }),
-      ]);
+      const { code, signal } = await waitForExit(child, () => output);
 
       expect(signal).toBeNull();
       expect(code).toBe(0);
@@ -55,7 +62,9 @@ describe('compiled worker process lifecycle', () => {
       );
       expect(output).toContain('database.closed');
       expect(output).toContain('telemetry.closed');
-      if (mode === 'active') expect(output).toContain('consumer.closed');
+      if (mode === 'active') {
+        expect(output).toContain('consumer.closed');
+      }
     },
   );
 
@@ -73,15 +82,7 @@ describe('compiled worker process lifecycle', () => {
       output += chunk;
     });
 
-    const [code, signal] = await Promise.race([
-      once(child, 'exit'),
-      new Promise<never>((_resolve, reject) => {
-        setTimeout(
-          () => reject(new Error(`worker did not exit: ${output}`)),
-          PROCESS_EXIT_TIMEOUT_MILLIS,
-        ).unref();
-      }),
-    ]);
+    const { code, signal } = await waitForExit(child, () => output);
 
     expect(signal).toBeNull();
     expect(code).toBe(0);
