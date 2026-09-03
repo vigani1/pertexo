@@ -29,6 +29,7 @@ import {
   NodeDispatchEvidenceError,
   NodeExecutorFailure,
 } from '@pertexo/node-sdk/server';
+import { waitForAbortableDelay } from '../runtime/abortable-delay.js';
 
 type AttemptDelivery = Extract<
   QueueDelivery,
@@ -109,31 +110,6 @@ export class NodeAttemptHandlerStateError extends Error {
   public constructor(readonly code: string) {
     super(`Node attempt delivery cannot execute: ${code}`);
   }
-}
-
-function abortError(): DOMException {
-  return new DOMException('The operation was aborted', 'AbortError');
-}
-
-function waitForHeartbeat(
-  milliseconds: number,
-  signal: AbortSignal,
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (signal.aborted) {
-      reject(abortError());
-      return;
-    }
-    const onAbort = (): void => {
-      clearTimeout(timer);
-      reject(abortError());
-    };
-    const timer = setTimeout(() => {
-      signal.removeEventListener('abort', onAbort);
-      resolve();
-    }, milliseconds);
-    signal.addEventListener('abort', onAbort, { once: true });
-  });
 }
 
 async function completeControlOutcome(
@@ -283,7 +259,7 @@ export function createNodeAttemptHandler(
       const heartbeat = (async (): Promise<void> => {
         try {
           while (!heartbeatSignal.aborted) {
-            await waitForHeartbeat(
+            await waitForAbortableDelay(
               dependencies.heartbeatIntervalMillis,
               heartbeatSignal,
             );

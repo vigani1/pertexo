@@ -32,6 +32,7 @@ import {
   mapUnknownOutcomeReconciliationError,
   type UnknownOutcomeReconciliationStore,
 } from './unknown-outcome-reconciliation-runtime.js';
+import { waitForSupervisorDelay } from '../runtime/abortable-delay.js';
 import {
   createFailureNotificationHandler,
   type FailureNotificationDeliveryCapability,
@@ -175,17 +176,7 @@ export async function createPreviewMaintenanceRuntime(
       } catch {
         // PostgreSQL authority is retried; dependency readiness remains fail closed.
       }
-      await new Promise<void>((resolve) => {
-        const timeout = setTimeout(resolve, 1_000);
-        recoveryAbort.signal.addEventListener(
-          'abort',
-          () => {
-            clearTimeout(timeout);
-            resolve();
-          },
-          { once: true },
-        );
-      });
+      await waitForSupervisorDelay(1_000, recoveryAbort.signal);
     }
   })();
   return Object.freeze({
