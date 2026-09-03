@@ -346,10 +346,8 @@ export class OutboxDispatcher {
           outcome: 'published',
         });
       });
-      const marked = await bounded(
-        this.database.markPublished(event.id, event.leaseToken),
-        this.options.operationTimeoutMillis,
-      );
+      const marked = await this.publicationSettlements.markPublished(event);
+      if (marked === 'outcome_unknown') return marked;
       this.observeMetrics(() => {
         this.metrics.recordOutboxDispatchLatency({
           ...currentJob,

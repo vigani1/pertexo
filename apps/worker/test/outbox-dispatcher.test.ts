@@ -298,6 +298,31 @@ describe('outbox dispatcher', () => {
     });
   });
 
+  it('retains the lease while a timed-out publication mark can still settle', async () => {
+    vi.useFakeTimers();
+    const selected = boundaries();
+    const mark = Promise.withResolvers<boolean>();
+    vi.mocked(selected.database.markPublished).mockReturnValue(mark.promise);
+    const dispatcher = createDispatcher(selected);
+
+    const dispatch = dispatcher.dispatchOnce();
+    await vi.advanceTimersByTimeAsync(5_000);
+
+    await expect(dispatch).resolves.toEqual({
+      claimed: 1,
+      failed: 0,
+      outcomeUnknown: 1,
+      published: 0,
+      stale: 0,
+    });
+    expect(selected.database.releaseOrFail).not.toHaveBeenCalled();
+
+    mark.resolve(true);
+    await vi.waitFor(() => {
+      expect(selected.database.markPublished).toHaveBeenCalledOnce();
+    });
+  });
+
   it('retains the lease and records a late success after an unknown publish outcome', async () => {
     const selected = boundaries();
     const metrics = transportMetrics();
