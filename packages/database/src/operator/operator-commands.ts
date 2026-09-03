@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import type { DatabaseConfig } from './config.js';
+import type { DatabaseConfig } from '../config.js';
 import { OperatorCommandConflictError } from './operator-command-errors.js';
 import { createOperatorCommandRuntime } from './operator-command-runtime.js';
 

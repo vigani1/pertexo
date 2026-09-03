@@ -1,6 +1,6 @@
 export { parseOperatorDatabaseConfig } from './config.js';
 export type { DatabaseConfig } from './config.js';
-export { createOperatorCommandDatabase } from './operator-commands.js';
+export { createOperatorCommandDatabase } from './operator/operator-commands.js';
 export type {
   GenericOperatorCommandResult,
   OperatorCommandDatabase,
@@ -8,4 +8,4 @@ export type {
   OperatorCommandResult,
   RedispatchFailedOutboxInput,
   ReplayOperatorRunInput,
-} from './operator-commands.js';
+} from './operator/operator-commands.js';

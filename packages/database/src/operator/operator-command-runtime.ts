@@ -1,17 +1,17 @@
 import type { Pool, PoolClient, QueryConfig, QueryResult } from 'pg';
 import { z } from 'zod';
 
-import type { DatabaseConfig } from './config.js';
+import type { DatabaseConfig } from '../config.js';
 import { OperatorCommandConflictError } from './operator-command-errors.js';
 import type {
   GenericOperatorCommandResult,
   OperatorCommandDatabaseOptions,
 } from './operator-commands.js';
-import { createDatabasePool } from './postgres-telemetry.js';
+import { createDatabasePool } from '../postgres-telemetry.js';
 import {
   EXPECTED_MIGRATION_HEAD,
   MINIMUM_POSTGRES_MAJOR,
-} from './readiness.js';
+} from '../readiness.js';
 
 type RuntimeOptions = Readonly<{
   forbiddenRoles: readonly string[];

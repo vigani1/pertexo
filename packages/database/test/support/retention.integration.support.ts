@@ -6,7 +6,7 @@ import { afterAll, beforeAll } from 'vitest';
 import { parseDatabaseConfig } from '../../src/config.js';
 import type { ControlLedger } from '../../src/lifecycle/control-ledger-coordinator.js';
 import { migrateDatabase } from '../../src/migrations.js';
-import { createOperatorCommandDatabase } from '../../src/operator-commands.js';
+import { createOperatorCommandDatabase } from '../../src/operator/operator-commands.js';
 import {
   createRetentionDatabase,
   createRetentionEnforcementCoordinator,

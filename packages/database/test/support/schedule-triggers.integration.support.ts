@@ -7,8 +7,8 @@ import { createWorkspaceDatabase } from '../../src/database.js';
 import { acceptWorkflowRun } from '../../src/execution-acceptance.js';
 import { createIdentityWorkspaceDatabase } from '../../src/tenant-access/identity-workspace.js';
 import { migrateDatabase } from '../../src/migrations.js';
-import { createOperatorCommandDatabase } from '../../src/operator-commands.js';
-import { createOperatorRunReplayStore } from '../../src/operator-run-replay.js';
+import { createOperatorCommandDatabase } from '../../src/operator/operator-commands.js';
+import { createOperatorRunReplayStore } from '../../src/operator/operator-run-replay.js';
 import {
   createScheduleTriggerDatabase,
   createScheduleTriggerScanner,

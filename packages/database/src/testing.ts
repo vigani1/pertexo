@@ -5,7 +5,7 @@ export {
   OperatorRunReplayNotExecutableError,
   type OperatorRunReplayCheckpointFactory,
   type OperatorRunReplayStore,
-} from './operator-run-replay.js';
+} from './operator/operator-run-replay.js';
 export {
   reconcileUnknownOutcomeEvidence,
   UnknownOutcomeReconciliationMismatchError,
@@ -417,7 +417,7 @@ export {
   type ReconcileOperatorAttemptInput,
   type RecordUnknownOutcomeEvidenceInput,
   type RedispatchFailedOutboxInput,
-} from './operator-commands.js';
+} from './operator/operator-commands.js';
 export type {
   ClaimOutboxBatchInput,
   ClaimOutboxBatchResult,

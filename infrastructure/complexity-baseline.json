@@ -135,7 +135,7 @@
       "branches": 43,
       "lines": 264
     },
-    "packages/database/src/operator-commands.ts#createOperatorCommandDatabase": {
+    "packages/database/src/operator/operator-commands.ts#createOperatorCommandDatabase": {
       "branches": 0,
       "lines": 230
     },
