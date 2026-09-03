@@ -1,13 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import { createServer, type Server } from 'node:http';
+import { createServer } from 'node:http';
 
 import {
   consumeInboxMessage,
   canonicalOutboxPayloadChecksum,
   createOutboxDispatcherDatabase,
   createWorkspaceDatabase,
-  InboxChecksumMismatchError,
   InboxReceiptUnavailableError,
   insertOutboxEvent,
   outboxEvents,
@@ -20,7 +19,6 @@ import {
   createQueueProducer,
   JOB_NAME,
   QUEUE_NAME,
-  unrecoverableQueueError,
 } from '@pertexo/queue';
 import type { QueueJobHandler } from '@pertexo/queue';
 import { Queue } from 'bullmq';

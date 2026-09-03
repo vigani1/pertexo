@@ -8,13 +8,9 @@ import {
   createOutboxDispatcherDatabase,
   createWorkspaceDatabase,
   InboxChecksumMismatchError,
-  InboxReceiptUnavailableError,
   insertOutboxEvent,
-  outboxEvents,
   parseDatabaseConfig,
 } from '@pertexo/database/testing';
-import type { TransportMetrics } from '@pertexo/observability/transport-metrics';
-import { createQueueTraceRunner } from '@pertexo/observability/queue-tracing';
 import {
   createQueueConsumer,
   createQueueProducer,
@@ -22,22 +18,17 @@ import {
   QUEUE_NAME,
   unrecoverableQueueError,
 } from '@pertexo/queue';
-import type { QueueJobHandler } from '@pertexo/queue';
 import { Queue } from 'bullmq';
-import { eq, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import { Pool } from 'pg';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-
-/* eslint-disable @typescript-eslint/unbound-method -- assertions target injected metric boundary fakes */
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { WorkerDrainState } from '../src/runtime/worker-drain-state.js';
 import {
   createDispatchConsumerCapabilityRegistry,
-  DispatchConsumerCapabilityError,
   type DispatchConsumerCapabilityRegistry,
 } from '../src/transport/dispatch-consumer-capabilities.js';
 import { OutboxDispatcher } from '../src/transport/outbox-dispatcher.js';
-import { createQueueMetricsObserver } from '../src/transport/transport-metrics-adapter.js';
 
 const integration = process.env.WORKER_TRANSPORT_INTEGRATION === 'true';
 const describeIntegration = integration ? describe : describe.skip;
@@ -59,7 +50,6 @@ const redisUrl =
 
 const workspaceId = '00000000-0000-4000-8000-0000000000d4';
 const actorId = '00000000-0000-4000-8000-0000000000a4';
-const TRACEPARENT = `00-${'a'.repeat(32)}-${'b'.repeat(16)}-01`;
 const apiDatabase = createWorkspaceDatabase(
   parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
 );
@@ -67,23 +57,6 @@ const workerDatabase = createWorkspaceDatabase(
   parseDatabaseConfig({ connectionString: workerUrl, max: 4 }),
 );
 const proofIds = new Set<string>();
-
-function capturingTransportMetrics(): TransportMetrics {
-  return {
-    addActiveConcurrency: vi.fn(),
-    observeArtifacts: vi.fn(),
-    observeOutbox: vi.fn(),
-    observeQueue: vi.fn(),
-    recordHandlerFinished: vi.fn(),
-    recordConsumerLifecycle: vi.fn(),
-    recordOutboxClaim: vi.fn(),
-    recordOutboxLeaseEvent: vi.fn(),
-    recordOutboxPublish: vi.fn(),
-    recordOutboxDispatchLatency: vi.fn(),
-    recordQueueStall: vi.fn(),
-    recordWorkerProcessStart: vi.fn(),
-  };
-}
 
 function checksum(value: unknown): string {
   return canonicalOutboxPayloadChecksum(value);
@@ -328,53 +301,6 @@ async function dispatchFairRounds(
   throw new Error(
     `Fair dispatch did not claim ${String(expectedClaims)} events within ${String(maximumRounds)} rounds: ${JSON.stringify(totals)}`,
   );
-}
-
-async function claimEventAcrossFairRounds(
-  database: ReturnType<typeof createOutboxDispatcherDatabase>,
-  eventId: string,
-) {
-  for (let round = 0; round < 3; round += 1) {
-    const claimed = await database.claimBatch({
-      enabledJobNames: [JOB_NAME.advanceWorkflowRun],
-      leaseDurationMillis: 1_000,
-      leaseOwner: 'integration-crashed',
-      leaseToken: randomUUID(),
-      limit: 100,
-      maxAttempts: 3,
-    });
-    const event = claimed.events.find((candidate) => candidate.id === eventId);
-    if (event !== undefined) return event;
-  }
-  throw new Error('Proof event was not claimed within bounded fair rounds');
-}
-
-async function waitForRemovableJob(queue: Queue, id: string): Promise<void> {
-  const deadline = Date.now() + 10_000;
-  while (Date.now() < deadline) {
-    const job = await queue.getJob(id);
-    const state = await job?.getState();
-    if (state === 'delayed' || state === 'failed') return;
-    await new Promise((resolve) => setTimeout(resolve, 20));
-  }
-  throw new Error(`Timed out waiting for removable job ${id}`);
-}
-
-async function waitForBalancedConsumerMetrics(
-  metrics: TransportMetrics,
-  minimumHandlers: number,
-): Promise<void> {
-  const deadline = Date.now() + 5_000;
-  while (Date.now() < deadline) {
-    const deltas = vi
-      .mocked(metrics.addActiveConcurrency)
-      .mock.calls.map(([measurement]) => measurement.delta);
-    const started = deltas.filter((delta) => delta === 1).length;
-    const finished = deltas.filter((delta) => delta === -1).length;
-    if (started >= minimumHandlers && finished === started) return;
-    await new Promise((resolve) => setTimeout(resolve, 10));
-  }
-  throw new Error('Timed out waiting for balanced consumer metrics');
 }
 
 async function cleanup(): Promise<void> {

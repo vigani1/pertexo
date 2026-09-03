@@ -49,7 +49,6 @@ const versionId = randomUUID();
 let replaySourceRunId = '';
 const triggerId = randomUUID();
 const skipTriggerId = randomUUID();
-const quotaTriggerId = randomUUID();
 const notificationConnectionId = randomUUID();
 const notificationSecretVersionId = randomUUID();
 const notificationDestinationId = randomUUID();

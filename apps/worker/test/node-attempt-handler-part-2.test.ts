@@ -12,15 +12,11 @@ import {
 import { JOB_NAME, type QueueDelivery } from '@pertexo/queue';
 import { HttpRequestExecutorError } from '@pertexo/integrations/server';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
-import {
-  type NodeExecutionRegistry,
-  WorkflowEngineError,
-} from '@pertexo/workflow-engine';
+import { WorkflowEngineError } from '@pertexo/workflow-engine';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
   createNodeAttemptHandler,
-  type NodeAttemptExecutionEngine,
   type PreparedNodeAttempt,
 } from '../src/testing.js';
 

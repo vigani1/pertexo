@@ -17,7 +17,6 @@ import {
   ControlLedgerClosedError,
   ControlLedgerConflictError,
   ControlLedgerIntegrityError,
-  ControlLedgerReadinessError,
   createControlLedger,
 } from '../src/control-ledger.js';
 import type {

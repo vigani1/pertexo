@@ -1,9 +1,9 @@
+import type { GetObjectCommand } from '@aws-sdk/client-s3';
 import {
   GetBucketLifecycleConfigurationCommand,
   GetBucketLocationCommand,
   GetBucketPolicyCommand,
   GetBucketVersioningCommand,
-  GetObjectCommand,
   GetObjectLockConfigurationCommand,
   HeadBucketCommand,
   ListObjectsV2Command,
@@ -14,9 +14,6 @@ import { Readable } from 'node:stream';
 import { describe, expect, it } from 'vitest';
 
 import {
-  ControlLedgerClosedError,
-  ControlLedgerConflictError,
-  ControlLedgerIntegrityError,
   ControlLedgerReadinessError,
   createControlLedger,
 } from '../src/control-ledger.js';

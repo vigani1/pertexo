@@ -56,7 +56,6 @@ const progressWorkspaceId = randomUUID();
 const backlogWorkspaceId = randomUUID();
 const deletionWorkspaceId = randomUUID();
 const committedArtifactIds = [randomUUID(), randomUUID()].toSorted();
-let deletionActorId = '';
 let priorDirectory = '';
 let maintenance: Pool | undefined;
 
@@ -190,7 +189,7 @@ beforeAll(async () => {
     await createWorkspace(owner, cancellationWorkspaceId);
     await createWorkspace(owner, progressWorkspaceId);
     await createWorkspace(owner, backlogWorkspaceId);
-    deletionActorId = await createWorkspace(owner, deletionWorkspaceId);
+    await createWorkspace(owner, deletionWorkspaceId);
     await owner.query('begin');
     await owner.query('set local role pertexo_owner');
     await owner.query("select set_config('app.workspace_id',$1,true)", [
