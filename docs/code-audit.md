@@ -566,6 +566,22 @@ making the architecture plan even larger.
 ### C-11 — Database factories act as large source-level namespaces
 
 - **Severity:** medium.
+- **Remediation status:** in progress on 2026-09-03; operator-command runtime
+  extraction complete, three factory families remain.
+- **Verified affected locations:** a repository-wide factory/file-size and
+  nested-operation inventory confirmed the four named factories remain the
+  database sources that combine multiple independently changing capability
+  families. Existing extracted row parsers, workflow publication helpers, and
+  coordinator stores are already owner-focused and are not duplicate targets.
+- **Operator-command checkpoint:** preserved `OperatorCommandDatabase` while
+  moving pool lifecycle, timeout installation, abort-aware transaction
+  execution, generic command parsing, and least-privilege readiness into the
+  private `operator-command-runtime.ts` owner. The 672-line namespace is now a
+  433-line command-specific facade plus a 244-line runtime capability; conflict
+  identity remains in a narrow private error module and is re-exported through
+  the existing public path.
+- **Checkpoint verification:** database unit suite (170 tests), database
+  typecheck and build, focused lint, and complexity ratchet.
 - **Locations:** `createIdentityWorkspaceDatabase`,
   `createWorkflowAuthoringDatabase`, `createOperatorCommandDatabase`, and
   `createFailureNotificationStore`.

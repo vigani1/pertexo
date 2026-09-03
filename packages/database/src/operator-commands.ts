@@ -1,13 +1,10 @@
-import { createDatabasePool } from './postgres-telemetry.js';
-import type { Pool } from 'pg';
-import type { PoolClient, QueryConfig, QueryResult } from 'pg';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from './config.js';
-import {
-  EXPECTED_MIGRATION_HEAD,
-  MINIMUM_POSTGRES_MAJOR,
-} from './readiness.js';
+import { OperatorCommandConflictError } from './operator-command-errors.js';
+import { createOperatorCommandRuntime } from './operator-command-runtime.js';
+
+export { OperatorCommandConflictError } from './operator-command-errors.js';
 
 const actorRefSchema = z
   .string()
@@ -204,216 +201,23 @@ const commandTypeSchema = z.enum([
   'unknown-outcome.record-evidence',
 ]);
 
-export class OperatorCommandConflictError extends Error {
-  public constructor() {
-    super('Operator command replay conflicts with the existing request');
-    this.name = 'OperatorCommandConflictError';
-  }
-}
-
-async function query<Row extends Record<string, unknown>>(
-  pool: Pool | PoolClient,
-  text: string,
-  values: readonly unknown[],
-  signal?: AbortSignal,
-): Promise<QueryResult<Row>> {
-  signal?.throwIfAborted();
-  const request: QueryConfig<unknown[]> & { readonly signal?: AbortSignal } = {
-    ...(signal === undefined ? {} : { signal }),
-    text,
-    values: [...values],
-  };
-  try {
-    const result = await pool.query<Row>(request);
-    signal?.throwIfAborted();
-    return result;
-  } catch (error: unknown) {
-    if (signal?.aborted === true) throw signal.reason;
-    throw error;
-  }
-}
-
 export function createOperatorCommandDatabase(
   config: DatabaseConfig,
   operatorRole = 'pertexo_operator',
   inputOptions: OperatorCommandDatabaseOptions = {},
 ): OperatorCommandDatabase {
-  const { ownerRole, workerRuntimeRole, ...poolConfig } = config;
-  void workerRuntimeRole;
-  const options = z
-    .object({
-      lockTimeoutMs: z.number().int().min(100).max(300_000).default(10_000),
-      forbiddenRoles: z
-        .array(z.string().regex(/^[a-z_][a-z0-9_]*$/u))
-        .min(1)
-        .max(16)
-        .default([
-          'pertexo_api',
-          'pertexo_dispatcher',
-          'pertexo_lifecycle_command',
-          'pertexo_maintenance',
-          'pertexo_migration',
-          'pertexo_owner',
-          'pertexo_worker',
-        ]),
-      statementTimeoutMs: z
-        .number()
-        .int()
-        .min(1_000)
-        .max(300_000)
-        .default(30_000),
-    })
-    .parse(inputOptions);
-  const pool = createDatabasePool({ ...poolConfig, max: 1 });
-  pool.on('error', () => undefined);
-
-  const executeCommand = async (
-    text: string,
-    values: readonly unknown[],
-    signal?: AbortSignal,
-  ): Promise<GenericOperatorCommandResult> => {
-    const client = await pool.connect();
-    try {
-      await query(client, 'begin', [], signal);
-      await query(
-        client,
-        "select set_config('lock_timeout',$1,true),set_config('statement_timeout',$2,true)",
-        [String(options.lockTimeoutMs), String(options.statementTimeoutMs)],
-        signal,
-      );
-      const response = await query(client, text, values, signal);
-      await query(client, 'commit', [], signal);
-      const row = response.rows[0];
-      if (row === undefined)
-        throw new Error('Operator command returned no result');
-      if (row.command_outcome === 'conflict')
-        throw new OperatorCommandConflictError();
-      return Object.freeze({
-        commandId: z.uuid().parse(row.command_id),
-        outcome: z
-          .string()
-          .regex(/^[a-z][a-z0-9_]{0,31}$/u)
-          .parse(row.command_outcome),
-        replayed: z.boolean().parse(row.replayed),
-        result: Object.freeze(
-          z.record(z.string(), z.unknown()).parse(row.result),
-        ),
-        status: z
-          .enum(['completed', 'failed', 'pending'])
-          .parse(row.command_status),
-      });
-    } catch (error: unknown) {
-      await client.query('rollback').catch(() => undefined);
-      throw error;
-    } finally {
-      client.release();
-    }
-  };
+  const runtime = createOperatorCommandRuntime(
+    config,
+    operatorRole,
+    inputOptions,
+  );
 
   return Object.freeze({
-    checkReadiness: async (signal?: AbortSignal): Promise<void> => {
-      const client = await pool.connect();
-      try {
-        await query(client, 'begin', [], signal);
-        await query(
-          client,
-          "select set_config('lock_timeout',$1,true),set_config('statement_timeout',$2,true)",
-          [String(options.lockTimeoutMs), String(options.statementTimeoutMs)],
-          signal,
-        );
-        const result = await query<{
-          can_command: boolean;
-          can_execution_commands: boolean;
-          can_get: boolean;
-          can_trigger_command: boolean;
-          can_replay_command: boolean;
-          can_maintenance_rerun: boolean;
-          direct_audit: boolean;
-          direct_command: boolean;
-          direct_evidence: boolean;
-          direct_execution: boolean;
-          direct_outbox: boolean;
-          expected_role: boolean;
-          forbidden_member: boolean;
-          migration_head: string | null;
-          owner_member: boolean;
-          postgres_major: number;
-          rolbypassrls: boolean;
-          rolsuper: boolean;
-          private_command: boolean;
-        }>(
-          client,
-          `select
-          current_setting('server_version_num')::integer/10000 postgres_major,
-          role.rolsuper,role.rolbypassrls,
-          pg_has_role(current_user,$1::name,'MEMBER') owner_member,
-          current_user=$2::name as expected_role,
-          exists(select 1 from unnest($3::name[]) forbidden(role_name)
-            where pg_has_role(current_user,forbidden.role_name,'MEMBER')) forbidden_member,
-          (has_any_column_privilege(current_user,'app.outbox_events','SELECT,INSERT,UPDATE,REFERENCES')
-            or has_table_privilege(current_user,'app.outbox_events','DELETE,TRUNCATE,TRIGGER')) direct_outbox,
-          (has_any_column_privilege(current_user,'app.audit_events','SELECT,INSERT,UPDATE,REFERENCES')
-            or has_table_privilege(current_user,'app.audit_events','DELETE,TRUNCATE,TRIGGER')) direct_audit,
-          (has_any_column_privilege(current_user,'app.operator_commands','SELECT,INSERT,UPDATE,REFERENCES')
-            or has_table_privilege(current_user,'app.operator_commands','DELETE,TRUNCATE,TRIGGER')) direct_command,
-          (has_any_column_privilege(current_user,'app.operator_unknown_outcome_evidence','SELECT,INSERT,UPDATE,REFERENCES')
-            or has_table_privilege(current_user,'app.operator_unknown_outcome_evidence','DELETE,TRUNCATE,TRIGGER')) direct_evidence,
-          exists(select 1 from (values ('workflow_runs'),('run_events'),
-            ('run_checkpoints'),('node_runs'),('node_attempts')) execution(table_name)
-            where has_any_column_privilege(current_user,'app.'||execution.table_name,'SELECT,INSERT,UPDATE,REFERENCES')
-              or has_table_privilege(current_user,'app.'||execution.table_name,'DELETE,TRUNCATE,TRIGGER')) direct_execution,
-          has_function_privilege(current_user,'app.redispatch_failed_outbox_event(uuid,uuid,uuid,character varying,character varying,boolean)','EXECUTE') can_command,
-          (has_function_privilege(current_user,'app.reconcile_operator_attempt(uuid,uuid,uuid,bigint,character varying,character varying,character varying,boolean)','EXECUTE')
-            and has_function_privilege(current_user,'app.resume_operator_due_work(uuid,uuid,uuid,character varying,character varying,boolean)','EXECUTE')
-            and has_function_privilege(current_user,'app.record_operator_unknown_outcome_evidence(uuid,uuid,uuid,character varying,jsonb,character varying,character varying)','EXECUTE')
-            and has_function_privilege(current_user,'app.cancel_operator_run(uuid,uuid,uuid,character varying,character varying,boolean)','EXECUTE')) can_execution_commands,
-          has_function_privilege(current_user,'app.get_operator_command(uuid,uuid,character varying,character varying)','EXECUTE') can_get,
-          has_function_privilege(current_user,'app.retry_operator_trigger_reconciliation(uuid,uuid,uuid,character varying,character varying,boolean)','EXECUTE') can_trigger_command,
-          has_function_privilege(current_user,'app.request_operator_run_replay(uuid,uuid,uuid,uuid,jsonb,character varying,character varying,boolean)','EXECUTE') can_replay_command,
-          has_function_privilege(current_user,'app.request_operator_maintenance_rerun(uuid,uuid,character varying,uuid,character varying,character varying,boolean)','EXECUTE') can_maintenance_rerun,
-          has_function_privilege(current_user,'app.execute_operator_execution_command(uuid,character varying,uuid,uuid,bigint,character varying,character varying,jsonb,character varying,character varying,boolean)','EXECUTE') private_command,
-          (select name from pertexo_internal.schema_migrations order by name desc limit 1) migration_head
-        from pg_roles role where role.rolname=current_user`,
-          [ownerRole, operatorRole, options.forbiddenRoles],
-          signal,
-        );
-        await query(client, 'commit', [], signal);
-        const row = result.rows[0];
-        if (
-          row === undefined ||
-          row.postgres_major < MINIMUM_POSTGRES_MAJOR ||
-          row.migration_head !== EXPECTED_MIGRATION_HEAD ||
-          row.rolsuper ||
-          row.rolbypassrls ||
-          row.owner_member ||
-          row.forbidden_member ||
-          !row.expected_role ||
-          row.direct_outbox ||
-          row.direct_audit ||
-          row.direct_command ||
-          row.direct_evidence ||
-          row.direct_execution ||
-          row.private_command ||
-          !row.can_command ||
-          !row.can_execution_commands ||
-          !row.can_trigger_command ||
-          !row.can_replay_command ||
-          !row.can_maintenance_rerun ||
-          !row.can_get
-        ) {
-          throw new Error('Operator command database boundary is incompatible');
-        }
-      } catch (error: unknown) {
-        await client.query('rollback').catch(() => undefined);
-        throw error;
-      } finally {
-        client.release();
-      }
-    },
-    close: () => pool.end(),
+    checkReadiness: (signal?: AbortSignal) => runtime.checkReadiness(signal),
+    close: () => runtime.close(),
     cancelRun: async (input: OperatorRunCommandInput) => {
       const parsed = targetRunInputSchema.parse(input);
-      return executeCommand(
+      return runtime.execute(
         'select * from app.cancel_operator_run($1::uuid,$2::uuid,$3::uuid,$4::varchar,$5::varchar,$6::boolean)',
         [
           parsed.commandId,
@@ -441,133 +245,90 @@ export function createOperatorCommandDatabase(
         })
         .strict()
         .parse(input);
-      const client = await pool.connect();
-      try {
-        await query(client, 'begin', [], parsed.signal);
-        await query(
-          client,
-          "select set_config('lock_timeout',$1,true),set_config('statement_timeout',$2,true)",
-          [String(options.lockTimeoutMs), String(options.statementTimeoutMs)],
-          parsed.signal,
-        );
-        const result = await query(
-          client,
-          `select * from app.get_operator_command(
+      const result = await runtime.transaction(
+        `select * from app.get_operator_command(
             $1::uuid,$2::uuid,$3::varchar,$4::varchar)`,
-          [
-            parsed.commandId,
-            parsed.workspaceId,
-            parsed.actorRef,
-            parsed.reason,
-          ],
-          parsed.signal,
-        );
-        await query(client, 'commit', [], parsed.signal);
-        const row = result.rows[0];
-        if (row === undefined) return null;
-        const commandResult = z
-          .record(z.string(), z.unknown())
-          .parse(row.result);
-        return Object.freeze({
-          commandId: z.uuid().parse(row.command_id),
-          commandType: commandTypeSchema.parse(row.command_type),
-          completedAt:
-            row.completed_at === null
-              ? null
-              : new Date(
-                  z.union([z.string(), z.date()]).parse(row.completed_at),
-                ),
-          createdAt: new Date(
-            z.union([z.string(), z.date()]).parse(row.created_at),
-          ),
-          dryRun: z.boolean().parse(row.dry_run),
-          outcome: z
-            .string()
-            .regex(/^[a-z][a-z0-9_]{0,31}$/u)
-            .parse(row.command_outcome),
-          priorErrorCode: z
-            .string()
-            .nullable()
-            .parse(commandResult.priorErrorCode ?? null),
-          priorFailedAt:
-            commandResult.priorFailedAt == null
-              ? null
-              : new Date(
-                  z
-                    .union([z.string(), z.date()])
-                    .parse(commandResult.priorFailedAt),
-                ),
-          priorPublishAttempts: z.coerce
-            .number()
-            .int()
-            .nonnegative()
-            .nullable()
-            .parse(commandResult.priorPublishAttempts ?? null),
-          result: Object.freeze(commandResult),
-          requestFingerprint: z
-            .string()
-            .regex(/^[0-9a-f]{64}$/u)
-            .parse(row.request_fingerprint),
-          status: z
-            .enum(['completed', 'failed', 'pending'])
-            .parse(row.command_status),
-        });
-      } catch (error: unknown) {
-        await client.query('rollback').catch(() => undefined);
-        throw error;
-      } finally {
-        client.release();
-      }
+        [parsed.commandId, parsed.workspaceId, parsed.actorRef, parsed.reason],
+        parsed.signal,
+      );
+      const row = result.rows[0];
+      if (row === undefined) return null;
+      const commandResult = z.record(z.string(), z.unknown()).parse(row.result);
+      return Object.freeze({
+        commandId: z.uuid().parse(row.command_id),
+        commandType: commandTypeSchema.parse(row.command_type),
+        completedAt:
+          row.completed_at === null
+            ? null
+            : new Date(z.union([z.string(), z.date()]).parse(row.completed_at)),
+        createdAt: new Date(
+          z.union([z.string(), z.date()]).parse(row.created_at),
+        ),
+        dryRun: z.boolean().parse(row.dry_run),
+        outcome: z
+          .string()
+          .regex(/^[a-z][a-z0-9_]{0,31}$/u)
+          .parse(row.command_outcome),
+        priorErrorCode: z
+          .string()
+          .nullable()
+          .parse(commandResult.priorErrorCode ?? null),
+        priorFailedAt:
+          commandResult.priorFailedAt == null
+            ? null
+            : new Date(
+                z
+                  .union([z.string(), z.date()])
+                  .parse(commandResult.priorFailedAt),
+              ),
+        priorPublishAttempts: z.coerce
+          .number()
+          .int()
+          .nonnegative()
+          .nullable()
+          .parse(commandResult.priorPublishAttempts ?? null),
+        result: Object.freeze(commandResult),
+        requestFingerprint: z
+          .string()
+          .regex(/^[0-9a-f]{64}$/u)
+          .parse(row.request_fingerprint),
+        status: z
+          .enum(['completed', 'failed', 'pending'])
+          .parse(row.command_status),
+      });
     },
     redispatchFailedOutbox: async (
       input: RedispatchFailedOutboxInput,
     ): Promise<OperatorCommandResult> => {
       const parsed = redispatchInputSchema.parse(input);
-      const client = await pool.connect();
-      try {
-        await query(client, 'begin', [], parsed.signal);
-        await query(
-          client,
-          "select set_config('lock_timeout',$1,true),set_config('statement_timeout',$2,true)",
-          [String(options.lockTimeoutMs), String(options.statementTimeoutMs)],
-          parsed.signal,
-        );
-        const result = await query(
-          client,
-          `select * from app.redispatch_failed_outbox_event(
+      const result = await runtime.transaction(
+        `select * from app.redispatch_failed_outbox_event(
             $1::uuid,$2::uuid,$3::uuid,$4::varchar,$5::varchar,$6::boolean)`,
-          [
-            parsed.commandId,
-            parsed.workspaceId,
-            parsed.outboxEventId,
-            parsed.actorRef,
-            parsed.reason,
-            parsed.dryRun,
-          ],
-          parsed.signal,
-        );
-        await query(client, 'commit', [], parsed.signal);
-        const row = result.rows[0];
-        if (row === undefined)
-          throw new Error('Operator command returned no result');
-        if (row.command_outcome === 'conflict')
-          throw new OperatorCommandConflictError();
-        return Object.freeze({
-          commandId: z.uuid().parse(row.command_id),
-          outcome: outcomeSchema.parse(row.command_outcome),
-          replayed: z.boolean().parse(row.replayed),
-          status: z.literal('completed').parse(row.command_status),
-        });
-      } catch (error: unknown) {
-        await client.query('rollback').catch(() => undefined);
-        throw error;
-      } finally {
-        client.release();
-      }
+        [
+          parsed.commandId,
+          parsed.workspaceId,
+          parsed.outboxEventId,
+          parsed.actorRef,
+          parsed.reason,
+          parsed.dryRun,
+        ],
+        parsed.signal,
+      );
+      const row = result.rows[0];
+      if (row === undefined)
+        throw new Error('Operator command returned no result');
+      if (row.command_outcome === 'conflict')
+        throw new OperatorCommandConflictError();
+      return Object.freeze({
+        commandId: z.uuid().parse(row.command_id),
+        outcome: outcomeSchema.parse(row.command_outcome),
+        replayed: z.boolean().parse(row.replayed),
+        status: z.literal('completed').parse(row.command_status),
+      });
     },
     reconcileAttempt: async (input: ReconcileOperatorAttemptInput) => {
       const parsed = reconcileAttemptInputSchema.parse(input);
-      return executeCommand(
+      return runtime.execute(
         `select * from app.reconcile_operator_attempt(
           $1::uuid,$2::uuid,$3::uuid,$4::bigint,$5::varchar,$6::varchar,$7::varchar,$8::boolean)`,
         [
@@ -590,7 +351,7 @@ export function createOperatorCommandDatabase(
       const serialized = JSON.stringify(parsed.evidenceRef);
       if (Buffer.byteLength(serialized, 'utf8') > 4096)
         throw new TypeError('Unknown outcome evidence exceeds 4096 bytes');
-      return executeCommand(
+      return runtime.execute(
         `select * from app.record_operator_unknown_outcome_evidence(
           $1::uuid,$2::uuid,$3::uuid,$4::varchar,$5::jsonb,$6::varchar,$7::varchar)`,
         [
@@ -607,7 +368,7 @@ export function createOperatorCommandDatabase(
     },
     resumeDueWork: async (input: OperatorRunCommandInput) => {
       const parsed = targetRunInputSchema.parse(input);
-      return executeCommand(
+      return runtime.execute(
         'select * from app.resume_operator_due_work($1::uuid,$2::uuid,$3::uuid,$4::varchar,$5::varchar,$6::boolean)',
         [
           parsed.commandId,
@@ -622,7 +383,7 @@ export function createOperatorCommandDatabase(
     },
     replayRun: async (input: ReplayOperatorRunInput) => {
       const parsed = replayRunInputSchema.parse(input);
-      return executeCommand(
+      return runtime.execute(
         'select * from app.request_operator_run_replay($1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::jsonb,$6::varchar,$7::varchar,$8::boolean)',
         [
           parsed.commandId,
@@ -639,7 +400,7 @@ export function createOperatorCommandDatabase(
     },
     requestMaintenanceRerun: async (input: OperatorMaintenanceRerunInput) => {
       const parsed = maintenanceRerunInputSchema.parse(input);
-      return executeCommand(
+      return runtime.execute(
         'select * from app.request_operator_maintenance_rerun($1::uuid,$2::uuid,$3::varchar,$4::uuid,$5::varchar,$6::varchar,$7::boolean)',
         [
           parsed.commandId,
@@ -655,7 +416,7 @@ export function createOperatorCommandDatabase(
     },
     retryTriggerReconciliation: async (input: OperatorWorkflowCommandInput) => {
       const parsed = targetWorkflowInputSchema.parse(input);
-      return executeCommand(
+      return runtime.execute(
         'select * from app.retry_operator_trigger_reconciliation($1::uuid,$2::uuid,$3::uuid,$4::varchar,$5::varchar,$6::boolean)',
         [
           parsed.commandId,
