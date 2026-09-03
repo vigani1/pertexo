@@ -223,16 +223,9 @@ export class WorkspaceController {
     try {
       const { workspaceId } = workspaceIdParamSchema.parse(params);
       const deletion = workspaceDeletionRequestSchema.parse(body ?? {});
-      const session = authenticatedSession(request);
-      const requestId = requestIdentifier(request);
-      const traceId = traceIdentifier(request);
-      const actor = createActorContext({
-        actorId: session.userId,
-        workspaceId,
-        sessionId: session.sessionId,
-        requestId,
-        ...traceFields(traceId),
-      });
+      const actor = lifecycleActorFrom(request, workspaceId);
+      const requestId = actor.requestId;
+      const traceId = actor.traceId;
       return await this.lifecycle.requestDeletion({
         actor,
         ...guardAuthorization(request),
@@ -261,16 +254,9 @@ export class WorkspaceController {
   ) {
     try {
       const { workspaceId } = workspaceIdParamSchema.parse(params);
-      const session = authenticatedSession(request);
-      const requestId = requestIdentifier(request);
-      const traceId = traceIdentifier(request);
-      const actor = createActorContext({
-        actorId: session.userId,
-        workspaceId,
-        sessionId: session.sessionId,
-        requestId,
-        ...traceFields(traceId),
-      });
+      const actor = lifecycleActorFrom(request, workspaceId);
+      const requestId = actor.requestId;
+      const traceId = actor.traceId;
       return await this.lifecycle.restore({
         actor,
         ...guardAuthorization(request),
@@ -294,16 +280,7 @@ export class WorkspaceController {
     try {
       const { workspaceId, operationId } =
         workspaceLifecycleOperationParamsSchema.parse(params);
-      const session = authenticatedSession(request);
-      const requestId = requestIdentifier(request);
-      const traceId = traceIdentifier(request);
-      const actor = createActorContext({
-        actorId: session.userId,
-        workspaceId,
-        sessionId: session.sessionId,
-        requestId,
-        ...traceFields(traceId),
-      });
+      const actor = lifecycleActorFrom(request, workspaceId);
       return await this.lifecycle.readOperation({
         actor,
         ...guardAuthorization(request),
@@ -322,6 +299,22 @@ function guardAuthorization(
   return request.authorizedWorkspace === undefined
     ? {}
     : { authorizedWorkspace: request.authorizedWorkspace };
+}
+
+function lifecycleActorFrom(
+  request: IdentityWorkspaceRequest,
+  workspaceId: string,
+) {
+  if (request.authorizedWorkspace !== undefined)
+    return request.authorizedWorkspace.actor;
+  const session = authenticatedSession(request);
+  return createActorContext({
+    actorId: session.userId,
+    workspaceId,
+    sessionId: session.sessionId,
+    requestId: requestIdentifier(request),
+    ...traceFields(traceIdentifier(request)),
+  });
 }
 
 function requestIdempotencyKey(request: IdentityWorkspaceRequest): string {

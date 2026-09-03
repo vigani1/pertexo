@@ -11,15 +11,15 @@ import {
   SecureHttpError,
 } from '@pertexo/integrations/server';
 
-import {
-  authorizeWorkspace,
-  authorizeWorkspaceOperation,
-} from '../workspaces/index.js';
 import type {
   ActorContext,
   AuthorizedWorkspaceContext,
   WorkspaceAuthorizationSource,
 } from '../workspaces/index.js';
+import {
+  authorizeConnectionOperation,
+  reauthorizeConnectionSecretAccess,
+} from './authorization.js';
 import type {
   ConnectionCommandPersistence,
   ConnectionHttpClient,
@@ -87,7 +87,7 @@ export class CreateConnectionUseCase {
 
   public execute(input: CreateConnectionCommand): Promise<ConnectionResponse> {
     return this.telemetry.measure(CONNECTION_OPERATION.create, async () => {
-      await authorize(input, this.authorization);
+      await authorizeConnectionOperation(input, this.authorization);
       const request = connectionCreateRequestSchema.parse(input.request);
       const requestHash = hashRequest(request);
       const replay = await this.persistence.findConnectionCreateReplay({
@@ -143,7 +143,7 @@ export class RotateConnectionSecretUseCase {
     input: RotateConnectionSecretCommand,
   ): Promise<ConnectionResponse> {
     return this.telemetry.measure(CONNECTION_OPERATION.rotate, async () => {
-      await authorize(input, this.authorization);
+      await authorizeConnectionOperation(input, this.authorization);
       const request = connectionRotateSecretRequestSchema.parse(input.request);
       const secretVersionId = randomUUID();
       const requestHash = hashRequest({
@@ -198,7 +198,7 @@ export class RevokeConnectionUseCase {
 
   public execute(input: RevokeConnectionCommand): Promise<ConnectionResponse> {
     return this.telemetry.measure(CONNECTION_OPERATION.revoke, async () => {
-      await authorize(input, this.authorization);
+      await authorizeConnectionOperation(input, this.authorization);
       return toResponse(
         await this.persistence.revokeConnection({
           workspaceId: input.routeWorkspaceId,
@@ -229,7 +229,11 @@ export class TestConnectionUseCase {
     input: TestConnectionCommand,
   ): Promise<ConnectionTestResponse> {
     return this.telemetry.measure(CONNECTION_OPERATION.test, async () => {
-      await authorize(input, this.authorization, 'connection:use');
+      await authorizeConnectionOperation(
+        input,
+        this.authorization,
+        'connection:use',
+      );
       const request = connectionTestRequestSchema.parse(input.request);
       const expectedProviderKey =
         'url' in request ? 'http' : request.providerKey;
@@ -258,7 +262,7 @@ export class TestConnectionUseCase {
 
       let plaintext: Uint8Array | undefined;
       try {
-        await reauthorizeBeforeSecretAccess(input, this.authorization);
+        await reauthorizeConnectionSecretAccess(input, this.authorization);
         const resolved = await this.persistence.resolveConnectionTestSecret({
           ...common,
           expectedProviderKey,
@@ -375,41 +379,6 @@ export class TestConnectionUseCase {
       }
     });
   }
-}
-
-async function authorize(
-  input: ConnectionCommandInput,
-  access: WorkspaceAuthorizationSource,
-  capability: 'connection:manage' | 'connection:use' = 'connection:manage',
-): Promise<void> {
-  await authorizeWorkspaceOperation({
-    actor: input.actor,
-    routeWorkspaceId: input.routeWorkspaceId,
-    capability,
-    access,
-    disclosure: 'not_found',
-    allowedWorkspaceStatuses: ['active'],
-    ...(input.authorizedWorkspace === undefined
-      ? {}
-      : { authorizedWorkspace: input.authorizedWorkspace }),
-  });
-}
-
-async function reauthorizeBeforeSecretAccess(
-  input: ConnectionCommandInput,
-  access: WorkspaceAuthorizationSource,
-): Promise<void> {
-  // Credential egress is a second security boundary after the durable test
-  // intent is created. Re-read membership here so revocation during that gap
-  // prevents secret decryption and provider dispatch.
-  await authorizeWorkspace({
-    actor: input.actor,
-    routeWorkspaceId: input.routeWorkspaceId,
-    capability: 'connection:use',
-    access,
-    disclosure: 'not_found',
-    allowedWorkspaceStatuses: ['active'],
-  });
 }
 
 function decodeCredential(plaintext: Uint8Array) {

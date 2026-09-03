@@ -89,18 +89,18 @@ export class NodeTestingController {
         command.mode === 'test_execute'
           ? requiredIdempotencyKey(request)
           : undefined;
-      const traceId = traceIdentifier(request);
       const traceparent = singleHeader(request, 'traceparent');
+      const actor = actorFrom(request, route.workspaceId);
       const result = await this.testNode.execute({
-        actor: actorFrom(request, route.workspaceId),
+        actor,
         routeWorkspaceId: route.workspaceId,
         ...guardAuthorization(request),
         workflowId: route.workflowId,
         nodeId: route.nodeId,
         request: command,
         ...(idempotencyKey === undefined ? {} : { idempotencyKey }),
-        requestId: requestIdentifier(request),
-        ...(traceId === undefined ? {} : { traceId }),
+        requestId: actor.requestId,
+        ...(actor.traceId === undefined ? {} : { traceId: actor.traceId }),
         ...(traceparent === undefined ? {} : { traceparent }),
       });
       if (command.mode === 'test_execute') response.status(202);
@@ -120,6 +120,8 @@ function guardAuthorization(
 }
 
 function actorFrom(request: IdentityWorkspaceRequest, workspaceId: string) {
+  if (request.authorizedWorkspace !== undefined)
+    return request.authorizedWorkspace.actor;
   const session = authenticatedSession(request);
   const traceId = traceIdentifier(request);
   return createActorContext({
