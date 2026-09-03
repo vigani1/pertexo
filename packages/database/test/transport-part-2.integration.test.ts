@@ -8,10 +8,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { parseDatabaseConfig } from '../src/config.js';
 import { createWorkspaceDatabase } from '../src/database.js';
 import { createOutboxDispatcherDatabase } from '../src/dispatcher.js';
-import {
-  createOperatorCommandDatabase,
-  OperatorCommandConflictError,
-} from '../src/operator-commands.js';
+import { createOperatorCommandDatabase } from '../src/operator-commands.js';
 import {
   consumeInboxMessage,
   InboxChecksumMismatchError,
@@ -22,12 +19,7 @@ import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
 } from '../src/outbox.js';
-import {
-  inboxReceipts,
-  auditEvents,
-  outboxEvents,
-  transportSecurityAuditFacts,
-} from '../src/schema.js';
+import { inboxReceipts, transportSecurityAuditFacts } from '../src/schema.js';
 
 const migrationUrl =
   process.env.DATABASE_MIGRATION_URL ??
@@ -50,7 +42,6 @@ const workspaceB = randomUUID();
 const fixtureUserId = randomUUID();
 const checksumA = createHash('sha256').update('payload-a').digest('hex');
 const checksumB = createHash('sha256').update('payload-b').digest('hex');
-const enabledJobNames = Object.freeze(['phase0-duplicate-proof']);
 
 const apiDatabase = createWorkspaceDatabase(
   parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
@@ -162,31 +153,6 @@ async function resetTransportFixture(): Promise<void> {
     client.release();
     await pool.end();
   }
-}
-
-async function expireLease(id: string): Promise<void> {
-  const pool = new Pool({ connectionString: dispatcherUrl, max: 1 });
-  try {
-    await pool.query(
-      `update app.outbox_events set lease_expires_at = clock_timestamp() - interval '1 second' where id = $1`,
-      [id],
-    );
-  } finally {
-    await pool.end();
-  }
-}
-
-function outboxInput(id: string = randomUUID()) {
-  const payload = { probeId: randomUUID(), schemaVersion: 1 };
-  return {
-    id,
-    jobName: 'phase0-duplicate-proof',
-    schemaVersion: 1,
-    aggregateType: 'queue-proof',
-    aggregateId: randomUUID(),
-    payload,
-    payloadChecksum: canonicalOutboxPayloadChecksum(payload),
-  } as const;
 }
 
 beforeAll(async () => {

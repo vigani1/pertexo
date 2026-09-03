@@ -11,7 +11,6 @@ import { createWorkspaceDatabase } from '../src/database.js';
 import { createOperatorCommandDatabase } from '../src/operator-commands.js';
 import { createOperatorRunReplayStore } from '../src/operator-run-replay.js';
 import { canonicalOutboxPayloadChecksum } from '../src/outbox.js';
-import { checkDatabaseReadiness } from '../src/readiness.js';
 import {
   createScheduleTriggerDatabase,
   createScheduleTriggerScanner,

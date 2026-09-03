@@ -12,22 +12,12 @@ import {
   createOperatorCommandDatabase,
   OperatorCommandConflictError,
 } from '../src/operator-commands.js';
-import {
-  consumeInboxMessage,
-  InboxChecksumMismatchError,
-  InboxReceiptUnavailableError,
-} from '../src/inbox.js';
 import { migrateDatabase } from '../src/migrations.js';
 import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
 } from '../src/outbox.js';
-import {
-  inboxReceipts,
-  auditEvents,
-  outboxEvents,
-  transportSecurityAuditFacts,
-} from '../src/schema.js';
+import { auditEvents, outboxEvents } from '../src/schema.js';
 
 const migrationUrl =
   process.env.DATABASE_MIGRATION_URL ??
