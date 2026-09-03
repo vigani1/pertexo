@@ -92,6 +92,14 @@ Deferred features may influence stable contracts where the cost is negligible,
 but they do not justify V1 tables, queues, deployments, adapters, or empty
 interfaces.
 
+### Repository delivery boundary
+
+This checkout deliberately delivers the backend platform only. The web client
+is deferred outside this repository's current scope. References to a future
+`apps/web` describe a possible consumer topology, not a required V1 workspace;
+do not create an empty package or browser-owned contracts merely to match that
+illustration.
+
 ## Initial Engineering Envelope
 
 These are V1 design and load-test assumptions, not public limits or sales
@@ -2141,7 +2149,8 @@ The existing Next.js application can migrate feature by feature while the new
 API is built, but new backend modules must not import Felidae clients,
 collection keys, numeric legacy statuses, or old workflow row shapes.
 
-1. Create the monorepo and keep the current web app operational in `apps/web`.
+1. Create the backend monorepo; keep any existing web client external until a
+   separately planned migration brings browser-owned code into scope.
 2. Implement identity/workspaces and establish one backend API client in web.
 3. Move workflow draft/load/publish to the owned API and graph snapshot model.
 4. Move connections and node catalog.

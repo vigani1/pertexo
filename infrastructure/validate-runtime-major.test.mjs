@@ -180,6 +180,23 @@ test('rejects syntactically invalid workflow YAML', () => {
   );
 });
 
+test('rejects duplicate workflow mapping keys', () => {
+  assert.throws(
+    () =>
+      validateRuntimeMajorSurfaces({
+        ...validSurfaces,
+        workflows: new Map([
+          ...validSurfaces.workflows,
+          [
+            'duplicate.yml',
+            'name: first\nname: second\njobs:\n  test:\n    steps: []\n',
+          ],
+        ]),
+      }),
+    /valid workflow YAML/,
+  );
+});
+
 test('rejects node-version-file selectors that the gate cannot resolve', () => {
   assert.throws(
     () =>
