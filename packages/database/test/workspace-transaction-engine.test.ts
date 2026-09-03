@@ -23,6 +23,22 @@ function poolWith(
 }
 
 describe('shared workspace transaction engine', () => {
+  it.each([0, 2_147_483_648, 1.5])(
+    'rejects invalid PostgreSQL statement timeout %s before checkout',
+    async (statementTimeoutMillis) => {
+      const connect = vi.fn();
+      await expect(
+        withTenantScopedClient(
+          { connect } as unknown as Pool,
+          { workspaceId },
+          () => Promise.resolve(),
+          { statementTimeoutMillis },
+        ),
+      ).rejects.toThrow('Invalid PostgreSQL statement timeout');
+      expect(connect).not.toHaveBeenCalled();
+    },
+  );
+
   it('uses a repeatable-read snapshot through the worker read seam', async () => {
     const statements: string[] = [];
     let transactionActive = false;

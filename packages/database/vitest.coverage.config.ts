@@ -14,10 +14,10 @@ export default defineConfig({
       // Public testing-entrypoint baseline after removing assertions against
       // sibling-private coordinator/node-attempt transaction wrappers.
       thresholds: {
-        branches: 94.2,
+        branches: 95.3,
         functions: 100,
-        lines: 97.5,
-        statements: 96,
+        lines: 97.9,
+        statements: 96.3,
       },
     },
   },

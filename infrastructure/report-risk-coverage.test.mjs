@@ -2,10 +2,62 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  coverageMetrics,
   createRiskCoverageReport,
   flattenRiskCoverageReviewGroups,
+  summarizeVitestResult,
   uncoveredBranches,
 } from './report-risk-coverage.mjs';
+
+test('publishes exact coverable-line denominators beside percentages', () => {
+  assert.deepEqual(
+    coverageMetrics({
+      '/repo/policy.ts': {
+        statementMap: {
+          0: { start: { line: 2 } },
+          1: { start: { line: 3 } },
+          2: { start: { line: 3 } },
+        },
+        s: { 0: 1, 1: 0, 2: 2 },
+        fnMap: { 0: {}, 1: {} },
+        f: { 0: 1, 1: 0 },
+        branchMap: { 0: {} },
+        b: { 0: [1, 0] },
+      },
+    }),
+    {
+      statements: { covered: 2, total: 3, percent: 66.67 },
+      branches: { covered: 1, total: 2, percent: 50 },
+      functions: { covered: 1, total: 2, percent: 50 },
+      lines: { covered: 2, total: 2, percent: 100 },
+    },
+  );
+});
+
+test('summarizes duration and test health without retry-masked flakes', () => {
+  assert.deepEqual(
+    summarizeVitestResult({
+      numTotalTests: 4,
+      numPassedTests: 3,
+      numFailedTests: 0,
+      numPendingTests: 1,
+      numTodoTests: 0,
+      startTime: 100,
+      testResults: [{ endTime: 145 }],
+    }),
+    {
+      durationMs: 45,
+      totalTests: 4,
+      passedTests: 3,
+      failedTests: 0,
+      skippedTests: 1,
+      todoTests: 0,
+      retryPolicy: 'disabled',
+      retryAttempts: 0,
+      flakyTests: 0,
+    },
+  );
+});
 
 test('flattens source-grouped manifest reviews without repeating locators', () => {
   const review = {
@@ -95,6 +147,12 @@ test('describes only the exact selected files without claiming classification', 
       {
         cohort: 'database',
         files: ['packages/database/src/workspace.ts'],
+        metrics: {
+          statements: { covered: 0, total: 0, percent: 100 },
+          branches: { covered: 0, total: 0, percent: 100 },
+          functions: { covered: 0, total: 0, percent: 100 },
+          lines: { covered: 0, total: 0, percent: 100 },
+        },
       },
     ],
   });
