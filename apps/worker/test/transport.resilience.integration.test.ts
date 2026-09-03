@@ -529,6 +529,7 @@ describeResilience(
         await expect(redisDispatcher.dispatchOnce()).resolves.toEqual({
           claimed: 1,
           failed: 1,
+          outcomeUnknown: 0,
           published: 0,
           stale: 0,
         });
@@ -638,6 +639,7 @@ describeResilience(
         await expect(drainedDispatcher.dispatchOnce()).resolves.toEqual({
           claimed: 0,
           failed: 0,
+          outcomeUnknown: 0,
           published: 0,
           stale: 0,
         });
