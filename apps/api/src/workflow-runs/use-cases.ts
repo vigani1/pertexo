@@ -13,6 +13,8 @@ import { canonicalJson } from '@pertexo/workflow-model/canonical-json';
 import {
   authorizeWorkspace,
   type AuthorizationCapability,
+  type WorkspaceAuthorizationSource,
+  type WorkspaceStatus,
 } from '../workspaces/index.js';
 import type {
   WorkflowRunApplicationInput,
@@ -58,9 +60,7 @@ export type StreamRunEventsInput = GetWorkflowRunInput &
 export class StartWorkflowRunUseCase {
   public constructor(
     private readonly persistence: WorkflowRunPersistence,
-    private readonly authorization: Parameters<
-      typeof authorizeWorkspace
-    >[0]['access'],
+    private readonly authorization: WorkspaceAuthorizationSource,
   ) {}
 
   public async execute(
@@ -101,9 +101,7 @@ export class StartWorkflowRunUseCase {
 export class GetWorkflowRunUseCase {
   public constructor(
     private readonly persistence: WorkflowRunPersistence,
-    private readonly authorization: Parameters<
-      typeof authorizeWorkspace
-    >[0]['access'],
+    private readonly authorization: WorkspaceAuthorizationSource,
   ) {}
 
   public async execute(
@@ -126,9 +124,7 @@ export class GetWorkflowRunUseCase {
 export class CancelWorkflowRunUseCase {
   public constructor(
     private readonly persistence: WorkflowRunPersistence,
-    private readonly authorization: Parameters<
-      typeof authorizeWorkspace
-    >[0]['access'],
+    private readonly authorization: WorkspaceAuthorizationSource,
   ) {}
 
   public async execute(
@@ -164,9 +160,7 @@ export class CancelWorkflowRunUseCase {
 export class StreamRunEventsUseCase {
   public constructor(
     private readonly persistence: WorkflowRunPersistence,
-    private readonly authorization: Parameters<
-      typeof authorizeWorkspace
-    >[0]['access'],
+    private readonly authorization: WorkspaceAuthorizationSource,
     private readonly streamer: WorkflowRunEventStreamer,
   ) {}
 
@@ -195,10 +189,8 @@ export class StreamRunEventsUseCase {
 async function authorize(
   input: WorkflowRunApplicationInput,
   capability: AuthorizationCapability,
-  access: Parameters<typeof authorizeWorkspace>[0]['access'],
-  allowedWorkspaceStatuses: NonNullable<
-    Parameters<typeof authorizeWorkspace>[0]['allowedWorkspaceStatuses']
-  >,
+  access: WorkspaceAuthorizationSource,
+  allowedWorkspaceStatuses: readonly WorkspaceStatus[],
 ): Promise<void> {
   await authorizeWorkspace({
     actor: input.actor,

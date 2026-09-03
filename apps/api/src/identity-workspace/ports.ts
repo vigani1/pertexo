@@ -8,8 +8,8 @@ import type {
   SessionStorePort,
 } from '../identity/index.js';
 import type {
-  WorkspaceAccessLookup,
   WorkspaceAccessQuery,
+  WorkspaceAuthorizationSource,
 } from '../workspaces/index.js';
 import type { WorkspaceAccess, WorkspaceId } from '../workspaces/index.js';
 import type { IdentityWorkspaceTelemetry } from './telemetry.js';
@@ -89,9 +89,6 @@ export interface WorkspaceAuthorizationReader {
   findAccess(query: WorkspaceAccessQuery): Promise<WorkspaceAccess | undefined>;
 }
 
-export type WorkspaceAuthorizationSource =
-  WorkspaceAuthorizationReader | WorkspaceAccessLookup;
-
 export type IdentityWorkspaceDependencies = Readonly<{
   config: IdentityWorkspaceConfig;
   provider: OidcProviderPort;
@@ -104,6 +101,8 @@ export type IdentityWorkspaceDependencies = Readonly<{
 }>;
 
 export type SessionCookieWriter = SessionCookieBoundary;
+
+export type { WorkspaceAuthorizationSource } from '../workspaces/index.js';
 
 export type SessionCookiePolicy = Readonly<{
   secure: boolean;

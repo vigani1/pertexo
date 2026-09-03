@@ -10,6 +10,7 @@ import {
 import {
   authorizeWorkspace,
   type AuthorizationCapability,
+  type WorkspaceAuthorizationSource,
 } from '../workspaces/index.js';
 import {
   createDraftRepresentationTag,
@@ -101,9 +102,7 @@ const ACTIVE_WORKFLOW_CAPABILITY = 'workflow:read' as const;
 export class ListWorkflowsUseCase {
   public constructor(
     private readonly persistence: WorkflowAuthoringPersistence,
-    private readonly authorization: Parameters<
-      typeof authorizeWorkspace
-    >[0]['access'],
+    private readonly authorization: WorkspaceAuthorizationSource,
     private readonly telemetry: WorkflowAuthoringTelemetry = NOOP_WORKFLOW_AUTHORING_TELEMETRY,
   ) {}
 
@@ -139,9 +138,7 @@ export type WorkflowListResult = Readonly<{
 export class CreateWorkflowUseCase {
   public constructor(
     private readonly persistence: WorkflowAuthoringPersistence,
-    private readonly authorization: Parameters<
-      typeof authorizeWorkspace
-    >[0]['access'],
+    private readonly authorization: WorkspaceAuthorizationSource,
     private readonly telemetry: WorkflowAuthoringTelemetry = NOOP_WORKFLOW_AUTHORING_TELEMETRY,
   ) {}
 
@@ -178,9 +175,7 @@ export class CreateWorkflowUseCase {
 export class GetWorkflowDraftUseCase {
   public constructor(
     private readonly persistence: WorkflowAuthoringPersistence,
-    private readonly authorization: Parameters<
-      typeof authorizeWorkspace
-    >[0]['access'],
+    private readonly authorization: WorkspaceAuthorizationSource,
     private readonly telemetry: WorkflowAuthoringTelemetry = NOOP_WORKFLOW_AUTHORING_TELEMETRY,
   ) {}
 
@@ -205,9 +200,7 @@ export class GetWorkflowDraftUseCase {
 export class SaveWorkflowDraftUseCase {
   public constructor(
     private readonly persistence: WorkflowAuthoringPersistence,
-    private readonly authorization: Parameters<
-      typeof authorizeWorkspace
-    >[0]['access'],
+    private readonly authorization: WorkspaceAuthorizationSource,
     private readonly telemetry: WorkflowAuthoringTelemetry = NOOP_WORKFLOW_AUTHORING_TELEMETRY,
   ) {}
 
@@ -254,9 +247,7 @@ export class SaveWorkflowDraftUseCase {
 export class ValidateWorkflowDraftUseCase {
   public constructor(
     private readonly persistence: WorkflowAuthoringPersistence,
-    private readonly authorization: Parameters<
-      typeof authorizeWorkspace
-    >[0]['access'],
+    private readonly authorization: WorkspaceAuthorizationSource,
     private readonly telemetry: WorkflowAuthoringTelemetry = NOOP_WORKFLOW_AUTHORING_TELEMETRY,
   ) {}
 
@@ -293,9 +284,7 @@ export class ValidateWorkflowDraftUseCase {
 export class PublishWorkflowUseCase {
   public constructor(
     private readonly persistence: WorkflowAuthoringPersistence,
-    private readonly authorization: Parameters<
-      typeof authorizeWorkspace
-    >[0]['access'],
+    private readonly authorization: WorkspaceAuthorizationSource,
     private readonly telemetry: WorkflowAuthoringTelemetry = NOOP_WORKFLOW_AUTHORING_TELEMETRY,
   ) {}
 
@@ -336,9 +325,7 @@ export class PublishWorkflowUseCase {
 export class ListWorkflowVersionsUseCase {
   public constructor(
     private readonly persistence: WorkflowAuthoringPersistence,
-    private readonly authorization: Parameters<
-      typeof authorizeWorkspace
-    >[0]['access'],
+    private readonly authorization: WorkspaceAuthorizationSource,
     private readonly telemetry: WorkflowAuthoringTelemetry = NOOP_WORKFLOW_AUTHORING_TELEMETRY,
   ) {}
 
@@ -428,7 +415,7 @@ function revisionConflict(
 async function authorize(
   input: WorkflowApplicationInput,
   capability: AuthorizationCapability,
-  access: Parameters<typeof authorizeWorkspace>[0]['access'],
+  access: WorkspaceAuthorizationSource,
 ): Promise<void> {
   await authorizeWorkspace({
     actor: input.actor,

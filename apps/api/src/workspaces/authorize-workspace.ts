@@ -53,11 +53,14 @@ export type WorkspaceAccessLookup = (
   query: WorkspaceAccessQuery,
 ) => Promise<WorkspaceAccess | undefined>;
 
+export type WorkspaceAuthorizationSource =
+  WorkspaceAuthorizationPort | WorkspaceAccessLookup;
+
 export type AuthorizeWorkspaceInput = Readonly<{
   actor: ActorContext | undefined;
   routeWorkspaceId: string;
   capability: AuthorizationCapability;
-  access: WorkspaceAuthorizationPort | WorkspaceAccessLookup;
+  access: WorkspaceAuthorizationSource;
   disclosure?: DisclosurePolicy;
   allowedWorkspaceStatuses?: readonly WorkspaceStatus[];
 }>;
@@ -94,7 +97,7 @@ function validateAccess(access: WorkspaceAccess): boolean {
 }
 
 async function findAccess(
-  source: WorkspaceAuthorizationPort | WorkspaceAccessLookup,
+  source: WorkspaceAuthorizationSource,
   query: WorkspaceAccessQuery,
 ): Promise<WorkspaceAccess | undefined> {
   return typeof source === 'function'
