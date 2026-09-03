@@ -7,7 +7,7 @@ import {
   NodeExecutorFailure,
   ProviderExecutionRateLimitError,
 } from '@pertexo/node-sdk/server';
-import { z } from 'zod';
+import type { z } from 'zod';
 
 import {
   classifySecureHttpError,
