@@ -1,9 +1,9 @@
-import { createHash, randomUUID } from 'node:crypto';
-
+import { createHash } from 'node:crypto';
 import { and, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { canonicalOutboxPayloadChecksum, insertOutboxEvent } from './outbox.js';
+import { generatePersistedId } from './persisted-id.js';
 import {
   parseInitialPhase3Checkpoint,
   serializePersistedPhase3Checkpoint,
@@ -393,9 +393,9 @@ export async function acceptWorkflowRun(
       transaction,
       parsed.workflowId,
     );
-  const idempotencyRecordId = randomUUID();
-  const runId = randomUUID();
-  const outboxEventId = randomUUID();
+  const idempotencyRecordId = generatePersistedId();
+  const runId = generatePersistedId();
+  const outboxEventId = generatePersistedId();
   const resultRef = {
     outboxEventId,
     initialCheckpointHash,

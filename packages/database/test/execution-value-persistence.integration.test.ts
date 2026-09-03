@@ -254,7 +254,7 @@ describe('execution value persistence migration', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0073_transient_data_retention.sql',
+          migrationHead: '0074_retention_schedule_state_rls.sql',
           role: expectedRole,
         });
       } finally {

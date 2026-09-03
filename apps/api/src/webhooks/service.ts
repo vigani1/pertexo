@@ -1,8 +1,9 @@
-import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 
 import {
   WebhookTriggerIdempotencyConflictError,
   WebhookTriggerNotFoundError,
+  generatePersistedId,
   type WebhookTriggerDatabase,
   type WorkflowTriggerHealth,
 } from '@pertexo/database/api';
@@ -62,7 +63,7 @@ export class WebhookManagementService {
           : sha256(input.endpointKey)
         : sha256(endpointKey);
     const secretVersionId =
-      secretBytes === undefined ? undefined : randomUUID();
+      secretBytes === undefined ? undefined : generatePersistedId();
     try {
       const base = {
         workspaceId: input.workspaceId,
@@ -92,7 +93,7 @@ export class WebhookManagementService {
           throw new Error('Webhook provision material is unavailable');
         trigger = await this.database.provision({
           ...base,
-          endpointId: randomUUID(),
+          endpointId: generatePersistedId(),
           endpointKeyHash: endpointHash,
           secret,
         });

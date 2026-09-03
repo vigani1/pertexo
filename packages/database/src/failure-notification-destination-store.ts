@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { FailureNotificationDestinationConfigSchema } from '@pertexo/workflow-model/failure-notification';
 
 import { FailureNotificationStateError } from './failure-notification-errors.js';
+import { generatePersistedId } from './persisted-id.js';
 import {
   auditFailureNotification,
   failureNotificationIdentitySchema,
@@ -83,8 +84,9 @@ export function createFailureNotificationDestinationStore(
           await client.query(
             `insert into app.connection_events
              (id,workspace_id,connection_id,event_type,actor_kind,actor_id,metadata)
-           values (gen_random_uuid(),$1,$2,'connection.credential_accessed','worker',$3,$4::jsonb)`,
+           values ($1,$2,$3,'connection.credential_accessed','worker',$4,$5::jsonb)`,
             [
+              generatePersistedId(),
               workspaceId,
               connectionId,
               workerId,

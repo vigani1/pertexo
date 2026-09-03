@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { generatePersistedId } from './persisted-id.js';
 
 import {
   parseWorkflowGraphForPublish,
@@ -119,7 +119,14 @@ async function claimPublication(
        (id,workspace_id,operation,scope,key_hash,request_hash,status,resource_id,result_ref)
      values($1,$2,'workflow.publish',$3,$4,$5,'in_progress',$6,'{}'::jsonb)
      on conflict (workspace_id,operation,scope,key_hash) do nothing`,
-    [randomUUID(), input.workspaceId, scope, digest, requestHash, workflowId],
+    [
+      generatePersistedId(),
+      input.workspaceId,
+      scope,
+      digest,
+      requestHash,
+      workflowId,
+    ],
   );
   const result = await client.query<{
     request_hash: string;
@@ -257,7 +264,7 @@ async function persistVersion(
          $7,$8::jsonb,$9,$10 from app.workflow_versions
        where workspace_id=$2 and workflow_id=$3 returning *`,
       [
-        randomUUID(),
+        generatePersistedId(),
         input.workspaceId,
         workflowId,
         publication.schemaVersion,
@@ -331,7 +338,7 @@ async function persistPublicationProjections(
          and app.workflow_triggers.workflow_id=excluded.workflow_id
          and app.workflow_triggers.kind=excluded.kind`,
       [
-        randomUUID(),
+        generatePersistedId(),
         input.workspaceId,
         workflowId,
         version.id,
@@ -380,7 +387,7 @@ async function finalizePublication(
     [version.id, input.workspaceId, claim.workflowId],
   );
   await hooks?.afterPublishStep?.('pointer');
-  const eventId = randomUUID();
+  const eventId = generatePersistedId();
   const payload = reconcileWorkflowTriggersPayload({
     workspaceId: input.workspaceId,
     outboxEventId: eventId,
@@ -410,7 +417,7 @@ async function finalizePublication(
         trace_id,metadata)
      values($1,$2,$3,'workflow.published','workflow',$4,$5,$6,$7::jsonb)`,
     [
-      randomUUID(),
+      generatePersistedId(),
       input.workspaceId,
       input.actorId,
       claim.workflowId,

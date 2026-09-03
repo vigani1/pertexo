@@ -1,4 +1,5 @@
-import { randomUUID } from 'node:crypto';
+import { generatePersistedId } from './persisted-id.js';
+
 import type { Pool } from 'pg';
 import { z } from 'zod';
 import {
@@ -123,7 +124,7 @@ export function createConnectionSecretPersistence(
                      'in_progress', $6, '{}'::jsonb)
              on conflict (workspace_id, operation, scope, key_hash) do nothing`,
             [
-              randomUUID(),
+              generatePersistedId(),
               workspaceId,
               scope,
               digest,
@@ -231,7 +232,7 @@ export function createConnectionSecretPersistence(
              values ($1, $2, $3, 'connection.secret_rotated', 'user', $4,
                      $5, $6, $7::jsonb)`,
             [
-              randomUUID(),
+              generatePersistedId(),
               workspaceId,
               connectionId,
               actorId,

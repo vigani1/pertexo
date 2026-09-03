@@ -5,6 +5,7 @@ import type {
   ConnectionTestOutcome,
   ConnectionTestResult,
 } from '@pertexo/database/api';
+import { generatePersistedId } from '@pertexo/database/api';
 import {
   ConnectionSecretEncryptionError,
   SECURE_HTTP_ERROR_CODE,
@@ -97,8 +98,8 @@ export class CreateConnectionUseCase {
         requestHash,
       });
       if (replay !== null) return toResponse(replay);
-      const connectionId = randomUUID();
-      const secretVersionId = randomUUID();
+      const connectionId = generatePersistedId();
+      const secretVersionId = generatePersistedId();
       const plaintext = encodeCredential(request.credential);
       try {
         const sealed = await this.encryption.seal(plaintext, {
@@ -145,7 +146,7 @@ export class RotateConnectionSecretUseCase {
     return this.telemetry.measure(CONNECTION_OPERATION.rotate, async () => {
       await authorizeConnectionOperation(input, this.authorization);
       const request = connectionRotateSecretRequestSchema.parse(input.request);
-      const secretVersionId = randomUUID();
+      const secretVersionId = generatePersistedId();
       const requestHash = hashRequest({
         connectionId: input.connectionId,
         ...request,

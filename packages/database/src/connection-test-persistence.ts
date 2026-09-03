@@ -1,4 +1,5 @@
-import { randomUUID } from 'node:crypto';
+import { generatePersistedId } from './persisted-id.js';
+
 import type { Pool } from 'pg';
 import {
   uuidSchema,
@@ -71,7 +72,7 @@ export function createConnectionTestPersistence(
              on conflict (workspace_id, operation, scope, key_hash) do nothing
              returning id`,
             [
-              randomUUID(),
+              generatePersistedId(),
               workspaceId,
               scope,
               digest,
@@ -222,7 +223,7 @@ export function createConnectionTestPersistence(
              values ($1, $2, $3, 'connection.credential_accessed', 'user',
                      $4, $5, $6, $7::jsonb)`,
             [
-              randomUUID(),
+              generatePersistedId(),
               workspaceId,
               connectionId,
               actorId,
@@ -297,7 +298,7 @@ export function createConnectionTestPersistence(
              values ($1, $2, $3, 'connection.test_dispatched', 'connection',
                      $4, $5, $6, $7::jsonb)`,
             [
-              randomUUID(),
+              generatePersistedId(),
               workspaceId,
               actorId,
               connectionId,
@@ -401,7 +402,7 @@ export function createConnectionTestPersistence(
                 actor_id, request_id, trace_id, metadata)
              values ($1, $2, $3, $4, 'user', $5, $6, $7, $8::jsonb)`,
             [
-              randomUUID(),
+              generatePersistedId(),
               workspaceId,
               connectionId,
               eventType,

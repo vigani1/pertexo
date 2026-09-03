@@ -1,6 +1,4 @@
 import { createDatabasePool } from './postgres-telemetry.js';
-import { randomUUID } from 'node:crypto';
-
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -17,6 +15,7 @@ import {
   readWorkflowRunAcceptanceReplay,
 } from './execution-acceptance.js';
 import { canonicalOutboxPayloadChecksum, insertOutboxEvent } from './outbox.js';
+import { generatePersistedId } from './persisted-id.js';
 import {
   classifyPublishedWorkflowVersionRow,
   type PublishedWorkflowV2Projection,
@@ -368,7 +367,7 @@ async function cancelInTransaction(
     ...(input.reason === undefined ? {} : { reason: input.reason }),
   });
   if (!cancellation.duplicate) {
-    const outboxEventId = randomUUID();
+    const outboxEventId = generatePersistedId();
     const payload = {
       schemaVersion: 1,
       workspaceId: transaction.workspaceId,
@@ -421,7 +420,7 @@ async function insertAudit(
       (id, workspace_id, actor_user_id, action, target_type, target_id,
        request_id, trace_id, metadata)
     values
-      (${randomUUID()}, ${transaction.workspaceId}, ${input.actorId},
+      (${generatePersistedId()}, ${transaction.workspaceId}, ${input.actorId},
        ${input.action}, 'workflow_run', ${input.runId},
        ${input.requestId ?? null}, ${input.traceId ?? null}, ${input.metadata})
   `);

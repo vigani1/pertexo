@@ -359,6 +359,17 @@ image smoke runs in CI.
 
 ### A-14 — Worker keepalive outlives application shutdown
 
+**Remediation status (2026-09-03): repository implementation complete; live
+image drain evidence remains A-04.** The anonymous interval was replaced by
+`WorkerProcessKeepalive`, a Nest lifecycle owner that starts idempotently and
+clears its only handle in `beforeApplicationShutdown`. The worker module owns
+the provider, and its fake-timer regression proves no referenced timer remains
+after shutdown. Repository-wide interval ownership search found the other
+worker monitors already store and clear their handles. Worker typecheck and all
+257 worker tests pass. A deployed/image SIGTERM exercise under the ECS
+120-second stop timeout still requires the runtime environment and is not
+represented as local proof.
+
 `apps/worker/src/main.ts` creates a referenced interval with the maximum Node
 timer delay so the process stays alive when every consumer is disabled. The
 handle is not stored, cleared, or unreferenced. Once shutdown hooks install
@@ -386,6 +397,13 @@ compiled process exits zero within the bounded test, and the image-level drain
 exercise passes under the ECS stop-timeout contract.
 
 ### A-04 — Repository readiness is not deployed readiness
+
+**Remediation status (2026-09-03): intentionally open; external evidence
+required.** No repository edit can manufacture the account-, region-,
+credential-, workload-, backup-, failover-, pager-, or running-digest evidence
+listed below. Repository-controlled prerequisites continue to be remediated by
+the other findings, but A-04 closes only after the immutable release candidate
+is exercised in the target AWS environment.
 
 The repository contains detailed ECS contracts, digest pins, recovery programs,
 dashboards, alerts, operator commands, and evidence schemas. These are strong
@@ -504,6 +522,14 @@ and a reviewer can trace each success/failure path in one local unit.
 
 ### A-07 — Repeated controller catches obscure endpoint intent
 
+**Remediation status (2026-09-03): complete.** All API feature controllers and
+bootstrap registrations were searched. Feature-owned mapper providers now
+compose through the platform application-error registry and global problem
+filter; controllers retain route/header parsing, response metadata, and use-
+case delegation without whole-handler catch/rethrow plumbing. The only
+remaining controller catches perform local cleanup or translate native webhook
+reply failures with distinct semantics. All API tests and typecheck pass.
+
 API feature controllers contain 27 `catch (error: unknown)` sites. Most wrap a
 whole endpoint only to call a feature mapper such as
 `throwWorkflowApplicationError`. Feature-owned error maps are good; repeating
@@ -521,6 +547,14 @@ negative contract test, fewer endpoint catch blocks, no vendor error class in a
 controller, and no widened cross-feature dependency.
 
 ### A-08 — Provenance and provider proof stop before the live boundary
+
+**Remediation status (2026-09-03): intentionally open; hosted identity and live
+credentials required.** The repository can define attestation and canary
+contracts, but it cannot produce a signed hosted-builder statement for a
+promoted registry digest or safely exercise Slack, Resend, AWS, and deployed
+verification without the target registry, deployment identity, and test
+credentials. Existing digest metadata and fake-provider tests remain truthful
+preconditions, not acceptance evidence.
 
 The production-image job builds as non-root/read-only, generates an SBOM,
 scans the image, and writes digest-bound provenance metadata. Actions are pinned
@@ -542,6 +576,13 @@ Required change:
   rather than replace, deterministic failure testing.
 
 ### A-09 — Merge governance proves execution, not review or security state
+
+**Remediation status (2026-09-03): repository policy partly complete; GitHub
+ruleset pending.** Dependency review is now a pinned, moderate-severity pull-
+request gate, and `SECURITY.md` records triage and release-blocking policy.
+Code-scanning merge protection is a repository setting rather than a tree
+change. A non-author approval remains intentionally unavailable while the
+project has one maintainer; no fake approval is introduced.
 
 `main` protection is strict and requires 11 current checks, linear history,
 conversation resolution, admin enforcement, and no force pushes/deletion.
@@ -609,6 +650,13 @@ names that state the failure being prevented.
 
 ### A-12 — `.mjs` is appropriate until a tool becomes an application
 
+**Remediation status (2026-09-03): reviewed and intentionally retained.** The
+repository-wide tooling inventory confirms that these files are direct Node
+entry points with dedicated tests. No finding demonstrates a type defect, and
+the audit explicitly makes conversion conditional on materially changing a
+large tool. The remediation work did not alter those domain-shaped cores, so a
+format-only TypeScript migration would add build coupling without evidence.
+
 The repository's `.mjs` files are executable Node/ESM tooling, validators, and
 process fixtures. That extension is correct: Node can run them directly without
 a build, and they should not be renamed merely for consistency with application
@@ -651,6 +699,15 @@ duplicate-key lint/parser gate.
 
 ### A-15 — A timeout does not settle queue publication truth
 
+**Remediation status (2026-09-03): complete.** Queue publication now returns a
+discriminated `published` or `outcome_unknown` result. The dispatcher retains
+the lease and owns the non-rejecting late-settlement promise: late success
+conditionally records publication, while late failure leaves the lease to
+expire before deterministic-job-ID retry. Repository-wide promise-race review
+documented why lossy hints, canceled handlers, destroyed late database
+connections, and observation-only bounds remain semantically different. Queue,
+worker, timing, and full root checks pass.
+
 The worker outbox dispatcher and queue producer use a timeout race that rejects
 the caller while the underlying BullMQ or database promise continues. Timeout
 therefore means “the caller stopped waiting,” not “the operation did not
@@ -671,6 +728,21 @@ supports deduplication but does not turn an abandoned client promise into a
 confirmed non-publication.
 
 ### A-16 — Persistence implementation has drifted from plan conventions
+
+**Remediation status (2026-09-03): complete.** Every production application
+write path was classified. Persisted entity, event, version, attempt, intent,
+and idempotency-row identities now use the database-owned UUIDv7 generator;
+request correlation, lease, dispatch-capability, and hashed idempotency tokens
+remain UUIDv4 by design. Tests prove UUIDv7 version, uniqueness, and monotonic
+order, while the schema gate rejects UUID-generating column defaults. All 67
+migration-owned application tables are now CI-accounted: 48 Drizzle tables and
+19 reviewed raw-SQL tables with owner, access roles, RLS status, and ownership
+reason. Forward-only migration `0074` enables and forces RLS on
+`retention_schedule_state`, retains function-only maintenance access, and gives
+the owner policy required by its `SECURITY DEFINER` functions. Database/API
+typechecks, 577 focused tests, schema ownership validation, and the unchanged
+complexity ratchet pass; the real-service migration suite remains part of the
+hosted integration gate.
 
 The authoritative plan says application-generated persisted identifiers use
 UUIDv7 and that Drizzle definitions plus reviewed migrations are the schema
@@ -706,6 +778,14 @@ Required change:
    maintenance metadata despite carrying `workspace_id`.
 
 ### A-17 — Two HTTP-path promises are not bounded or joined correctly
+
+**Remediation status (2026-09-03): complete.** Redis rate limiting has one
+end-to-end one-second deadline covering connect and command work, disconnects
+and resets the client after expiry, and exposes explicit fail-open/fail-closed
+caller policy. Native Fastify webhook handlers return/await reply delivery in
+both success and problem paths, keeping serialization/send failure attached to
+route completion without changing durable acceptance truth. Stalled Redis,
+send failure, interceptor policy, webhook, API, and root regressions pass.
 
 `RedisRateLimitRuntime` disables the offline queue and limits retries, but sets
 no repository-owned connection or command deadline. The API interceptor awaits

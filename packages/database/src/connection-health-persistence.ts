@@ -1,4 +1,5 @@
-import { randomUUID } from 'node:crypto';
+import { generatePersistedId } from './persisted-id.js';
+
 import type { Pool } from 'pg';
 import { z } from 'zod';
 import {
@@ -90,7 +91,7 @@ export function createConnectionHealthPersistence(
                 actor_id, request_id, trace_id, metadata)
              values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb)`,
             [
-              randomUUID(),
+              generatePersistedId(),
               workspaceId,
               connectionId,
               eventType,

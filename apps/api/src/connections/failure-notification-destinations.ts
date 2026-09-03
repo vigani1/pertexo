@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
 
 import {
   Body,
@@ -22,7 +22,10 @@ import {
   workflowFailureNotificationPolicyRequestSchema,
 } from '@pertexo/contracts';
 import { idempotencyKeySchema } from '@pertexo/contracts/identity-workspace';
-import type { FailureNotificationDestinationDatabase } from '@pertexo/database/api';
+import {
+  generatePersistedId,
+  type FailureNotificationDestinationDatabase,
+} from '@pertexo/database/api';
 import { z } from 'zod';
 
 import {
@@ -144,7 +147,7 @@ export class FailureNotificationDestinationUseCases {
         response(
           await this.database.create({
             ...idempotentCommand(input.request, input.workspaceId, input.body),
-            destinationId: randomUUID(),
+            destinationId: generatePersistedId(),
             config: input.body,
           }),
         ),

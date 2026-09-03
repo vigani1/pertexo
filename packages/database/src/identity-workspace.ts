@@ -1,5 +1,8 @@
+import { randomUUID } from 'node:crypto';
 import { createDatabasePool } from './postgres-telemetry.js';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
+
+import { generatePersistedId } from './persisted-id.js';
 
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
@@ -326,7 +329,7 @@ async function claimWorkspaceCreationCommand(
      values ($1, $2, $3, $4, $5, 'in_progress')
      on conflict (actor_user_id, operation, key_hash) do nothing
      returning id`,
-    [randomUUID(), actorUserId, operation, keyHash, requestHash],
+    [generatePersistedId(), actorUserId, operation, keyHash, requestHash],
   );
   const insertedId = inserted.rows[0]?.id;
   if (insertedId !== undefined) return { claimed: true, id: insertedId };
@@ -425,7 +428,7 @@ export function createIdentityWorkspaceDatabase(
     createWorkspaceWithOwner: async (
       input: WorkspaceWithOwnerInput,
     ): Promise<WorkspaceRecord> => {
-      const id = parseUuid(input.id ?? randomUUID());
+      const id = parseUuid(input.id ?? generatePersistedId());
       const ownerUserId = parseUuid(input.ownerUserId);
       const metadata = parseMetadata(input.metadata);
       const name = input.name.trim();
@@ -477,7 +480,7 @@ export function createIdentityWorkspaceDatabase(
                 request_id, trace_id, metadata)
              values ($1, $2, $3, 'workspace.created', 'workspace', $2, $4, $5, $6::jsonb)`,
               [
-                randomUUID(),
+                generatePersistedId(),
                 id,
                 ownerUserId,
                 input.requestId ?? null,
@@ -530,7 +533,7 @@ export function createIdentityWorkspaceDatabase(
                 $1::uuid,$2::uuid,$3::char(64),$4::varchar,$5::uuid,
                 $6::varchar,$7::char(64))`,
               [
-                randomUUID(),
+                generatePersistedId(),
                 workspaceId,
                 idempotencyKeyHash,
                 commandType,

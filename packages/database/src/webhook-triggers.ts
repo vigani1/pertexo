@@ -1,6 +1,5 @@
 import { createDatabasePool } from './postgres-telemetry.js';
-import { createHash, randomUUID } from 'node:crypto';
-
+import { createHash } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
@@ -14,6 +13,7 @@ import {
   type CompatibilityReleaseExpectationSet,
 } from './compatibility-release.js';
 import { acceptWorkflowRun } from './execution-acceptance.js';
+import { generatePersistedId } from './persisted-id.js';
 import {
   classifyPublishedWorkflowVersionRow,
   type PublishedWorkflowV2Projection,
@@ -189,7 +189,7 @@ async function claimCommand(
      values($1,$2,$3,$4,$5,$6,'in_progress',$7,'{}'::jsonb,clock_timestamp()+interval '24 hours')
      on conflict(workspace_id,operation,scope,key_hash) do nothing`,
     [
-      randomUUID(),
+      generatePersistedId(),
       input.workspaceId,
       operation,
       `${input.actorId}:${input.triggerId}`,
@@ -608,7 +608,7 @@ export function createWebhookTriggerDatabase(
           if (eligible.rows[0] === undefined)
             throw new WebhookDeliveryIneligibleError();
 
-          const deliveryId = randomUUID();
+          const deliveryId = generatePersistedId();
           await transaction.db.execute(sql`
             insert into app.webhook_trigger_replay_records
               (workspace_id,endpoint_id,dedupe_kind,dedupe_key_hash,

@@ -1,4 +1,6 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
+
+import { generatePersistedId } from './persisted-id.js';
 
 import type { PoolClient } from 'pg';
 import { v5 as uuidv5 } from 'uuid';
@@ -172,6 +174,6 @@ export async function persistFailureNotificationIntent(
     `insert into app.run_failure_notification_audit_facts
        (id,workspace_id,notification_intent_id,fact_type,attempt_number,possibly_dispatched)
      values ($1,$2,$3,'intent_created',0,false)`,
-    [randomUUID(), input.workspaceId, intentId],
+    [generatePersistedId(), input.workspaceId, intentId],
   );
 }

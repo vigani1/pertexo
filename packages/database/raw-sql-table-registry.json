@@ -1,0 +1,140 @@
+[
+  {
+    "name": "failure_notification_destination_versions",
+    "owner": "owner_role",
+    "accessRoles": ["api_runtime_role", "worker_runtime_role"],
+    "rls": "forced",
+    "reason": "Append-only credential configuration history is owned by hardened SQL triggers and transaction functions."
+  },
+  {
+    "name": "failure_notification_destinations",
+    "owner": "owner_role",
+    "accessRoles": ["api_runtime_role", "worker_runtime_role"],
+    "rls": "forced",
+    "reason": "Destination lifecycle uses SQL-enforced version pinning and immutable history."
+  },
+  {
+    "name": "operator_commands",
+    "owner": "owner_role",
+    "accessRoles": ["operator_role"],
+    "rls": "not_applicable",
+    "reason": "Function-only operator command ledger; the caller receives EXECUTE grants and no table access."
+  },
+  {
+    "name": "operator_maintenance_rerun_requests",
+    "owner": "owner_role",
+    "accessRoles": ["maintenance_role"],
+    "rls": "forced",
+    "reason": "Maintenance request handoff is implemented by SECURITY DEFINER operator functions."
+  },
+  {
+    "name": "operator_run_replay_requests",
+    "owner": "owner_role",
+    "accessRoles": ["worker_runtime_role"],
+    "rls": "forced",
+    "reason": "Worker request handoff is workspace-scoped and function-controlled."
+  },
+  {
+    "name": "operator_unknown_outcome_evidence",
+    "owner": "owner_role",
+    "accessRoles": ["worker_runtime_role"],
+    "rls": "forced",
+    "reason": "Recovery evidence is workspace-scoped and readable only through a narrow worker grant."
+  },
+  {
+    "name": "outbox_fair_dispatch_cursor",
+    "owner": "owner_role",
+    "accessRoles": ["dispatcher_role"],
+    "rls": "not_applicable",
+    "reason": "Global singleton fairness cursor has no tenant payload; dispatcher receives column-limited access."
+  },
+  {
+    "name": "regional_write_admission",
+    "owner": "owner_role",
+    "accessRoles": [
+      "api_runtime_role",
+      "worker_runtime_role",
+      "maintenance_role",
+      "operator_role"
+    ],
+    "rls": "not_applicable",
+    "reason": "Global singleton regional safety state is available only through SECURITY DEFINER functions."
+  },
+  {
+    "name": "run_failure_notification_audit_facts",
+    "owner": "owner_role",
+    "accessRoles": ["api_runtime_role", "worker_runtime_role"],
+    "rls": "forced",
+    "reason": "Append-only delivery facts are maintained beside notification state-machine SQL."
+  },
+  {
+    "name": "run_failure_notification_intents",
+    "owner": "owner_role",
+    "accessRoles": ["api_runtime_role", "worker_runtime_role"],
+    "rls": "forced",
+    "reason": "Notification claim, fence, and completion transitions are implemented in SQL functions."
+  },
+  {
+    "name": "workflow_failure_notification_policies",
+    "owner": "owner_role",
+    "accessRoles": ["api_runtime_role"],
+    "rls": "forced",
+    "reason": "Policy rows share destination-version invariants implemented by database constraints and functions."
+  },
+  {
+    "name": "workflow_run_active_admissions",
+    "owner": "owner_role",
+    "accessRoles": ["worker_runtime_role", "dispatcher_role"],
+    "rls": "forced",
+    "reason": "Active-capacity reservations are mutated only by fenced SQL functions."
+  },
+  {
+    "name": "workspace_execution_admission_counters",
+    "owner": "owner_role",
+    "accessRoles": ["api_runtime_role", "worker_runtime_role"],
+    "rls": "forced",
+    "reason": "Capacity counters are maintained atomically by admission SQL functions."
+  },
+  {
+    "name": "workspace_execution_entitlement_versions",
+    "owner": "owner_role",
+    "accessRoles": ["api_runtime_role", "worker_runtime_role"],
+    "rls": "forced",
+    "reason": "Immutable entitlement history is maintained with SQL constraints and triggers."
+  },
+  {
+    "name": "workspace_execution_entitlements",
+    "owner": "owner_role",
+    "accessRoles": ["api_runtime_role", "worker_runtime_role"],
+    "rls": "forced",
+    "reason": "Current entitlement pointers are coupled to immutable version history."
+  },
+  {
+    "name": "workspace_lifecycle_operations",
+    "owner": "owner_role",
+    "accessRoles": ["lifecycle_command_role"],
+    "rls": "forced",
+    "reason": "Lifecycle command state is function-only and protected by mutation guards."
+  },
+  {
+    "name": "workspace_purge_completions",
+    "owner": "owner_role",
+    "accessRoles": ["maintenance_role"],
+    "rls": "forced",
+    "reason": "Purge completion claims are controlled by maintenance SQL functions."
+  },
+  {
+    "name": "workspace_purge_jobs",
+    "owner": "owner_role",
+    "accessRoles": ["maintenance_role"],
+    "rls": "forced",
+    "reason": "Purge job orchestration is controlled by maintenance SQL functions."
+  },
+  {
+    "name": "workspace_purge_steps",
+    "owner": "owner_role",
+    "accessRoles": ["maintenance_role"],
+    "rls": "forced",
+    "reason": "Purge step fencing and claims are controlled by maintenance SQL functions."
+  }
+]

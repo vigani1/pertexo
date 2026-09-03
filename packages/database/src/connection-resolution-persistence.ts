@@ -1,4 +1,5 @@
-import { randomUUID } from 'node:crypto';
+import { generatePersistedId } from './persisted-id.js';
+
 import type { Pool } from 'pg';
 import { z } from 'zod';
 import {
@@ -85,7 +86,7 @@ export function createConnectionResolutionPersistence(
              values ($1, $2, $3, 'connection.credential_accessed', 'worker',
                      $4, $5, $6::jsonb)`,
             [
-              randomUUID(),
+              generatePersistedId(),
               workspaceId,
               connectionId,
               workerId,
