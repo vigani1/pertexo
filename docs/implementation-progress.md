@@ -8,16 +8,15 @@ is marked complete only when all of its plan requirements and applicable
 vertical-slice completion criteria have passed. Commits or scaffolding alone do
 not complete a phase.
 
-Current audit note: the fresh whole-repository review at implementation tree
-`200e9c5a4a2fd2772e37c06ad2ada6bc2b64e996` is recorded in
+Current audit note: the whole-repository review at implementation tree
+`6dc62b689974341d4e58af49e2f39ef84dc92b6e` is recorded in
 [the engineering audit](./whole-repository-audit.md). It does not change the
 completed status of Phases 0–6. It confirms that Phase 7 remains **In progress**
-and records four immediate pre-release code/security blockers: the worker's
-misclassified runtime dependency, an unowned worker keepalive that can prevent
-clean shutdown, one open high-severity CodeQL logger alert, and two unique
-moderate Fastify runtime advisories. These findings must be closed with the
-audit's acceptance evidence; green analysis/test execution by itself is not
-evidence that the security or production-deployment state is clear.
+because live AWS, provider, provenance, load, pager, backup, failover, and
+regional-recovery evidence requires external accounts and deployed
+infrastructure. Every repository-controlled audit finding is complete at the
+named implementation tree; green repository checks are not represented as a
+substitute for that live production evidence.
 
 ## Status summary
 
@@ -4692,10 +4691,11 @@ Verification at implementation head `9e4263794715d273e8660c0dd4efa67c5032e940`:
 - GitHub Actions CI run `33374292338` and Release Gate run `33378998330`
   passed at the implementation head; CodeQL was green.
 
-No Phase 7 completion box changes in this documentation-only audit. The current
-P1 findings and the existing live-production checklist remain release blockers.
+That historical documentation-only audit did not change a Phase 7 completion
+box. Its repository P1 findings are now closed; the live-production checklist
+below remains the release blocker.
 
-## Current whole-repository audit — implementation tree `200e9c5a4a2fd2772e37c06ad2ada6bc2b64e996`
+## Current whole-repository audit — implementation tree `6dc62b689974341d4e58af49e2f39ef84dc92b6e`
 
 Status: **Repository-controlled audit blockers are complete; external
 production/control evidence remains open**
@@ -4761,13 +4761,14 @@ Fresh audit findings at the implementation tree named above:
       which is currently declared only as a development dependency, and add an
       isolated production-install/image role-load smoke.
 - [x] Own and stop/unreference the worker process keepalive; the lifecycle
-      regression is complete and the image-level SIGTERM drill remains live
-      Phase 7 evidence.
+      and compiled-process regressions prove clean bounded SIGTERM exit with
+      consumers disabled or active and during bootstrap failure. The deployed
+      ECS drain drill remains live Phase 7 evidence.
 - [x] Replace the polynomial-time logger redaction path, add bounded adversarial
       tests, and make high-severity code-scanning results merge-blocking.
-      Pull-request CodeQL is green and active repository ruleset `22213497`
-      blocks CodeQL errors and high/critical alerts on `main`; the historical
-      default-branch alert will close only after merge and exact-main analysis.
+      Pull-request and exact-main CodeQL are green, the historical alert is
+      closed, and active repository ruleset `22213497` blocks CodeQL errors and
+      high/critical alerts on `main`.
 - [x] Resolve both the direct Fastify 5.12.0 and Nest-transitive 5.11.3 paths to
       a fixed release, retain the proxy/validation regression behavior, and
       make unaccepted moderate production advisories fail admission.
@@ -4776,6 +4777,12 @@ Fresh audit findings at the implementation tree named above:
       retention scheduler state through forward-only migration `0074`. A final
       UUIDv4 assertion sweep moved persisted browser-session IDs to the central
       UUIDv7 generator and retained independent randomness for bearer tokens.
+      Persisted artifacts now use the same generator by default and expose an
+      injected identity only as an explicit test seam.
+- [x] Retain outbox ownership when either queue publication or its durable
+      `markPublished` update exceeds the caller deadline. Both late promises are
+      owned to settlement, surface `outcome_unknown`, and cannot trigger lease
+      release or retry while authoritative truth can still change.
 - [x] Carry out the repository-controlled P2/P3 maintainability,
       selected-coverage, package-surface, test-organization, and public-
       governance improvements in `docs/whole-repository-audit.md` without
