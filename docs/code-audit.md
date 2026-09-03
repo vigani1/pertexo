@@ -566,8 +566,9 @@ making the architecture plan even larger.
 ### C-11 — Database factories act as large source-level namespaces
 
 - **Severity:** medium.
-- **Remediation status:** in progress on 2026-09-03; operator-command runtime
-  extraction complete, three factory families remain.
+- **Remediation status:** in progress on 2026-09-03; operator-command and
+  identity/session capability extraction complete, workflow-authoring and
+  failure-notification factories remain.
 - **Verified affected locations:** a repository-wide factory/file-size and
   nested-operation inventory confirmed the four named factories remain the
   database sources that combine multiple independently changing capability
@@ -580,6 +581,14 @@ making the architecture plan even larger.
   433-line command-specific facade plus a 244-line runtime capability; conflict
   identity remains in a narrow private error module and is re-exported through
   the existing public path.
+- **Identity/workspace checkpoint:** preserved `IdentityWorkspaceDatabase` and
+  its original export paths while separating user/auth-identity operations,
+  session operations, strict row mapping, shared validation/conflict policy,
+  and rich error evidence. The original 984-line source is now a 587-line
+  contract/workspace facade with focused 249-line identity, 110-line session,
+  154-line row, 78-line validation, and 33-line error owners. Workspace
+  creation/lifecycle remains together because transaction and idempotency order
+  are correctness behavior, not incidental duplication.
 - **Checkpoint verification:** database unit suite (170 tests), database
   typecheck and build, focused lint, and complexity ratchet.
 - **Locations:** `createIdentityWorkspaceDatabase`,
