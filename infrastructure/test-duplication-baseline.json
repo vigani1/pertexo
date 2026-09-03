@@ -1,0 +1,641 @@
+{
+  "toolVersion": "4.0.5",
+  "scopes": {
+    "source": {
+      "paths": ["apps/*/src", "packages/*/src"],
+      "ignore": "**/*.test.ts,**/test/**,**/dist/**",
+      "minLines": 12,
+      "minTokens": 80,
+      "maximums": {
+        "clones": 45,
+        "duplicatedLines": 992,
+        "duplicatedTokens": 8438
+      },
+      "families": [
+        {
+          "files": [
+            "packages/workflow-engine/src/checkpoint-v1.ts",
+            "packages/workflow-engine/src/checkpoint-v1.ts"
+          ],
+          "classification": "intentional-scenario-local",
+          "reason": "Checkpoint decoding keeps the loop and iteration lookup branches adjacent so their distinct persisted-state errors remain auditable.",
+          "clones": [
+            {
+              "hash": "c155b6228f106ce4fc47b7a9ee968ecb5cefb60e32669989fedf9e2360d64624",
+              "maxLines": 18
+            }
+          ]
+        },
+        {
+          "files": [
+            "packages/node-sdk/src/release.ts",
+            "packages/node-sdk/src/server.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "Release validation and server registration independently tokenize identities at separate public trust boundaries; sharing would couple browser-safe and server-only modules.",
+          "clones": [
+            {
+              "hash": "4f5b31520a1781fc74338cb78707ab919a1226a4e505e7fddc33e395911470b0",
+              "maxLines": 20
+            }
+          ]
+        },
+        {
+          "files": [
+            "packages/database/src/schema/execution.ts",
+            "packages/database/src/schema/execution.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "Distinct execution tables explicitly declare common audit and lease columns; a column macro would obscure each migration-owned table contract.",
+          "clones": [
+            {
+              "hash": "5d9053d208369b8bd695d092a151253ee5f6942f97f5c4ca6f9215ae05d5ec27",
+              "maxLines": 15
+            },
+            {
+              "hash": "246133aa0f4fc66819d536b01ac62449b548a786d16c98593cd028e393dfa710",
+              "maxLines": 15
+            },
+            {
+              "hash": "dbb4acc9867bc1185bef285afdfc670ed099bb21e1b0d922eb73321c53df8754",
+              "maxLines": 16
+            }
+          ]
+        },
+        {
+          "files": [
+            "packages/database/src/schema/execution-support.ts",
+            "packages/database/src/schema/execution-support.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "Two execution-support tables intentionally spell out their independently migrated result and expiry columns rather than hiding schema ownership in a builder.",
+          "clones": [
+            {
+              "hash": "702de3a814d23c7e91741749f0e28f0240d8397c85c59fed1bf2a7d0ec2d4bac",
+              "maxLines": 14
+            }
+          ]
+        },
+        {
+          "files": [
+            "packages/database/src/schema/connections.ts",
+            "packages/database/src/schema/triggers.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "Connection and trigger secret rows share envelope-encryption columns but remain separate migration and retention contracts with different owners.",
+          "clones": [
+            {
+              "hash": "d818ad86a48268a771264dbb230d62be1233362f96a93e0153c580fdc9db7511",
+              "maxLines": 15
+            }
+          ]
+        },
+        {
+          "files": [
+            "packages/database/src/workspace-purge.ts",
+            "packages/database/src/workspace-purge.ts"
+          ],
+          "classification": "intentional-scenario-local",
+          "reason": "The purge state machine keeps separate missing-command checks beside the transitions whose repair identifiers they validate.",
+          "clones": [
+            {
+              "hash": "b5056a5b737b45a7f940113569b3ac2142b4e73eaee4445f63436d55af1e608b",
+              "maxLines": 19
+            }
+          ]
+        },
+        {
+          "files": [
+            "packages/database/src/workspace-lifecycle-commands.ts",
+            "packages/database/src/workspace-purge.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "Lifecycle command admission and purge execution use similar transaction prologues but deliberately own different locks, roles, rollback semantics, and state machines.",
+          "clones": [
+            {
+              "hash": "39f7770dace296ebe067bd4684fcb63e8e13791143715b64b28634ca4e40f693",
+              "maxLines": 26
+            }
+          ]
+        },
+        {
+          "files": [
+            "packages/database/src/stored-execution-value.ts",
+            "packages/workflow-engine/src/executable-validation.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "Both count JSON string bytes, but stored values reject unpaired surrogates while executable validation accounts for their escaped representation; the policies are intentionally different.",
+          "clones": [
+            {
+              "hash": "a76c5e4658a7d36e346ef653199293f8b59c53778113f989f733da4bc9337c1e",
+              "maxLines": 16
+            }
+          ]
+        },
+        {
+          "files": [
+            "packages/database/src/retention.ts",
+            "packages/database/src/workspace-purge.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "Abort-aware query wrappers remain private to two independent high-risk transaction owners so cancellation and error policy cannot drift through a generic repository layer.",
+          "clones": [
+            {
+              "hash": "825c177d311dd88b5cc22be352ad3e875aa861db8f64fd58c1ee5ed5c8f8593a",
+              "maxLines": 15
+            }
+          ]
+        },
+        {
+          "files": [
+            "packages/database/src/preview-retention.ts",
+            "packages/database/src/run-artifact-retention.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "Preview and durable run-artifact retention share bounded configuration and transaction scaffolding but enforce different eligibility, ownership, and deletion policies.",
+          "clones": [
+            {
+              "hash": "eb99cfb009d7fed09fbbe046eb65e32c6b2ccd4fdcf37a6740eae301ca742410",
+              "maxLines": 31
+            },
+            {
+              "hash": "372a230c5e130666e6a550a4020f8fdd50353241ca171c28d940fd4e6fdb638f",
+              "maxLines": 17
+            }
+          ]
+        },
+        {
+          "files": [
+            "packages/database/src/preview-retention.ts",
+            "packages/database/src/retention.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "Both parse ledger high-water facts at separate retention boundaries; retaining local parsing keeps each fail-closed projection auditable.",
+          "clones": [
+            {
+              "hash": "0c9c4fbdd1ca8d9fdbc364bccb52a0010b40df7a422dca15ad7f4f5981d5e2fb",
+              "maxLines": 23
+            }
+          ]
+        },
+        {
+          "files": [
+            "packages/database/src/preview-cleanup.ts",
+            "packages/database/src/preview-cleanup.ts"
+          ],
+          "classification": "intentional-scenario-local",
+          "reason": "Cleanup retry branches repeat clock and delivery construction beside distinct lease, quiescence, and terminal-state transitions to preserve review order.",
+          "clones": [
+            {
+              "hash": "26cd4f5535767e9b472683b611fb82f73c7d1f5d24d1c7dd8668e22f16776b1c",
+              "maxLines": 18
+            },
+            {
+              "hash": "53879b3289bf04e8a17f77a82f86f436359ef624a50e8170a12d4dccb113ab42",
+              "maxLines": 19
+            },
+            {
+              "hash": "f72faf29b45be63f19c83d9abd391121c6cdabab3140b5a9ee5db8bc82963467",
+              "maxLines": 18
+            }
+          ]
+        },
+        {
+          "files": [
+            "packages/database/src/execution-acceptance.ts",
+            "packages/database/src/preview-execution-acceptance.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "Durable and preview acceptance deliberately query separate idempotency operations while preserving independently reviewable transaction semantics.",
+          "clones": [
+            {
+              "hash": "567203a7e983e25de3e1ed6bc95f192a3b0ec77c1683ee501cf10f8ab418d734",
+              "maxLines": 15
+            }
+          ]
+        },
+        {
+          "files": [
+            "packages/database/src/coordinator-run-store-plan.ts",
+            "packages/database/src/phase3-checkpoint.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "The planned-transition validator and persisted checkpoint decoder independently validate the same branch-path wire shape at different trust boundaries.",
+          "clones": [
+            {
+              "hash": "8e46d59bc2dc7aabce2d1906313e5193a0b508044c3ca1c3eb7865a25f3e5ac0",
+              "maxLines": 14
+            }
+          ]
+        },
+        {
+          "files": [
+            "packages/contracts/src/workflow-authoring.ts",
+            "packages/contracts/src/workflow-runs.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "Separate generated-contract owners repeat OpenAPI references and security components so each entry point remains independently generated and consumable.",
+          "clones": [
+            {
+              "hash": "5170a03e2e47c8345bc2baad80aece40a3cb539f885fcc187a8e68394e69c5c5",
+              "maxLines": 26
+            },
+            {
+              "hash": "1f58289893a3262467e7dda162d388a68ccb807c55b217497293fc7ffe36c7c3",
+              "maxLines": 23
+            }
+          ]
+        },
+        {
+          "files": [
+            "packages/contracts/src/node-testing.ts",
+            "packages/contracts/src/workflow-authoring.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "Node-testing and workflow-authoring OpenAPI documents intentionally emit self-contained response maps and component sections for separate public artifacts.",
+          "clones": [
+            {
+              "hash": "057dcd7e22932ec60071e845192b60d2a7eaec528f0a77b04311718c62a65684",
+              "maxLines": 73
+            }
+          ]
+        },
+        {
+          "files": [
+            "packages/contracts/src/identity-workspace.ts",
+            "packages/contracts/src/workflow-runs.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "Identity and workflow-run OpenAPI documents intentionally retain complete independent security and response component declarations.",
+          "clones": [
+            {
+              "hash": "7e35de0a21dbcc6bb5541a3c0174d883480c4603f43be7715b7e771fa49b7c06",
+              "maxLines": 55
+            }
+          ]
+        },
+        {
+          "files": [
+            "packages/contracts/src/connections.ts",
+            "packages/contracts/src/workflow-runs.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "Connections and workflow-run contract generators use matching OpenAPI request/response helpers but produce distinct standalone public artifacts.",
+          "clones": [
+            {
+              "hash": "d3a0be2c2822c441da43ad5329ac78facba386e592d632573cce3ae9964cf8a3",
+              "maxLines": 36
+            },
+            {
+              "hash": "a7ee85546022912c1fde3023275601e248065a4e4a62df81497ebf38d862d38f",
+              "maxLines": 25
+            }
+          ]
+        },
+        {
+          "files": [
+            "packages/artifact-store/src/config.ts",
+            "packages/artifact-store/src/control-ledger-config.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "Artifact data and control-ledger endpoints share URL hardening while retaining different required environment variables, regions, buckets, and lifecycle policy.",
+          "clones": [
+            {
+              "hash": "b00c804bbc97c17965a3fce68b63b2b89c6c4c5d1385c2861dd581eaac00c4b5",
+              "maxLines": 23
+            }
+          ]
+        },
+        {
+          "files": [
+            "apps/worker/src/execution/operator-run-replay-runtime.ts",
+            "apps/worker/src/triggers/trigger-runtime.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "Operator replay and trigger reconciliation independently verify executable compatibility before entering different dispatch and recovery flows.",
+          "clones": [
+            {
+              "hash": "cba84a944598fd845996bf250fb7a268ec18b3f917364e6f242d2948ecb047d4",
+              "maxLines": 34
+            }
+          ]
+        },
+        {
+          "files": [
+            "apps/worker/src/execution/failure-notification-delivery.ts",
+            "apps/worker/src/execution/failure-notification-delivery.ts"
+          ],
+          "classification": "intentional-scenario-local",
+          "reason": "Slack and email delivery branches keep provider-specific secret decoding beside their distinct payload validation and error classification.",
+          "clones": [
+            {
+              "hash": "c664383c1fad25aefd9c2b03b36d58c14f29ebbc9d009fe2fc7c7cd08283060e",
+              "maxLines": 18
+            }
+          ]
+        },
+        {
+          "files": [
+            "apps/worker/src/execution/coordinator-engine.ts",
+            "apps/worker/src/execution/node-attempt-engine.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "Coordinator and attempt engines validate compatibility at separate execution boundaries and then construct different engines with different failure ownership.",
+          "clones": [
+            {
+              "hash": "242b3296d49d446610c24a080f2ddf8e0b2605a50955f8c63af9d4788d9a1ed6",
+              "maxLines": 36
+            }
+          ]
+        },
+        {
+          "files": [
+            "apps/recovery/src/config.ts",
+            "apps/retention/src/config.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "Recovery and retention executables independently parse observability plus service-specific environment contracts; a shared config would blur deployment ownership.",
+          "clones": [
+            {
+              "hash": "4c73efcde526fffed3bfe713376476143ba18a3e3d7ac8ebe09c2b451037622b",
+              "maxLines": 21
+            }
+          ]
+        },
+        {
+          "files": [
+            "apps/operator-command/src/main.ts",
+            "apps/retention/src/main.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "Two process entry points repeat fail-closed telemetry shutdown and signal-listener cleanup while owning unrelated application resources.",
+          "clones": [
+            {
+              "hash": "00e1fe5720681052b8d49d7416d5b8bc4d481ccd37ceab304e95f39e8852e7d1",
+              "maxLines": 15
+            }
+          ]
+        },
+        {
+          "files": [
+            "apps/operator-command/src/config.ts",
+            "apps/operator-command/src/run.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "The CLI input union and exhaustive command dispatcher necessarily mirror the same command vocabulary at parsing and execution boundaries.",
+          "clones": [
+            {
+              "hash": "181c8816c257de0dc7523aeb251e5c9ca1bbc70a4bea28ddc4004e6b0f8ce69d",
+              "maxLines": 52
+            }
+          ]
+        },
+        {
+          "files": [
+            "apps/lifecycle-command/src/run.ts",
+            "apps/retention/src/run.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "Lifecycle and retention runners close different ordered resource sets; keeping cleanup local preserves each command's authoritative failure and shutdown policy.",
+          "clones": [
+            {
+              "hash": "e2cb436adf369c8c8b0410d528504d8c21fe49531ef903d05ec036e83a2bfb40",
+              "maxLines": 14
+            }
+          ]
+        },
+        {
+          "files": [
+            "apps/lifecycle-command/src/main.ts",
+            "apps/recovery/src/main.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "Independent executable entry points repeat bootstrap-failure cleanup while owning different runtime resources and recovery authority.",
+          "clones": [
+            {
+              "hash": "3c11b016d102aef5a0ec76825c0d73ec509e548ca3162e49b12f157e0c0121ac",
+              "maxLines": 17
+            }
+          ]
+        },
+        {
+          "files": [
+            "apps/lifecycle-command/src/main.ts",
+            "apps/retention/src/main.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "Independent executable entry points keep local signal listener teardown so their process lifecycle remains explicit and dependency-free.",
+          "clones": [
+            {
+              "hash": "9a091b2201301762453d5bbb1937732c7fd610ad2187849c8a61223707624d17",
+              "maxLines": 14
+            }
+          ]
+        },
+        {
+          "files": [
+            "apps/api/src/platform/observability/observability.module.ts",
+            "apps/worker/src/platform/observability/observability.module.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "API and worker Nest roots intentionally own identical thin observability adapters without introducing a cross-application framework package.",
+          "clones": [
+            {
+              "hash": "7a157fa7f925b07b7d10b06396d9c2e3c48c0b45dbd1b9f3d13217fb85617e83",
+              "maxLines": 33
+            }
+          ]
+        },
+        {
+          "files": [
+            "apps/api/src/platform/database/database.module.ts",
+            "apps/worker/src/platform/database/database.module.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "API and worker database modules expose similar Nest lifecycle adapters but validate different roles, compatibility cohorts, and runtime responsibilities.",
+          "clones": [
+            {
+              "hash": "c1b1181c644038301a01d90599f66745f9029f3bf0a49b87eaa6400c93d7aa89",
+              "maxLines": 34
+            }
+          ]
+        },
+        {
+          "files": [
+            "apps/api/src/platform/config/api-config.ts",
+            "apps/worker/src/config/worker-config.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "API and worker independently validate common PostgreSQL pool variables inside different deployable configuration contracts.",
+          "clones": [
+            {
+              "hash": "1e9ae16007a8ead1371baa5684bb942e436acc8a5f6e5fe23968e8233c09f29a",
+              "maxLines": 14
+            }
+          ]
+        },
+        {
+          "files": [
+            "apps/api/src/workflow-authoring/controllers.ts",
+            "apps/api/src/workflow-runs/controllers.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "Authoring and run controllers consume the same authorization decoration but retain feature-owned actor and trace extraction at separate HTTP boundaries.",
+          "clones": [
+            {
+              "hash": "45819724caab9c0e11553e2c4656a49387142e13383edba9737cfd146d2901ce",
+              "maxLines": 15
+            },
+            {
+              "hash": "80bf7a1f36ee2d62b512e79e615e5355826bc81033f82d5c6c9c5535f6b83e5a",
+              "maxLines": 21
+            }
+          ]
+        },
+        {
+          "files": [
+            "apps/api/src/schedules/controllers.ts",
+            "apps/api/src/webhooks/controllers.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "Schedule and webhook routes intentionally own separate strict route schemas despite sharing workspace and workflow identifiers.",
+          "clones": [
+            {
+              "hash": "b38558840a127d40386e907528cfa24485b65ffd53fa9f9f3ecd84cad789e178",
+              "maxLines": 13
+            }
+          ]
+        },
+        {
+          "files": [
+            "apps/api/src/identity-workspace/telemetry.ts",
+            "apps/api/src/workflow-authoring/telemetry.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "Identity and authoring telemetry wrappers record different operation vocabularies and attributes while preserving feature-local cardinality control.",
+          "clones": [
+            {
+              "hash": "6e1c8ae1870df8cf22cc83f7426bdb71af16faecd40196dcd52d1ed08bf2c689",
+              "maxLines": 25
+            }
+          ]
+        },
+        {
+          "files": [
+            "apps/api/src/connections/use-cases.ts",
+            "apps/api/src/connections/use-cases.ts"
+          ],
+          "classification": "intentional-scenario-local",
+          "reason": "Create, rotate, and test connection cases keep explicit request construction and outcome mapping beside distinct idempotency and credential transitions.",
+          "clones": [
+            {
+              "hash": "5b98c8a68dc65caee8d2b2c1e6a445f9fce39340c9a070453c3fcac34bc7616c",
+              "maxLines": 18
+            },
+            {
+              "hash": "a06266996ec85100f0dac1716cf714545143e986467b0e58103a3513e7837b01",
+              "maxLines": 23
+            }
+          ]
+        },
+        {
+          "files": [
+            "apps/api/src/connections/controllers.ts",
+            "apps/api/src/node-testing/controller.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "Connection and node-testing controllers consume the shared authorization decoration but retain feature-owned actor extraction at separate HTTP seams.",
+          "clones": [
+            {
+              "hash": "b3b1bb3fea7a69da2566c293f74859813c1008b92d0d68640f46313f03720762",
+              "maxLines": 15
+            }
+          ]
+        }
+      ]
+    },
+    "test": {
+      "paths": ["apps/*/test", "packages/*/test"],
+      "ignore": "**/dist/**",
+      "minLines": 18,
+      "minTokens": 130,
+      "maximums": {
+        "clones": 5,
+        "duplicatedLines": 159,
+        "duplicatedTokens": 1425
+      },
+      "families": [
+        {
+          "files": [
+            "packages/workflow-engine/test/executable-workflow-foreach.test.ts",
+            "packages/workflow-engine/test/executable-workflow-foreach.test.ts"
+          ],
+          "classification": "intentional-scenario-local",
+          "reason": "The conflict scenario repeats the persisted successful observation to make the changed completed-output value and resulting rejection visible in the test.",
+          "clones": [
+            {
+              "hash": "f75a4b5100a0a0276f41ff9f6f7f083f7b9dc3a665a42885b4cd66cfdfee22cf",
+              "maxLines": 30
+            }
+          ]
+        },
+        {
+          "files": [
+            "apps/worker/test/worker-bootstrap.test.ts",
+            "apps/worker/test/worker-bootstrap.test.ts"
+          ],
+          "classification": "intentional-scenario-local",
+          "reason": "Node-attempt and preview-maintenance bootstrap scenarios name their distinct runtime owner, queue job, readiness call, and cleanup assertion directly.",
+          "clones": [
+            {
+              "hash": "a089c2de50fb59267a02f5487f244124594750112bfb06687af6fd0b4366e64f",
+              "maxLines": 33
+            }
+          ]
+        },
+        {
+          "files": [
+            "apps/worker/test/node-attempt-handler-part-2.test.ts",
+            "apps/worker/test/node-attempt-handler-part-2.test.ts"
+          ],
+          "classification": "intentional-scenario-local",
+          "reason": "Provider-failure scenarios build explicit executors with different failure kinds and completion expectations; an option-driven helper would hide the tested behavior.",
+          "clones": [
+            {
+              "hash": "23facc9ee3428611964a622cdf2011e7ea7907b81ecc5cb1416df92597586fd2",
+              "maxLines": 31
+            }
+          ]
+        },
+        {
+          "files": [
+            "apps/lifecycle-command/test/run.test.ts",
+            "apps/retention/test/run.test.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "Separate deployable applications use similar ledger and logger fakes but exercise different startup, telemetry, reconciliation, and shutdown contracts.",
+          "clones": [
+            {
+              "hash": "665d091e56e0ff0c9de8fe9587dfb00c1f63cd8bdcfdbd58075f5b38a79b51fa",
+              "maxLines": 37
+            }
+          ]
+        },
+        {
+          "files": [
+            "apps/api/test/identity-workspace/real-api.integration.test.ts",
+            "apps/api/test/workflow-runs/postgres-persistence.test.ts"
+          ],
+          "classification": "false-positive",
+          "reason": "The API integration graph is a raw authoring payload while the persistence test graph is an executable compilation input; sharing would collapse distinct public seams.",
+          "clones": [
+            {
+              "hash": "d6458c48d97d52069ea65c2b092e443c4dad2a7b68a909333124484d6fa05e50",
+              "maxLines": 33
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
