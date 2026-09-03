@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CoordinatorPlanInvalidError,
   createCoordinatorRunStore,
-} from '../src/coordinator-run-store.js';
+} from '../src/execution/coordinator-run-store.js';
 import { runCheckpoints, workflowRuns } from '../src/schema.js';
 
 const migrationUrl = new URL(

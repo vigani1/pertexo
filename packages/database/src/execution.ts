@@ -19,8 +19,8 @@ export type {
 export {
   CoordinatorDeliveryMismatchError,
   createCoordinatorRunStore,
-} from './coordinator-run-store.js';
-export type { CoordinatorRunStore } from './coordinator-run-store.js';
+} from './execution/coordinator-run-store.js';
+export type { CoordinatorRunStore } from './execution/coordinator-run-store.js';
 export type { DatabaseConfig } from './config.js';
 export { createWorkspaceDatabase } from './database.js';
 export type { WorkspaceDatabase } from './database.js';

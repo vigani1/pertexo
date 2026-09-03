@@ -39,14 +39,14 @@ export {
   CoordinatorPlanInvalidError,
   CoordinatorRunStateCorruptError,
   createCoordinatorRunStore,
-} from './coordinator-run-store.js';
+} from './execution/coordinator-run-store.js';
 export type {
   AcknowledgeAdvanceDeliveryResult,
   CommitAdvancePlanResult,
   CoordinatorAdvanceDelivery,
   CoordinatorRunStore,
   LoadAdvanceStateResult,
-} from './coordinator-run-store.js';
+} from './execution/coordinator-run-store.js';
 export {
   artifacts,
   auditEvents,
