@@ -18,7 +18,7 @@ export {
   WorkflowTriggerStalePublicationError,
   type WorkflowTriggerHealth,
   type WorkflowTriggerReconciliationDatabase,
-} from './workflow-triggers.js';
+} from './triggers/workflow-triggers.js';
 export {
   createWebhookTriggerDatabase,
   WebhookDeliveryIneligibleError,
@@ -31,8 +31,8 @@ export {
   type WebhookCheckpointFactory,
   type WebhookTriggerDatabase,
   type WebhookVerificationReference,
-} from './webhook-triggers.js';
-export { workflowTriggerProjection } from './workflow-trigger-projection.js';
+} from './triggers/webhook-triggers.js';
+export { workflowTriggerProjection } from './triggers/workflow-trigger-projection.js';
 export {
   createScheduleTriggerScanner,
   createScheduleTriggerDatabase,
@@ -44,15 +44,15 @@ export {
   type ScheduleTriggerDatabase,
   type ScheduleTriggerCommandResult,
   type ScheduleTriggerRecord,
-} from './schedule-triggers.js';
+} from './triggers/schedule-triggers.js';
 export {
   parseScheduleRecurrence,
   resolveScheduleObservation,
   SCHEDULE_CRON_PARSER_VERSION,
   type ScheduleObservation,
   type ScheduleRecurrence,
-} from './schedule-recurrence.js';
-export type { WorkflowTriggerProjection } from './workflow-trigger-projection.js';
+} from './triggers/schedule-recurrence.js';
+export type { WorkflowTriggerProjection } from './triggers/workflow-trigger-projection.js';
 export {
   createFailureNotificationDestinationDatabase,
   FailureNotificationDestinationError,

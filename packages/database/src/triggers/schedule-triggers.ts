@@ -1,13 +1,13 @@
-import { createDatabasePool } from './postgres-telemetry.js';
+import { createDatabasePool } from '../postgres-telemetry.js';
 import { createHash } from 'node:crypto';
 
-import { generatePersistedId } from './persisted-id.js';
+import { generatePersistedId } from '../persisted-id.js';
 
 import { sql } from 'drizzle-orm';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
-import type { DatabaseConfig } from './config.js';
+import type { DatabaseConfig } from '../config.js';
 import { ScheduleTriggerError } from './schedule-trigger-errors.js';
 import {
   lockExpectedCompatibilityReleaseSet,
@@ -15,15 +15,15 @@ import {
   parseCompatibilityReleaseExpectationSet,
   type CompatibilityReleaseExpectation,
   type CompatibilityReleaseExpectationSet,
-} from './compatibility/compatibility-release.js';
+} from '../compatibility/compatibility-release.js';
 import {
   acceptWorkflowRun,
   WorkspaceRunQuotaExceededError,
-} from './execution-acceptance.js';
+} from '../execution-acceptance.js';
 import {
   classifyPublishedWorkflowVersionRow,
   type PublishedWorkflowV2Projection,
-} from './published-workflow-reader.js';
+} from '../published-workflow-reader.js';
 import {
   parseScheduleRecurrence,
   resolveScheduleObservation,
@@ -32,7 +32,7 @@ import { refreshWorkflowActivation } from './workflow-triggers.js';
 import {
   withTenantScopedClient,
   withWorkspaceTransaction,
-} from './workspace.js';
+} from '../workspace.js';
 
 const claimSchema = z.object({
   trigger_id: z.uuid(),

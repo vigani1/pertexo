@@ -54,11 +54,11 @@ export type { PublishedWorkflowV2Projection } from './published-workflow-reader.
 export {
   ScheduleTriggerError,
   createScheduleTriggerDatabase,
-} from './schedule-triggers.js';
+} from './triggers/schedule-triggers.js';
 export type {
   ScheduleTriggerDatabase,
   ScheduleTriggerRecord,
-} from './schedule-triggers.js';
+} from './triggers/schedule-triggers.js';
 export {
   WebhookDeliveryIneligibleError,
   WebhookDeliveryReplayMismatchError,
@@ -66,12 +66,12 @@ export {
   WebhookTriggerIdempotencyConflictError,
   WebhookTriggerNotFoundError,
   createWebhookTriggerDatabase,
-} from './webhook-triggers.js';
+} from './triggers/webhook-triggers.js';
 export type {
   WebhookCheckpointFactory,
   WebhookTriggerDatabase,
   WebhookVerificationReference,
-} from './webhook-triggers.js';
+} from './triggers/webhook-triggers.js';
 export {
   WorkflowIdempotencyConflictError,
   WorkflowDefinitionPlacementError,
@@ -91,6 +91,6 @@ export {
   createWorkflowRunDatabase,
 } from './workflow-run-api.js';
 export type { WorkflowRunDatabase } from './workflow-run-api.js';
-export type { WorkflowTriggerHealth } from './workflow-triggers.js';
+export type { WorkflowTriggerHealth } from './triggers/workflow-triggers.js';
 export { createWorkspaceDatabase } from './database.js';
 export type { WorkspaceDatabase } from './database.js';

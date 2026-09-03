@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { workflowTriggerProjection } from '../src/workflow-trigger-projection.js';
+import { workflowTriggerProjection } from '../src/triggers/workflow-trigger-projection.js';
 
 const node = (
   id: string,
