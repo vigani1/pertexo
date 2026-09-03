@@ -8,9 +8,8 @@ import {
   EMPTY_DEFINITION_CATALOG_V1,
   EMPTY_WORKFLOW_GRAPH_V1,
   parseWorkflowGraphDraft,
-  workflowCompatibilityReport,
+  type workflowCompatibilityReport,
   workflowDraftRepresentationTag,
-  workflowRetainedExecutableChecksum,
   type WorkflowDefinitionCatalogV1,
   type WorkflowGraph,
 } from '@pertexo/workflow-model/graph';
@@ -32,6 +31,13 @@ import {
 import { canonicalOutboxPayloadChecksum } from './outbox.js';
 import { createWorkflowPublisher } from './workflow-publication.js';
 import {
+  checksumSchema,
+  createdWorkflowRowSchema,
+  mapDraft,
+  mapVersion,
+  mapWorkflow,
+} from './workflow-authoring-rows.js';
+import {
   acceptPreviewRun,
   readPreviewRun,
   type AcceptedPreviewRun,
@@ -44,14 +50,6 @@ import {
 } from './workspace.js';
 
 const uuidSchema = z.uuid();
-const retainedChecksumSchema = z.string().regex(/^wf:v1:sha256:[0-9a-f]{64}$/u);
-const executableChecksumSchema = z
-  .string()
-  .regex(/^wf:v2:sha256:[0-9a-f]{64}$/u);
-const checksumSchema = z.union([
-  retainedChecksumSchema,
-  executableChecksumSchema,
-]);
 const nameSchema = z.string().trim().min(1).max(128);
 const idempotencyKeySchema = z
   .string()
@@ -351,69 +349,6 @@ function requirePlaceableDefinitionAdditions(
   }
   if (issues.length > 0)
     throw new WorkflowDefinitionPlacementError(Object.freeze(issues));
-}
-
-function mapWorkflow(row: Record<string, unknown>): WorkflowRecord {
-  const publishedVersionId = row.published_version_id;
-  if (publishedVersionId !== null && typeof publishedVersionId !== 'string') {
-    throw new Error('Database returned an invalid published version ID');
-  }
-  return Object.freeze({
-    id: String(row.id),
-    workspaceId: String(row.workspace_id),
-    name: String(row.name),
-    lifecycleStatus: row.lifecycle_status as 'active' | 'archived',
-    activationStatus: 'inactive',
-    publishedVersionId,
-    createdBy: String(row.created_by),
-    createdAt: new Date(row.created_at as Date),
-    updatedAt: new Date(row.updated_at as Date),
-  });
-}
-
-function mapDraft(
-  row: Record<string, unknown>,
-  definitionCatalog: WorkflowDefinitionCatalogV1,
-): WorkflowDraftRecord {
-  const graph = parseWorkflowGraphDraft(row.graph_json);
-  return Object.freeze({
-    workflowId: String(row.workflow_id),
-    workspaceId: String(row.workspace_id),
-    revision: Number(row.revision),
-    schemaVersion: Number(row.schema_version),
-    graphJson: graph,
-    compatibility: workflowCompatibilityReport(graph, definitionCatalog),
-    updatedBy: String(row.updated_by),
-    updatedAt: new Date(row.updated_at as Date),
-  });
-}
-
-function mapVersion(row: Record<string, unknown>): WorkflowVersionRecord {
-  const graph = parseWorkflowGraphDraft(row.graph_json);
-  const schemaVersion = Number(row.schema_version);
-  if (schemaVersion !== graph.schemaVersion) {
-    throw new Error('Stored workflow version schema does not match its graph');
-  }
-  const checksum = checksumSchema.parse(row.checksum);
-  if (
-    retainedChecksumSchema.safeParse(checksum).success &&
-    checksum !== workflowRetainedExecutableChecksum(graph)
-  ) {
-    throw new Error(
-      'Stored workflow version checksum does not match its graph',
-    );
-  }
-  return Object.freeze({
-    id: String(row.id),
-    workspaceId: String(row.workspace_id),
-    workflowId: String(row.workflow_id),
-    versionNumber: Number(row.version_number),
-    schemaVersion,
-    graphJson: graph,
-    checksum,
-    publishedBy: String(row.published_by),
-    publishedAt: new Date(row.published_at as Date),
-  });
 }
 
 async function withAuthorTransaction<T>(
@@ -736,7 +671,8 @@ export function createWorkflowAuthoringDatabase(
             throw error;
           }
           const created = await client.query<Record<string, unknown>>(
-            `select workflow.*, row_to_json(draft.*) as draft
+            `select row_to_json(workflow.*) as workflow,
+                    row_to_json(draft.*) as draft
              from app.workflows workflow
              join app.workflow_drafts draft
                on draft.workspace_id = workflow.workspace_id
@@ -744,21 +680,11 @@ export function createWorkflowAuthoringDatabase(
              where workflow.workspace_id = $1 and workflow.id = $2`,
             [input.workspaceId, createdId],
           );
-          const row = created.rows[0];
-          if (
-            row === undefined ||
-            typeof row.draft !== 'object' ||
-            row.draft === null
-          ) {
-            throw new Error('Workflow creation returned no atomic draft');
-          }
+          const row = createdWorkflowRowSchema.parse(created.rows[0]);
           return Object.freeze({
             workflowId: createdId,
-            workflow: mapWorkflow(row),
-            draft: mapDraft(
-              row.draft as Record<string, unknown>,
-              definitionCatalog,
-            ),
+            workflow: mapWorkflow(row.workflow),
+            draft: mapDraft(row.draft, definitionCatalog),
           });
         },
       ),

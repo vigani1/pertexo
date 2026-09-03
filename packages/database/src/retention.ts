@@ -185,13 +185,13 @@ function mapClaim(row: Record<string, unknown>): RetentionDryRunClaim {
     batchId: uuidSchema.parse(row.batch_id),
     workspaceId: uuidSchema.parse(row.workspace_id),
     retentionKind: retentionKindSchema.parse(row.retention_kind),
-    cutoffAt: new Date(row.cutoff_at as string | Date),
+    cutoffAt: z.coerce.date().parse(row.cutoff_at),
     requestedBy: boundedText(128).parse(row.requested_by),
     reason: boundedText(512).parse(row.reason),
     cursorExpiresAt:
       row.cursor_expires_at === null
         ? null
-        : new Date(row.cursor_expires_at as string | Date),
+        : z.coerce.date().parse(row.cursor_expires_at),
     cursorId: row.cursor_id === null ? null : uuidSchema.parse(row.cursor_id),
     dryRunCursor:
       row.dry_run_cursor === null || row.dry_run_cursor === undefined
@@ -203,7 +203,7 @@ function mapClaim(row: Record<string, unknown>): RetentionDryRunClaim {
         : retentionTupleSchema.parse(row.dry_run_upper),
     leaseToken: uuidSchema.parse(row.lease_token),
     leaseFence: z.coerce.number().int().positive().parse(row.lease_fence),
-    leaseExpiresAt: new Date(row.lease_expires_at as string | Date),
+    leaseExpiresAt: z.coerce.date().parse(row.lease_expires_at),
   });
 }
 
@@ -289,7 +289,7 @@ export function createRetentionDatabase(
     const cursorExpiresAt =
       row.cursor_expires_at === null || row.cursor_expires_at === undefined
         ? null
-        : new Date(row.cursor_expires_at as string | Date);
+        : z.coerce.date().parse(row.cursor_expires_at);
     const cursorId =
       row.cursor_id === null || row.cursor_id === undefined
         ? null
@@ -573,7 +573,7 @@ export function createRetentionDatabase(
       if (row === undefined)
         throw new Error('Retention schedule result was not returned');
       return Object.freeze({
-        cutoffAt: new Date(row.cutoff_at),
+        cutoffAt: z.coerce.date().parse(row.cutoff_at),
         scannedCount: z.coerce
           .number()
           .int()

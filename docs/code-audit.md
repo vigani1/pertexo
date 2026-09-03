@@ -507,6 +507,29 @@ making the architecture plan even larger.
 ### C-12 — Persisted-row parsing is inconsistent
 
 - **Severity:** medium.
+- **Remediation status:** complete on 2026-09-03.
+- **Repository-wide affected locations:** the weak mapper pattern covered
+  workflow, draft, and version rows; user, authentication identity, session,
+  workspace, and lifecycle-operation rows; the outbox claim JSON envelope; and
+  isolated retention, node-attempt, run-event, cancellation, and OIDC date or
+  digest fields. Workflow-trigger health already parsed every field with Zod.
+  Remaining numeric conversions in control-ledger inventory, coordinator fact
+  accounting, node-attempt fencing, and transaction-timeout read-back are
+  immediately guarded by safe-integer/range or exact-identity checks. Ledger
+  timestamps retained as `Date` construction immediately call `toISOString`,
+  which rejects invalid values while preserving their comparison semantics.
+- **Remediation:** added strict owner-local row schemas for workflow authoring,
+  identity/workspace, and outbox claim envelopes; SQL now projects the exact
+  outbox fields validated by that envelope. Replaced permissive string/number
+  coercion and unchecked dates with UUID/enumeration/bounds/JSON/date schemas.
+  Row parsing was extracted into private owner-named modules so the stronger
+  boundary did not enlarge existing factory hotspots. Success-path domain
+  shapes and the intentionally separate Phase 2 activation view are preserved.
+- **Verification:** complete database unit suite 170 tests, database typecheck
+  and build, API suite 381 tests, repository lint and complexity ratchet. Public
+  identity/workspace and outbox PostgreSQL integration suites were invoked but
+  could not run because no PostgreSQL service was listening on localhost port
+  5432; they were not reported as passing.
 - **Location:** `packages/database/src/workflow-authoring.ts#mapWorkflow`,
   `#mapDraft`, and `#mapVersion`.
 - **Issue:** row fields are converted with `String`, `Number`, casts, and

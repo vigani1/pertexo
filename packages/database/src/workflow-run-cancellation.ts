@@ -59,7 +59,7 @@ export async function requestWorkflowRunCancellation(
     return Object.freeze({
       duplicate: true,
       eventSequence: null,
-      requestedAt: new Date(row.cancel_requested_at),
+      requestedAt: z.coerce.date().parse(row.cancel_requested_at),
     });
   }
 

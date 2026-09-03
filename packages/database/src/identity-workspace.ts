@@ -11,6 +11,13 @@ import {
   IdempotencyRequestConflictError,
 } from './execution-acceptance.js';
 import {
+  mapAuthIdentity,
+  mapSession,
+  mapUser,
+  mapWorkspace,
+  mapWorkspaceLifecycleOperation,
+} from './identity-workspace-rows.js';
+import {
   withPlatformTransaction,
   withTenantScopedClient,
 } from './workspace.js';
@@ -294,99 +301,6 @@ function databaseConflict(
   throw error;
 }
 
-function mapUser(row: Record<string, unknown>): UserRecord {
-  return Object.freeze({
-    id: String(row.id),
-    email: String(row.email),
-    displayName: String(row.display_name),
-    status: row.status as UserStatus,
-    createdAt: new Date(row.created_at as string | Date),
-    updatedAt: new Date(row.updated_at as string | Date),
-  });
-}
-
-function mapAuthIdentity(row: Record<string, unknown>): AuthIdentityRecord {
-  return Object.freeze({
-    id: String(row.id),
-    userId: String(row.user_id),
-    issuer: String(row.issuer),
-    providerSubject: String(row.provider_subject),
-    profileMetadata: row.profile_metadata as Record<string, unknown>,
-    createdAt: new Date(row.created_at as string | Date),
-    updatedAt: new Date(row.updated_at as string | Date),
-  });
-}
-
-function nullableString(value: unknown): string | null {
-  if (value === null || value === undefined) return null;
-  if (typeof value !== 'string')
-    throw new Error('Database returned a non-string value');
-  return value;
-}
-
-function mapSession(row: Record<string, unknown>): SessionRecord {
-  return Object.freeze({
-    id: String(row.id),
-    userId: String(row.user_id),
-    tokenDigest: String(row.token_digest),
-    expiresAt: new Date(row.expires_at as string | Date),
-    revokedAt:
-      row.revoked_at === null
-        ? null
-        : new Date(row.revoked_at as string | Date),
-    userAgent: nullableString(row.user_agent),
-    ipAddress: nullableString(row.ip_address),
-    createdAt: new Date(row.created_at as string | Date),
-  });
-}
-
-function mapWorkspace(row: Record<string, unknown>): WorkspaceRecord {
-  return Object.freeze({
-    id: String(row.id),
-    name: String(row.name),
-    slug: String(row.slug),
-    status: row.status as WorkspaceStatus,
-    createdBy: String(row.created_by),
-    deletionRequestedAt:
-      row.deletion_requested_at === null
-        ? null
-        : new Date(row.deletion_requested_at as string | Date),
-    deletionRequestedBy:
-      row.deletion_requested_by === null
-        ? null
-        : nullableString(row.deletion_requested_by),
-    deletionReason: nullableString(row.deletion_reason),
-    purgeAfter:
-      row.purge_after === null
-        ? null
-        : new Date(row.purge_after as string | Date),
-    createdAt: new Date(row.created_at as string | Date),
-    updatedAt: new Date(row.updated_at as string | Date),
-  });
-}
-
-function mapWorkspaceLifecycleOperation(
-  row: Record<string, unknown>,
-): WorkspaceLifecycleOperation {
-  return Object.freeze({
-    id: uuidSchema.parse(row.operation_id),
-    workspaceId: uuidSchema.parse(row.workspace_id),
-    commandType: z
-      .enum(['deletion_requested', 'deletion_restored'])
-      .parse(row.command_type),
-    status: z
-      .enum(['pending', 'running', 'completed', 'failed'])
-      .parse(row.status),
-    submittedAt: new Date(row.occurred_at as string | Date),
-    updatedAt: new Date(row.updated_at as string | Date),
-    completedAt:
-      row.completed_at === null
-        ? null
-        : new Date(row.completed_at as string | Date),
-    errorCode: z.string().nullable().parse(row.error_code),
-  });
-}
-
 function workspaceLifecycleOperationError(error: unknown): never {
   const code =
     error instanceof Error ? (error as DatabaseError).code : undefined;
@@ -624,7 +538,7 @@ export function createIdentityWorkspaceDatabase(
       );
       if (existing.rows[0] !== undefined) {
         const row = existing.rows[0] as Record<string, unknown>;
-        if (String(row.user_id) !== userId) {
+        if (uuidSchema.parse(row.user_id) !== userId) {
           throw new IdentityConflictError(
             'Authentication identity is linked to another user',
           );
@@ -659,7 +573,7 @@ export function createIdentityWorkspaceDatabase(
             [issuer, providerSubject],
           );
           const row = raced.rows[0] as Record<string, unknown> | undefined;
-          if (row !== undefined && String(row.user_id) === userId) {
+          if (row !== undefined && uuidSchema.parse(row.user_id) === userId) {
             return mapAuthIdentity(row);
           }
         }

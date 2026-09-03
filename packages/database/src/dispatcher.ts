@@ -3,6 +3,7 @@ import { createDatabasePool } from './postgres-telemetry.js';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from './config.js';
+import { claimQueryResultSchema, toLeasedEvent } from './dispatcher-rows.js';
 import {
   EXPECTED_MIGRATION_HEAD,
   MINIMUM_POSTGRES_MAJOR,
@@ -87,45 +88,6 @@ export interface OutboxDispatcherDatabase {
   ): Promise<OutboxBacklogSnapshot>;
   checkReadiness(): Promise<void>;
   close(): Promise<void>;
-}
-
-interface ClaimedRow {
-  aggregate_id: string;
-  aggregate_type: string;
-  available_at: string;
-  id: string;
-  job_name: string;
-  lease_expires_at: string;
-  lease_owner: string;
-  lease_token: string;
-  payload: unknown;
-  payload_checksum: string;
-  publish_attempts: number;
-  schema_version: number;
-  workspace_id: string;
-}
-
-interface ClaimQueryResult {
-  events: ClaimedRow[];
-  exhausted_count: number;
-}
-
-function toLeasedEvent(row: ClaimedRow): LeasedOutboxEvent {
-  return Object.freeze({
-    aggregateId: row.aggregate_id,
-    aggregateType: row.aggregate_type,
-    availableAt: new Date(row.available_at),
-    id: row.id,
-    jobName: row.job_name,
-    leaseExpiresAt: new Date(row.lease_expires_at),
-    leaseOwner: row.lease_owner,
-    leaseToken: row.lease_token,
-    payload: row.payload,
-    payloadChecksum: row.payload_checksum,
-    publishAttempts: row.publish_attempts,
-    schemaVersion: row.schema_version,
-    workspaceId: row.workspace_id,
-  });
 }
 
 async function checkDispatcherReadiness(
@@ -282,7 +244,7 @@ export function createOutboxDispatcherDatabase(
         await client.query(
           `select app.recover_due_workflow_run_active_admissions(100)`,
         );
-        const result = await client.query<ClaimQueryResult>(
+        const result = await client.query<Record<string, unknown>>(
           `
             with cursor_state as materialized (
               select last_workspace_id
@@ -382,7 +344,9 @@ export function createOutboxDispatcherDatabase(
               from admitted
               where event.id = admitted.id
                 and admitted.publish_attempts < $6
-              returning event.*
+              returning event.aggregate_id,event.aggregate_type,event.available_at,event.id,
+                        event.job_name,event.lease_expires_at,event.lease_owner,event.lease_token,
+                        event.payload,event.payload_checksum,event.publish_attempts,event.schema_version,event.workspace_id
             )
             select
               coalesce(
@@ -404,10 +368,7 @@ export function createOutboxDispatcherDatabase(
           ],
         );
         await client.query('commit');
-        const row = result.rows[0];
-        if (row === undefined) {
-          throw new Error('Outbox claim returned no summary row');
-        }
+        const row = claimQueryResultSchema.parse(result.rows[0]);
         return Object.freeze({
           events: Object.freeze(row.events.map(toLeasedEvent)),
           exhaustedCount: row.exhausted_count,

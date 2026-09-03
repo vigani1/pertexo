@@ -1,5 +1,5 @@
 import type { Pool } from 'pg';
-import type { z } from 'zod';
+import { z } from 'zod';
 
 import {
   heartbeatSchema,
@@ -81,7 +81,7 @@ export async function heartbeatNodeAttempt(
       const row = result.rows[0];
       if (row === undefined) throw new NodeAttemptReconciliationRequiredError();
       return Object.freeze({
-        leaseExpiresAt: new Date(row.lease_expires_at),
+        leaseExpiresAt: z.coerce.date().parse(row.lease_expires_at),
         abortRequested: row.abort_requested,
         ...(row.abort_reason === null ? {} : { abortReason: row.abort_reason }),
       });
