@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { createActorContext } from '../../src/workspaces/index.js';
+import {
+  authorizeWorkspace,
+  createActorContext,
+} from '../../src/workspaces/index.js';
 import {
   CancelWorkflowRunUseCase,
   GetWorkflowRunUseCase,
@@ -73,6 +76,27 @@ function persistence() {
 }
 
 describe('workflow run application seams', () => {
+  it('reuses guard authorization without repeating the access lookup', async () => {
+    const fixture = persistence();
+    const access = authorization();
+    const authorizedWorkspace = await authorizeWorkspace({
+      actor,
+      routeWorkspaceId: workspaceId,
+      capability: 'run:read',
+      access,
+      disclosure: 'not_found',
+    });
+
+    await new GetWorkflowRunUseCase(fixture.store, access).execute({
+      actor,
+      routeWorkspaceId: workspaceId,
+      authorizedWorkspace,
+      runId,
+    });
+
+    expect(access.findAccess).toHaveBeenCalledTimes(1);
+  });
+
   it('authorizes and canonicalizes one idempotent start command', async () => {
     const fixture = persistence();
     const useCase = new StartWorkflowRunUseCase(fixture.store, authorization());
