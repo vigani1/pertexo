@@ -18,19 +18,19 @@ export type {
 } from './connections/connections.js';
 export type { DatabaseConfig } from './config.js';
 export { generatePersistedId } from './persisted-id.js';
-export { ExecutionStateConflictError } from './execution-state.js';
-export { readRunEventsAfter } from './run-events.js';
+export { ExecutionStateConflictError } from './execution/execution-state.js';
+export { readRunEventsAfter } from './execution/run-events.js';
 export {
   IdempotencyRequestConflictError,
   RegionalWriteAdmissionPausedError,
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
-} from './execution-acceptance.js';
+} from './execution/execution-acceptance.js';
 export {
   FailureNotificationDestinationError,
   createFailureNotificationDestinationDatabase,
-} from './failure-notification-destinations.js';
-export type { FailureNotificationDestinationDatabase } from './failure-notification-destinations.js';
+} from './execution/failure-notification-destinations.js';
+export type { FailureNotificationDestinationDatabase } from './execution/failure-notification-destinations.js';
 export {
   IdentityConflictError,
   WorkspaceLifecycleConflictError,
@@ -49,8 +49,8 @@ export type {
 export {
   PreviewIdempotencyConflictError,
   PriorPreviewInputUnavailableError,
-} from './preview-execution.js';
-export type { PublishedWorkflowV2Projection } from './published-workflow-reader.js';
+} from './execution/preview-execution.js';
+export type { PublishedWorkflowV2Projection } from './execution/published-workflow-reader.js';
 export {
   ScheduleTriggerError,
   createScheduleTriggerDatabase,
@@ -89,8 +89,8 @@ export {
   WorkflowRunNotExecutableError,
   WorkflowRunNotFoundError,
   createWorkflowRunDatabase,
-} from './workflow-run-api.js';
-export type { WorkflowRunDatabase } from './workflow-run-api.js';
+} from './execution/workflow-run-api.js';
+export type { WorkflowRunDatabase } from './execution/workflow-run-api.js';
 export type { WorkflowTriggerHealth } from './triggers/workflow-triggers.js';
 export { createWorkspaceDatabase } from './database.js';
 export type { WorkspaceDatabase } from './database.js';

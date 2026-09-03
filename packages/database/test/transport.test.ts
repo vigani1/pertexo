@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
-} from '../src/outbox.js';
-import { createOutboxDispatcherDatabase } from '../src/dispatcher.js';
+} from '../src/execution/outbox.js';
+import { createOutboxDispatcherDatabase } from '../src/execution/dispatcher.js';
 import { parseDatabaseConfig } from '../src/config.js';
 
 const checksum = 'a'.repeat(64);

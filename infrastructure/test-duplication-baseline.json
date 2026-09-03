@@ -120,7 +120,7 @@
         },
         {
           "files": [
-            "packages/database/src/stored-execution-value.ts",
+            "packages/database/src/execution/stored-execution-value.ts",
             "packages/workflow-engine/src/executable-validation.ts"
           ],
           "classification": "false-positive",
@@ -202,8 +202,8 @@
         },
         {
           "files": [
-            "packages/database/src/execution-acceptance.ts",
-            "packages/database/src/preview-execution-acceptance.ts"
+            "packages/database/src/execution/execution-acceptance.ts",
+            "packages/database/src/execution/preview-execution-acceptance.ts"
           ],
           "classification": "false-positive",
           "reason": "Durable and preview acceptance deliberately query separate idempotency operations while preserving independently reviewable transaction semantics.",
@@ -216,14 +216,14 @@
         },
         {
           "files": [
-            "packages/database/src/coordinator-run-store-plan.ts",
+            "packages/database/src/execution/coordinator-run-store-plan.ts",
             "packages/database/src/compatibility/persisted-workflow-checkpoint.ts"
           ],
           "classification": "false-positive",
           "reason": "The planned-transition validator and persisted checkpoint decoder independently validate the same branch-path wire shape at different trust boundaries.",
           "clones": [
             {
-              "hash": "8e46d59bc2dc7aabce2d1906313e5193a0b508044c3ca1c3eb7865a25f3e5ac0",
+              "hash": "fc3bd5c2c348628313a8de63916e84d1ee583931bcbe010e023636f6819cccbf",
               "maxLines": 14
             }
           ]

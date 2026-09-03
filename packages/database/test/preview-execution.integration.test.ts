@@ -13,7 +13,7 @@ import {
   PreviewIdempotencyConflictError,
   PriorPreviewInputUnavailableError,
   readPreviewRun,
-} from '../src/preview-execution.js';
+} from '../src/execution/preview-execution.js';
 import {
   auditEvents,
   idempotencyRecords,

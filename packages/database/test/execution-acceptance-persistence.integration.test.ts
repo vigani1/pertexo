@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   acceptWorkflowRun,
   IdempotencyRequestConflictError,
-} from '../src/execution-acceptance.js';
+} from '../src/execution/execution-acceptance.js';
 import {
   idempotencyRecords,
   outboxEvents,
@@ -15,7 +15,7 @@ import {
 import {
   STORED_EXECUTION_VALUE_LIMITS_V1,
   StoredExecutionValueInvalidError,
-} from '../src/stored-execution-value.js';
+} from '../src/execution/stored-execution-value.js';
 import {
   acceptanceInput,
   apiDatabase,

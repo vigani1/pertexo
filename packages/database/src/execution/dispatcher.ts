@@ -1,0 +1,507 @@
+import type { Pool } from 'pg';
+import { createDatabasePool } from '../postgres-telemetry.js';
+import { z } from 'zod';
+
+import type { DatabaseConfig } from '../config.js';
+import { claimQueryResultSchema, toLeasedEvent } from './dispatcher-rows.js';
+import {
+  EXPECTED_MIGRATION_HEAD,
+  MINIMUM_POSTGRES_MAJOR,
+} from '../readiness.js';
+
+const claimInputSchema = z.object({
+  enabledJobNames: z
+    .array(z.string().regex(/^[a-z][a-z0-9-]{0,127}$/u))
+    .max(64)
+    .refine((values) => new Set(values).size === values.length),
+  leaseDurationMillis: z.number().int().min(1_000).max(300_000),
+  leaseOwner: z.string().regex(/^[A-Za-z0-9._:-]{1,128}$/u),
+  leaseToken: z.uuid(),
+  limit: z.number().int().min(1).max(100),
+  maxAttempts: z.number().int().min(1).max(1_000),
+});
+
+const observeBacklogInputSchema = z.object({
+  enabledJobNames: z
+    .array(z.string().regex(/^[a-z][a-z0-9-]{0,127}$/u))
+    .max(64)
+    .refine((values) => new Set(values).size === values.length),
+});
+
+const leasedEventSchema = z.object({
+  id: z.uuid(),
+  leaseToken: z.uuid(),
+});
+
+const releaseInputSchema = leasedEventSchema.extend({
+  errorCode: z.string().regex(/^[a-z][a-z0-9._:-]{0,127}$/u),
+  maxAttempts: z.number().int().min(1).max(1_000),
+  retryAt: z.date(),
+});
+
+export type ClaimOutboxBatchInput = Readonly<
+  Omit<z.input<typeof claimInputSchema>, 'enabledJobNames'> & {
+    enabledJobNames: readonly string[];
+  }
+>;
+export type ObserveOutboxBacklogInput = Readonly<{
+  enabledJobNames: readonly string[];
+}>;
+export type LeasedOutboxEvent = Readonly<{
+  aggregateId: string;
+  aggregateType: string;
+  availableAt: Date;
+  id: string;
+  jobName: string;
+  leaseExpiresAt: Date;
+  leaseOwner: string;
+  leaseToken: string;
+  payload: unknown;
+  payloadChecksum: string;
+  publishAttempts: number;
+  schemaVersion: number;
+  workspaceId: string;
+}>;
+
+export type ReleaseOutboxResult = 'retry_scheduled' | 'failed' | 'not_leased';
+
+export type OutboxBacklogSnapshot = Readonly<{
+  backlog: number;
+  /** Age of the oldest due, claimable row. Omitted when the backlog is empty. */
+  oldestAgeSeconds?: number;
+}>;
+
+export type ClaimOutboxBatchResult = Readonly<{
+  events: readonly LeasedOutboxEvent[];
+  /** Rows atomically terminalized because their publish-attempt ceiling was reached. */
+  exhaustedCount: number;
+}>;
+
+export interface OutboxDispatcherDatabase {
+  claimBatch(input: ClaimOutboxBatchInput): Promise<ClaimOutboxBatchResult>;
+  markPublished(eventId: string, leaseToken: string): Promise<boolean>;
+  releaseOrFail(
+    input: z.input<typeof releaseInputSchema>,
+  ): Promise<ReleaseOutboxResult>;
+  observeBacklog(
+    input: ObserveOutboxBacklogInput,
+  ): Promise<OutboxBacklogSnapshot>;
+  checkReadiness(): Promise<void>;
+  close(): Promise<void>;
+}
+
+async function checkDispatcherReadiness(
+  pool: Pool,
+  ownerRole: string,
+): Promise<void> {
+  const result = await pool.query<{
+    can_delete: boolean;
+    can_insert: boolean;
+    can_select: boolean;
+    can_update: boolean;
+    can_update_immutable: boolean;
+    can_update_table: boolean;
+    dispatch_index_compatible: boolean;
+    fair_cursor_compatible: boolean;
+    migration_head: string | null;
+    owner_member: boolean;
+    policy_count: number;
+    postgres_major: number;
+    relforcerowsecurity: boolean;
+    relrowsecurity: boolean;
+    rolbypassrls: boolean;
+    rolsuper: boolean;
+  }>(
+    `
+      select
+        current_setting('server_version_num')::integer / 10000 as postgres_major,
+        role.rolsuper,
+        role.rolbypassrls,
+        pg_has_role(current_user, $1::name, 'MEMBER') as owner_member,
+        table_class.relrowsecurity,
+        table_class.relforcerowsecurity,
+        has_table_privilege(current_user, table_class.oid, 'SELECT') as can_select,
+        has_any_column_privilege(current_user, table_class.oid, 'UPDATE') as can_update,
+        has_table_privilege(current_user, table_class.oid, 'UPDATE') as can_update_table,
+        exists (
+          select 1
+          from pg_attribute attribute
+          where attribute.attrelid = table_class.oid
+            and attribute.attname = any(array[
+              'id',
+              'workspace_id',
+              'job_name',
+              'schema_version',
+              'aggregate_type',
+              'aggregate_id',
+              'payload',
+              'payload_checksum',
+              'created_at'
+            ])
+            and has_column_privilege(
+              current_user,
+              table_class.oid,
+              attribute.attnum,
+              'UPDATE'
+            )
+        ) as can_update_immutable,
+        has_table_privilege(current_user, table_class.oid, 'INSERT') as can_insert,
+        has_table_privilege(current_user, table_class.oid, 'DELETE') as can_delete,
+        exists (
+          select 1 from pg_indexes
+          where schemaname = 'app'
+            and tablename = 'outbox_events'
+            and indexname = 'outbox_events_dispatch_job_due_idx'
+            and indexdef like '%job_name, available_at, id%'
+            and indexdef like '%published_at IS NULL%'
+            and indexdef like '%failed_at IS NULL%'
+        ) as dispatch_index_compatible,
+        (
+          to_regclass('app.outbox_fair_dispatch_cursor') is not null
+          and (select count(*)=1 from app.outbox_fair_dispatch_cursor where singleton)
+          and has_table_privilege(current_user,'app.outbox_fair_dispatch_cursor','SELECT')
+          and has_column_privilege(current_user,'app.outbox_fair_dispatch_cursor','last_workspace_id','UPDATE')
+          and has_column_privilege(current_user,'app.outbox_fair_dispatch_cursor','updated_at','UPDATE')
+          and not has_column_privilege(current_user,'app.outbox_fair_dispatch_cursor','singleton','UPDATE')
+          and not has_table_privilege(current_user,'app.outbox_fair_dispatch_cursor','INSERT')
+          and not has_table_privilege(current_user,'app.outbox_fair_dispatch_cursor','DELETE')
+          and has_function_privilege(current_user,'app.reserve_workflow_run_active_admission(uuid,uuid,uuid)','EXECUTE')
+          and has_function_privilege(current_user,'app.workflow_run_active_admission_eligible(uuid,uuid,uuid)','EXECUTE')
+          and has_function_privilege(current_user,'app.release_dispatcher_workflow_run_active_admission(uuid,uuid)','EXECUTE')
+          and has_function_privilege(current_user,'app.arm_dispatcher_workflow_run_active_admission(uuid,uuid)','EXECUTE')
+          and has_function_privilege(current_user,'app.recover_due_workflow_run_active_admissions(integer)','EXECUTE')
+        ) as fair_cursor_compatible,
+        (
+          select count(*)::integer
+          from pg_policy policy
+          where policy.polrelid = table_class.oid
+            and policy.polname in (
+              'outbox_events_dispatcher_select',
+              'outbox_events_dispatcher_update'
+            )
+            and role.oid = any(policy.polroles)
+        ) as policy_count,
+        (
+          select name
+          from pertexo_internal.schema_migrations
+          order by name desc
+          limit 1
+        ) as migration_head
+      from pg_roles role
+      join pg_class table_class on table_class.oid = 'app.outbox_events'::regclass
+      where role.rolname = current_user
+    `,
+    [ownerRole],
+  );
+  const row = result.rows[0];
+  if (
+    row === undefined ||
+    row.postgres_major < MINIMUM_POSTGRES_MAJOR ||
+    row.migration_head !== EXPECTED_MIGRATION_HEAD ||
+    !row.relrowsecurity ||
+    !row.relforcerowsecurity ||
+    !row.can_select ||
+    !row.can_update ||
+    row.can_update_immutable ||
+    row.can_update_table ||
+    row.can_insert ||
+    row.can_delete ||
+    !row.dispatch_index_compatible ||
+    !row.fair_cursor_compatible ||
+    row.policy_count !== 2 ||
+    row.rolsuper ||
+    row.rolbypassrls ||
+    row.owner_member
+  ) {
+    throw new Error('Outbox dispatcher database boundary is incompatible');
+  }
+}
+
+export function createOutboxDispatcherDatabase(
+  config: DatabaseConfig,
+): OutboxDispatcherDatabase {
+  const { ownerRole, ...poolConfig } = config;
+  const pool = createDatabasePool(poolConfig);
+  pool.on('error', () => undefined);
+
+  return Object.freeze({
+    claimBatch: async (
+      input: ClaimOutboxBatchInput,
+    ): Promise<ClaimOutboxBatchResult> => {
+      const parsed = claimInputSchema.parse({
+        ...input,
+        enabledJobNames: [...input.enabledJobNames],
+      });
+      if (parsed.enabledJobNames.length === 0) {
+        return Object.freeze({
+          events: Object.freeze([]),
+          exhaustedCount: 0,
+        });
+      }
+      const client = await pool.connect();
+      try {
+        await client.query('begin');
+        await client.query(
+          `select app.recover_due_workflow_run_active_admissions(100)`,
+        );
+        const result = await client.query<Record<string, unknown>>(
+          `
+            with cursor_state as materialized (
+              select last_workspace_id
+              from app.outbox_fair_dispatch_cursor
+              where singleton
+              for update
+            ), workspace_round as materialized (
+              select eligible.workspace_id,
+                     row_number() over (order by
+                       case when cursor_state.last_workspace_id is null then 0
+                            when eligible.workspace_id > cursor_state.last_workspace_id then 0
+                            else 1 end,
+                       eligible.workspace_id) as round_ordinal
+              from (
+                select distinct workspace_id
+                from app.outbox_events
+                where published_at is null
+                  and failed_at is null
+                  and job_name = any($5::varchar[])
+                  and available_at <= clock_timestamp()
+                  and (lease_expires_at is null or lease_expires_at <= clock_timestamp())
+              ) eligible
+              cross join cursor_state
+              order by
+                case when cursor_state.last_workspace_id is null then 0
+                     when eligible.workspace_id > cursor_state.last_workspace_id then 0
+                     else 1 end,
+                eligible.workspace_id
+              limit $1
+            ), candidates as materialized (
+              select picked.id,picked.publish_attempts,picked.job_name,
+                     picked.aggregate_type,picked.aggregate_id,
+                     workspace_round.workspace_id,workspace_round.round_ordinal
+              from workspace_round
+              cross join lateral (
+                select id,publish_attempts,job_name,aggregate_type,aggregate_id
+                from app.outbox_events event
+                where event.workspace_id=workspace_round.workspace_id
+                  and published_at is null
+                  and failed_at is null
+                  and job_name = any($5::varchar[])
+                  and available_at <= clock_timestamp()
+                  and (lease_expires_at is null or lease_expires_at <= clock_timestamp())
+                  and (
+                    publish_attempts >= $6
+                    or job_name <> 'advance-workflow-run'
+                    or app.workflow_run_active_admission_eligible(
+                         event.workspace_id,event.id,event.aggregate_id
+                       )
+                  )
+                order by available_at,id
+                for update skip locked
+                limit 1
+              ) picked
+            ), admitted as materialized (
+              select candidates.*
+              from candidates
+              where candidates.publish_attempts >= $6
+                 or candidates.job_name <> 'advance-workflow-run'
+                 or app.reserve_workflow_run_active_admission(
+                      candidates.workspace_id,candidates.id,candidates.aggregate_id
+                    )
+            ), exhausted as (
+              update app.outbox_events event
+              set
+                failed_at = clock_timestamp(),
+                last_error_code = 'publish.attempts_exhausted',
+                lease_owner = null,
+                lease_token = null,
+                lease_expires_at = null,
+                updated_at = clock_timestamp()
+              from admitted
+              where event.id = admitted.id
+                and admitted.publish_attempts >= $6
+              returning event.id,event.workspace_id
+            ), released_exhausted_admissions as (
+              select app.release_dispatcher_workflow_run_active_admission(workspace_id,id)
+              from exhausted
+            ), cursor_updated as (
+              update app.outbox_fair_dispatch_cursor cursor
+              set last_workspace_id=(
+                    select workspace_id from workspace_round
+                    order by round_ordinal desc limit 1
+                  ),
+                  updated_at=clock_timestamp()
+              where cursor.singleton and exists(select 1 from workspace_round)
+              returning cursor.singleton
+            )
+            , leased as (
+              update app.outbox_events event
+              set
+                lease_owner = $2,
+                lease_token = $3,
+                lease_expires_at = clock_timestamp() + ($4::integer * interval '1 millisecond'),
+                publish_attempts = event.publish_attempts + 1,
+                updated_at = clock_timestamp()
+              from admitted
+              where event.id = admitted.id
+                and admitted.publish_attempts < $6
+              returning event.aggregate_id,event.aggregate_type,event.available_at,event.id,
+                        event.job_name,event.lease_expires_at,event.lease_owner,event.lease_token,
+                        event.payload,event.payload_checksum,event.publish_attempts,event.schema_version,event.workspace_id
+            )
+            select
+              coalesce(
+                jsonb_agg(to_jsonb(leased) order by leased.available_at, leased.id),
+                '[]'::jsonb
+              ) as events,
+              (select count(*)::integer from exhausted) as exhausted_count,
+              (select count(*)::integer from cursor_updated) as cursor_update_count,
+              (select count(*)::integer from released_exhausted_admissions) as released_admission_count
+            from leased
+          `,
+          [
+            parsed.limit,
+            parsed.leaseOwner,
+            parsed.leaseToken,
+            parsed.leaseDurationMillis,
+            parsed.enabledJobNames,
+            parsed.maxAttempts,
+          ],
+        );
+        await client.query('commit');
+        const row = claimQueryResultSchema.parse(result.rows[0]);
+        return Object.freeze({
+          events: Object.freeze(row.events.map(toLeasedEvent)),
+          exhaustedCount: row.exhausted_count,
+        });
+      } catch (error: unknown) {
+        await client.query('rollback').catch(() => undefined);
+        throw error;
+      } finally {
+        client.release();
+      }
+    },
+    markPublished: async (
+      eventId: string,
+      leaseToken: string,
+    ): Promise<boolean> => {
+      const parsed = leasedEventSchema.parse({ id: eventId, leaseToken });
+      const result = await pool.query(
+        `
+          with published as (
+          update app.outbox_events
+          set
+            published_at = clock_timestamp(),
+            lease_owner = null,
+            lease_token = null,
+            lease_expires_at = null,
+            last_error_code = null,
+            updated_at = clock_timestamp()
+          where id = $1
+            and lease_token = $2
+            and published_at is null
+            and failed_at is null
+          returning workspace_id,id
+          ) select id,
+              app.arm_dispatcher_workflow_run_active_admission(workspace_id,id)
+                as armed_admission
+            from published
+        `,
+        [parsed.id, parsed.leaseToken],
+      );
+      return result.rowCount === 1;
+    },
+    releaseOrFail: async (
+      input: z.input<typeof releaseInputSchema>,
+    ): Promise<ReleaseOutboxResult> => {
+      const parsed = releaseInputSchema.parse(input);
+      const result = await pool.query<{ failed: boolean }>(
+        `
+          with updated as (
+          update app.outbox_events
+          set
+            available_at = case
+              when publish_attempts >= $4 then available_at
+              else $3
+            end,
+            failed_at = case
+              when publish_attempts >= $4 then clock_timestamp()
+              else null
+            end,
+            last_error_code = $5,
+            lease_owner = null,
+            lease_token = null,
+            lease_expires_at = null,
+            updated_at = clock_timestamp()
+          where id = $1
+            and lease_token = $2
+            and published_at is null
+            and failed_at is null
+          returning failed_at is not null as failed,workspace_id,id
+          ) select failed,
+              case when failed then
+                app.release_dispatcher_workflow_run_active_admission(workspace_id,id)
+              else false end as released_admission
+            from updated
+        `,
+        [
+          parsed.id,
+          parsed.leaseToken,
+          parsed.retryAt,
+          parsed.maxAttempts,
+          parsed.errorCode,
+        ],
+      );
+      const row = result.rows[0];
+      return row === undefined
+        ? 'not_leased'
+        : row.failed
+          ? 'failed'
+          : 'retry_scheduled';
+    },
+    observeBacklog: async (
+      input: ObserveOutboxBacklogInput,
+    ): Promise<OutboxBacklogSnapshot> => {
+      const parsed = observeBacklogInputSchema.parse({
+        enabledJobNames: [...input.enabledJobNames],
+      });
+      if (parsed.enabledJobNames.length === 0) {
+        return Object.freeze({ backlog: 0 });
+      }
+      const result = await pool.query<{
+        backlog: number;
+        oldest_age_seconds: number | null;
+      }>(
+        `
+        select
+          count(*)::integer as backlog,
+          extract(
+            epoch from (clock_timestamp() - min(available_at))
+          )::double precision as oldest_age_seconds
+        from app.outbox_events
+        where published_at is null
+          and failed_at is null
+          and job_name = any($1::varchar[])
+          and available_at <= clock_timestamp()
+          and (
+            lease_expires_at is null
+            or lease_expires_at <= clock_timestamp()
+          )
+      `,
+        [parsed.enabledJobNames],
+      );
+      const row = result.rows[0];
+      if (row === undefined) {
+        throw new Error('Outbox backlog observation returned no row');
+      }
+      return Object.freeze({
+        backlog: row.backlog,
+        ...(row.oldest_age_seconds === null
+          ? {}
+          : { oldestAgeSeconds: Math.max(0, row.oldest_age_seconds) }),
+      });
+    },
+    checkReadiness: async (): Promise<void> =>
+      checkDispatcherReadiness(pool, ownerRole),
+    close: async (): Promise<void> => pool.end(),
+  });
+}

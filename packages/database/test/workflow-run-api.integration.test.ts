@@ -5,12 +5,12 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '../src/config.js';
 import { CompatibilityReleaseMismatchError } from '../src/compatibility/compatibility-release.js';
-import { IdempotencyRequestConflictError } from '../src/execution-acceptance.js';
+import { IdempotencyRequestConflictError } from '../src/execution/execution-acceptance.js';
 import { migrateDatabase } from '../src/migrations.js';
 import {
   createWorkflowRunDatabase,
   WorkflowRunNotExecutableError,
-} from '../src/workflow-run-api.js';
+} from '../src/execution/workflow-run-api.js';
 import { PHASE3_COMPATIBILITY_EXPECTATION } from './phase3-compatibility-fixture.js';
 
 const migrationUrl =

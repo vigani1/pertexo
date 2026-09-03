@@ -5,12 +5,12 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '../src/config.js';
-import { createOutboxDispatcherDatabase } from '../src/dispatcher.js';
+import { createOutboxDispatcherDatabase } from '../src/execution/dispatcher.js';
 import { OperatorCommandConflictError } from '../src/operator/operator-commands.js';
 import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
-} from '../src/outbox.js';
+} from '../src/execution/outbox.js';
 import { auditEvents, outboxEvents } from '../src/schema.js';
 import { createTransportTestEnvironment } from './support/transport.integration.support.js';
 

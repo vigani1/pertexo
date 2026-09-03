@@ -6,11 +6,11 @@ import {
   acceptWorkflowRun,
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
-} from '../src/execution-acceptance.js';
+} from '../src/execution/execution-acceptance.js';
 import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,
-} from '../src/outbox.js';
+} from '../src/execution/outbox.js';
 import {
   acceptanceInput,
   apiDatabase,

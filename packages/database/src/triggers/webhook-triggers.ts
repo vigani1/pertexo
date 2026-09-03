@@ -12,12 +12,12 @@ import {
   type CompatibilityReleaseExpectation,
   type CompatibilityReleaseExpectationSet,
 } from '../compatibility/compatibility-release.js';
-import { acceptWorkflowRun } from '../execution-acceptance.js';
+import { acceptWorkflowRun } from '../execution/execution-acceptance.js';
 import { generatePersistedId } from '../persisted-id.js';
 import {
   classifyPublishedWorkflowVersionRow,
   type PublishedWorkflowV2Projection,
-} from '../published-workflow-reader.js';
+} from '../execution/published-workflow-reader.js';
 import {
   readHealth,
   refreshWorkflowActivation,

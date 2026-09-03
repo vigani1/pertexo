@@ -12,7 +12,7 @@ import {
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,
   type PreviewDelivery,
-} from '../src/preview-execution.js';
+} from '../src/execution/preview-execution.js';
 import {
   acceptFixture,
   actorUserId,

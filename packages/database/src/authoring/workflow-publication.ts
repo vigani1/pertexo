@@ -13,7 +13,7 @@ import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
 import type { CompatibilityReleaseExpectation } from '../compatibility/compatibility-release.js';
-import { canonicalOutboxPayloadChecksum } from '../outbox.js';
+import { canonicalOutboxPayloadChecksum } from '../execution/outbox.js';
 import {
   WorkflowNotFoundError,
   WorkflowIdempotencyConflictError,

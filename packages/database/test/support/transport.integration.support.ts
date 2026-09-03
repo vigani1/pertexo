@@ -5,7 +5,7 @@ import { Pool } from 'pg';
 
 import { parseDatabaseConfig } from '../../src/config.js';
 import { createWorkspaceDatabase } from '../../src/database.js';
-import { createOutboxDispatcherDatabase } from '../../src/dispatcher.js';
+import { createOutboxDispatcherDatabase } from '../../src/execution/dispatcher.js';
 import { migrateDatabase } from '../../src/migrations.js';
 import { createOperatorCommandDatabase } from '../../src/operator/operator-commands.js';
 

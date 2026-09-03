@@ -1,0 +1,26 @@
+export {
+  createWorkflowAuthoringDatabase,
+  reconcileWorkflowTriggersPayload,
+  WorkflowNotFoundError,
+  WorkflowIdempotencyConflictError,
+  WorkflowDefinitionPlacementError,
+  WorkflowRevisionConflictError,
+} from './workflow-authoring.js';
+export type {
+  CreateWorkflowInput,
+  CreateWorkflowResult,
+  ListWorkflowVersionsInput,
+  ListWorkflowsInput,
+  PublishWorkflowInput,
+  PublishWorkflowResult,
+  SaveWorkflowDraftInput,
+  WorkflowAuthoringDatabase,
+  WorkflowAuthoringDatabaseOptions,
+  WorkflowAuthoringTestHooks,
+  WorkflowDefinitionPlacementIssue,
+  WorkflowDraftRecord,
+  WorkflowPage,
+  WorkflowRecord,
+  WorkflowVersionPage,
+  WorkflowVersionRecord,
+} from './workflow-authoring.js';

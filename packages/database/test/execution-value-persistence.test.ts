@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 
 import { EXPECTED_MIGRATION_HEAD } from '../src/readiness.js';
-import { EXECUTION_JSONB_DATABASE_BACKSTOP_BYTES_V1 } from '../src/stored-execution-value.js';
+import { EXECUTION_JSONB_DATABASE_BACKSTOP_BYTES_V1 } from '../src/execution/stored-execution-value.js';
 
 const migrationUrl = new URL(
   '../migrations/0014_execution_value_persistence.sql',

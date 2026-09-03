@@ -13,7 +13,7 @@ import { checkDatabaseReadiness } from '../src/readiness.js';
 import {
   EXECUTION_JSONB_DATABASE_BACKSTOP_BYTES_V1,
   serializeStoredExecutionValueV1,
-} from '../src/stored-execution-value.js';
+} from '../src/execution/stored-execution-value.js';
 
 const adminUrl =
   process.env.DATABASE_ADMIN_URL ??

@@ -35,7 +35,7 @@ import {
   type AcceptedPreviewRun,
   type AcceptPreviewRunInput,
   type PreviewRunRecord,
-} from '../preview-execution.js';
+} from '../execution/preview-execution.js';
 import {
   withTenantScopedClient,
   withWorkspaceTransaction,

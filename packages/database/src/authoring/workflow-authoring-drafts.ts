@@ -10,7 +10,7 @@ import {
   type WorkflowGraph,
 } from '@pertexo/workflow-model/graph';
 
-import { canonicalOutboxPayloadChecksum } from '../outbox.js';
+import { canonicalOutboxPayloadChecksum } from '../execution/outbox.js';
 import {
   WorkflowIdempotencyConflictError,
   WorkflowNotFoundError,

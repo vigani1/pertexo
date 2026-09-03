@@ -7,7 +7,7 @@ import {
   serializeStoredExecutionValueV1,
   STORED_EXECUTION_VALUE_LIMITS_V1,
   StoredExecutionValueInvalidError,
-} from '../src/stored-execution-value.js';
+} from '../src/execution/stored-execution-value.js';
 
 describe('StoredExecutionValueV1', () => {
   it('round-trips inline JSON at the exact encoded-value byte limit', () => {
