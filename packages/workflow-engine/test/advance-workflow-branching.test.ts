@@ -1,46 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  createCheckpoint,
-  createCheckpointV2,
-  invocationKey,
-  type WorkflowCheckpointV1,
-} from '../src/index.js';
+import { createCheckpointV2, invocationKey } from '../src/index.js';
 import {
   advanceWorkflow as advanceWorkflowForTesting,
   deriveReadyNodes,
   parseSchedulerGraph,
 } from '../src/testing.js';
-
-const occurredAt = '2026-08-20T10:00:00.000Z';
-const chainGraph = {
-  schemaVersion: 1,
-  settings: {},
-  nodes: ['a', 'b'].map((id) => ({
-    id,
-    definition: { key: 'core.set', version: 1 },
-    position: { x: 0, y: 0 },
-    configVersion: 1,
-    config: {},
-    inputMappings: {},
-    connectionRefs: {},
-  })),
-  edges: [
-    {
-      id: 'a-b',
-      source: { nodeId: 'a', port: 'output' },
-      target: { nodeId: 'b', port: 'input' },
-    },
-  ],
-} as const;
-
-function checkpoint(): WorkflowCheckpointV1 {
-  return createCheckpoint({
-    engineVersion: 'engine-v1',
-    workflowVersionId: 'version-1',
-    iterationBudget: 1_000,
-  });
-}
+import {
+  chainGraph,
+  checkpoint,
+  occurredAt,
+} from './support/advance-workflow.fixture.js';
 
 describe('AdvanceWorkflow branching', () => {
   it('retains edge ports in the scheduler projection', () => {
