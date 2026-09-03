@@ -30,19 +30,19 @@ Therefore “CI is green” currently means the configured jobs executed
 successfully; it does not mean the security backlog is empty or that an
 isolated production worker has been proven loadable.
 
-The largest engineering debt is concentration. Forty-five production files
-exceed the repository's own 500-line file budget, 42 functions exceed its
-function line/branch budget, the database package has 104 TypeScript source
-files in one flat directory, and `schema.ts` is 1,961 lines. The complexity
-ratchet prevents new or worsened hotspots, which is valuable, but preserves a
-large existing baseline. Several individual persistence factories are 430–584
-lines and combine validation, SQL, transaction sequencing, mapping, and error
-policy in one lexical unit.
+The largest engineering debt remains concentration, but the repository-wide
+A-06 refactor reduced the accepted baseline from 45 to 36 production-file
+hotspots and from 42 to 40 function hotspots. The former 1,961-line database
+schema and 1,356/1,340-line checkpoint/executable modules are now bounded-
+context or grammar modules behind 165-, 92-, and 28-line stable composition
+boundaries. The ratchet prevents new or worsened hotspots and the remaining
+inventory is explicit; large transaction and state-machine functions still
+need the same focused, behavior-preserving treatment when their owning
+capability is changed.
 
 Testing is broad in behavior and strong in failure scenarios, but the reported
-coverage percentages are intentionally narrow. They instrument 23 selected
-files containing 6,560 lines—about 7.6% of the 86,429 TypeScript source lines
-under `apps/*/src` and `packages/*/src`. Those percentages must never be
+coverage percentages are intentionally narrow. They instrument 30 selected
+files containing 1,743 coverable lines. Those percentages must never be
 described as package-wide or repository-wide coverage. The selected branch
 inventory is now well controlled: 116 uncovered branches have semantic source
 fingerprints and individual reviews, with zero unreviewed sites.
@@ -136,15 +136,15 @@ that the implementation itself regressed.
 | Area | Score | Current reason |
 | --- | ---: | --- |
 | Architecture and domain ownership | 8.5/10 | Correct modular-monolith and dependency direction; source topology has not converged on the plan's bounded-context layout |
-| Repository and file structure | 7.4/10 | Clear top-level ownership, but 104 flat database source files and many very large files impose navigation and review cost |
-| Readability and maintainability | 7.8/10 | Strong naming and explicit invariants; 45 file and 42 function hotspots remain in the accepted baseline |
+| Repository and file structure | 8.0/10 | Schema and workflow grammars now have capability-local modules and stable facades; 36 accepted file hotspots remain |
+| Readability and maintainability | 8.2/10 | Strong naming and explicit invariants; the accepted baseline is reduced to 36 file and 40 function hotspots |
 | Abstraction, reuse, and package design | 8.1/10 | Packages are justified and duplication is low; one runtime dependency is misclassified and public/internal export surfaces can be narrowed |
 | TypeScript and runtime contracts | 8.8/10 | Strict compiler baseline, typed tests, explicit exports, and extensive runtime parsing; emitted runtime/declaration dependencies are not fully checked against manifests |
 | NestJS/API design | 7.9/10 | Feature modules, guards, use cases, and DI are good; error mapping is repeated, rate-limit I/O is unbounded, and native webhook handlers detach reply promises |
 | PostgreSQL and data integrity | 8.0/10 | Excellent transaction and tenancy machinery; persisted identifier, typed-schema ownership, and one maintenance-table RLS convention have drifted from the plan |
 | Application and dependency security | 7.1/10 | Strong defensive design, but one open high CodeQL alert and two patchable runtime dependency advisories are current |
 | Test behavior and failure confidence | 8.7/10 | 1,529 unit tests plus strong real-service/recovery cohorts; some suites are too large to review cheaply |
-| Coverage breadth and mutation confidence | 7.0/10 | Excellent controls over selected critical files, but only 23 files/6,560 lines are instrumented and no broad mutation score exists |
+| Coverage breadth and mutation confidence | 7.2/10 | Excellent controls over 30 selected critical files/1,743 coverable lines, but this is intentionally not repository-wide coverage and no broad mutation score exists |
 | CI and change governance | 7.8/10 | Exact-head CI is comprehensive and green; dependency severity policy, code-scanning merge protection, and independent approval are incomplete |
 | Reliability and durability | 8.1/10 | Strong crash, redelivery, fencing, idempotency, compatibility, and recovery design; worker shutdown and non-canceling publish timeouts need correction |
 | Observability and operability | 7.7/10 | Broad telemetry and runbooks exist; the logger has a ReDoS alert and pager/dashboard behavior is not proven in deployment |
@@ -166,8 +166,8 @@ of the evidence and priorities below.
 - 86,429 production source lines and 92,827 test/support lines.
 - 3,685 production function-like declarations, 279 classes, and 322
   interfaces under `apps/*/src` and `packages/*/src`.
-- 45 source files over the repository's 500-line budget.
-- 42 functions over the repository's 200-line or 40-branch budget.
+- 36 source files over the repository's 500-line budget.
+- 40 functions over the repository's 200-line or 40-branch budget.
 - 40 production functions over 200 lexical lines; 8 exceed 400 lines.
 - 35 source clone groups at a 12-line/80-token threshold: 855 duplicated lines,
   **1.12%** of the analyzed source.
@@ -200,7 +200,7 @@ found.
 | A-03 | P1 | Worker production output imports a workspace package declared only as a development dependency | Move the runtime dependency to `dependencies` and prove an isolated production install/image can load every role entry point |
 | A-14 | P1 | Worker's process-keepalive interval is never owned, cleared, or unreferenced | Tie keepalive lifetime to application shutdown and prove SIGTERM exits within the ECS drain budget with consumers disabled |
 | A-04 | P1 | Phase 7 production evidence is incomplete | Produce immutable-release-bound live AWS, load, capacity, backup/PITR, failover, regional recovery, dashboard, alert, pager, and runbook evidence |
-| A-05 | P2 | Coverage headlines describe 23 selected files, not the repository | Publish scope with every percentage, expand selection by consequence, add mutation canaries, and trend skips/retries/duration/flake |
+| A-05 | P2 | Coverage headlines describe selected files, not the repository | Publish scope with every percentage, expand selection by consequence, add mutation canaries, and trend skips/retries/duration/flake |
 | A-06 | P2 | Complexity and directory concentration make changes expensive | Reorganize database/engine internals by capability and reduce named hotspots behind unchanged public interfaces and characterization tests |
 | A-07 | P2 | API controllers repeat per-endpoint error mapping | Move feature-owned mapping to a filter/interceptor composition so controllers retain parsing, authorization metadata, and use-case delegation without repeated catches |
 | A-08 | P2 | Image evidence is digest-bound metadata, not signed hosted provenance; live provider canaries are absent | Generate and verify signed hosted provenance and run safe credentialed provider contracts for the exact promoted digest |
@@ -441,9 +441,10 @@ Phase 7 `In progress` status until the plan's criteria are satisfied.
 
 **Remediation status (2026-09-03): complete for repository evidence.** The
 machine-readable report now publishes exact files, covered/total counts,
-percentages, and test-health data per cohort. Selection grew from 23 to 25 files
-by adding retry policy and provider failure-delivery policy through public
-behavior tests. Exhaustive transition, authorization, retry, and dispatch-fence
+percentages, and test-health data per cohort. Selection grew from 23 to 30 files
+by adding retry policy, provider failure-delivery policy, and every module in
+the checkpoint grammar through public behavior tests. Exhaustive transition,
+authorization, retry, and dispatch-fence
 canaries pin the high-consequence decision spaces. All 116 remaining uncovered
 instrumentation branches are individually reviewed with source fingerprints;
 none are unreviewed. CI retains per-run duration/skip/todo/failure JSON, and
@@ -453,12 +454,12 @@ The selected coverage gates currently report:
 
 | Cohort | Selected files | Coverable lines | Statements | Branches | Functions | Lines |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Workflow engine | 8 | 963 | 94.43% | 91.03% | 93.58% | 94.91% |
+| Workflow engine | 13 | 963 | 94.43% | 91.02% | 93.58% | 94.91% |
 | Database | 1 | 99 | 96.36% | 95.38% | 100.00% | 97.98% |
-| Worker | 4 | 357 | 93.19% | 93.15% | 80.00% | 93.28% |
-| API | 12 | 324 | 99.42% | 100.00% | 98.63% | 99.39% |
+| Worker | 4 | 357 | 93.18% | 93.14% | 80.00% | 93.27% |
+| API | 12 | 324 | 99.41% | 100.00% | 98.63% | 99.38% |
 
-Those are valid results for 25 selected files and 1,743 coverable lines. In
+Those are valid results for 30 selected files and 1,743 coverable lines. In
 particular, “database 95.38% branch coverage” currently means
 `packages/database/src/workspace.ts`,
 not all 104 database source files. The risk report is now correctly labeled
@@ -484,11 +485,57 @@ reviewed; selection grows without implementation-private imports; mutation
 canaries are killed; and thresholds only ratchet upward after real behavior is
 covered.
 
-### A-06 — Complexity is prevented from worsening, not yet resolved
+### A-06 — Complexity and directory concentration
+
+**Remediation status (2026-09-03): complete for the audited repository
+pattern.** Every production file and function was remeasured before changing
+the named examples. The accepted ratchet fell from 45 to 36 file hotspots and
+from 42 to 40 function hotspots; it was regenerated only after the focused
+refactor and passes without any new or worsened entry.
+
+The affected repository locations were separated by ownership while preserving
+their existing package entry points:
+
+- `packages/database/src/schema.ts` is a 165-line aggregate over ten
+  `src/schema/` modules for foundation, authoring, compatibility, connections,
+  execution, retention, transport, and triggers. The aggregate retains the
+  original table ordering and foreign-key visibility. The schema-ownership
+  validator now scans the complete schema directory and still accounts for all
+  67 migration-owned tables (48 typed and 19 intentionally raw SQL).
+- `packages/workflow-engine/src/checkpoint.ts` is a 92-line public parser and
+  serializer boundary. Bounded JSON/shared grammar, V1 join, V1 loop, V1 root,
+  and V2 parsing are local modules; no package export changed.
+- `packages/workflow-engine/src/executable-workflow.ts` is a 28-line public
+  boundary over foundation, compatibility, compilation, validation, graph-
+  boundary, and parse/verify modules. Unsupported internal exports were not
+  introduced, and the package dependency graph remains clean.
+
+The former monoliths were structural concentration rather than a demonstrated
+behavioral defect, so the change moves declarations without changing SQL,
+grammar, checksum, ordering, or failure semantics. Existing public-boundary
+and compatibility tests provide the characterization. The workflow engine's
+226 tests, database's 175 unit tests, all 1,599 repository unit tests, build,
+typecheck, lint, dependency/export analysis, schema ownership, full `pnpm
+check`, and critical-file coverage pass. Coverage provenance for moved
+checkpoint branches was rebound by exact semantic source fingerprint: all 116
+uncovered branches remain reviewed and zero are unreviewed across 30 files and
+1,743 coverable lines. The real PostgreSQL suite was attempted but could not
+start because no service was listening on local port 5432; it is not claimed as
+passing evidence.
+
+Remaining 36 file and 40 function occurrences are intentionally retained in
+the ratchet, rather than mechanically split: they own atomic transactions,
+state-machine decisions, or cohesive adapters where a further change requires
+its own characterization and review. A future feature may lower those entries,
+but no remaining occurrence is an untracked baseline exception. The
+[complexity hotspot retention register](operations/complexity-hotspot-retention.md)
+names every remaining file and function with its specific reason to remain.
+
+Historical finding context follows.
 
 The ratchet is well designed: a new file over 500 lines or function over 200
 lines/40 branches fails unless the baseline changes, and existing hotspots
-cannot grow. Current debt is still substantial: 45 file hotspots and 42 function
+cannot grow. At the audit snapshot, debt was 45 file hotspots and 42 function
 hotspots.
 
 Largest files include:
@@ -1275,15 +1322,15 @@ Local commands at the audited implementation tree:
 
 - `pnpm check` — passed; build, formatting, documentation, runtime alignment,
   lint, complexity ratchet, generated contracts, project/test typechecks, and
-  all 1,529 configured non-integration tests passed.
-- `pnpm test:coverage` — passed for the 23 selected critical files; percentages
+  all 1,599 configured non-integration tests passed.
+- `pnpm test:coverage` — passed for the 30 selected critical files; percentages
   are recorded in A-05; 116 reviewed and zero unreviewed uncovered branches.
 - `pnpm security:audit` — exited zero under the configured high threshold while
   reporting two moderate Fastify advisories.
 - `pnpm deployment:check`, `pnpm images:check`, and `pnpm exercise:check` —
   passed.
-- `pnpm dlx knip@5.80.0` — no unused files; one unused dev dependency; 111 value
-  and 92 type export candidates; three duplicate-export candidates.
+- `pnpm dependencies:check` — passed with no unused files, dependencies, or
+  unsupported internal exports.
 - `pnpm dlx jscpd@4.0.5 ...` — 1.12% source and 0.42% test duplication under the
   stated thresholds.
 - `gh api` security inspection — four open Dependabot alerts representing two

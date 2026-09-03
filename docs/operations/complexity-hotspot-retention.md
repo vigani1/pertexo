@@ -1,0 +1,95 @@
+# Complexity Hotspot Retention Register
+
+Recorded: 2026-09-03
+
+This register accounts for every occurrence accepted by `infrastructure/complexity-baseline.json` after the A-06 refactor. An entry is permission not to worsen the measured debt, not permission to add behavior or raise the baseline. Remove an entry when a focused, behavior-preserving refactor brings it within budget.
+
+## File hotspots
+
+| File | Lines | Retention reason |
+| --- | ---: | --- |
+| `apps/api/src/connections/use-cases.ts` | 556 | Connection use cases share authorization, credential, and provider-test policy; retain pending a focused feature-local split. |
+| `apps/api/src/identity-infrastructure/oidc-adapter.ts` | 507 | OIDC discovery, callback, token, and identity validation remain one security boundary; retain to preserve validation order. |
+| `apps/worker/src/execution/node-runtime-capabilities.ts` | 503 | Worker attempt or transport lifecycle composition remains local; split only with cancellation, fencing, and redelivery characterization. |
+| `apps/worker/src/execution/preview-attempt-handler.ts` | 534 | Worker attempt or transport lifecycle composition remains local; split only with cancellation, fencing, and redelivery characterization. |
+| `apps/worker/src/transport/outbox-dispatcher.ts` | 540 | Worker attempt or transport lifecycle composition remains local; split only with cancellation, fencing, and redelivery characterization. |
+| `packages/artifact-store/src/control-ledger.ts` | 997 | Append-only ledger integrity and replay rules share one owner; splitting requires hash-chain and concurrency characterization. |
+| `packages/artifact-store/src/store.ts` | 903 | Artifact streaming, metadata, checksum, and storage lifecycle share one adapter boundary; split only with object-store integration evidence. |
+| `packages/database/src/connection-persistence.ts` | 652 | Capability-owned PostgreSQL composition or transaction surface; retain until a focused change can preserve SQL ordering, connection ownership, and atomicity with real-service characterization. |
+| `packages/database/src/control-ledger-coordinator.ts` | 1048 | Capability-owned PostgreSQL composition or transaction surface; retain until a focused change can preserve SQL ordering, connection ownership, and atomicity with real-service characterization. |
+| `packages/database/src/coordinator-run-store-observations.ts` | 729 | Capability-owned PostgreSQL composition or transaction surface; retain until a focused change can preserve SQL ordering, connection ownership, and atomicity with real-service characterization. |
+| `packages/database/src/dispatcher.ts` | 508 | Capability-owned PostgreSQL composition or transaction surface; retain until a focused change can preserve SQL ordering, connection ownership, and atomicity with real-service characterization. |
+| `packages/database/src/execution-acceptance.ts` | 547 | Capability-owned PostgreSQL composition or transaction surface; retain until a focused change can preserve SQL ordering, connection ownership, and atomicity with real-service characterization. |
+| `packages/database/src/failure-notification-destinations.ts` | 633 | Capability-owned PostgreSQL composition or transaction surface; retain until a focused change can preserve SQL ordering, connection ownership, and atomicity with real-service characterization. |
+| `packages/database/src/identity-workspace.ts` | 591 | Capability-owned PostgreSQL composition or transaction surface; retain until a focused change can preserve SQL ordering, connection ownership, and atomicity with real-service characterization. |
+| `packages/database/src/postgres-telemetry.ts` | 541 | Capability-owned PostgreSQL composition or transaction surface; retain until a focused change can preserve SQL ordering, connection ownership, and atomicity with real-service characterization. |
+| `packages/database/src/preview-cleanup.ts` | 548 | Capability-owned PostgreSQL composition or transaction surface; retain until a focused change can preserve SQL ordering, connection ownership, and atomicity with real-service characterization. |
+| `packages/database/src/preview-execution-acceptance.ts` | 563 | Capability-owned PostgreSQL composition or transaction surface; retain until a focused change can preserve SQL ordering, connection ownership, and atomicity with real-service characterization. |
+| `packages/database/src/retention.ts` | 813 | Capability-owned PostgreSQL composition or transaction surface; retain until a focused change can preserve SQL ordering, connection ownership, and atomicity with real-service characterization. |
+| `packages/database/src/schedule-triggers.ts` | 662 | Capability-owned PostgreSQL composition or transaction surface; retain until a focused change can preserve SQL ordering, connection ownership, and atomicity with real-service characterization. |
+| `packages/database/src/testing.ts` | 567 | Capability-owned PostgreSQL composition or transaction surface; retain until a focused change can preserve SQL ordering, connection ownership, and atomicity with real-service characterization. |
+| `packages/database/src/webhook-triggers.ts` | 666 | Capability-owned PostgreSQL composition or transaction surface; retain until a focused change can preserve SQL ordering, connection ownership, and atomicity with real-service characterization. |
+| `packages/database/src/workflow-authoring.ts` | 624 | Capability-owned PostgreSQL composition or transaction surface; retain until a focused change can preserve SQL ordering, connection ownership, and atomicity with real-service characterization. |
+| `packages/database/src/workflow-run-api.ts` | 517 | Capability-owned PostgreSQL composition or transaction surface; retain until a focused change can preserve SQL ordering, connection ownership, and atomicity with real-service characterization. |
+| `packages/database/src/workflow-triggers.ts` | 503 | Capability-owned PostgreSQL composition or transaction surface; retain until a focused change can preserve SQL ordering, connection ownership, and atomicity with real-service characterization. |
+| `packages/database/src/workspace-lifecycle-commands.ts` | 559 | Capability-owned PostgreSQL composition or transaction surface; retain until a focused change can preserve SQL ordering, connection ownership, and atomicity with real-service characterization. |
+| `packages/database/src/workspace-purge.ts` | 798 | Capability-owned PostgreSQL composition or transaction surface; retain until a focused change can preserve SQL ordering, connection ownership, and atomicity with real-service characterization. |
+| `packages/integrations/src/http/secure-http.ts` | 808 | Deliberately linear SSRF/DNS/TLS/redirect validation sequence; leave intact unless profiling or a correctness defect justifies a seam. |
+| `packages/node-catalog/src/registry.ts` | 767 | Catalog assembly and compatibility validation share one registry owner and generated manifest boundary. |
+| `packages/node-sdk/src/release.ts` | 846 | Canonical release grammar, fingerprinting, and successor validation share one compatibility boundary. |
+| `packages/node-sdk/src/server.ts` | 954 | Registry HTTP boundary keeps validation, compatibility headers, and response contracts local; split only with server contract characterization. |
+| `packages/queue/src/consumer.ts` | 685 | Consumer lease, shutdown, redelivery, and acknowledgement lifecycle is one stateful adapter boundary. |
+| `packages/workflow-engine/src/coordinator-observations.ts` | 540 | Cohesive scheduler/state-machine validation surface; retain to keep transition ordering local and refactor only with public-boundary characterization. |
+| `packages/workflow-engine/src/operations.ts` | 731 | Cohesive scheduler/state-machine validation surface; retain to keep transition ordering local and refactor only with public-boundary characterization. |
+| `packages/workflow-engine/src/workflow-transition-observations.ts` | 528 | Cohesive scheduler/state-machine validation surface; retain to keep transition ordering local and refactor only with public-boundary characterization. |
+| `packages/workflow-model/src/expressions.ts` | 611 | Canonical graph/expression grammar and validation boundary; retain to keep one source of truth for parsing and normalization. |
+| `packages/workflow-model/src/graph.ts` | 927 | Canonical graph/expression grammar and validation boundary; retain to keep one source of truth for parsing and normalization. |
+
+## Function hotspots
+
+| Function | Lines | Branches | Retention reason |
+| --- | ---: | ---: | --- |
+| `apps/api/src/webhooks/ingress.ts#acceptWebhook` | 214 | 32 | Webhook admission keeps verification, authorization, persistence, and reply sequencing explicit in one security-sensitive path. |
+| `apps/worker/src/execution/node-attempt-handler.ts#createNodeAttemptHandler` | 329 | 3 | Attempt lifecycle handler keeps lease, cancellation, execution, and acknowledgement ordering visible; retain under public behavior tests. |
+| `apps/worker/src/execution/node-attempt-handler.ts#handle` | 314 | 31 | Attempt lifecycle handler keeps lease, cancellation, execution, and acknowledgement ordering visible; retain under public behavior tests. |
+| `apps/worker/src/execution/preview-attempt-handler.ts#createPreviewAttemptHandler` | 258 | 3 | Attempt lifecycle handler keeps lease, cancellation, execution, and acknowledgement ordering visible; retain under public behavior tests. |
+| `apps/worker/src/execution/preview-attempt-handler.ts#handle` | 243 | 11 | Attempt lifecycle handler keeps lease, cancellation, execution, and acknowledgement ordering visible; retain under public behavior tests. |
+| `packages/database/src/connection-management-persistence.ts#createConnectionManagementPersistence` | 284 | 0 | Database capability factory owns private SQL methods and transaction policy; retain until a focused split has real PostgreSQL characterization. |
+| `packages/database/src/connection-secret-persistence.ts#createConnectionSecretPersistence` | 269 | 0 | Database capability factory owns private SQL methods and transaction policy; retain until a focused split has real PostgreSQL characterization. |
+| `packages/database/src/connection-test-persistence.ts#createConnectionTestPersistence` | 430 | 0 | Database capability factory owns private SQL methods and transaction policy; retain until a focused split has real PostgreSQL characterization. |
+| `packages/database/src/control-ledger-coordinator.ts#createControlLedgerCoordinator` | 578 | 4 | Database capability factory owns private SQL methods and transaction policy; retain until a focused split has real PostgreSQL characterization. |
+| `packages/database/src/coordinator-run-store-commit-state.ts#lockCoordinatorCommitState` | 208 | 34 | Single PostgreSQL transaction or mapped persistence operation; retain to preserve lock, query, and commit ordering until a separately reviewed extraction. |
+| `packages/database/src/coordinator-run-store-observations.ts#loadCoordinatorAdvanceState` | 276 | 0 | Single PostgreSQL transaction or mapped persistence operation; retain to preserve lock, query, and commit ordering until a separately reviewed extraction. |
+| `packages/database/src/coordinator-run-store-observations.ts#<ArrowFunction:1>` | 263 | 37 | Single PostgreSQL transaction or mapped persistence operation; retain to preserve lock, query, and commit ordering until a separately reviewed extraction. |
+| `packages/database/src/dispatcher.ts#createOutboxDispatcherDatabase` | 288 | 0 | Composition factory owns private method closures and one connection policy; low branch count shows size rather than decision complexity, so retain until that capability changes. |
+| `packages/database/src/execution-acceptance.ts#acceptWorkflowRun` | 203 | 16 | Single PostgreSQL transaction or mapped persistence operation; retain to preserve lock, query, and commit ordering until a separately reviewed extraction. |
+| `packages/database/src/failure-notification-destinations.ts#createFailureNotificationDestinationDatabase` | 284 | 0 | Composition factory owns private method closures and one connection policy; low branch count shows size rather than decision complexity, so retain until that capability changes. |
+| `packages/database/src/identity-workspace.ts#createIdentityWorkspaceDatabase` | 209 | 0 | Composition factory owns private method closures and one connection policy; low branch count shows size rather than decision complexity, so retain until that capability changes. |
+| `packages/database/src/node-attempt-run-store-claim.ts#claimNodeAttemptDelivery` | 219 | 3 | Single PostgreSQL transaction or mapped persistence operation; retain to preserve lock, query, and commit ordering until a separately reviewed extraction. |
+| `packages/database/src/node-attempt-run-store-inputs.ts#loadNodeAttemptInputs` | 303 | 2 | Single PostgreSQL transaction or mapped persistence operation; retain to preserve lock, query, and commit ordering until a separately reviewed extraction. |
+| `packages/database/src/node-attempt-run-store-inputs.ts#<ArrowFunction:3>` | 264 | 43 | Single PostgreSQL transaction or mapped persistence operation; retain to preserve lock, query, and commit ordering until a separately reviewed extraction. |
+| `packages/database/src/operator-commands.ts#createOperatorCommandDatabase` | 230 | 0 | Composition factory owns private method closures and one connection policy; low branch count shows size rather than decision complexity, so retain until that capability changes. |
+| `packages/database/src/phase3-checkpoint.ts#<ArrowFunction:16>` | 142 | 44 | Authoritative scheduler/checkpoint state-machine decision; ordering is correctness-sensitive and section 19.4 excludes speculative decomposition. |
+| `packages/database/src/preview-execution-reconciliation.ts#reconcilePreviewDelivery` | 277 | 4 | Single PostgreSQL transaction or mapped persistence operation; retain to preserve lock, query, and commit ordering until a separately reviewed extraction. |
+| `packages/database/src/preview-execution-reconciliation.ts#<ArrowFunction:4>` | 236 | 22 | Single PostgreSQL transaction or mapped persistence operation; retain to preserve lock, query, and commit ordering until a separately reviewed extraction. |
+| `packages/database/src/retention.ts#createRetentionDatabase` | 374 | 0 | Composition factory owns private method closures and one connection policy; low branch count shows size rather than decision complexity, so retain until that capability changes. |
+| `packages/database/src/schedule-triggers.ts#createScheduleTriggerDatabase` | 218 | 0 | Composition factory owns private method closures and one connection policy; low branch count shows size rather than decision complexity, so retain until that capability changes. |
+| `packages/database/src/webhook-triggers.ts#createWebhookTriggerDatabase` | 352 | 1 | Composition factory owns private method closures and one connection policy; low branch count shows size rather than decision complexity, so retain until that capability changes. |
+| `packages/database/src/workflow-triggers.ts#createWorkflowTriggerReconciliationDatabase` | 317 | 0 | Composition factory owns private method closures and one connection policy; low branch count shows size rather than decision complexity, so retain until that capability changes. |
+| `packages/database/src/workflow-triggers.ts#reconcile` | 279 | 2 | Single PostgreSQL transaction or mapped persistence operation; retain to preserve lock, query, and commit ordering until a separately reviewed extraction. |
+| `packages/database/src/workflow-triggers.ts#<ArrowFunction:1>` | 265 | 33 | Single PostgreSQL transaction or mapped persistence operation; retain to preserve lock, query, and commit ordering until a separately reviewed extraction. |
+| `packages/database/src/workspace-lifecycle-commands.ts#createWorkspaceLifecycleCommandCoordinator` | 243 | 0 | Database capability factory owns private SQL methods and transaction policy; retain until a focused split has real PostgreSQL characterization. |
+| `packages/database/src/workspace-purge.ts#createWorkspacePurgeCoordinator` | 584 | 1 | Database capability factory owns private SQL methods and transaction policy; retain until a focused split has real PostgreSQL characterization. |
+| `packages/database/src/workspace-purge.ts#processNext` | 533 | 19 | Single PostgreSQL transaction or mapped persistence operation; retain to preserve lock, query, and commit ordering until a separately reviewed extraction. |
+| `packages/node-sdk/src/server.ts#createNodeRegistry` | 287 | 22 | Registry construction keeps compatibility selection and immutable release validation in one public boundary. |
+| `packages/observability/src/transport-metrics.ts#createTransportMetrics` | 216 | 1 | Metrics factory centralizes bounded-cardinality instruments and adapter methods; low branch count makes further splitting low value. |
+| `packages/workflow-engine/src/checkpoint-v1-join.ts#parseJoin` | 201 | 41 | Versioned checkpoint grammar decision remains atomic at the parser boundary; existing golden/public tests guard it and code-audit section 19.4 says to leave parser semantics alone. |
+| `packages/workflow-engine/src/checkpoint-v1-loop.ts#parseLoop` | 222 | 25 | Versioned checkpoint grammar decision remains atomic at the parser boundary; existing golden/public tests guard it and code-audit section 19.4 says to leave parser semantics alone. |
+| `packages/workflow-engine/src/checkpoint-v1.ts#parseCheckpointV1Boundary` | 272 | 39 | Versioned checkpoint grammar decision remains atomic at the parser boundary; existing golden/public tests guard it and code-audit section 19.4 says to leave parser semantics alone. |
+| `packages/workflow-engine/src/coordinator-observations.ts#forEachCoordinatorObservations` | 220 | 44 | Authoritative scheduler/checkpoint state-machine decision; ordering is correctness-sensitive and section 19.4 excludes speculative decomposition. |
+| `packages/workflow-engine/src/graph-scheduler.ts#deriveReadyNodes` | 202 | 35 | Authoritative scheduler/checkpoint state-machine decision; ordering is correctness-sensitive and section 19.4 excludes speculative decomposition. |
+| `packages/workflow-engine/src/operations.ts#assertCheckpointMatchesExecutable` | 178 | 42 | Authoritative scheduler/checkpoint state-machine decision; ordering is correctness-sensitive and section 19.4 excludes speculative decomposition. |
+
+## Verification
+
+`node infrastructure/validate-complexity.mjs` re-inventories all production TypeScript and fails for a new or worsened hotspot. At this register revision it reports 36 file and 40 function hotspots with no regression.

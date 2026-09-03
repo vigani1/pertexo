@@ -4413,6 +4413,16 @@ Current evidence:
   vocabulary. `advanceWorkflowFromSchedulerState` is reduced from approximately
   1,040 lines to 106 and remains the sole orchestration interface. All 121
   workflow-engine assertions pass, completing A-06.
+- The final A-06 structural checkpoint splits the 1,961-line database schema
+  into ten bounded-context schema modules behind the unchanged `databaseSchema`
+  aggregate, and splits the 1,356/1,340-line checkpoint and executable grammar
+  modules behind unchanged 92/28-line public boundaries. Repository-wide
+  measurement reduced the ratchet from 45 to 36 file hotspots and from 42 to
+  40 function hotspots. Schema ownership still accounts for 67 migration
+  tables, all 1,599 unit tests and `pnpm check` pass, and the coverage report
+  retains 116 reviewed and zero unreviewed branches across 30 selected files.
+  The local PostgreSQL integration suite was attempted but was unavailable
+  because no database service was listening on port 5432.
 - A-07 node-attempt decomposition has begun with stable contract and foundation
   seams. Boundary schemas, lease/result vocabulary, public errors, and the
   narrow worker-facing store interface are isolated from implementation.
