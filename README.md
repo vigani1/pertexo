@@ -6,6 +6,10 @@ focuses on the backend foundations that make workflow execution reliable:
 immutable published versions, resumable runs, idempotent side effects, tenant
 isolation, and observable API and worker processes.
 
+This repository deliberately contains the backend platform only. A web client is
+deferred and is not part of this repository's current delivery scope; an empty
+`apps/web` workspace should not be created to satisfy an old diagram.
+
 ## What Is Implemented
 
 - Separate NestJS API and worker process roles in a TypeScript monorepo.
@@ -106,6 +110,17 @@ S3-compatible services above. Resilience and compatibility-rollout commands are
 separate destructive or recovery-focused gates. Historical Phase 0E invariants
 now run through the production coordinator, node-attempt, and SSE integration
 suites selected by CI's `recovery` job.
+
+## Contributing, Security, and License
+
+Development and review expectations are in
+[`CONTRIBUTING.md`](./CONTRIBUTING.md). Report vulnerabilities privately as
+described in [`SECURITY.md`](./SECURITY.md).
+
+No open-source license is granted for this repository at present. Public
+visibility does not grant permission to use, copy, modify, or redistribute the
+code. Selecting an open-source license is intentionally deferred until the owner
+makes that legal/product decision.
 
 ## Project Status
 

@@ -624,6 +624,16 @@ keeping a tiny executable wrapper. Keep small dependency-light validators as
 
 ### A-13 — Public repository policy and workflow hygiene
 
+**Remediation status (2026-09-03): complete.** `SECURITY.md` now defines the
+private advisory channel, supported branch, safe report contents, same-day
+triage, coordinated disclosure, and release-blocking severity policy.
+`CONTRIBUTING.md` records setup, plan/ADR constraints, tests, commits, review,
+and secret handling. The README makes the legally accurate current decision
+explicit: public visibility grants no license, and choosing an open-source
+license is deferred to the owner rather than guessed by tooling. The duplicate
+artifact key no longer exists, and the structural YAML parser exercised by
+`runtime:check` rejects syntax and duplicate mapping keys across every workflow.
+
 The repository is public, has secret scanning and push protection enabled, and
 has Dependabot/CodeQL automation. It has no license, `SECURITY.md`, or
 `CONTRIBUTING.md`. That leaves external users unclear about legal reuse,
@@ -730,6 +740,13 @@ bundle, and import cost before splitting a metadata-only entry point; keep the
 current deeper module if the measured gain is negligible.
 
 ### A-19 — Clarify where the web application belongs
+
+**Remediation status (2026-09-03): complete.** The README and authoritative
+backend plan now state that this checkout is intentionally backend-only, the
+web client is deferred outside the current delivery scope, and an empty
+`apps/web` package must not be created merely to match the historical
+transition diagram. The stale transition step now describes a separately
+planned future client migration.
 
 The authoritative backend plan illustrates an `apps/web` workspace, while this
 checkout and README are backend-only. That can be a valid repository boundary,
