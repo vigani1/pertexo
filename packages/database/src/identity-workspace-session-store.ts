@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { generatePersistedId } from './persisted-id.js';
 
 import type { DatabaseError, Pool } from 'pg';
 import { z } from 'zod';
@@ -30,7 +30,7 @@ export function createIdentityWorkspaceSessionStore(pool: Pool): SessionStore {
     createSession: async (
       input: CreateSessionInput,
     ): Promise<SessionRecord> => {
-      const id = uuidSchema.parse(input.id ?? randomUUID());
+      const id = uuidSchema.parse(input.id ?? generatePersistedId());
       const tokenDigest = digestSchema.parse(input.tokenDigest);
       if (
         !(input.expiresAt instanceof Date) ||

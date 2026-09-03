@@ -22,7 +22,7 @@ const readyRow = Object.freeze({
   execution_admission_compatible: true,
   execution_values_compatible: true,
   failure_notification_compatible: true,
-  migration_head: '0073_transient_data_retention.sql',
+  migration_head: '0074_retention_schedule_state_rls.sql',
   oidc_capacity_compatible: true,
   oidc_grants_compatible: true,
   oidc_schema_compatible: true,
@@ -54,7 +54,7 @@ const readyRow = Object.freeze({
 }) satisfies ReadinessRow;
 
 const expected = Object.freeze({
-  migrationHead: '0073_transient_data_retention.sql',
+  migrationHead: '0074_retention_schedule_state_rls.sql',
   minimumPostgresMajor: 18,
   ownerRole: 'pertexo_owner',
 });

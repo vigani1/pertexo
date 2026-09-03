@@ -1,4 +1,6 @@
 import type { PoolClient } from 'pg';
+
+import { generatePersistedId } from './persisted-id.js';
 import { v5 as uuidv5 } from 'uuid';
 import { z } from 'zod';
 
@@ -62,8 +64,9 @@ export async function auditFailureNotification(
     `insert into app.run_failure_notification_audit_facts (
        id,workspace_id,notification_intent_id,fact_type,attempt_number,
        safe_error_code,possibly_dispatched
-     ) values (gen_random_uuid(),$1,$2,$3,$4,$5,$6)`,
+     ) values ($1,$2,$3,$4,$5,$6,$7)`,
     [
+      generatePersistedId(),
       input.workspaceId,
       input.intentId,
       input.factType,

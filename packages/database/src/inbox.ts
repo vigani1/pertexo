@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { generatePersistedId } from './persisted-id.js';
 
 import { and, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
@@ -110,7 +110,7 @@ export async function consumeInboxMessage<T>(
   // audit fact commits successfully.
   await database.withWorkspace(workspaceId, async (transaction) => {
     await transaction.db.insert(transportSecurityAuditFacts).values({
-      id: randomUUID(),
+      id: generatePersistedId(),
       workspaceId: transaction.workspaceId,
       factType: 'inbox_checksum_mismatch',
       consumerName: parsed.consumerName,

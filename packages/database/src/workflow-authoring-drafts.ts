@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { generatePersistedId } from './persisted-id.js';
 
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
@@ -68,7 +68,7 @@ async function createWorkflow(
   input: CreateWorkflowInput,
 ): Promise<CreateWorkflowResult> {
   return context.transact(input.workspaceId, input.actorId, async (client) => {
-    const workflowId = uuidSchema.parse(input.id ?? randomUUID());
+    const workflowId = uuidSchema.parse(input.id ?? generatePersistedId());
     const graph = parseWorkflowGraphDraft(input.emptyGraph);
     await context.requireAuthor(client, input.workspaceId, input.actorId);
     const { definitionCatalog, placementDefinitionCatalog } =
@@ -207,7 +207,7 @@ async function saveDraft(
       `insert into app.audit_events (id, workspace_id, actor_user_id, action, target_type, target_id, request_id, trace_id, metadata)
        values ($1, $2, $3, 'workflow.draft_saved', 'workflow', $4, $5, $6, $7::jsonb)`,
       [
-        randomUUID(),
+        generatePersistedId(),
         input.workspaceId,
         input.actorId,
         input.workflowId,

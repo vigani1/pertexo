@@ -1,5 +1,7 @@
 import { createDatabasePool } from './postgres-telemetry.js';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
+
+import { generatePersistedId } from './persisted-id.js';
 
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
@@ -123,7 +125,7 @@ async function claimCommand(
      values ($1,$2,$3,$4,$5,$6,'in_progress',$7,'{}'::jsonb)
      on conflict (workspace_id,operation,scope,key_hash) do nothing`,
     [
-      randomUUID(),
+      generatePersistedId(),
       input.workspaceId,
       operation,
       scope,
@@ -305,7 +307,7 @@ async function audit(
        (id,workspace_id,actor_user_id,action,target_type,target_id,request_id,trace_id,metadata)
      values ($1,$2,$3,$4,'failure_notification_destination',$5,$6,$7,$8::jsonb)`,
     [
-      randomUUID(),
+      generatePersistedId(),
       input.workspaceId,
       input.actorId,
       action,

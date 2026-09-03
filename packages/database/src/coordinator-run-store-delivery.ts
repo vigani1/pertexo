@@ -1,4 +1,6 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
+
+import { generatePersistedId } from './persisted-id.js';
 
 import type { Pool, PoolClient } from 'pg';
 
@@ -154,7 +156,7 @@ export async function deferCoordinatorForActiveCapacity(
   if (receipt === 'duplicate')
     return Object.freeze({ kind: 'deferred', revision: input.revision });
 
-  const outboxEventId = randomUUID();
+  const outboxEventId = generatePersistedId();
   const payload = {
     schemaVersion: 1,
     workspaceId: input.workspaceId,
@@ -198,7 +200,7 @@ export async function auditCoordinatorDeliveryMismatch(
            id,workspace_id,fact_type,consumer_name,message_id
          ) values ($1,$2,'inbox_checksum_mismatch',$3,$4)`,
         [
-          randomUUID(),
+          generatePersistedId(),
           workspaceId,
           coordinatorConsumerName,
           delivery.outboxEventId,

@@ -1,4 +1,6 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
+
+import { generatePersistedId } from './persisted-id.js';
 
 import type { Pool, PoolClient } from 'pg';
 import type { z } from 'zod';
@@ -128,7 +130,7 @@ export async function auditMismatch(
          id,workspace_id,fact_type,consumer_name,message_id
        ) values ($1,$2,'inbox_checksum_mismatch',$3,$4)`,
       [
-        randomUUID(),
+        generatePersistedId(),
         workspaceId,
         nodeAttemptConsumerName,
         delivery.outboxEventId,

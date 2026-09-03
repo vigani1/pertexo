@@ -360,6 +360,10 @@ beforeAll(async () => {
     path.join(MIGRATIONS_DIRECTORY, '0073_transient_data_retention.sql'),
     path.join(priorDirectory, '0073_transient_data_retention.sql'),
   );
+  await copyFile(
+    path.join(MIGRATIONS_DIRECTORY, '0074_retention_schedule_state_rls.sql'),
+    path.join(priorDirectory, '0074_retention_schedule_state_rls.sql'),
+  );
   await expect(
     migrateDatabase(migrationConfig, priorDirectory),
   ).resolves.toEqual([
@@ -391,6 +395,7 @@ beforeAll(async () => {
     '0071_oidc_browser_binding.sql',
     '0072_regional_replica_identity.sql',
     '0073_transient_data_retention.sql',
+    '0074_retention_schedule_state_rls.sql',
   ]);
   maintenance = new Pool({ connectionString: maintenanceUrl, max: 4 });
 }, 120_000);

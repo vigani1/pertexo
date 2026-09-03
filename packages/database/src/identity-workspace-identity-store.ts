@@ -1,4 +1,6 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
+
+import { generatePersistedId } from './persisted-id.js';
 
 import type { DatabaseError, Pool } from 'pg';
 import { z } from 'zod';
@@ -39,7 +41,7 @@ async function createUser(
   pool: Pool,
   input: CreateUserInput,
 ): Promise<UserRecord> {
-  const id = parseIdentityUuid(input.id ?? randomUUID());
+  const id = parseIdentityUuid(input.id ?? generatePersistedId());
   if (input.email.trim() !== input.email || input.email.length < 3)
     throw new Error('Invalid user email');
   if (input.displayName.trim().length === 0)
@@ -82,7 +84,7 @@ export function createIdentityWorkspaceIdentityStore(
     linkAuthIdentity: async (
       input: CreateAuthIdentityInput,
     ): Promise<AuthIdentityRecord> => {
-      const id = parseIdentityUuid(input.id ?? randomUUID());
+      const id = parseIdentityUuid(input.id ?? generatePersistedId());
       const userId = parseIdentityUuid(input.userId);
       const issuer = issuerSchema.parse(input.issuer);
       const providerSubject = z
@@ -230,7 +232,7 @@ export function createIdentityWorkspaceIdentityStore(
           `insert into app.users (id, email, display_name, status)
            values ($1, $2, $3, 'active')
            returning id, email, display_name, status, created_at, updated_at`,
-          [randomUUID(), email, displayName],
+          [generatePersistedId(), email, displayName],
         );
         const user = mapUser(userResult.rows[0] as Record<string, unknown>);
         const identityResult = await client.query(
@@ -240,7 +242,7 @@ export function createIdentityWorkspaceIdentityStore(
            returning id, user_id, issuer, provider_subject, profile_metadata,
                      created_at, updated_at`,
           [
-            randomUUID(),
+            generatePersistedId(),
             user.id,
             issuer,
             providerSubject,

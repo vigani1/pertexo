@@ -14,7 +14,9 @@ describe('regional replica identity migration', () => {
       'utf8',
     );
 
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0073_transient_data_retention.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe(
+      '0074_retention_schedule_state_rls.sql',
+    );
     expect(sql).toContain('replica_identity_status');
     expect(sql).toContain('replica_session_count');
     expect(sql).toContain("'missing'");

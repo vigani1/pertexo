@@ -1,5 +1,7 @@
 import { createDatabasePool } from './postgres-telemetry.js';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
+
+import { generatePersistedId } from './persisted-id.js';
 
 import { sql } from 'drizzle-orm';
 import type { PoolClient } from 'pg';
@@ -325,7 +327,7 @@ export function createScheduleTriggerDatabase(
                clock_timestamp()+interval '24 hours')
              on conflict(workspace_id,operation,scope,key_hash) do nothing`,
             [
-              randomUUID(),
+              generatePersistedId(),
               input.workspaceId,
               operation,
               scope,
@@ -441,7 +443,7 @@ export function createScheduleTriggerDatabase(
               (id,workspace_id,actor_user_id,action,target_type,target_id,request_id,trace_id,metadata)
              values($1,$2,$3,$4,'schedule_trigger',$5,$6,$7,$8::jsonb)`,
             [
-              randomUUID(),
+              generatePersistedId(),
               input.workspaceId,
               input.actorId,
               input.enabled
@@ -618,7 +620,7 @@ export function createScheduleTriggerScanner(
                 completed: boolean;
               }>(sql`
                 select app.complete_trigger_schedule_claim(
-                  ${claim.trigger_id},${claim.lease_token},${randomUUID()},${scheduledAt},
+                  ${claim.trigger_id},${claim.lease_token},${generatePersistedId()},${scheduledAt},
                   ${claim.misfire_policy === 'skip' ? 'skipped' : 'accepted'},
                   ${runId},${observation.nextAt}) completed
               `);

@@ -11,7 +11,9 @@ describe('OIDC browser binding migration', () => {
       'utf8',
     );
 
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0073_transient_data_retention.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe(
+      '0074_retention_schedule_state_rls.sql',
+    );
     expect(sql).toContain('ADD COLUMN browser_binding_digest char(64)');
     expect(sql).toContain("browser_binding_digest = repeat('0', 64)");
     expect(sql).toContain(

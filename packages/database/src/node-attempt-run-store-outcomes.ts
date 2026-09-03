@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { generatePersistedId } from './persisted-id.js';
 
 import type { PoolClient } from 'pg';
 import type { z } from 'zod';
@@ -183,7 +183,7 @@ async function enqueueAdvance(
   client: PoolClient,
   input: CompletionInput,
 ): Promise<string> {
-  const outboxEventId = randomUUID();
+  const outboxEventId = generatePersistedId();
   const payload = {
     schemaVersion: 1,
     workspaceId: input.lease.workspaceId,

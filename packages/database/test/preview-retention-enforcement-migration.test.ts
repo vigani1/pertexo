@@ -11,7 +11,9 @@ const migrationUrl = new URL(
 
 describe('preview retention enforcement migration', () => {
   it('moves bounded preview destruction behind maintenance authority', async () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0073_transient_data_retention.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe(
+      '0074_retention_schedule_state_rls.sql',
+    );
     const migration = await readFile(migrationUrl, 'utf8');
 
     expect(migration).toContain('artifacts_preview_destruction_guard');

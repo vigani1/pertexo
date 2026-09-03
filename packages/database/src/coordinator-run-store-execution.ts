@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { generatePersistedId } from './persisted-id.js';
 
 import type { PoolClient } from 'pg';
 
@@ -110,8 +110,8 @@ async function persistNodeAdmissions(
     const attempt = plan.attempts.find(
       ({ invocationKey }) => invocationKey === admission.invocationKey,
     );
-    const nodeRunId = randomUUID();
-    const attemptId = attempt === undefined ? undefined : randomUUID();
+    const nodeRunId = generatePersistedId();
+    const attemptId = attempt === undefined ? undefined : generatePersistedId();
     await client.query(
       `insert into app.node_runs (
          id, workspace_id, workflow_run_id, node_id, invocation_key,
@@ -209,7 +209,7 @@ async function persistAttemptAdmissions(
         throw new CoordinatorPlanInvalidError();
       ids = {
         nodeRunId: node.id,
-        attemptId: randomUUID(),
+        attemptId: generatePersistedId(),
         attemptNumber: attempt.attemptNumber,
       };
       physical.set(attempt.invocationKey, ids);
@@ -239,7 +239,7 @@ async function persistAttemptAdmissions(
         attempt.admissionKind,
       ],
     );
-    const outboxEventId = randomUUID();
+    const outboxEventId = generatePersistedId();
     const payload = {
       schemaVersion: 1,
       workspaceId,

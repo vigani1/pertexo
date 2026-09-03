@@ -14,7 +14,9 @@ describe('transient data retention migration', () => {
       'utf8',
     );
 
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0073_transient_data_retention.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe(
+      '0074_retention_schedule_state_rls.sql',
+    );
     expect(migration).toContain("interval '24 hours'");
     expect(migration).toContain("interval '30 days'");
     expect(migration).toContain("record.status = 'completed'");

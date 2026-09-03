@@ -17,6 +17,7 @@ export type {
   ConnectionTestResult,
 } from './connections.js';
 export type { DatabaseConfig } from './config.js';
+export { generatePersistedId } from './persisted-id.js';
 export { ExecutionStateConflictError } from './execution-state.js';
 export { readRunEventsAfter } from './run-events.js';
 export {
