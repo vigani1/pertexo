@@ -1,5 +1,7 @@
 import { createWorkerApplication } from '../dist/app.js';
 import { WorkerProcessShutdown } from '../dist/runtime/worker-process-shutdown.js';
+import process from 'node:process';
+import { clearInterval, setInterval } from 'node:timers';
 
 const mode = process.argv[2];
 if (!['active', 'bootstrap-failure', 'disabled'].includes(mode)) {
