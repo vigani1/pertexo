@@ -495,11 +495,15 @@ covered.
 
 ### A-06 — Complexity and directory concentration
 
-**Remediation status (2026-09-03): complete for the audited repository
-pattern.** Every production file and function was remeasured before changing
-the named examples. The accepted ratchet fell from 45 to 36 file hotspots and
-from 42 to 40 function hotspots; it was regenerated only after the focused
-refactor and passes without any new or worsened entry.
+**Remediation status (2026-09-03): partially complete; major monoliths were
+split and residual locality/complexity remains controlled debt.** Every
+production file and function was remeasured before changing the named examples.
+The accepted ratchet fell from 45 to 36 file hotspots and from 42 to 40 function
+hotspots; it was regenerated only after the focused refactor and passes without
+any new or worsened entry. The database schema gained capability-local modules,
+but 122 TypeScript implementation files still live directly under
+`packages/database/src`; code-audit C-22 now tracks that remaining locality
+work explicitly.
 
 The affected repository locations were separated by ownership while preserving
 their existing package entry points:
@@ -1345,12 +1349,13 @@ security/configuration outcomes—not only tool execution—are gated.
 
 ### Stage 3 — Reduce change-locality cost
 
-**Status: complete for production complexity; test cleanup remains open.**
-UUIDv7, schema ownership, and RLS conventions are enforced; database and
-workflow internals were split behind unchanged public seams; named hotspots and
-oversized tests were decomposed with characterization coverage; the reduced
-production complexity baseline is enforced. A-11 remains open for duplicated
-setup introduced or retained across the split test suites.
+**Status: partially complete with controlled follow-up.** UUIDv7, schema
+ownership, and RLS conventions are enforced; the largest database and workflow
+internals were split behind unchanged public seams; named hotspots and oversized
+tests were decomposed with characterization coverage; and the reduced production
+complexity baseline is enforced. A-06/C-22/C-23 retain incremental database
+locality and hotspot work, while A-11/C-21 retains duplicated setup introduced
+or preserved across the split test suites.
 
 Exit: fewer file/function hotspots, no new package or query edge, and improved
 review locality.
