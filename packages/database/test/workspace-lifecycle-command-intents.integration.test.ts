@@ -7,7 +7,7 @@ import { migrateDatabase } from '../src/migrations.js';
 import {
   createWorkspaceLifecycleCommandCoordinator,
   type WorkspaceLifecycleLedgerRecord,
-} from '../src/workspace-lifecycle-commands.js';
+} from '../src/lifecycle/workspace-lifecycle-commands.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';
 
 const adminUrl =

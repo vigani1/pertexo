@@ -14,23 +14,23 @@
     "packages/artifact-store/src/store.ts": 903,
     "packages/database/src/authoring/workflow-authoring.ts": 624,
     "packages/database/src/connections/connection-persistence.ts": 652,
-    "packages/database/src/control-ledger-coordinator.ts": 1048,
     "packages/database/src/coordinator-run-store-observations.ts": 729,
     "packages/database/src/dispatcher.ts": 508,
     "packages/database/src/execution-acceptance.ts": 547,
     "packages/database/src/failure-notification-destinations.ts": 633,
+    "packages/database/src/lifecycle/control-ledger-coordinator.ts": 1048,
+    "packages/database/src/lifecycle/preview-cleanup.ts": 548,
+    "packages/database/src/lifecycle/retention.ts": 813,
+    "packages/database/src/lifecycle/workspace-lifecycle-commands.ts": 559,
+    "packages/database/src/lifecycle/workspace-purge.ts": 798,
     "packages/database/src/postgres-telemetry.ts": 541,
-    "packages/database/src/preview-cleanup.ts": 548,
     "packages/database/src/preview-execution-acceptance.ts": 563,
-    "packages/database/src/retention.ts": 813,
     "packages/database/src/tenant-access/identity-workspace.ts": 591,
     "packages/database/src/testing.ts": 567,
     "packages/database/src/triggers/schedule-triggers.ts": 662,
     "packages/database/src/triggers/webhook-triggers.ts": 666,
     "packages/database/src/triggers/workflow-triggers.ts": 503,
     "packages/database/src/workflow-run-api.ts": 517,
-    "packages/database/src/workspace-lifecycle-commands.ts": 559,
-    "packages/database/src/workspace-purge.ts": 798,
     "packages/integrations/src/http/secure-http.ts": 808,
     "packages/node-catalog/src/registry.ts": 767,
     "packages/node-sdk/src/release.ts": 846,
@@ -79,10 +79,6 @@
       "branches": 0,
       "lines": 430
     },
-    "packages/database/src/control-ledger-coordinator.ts#createControlLedgerCoordinator": {
-      "branches": 4,
-      "lines": 578
-    },
     "packages/database/src/coordinator-run-store-commit-state.ts#lockCoordinatorCommitState": {
       "branches": 34,
       "lines": 208
@@ -106,6 +102,26 @@
     "packages/database/src/failure-notification-destinations.ts#createFailureNotificationDestinationDatabase": {
       "branches": 0,
       "lines": 284
+    },
+    "packages/database/src/lifecycle/control-ledger-coordinator.ts#createControlLedgerCoordinator": {
+      "branches": 4,
+      "lines": 578
+    },
+    "packages/database/src/lifecycle/retention.ts#createRetentionDatabase": {
+      "branches": 0,
+      "lines": 374
+    },
+    "packages/database/src/lifecycle/workspace-lifecycle-commands.ts#createWorkspaceLifecycleCommandCoordinator": {
+      "branches": 0,
+      "lines": 243
+    },
+    "packages/database/src/lifecycle/workspace-purge.ts#createWorkspacePurgeCoordinator": {
+      "branches": 1,
+      "lines": 584
+    },
+    "packages/database/src/lifecycle/workspace-purge.ts#processNext": {
+      "branches": 19,
+      "lines": 533
     },
     "packages/database/src/node-attempt-run-store-claim.ts#claimNodeAttemptDelivery": {
       "branches": 3,
@@ -131,10 +147,6 @@
       "branches": 22,
       "lines": 236
     },
-    "packages/database/src/retention.ts#createRetentionDatabase": {
-      "branches": 0,
-      "lines": 374
-    },
     "packages/database/src/tenant-access/identity-workspace.ts#createIdentityWorkspaceDatabase": {
       "branches": 0,
       "lines": 209
@@ -158,18 +170,6 @@
     "packages/database/src/triggers/workflow-triggers.ts#<ArrowFunction:1>": {
       "branches": 33,
       "lines": 265
-    },
-    "packages/database/src/workspace-lifecycle-commands.ts#createWorkspaceLifecycleCommandCoordinator": {
-      "branches": 0,
-      "lines": 243
-    },
-    "packages/database/src/workspace-purge.ts#createWorkspacePurgeCoordinator": {
-      "branches": 1,
-      "lines": 584
-    },
-    "packages/database/src/workspace-purge.ts#processNext": {
-      "branches": 19,
-      "lines": 533
     },
     "packages/node-sdk/src/server.ts#createNodeRegistry": {
       "branches": 22,

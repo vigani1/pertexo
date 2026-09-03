@@ -81,7 +81,7 @@ export {
   type WorkspaceLifecycleCommandType,
   type WorkspaceLifecycleLedger,
   type WorkspaceLifecycleLedgerRecord,
-} from './workspace-lifecycle-commands.js';
+} from './lifecycle/workspace-lifecycle-commands.js';
 export {
   CONTROL_LEDGER_ZERO_HASH,
   ControlLedgerCommandConflictError,
@@ -102,7 +102,7 @@ export {
   type LegalHoldCommandInput,
   type LegalHoldCommandResult,
   type LegalHoldCommandType,
-} from './control-ledger-coordinator.js';
+} from './lifecycle/control-ledger-coordinator.js';
 export { createDueNodeWakeupScanner } from './due-node-wakeup-scanner.js';
 export type { DueNodeWakeupScanner } from './due-node-wakeup-scanner.js';
 export {
@@ -212,21 +212,21 @@ export type { WorkspaceDatabase } from './database.js';
 export {
   createRetentionDatabase,
   createRetentionEnforcementCoordinator,
-} from './retention.js';
-export { createRunArtifactRetentionCoordinator } from './run-artifact-retention.js';
-export { createWorkspacePurgeCoordinator } from './workspace-purge.js';
+} from './lifecycle/retention.js';
+export { createRunArtifactRetentionCoordinator } from './lifecycle/run-artifact-retention.js';
+export { createWorkspacePurgeCoordinator } from './lifecycle/workspace-purge.js';
 export type {
   WorkspacePurgeCoordinator,
   WorkspacePurgeLedger,
   WorkspacePurgeObjectStore,
   WorkspacePurgeProcessResult,
-} from './workspace-purge.js';
+} from './lifecycle/workspace-purge.js';
 export type {
   RunArtifactRetentionCoordinator,
   RunArtifactRetentionCoordinatorOptions,
   RunArtifactRetentionProcessResult,
   RunArtifactRetentionStore,
-} from './run-artifact-retention.js';
+} from './lifecycle/run-artifact-retention.js';
 export type {
   OperatorMaintenanceRerunResult,
   RegionalReplicaLagObservation,
@@ -243,7 +243,7 @@ export type {
   RetentionScheduleResult,
   StartWorkflowRunInputRetentionDryRunInput,
   StartWorkflowRunInputRetentionInput,
-} from './retention.js';
+} from './lifecycle/retention.js';
 export {
   createIdentityWorkspaceDatabase,
   IdentityConflictError,
@@ -319,19 +319,19 @@ export {
   completePreviewArtifactDeletion,
   finishPreviewCleanupDelivery,
   PreviewCleanupStateError,
-} from './preview-cleanup.js';
+} from './lifecycle/preview-cleanup.js';
 export type {
   PreviewCleanupArtifact,
   PreviewCleanupClaimResult,
   PreviewCleanupFinishResult,
-} from './preview-cleanup.js';
-export { createPreviewRetentionCoordinator } from './preview-retention.js';
+} from './lifecycle/preview-cleanup.js';
+export { createPreviewRetentionCoordinator } from './lifecycle/preview-retention.js';
 export type {
   PreviewRetentionArtifactStore,
   PreviewRetentionCoordinator,
   PreviewRetentionCoordinatorOptions,
   PreviewRetentionProcessResult,
-} from './preview-retention.js';
+} from './lifecycle/preview-retention.js';
 export type {
   AcceptedPreviewRun,
   AcceptPreviewRunInput,

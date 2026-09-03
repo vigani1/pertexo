@@ -4,14 +4,14 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll } from 'vitest';
 
 import { parseDatabaseConfig } from '../../src/config.js';
-import type { ControlLedger } from '../../src/control-ledger-coordinator.js';
+import type { ControlLedger } from '../../src/lifecycle/control-ledger-coordinator.js';
 import { migrateDatabase } from '../../src/migrations.js';
 import { createOperatorCommandDatabase } from '../../src/operator-commands.js';
 import {
   createRetentionDatabase,
   createRetentionEnforcementCoordinator,
-} from '../../src/retention.js';
-import { createRunArtifactRetentionCoordinator } from '../../src/run-artifact-retention.js';
+} from '../../src/lifecycle/retention.js';
+import { createRunArtifactRetentionCoordinator } from '../../src/lifecycle/run-artifact-retention.js';
 import { dropDisconnectedDatabase } from './disposable-database.js';
 
 export const adminUrl =

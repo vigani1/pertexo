@@ -1,14 +1,14 @@
-import { createDatabasePool } from './postgres-telemetry.js';
+import { createDatabasePool } from '../postgres-telemetry.js';
 import { createHash } from 'node:crypto';
 
 import type { PoolClient, QueryConfig, QueryResult } from 'pg';
 import { z } from 'zod';
 
-import type { DatabaseConfig } from './config.js';
+import type { DatabaseConfig } from '../config.js';
 import {
   EXPECTED_MIGRATION_HEAD,
   MINIMUM_POSTGRES_MAJOR,
-} from './readiness.js';
+} from '../readiness.js';
 
 const ZERO_HASH = '0'.repeat(64);
 const BACKEND_CANCELLATION_TIMEOUT_MS = 1_000;

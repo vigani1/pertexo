@@ -1,11 +1,11 @@
-import { createDatabasePool } from './postgres-telemetry.js';
+import { createDatabasePool } from '../postgres-telemetry.js';
 import type { Pool } from 'pg';
 import type { PoolClient, QueryResult } from 'pg';
 import { z } from 'zod';
 
-import type { DatabaseConfig } from './config.js';
+import type { DatabaseConfig } from '../config.js';
 import type { ControlLedger } from './control-ledger-coordinator.js';
-import { EXPECTED_MIGRATION_HEAD } from './readiness.js';
+import { EXPECTED_MIGRATION_HEAD } from '../readiness.js';
 import {
   reapTransientData,
   type TransientDataReapResult,

@@ -1,14 +1,14 @@
 export type { DatabaseConfig } from './config.js';
 export { parseMaintenanceDatabaseConfig } from './config.js';
-export { createPreviewRetentionCoordinator } from './preview-retention.js';
+export { createPreviewRetentionCoordinator } from './lifecycle/preview-retention.js';
 export type {
   PreviewRetentionCoordinator,
   PreviewRetentionProcessResult,
-} from './preview-retention.js';
+} from './lifecycle/preview-retention.js';
 export {
   createRetentionDatabase,
   createRetentionEnforcementCoordinator,
-} from './retention.js';
+} from './lifecycle/retention.js';
 export type {
   OperatorMaintenanceRerunResult,
   RegionalReplicaLagObservation,
@@ -17,15 +17,15 @@ export type {
   RetentionEnforcementCoordinator,
   RetentionEnforcementProcessResult,
   RetentionScheduleResult,
-} from './retention.js';
-export type { TransientDataReapResult } from './transient-data-retention.js';
-export { createRunArtifactRetentionCoordinator } from './run-artifact-retention.js';
+} from './lifecycle/retention.js';
+export type { TransientDataReapResult } from './lifecycle/transient-data-retention.js';
+export { createRunArtifactRetentionCoordinator } from './lifecycle/run-artifact-retention.js';
 export type {
   RunArtifactRetentionCoordinator,
   RunArtifactRetentionProcessResult,
-} from './run-artifact-retention.js';
-export { createWorkspacePurgeCoordinator } from './workspace-purge.js';
+} from './lifecycle/run-artifact-retention.js';
+export { createWorkspacePurgeCoordinator } from './lifecycle/workspace-purge.js';
 export type {
   WorkspacePurgeCoordinator,
   WorkspacePurgeProcessResult,
-} from './workspace-purge.js';
+} from './lifecycle/workspace-purge.js';

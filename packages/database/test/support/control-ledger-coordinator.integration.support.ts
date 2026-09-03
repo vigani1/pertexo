@@ -9,7 +9,7 @@ import type {
   AppendControlLedgerRecord,
   ControlLedger,
   ControlLedgerRecord,
-} from '../../src/control-ledger-coordinator.js';
+} from '../../src/lifecycle/control-ledger-coordinator.js';
 import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../../src/migrations.js';
 import { dropDisconnectedDatabase } from './disposable-database.js';
 

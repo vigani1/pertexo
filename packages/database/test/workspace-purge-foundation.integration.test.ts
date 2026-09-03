@@ -8,7 +8,7 @@ import {
   createWorkspacePurgeCoordinator,
   type WorkspacePurgeLedger,
   type WorkspacePurgeLedgerRecord,
-} from '../src/workspace-purge.js';
+} from '../src/lifecycle/workspace-purge.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';
 
 const adminUrl =

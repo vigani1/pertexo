@@ -1,13 +1,13 @@
-import { createDatabasePool } from './postgres-telemetry.js';
+import { createDatabasePool } from '../postgres-telemetry.js';
 import type { Pool } from 'pg';
 import type { PoolClient, QueryConfig, QueryResult } from 'pg';
 import { z } from 'zod';
 
-import type { DatabaseConfig } from './config.js';
+import type { DatabaseConfig } from '../config.js';
 import {
   EXPECTED_MIGRATION_HEAD,
   MINIMUM_POSTGRES_MAJOR,
-} from './readiness.js';
+} from '../readiness.js';
 
 const uuidSchema = z.uuid();
 const hashSchema = z.string().regex(/^[0-9a-f]{64}$/u);
