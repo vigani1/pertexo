@@ -19,7 +19,7 @@ import {
   parseCompatibilityReleaseExpectationHistory,
   parseCompatibilityReleaseExpectationSet,
   type CompatibilityReleaseExpectation,
-} from './compatibility-release.js';
+} from './compatibility/compatibility-release.js';
 import { WorkflowNotFoundError } from './workflow-authoring-errors.js';
 import { createWorkflowPublisher } from './workflow-publication.js';
 import { createWorkflowAuthoringReadStore } from './workflow-authoring-reads.js';

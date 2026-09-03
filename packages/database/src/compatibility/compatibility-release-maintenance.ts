@@ -1,8 +1,8 @@
-import { createDatabasePool } from './postgres-telemetry.js';
+import { createDatabasePool } from '../postgres-telemetry.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
-import type { DatabaseConfig } from './config.js';
+import type { DatabaseConfig } from '../config.js';
 import {
   parseCompatibilityReleaseExpectation,
   type CompatibilityReleaseExpectation,

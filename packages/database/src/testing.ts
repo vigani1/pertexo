@@ -171,15 +171,15 @@ export {
   parseCompatibilityReleaseExpectation,
   parseCompatibilityReleaseExpectationSet,
   parseCompatibilityReleaseExpectationHistory,
-} from './compatibility-release.js';
+} from './compatibility/compatibility-release.js';
 export type {
   CompatibilityReleaseExpectation,
   CompatibilityReleaseExpectationSet,
-} from './compatibility-release.js';
-export { createCompatibilityReleaseMaintenance } from './compatibility-release-maintenance.js';
-export type { CompatibilityReleaseMaintenance } from './compatibility-release-maintenance.js';
-export { createCompatibilityReleaseReadinessProbe } from './compatibility-release-readiness.js';
-export type { CompatibilityReleaseReadinessProbe } from './compatibility-release-readiness.js';
+} from './compatibility/compatibility-release.js';
+export { createCompatibilityReleaseMaintenance } from './compatibility/compatibility-release-maintenance.js';
+export type { CompatibilityReleaseMaintenance } from './compatibility/compatibility-release-maintenance.js';
+export { createCompatibilityReleaseReadinessProbe } from './compatibility/compatibility-release-readiness.js';
+export type { CompatibilityReleaseReadinessProbe } from './compatibility/compatibility-release-readiness.js';
 export {
   ARTIFACT_STATUS,
   ArtifactFinalizeConflictError,

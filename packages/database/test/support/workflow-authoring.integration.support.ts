@@ -14,7 +14,7 @@ import {
   CONNECTION_AUTH_TYPE,
   createConnectionDatabase,
 } from '../../src/connections.js';
-import { CompatibilityReleaseMismatchError } from '../../src/compatibility-release.js';
+import { CompatibilityReleaseMismatchError } from '../../src/compatibility/compatibility-release.js';
 import { createIdentityWorkspaceDatabase } from '../../src/identity-workspace.js';
 import { migrateDatabase } from '../../src/migrations.js';
 import { PHASE3_COMPATIBILITY_EXPECTATION } from '../phase3-compatibility-fixture.js';

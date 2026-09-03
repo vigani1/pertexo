@@ -11,7 +11,7 @@ import {
   parseCompatibilityReleaseExpectationSet,
   type CompatibilityReleaseExpectation,
   type CompatibilityReleaseExpectationSet,
-} from './compatibility-release.js';
+} from './compatibility/compatibility-release.js';
 import { acceptWorkflowRun } from './execution-acceptance.js';
 import { generatePersistedId } from './persisted-id.js';
 import {

@@ -4,14 +4,14 @@ import {
   CoordinatorPlanInvalidError,
   CoordinatorRunStateCorruptError,
 } from './coordinator-run-store-contract.js';
-import type { PersistedPhase3Checkpoint } from './phase3-checkpoint.js';
+import type { PersistedWorkflowCheckpoint } from './compatibility/persisted-workflow-checkpoint.js';
 
 export async function persistLoopBarrierTransitions(
   client: PoolClient,
   workspaceId: string,
   runId: string,
-  current: PersistedPhase3Checkpoint,
-  next: PersistedPhase3Checkpoint,
+  current: PersistedWorkflowCheckpoint,
+  next: PersistedWorkflowCheckpoint,
 ): Promise<void> {
   const currentLoops = new Set(
     current.loops.map(({ controlInvocationKey }) => controlInvocationKey),
@@ -41,8 +41,8 @@ export async function persistDueReadyTransitions(
   client: PoolClient,
   workspaceId: string,
   runId: string,
-  current: PersistedPhase3Checkpoint,
-  next: PersistedPhase3Checkpoint,
+  current: PersistedWorkflowCheckpoint,
+  next: PersistedWorkflowCheckpoint,
 ): Promise<void> {
   const currentInvocations = new Map(
     current.invocations.map((invocation) => [

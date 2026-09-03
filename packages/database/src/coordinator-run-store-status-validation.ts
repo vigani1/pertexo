@@ -9,9 +9,9 @@ import {
   assertPlan,
   sameStoredValue,
 } from './coordinator-run-store-validation-values.js';
-import type { PersistedPhase3Checkpoint } from './phase3-checkpoint.js';
+import type { PersistedWorkflowCheckpoint } from './compatibility/persisted-workflow-checkpoint.js';
 
-type Invocation = PersistedPhase3Checkpoint['invocations'][number];
+type Invocation = PersistedWorkflowCheckpoint['invocations'][number];
 type PersistedFact = Readonly<{
   invocationKey: string | null;
   observation: Readonly<Record<string, unknown>>;
@@ -22,7 +22,7 @@ type PersistedState = Readonly<{
   observations: ReadonlyMap<string, Readonly<Record<string, unknown>>>;
 }>;
 type TransitionContext = Readonly<{
-  current: PersistedPhase3Checkpoint;
+  current: PersistedWorkflowCheckpoint;
   plan: ParsedTransitionPlan;
   currentInvocations: ReadonlyMap<string, Invocation>;
   expectedNodeEvents: Set<string>;
@@ -49,7 +49,7 @@ function indexPersistedFacts(facts: readonly PersistedFact[]): PersistedState {
 }
 
 function isDeclaredLoopBarrier(
-  current: PersistedPhase3Checkpoint,
+  current: PersistedWorkflowCheckpoint,
   plan: ParsedTransitionPlan,
   invocationKey: string,
 ): boolean {
@@ -65,7 +65,7 @@ function isDeclaredLoopBarrier(
 function validatePersistedFact(
   fact: PersistedFact,
   next: Invocation | undefined,
-  current: PersistedPhase3Checkpoint,
+  current: PersistedWorkflowCheckpoint,
   plan: ParsedTransitionPlan,
 ): void {
   const observation = fact.observation;
@@ -90,7 +90,7 @@ function validatePersistedFact(
 function validatePersistedFacts(
   facts: readonly PersistedFact[],
   nextInvocations: ReadonlyMap<string, Invocation>,
-  current: PersistedPhase3Checkpoint,
+  current: PersistedWorkflowCheckpoint,
   plan: ParsedTransitionPlan,
 ): void {
   for (const fact of facts) {
@@ -326,7 +326,7 @@ function validateNodeEvents(context: TransitionContext): void {
 }
 
 function validateRunEvents(
-  current: PersistedPhase3Checkpoint,
+  current: PersistedWorkflowCheckpoint,
   plan: ParsedTransitionPlan,
   terminalRunStatuses: ReadonlySet<string>,
 ): void {
@@ -353,7 +353,7 @@ function validateRunEvents(
 }
 
 export function assertStatusTransitionsValid(
-  current: PersistedPhase3Checkpoint,
+  current: PersistedWorkflowCheckpoint,
   plan: ParsedTransitionPlan,
   facts: readonly PersistedFact[],
   terminalRunStatuses: ReadonlySet<string>,

@@ -1,6 +1,6 @@
-import { createDatabasePool } from './postgres-telemetry.js';
+import { createDatabasePool } from '../postgres-telemetry.js';
 
-import type { DatabaseConfig } from './config.js';
+import type { DatabaseConfig } from '../config.js';
 import type {
   CompatibilityReleaseExpectation,
   CompatibilityReleaseExpectationSet,
@@ -9,7 +9,7 @@ import {
   checkDatabasePreactivationReadiness,
   checkDatabaseReadiness,
   type DatabaseReadiness,
-} from './readiness.js';
+} from '../readiness.js';
 
 export interface CompatibilityReleaseReadinessProbe {
   checkCurrent(): Promise<DatabaseReadiness>;

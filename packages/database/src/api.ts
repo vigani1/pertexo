@@ -1,4 +1,4 @@
-export type { CompatibilityReleaseExpectation } from './compatibility-release.js';
+export type { CompatibilityReleaseExpectation } from './compatibility/compatibility-release.js';
 export {
   ConnectionConflictError,
   ConnectionIdempotencyConflictError,

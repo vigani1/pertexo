@@ -5,9 +5,9 @@ import { z } from 'zod';
 import { canonicalOutboxPayloadChecksum, insertOutboxEvent } from './outbox.js';
 import { generatePersistedId } from './persisted-id.js';
 import {
-  parseInitialPhase3Checkpoint,
-  serializePersistedPhase3Checkpoint,
-} from './phase3-checkpoint.js';
+  parseInitialWorkflowCheckpoint,
+  serializePersistedWorkflowCheckpoint,
+} from './compatibility/persisted-workflow-checkpoint.js';
 import {
   idempotencyRecords,
   runCheckpoints,
@@ -364,8 +364,8 @@ export async function acceptWorkflowRun(
     (parsed.replayCommandId !== undefined)
   )
     throw new TypeError('Replay lineage must match the replay trigger type');
-  const initialCheckpointJson = serializePersistedPhase3Checkpoint(
-    parseInitialPhase3Checkpoint(parsed.initialCheckpoint, {
+  const initialCheckpointJson = serializePersistedWorkflowCheckpoint(
+    parseInitialWorkflowCheckpoint(parsed.initialCheckpoint, {
       engineVersion: parsed.engineVersion,
       workflowVersionId: parsed.workflowVersionId,
     }),

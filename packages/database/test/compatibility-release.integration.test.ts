@@ -11,8 +11,8 @@ import { z } from 'zod';
 import {
   checkExpectedCompatibilityRelease,
   CompatibilityReleaseMismatchError,
-} from '../src/compatibility-release.js';
-import { createCompatibilityReleaseMaintenance } from '../src/compatibility-release-maintenance.js';
+} from '../src/compatibility/compatibility-release.js';
+import { createCompatibilityReleaseMaintenance } from '../src/compatibility/compatibility-release-maintenance.js';
 import { parseDatabaseConfig } from '../src/config.js';
 import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../src/migrations.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';

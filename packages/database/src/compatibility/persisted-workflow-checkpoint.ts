@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { serializeStoredExecutionJsonValue } from './stored-execution-value.js';
+import { serializeStoredExecutionJsonValue } from '../stored-execution-value.js';
 
 const canonicalUuidSchema = z
   .string()
@@ -221,7 +221,7 @@ function refineInvocationIndexes(
     });
 }
 
-const phase3CheckpointV1Schema = z
+const persistedWorkflowCheckpointV1Schema = z
   .object({
     schemaVersion: z.literal(1),
     ...checkpointShape,
@@ -231,7 +231,7 @@ const phase3CheckpointV1Schema = z
   .strict()
   .superRefine(refineInvocationIndexes);
 
-const phase3CheckpointV2Schema = z
+const persistedWorkflowCheckpointV2Schema = z
   .object({
     schemaVersion: z.literal(2),
     ...checkpointShape,
@@ -407,21 +407,21 @@ function compareOrdinal(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
 }
 
-export type PersistedPhase3Checkpoint = Readonly<
-  | z.output<typeof phase3CheckpointV1Schema>
-  | z.output<typeof phase3CheckpointV2Schema>
+export type PersistedWorkflowCheckpoint = Readonly<
+  | z.output<typeof persistedWorkflowCheckpointV1Schema>
+  | z.output<typeof persistedWorkflowCheckpointV2Schema>
 >;
 
-class Phase3CheckpointInvalidError extends Error {
-  public override readonly name = 'Phase3CheckpointInvalidError';
+class PersistedWorkflowCheckpointInvalidError extends Error {
+  public override readonly name = 'PersistedWorkflowCheckpointInvalidError';
   public constructor() {
-    super('Phase 3 workflow checkpoint is invalid');
+    super('Persisted workflow checkpoint is invalid');
   }
 }
 
-export function parsePersistedPhase3Checkpoint(
+export function parsePersistedWorkflowCheckpoint(
   value: unknown,
-): PersistedPhase3Checkpoint {
+): PersistedWorkflowCheckpoint {
   try {
     const normalized = JSON.parse(
       serializeStoredExecutionJsonValue(value),
@@ -431,22 +431,22 @@ export function parsePersistedPhase3Checkpoint(
       normalized === null ||
       !('schemaVersion' in normalized)
     )
-      throw new Phase3CheckpointInvalidError();
+      throw new PersistedWorkflowCheckpointInvalidError();
     return Object.freeze(
       normalized.schemaVersion === 1
-        ? phase3CheckpointV1Schema.parse(normalized)
-        : phase3CheckpointV2Schema.parse(normalized),
+        ? persistedWorkflowCheckpointV1Schema.parse(normalized)
+        : persistedWorkflowCheckpointV2Schema.parse(normalized),
     );
   } catch {
-    throw new Phase3CheckpointInvalidError();
+    throw new PersistedWorkflowCheckpointInvalidError();
   }
 }
 
-export function parseInitialPhase3Checkpoint(
+export function parseInitialWorkflowCheckpoint(
   value: unknown,
   identity: Readonly<{ engineVersion: string; workflowVersionId: string }>,
-): PersistedPhase3Checkpoint {
-  const checkpoint = parsePersistedPhase3Checkpoint(value);
+): PersistedWorkflowCheckpoint {
+  const checkpoint = parsePersistedWorkflowCheckpoint(value);
   if (
     checkpoint.engineVersion !== identity.engineVersion ||
     checkpoint.workflowVersionId !== identity.workflowVersionId ||
@@ -462,12 +462,12 @@ export function parseInitialPhase3Checkpoint(
     checkpoint.cancelRequested ||
     checkpoint.deadlineExpired
   )
-    throw new Phase3CheckpointInvalidError();
+    throw new PersistedWorkflowCheckpointInvalidError();
   return checkpoint;
 }
 
-export function serializePersistedPhase3Checkpoint(value: unknown): string {
+export function serializePersistedWorkflowCheckpoint(value: unknown): string {
   return serializeStoredExecutionJsonValue(
-    parsePersistedPhase3Checkpoint(value),
+    parsePersistedWorkflowCheckpoint(value),
   );
 }

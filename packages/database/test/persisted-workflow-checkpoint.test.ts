@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parsePersistedPhase3Checkpoint } from '../src/phase3-checkpoint.js';
+import { parsePersistedWorkflowCheckpoint } from '../src/compatibility/persisted-workflow-checkpoint.js';
 
 const workflowVersionId = '00000000-0000-4000-8000-000000000101';
 const conditionKey = `${workflowVersionId}|condition|b:|i:`;
@@ -30,10 +30,10 @@ function checkpointV1() {
 describe('persisted coordinator checkpoint codec', () => {
   it('canonicalizes Condition checkpoint V2 without reinterpreting V1', () => {
     const retained = checkpointV1();
-    expect(parsePersistedPhase3Checkpoint(retained)).toEqual(retained);
+    expect(parsePersistedWorkflowCheckpoint(retained)).toEqual(retained);
 
     expect(
-      parsePersistedPhase3Checkpoint({
+      parsePersistedWorkflowCheckpoint({
         ...retained,
         schemaVersion: 2,
         revision: 2,
@@ -115,7 +115,7 @@ describe('persisted coordinator checkpoint codec', () => {
     } as const;
 
     expect(() =>
-      parsePersistedPhase3Checkpoint({
+      parsePersistedWorkflowCheckpoint({
         ...base,
         branchSelections: [
           selection,
@@ -123,22 +123,26 @@ describe('persisted coordinator checkpoint codec', () => {
         ],
       }),
     ).toThrow(
-      expect.objectContaining({ name: 'Phase3CheckpointInvalidError' }),
+      expect.objectContaining({
+        name: 'PersistedWorkflowCheckpointInvalidError',
+      }),
     );
     expect(() =>
-      parsePersistedPhase3Checkpoint({
+      parsePersistedWorkflowCheckpoint({
         ...base,
         invocations: [{ ...base.invocations[0], status: 'running' }],
         branchSelections: [selection],
       }),
     ).toThrow(
-      expect.objectContaining({ name: 'Phase3CheckpointInvalidError' }),
+      expect.objectContaining({
+        name: 'PersistedWorkflowCheckpointInvalidError',
+      }),
     );
   });
 
   it('accepts a bounded settled Merge ledger in checkpoint V2', () => {
     expect(
-      parsePersistedPhase3Checkpoint({
+      parsePersistedWorkflowCheckpoint({
         ...checkpointV1(),
         schemaVersion: 2,
         branchSelections: [],
@@ -185,7 +189,7 @@ describe('persisted coordinator checkpoint codec', () => {
   });
 
   it('accepts exact scoped For Each state and preserves loop-free V2', () => {
-    const loop = parsePersistedPhase3Checkpoint({
+    const loop = parsePersistedWorkflowCheckpoint({
       ...checkpointV1(),
       schemaVersion: 2,
       runStatus: 'waiting',
@@ -246,7 +250,7 @@ describe('persisted coordinator checkpoint codec', () => {
       invocations: [{ iterationPath: [] }, { iterationPath: [{ ordinal: 0 }] }],
     });
     expect(
-      parsePersistedPhase3Checkpoint({
+      parsePersistedWorkflowCheckpoint({
         ...checkpointV1(),
         schemaVersion: 2,
         branchSelections: [],
@@ -310,8 +314,10 @@ describe('persisted coordinator checkpoint codec', () => {
         loops: [{ ...base.loops[0], bodyRootNodeIds: [] }],
       },
     ])
-      expect(() => parsePersistedPhase3Checkpoint(invalid)).toThrow(
-        expect.objectContaining({ name: 'Phase3CheckpointInvalidError' }),
+      expect(() => parsePersistedWorkflowCheckpoint(invalid)).toThrow(
+        expect.objectContaining({
+          name: 'PersistedWorkflowCheckpointInvalidError',
+        }),
       );
   });
 });

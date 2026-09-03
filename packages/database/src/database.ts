@@ -1,8 +1,8 @@
 import { createDatabasePool } from './postgres-telemetry.js';
 
 import type { DatabaseConfig } from './config.js';
-import type { CompatibilityReleaseExpectation } from './compatibility-release.js';
-import type { CompatibilityReleaseExpectationSet } from './compatibility-release.js';
+import type { CompatibilityReleaseExpectation } from './compatibility/compatibility-release.js';
+import type { CompatibilityReleaseExpectationSet } from './compatibility/compatibility-release.js';
 import {
   checkDatabaseReadiness,
   checkDatabaseServingReadiness,
