@@ -126,7 +126,7 @@ export type OperatorCommandRecord = Readonly<{
   requestFingerprint: string;
   status: 'completed' | 'failed' | 'pending';
 }>;
-export type OperatorCommandType =
+type OperatorCommandType =
   | 'attempt.reconcile'
   | 'due-work.resume'
   | 'outbox.redispatch'
