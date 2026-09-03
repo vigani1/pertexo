@@ -209,6 +209,16 @@ making the architecture plan even larger.
 
 ## 5. Top 20 implementation-quality findings
 
+These are the twenty highest-priority concrete findings formalized during the
+risk-based implementation review, not a claim that only twenty code-quality
+questions were examined or that every production line received equal manual
+scrutiny. Sections 6–19 record the broader repository-wide inventories,
+patterns, hotspots, and leave-alone decisions. A post-remediation recheck also
+found repeated setup across several split test suites; that cross-cutting test-
+maintainability finding is tracked as partially open A-11 in
+[the whole-repository audit](./whole-repository-audit.md) rather than being
+retroactively hidden inside C-01 through C-20.
+
 ### C-01 — Bounded operations do not cancel the underlying publication
 
 - **Severity:** high.
@@ -1310,10 +1320,13 @@ unusually explicit about TypeScript quality, seam parsing, error mapping,
 transaction ownership, module organization, testing, and avoiding speculative
 abstractions. The implementation follows most of that direction.
 
-All twenty implementation-quality findings have now been remediated after
-repository-wide pattern searches. Remaining similar-looking code is recorded
-under the individual finding where its ordering, ownership, persisted-state,
-retry, integrity, or public-boundary semantics require it to remain. This does
+All twenty prioritized implementation-quality findings have now been remediated
+after repository-wide pattern searches. They were the formal high-value finding
+set, not an exhaustive enumeration of every local smell. Remaining similar-
+looking production code is recorded under the individual finding where its
+ordering, ownership, persisted-state, retry, integrity, or public-boundary
+semantics require it to remain. The later full-corpus test recheck partially
+reopened whole-audit A-11 for duplicated split-suite setup. This conclusion does
 not claim that future craft debt is impossible; it records that the concrete
-C-01 through C-20 scope is complete without changing the section 19.4
-state-machine and security-flow exclusions merely to reduce metrics.
+C-01 through C-20 scope is complete without changing the section 19.4 state-
+machine and security-flow exclusions merely to reduce metrics.

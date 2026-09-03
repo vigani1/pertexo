@@ -4788,6 +4788,12 @@ Fresh audit findings at the implementation tree named above:
       governance improvements in `docs/whole-repository-audit.md` without
       weakening existing invariants. Hosted signed provenance and live provider
       evidence remain the credential-dependent A-08/Phase 7 work below.
+- [ ] Complete the partially reopened A-11 test-maintainability work: extract
+      genuinely shared setup from paired split suites into owner-local support
+      modules, keep scenario state/assertions local, document and automate the
+      exact full-corpus clone scan, and lower its current 25-group/1,977-line
+      (2.08%) baseline without weakening independent collection or integration
+      isolation.
 
 Still open:
 

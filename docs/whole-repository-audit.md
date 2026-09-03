@@ -8,9 +8,12 @@ Status: current resolution and remaining external-evidence plan
 
 ## 1. Executive verdict
 
-This is a strong, serious backend codebase. Every repository-fixable finding in
-this audit has been remediated or, where the audit explicitly required restraint,
-reviewed and intentionally retained with a documented reason. The modular-
+This is a strong, serious backend codebase. Every repository-fixable correctness,
+security, and runtime finding in this audit has been remediated or, where the
+audit explicitly required restraint, reviewed and intentionally retained with a
+documented reason. Test-suite decomposition is complete, but the post-remediation
+recheck reopened A-11 narrowly because several split suites duplicate substantial
+setup and the earlier clone statistic was not reproducible. The modular-
 monolith direction is sound; the workspace dependency graph is acyclic; package
 export maps are deliberate; the TypeScript baseline is strict; runtime trust
 boundaries are parsed; tenant isolation and transactional behavior receive
@@ -43,7 +46,9 @@ coverage percentages are intentionally narrow. They instrument 30 selected
 files containing 1,736 coverable lines. Those percentages must never be
 described as package-wide or repository-wide coverage. The selected branch
 inventory is now well controlled: 116 uncovered branches have semantic source
-fingerprints and individual reviews, with zero unreviewed sites.
+fingerprints and individual reviews, with zero unreviewed sites. Test-code
+navigation improved because no test file exceeds 1,000 lines, but duplicated
+setup across several split suites remains an open maintainability follow-up.
 
 Current decision:
 
@@ -57,8 +62,9 @@ Current decision:
 The code is good overall: readable at local boundaries, highly defensive, and
 carefully tested. Its remaining engineering limits are explicit rather than
 hidden: 36 accepted production-file hotspots, 40 accepted function hotspots,
-selected rather than repository-wide coverage, solo-maintainer review policy,
-and the external Phase 7 evidence required before production readiness.
+selected rather than repository-wide coverage, repeated split-suite setup,
+solo-maintainer review policy, and the external Phase 7 evidence required
+before production readiness.
 
 ## 2. Scope, method, and scoring
 
@@ -135,24 +141,24 @@ each remediation status records the current disposition.
 | --- | ---: | --- |
 | Architecture and domain ownership | 9.1/10 | Correct modular-monolith, dependency direction, capability ownership, and stable public seams |
 | Repository and file structure | 8.8/10 | Schema and workflow grammars have capability-local modules and stable facades; 36 explicitly accepted file hotspots remain |
-| Readability and maintainability | 8.8/10 | Strong naming and explicit invariants; the ratchet holds 36 file and 40 function hotspots with no unreviewed growth |
+| Readability and maintainability | 8.7/10 | Strong naming and explicit invariants; the ratchet holds 36 file and 40 function hotspots, while repeated split-suite setup remains open |
 | Abstraction, reuse, and package design | 9.1/10 | Packages are justified, duplication is low, manifests are checked, and unsupported internal exports were removed |
 | TypeScript and runtime contracts | 9.2/10 | Strict compiler baseline, typed tests, explicit exports, runtime parsing, and manifest/declaration dependency validation are enforced |
 | NestJS/API design | 9.1/10 | Feature modules, guards, use cases, DI, centralized feature-owned error mapping, bounded rate limiting, and joined replies are verified |
 | PostgreSQL and data integrity | 9.1/10 | Transaction, tenancy, UUIDv7, typed-schema ownership, migration, and RLS conventions are executable gates |
 | Application and dependency security | 9.2/10 | No known production advisory or open code-scanning alert; moderate dependency admission and high/critical code-scanning merge protection are active |
-| Test behavior and failure confidence | 9.2/10 | More than 1,600 unit tests plus strong real-service/recovery/process cohorts; no test file exceeds the repository limit |
+| Test behavior and failure confidence | 9.0/10 | More than 1,600 unit tests plus strong real-service/recovery/process cohorts; no test file exceeds the repository limit, but several split suites duplicate large setup blocks |
 | Coverage breadth and mutation confidence | 8.2/10 | Exact controls cover 30 selected critical files/1,736 coverable lines with 116 reviewed and zero unreviewed branches; this remains intentionally non-global |
 | CI and change governance | 9.1/10 | Exact-head CI is comprehensive; dependency review, explicit docs/history checks, code-scanning merge protection, and rebase-tree identity are enforced; independent approval awaits a second maintainer |
 | Reliability and durability | 9.1/10 | Crash, redelivery, fencing, idempotency, compatibility, shutdown, and unknown publication outcomes have regression coverage |
 | Observability and operability | 8.7/10 | Broad telemetry and runbooks exist and logger safety is verified; live dashboard, alert, and pager behavior remain external evidence |
 | Performance and scalability | 6.8/10 | Bounded local harnesses and index-aware tests exist, but representative load, saturation, fairness, pool budgets, and DB plans are not evidenced |
-| Documentation and governance | 9.1/10 | Detailed plan/ADRs/progress, current audit evidence, contribution/security policies, and an explicit no-license decision are maintained and checked |
+| Documentation and governance | 9.0/10 | Detailed plan/ADRs/progress, contribution/security policies, and an explicit no-license decision are maintained; clone evidence now needs a reproducible correction |
 | Production readiness | 6.5/10 | Repository-controlled prerequisites are green, but authoritative live AWS, load, capacity, pager, backup/PITR, failover, provenance, provider, and regional recovery evidence remain open |
 
-Overall codebase engineering quality: **8.9/10**.
+Overall codebase engineering quality: **8.8/10**.
 
-Overall project state including production readiness: **8.5/10**.
+Overall project state including production readiness: **8.4/10**.
 
 These are not mathematical claims of “81% good.” They are a compact summary
 of the evidence and priorities below.
@@ -169,8 +175,10 @@ of the evidence and priorities below.
 - 40 production functions over 200 lexical lines; 8 exceed 400 lines.
 - 35 source clone groups at a 12-line/80-token threshold: 855 duplicated lines,
   **1.12%** of the analyzed source.
-- 11 test clone groups at an 18-line/130-token threshold: 347 duplicated lines,
-  **0.42%** of the analyzed test corpus.
+- A reproducible post-remediation scan of every `apps/*/test` and
+  `packages/*/test` TypeScript file at the 18-line/130-token threshold reports
+  25 clone groups and 1,977 duplicated lines, **2.08%** of the analyzed test
+  corpus. This supersedes the earlier unreproducible 11-group/0.42% figure.
 - Static unused-code analysis found no unused files. It reported one unused
   worker development dependency, 111 candidate unused value exports, and 92
   candidate unused type exports. Export reports are candidates, not automatic
@@ -700,21 +708,46 @@ Package exports should be tested as contracts.
 
 ### A-11 — Tests are strong code and should be reviewed like code
 
-**Remediation status (2026-09-03): complete.** A repository-wide line-count
-inventory found seven test files above 1,000 lines. Each was split at scenario
-boundaries while retaining the scenario's setup and assertions in the same
-file: workflow foreach, database transport, database control-ledger
-coordination, database schedule triggers, artifact control ledger, worker node
-attempts, and worker transport. No giant fixture or registration module was
-introduced; the largest remaining test file is exactly 1,000 lines and no test
-file exceeds the limit. The affected unit scenarios pass, all split integration
-files collect their original scenario names, and package typechecks pass.
+**Remediation status (2026-09-03): partially complete; split-suite setup
+deduplication remains open.** A repository-wide line-count inventory found
+seven test files above 1,000 lines. Each was split at scenario boundaries:
+workflow foreach, database transport, database control-ledger coordination,
+database schedule triggers, artifact control ledger, worker node attempts, and
+worker transport. The largest remaining test file is exactly 1,000 lines and
+no test file exceeds the limit. The affected unit scenarios pass, all split
+integration files collect their scenario names, and package typechecks pass.
 
-The repository has more test/support lines than production lines, but measured
-test duplication is only 0.42%. The problem is navigation, not excessive copy-
-paste. Several files exceed 1,000 lines, including workflow `foreach`, database
-transport/control-ledger, artifact control-ledger, and worker node-attempt and
-transport suites. Some top-level `describe` callbacks span 700–1,300 lines.
+The split improved navigation but copied substantial setup into companion
+files. A fresh full-corpus scan reports 25 exact clone groups and 1,977
+duplicated lines (2.08%), rather than the audit's earlier 11 groups, 347 lines,
+and 0.42%. Large examples include the paired database schedule-trigger and
+control-ledger coordinator integration suites, the artifact control-ledger
+suites, and the worker transport and node-attempt suites. The earlier figure
+did not record an exact executable command or exclusions and is therefore not
+reproducible evidence.
+
+The principal affected pairs are:
+
+- `packages/database/test/schedule-triggers.integration.test.ts` and
+  `schedule-triggers-part-2.integration.test.ts`;
+- `packages/database/test/control-ledger-coordinator.integration.test.ts` and
+  `control-ledger-coordinator-part-2.integration.test.ts`;
+- `packages/database/test/transport.integration.test.ts` and
+  `transport-part-2.integration.test.ts`;
+- `packages/artifact-store/test/control-ledger.test.ts` and
+  `control-ledger-part-2.test.ts`;
+- `apps/worker/test/transport.integration.test.ts` and
+  `transport-part-2.integration.test.ts`; and
+- `apps/worker/test/node-attempt-handler.test.ts` and
+  `node-attempt-handler-part-2.test.ts`.
+
+Reproduction command:
+
+```sh
+pnpm dlx jscpd@4.0.5 apps/*/test packages/*/test \
+  --min-lines 18 --min-tokens 130 --format typescript \
+  --reporters console --ignore '**/dist/**'
+```
 
 Keep the package-level `test/` directories: they correctly separate production
 build inputs, make real-service configuration explicit, and fit this monorepo.
@@ -723,6 +756,23 @@ Reorganize large directories and suites by behavior (`claim`, `complete`,
 fixture builders. A fixture should expose domain actions, not dozens of raw
 mocks that hide what a test proves. Preserve simple assertions and scenario
 names that state the failure being prevented.
+
+Required follow-up:
+
+1. Extract only genuinely shared environment setup, lifecycle cleanup, and
+   domain fixture construction from the paired suites into owner-local support
+   modules. Keep scenario-specific state and assertions beside each test.
+2. Preserve independent collection and real-service isolation; do not create a
+   single mutable global fixture or a generic cross-package test utility.
+3. Add a pinned, reproducible test-clone command or validator to CI with
+   explicit inclusions/exclusions and a non-regression baseline.
+4. Re-run every affected unit/integration cohort and lower the baseline only
+   after the duplication is actually removed.
+
+Acceptance evidence: every split suite still collects and passes independently,
+no test file exceeds 1,000 lines, the exact clone command is documented and
+automated, and duplicated test lines fall below the recorded 2.08% baseline
+without obscuring behavior-specific setup or assertions.
 
 ### A-12 — `.mjs` is appropriate until a tool becomes an application
 
@@ -1295,10 +1345,12 @@ security/configuration outcomes—not only tool execution—are gated.
 
 ### Stage 3 — Reduce change-locality cost
 
-**Status: complete for the audited pattern.** UUIDv7, schema ownership, and RLS
-conventions are enforced; database and workflow internals were split behind
-unchanged public seams; named hotspots and oversized tests were decomposed with
-characterization coverage; the reduced complexity baseline is enforced.
+**Status: complete for production complexity; test cleanup remains open.**
+UUIDv7, schema ownership, and RLS conventions are enforced; database and
+workflow internals were split behind unchanged public seams; named hotspots and
+oversized tests were decomposed with characterization coverage; the reduced
+production complexity baseline is enforced. A-11 remains open for duplicated
+setup introduced or retained across the split test suites.
 
 Exit: fewer file/function hotspots, no new package or query edge, and improved
 review locality.
@@ -1337,8 +1389,10 @@ Local commands at the audited implementation tree:
   passed.
 - `pnpm dependencies:check` — passed with no unused files, dependencies, or
   unsupported internal exports.
-- `pnpm dlx jscpd@4.0.5 ...` — 1.12% source and 0.42% test duplication under the
-  stated thresholds.
+- `pnpm dlx jscpd@4.0.5 apps/*/test packages/*/test --min-lines 18
+  --min-tokens 130 --format typescript --reporters console --ignore
+  '**/dist/**'` — post-remediation recheck reported 25 test clone groups and
+  1,977 duplicated lines (2.08%); A-11 is partially reopened.
 - `gh api` security inspection — zero open Dependabot alerts and zero open
   CodeQL alerts on the default branch.
 - branch-protection/ruleset inspection — 11 strict required contexts plus
@@ -1375,10 +1429,12 @@ has only one current production consumer but owns the deliberate public wire
 boundary and planned browser consumption. The rest have multiple current
 consumers or a clear runtime/domain responsibility.
 
-Are tests good? **Yes in behavioral depth; incomplete as a coverage claim.**
-The separation into package `test/` directories is appropriate, oversized
-suites were decomposed, and critical-file coverage is honestly labeled with
-exact denominators and reviewed gaps. It is not whole-repository coverage.
+Are tests good? **Yes in behavioral depth; incomplete in coverage breadth and
+test-code cleanup.** The separation into package `test/` directories is
+appropriate, oversized suites were decomposed, and critical-file coverage is
+honestly labeled with exact denominators and reviewed gaps. It is not
+whole-repository coverage, and several split suites still duplicate substantial
+setup tracked by partially open A-11.
 
 Does it run in GitHub CI? **Yes.** Exact-main CI and CodeQL are green and
 comprehensive. Moderate dependency findings and high/critical code-scanning

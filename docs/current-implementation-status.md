@@ -37,16 +37,20 @@ tests. The exact report schema and validator already live under
 
 Audited implementation tree: `6dc62b689974341d4e58af49e2f39ef84dc92b6e`
 
-The 2026-09-03 whole-repository audit's repository-controlled findings are
-complete at the implementation tree above. That includes the worker production
-dependency and image role-load proof, owned process shutdown, bounded logger
-redaction, patched dependencies, security admission, selected risk coverage,
-complexity and test decomposition, UUIDv7/schema/RLS conventions, bounded async
-outcomes, package surfaces, and public governance. The latest audit follow-up
-also makes persisted artifact identities UUIDv7, retains leases while late
-publication marks settle, and proves compiled workers exit cleanly after
-SIGTERM with consumers disabled or active and during bootstrap failure. The
-signal owner handles SIGINT through the same idempotent path, without
+The 2026-09-03 whole-repository audit's repository-controlled correctness,
+security, and runtime findings are complete at the implementation tree above.
+That includes the worker production dependency and image role-load proof, owned
+process shutdown, bounded logger redaction, patched dependencies, security
+admission, selected risk coverage, production complexity decomposition,
+UUIDv7/schema/RLS conventions, bounded async outcomes, package surfaces, and
+public governance. Test files were decomposed below the 1,000-line limit, but a
+post-remediation full-corpus clone scan partially reopened A-11: paired split
+suites retain 1,977 duplicated lines (2.08%), and their shared setup needs an
+owner-local extraction plus an automated non-regression baseline. The latest
+audit follow-up also makes persisted artifact identities UUIDv7, retains leases
+while late publication marks settle, and proves compiled workers exit cleanly
+after SIGTERM with consumers disabled or active and during bootstrap failure.
+The signal owner handles SIGINT through the same idempotent path, without
 overstating the exercised process matrix.
 The exact findings and evidence are in `docs/whole-repository-audit.md`. These
 do not change Phases 0–6; Phase 7 remains in progress only because its live
