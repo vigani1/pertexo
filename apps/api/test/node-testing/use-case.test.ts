@@ -8,7 +8,6 @@ import type {
 } from '@pertexo/database/testing';
 import { describe, expect, it, vi } from 'vitest';
 
-import { NodeTestIdempotencyRequiredError } from '../../src/node-testing/errors.js';
 import { TestWorkflowNodeUseCase } from '../../src/node-testing/use-case.js';
 import {
   authorizeWorkspace,
@@ -320,7 +319,10 @@ describe('node test application use case', () => {
           },
         },
       }),
-    ).rejects.toBeInstanceOf(NodeTestIdempotencyRequiredError);
+    ).rejects.toMatchObject({
+      code: 'idempotency_required',
+      name: 'NodeTestRequestError',
+    });
   });
 
   it('pins the exact release and accepts one identifier-only durable preview', async () => {

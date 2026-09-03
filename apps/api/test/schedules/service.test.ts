@@ -1,6 +1,5 @@
 import {
-  ScheduleTriggerIdempotencyConflictError,
-  ScheduleTriggerNotFoundError,
+  ScheduleTriggerError,
   type ScheduleTriggerDatabase,
 } from '@pertexo/database/testing';
 import { describe, expect, it, vi } from 'vitest';
@@ -51,12 +50,12 @@ describe('schedule management service', () => {
   it('maps hidden not-found and exact replay conflicts to stable problems', async () => {
     const database = setup();
     const service = new ScheduleManagementService(database);
-    database.list.mockRejectedValueOnce(new ScheduleTriggerNotFoundError());
+    database.list.mockRejectedValueOnce(new ScheduleTriggerError('not_found'));
     await expect(service.list(input)).rejects.toMatchObject({
       code: 'resource.not_found',
     });
     database.setEnabled.mockRejectedValueOnce(
-      new ScheduleTriggerIdempotencyConflictError(),
+      new ScheduleTriggerError('idempotency_conflict'),
     );
     await expect(service.setEnabled(input, true)).rejects.toMatchObject({
       code: 'request.idempotency_conflict',

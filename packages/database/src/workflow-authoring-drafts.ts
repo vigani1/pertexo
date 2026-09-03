@@ -12,7 +12,7 @@ import {
 
 import { canonicalOutboxPayloadChecksum } from './outbox.js';
 import {
-  WorkflowCreateIdempotencyConflictError,
+  WorkflowIdempotencyConflictError,
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
 } from './workflow-authoring-errors.js';
@@ -112,7 +112,7 @@ async function createWorkflow(
         error instanceof Error &&
         (error as Error & { code?: string }).code === '23505'
       )
-        throw new WorkflowCreateIdempotencyConflictError(
+        throw new WorkflowIdempotencyConflictError(
           'Workflow create idempotency key request mismatch',
         );
       throw error;

@@ -9,7 +9,13 @@ import {
 } from '@pertexo/workflow-model/failure-notification';
 
 import type { DatabaseConfig } from './config.js';
+import {
+  FailureNotificationDestinationError,
+  type FailureNotificationDestinationErrorCode,
+} from './failure-notification-destination-errors.js';
 import { withTenantScopedClient } from './workspace.js';
+
+export { FailureNotificationDestinationError } from './failure-notification-destination-errors.js';
 
 type DestinationConfig = FailureNotificationDestinationConfig;
 
@@ -79,15 +85,11 @@ export interface FailureNotificationDestinationDatabase {
   close(): Promise<void>;
 }
 
-export class FailureNotificationDestinationNotFoundError extends Error {
-  public override readonly name = 'FailureNotificationDestinationNotFoundError';
-}
-export class FailureNotificationDestinationConflictError extends Error {
-  public override readonly name = 'FailureNotificationDestinationConflictError';
-}
-export class FailureNotificationDestinationIdempotencyConflictError extends Error {
-  public override readonly name =
-    'FailureNotificationDestinationIdempotencyConflictError';
+function destinationError(
+  code: FailureNotificationDestinationErrorCode,
+  message: string,
+): FailureNotificationDestinationError {
+  return new FailureNotificationDestinationError(code, message);
 }
 
 const digestSchema = z.string().regex(/^[0-9a-f]{64}$/u);
@@ -144,7 +146,8 @@ async function claimCommand(
   if (claim === undefined)
     throw new Error('Destination idempotency claim is unavailable');
   if (claim.request_hash !== requestHash)
-    throw new FailureNotificationDestinationIdempotencyConflictError(
+    throw destinationError(
+      'idempotency_conflict',
       'Idempotency key request mismatch',
     );
   if (claim.status !== 'completed') return Object.freeze({ kind: 'new' });
@@ -221,9 +224,7 @@ async function authorize(
     [workspaceId, actorId, roles],
   );
   if (result.rowCount !== 1)
-    throw new FailureNotificationDestinationNotFoundError(
-      'Destination is not visible',
-    );
+    throw destinationError('not_found', 'Destination is not visible');
 }
 
 async function assertConnection(
@@ -243,9 +244,7 @@ async function assertConnection(
     ],
   );
   if (result.rowCount !== 1)
-    throw new FailureNotificationDestinationNotFoundError(
-      'Connection is not visible',
-    );
+    throw destinationError('not_found', 'Connection is not visible');
 }
 
 function map(
@@ -290,9 +289,7 @@ async function read(
     [workspaceId, z.uuid().parse(destinationId)],
   );
   if (result.rows[0] === undefined)
-    throw new FailureNotificationDestinationNotFoundError(
-      'Destination is not visible',
-    );
+    throw destinationError('not_found', 'Destination is not visible');
   return map(result.rows[0]);
 }
 
@@ -469,9 +466,7 @@ export function createFailureNotificationDestinationDatabase(
           current.currentVersion !== input.expectedVersion ||
           current.kind !== parsed.kind
         )
-          throw new FailureNotificationDestinationConflictError(
-            'Destination version conflict',
-          );
+          throw destinationError('conflict', 'Destination version conflict');
         await assertConnection(client, input.workspaceId, parsed);
         const next = current.currentVersion + 1;
         await insertVersion(client, {
@@ -578,7 +573,8 @@ export function createFailureNotificationDestinationDatabase(
           [input.workspaceId, workflowId, input.destinationId, input.actorId],
         );
         if (result.rowCount !== 1)
-          throw new FailureNotificationDestinationNotFoundError(
+          throw destinationError(
+            'not_found',
             'Workflow or destination is not visible',
           );
         await audit(
@@ -614,9 +610,7 @@ export function createFailureNotificationDestinationDatabase(
           [input.workspaceId, workflowId],
         );
         if (workflow.rowCount !== 1)
-          throw new FailureNotificationDestinationNotFoundError(
-            'Workflow is not visible',
-          );
+          throw destinationError('not_found', 'Workflow is not visible');
         const result = await client.query(
           `delete from app.workflow_failure_notification_policies where workspace_id=$1 and workflow_id=$2`,
           [input.workspaceId, workflowId],

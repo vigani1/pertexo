@@ -194,7 +194,10 @@ describe('node testing controller', () => {
         },
         { status: vi.fn() },
       ),
-    ).rejects.toMatchObject({ name: 'NodeTestIdempotencyRequiredError' });
+    ).rejects.toMatchObject({
+      code: 'idempotency_required',
+      name: 'NodeTestRequestError',
+    });
     expect(fixture.persistence.acceptPreview).not.toHaveBeenCalled();
   });
 

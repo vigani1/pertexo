@@ -3,15 +3,13 @@ import { describe, expect, it } from 'vitest';
 import {
   parseIdempotencyKey,
   parseStrongIfMatch,
-  PreconditionRequiredError,
+  WorkflowHeaderError,
 } from '../../src/workflow-authoring/preconditions.js';
 
 describe('workflow authoring HTTP preconditions', () => {
   it('requires exactly one If-Match value', () => {
-    expect(() => parseStrongIfMatch(undefined)).toThrow(
-      PreconditionRequiredError,
-    );
-    expect(() => parseStrongIfMatch([])).toThrow(PreconditionRequiredError);
+    expect(() => parseStrongIfMatch(undefined)).toThrow(WorkflowHeaderError);
+    expect(() => parseStrongIfMatch([])).toThrow(WorkflowHeaderError);
     expect(() =>
       parseStrongIfMatch(['"draft-v1.abc"', '"draft-v1.def"']),
     ).toThrow();

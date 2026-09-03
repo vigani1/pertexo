@@ -1,8 +1,6 @@
 import {
-  FailureNotificationDestinationConflictError,
+  FailureNotificationDestinationError,
   type FailureNotificationDestinationDatabase,
-  FailureNotificationDestinationIdempotencyConflictError,
-  FailureNotificationDestinationNotFoundError,
 } from '@pertexo/database/testing';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -163,7 +161,7 @@ describe('failure notification destination API seams', () => {
     );
 
     vi.mocked(database.appendVersion).mockRejectedValueOnce(
-      new FailureNotificationDestinationConflictError(),
+      new FailureNotificationDestinationError('conflict'),
     );
     await expect(
       controller.append(
@@ -171,10 +169,13 @@ describe('failure notification destination API seams', () => {
         { workspaceId, destinationId },
         body,
       ),
-    ).rejects.toBeInstanceOf(FailureNotificationDestinationConflictError);
+    ).rejects.toMatchObject({
+      code: 'conflict',
+      name: 'FailureNotificationDestinationError',
+    });
 
     vi.mocked(database.appendVersion).mockRejectedValueOnce(
-      new FailureNotificationDestinationIdempotencyConflictError(),
+      new FailureNotificationDestinationError('idempotency_conflict'),
     );
     await expect(
       controller.append(
@@ -182,9 +183,10 @@ describe('failure notification destination API seams', () => {
         { workspaceId, destinationId },
         body,
       ),
-    ).rejects.toBeInstanceOf(
-      FailureNotificationDestinationIdempotencyConflictError,
-    );
+    ).rejects.toMatchObject({
+      code: 'idempotency_conflict',
+      name: 'FailureNotificationDestinationError',
+    });
   });
 
   it('sets and clears workflow policy with exact idempotent replay metadata', async () => {
@@ -233,14 +235,17 @@ describe('failure notification destination API seams', () => {
       new FailureNotificationDestinationUseCases(database),
     );
     vi.mocked(database.get).mockRejectedValueOnce(
-      new FailureNotificationDestinationNotFoundError(),
+      new FailureNotificationDestinationError('not_found'),
     );
     await expect(
       controller.get(request(), { workspaceId, destinationId }),
-    ).rejects.toBeInstanceOf(FailureNotificationDestinationNotFoundError);
+    ).rejects.toMatchObject({
+      code: 'not_found',
+      name: 'FailureNotificationDestinationError',
+    });
 
     vi.mocked(database.appendVersion).mockRejectedValueOnce(
-      new FailureNotificationDestinationNotFoundError(),
+      new FailureNotificationDestinationError('not_found'),
     );
     await expect(
       controller.append(
@@ -251,6 +256,9 @@ describe('failure notification destination API seams', () => {
           config: { ...record.config, channelId: 'C67890' },
         },
       ),
-    ).rejects.toBeInstanceOf(FailureNotificationDestinationNotFoundError);
+    ).rejects.toMatchObject({
+      code: 'not_found',
+      name: 'FailureNotificationDestinationError',
+    });
   });
 });

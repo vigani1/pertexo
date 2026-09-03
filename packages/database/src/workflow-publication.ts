@@ -16,7 +16,7 @@ import type { CompatibilityReleaseExpectation } from './compatibility-release.js
 import { canonicalOutboxPayloadChecksum } from './outbox.js';
 import {
   WorkflowNotFoundError,
-  WorkflowPublishIdempotencyConflictError,
+  WorkflowIdempotencyConflictError,
   WorkflowRevisionConflictError,
 } from './workflow-authoring-errors.js';
 import type {
@@ -135,7 +135,7 @@ async function claimPublication(
   if (claimed === undefined)
     throw new Error('Publish idempotency claim is unavailable');
   if (claimed.request_hash !== requestHash)
-    throw new WorkflowPublishIdempotencyConflictError(
+    throw new WorkflowIdempotencyConflictError(
       'Idempotency key request mismatch',
     );
   return Object.freeze({

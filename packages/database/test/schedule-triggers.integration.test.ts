@@ -15,8 +15,6 @@ import { checkDatabaseReadiness } from '../src/readiness.js';
 import {
   createScheduleTriggerDatabase,
   createScheduleTriggerScanner,
-  ScheduleTriggerIdempotencyConflictError,
-  ScheduleTriggerNotFoundError,
 } from '../src/schedule-triggers.js';
 import { createWorkflowTriggerReconciliationDatabase } from '../src/workflow-triggers.js';
 import { PHASE3_COMPATIBILITY_EXPECTATION } from './phase3-compatibility-fixture.js';
@@ -986,14 +984,20 @@ describe('schedule trigger PostgreSQL slice', () => {
         enabled: true,
         requestHash: createHash('sha256').update('enable-main').digest('hex'),
       }),
-    ).rejects.toBeInstanceOf(ScheduleTriggerIdempotencyConflictError);
+    ).rejects.toMatchObject({
+      code: 'idempotency_conflict',
+      name: 'ScheduleTriggerError',
+    });
     await expect(
       schedules.list({
         workspaceId: randomUUID(),
         actorId,
         workflowId,
       }),
-    ).rejects.toBeInstanceOf(ScheduleTriggerNotFoundError);
+    ).rejects.toMatchObject({
+      code: 'not_found',
+      name: 'ScheduleTriggerError',
+    });
 
     const enabled = await schedules.setEnabled({
       ...command,

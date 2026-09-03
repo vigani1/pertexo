@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  WorkflowCreateIdempotencyConflictError,
+  WorkflowIdempotencyConflictError,
   actorId,
   apiPool,
   authoring,
@@ -43,7 +43,7 @@ describe('workflow draft persistence', () => {
     });
     await expect(
       authoring.createWorkflow({ ...createInput, name: 'Changed request' }),
-    ).rejects.toBeInstanceOf(WorkflowCreateIdempotencyConflictError);
+    ).rejects.toBeInstanceOf(WorkflowIdempotencyConflictError);
     await expect(
       authoring.listWorkflows({ workspaceId, actorId }),
     ).resolves.toMatchObject({ items: [{ id: workflowId }] });

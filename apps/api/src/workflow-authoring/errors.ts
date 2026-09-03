@@ -1,8 +1,7 @@
 import {
-  WorkflowCreateIdempotencyConflictError,
+  WorkflowIdempotencyConflictError,
   WorkflowDefinitionPlacementError,
   WorkflowNotFoundError,
-  WorkflowPublishIdempotencyConflictError,
   WorkflowRevisionConflictError,
 } from '@pertexo/database/api';
 import { z } from 'zod';
@@ -13,10 +12,7 @@ import {
   type ApplicationError,
 } from '../platform/http/index.js';
 import { AuthorizationError } from '../workspaces/index.js';
-import {
-  InvalidWorkflowHeaderError,
-  PreconditionRequiredError,
-} from './preconditions.js';
+import { WorkflowHeaderError } from './preconditions.js';
 import { InvalidWorkflowCursorError } from './use-cases.js';
 import {
   InvalidWorkflowGraphError,
@@ -32,11 +28,14 @@ export class WorkflowVersionListingUnavailableError extends Error {
 
 export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
   if (isApplicationError(error)) return error;
-  if (error instanceof PreconditionRequiredError)
+  if (
+    error instanceof WorkflowHeaderError &&
+    error.code === 'precondition_required'
+  )
     return applicationError('request.precondition_required', {
       safeDetail: 'If-Match is required for this operation.',
     });
-  if (error instanceof InvalidWorkflowHeaderError)
+  if (error instanceof WorkflowHeaderError)
     return applicationError('request.invalid', {
       safeDetail: error.message,
     });
@@ -50,10 +49,7 @@ export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
     });
   if (error instanceof WorkflowNotFoundError)
     return applicationError('resource.not_found');
-  if (
-    error instanceof WorkflowCreateIdempotencyConflictError ||
-    error instanceof WorkflowPublishIdempotencyConflictError
-  )
+  if (error instanceof WorkflowIdempotencyConflictError)
     return applicationError('request.idempotency_conflict', {
       safeDetail: 'The idempotency key was already used for another request.',
     });

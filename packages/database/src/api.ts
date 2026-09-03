@@ -26,9 +26,7 @@ export {
   WorkspaceRunQuotaExceededError,
 } from './execution-acceptance.js';
 export {
-  FailureNotificationDestinationConflictError,
-  FailureNotificationDestinationIdempotencyConflictError,
-  FailureNotificationDestinationNotFoundError,
+  FailureNotificationDestinationError,
   createFailureNotificationDestinationDatabase,
 } from './failure-notification-destinations.js';
 export type { FailureNotificationDestinationDatabase } from './failure-notification-destinations.js';
@@ -53,8 +51,7 @@ export {
 } from './preview-execution.js';
 export type { PublishedWorkflowV2Projection } from './published-workflow-reader.js';
 export {
-  ScheduleTriggerIdempotencyConflictError,
-  ScheduleTriggerNotFoundError,
+  ScheduleTriggerError,
   createScheduleTriggerDatabase,
 } from './schedule-triggers.js';
 export type {
@@ -75,10 +72,9 @@ export type {
   WebhookVerificationReference,
 } from './webhook-triggers.js';
 export {
-  WorkflowCreateIdempotencyConflictError,
+  WorkflowIdempotencyConflictError,
   WorkflowDefinitionPlacementError,
   WorkflowNotFoundError,
-  WorkflowPublishIdempotencyConflictError,
   WorkflowRevisionConflictError,
   createWorkflowAuthoringDatabase,
 } from './workflow-authoring.js';

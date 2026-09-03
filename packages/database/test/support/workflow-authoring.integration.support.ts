@@ -21,9 +21,8 @@ import { PHASE3_COMPATIBILITY_EXPECTATION } from '../phase3-compatibility-fixtur
 import { checkDatabaseReadiness } from '../../src/readiness.js';
 import {
   createWorkflowAuthoringDatabase,
-  WorkflowCreateIdempotencyConflictError,
+  WorkflowIdempotencyConflictError,
   WorkflowNotFoundError,
-  WorkflowPublishIdempotencyConflictError,
   WorkflowRevisionConflictError,
   type WorkflowAuthoringDatabase,
 } from '../../src/workflow-authoring.js';
@@ -302,9 +301,8 @@ export {
   EMPTY_DEFINITION_CATALOG_V1,
   PHASE3_COMPATIBILITY_EXPECTATION,
   Pool,
-  WorkflowCreateIdempotencyConflictError,
+  WorkflowIdempotencyConflictError,
   WorkflowNotFoundError,
-  WorkflowPublishIdempotencyConflictError,
   WorkflowRevisionConflictError,
   checkDatabaseReadiness,
   createConnectionDatabase,
