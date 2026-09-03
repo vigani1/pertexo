@@ -1,12 +1,5 @@
-import type {
-  ConnectionRecord,
-  WorkspaceDatabase,
-} from '@pertexo/database/testing';
+import type { ConnectionRecord } from '@pertexo/database/testing';
 import { connectionResponseSchema } from '@pertexo/contracts/connections';
-import type {
-  StructuredLogger,
-  TelemetryLifecycle,
-} from '@pertexo/observability';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createApiApplication } from '../../src/app.js';
@@ -14,7 +7,10 @@ import type { ConnectionDependencies } from '../../src/connections/index.js';
 import type { IdentityWorkspaceDependencies } from '../../src/identity-workspace/index.js';
 import type { ApiConnectionRuntime } from '../../src/platform/connections/connection-runtime.module.js';
 import type { ApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
-import type { ApiWorkflowRuntime } from '../../src/platform/workflow/workflow-runtime.module.js';
+import {
+  createApiPlatformFixture,
+  createStubApiWorkflowRuntime,
+} from '../support/api-platform.fixture.js';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -22,66 +18,8 @@ const rawSession = 's'.repeat(43);
 const csrf = 'c'.repeat(32);
 const credentialValue = 'Bearer http-stack-secret';
 
-const database: WorkspaceDatabase = {
-  withWorkspace: async <T>(
-    _workspaceId: string,
-    operation: (transaction: never) => Promise<T>,
-  ): Promise<T> => operation(undefined as never),
-  checkCompatibility: () =>
-    Promise.resolve({
-      migrationHead: '0021_workflow_integration_usage.sql',
-      postgresMajor: 18,
-      role: 'pertexo_api',
-    }),
-  checkReadiness: () =>
-    Promise.resolve({
-      migrationHead: '0021_workflow_integration_usage.sql',
-      postgresMajor: 18,
-      role: 'pertexo_api',
-    }),
-  close: () => Promise.resolve(),
-};
-
-const config = {
-  database: {
-    connectionString: 'postgresql://pertexo_api:secret@localhost:5432/pertexo',
-    connectionTimeoutMillis: 5_000,
-    idleTimeoutMillis: 30_000,
-    max: 5,
-    ownerRole: 'pertexo_owner',
-    workerRuntimeRole: 'pertexo_worker',
-  },
-  host: '127.0.0.1',
-  nodeCompatibilityCohort: 'core' as const,
-  nodeEnv: 'test' as const,
-  observability: {
-    environment: 'test' as const,
-    logLevel: 'silent' as const,
-    otlpHeaders: {},
-    serviceName: 'pertexo-api',
-    serviceVersion: 'test',
-  },
-  port: 3000,
-  redisUrl: 'redis://localhost:6379/0',
-};
-
-const logger: StructuredLogger = {
-  debug: vi.fn(),
-  error: vi.fn(),
-  fatal: vi.fn(),
-  info: vi.fn(),
-  trace: vi.fn(),
-  warn: vi.fn(),
-};
-const telemetry: TelemetryLifecycle = {
-  enabled: false,
-  started: false,
-  start: vi.fn(),
-  shutdown: vi.fn().mockResolvedValue(undefined),
-};
-const rateLimitConsumer = {
-  consume: () => Promise.resolve({ allowed: true as const }),
-};
+const { config, database, logger, rateLimitConsumer, telemetry } =
+  createApiPlatformFixture('0021_workflow_integration_usage.sql');
 
 function identityRuntime(): ApiIdentityRuntime {
   const dependencies: IdentityWorkspaceDependencies = {
@@ -137,42 +75,6 @@ function identityRuntime(): ApiIdentityRuntime {
     },
   };
   return Object.freeze({ dependencies, close: () => Promise.resolve() });
-}
-
-function workflowRuntime(
-  authorization: IdentityWorkspaceDependencies['authorization'],
-): ApiWorkflowRuntime {
-  return Object.freeze({
-    dependencies: {
-      authorization,
-      persistence: {
-        createWorkflow: () => Promise.reject(new Error('not used')),
-        listWorkflows: () => Promise.resolve({ items: [] }),
-        getDraft: () => Promise.resolve(null),
-        getVersion: () => Promise.resolve(null),
-        listVersions: () => Promise.resolve({ items: [] }),
-        saveDraft: () => Promise.reject(new Error('not used')),
-        publishWorkflow: () => Promise.reject(new Error('not used')),
-      },
-    },
-    runDependencies: {
-      authorization,
-      persistence: {
-        start: () => Promise.reject(new Error('not used')),
-        get: () => Promise.resolve(undefined),
-        cancel: () => Promise.reject(new Error('not used')),
-      },
-      streamer: {
-        stream: () => ({
-          async *[Symbol.asyncIterator]() {
-            await Promise.resolve();
-            yield { id: 1, event: 'run.queued', data: '{}' };
-          },
-        }),
-      },
-    },
-    close: () => Promise.resolve(),
-  });
 }
 
 function connectionRuntime(
@@ -334,7 +236,9 @@ describe('connections real Nest HTTP stack', () => {
     application = await createApiApplication(config, {
       database,
       identityRuntime: identity,
-      workflowRuntime: workflowRuntime(identity.dependencies.authorization),
+      workflowRuntime: createStubApiWorkflowRuntime(
+        identity.dependencies.authorization,
+      ),
       connectionRuntime: connection.runtime,
       logger,
       rateLimitConsumer,
