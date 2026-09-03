@@ -13,4 +13,7 @@ export {
   type RateLimitFailureMode,
   type RateLimitSubject,
 } from './policy.js';
-export { RedisRateLimitRuntime } from './redis-runtime.js';
+export {
+  RedisRateLimitRuntime,
+  type RedisRateLimitRuntimeOptions,
+} from './redis-runtime.js';
