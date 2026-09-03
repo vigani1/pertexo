@@ -65,6 +65,18 @@ export type AuthorizeWorkspaceInput = Readonly<{
   allowedWorkspaceStatuses?: readonly WorkspaceStatus[];
 }>;
 
+export type AssertAuthorizedWorkspaceContextInput = Readonly<{
+  context: AuthorizedWorkspaceContext;
+  actor: ActorContext;
+  routeWorkspaceId: string;
+  capability: AuthorizationCapability;
+}>;
+
+export type AuthorizeWorkspaceOperationInput = AuthorizeWorkspaceInput &
+  Readonly<{ authorizedWorkspace?: AuthorizedWorkspaceContext }>;
+
+const issuedAuthorizationContexts = new WeakSet<object>();
+
 function denied(
   disclosure: DisclosurePolicy,
   message: string,
@@ -164,12 +176,56 @@ export async function authorizeWorkspace(
     throw denied(disclosure, 'actor lacks the requested workspace capability');
   }
 
-  return Object.freeze({
+  const context: AuthorizedWorkspaceContext = Object.freeze({
     actor,
     workspaceId: input.routeWorkspaceId,
     role: record.role,
     capability: input.capability,
   });
+  issuedAuthorizationContexts.add(context);
+  return context;
+}
+
+export function assertAuthorizedWorkspaceContext(
+  input: AssertAuthorizedWorkspaceContextInput,
+): AuthorizedWorkspaceContext {
+  if (!issuedAuthorizationContexts.has(input.context)) {
+    throw invalid(
+      'authorization context was not established by the guard seam',
+    );
+  }
+  const authorizedActor = input.context.actor;
+  if (
+    input.context.workspaceId !== input.routeWorkspaceId ||
+    input.context.capability !== input.capability ||
+    authorizedActor.actorId !== input.actor.actorId ||
+    authorizedActor.workspaceId !== input.actor.workspaceId ||
+    authorizedActor.sessionId !== input.actor.sessionId ||
+    authorizedActor.requestId !== input.actor.requestId ||
+    authorizedActor.traceId !== input.actor.traceId
+  ) {
+    throw denied(
+      'forbidden',
+      'authorization context does not match the operation',
+    );
+  }
+  return input.context;
+}
+
+export function authorizeWorkspaceOperation(
+  input: AuthorizeWorkspaceOperationInput,
+): Promise<AuthorizedWorkspaceContext> {
+  if (input.authorizedWorkspace === undefined || input.actor === undefined) {
+    return authorizeWorkspace(input);
+  }
+  return Promise.resolve(
+    assertAuthorizedWorkspaceContext({
+      context: input.authorizedWorkspace,
+      actor: input.actor,
+      routeWorkspaceId: input.routeWorkspaceId,
+      capability: input.capability,
+    }),
+  );
 }
 
 export const authorizeWorkspaceAccess = authorizeWorkspace;
