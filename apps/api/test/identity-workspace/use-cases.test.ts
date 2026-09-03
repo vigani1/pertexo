@@ -200,8 +200,7 @@ describe('identity/workspace application use cases', () => {
     const result = await app.execute({
       actorId,
       idempotencyKey,
-      name: ' Operations ',
-      slug: 'operations',
+      request: { name: ' Operations ', slug: 'operations' },
       requestId,
       traceId: 'trace-42',
     });

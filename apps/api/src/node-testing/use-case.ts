@@ -2,7 +2,6 @@ import { createHash } from 'node:crypto';
 
 import {
   nodeTestExecuteAcceptedResponseSchema,
-  nodeTestRequestSchema,
   nodeValidationResponseSchema,
   previewRunResponseSchema,
   type NodeTestRequest,
@@ -76,7 +75,7 @@ export class TestWorkflowNodeUseCase {
   public async execute(
     input: NodeTestUseCaseInput,
   ): Promise<NodeValidationResponse | NodeTestExecuteAcceptedResponse> {
-    const request = nodeTestRequestSchema.parse(input.request);
+    const request = input.request;
     await this.authorize(input, 'workflow:update');
     const draft = await this.currentDraft(input);
     if (draft.revision !== request.expectedRevision)

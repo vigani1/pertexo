@@ -103,8 +103,7 @@ export class OidcApplicationService {
 export type CreateWorkspaceInput = Readonly<{
   actorId: string;
   idempotencyKey: string;
-  name: string;
-  slug: string;
+  request: unknown;
   requestId?: string;
   traceId?: string;
   metadata?: Record<string, unknown>;
@@ -122,10 +121,7 @@ export class CreateWorkspaceUseCase {
     return this.telemetry.measure(
       IDENTITY_WORKSPACE_OPERATION.workspaceCreate,
       async () => {
-        const request = workspaceCreateRequestSchema.parse({
-          name: input.name,
-          slug: input.slug,
-        });
+        const request = workspaceCreateRequestSchema.parse(input.request);
         const workspace = await this.persistence.createWorkspaceWithOwner({
           ownerUserId: input.actorId,
           idempotencyKey: input.idempotencyKey,

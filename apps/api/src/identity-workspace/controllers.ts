@@ -41,9 +41,7 @@ import {
 } from './use-cases.js';
 import {
   idempotencyKeySchema,
-  oidcCallbackRequestSchema,
   oidcStartResponseSchema,
-  workspaceCreateRequestSchema,
   workspaceDeletionRequestSchema,
   workspaceIdParamSchema,
   workspaceLifecycleOperationParamsSchema,
@@ -112,14 +110,13 @@ export class OidcController {
   ): Promise<void> {
     const clearedBinding = clearOidcBindingCookie(this.cookiePolicy);
     try {
-      const callback = oidcCallbackRequestSchema.parse(query);
       const cookies = new ResponseCookieBoundary(
         response,
         this.csrf.issueToken(),
         clearedBinding,
       );
       await this.application.complete(
-        callback,
+        query,
         readCookie(request, OIDC_BROWSER_BINDING_COOKIE_NAME),
         cookies,
       );
@@ -184,13 +181,11 @@ export class WorkspaceController {
     @Req() request: IdentityWorkspaceRequest,
     @Body() body: unknown,
   ) {
-    const input = workspaceCreateRequestSchema.parse(body);
     const session = authenticatedSession(request);
     return this.createWorkspace.execute({
       actorId: session.userId,
       idempotencyKey: requestIdempotencyKey(request),
-      name: input.name,
-      slug: input.slug,
+      request: body,
       requestId: requestIdentifier(request),
       ...traceFields(traceIdentifier(request)),
     });

@@ -21,11 +21,7 @@ import type {
   OidcConfiguration,
   VerifiedOidcProfile,
 } from './types.js';
-import {
-  internalIdentitySchema,
-  oidcCallbackInputSchema,
-  oidcConfigurationSchema,
-} from './types.js';
+import { internalIdentitySchema, oidcConfigurationSchema } from './types.js';
 import type { IdentityCrypto } from './crypto.js';
 
 const tokenResponseSchema = z.object({
@@ -155,12 +151,7 @@ export class OidcLoginService {
     input: OidcCallbackInput,
     browserBinding: string | undefined,
   ): Promise<OidcLoginResult> {
-    let callback: OidcCallbackInput;
-    try {
-      callback = oidcCallbackInputSchema.parse(input);
-    } catch {
-      throw new IdentityError('identity.invalid_input');
-    }
+    const callback = input;
     if (browserBinding === undefined || browserBinding.length > 512) {
       throw new IdentityError('identity.callback_rejected');
     }

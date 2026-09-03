@@ -44,7 +44,6 @@ import {
   ValidateWorkflowDraftUseCase,
 } from './use-cases.js';
 import {
-  workflowCreateRequestSchema,
   workflowDraftSaveRequestSchema,
   workflowIdParamSchema,
   workflowListQuerySchema,
@@ -104,12 +103,11 @@ export class WorkflowAuthoringController {
     @Res({ passthrough: true }) response: WorkflowResponse,
   ) {
     const { workspaceId } = workspaceParams(params);
-    const input = workflowCreateRequestSchema.parse(body);
     const result = await this.createWorkflow.execute({
       actor: actorFrom(request, workspaceId),
       routeWorkspaceId: workspaceId,
       ...guardAuthorization(request),
-      name: input.name,
+      request: body,
       idempotencyKey: parseIdempotencyKey(
         requestHeaderValue(request.headers, 'idempotency-key'),
       ),

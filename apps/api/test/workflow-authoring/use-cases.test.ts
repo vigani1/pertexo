@@ -416,7 +416,7 @@ describe('workflow authoring application seams', () => {
     ).execute({
       actor,
       routeWorkspaceId: workspaceId,
-      name: ' Operations ',
+      request: { name: ' Operations ' },
       idempotencyKey: 'create-42',
     });
     expect(result.body).toMatchObject({

@@ -114,24 +114,25 @@ describe('connections controller public seam', () => {
     expect(rotate.execute).not.toHaveBeenCalled();
   });
 
-  it('rejects transport-controlled credential headers before delegation', async () => {
+  it('forwards unknown connection input to the independently safe use case', async () => {
     const { instance, create } = controller();
-    await expect(
-      instance.create(
-        request({ 'idempotency-key': 'create-42' }),
-        { workspaceId },
-        {
-          providerKey: 'http',
-          name: 'Operations API',
-          credential: {
-            schemaVersion: 1,
-            type: 'http_headers',
-            headers: { Host: 'metadata.internal' },
-          },
-        },
-      ),
-    ).rejects.toMatchObject({ name: 'ZodError' });
-    expect(create.execute).not.toHaveBeenCalled();
+    const body = {
+      providerKey: 'http',
+      name: 'Operations API',
+      credential: {
+        schemaVersion: 1,
+        type: 'http_headers',
+        headers: { Host: 'metadata.internal' },
+      },
+    };
+    await instance.create(
+      request({ 'idempotency-key': 'create-42' }),
+      { workspaceId },
+      body,
+    );
+    expect(create.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ request: body }),
+    );
   });
 
   it('parses and forwards revoke without accepting a credential body', async () => {
@@ -157,12 +158,15 @@ describe('connections controller public seam', () => {
         request: { url: 'https://provider.example.test/health' },
       }),
     );
-    await expect(
-      instance.test(
-        request({ 'idempotency-key': 'test-43' }),
-        { workspaceId, connectionId },
-        { url: 'http://provider.example.test/health' },
-      ),
-    ).rejects.toMatchObject({ name: 'ZodError' });
+    await instance.test(
+      request({ 'idempotency-key': 'test-43' }),
+      { workspaceId, connectionId },
+      { url: 'http://provider.example.test/health' },
+    );
+    expect(test.execute).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        request: { url: 'http://provider.example.test/health' },
+      }),
+    );
   });
 });
