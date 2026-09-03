@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  FailureNotificationDestinationIdempotencyConflictError,
-  FailureNotificationDestinationNotFoundError,
   Pool,
   api,
   apiBaseUrl,
@@ -86,9 +84,10 @@ describe('connection persistence', () => {
     expect(replayed).toEqual(created);
     await expect(
       destinations.create({ ...create, requestHash: '2'.repeat(64) }),
-    ).rejects.toBeInstanceOf(
-      FailureNotificationDestinationIdempotencyConflictError,
-    );
+    ).rejects.toMatchObject({
+      code: 'idempotency_conflict',
+      name: 'FailureNotificationDestinationError',
+    });
 
     const append = {
       ...create,
@@ -163,7 +162,10 @@ describe('connection persistence', () => {
         ...clearPolicy,
         idempotencyKey: `${clearPolicy.idempotencyKey}-new`,
       }),
-    ).rejects.toBeInstanceOf(FailureNotificationDestinationNotFoundError);
+    ).rejects.toMatchObject({
+      code: 'not_found',
+      name: 'FailureNotificationDestinationError',
+    });
 
     const audit = new Pool({ connectionString: databaseUrl(migrationBaseUrl) });
     const auditClient = await audit.connect();

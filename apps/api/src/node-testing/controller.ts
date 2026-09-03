@@ -30,7 +30,7 @@ import {
 } from '../platform/http/request-headers.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { createActorContext } from '../workspaces/index.js';
-import { NodeTestIdempotencyRequiredError } from './errors.js';
+import { NodeTestRequestError } from './errors.js';
 import { NodeTestingUpdateGuard } from './guards.js';
 import { GetPreviewRunUseCase, TestWorkflowNodeUseCase } from './use-case.js';
 
@@ -124,7 +124,8 @@ function actorFrom(request: IdentityWorkspaceRequest, workspaceId: string) {
 
 function requiredIdempotencyKey(request: IdentityWorkspaceRequest): string {
   const value = requestHeaderValue(request.headers, 'idempotency-key');
-  if (value === undefined) throw new NodeTestIdempotencyRequiredError();
+  if (value === undefined)
+    throw new NodeTestRequestError('idempotency_required');
   return parseIdempotencyKey(value);
 }
 

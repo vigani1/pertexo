@@ -873,8 +873,45 @@ making the architecture plan even larger.
 ### C-19 — Error classes are more granular than their policies require
 
 - **Severity:** low to medium.
-- **Locations:** database, queue, workflow, connection, trigger, artifact, and
-  API feature error catalogs.
+- **Remediation status:** complete on 2026-09-03.
+- **Repository-wide affected locations:** every directly exported `Error`
+  subclass under `apps/**/src` and `packages/**/src` was inventoried, together
+  with its constructors, `instanceof` consumers, package exports, and test
+  fixtures. The genuinely redundant tag families were workflow request-header
+  validation, node-test idempotency validation, scheduled-trigger lookup and
+  idempotency, failure-notification destination persistence, and workflow
+  authoring idempotency. Their occurrences spanned the API mappers and tests,
+  database facades and testing exports, persistence implementations, worker
+  consumers, and database integration support.
+- **Remediation:** the five redundant families now use feature-owned coded
+  errors: `WorkflowHeaderError`, `NodeTestRequestError`,
+  `ScheduleTriggerError`, `FailureNotificationDestinationError`, and the
+  shared `WorkflowIdempotencyConflictError`. This reduced the original 123
+  direct exported subclasses to 117 without introducing a global error
+  package. Each code is narrowed to the owning feature's expected outcomes,
+  and boundary mappers continue to produce the same application-error codes.
+  Package exports and tests now assert feature code plus stable family name
+  instead of depending on redundant leaf-class identity.
+- **Intentionally retained occurrences:** connection persistence keeps
+  distinct classes because availability, idempotency, optimistic-secret
+  fencing, and in-progress ownership have different retry and worker/API
+  policies across package boundaries. Queue and Redis classes identify
+  configuration, readiness, command timeout, delivery rejection, draining,
+  and lossy-hint publication catch boundaries. Artifact/control-ledger,
+  coordinator, node-attempt, preview, inbox, webhook-delivery, recovery, and
+  workflow-engine classes carry integrity evidence, persisted-state meaning,
+  lease/reconciliation semantics, validation issues, or materially different
+  retry policy. API platform and feature classes either carry response details
+  or are the single boundary-owned identity for one policy. Those are the
+  dedicated classes explicitly permitted by this finding's cleaner shape;
+  merging them would erase causality or create a broad cross-feature enum.
+- **Verification:** repository-wide searches found none of the superseded
+  class names; database and API typechecks passed; all 396 API tests passed,
+  including mapper and public controller regressions for every consolidated
+  family. The final risky-group `pnpm check` result is recorded in section
+  19.3.
+- **Original locations:** database, queue, workflow, connection, trigger,
+  artifact, worker, integration, and API feature error catalogs.
 - **Issue:** 123 directly exported `Error` subclasses were found; many primarily
   act as `instanceof` tags.
 - **Why it matters:** new expected outcomes can require another class, export,
@@ -1240,6 +1277,12 @@ individual findings rather than represented as passing.
 
 ### 19.3 Valuable but risky
 
+**Group verification (2026-09-03):** C-01, C-08, C-09, C-17, C-19, and C-20
+were implemented as separately reviewable changes with characterization at
+their public seams. The final `pnpm check` passed formatting, documentation,
+runtime-major policy, all builds, lint, the unchanged complexity ratchet,
+generated contracts, all typechecks, and 1,567 package/application unit tests.
+
 - Redesign queue/outbox timeout and unknown-outcome behavior.
 - Add a bounded Redis rate-limit degradation policy.
 - Reduce error-class proliferation.
@@ -1267,18 +1310,10 @@ unusually explicit about TypeScript quality, seam parsing, error mapping,
 transaction ownership, module organization, testing, and avoiding speculative
 abstractions. The implementation follows most of that direction.
 
-The remaining craft debt comes from three sources:
-
-1. a few direct deviations from plan rules, especially parse-once, exception
-   mapping, authorization ownership, graceful shutdown, transaction reuse, and
-   dependency declaration;
-2. source-layout convergence that the plan explicitly anticipated but the
-   implementation has not completed; and
-3. implementation details the plan did not prescribe, such as timer helpers,
-   row-schema conventions, freeze policy, cleanup aggregation, and graph
-   indexing.
-
-The correct next step is not to redesign the system. It is a sequence of
-characterized, behavior-preserving refactors around the current deep module
-interfaces, followed by the few behavioral corrections whose semantics are
-already required by the plan.
+All twenty implementation-quality findings have now been remediated after
+repository-wide pattern searches. Remaining similar-looking code is recorded
+under the individual finding where its ordering, ownership, persisted-state,
+retry, integrity, or public-boundary semantics require it to remain. This does
+not claim that future craft debt is impossible; it records that the concrete
+C-01 through C-20 scope is complete without changing the section 19.4
+state-machine and security-flow exclusions merely to reduce metrics.

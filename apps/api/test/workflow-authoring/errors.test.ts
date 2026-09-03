@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  WorkflowCreateIdempotencyConflictError,
+  WorkflowIdempotencyConflictError,
   WorkflowDefinitionPlacementError,
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
@@ -37,7 +37,7 @@ describe('workflow authoring error mapping', () => {
 
   it('maps idempotency conflicts and reports the versions persistence seam gap', () => {
     expect(
-      mapWorkflowAuthoringError(new WorkflowCreateIdempotencyConflictError()),
+      mapWorkflowAuthoringError(new WorkflowIdempotencyConflictError()),
     ).toMatchObject({ code: 'request.idempotency_conflict' });
     expect(
       mapWorkflowAuthoringError(new WorkflowVersionListingUnavailableError()),

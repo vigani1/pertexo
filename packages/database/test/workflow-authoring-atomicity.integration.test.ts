@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  WorkflowPublishIdempotencyConflictError,
+  WorkflowIdempotencyConflictError,
   actorId,
   apiPool,
   apiUrl,
@@ -232,7 +232,7 @@ describe('workflow publication atomicity', () => {
     ]);
     await expect(
       authoring.publishWorkflow({ ...input, requestHash: 'c'.repeat(64) }),
-    ).rejects.toBeInstanceOf(WorkflowPublishIdempotencyConflictError);
+    ).rejects.toBeInstanceOf(WorkflowIdempotencyConflictError);
 
     const owner = await ownerPool.connect();
     try {

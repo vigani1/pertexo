@@ -12,10 +12,6 @@ export class WorkflowRevisionConflictError extends Error {
   }
 }
 
-export class WorkflowPublishIdempotencyConflictError extends Error {
-  public override readonly name = 'WorkflowPublishIdempotencyConflictError';
-}
-
-export class WorkflowCreateIdempotencyConflictError extends Error {
-  public override readonly name = 'WorkflowCreateIdempotencyConflictError';
+export class WorkflowIdempotencyConflictError extends Error {
+  public override readonly name = 'WorkflowIdempotencyConflictError';
 }

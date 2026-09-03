@@ -18,10 +18,16 @@ import {
 } from '../platform/http/index.js';
 import type { NodeValidationIssue } from './validation.js';
 
-export class NodeTestIdempotencyRequiredError extends Error {
-  public override readonly name = 'NodeTestIdempotencyRequiredError';
-  public constructor() {
-    super('Idempotency-Key is required for test_execute');
+export class NodeTestRequestError extends Error {
+  public override readonly name = 'NodeTestRequestError';
+  public constructor(
+    public readonly code: 'idempotency_conflict' | 'idempotency_required',
+  ) {
+    super(
+      code === 'idempotency_required'
+        ? 'Idempotency-Key is required for test_execute'
+        : 'request.idempotency_conflict',
+    );
   }
 }
 
@@ -32,16 +38,12 @@ export class NodeTestInvalidError extends Error {
   }
 }
 
-export class NodeTestIdempotencyConflictError extends Error {
-  public override readonly name = 'NodeTestIdempotencyConflictError';
-  public constructor() {
-    super('request.idempotency_conflict');
-  }
-}
-
 export function mapNodeTestingError(error: unknown): ApplicationError {
   if (isApplicationError(error)) return error;
-  if (error instanceof NodeTestIdempotencyRequiredError)
+  if (
+    error instanceof NodeTestRequestError &&
+    error.code === 'idempotency_required'
+  )
     return applicationError('request.precondition_required', {
       safeDetail: 'Idempotency-Key is required for test_execute.',
     });
@@ -51,7 +53,7 @@ export function mapNodeTestingError(error: unknown): ApplicationError {
     return applicationError(error.code, { safeDetail: error.message });
   if (error instanceof WorkflowNotFoundError)
     return applicationError('resource.not_found');
-  if (error instanceof NodeTestIdempotencyConflictError)
+  if (error instanceof NodeTestRequestError)
     return applicationError('request.idempotency_conflict', {
       safeDetail: 'The idempotency key was already used for another request.',
     });

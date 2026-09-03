@@ -34,11 +34,7 @@ import type {
   WorkspaceAuthorizationPort,
 } from '../workspaces/index.js';
 import type { WorkspaceAuthorizationSource } from '../identity-workspace/ports.js';
-import {
-  NodeTestIdempotencyConflictError,
-  NodeTestIdempotencyRequiredError,
-  NodeTestInvalidError,
-} from './errors.js';
+import { NodeTestRequestError, NodeTestInvalidError } from './errors.js';
 import type { NodeTestingPersistence } from './ports.js';
 import { prepareNodeValidation } from './validation.js';
 
@@ -118,7 +114,7 @@ export class TestWorkflowNodeUseCase {
       });
 
     if (input.idempotencyKey === undefined)
-      throw new NodeTestIdempotencyRequiredError();
+      throw new NodeTestRequestError('idempotency_required');
     if (prepared.issues.length > 0)
       throw new NodeTestInvalidError(prepared.issues);
 
@@ -211,7 +207,7 @@ export class TestWorkflowNodeUseCase {
       });
     } catch (error: unknown) {
       if (error instanceof PreviewIdempotencyConflictError)
-        throw new NodeTestIdempotencyConflictError();
+        throw new NodeTestRequestError('idempotency_conflict');
       throw error;
     }
   }

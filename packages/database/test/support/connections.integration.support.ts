@@ -20,8 +20,7 @@ import {
 } from '../../src/connections.js';
 import {
   createFailureNotificationDestinationDatabase,
-  FailureNotificationDestinationIdempotencyConflictError,
-  FailureNotificationDestinationNotFoundError,
+  FailureNotificationDestinationError,
   type FailureNotificationDestinationDatabase,
 } from '../../src/failure-notification-destinations.js';
 import { createFailureNotificationStore } from '../../src/failure-notifications.js';
@@ -386,8 +385,7 @@ export {
   ConnectionSecretVersionConflictError,
   ConnectionTestInProgressError,
   ConnectionUnavailableError,
-  FailureNotificationDestinationIdempotencyConflictError,
-  FailureNotificationDestinationNotFoundError,
+  FailureNotificationDestinationError,
   Pool,
   canonicalOutboxPayloadChecksum,
   checkDatabaseReadiness,

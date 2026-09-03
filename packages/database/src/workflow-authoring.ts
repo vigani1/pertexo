@@ -50,9 +50,8 @@ const idempotencyKeySchema = z
   .refine((value) => !value.includes(','));
 
 export {
-  WorkflowCreateIdempotencyConflictError,
+  WorkflowIdempotencyConflictError,
   WorkflowNotFoundError,
-  WorkflowPublishIdempotencyConflictError,
   WorkflowRevisionConflictError,
 } from './workflow-authoring-errors.js';
 

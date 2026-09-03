@@ -37,8 +37,7 @@ export {
   createScheduleTriggerScanner,
   createScheduleTriggerDatabase,
   ScheduleClaimLostError,
-  ScheduleTriggerIdempotencyConflictError,
-  ScheduleTriggerNotFoundError,
+  ScheduleTriggerError,
   type ScanDueSchedulesResult,
   type ScheduleCheckpointFactory,
   type ScheduleTriggerScanner,
@@ -56,9 +55,7 @@ export {
 export type { WorkflowTriggerProjection } from './workflow-trigger-projection.js';
 export {
   createFailureNotificationDestinationDatabase,
-  FailureNotificationDestinationConflictError,
-  FailureNotificationDestinationIdempotencyConflictError,
-  FailureNotificationDestinationNotFoundError,
+  FailureNotificationDestinationError,
   type FailureNotificationDestinationDatabase,
   type FailureNotificationDestinationRecord,
 } from './failure-notification-destinations.js';
@@ -498,9 +495,8 @@ export {
   createWorkflowAuthoringDatabase,
   reconcileWorkflowTriggersPayload,
   WorkflowNotFoundError,
-  WorkflowCreateIdempotencyConflictError,
+  WorkflowIdempotencyConflictError,
   WorkflowDefinitionPlacementError,
-  WorkflowPublishIdempotencyConflictError,
   WorkflowRevisionConflictError,
 } from './workflow-authoring.js';
 export { createWorkflowIntegrationUsageDatabase } from './workflow-integration-usage.js';

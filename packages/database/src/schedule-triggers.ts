@@ -6,6 +6,7 @@ import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from './config.js';
+import { ScheduleTriggerError } from './schedule-trigger-errors.js';
 import {
   lockExpectedCompatibilityReleaseSet,
   parseCompatibilityReleaseExpectation,
@@ -149,12 +150,7 @@ export interface ScheduleTriggerDatabase {
   close(): Promise<void>;
 }
 
-export class ScheduleTriggerNotFoundError extends Error {
-  public override readonly name = 'ScheduleTriggerNotFoundError';
-}
-export class ScheduleTriggerIdempotencyConflictError extends Error {
-  public override readonly name = 'ScheduleTriggerIdempotencyConflictError';
-}
+export { ScheduleTriggerError } from './schedule-trigger-errors.js';
 
 async function authorizeScheduleManager(
   client: PoolClient,
@@ -170,7 +166,7 @@ async function authorizeScheduleManager(
        and workspace.status='active' and actor.status='active'`,
     [workspaceId, actorId],
   );
-  if (result.rowCount !== 1) throw new ScheduleTriggerNotFoundError();
+  if (result.rowCount !== 1) throw new ScheduleTriggerError('not_found');
 }
 
 async function authorizeScheduleReader(
@@ -190,7 +186,7 @@ async function authorizeScheduleReader(
        and workspace.status='active' and actor.status='active'`,
     [workspaceId, actorId, workflowId],
   );
-  if (result.rowCount !== 1) throw new ScheduleTriggerNotFoundError();
+  if (result.rowCount !== 1) throw new ScheduleTriggerError('not_found');
 }
 
 function mapScheduleTrigger(
@@ -259,7 +255,7 @@ async function readSchedule(
     [workspaceId, workflowId, triggerId],
   );
   const row = result.rows[0];
-  if (row === undefined) throw new ScheduleTriggerNotFoundError();
+  if (row === undefined) throw new ScheduleTriggerError('not_found');
   return mapScheduleTrigger(row);
 }
 
@@ -352,7 +348,7 @@ export function createScheduleTriggerDatabase(
           if (claim === undefined)
             throw new Error('Schedule command claim is unavailable');
           if (claim.request_hash !== requestHash)
-            throw new ScheduleTriggerIdempotencyConflictError();
+            throw new ScheduleTriggerError('idempotency_conflict');
           if (claim.status === 'completed') {
             const stored = z
               .looseObject({ trigger: z.unknown() })
@@ -385,7 +381,7 @@ export function createScheduleTriggerDatabase(
             [input.workspaceId, triggerId, workflowId],
           );
           const row = result.rows[0];
-          if (row === undefined) throw new ScheduleTriggerNotFoundError();
+          if (row === undefined) throw new ScheduleTriggerError('not_found');
           let nextFireAt = row.next_fire_at;
           if (input.enabled && row.misfire_policy === 'skip') {
             const observed = await client.query<{ observed_at: Date }>(

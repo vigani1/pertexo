@@ -1,8 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import {
-  ScheduleTriggerIdempotencyConflictError,
-  ScheduleTriggerNotFoundError,
+  ScheduleTriggerError,
   type ScheduleTriggerDatabase,
   type ScheduleTriggerRecord,
 } from '@pertexo/database/api';
@@ -60,9 +59,9 @@ export class ScheduleManagementService {
   }
 
   private mapError(error: unknown): never {
-    if (error instanceof ScheduleTriggerNotFoundError)
+    if (error instanceof ScheduleTriggerError && error.code === 'not_found')
       return throwApplicationError(applicationError('resource.not_found'));
-    if (error instanceof ScheduleTriggerIdempotencyConflictError)
+    if (error instanceof ScheduleTriggerError)
       return throwApplicationError(
         applicationError('request.idempotency_conflict', {
           safeDetail:

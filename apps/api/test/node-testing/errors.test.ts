@@ -6,18 +6,17 @@ import { describe, expect, it } from 'vitest';
 
 import {
   mapNodeTestingError,
-  NodeTestIdempotencyConflictError,
-  NodeTestIdempotencyRequiredError,
   NodeTestInvalidError,
+  NodeTestRequestError,
 } from '../../src/node-testing/errors.js';
 
 describe('node testing error mapping', () => {
   it('owns preview precondition and validation errors', () => {
     expect(
-      mapNodeTestingError(new NodeTestIdempotencyRequiredError()),
+      mapNodeTestingError(new NodeTestRequestError('idempotency_required')),
     ).toMatchObject({ code: 'request.precondition_required' });
     expect(
-      mapNodeTestingError(new NodeTestIdempotencyConflictError()),
+      mapNodeTestingError(new NodeTestRequestError('idempotency_conflict')),
     ).toMatchObject({ code: 'request.idempotency_conflict' });
     expect(
       mapNodeTestingError(

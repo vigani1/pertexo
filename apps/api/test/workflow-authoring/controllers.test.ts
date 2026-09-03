@@ -105,7 +105,10 @@ describe('workflow authoring controller public seam', () => {
         { graph: body.graph },
         { header: vi.fn() },
       ),
-    ).rejects.toMatchObject({ name: 'PreconditionRequiredError' });
+    ).rejects.toMatchObject({
+      code: 'precondition_required',
+      name: 'WorkflowHeaderError',
+    });
   });
 
   it('maps the create draft representation ETag to the response', async () => {
