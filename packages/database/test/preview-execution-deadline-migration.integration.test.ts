@@ -11,7 +11,7 @@ import {
   EXPECTED_MIGRATION_HEAD,
 } from '../src/readiness.js';
 import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../src/migrations.js';
-import { dropDisconnectedDatabase } from './support/disposable-database.js';
+import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 
 const adminUrl =
   process.env.DATABASE_ADMIN_URL ??
@@ -24,11 +24,18 @@ const apiBaseUrl =
   'postgresql://pertexo_api:pertexo-local-api@localhost:5432/pertexo';
 const databaseName = `pertexo_test_0070_preview_deadline_${randomUUID().replaceAll('-', '')}`;
 
-function databaseUrl(base: string): string {
-  const value = new URL(base);
-  value.pathname = `/${databaseName}`;
-  return value.toString();
-}
+const database = createDisposableDatabaseFixture({
+  adminUrl,
+  connectRoles: [
+    'pertexo_migration',
+    'pertexo_api',
+    'pertexo_worker',
+    'pertexo_dispatcher',
+  ],
+  databaseName,
+  ownerRole: 'pertexo_owner',
+});
+const { databaseUrl } = database;
 
 const migrationConfig = {
   apiRuntimeRole: 'pertexo_api',
@@ -41,27 +48,8 @@ const migrationConfig = {
   workerRuntimeRole: 'pertexo_worker',
 } as const;
 
-beforeAll(async () => {
-  const admin = new Pool({ connectionString: adminUrl, max: 1 });
-  try {
-    await admin.query(`create database "${databaseName}" owner pertexo_owner`);
-    await admin.query(`revoke all on database "${databaseName}" from public`);
-    await admin.query(
-      `grant connect on database "${databaseName}" to pertexo_migration, pertexo_api, pertexo_worker, pertexo_dispatcher`,
-    );
-  } finally {
-    await admin.end();
-  }
-}, 30_000);
-
-afterAll(async () => {
-  const admin = new Pool({ connectionString: adminUrl, max: 1 });
-  try {
-    await dropDisconnectedDatabase(admin, databaseName);
-  } finally {
-    await admin.end();
-  }
-});
+beforeAll(database.create, 30_000);
+afterAll(database.drop);
 
 describe('preview execution deadline prior-head migration', () => {
   it('upgrades 0069 with the exact deadline schema and startup contract', async () => {
