@@ -1,4 +1,4 @@
-import { createDatabasePool } from '../postgres-telemetry.js';
+import { createDatabasePool } from '../platform/postgres-telemetry.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 

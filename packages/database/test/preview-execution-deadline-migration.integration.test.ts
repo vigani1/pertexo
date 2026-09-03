@@ -9,7 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   checkDatabaseReadiness,
   EXPECTED_MIGRATION_HEAD,
-} from '../src/readiness.js';
+} from '../src/platform/readiness.js';
 import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../src/migrations.js';
 import { createDisposableDatabaseFixture } from './support/disposable-database.js';
 

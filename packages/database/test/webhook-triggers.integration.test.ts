@@ -15,7 +15,7 @@ import {
   workflowCompatibilityReport,
   workflowDraftRepresentationTag,
 } from '@pertexo/workflow-model/graph';
-import { checkDatabaseReadiness } from '../src/readiness.js';
+import { checkDatabaseReadiness } from '../src/platform/readiness.js';
 import {
   createWebhookTriggerDatabase,
   WebhookDeliveryIneligibleError,

@@ -1,4 +1,4 @@
-import { createDatabasePool } from '../postgres-telemetry.js';
+import { createDatabasePool } from '../platform/postgres-telemetry.js';
 
 import type { DatabaseConfig } from '../config.js';
 import { claimNodeAttemptDelivery } from './node-attempt-run-store-claim.js';

@@ -19,7 +19,7 @@ import { dropDisconnectedDatabase } from './support/disposable-database.js';
 import {
   checkDatabasePreactivationReadiness,
   checkDatabaseReadiness,
-} from '../src/readiness.js';
+} from '../src/platform/readiness.js';
 import { PHASE3_COMPATIBILITY_EXPECTATION } from './phase3-compatibility-fixture.js';
 
 const adminUrl =

@@ -1,6 +1,6 @@
 import type { PoolClient } from 'pg';
 
-import { generatePersistedId } from '../persisted-id.js';
+import { generatePersistedId } from '../platform/persisted-id.js';
 import { v5 as uuidv5 } from 'uuid';
 import { z } from 'zod';
 

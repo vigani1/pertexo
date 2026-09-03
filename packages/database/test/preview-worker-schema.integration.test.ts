@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   checkDatabaseReadiness,
   EXPECTED_MIGRATION_HEAD,
-} from '../src/readiness.js';
+} from '../src/platform/readiness.js';
 import {
   acceptFixture,
   apiPool,

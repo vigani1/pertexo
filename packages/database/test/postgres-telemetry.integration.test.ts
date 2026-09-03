@@ -4,7 +4,7 @@ import { expect, it } from 'vitest';
 import {
   createDatabasePool,
   DATABASE_METRIC_NAME,
-} from '../src/postgres-telemetry.js';
+} from '../src/platform/postgres-telemetry.js';
 
 const databaseUrl =
   process.env.DATABASE_MIGRATION_URL ??

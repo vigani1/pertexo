@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 
 import { describe, expect, it } from 'vitest';
 
-import { EXPECTED_MIGRATION_HEAD } from '../src/readiness.js';
+import { EXPECTED_MIGRATION_HEAD } from '../src/platform/readiness.js';
 
 describe('schedule trigger migration contract', () => {
   it('persists immutable recurrence, unique occurrences, bounded leases, and narrow worker functions', async () => {

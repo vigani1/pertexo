@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 
 import { describe, expect, it } from 'vitest';
 
-import { EXPECTED_MIGRATION_HEAD } from '../src/readiness.js';
+import { EXPECTED_MIGRATION_HEAD } from '../src/platform/readiness.js';
 import { MIGRATIONS_DIRECTORY } from '../src/migrations.js';
 
 describe('preview execution deadline migration', () => {

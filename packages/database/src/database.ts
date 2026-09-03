@@ -1,4 +1,4 @@
-import { createDatabasePool } from './postgres-telemetry.js';
+import { createDatabasePool } from './platform/postgres-telemetry.js';
 
 import type { DatabaseConfig } from './config.js';
 import type { CompatibilityReleaseExpectation } from './compatibility/compatibility-release.js';
@@ -6,8 +6,8 @@ import type { CompatibilityReleaseExpectationSet } from './compatibility/compati
 import {
   checkDatabaseReadiness,
   checkDatabaseServingReadiness,
-} from './readiness.js';
-import type { DatabaseReadiness } from './readiness.js';
+} from './platform/readiness.js';
+import type { DatabaseReadiness } from './platform/readiness.js';
 import { withWorkspaceTransaction } from './tenant-access/workspace.js';
 import type {
   WorkspaceTransaction,

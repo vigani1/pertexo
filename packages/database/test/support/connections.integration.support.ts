@@ -28,7 +28,7 @@ import { parseDatabaseConfig } from '../../src/config.js';
 import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../../src/migrations.js';
 import { canonicalOutboxPayloadChecksum } from '../../src/execution/outbox.js';
 import { dropDisconnectedDatabase } from './disposable-database.js';
-import { checkDatabaseReadiness } from '../../src/readiness.js';
+import { checkDatabaseReadiness } from '../../src/platform/readiness.js';
 
 export const adminUrl =
   process.env.DATABASE_ADMIN_URL ??

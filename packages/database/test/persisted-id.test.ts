@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { generatePersistedId } from '../src/persisted-id.js';
+import { generatePersistedId } from '../src/platform/persisted-id.js';
 
 describe('persisted identifiers', () => {
   it('generates UUIDv7 values in monotonic order', () => {

@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 
 import { describe, expect, it } from 'vitest';
 
-import { EXPECTED_MIGRATION_HEAD } from '../src/readiness.js';
+import { EXPECTED_MIGRATION_HEAD } from '../src/platform/readiness.js';
 
 const migrationUrl = new URL(
   '../migrations/0060_standard_retention_dry_run.sql',

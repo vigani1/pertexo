@@ -1,4 +1,4 @@
-import { generatePersistedId } from '../persisted-id.js';
+import { generatePersistedId } from '../platform/persisted-id.js';
 
 import type { PoolClient } from 'pg';
 import type { z } from 'zod';

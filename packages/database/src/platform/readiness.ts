@@ -6,7 +6,7 @@ import {
   checkExpectedCompatibilityReleaseSet,
   type CompatibilityReleaseExpectation,
   type CompatibilityReleaseExpectationSet,
-} from './compatibility/compatibility-release.js';
+} from '../compatibility/compatibility-release.js';
 import {
   assertDatabaseReadinessRow,
   assertReadinessSupport,

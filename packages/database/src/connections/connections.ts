@@ -1,4 +1,4 @@
-import { createDatabasePool } from '../postgres-telemetry.js';
+import { createDatabasePool } from '../platform/postgres-telemetry.js';
 
 import type { DatabaseConfig } from '../config.js';
 import { createConnectionHealthPersistence } from './connection-health-persistence.js';

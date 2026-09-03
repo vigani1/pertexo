@@ -1,4 +1,4 @@
-import { createDatabasePool } from '../postgres-telemetry.js';
+import { createDatabasePool } from '../platform/postgres-telemetry.js';
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -15,7 +15,7 @@ import {
   readWorkflowRunAcceptanceReplay,
 } from './execution-acceptance.js';
 import { canonicalOutboxPayloadChecksum, insertOutboxEvent } from './outbox.js';
-import { generatePersistedId } from '../persisted-id.js';
+import { generatePersistedId } from '../platform/persisted-id.js';
 import {
   classifyPublishedWorkflowVersionRow,
   type PublishedWorkflowV2Projection,

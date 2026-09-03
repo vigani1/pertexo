@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 
 import { describe, expect, it } from 'vitest';
 
-import { EXPECTED_MIGRATION_HEAD } from '../src/readiness.js';
+import { EXPECTED_MIGRATION_HEAD } from '../src/platform/readiness.js';
 
 describe('transient data retention migration', () => {
   it('defines bounded maintenance-only cleanup with safe claim and hold guards', async () => {

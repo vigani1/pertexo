@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import { EXPECTED_MIGRATION_HEAD } from '../src/readiness.js';
+import { EXPECTED_MIGRATION_HEAD } from '../src/platform/readiness.js';
 
 describe('operator outbox redispatch migration', () => {
   it('keeps the operator on narrow functions with durable replay and audit', () => {

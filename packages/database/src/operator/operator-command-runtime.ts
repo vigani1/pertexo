@@ -7,11 +7,11 @@ import type {
   GenericOperatorCommandResult,
   OperatorCommandDatabaseOptions,
 } from './operator-commands.js';
-import { createDatabasePool } from '../postgres-telemetry.js';
+import { createDatabasePool } from '../platform/postgres-telemetry.js';
 import {
   EXPECTED_MIGRATION_HEAD,
   MINIMUM_POSTGRES_MAJOR,
-} from '../readiness.js';
+} from '../platform/readiness.js';
 
 type RuntimeOptions = Readonly<{
   forbiddenRoles: readonly string[];

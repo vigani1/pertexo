@@ -3,7 +3,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { canonicalOutboxPayloadChecksum, insertOutboxEvent } from './outbox.js';
-import { generatePersistedId } from '../persisted-id.js';
+import { generatePersistedId } from '../platform/persisted-id.js';
 import {
   parseInitialWorkflowCheckpoint,
   serializePersistedWorkflowCheckpoint,

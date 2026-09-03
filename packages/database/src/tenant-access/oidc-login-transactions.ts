@@ -1,6 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
 
-import { createDatabasePool } from '../postgres-telemetry.js';
+import { createDatabasePool } from '../platform/postgres-telemetry.js';
 import { withPlatformTransaction } from './workspace.js';
 import { z } from 'zod';
 

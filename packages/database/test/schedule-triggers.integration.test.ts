@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { canonicalOutboxPayloadChecksum } from '../src/execution/outbox.js';
-import { checkDatabaseReadiness } from '../src/readiness.js';
+import { checkDatabaseReadiness } from '../src/platform/readiness.js';
 import { createScheduleTriggerTestEnvironment } from './support/schedule-triggers.integration.support.js';
 
 const schedule = createScheduleTriggerTestEnvironment();
