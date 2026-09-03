@@ -1,4 +1,4 @@
-export const IDENTITY_ERROR_CODES = [
+const IDENTITY_ERROR_CODES = [
   'identity.invalid_input',
   'identity.transaction_missing',
   'identity.transaction_expired',
@@ -74,7 +74,7 @@ export function isIdentityError(value: unknown): value is IdentityError {
   return value instanceof IdentityError;
 }
 
-export function asIdentityError(
+function asIdentityError(
   value: unknown,
   fallback: IdentityErrorCode,
 ): IdentityError {

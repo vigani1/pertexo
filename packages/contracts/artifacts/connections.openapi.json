@@ -1745,7 +1745,8 @@
             ],
             "additionalProperties": false
           }
-        ]
+        ],
+        "description": "Failure notification destination creation request"
       },
       "FailureNotificationDestinationListResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",

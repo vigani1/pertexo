@@ -27,7 +27,7 @@ export interface RestoreBeforeServeResources {
   readonly telemetry: TelemetryLifecycle;
 }
 
-export interface RestoreArtifactInventoryResult {
+interface RestoreArtifactInventoryResult {
   readonly artifactCount: number;
   readonly inventoryDigest: string;
   readonly pageCount: number;

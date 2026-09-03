@@ -8,7 +8,7 @@ export function isCanonicalUuid(value: unknown): value is string {
   return typeof value === 'string' && uuidPattern.test(value);
 }
 
-export function isSafeIdentifier(value: unknown): value is string {
+function isSafeIdentifier(value: unknown): value is string {
   return typeof value === 'string' && boundedIdentifierPattern.test(value);
 }
 

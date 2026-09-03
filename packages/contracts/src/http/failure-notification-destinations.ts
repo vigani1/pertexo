@@ -16,7 +16,9 @@ export const failureNotificationDestinationConfigSchema =
   FailureNotificationDestinationConfigSchema;
 
 export const failureNotificationDestinationCreateRequestSchema =
-  failureNotificationDestinationConfigSchema;
+  failureNotificationDestinationConfigSchema.describe(
+    'Failure notification destination creation request',
+  );
 export const failureNotificationDestinationAppendVersionRequestSchema = z
   .object({
     expectedVersion: z.number().int().positive(),

@@ -112,7 +112,7 @@ export function createProductionObjectStoreObserver(): ObjectStoreObserver {
   return productionObserver;
 }
 
-export function safelyObserveRequest(
+function safelyObserveRequest(
   observer: ObjectStoreObserver | undefined,
   observation: ObjectStoreRequestObservation,
 ): void {

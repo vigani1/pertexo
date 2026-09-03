@@ -86,7 +86,7 @@ type ArtifactDescriptor = Readonly<{
   previewRunId?: string;
 }>;
 
-export interface WorkerArtifactPersistence {
+interface WorkerArtifactPersistence {
   createPending(
     input: ArtifactDescriptor &
       Readonly<{ expiresAt: Date; purpose: string; signal: AbortSignal }>,

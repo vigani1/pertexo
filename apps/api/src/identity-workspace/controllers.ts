@@ -59,7 +59,7 @@ import {
   type IdentityWorkspaceTelemetry,
 } from './telemetry.js';
 
-export const OIDC_SESSION_RESPONSE = Object.freeze({
+const OIDC_SESSION_RESPONSE = Object.freeze({
   status: 204,
 });
 

@@ -1,12 +1,9 @@
 export {
   idempotencyKeySchema,
-  oidcAuthorizationCodeSchema,
   oidcCallbackRequestSchema,
   oidcStartResponseSchema,
-  oidcStateSchema,
   workspaceCreateRequestSchema,
   workspaceDeletionRequestSchema,
-  workspaceIdentifierSchema,
   workspaceIdParamSchema,
   workspaceLifecycleOperationParamsSchema,
   workspaceLifecycleOperationResponseSchema,

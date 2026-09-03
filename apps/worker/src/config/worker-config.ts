@@ -27,7 +27,7 @@ const workerLogLevels = [
   'trace',
 ] as const;
 
-export const SUPPORTED_DISPATCH_CAPABILITIES = Object.freeze([
+const SUPPORTED_DISPATCH_CAPABILITIES = Object.freeze([
   JOB_NAME.advanceWorkflowRun,
   JOB_NAME.executeNodeAttempt,
   JOB_NAME.executePreviewAttempt,
@@ -73,7 +73,7 @@ const enabledJobNamesSchema = z
   })
   .transform((jobNames) => Object.freeze([...jobNames]));
 
-export const workerConfigSchema = z
+const workerConfigSchema = z
   .object({
     DATABASE_WORKER_URL: z
       .url()

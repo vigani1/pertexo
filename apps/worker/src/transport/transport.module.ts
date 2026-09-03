@@ -21,15 +21,10 @@ import {
 import { triggerRuntimeProvider } from './trigger-runtime-provider.js';
 
 export {
-  COORDINATOR_RUNTIME,
-  DISPATCH_CONSUMER_CAPABILITIES,
   NODE_ATTEMPT_RUNTIME,
   OUTBOX_DISPATCHER,
-  PREVIEW_MAINTENANCE_RUNTIME,
-  QUEUE_CONSUMER_OBSERVER,
   TRANSPORT_METRICS,
   TRIGGER_RUNTIME,
-  type TransportModuleDependencies,
 } from './transport-tokens.js';
 
 @Module({})

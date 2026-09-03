@@ -52,8 +52,6 @@ import {
   type WorkflowDraftResult,
 } from './serializers.js';
 
-export type { WorkflowCreateResult, WorkflowDraftResult };
-
 export type ListWorkflowsInput = WorkflowApplicationInput &
   Readonly<{ limit?: number; after?: string }>;
 export type CreateWorkflowInput = WorkflowApplicationInput &

@@ -37,7 +37,7 @@ interface RequestState {
   context: RequestContext;
 }
 
-export class RequestContextUnavailableError extends Error {
+class RequestContextUnavailableError extends Error {
   public constructor() {
     super('request context is unavailable outside an active request scope');
     this.name = 'RequestContextUnavailableError';

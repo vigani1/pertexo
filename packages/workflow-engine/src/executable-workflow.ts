@@ -76,7 +76,7 @@ export interface WorkflowExecutableGraphV2 {
   readonly edges: readonly WorkflowEdge[];
 }
 
-export interface WorkflowExecutableStructuredBodyV2 extends WorkflowExecutableGraphV2 {
+interface WorkflowExecutableStructuredBodyV2 extends WorkflowExecutableGraphV2 {
   readonly inputPorts: readonly string[];
   readonly outputPorts: readonly string[];
 }

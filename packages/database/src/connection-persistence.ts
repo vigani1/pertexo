@@ -20,7 +20,7 @@ export const providerKeySchema = z
   .max(64)
   .regex(/^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u);
 export const connectionNameSchema = z.string().trim().min(1).max(128);
-export const idempotencyKeySchema = z
+const idempotencyKeySchema = z
   .string()
   .min(1)
   .max(128)
@@ -31,7 +31,7 @@ export const identifierSchema = z
   .min(1)
   .max(128)
   .regex(/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/u);
-export const requestIdentifierSchema = z.string().min(1).max(128);
+const requestIdentifierSchema = z.string().min(1).max(128);
 export const errorCodeSchema = z
   .string()
   .min(1)
@@ -529,7 +529,7 @@ export function durableCreateResult(value: unknown): Readonly<{
     .parse(value);
 }
 
-export const durableConnectionSnapshotSchema = z
+const durableConnectionSnapshotSchema = z
   .object({
     id: z.uuid(),
     workspaceId: z.uuid(),
@@ -596,7 +596,7 @@ export const connectionTestOutcomeSchema = z.discriminatedUnion('ok', [
     .strict(),
 ]);
 
-export const durableConnectionTestResultSchema = z
+const durableConnectionTestResultSchema = z
   .object({
     schemaVersion: z.literal(1),
     connection: durableConnectionSnapshotSchema,

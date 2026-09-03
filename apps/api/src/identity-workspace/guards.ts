@@ -27,7 +27,7 @@ import { WORKSPACE_AUTHORIZATION } from './tokens.js';
 export const SESSION_COOKIE_NAME = 'pertexo_session';
 export const CSRF_COOKIE_NAME = 'pertexo_csrf';
 export const OIDC_BROWSER_BINDING_COOKIE_NAME = 'pertexo_oidc_binding';
-export const CSRF_HEADER_NAME = 'x-csrf-token';
+const CSRF_HEADER_NAME = 'x-csrf-token';
 
 @Injectable()
 export class SessionAuthenticationGuard implements CanActivate {

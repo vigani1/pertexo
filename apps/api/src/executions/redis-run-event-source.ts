@@ -102,7 +102,7 @@ export class RedisRunEventSourceConfigurationError extends Error {
   public override readonly name = 'RedisRunEventSourceConfigurationError';
 }
 
-export class RedisRunEventSubscribeError extends Error {
+class RedisRunEventSubscribeError extends Error {
   public override readonly name = 'RedisRunEventSubscribeError';
 }
 

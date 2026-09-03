@@ -412,7 +412,7 @@ export type PersistedPhase3Checkpoint = Readonly<
   | z.output<typeof phase3CheckpointV2Schema>
 >;
 
-export class Phase3CheckpointInvalidError extends Error {
+class Phase3CheckpointInvalidError extends Error {
   public override readonly name = 'Phase3CheckpointInvalidError';
   public constructor() {
     super('Phase 3 workflow checkpoint is invalid');

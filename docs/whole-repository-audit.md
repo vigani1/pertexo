@@ -604,13 +604,17 @@ compensating checks.
 
 ### A-10 — Remove verified dead surface, not every static-analysis candidate
 
-**Remediation status (2026-09-03): partially complete.** The manifest/type
-surface portion is complete: dependency analysis is pinned, runs in the root
-gate, the API declaration edge is correctly classified, and the worker's sole
-verified-unused dependency is removed. Candidate value/type exports still
-require the repository-wide supported-entry-point review described below; they
-are not treated as dead merely because a static analyzer cannot observe a
-consumer.
+**Remediation status (2026-09-03): complete.** The pinned workspace-aware
+dependency/export analysis now runs in the root gate across production, tests,
+generated contracts, and explicit package entry points. The API declaration
+edge is correctly classified, the worker's verified-unused dependency is
+removed, and the repository-wide review removed 107 value/class and 98 type
+exports with no supported consumer. Package export maps and composition entry
+points remain explicit supported boundaries. The two legitimate same-shape
+schema pairs now carry distinct semantic metadata rather than duplicate object
+aliases. Knip reports zero unused dependencies, files, exports, types, or
+duplicates; build, typecheck, unit tests, and the complexity ratchet preserve
+behavior.
 
 Static analysis found no unused files, which is important evidence against
 wholesale obsolete modules. It did identify:

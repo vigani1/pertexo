@@ -128,7 +128,7 @@ function mapWorkspace(
   });
 }
 
-export function asSessionStore(
+function asSessionStore(
   adapter: DatabaseIdentityWorkspaceAdapter,
 ): SessionStorePort {
   return adapter;

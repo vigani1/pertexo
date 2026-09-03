@@ -79,7 +79,7 @@ export interface NodeAttemptRuntime {
  * consumer routes by durable job kind so neither capability can steal the
  * other's deliveries.
  */
-export type PreviewAttemptRuntimeDependency = Readonly<{
+type PreviewAttemptRuntimeDependency = Readonly<{
   heartbeatIntervalMillis?: number;
   invoker: PreviewNodeInvoker;
   leaseDurationSeconds?: number;

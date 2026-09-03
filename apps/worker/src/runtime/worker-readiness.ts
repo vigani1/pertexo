@@ -10,7 +10,7 @@ import type { OutboxDispatcher } from '../transport/outbox-dispatcher.js';
 import type { NodeAttemptRuntime } from '../execution/node-attempt-runtime.js';
 import { WorkerDrainState } from './worker-drain-state.js';
 
-export class WorkerDrainingError extends Error {
+class WorkerDrainingError extends Error {
   public constructor() {
     super('worker is draining and cannot accept new work');
     this.name = 'WorkerDrainingError';

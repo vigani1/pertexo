@@ -81,7 +81,7 @@ export interface IdentityClock {
   now(): Date;
 }
 
-export type IdentityModuleOptions = Readonly<{
+type IdentityModuleOptions = Readonly<{
   oidc: OidcConfiguration;
   crypto?: IdentityCrypto;
   clock?: IdentityClock;

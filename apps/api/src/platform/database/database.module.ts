@@ -17,7 +17,7 @@ import {
 
 export const WORKSPACE_DATABASE = Symbol('WORKSPACE_DATABASE');
 
-export class NestWorkspaceDatabase
+class NestWorkspaceDatabase
   implements WorkspaceDatabase, OnApplicationShutdown
 {
   public constructor(private readonly database: WorkspaceDatabase) {}

@@ -18,7 +18,7 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 
-export const appSchema = pgSchema('app');
+const appSchema = pgSchema('app');
 
 export const users = appSchema.table(
   'users',
@@ -89,7 +89,7 @@ export const sessions = appSchema.table(
   ],
 );
 
-export const oidcLoginTransactions = appSchema.table(
+const oidcLoginTransactions = appSchema.table(
   'oidc_login_transactions',
   {
     stateDigest: varchar('state_digest', { length: 64 }).primaryKey(),
@@ -165,7 +165,7 @@ export const workspaces = appSchema.table(
   ],
 );
 
-export const workspaceControlLedgerProjection = appSchema.table(
+const workspaceControlLedgerProjection = appSchema.table(
   'workspace_control_ledger_projection',
   {
     workspaceId: uuid('workspace_id').notNull(),
@@ -227,7 +227,7 @@ export const workspaceControlLedgerProjection = appSchema.table(
   ],
 );
 
-export const workspaceLegalHolds = appSchema.table(
+const workspaceLegalHolds = appSchema.table(
   'workspace_legal_holds',
   {
     workspaceId: uuid('workspace_id').notNull(),
@@ -280,7 +280,7 @@ export const workspaceLegalHolds = appSchema.table(
   ],
 );
 
-export const retentionControlAuditFacts = appSchema.table(
+const retentionControlAuditFacts = appSchema.table(
   'retention_control_audit_facts',
   {
     id: uuid('id').primaryKey(),
@@ -338,7 +338,7 @@ export const retentionControlAuditFacts = appSchema.table(
   ],
 );
 
-export const retentionBatches = appSchema.table(
+const retentionBatches = appSchema.table(
   'retention_batches',
   {
     id: uuid('id').primaryKey(),
@@ -407,7 +407,7 @@ export const retentionBatches = appSchema.table(
   ],
 );
 
-export const retentionScheduleState = appSchema.table(
+const retentionScheduleState = appSchema.table(
   'retention_schedule_state',
   {
     workspaceId: uuid('workspace_id').notNull(),
@@ -538,7 +538,7 @@ export const usageEvents = appSchema.table(
   ],
 );
 
-export const connections = appSchema.table(
+const connections = appSchema.table(
   'connections',
   {
     id: uuid('id').primaryKey(),
@@ -582,7 +582,7 @@ export const connections = appSchema.table(
   ],
 );
 
-export const connectionSecretVersions = appSchema.table(
+const connectionSecretVersions = appSchema.table(
   'connection_secret_versions',
   {
     id: uuid('id').primaryKey(),
@@ -617,7 +617,7 @@ export const connectionSecretVersions = appSchema.table(
   ],
 );
 
-export const connectionEvents = appSchema.table(
+const connectionEvents = appSchema.table(
   'connection_events',
   {
     id: uuid('id').primaryKey(),
@@ -1603,7 +1603,7 @@ export const webhookTriggerDeliveries = appSchema.table(
   ],
 );
 
-export const webhookEndpointIngressLimits = appSchema.table(
+const webhookEndpointIngressLimits = appSchema.table(
   'webhook_endpoint_ingress_limits',
   {
     endpointId: uuid('endpoint_id').primaryKey(),
@@ -1760,7 +1760,7 @@ export const nodeCompatibilityReleases = appSchema.table(
   ],
 );
 
-export const nodeCompatibilityPreactivationChecks = appSchema.table(
+const nodeCompatibilityPreactivationChecks = appSchema.table(
   'node_compatibility_preactivation_checks',
   {
     checkId: uuid('check_id').primaryKey(),
@@ -1793,7 +1793,7 @@ export const nodeCompatibilityPreactivationChecks = appSchema.table(
   ],
 );
 
-export const nodeCompatibilityActivationApprovals = appSchema.table(
+const nodeCompatibilityActivationApprovals = appSchema.table(
   'node_compatibility_activation_approvals',
   {
     approvalId: uuid('approval_id').primaryKey(),
@@ -1861,7 +1861,7 @@ export const nodeCompatibilityCurrent = appSchema.table(
   ],
 );
 
-export const nodeCompatibilityActivations = appSchema.table(
+const nodeCompatibilityActivations = appSchema.table(
   'node_compatibility_activations',
   {
     activationId: uuid('activation_id').primaryKey(),

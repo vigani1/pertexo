@@ -11,7 +11,7 @@ export const WORKFLOW_AUTHORING_OPERATION = Object.freeze({
 export type WorkflowAuthoringOperation =
   (typeof WORKFLOW_AUTHORING_OPERATION)[keyof typeof WORKFLOW_AUTHORING_OPERATION];
 export type WorkflowAuthoringOutcome = 'failed' | 'succeeded';
-export type WorkflowAuthoringMetricAttributes = Readonly<{
+type WorkflowAuthoringMetricAttributes = Readonly<{
   operation: WorkflowAuthoringOperation;
   outcome: WorkflowAuthoringOutcome;
 }>;

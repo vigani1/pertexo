@@ -27,7 +27,6 @@ import { idempotencyKeySchema } from '@pertexo/contracts/identity-workspace';
 import type { AuthorizedWorkspaceContext } from '../workspaces/index.js';
 
 export {
-  strongEtagSchema,
   workflowCreateRequestSchema,
   workflowCreateResponseSchema,
   workflowDraftResponseSchema,
@@ -36,24 +35,18 @@ export {
   workflowListQuerySchema,
   workflowListResponseSchema,
   workflowPublishResponseSchema,
-  workflowRevisionConflictProblemSchema,
   workflowValidateResponseSchema,
   workflowVersionResponseSchema,
   workflowVersionsQuerySchema,
   workflowVersionsResponseSchema,
-  workflowGraphSchema,
-  idempotencyKeySchema,
 };
 
 export type {
-  WorkflowCreateResponse,
-  WorkflowDraftResponse,
   WorkflowPublishResponse,
   WorkflowValidateResponse,
   WorkflowVersionResponse,
   WorkflowVersionsResponse,
   WorkflowSummary,
-  WorkflowGraphContract,
 };
 
 export type WorkflowAuthoringRequest = Readonly<{
@@ -77,18 +70,18 @@ export interface WorkflowResponse {
   header(name: string, value: string): unknown;
 }
 
-export type WorkflowRouteParams = Readonly<{
+type WorkflowRouteParams = Readonly<{
   workspaceId: string;
   workflowId: string;
 }>;
 
-export type WorkflowWorkspaceParams = Readonly<{ workspaceId: string }>;
+type WorkflowWorkspaceParams = Readonly<{ workspaceId: string }>;
 
-export type WorkflowListQuery = Readonly<{
+type WorkflowListQuery = Readonly<{
   limit?: number;
   after?: string;
 }>;
 
-export type WorkflowVersionsQuery = WorkflowListQuery;
+type WorkflowVersionsQuery = WorkflowListQuery;
 
-export type WorkflowGraphInput = WorkflowGraphContract;
+type WorkflowGraphInput = WorkflowGraphContract;

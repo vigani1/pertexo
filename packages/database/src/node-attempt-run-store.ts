@@ -37,7 +37,6 @@ export type {
   CompleteNodeAttemptResult,
   NodeAttemptClaimResult,
   NodeAttemptCompletion,
-  NodeAttemptDelivery,
   NodeAttemptInputs,
   NodeAttemptLease,
   NodeAttemptRunStore,

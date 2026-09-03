@@ -11,7 +11,7 @@ import {
 } from '@pertexo/workflow-engine';
 
 export const API_ENGINE_VERSION = 'phase3-engine-v1';
-export const API_ITERATION_BUDGET = 1_000;
+const API_ITERATION_BUDGET = 1_000;
 
 export class InitialWorkflowCheckpointError extends Error {
   public override readonly name = 'InitialWorkflowCheckpointError';

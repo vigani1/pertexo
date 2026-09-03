@@ -12,7 +12,7 @@ const MAX_ASSOCIATED_DATA_BYTES = 512;
 const MAX_PLAINTEXT_BYTES = 16_384;
 const KEY_VERSION_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/u;
 
-export type OidcSecretKeyMaterial = Readonly<{
+type OidcSecretKeyMaterial = Readonly<{
   version: string;
   key: string;
 }>;

@@ -126,7 +126,7 @@ export interface PreviewAttemptHandler {
   ): Promise<PreviewAttemptHandlerResult>;
 }
 
-export type PreviewCapabilityContext = NodeAttemptCapabilityContext &
+type PreviewCapabilityContext = NodeAttemptCapabilityContext &
   Readonly<{
     previewAttemptId: string;
     previewRunId: string;
@@ -145,7 +145,7 @@ export interface PreviewAttemptHandlerDependencies {
   workerId: string;
 }
 
-export class PreviewAttemptStateError extends Error {
+class PreviewAttemptStateError extends Error {
   public override readonly name = 'PreviewAttemptStateError';
   public constructor(readonly code: string) {
     super(`Preview attempt delivery cannot execute: ${code}`);

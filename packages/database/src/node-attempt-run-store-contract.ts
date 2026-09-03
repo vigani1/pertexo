@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const identitySchema = z
+const identitySchema = z
   .string()
   .regex(
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u,
@@ -9,7 +9,7 @@ const checksumSchema = z.string().regex(/^[0-9a-f]{64}$/u);
 const workerIdSchema = z
   .string()
   .regex(/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/u);
-export const deliverySchema = z
+const deliverySchema = z
   .object({
     outboxEventId: identitySchema,
     payloadChecksum: checksumSchema,
@@ -115,7 +115,7 @@ export type NodeAttemptLease = Readonly<{
   delivery: NodeAttemptDelivery;
 }>;
 
-export const nodeAttemptLeaseSchema = z
+const nodeAttemptLeaseSchema = z
   .object({
     workspaceId: identitySchema,
     runId: identitySchema,
