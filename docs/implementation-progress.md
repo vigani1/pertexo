@@ -4717,8 +4717,11 @@ Repository-controlled remediation:
       manifest schema V4 groups reviews by file and binds all retained reviews
       to semantic source fingerprints. Private-state tests and 26 unsupported
       generic integration claims were removed. Public replacements currently
-      measure 90.64% workflow engine, 94.23% database, 91.86% worker, and 99.64%
-      API branch coverage, with 116 reviewed and zero unreviewed sites.
+      measure 91.02% workflow engine, 95.38% database, 93.14% worker, and 100%
+      API branch coverage across 30 selected files and 1,736 coverable lines,
+      with 116 reviewed and zero unreviewed sites. The API cohort now executes
+      every selected statement, branch, function, and line, including malformed
+      request-instance parsing and owned rate-limit shutdown.
 - [x] Split production dependency updates into HTTP, validation, AWS,
       telemetry, queue, and routine compatibility groups and document owner,
       triage, isolation, and bounded-deferral SLAs.

@@ -660,6 +660,16 @@ describe('RFC 9457 problem details filter', () => {
     );
   });
 
+  it('omits an instance when the request URL is malformed', () => {
+    const response = responseMock();
+    new ProblemDetailsFilter(new RequestContextStore()).catch(
+      new Error('private failure'),
+      hostFor({ url: 'not an absolute URL' }, response),
+    );
+
+    expect(response.body).not.toHaveProperty('instance');
+  });
+
   it('supports Fastify-style response methods and safe fallback context', async () => {
     const code = vi.fn();
     const header = vi.fn();
