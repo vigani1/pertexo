@@ -725,7 +725,7 @@ truth. This follows Fastify's official
 
 ### A-18 — Similar schemas need explicit semantic ownership
 
-**Remediation status (2026-09-03): partially complete.** Credential ownership
+**Remediation status (2026-09-03): complete.** Credential ownership
 is complete: contract schemas are explicitly the untrusted HTTP wire boundary,
 integration `resolved*CredentialSchema` exports are the post-decryption
 provider boundary, and the operations note records normalization and why both
@@ -733,8 +733,14 @@ must parse. Public API tests prove valid equivalence plus shared negative token,
 mailbox, prohibited-header, and serialized-byte cases; the wire byte accounting
 was corrected to include `name:value\r\n`, matching actual transport. The
 node-catalog metadata import was measured separately (about 112 ms cold for the
-server entry versus 79 ms for metadata-only root loading on this host) and
-remains the unfinished half of this finding.
+server entry versus 79 ms for metadata-only root loading on this host). Because
+the approximately 33 ms and executor-graph coupling were material at the API
+validation boundary, definition registrations and release resolution now live
+in browser-safe modules. The API imports the root catalog, while the server
+entry composes executors on top of the same definitions. Package-contract
+tests prevent the metadata resolver from importing integration or core server
+entries; node-catalog, nodes-core, and all 405 API tests pass with the unchanged
+complexity ratchet.
 
 HTTP, Slack, and Resend credential shapes appear in public connection contracts
 and again in server integration validation. Some differences—such as mailbox

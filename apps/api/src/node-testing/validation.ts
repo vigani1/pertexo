@@ -1,4 +1,4 @@
-import { resolvePlatformNodeDefinitionForRelease } from '@pertexo/node-catalog/server';
+import { resolvePlatformNodeDefinitionForRelease } from '@pertexo/node-catalog';
 import type { RegistryRelease } from '@pertexo/node-sdk';
 import {
   canonicalizeJson,
