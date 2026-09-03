@@ -439,6 +439,24 @@ making the architecture plan even larger.
 ### C-08 — Redis rate limiting lacks a wall-clock deadline
 
 - **Severity:** medium.
+- **Remediation status:** complete on 2026-09-03.
+- **Repository-wide affected locations:** production Redis construction and
+  operation waits were inspected across `packages/rate-limit`,
+  `packages/queue`, and the API run-event source. Queue publication and
+  run-event notification/source adapters already own bounded waits; the only
+  request-facing rate-limit gap was
+  `packages/rate-limit/src/redis-runtime.ts#RedisRateLimitRuntime`.
+- **Remediation:** the rate-limit adapter now applies one validated 100–10,000
+  ms operation budget (1,000 ms by default) to connection establishment and
+  Lua evaluation, disables reconnect retries, and disconnects/reset its lazy
+  connection after a deadline so a later request can recover cleanly. A Lua
+  command that completed just as the client timed out may conservatively have
+  consumed capacity; callers never treat that unknown outcome as permission.
+  ADR-012's caller-owned policy remains explicit: safe authenticated reads
+  fail open and mutation/side-effect classes fail closed.
+- **Verification:** `@pertexo/rate-limit` unit suite (12 tests), focused API
+  rate-limit interceptor suite (10 tests), package build/typecheck/lint, API
+  typecheck, complexity ratchet, and documentation checks.
 - **Location:** `packages/rate-limit/src/redis-runtime.ts#RedisRateLimitRuntime`.
 - **Issue:** retries are bounded, but connection and command waits have no
   explicit end-to-end deadline.
