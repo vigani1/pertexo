@@ -33,6 +33,20 @@ const blockedConfiguredHeaders = new Set([
   'transfer-encoding',
   'upgrade',
 ]);
+const blockedCredentialHeaders = new Set([
+  'accept-encoding',
+  'connection',
+  'content-length',
+  'host',
+  'idempotency-key',
+  'keep-alive',
+  'proxy-authenticate',
+  'proxy-authorization',
+  'te',
+  'trailer',
+  'transfer-encoding',
+  'upgrade',
+]);
 const credentialLikeHeader = /(?:auth|credential|secret|token|api[-_]?key)/iu;
 
 function utf8Bytes(value: string): number {
@@ -79,6 +93,53 @@ export const httpRequestHeadersSchema = z
         message: 'headers exceed byte limit',
       });
   });
+
+export const resolvedHttpHeadersCredentialSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    type: z.literal('http_headers'),
+    headers: z
+      .record(headerNameSchema, headerValueSchema)
+      .superRefine((headers, context) => {
+        const entries = Object.entries(headers);
+        if (entries.length < 1 || entries.length > 32)
+          context.addIssue({
+            code: 'custom',
+            message: 'credential header count is invalid',
+          });
+        const normalized = new Set<string>();
+        let bytes = 0;
+        for (const [name, value] of entries) {
+          const canonicalName = name.toLowerCase();
+          bytes += utf8Bytes(`${canonicalName}:${value}\r\n`);
+          if (
+            normalized.has(canonicalName) ||
+            blockedCredentialHeaders.has(canonicalName)
+          )
+            context.addIssue({
+              code: 'custom',
+              path: [name],
+              message: 'credential header is invalid',
+            });
+          normalized.add(canonicalName);
+        }
+        if (bytes > 16_384)
+          context.addIssue({
+            code: 'custom',
+            message: 'credential headers exceed byte limit',
+          });
+      })
+      .transform((headers) =>
+        Object.freeze(
+          Object.fromEntries(
+            Object.entries(headers)
+              .map(([name, value]) => [name.toLowerCase(), value] as const)
+              .sort(([left], [right]) => left.localeCompare(right)),
+          ),
+        ),
+      ),
+  })
+  .strict();
 
 export const httpRequestConfigSchema = z
   .object({

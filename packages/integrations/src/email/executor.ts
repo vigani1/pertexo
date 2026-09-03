@@ -25,7 +25,7 @@ import {
   emailSendNotificationConfigSchema,
   emailSendNotificationInputSchema,
   emailSendNotificationOutputSchema,
-  resendApiKeyCredentialSchema,
+  resolvedResendApiKeyCredentialSchema,
   type EmailSendNotificationOutput,
 } from './validation.js';
 
@@ -172,7 +172,7 @@ async function execute(
       throw failure('failed', 'configuration', false);
     let credential;
     try {
-      credential = resendApiKeyCredentialSchema.parse(
+      credential = resolvedResendApiKeyCredentialSchema.parse(
         JSON.parse(
           new TextDecoder('utf-8', { fatal: true }).decode(resolved.secret),
         ),

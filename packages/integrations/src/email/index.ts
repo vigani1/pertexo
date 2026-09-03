@@ -8,10 +8,10 @@ export {
 } from './definition.js';
 export {
   EMAIL_SEND_NOTIFICATION_LIMITS,
-  emailMailboxSchema,
+  providerEmailMailboxSchema,
   emailSendNotificationConfigSchema,
   emailSendNotificationInputSchema,
   emailSendNotificationOutputSchema,
-  resendApiKeyCredentialSchema,
+  resolvedResendApiKeyCredentialSchema,
 } from './validation.js';
 export type { EmailSendNotificationOutput } from './validation.js';

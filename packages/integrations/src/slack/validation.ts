@@ -42,7 +42,7 @@ export const slackSendMessageOutputSchema = z
   .strict()
   .readonly();
 
-export const slackBotTokenCredentialSchema = z
+export const resolvedSlackBotTokenCredentialSchema = z
   .object({
     schemaVersion: z.literal(1),
     type: z.literal('slack_bot_token'),
