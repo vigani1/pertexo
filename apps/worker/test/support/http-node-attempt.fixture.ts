@@ -3,8 +3,6 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
 import {
   acceptWorkflowRun,
-  createCompatibilityReleaseMaintenance,
-  createCompatibilityReleaseReadinessProbe,
   createConnectionDatabase,
   createWorkspaceDatabase,
   parseDatabaseConfig,
@@ -24,11 +22,11 @@ import {
   buildWorkflowExecutableV2,
   composeExecutableCompatibilityRelease,
   createCheckpoint,
-  describeExecutableCompatibilityRelease,
 } from '@pertexo/workflow-engine';
 import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll } from 'vitest';
 
+import { activateCompatibilityReleaseFixture } from './compatibility-release.fixture.js';
 import { dropDisconnectedDatabase } from './disposable-database.js';
 import { queryAsWorkspaceRole } from './workspace-query.js';
 
@@ -189,90 +187,34 @@ async function migrateDatabase(): Promise<void> {
 async function activateRelease(
   targetRelease: typeof PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
 ): Promise<void> {
-  const target = describeExecutableCompatibilityRelease(
-    composeExecutableCompatibilityRelease(targetRelease),
-  );
-  const currentRows = await withOwner((client) =>
-    client.query<{ catalog_json: unknown; epoch: number; fingerprint: string }>(
-      `select current.epoch,current.fingerprint,release.catalog_json
-       from app.node_compatibility_current current
-       join app.node_compatibility_releases release
-         on release.epoch=current.epoch and release.fingerprint=current.fingerprint`,
-    ),
-  );
-  const current = currentRows.rows[0];
-  if (current === undefined) throw new Error('compatibility pointer missing');
-  const predecessor = {
-    catalogJson:
-      typeof current.catalog_json === 'string'
-        ? current.catalog_json
-        : JSON.stringify(current.catalog_json),
-    epoch: current.epoch,
-    fingerprint: current.fingerprint,
-  };
-  const supported = [predecessor, target];
-  const maintenance = createCompatibilityReleaseMaintenance(
-    parseDatabaseConfig({
-      connectionString: databaseUrl(migrationUrl),
-      ownerRole: 'pertexo_owner',
-      workerRuntimeRole: 'pertexo_worker',
-    }),
-  );
-  const apiProbe = createCompatibilityReleaseReadinessProbe(
-    parseDatabaseConfig({ connectionString: databaseUrl(apiUrl), max: 1 }),
-    supported,
-  );
-  const workerProbe = createCompatibilityReleaseReadinessProbe(
-    parseDatabaseConfig({ connectionString: databaseUrl(workerUrl), max: 1 }),
-    supported,
-  );
-  const epoch = String(target.epoch);
-  const deploymentId = `http-attempt-${epoch}-${randomUUID()}`;
-  const approvalId = randomUUID();
-  try {
-    await maintenance.prepare({
-      actorId: 'http-attempt-integration',
-      actorKind: 'deployment',
-      expectedPredecessor: predecessor,
-      reason: 'Prepare HTTP attempt integration release',
-      target,
-    });
-    await Promise.all([
-      apiProbe.checkTarget(target),
-      workerProbe.checkTarget(target),
-    ]);
-    for (const roleKind of ['api', 'worker'] as const)
-      await maintenance.recordPreactivation({
-        artifactId: `http-attempt-${roleKind}-${epoch}`,
-        checkId: randomUUID(),
-        deploymentId,
-        roleKind,
-        target,
-      });
-    await maintenance.approve({
-      actorId: 'http-attempt-integration',
-      approvalId,
-      deploymentId,
-      reason: 'Approve HTTP attempt integration release',
-      requiredApiArtifacts: [`http-attempt-api-${epoch}`],
-      requiredWorkerArtifacts: [`http-attempt-worker-${epoch}`],
-      target,
-    });
-    await maintenance.activate({
-      activationId: randomUUID(),
-      actorId: 'http-attempt-integration',
-      actorKind: 'deployment',
-      approvalId,
-      expectedPredecessor: predecessor,
-      reason: 'Activate HTTP attempt integration release',
-    });
-  } finally {
-    await Promise.allSettled([
-      maintenance.close(),
-      apiProbe.close(),
-      workerProbe.close(),
-    ]);
-  }
+  await activateCompatibilityReleaseFixture({
+    actorId: 'http-attempt-integration',
+    apiUrl: databaseUrl(apiUrl),
+    artifactPrefix: 'http-attempt',
+    migrationUrl: databaseUrl(migrationUrl),
+    reasons: {
+      activate: 'Activate HTTP attempt integration release',
+      approve: 'Approve HTTP attempt integration release',
+      prepare: 'Prepare HTTP attempt integration release',
+    },
+    readCurrent: async () =>
+      (
+        await withOwner((client) =>
+          client.query<{
+            catalog_json: unknown;
+            epoch: number;
+            fingerprint: string;
+          }>(
+            `select current.epoch,current.fingerprint,release.catalog_json
+             from app.node_compatibility_current current
+             join app.node_compatibility_releases release
+               on release.epoch=current.epoch and release.fingerprint=current.fingerprint`,
+          ),
+        )
+      ).rows[0],
+    targetRelease,
+    workerUrl: databaseUrl(workerUrl),
+  });
 }
 
 function graph() {

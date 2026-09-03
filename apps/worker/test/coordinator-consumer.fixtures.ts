@@ -53,6 +53,7 @@ import { WorkerDrainState } from '../src/runtime/worker-drain-state.js';
 import { createDispatchConsumerCapabilityRegistry } from '../src/transport/dispatch-consumer-capabilities.js';
 import { OutboxDispatcher } from '../src/transport/outbox-dispatcher.js';
 import { seedCoordinatorWorkflowFixtures } from './support/coordinator-workflow-fixtures.js';
+import { activateCompatibilityReleaseFixture } from './support/compatibility-release.fixture.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';
 import { queryAsWorkspaceRole } from './support/workspace-query.js';
 
@@ -287,92 +288,32 @@ async function waitFor<T>(
 async function activateRelease(
   targetRelease: Parameters<typeof composeExecutableCompatibilityRelease>[0],
 ): Promise<void> {
-  const target = describeExecutableCompatibilityRelease(
-    composeExecutableCompatibilityRelease(targetRelease),
-  );
-  const currentRows = await ownerQuery<{
-    catalog_json: unknown;
-    epoch: number;
-    fingerprint: string;
-  }>(
-    `select current.epoch,current.fingerprint,release.catalog_json
-     from app.node_compatibility_current current
-     join app.node_compatibility_releases release
-       on release.epoch=current.epoch and release.fingerprint=current.fingerprint`,
-  );
-  const current = currentRows[0];
-  if (current === undefined) throw new Error('compatibility pointer missing');
-  const predecessor = {
-    catalogJson:
-      typeof current.catalog_json === 'string'
-        ? current.catalog_json
-        : JSON.stringify(current.catalog_json),
-    epoch: current.epoch,
-    fingerprint: current.fingerprint,
-  };
-  const supported = [predecessor, target];
-  const maintenance = createCompatibilityReleaseMaintenance(
-    parseDatabaseConfig({
-      connectionString: databaseUrl(migrationUrl),
-      ownerRole: 'pertexo_owner',
-      workerRuntimeRole: 'pertexo_worker',
-    }),
-  );
-  const apiProbe = createCompatibilityReleaseReadinessProbe(
-    parseDatabaseConfig({ connectionString: databaseUrl(apiUrl), max: 1 }),
-    supported,
-  );
-  const workerProbe = createCompatibilityReleaseReadinessProbe(
-    parseDatabaseConfig({ connectionString: databaseUrl(workerUrl), max: 1 }),
-    supported,
-  );
-  const epoch = String(target.epoch);
-  const deploymentId = `retained-core-${epoch}-${randomUUID()}`;
-  const approvalId = randomUUID();
-  try {
-    await maintenance.prepare({
-      actorId: 'retained-core-integration',
-      actorKind: 'deployment',
-      expectedPredecessor: predecessor,
-      reason: 'Prepare retained core execution release',
-      target,
-    });
-    await Promise.all([
-      apiProbe.checkTarget(target),
-      workerProbe.checkTarget(target),
-    ]);
-    for (const roleKind of ['api', 'worker'] as const)
-      await maintenance.recordPreactivation({
-        artifactId: `retained-core-${roleKind}-${epoch}`,
-        checkId: randomUUID(),
-        deploymentId,
-        roleKind,
-        target,
-      });
-    await maintenance.approve({
-      actorId: 'retained-core-integration',
-      approvalId,
-      deploymentId,
-      reason: 'Approve retained core execution release',
-      requiredApiArtifacts: [`retained-core-api-${epoch}`],
-      requiredWorkerArtifacts: [`retained-core-worker-${epoch}`],
-      target,
-    });
-    await maintenance.activate({
-      activationId: randomUUID(),
-      actorId: 'retained-core-integration',
-      actorKind: 'deployment',
-      approvalId,
-      expectedPredecessor: predecessor,
-      reason: 'Activate retained core execution release',
-    });
-  } finally {
-    await Promise.allSettled([
-      maintenance.close(),
-      apiProbe.close(),
-      workerProbe.close(),
-    ]);
-  }
+  await activateCompatibilityReleaseFixture({
+    actorId: 'retained-core-integration',
+    apiUrl: databaseUrl(apiUrl),
+    artifactPrefix: 'retained-core',
+    migrationUrl: databaseUrl(migrationUrl),
+    reasons: {
+      activate: 'Activate retained core execution release',
+      approve: 'Approve retained core execution release',
+      prepare: 'Prepare retained core execution release',
+    },
+    readCurrent: async () =>
+      (
+        await ownerQuery<{
+          catalog_json: unknown;
+          epoch: number;
+          fingerprint: string;
+        }>(
+          `select current.epoch,current.fingerprint,release.catalog_json
+           from app.node_compatibility_current current
+           join app.node_compatibility_releases release
+             on release.epoch=current.epoch and release.fingerprint=current.fingerprint`,
+        )
+      )[0],
+    targetRelease,
+    workerUrl: databaseUrl(workerUrl),
+  });
 }
 
 async function setupFixture(): Promise<void> {
