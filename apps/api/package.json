@@ -19,6 +19,7 @@
     "@pertexo/database": "workspace:*",
     "@pertexo/integrations": "workspace:*",
     "@pertexo/node-catalog": "workspace:*",
+    "@pertexo/node-sdk": "workspace:*",
     "@pertexo/nodes-core": "workspace:*",
     "@pertexo/observability": "workspace:*",
     "@pertexo/queue": "workspace:*",
@@ -38,7 +39,6 @@
   },
   "devDependencies": {
     "@opentelemetry/sdk-node": "0.221.0",
-    "@pertexo/node-sdk": "workspace:*",
     "@types/pg": "8.21.0",
     "pg": "8.23.0"
   }

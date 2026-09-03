@@ -34,7 +34,6 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
-    "@opentelemetry/sdk-node": "0.221.0",
     "@types/pg": "8.21.0",
     "bullmq": "6.1.2",
     "drizzle-orm": "0.45.2",
