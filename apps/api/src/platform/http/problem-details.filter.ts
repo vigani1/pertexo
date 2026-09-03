@@ -28,6 +28,9 @@ import {
 import { firstRequestHeader } from './request-headers.js';
 
 export const HTTP_ERROR_LOGGER = Symbol('HTTP_ERROR_LOGGER');
+export const HTTP_APPLICATION_ERROR_MAPPERS = Symbol(
+  'HTTP_APPLICATION_ERROR_MAPPERS',
+);
 
 export type ProblemIssue = ApiProblemIssue;
 export type ProblemDetails = ApiProblem | WorkflowRevisionConflictProblem;
@@ -45,6 +48,11 @@ export type HttpErrorLogEntry = Readonly<{
 export interface HttpErrorLogger {
   log(entry: HttpErrorLogEntry): void | Promise<void>;
 }
+
+export type HttpApplicationErrorMapper = (
+  error: unknown,
+  request: HttpRequestLike,
+) => ApplicationError | undefined;
 
 type ProblemResponse = HttpResponseLike & {
   code?: (status: number) => unknown;
@@ -219,9 +227,18 @@ function safeApplicationIssues(
   return issues.length === 0 ? undefined : Object.freeze(issues);
 }
 
-function normalize(exception: unknown): NormalizedProblem {
+function normalize(
+  exception: unknown,
+  request: HttpRequestLike,
+  applicationErrorMappers: readonly HttpApplicationErrorMapper[],
+): NormalizedProblem {
   if (isApplicationError(exception)) {
     return fromApplicationError(exception);
+  }
+
+  for (const mapper of applicationErrorMappers) {
+    const mapped = mapper(exception, request);
+    if (mapped !== undefined) return fromApplicationError(mapped);
   }
 
   if (exception instanceof ZodError) {
@@ -315,13 +332,18 @@ export class ProblemDetailsFilter implements ExceptionFilter {
   public constructor(
     private readonly contexts: RequestContextStore,
     private readonly logger?: HttpErrorLogger,
+    private readonly applicationErrorMappers: readonly HttpApplicationErrorMapper[] = [],
   ) {}
 
   public catch(exception: unknown, host: ArgumentsHost): void {
     const http = host.switchToHttp();
     const request = http.getRequest<HttpRequestLike>();
     const response = http.getResponse<ProblemResponse>();
-    const normalized = normalize(exception);
+    const normalized = normalize(
+      exception,
+      request,
+      this.applicationErrorMappers,
+    );
     const context = contextFor(this.contexts, request);
     const requestId = context.requestId;
     const instance = instanceFrom(request);

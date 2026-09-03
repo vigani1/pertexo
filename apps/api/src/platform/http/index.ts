@@ -10,10 +10,12 @@ export type {
 } from './application-error.js';
 export { HttpPlatformModule, REQUEST_CONTEXT_STORE } from './http.module.js';
 export {
+  HTTP_APPLICATION_ERROR_MAPPERS,
   HTTP_ERROR_LOGGER,
   ProblemDetailsFilter,
 } from './problem-details.filter.js';
 export type {
+  HttpApplicationErrorMapper,
   HttpErrorLogEntry,
   HttpErrorLogger,
   ProblemDetails,

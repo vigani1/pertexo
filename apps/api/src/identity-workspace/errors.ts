@@ -82,9 +82,3 @@ function mapIdentityError(error: IdentityError): ApplicationError {
   }
   return applicationError('request.invalid', { safeDetail: error.message });
 }
-
-export function rethrowAsApplicationError(error: unknown): never {
-  // The HTTP problem filter consumes this frozen application-error value.
-  // eslint-disable-next-line @typescript-eslint/only-throw-error
-  throw mapIdentityWorkspaceError(error);
-}

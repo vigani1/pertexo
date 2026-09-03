@@ -104,25 +104,21 @@ export class WorkflowRunsController {
     @Param() params: unknown,
     @Body() body: unknown,
   ) {
-    try {
-      const route = workflowRunStartParamsSchema.parse(params);
-      const input = workflowRunStartRequestSchema.parse(body);
-      return await this.startWorkflowRun.execute({
-        actor: actorFrom(request, route.workspaceId),
-        routeWorkspaceId: route.workspaceId,
-        ...guardAuthorization(request),
-        workflowId: route.workflowId,
-        idempotencyKey: requiredIdempotencyKey(request),
-        ...(input.input === undefined ? {} : { input: input.input }),
-        ...(input.deadlineAt === undefined
-          ? {}
-          : { deadlineAt: input.deadlineAt }),
-        ...requestIdentifiers(request),
-        ...traceparent(request),
-      });
-    } catch (error: unknown) {
-      return throwWorkflowRunError(error);
-    }
+    const route = workflowRunStartParamsSchema.parse(params);
+    const input = workflowRunStartRequestSchema.parse(body);
+    return this.startWorkflowRun.execute({
+      actor: actorFrom(request, route.workspaceId),
+      routeWorkspaceId: route.workspaceId,
+      ...guardAuthorization(request),
+      workflowId: route.workflowId,
+      idempotencyKey: requiredIdempotencyKey(request),
+      ...(input.input === undefined ? {} : { input: input.input }),
+      ...(input.deadlineAt === undefined
+        ? {}
+        : { deadlineAt: input.deadlineAt }),
+      ...requestIdentifiers(request),
+      ...traceparent(request),
+    });
   }
 
   @Get('runs/:runId')
@@ -131,17 +127,13 @@ export class WorkflowRunsController {
     @Req() request: WorkflowRunsRequest,
     @Param() params: unknown,
   ) {
-    try {
-      const route = workflowRunParamsSchema.parse(params);
-      return await this.getWorkflowRun.execute({
-        actor: actorFrom(request, route.workspaceId),
-        routeWorkspaceId: route.workspaceId,
-        ...guardAuthorization(request),
-        runId: route.runId,
-      });
-    } catch (error: unknown) {
-      return throwWorkflowRunError(error);
-    }
+    const route = workflowRunParamsSchema.parse(params);
+    return this.getWorkflowRun.execute({
+      actor: actorFrom(request, route.workspaceId),
+      routeWorkspaceId: route.workspaceId,
+      ...guardAuthorization(request),
+      runId: route.runId,
+    });
   }
 
   @Sse('runs/:runId/events')
@@ -178,7 +170,9 @@ export class WorkflowRunsController {
     } catch (error: unknown) {
       request.raw?.off('close', onClose);
       controller.abort();
-      return throwWorkflowRunError(error);
+      // The cleanup is controller-owned; HTTP translation belongs to the
+      // global problem-details filter after the listener is detached.
+      throw error;
     }
   }
 
@@ -195,21 +189,17 @@ export class WorkflowRunsController {
     @Param() params: unknown,
     @Body() body: unknown,
   ) {
-    try {
-      const route = workflowRunParamsSchema.parse(params);
-      const input = workflowRunCancelRequestSchema.parse(body);
-      return await this.cancelWorkflowRun.execute({
-        actor: actorFrom(request, route.workspaceId),
-        routeWorkspaceId: route.workspaceId,
-        ...guardAuthorization(request),
-        runId: route.runId,
-        ...(input.reason === undefined ? {} : { reason: input.reason }),
-        ...requestIdentifiers(request),
-        ...traceparent(request),
-      });
-    } catch (error: unknown) {
-      return throwWorkflowRunError(error);
-    }
+    const route = workflowRunParamsSchema.parse(params);
+    const input = workflowRunCancelRequestSchema.parse(body);
+    return this.cancelWorkflowRun.execute({
+      actor: actorFrom(request, route.workspaceId),
+      routeWorkspaceId: route.workspaceId,
+      ...guardAuthorization(request),
+      runId: route.runId,
+      ...(input.reason === undefined ? {} : { reason: input.reason }),
+      ...requestIdentifiers(request),
+      ...traceparent(request),
+    });
   }
 }
 

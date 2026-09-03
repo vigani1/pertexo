@@ -26,7 +26,7 @@ import {
 } from '../platform/http/request-headers.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { createActorContext } from '../workspaces/index.js';
-import { mapWorkflowAuthoringError } from './errors.js';
+import { throwWorkflowApplicationError } from './errors.js';
 import {
   WorkflowCreateGuard,
   WorkflowPublishGuard,
@@ -78,19 +78,15 @@ export class WorkflowAuthoringController {
     @Param() params: unknown,
     @Query() query: unknown,
   ) {
-    try {
-      const { workspaceId } = workspaceParams(params);
-      const input = workflowListQuerySchema.parse(query ?? {});
-      return await this.listWorkflows.execute({
-        actor: actorFrom(request, workspaceId),
-        routeWorkspaceId: workspaceId,
-        ...guardAuthorization(request),
-        ...(input.limit === undefined ? {} : { limit: input.limit }),
-        ...(input.after === undefined ? {} : { after: input.after }),
-      });
-    } catch (error: unknown) {
-      return throwWorkflowApplicationError(error);
-    }
+    const { workspaceId } = workspaceParams(params);
+    const input = workflowListQuerySchema.parse(query ?? {});
+    return this.listWorkflows.execute({
+      actor: actorFrom(request, workspaceId),
+      routeWorkspaceId: workspaceId,
+      ...guardAuthorization(request),
+      ...(input.limit === undefined ? {} : { limit: input.limit }),
+      ...(input.after === undefined ? {} : { after: input.after }),
+    });
   }
 
   @Post()
@@ -107,24 +103,20 @@ export class WorkflowAuthoringController {
     @Body() body: unknown,
     @Res({ passthrough: true }) response: WorkflowResponse,
   ) {
-    try {
-      const { workspaceId } = workspaceParams(params);
-      const input = workflowCreateRequestSchema.parse(body);
-      const result = await this.createWorkflow.execute({
-        actor: actorFrom(request, workspaceId),
-        routeWorkspaceId: workspaceId,
-        ...guardAuthorization(request),
-        name: input.name,
-        idempotencyKey: parseIdempotencyKey(
-          requestHeaderValue(request.headers, 'idempotency-key'),
-        ),
-        ...requestIdentifiers(request),
-      });
-      response.header('ETag', result.representationTag);
-      return result.body;
-    } catch (error: unknown) {
-      return throwWorkflowApplicationError(error);
-    }
+    const { workspaceId } = workspaceParams(params);
+    const input = workflowCreateRequestSchema.parse(body);
+    const result = await this.createWorkflow.execute({
+      actor: actorFrom(request, workspaceId),
+      routeWorkspaceId: workspaceId,
+      ...guardAuthorization(request),
+      name: input.name,
+      idempotencyKey: parseIdempotencyKey(
+        requestHeaderValue(request.headers, 'idempotency-key'),
+      ),
+      ...requestIdentifiers(request),
+    });
+    response.header('ETag', result.representationTag);
+    return result.body;
   }
 
   @Get(':workflowId/draft')
@@ -134,19 +126,15 @@ export class WorkflowAuthoringController {
     @Param() params: unknown,
     @Res({ passthrough: true }) response: WorkflowResponse,
   ) {
-    try {
-      const route = workflowParams(params);
-      const result = await this.getDraft.execute({
-        actor: actorFrom(request, route.workspaceId),
-        routeWorkspaceId: route.workspaceId,
-        ...guardAuthorization(request),
-        workflowId: route.workflowId,
-      });
-      response.header('ETag', result.representationTag);
-      return result.body;
-    } catch (error: unknown) {
-      return throwWorkflowApplicationError(error);
-    }
+    const route = workflowParams(params);
+    const result = await this.getDraft.execute({
+      actor: actorFrom(request, route.workspaceId),
+      routeWorkspaceId: route.workspaceId,
+      ...guardAuthorization(request),
+      workflowId: route.workflowId,
+    });
+    response.header('ETag', result.representationTag);
+    return result.body;
   }
 
   @Put(':workflowId/draft')
@@ -162,25 +150,21 @@ export class WorkflowAuthoringController {
     @Body() body: unknown,
     @Res({ passthrough: true }) response: WorkflowResponse,
   ) {
-    try {
-      const route = workflowParams(params);
-      const input = workflowDraftSaveRequestSchema.parse(body);
-      const result = await this.saveDraft.execute({
-        actor: actorFrom(request, route.workspaceId),
-        routeWorkspaceId: route.workspaceId,
-        ...guardAuthorization(request),
-        workflowId: route.workflowId,
-        representationTag: parseStrongIfMatch(
-          requestHeaderValue(request.headers, 'if-match'),
-        ),
-        graph: input.graph,
-        ...requestIdentifiers(request),
-      });
-      response.header('ETag', result.representationTag);
-      return result.body;
-    } catch (error: unknown) {
-      return throwWorkflowApplicationError(error);
-    }
+    const route = workflowParams(params);
+    const input = workflowDraftSaveRequestSchema.parse(body);
+    const result = await this.saveDraft.execute({
+      actor: actorFrom(request, route.workspaceId),
+      routeWorkspaceId: route.workspaceId,
+      ...guardAuthorization(request),
+      workflowId: route.workflowId,
+      representationTag: parseStrongIfMatch(
+        requestHeaderValue(request.headers, 'if-match'),
+      ),
+      graph: input.graph,
+      ...requestIdentifiers(request),
+    });
+    response.header('ETag', result.representationTag);
+    return result.body;
   }
 
   @Post(':workflowId/validate')
@@ -191,17 +175,13 @@ export class WorkflowAuthoringController {
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,
   ) {
-    try {
-      const route = workflowParams(params);
-      return await this.validateDraft.execute({
-        actor: actorFrom(request, route.workspaceId),
-        routeWorkspaceId: route.workspaceId,
-        ...guardAuthorization(request),
-        workflowId: route.workflowId,
-      });
-    } catch (error: unknown) {
-      return throwWorkflowApplicationError(error);
-    }
+    const route = workflowParams(params);
+    return this.validateDraft.execute({
+      actor: actorFrom(request, route.workspaceId),
+      routeWorkspaceId: route.workspaceId,
+      ...guardAuthorization(request),
+      workflowId: route.workflowId,
+    });
   }
 
   @Post(':workflowId/publish')
@@ -216,25 +196,21 @@ export class WorkflowAuthoringController {
     @Req() request: WorkflowAuthoringRequest,
     @Param() params: unknown,
   ) {
-    try {
-      const route = workflowParams(params);
-      return await this.publishWorkflow.execute({
-        actor: actorFrom(request, route.workspaceId),
-        routeWorkspaceId: route.workspaceId,
-        ...guardAuthorization(request),
-        workflowId: route.workflowId,
-        representationTag: parseStrongIfMatch(
-          requestHeaderValue(request.headers, 'if-match'),
-        ),
-        idempotencyKey: parseIdempotencyKey(
-          requestHeaderValue(request.headers, 'idempotency-key'),
-        ),
-        ...requestIdentifiers(request),
-        ...traceparent(request),
-      });
-    } catch (error: unknown) {
-      return throwWorkflowApplicationError(error);
-    }
+    const route = workflowParams(params);
+    return this.publishWorkflow.execute({
+      actor: actorFrom(request, route.workspaceId),
+      routeWorkspaceId: route.workspaceId,
+      ...guardAuthorization(request),
+      workflowId: route.workflowId,
+      representationTag: parseStrongIfMatch(
+        requestHeaderValue(request.headers, 'if-match'),
+      ),
+      idempotencyKey: parseIdempotencyKey(
+        requestHeaderValue(request.headers, 'idempotency-key'),
+      ),
+      ...requestIdentifiers(request),
+      ...traceparent(request),
+    });
   }
 
   @Get(':workflowId/versions')
@@ -244,20 +220,16 @@ export class WorkflowAuthoringController {
     @Param() params: unknown,
     @Query() query: unknown,
   ) {
-    try {
-      const route = workflowParams(params);
-      const input = workflowVersionsQuerySchema.parse(query ?? {});
-      return await this.listVersions.execute({
-        actor: actorFrom(request, route.workspaceId),
-        routeWorkspaceId: route.workspaceId,
-        ...guardAuthorization(request),
-        workflowId: route.workflowId,
-        ...(input.limit === undefined ? {} : { limit: input.limit }),
-        ...(input.after === undefined ? {} : { after: input.after }),
-      });
-    } catch (error: unknown) {
-      return throwWorkflowApplicationError(error);
-    }
+    const route = workflowParams(params);
+    const input = workflowVersionsQuerySchema.parse(query ?? {});
+    return this.listVersions.execute({
+      actor: actorFrom(request, route.workspaceId),
+      routeWorkspaceId: route.workspaceId,
+      ...guardAuthorization(request),
+      workflowId: route.workflowId,
+      ...(input.limit === undefined ? {} : { limit: input.limit }),
+      ...(input.after === undefined ? {} : { after: input.after }),
+    });
   }
 }
 
@@ -327,11 +299,4 @@ function traceparent(
 ): Readonly<{ traceparent?: string }> {
   const value = singleRequestHeader(request.headers, 'traceparent');
   return value === undefined ? {} : { traceparent: value };
-}
-
-function throwWorkflowApplicationError(error: unknown): never {
-  const mapped = mapWorkflowAuthoringError(error);
-  // The shared problem filter consumes frozen application errors.
-  // eslint-disable-next-line @typescript-eslint/only-throw-error
-  throw mapped;
 }

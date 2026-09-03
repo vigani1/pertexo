@@ -33,7 +33,6 @@ export {
 } from './database-adapter.js';
 export {
   mapIdentityWorkspaceError,
-  rethrowAsApplicationError,
   workspaceApplicationError,
 } from './errors.js';
 export * from './ports.js';

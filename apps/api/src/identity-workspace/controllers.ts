@@ -22,7 +22,6 @@ import {
 import { createActorContext } from '../workspaces/index.js';
 import { applicationError } from '../platform/http/index.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
-import { mapIdentityWorkspaceError } from './errors.js';
 import type { SessionCookiePolicy } from './ports.js';
 import {
   authenticatedSession,
@@ -87,24 +86,20 @@ export class OidcController {
   public async start(
     @Res({ passthrough: true }) response: CookieResponse,
   ): Promise<Readonly<{ authorizationUrl: string; expiresAt: string }>> {
-    try {
-      const result = await this.application.start();
-      response.header(
-        'set-cookie',
-        serializeOidcBindingCookie(
-          result.browserBinding,
-          result.expiresAt,
-          result.browserBindingMaxAgeSeconds,
-          this.cookiePolicy,
-        ),
-      );
-      return oidcStartResponseSchema.parse({
-        authorizationUrl: result.authorizationUrl,
-        expiresAt: result.expiresAt.toISOString(),
-      });
-    } catch (error: unknown) {
-      return throwApplicationError(mapIdentityWorkspaceError(error));
-    }
+    const result = await this.application.start();
+    response.header(
+      'set-cookie',
+      serializeOidcBindingCookie(
+        result.browserBinding,
+        result.expiresAt,
+        result.browserBindingMaxAgeSeconds,
+        this.cookiePolicy,
+      ),
+    );
+    return oidcStartResponseSchema.parse({
+      authorizationUrl: result.authorizationUrl,
+      expiresAt: result.expiresAt.toISOString(),
+    });
   }
 
   @Get('callback')
@@ -134,7 +129,9 @@ export class OidcController {
       } catch {
         // Preserve the original callback error if the response boundary failed.
       }
-      return throwApplicationError(mapIdentityWorkspaceError(error));
+      // Cookie cleanup is controller-owned; the global filter performs the
+      // feature-specific translation after the browser binding is cleared.
+      throw error;
     }
   }
 }
@@ -157,23 +154,19 @@ export class SessionController {
     @Req() request: IdentityWorkspaceRequest,
     @Res({ passthrough: true }) response: CookieResponse,
   ): Promise<void> {
-    try {
-      const token = sessionToken(request);
-      if (token === undefined)
-        return throwApplicationError(applicationError('auth.unauthenticated'));
-      await this.telemetry.measure(
-        IDENTITY_WORKSPACE_OPERATION.sessionLogout,
-        async () => {
-          await this.sessions.revoke(token);
-          response.header('set-cookie', [
-            clearCookie(SESSION_COOKIE_NAME, true, this.cookiePolicy),
-            clearCookie(CSRF_COOKIE_NAME, false, this.cookiePolicy),
-          ]);
-        },
-      );
-    } catch (error: unknown) {
-      return throwApplicationError(mapIdentityWorkspaceError(error));
-    }
+    const token = sessionToken(request);
+    if (token === undefined)
+      return throwApplicationError(applicationError('auth.unauthenticated'));
+    await this.telemetry.measure(
+      IDENTITY_WORKSPACE_OPERATION.sessionLogout,
+      async () => {
+        await this.sessions.revoke(token);
+        response.header('set-cookie', [
+          clearCookie(SESSION_COOKIE_NAME, true, this.cookiePolicy),
+          clearCookie(CSRF_COOKIE_NAME, false, this.cookiePolicy),
+        ]);
+      },
+    );
   }
 }
 
@@ -191,20 +184,16 @@ export class WorkspaceController {
     @Req() request: IdentityWorkspaceRequest,
     @Body() body: unknown,
   ) {
-    try {
-      const input = workspaceCreateRequestSchema.parse(body);
-      const session = authenticatedSession(request);
-      return await this.createWorkspace.execute({
-        actorId: session.userId,
-        idempotencyKey: requestIdempotencyKey(request),
-        name: input.name,
-        slug: input.slug,
-        requestId: requestIdentifier(request),
-        ...traceFields(traceIdentifier(request)),
-      });
-    } catch (error: unknown) {
-      return throwApplicationError(mapIdentityWorkspaceError(error));
-    }
+    const input = workspaceCreateRequestSchema.parse(body);
+    const session = authenticatedSession(request);
+    return this.createWorkspace.execute({
+      actorId: session.userId,
+      idempotencyKey: requestIdempotencyKey(request),
+      name: input.name,
+      slug: input.slug,
+      requestId: requestIdentifier(request),
+      ...traceFields(traceIdentifier(request)),
+    });
   }
 
   @Post(':workspaceId/deletion')
@@ -220,24 +209,20 @@ export class WorkspaceController {
     @Param() params: unknown,
     @Body() body: unknown,
   ) {
-    try {
-      const { workspaceId } = workspaceIdParamSchema.parse(params);
-      const deletion = workspaceDeletionRequestSchema.parse(body ?? {});
-      const actor = lifecycleActorFrom(request, workspaceId);
-      const requestId = actor.requestId;
-      const traceId = actor.traceId;
-      return await this.lifecycle.requestDeletion({
-        actor,
-        ...guardAuthorization(request),
-        idempotencyKey: requestIdempotencyKey(request),
-        routeWorkspaceId: workspaceId,
-        reason: deletion.reason,
-        requestId,
-        ...traceFields(traceId),
-      });
-    } catch (error: unknown) {
-      return throwApplicationError(mapIdentityWorkspaceError(error));
-    }
+    const { workspaceId } = workspaceIdParamSchema.parse(params);
+    const deletion = workspaceDeletionRequestSchema.parse(body ?? {});
+    const actor = lifecycleActorFrom(request, workspaceId);
+    const requestId = actor.requestId;
+    const traceId = actor.traceId;
+    return this.lifecycle.requestDeletion({
+      actor,
+      ...guardAuthorization(request),
+      idempotencyKey: requestIdempotencyKey(request),
+      routeWorkspaceId: workspaceId,
+      reason: deletion.reason,
+      requestId,
+      ...traceFields(traceId),
+    });
   }
 
   @Delete(':workspaceId/deletion')
@@ -252,22 +237,18 @@ export class WorkspaceController {
     @Req() request: IdentityWorkspaceRequest,
     @Param() params: unknown,
   ) {
-    try {
-      const { workspaceId } = workspaceIdParamSchema.parse(params);
-      const actor = lifecycleActorFrom(request, workspaceId);
-      const requestId = actor.requestId;
-      const traceId = actor.traceId;
-      return await this.lifecycle.restore({
-        actor,
-        ...guardAuthorization(request),
-        idempotencyKey: requestIdempotencyKey(request),
-        routeWorkspaceId: workspaceId,
-        requestId,
-        ...traceFields(traceId),
-      });
-    } catch (error: unknown) {
-      return throwApplicationError(mapIdentityWorkspaceError(error));
-    }
+    const { workspaceId } = workspaceIdParamSchema.parse(params);
+    const actor = lifecycleActorFrom(request, workspaceId);
+    const requestId = actor.requestId;
+    const traceId = actor.traceId;
+    return this.lifecycle.restore({
+      actor,
+      ...guardAuthorization(request),
+      idempotencyKey: requestIdempotencyKey(request),
+      routeWorkspaceId: workspaceId,
+      requestId,
+      ...traceFields(traceId),
+    });
   }
 
   @Get(':workspaceId/lifecycle-operations/:operationId')
@@ -277,19 +258,15 @@ export class WorkspaceController {
     @Req() request: IdentityWorkspaceRequest,
     @Param() params: unknown,
   ) {
-    try {
-      const { workspaceId, operationId } =
-        workspaceLifecycleOperationParamsSchema.parse(params);
-      const actor = lifecycleActorFrom(request, workspaceId);
-      return await this.lifecycle.readOperation({
-        actor,
-        ...guardAuthorization(request),
-        routeWorkspaceId: workspaceId,
-        operationId,
-      });
-    } catch (error: unknown) {
-      return throwApplicationError(mapIdentityWorkspaceError(error));
-    }
+    const { workspaceId, operationId } =
+      workspaceLifecycleOperationParamsSchema.parse(params);
+    const actor = lifecycleActorFrom(request, workspaceId);
+    return this.lifecycle.readOperation({
+      actor,
+      ...guardAuthorization(request),
+      routeWorkspaceId: workspaceId,
+      operationId,
+    });
   }
 }
 

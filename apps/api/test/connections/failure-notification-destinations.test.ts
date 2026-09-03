@@ -87,7 +87,7 @@ describe('failure notification destination API seams', () => {
 
     await expect(
       controller.create(request(), { workspaceId }, record.config),
-    ).rejects.toMatchObject({ code: 'request.invalid' });
+    ).rejects.toMatchObject({ name: 'ZodError' });
   });
 
   it('keeps GET idempotency-free and measures destination-specific commands', async () => {
@@ -171,7 +171,7 @@ describe('failure notification destination API seams', () => {
         { workspaceId, destinationId },
         body,
       ),
-    ).rejects.toMatchObject({ code: 'connection.conflict' });
+    ).rejects.toBeInstanceOf(FailureNotificationDestinationConflictError);
 
     vi.mocked(database.appendVersion).mockRejectedValueOnce(
       new FailureNotificationDestinationIdempotencyConflictError(),
@@ -182,7 +182,9 @@ describe('failure notification destination API seams', () => {
         { workspaceId, destinationId },
         body,
       ),
-    ).rejects.toMatchObject({ code: 'request.idempotency_conflict' });
+    ).rejects.toBeInstanceOf(
+      FailureNotificationDestinationIdempotencyConflictError,
+    );
   });
 
   it('sets and clears workflow policy with exact idempotent replay metadata', async () => {
@@ -235,7 +237,7 @@ describe('failure notification destination API seams', () => {
     );
     await expect(
       controller.get(request(), { workspaceId, destinationId }),
-    ).rejects.toMatchObject({ code: 'resource.not_found' });
+    ).rejects.toBeInstanceOf(FailureNotificationDestinationNotFoundError);
 
     vi.mocked(database.appendVersion).mockRejectedValueOnce(
       new FailureNotificationDestinationNotFoundError(),
@@ -249,6 +251,6 @@ describe('failure notification destination API seams', () => {
           config: { ...record.config, channelId: 'C67890' },
         },
       ),
-    ).rejects.toMatchObject({ code: 'resource.not_found' });
+    ).rejects.toBeInstanceOf(FailureNotificationDestinationNotFoundError);
   });
 });

@@ -105,7 +105,7 @@ describe('workflow authoring controller public seam', () => {
         { graph: body.graph },
         { header: vi.fn() },
       ),
-    ).rejects.toMatchObject({ code: 'request.precondition_required' });
+    ).rejects.toMatchObject({ name: 'PreconditionRequiredError' });
   });
 
   it('maps the create draft representation ETag to the response', async () => {
@@ -187,7 +187,7 @@ describe('workflow authoring controller public seam', () => {
         { name: 'Operations' },
         { header: vi.fn() },
       ),
-    ).rejects.toMatchObject({ code: 'request.invalid' });
+    ).rejects.toMatchObject({ name: 'ZodError' });
   });
 
   it('rejects route fields outside the workflow collection contract', async () => {
@@ -200,7 +200,7 @@ describe('workflow authoring controller public seam', () => {
         { name: 'Operations' },
         { header: vi.fn() },
       ),
-    ).rejects.toMatchObject({ code: 'request.invalid' });
+    ).rejects.toMatchObject({ name: 'ZodError' });
     expect(createWorkflow.execute).not.toHaveBeenCalled();
   });
 });

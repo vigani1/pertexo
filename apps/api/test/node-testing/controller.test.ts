@@ -194,7 +194,7 @@ describe('node testing controller', () => {
         },
         { status: vi.fn() },
       ),
-    ).rejects.toMatchObject({ code: 'request.precondition_required' });
+    ).rejects.toMatchObject({ name: 'NodeTestIdempotencyRequiredError' });
     expect(fixture.persistence.acceptPreview).not.toHaveBeenCalled();
   });
 

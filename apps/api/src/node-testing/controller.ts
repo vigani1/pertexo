@@ -30,10 +30,7 @@ import {
 } from '../platform/http/request-headers.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { createActorContext } from '../workspaces/index.js';
-import {
-  NodeTestIdempotencyRequiredError,
-  throwNodeTestingApplicationError,
-} from './errors.js';
+import { NodeTestIdempotencyRequiredError } from './errors.js';
 import { NodeTestingUpdateGuard } from './guards.js';
 import { GetPreviewRunUseCase, TestWorkflowNodeUseCase } from './use-case.js';
 
@@ -56,17 +53,13 @@ export class NodeTestingController {
     @Req() request: IdentityWorkspaceRequest,
     @Param() params: unknown,
   ) {
-    try {
-      const route = previewRunParamsSchema.parse(params);
-      return await this.getPreview.execute({
-        actor: actorFrom(request, route.workspaceId),
-        routeWorkspaceId: route.workspaceId,
-        ...guardAuthorization(request),
-        previewRunId: route.previewRunId,
-      });
-    } catch (error: unknown) {
-      return throwNodeTestingApplicationError(error);
-    }
+    const route = previewRunParamsSchema.parse(params);
+    return this.getPreview.execute({
+      actor: actorFrom(request, route.workspaceId),
+      routeWorkspaceId: route.workspaceId,
+      ...guardAuthorization(request),
+      previewRunId: route.previewRunId,
+    });
   }
 
   @Post('workflows/:workflowId/draft/nodes/:nodeId/test')
@@ -82,32 +75,28 @@ export class NodeTestingController {
     @Body() body: unknown,
     @Res({ passthrough: true }) response: StatusResponse,
   ) {
-    try {
-      const route = nodeTestParamsSchema.parse(params);
-      const command = nodeTestRequestSchema.parse(body);
-      const idempotencyKey =
-        command.mode === 'test_execute'
-          ? requiredIdempotencyKey(request)
-          : undefined;
-      const traceparent = singleHeader(request, 'traceparent');
-      const actor = actorFrom(request, route.workspaceId);
-      const result = await this.testNode.execute({
-        actor,
-        routeWorkspaceId: route.workspaceId,
-        ...guardAuthorization(request),
-        workflowId: route.workflowId,
-        nodeId: route.nodeId,
-        request: command,
-        ...(idempotencyKey === undefined ? {} : { idempotencyKey }),
-        requestId: actor.requestId,
-        ...(actor.traceId === undefined ? {} : { traceId: actor.traceId }),
-        ...(traceparent === undefined ? {} : { traceparent }),
-      });
-      if (command.mode === 'test_execute') response.status(202);
-      return result;
-    } catch (error: unknown) {
-      return throwNodeTestingApplicationError(error);
-    }
+    const route = nodeTestParamsSchema.parse(params);
+    const command = nodeTestRequestSchema.parse(body);
+    const idempotencyKey =
+      command.mode === 'test_execute'
+        ? requiredIdempotencyKey(request)
+        : undefined;
+    const traceparent = singleHeader(request, 'traceparent');
+    const actor = actorFrom(request, route.workspaceId);
+    const result = await this.testNode.execute({
+      actor,
+      routeWorkspaceId: route.workspaceId,
+      ...guardAuthorization(request),
+      workflowId: route.workflowId,
+      nodeId: route.nodeId,
+      request: command,
+      ...(idempotencyKey === undefined ? {} : { idempotencyKey }),
+      requestId: actor.requestId,
+      ...(actor.traceId === undefined ? {} : { traceId: actor.traceId }),
+      ...(traceparent === undefined ? {} : { traceparent }),
+    });
+    if (command.mode === 'test_execute') response.status(202);
+    return result;
   }
 }
 

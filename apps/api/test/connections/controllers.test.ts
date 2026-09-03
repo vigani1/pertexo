@@ -102,14 +102,14 @@ describe('connections controller public seam', () => {
           credential,
         },
       ),
-    ).rejects.toMatchObject({ code: 'request.invalid' });
+    ).rejects.toMatchObject({ name: 'ZodError' });
     await expect(
       instance.rotate(
         request(),
         { workspaceId, connectionId },
         { expectedSecretVersionId: secretVersionId, credential },
       ),
-    ).rejects.toMatchObject({ code: 'request.invalid' });
+    ).rejects.toMatchObject({ name: 'ZodError' });
     expect(create.execute).not.toHaveBeenCalled();
     expect(rotate.execute).not.toHaveBeenCalled();
   });
@@ -130,7 +130,7 @@ describe('connections controller public seam', () => {
           },
         },
       ),
-    ).rejects.toMatchObject({ code: 'request.invalid' });
+    ).rejects.toMatchObject({ name: 'ZodError' });
     expect(create.execute).not.toHaveBeenCalled();
   });
 
@@ -163,6 +163,6 @@ describe('connections controller public seam', () => {
         { workspaceId, connectionId },
         { url: 'http://provider.example.test/health' },
       ),
-    ).rejects.toMatchObject({ code: 'request.invalid' });
+    ).rejects.toMatchObject({ name: 'ZodError' });
   });
 });

@@ -34,7 +34,6 @@ import {
   traceIdentifier,
 } from '../identity-workspace/index.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
-import { throwConnectionApplicationError } from './errors.js';
 import {
   ConnectionManageGuard,
   FailureNotificationWorkflowEditGuard,
@@ -255,16 +254,12 @@ export class FailureNotificationDestinationsController {
     @Param() params: unknown,
     @Body() body: unknown,
   ) {
-    try {
-      const route = workspaceParamsSchema.parse(params);
-      return await this.useCases.create({
-        request,
-        workspaceId: route.workspaceId,
-        body: failureNotificationDestinationCreateRequestSchema.parse(body),
-      });
-    } catch (error: unknown) {
-      return throwConnectionApplicationError(error);
-    }
+    const route = workspaceParamsSchema.parse(params);
+    return this.useCases.create({
+      request,
+      workspaceId: route.workspaceId,
+      body: failureNotificationDestinationCreateRequestSchema.parse(body),
+    });
   }
   @Get('failure-notification-destinations')
   @RateLimit('authenticated_read')
@@ -273,14 +268,10 @@ export class FailureNotificationDestinationsController {
     @Req() request: ConnectionRequest,
     @Param() params: unknown,
   ) {
-    try {
-      return await this.useCases.list({
-        request,
-        workspaceId: workspaceParamsSchema.parse(params).workspaceId,
-      });
-    } catch (error: unknown) {
-      return throwConnectionApplicationError(error);
-    }
+    return this.useCases.list({
+      request,
+      workspaceId: workspaceParamsSchema.parse(params).workspaceId,
+    });
   }
   @Get('failure-notification-destinations/:destinationId')
   @RateLimit('authenticated_read')
@@ -289,16 +280,12 @@ export class FailureNotificationDestinationsController {
     @Req() request: ConnectionRequest,
     @Param() params: unknown,
   ) {
-    try {
-      const route = destinationParamsSchema.parse(params);
-      return await this.useCases.get({
-        request,
-        workspaceId: route.workspaceId,
-        destinationId: route.destinationId,
-      });
-    } catch (error: unknown) {
-      return throwConnectionApplicationError(error);
-    }
+    const route = destinationParamsSchema.parse(params);
+    return this.useCases.get({
+      request,
+      workspaceId: route.workspaceId,
+      destinationId: route.destinationId,
+    });
   }
   @Post('failure-notification-destinations/:destinationId/versions')
   @UseGuards(
@@ -311,19 +298,15 @@ export class FailureNotificationDestinationsController {
     @Param() params: unknown,
     @Body() body: unknown,
   ) {
-    try {
-      const route = destinationParamsSchema.parse(params);
-      return await this.useCases.append({
-        request,
-        workspaceId: route.workspaceId,
-        destinationId: route.destinationId,
-        body: failureNotificationDestinationAppendVersionRequestSchema.parse(
-          body,
-        ),
-      });
-    } catch (error: unknown) {
-      return throwConnectionApplicationError(error);
-    }
+    const route = destinationParamsSchema.parse(params);
+    return this.useCases.append({
+      request,
+      workspaceId: route.workspaceId,
+      destinationId: route.destinationId,
+      body: failureNotificationDestinationAppendVersionRequestSchema.parse(
+        body,
+      ),
+    });
   }
   @Put('failure-notification-destinations/:destinationId/status')
   @UseGuards(
@@ -336,17 +319,13 @@ export class FailureNotificationDestinationsController {
     @Param() params: unknown,
     @Body() body: unknown,
   ) {
-    try {
-      const route = destinationParamsSchema.parse(params);
-      return await this.useCases.status({
-        request,
-        workspaceId: route.workspaceId,
-        destinationId: route.destinationId,
-        body: failureNotificationDestinationStatusRequestSchema.parse(body),
-      });
-    } catch (error: unknown) {
-      return throwConnectionApplicationError(error);
-    }
+    const route = destinationParamsSchema.parse(params);
+    return this.useCases.status({
+      request,
+      workspaceId: route.workspaceId,
+      destinationId: route.destinationId,
+      body: failureNotificationDestinationStatusRequestSchema.parse(body),
+    });
   }
   @Put('workflows/:workflowId/failure-notification-policy')
   @UseGuards(
@@ -360,17 +339,13 @@ export class FailureNotificationDestinationsController {
     @Param() params: unknown,
     @Body() body: unknown,
   ) {
-    try {
-      const route = workflowPolicyParamsSchema.parse(params);
-      await this.useCases.setPolicy({
-        request,
-        workspaceId: route.workspaceId,
-        workflowId: route.workflowId,
-        body: workflowFailureNotificationPolicyRequestSchema.parse(body),
-      });
-    } catch (error: unknown) {
-      return throwConnectionApplicationError(error);
-    }
+    const route = workflowPolicyParamsSchema.parse(params);
+    await this.useCases.setPolicy({
+      request,
+      workspaceId: route.workspaceId,
+      workflowId: route.workflowId,
+      body: workflowFailureNotificationPolicyRequestSchema.parse(body),
+    });
   }
   @Delete('workflows/:workflowId/failure-notification-policy')
   @UseGuards(
@@ -383,15 +358,11 @@ export class FailureNotificationDestinationsController {
     @Req() request: ConnectionRequest,
     @Param() params: unknown,
   ) {
-    try {
-      const route = workflowPolicyParamsSchema.parse(params);
-      await this.useCases.clearPolicy({
-        request,
-        workspaceId: route.workspaceId,
-        workflowId: route.workflowId,
-      });
-    } catch (error: unknown) {
-      return throwConnectionApplicationError(error);
-    }
+    const route = workflowPolicyParamsSchema.parse(params);
+    await this.useCases.clearPolicy({
+      request,
+      workspaceId: route.workspaceId,
+      workflowId: route.workflowId,
+    });
   }
 }

@@ -68,9 +68,3 @@ export function mapConnectionError(error: unknown): ApplicationError {
     });
   return applicationError('internal.unexpected', { cause: error });
 }
-
-export function throwConnectionApplicationError(error: unknown): never {
-  // The shared problem filter consumes frozen application errors.
-  // eslint-disable-next-line @typescript-eslint/only-throw-error
-  throw mapConnectionError(error);
-}

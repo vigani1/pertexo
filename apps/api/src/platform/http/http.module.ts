@@ -8,8 +8,10 @@ import type {
 import { APP_FILTER } from '@nestjs/core';
 
 import {
+  HTTP_APPLICATION_ERROR_MAPPERS,
   HTTP_ERROR_LOGGER,
   ProblemDetailsFilter,
+  type HttpApplicationErrorMapper,
   type HttpErrorLogger,
 } from './problem-details.filter.js';
 import {
@@ -29,8 +31,14 @@ const problemFilterProvider: Provider = {
   useFactory: (
     contexts: RequestContextStore,
     logger: HttpErrorLogger,
-  ): ProblemDetailsFilter => new ProblemDetailsFilter(contexts, logger),
-  inject: [REQUEST_CONTEXT_STORE, HTTP_ERROR_LOGGER],
+    applicationErrorMappers: readonly HttpApplicationErrorMapper[],
+  ): ProblemDetailsFilter =>
+    new ProblemDetailsFilter(contexts, logger, applicationErrorMappers),
+  inject: [
+    REQUEST_CONTEXT_STORE,
+    HTTP_ERROR_LOGGER,
+    HTTP_APPLICATION_ERROR_MAPPERS,
+  ],
 };
 
 @Global()
@@ -47,11 +55,18 @@ const problemFilterProvider: Provider = {
   ],
 })
 export class HttpPlatformModule implements NestModule {
-  public static register(logger: HttpErrorLogger): DynamicModule {
+  public static register(
+    logger: HttpErrorLogger,
+    applicationErrorMappers: readonly HttpApplicationErrorMapper[] = [],
+  ): DynamicModule {
     return {
       module: HttpPlatformModule,
       providers: [
         { provide: HTTP_ERROR_LOGGER, useValue: logger },
+        {
+          provide: HTTP_APPLICATION_ERROR_MAPPERS,
+          useValue: applicationErrorMappers,
+        },
         problemFilterProvider,
       ],
     };

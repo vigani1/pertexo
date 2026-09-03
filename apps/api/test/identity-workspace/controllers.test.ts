@@ -181,7 +181,7 @@ describe('identity/workspace controllers', () => {
         { cookies: { pertexo_oidc_binding: 'browser-binding' } },
         response,
       ),
-    ).rejects.toMatchObject({ code: 'auth.unauthenticated' });
+    ).rejects.toMatchObject({ code: 'identity.session_invalid' });
     expect(revokedAt).toBeInstanceOf(Date);
   });
 
@@ -233,7 +233,7 @@ describe('identity/workspace controllers', () => {
         {},
         malformedResponse,
       ),
-    ).rejects.toMatchObject({ code: 'request.invalid' });
+    ).rejects.toMatchObject({ name: 'ZodError' });
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(vi.mocked(malformedResponse.header)).toHaveBeenCalledWith(
       'set-cookie',
@@ -254,21 +254,21 @@ describe('identity/workspace controllers', () => {
     } satisfies IdentityWorkspaceRequest;
     await expect(
       workspaceController.create(request, { name: '', slug: 'not valid' }),
-    ).rejects.toMatchObject({ code: 'request.invalid' });
+    ).rejects.toMatchObject({ name: 'ZodError' });
     await expect(
       workspaceController.requestDeletion(
         request,
         { workspaceId: 'not-a-uuid' },
         { reason: 'retire it' },
       ),
-    ).rejects.toMatchObject({ code: 'request.invalid' });
+    ).rejects.toMatchObject({ name: 'ZodError' });
 
     await expect(
       workspaceController.create(request, {
         name: 'Missing key',
         slug: 'missing-key',
       }),
-    ).rejects.toMatchObject({ code: 'request.invalid' });
+    ).rejects.toMatchObject({ name: 'ZodError' });
     await expect(
       workspaceController.create(
         {
@@ -277,7 +277,7 @@ describe('identity/workspace controllers', () => {
         },
         { name: 'Ambiguous key', slug: 'ambiguous-key' },
       ),
-    ).rejects.toMatchObject({ code: 'request.invalid' });
+    ).rejects.toMatchObject({ name: 'ZodError' });
   });
 
   it('maps an OIDC provider outage to the stable application error', async () => {
@@ -299,9 +299,6 @@ describe('identity/workspace controllers', () => {
         { cookies: { pertexo_oidc_binding: 'browser-binding' } },
         { header: vi.fn() },
       ),
-    ).rejects.toMatchObject({
-      code: 'provider.unavailable',
-      safeDetail: 'The identity provider is temporarily unavailable.',
-    });
+    ).rejects.toMatchObject({ code: 'identity.provider_unavailable' });
   });
 });
