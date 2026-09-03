@@ -259,6 +259,21 @@ active code-scanning merge-protection rule.
 
 ### A-02 — Patchable Fastify advisories are allowed by the gate
 
+**Remediation status (2026-09-03): repository implementation complete; default-
+branch alert closure pending merge.** The direct API dependency and Nest's
+transitive copy are both forced to Fastify 5.12.1; `pnpm why fastify -r` now
+reports one version and `pnpm security:audit` reports no known production
+vulnerability. Because patched Fastify rejects insecure numeric proxy-hop
+trust, deployed configuration now requires explicit `TRUST_PROXY_CIDRS` IP/CIDR
+networks and passes them to Fastify's address-validating trust policy. Tests
+cover an untrusted direct peer spoofing `X-Forwarded-For`, an allowed ingress,
+invalid network configuration, and root-primitive coercion reaching the handler
+as the validated number. Production audit admission now fails at `moderate`,
+and pull requests run the SHA-pinned dependency-review action at the same
+threshold. The full `pnpm check` passes with 1,570 unit tests. GitHub's four
+default-branch Dependabot records remain open until the fixed lockfile reaches
+`main` and Dependabot refreshes it.
+
 `pnpm audit --prod --audit-level high` exits successfully while reporting two
 moderate advisories:
 

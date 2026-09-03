@@ -136,7 +136,11 @@ export async function createApiApplication(
       ? undefined
       : createApiScheduleRuntime(config.database));
   const fastifyAdapter = new FastifyAdapter({
-    trustProxy: config.trustedProxyHops ?? 0,
+    trustProxy:
+      config.trustedProxyCidrs === undefined ||
+      config.trustedProxyCidrs.length === 0
+        ? false
+        : [...config.trustedProxyCidrs],
   });
   let application: NestFastifyApplication;
   try {

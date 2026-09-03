@@ -34,7 +34,7 @@
     "retention:start": "pnpm --filter @pertexo/retention start",
     "release:check": "pnpm security:audit && pnpm check && pnpm deployment:check && pnpm exercise:check",
     "runtime:check": "node infrastructure/validate-runtime-major.mjs && node --test infrastructure/validate-runtime-major.test.mjs",
-    "security:audit": "pnpm audit --prod --audit-level high",
+    "security:audit": "pnpm audit --prod --audit-level moderate",
     "test": "pnpm --recursive --if-present test",
     "test:coverage": "pnpm --filter @pertexo/workflow-engine test:coverage && pnpm --filter @pertexo/database test:coverage && pnpm --filter @pertexo/worker test:coverage && pnpm --filter @pertexo/api test:coverage && pnpm coverage:risk-report",
     "coverage:risk-report": "node --test infrastructure/report-risk-coverage.test.mjs && node infrastructure/report-risk-coverage.mjs",
