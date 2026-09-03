@@ -1,0 +1,13 @@
+#!/bin/sh
+set -eu
+
+if [ "${PERTEXO_SKIP_PRE_PUSH_CHECKS:-}" = "1" ]; then
+  echo "Skipping Pertexo pre-push checks because PERTEXO_SKIP_PRE_PUSH_CHECKS=1."
+  exit 0
+fi
+
+repository_root=$(git rev-parse --show-toplevel)
+cd "$repository_root"
+
+echo "Running Pertexo pre-push checks (static, unit, and coverage gates)..."
+exec pnpm prepush:check

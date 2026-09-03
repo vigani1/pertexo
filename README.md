@@ -97,6 +97,8 @@ pnpm dev:api
 pnpm dev:worker
 pnpm test
 pnpm check
+pnpm prepush:check
+pnpm prepush:full
 pnpm test:integration
 pnpm --filter @pertexo/api test:sse-resilience
 pnpm --filter @pertexo/worker test:resilience
@@ -110,6 +112,15 @@ S3-compatible services above. Resilience and compatibility-rollout commands are
 separate destructive or recovery-focused gates. Historical Phase 0E invariants
 now run through the production coordinator, node-attempt, and SSE integration
 suites selected by CI's `recovery` job.
+
+`pnpm install` configures the repository-managed pre-push hook. Every ordinary
+push runs `pnpm prepush:check`, which combines `pnpm check` with the
+critical-file coverage thresholds. Run `pnpm prepush:full` before pushing
+changes to PostgreSQL, Redis, queues, object storage, HTTP behavior, or process
+coordination; it adds the service-backed integration suite and therefore
+requires the local services above. The explicit
+`PERTEXO_SKIP_PRE_PUSH_CHECKS=1 git push` escape hatch is for documented
+emergencies only and does not bypass protected GitHub checks.
 
 ## Contributing, Security, and License
 
