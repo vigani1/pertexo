@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import type { Pool } from 'pg';
-import type { z } from 'zod';
+import { z } from 'zod';
 
 import { parsePersistedPhase3Checkpoint } from './phase3-checkpoint.js';
 import {
@@ -317,7 +317,7 @@ export async function loadNodeAttemptInputs(
         ...(row.abort_reason === null ? {} : { abortReason: row.abort_reason }),
         ...(row.deadline_at === null
           ? {}
-          : { deadlineAt: new Date(row.deadline_at) }),
+          : { deadlineAt: z.coerce.date().parse(row.deadline_at) }),
         ...(resumeOutput === undefined ? {} : { resumeOutput }),
       });
     },

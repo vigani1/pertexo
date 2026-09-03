@@ -182,7 +182,7 @@ export async function readRunEventsAfter(
     events: Object.freeze(
       pageRows.map((row) =>
         Object.freeze({
-          createdAt: new Date(row.created_at),
+          createdAt: z.coerce.date().parse(row.created_at),
           payload: row.payload,
           sequence: row.sequence,
           type: row.type,

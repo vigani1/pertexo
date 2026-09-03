@@ -177,13 +177,11 @@ export function createOidcLoginTransactionStore(
         const row = locked.rows[0] as Record<string, unknown> | undefined;
         if (row === undefined) return { status: 'missing' as const };
         if (row.consumed_at !== null) return { status: 'replayed' as const };
-        if (
-          new Date(row.expires_at as string | Date).getTime() <= now.getTime()
-        )
+        if (z.coerce.date().parse(row.expires_at).getTime() <= now.getTime())
           return { status: 'expired' as const };
         if (
           !constantTimeDigestEqual(
-            String(row.browser_binding_digest),
+            stateDigestSchema.parse(row.browser_binding_digest),
             browserBindingDigest,
           )
         ) {
@@ -226,7 +224,7 @@ export function createOidcLoginTransactionStore(
             browserBindingDigest,
             codeVerifier,
             nonce,
-            expiresAt: new Date(consumedRow.expires_at as string | Date),
+            expiresAt: z.coerce.date().parse(consumedRow.expires_at),
           }),
         };
       } catch (error: unknown) {
