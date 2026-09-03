@@ -7,7 +7,10 @@ import {
   WorkspaceLifecycleUseCase,
   workspaceCreateRequestSchema,
 } from '../../src/identity-workspace/index.js';
-import { createActorContext } from '../../src/workspaces/index.js';
+import {
+  authorizeWorkspace,
+  createActorContext,
+} from '../../src/workspaces/index.js';
 import type { WorkspaceAuthorizationReader } from '../../src/identity-workspace/ports.js';
 import type { WorkspaceAccess } from '../../src/workspaces/index.js';
 import { OpaqueSessionService } from '../../src/identity/index.js';
@@ -86,6 +89,32 @@ function actor() {
 }
 
 describe('identity/workspace application use cases', () => {
+  it('reuses guard authorization for lifecycle operations', async () => {
+    const store = persistence();
+    const authorization: WorkspaceAuthorizationReader = {
+      findAccess: vi.fn().mockResolvedValue(activeAccess()),
+    };
+    const requestActor = actor();
+    const authorizedWorkspace = await authorizeWorkspace({
+      actor: requestActor,
+      routeWorkspaceId: workspaceId,
+      capability: 'workspace:manage',
+      access: authorization,
+      disclosure: 'forbidden',
+      allowedWorkspaceStatuses: ['active', 'suspended', 'pending_deletion'],
+    });
+
+    await new WorkspaceLifecycleUseCase(store, authorization).readOperation({
+      actor: requestActor,
+      authorizedWorkspace,
+      routeWorkspaceId: workspaceId,
+      operationId: operation().id,
+    });
+
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(vi.mocked(authorization.findAccess)).toHaveBeenCalledTimes(1);
+  });
+
   it('matches persistence workspace name and slug limits exactly', () => {
     expect(
       workspaceCreateRequestSchema.parse({
