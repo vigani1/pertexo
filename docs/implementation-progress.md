@@ -4697,8 +4697,8 @@ P1 findings and the existing live-production checklist remain release blockers.
 
 ## Current whole-repository audit — implementation tree `200e9c5a4a2fd2772e37c06ad2ada6bc2b64e996`
 
-Status: **Fresh audit has open repository blockers; external production/control
-evidence also remains open**
+Status: **Repository-controlled audit blockers are complete; external
+production/control evidence remains open**
 
 Repository-controlled remediation:
 
@@ -4793,9 +4793,12 @@ Still open:
       vulnerable-dependency, and vulnerable-image rejection canaries.
 - [ ] Select registry/signing identities, publish signed provenance, promote the
       scanned image by digest, and prove the deployment consumes that digest.
-- [ ] Review and classify consequential uncovered sites from the emitted
+- [x] Review and classify consequential uncovered sites from the emitted
       inventory, add corresponding failure-injection/mutation cases, and
-      observe the new dependency groups in the next automation cycle.
+      observe the new dependency groups in the next automation cycle. The
+      selected-file report now records 116 reviewed and zero unreviewed sites,
+      and the split dependency groups have produced their first automation
+      branches.
 - [ ] Require independent approval/code-owner review and verified provenance
       when a second maintainer and signing identities exist; retain the
       documented solo exception until then.
