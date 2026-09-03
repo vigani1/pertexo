@@ -20,11 +20,10 @@ import { unrecoverableQueueError } from '@pertexo/queue';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 import { z } from 'zod';
 
-import {
-  createPreviewAttemptHandler,
-  type PreviewInvocationOutcome,
-  type PreviewAttemptRunStore,
-  type PreviewNodeInvoker,
+import type {
+  PreviewInvocationOutcome,
+  PreviewAttemptRunStore,
+  PreviewNodeInvoker,
 } from './preview-attempt-handler.js';
 
 export type { PreviewAttemptHandler } from './preview-attempt-handler.js';

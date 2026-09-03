@@ -7,8 +7,6 @@ import {
   type AuthorizedWorkspaceContext,
   type AuthorizationCapability,
   type DisclosurePolicy,
-  type MembershipStatus,
-  type Role,
   type WorkspaceAccess,
   type WorkspaceStatus,
 } from './types.js';
@@ -43,11 +41,6 @@ export type WorkspaceAccessQuery = Readonly<{
 export interface WorkspaceAuthorizationPort {
   findAccess(query: WorkspaceAccessQuery): Promise<WorkspaceAccess | undefined>;
 }
-
-/** DI/guard token for the narrow pre-transaction authorization port. */
-const WORKSPACE_AUTHORIZATION_PORT = Symbol.for(
-  'pertexo.workspaces.authorization-port',
-);
 
 type WorkspaceAccessLookup = (
   query: WorkspaceAccessQuery,
@@ -227,7 +220,5 @@ export function authorizeWorkspaceOperation(
     }),
   );
 }
-
-const authorizeWorkspaceAccess = authorizeWorkspace;
 
 export type { WorkspaceStatus };

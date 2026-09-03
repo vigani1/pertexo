@@ -59,10 +59,6 @@ import {
   type IdentityWorkspaceTelemetry,
 } from './telemetry.js';
 
-const OIDC_SESSION_RESPONSE = Object.freeze({
-  status: 204,
-});
-
 @Controller('v1/auth/oidc')
 export class OidcController {
   private readonly application: OidcApplicationService;

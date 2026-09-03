@@ -52,5 +52,3 @@ export function parseIdempotencyKey(value: unknown): string {
     throw new WorkflowHeaderError('invalid', 'Idempotency-Key');
   return candidate;
 }
-
-type HeaderValue = string | readonly string[] | undefined;

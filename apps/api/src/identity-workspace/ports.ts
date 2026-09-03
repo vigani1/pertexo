@@ -3,8 +3,6 @@ import type {
   IdentityCrypto,
   OidcLoginTransactionStore,
   OidcProviderPort,
-  SessionCookieBoundary,
-  SessionRecord as IdentitySessionRecord,
   SessionStorePort,
 } from '../identity/index.js';
 import type {
@@ -99,8 +97,6 @@ export type IdentityWorkspaceDependencies = Readonly<{
   clock?: IdentityClock;
   telemetry?: IdentityWorkspaceTelemetry;
 }>;
-
-type SessionCookieWriter = SessionCookieBoundary;
 
 export type { WorkspaceAuthorizationSource } from '../workspaces/index.js';
 

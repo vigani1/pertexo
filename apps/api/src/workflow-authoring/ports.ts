@@ -1,5 +1,4 @@
 import type { WorkflowAuthoringDatabase } from '@pertexo/database/api';
-import type { WorkflowGraphContract } from '@pertexo/contracts';
 import type {
   WorkspaceAuthorizationPort,
   ActorContext,
@@ -35,17 +34,3 @@ export type WorkflowApplicationInput = Readonly<{
   routeWorkspaceId: string;
   authorizedWorkspace?: AuthorizedWorkspaceContext;
 }>;
-
-/** Optional application-owned graph seam for deployments with a registry adapter. */
-interface WorkflowGraphCatalog {
-  readonly catalog: WorkflowAuthoringDependencies['definitionCatalog'];
-  parseDraft(input: unknown): WorkflowGraphContract;
-  validate(input: WorkflowGraphContract): Readonly<{
-    ok: boolean;
-    issues: readonly Readonly<{
-      code: string;
-      path: string;
-      message: string;
-    }>[];
-  }>;
-}
