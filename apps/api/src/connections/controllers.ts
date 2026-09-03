@@ -172,6 +172,8 @@ function workspaceParams(value: unknown): Readonly<{ workspaceId: string }> {
 }
 
 function actorFrom(request: ConnectionRequest, workspaceId: string) {
+  if (request.authorizedWorkspace !== undefined)
+    return request.authorizedWorkspace.actor;
   const session = authenticatedSession(request);
   const traceId = traceIdentifier(request);
   return createActorContext({
@@ -191,6 +193,13 @@ function requestMetadata(request: ConnectionRequest): Readonly<{
   requestId: string;
   traceId?: string;
 }> {
+  if (request.authorizedWorkspace !== undefined) {
+    const actor = request.authorizedWorkspace.actor;
+    return {
+      requestId: actor.requestId,
+      ...(actor.traceId === undefined ? {} : { traceId: actor.traceId }),
+    };
+  }
   const traceId = traceIdentifier(request);
   return {
     requestId: requestIdentifier(request),

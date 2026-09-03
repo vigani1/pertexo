@@ -335,21 +335,28 @@ making the architecture plan even larger.
 ### C-05 — Workspace authorization is repeated on guarded requests
 
 - **Severity:** medium.
-- **Remediation status:** in progress; the low-risk type-ownership prerequisite
-  is complete, while removing duplicate guard/use-case lookups remains in the
-  medium-risk group.
-- **Repository-wide type locations:** seven workflow-authoring constructors and
-  its authorization helper, four workflow-run constructors and its helper, and
-  four connection constructors and its helper derived the access-source type
-  through `Parameters<typeof authorizeWorkspace>`. No such derived type remains.
-- **Prerequisite remediation:** `WorkspaceAuthorizationSource` is now owned and
-  exported by the workspace authorization module. Identity/workspace ports
-  re-export that canonical type for compatibility instead of redefining its
-  union. This is type-only and does not change any authorization lookup.
-- **Prerequisite verification:** repository-wide search for the derived
-  `Parameters` form; API typecheck and the workflow-authoring, workflow-run,
-  connection, authorization, and guard suites recorded with the medium-risk
-  behavior change.
+- **Remediation status:** complete on 2026-09-03.
+- **Repository-wide affected locations:** the duplicate guarded path covered
+  seven workflow-authoring operations, four workflow-run operations, four
+  connection operations, two node-testing operations, and three workspace
+  lifecycle operations. Schedule, webhook, and failure-notification destination
+  controllers use capability guards but their use cases did not repeat the
+  lookup. Direct use-case callers without a guard context intentionally retain
+  authorization. Connection testing intentionally retains one fresh
+  `connection:use` lookup immediately before credential decryption/provider
+  dispatch, and node testing retains the distinct `connection:use` capability
+  check for graphs with connection references.
+- **Remediation:** `WorkspaceAuthorizationSource` is now owned and exported by
+  the workspace authorization module; no derived `Parameters` form remains.
+  Guard-issued authorization contexts have provenance tracking and must match
+  capability, workspace, actor, session, request, and trace identity before a
+  use case can reuse them. Guarded controllers pass that context and its exact
+  actor/request identity to use cases, eliminating the repeated access query
+  without accepting a fabricated request property or weakening tenant/RLS
+  persistence checks.
+- **Verification:** red/green provenance, mismatch, and no-second-lookup tests;
+  feature tests cover the deliberately retained credential checks; complete API
+  suite 381 tests, API typecheck and build, plus repository lint.
 - **Locations:** `apps/api/src/identity-workspace/guards.ts`, workflow authoring,
   workflow run, and connection use cases.
 - **Issue:** the capability guard calls `authorizeWorkspace`, stores the

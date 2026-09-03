@@ -281,6 +281,8 @@ function workflowParams(value: unknown): Readonly<{
 }
 
 function actorFrom(request: WorkflowAuthoringRequest, workspaceId: string) {
+  if (request.authorizedWorkspace !== undefined)
+    return request.authorizedWorkspace.actor;
   const session = authenticatedSession(request);
   const traceId = traceIdentifier(request);
   try {
@@ -305,6 +307,13 @@ function requestIdentifiers(request: WorkflowAuthoringRequest): Readonly<{
   requestId: string;
   traceId?: string;
 }> {
+  if (request.authorizedWorkspace !== undefined) {
+    const actor = request.authorizedWorkspace.actor;
+    return {
+      requestId: actor.requestId,
+      ...(actor.traceId === undefined ? {} : { traceId: actor.traceId }),
+    };
+  }
   const requestId = requestIdentifier(request);
   const traceId = traceIdentifier(request);
   return {
