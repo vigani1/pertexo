@@ -880,6 +880,77 @@ different claims. Keep both commands and document that distinction. Improve
 suite organization and coverage truth through A-05/A-11 rather than moving
 every test beside its source file.
 
+#### Vitest and test-tooling modernization assessment
+
+The testing stack is modern and appropriate for this backend. The audited tree
+pins Node 24, pnpm 11.22.0, TypeScript 6.0.3, Vitest 4.1.10, and
+`@vitest/coverage-v8` 4.1.10 under native ESM. A registry check on 2026-09-03
+reported Vitest and its V8 provider at 4.1.11, so the runner is one patch—not a
+generation—behind. Package tests compile separately through `tsconfig.test.json`
+and all workspace packages use one root-owned Vitest version.
+
+The same registry check reported pnpm 11.25.0 and TypeScript 7.0.2. Remaining
+on a recent pinned pnpm 11 release is normal patch lag; TypeScript 7 is a major
+compiler change and should be evaluated through a dedicated compatibility
+branch rather than adopted merely to claim “latest.” Modernity here means a
+supported, reproducible stack using current safety capabilities, not automatic
+major-version churn.
+
+Current use is substantive rather than nominal:
+
+| Capability | Current use | Judgment |
+| --- | --- | --- |
+| TypeScript and ESM | Native `.ts` tests, `.js` ESM specifiers, package export maps, and separate test typechecks | Correct and current |
+| V8 coverage | Official `@vitest/coverage-v8` provider, explicit includes, JSON summaries, and four aggregate threshold sets | Correct provider; selected scope and aggregate masking remain the limitation |
+| Test cohorts | Unit, real-service integration, resilience, compatibility, recovery, and selected coverage use distinct scripts/configurations | Strong separation of failure evidence |
+| Isolation and concurrency | Ordinary unit tests use Vitest defaults; stateful database/worker/resilience cohorts disable file parallelism and cap workers | Appropriate; concurrency is not a goal when shared services make it nondeterministic |
+| Time control and mocking | Static inspection found 5 fake-timer, 47 mock, and 3 hoisted-setup call sites | Used selectively rather than making implementation-heavy mocks the default |
+| Parameterized tests | 109 `describe.each`/`it.each`/`test.each` call sites | Strong use for policy and compatibility matrices |
+| Type tests | 5 `expectTypeOf`/`assertType` call sites plus full test-project compilation | Useful, though runtime parsing remains authoritative for untrusted data |
+| CI reporting | JSON reports and minimum executed-test counts are uploaded for service-consuming cohorts | Strong protection against silently skipped integration groups |
+| Focus/retry hygiene | No committed `.only` and no blanket retry setting were found | Good: failures are not hidden by automatic retries |
+| Snapshots | No snapshot assertions were found | Not a defect; explicit domain/API assertions are more reviewable here |
+
+Vitest's official [feature inventory](https://v4.vitest.dev/guide/features)
+includes projects, sharding, type tests, browser mode, benchmarking, snapshots,
+mocking, and V8/Istanbul coverage. A mature repository should select among
+those features rather than enable all of them. The current choices are mostly
+sound.
+
+The useful next capabilities are:
+
+1. Add consequence-based per-file thresholds inside the selected security and
+   state-machine cohort. Vitest supports
+   [`coverage.thresholds.perFile`](https://v4.vitest.dev/guide/cli); do not let a
+   highly covered file compensate for a weaker authorization, fencing, retry,
+   or transition file.
+2. Add changed-file coverage as pull-request information, not as a replacement
+   for the critical-file gate. Vitest 4.1's `coverage.changed` can narrow the
+   report while still allowing the relevant suite to run.
+3. Add targeted mutation canaries for authorization, workspace scope, fencing,
+   idempotency, retry class, and unknown-outcome decisions. This is more useful
+   than chasing repository-wide 100% line coverage.
+4. Add property/fuzz tests for workflow/checkpoint/expression parsing, cursor
+   encoding, headers, credential transformations, serialization compatibility,
+   and nested runtime input.
+5. Add bounded benchmarks/adversarial cases for log redaction, expressions,
+   checkpoint parsing, large workflow validation, and fan-out planning.
+6. Consider a root Vitest
+   [`projects`](https://main.vitest.dev/guide/projects) configuration only if it
+   reduces duplicated configuration and makes named cohorts easier to discover.
+   The existing pnpm-recursive orchestration is valid and should not be replaced
+   for fashion.
+7. Consider sharding the eight-minute integration job by isolated service
+   cohort. Preserve disposable Compose identity, migration ordering, minimum
+   test counts, and failure artifacts; otherwise faster CI would be less
+   trustworthy.
+
+Do not add browser mode until browser-owned code exists, switch from V8 to
+Istanbul without a measured need, introduce broad snapshot testing for precise
+domain contracts, enable unsafe concurrency in shared-service suites, or use
+blanket retries to make flakes disappear. Those are available features, not
+missing quality requirements.
+
 ### 6.10 CI/CD and supply chain
 
 The exact audited HEAD has a successful GitHub CI run with quality, three unit
@@ -888,6 +959,12 @@ and deployment-security jobs. CodeQL also completed successfully. Actions are
 pinned to immutable SHAs, permissions are explicit/minimal, jobs have timeouts,
 service failures upload logs, image scans and SBOMs are retained, and branch
 protection requires 11 strict contexts.
+
+Automation is layered: CI runs on every pull request, every push to `main`, and
+daily; CodeQL runs on pull requests, `main`, a weekly schedule, and manual
+dispatch; the release gate runs weekly and manually. Local editing alone does
+not run these checks, so contributors still need `pnpm check` before pushing.
+The protected pull-request run is the automatic admission mechanism.
 
 Weaknesses are policy rather than missing automation: security analysis upload
 does not block on alerts, dependency scanning permits moderate findings,
