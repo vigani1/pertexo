@@ -32,6 +32,8 @@ export {
   createExecutableCompatibilityReleaseHistory,
   describeExecutableCompatibilityRelease,
   parseWorkflowExecutableV2,
+  BASELINE_RUNTIME_POLICIES_V1,
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- Public compatibility alias.
   PHASE3_RUNTIME_POLICIES_V1,
   verifyWorkflowExecutableV2,
   WORKFLOW_EXECUTABLE_LIMITS_V2,

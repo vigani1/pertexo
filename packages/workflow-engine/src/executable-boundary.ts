@@ -79,7 +79,7 @@ export function parseBoundary(input: {
     !Array.isArray(envelope.configMigrations) ||
     envelope.configMigrations.length
   )
-    fail('Phase 3 config migrations must be empty');
+    fail('Baseline runtime config migrations must be empty');
   const rawGraph = readRawExecutableGraph(envelope.graph, false);
   const graph = parseWorkflowGraphForPublish(authoringGraph(rawGraph), {
     schemaVersion: 1,
