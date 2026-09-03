@@ -34,9 +34,14 @@ async function waitForExit(
 }
 
 describe('compiled worker process lifecycle', () => {
-  it.each(['disabled', 'active'] as const)(
-    'exits cleanly after SIGTERM with %s consumers',
-    async (mode) => {
+  it.each([
+    ['SIGINT', 'disabled'],
+    ['SIGINT', 'active'],
+    ['SIGTERM', 'disabled'],
+    ['SIGTERM', 'active'],
+  ] as const)(
+    'exits cleanly after %s with %s consumers',
+    async (shutdownSignal, mode) => {
       const child = spawn(process.execPath, [fixturePath, mode], {
         stdio: ['ignore', 'pipe', 'pipe'],
       });
@@ -52,7 +57,7 @@ describe('compiled worker process lifecycle', () => {
 
       await waitForOutput(() => output, 'worker.ready');
       const signaledAt = performance.now();
-      child.kill('SIGTERM');
+      child.kill(shutdownSignal);
       const { code, signal } = await waitForExit(child, () => output);
 
       expect(signal).toBeNull();
