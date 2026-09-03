@@ -32,7 +32,7 @@ import {
   assertCoordinatorNotAborted as assertNotAborted,
   withCoordinatorWriteClient as withWorkspaceWriteClient,
 } from './coordinator-run-store-transactions.js';
-import { serializePersistedPhase3Checkpoint } from './phase3-checkpoint.js';
+import { serializePersistedWorkflowCheckpoint } from './compatibility/persisted-workflow-checkpoint.js';
 
 export async function commitCoordinatorAdvancePlan(
   pool: Pool,
@@ -57,7 +57,7 @@ export async function commitCoordinatorAdvancePlan(
   }
   const plan = parseTransitionPlan(input.plan);
   validateTransitionPlan(plan, workflowVersionId);
-  const checkpointJson = serializePersistedPhase3Checkpoint(plan.checkpoint);
+  const checkpointJson = serializePersistedWorkflowCheckpoint(plan.checkpoint);
   const planFingerprint = transitionFingerprint({
     plan,
     traceparent,

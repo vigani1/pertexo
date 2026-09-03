@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 
-import type { CompatibilityReleaseExpectation } from '../src/compatibility-release.js';
+import type { CompatibilityReleaseExpectation } from '../src/compatibility/compatibility-release.js';
 
 const migration = readFileSync(
   new URL(

@@ -12,9 +12,9 @@ import {
 } from './coordinator-run-store-transactions.js';
 import { validateLoadedCheckpointPhysicalState } from './coordinator-run-store-physical-state.js';
 import {
-  parsePersistedPhase3Checkpoint,
-  type PersistedPhase3Checkpoint,
-} from './phase3-checkpoint.js';
+  parsePersistedWorkflowCheckpoint,
+  type PersistedWorkflowCheckpoint,
+} from './compatibility/persisted-workflow-checkpoint.js';
 import {
   parseStoredExecutionValueV1,
   serializeStoredExecutionJsonValue,
@@ -500,9 +500,9 @@ export async function loadCoordinatorAdvanceState(
       if (row === undefined) return Object.freeze({ kind: 'not_found' });
       if (row.executable_schema_version !== 2)
         return Object.freeze({ kind: 'not_executable' });
-      let checkpoint: PersistedPhase3Checkpoint;
+      let checkpoint: PersistedWorkflowCheckpoint;
       try {
-        checkpoint = parsePersistedPhase3Checkpoint(row.scheduler_state);
+        checkpoint = parsePersistedWorkflowCheckpoint(row.scheduler_state);
       } catch {
         return Object.freeze({ kind: 'unsupported_checkpoint' });
       }

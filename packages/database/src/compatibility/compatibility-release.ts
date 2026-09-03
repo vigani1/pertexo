@@ -2,7 +2,7 @@ import { sql } from 'drizzle-orm';
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 
-import type { WorkspaceDrizzle } from './workspace.js';
+import type { WorkspaceDrizzle } from '../workspace.js';
 
 const MAXIMUM_COMPATIBILITY_CATALOG_BYTES = 128 * 1024;
 const MAXIMUM_ROLLING_RELEASES = 2;

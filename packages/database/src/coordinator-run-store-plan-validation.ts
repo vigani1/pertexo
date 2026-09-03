@@ -1,11 +1,11 @@
 import type { ParsedTransitionPlan } from './coordinator-run-store-plan.js';
-import type { PersistedPhase3Checkpoint } from './phase3-checkpoint.js';
+import type { PersistedWorkflowCheckpoint } from './compatibility/persisted-workflow-checkpoint.js';
 import {
   assertPlan,
   sameStoredValue,
 } from './coordinator-run-store-validation-values.js';
 
-type CheckpointInvocation = PersistedPhase3Checkpoint['invocations'][number];
+type CheckpointInvocation = PersistedWorkflowCheckpoint['invocations'][number];
 type Attempt = ParsedTransitionPlan['attempts'][number];
 type Admission = ParsedTransitionPlan['nodeRunAdmissions'][number];
 type EngineEvent = ParsedTransitionPlan['events'][number];

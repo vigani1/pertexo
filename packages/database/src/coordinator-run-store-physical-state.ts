@@ -1,13 +1,13 @@
 import type { PoolClient } from 'pg';
 
 import { CoordinatorRunStateCorruptError } from './coordinator-run-store-contract.js';
-import type { PersistedPhase3Checkpoint } from './phase3-checkpoint.js';
+import type { PersistedWorkflowCheckpoint } from './compatibility/persisted-workflow-checkpoint.js';
 import {
   parseStoredExecutionValueV1,
   serializeStoredExecutionJsonValue,
 } from './stored-execution-value.js';
 
-type Invocation = PersistedPhase3Checkpoint['invocations'][number];
+type Invocation = PersistedWorkflowCheckpoint['invocations'][number];
 
 type PhysicalInvocationRow = Readonly<{
   attempt_id: string | null;
@@ -122,7 +122,7 @@ function validateRunning(
 function validateWaiting(
   row: PhysicalInvocationRow,
   invocation: Invocation,
-  checkpoint: PersistedPhase3Checkpoint,
+  checkpoint: PersistedWorkflowCheckpoint,
 ): void {
   const dueAt = row.retry_due_at ?? row.resume_at;
   const isLoopBarrier = checkpoint.loops.some(
@@ -163,7 +163,7 @@ function validateReady(
 function validatePhysicalStatus(
   row: PhysicalInvocationRow,
   invocation: Invocation,
-  checkpoint: PersistedPhase3Checkpoint,
+  checkpoint: PersistedWorkflowCheckpoint,
   freshFact: Readonly<Record<string, unknown>> | undefined,
 ): void {
   switch (invocation.status) {
@@ -189,7 +189,7 @@ function validatePhysicalStatus(
 function validateInvocation(
   row: PhysicalInvocationRow | undefined,
   invocation: Invocation,
-  checkpoint: PersistedPhase3Checkpoint,
+  checkpoint: PersistedWorkflowCheckpoint,
   freshFact: Readonly<Record<string, unknown>> | undefined,
 ): string | undefined {
   corruptIf(row === undefined);
@@ -210,7 +210,7 @@ export async function validateLoadedCheckpointPhysicalState(
   client: PoolClient,
   workspaceId: string,
   runId: string,
-  checkpoint: PersistedPhase3Checkpoint,
+  checkpoint: PersistedWorkflowCheckpoint,
   freshSemanticFacts: ReadonlyMap<string, Readonly<Record<string, unknown>>>,
 ): Promise<void> {
   const result = await client.query<PhysicalInvocationRow>(

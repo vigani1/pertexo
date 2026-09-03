@@ -16,9 +16,9 @@ import {
 } from './coordinator-run-store-plan-validation.js';
 import { assertStatusTransitionsValid } from './coordinator-run-store-status-validation.js';
 import {
-  parsePersistedPhase3Checkpoint,
-  type PersistedPhase3Checkpoint,
-} from './phase3-checkpoint.js';
+  parsePersistedWorkflowCheckpoint,
+  type PersistedWorkflowCheckpoint,
+} from './compatibility/persisted-workflow-checkpoint.js';
 import {
   parseStoredExecutionValueV1,
   serializeStoredExecutionJsonValue,
@@ -113,14 +113,14 @@ export const traceparentSchema = z
 export type ParsedTransitionPlan = Omit<
   z.output<typeof transitionPlanSchema>,
   'checkpoint'
-> & { readonly checkpoint: PersistedPhase3Checkpoint };
+> & { readonly checkpoint: PersistedWorkflowCheckpoint };
 
 export function parseTransitionPlan(value: unknown): ParsedTransitionPlan {
   try {
     const parsed = transitionPlanSchema.parse(normalizedJson(value));
     return Object.freeze({
       ...parsed,
-      checkpoint: parsePersistedPhase3Checkpoint(parsed.checkpoint),
+      checkpoint: parsePersistedWorkflowCheckpoint(parsed.checkpoint),
     });
   } catch {
     throw new CoordinatorPlanInvalidError();
@@ -154,7 +154,7 @@ export function transitionFingerprint(
 }
 
 export function validateTransitionDelta(
-  current: PersistedPhase3Checkpoint,
+  current: PersistedWorkflowCheckpoint,
   plan: ParsedTransitionPlan,
 ): void {
   const expectedAdmittedKeys = new Set([
@@ -280,7 +280,7 @@ export function validateTransitionDelta(
 }
 
 export function validateStatusTransitions(
-  current: PersistedPhase3Checkpoint,
+  current: PersistedWorkflowCheckpoint,
   plan: ParsedTransitionPlan,
   persistedFacts: readonly Readonly<{
     invocationKey: string | null;
@@ -300,7 +300,7 @@ export async function validateCheckpointOutputOwnership(
   client: PoolClient,
   workspaceId: string,
   runId: string,
-  checkpoint: PersistedPhase3Checkpoint,
+  checkpoint: PersistedWorkflowCheckpoint,
   waitResumeKeys: ReadonlySet<string>,
 ): Promise<void> {
   const expected = checkpoint.invocations.filter(

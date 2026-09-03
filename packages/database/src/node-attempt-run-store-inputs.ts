@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 
-import { parsePersistedPhase3Checkpoint } from './phase3-checkpoint.js';
+import { parsePersistedWorkflowCheckpoint } from './compatibility/persisted-workflow-checkpoint.js';
 import {
   loadInputsSchema,
   NodeAttemptStateCorruptError,
@@ -183,7 +183,7 @@ export async function loadNodeAttemptInputs(
           });
         }
       }
-      const checkpoint = parsePersistedPhase3Checkpoint(row.scheduler_state);
+      const checkpoint = parsePersistedWorkflowCheckpoint(row.scheduler_state);
       const join = checkpoint.joins.find(
         ({ joinInvocationKey }) =>
           joinInvocationKey === input.lease.invocationKey,

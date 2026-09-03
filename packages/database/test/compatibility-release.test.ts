@@ -6,7 +6,7 @@ import {
   parseCompatibilityReleaseExpectation,
   parseCompatibilityReleaseExpectationHistory,
   parseCompatibilityReleaseExpectationSet,
-} from '../src/compatibility-release.js';
+} from '../src/compatibility/compatibility-release.js';
 import { parseDatabaseConfig } from '../src/config.js';
 import { createWorkspaceDatabase } from '../src/database.js';
 import { EXPECTED_MIGRATION_HEAD } from '../src/readiness.js';

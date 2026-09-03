@@ -4,7 +4,7 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '../src/config.js';
-import { CompatibilityReleaseMismatchError } from '../src/compatibility-release.js';
+import { CompatibilityReleaseMismatchError } from '../src/compatibility/compatibility-release.js';
 import { IdempotencyRequestConflictError } from '../src/execution-acceptance.js';
 import { migrateDatabase } from '../src/migrations.js';
 import {

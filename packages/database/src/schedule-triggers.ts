@@ -15,7 +15,7 @@ import {
   parseCompatibilityReleaseExpectationSet,
   type CompatibilityReleaseExpectation,
   type CompatibilityReleaseExpectationSet,
-} from './compatibility-release.js';
+} from './compatibility/compatibility-release.js';
 import {
   acceptWorkflowRun,
   WorkspaceRunQuotaExceededError,

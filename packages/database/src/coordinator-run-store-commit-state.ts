@@ -27,9 +27,9 @@ import {
   validateTransitionDelta,
 } from './coordinator-run-store-plan.js';
 import {
-  parsePersistedPhase3Checkpoint,
-  type PersistedPhase3Checkpoint,
-} from './phase3-checkpoint.js';
+  parsePersistedWorkflowCheckpoint,
+  type PersistedWorkflowCheckpoint,
+} from './compatibility/persisted-workflow-checkpoint.js';
 import { serializeStoredExecutionJsonValue } from './stored-execution-value.js';
 
 export type CoordinatorCommitRow = Readonly<{
@@ -67,7 +67,7 @@ export type CoordinatorCommitState =
   | Readonly<{
       kind: 'ready';
       row: CoordinatorCommitRow;
-      currentCheckpoint: PersistedPhase3Checkpoint;
+      currentCheckpoint: PersistedWorkflowCheckpoint;
       pendingFailures: readonly PendingCoordinatorFailure[];
       authoritativeCancellation: boolean;
     }>;
@@ -148,9 +148,9 @@ export async function lockCoordinatorCommitState(
     return outcome({ kind: 'stale', revision: row.revision });
   }
 
-  let currentCheckpoint: PersistedPhase3Checkpoint;
+  let currentCheckpoint: PersistedWorkflowCheckpoint;
   try {
-    currentCheckpoint = parsePersistedPhase3Checkpoint(row.scheduler_state);
+    currentCheckpoint = parsePersistedWorkflowCheckpoint(row.scheduler_state);
   } catch {
     throw new CoordinatorRunStateCorruptError();
   }

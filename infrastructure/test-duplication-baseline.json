@@ -217,7 +217,7 @@
         {
           "files": [
             "packages/database/src/coordinator-run-store-plan.ts",
-            "packages/database/src/phase3-checkpoint.ts"
+            "packages/database/src/compatibility/persisted-workflow-checkpoint.ts"
           ],
           "classification": "false-positive",
           "reason": "The planned-transition validator and persisted checkpoint decoder independently validate the same branch-path wire shape at different trust boundaries.",
