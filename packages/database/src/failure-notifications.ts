@@ -1,24 +1,26 @@
 import { createDatabasePool } from './postgres-telemetry.js';
 import { createHash } from 'node:crypto';
 
-import type { PoolClient } from 'pg';
-import { v5 as uuidv5 } from 'uuid';
 import { z } from 'zod';
 import {
-  FailureNotificationDestinationConfigSchema,
   FailureNotificationContextV1Schema,
-  FailureNotificationDeliveryResultV1Schema,
   type FailureNotificationContextV1,
   type FailureNotificationDeliveryResultV1,
 } from '@pertexo/workflow-model/failure-notification';
 
 import type { DatabaseConfig } from './config.js';
-import { canonicalOutboxPayloadChecksum } from './outbox.js';
 import { serializeStoredExecutionJsonValue } from './stored-execution-value.js';
 import { withTenantScopedClient } from './workspace.js';
+import { FailureNotificationStateError } from './failure-notification-errors.js';
+import { createFailureNotificationDestinationStore } from './failure-notification-destination-store.js';
+import { createFailureNotificationCompletionStore } from './failure-notification-completion-store.js';
+import {
+  auditFailureNotification as audit,
+  failureNotificationChecksumSchema as checksumSchema,
+  failureNotificationIdentitySchema as identitySchema,
+} from './failure-notification-store-support.js';
 
-const identitySchema = z.uuid();
-const checksumSchema = z.string().regex(/^[0-9a-f]{64}$/u);
+export { FailureNotificationStateError } from './failure-notification-errors.js';
 
 export type FailureNotificationDelivery = Readonly<{
   outboxEventId: string;
@@ -98,75 +100,6 @@ export interface FailureNotificationStore {
   ): Promise<void>;
   recoverDue(limit: number, maxAttempts: number): Promise<number>;
   close(): Promise<void>;
-}
-
-export class FailureNotificationStateError extends Error {
-  public override readonly name = 'FailureNotificationStateError';
-}
-
-function retryOutboxId(intentId: string, attemptNumber: number): string {
-  return uuidv5(`delivery:${String(attemptNumber)}`, intentId);
-}
-
-async function insertDeliveryOutbox(
-  client: PoolClient,
-  input: Readonly<{
-    workspaceId: string;
-    intentId: string;
-    attemptNumber: number;
-    availableAt: Date;
-  }>,
-): Promise<void> {
-  const outboxEventId = retryOutboxId(input.intentId, input.attemptNumber);
-  const payload = {
-    schemaVersion: 1,
-    workspaceId: input.workspaceId,
-    notificationIntentId: input.intentId,
-    outboxEventId,
-  } as const;
-  await client.query(
-    `insert into app.outbox_events (
-       id,workspace_id,job_name,schema_version,aggregate_type,aggregate_id,
-       payload,payload_checksum,available_at
-     ) values ($1,$2,'deliver-run-failure-notification',1,
-       'run-failure-notification',$3,$4::jsonb,$5,$6)
-     on conflict (id) do nothing`,
-    [
-      outboxEventId,
-      input.workspaceId,
-      input.intentId,
-      serializeStoredExecutionJsonValue(payload),
-      canonicalOutboxPayloadChecksum(payload),
-      input.availableAt,
-    ],
-  );
-}
-
-async function audit(
-  client: PoolClient,
-  input: Readonly<{
-    workspaceId: string;
-    intentId: string;
-    factType: string;
-    attemptNumber: number;
-    safeErrorCode?: string;
-    possiblyDispatched: boolean;
-  }>,
-): Promise<void> {
-  await client.query(
-    `insert into app.run_failure_notification_audit_facts (
-       id,workspace_id,notification_intent_id,fact_type,attempt_number,
-       safe_error_code,possibly_dispatched
-     ) values (gen_random_uuid(),$1,$2,$3,$4,$5,$6)`,
-    [
-      input.workspaceId,
-      input.intentId,
-      input.factType,
-      input.attemptNumber,
-      input.safeErrorCode ?? null,
-      input.possiblyDispatched,
-    ],
-  );
 }
 
 export function createFailureNotificationStore(
@@ -348,303 +281,8 @@ export function createFailureNotificationStore(
         });
       });
     },
-    loadDestination: async (
-      raw: Parameters<FailureNotificationStore['loadDestination']>[0],
-    ) => {
-      const workspaceId = identitySchema.parse(raw.workspaceId);
-      const intentId = identitySchema.parse(raw.intentId);
-      const workerId = z.string().min(1).max(128).parse(raw.workerId);
-      return withTenantScopedClient(
-        pool,
-        { workspaceId },
-        async (client) => {
-          const result = await client.query<Record<string, unknown>>(
-            `select version.kind, version.config, intent.connection_secret_version_id,
-                  secret.schema_version, secret.kms_key_reference,
-                  secret.encrypted_data_key, secret.ciphertext, secret.nonce,
-                  secret.auth_tag
-             from app.run_failure_notification_intents intent
-             join app.failure_notification_destinations destination
-               on destination.workspace_id=intent.workspace_id
-              and destination.id=intent.destination_id
-             join app.failure_notification_destination_versions version
-               on version.workspace_id=intent.workspace_id
-              and version.destination_id=intent.destination_id
-              and version.version=intent.destination_config_version
-             join app.connections connection
-               on connection.workspace_id=intent.workspace_id
-              and connection.id=(version.config->>'connectionId')::uuid
-             join app.connection_secret_versions secret
-               on secret.workspace_id=connection.workspace_id
-              and secret.connection_id=connection.id
-              and secret.id=intent.connection_secret_version_id
-              where intent.workspace_id=$1 and intent.id=$2
-                and intent.status='claimed' and intent.delivery_attempts=$3
-                and destination.status='enabled'
-                and destination.kind=version.kind
-               and version.side_effect_class=intent.side_effect_class
-               and connection.provider_key=version.kind
-               and connection.auth_type=case version.kind
-                 when 'slack' then 'slack_bot_token' else 'resend_api_key' end
-               and connection.status='active'
-              and connection.current_secret_version_id=intent.connection_secret_version_id`,
-            [workspaceId, intentId, raw.attemptNumber],
-          );
-          const row = result.rows[0];
-          if (row === undefined)
-            throw new FailureNotificationStateError(
-              'Delivery destination is unavailable',
-            );
-          const kind = z.enum(['slack', 'email']).parse(row.kind);
-          const config = FailureNotificationDestinationConfigSchema.parse({
-            ...z.record(z.string(), z.unknown()).parse(row.config),
-            kind,
-          });
-          const connectionId = config.connectionId;
-          const secretVersionId = identitySchema.parse(
-            row.connection_secret_version_id,
-          );
-          await client.query(
-            `insert into app.connection_events
-             (id,workspace_id,connection_id,event_type,actor_kind,actor_id,metadata)
-           values (gen_random_uuid(),$1,$2,'connection.credential_accessed','worker',$3,$4::jsonb)`,
-            [
-              workspaceId,
-              connectionId,
-              workerId,
-              JSON.stringify({
-                purpose: 'failure_notification.deliver',
-                secretVersionId,
-              }),
-            ],
-          );
-          const resolved = {
-            connectionId,
-            secretVersionId,
-            sealed: Object.freeze({
-              schemaVersion: z.literal(1).parse(row.schema_version),
-              kmsKeyReference: z.string().parse(row.kms_key_reference),
-              encryptedDataKey: z.string().parse(row.encrypted_data_key),
-              ciphertext: z.string().parse(row.ciphertext),
-              nonce: z.string().parse(row.nonce),
-              tag: z.string().parse(row.auth_tag),
-            }),
-          };
-          return config.kind === 'slack'
-            ? Object.freeze({
-                ...resolved,
-                kind: config.kind,
-                channelId: config.channelId,
-              })
-            : Object.freeze({
-                ...resolved,
-                kind: config.kind,
-                toEmail: config.toEmail,
-              });
-        },
-        { signal: raw.signal, statementTimeoutMillis: 30_000 },
-      );
-    },
-    fenceDispatch: async (
-      raw: Parameters<FailureNotificationStore['fenceDispatch']>[0],
-    ) => {
-      const workspaceId = identitySchema.parse(raw.workspaceId);
-      const intentId = identitySchema.parse(raw.intentId);
-      const binding = raw.deliveryBinding;
-      await withTenantScopedClient(pool, { workspaceId }, async (client) => {
-        const parsedBinding =
-          binding === undefined
-            ? null
-            : z
-                .string()
-                .regex(/^email:v1:sha256:[0-9a-f]{64}$/u)
-                .parse(binding);
-        const destination = await client.query<{ ready: boolean }>(
-          `select app.lock_failure_notification_dispatch_destination($1,$2,$3) ready`,
-          [workspaceId, intentId, raw.attemptNumber],
-        );
-        if (destination.rows[0]?.ready !== true)
-          throw new FailureNotificationStateError(
-            'Delivery dispatch fence failed',
-          );
-        const fenced = await client.query(
-          `update app.run_failure_notification_intents intent
-              set status='dispatching',dispatch_marked_at=clock_timestamp(),
-                  delivery_binding=coalesce(intent.delivery_binding,$4),
-                  updated_at=clock_timestamp()
-             from app.failure_notification_destinations destination,
-                  app.failure_notification_destination_versions version,
-                  app.connections connection
-            where intent.workspace_id=$1 and intent.id=$2
-              and intent.status='claimed' and intent.delivery_attempts=$3
-               and destination.workspace_id=intent.workspace_id
-               and destination.id=intent.destination_id
-               and destination.status='enabled'
-               and destination.kind=version.kind
-              and version.workspace_id=intent.workspace_id
-              and version.destination_id=intent.destination_id
-              and version.version=intent.destination_config_version
-              and version.side_effect_class=intent.side_effect_class
-              and connection.workspace_id=intent.workspace_id
-              and connection.id=(version.config->>'connectionId')::uuid
-              and connection.provider_key=version.kind
-              and connection.auth_type=case version.kind
-                when 'slack' then 'slack_bot_token' else 'resend_api_key' end
-              and connection.status='active'
-              and connection.current_secret_version_id=intent.connection_secret_version_id
-              and (($4::text is null and intent.delivery_binding is null)
-                or ($4 is not null and (intent.delivery_binding is null or intent.delivery_binding=$4)))
-              and app.connection_dispatch_fence_current(
-                intent.workspace_id,connection.id,version.kind,
-                case version.kind when 'slack' then 'slack_bot_token' else 'resend_api_key' end,
-                intent.connection_secret_version_id)
-            returning intent.id`,
-          [workspaceId, intentId, raw.attemptNumber, parsedBinding],
-        );
-        if (fenced.rowCount !== 1)
-          throw new FailureNotificationStateError(
-            'Delivery dispatch fence failed',
-          );
-        await audit(client, {
-          workspaceId,
-          intentId,
-          factType: 'dispatch_marked',
-          attemptNumber: raw.attemptNumber,
-          possiblyDispatched: false,
-        });
-      });
-    },
-    completeDelivery: async (
-      raw: Parameters<FailureNotificationStore['completeDelivery']>[0],
-    ) => {
-      const workspaceId = identitySchema.parse(raw.workspaceId);
-      const intentId = identitySchema.parse(raw.intentId);
-      const result = FailureNotificationDeliveryResultV1Schema.parse(
-        raw.result,
-      );
-      return withTenantScopedClient(pool, { workspaceId }, async (client) => {
-        const locked = await client.query<{
-          delivery_attempts: number;
-          possibly_dispatched: boolean | null;
-          side_effect_class: 'safe' | 'idempotent_with_key' | 'unsafe';
-          status: string;
-        }>(
-          `select status,delivery_attempts,side_effect_class,possibly_dispatched
-           from app.run_failure_notification_intents
-           where workspace_id=$1 and id=$2 for update`,
-          [workspaceId, intentId],
-        );
-        const row = locked.rows[0];
-        if (
-          (row?.status !== 'claimed' && row?.status !== 'dispatching') ||
-          row.delivery_attempts !== raw.attemptNumber
-        )
-          return 'stale' as const;
-        if (
-          row.status === 'claimed' &&
-          (result.kind === 'delivered' ||
-            (result.kind === 'outcome_unknown' &&
-              row.possibly_dispatched !== true))
-        )
-          throw new FailureNotificationStateError(
-            'Predispatch completion result is incompatible',
-          );
-        const actuallyDispatched =
-          row.status === 'dispatching' && result.possiblyDispatched;
-        const deliveryUnresolved =
-          row.possibly_dispatched === true || actuallyDispatched;
-        const retryRequested =
-          result.kind === 'retry' ||
-          (row.side_effect_class !== 'unsafe' &&
-            result.kind === 'outcome_unknown');
-        const safeUnsafeRetry =
-          row.side_effect_class !== 'unsafe' ||
-          (result.kind === 'retry' && !actuallyDispatched);
-        const mayRetry =
-          retryRequested &&
-          safeUnsafeRetry &&
-          raw.attemptNumber < raw.maxAttempts;
-        if (mayRetry) {
-          const scheduled = await client.query<{ next_delivery_at: Date }>(
-            `update app.run_failure_notification_intents
-             set status='retry',dispatch_marked_at=null,recovery_at=null,
-                  next_delivery_at=clock_timestamp()+make_interval(secs=>$3),
-                  safe_error_code=$4,possibly_dispatched=$5,updated_at=clock_timestamp()
-             where workspace_id=$1 and id=$2
-             returning next_delivery_at`,
-            [
-              workspaceId,
-              intentId,
-              raw.retryDelaySeconds,
-              result.safeErrorCode ?? null,
-              deliveryUnresolved,
-            ],
-          );
-          const due = scheduled.rows[0]?.next_delivery_at;
-          if (due === undefined)
-            throw new FailureNotificationStateError(
-              'Retry schedule was not persisted',
-            );
-          await insertDeliveryOutbox(client, {
-            workspaceId,
-            intentId,
-            attemptNumber: raw.attemptNumber + 1,
-            availableAt: due,
-          });
-          await audit(client, {
-            workspaceId,
-            intentId,
-            factType: 'retry_scheduled',
-            attemptNumber: raw.attemptNumber,
-            ...(result.safeErrorCode === undefined
-              ? {}
-              : { safeErrorCode: result.safeErrorCode }),
-            possiblyDispatched: deliveryUnresolved,
-          });
-          return 'completed' as const;
-        }
-        const terminalStatus =
-          result.kind === 'delivered'
-            ? 'delivered'
-            : actuallyDispatched ||
-                result.kind === 'outcome_unknown' ||
-                (row.side_effect_class === 'idempotent_with_key' &&
-                  deliveryUnresolved)
-              ? 'outcome_unknown'
-              : 'dead_letter';
-        await client.query(
-          `update app.run_failure_notification_intents
-           set status=$3,dispatch_marked_at=null,recovery_at=null,next_delivery_at=null,
-               safe_error_code=$4,possibly_dispatched=$5,provider_reference=$6,
-               completed_at=clock_timestamp(),updated_at=clock_timestamp()
-           where workspace_id=$1 and id=$2`,
-          [
-            workspaceId,
-            intentId,
-            terminalStatus,
-            result.safeErrorCode ?? null,
-            deliveryUnresolved,
-            result.providerReference ?? null,
-          ],
-        );
-        await audit(client, {
-          workspaceId,
-          intentId,
-          factType:
-            terminalStatus === 'delivered'
-              ? 'delivered'
-              : terminalStatus === 'outcome_unknown'
-                ? 'outcome_unknown'
-                : 'dead_lettered',
-          attemptNumber: raw.attemptNumber,
-          ...(result.safeErrorCode === undefined
-            ? {}
-            : { safeErrorCode: result.safeErrorCode }),
-          possiblyDispatched: deliveryUnresolved,
-        });
-        return 'completed' as const;
-      });
-    },
+    ...createFailureNotificationDestinationStore(pool),
+    ...createFailureNotificationCompletionStore(pool),
     recoverDue: async (limit: number, maxAttempts: number) => {
       if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100)
         throw new FailureNotificationStateError('Invalid recovery limit');

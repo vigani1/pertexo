@@ -566,9 +566,7 @@ making the architecture plan even larger.
 ### C-11 — Database factories act as large source-level namespaces
 
 - **Severity:** medium.
-- **Remediation status:** in progress on 2026-09-03; operator-command,
-  identity/session, and workflow-authoring capability extraction complete;
-  the failure-notification factory remains.
+- **Remediation status:** complete on 2026-09-03.
 - **Verified affected locations:** a repository-wide factory/file-size and
   nested-operation inventory confirmed the four named factories remain the
   database sources that combine multiple independently changing capability
@@ -597,6 +595,21 @@ making the architecture plan even larger.
   owners and the existing 131-line strict row mapper. Authorization,
   compatibility selection, placement validation, CAS order, audit order, and
   transaction ownership are unchanged.
+- **Failure-notification checkpoint:** preserved `FailureNotificationStore`
+  while splitting claim/recovery coordination, destination loading and dispatch
+  fencing, completion/retry/terminalization, deterministic outbox/audit support,
+  and error identity. The original 665-line factory is now a 303-line
+  claim/recovery facade with 195-line destination, 153-line completion,
+  75-line support, and 3-line error owners.
+- **Documented retained occurrences:** the repository-wide post-change factory
+  inventory still contains large retention, schedule-trigger, webhook-trigger,
+  failure-notification-destination, dispatcher, and workflow-trigger sources.
+  Each owns one cohesive correctness sequence (paged retention, fenced trigger
+  lifecycle, webhook verification, versioned destination management, fair
+  outbox leasing, or trigger projection) and is covered by section 19.4's
+  leave-alone rule. `testing.ts` is an export surface, not an implementation
+  factory. No remaining occurrence combines the four independent capability
+  families identified by this finding.
 - **Checkpoint verification:** database unit suite (170 tests), database
   typecheck and build, focused lint, and complexity ratchet.
 - **Locations:** `createIdentityWorkspaceDatabase`,
