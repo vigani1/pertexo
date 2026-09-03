@@ -1,6 +1,5 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { createDatabasePool } from './postgres-telemetry.js';
-import { createHash } from 'node:crypto';
 
 import { generatePersistedId } from './persisted-id.js';
 
@@ -530,10 +529,9 @@ export function createIdentityWorkspaceDatabase(
           { workspaceId, actorId: actorUserId },
           async (client) => {
             const result = await client.query(
-              `select ${workspaceLifecycleOperationRowSelection}
-                 from app.request_workspace_lifecycle_operation(
-                   $1::uuid,$2::uuid,$3::char(64),$4::varchar,$5::uuid,
-                   $6::varchar,$7::char(64))`,
+              `select ${workspaceLifecycleOperationRowSelection} from
+                 app.request_workspace_lifecycle_operation($1::uuid,$2::uuid,
+                   $3::char(64),$4::varchar,$5::uuid,$6::varchar,$7::char(64))`,
               [
                 generatePersistedId(),
                 workspaceId,
@@ -570,9 +568,8 @@ export function createIdentityWorkspaceDatabase(
           { workspaceId, actorId: actorUserId },
           async (client) => {
             const result = await client.query(
-              `select ${workspaceLifecycleOperationRowSelection}
-                 from app.read_workspace_lifecycle_operation(
-                   $1::uuid,$2::uuid,$3::uuid)`,
+              `select ${workspaceLifecycleOperationRowSelection} from
+                 app.read_workspace_lifecycle_operation($1::uuid,$2::uuid,$3::uuid)`,
               [workspaceId, operationId, actorUserId],
             );
             const row = result.rows[0] as Record<string, unknown> | undefined;
