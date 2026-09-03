@@ -3,6 +3,7 @@ import type { WorkflowGraphContract } from '@pertexo/contracts';
 import type {
   WorkspaceAuthorizationPort,
   ActorContext,
+  AuthorizedWorkspaceContext,
 } from '../workspaces/index.js';
 import type { WorkspaceAuthorizationSource } from '../identity-workspace/ports.js';
 import type { WorkflowAuthoringTelemetry } from './telemetry.js';
@@ -32,6 +33,7 @@ export type WorkflowAuthoringDependencies = Readonly<{
 export type WorkflowApplicationInput = Readonly<{
   actor: ActorContext;
   routeWorkspaceId: string;
+  authorizedWorkspace?: AuthorizedWorkspaceContext;
 }>;
 
 /** Optional application-owned graph seam for deployments with a registry adapter. */

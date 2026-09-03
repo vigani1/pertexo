@@ -8,7 +8,7 @@ import {
 } from './graph.js';
 
 import {
-  authorizeWorkspace,
+  authorizeWorkspaceOperation,
   type AuthorizationCapability,
   type WorkspaceAuthorizationSource,
 } from '../workspaces/index.js';
@@ -419,13 +419,16 @@ async function authorize(
   capability: AuthorizationCapability,
   access: WorkspaceAuthorizationSource,
 ): Promise<void> {
-  await authorizeWorkspace({
+  await authorizeWorkspaceOperation({
     actor: input.actor,
     routeWorkspaceId: input.routeWorkspaceId,
     capability,
     access,
     disclosure: 'not_found',
     allowedWorkspaceStatuses: ['active'],
+    ...(input.authorizedWorkspace === undefined
+      ? {}
+      : { authorizedWorkspace: input.authorizedWorkspace }),
   });
 }
 

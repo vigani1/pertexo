@@ -10,7 +10,10 @@ import {
   ValidateWorkflowDraftUseCase,
 } from '../../src/workflow-authoring/use-cases.js';
 import { createDraftRepresentationTag } from '../../src/workflow-authoring/etag.js';
-import { createActorContext } from '../../src/workspaces/index.js';
+import {
+  authorizeWorkspace,
+  createActorContext,
+} from '../../src/workspaces/index.js';
 import type { WorkflowAuthoringPersistence } from '../../src/workflow-authoring/ports.js';
 import type {
   PublishWorkflowInput as DatabasePublishWorkflowInput,
@@ -119,6 +122,25 @@ function persistence(overrides: Partial<WorkflowAuthoringPersistence> = {}) {
 }
 
 describe('workflow authoring application seams', () => {
+  it('reuses guard authorization without repeating the access lookup', async () => {
+    const access = authorization();
+    const authorizedWorkspace = await authorizeWorkspace({
+      actor,
+      routeWorkspaceId: workspaceId,
+      capability: 'workflow:read',
+      access,
+      disclosure: 'not_found',
+    });
+
+    await new ListWorkflowsUseCase(persistence(), access).execute({
+      actor,
+      routeWorkspaceId: workspaceId,
+      authorizedWorkspace,
+    });
+
+    expect(access.findAccess).toHaveBeenCalledTimes(1);
+  });
+
   it('hides a route workspace mismatch through not-found authorization and does not touch persistence', async () => {
     const store = persistence();
     const access = authorization();
