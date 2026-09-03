@@ -6,10 +6,13 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '../src/config.js';
 import { createWorkspaceDatabase } from '../src/database.js';
-import { acceptWorkflowRun } from '../src/execution-acceptance.js';
-import { ExecutionStateConflictError } from '../src/execution-state.js';
+import { acceptWorkflowRun } from '../src/execution/execution-acceptance.js';
+import { ExecutionStateConflictError } from '../src/execution/execution-state.js';
 import { migrateDatabase } from '../src/migrations.js';
-import { appendRunEvent, readRunEventsAfter } from '../src/run-events.js';
+import {
+  appendRunEvent,
+  readRunEventsAfter,
+} from '../src/execution/run-events.js';
 
 const migrationUrl =
   process.env.DATABASE_MIGRATION_URL ??

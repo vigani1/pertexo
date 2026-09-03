@@ -9,13 +9,13 @@ import {
 } from '../compatibility/compatibility-release.js';
 import type { DatabaseConfig } from '../config.js';
 import { createWorkspaceDatabase } from '../database.js';
-import { acceptWorkflowRun } from '../execution-acceptance.js';
-import { consumeInboxMessage } from '../inbox.js';
-import { canonicalOutboxPayloadChecksum } from '../outbox.js';
+import { acceptWorkflowRun } from '../execution/execution-acceptance.js';
+import { consumeInboxMessage } from '../execution/inbox.js';
+import { canonicalOutboxPayloadChecksum } from '../execution/outbox.js';
 import {
   classifyPublishedWorkflowVersionRow,
   type PublishedWorkflowV2Projection,
-} from '../published-workflow-reader.js';
+} from '../execution/published-workflow-reader.js';
 
 const inputSchema = z
   .object({

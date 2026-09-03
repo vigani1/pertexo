@@ -22,11 +22,11 @@ import {
   createFailureNotificationDestinationDatabase,
   FailureNotificationDestinationError,
   type FailureNotificationDestinationDatabase,
-} from '../../src/failure-notification-destinations.js';
-import { createFailureNotificationStore } from '../../src/failure-notifications.js';
+} from '../../src/execution/failure-notification-destinations.js';
+import { createFailureNotificationStore } from '../../src/execution/failure-notifications.js';
 import { parseDatabaseConfig } from '../../src/config.js';
 import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../../src/migrations.js';
-import { canonicalOutboxPayloadChecksum } from '../../src/outbox.js';
+import { canonicalOutboxPayloadChecksum } from '../../src/execution/outbox.js';
 import { dropDisconnectedDatabase } from './disposable-database.js';
 import { checkDatabaseReadiness } from '../../src/readiness.js';
 

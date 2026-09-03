@@ -5,7 +5,7 @@ import {
   IDEMPOTENCY_STATUS_VALUES,
   RUN_STATUS,
   RUN_STATUS_VALUES,
-} from '../src/execution-acceptance.js';
+} from '../src/execution/execution-acceptance.js';
 
 describe('execution vocabulary', () => {
   it('exports the authoritative workflow-run statuses', () => {

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { serializeStoredExecutionJsonValue } from '../stored-execution-value.js';
+import { serializeStoredExecutionJsonValue } from '../execution/stored-execution-value.js';
 
 const canonicalUuidSchema = z
   .string()

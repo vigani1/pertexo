@@ -18,7 +18,7 @@ import {
   IDEMPOTENCY_STATUS,
   IdempotencyRecordCorruptError,
   IdempotencyRequestConflictError,
-} from '../execution-acceptance.js';
+} from '../execution/execution-acceptance.js';
 import {
   mapWorkspace,
   mapWorkspaceLifecycleOperation,

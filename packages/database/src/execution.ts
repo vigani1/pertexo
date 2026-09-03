@@ -5,8 +5,8 @@ export {
   finalizeArtifactUpload,
   readArtifactCapacity,
   readExecutionStorageCapacity,
-} from './artifacts.js';
-export type { ArtifactCapacityObservation } from './artifacts.js';
+} from './execution/artifacts.js';
+export type { ArtifactCapacityObservation } from './execution/artifacts.js';
 export {
   CONNECTION_AUTH_TYPE,
   ConnectionUnavailableError,
@@ -25,27 +25,27 @@ export type { DatabaseConfig } from './config.js';
 export { createWorkspaceDatabase } from './database.js';
 export type { WorkspaceDatabase } from './database.js';
 export { generatePersistedId } from './persisted-id.js';
-export { createDeadlineWakeupScanner } from './deadline-wakeup-scanner.js';
-export type { DeadlineWakeupScanner } from './deadline-wakeup-scanner.js';
-export { createDueNodeWakeupScanner } from './due-node-wakeup-scanner.js';
-export type { DueNodeWakeupScanner } from './due-node-wakeup-scanner.js';
-export { createOutboxDispatcherDatabase } from './dispatcher.js';
+export { createDeadlineWakeupScanner } from './execution/deadline-wakeup-scanner.js';
+export type { DeadlineWakeupScanner } from './execution/deadline-wakeup-scanner.js';
+export { createDueNodeWakeupScanner } from './execution/due-node-wakeup-scanner.js';
+export type { DueNodeWakeupScanner } from './execution/due-node-wakeup-scanner.js';
+export { createOutboxDispatcherDatabase } from './execution/dispatcher.js';
 export type {
   LeasedOutboxEvent,
   OutboxDispatcherDatabase,
-} from './dispatcher.js';
+} from './execution/dispatcher.js';
 export {
   FailureNotificationStateError,
   createFailureNotificationStore,
-} from './failure-notifications.js';
+} from './execution/failure-notifications.js';
 export type {
   FailureNotificationResolvedDestination,
   FailureNotificationStore,
-} from './failure-notifications.js';
+} from './execution/failure-notifications.js';
 export {
   InboxChecksumMismatchError,
   InboxReceiptUnavailableError,
-} from './inbox.js';
+} from './execution/inbox.js';
 export {
   NodeAttemptConnectionFenceError,
   NodeAttemptDeliveryMismatchError,
@@ -53,19 +53,19 @@ export {
   NodeAttemptOutputInvalidError,
   NodeAttemptStateCorruptError,
   createNodeAttemptRunStore,
-} from './node-attempt-run-store.js';
+} from './execution/node-attempt-run-store.js';
 export type {
   NodeAttemptInputs,
   NodeAttemptLease,
   NodeAttemptRunStore,
-} from './node-attempt-run-store.js';
+} from './execution/node-attempt-run-store.js';
 export {
   OperatorRunReplayMismatchError,
   OperatorRunReplayNotExecutableError,
   createOperatorRunReplayStore,
 } from './operator/operator-run-replay.js';
 export type { OperatorRunReplayStore } from './operator/operator-run-replay.js';
-export { canonicalOutboxPayloadChecksum } from './outbox.js';
+export { canonicalOutboxPayloadChecksum } from './execution/outbox.js';
 export { createDatabasePool } from './postgres-telemetry.js';
 export {
   PreviewAttemptStateError,
@@ -76,7 +76,7 @@ export {
   isValidStoredExecutionOutput,
   markPreviewDispatched,
   reconcilePreviewDelivery,
-} from './preview-execution.js';
+} from './execution/preview-execution.js';
 export type {
   PreviewAttemptLease,
   PreviewClaimResult,
@@ -86,12 +86,12 @@ export type {
   PreviewHeartbeatResult,
   PreviewStatus,
   PreviewTerminalOutcome,
-} from './preview-execution.js';
-export { createPublishedWorkflowReader } from './published-workflow-reader.js';
+} from './execution/preview-execution.js';
+export { createPublishedWorkflowReader } from './execution/published-workflow-reader.js';
 export type {
   PublishedWorkflowReader,
   PublishedWorkflowV2Projection,
-} from './published-workflow-reader.js';
+} from './execution/published-workflow-reader.js';
 export { createScheduleTriggerScanner } from './triggers/schedule-triggers.js';
 export type {
   ScanDueSchedulesResult,
@@ -102,8 +102,8 @@ export {
   UnknownOutcomeReconciliationMismatchError,
   UnknownOutcomeReconciliationStateError,
   reconcileUnknownOutcomeEvidence,
-} from './unknown-outcome-reconciliation.js';
-export type { UnknownOutcomeReconciliationResult } from './unknown-outcome-reconciliation.js';
+} from './execution/unknown-outcome-reconciliation.js';
+export type { UnknownOutcomeReconciliationResult } from './execution/unknown-outcome-reconciliation.js';
 export {
   WorkflowTriggerReconciliationMismatchError,
   WorkflowTriggerStalePublicationError,

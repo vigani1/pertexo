@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import {
   acceptWorkflowRun,
   WorkspaceRunAdmissionDeniedError,
-} from '../src/execution-acceptance.js';
+} from '../src/execution/execution-acceptance.js';
 import { workflowRuns } from '../src/schema.js';
 import {
   acceptanceInput,

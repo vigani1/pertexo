@@ -1,7 +1,7 @@
 import type { DatabaseError } from 'pg';
 import { z } from 'zod';
 
-import { IdempotencyRequestConflictError } from '../execution-acceptance.js';
+import { IdempotencyRequestConflictError } from '../execution/execution-acceptance.js';
 import {
   IdentityConflictError,
   WorkspaceLifecycleConflictError,

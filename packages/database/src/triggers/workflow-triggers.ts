@@ -3,7 +3,7 @@ import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from '../config.js';
-import { canonicalOutboxPayloadChecksum } from '../outbox.js';
+import { canonicalOutboxPayloadChecksum } from '../execution/outbox.js';
 import {
   parseScheduleRecurrence,
   resolveScheduleObservation,

@@ -19,11 +19,11 @@ import {
 import {
   acceptWorkflowRun,
   WorkspaceRunQuotaExceededError,
-} from '../execution-acceptance.js';
+} from '../execution/execution-acceptance.js';
 import {
   classifyPublishedWorkflowVersionRow,
   type PublishedWorkflowV2Projection,
-} from '../published-workflow-reader.js';
+} from '../execution/published-workflow-reader.js';
 import {
   parseScheduleRecurrence,
   resolveScheduleObservation,

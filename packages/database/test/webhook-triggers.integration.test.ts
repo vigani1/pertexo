@@ -6,7 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { parseDatabaseConfig } from '../src/config.js';
 import { createIdentityWorkspaceDatabase } from '../src/tenant-access/identity-workspace.js';
 import { migrateDatabase } from '../src/migrations.js';
-import { canonicalOutboxPayloadChecksum } from '../src/outbox.js';
+import { canonicalOutboxPayloadChecksum } from '../src/execution/outbox.js';
 import {
   createWorkflowAuthoringDatabase,
   type WorkflowAuthoringDatabase,
