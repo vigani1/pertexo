@@ -1,3 +1,4 @@
+export { CORE_NODE_DEFINITION_REGISTRATIONS } from './definitions.js';
 export * from './condition/index.js';
 export * from './for-each/index.js';
 export * from './switch/index.js';

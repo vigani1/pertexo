@@ -21,11 +21,21 @@ describe('@pertexo/node-catalog package contract', () => {
     expect(Object.keys(browserEntry)).not.toContain(
       'createPlatformNodeRegistryForRelease',
     );
+    expect(browserEntry.resolvePlatformNodeDefinitionForRelease).toBeTypeOf(
+      'function',
+    );
     const indexSource = await readFile(
       resolve(packageDirectory, 'src/index.ts'),
       'utf8',
     );
     expect(indexSource).not.toMatch(/node:/u);
     expect(indexSource).not.toMatch(/\.\/server(?:\.js|['"])/u);
+    const resolutionSource = await readFile(
+      resolve(packageDirectory, 'src/definition-resolution.ts'),
+      'utf8',
+    );
+    expect(resolutionSource).not.toContain('@pertexo/integrations/server');
+    expect(resolutionSource).not.toContain('@pertexo/nodes-core/server');
+    expect(resolutionSource).not.toContain('server-only');
   });
 });
