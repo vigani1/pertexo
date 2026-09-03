@@ -1,23 +1,23 @@
-import { createDatabasePool } from './postgres-telemetry.js';
+import { createDatabasePool } from '../postgres-telemetry.js';
 import { createHash } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
-import type { DatabaseConfig } from './config.js';
+import type { DatabaseConfig } from '../config.js';
 import {
   lockExpectedCompatibilityReleaseSet,
   parseCompatibilityReleaseExpectation,
   parseCompatibilityReleaseExpectationSet,
   type CompatibilityReleaseExpectation,
   type CompatibilityReleaseExpectationSet,
-} from './compatibility/compatibility-release.js';
-import { acceptWorkflowRun } from './execution-acceptance.js';
-import { generatePersistedId } from './persisted-id.js';
+} from '../compatibility/compatibility-release.js';
+import { acceptWorkflowRun } from '../execution-acceptance.js';
+import { generatePersistedId } from '../persisted-id.js';
 import {
   classifyPublishedWorkflowVersionRow,
   type PublishedWorkflowV2Projection,
-} from './published-workflow-reader.js';
+} from '../published-workflow-reader.js';
 import {
   readHealth,
   refreshWorkflowActivation,
@@ -27,7 +27,7 @@ import {
   withTenantScopedClient,
   withWorkspaceTransaction,
   type WorkspaceTransaction,
-} from './workspace.js';
+} from '../workspace.js';
 
 const uuidSchema = z.uuid();
 const digestSchema = z.string().regex(/^[0-9a-f]{64}$/u);

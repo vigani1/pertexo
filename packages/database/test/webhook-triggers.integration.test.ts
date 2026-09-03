@@ -22,8 +22,8 @@ import {
   WebhookDeliveryReplayMismatchError,
   WebhookIngressRateLimitExceededError,
   WebhookTriggerNotFoundError,
-} from '../src/webhook-triggers.js';
-import { createWorkflowTriggerReconciliationDatabase } from '../src/workflow-triggers.js';
+} from '../src/triggers/webhook-triggers.js';
+import { createWorkflowTriggerReconciliationDatabase } from '../src/triggers/workflow-triggers.js';
 import { PHASE3_COMPATIBILITY_EXPECTATION } from './phase3-compatibility-fixture.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';
 

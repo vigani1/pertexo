@@ -1,15 +1,15 @@
-import { createDatabasePool } from './postgres-telemetry.js';
+import { createDatabasePool } from '../postgres-telemetry.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
-import type { DatabaseConfig } from './config.js';
-import { canonicalOutboxPayloadChecksum } from './outbox.js';
+import type { DatabaseConfig } from '../config.js';
+import { canonicalOutboxPayloadChecksum } from '../outbox.js';
 import {
   parseScheduleRecurrence,
   resolveScheduleObservation,
   type ScheduleRecurrence,
 } from './schedule-recurrence.js';
-import { withTenantScopedClient } from './workspace.js';
+import { withTenantScopedClient } from '../workspace.js';
 
 const uuidSchema = z.uuid();
 const digestSchema = z.string().regex(/^[0-9a-f]{64}$/u);

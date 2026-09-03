@@ -28,7 +28,7 @@ import type {
   WorkflowVersionRecord,
 } from './workflow-authoring.js';
 import { workflowVersionRowSelection } from './workflow-authoring-rows.js';
-import { workflowTriggerProjection } from './workflow-trigger-projection.js';
+import { workflowTriggerProjection } from './triggers/workflow-trigger-projection.js';
 
 const uuidSchema = z.uuid();
 const digestSchema = z.string().regex(/^[0-9a-f]{64}$/u);
