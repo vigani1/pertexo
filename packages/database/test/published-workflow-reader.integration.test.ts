@@ -9,7 +9,7 @@ import { createIdentityWorkspaceDatabase } from '../src/tenant-access/identity-w
 import { migrateDatabase } from '../src/migrations.js';
 import { createPublishedWorkflowReader } from '../src/published-workflow-reader.js';
 import { checkDatabaseReadiness } from '../src/readiness.js';
-import { createWorkflowAuthoringDatabase } from '../src/workflow-authoring.js';
+import { createWorkflowAuthoringDatabase } from '../src/authoring/workflow-authoring.js';
 import { PHASE3_COMPATIBILITY_EXPECTATION } from './phase3-compatibility-fixture.js';
 
 const migrationUrl =

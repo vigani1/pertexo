@@ -1,4 +1,4 @@
-import { createDatabasePool } from './postgres-telemetry.js';
+import { createDatabasePool } from '../postgres-telemetry.js';
 import { createHash } from 'node:crypto';
 
 import type { Pool } from 'pg';
@@ -11,7 +11,7 @@ import {
   type WorkflowGraph,
 } from '@pertexo/workflow-model/graph';
 
-import type { DatabaseConfig } from './config.js';
+import type { DatabaseConfig } from '../config.js';
 import {
   lockExpectedCompatibilityReleaseWithClient,
   lockExpectedCompatibilityReleaseSetWithClient,
@@ -19,7 +19,7 @@ import {
   parseCompatibilityReleaseExpectationHistory,
   parseCompatibilityReleaseExpectationSet,
   type CompatibilityReleaseExpectation,
-} from './compatibility/compatibility-release.js';
+} from '../compatibility/compatibility-release.js';
 import { WorkflowNotFoundError } from './workflow-authoring-errors.js';
 import { createWorkflowPublisher } from './workflow-publication.js';
 import { createWorkflowAuthoringReadStore } from './workflow-authoring-reads.js';
@@ -35,11 +35,11 @@ import {
   type AcceptedPreviewRun,
   type AcceptPreviewRunInput,
   type PreviewRunRecord,
-} from './preview-execution.js';
+} from '../preview-execution.js';
 import {
   withTenantScopedClient,
   withWorkspaceTransaction,
-} from './tenant-access/workspace.js';
+} from '../tenant-access/workspace.js';
 
 const uuidSchema = z.uuid();
 const idempotencyKeySchema = z

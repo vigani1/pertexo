@@ -498,7 +498,7 @@ export {
   WorkflowIdempotencyConflictError,
   WorkflowDefinitionPlacementError,
   WorkflowRevisionConflictError,
-} from './workflow-authoring.js';
+} from './authoring/workflow-authoring.js';
 export { createWorkflowIntegrationUsageDatabase } from './connections/workflow-integration-usage.js';
 export type {
   FindConnectionImpactInput,
@@ -524,7 +524,7 @@ export type {
   WorkflowRecord,
   WorkflowVersionPage,
   WorkflowVersionRecord,
-} from './workflow-authoring.js';
+} from './authoring/workflow-authoring.js';
 export type {
   WorkspaceDrizzle,
   WorkspaceId,
