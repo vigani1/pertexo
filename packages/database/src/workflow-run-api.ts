@@ -20,8 +20,8 @@ import {
   classifyPublishedWorkflowVersionRow,
   type PublishedWorkflowV2Projection,
 } from './published-workflow-reader.js';
-import { withWorkspaceTransaction } from './workspace.js';
-import type { WorkspaceTransaction } from './workspace.js';
+import { withWorkspaceTransaction } from './tenant-access/workspace.js';
+import type { WorkspaceTransaction } from './tenant-access/workspace.js';
 import { requestWorkflowRunCancellation } from './workflow-run-cancellation.js';
 
 const digestSchema = z.string().regex(/^[0-9a-f]{64}$/u);

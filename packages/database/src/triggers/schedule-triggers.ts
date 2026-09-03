@@ -32,7 +32,7 @@ import { refreshWorkflowActivation } from './workflow-triggers.js';
 import {
   withTenantScopedClient,
   withWorkspaceTransaction,
-} from '../workspace.js';
+} from '../tenant-access/workspace.js';
 
 const claimSchema = z.object({
   trigger_id: z.uuid(),

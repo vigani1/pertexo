@@ -8,7 +8,7 @@ import {
   parseOperatorDatabaseConfig,
   parseOutboxDispatcherConfig,
 } from '../src/config.js';
-import { parseWorkspaceId } from '../src/workspace.js';
+import { parseWorkspaceId } from '../src/tenant-access/workspace.js';
 
 describe('database configuration', () => {
   it('parses immutable pool settings', () => {

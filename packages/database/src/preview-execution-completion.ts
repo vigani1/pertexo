@@ -18,7 +18,7 @@ import {
 } from './preview-execution-contract.js';
 import { completePreviewReceipt } from './preview-execution-delivery.js';
 import { serializeStoredExecutionValueV1 } from './stored-execution-value.js';
-import { withTenantScopedClient } from './workspace.js';
+import { withTenantScopedClient } from './tenant-access/workspace.js';
 
 export type PreviewCompletionResult = Readonly<{
   kind: 'committed' | 'duplicate';

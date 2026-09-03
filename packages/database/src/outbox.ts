@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
 import { outboxEvents } from './schema.js';
-import type { WorkspaceTransaction } from './workspace.js';
+import type { WorkspaceTransaction } from './tenant-access/workspace.js';
 
 const checksumSchema = z.string().regex(/^[0-9a-f]{64}$/u);
 const boundedJsonSchema = z

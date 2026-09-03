@@ -15,7 +15,10 @@ import {
 } from '../src/preview-execution.js';
 import { createPreviewRetentionCoordinator } from '../src/preview-retention.js';
 import { databaseSchema } from '../src/schema.js';
-import { parseWorkspaceId, withTenantScopedClient } from '../src/workspace.js';
+import {
+  parseWorkspaceId,
+  withTenantScopedClient,
+} from '../src/tenant-access/workspace.js';
 import {
   acceptFixture,
   claimFixture,

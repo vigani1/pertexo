@@ -10,7 +10,7 @@ import {
 
 import type { DatabaseConfig } from './config.js';
 import { serializeStoredExecutionJsonValue } from './stored-execution-value.js';
-import { withTenantScopedClient } from './workspace.js';
+import { withTenantScopedClient } from './tenant-access/workspace.js';
 import { FailureNotificationStateError } from './failure-notification-errors.js';
 import { createFailureNotificationDestinationStore } from './failure-notification-destination-store.js';
 import { createFailureNotificationCompletionStore } from './failure-notification-completion-store.js';

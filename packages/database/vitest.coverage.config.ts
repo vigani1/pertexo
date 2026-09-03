@@ -10,7 +10,7 @@ export default defineConfig({
       reportsDirectory: '../../coverage/database',
       // Persistence SQL paths are proven by real-service suites. This unit
       // gate covers the security-critical shared transaction engine.
-      include: ['src/workspace.ts'],
+      include: ['src/tenant-access/workspace.ts'],
       // Public testing-entrypoint baseline after removing assertions against
       // sibling-private coordinator/node-attempt transaction wrappers.
       thresholds: {

@@ -24,7 +24,7 @@ import {
   serializeStoredExecutionValueV1,
   type StoredExecutionValueV1,
 } from './stored-execution-value.js';
-import { withTenantScopedClient } from './workspace.js';
+import { withTenantScopedClient } from './tenant-access/workspace.js';
 
 export type PreviewReconciliationOutcome = Readonly<{
   status: typeof PREVIEW_STATUS.outcomeUnknown;

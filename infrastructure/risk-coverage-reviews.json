@@ -990,7 +990,7 @@
     },
     {
       "cohort": "database",
-      "file": "packages/database/src/workspace.ts",
+      "file": "packages/database/src/tenant-access/workspace.ts",
       "reviews": [
         {
           "branchId": "13",

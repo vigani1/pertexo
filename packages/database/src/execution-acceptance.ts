@@ -15,7 +15,7 @@ import {
   workflowRuns,
 } from './schema.js';
 import { serializeStoredExecutionValueV1 } from './stored-execution-value.js';
-import type { WorkspaceTransaction } from './workspace.js';
+import type { WorkspaceTransaction } from './tenant-access/workspace.js';
 
 const sha256Schema = z.string().regex(/^[0-9a-f]{64}$/u);
 const traceparentSchema = z

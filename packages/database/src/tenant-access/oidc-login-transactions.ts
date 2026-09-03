@@ -1,10 +1,10 @@
 import { timingSafeEqual } from 'node:crypto';
 
-import { createDatabasePool } from './postgres-telemetry.js';
+import { createDatabasePool } from '../postgres-telemetry.js';
 import { withPlatformTransaction } from './workspace.js';
 import { z } from 'zod';
 
-import type { DatabaseConfig } from './config.js';
+import type { DatabaseConfig } from '../config.js';
 import { IdentityConflictError } from './identity-workspace.js';
 
 const stateDigestSchema = z.string().regex(/^[0-9a-f]{64}$/u);

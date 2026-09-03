@@ -8,11 +8,11 @@ import {
   checkDatabaseServingReadiness,
 } from './readiness.js';
 import type { DatabaseReadiness } from './readiness.js';
-import { withWorkspaceTransaction } from './workspace.js';
+import { withWorkspaceTransaction } from './tenant-access/workspace.js';
 import type {
   WorkspaceTransaction,
   WorkspaceTransactionOptions,
-} from './workspace.js';
+} from './tenant-access/workspace.js';
 
 export interface WorkspaceDatabase {
   withWorkspace<T>(

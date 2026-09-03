@@ -28,7 +28,7 @@ import {
   workspaceId,
   workflowId,
 } from './support/preview-worker-fixture.js';
-import { withTenantScopedClient } from '../src/workspace.js';
+import { withTenantScopedClient } from '../src/tenant-access/workspace.js';
 
 describe('preview worker attempt lifecycle', () => {
   it('claims a queued attempt with pinned identity and completes truthfully', async () => {

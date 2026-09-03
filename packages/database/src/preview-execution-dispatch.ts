@@ -6,7 +6,7 @@ import {
   optionsFor,
   type PreviewAttemptLease,
 } from './preview-execution-contract.js';
-import { withTenantScopedClient } from './workspace.js';
+import { withTenantScopedClient } from './tenant-access/workspace.js';
 
 export async function markPreviewDispatched(
   pool: Pool,

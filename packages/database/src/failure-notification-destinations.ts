@@ -15,7 +15,7 @@ import {
   FailureNotificationDestinationError,
   type FailureNotificationDestinationErrorCode,
 } from './failure-notification-destination-errors.js';
-import { withTenantScopedClient } from './workspace.js';
+import { withTenantScopedClient } from './tenant-access/workspace.js';
 
 export { FailureNotificationDestinationError } from './failure-notification-destination-errors.js';
 
