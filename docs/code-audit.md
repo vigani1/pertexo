@@ -229,6 +229,33 @@ making the architecture plan even larger.
 ### C-02 — Failure notification storage reimplements tenant transactions
 
 - **Severity:** high.
+- **Remediation status:** complete on 2026-09-03.
+- **Repository-wide affected locations:** the only owner-local tenant
+  transaction helpers duplicating the ordinary request/store transaction were
+  `transaction` and `abortableTransaction` in
+  `packages/database/src/failure-notifications.ts`; their four call sites own
+  claim, destination load, dispatch fencing, and completion. A repository-wide
+  `begin`/workspace-context inventory also covered dispatcher, migrations,
+  compatibility maintenance, preview and artifact retention, lifecycle and
+  operator commands, control-ledger coordination, workspace purge, and general
+  retention. Those occurrences remain intentionally specialized: they are
+  platform-global/owner-role transactions, cross-workspace maintenance that
+  changes tenant context inside a bounded step, or operational flows with
+  explicit lock/statement timeouts and cancellation sequencing. They are not
+  interchangeable ordinary tenant-store transactions.
+- **Remediation:** removed both failure-notification helpers and routed all four
+  call sites through `withTenantScopedClient`. Extended the canonical primitive
+  with a validated transaction-local `statementTimeoutMillis` option and
+  fail-closed read-back, preserving the destination load's 30-second bound
+  while gaining context preflight, rollback aggregation, and contaminated-client
+  destruction.
+- **Verification:** red/green timeout installation and mismatch tests in
+  `packages/database/test/workspace-transaction-engine.test.ts`; focused suite
+  21 tests, complete database unit suite 170 tests, database typecheck and build.
+  The existing real-adapter cancellation characterization in
+  `tenant-context-hygiene.integration.test.ts` was invoked but could not run
+  because no PostgreSQL service was listening on `127.0.0.1` or `::1` port
+  5432; it was not reported as passing.
 - **Location:** `packages/database/src/failure-notifications.ts#transaction` and
   `#abortableTransaction`.
 - **Issue:** the module manually acquires clients, starts transactions, installs

@@ -17,6 +17,7 @@ export type WorkspaceTransaction = Readonly<{
 
 export type WorkspaceTransactionOptions = Readonly<{
   signal?: AbortSignal;
+  statementTimeoutMillis?: number;
 }>;
 
 export type TenantTransactionScope = Readonly<{
@@ -55,12 +56,17 @@ async function assertNoTenantContext(client: PoolClient): Promise<void> {
 async function verifyTenantContext(
   client: PoolClient,
   scope: TenantTransactionScope,
+  statementTimeoutMillis: number | undefined,
 ): Promise<void> {
   const result = await client.query<{
     workspace_id: string | null;
     actor_id: string | null;
+    statement_timeout_millis: string | number;
   }>(
-    "select current_setting('app.workspace_id', true) as workspace_id, current_setting('app.actor_id', true) as actor_id",
+    `select current_setting('app.workspace_id', true) as workspace_id,
+            current_setting('app.actor_id', true) as actor_id,
+            (select setting::bigint from pg_settings where name='statement_timeout')
+              as statement_timeout_millis`,
   );
   const row = result.rows[0];
   if (row?.workspace_id !== scope.workspaceId) {
@@ -69,6 +75,20 @@ async function verifyTenantContext(
   if (scope.actorId !== undefined && row.actor_id !== scope.actorId) {
     throw new Error('PostgreSQL tenant context verification failed');
   }
+  if (
+    statementTimeoutMillis !== undefined &&
+    Number(row.statement_timeout_millis) !== statementTimeoutMillis
+  ) {
+    throw new Error('PostgreSQL transaction timeout verification failed');
+  }
+}
+
+function parseStatementTimeout(value: number | undefined): number | undefined {
+  if (value === undefined) return undefined;
+  if (!Number.isSafeInteger(value) || value < 1 || value > 2_147_483_647) {
+    throw new RangeError('Invalid PostgreSQL statement timeout');
+  }
+  return value;
 }
 
 async function runTransaction<T>(
@@ -83,6 +103,9 @@ async function runTransaction<T>(
     cleanup: string;
   }>,
 ): Promise<T> {
+  const statementTimeoutMillis = parseStatementTimeout(
+    options.statementTimeoutMillis,
+  );
   const abortError = new Error(messages.abort);
   abortError.name = 'AbortError';
   if (options.signal?.aborted) throw abortError;
@@ -131,7 +154,13 @@ async function runTransaction<T>(
         [scope.workspaceId, scope.actorId],
       );
     }
-    if (scope !== undefined) await verifyTenantContext(client, scope);
+    if (statementTimeoutMillis !== undefined) {
+      await client.query("select set_config('statement_timeout', $1, true)", [
+        `${String(statementTimeoutMillis)}ms`,
+      ]);
+    }
+    if (scope !== undefined)
+      await verifyTenantContext(client, scope, statementTimeoutMillis);
 
     const result = await operation(client);
     await client.query('commit');
