@@ -781,6 +781,27 @@ making the architecture plan even larger.
 ### C-20 — Executable graph validation repeatedly scans collections
 
 - **Severity:** low to medium.
+- **Remediation status:** complete on 2026-09-03.
+- **Repository-wide affected locations:** collection lookup scans were
+  inventoried across workflow-engine graph compilation, executable parsing,
+  scheduling, checkpoint validation, and transition processing. The repeated
+  graph-scale scans were confined to executable port and structured-branch
+  validation. Checkpoint/invocation searches operate on distinct runtime state,
+  preserve order-sensitive validation, or are outside graph publication and
+  remain intentionally explicit. A final single pass selecting Merge nodes is
+  not nested and remains clearer than materializing another public concept.
+- **Remediation:** executable build and verification now each construct one
+  private validation index containing nodes by ID, incoming edges by node and
+  target port, outgoing edges by source port, paired Merges by Parallel ID, and
+  adjacency. Port availability, configured branch outputs, pairing, exact
+  Merge-input cardinality, branch roots, and reachability reuse that index;
+  invariant checks and failure messages retain their original order.
+- **Verification:** complete workflow-engine suite (224 tests) and typecheck;
+  added a public `buildWorkflowExecutableV2` large-graph regression that
+  compiles a 300-node chain within a two-second publication budget (the largest
+  practical public fixture is also bounded by the executable's 10,000-member
+  envelope limit). Post-change inspection found no node/edge `find`, `filter`,
+  or `some` nested inside the two indexed validation loops.
 - **Location:** `packages/workflow-engine/src/executable-workflow.ts`
   `#assertGraphPorts` and `#assertBranchesDoNotReconverge`.
 - **Issue:** `find`, `filter`, and `some` operations repeatedly scan nodes and

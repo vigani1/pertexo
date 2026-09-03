@@ -28,6 +28,11 @@ import {
 
 import { WorkflowEngineError } from './errors.js';
 import type { SideEffectClass } from './types.js';
+import {
+  graphValidationIndex,
+  nodePortKey,
+  type GraphValidationIndex,
+} from './executable-graph-validation-index.js';
 
 export const PHASE3_RUNTIME_POLICIES_V1 = Object.freeze({
   scheduler: Object.freeze({ key: 'engine.scheduler', version: 1 }),
@@ -437,6 +442,7 @@ function canonicalEdges(graph: WorkflowGraph): readonly WorkflowEdge[] {
 function assertGraphPorts(
   graph: WorkflowGraph,
   release: RegistryRelease,
+  index: GraphValidationIndex,
 ): void {
   const manifests = new Map(
     graph.nodes.map((node) => [
@@ -451,7 +457,7 @@ function assertGraphPorts(
       fail('workflow edge references an unavailable node');
     if (!source.ports.outputs.includes(edge.source.port))
       fail('workflow edge source port is unavailable');
-    const sourceNode = graph.nodes.find(({ id }) => id === edge.source.nodeId);
+    const sourceNode = index.nodesById.get(edge.source.nodeId);
     if (
       sourceNode !== undefined &&
       (sourceNode.definition.key === 'core.switch' ||
@@ -506,12 +512,10 @@ function configuredStructuredOutputPorts(
   return [...configuredBranchPorts(node), ...configuredParallelPorts(node)];
 }
 
-function assertBranchesDoNotReconverge(graph: WorkflowGraph): void {
-  const adjacency = new Map<string, string[]>();
-  for (const node of graph.nodes) adjacency.set(node.id, []);
-  for (const edge of graph.edges)
-    adjacency.get(edge.source.nodeId)?.push(edge.target.nodeId);
-
+function assertBranchesDoNotReconverge(
+  graph: WorkflowGraph,
+  index: GraphValidationIndex,
+): void {
   const descendants = (
     roots: readonly string[],
     boundaries: ReadonlySet<string> = new Set(),
@@ -523,7 +527,7 @@ function assertBranchesDoNotReconverge(graph: WorkflowGraph): void {
       if (nodeId === undefined || reached.has(nodeId)) continue;
       if (boundaries.has(nodeId)) continue;
       reached.add(nodeId);
-      pending.push(...(adjacency.get(nodeId) ?? []));
+      pending.push(...(index.adjacency.get(nodeId) ?? []));
     }
     return reached;
   };
@@ -536,7 +540,10 @@ function assertBranchesDoNotReconverge(graph: WorkflowGraph): void {
       merge.config,
       'parallelNodeId',
     ) as unknown;
-    const parallel = graph.nodes.find(({ id }) => id === parallelNodeId);
+    const parallel =
+      typeof parallelNodeId === 'string'
+        ? index.nodesById.get(parallelNodeId)
+        : undefined;
     if (
       parallel?.definition.key !== 'core.parallel' ||
       parallel.definition.version !== 1
@@ -551,34 +558,26 @@ function assertBranchesDoNotReconverge(graph: WorkflowGraph): void {
       node.definition.key === 'core.parallel' &&
       ports.some(
         (port) =>
-          !graph.edges.some(
-            (edge) =>
-              edge.source.nodeId === node.id && edge.source.port === port,
-          ),
+          (index.outgoingByNodePort.get(nodePortKey(node.id, port))?.length ??
+            0) === 0,
       )
     )
       fail('every Parallel branch must have an outgoing edge');
     const pairedMerges =
       node.definition.key === 'core.parallel'
-        ? graph.nodes.filter(
-            (candidate) =>
-              candidate.definition.key === 'core.merge' &&
-              candidate.definition.version === 1 &&
-              Reflect.get(candidate.config, 'parallelNodeId') === node.id,
-          )
+        ? (index.mergesByParallelNode.get(node.id) ?? [])
         : [];
     if (node.definition.key === 'core.parallel' && pairedMerges.length !== 1)
       fail('Parallel requires exactly one paired Merge');
     const pairedMerge = pairedMerges[0];
     if (pairedMerge !== undefined) {
-      const incoming = graph.edges.filter(
-        ({ target }) => target.nodeId === pairedMerge.id,
-      );
+      const incoming = index.incomingByNode.get(pairedMerge.id) ?? [];
       if (
         incoming.length !== ports.length ||
         ports.some(
           (port) =>
-            incoming.filter(({ target }) => target.port === port).length !== 1,
+            (index.incomingByNodePort.get(nodePortKey(pairedMerge.id, port))
+              ?.length ?? 0) !== 1,
         ) ||
         incoming.some(({ target }) => !ports.includes(target.port))
       )
@@ -596,11 +595,9 @@ function assertBranchesDoNotReconverge(graph: WorkflowGraph): void {
         fail('Merge count policy exceeds paired Parallel branches');
     }
     const branchRoots = (port: string): string[] =>
-      graph.edges
-        .filter(
-          (edge) => edge.source.nodeId === node.id && edge.source.port === port,
-        )
-        .map((edge) => edge.target.nodeId);
+      (index.outgoingByNodePort.get(nodePortKey(node.id, port)) ?? []).map(
+        (edge) => edge.target.nodeId,
+      );
     const boundaries = new Set(
       pairedMerge === undefined ? [] : [pairedMerge.id],
     );
@@ -609,15 +606,14 @@ function assertBranchesDoNotReconverge(graph: WorkflowGraph): void {
     );
     if (
       pairedMerge !== undefined &&
-      ports.some((port, index) => {
-        const incoming = graph.edges.find(
-          ({ target }) =>
-            target.nodeId === pairedMerge.id && target.port === port,
-        );
+      ports.some((port, portIndex) => {
+        const incoming = index.incomingByNodePort.get(
+          nodePortKey(pairedMerge.id, port),
+        )?.[0];
         return (
           incoming === undefined ||
           (incoming.source.nodeId !== node.id &&
-            !reachedByPort[index]?.has(incoming.source.nodeId))
+            !reachedByPort[portIndex]?.has(incoming.source.nodeId))
         );
       })
     )
@@ -656,8 +652,9 @@ function compileExecutableGraph(
   graph: WorkflowGraph,
   release: RegistryRelease,
 ): WorkflowExecutableGraphV2 {
-  assertGraphPorts(graph, release);
-  assertBranchesDoNotReconverge(graph);
+  const index = graphValidationIndex(graph);
+  assertGraphPorts(graph, release, index);
+  assertBranchesDoNotReconverge(graph, index);
   return {
     settings: graph.settings,
     nodes: [...graph.nodes]
@@ -1175,8 +1172,9 @@ function validateExecutableGraph(
   current: RegistryRelease,
   alreadyAdmitted: boolean,
 ): WorkflowExecutableGraphV2 {
-  assertGraphPorts(graph, admission);
-  assertBranchesDoNotReconverge(graph);
+  const index = graphValidationIndex(graph);
+  assertGraphPorts(graph, admission, index);
+  assertBranchesDoNotReconverge(graph, index);
   const parsedById = new Map(graph.nodes.map((node) => [node.id, node]));
   const nodes = tree.nodes.map((rawNode) => {
     if (typeof rawNode.raw.id !== 'string') fail('node ID is invalid');

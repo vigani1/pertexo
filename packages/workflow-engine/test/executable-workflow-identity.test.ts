@@ -635,4 +635,41 @@ describe('workflow executable V2 identity', () => {
       buildWorkflowExecutableV2({ graph: nearLimit, release }),
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
   });
+
+  it('compiles a large 300-node chain within the bounded publication budget', () => {
+    const release = composeExecutableCompatibilityRelease(nodeRelease());
+    const middle = Array.from({ length: 298 }, (_, index) => ({
+      id: `set-${String(index)}`,
+      definition: { key: 'core.set', version: 1 } as const,
+      position: { x: index + 1, y: 0 },
+      configVersion: 1,
+      config: {},
+      inputMappings: {},
+      connectionRefs: {},
+    }));
+    const nodes = [
+      { ...graph().nodes[0], inputMappings: {} },
+      ...middle,
+      { ...graph().nodes[2], inputMappings: {} },
+    ];
+    const edges = Array.from({ length: nodes.length - 1 }, (_, index) => ({
+      id: `edge-${String(index)}`,
+      source: { nodeId: nodes[index]?.id, port: 'out' },
+      target: { nodeId: nodes[index + 1]?.id, port: 'in' },
+    }));
+    const startedAt = performance.now();
+
+    const executable = buildWorkflowExecutableV2({
+      graph: {
+        schemaVersion: 1,
+        settings: { maxRunDurationMs: 60_000 },
+        nodes,
+        edges,
+      },
+      release,
+    });
+
+    expect(executable.envelope.graph.nodes).toHaveLength(300);
+    expect(performance.now() - startedAt).toBeLessThan(2_000);
+  });
 });
