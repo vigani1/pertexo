@@ -35,17 +35,22 @@ tests. The exact report schema and validator already live under
 
 ## Current engineering remediation
 
-Audited implementation tree: `200e9c5a4a2fd2772e37c06ad2ada6bc2b64e996`
+Audited implementation tree: `6dc62b689974341d4e58af49e2f39ef84dc92b6e`
 
-The 2026-09-03 fresh whole-repository audit supersedes the prior audit's
-current-state conclusions. It found four repository-controlled pre-release
-blockers: a worker runtime workspace dependency declared only for development,
-an unowned worker keepalive that can prevent graceful process exit, an open
-high-severity CodeQL polynomial-ReDoS logger alert, and two unique moderate
-Fastify advisories across the direct and Nest-transitive dependency paths. The
-exact findings, acceptance evidence, quality scores, and staged improvement plan
-are in `docs/whole-repository-audit.md`. These do not reopen Phases 0–6, but they
-must be resolved before Phase 7 can be called production ready.
+The 2026-09-03 whole-repository audit's repository-controlled findings are
+complete at the implementation tree above. That includes the worker production
+dependency and image role-load proof, owned process shutdown, bounded logger
+redaction, patched dependencies, security admission, selected risk coverage,
+complexity and test decomposition, UUIDv7/schema/RLS conventions, bounded async
+outcomes, package surfaces, and public governance. The latest audit follow-up
+also makes persisted artifact identities UUIDv7, retains leases while late
+publication marks settle, and proves compiled workers exit cleanly after
+SIGTERM with consumers disabled or active and during bootstrap failure. The
+signal owner handles SIGINT through the same idempotent path, without
+overstating the exercised process matrix.
+The exact findings and evidence are in `docs/whole-repository-audit.md`. These
+do not change Phases 0–6; Phase 7 remains in progress only because its live
+external evidence has not been executed.
 
 The 2026-09-01 audit refresh is implemented at fixed ancestor `0865633` and
 merged to `main` through pull request #7. It
