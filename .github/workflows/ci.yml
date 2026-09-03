@@ -126,8 +126,13 @@ jobs:
           {
             pnpm docs:check
             pnpm format:check
+            pnpm runtime:check
+            pnpm dependencies:check
+            pnpm database:schema:check
             pnpm build
             pnpm lint
+            pnpm complexity:check
+            pnpm duplication:check
             pnpm contracts:check
             pnpm typecheck
           } 2>&1 | tee artifacts/quality.log

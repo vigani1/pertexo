@@ -8,9 +8,14 @@
     "node": ">=24.0.0 <25.0.0",
     "pnpm": ">=11.22.0 <12.0.0"
   },
+  "knip": {
+    "ignoreDependencies": [
+      "jscpd"
+    ]
+  },
   "scripts": {
     "build": "pnpm --recursive --if-present build",
-    "check": "pnpm format:check && pnpm docs:check && pnpm runtime:check && pnpm dependencies:check && pnpm database:schema:check && pnpm build && pnpm lint && pnpm complexity:check && pnpm contracts:check && pnpm typecheck && pnpm test",
+    "check": "pnpm format:check && pnpm docs:check && pnpm runtime:check && pnpm dependencies:check && pnpm database:schema:check && pnpm build && pnpm lint && pnpm complexity:check && pnpm duplication:check && pnpm contracts:check && pnpm typecheck && pnpm test",
     "complexity:check": "node infrastructure/validate-complexity.mjs && node --test infrastructure/validate-complexity.test.mjs",
     "contracts:check": "pnpm --filter @pertexo/contracts contracts:check",
     "contracts:generate": "pnpm --filter @pertexo/contracts contracts:generate",
@@ -21,6 +26,7 @@
     "deployment:evidence:check": "node infrastructure/ecs/validate-external-platform-evidence.mjs",
     "deployment:render": "node infrastructure/ecs/render-task-definitions.mjs",
     "docs:check": "node --test infrastructure/validate-documentation.test.mjs && node infrastructure/validate-documentation.mjs",
+    "duplication:check": "node --test infrastructure/validate-test-duplication.test.mjs && node infrastructure/validate-test-duplication.mjs",
     "db:migrate": "pnpm --filter @pertexo/database db:migrate",
     "db:provision-operator": "node infrastructure/postgres/provision-operator-role.mjs",
     "database:schema:check": "node --test infrastructure/validate-database-schema.test.mjs && node infrastructure/validate-database-schema.mjs",
@@ -49,6 +55,7 @@
     "@vitest/coverage-v8": "4.1.10",
     "eslint": "9.39.5",
     "github-slugger": "2.0.0",
+    "jscpd": "4.0.5",
     "knip": "5.80.0",
     "markdown-it": "15.0.1",
     "prettier": "3.9.6",
