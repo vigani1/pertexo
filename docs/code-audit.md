@@ -308,6 +308,21 @@ making the architecture plan even larger.
 ### C-05 — Workspace authorization is repeated on guarded requests
 
 - **Severity:** medium.
+- **Remediation status:** in progress; the low-risk type-ownership prerequisite
+  is complete, while removing duplicate guard/use-case lookups remains in the
+  medium-risk group.
+- **Repository-wide type locations:** seven workflow-authoring constructors and
+  its authorization helper, four workflow-run constructors and its helper, and
+  four connection constructors and its helper derived the access-source type
+  through `Parameters<typeof authorizeWorkspace>`. No such derived type remains.
+- **Prerequisite remediation:** `WorkspaceAuthorizationSource` is now owned and
+  exported by the workspace authorization module. Identity/workspace ports
+  re-export that canonical type for compatibility instead of redefining its
+  union. This is type-only and does not change any authorization lookup.
+- **Prerequisite verification:** repository-wide search for the derived
+  `Parameters` form; API typecheck and the workflow-authoring, workflow-run,
+  connection, authorization, and guard suites recorded with the medium-risk
+  behavior change.
 - **Locations:** `apps/api/src/identity-workspace/guards.ts`, workflow authoring,
   workflow run, and connection use cases.
 - **Issue:** the capability guard calls `authorizeWorkspace`, stores the

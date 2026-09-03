@@ -12,7 +12,10 @@ import {
 } from '@pertexo/integrations/server';
 
 import { authorizeWorkspace } from '../workspaces/index.js';
-import type { ActorContext } from '../workspaces/index.js';
+import type {
+  ActorContext,
+  WorkspaceAuthorizationSource,
+} from '../workspaces/index.js';
 import type {
   ConnectionCommandPersistence,
   ConnectionHttpClient,
@@ -69,12 +72,10 @@ export type TestConnectionCommand = ConnectionCommandInput &
     idempotencyKey: string;
   }>;
 
-type Authorization = Parameters<typeof authorizeWorkspace>[0]['access'];
-
 export class CreateConnectionUseCase {
   public constructor(
     private readonly persistence: ConnectionCommandPersistence,
-    private readonly authorization: Authorization,
+    private readonly authorization: WorkspaceAuthorizationSource,
     private readonly encryption: Pick<ConnectionSecretEncryptionPort, 'seal'>,
     private readonly telemetry: ConnectionTelemetry = NOOP_CONNECTION_TELEMETRY,
   ) {}
@@ -128,7 +129,7 @@ export class CreateConnectionUseCase {
 export class RotateConnectionSecretUseCase {
   public constructor(
     private readonly persistence: ConnectionCommandPersistence,
-    private readonly authorization: Authorization,
+    private readonly authorization: WorkspaceAuthorizationSource,
     private readonly encryption: Pick<ConnectionSecretEncryptionPort, 'seal'>,
     private readonly telemetry: ConnectionTelemetry = NOOP_CONNECTION_TELEMETRY,
   ) {}
@@ -186,7 +187,7 @@ export class RotateConnectionSecretUseCase {
 export class RevokeConnectionUseCase {
   public constructor(
     private readonly persistence: ConnectionCommandPersistence,
-    private readonly authorization: Authorization,
+    private readonly authorization: WorkspaceAuthorizationSource,
     private readonly telemetry: ConnectionTelemetry = NOOP_CONNECTION_TELEMETRY,
   ) {}
 
@@ -211,7 +212,7 @@ export class RevokeConnectionUseCase {
 export class TestConnectionUseCase {
   public constructor(
     private readonly persistence: ConnectionTestPersistence,
-    private readonly authorization: Authorization,
+    private readonly authorization: WorkspaceAuthorizationSource,
     private readonly encryption: ConnectionSecretEncryptionPort,
     private readonly httpClient: ConnectionHttpClient,
     private readonly telemetry: ConnectionTelemetry = NOOP_CONNECTION_TELEMETRY,
@@ -373,7 +374,7 @@ export class TestConnectionUseCase {
 
 async function authorize(
   input: ConnectionCommandInput,
-  access: Authorization,
+  access: WorkspaceAuthorizationSource,
   capability: 'connection:manage' | 'connection:use' = 'connection:manage',
 ): Promise<void> {
   await authorizeWorkspace({
