@@ -24,6 +24,7 @@ export type { CoordinatorRunStore } from './coordinator-run-store.js';
 export type { DatabaseConfig } from './config.js';
 export { createWorkspaceDatabase } from './database.js';
 export type { WorkspaceDatabase } from './database.js';
+export { generatePersistedId } from './persisted-id.js';
 export { createDeadlineWakeupScanner } from './deadline-wakeup-scanner.js';
 export type { DeadlineWakeupScanner } from './deadline-wakeup-scanner.js';
 export { createDueNodeWakeupScanner } from './due-node-wakeup-scanner.js';
