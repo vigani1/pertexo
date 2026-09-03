@@ -456,6 +456,23 @@ making the architecture plan even larger.
 ### C-10 — Worker transport composition owns too much in one file
 
 - **Severity:** medium.
+- **Remediation status:** complete on 2026-09-03.
+- **Repository-wide affected locations:** the 607-line transport module was the
+  only worker Nest composition file that constructed all transport runtimes,
+  dispatch registration, metrics, and shutdown ownership together.
+  `worker.module.ts` remains a small application-module assembly point, while
+  execution runtime factories remain capability implementations rather than
+  Nest provider composition and are assessed independently.
+- **Remediation:** retained `TransportModule` and every exported token/provider
+  contract, but reduced the module to a 71-line assembly facade. Private source
+  owners now separately compose coordinator, node-attempt, preview-maintenance
+  and notification delivery, trigger runtime, dispatch/metrics/capability
+  providers, lifecycle shutdown, and tokens/dependency types. Enablement rules,
+  provider order, exports, failure cleanup, and shutdown order are unchanged.
+- **Verification:** pre-change and post-change worker bootstrap characterization
+  (14 tests); focused transport/dispatcher suites (40 tests); complete worker
+  unit suite 255 tests; worker typecheck and build; repository lint and
+  complexity ratchet.
 - **Location:** `apps/worker/src/transport/transport.module.ts`.
 - **Issue:** the 607-line implementation constructs coordinator, node attempt,
   preview maintenance, triggers, transport metrics, notification delivery,
