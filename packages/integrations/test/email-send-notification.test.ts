@@ -9,7 +9,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   EMAIL_SEND_NOTIFICATION_MANIFEST,
   RESEND_API_KEY_CONNECTION_SLOT,
-  emailMailboxSchema,
+  providerEmailMailboxSchema,
   emailSendNotificationInputSchema,
 } from '../src/index.js';
 import {
@@ -111,7 +111,7 @@ describe('email.send_notification@1', () => {
       connectionRequirements: ['resend_api_key'],
       capabilities: ['external_http', 'side_effect_disclosure'],
     });
-    expect(emailMailboxSchema.parse('Local@Example.COM')).toBe(
+    expect(providerEmailMailboxSchema.parse('Local@Example.COM')).toBe(
       'Local@example.com',
     );
     for (const invalid of [
@@ -125,7 +125,7 @@ describe('email.send_notification@1', () => {
       'a@localhost',
       `${'a'.repeat(65)}@example.com`,
     ])
-      expect(emailMailboxSchema.safeParse(invalid).success).toBe(false);
+      expect(providerEmailMailboxSchema.safeParse(invalid).success).toBe(false);
     expect(
       emailSendNotificationInputSchema.safeParse({
         toEmail: 'a@example.com',

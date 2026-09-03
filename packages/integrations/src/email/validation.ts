@@ -24,7 +24,7 @@ const localPart =
   /^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*$/u;
 const domainLabel = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/u;
 
-export const emailMailboxSchema = z
+export const providerEmailMailboxSchema = z
   .string()
   .min(3)
   .max(254)
@@ -57,7 +57,7 @@ export const emailSendNotificationConfigSchema = z
 
 export const emailSendNotificationInputSchema = z
   .object({
-    toEmail: emailMailboxSchema,
+    toEmail: providerEmailMailboxSchema,
     subject: z
       .string()
       .min(1)
@@ -78,7 +78,7 @@ export const emailSendNotificationOutputSchema = z
   .strict()
   .readonly();
 
-export const resendApiKeyCredentialSchema = z
+export const resolvedResendApiKeyCredentialSchema = z
   .object({
     schemaVersion: z.literal(1),
     type: z.literal('resend_api_key'),
@@ -87,7 +87,7 @@ export const resendApiKeyCredentialSchema = z
       .min(8)
       .max(512)
       .regex(/^re_[A-Za-z0-9_-]+$/u),
-    fromEmail: emailMailboxSchema,
+    fromEmail: providerEmailMailboxSchema,
   })
   .strict()
   .readonly();

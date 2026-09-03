@@ -18,7 +18,7 @@ import {
   SLACK_SEND_MESSAGE_POLICY,
 } from './definition.js';
 import {
-  slackBotTokenCredentialSchema,
+  resolvedSlackBotTokenCredentialSchema,
   slackSendMessageConfigSchema,
   slackSendMessageInputSchema,
   slackSendMessageOutputSchema,
@@ -164,7 +164,7 @@ async function execute(
       throw failure('failed', 'configuration', false);
     let credential;
     try {
-      credential = slackBotTokenCredentialSchema.parse(
+      credential = resolvedSlackBotTokenCredentialSchema.parse(
         JSON.parse(
           new TextDecoder('utf-8', { fatal: true }).decode(resolved.secret),
         ),

@@ -85,7 +85,7 @@ export const httpHeaderCredentialSchema = z
     let bytes = 0;
     for (const [name, value] of Object.entries(headers)) {
       const canonicalName = name.toLowerCase();
-      bytes += utf8ByteLength(name) + utf8ByteLength(value);
+      bytes += utf8ByteLength(`${canonicalName}:${value}\r\n`);
       if (normalized.has(canonicalName)) {
         context.addIssue({
           code: 'custom',

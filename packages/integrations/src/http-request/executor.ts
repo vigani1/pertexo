@@ -28,84 +28,9 @@ import {
   httpRequestConfigSchema,
   httpRequestInputSchema,
   httpRequestOutputSchema,
+  resolvedHttpHeadersCredentialSchema,
   type HttpRequestOutput,
 } from './validation.js';
-
-const credentialHeaderNameSchema = z
-  .string()
-  .min(1)
-  .max(128)
-  .regex(/^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/u);
-const blockedCredentialHeaders = new Set([
-  'accept-encoding',
-  'connection',
-  'content-length',
-  'host',
-  'idempotency-key',
-  'keep-alive',
-  'proxy-authenticate',
-  'proxy-authorization',
-  'te',
-  'trailer',
-  'transfer-encoding',
-  'upgrade',
-]);
-const resolvedCredentialSchema = z
-  .object({
-    schemaVersion: z.literal(1),
-    type: z.literal('http_headers'),
-    headers: z
-      .record(
-        credentialHeaderNameSchema,
-        z
-          .string()
-          .min(1)
-          .max(8_192)
-          .refine((value) => !/[\r\n\0]/u.test(value)),
-      )
-      .superRefine((headers, context) => {
-        const entries = Object.entries(headers);
-        if (entries.length < 1 || entries.length > 32)
-          context.addIssue({
-            code: 'custom',
-            message: 'credential header count is invalid',
-          });
-        const normalized = new Set<string>();
-        let bytes = 0;
-        for (const [name, value] of entries) {
-          const canonicalName = name.toLowerCase();
-          bytes += new TextEncoder().encode(
-            `${canonicalName}:${value}\r\n`,
-          ).byteLength;
-          if (
-            normalized.has(canonicalName) ||
-            blockedCredentialHeaders.has(canonicalName)
-          )
-            context.addIssue({
-              code: 'custom',
-              path: [name],
-              message: 'credential header is invalid',
-            });
-          normalized.add(canonicalName);
-        }
-        if (bytes > 16_384)
-          context.addIssue({
-            code: 'custom',
-            message: 'credential headers exceed byte limit',
-          });
-      })
-      .transform((headers) =>
-        Object.freeze(
-          Object.fromEntries(
-            Object.entries(headers).map(([name, value]) => [
-              name.toLowerCase(),
-              value,
-            ]),
-          ),
-        ),
-      ),
-  })
-  .strict();
 
 export class HttpRequestExecutorError extends NodeExecutorFailure {
   public override readonly name = 'HttpRequestExecutorError';
@@ -174,7 +99,7 @@ function requestBody(
 
 function decodeCredential(secret: Uint8Array) {
   try {
-    return resolvedCredentialSchema.parse(
+    return resolvedHttpHeadersCredentialSchema.parse(
       JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(secret)),
     );
   } catch {

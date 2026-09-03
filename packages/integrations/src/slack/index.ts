@@ -8,7 +8,7 @@ export {
 } from './definition.js';
 export {
   SLACK_SEND_MESSAGE_LIMITS,
-  slackBotTokenCredentialSchema,
+  resolvedSlackBotTokenCredentialSchema,
   slackChannelIdSchema,
   slackMessageTextSchema,
   slackSendMessageConfigSchema,

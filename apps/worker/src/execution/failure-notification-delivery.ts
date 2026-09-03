@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
 
 import {
-  resendApiKeyCredentialSchema,
-  slackBotTokenCredentialSchema,
+  resolvedResendApiKeyCredentialSchema as resendCredentialSchema,
+  resolvedSlackBotTokenCredentialSchema as slackCredentialSchema,
 } from '@pertexo/integrations';
 import {
   FailureNotificationStateError,
@@ -286,12 +286,10 @@ async function deliverSlack(
   try {
     if (input.sideEffectClass !== 'unsafe')
       throw new Error('Failure notification side-effect class mismatch');
-    let credential: ReturnType<typeof slackBotTokenCredentialSchema.parse>;
+    let credential: ReturnType<typeof slackCredentialSchema.parse>;
     try {
       const decoded = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-      credential = slackBotTokenCredentialSchema.parse(
-        JSON.parse(decoded) as unknown,
-      );
+      credential = slackCredentialSchema.parse(JSON.parse(decoded) as unknown);
     } catch {
       return settleUnresolvedDelivery(
         {
@@ -362,12 +360,10 @@ async function deliverEmail(
   try {
     if (input.sideEffectClass !== 'idempotent_with_key')
       throw new Error('Failure notification side-effect class mismatch');
-    let credential: ReturnType<typeof resendApiKeyCredentialSchema.parse>;
+    let credential: ReturnType<typeof resendCredentialSchema.parse>;
     try {
       const decoded = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-      credential = resendApiKeyCredentialSchema.parse(
-        JSON.parse(decoded) as unknown,
-      );
+      credential = resendCredentialSchema.parse(JSON.parse(decoded) as unknown);
     } catch {
       return settleUnresolvedDelivery(
         {

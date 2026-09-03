@@ -13,6 +13,7 @@ export {
   httpRequestHeadersSchema,
   httpRequestInputSchema,
   httpRequestOutputSchema,
+  resolvedHttpHeadersCredentialSchema,
 } from './validation.js';
 export type {
   HttpRequestConfig,
