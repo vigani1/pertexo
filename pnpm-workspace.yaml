@@ -4,6 +4,7 @@ packages:
   - packages/integrations/*
 
 overrides:
+  fastify: 5.12.1
   'fast-uri@^3.0.0': 3.1.6
   'fast-uri@^4.0.0': 4.1.3
 

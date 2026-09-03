@@ -1,3 +1,5 @@
+import { isIP } from 'node:net';
+
 import { z } from 'zod';
 import { parseObservabilityConfig } from '@pertexo/observability/config';
 import type { ObservabilityConfig } from '@pertexo/observability/config';
@@ -25,6 +27,27 @@ const OIDC_SIGNING_ALGORITHMS = [
   'RS384',
   'RS512',
 ] as const;
+
+function isProxyNetwork(value: string): boolean {
+  const parts = value.split('/');
+  if (parts.length > 2) return false;
+  const version = isIP(parts[0] ?? '');
+  if (version === 0) return false;
+  const prefix = parts[1];
+  if (prefix === undefined) return true;
+  if (!/^\d{1,3}$/u.test(prefix)) return false;
+  const bits = Number(prefix);
+  return bits >= 0 && bits <= (version === 4 ? 32 : 128);
+}
+
+const trustedProxyCidrsSchema = z
+  .string()
+  .transform((value) => value.split(',').map((entry) => entry.trim()))
+  .pipe(
+    z
+      .array(z.string().min(1).refine(isProxyNetwork, 'Invalid proxy IP/CIDR'))
+      .min(1),
+  );
 
 const apiEnvironmentSchema = z
   .object({
@@ -97,7 +120,7 @@ const apiEnvironmentSchema = z
       .positive()
       .default(24 * 60 * 60_000),
     SERVICE_VERSION: z.string().trim().min(1).default('0.0.0-dev'),
-    TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(1).default(0),
+    TRUST_PROXY_CIDRS: trustedProxyCidrsSchema.optional(),
     POSTGRES_OWNER_USER: z
       .string()
       .regex(/^[a-z_][a-z0-9_]*$/u)
@@ -173,7 +196,7 @@ export type ApiConfig = Readonly<{
   observability: ObservabilityConfig;
   port: number;
   redisUrl: string;
-  trustedProxyHops?: number;
+  trustedProxyCidrs?: readonly string[];
 }>;
 
 export function parseApiConfig(
@@ -196,8 +219,8 @@ export function parseApiConfig(
   if (deployed && parsed.REDIS_URL === undefined) {
     throw new Error('REDIS_URL is required when deployed');
   }
-  if (deployed && parsed.TRUST_PROXY_HOPS !== 1) {
-    throw new Error('TRUST_PROXY_HOPS must be 1 when deployed');
+  if (deployed && parsed.TRUST_PROXY_CIDRS === undefined) {
+    throw new Error('TRUST_PROXY_CIDRS is required when deployed');
   }
 
   return Object.freeze({
@@ -218,7 +241,7 @@ export function parseApiConfig(
     observability,
     port: parsed.PORT,
     redisUrl: parsed.REDIS_URL ?? 'redis://localhost:6379/0',
-    trustedProxyHops: parsed.TRUST_PROXY_HOPS,
+    trustedProxyCidrs: Object.freeze(parsed.TRUST_PROXY_CIDRS ?? []),
   });
 }
 
