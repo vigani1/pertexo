@@ -11,6 +11,7 @@ import {
 } from '../../src/platform/http/index.js';
 import { IdentityError } from '../../src/identity/index.js';
 import { mapIdentityWorkspaceError } from '../../src/identity-workspace/index.js';
+import { APPLICATION_ERROR_MAPPERS } from '../../src/application-error-mappers.js';
 
 interface ResponseMock {
   body?: unknown;
@@ -223,6 +224,92 @@ describe('RFC 9457 problem details filter', () => {
       requestId: 'request-provider-outage',
     });
     expect(JSON.stringify(response.body)).not.toContain('secret');
+  });
+
+  it('delegates an unmapped route failure to the matching feature error mapper', () => {
+    const contexts = new RequestContextStore();
+    const response = responseMock();
+    const mapper = vi.fn((error: unknown) =>
+      error instanceof IdentityError
+        ? mapIdentityWorkspaceError(error)
+        : undefined,
+    );
+    const filter = new ProblemDetailsFilter(contexts, undefined, [
+      (_error, request) =>
+        request.url?.startsWith('/v1/auth/') === true
+          ? mapper(_error)
+          : undefined,
+    ]);
+
+    contexts.run('request-feature-mapper', () => {
+      filter.catch(
+        new IdentityError('identity.provider_unavailable'),
+        hostFor({ url: '/v1/auth/oidc/callback?code=secret' }, response),
+      );
+    });
+
+    expect(mapper).toHaveBeenCalledOnce();
+    expect(response.body).toMatchObject({
+      status: 503,
+      code: 'provider.unavailable',
+      detail: 'The identity provider is temporarily unavailable.',
+      instance: '/v1/auth/oidc/callback',
+    });
+  });
+
+  it.each([
+    [
+      '/v1/workspaces/workspace-a/connections',
+      'The connection request is invalid.',
+    ],
+    [
+      '/v1/workspaces/workspace-a/failure-notification-destinations',
+      'The connection request is invalid.',
+    ],
+    [
+      '/v1/workspaces/workspace-a/workflows/workflow-a/failure-notification-policy',
+      'The connection request is invalid.',
+    ],
+    [
+      '/v1/workspaces/workspace-a/workflows/workflow-a/runs',
+      'The workflow run request is invalid.',
+    ],
+    [
+      '/v1/workspaces/workspace-a/runs/run-a',
+      'The workflow run request is invalid.',
+    ],
+    [
+      '/v1/workspaces/workspace-a/workflows/workflow-a/draft/nodes/node-a/test',
+      'The workflow graph is invalid.',
+    ],
+    [
+      '/v1/workspaces/workspace-a/previews/preview-a',
+      'The workflow graph is invalid.',
+    ],
+    [
+      '/v1/workspaces/workspace-a/workflows/workflow-a/draft',
+      'The workflow graph is invalid.',
+    ],
+    ['/v1/workspaces', 'The request is invalid.'],
+    ['/v1/auth/oidc/callback', 'The request is invalid.'],
+  ])('preserves the feature validation problem for %s', (url, detail) => {
+    const response = responseMock();
+    const validationError = new z.ZodError([
+      { code: 'custom', path: [], message: 'unsafe detail' },
+    ]);
+
+    new ProblemDetailsFilter(
+      new RequestContextStore(),
+      undefined,
+      APPLICATION_ERROR_MAPPERS,
+    ).catch(validationError, hostFor({ url }, response));
+
+    expect(response.body).toMatchObject({
+      status: 400,
+      code: 'request.invalid',
+      detail,
+    });
+    expect(JSON.stringify(response.body)).not.toContain('unsafe detail');
   });
 
   it('converts Zod issues to bounded pointer-addressed validation errors', () => {

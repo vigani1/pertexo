@@ -579,6 +579,28 @@ making the architecture plan even larger.
 ### C-14 — Controllers repeat whole-handler error plumbing
 
 - **Severity:** medium.
+- **Remediation status:** complete on 2026-09-03.
+- **Repository-wide affected locations:** all controller-level catch clauses and
+  feature error-mapper calls were inventoried across `apps/api/src`. Repetitive
+  whole-handler translation was removed from workflow authoring, workflow run,
+  node testing, connection, failure-notification destination, OIDC/session, and
+  workspace controllers. The OIDC callback and workflow-run SSE catches remain
+  because they detach cookies/listeners and abort work before rethrowing. Actor
+  construction helpers retain narrow translation that deliberately creates a
+  stable invalid-request error. Identity/workspace guard catches also remain:
+  those guards protect schedule and webhook routes that have no owning feature
+  mapper, so removing them demonstrably changed a known CSRF 403 into a 500.
+- **Remediation:** `ProblemDetailsFilter` now accepts application-composed,
+  route-aware feature mappers. `AppModule` owns the route-to-feature mapping,
+  while each feature continues to own its existing error semantics. Specific
+  routes are matched before the broader workflow and workspace families, which
+  preserves distinct validation detail for otherwise identical `ZodError`
+  values. Dead controller-only throw helpers were removed.
+- **Verification:** red/green global-filter delegation characterization and a
+  table covering connection, failure-notification, workflow-run, node-test,
+  workflow-authoring, workspace, and identity route families; API suite (392
+  tests), API typecheck and build. The guard inventory was additionally checked
+  through API bootstrap, including the protected schedule-route CSRF response.
 - **Locations:** workflow authoring, connection, failure-notification
   destination, identity/workspace, and related controllers.
 - **Issue:** endpoint bodies are wrapped in `try/catch` primarily to invoke a
@@ -1018,6 +1040,13 @@ typechecks, and 1,537 package/application unit tests. The ratchet was not relaxe
 - Deduplicate compatibility catalog projection.
 
 ### 19.2 High value and medium risk
+
+**Group verification (2026-09-03):** `pnpm check` passed after C-02, C-05,
+C-10, C-12, C-13, C-14, and C-18: formatting, documentation, runtime-major
+policy, all builds, lint, complexity ratchet, generated contracts, all
+typechecks, and 1,556 package/application unit tests. PostgreSQL integration
+checks that require the unavailable local database are recorded under their
+individual findings rather than represented as passing.
 
 - Move failure notifications onto the canonical tenant transaction primitive.
 - Eliminate duplicate guard/use-case authorization safely.

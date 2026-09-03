@@ -21,7 +21,6 @@ import {
 } from '../identity-workspace/index.js';
 import { createActorContext } from '../workspaces/index.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
-import { throwConnectionApplicationError } from './errors.js';
 import { ConnectionManageGuard, ConnectionUseGuard } from './guards.js';
 import {
   CreateConnectionUseCase,
@@ -61,19 +60,15 @@ export class ConnectionsController {
     @Param() params: unknown,
     @Body() body: unknown,
   ) {
-    try {
-      const { workspaceId } = workspaceParams(params);
-      return await this.createConnection.execute({
-        actor: actorFrom(request, workspaceId),
-        routeWorkspaceId: workspaceId,
-        ...guardAuthorization(request),
-        request: connectionCreateRequestSchema.parse(body),
-        idempotencyKey: idempotencyKey(request),
-        ...requestMetadata(request),
-      });
-    } catch (error: unknown) {
-      return throwConnectionApplicationError(error);
-    }
+    const { workspaceId } = workspaceParams(params);
+    return this.createConnection.execute({
+      actor: actorFrom(request, workspaceId),
+      routeWorkspaceId: workspaceId,
+      ...guardAuthorization(request),
+      request: connectionCreateRequestSchema.parse(body),
+      idempotencyKey: idempotencyKey(request),
+      ...requestMetadata(request),
+    });
   }
 
   @Put(':connectionId/secret')
@@ -88,20 +83,16 @@ export class ConnectionsController {
     @Param() params: unknown,
     @Body() body: unknown,
   ) {
-    try {
-      const route = connectionIdParamSchema.parse(params);
-      return await this.rotateSecret.execute({
-        actor: actorFrom(request, route.workspaceId),
-        routeWorkspaceId: route.workspaceId,
-        ...guardAuthorization(request),
-        connectionId: route.connectionId,
-        request: connectionRotateSecretRequestSchema.parse(body),
-        idempotencyKey: idempotencyKey(request),
-        ...requestMetadata(request),
-      });
-    } catch (error: unknown) {
-      return throwConnectionApplicationError(error);
-    }
+    const route = connectionIdParamSchema.parse(params);
+    return this.rotateSecret.execute({
+      actor: actorFrom(request, route.workspaceId),
+      routeWorkspaceId: route.workspaceId,
+      ...guardAuthorization(request),
+      connectionId: route.connectionId,
+      request: connectionRotateSecretRequestSchema.parse(body),
+      idempotencyKey: idempotencyKey(request),
+      ...requestMetadata(request),
+    });
   }
 
   @Delete(':connectionId')
@@ -115,18 +106,14 @@ export class ConnectionsController {
     @Req() request: ConnectionRequest,
     @Param() params: unknown,
   ) {
-    try {
-      const route = connectionIdParamSchema.parse(params);
-      return await this.revokeConnection.execute({
-        actor: actorFrom(request, route.workspaceId),
-        routeWorkspaceId: route.workspaceId,
-        ...guardAuthorization(request),
-        connectionId: route.connectionId,
-        ...requestMetadata(request),
-      });
-    } catch (error: unknown) {
-      return throwConnectionApplicationError(error);
-    }
+    const route = connectionIdParamSchema.parse(params);
+    return this.revokeConnection.execute({
+      actor: actorFrom(request, route.workspaceId),
+      routeWorkspaceId: route.workspaceId,
+      ...guardAuthorization(request),
+      connectionId: route.connectionId,
+      ...requestMetadata(request),
+    });
   }
 
   @Post(':connectionId/test')
@@ -142,20 +129,16 @@ export class ConnectionsController {
     @Param() params: unknown,
     @Body() body: unknown,
   ) {
-    try {
-      const route = connectionIdParamSchema.parse(params);
-      return await this.testConnection.execute({
-        actor: actorFrom(request, route.workspaceId),
-        routeWorkspaceId: route.workspaceId,
-        ...guardAuthorization(request),
-        connectionId: route.connectionId,
-        request: connectionTestRequestSchema.parse(body),
-        idempotencyKey: idempotencyKey(request),
-        ...requestMetadata(request),
-      });
-    } catch (error: unknown) {
-      return throwConnectionApplicationError(error);
-    }
+    const route = connectionIdParamSchema.parse(params);
+    return this.testConnection.execute({
+      actor: actorFrom(request, route.workspaceId),
+      routeWorkspaceId: route.workspaceId,
+      ...guardAuthorization(request),
+      connectionId: route.connectionId,
+      request: connectionTestRequestSchema.parse(body),
+      idempotencyKey: idempotencyKey(request),
+      ...requestMetadata(request),
+    });
   }
 }
 

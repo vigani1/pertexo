@@ -86,9 +86,3 @@ export function mapNodeTestingError(error: unknown): ApplicationError {
     });
   return applicationError('internal.unexpected', { cause: error });
 }
-
-export function throwNodeTestingApplicationError(error: unknown): never {
-  // The shared problem filter consumes frozen application errors.
-  // eslint-disable-next-line @typescript-eslint/only-throw-error
-  throw mapNodeTestingError(error);
-}

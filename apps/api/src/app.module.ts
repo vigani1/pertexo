@@ -41,6 +41,7 @@ import type { ApiScheduleRuntime } from './platform/schedules/schedule-runtime.m
 import { ScheduleModule } from './schedules/module.js';
 import type { RateLimitConsumer } from './platform/rate-limit/interceptor.js';
 import { RateLimitModule } from './platform/rate-limit/rate-limit.module.js';
+import { APPLICATION_ERROR_MAPPERS } from './application-error-mappers.js';
 
 export type ApiModuleDependencies = Readonly<{
   database?: WorkspaceDatabase;
@@ -163,7 +164,7 @@ export class AppModule {
           dependencies.logger,
           dependencies.telemetry,
         ),
-        HttpPlatformModule.register(httpErrorLogger),
+        HttpPlatformModule.register(httpErrorLogger, APPLICATION_ERROR_MAPPERS),
         RateLimitModule.register(
           config.redisUrl,
           dependencies.rateLimitConsumer,
