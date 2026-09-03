@@ -11,7 +11,7 @@ import {
 import { createRateLimitMetricRecorder } from './metrics.js';
 
 export const RATE_LIMIT_CONSUMER = Symbol('RATE_LIMIT_CONSUMER');
-export const RATE_LIMIT_METRICS = Symbol('RATE_LIMIT_METRICS');
+const RATE_LIMIT_METRICS = Symbol('RATE_LIMIT_METRICS');
 
 class ApiRedisRateLimitRuntime
   extends RedisRateLimitRuntime

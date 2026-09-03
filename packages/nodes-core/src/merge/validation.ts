@@ -45,4 +45,6 @@ export const CORE_MERGE_INPUT_SCHEMA = z
     selectedBranchIds: z.array(CORE_PARALLEL_BRANCH_PORT_SCHEMA).max(16),
   })
   .strict();
-export const CORE_MERGE_OUTPUT_SCHEMA = CORE_MERGE_INPUT_SCHEMA;
+export const CORE_MERGE_OUTPUT_SCHEMA = CORE_MERGE_INPUT_SCHEMA.describe(
+  'Core merge node output',
+);

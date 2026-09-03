@@ -11,8 +11,8 @@ import {
 
 export { NestLoggerAdapter };
 
-export const STRUCTURED_LOGGER = Symbol('STRUCTURED_LOGGER');
-export const TELEMETRY_LIFECYCLE = Symbol('TELEMETRY_LIFECYCLE');
+const STRUCTURED_LOGGER = Symbol('STRUCTURED_LOGGER');
+const TELEMETRY_LIFECYCLE = Symbol('TELEMETRY_LIFECYCLE');
 
 @Module({})
 // Nest dynamic modules require a class container.

@@ -37,7 +37,7 @@ export type WorkflowApplicationInput = Readonly<{
 }>;
 
 /** Optional application-owned graph seam for deployments with a registry adapter. */
-export interface WorkflowGraphCatalog {
+interface WorkflowGraphCatalog {
   readonly catalog: WorkflowAuthoringDependencies['definitionCatalog'];
   parseDraft(input: unknown): WorkflowGraphContract;
   validate(input: WorkflowGraphContract): Readonly<{

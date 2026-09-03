@@ -99,7 +99,7 @@ export interface SseRunEventFrame {
     | 'recovery_backfill';
 }
 
-export class RunEventStreamInvariantError extends Error {
+class RunEventStreamInvariantError extends Error {
   public override readonly name = 'RunEventStreamInvariantError';
 }
 

@@ -2,7 +2,7 @@ import { metrics, type Meter } from '@opentelemetry/api';
 
 import type { RateLimitMetricRecorder } from './interceptor.js';
 
-export const RATE_LIMIT_METRIC_NAME = Object.freeze({
+const RATE_LIMIT_METRIC_NAME = Object.freeze({
   decisions: 'pertexo.api.rate_limit.decision.count',
 });
 

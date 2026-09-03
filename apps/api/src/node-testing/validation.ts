@@ -16,7 +16,7 @@ export type NodeValidationIssue = Readonly<{
   message: string;
 }>;
 
-export type NodeSideEffectDisclosure = Readonly<{
+type NodeSideEffectDisclosure = Readonly<{
   sideEffectClass: 'safe' | 'idempotent_with_key' | 'unsafe';
   mayContactProvider: boolean;
   mayCauseExternalSideEffect: boolean;

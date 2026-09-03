@@ -32,7 +32,7 @@ export const HTTP_APPLICATION_ERROR_MAPPERS = Symbol(
   'HTTP_APPLICATION_ERROR_MAPPERS',
 );
 
-export type ProblemIssue = ApiProblemIssue;
+type ProblemIssue = ApiProblemIssue;
 export type ProblemDetails = ApiProblem | WorkflowRevisionConflictProblem;
 
 export type HttpErrorLogEntry = Readonly<{

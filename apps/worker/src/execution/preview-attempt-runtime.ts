@@ -27,14 +27,7 @@ import {
   type PreviewNodeInvoker,
 } from './preview-attempt-handler.js';
 
-export { createPreviewAttemptHandler };
-export type {
-  PreviewAttemptHandler,
-  PreviewAttemptHandlerDependencies,
-  PreviewAttemptRunStore,
-  PreviewNodeInvoker,
-  PreviewRuntimeCapabilityFactories,
-} from './preview-attempt-handler.js';
+export type { PreviewAttemptHandler } from './preview-attempt-handler.js';
 
 const leasePickSchema = z.object({
   attemptFenceToken: z.number().int().nonnegative(),

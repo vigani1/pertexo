@@ -238,7 +238,7 @@ export type WorkflowAuthoringDatabaseOptions = Readonly<{
   testHooks?: WorkflowAuthoringTestHooks;
 }>;
 
-export type WorkflowAuthoringCompatibilityVariant = Readonly<{
+type WorkflowAuthoringCompatibilityVariant = Readonly<{
   compatibilityRelease: CompatibilityReleaseExpectation;
   definitionCatalog: WorkflowDefinitionCatalogV1;
   placementDefinitionCatalog: WorkflowDefinitionCatalogV1;

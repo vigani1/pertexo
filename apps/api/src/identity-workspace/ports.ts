@@ -100,7 +100,7 @@ export type IdentityWorkspaceDependencies = Readonly<{
   telemetry?: IdentityWorkspaceTelemetry;
 }>;
 
-export type SessionCookieWriter = SessionCookieBoundary;
+type SessionCookieWriter = SessionCookieBoundary;
 
 export type { WorkspaceAuthorizationSource } from '../workspaces/index.js';
 
@@ -108,5 +108,3 @@ export type SessionCookiePolicy = Readonly<{
   secure: boolean;
   sameSite: 'lax' | 'strict' | 'none';
 }>;
-
-export type { IdentityClock, IdentityCrypto, IdentitySessionRecord };

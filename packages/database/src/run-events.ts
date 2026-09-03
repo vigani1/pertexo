@@ -61,7 +61,7 @@ export type RunEventPage = Readonly<{
   highWaterSequence: number;
 }>;
 
-export async function lockRunForEvent(
+async function lockRunForEvent(
   transaction: WorkspaceTransaction,
   runId: string,
 ): Promise<void> {

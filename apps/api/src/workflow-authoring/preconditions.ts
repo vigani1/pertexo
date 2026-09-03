@@ -53,4 +53,4 @@ export function parseIdempotencyKey(value: unknown): string {
   return candidate;
 }
 
-export type HeaderValue = string | readonly string[] | undefined;
+type HeaderValue = string | readonly string[] | undefined;

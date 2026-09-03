@@ -47,7 +47,7 @@ export function record(value: unknown): Readonly<Record<string, unknown>> {
   return normalized as Readonly<Record<string, unknown>>;
 }
 
-export function canonicalEventPayload(value: unknown): Readonly<{
+function canonicalEventPayload(value: unknown): Readonly<{
   bytes: number;
   payload: Readonly<Record<string, unknown>>;
 }> {
@@ -226,7 +226,7 @@ export function terminalStatus(type: string): string | undefined {
   )[type];
 }
 
-export function attemptFact(
+function attemptFact(
   row: EventRow,
   eventPayload?: Readonly<Record<string, unknown>>,
 ): Readonly<{

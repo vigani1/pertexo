@@ -19,7 +19,7 @@ import {
   RequestContextStore,
 } from './request-context.js';
 
-export const REQUEST_CONTEXT_STORE = Symbol('REQUEST_CONTEXT_STORE');
+const REQUEST_CONTEXT_STORE = Symbol('REQUEST_CONTEXT_STORE');
 
 const contextStoreProvider: Provider = {
   provide: REQUEST_CONTEXT_STORE,

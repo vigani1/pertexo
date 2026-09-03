@@ -14,7 +14,7 @@ import {
 } from '../workspaces/index.js';
 import { isIdentityError, type IdentityError } from '../identity/index.js';
 
-export function workspaceApplicationError(
+function workspaceApplicationError(
   code: AuthorizationErrorCode,
   safeDetail?: string,
 ): ApplicationError {

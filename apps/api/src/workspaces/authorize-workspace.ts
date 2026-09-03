@@ -45,11 +45,11 @@ export interface WorkspaceAuthorizationPort {
 }
 
 /** DI/guard token for the narrow pre-transaction authorization port. */
-export const WORKSPACE_AUTHORIZATION_PORT = Symbol.for(
+const WORKSPACE_AUTHORIZATION_PORT = Symbol.for(
   'pertexo.workspaces.authorization-port',
 );
 
-export type WorkspaceAccessLookup = (
+type WorkspaceAccessLookup = (
   query: WorkspaceAccessQuery,
 ) => Promise<WorkspaceAccess | undefined>;
 
@@ -228,6 +228,6 @@ export function authorizeWorkspaceOperation(
   );
 }
 
-export const authorizeWorkspaceAccess = authorizeWorkspace;
+const authorizeWorkspaceAccess = authorizeWorkspace;
 
-export type { MembershipStatus, Role, WorkspaceStatus };
+export type { WorkspaceStatus };

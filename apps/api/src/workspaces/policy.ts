@@ -56,7 +56,7 @@ const roleCapabilities: Readonly<
   viewer: readCapabilities,
 });
 
-export const WORKSPACE_ROLE_CAPABILITIES = roleCapabilities;
+const WORKSPACE_ROLE_CAPABILITIES = roleCapabilities;
 
 export function hasCapability(
   role: Role,

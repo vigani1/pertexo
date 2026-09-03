@@ -42,7 +42,7 @@ export type AuditFactInput = Readonly<{
   traceId?: string;
 }>;
 
-export class AuditFactError extends TypeError {
+class AuditFactError extends TypeError {
   public readonly code = 'request.invalid' as const;
 
   public constructor(message: string) {

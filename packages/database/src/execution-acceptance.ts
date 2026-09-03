@@ -172,7 +172,7 @@ type ResolvedFailureNotificationPolicy = Readonly<{
 }>;
 
 /** Shared acceptance-time resolver for manual, webhook, and schedule admission. */
-export async function resolveWorkflowFailureNotificationPolicy(
+async function resolveWorkflowFailureNotificationPolicy(
   transaction: WorkspaceTransaction,
   workflowId: string,
 ): Promise<ResolvedFailureNotificationPolicy | undefined> {
