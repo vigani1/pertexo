@@ -354,8 +354,8 @@ export function createOutboxDispatcherDatabase(
                 '[]'::jsonb
               ) as events,
               (select count(*)::integer from exhausted) as exhausted_count,
-              (select count(*) from cursor_updated) as cursor_update_count,
-              (select count(*) from released_exhausted_admissions) as released_admission_count
+              (select count(*)::integer from cursor_updated) as cursor_update_count,
+              (select count(*)::integer from released_exhausted_admissions) as released_admission_count
             from leased
           `,
           [
