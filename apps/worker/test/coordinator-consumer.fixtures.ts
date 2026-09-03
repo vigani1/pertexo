@@ -54,6 +54,7 @@ import { createDispatchConsumerCapabilityRegistry } from '../src/transport/dispa
 import { OutboxDispatcher } from '../src/transport/outbox-dispatcher.js';
 import { seedCoordinatorWorkflowFixtures } from './support/coordinator-workflow-fixtures.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';
+import { queryAsWorkspaceRole } from './support/workspace-query.js';
 
 const enabled = process.env.WORKER_TRANSPORT_INTEGRATION === 'true';
 const execFileAsync = promisify(execFile);
@@ -232,21 +233,12 @@ async function workerQuery<T extends Record<string, unknown>>(
   statement: string,
   parameters: readonly unknown[] = [],
 ): Promise<readonly T[]> {
-  const client = await workerPool.connect();
-  try {
-    await client.query('begin');
-    await client.query("select set_config('app.workspace_id', $1, true)", [
-      workspaceId,
-    ]);
-    const result = await client.query<T>(statement, [...parameters]);
-    await client.query('commit');
-    return result.rows;
-  } catch (error: unknown) {
-    await client.query('rollback').catch(() => undefined);
-    throw error;
-  } finally {
-    client.release();
-  }
+  return queryAsWorkspaceRole<T>(
+    workerPool,
+    workspaceId,
+    statement,
+    parameters,
+  );
 }
 
 async function apiQuery<T extends Record<string, unknown>>(
