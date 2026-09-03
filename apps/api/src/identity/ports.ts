@@ -1,9 +1,7 @@
-import type { IdentityCrypto } from './crypto.js';
 import type {
   ExternalIdentity,
   InternalIdentity,
   OidcLoginTransaction,
-  OidcConfiguration,
   SafeClientMetadata,
   SessionCookieOptions,
   SessionLookup,
@@ -80,12 +78,6 @@ export interface SessionCookieBoundary {
 export interface IdentityClock {
   now(): Date;
 }
-
-type IdentityModuleOptions = Readonly<{
-  oidc: OidcConfiguration;
-  crypto?: IdentityCrypto;
-  clock?: IdentityClock;
-}>;
 
 export type SessionIssueInput = Readonly<{
   userId: string;

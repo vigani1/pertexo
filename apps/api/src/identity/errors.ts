@@ -1,24 +1,21 @@
-const IDENTITY_ERROR_CODES = [
-  'identity.invalid_input',
-  'identity.transaction_missing',
-  'identity.transaction_expired',
-  'identity.transaction_replayed',
-  'identity.callback_rejected',
-  'identity.provider_rejected',
-  'identity.provider_unavailable',
-  'identity.issuer_mismatch',
-  'identity.audience_mismatch',
-  'identity.nonce_mismatch',
-  'identity.subject_missing',
-  'identity.profile_incomplete',
-  'identity.mapping_failed',
-  'identity.session_invalid',
-  'identity.session_expired',
-  'identity.session_revoked',
-  'identity.csrf_failed',
-] as const;
-
-export type IdentityErrorCode = (typeof IDENTITY_ERROR_CODES)[number];
+export type IdentityErrorCode =
+  | 'identity.invalid_input'
+  | 'identity.transaction_missing'
+  | 'identity.transaction_expired'
+  | 'identity.transaction_replayed'
+  | 'identity.callback_rejected'
+  | 'identity.provider_rejected'
+  | 'identity.provider_unavailable'
+  | 'identity.issuer_mismatch'
+  | 'identity.audience_mismatch'
+  | 'identity.nonce_mismatch'
+  | 'identity.subject_missing'
+  | 'identity.profile_incomplete'
+  | 'identity.mapping_failed'
+  | 'identity.session_invalid'
+  | 'identity.session_expired'
+  | 'identity.session_revoked'
+  | 'identity.csrf_failed';
 
 const SAFE_MESSAGES: Readonly<Record<IdentityErrorCode, string>> = {
   'identity.invalid_input': 'The identity request is invalid.',
@@ -72,11 +69,4 @@ function defaultStatus(code: IdentityErrorCode): 400 | 401 | 403 | 503 {
 
 export function isIdentityError(value: unknown): value is IdentityError {
   return value instanceof IdentityError;
-}
-
-function asIdentityError(
-  value: unknown,
-  fallback: IdentityErrorCode,
-): IdentityError {
-  return value instanceof IdentityError ? value : new IdentityError(fallback);
 }

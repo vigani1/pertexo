@@ -18,7 +18,6 @@ import {
   type CompleteNodeAttemptResult,
   type NodeAttemptClaimResult,
   type NodeAttemptCompletion,
-  type NodeAttemptDelivery,
   type NodeAttemptInputs,
   type NodeAttemptLease,
   type NodeAttemptRunStore,

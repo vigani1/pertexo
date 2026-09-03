@@ -97,8 +97,6 @@ type ParsedGenericOidcAdapterConfiguration = z.output<
   typeof adapterConfigurationSchema
 >;
 
-const genericOidcAdapterConfigurationSchema = adapterConfigurationSchema;
-
 type FetchLike = typeof fetch;
 type VerificationKey = KeyInput | ReturnType<typeof createRemoteJWKSet>;
 

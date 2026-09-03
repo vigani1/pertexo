@@ -3,7 +3,7 @@ import type {
   SessionRecord as DatabaseSessionRecord,
 } from '@pertexo/database/api';
 
-import type { SessionRecord, SessionStorePort } from '../identity/index.js';
+import type { SessionRecord } from '../identity/index.js';
 import type {
   IdentityWorkspacePersistence,
   WorkspaceAuthorizationReader,
@@ -126,10 +126,4 @@ function mapWorkspace(
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
   });
-}
-
-function asSessionStore(
-  adapter: DatabaseIdentityWorkspaceAdapter,
-): SessionStorePort {
-  return adapter;
 }

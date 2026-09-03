@@ -1932,6 +1932,7 @@ export const databaseSchema = {
   previewRuns,
   retentionBatches,
   retentionControlAuditFacts,
+  retentionScheduleState,
   workspaceControlLedgerProjection,
   rlsProbeRecords,
   runCheckpoints,

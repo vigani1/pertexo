@@ -17,10 +17,7 @@ import type {
   PreviewTerminalOutcome,
   PreviewDelivery,
 } from '@pertexo/database/execution';
-import type {
-  NodeAttemptCapabilityContext,
-  NodeAttemptRuntimeCapabilityFactories,
-} from './node-attempt-handler.js';
+import type { NodeAttemptRuntimeCapabilityFactories } from './node-attempt-handler.js';
 import type {
   PreviewTelemetry,
   PreviewTerminalStatus,
@@ -125,12 +122,6 @@ export interface PreviewAttemptHandler {
     context: QueueHandlerContext,
   ): Promise<PreviewAttemptHandlerResult>;
 }
-
-type PreviewCapabilityContext = NodeAttemptCapabilityContext &
-  Readonly<{
-    previewAttemptId: string;
-    previewRunId: string;
-  }>;
 
 export type PreviewRuntimeCapabilityFactories =
   NodeAttemptRuntimeCapabilityFactories;
