@@ -7,7 +7,7 @@ import type {
 import type { WorkspaceAuthorizationSource } from '../identity-workspace/ports.js';
 import type { WorkflowAuthoringTelemetry } from './telemetry.js';
 
-/** Narrow application persistence seam; database lifecycle is owned by runtime composition. */
+/** Narrow persistence seam; runtime owns lifecycle, and callers preserve single-snapshot CAS conflicts. */
 export type WorkflowAuthoringPersistence = Pick<
   WorkflowAuthoringDatabase,
   | 'createWorkflow'

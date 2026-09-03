@@ -507,9 +507,8 @@ function secureErrorOutcome(error: SecureHttpError): ConnectionTestOutcome {
   });
 }
 
-function encodeCredential(value: unknown): Uint8Array {
-  return new TextEncoder().encode(JSON.stringify(value));
-}
+const encodeCredential = (value: unknown): Uint8Array =>
+  new TextEncoder().encode(JSON.stringify(value));
 
 function hashRequest(value: unknown): string {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');

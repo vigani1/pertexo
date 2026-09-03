@@ -930,6 +930,11 @@ Do not:
 
 ### 19.1 High value and low risk
 
+**Group verification (2026-09-03):** `pnpm check` passed after the completed
+remediations and C-05 prerequisite: formatting, documentation, runtime-major
+policy, all builds, lint, complexity ratchet, generated contracts, all
+typechecks, and 1,537 package/application unit tests. The ratchet was not relaxed.
+
 - Correct the worker runtime dependency classification.
 - Own or unreference the worker keepalive timer.
 - Remove the no-op workflow catch/rethrow.
