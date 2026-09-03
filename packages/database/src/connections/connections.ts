@@ -1,6 +1,6 @@
-import { createDatabasePool } from './postgres-telemetry.js';
+import { createDatabasePool } from '../postgres-telemetry.js';
 
-import type { DatabaseConfig } from './config.js';
+import type { DatabaseConfig } from '../config.js';
 import { createConnectionHealthPersistence } from './connection-health-persistence.js';
 import { createConnectionManagementPersistence } from './connection-management-persistence.js';
 import { createConnectionResolutionPersistence } from './connection-resolution-persistence.js';

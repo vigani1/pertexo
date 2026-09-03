@@ -11,8 +11,8 @@ import type {
   ConnectionResolutionDatabase,
   WorkerConnectionResolutionDatabase,
 } from '../src/execution.js';
-import { createApiConnectionDatabase } from '../src/connections.js';
-import { createWorkerConnectionResolutionDatabase } from '../src/connections.js';
+import { createApiConnectionDatabase } from '../src/connections/connections.js';
+import { createWorkerConnectionResolutionDatabase } from '../src/connections/connections.js';
 
 const supportedSurfaces = [
   'api',

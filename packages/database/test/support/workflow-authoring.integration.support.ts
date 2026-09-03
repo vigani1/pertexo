@@ -13,7 +13,7 @@ import { parseDatabaseConfig } from '../../src/config.js';
 import {
   CONNECTION_AUTH_TYPE,
   createConnectionDatabase,
-} from '../../src/connections.js';
+} from '../../src/connections/connections.js';
 import { CompatibilityReleaseMismatchError } from '../../src/compatibility/compatibility-release.js';
 import { createIdentityWorkspaceDatabase } from '../../src/identity-workspace.js';
 import { migrateDatabase } from '../../src/migrations.js';
@@ -26,7 +26,7 @@ import {
   WorkflowRevisionConflictError,
   type WorkflowAuthoringDatabase,
 } from '../../src/workflow-authoring.js';
-import { createWorkflowIntegrationUsageDatabase } from '../../src/workflow-integration-usage.js';
+import { createWorkflowIntegrationUsageDatabase } from '../../src/connections/workflow-integration-usage.js';
 
 export const migrationUrl =
   process.env.DATABASE_MIGRATION_URL ??

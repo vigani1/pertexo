@@ -12,7 +12,7 @@
     "apps/worker/src/transport/outbox-dispatcher.ts": 538,
     "packages/artifact-store/src/control-ledger.ts": 997,
     "packages/artifact-store/src/store.ts": 903,
-    "packages/database/src/connection-persistence.ts": 652,
+    "packages/database/src/connections/connection-persistence.ts": 652,
     "packages/database/src/control-ledger-coordinator.ts": 1048,
     "packages/database/src/coordinator-run-store-observations.ts": 729,
     "packages/database/src/dispatcher.ts": 508,
@@ -67,15 +67,15 @@
       "branches": 44,
       "lines": 142
     },
-    "packages/database/src/connection-management-persistence.ts#createConnectionManagementPersistence": {
+    "packages/database/src/connections/connection-management-persistence.ts#createConnectionManagementPersistence": {
       "branches": 0,
       "lines": 284
     },
-    "packages/database/src/connection-secret-persistence.ts#createConnectionSecretPersistence": {
+    "packages/database/src/connections/connection-secret-persistence.ts#createConnectionSecretPersistence": {
       "branches": 0,
       "lines": 269
     },
-    "packages/database/src/connection-test-persistence.ts#createConnectionTestPersistence": {
+    "packages/database/src/connections/connection-test-persistence.ts#createConnectionTestPersistence": {
       "branches": 0,
       "lines": 430
     },

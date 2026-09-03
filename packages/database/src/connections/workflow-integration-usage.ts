@@ -1,9 +1,9 @@
-import { createDatabasePool } from './postgres-telemetry.js';
+import { createDatabasePool } from '../postgres-telemetry.js';
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 
-import type { DatabaseConfig } from './config.js';
-import { withWorkspaceTransaction } from './workspace.js';
+import type { DatabaseConfig } from '../config.js';
+import { withWorkspaceTransaction } from '../workspace.js';
 
 const uuidSchema = z.uuid();
 const integrationKeySchema = z
