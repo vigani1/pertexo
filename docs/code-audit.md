@@ -695,6 +695,24 @@ making the architecture plan even larger.
 ### C-17 — Response validation and freezing are scattered
 
 - **Severity:** low.
+- **Remediation status:** complete on 2026-09-03.
+- **Repository-wide affected locations:** response-schema parses and adjacent
+  freezing were inventoried across API features. Workflow authoring was the
+  only feature where one response family was assembled across use-case bodies
+  and local record mappers. Identity/workspace, connection, workflow-run, and
+  node-testing response parsers already have one final serializer per contract
+  or one cohesive use-case response boundary and remain. Freezing of actor
+  contexts, telemetry objects, runtime dependency objects, cryptographic
+  results, and internal execution values is unrelated ownership and remains.
+- **Remediation:** introduced the feature-private
+  `workflow-authoring/serializers.ts` owner for list, create, draft, validation,
+  publication, version, and versions contracts. Record conversion, graph
+  parsing, ISO date conversion, final schema parsing, and representation-tag
+  construction are now localized there; use cases only select data and invoke
+  the appropriate serializer. Each public response contract is parsed once.
+- **Verification:** workflow-authoring public use-case/controller suites (32
+  tests), API typecheck. Post-change response-schema inventory confirms the
+  workflow-authoring use-case module no longer constructs response contracts.
 - **Locations:** workflow authoring `toDraft`, `toVersion`, and response
   construction; related API feature mappers.
 - **Issue:** typed records are transformed, schema-parsed, and frequently
