@@ -22,7 +22,7 @@ import { parseBoundary } from './executable-boundary.js';
 import {
   type CompiledWorkflowExecutableV2,
   type ExecutableRuntimePoliciesV1,
-  PHASE3_RUNTIME_POLICIES_V1,
+  BASELINE_RUNTIME_POLICIES_V1,
   type VerifiedWorkflowExecutableV2,
   type WorkflowExecutableGraphV2,
   type WorkflowExecutableNodeV2,
@@ -389,7 +389,7 @@ function buildBoundary(input: {
   readonly release: unknown;
 }): CompiledWorkflowExecutableV2 {
   const release = parseRegistryRelease(input.release);
-  validateGlobals(PHASE3_RUNTIME_POLICIES_V1, release);
+  validateGlobals(BASELINE_RUNTIME_POLICIES_V1, release);
   const graph = parseWorkflowGraphForPublish(input.graph, {
     schemaVersion: 1,
     definitions: release.definitions.map(({ definition }) => definition),
@@ -399,12 +399,12 @@ function buildBoundary(input: {
     schemaVersion: 2,
     sourceGraphSchemaVersion: 1,
     graph: executableGraph,
-    runtimePolicies: PHASE3_RUNTIME_POLICIES_V1,
+    runtimePolicies: BASELINE_RUNTIME_POLICIES_V1,
     configMigrations: [],
     compatibilitySelectionFingerprint: selectionFingerprint(
       release,
       allExecutableNodes(executableGraph),
-      PHASE3_RUNTIME_POLICIES_V1,
+      BASELINE_RUNTIME_POLICIES_V1,
     ),
     compatibilityReleaseEpoch: release.epoch,
     compatibilityReleaseFingerprint: release.fingerprint,

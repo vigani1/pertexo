@@ -18,13 +18,17 @@ import type {
 import { WorkflowEngineError } from './errors.js';
 import type { SideEffectClass } from './types.js';
 
-export const PHASE3_RUNTIME_POLICIES_V1 = Object.freeze({
+export const BASELINE_RUNTIME_POLICIES_V1 = Object.freeze({
   scheduler: Object.freeze({ key: 'engine.scheduler', version: 1 }),
   checkpoint: Object.freeze({ key: 'engine.checkpoint', version: 1 }),
   retry: Object.freeze({ key: 'engine.retry', version: 1 }),
   timeout: Object.freeze({ key: 'engine.timeout', version: 1 }),
   cancellation: Object.freeze({ key: 'engine.cancellation', version: 1 }),
 });
+/**
+ * @deprecated Use BASELINE_RUNTIME_POLICIES_V1. Retained for source compatibility.
+ */
+export const PHASE3_RUNTIME_POLICIES_V1 = BASELINE_RUNTIME_POLICIES_V1;
 export const WORKFLOW_EXECUTABLE_LIMITS_V2 = Object.freeze({
   bytes: NODE_JSON_LIMITS_V1.bytes,
   depth: NODE_JSON_LIMITS_V1.depth,
@@ -174,7 +178,7 @@ export function validateGlobals(
   release: RegistryRelease,
 ): void {
   const selected = globalPolicies(policies);
-  const expected = globalPolicies(PHASE3_RUNTIME_POLICIES_V1);
+  const expected = globalPolicies(BASELINE_RUNTIME_POLICIES_V1);
   if (
     !selected.every((value, index) => {
       const expectedValue = expected[index];
@@ -182,7 +186,7 @@ export function validateGlobals(
     }) ||
     new Set(selected.map(token)).size !== selected.length
   )
-    fail('runtime policy selection is not Phase 3 policy v1');
+    fail('runtime policy selection is not baseline policy v1');
   const available = new Set(release.policies.map(token));
   if (!selected.every((value) => available.has(token(value))))
     fail('compatibility release is missing a runtime policy');

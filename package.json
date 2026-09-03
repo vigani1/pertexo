@@ -11,7 +11,12 @@
   "knip": {
     "ignoreDependencies": [
       "jscpd"
-    ]
+    ],
+    "ignoreIssues": {
+      "packages/workflow-engine/src/executable-foundation.ts": [
+        "duplicates"
+      ]
+    }
   },
   "scripts": {
     "build": "pnpm --recursive --if-present build",

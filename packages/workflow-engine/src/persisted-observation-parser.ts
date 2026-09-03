@@ -355,7 +355,7 @@ export function parsePersistedObservation(value: JsonValue): ParsedObservation {
     default:
       operationError(
         'observation_invalid',
-        'observation kind is unsupported in Phase 3',
+        'observation kind is unsupported by the baseline engine',
       );
   }
 }

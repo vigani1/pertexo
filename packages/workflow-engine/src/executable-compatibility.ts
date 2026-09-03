@@ -6,7 +6,7 @@ import {
   type RegistryRelease,
 } from '@pertexo/node-sdk';
 import {
-  PHASE3_RUNTIME_POLICIES_V1,
+  BASELINE_RUNTIME_POLICIES_V1,
   fail,
   globalPolicies,
   normalizeError,
@@ -25,7 +25,7 @@ export function composeExecutableCompatibilityRelease(
       executors: nodeRelease.executors,
       policies: [
         ...nodeRelease.policies,
-        ...globalPolicies(PHASE3_RUNTIME_POLICIES_V1),
+        ...globalPolicies(BASELINE_RUNTIME_POLICIES_V1),
       ],
     });
   } catch (error) {
