@@ -434,242 +434,101 @@ describeIntegration(
       }
     });
 
-    it('uses SKIP LOCKED across two dispatchers and publishes every outbox ID once', async () => {
-      const ids = await Promise.all(
-        Array.from({ length: 4 }, () => insertRunEvent()),
-      );
-      const first = createDispatcher('integration-a', 2);
-      const second = createDispatcher('integration-b', 2);
-      try {
-        await Promise.all([first.checkReadiness(), second.checkReadiness()]);
-        const result = await dispatchFairRounds([first, second], ids.length);
-        expect(result).toMatchObject({ failed: 0 });
-        expect(result.claimed).toBeGreaterThanOrEqual(ids.length);
-        expect(result.published).toBeGreaterThanOrEqual(ids.length);
-        const queue = new Queue(QUEUE_NAME.workflowCoordinator, {
-          connection: redisConnection(),
-        });
-        try {
-          const jobs = await Promise.all(
-            ids.map((id) => queue.getJob(`outbox-${id}`)),
-          );
-          expect(jobs.every((job) => job !== undefined)).toBe(true);
-        } finally {
-          await queue.close();
-        }
-      } finally {
-        await Promise.all([first.close(), second.close()]);
-      }
-    });
-
-    it('derives dispatch from a composed ready consumer and holds unsupported work', async () => {
-      const enabledId = await insertRunEvent();
-      const heldId = randomUUID();
-      const payload = {
-        publishedVersionId: randomUUID(),
-        workflowId: randomUUID(),
-      };
-      await apiDatabase.withWorkspace(workspaceId, (transaction) =>
-        insertOutboxEvent(transaction, {
-          aggregateId: payload.workflowId,
-          aggregateType: 'workflow',
-          availableAt: new Date(0),
-          id: heldId,
-          jobName: JOB_NAME.reconcileWorkflowTriggers,
-          payload,
-          payloadChecksum: checksum(payload),
-          schemaVersion: 1,
-        }).then(() => undefined),
-      );
-      const noConsumerDispatcher = createDispatcher(
-        'integration-no-consumer',
-        100,
-        [],
-        createDispatchConsumerCapabilityRegistry([]),
-      );
-      const mismatchedDispatcher = createDispatcher(
-        'integration-mismatched-consumer',
-        100,
-        [JOB_NAME.advanceWorkflowRun],
-        createDispatchConsumerCapabilityRegistry([]),
-      );
-      const enabledQueue = new Queue(QUEUE_NAME.workflowCoordinator, {
-        connection: redisConnection(),
-      });
-      const heldQueue = new Queue(QUEUE_NAME.triggerLifecycle, {
-        connection: redisConnection(),
-      });
-      const consumerStarted = deferred();
-      const releaseConsumer = deferred();
-      const consumer = createQueueConsumer({
-        handler: async (delivery) => {
-          if (delivery.data.outboxEventId !== enabledId) return;
-          consumerStarted.resolve();
-          await releaseConsumer.promise;
-        },
-        queueName: QUEUE_NAME.workflowCoordinator,
-        redisUrl,
-      });
-      const dispatcher = createDispatcher(
-        'integration-phase2-allowlist',
-        100,
-        [JOB_NAME.advanceWorkflowRun],
-        createDispatchConsumerCapabilityRegistry([
-          { consumer, jobName: JOB_NAME.advanceWorkflowRun },
-        ]),
-      );
-      try {
-        await noConsumerDispatcher.checkReadiness();
-        await expect(noConsumerDispatcher.dispatchOnce()).resolves.toEqual({
-          claimed: 0,
-          failed: 0,
-          published: 0,
-          stale: 0,
-        });
-        await expect(
-          mismatchedDispatcher.checkReadiness(),
-        ).rejects.toBeInstanceOf(DispatchConsumerCapabilityError);
-        await dispatcher.checkReadiness();
-        await expect(
-          dispatchFairRounds([dispatcher], 1),
-        ).resolves.toMatchObject({
-          claimed: 1,
-          published: 1,
-        });
-        await expect(
-          enabledQueue.getJob(`outbox-${enabledId}`),
-        ).resolves.toBeDefined();
-        await expect(
-          heldQueue.getJob(`outbox-${heldId}`),
-        ).resolves.toBeUndefined();
-        await consumerStarted.promise;
-
-        const held = await apiDatabase.withWorkspace(workspaceId, ({ db }) =>
-          db
-            .select({
-              failedAt: outboxEvents.failedAt,
-              leaseExpiresAt: outboxEvents.leaseExpiresAt,
-              leaseOwner: outboxEvents.leaseOwner,
-              leaseToken: outboxEvents.leaseToken,
-              publishAttempts: outboxEvents.publishAttempts,
-              publishedAt: outboxEvents.publishedAt,
-            })
-            .from(outboxEvents)
-            .where(eq(outboxEvents.id, heldId)),
-        );
-        expect(held).toEqual([
+    it('handles concurrent duplicates, checksum conflict, and rollback atomically', async () => {
+      const messageId = randomUUID();
+      const logicalAttemptId = randomUUID();
+      const [first, second] = await Promise.all([
+        consumeProof(messageId, logicalAttemptId),
+        consumeProof(messageId, logicalAttemptId),
+      ]);
+      expect([first.status, second.status].sort()).toEqual([
+        'duplicate',
+        'processed',
+      ]);
+      await expect(
+        consumeInboxMessage(
+          workerDatabase,
+          workspaceId,
           {
-            failedAt: null,
-            leaseExpiresAt: null,
-            leaseOwner: null,
-            leaseToken: null,
-            publishAttempts: 0,
-            publishedAt: null,
+            consumerName: 'worker.phase0-proof',
+            messageId,
+            payloadChecksum: '0'.repeat(64),
           },
-        ]);
-      } finally {
-        releaseConsumer.resolve();
-        await Promise.all([
-          noConsumerDispatcher.close(),
-          mismatchedDispatcher.close(),
-          dispatcher.close(),
-          consumer.close(),
-          enabledQueue.close(),
-          heldQueue.close(),
-        ]);
-      }
+          () => Promise.resolve(undefined),
+        ),
+      ).rejects.toBeInstanceOf(InboxChecksumMismatchError);
+
+      const rollbackMessageId = randomUUID();
+      await expect(
+        consumeInboxMessage(
+          workerDatabase,
+          workspaceId,
+          {
+            consumerName: 'worker.rollback-proof',
+            messageId: rollbackMessageId,
+            payloadChecksum: checksum('rollback'),
+          },
+          async ({ db, workspaceId: activeWorkspaceId }) => {
+            await db.execute(sql`
+            insert into app.queue_duplicate_probe_attempts
+              (id, workspace_id, logical_attempt_id)
+            values (${randomUUID()}, ${activeWorkspaceId}, ${randomUUID()})
+          `);
+            throw new Error('injected rollback');
+          },
+        ),
+      ).rejects.toThrow('injected rollback');
+      await expect(
+        consumeInboxMessage(
+          workerDatabase,
+          workspaceId,
+          {
+            consumerName: 'worker.rollback-proof',
+            messageId: rollbackMessageId,
+            payloadChecksum: checksum('rollback'),
+          },
+          () => Promise.resolve('recovered'),
+        ),
+      ).resolves.toEqual({ status: 'processed', value: 'recovered' });
     });
 
-    it('reclaims enqueue-before-mark and Bull redelivery becomes an inbox no-op', async () => {
-      const id = await insertRunEvent(randomUUID(), TRACEPARENT);
+    it('persists unsafe ambiguity and makes Bull treat it as unrecoverable', async () => {
+      const id = await insertRunEvent();
       const logicalAttemptId = randomUUID();
       const providerOutboxId = randomUUID();
       const providerAttemptId = randomUUID();
       const providerNodeRunId = randomUUID();
       const providerRunId = randomUUID();
-      const providerKey = `provider:${logicalAttemptId}`;
-      const acceptedProviderEffects = new Set<string>();
+      const providerKey = `unsafe:${logicalAttemptId}`;
       let providerRequests = 0;
-      const provider = createServer((request, response) => {
+      let providerDeliveries = 0;
+      const provider: Server = createServer((request) => {
         providerRequests += 1;
-        const key = String(request.headers['idempotency-key']);
-        acceptedProviderEffects.add(key);
-        if (providerRequests === 1) {
-          request.socket.destroy();
-          return;
-        }
-        response.writeHead(200).end();
+        request.socket.destroy();
       });
       await new Promise<void>((resolve) =>
         provider.listen(0, '127.0.0.1', resolve),
       );
-      const providerAddress = provider.address();
-      if (providerAddress === null || typeof providerAddress === 'string') {
-        throw new Error('Fake provider did not bind');
-      }
-      const rawDispatcher = createOutboxDispatcherDatabase(
-        parseDatabaseConfig({ connectionString: dispatcherUrl, max: 1 }),
-      );
-      const producer = createQueueProducer({ redisUrl });
-      const queue = new Queue(QUEUE_NAME.workflowCoordinator, {
-        connection: redisConnection(),
-      });
-      const dispatcher = createDispatcher('integration-reclaimer');
-      const receiptStatuses: string[] = [];
-      const firstCoordinatorCommit = deferred();
-      const duplicateCoordinatorCommit = deferred();
-      const providerCompleted = deferred();
-      let coordinatorDeliveries = 0;
-      let providerDeliveries = 0;
-      const consumerMetrics = capturingTransportMetrics();
-      const consumerObserver = createQueueMetricsObserver(consumerMetrics);
-      const otelTraceRunner = createQueueTraceRunner();
-      const activatedTraceparents: string[] = [];
-      const traceRunner = {
-        run: async <T>(
-          traceparent: string | undefined,
-          observation: {
-            readonly jobName: string;
-            readonly queueName: string;
-          },
-          operation: () => Promise<T>,
-        ): Promise<T> => {
-          if (traceparent !== undefined)
-            activatedTraceparents.push(traceparent);
-          return otelTraceRunner.run(traceparent, observation, operation);
+      const address = provider.address();
+      if (address === null || typeof address === 'string')
+        throw new Error('No provider');
+      const dispatcher = createDispatcher('integration-unsafe');
+      const coordinatorCompleted = deferred();
+      const ambiguityPersisted = deferred();
+      const coordinator = createQueueConsumer({
+        handler: async (delivery) => {
+          if (delivery.transport.jobId !== `outbox-${id}`) return;
+          await consumeProof(id, logicalAttemptId, {
+            attemptId: providerAttemptId,
+            idempotencyKey: providerKey,
+            nodeRunId: providerNodeRunId,
+            outboxEventId: providerOutboxId,
+            runId: providerRunId,
+          });
+          coordinatorCompleted.resolve();
         },
-      };
-      const coordinatorHandler: QueueJobHandler = async (delivery) => {
-        if (delivery.transport.jobId !== `outbox-${id}`) return;
-        coordinatorDeliveries += 1;
-        const result = await consumeProof(id, logicalAttemptId, {
-          attemptId: providerAttemptId,
-          idempotencyKey: providerKey,
-          nodeRunId: providerNodeRunId,
-          outboxEventId: providerOutboxId,
-          runId: providerRunId,
-          traceparent: TRACEPARENT,
-        });
-        receiptStatuses.push(result.status);
-        if (result.status === 'processed') {
-          firstCoordinatorCommit.resolve();
-          throw new Error('injected crash after coordinator commit before ack');
-        }
-        duplicateCoordinatorCommit.resolve();
-      };
-      const firstCoordinator = createQueueConsumer({
-        handler: coordinatorHandler,
-        observer: consumerObserver,
         queueName: QUEUE_NAME.workflowCoordinator,
         redisUrl,
-        traceRunner,
-      });
-      const secondCoordinator = createQueueConsumer({
-        handler: coordinatorHandler,
-        observer: consumerObserver,
-        queueName: QUEUE_NAME.workflowCoordinator,
-        redisUrl,
-        traceRunner,
       });
       const providerConsumer = createQueueConsumer({
         handler: async (delivery) => {
@@ -677,190 +536,90 @@ describeIntegration(
             return;
           }
           providerDeliveries += 1;
-          await fetch(
-            `http://127.0.0.1:${String(providerAddress.port)}/safe-effect`,
-            {
+          try {
+            await fetch(`http://127.0.0.1:${String(address.port)}/unsafe`, {
               method: 'POST',
-              headers: { 'idempotency-key': providerKey },
-            },
-          );
-          const result = await consumeProof(id, logicalAttemptId, {
-            attemptId: providerAttemptId,
-            idempotencyKey: providerKey,
-            nodeRunId: providerNodeRunId,
-            outboxEventId: providerOutboxId,
-            runId: providerRunId,
-          });
-          if (result.status !== 'duplicate') {
-            throw new Error(
-              'Provider delivery must follow the committed intent',
+            });
+          } catch (error: unknown) {
+            await consumeInboxMessage(
+              workerDatabase,
+              workspaceId,
+              {
+                consumerName: 'worker.phase0-unsafe-provider-proof',
+                messageId: providerOutboxId,
+                payloadChecksum: checksum({
+                  attemptId: providerAttemptId,
+                  nodeRunId: providerNodeRunId,
+                  runId: providerRunId,
+                }),
+              },
+              async ({ db, workspaceId: activeWorkspaceId }) => {
+                await db.execute(sql`
+                update app.queue_duplicate_probe_provider_intents
+                set outcome = 'outcome_unknown', completed_at = clock_timestamp()
+                where id = ${providerAttemptId}
+                  and outcome = 'pending'
+              `);
+                await db.execute(sql`
+                insert into app.queue_duplicate_probe_provider_effects
+                  (id, workspace_id, idempotency_key, outcome)
+                values (
+                  ${randomUUID()},
+                  ${activeWorkspaceId},
+                  ${providerKey},
+                  'outcome_unknown'
+                )
+              `);
+              },
+            );
+            ambiguityPersisted.resolve();
+            throw unrecoverableQueueError(
+              `unsafe provider outcome is ambiguous: ${error instanceof Error ? error.name : 'unknown'}`,
             );
           }
-          await consumeInboxMessage(
-            workerDatabase,
-            workspaceId,
-            {
-              consumerName: 'worker.phase0-provider-proof',
-              messageId: providerOutboxId,
-              payloadChecksum: checksum({
-                attemptId: providerAttemptId,
-                nodeRunId: providerNodeRunId,
-                runId: providerRunId,
-              }),
-            },
-            async ({ db, workspaceId: activeWorkspaceId }) => {
-              await db.execute(sql`
-              update app.queue_duplicate_probe_provider_intents
-              set outcome = 'accepted', completed_at = clock_timestamp()
-              where id = ${providerAttemptId}
-                and outcome = 'pending'
-            `);
-              await db.execute(sql`
-              insert into app.queue_duplicate_probe_provider_effects
-                (id, workspace_id, idempotency_key, outcome)
-              values (
-                ${randomUUID()},
-                ${activeWorkspaceId},
-                ${providerKey},
-                'accepted'
-              )
-            `);
-            },
-          );
-          providerCompleted.resolve();
         },
-        observer: consumerObserver,
         queueName: QUEUE_NAME.nodeAttempts,
         redisUrl,
-        traceRunner,
+      });
+      const providerQueue = new Queue(QUEUE_NAME.nodeAttempts, {
+        connection: redisConnection(),
       });
       try {
         await Promise.all([
-          producer.waitUntilReady(),
-          firstCoordinator.waitUntilReady(),
-        ]);
-        const event = await claimEventAcrossFairRounds(rawDispatcher, id);
-        await producer.publish({
-          name: JOB_NAME.advanceWorkflowRun,
-          data: {
-            ...(event.payload as { runId: string }),
-            outboxEventId: event.id,
-            schemaVersion: 1,
-            workspaceId,
-          },
-        });
-        await firstCoordinatorCommit.promise;
-        await waitForRemovableJob(queue, `outbox-${id}`);
-        await firstCoordinator.close();
-        await queue.getJob(`outbox-${id}`).then((job) => job?.remove());
-        // This proves BullMQ/PostgreSQL lease recovery across two live workers;
-        // neither boundary accepts an injected application clock.
-        await new Promise((resolve) => setTimeout(resolve, 1_100));
-        await Promise.all([
-          secondCoordinator.waitUntilReady(),
+          dispatcher.checkReadiness(),
+          coordinator.waitUntilReady(),
           providerConsumer.waitUntilReady(),
         ]);
-        await dispatchFairRounds([dispatcher], 2);
-        await Promise.all([
-          duplicateCoordinatorCommit.promise,
-          providerCompleted.promise,
-        ]);
-
-        expect(coordinatorDeliveries).toBe(2);
-        expect(providerDeliveries).toBe(2);
-        expect(receiptStatuses).toEqual(['processed', 'duplicate']);
-        expect(providerRequests).toBe(2);
-        expect(activatedTraceparents.length).toBeGreaterThanOrEqual(4);
-        expect(new Set(activatedTraceparents)).toEqual(new Set([TRACEPARENT]));
-        expect(consumerMetrics.recordHandlerFinished).toHaveBeenCalledWith(
-          expect.objectContaining({ outcome: 'completed' }),
+        await dispatchFairRounds([dispatcher], 1);
+        await coordinatorCompleted.promise;
+        await dispatchFairRounds([dispatcher], 1);
+        await ambiguityPersisted.promise;
+        // Observe the real BullMQ retry window to prove an ambiguous provider
+        // outcome is not retried by the transport.
+        await new Promise((resolve) => setTimeout(resolve, 1_200));
+        expect(providerDeliveries).toBe(1);
+        expect(providerRequests).toBe(1);
+        const failedJob = await providerQueue.getJob(
+          `outbox-${providerOutboxId}`,
         );
-        expect(consumerMetrics.recordHandlerFinished).toHaveBeenCalledWith(
-          expect.objectContaining({ outcome: 'failed' }),
-        );
-        await waitForBalancedConsumerMetrics(consumerMetrics, 4);
-        const concurrencyDeltas = vi
-          .mocked(consumerMetrics.addActiveConcurrency)
-          .mock.calls.map(([measurement]) => measurement.delta);
-        const startedHandlers = concurrencyDeltas.filter(
-          (delta) => delta === 1,
-        );
-        const finishedHandlers = concurrencyDeltas.filter(
-          (delta) => delta === -1,
-        );
-        expect(startedHandlers.length).toBeGreaterThanOrEqual(4);
-        expect(finishedHandlers).toHaveLength(startedHandlers.length);
-        expect(acceptedProviderEffects).toEqual(new Set([providerKey]));
-        const ledger = await workerDatabase.withWorkspace(
+        expect(failedJob?.attemptsMade).toBe(1);
+        const result = await workerDatabase.withWorkspace(
           workspaceId,
           ({ db }) =>
             db.execute(sql`
-              select
-                (select count(*)::integer
-                   from app.queue_duplicate_probe_attempts
-                  where workspace_id=${workspaceId}
-                    and logical_attempt_id=${logicalAttemptId}) attempts,
-                (select count(*)::integer
-                   from app.queue_duplicate_probe_events
-                  where workspace_id=${workspaceId}
-                    and logical_attempt_id=${logicalAttemptId}) events,
-                (select count(*)::integer
-                   from app.queue_duplicate_probe_usage
-                  where workspace_id=${workspaceId}
-                    and idempotency_key=${`usage:${logicalAttemptId}`}) usage,
-                (select count(*)::integer
-                   from app.queue_duplicate_probe_provider_effects
-                  where workspace_id=${workspaceId}
-                    and idempotency_key=${providerKey}) provider_effects
-            `),
+          select count(*)::integer as count
+          from app.queue_duplicate_probe_provider_effects
+          where idempotency_key = ${providerKey}
+            and outcome = 'outcome_unknown'
+        `),
         );
-        expect(ledger.rows).toEqual([
-          { attempts: 1, events: 1, provider_effects: 1, usage: 1 },
-        ]);
-        const intent = await workerDatabase.withWorkspace(
-          workspaceId,
-          ({ db }) =>
-            db.execute(sql`
-            select outcome, completed_at is not null as completed
-            from app.queue_duplicate_probe_provider_intents
-            where id = ${providerAttemptId}
-          `),
-        );
-        expect(intent.rows).toEqual([{ outcome: 'accepted', completed: true }]);
-
-        const published = await apiDatabase.withWorkspace(
-          workspaceId,
-          ({ db }) =>
-            db.select().from(outboxEvents).where(eq(outboxEvents.id, id)),
-        );
-        expect(published[0]?.publishedAt).toBeInstanceOf(Date);
-        const otherWorkspace = randomUUID();
-        await expect(
-          apiDatabase.withWorkspace(otherWorkspace, ({ db }) =>
-            db.select().from(outboxEvents).where(eq(outboxEvents.id, id)),
-          ),
-        ).resolves.toEqual([]);
-        await expect(
-          consumeInboxMessage(
-            workerDatabase,
-            otherWorkspace,
-            {
-              consumerName: 'worker.phase0-proof',
-              messageId: id,
-              payloadChecksum: checksum({ logicalAttemptId }),
-            },
-            () => Promise.resolve(undefined),
-          ),
-        ).rejects.toBeInstanceOf(InboxReceiptUnavailableError);
+        expect(result.rows[0]).toEqual({ count: 1 });
       } finally {
         await Promise.all([
           dispatcher.close(),
-          producer.close(),
-          rawDispatcher.close(),
-          queue.close(),
-          firstCoordinator.close(),
-          secondCoordinator.close(),
+          coordinator.close(),
           providerConsumer.close(),
+          providerQueue.close(),
         ]);
         await new Promise<void>((resolve, reject) => {
           provider.close((error) => {
