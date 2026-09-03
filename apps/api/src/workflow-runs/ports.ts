@@ -1,4 +1,7 @@
-import type { ActorContext } from '../workspaces/index.js';
+import type {
+  ActorContext,
+  AuthorizedWorkspaceContext,
+} from '../workspaces/index.js';
 
 export type WorkflowRunRecord = Readonly<{
   id: string;
@@ -95,6 +98,7 @@ export interface WorkflowRunPersistence {
 export type WorkflowRunApplicationInput = Readonly<{
   actor: ActorContext;
   routeWorkspaceId: string;
+  authorizedWorkspace?: AuthorizedWorkspaceContext;
 }>;
 
 export type WorkflowRunEventFrame = Readonly<{

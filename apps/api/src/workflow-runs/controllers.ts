@@ -44,6 +44,7 @@ import {
 } from '../platform/observability/sse-visibility-metrics.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { createActorContext } from '../workspaces/index.js';
+import type { AuthorizedWorkspaceContext } from '../workspaces/index.js';
 import { throwWorkflowRunError } from './errors.js';
 import {
   WorkflowRunCancelGuard,
@@ -70,6 +71,7 @@ export type WorkflowRunsRequest = Readonly<{
     expiresAt: Date;
     clientMetadata: Readonly<Record<string, string>>;
   }>;
+  authorizedWorkspace?: AuthorizedWorkspaceContext;
   raw?: Readonly<{
     once(event: 'close', listener: () => void): unknown;
     off(event: 'close', listener: () => void): unknown;
@@ -108,6 +110,7 @@ export class WorkflowRunsController {
       return await this.startWorkflowRun.execute({
         actor: actorFrom(request, route.workspaceId),
         routeWorkspaceId: route.workspaceId,
+        ...guardAuthorization(request),
         workflowId: route.workflowId,
         idempotencyKey: requiredIdempotencyKey(request),
         ...(input.input === undefined ? {} : { input: input.input }),
@@ -133,6 +136,7 @@ export class WorkflowRunsController {
       return await this.getWorkflowRun.execute({
         actor: actorFrom(request, route.workspaceId),
         routeWorkspaceId: route.workspaceId,
+        ...guardAuthorization(request),
         runId: route.runId,
       });
     } catch (error: unknown) {
@@ -157,6 +161,7 @@ export class WorkflowRunsController {
       const frames = await this.streamEvents.execute({
         actor: actorFrom(request, route.workspaceId),
         routeWorkspaceId: route.workspaceId,
+        ...guardAuthorization(request),
         runId: route.runId,
         lastEventId: requestedLastEventId,
         signal: controller.signal,
@@ -196,6 +201,7 @@ export class WorkflowRunsController {
       return await this.cancelWorkflowRun.execute({
         actor: actorFrom(request, route.workspaceId),
         routeWorkspaceId: route.workspaceId,
+        ...guardAuthorization(request),
         runId: route.runId,
         ...(input.reason === undefined ? {} : { reason: input.reason }),
         ...requestIdentifiers(request),
@@ -205,6 +211,14 @@ export class WorkflowRunsController {
       return throwWorkflowRunError(error);
     }
   }
+}
+
+function guardAuthorization(
+  request: WorkflowRunsRequest,
+): Pick<WorkflowRunsRequest, 'authorizedWorkspace'> {
+  return request.authorizedWorkspace === undefined
+    ? {}
+    : { authorizedWorkspace: request.authorizedWorkspace };
 }
 
 function frameObservable(

@@ -11,7 +11,7 @@ import {
 import { canonicalJson } from '@pertexo/workflow-model/canonical-json';
 
 import {
-  authorizeWorkspace,
+  authorizeWorkspaceOperation,
   type AuthorizationCapability,
   type WorkspaceAuthorizationSource,
   type WorkspaceStatus,
@@ -192,13 +192,16 @@ async function authorize(
   access: WorkspaceAuthorizationSource,
   allowedWorkspaceStatuses: readonly WorkspaceStatus[],
 ): Promise<void> {
-  await authorizeWorkspace({
+  await authorizeWorkspaceOperation({
     actor: input.actor,
     routeWorkspaceId: input.routeWorkspaceId,
     capability,
     access,
     disclosure: 'not_found',
     allowedWorkspaceStatuses,
+    ...(input.authorizedWorkspace === undefined
+      ? {}
+      : { authorizedWorkspace: input.authorizedWorkspace }),
   });
 }
 
