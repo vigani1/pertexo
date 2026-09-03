@@ -19,7 +19,10 @@ import {
   RotateConnectionSecretUseCase,
   TestConnectionUseCase,
 } from '../../src/connections/use-cases.js';
-import { createActorContext } from '../../src/workspaces/index.js';
+import {
+  authorizeWorkspace,
+  createActorContext,
+} from '../../src/workspaces/index.js';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -144,6 +147,26 @@ const sealed = Object.freeze({
 });
 
 describe('connection application use cases', () => {
+  it('reuses guard authorization without repeating a command access lookup', async () => {
+    const access = authorization();
+    const authorizedWorkspace = await authorizeWorkspace({
+      actor,
+      routeWorkspaceId: workspaceId,
+      capability: 'connection:manage',
+      access,
+      disclosure: 'not_found',
+    });
+
+    await new RevokeConnectionUseCase(persistence(), access).execute({
+      actor,
+      routeWorkspaceId: workspaceId,
+      authorizedWorkspace,
+      connectionId,
+    });
+
+    expect(access.findAccess).toHaveBeenCalledTimes(1);
+  });
+
   it('authorizes, seals, persists, zeroes plaintext, and returns no credential material', async () => {
     const createConnection = vi.fn<
       ConnectionCommandPersistence['createConnection']
@@ -313,6 +336,14 @@ describe('connection application use cases', () => {
 
   it('decrypts just in time, commits dispatch evidence, and stores only a safe test result', async () => {
     const store = testPersistence();
+    const access = authorization();
+    const authorizedWorkspace = await authorizeWorkspace({
+      actor,
+      routeWorkspaceId: workspaceId,
+      capability: 'connection:use',
+      access,
+      disclosure: 'not_found',
+    });
     let plaintext: Uint8Array | undefined;
     let responseBody: Uint8Array | undefined;
     const encryption = {
@@ -345,12 +376,13 @@ describe('connection application use cases', () => {
 
     const result = await new TestConnectionUseCase(
       store,
-      authorization(),
+      access,
       encryption,
       httpClient,
     ).execute({
       actor,
       routeWorkspaceId: workspaceId,
+      authorizedWorkspace,
       connectionId,
       idempotencyKey: 'test-42',
       requestId: 'request-42',
@@ -362,6 +394,7 @@ describe('connection application use cases', () => {
       outcome: { ok: true, httpStatus: 204, errorCode: null },
     });
     expect(store.markConnectionTestDispatched).toHaveBeenCalledOnce();
+    expect(access.findAccess).toHaveBeenCalledTimes(2);
     expect(store.completeConnectionTest).toHaveBeenCalledWith(
       expect.objectContaining({ outcome: { ok: true, httpStatus: 204 } }),
     );

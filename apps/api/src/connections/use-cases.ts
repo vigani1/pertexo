@@ -11,9 +11,13 @@ import {
   SecureHttpError,
 } from '@pertexo/integrations/server';
 
-import { authorizeWorkspace } from '../workspaces/index.js';
+import {
+  authorizeWorkspace,
+  authorizeWorkspaceOperation,
+} from '../workspaces/index.js';
 import type {
   ActorContext,
+  AuthorizedWorkspaceContext,
   WorkspaceAuthorizationSource,
 } from '../workspaces/index.js';
 import type {
@@ -45,6 +49,7 @@ import {
 type ConnectionCommandInput = Readonly<{
   actor: ActorContext;
   routeWorkspaceId: string;
+  authorizedWorkspace?: AuthorizedWorkspaceContext;
   requestId?: string;
   traceId?: string;
 }>;
@@ -253,7 +258,7 @@ export class TestConnectionUseCase {
 
       let plaintext: Uint8Array | undefined;
       try {
-        await authorize(input, this.authorization, 'connection:use');
+        await reauthorizeBeforeSecretAccess(input, this.authorization);
         const resolved = await this.persistence.resolveConnectionTestSecret({
           ...common,
           expectedProviderKey,
@@ -377,10 +382,30 @@ async function authorize(
   access: WorkspaceAuthorizationSource,
   capability: 'connection:manage' | 'connection:use' = 'connection:manage',
 ): Promise<void> {
-  await authorizeWorkspace({
+  await authorizeWorkspaceOperation({
     actor: input.actor,
     routeWorkspaceId: input.routeWorkspaceId,
     capability,
+    access,
+    disclosure: 'not_found',
+    allowedWorkspaceStatuses: ['active'],
+    ...(input.authorizedWorkspace === undefined
+      ? {}
+      : { authorizedWorkspace: input.authorizedWorkspace }),
+  });
+}
+
+async function reauthorizeBeforeSecretAccess(
+  input: ConnectionCommandInput,
+  access: WorkspaceAuthorizationSource,
+): Promise<void> {
+  // Credential egress is a second security boundary after the durable test
+  // intent is created. Re-read membership here so revocation during that gap
+  // prevents secret decryption and provider dispatch.
+  await authorizeWorkspace({
+    actor: input.actor,
+    routeWorkspaceId: input.routeWorkspaceId,
+    capability: 'connection:use',
     access,
     disclosure: 'not_found',
     allowedWorkspaceStatuses: ['active'],
