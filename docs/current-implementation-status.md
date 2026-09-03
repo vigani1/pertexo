@@ -1,6 +1,6 @@
 # Current Backend Implementation Status
 
-Updated: 2026-09-03
+Updated: 2026-09-04
 
 ## Delivery state
 
@@ -35,7 +35,7 @@ tests. The exact report schema and validator already live under
 
 ## Current engineering remediation
 
-Audited implementation tree: `6dc62b689974341d4e58af49e2f39ef84dc92b6e`
+Audited implementation tree: `db23a4da448c95118335b19b4e5b2b3846e2d601`
 
 The 2026-09-03 whole-repository audit's repository-controlled correctness,
 security, and runtime findings are complete at the implementation tree above.
@@ -43,27 +43,35 @@ That includes the worker production dependency and image role-load proof, owned
 process shutdown, bounded logger redaction, patched dependencies, security
 admission, selected risk coverage, production complexity decomposition,
 UUIDv7/schema/RLS conventions, bounded async outcomes, package surfaces, and
-public governance. Test files were decomposed below the 1,000-line limit, but a
-post-remediation full-corpus clone scan partially reopened A-11: paired split
-suites retain 1,977 duplicated lines (2.08%), and their shared setup needs an
-owner-local extraction plus an automated non-regression baseline. The latest
+public governance. A-11 is now complete: owner-local support modules remove
+genuinely shared split-suite setup, while scenario state and assertions remain
+visible. The exact scan fell from 25 groups/1,977 lines (2.08%) to 5 groups/159
+lines (0.17%), and a pinned semantic baseline now rejects unexplained drift in
+the root and protected CI checks. Database internals moved from 122 flat root
+files to ten capability directories behind 12 stable entry points; the public
+testing barrel fell from 567 to 82 lines. The latest
 audit follow-up also makes persisted artifact identities UUIDv7, retains leases
 while late publication marks settle, and proves compiled workers exit cleanly
-after SIGTERM with consumers disabled or active and during bootstrap failure.
-The signal owner handles SIGINT through the same idempotent path, without
-overstating the exercised process matrix.
+after SIGINT or SIGTERM with consumers disabled or active and during bootstrap
+failure.
 
 The code audit now formalizes all currently evidenced residual implementation
-work as C-21 through C-28. C-21/A-11 and C-28 are directly open; C-22 tracks
-incremental database source locality; C-23 is ratcheted complexity debt; C-24 is
-continuous risk-based coverage expansion; C-25 is mutation/profiling-gated;
-C-26 is compatibility-sensitive terminology cleanup; and C-27 activates when a
-large domain-shaped `.mjs` tool changes materially. These do not change the
+work as C-21 through C-28. C-21/A-11, C-22, C-26, and C-28 are complete. C-23
+is ratcheted complexity debt at 35 files and 40 functions; C-24 is continuous
+risk-based coverage expansion; C-25 has an explicit ownership policy and is
+mutation/profiling-gated; and C-27 activates when a large domain-shaped `.mjs`
+tool changes materially. These do not change the
 completed status of Phases 0–6 or turn evidence-gated/conditional cleanup into
 an instruction for a mechanical repository-wide rewrite.
 The exact findings and evidence are in `docs/whole-repository-audit.md`. These
 do not change Phases 0–6; Phase 7 remains in progress only because its live
 external evidence has not been executed.
+
+Fresh local verification at this implementation tree passes `pnpm check`,
+`pnpm test:coverage`, `pnpm release:check`, and `pnpm images:check`. Enabled
+real-service cohorts pass 320 database, 22 worker, 15 API, and 5 artifact-store
+tests. Coverage remains explicitly limited to 30 selected files/1,736 coverable
+lines with 116 reviewed and zero unreviewed uncovered branches.
 
 The 2026-09-01 audit refresh is implemented at fixed ancestor `0865633` and
 merged to `main` through pull request #7. It

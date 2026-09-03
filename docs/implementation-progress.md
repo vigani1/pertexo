@@ -1,6 +1,6 @@
 # Backend Implementation Progress
 
-Last updated: 2026-09-03
+Last updated: 2026-09-04
 
 This file tracks delivery against
 [the authoritative backend plan](./workflow-platform-backend-plan.md). A phase
@@ -9,17 +9,18 @@ vertical-slice completion criteria have passed. Commits or scaffolding alone do
 not complete a phase.
 
 Current audit note: the whole-repository review at implementation tree
-`6dc62b689974341d4e58af49e2f39ef84dc92b6e` is recorded in
+`db23a4da448c95118335b19b4e5b2b3846e2d601` is recorded in
 [the engineering audit](./whole-repository-audit.md). It does not change the
 completed status of Phases 0–6. It confirms that Phase 7 remains **In progress**
 because live AWS, provider, provenance, load, pager, backup, failover, and
 regional-recovery evidence requires external accounts and deployed
 infrastructure. Repository-controlled correctness, security, and runtime
-findings are complete at the named implementation tree. Whole-audit A-06/A-11
-and code-audit C-21 through C-28 now make the remaining maintainability,
-locality, complexity, coverage, terminology, tooling-type, and reproducibility
-work explicit; green repository checks are not represented as a substitute for
-either that work or live production evidence.
+findings are complete at the named implementation tree. Whole-audit A-11 and
+code-audit C-21, C-22, C-26, and C-28 are complete; the remaining complexity,
+coverage, immutability, and tooling entries are controlled, continuous,
+evidence-gated, or conditional rather than unperformed repository defects.
+Green repository checks are not represented as a substitute for live
+production evidence.
 
 ## Status summary
 
@@ -4698,7 +4699,7 @@ That historical documentation-only audit did not change a Phase 7 completion
 box. Its repository P1 findings are now closed; the live-production checklist
 below remains the release blocker.
 
-## Current whole-repository audit — implementation tree `6dc62b689974341d4e58af49e2f39ef84dc92b6e`
+## Current whole-repository audit — implementation tree `db23a4da448c95118335b19b4e5b2b3846e2d601`
 
 Status: **Repository-controlled audit blockers are complete; external
 production/control evidence remains open**
@@ -4791,23 +4792,39 @@ Fresh audit findings at the implementation tree named above:
       governance improvements in `docs/whole-repository-audit.md` without
       weakening existing invariants. Hosted signed provenance and live provider
       evidence remain the credential-dependent A-08/Phase 7 work below.
-- [ ] Complete the partially reopened A-11 test-maintainability work: extract
+- [x] Complete the partially reopened A-11 test-maintainability work: extract
       genuinely shared setup from paired split suites into owner-local support
       modules, keep scenario state/assertions local, document and automate the
-      exact full-corpus clone scan, and lower its current 25-group/1,977-line
-      (2.08%) baseline without weakening independent collection or integration
-      isolation.
-- [ ] Implement code-audit C-22 through focused capability-local database
+      exact full-corpus clone scan from 25 groups/1,977 lines (2.08%) to 5
+      groups/159 lines (0.17%) without weakening independent collection or
+      integration isolation.
+- [x] Implement code-audit C-22 through focused capability-local database
       source moves that preserve package entry points, transaction ordering,
       migration behavior, and real-PostgreSQL evidence; do not perform one
-      repository-wide relocation.
-- [ ] Complete code-audit C-28 by pinning reproducible source/test clone scans,
+      repository-wide relocation. The root now retains 12 public/composition
+      files and ten capability-owned directories.
+- [x] Complete code-audit C-28 by pinning reproducible source/test clone scans,
       classifying retained semantic clones, and enforcing a no-new-or-worsened
-      baseline in protected CI. C-21 shares the test-side implementation.
+      baseline in protected CI. C-21 shares the test-side implementation;
+      exact semantic identities reject stale or worsened explanations.
+- [x] Complete code-audit C-26 source terminology cleanup by moving the
+      persisted checkpoint owner and symbols to durable names and using the
+      baseline runtime-policy name internally. Retain the deprecated public
+      alias, serialized engine identifier, migrations, readiness fields, and
+      database objects as explicit compatibility contracts.
+- [x] Record the C-25 immutability/optional-property ownership policy. No
+      freeze or copy is removed without mutation or performance evidence.
+- [x] Re-run the complexity inventory after capability moves: 35 file and 40
+      function hotspots remain individually reasoned and non-regressing.
+- [x] Run final local admission: `pnpm check`, `pnpm test:coverage`,
+      `pnpm release:check`, and `pnpm images:check` pass. Enabled real-service
+      cohorts pass 320 database, 22 worker, 15 API, and 5 artifact-store tests;
+      provider-specific local skips remain distinct from live Phase 7 evidence.
 
-Code-audit C-23 through C-27 are controlled, continuous, evidence-gated, or
-conditional work rather than unconditional completion checkboxes. Their
-activation and acceptance evidence are recorded in `docs/code-audit.md`.
+Code-audit C-23 through C-25 and C-27 are controlled, continuous,
+evidence-gated, or conditional work rather than unconditional completion
+checkboxes. Their activation and acceptance evidence are recorded in
+`docs/code-audit.md`.
 
 Still open:
 
