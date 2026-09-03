@@ -467,6 +467,22 @@ making the architecture plan even larger.
 ### C-15 — Draft saving contains a no-op catch/rethrow
 
 - **Severity:** low.
+- **Remediation status:** complete on 2026-09-03.
+- **Repository-wide affected locations:** a structural scan of every production
+  catch clause found this as the only branch whose possible paths all rethrew
+  the same value without adding cleanup, translation, telemetry, or state
+  repair. Catch/rethrow sites that perform those operations are intentionally
+  retained.
+- **Remediation:** removed the redundant catch from
+  `SaveWorkflowDraftUseCase.execute` and moved the useful compare-and-swap
+  snapshot constraint onto `WorkflowAuthoringDatabase.saveDraft`, the owning
+  persistence interface. The use case still forwards the database conflict
+  unchanged.
+- **Verification:** the existing CAS snapshot characterization failed during an
+  initially over-broad import cleanup and then passed after retaining the error
+  type needed by the separate stale-request path; `pnpm --filter @pertexo/api
+  exec vitest run test/workflow-authoring/use-cases.test.ts` (8 tests), API and
+  database typechecks.
 - **Location:** `apps/api/src/workflow-authoring/use-cases.ts`
   `#SaveWorkflowDraftUseCase.execute`.
 - **Issue:** the catch checks `WorkflowRevisionConflictError` and then rethrows

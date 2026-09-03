@@ -221,26 +221,18 @@ export class SaveWorkflowDraftUseCase {
         const currentTag = toDraft(current).representationTag;
         if (currentTag !== input.representationTag)
           throw revisionConflict(current, currentTag);
-        try {
-          const saved = await this.persistence.saveDraft({
-            workspaceId: input.routeWorkspaceId,
-            workflowId: input.workflowId,
-            actorId: input.actor.actorId,
-            expectedRevision: current.revision,
-            graphJson: graph,
-            ...(input.requestId === undefined
-              ? {}
-              : { requestId: input.requestId }),
-            ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
-          });
-          return toDraft(saved);
-        } catch (error: unknown) {
-          if (!(error instanceof WorkflowRevisionConflictError)) throw error;
-          // The persistence CAS conflict contains the revision and strong
-          // representation tag read by the same failed transaction. A second
-          // draft read could observe a later save and pair mismatched values.
-          throw error;
-        }
+        const saved = await this.persistence.saveDraft({
+          workspaceId: input.routeWorkspaceId,
+          workflowId: input.workflowId,
+          actorId: input.actor.actorId,
+          expectedRevision: current.revision,
+          graphJson: graph,
+          ...(input.requestId === undefined
+            ? {}
+            : { requestId: input.requestId }),
+          ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
+        });
+        return toDraft(saved);
       },
     );
   }
