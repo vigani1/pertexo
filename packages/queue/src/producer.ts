@@ -46,6 +46,16 @@ export type EnqueuedQueueJob = Readonly<{
   readonly queueName: QueueName;
 }>;
 
+export type QueuePublishResult = EnqueuedQueueJob &
+  (
+    | Readonly<{ readonly outcome: 'published' }>
+    | Readonly<{
+        readonly outcome: 'outcome_unknown';
+        /** Never rejects; records how the already-started publication settles. */
+        readonly settlement: Promise<'failed' | 'published'>;
+      }>
+  );
+
 export interface QueueStateObservation {
   readonly depth: number;
   /** Age of the oldest waiting job, excluding delayed work; zero when empty. */
@@ -54,7 +64,8 @@ export interface QueueStateObservation {
 }
 
 export interface QueueProducer {
-  publish(job: QueueJob): Promise<EnqueuedQueueJob>;
+  /** Returns within the configured deadline without misclassifying a timeout as failure. */
+  publish(job: QueueJob): Promise<QueuePublishResult>;
   observe(): Promise<readonly QueueStateObservation[]>;
   isReady(): boolean;
   waitUntilReady(timeoutMs?: number): Promise<void>;
@@ -74,14 +85,6 @@ export class QueueNotReadyError extends Error {
 
   public constructor() {
     super('Queue producer Redis connection is not ready');
-  }
-}
-
-export class QueuePublishTimeoutError extends Error {
-  public override readonly name = 'QueuePublishTimeoutError';
-
-  public constructor() {
-    super('Queue publish exceeded its bounded timeout');
   }
 }
 
@@ -194,8 +197,9 @@ export class BullMqQueueProducer implements QueueProducer {
       new Redis(parsedOptions.redisUrl, {
         connectTimeout: parsedOptions.readyTimeoutMs,
         enableOfflineQueue: false,
-        // Producers fail fast so an outbox lease can be released/retried. A
-        // Worker uses a separate blocking connection with null retries.
+        // Producers fail fast so the outbox owner can retain an uncertain
+        // lease and reconcile late settlement. A worker uses a separate
+        // blocking connection with null retries.
         maxRetriesPerRequest: 1,
       }),
       this.redisTelemetry,
@@ -285,7 +289,7 @@ export class BullMqQueueProducer implements QueueProducer {
     );
   }
 
-  public async publish(job: QueueJob): Promise<EnqueuedQueueJob> {
+  public async publish(job: QueueJob): Promise<QueuePublishResult> {
     return observeRedisOperation(
       this.redisTelemetry,
       'queue_producer',
@@ -294,7 +298,7 @@ export class BullMqQueueProducer implements QueueProducer {
     );
   }
 
-  private async performPublish(job: QueueJob): Promise<EnqueuedQueueJob> {
+  private async performPublish(job: QueueJob): Promise<QueuePublishResult> {
     const parsed = parseQueueJob(job);
     const jobId = jobIdForOutboxEvent(parsed.data.outboxEventId);
     const queueName = QUEUE_FOR_JOB[parsed.name];
@@ -303,19 +307,34 @@ export class BullMqQueueProducer implements QueueProducer {
       throw new QueueNotReadyError();
     }
 
-    await this.withPublishTimeout(
-      this.queueFor(parsed).add(
-        parsed.name,
-        parsed.data,
-        toJobOptions(queueName, jobId),
-      ),
+    const enqueued = { jobId, jobName: parsed.name, queueName } as const;
+    const publication = this.queueFor(parsed).add(
+      parsed.name,
+      parsed.data,
+      toJobOptions(queueName, jobId),
     );
-
-    return {
-      jobId,
-      jobName: parsed.name,
-      queueName,
-    };
+    const settlement = publication.then(
+      () => 'published' as const,
+      () => 'failed' as const,
+    );
+    let timer: NodeJS.Timeout | undefined;
+    const timedOut = new Promise<true>((resolve) => {
+      timer = setTimeout(() => {
+        resolve(true);
+      }, this.publishTimeoutMs);
+      timer.unref();
+    });
+    try {
+      const unknown = await Promise.race([
+        publication.then(() => false as const),
+        timedOut,
+      ]);
+      return unknown
+        ? Object.freeze({ ...enqueued, outcome: 'outcome_unknown', settlement })
+        : Object.freeze({ ...enqueued, outcome: 'published' });
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+    }
   }
 
   public async observe(): Promise<readonly QueueStateObservation[]> {
@@ -333,7 +352,7 @@ export class BullMqQueueProducer implements QueueProducer {
     }
 
     const observedAt = Date.now();
-    return this.withPublishTimeout(
+    return this.withTimeout(
       Promise.all(
         Object.entries(this.queues).map(async ([queueName, queue]) => {
           const [depth, waiting] = await Promise.all([
@@ -358,6 +377,8 @@ export class BullMqQueueProducer implements QueueProducer {
           });
         }),
       ).then((observations) => Object.freeze(observations)),
+      this.publishTimeoutMs,
+      new Error('Queue observation exceeded its bounded timeout'),
     );
   }
 
@@ -396,14 +417,6 @@ export class BullMqQueueProducer implements QueueProducer {
 
   private isOpen(): boolean {
     return this.lifecycle === 'open';
-  }
-
-  private withPublishTimeout<T>(operation: Promise<T>): Promise<T> {
-    return this.withTimeout(
-      operation,
-      this.publishTimeoutMs,
-      new QueuePublishTimeoutError(),
-    );
   }
 
   private withTimeout<T>(

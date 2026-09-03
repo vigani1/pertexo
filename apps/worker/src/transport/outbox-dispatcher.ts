@@ -15,7 +15,6 @@ import {
   JOB_NAME,
   QUEUE_FOR_JOB,
   QueueNotReadyError,
-  QueuePublishTimeoutError,
   parseQueueJob,
   type QueueJob,
   type JobName,
@@ -31,6 +30,11 @@ import {
   type DispatchConsumerCapabilityRegistry,
 } from './dispatch-consumer-capabilities.js';
 import { transportJobForName } from './transport-job.js';
+import { OutboxPublicationSettlements } from './outbox-publication-settlements.js';
+import {
+  bounded,
+  TransportOperationTimeoutError,
+} from './transport-operation-deadline.js';
 
 const optionsSchema = z
   .object({
@@ -66,6 +70,7 @@ export type OutboxDispatcherRuntimeHooks = Readonly<{
 export type OutboxDispatchResult = Readonly<{
   claimed: number;
   failed: number;
+  outcomeUnknown: number;
   published: number;
   stale: number;
 }>;
@@ -91,14 +96,6 @@ export class OutboxDispatcherClosedError extends Error {
   }
 }
 
-class TransportOperationTimeoutError extends Error {
-  public override readonly name = 'TransportOperationTimeoutError';
-
-  public constructor(timeoutMillis: number) {
-    super(`Transport operation exceeded ${String(timeoutMillis)}ms`);
-  }
-}
-
 const transportJobNameSchema = z.enum(JOB_NAME);
 const WORKSPACE_CAPACITY_SAMPLE_INTERVAL_MILLIS = 5 * 60_000;
 const MAX_TRACKED_WORKSPACE_CAPACITY_SAMPLES = 1_000;
@@ -120,10 +117,7 @@ function transportErrorClass(error: unknown): TransportErrorClass {
   ) {
     return 'contract';
   }
-  if (
-    error instanceof QueuePublishTimeoutError ||
-    error instanceof TransportOperationTimeoutError
-  ) {
+  if (error instanceof TransportOperationTimeoutError) {
     return 'timeout';
   }
   if (error instanceof QueueNotReadyError) {
@@ -175,32 +169,10 @@ function errorCode(error: unknown): string {
 const EMPTY_RESULT: OutboxDispatchResult = Object.freeze({
   claimed: 0,
   failed: 0,
+  outcomeUnknown: 0,
   published: 0,
   stale: 0,
 });
-
-function bounded<T>(promise: Promise<T>, timeoutMillis: number): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      reject(new TransportOperationTimeoutError(timeoutMillis));
-    }, timeoutMillis);
-    timer.unref();
-    promise.then(
-      (value) => {
-        clearTimeout(timer);
-        resolve(value);
-      },
-      (error: unknown) => {
-        clearTimeout(timer);
-        reject(
-          error instanceof Error
-            ? error
-            : new Error('Transport operation failed', { cause: error }),
-        );
-      },
-    );
-  });
-}
 
 export class OutboxDispatcher {
   private readonly options: Readonly<
@@ -212,6 +184,7 @@ export class OutboxDispatcher {
   private readonly capacitySampledAtByWorkspace = new Map<string, number>();
   private readonly pendingCapacityWorkspaces = new Set<string>();
   private capacitySamplerPromise: Promise<void> | undefined;
+  private readonly publicationSettlements: OutboxPublicationSettlements;
   private runtimeHooks: OutboxDispatcherRuntimeHooks | undefined;
   private lifecycle: 'idle' | 'running' | 'closed' = 'idle';
   private loopPromise: Promise<void> | undefined;
@@ -233,6 +206,10 @@ export class OutboxDispatcher {
       ...parsed,
       enabledJobNames: Object.freeze([...parsed.enabledJobNames]),
     });
+    this.publicationSettlements = new OutboxPublicationSettlements(
+      database,
+      this.options.operationTimeoutMillis,
+    );
     this.enabledQueueNames = new Set(
       this.options.enabledJobNames.map(
         (jobName: JobName) => QUEUE_FOR_JOB[jobName],
@@ -292,6 +269,9 @@ export class OutboxDispatcher {
     return Object.freeze({
       claimed: events.length,
       failed: outcomes.filter((outcome) => outcome === 'failed').length,
+      outcomeUnknown: outcomes.filter(
+        (outcome) => outcome === 'outcome_unknown',
+      ).length,
       published: outcomes.filter((outcome) => outcome === 'published').length,
       stale: outcomes.filter((outcome) => outcome === 'stale').length,
     });
@@ -324,6 +304,7 @@ export class OutboxDispatcher {
             this.capacitySamplerPromise,
             this.options.operationTimeoutMillis,
           ),
+      ...this.publicationSettlements.boundedPending(),
     ]);
     const closeResults = await Promise.allSettled([
       bounded(this.database.close(), this.options.operationTimeoutMillis),
@@ -338,7 +319,7 @@ export class OutboxDispatcher {
 
   private async dispatch(
     event: LeasedOutboxEvent,
-  ): Promise<'failed' | 'published' | 'stale'> {
+  ): Promise<'failed' | 'outcome_unknown' | 'published' | 'stale'> {
     let jobObservation: TransportJob | undefined;
     let queuePublished = false;
     try {
@@ -346,10 +327,18 @@ export class OutboxDispatcher {
       const job = toQueueJob(event);
       const currentJob = transportJob(job);
       jobObservation = currentJob;
-      await bounded(
-        this.producer.publish(job),
-        this.options.operationTimeoutMillis,
-      );
+      const publication = await this.producer.publish(job);
+      if (publication.outcome === 'outcome_unknown') {
+        this.observeMetrics(() => {
+          this.metrics.recordOutboxPublish({
+            ...currentJob,
+            errorClass: 'timeout',
+            outcome: 'outcome_unknown',
+          });
+        });
+        this.publicationSettlements.track(event, publication.settlement);
+        return 'outcome_unknown';
+      }
       queuePublished = true;
       this.observeMetrics(() => {
         this.metrics.recordOutboxPublish({

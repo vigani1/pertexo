@@ -76,7 +76,7 @@ export type TransportPublishMeasurement = TransportJob &
     | { readonly outcome: 'deduplicated' | 'published' }
     | {
         readonly errorClass: TransportErrorClass;
-        readonly outcome: 'failed';
+        readonly outcome: 'failed' | 'outcome_unknown';
       }
   );
 

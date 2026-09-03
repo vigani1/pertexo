@@ -32,12 +32,12 @@ export {
   BullMqQueueProducer,
   QueueConfigurationError,
   QueueNotReadyError,
-  QueuePublishTimeoutError,
   createQueueProducer,
   jobIdForOutboxEvent,
   type EnqueuedQueueJob,
   type QueueProducer,
   type QueueProducerOptions,
+  type QueuePublishResult,
   type QueueStateObservation,
 } from './producer.js';
 export {
