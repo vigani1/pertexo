@@ -503,7 +503,7 @@ The accepted ratchet fell from 45 to 35 file hotspots and from 42 to 40 function
 hotspots; it was regenerated only after the focused refactor and passes without
 any new or worsened entry. Database internals moved from 122 TypeScript files at
 `packages/database/src` to ten capability-owned directories behind 12 stable
-public/composition entry points. The public testing barrel fell from 567 to 82
+public/composition entry points. The public testing barrel fell from 567 to 85 physical
 lines and delegates exact test seams to owner-local barrels.
 
 The affected repository locations were separated by ownership while preserving

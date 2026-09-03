@@ -49,7 +49,7 @@ visible. The exact scan fell from 25 groups/1,977 lines (2.08%) to 5 groups/159
 lines (0.17%), and a pinned semantic baseline now rejects unexplained drift in
 the root and protected CI checks. Database internals moved from 122 flat root
 files to ten capability directories behind 12 stable entry points; the public
-testing barrel fell from 567 to 82 lines. The latest
+testing barrel fell from 567 to 85 physical lines. The latest
 audit follow-up also makes persisted artifact identities UUIDv7, retains leases
 while late publication marks settle, and proves compiled workers exit cleanly
 after SIGINT or SIGTERM with consumers disabled or active and during bootstrap
