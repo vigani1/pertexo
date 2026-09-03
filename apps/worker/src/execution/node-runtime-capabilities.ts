@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 import { mkdtemp, open, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -18,6 +18,7 @@ import {
   createPendingPreviewArtifact,
   createWorkspaceDatabase,
   finalizeArtifactUpload,
+  generatePersistedId,
   type ConnectionResolutionDatabase,
   type WorkerConnectionResolutionDatabase,
   type DatabaseConfig,
@@ -482,7 +483,7 @@ export async function createWorkerNodeRuntimeCapabilities(
         persistence,
         store,
         retentionMillis,
-        dependencies.artifactId ?? randomUUID,
+        dependencies.artifactId ?? generatePersistedId,
         dependencies.now ?? (() => new Date()),
         dependencies.spoolDirectory ?? tmpdir(),
       );

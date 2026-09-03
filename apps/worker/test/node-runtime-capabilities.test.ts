@@ -592,6 +592,57 @@ describe('worker node runtime capabilities', () => {
     await runtime.close();
   });
 
+  it('generates UUIDv7 identities for persisted artifacts by default', async () => {
+    const spoolDirectory = await mkdtemp(
+      path.join(tmpdir(), 'pertexo-capability-test-'),
+    );
+    temporaryDirectories.push(spoolDirectory);
+    const createPending = vi.fn(() => Promise.resolve());
+    const runtime = await createWorkerNodeRuntimeCapabilities(
+      { database: databaseConfig },
+      {
+        artifactPersistence: {
+          createPending,
+          finalize: vi.fn(() => Promise.resolve()),
+        },
+        artifactStore: {
+          put: async (request) => {
+            for await (const _chunk of request.body) void _chunk;
+            return {
+              artifactId: request.artifactId,
+              workspaceId: request.workspaceId,
+              byteLength: request.byteLength,
+              mediaType: request.mediaType,
+              sha256: request.sha256,
+            };
+          },
+        },
+        spoolDirectory,
+      },
+    );
+    const artifacts = runtime.factories.artifacts?.(context);
+    if (artifacts === undefined) throw new Error('artifact capability missing');
+
+    const reference = await artifacts.write({
+      body: (async function* (): AsyncGenerator<Uint8Array> {
+        await Promise.resolve();
+        yield new Uint8Array([1]);
+      })(),
+      maxBytes: 1,
+      mediaType: 'application/octet-stream',
+      purpose: 'node-output',
+      signal: new AbortController().signal,
+    });
+
+    expect(reference.artifactId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u,
+    );
+    expect(createPending).toHaveBeenCalledWith(
+      expect.objectContaining({ artifactId: reference.artifactId }),
+    );
+    await runtime.close();
+  });
+
   it('caps artifact retention at the owning preview deadline', async () => {
     const createPending = vi.fn(() => Promise.resolve());
     const now = new Date('2026-08-22T12:00:00.000Z');
