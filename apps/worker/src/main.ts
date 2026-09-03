@@ -3,8 +3,6 @@ import type { StructuredLogger } from '@pertexo/observability/logging';
 
 import { parseWorkerConfig } from './config/worker-config.js';
 
-const KEEP_ALIVE_INTERVAL_MS = 2_147_483_647;
-
 interface CloseableApplication {
   close(): Promise<void>;
 }
@@ -25,10 +23,6 @@ async function bootstrap(): Promise<void> {
     logger = createStructuredLogger(config.observability);
     application = await createWorkerApplication(config, { logger, telemetry });
     logger.info('worker.started');
-
-    // Enabled queue consumers keep their own connections alive. Retain the
-    // process as well when every dispatch capability is intentionally disabled.
-    setInterval(() => undefined, KEEP_ALIVE_INTERVAL_MS);
   } catch (error: unknown) {
     if (logger === undefined) {
       try {
