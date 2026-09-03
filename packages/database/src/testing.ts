@@ -21,7 +21,7 @@ export {
   DATABASE_METRIC_NAME,
   type DatabasePoolOptions,
   type DatabasePoolRole,
-} from './postgres-telemetry.js';
+} from './platform/postgres-telemetry.js';
 export { createWorkspaceDatabase } from './database.js';
 export type { WorkspaceDatabase } from './database.js';
 export {
@@ -29,8 +29,11 @@ export {
   checkDatabaseReadiness,
   checkDatabaseServingReadiness,
   checkDatabasePreactivationReadiness,
-} from './readiness.js';
-export type { DatabaseReadiness, ReadinessOptions } from './readiness.js';
+} from './platform/readiness.js';
+export type {
+  DatabaseReadiness,
+  ReadinessOptions,
+} from './platform/readiness.js';
 export {
   CoordinatorDeliveryMismatchError,
   CoordinatorPlanInvalidError,

@@ -8,7 +8,7 @@ import { parseDatabaseConfig } from '../src/config.js';
 import { createIdentityWorkspaceDatabase } from '../src/tenant-access/identity-workspace.js';
 import { migrateDatabase } from '../src/migrations.js';
 import { createPublishedWorkflowReader } from '../src/execution/published-workflow-reader.js';
-import { checkDatabaseReadiness } from '../src/readiness.js';
+import { checkDatabaseReadiness } from '../src/platform/readiness.js';
 import { createWorkflowAuthoringDatabase } from '../src/authoring/workflow-authoring.js';
 import { PHASE3_COMPATIBILITY_EXPECTATION } from './phase3-compatibility-fixture.js';
 

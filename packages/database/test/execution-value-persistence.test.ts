@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 
 import { describe, expect, it } from 'vitest';
 
-import { EXPECTED_MIGRATION_HEAD } from '../src/readiness.js';
+import { EXPECTED_MIGRATION_HEAD } from '../src/platform/readiness.js';
 import { EXECUTION_JSONB_DATABASE_BACKSTOP_BYTES_V1 } from '../src/execution/stored-execution-value.js';
 
 const migrationUrl = new URL(

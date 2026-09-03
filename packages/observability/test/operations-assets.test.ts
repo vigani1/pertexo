@@ -42,7 +42,7 @@ describe('operations observability assets', () => {
           '../../../apps/worker/src/execution/coordinator-telemetry.ts',
           '../../../apps/worker/src/triggers/trigger-telemetry.ts',
           '../../artifact-store/src/object-store-telemetry.ts',
-          '../../database/src/postgres-telemetry.ts',
+          '../../database/src/platform/postgres-telemetry.ts',
           '../../queue/src/redis-telemetry.ts',
           '../src/maintenance-metrics.ts',
           '../src/telemetry.ts',

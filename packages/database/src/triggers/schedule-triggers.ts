@@ -1,7 +1,7 @@
-import { createDatabasePool } from '../postgres-telemetry.js';
+import { createDatabasePool } from '../platform/postgres-telemetry.js';
 import { createHash } from 'node:crypto';
 
-import { generatePersistedId } from '../persisted-id.js';
+import { generatePersistedId } from '../platform/persisted-id.js';
 
 import { sql } from 'drizzle-orm';
 import type { PoolClient } from 'pg';

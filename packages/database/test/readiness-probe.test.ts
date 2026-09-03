@@ -5,7 +5,7 @@ import {
   assertReadinessSupport,
   DATABASE_READINESS_SQL,
   type ReadinessRow,
-} from '../src/readiness-probe.js';
+} from '../src/platform/readiness-probe.js';
 
 const readyRow = Object.freeze({
   can_delete: true,

@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   checkDatabaseServingReadiness,
   EXPECTED_MIGRATION_HEAD,
-} from '../src/readiness.js';
+} from '../src/platform/readiness.js';
 
 describe('steady database serving readiness', () => {
   it('checks only bounded live compatibility state', async () => {

@@ -1,5 +1,5 @@
 import type { Pool } from 'pg';
-import { createDatabasePool } from '../postgres-telemetry.js';
+import { createDatabasePool } from '../platform/postgres-telemetry.js';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from '../config.js';
@@ -7,7 +7,7 @@ import { claimQueryResultSchema, toLeasedEvent } from './dispatcher-rows.js';
 import {
   EXPECTED_MIGRATION_HEAD,
   MINIMUM_POSTGRES_MAJOR,
-} from '../readiness.js';
+} from '../platform/readiness.js';
 
 const claimInputSchema = z.object({
   enabledJobNames: z

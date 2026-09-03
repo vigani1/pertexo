@@ -24,7 +24,7 @@ export type { CoordinatorRunStore } from './coordinator-run-store.js';
 export type { DatabaseConfig } from './config.js';
 export { createWorkspaceDatabase } from './database.js';
 export type { WorkspaceDatabase } from './database.js';
-export { generatePersistedId } from './persisted-id.js';
+export { generatePersistedId } from './platform/persisted-id.js';
 export { createDeadlineWakeupScanner } from './execution/deadline-wakeup-scanner.js';
 export type { DeadlineWakeupScanner } from './execution/deadline-wakeup-scanner.js';
 export { createDueNodeWakeupScanner } from './execution/due-node-wakeup-scanner.js';
@@ -66,7 +66,7 @@ export {
 } from './operator/operator-run-replay.js';
 export type { OperatorRunReplayStore } from './operator/operator-run-replay.js';
 export { canonicalOutboxPayloadChecksum } from './execution/outbox.js';
-export { createDatabasePool } from './postgres-telemetry.js';
+export { createDatabasePool } from './platform/postgres-telemetry.js';
 export {
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,
@@ -110,4 +110,4 @@ export {
   createWorkflowTriggerReconciliationDatabase,
 } from './triggers/workflow-triggers.js';
 export type { WorkflowTriggerReconciliationDatabase } from './triggers/workflow-triggers.js';
-export type { DatabaseReadiness } from './readiness.js';
+export type { DatabaseReadiness } from './platform/readiness.js';

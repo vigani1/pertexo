@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { FailureNotificationDestinationConfigSchema } from '@pertexo/workflow-model/failure-notification';
 
 import { FailureNotificationStateError } from './failure-notification-errors.js';
-import { generatePersistedId } from '../persisted-id.js';
+import { generatePersistedId } from '../platform/persisted-id.js';
 import {
   auditFailureNotification,
   failureNotificationIdentitySchema,

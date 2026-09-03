@@ -9,7 +9,7 @@ import {
 } from '../src/compatibility/compatibility-release.js';
 import { parseDatabaseConfig } from '../src/config.js';
 import { createWorkspaceDatabase } from '../src/database.js';
-import { EXPECTED_MIGRATION_HEAD } from '../src/readiness.js';
+import { EXPECTED_MIGRATION_HEAD } from '../src/platform/readiness.js';
 
 const migrationUrl = new URL(
   '../migrations/0017_node_compatibility_releases.sql',

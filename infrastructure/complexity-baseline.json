@@ -25,7 +25,7 @@
     "packages/database/src/lifecycle/retention.ts": 813,
     "packages/database/src/lifecycle/workspace-lifecycle-commands.ts": 559,
     "packages/database/src/lifecycle/workspace-purge.ts": 798,
-    "packages/database/src/postgres-telemetry.ts": 541,
+    "packages/database/src/platform/postgres-telemetry.ts": 541,
     "packages/database/src/tenant-access/identity-workspace.ts": 591,
     "packages/database/src/triggers/schedule-triggers.ts": 662,
     "packages/database/src/triggers/webhook-triggers.ts": 666,

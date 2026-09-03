@@ -7,7 +7,7 @@ import { migrateDatabase } from '../src/migrations.js';
 import {
   checkDatabaseReadiness,
   checkDatabaseServingReadiness,
-} from '../src/readiness.js';
+} from '../src/platform/readiness.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';
 
 const adminUrl =

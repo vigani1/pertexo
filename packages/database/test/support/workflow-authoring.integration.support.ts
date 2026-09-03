@@ -18,7 +18,7 @@ import { CompatibilityReleaseMismatchError } from '../../src/compatibility/compa
 import { createIdentityWorkspaceDatabase } from '../../src/tenant-access/identity-workspace.js';
 import { migrateDatabase } from '../../src/migrations.js';
 import { PHASE3_COMPATIBILITY_EXPECTATION } from '../phase3-compatibility-fixture.js';
-import { checkDatabaseReadiness } from '../../src/readiness.js';
+import { checkDatabaseReadiness } from '../../src/platform/readiness.js';
 import {
   createWorkflowAuthoringDatabase,
   WorkflowIdempotencyConflictError,

@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { createDatabasePool } from '../postgres-telemetry.js';
+import { createDatabasePool } from '../platform/postgres-telemetry.js';
 
-import { generatePersistedId } from '../persisted-id.js';
+import { generatePersistedId } from '../platform/persisted-id.js';
 
 import type { PoolClient } from 'pg';
 import { z } from 'zod';

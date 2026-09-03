@@ -9,7 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../src/migrations.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';
-import { checkDatabaseReadiness } from '../src/readiness.js';
+import { checkDatabaseReadiness } from '../src/platform/readiness.js';
 import {
   EXECUTION_JSONB_DATABASE_BACKSTOP_BYTES_V1,
   serializeStoredExecutionValueV1,
