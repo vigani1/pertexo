@@ -25,6 +25,7 @@ import type {
   PreviewTelemetry,
   PreviewTerminalStatus,
 } from './preview-telemetry.js';
+import { waitForSupervisorDelay } from '../runtime/abortable-delay.js';
 
 type PreviewQueueDelivery = Extract<
   QueueDelivery,
@@ -281,27 +282,6 @@ function committedTerminal(
   return committed(result);
 }
 
-function waitForHeartbeat(
-  milliseconds: number,
-  signal: AbortSignal,
-): Promise<void> {
-  return new Promise((resolve) => {
-    if (signal.aborted) {
-      resolve();
-      return;
-    }
-    const timer = setTimeout(() => {
-      signal.removeEventListener('abort', onAbort);
-      resolve();
-    }, milliseconds);
-    const onAbort = (): void => {
-      clearTimeout(timer);
-      resolve();
-    };
-    signal.addEventListener('abort', onAbort, { once: true });
-  });
-}
-
 export function createPreviewAttemptHandler(
   dependencies: PreviewAttemptHandlerDependencies,
 ): PreviewAttemptHandler {
@@ -480,7 +460,7 @@ export function createPreviewAttemptHandler(
       });
       void (async (): Promise<void> => {
         while (!heartbeatSignal.aborted) {
-          await waitForHeartbeat(
+          await waitForSupervisorDelay(
             dependencies.heartbeatIntervalMillis,
             heartbeatSignal,
           );

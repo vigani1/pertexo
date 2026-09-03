@@ -45,6 +45,7 @@ import {
   type CoordinatorHandler,
   CoordinatorHandlerStateError,
 } from './coordinator-handler.js';
+import { waitForSupervisorDelay } from '../runtime/abortable-delay.js';
 
 export interface CoordinatorRuntime {
   readonly consumer: QueueConsumer;
@@ -100,24 +101,6 @@ function queueHandler(handler: CoordinatorHandler): QueueJobHandler {
       throw error;
     }
   };
-}
-
-function delay(milliseconds: number, signal: AbortSignal): Promise<void> {
-  return new Promise((resolve) => {
-    if (signal.aborted) {
-      resolve();
-      return;
-    }
-    const onAbort = (): void => {
-      clearTimeout(timeout);
-      resolve();
-    };
-    const timeout = setTimeout(() => {
-      signal.removeEventListener('abort', onAbort);
-      resolve();
-    }, milliseconds);
-    signal.addEventListener('abort', onAbort, { once: true });
-  });
 }
 
 export async function createCoordinatorRuntime(
@@ -223,7 +206,10 @@ export async function createCoordinatorRuntime(
       } catch {
         // A transient database outage must not terminate the coordinator process.
       }
-      await delay(dueWakeupPollIntervalMillis, scannerAbort.signal);
+      await waitForSupervisorDelay(
+        dueWakeupPollIntervalMillis,
+        scannerAbort.signal,
+      );
     }
   })();
   let closePromise: Promise<void> | undefined;

@@ -327,6 +327,26 @@ making the architecture plan even larger.
 ### C-06 — Abortable delay implementations have drifted
 
 - **Severity:** medium.
+- **Remediation status:** complete on 2026-09-03.
+- **Repository-wide affected locations:** duplicated delays existed in the
+  coordinator runtime, trigger runtime, durable node-attempt heartbeat, preview
+  node-attempt heartbeat, and the preview-maintenance recovery loop (the fifth
+  location was not named in the original examples). The failure-notification
+  handler's combined queue-abort/deadline controller is intentionally retained:
+  it owns different timeout semantics and already removes its listener in
+  `finally`. Queue execution, expression evaluation, API streaming/OIDC, object
+  storage, and database cancellation listeners likewise govern in-flight I/O
+  rather than worker loop delays and retain their local cleanup contracts.
+- **Remediation:** introduced worker-owned `waitForSupervisorDelay` (abort
+  resolves a loop wait) and `waitForAbortableDelay` (abort rejects operational
+  work with `AbortError`). Both remove the listener on elapsed completion,
+  clear the timer on abort, and close the registration race. All five duplicate
+  worker delay implementations now use one of these explicit semantics.
+- **Verification:** red/green timer and listener regression tests in
+  `apps/worker/test/abortable-delay.test.ts`; targeted trigger, coordinator,
+  durable attempt, preview attempt, and preview reconciliation suites plus the
+  delay suite (67 tests); worker typecheck. A post-change worker source scan
+  found no remaining timer-backed abortable delay outside the shared primitive.
 - **Locations:** worker coordinator runtime, trigger runtime, node-attempt
   handler, and preview-attempt handler.
 - **Issue:** four similar helpers differ in resolve/reject behavior and listener

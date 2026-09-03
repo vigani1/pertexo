@@ -37,6 +37,7 @@ import {
   createTriggerRuntimeTelemetry,
   type TriggerRuntimeTelemetry,
 } from './trigger-telemetry.js';
+import { waitForSupervisorDelay } from '../runtime/abortable-delay.js';
 
 export interface TriggerRuntime {
   readonly consumer: QueueConsumer;
@@ -80,27 +81,6 @@ function validateOptions(options: TriggerRuntimeOptions): void {
     options.leaseOwner.length > 128
   )
     throw new TypeError('Trigger runtime scanner configuration is invalid');
-}
-
-function abortableDelay(
-  milliseconds: number,
-  signal: AbortSignal,
-): Promise<void> {
-  return new Promise((resolve) => {
-    if (signal.aborted) {
-      resolve();
-      return;
-    }
-    const timeout = setTimeout(resolve, milliseconds);
-    signal.addEventListener(
-      'abort',
-      () => {
-        clearTimeout(timeout);
-        resolve();
-      },
-      { once: true },
-    );
-  });
 }
 
 export async function createTriggerRuntime(
@@ -245,7 +225,10 @@ export async function createTriggerRuntime(
           error,
         );
       }
-      await abortableDelay(options.pollIntervalMillis, scannerAbort.signal);
+      await waitForSupervisorDelay(
+        options.pollIntervalMillis,
+        scannerAbort.signal,
+      );
     }
   })();
   let closePromise: Promise<void> | undefined;
