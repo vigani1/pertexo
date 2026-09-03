@@ -216,11 +216,6 @@ export type WorkflowAuthoringDatabase = Readonly<{
     actorId: string,
   ): Promise<WorkflowVersionRecord | null>;
   listVersions(input: ListWorkflowVersionsInput): Promise<WorkflowVersionPage>;
-  /**
-   * A failed compare-and-swap reports the current revision and representation
-   * tag from the same transaction snapshot. Callers must preserve that error;
-   * a follow-up read could pair values from a later save.
-   */
   saveDraft(input: SaveWorkflowDraftInput): Promise<WorkflowDraftRecord>;
   publishWorkflow(input: PublishWorkflowInput): Promise<PublishWorkflowResult>;
   close(): Promise<void>;

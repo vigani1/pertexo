@@ -31,6 +31,7 @@ function waitForDelay(
     }, milliseconds);
     signal.addEventListener('abort', onAbort, { once: true });
     // Close the race between the initial check and listener registration.
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- AbortSignal state can change asynchronously between the two reads.
     if (signal.aborted) onAbort();
   });
 }
