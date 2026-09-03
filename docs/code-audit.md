@@ -1,10 +1,10 @@
 # Code Implementation Craft Audit
 
-Recorded: 2026-09-03
+Recorded: 2026-09-04
 
-Audited implementation tree: `475d499f448d41aeb550c4236af7abf63d349868`
+Audited implementation tree: `db23a4da448c95118335b19b4e5b2b3846e2d601`
 
-Status: current read-only findings and refactoring guidance
+Status: current disposition with original-snapshot findings retained for traceability
 
 ## 1. Purpose
 
@@ -33,7 +33,9 @@ readiness remain covered by [the whole-repository audit](./whole-repository-audi
 
 ## 2. Review coverage and limitations
 
-This was a repository-wide, risk-based implementation review. It was not a
+This section describes the original review method and calibration. Sections 20
+through 22 contain the current recheck and disposition. The work was a
+repository-wide, risk-based implementation review. It was not a
 manual line-by-line inspection of every production line.
 
 Every production file was included in repository-wide inventories and searches
@@ -64,7 +66,7 @@ the dominant risk areas. It does not claim that every one of the approximately
 86,400 production lines received equal manual scrutiny, and it cannot guarantee
 that no isolated local smell remains outside the sampled paths.
 
-Verification at the audited tree:
+Verification at the original review snapshot:
 
 - `pnpm check`: passed;
 - formatting, documentation checks, runtime checks, builds, lint, complexity
@@ -77,7 +79,11 @@ Redis, service, resilience, provider, load, or recovery-drill suites. A green
 result here is characterization evidence, not proof of production readiness or
 whole-repository behavioral coverage.
 
-## 3. Executive verdict
+## 3. Original executive verdict and calibration
+
+The following prose and scores explain why C-01 through C-20 were opened. They
+are not the current post-remediation scorecard; see section 22 and the
+[whole-repository audit](./whole-repository-audit.md) for current conclusions.
 
 The codebase is clean overall, well above the quality of a typical large
 application repository, and recognizably senior-level TypeScript. It is not yet
@@ -158,20 +164,20 @@ The current relationship is:
 
 | Plan requirement | Current assessment | Relevant audit finding |
 | --- | --- | --- |
-| Parse once at the owning seam | Partial drift | Some request values are parsed in both controller and use case; response and graph values also cross more parsing steps than necessary |
-| Do not duplicate Zod, decorator, and ad hoc validation | Partial drift | Route parsing uses both manual inspection and schemas; persisted rows use several validation styles |
-| One global exception filter maps application errors | Partial drift | The shared problem filter exists, but controllers still repeat feature mapping catches around whole handlers |
-| One authentication guard establishes the actor; module policy performs authorization | Partial drift | Feature capability guards authorize and then many use cases perform the same authorization lookup again |
-| Avoid generic option bags and invalid combinations | Partial drift | API and worker composition dependency bags allow mutually shadowing runtime/override combinations |
-| Transactions have one use-case owner rather than scattered repository transaction setup | Mostly aligned with one concrete drift | The shared tenant transaction implementation is strong, but failure notifications reimplement it locally |
+| Parse once at the owning seam | Aligned | C-16 removed redundant supported-boundary parsing; deliberate durable-data validation remains at trust boundaries |
+| Do not duplicate Zod, decorator, and ad hoc validation | Aligned | C-12/C-17/C-18/C-20 established owner-local persisted-row, response, route/cursor, and graph validation seams |
+| One global exception filter maps application errors | Aligned | C-14/C-19 retain one shared problem filter with feature-owned exhaustive mapping rather than controller catch ladders |
+| One authentication guard establishes the actor; module policy performs authorization | Aligned | C-05 separates actor establishment from capability policy without duplicate authorization lookups |
+| Avoid generic option bags and invalid combinations | Aligned | C-09 replaced shadowing composition combinations with explicit owners |
+| Transactions have one use-case owner rather than scattered repository transaction setup | Aligned | C-02 converged tenant transaction ownership while preserving distinct security semantics |
 | Helper extraction requires shared semantics | Aligned | There is little text duplication and no generic helper bucket; this audit does not recommend broad DRY refactoring |
-| Functions do one job and comments explain constraints | Mostly aligned | Most long correctness flows are cohesive; the workflow draft catch/rethrow is one clear counterexample |
-| One application error structure rather than a subclass per application case | Partial drift | `ApplicationError` is used at the HTTP seam, but tag-only error subclasses and `instanceof` mapping ladders remain numerous |
+| Functions do one job and comments explain constraints | Aligned with controlled hotspots | C-15 removed the meaningless catch/rethrow; 35 file and 40 function hotspots retain explicit correctness ownership |
+| One application error structure rather than a subclass per application case | Aligned | C-14/C-19 use coded errors and exhaustive layer-owned mapping without tag-only class ladders |
 | Strict TypeScript and minimal unsafe assertions | Strongly aligned | Strict project references and production escape-hatch avoidance are notable strengths |
 | Discriminated unions and exhaustive handling | Strongly aligned | Execution outcomes and domain variants generally follow this pattern |
-| Capability-oriented folders and explicit ownership | Top-level aligned; internal convergence incomplete | API features and packages are clear, but the database package remains a 104-file flat directory |
-| Static package direction and server-only export protection | Strongly aligned, with one manifest defect | Package graph is acyclic and imports are disciplined; worker runtime dependency classification is incorrect |
-| Graceful shutdown and named timeout ownership | Partial drift | Worker keepalive ownership, lifecycle-helper variation, and non-canceling publish timeouts remain |
+| Capability-oriented folders and explicit ownership | Aligned | C-22 groups database internals in ten capability directories behind 12 stable public/composition files |
+| Static package direction and server-only export protection | Strongly aligned | C-04 corrected the worker runtime manifest; package direction and supported surfaces are executable gates |
+| Graceful shutdown and named timeout ownership | Aligned | C-01/C-03 own late operations and worker keepalive; compiled SIGINT/SIGTERM/bootstrap-failure tests pass |
 | Tests target public module interfaces | Strongly aligned | Unit and integration styles generally test meaningful interfaces rather than private Nest internals |
 
 ### 4.3 Areas where the plan was not detailed enough
@@ -218,7 +224,7 @@ questions were examined or that every production line received equal manual
 scrutiny. Sections 6–19 record the broader repository-wide inventories,
 patterns, hotspots, and leave-alone decisions. A post-remediation recheck also
 found repeated setup across several split test suites; that cross-cutting test-
-maintainability finding is tracked as partially open A-11 in
+maintainability finding was completed under A-11/C-21 in
 [the whole-repository audit](./whole-repository-audit.md) rather than being
 retroactively hidden inside C-01 through C-20.
 
@@ -302,7 +308,7 @@ retroactively hidden inside C-01 through C-20.
 - **Issue:** the module manually acquires clients, starts transactions, installs
   workspace context, handles abortion, rolls back, and releases connections.
 - **Why it matters:** it bypasses the stronger hygiene in
-  `packages/database/src/workspace.ts#runTransaction`, including context
+  `packages/database/src/tenant-access/workspace.ts#runTransaction`, including context
   preflight, setting read-back, rollback aggregation, and contaminated-client
   destruction.
 - **Cleaner shape:** extend the canonical tenant transaction primitive with the
@@ -996,10 +1002,10 @@ measurements or recommendations below differ from the current tree.
 
 ### 6.2 Structure that should be reorganized
 
-Schema ownership has moved into `packages/database/src/schema`, but
-`packages/database/src` still has 122 TypeScript files at its root. Prefixes
-identify families, but the filesystem does not provide enough locality. A
-reasonable incremental target, without changing public export paths, is:
+Schema ownership has moved into `packages/database/src/schema`. The later C-22
+remediation completed this target: ten capability directories now own database
+internals while 12 stable public/composition files remain at the source root.
+The target that guided that change, without changing public export paths, was:
 
 ```text
 packages/database/src/
@@ -1194,7 +1200,7 @@ and similar low-volume operations should not be micro-optimized.
 
 | Concern | Best current pattern | Code that should converge |
 | --- | --- | --- |
-| Tenant transactions | `packages/database/src/workspace.ts#runTransaction` | Failure notifications and future tenant stores |
+| Tenant transactions | `packages/database/src/tenant-access/workspace.ts#runTransaction` | Failure notifications and future tenant stores |
 | Error handling | Coded errors such as `SecureHttpError` plus exhaustive layer-owned mapping | Tag-only class families and repetitive mapper ladders |
 | Cleanup | `closeWorkflowResources` collecting all failures in `AggregateError` | Shutdown implementations that throw only the first failure |
 | Dependency composition | Small explicit runtime holders such as `createApiWebhookRuntime` | API application and worker transport dependency bags |
@@ -1331,8 +1337,8 @@ after repository-wide pattern searches. They were the formal high-value finding
 set, not an exhaustive enumeration of every local smell. Remaining similar-
 looking production code is recorded under the individual finding where its
 ordering, ownership, persisted-state, retry, integrity, or public-boundary
-semantics require it to remain. The later full-corpus test recheck partially
-reopened whole-audit A-11 for duplicated split-suite setup. This conclusion does
+semantics require it to remain. The later full-corpus test recheck reopened
+whole-audit A-11; C-21 records its completed owner-local remediation. This conclusion does
 not claim that future craft debt is impossible; it records that the concrete
 C-01 through C-20 scope is complete without changing the section 19.4 state-
 machine and security-flow exclusions merely to reduce metrics.
@@ -1360,24 +1366,25 @@ Status meanings:
 
 | ID | Priority | Status | Remaining finding |
 | --- | --- | --- | --- |
-| C-21 | P2 | Open | Split test suites duplicate substantial environment and fixture setup |
-| C-22 | P2 | Open incrementally | The database implementation remains concentrated in one flat source directory |
-| C-23 | P2 | Controlled debt | Thirty-six production files and forty functions remain above the complexity budgets |
+| C-21 | P2 | Complete | Owner-local support modules remove genuinely shared split-suite setup |
+| C-22 | P2 | Complete | Database internals are grouped by capability behind unchanged public entry points |
+| C-23 | P2 | Controlled debt | Thirty-five production files and forty functions remain above the complexity budgets |
 | C-24 | P2 | Continuous assurance | Coverage is exact and strong for selected critical modules, but intentionally narrow |
-| C-25 | P3 | Evidence-gated | Repeated freezing, copying, and exact-optional-property construction add ceremony at some trusted seams |
-| C-26 | P3 | Open incrementally | Historical Phase 3 source terminology remains in current domain implementation names |
+| C-25 | P3 | Policy recorded; evidence-gated | Immutability and optional-property ownership is explicit; removal still requires mutation or profiling evidence |
+| C-26 | P3 | Complete with compatibility retainers | Source-only phase terminology is durable; persisted and operational identifiers remain compatible |
 | C-27 | P3 | Conditional | Several large domain-shaped `.mjs` tools do not receive type-aware checking |
-| C-28 | P3 | Open | Source/test clone measurement is not a pinned reproducible non-regression gate |
+| C-28 | P3 | Complete | Pinned source/test clone scans and reviewed semantic baselines gate local and protected CI |
 
 ### C-21 — Split test suites duplicate substantial setup
 
 - **Priority:** P2.
-- **Status:** open; this is the code-audit counterpart of partially open
-  whole-repository finding A-11.
-- **Evidence:** the exact full-test-corpus command below reports 25 clone groups
-  and 1,977 duplicated lines, or 2.08% of the analyzed test corpus. The earlier
-  11-group/0.42% statement was not accompanied by a reproducible command or
-  exclusions and has been superseded.
+- **Status:** complete for repository-controlled work; this is the code-audit
+  counterpart of whole-repository finding A-11.
+- **Evidence:** the unchanged full-test-corpus command below fell from 25 clone
+  groups and 1,977 duplicated lines (2.08%) to 5 groups and 159 duplicated
+  lines (0.17%) across 362 files and 93,397 lines. The six priority split-suite
+  pairs and additional repeated environment, lifecycle, and domain-fixture
+  construction now use owner-local support modules.
 - **Main locations:** paired schedule-trigger, database control-ledger,
   database transport, artifact control-ledger, worker transport, and worker
   node-attempt-handler suites.
@@ -1390,10 +1397,16 @@ Status meanings:
   global fixture.
 - **Refactor risk:** medium because integration isolation, cleanup, and
   independent test collection must remain intact.
-- **Acceptance evidence:** every paired suite collects and passes independently;
-  real-service cleanup remains deterministic; no test exceeds 1,000 lines; and
-  the pinned clone scan falls below the 2.08% baseline without broader ignores
-  or weaker thresholds.
+- **Acceptance evidence:** every priority suite collected and passed
+  independently and together, including PostgreSQL, Redis, and object-store
+  integrations; no test exceeds 1,000 lines. The five retained groups are
+  individually classified in `infrastructure/test-duplication-baseline.json`
+  as scenario-local repetition or false positives. No threshold or exclusion
+  was weakened.
+
+The [A-11 baseline disposition ledger](./operations/test-duplication-review.md)
+accounts for every one of the original 25 reports and names the extracted owner
+or retention reason.
 
 Reproduction:
 
@@ -1406,12 +1419,13 @@ pnpm dlx jscpd@4.0.5 apps/*/test packages/*/test \
 ### C-22 — Database implementation locality remains flat
 
 - **Priority:** P2.
-- **Status:** open incrementally; public database capability entry points are
-  already narrow and must remain stable.
-- **Evidence:** `packages/database/src` currently contains 122 TypeScript files
-  at its root and only the schema implementation has a capability subdirectory.
-  Prefix naming helps search, but related transaction, row-mapping, SQL, and
-  reconciliation files remain interleaved in one directory.
+- **Status:** complete; public database capability entry points remain stable.
+- **Evidence:** `packages/database/src` fell from 122 root TypeScript files to
+  12 public/composition entry points. Internals now have obvious owners under
+  `authoring`, `compatibility`, `connections`, `execution`, `lifecycle`,
+  `operator`, `platform`, `schema`, `tenant-access`, and `triggers`. The public
+  testing entry point fell from 567 to 82 lines and delegates exact seams to
+  capability-local testing barrels.
 - **Why it matters:** maintainers must reconstruct ownership from filenames and
   imports, and a capability change frequently navigates a large unrelated file
   list. This weakens locality without being a runtime correctness defect.
@@ -1432,7 +1446,7 @@ pnpm dlx jscpd@4.0.5 apps/*/test packages/*/test \
 
 - **Priority:** P2.
 - **Status:** controlled debt, not a blanket instruction to split every entry.
-- **Evidence:** the enforced baseline contains 36 production files above 500
+- **Evidence:** the enforced baseline contains 35 production files above 500
   lines and 40 functions above 200 lines or 40 branches. The complete current
   inventory and retention reason for every occurrence lives in
   [`docs/operations/complexity-hotspot-retention.md`](./operations/complexity-hotspot-retention.md).
@@ -1461,7 +1475,7 @@ pnpm dlx jscpd@4.0.5 apps/*/test packages/*/test \
   whole-package or whole-repository coverage.
 - **Evidence:** coverage gates instrument 30 selected files with 1,736 coverable
   lines. They provide strong decision coverage and source-fingerprinted review
-  for 116 uncovered branches, but the repository contains 506 production
+  for 116 uncovered branches, but the repository contains 514 production
   TypeScript files.
 - **Why it matters:** a green selected-module percentage cannot reveal a newly
   risky unselected adapter or capability. Coverage selection must evolve when
@@ -1503,14 +1517,20 @@ pnpm dlx jscpd@4.0.5 apps/*/test packages/*/test \
   changed values, no weaker checksum/configuration/capability immutability, and
   measured allocation/latency improvement for performance-motivated changes.
 
+The seam policy is recorded in
+[`docs/operations/immutability-policy.md`](./operations/immutability-policy.md).
+No freeze or copy was removed without the evidence required by that policy.
+
 ### C-26 — Historical Phase 3 terminology remains in current source names
 
 - **Priority:** P3.
-- **Status:** open incrementally and compatibility-sensitive.
-- **Evidence:** current code still uses source names such as
-  `packages/database/src/phase3-checkpoint.ts` and internal engine identifiers
-  such as `phase3-engine-v1`; readiness SQL and migration compatibility names
-  also preserve the historical phase label.
+- **Status:** complete with compatibility-sensitive retainers.
+- **Evidence:** the source owner and symbols now use durable
+  `persisted-workflow-checkpoint` terminology, and the engine's internal policy
+  name is `BASELINE_RUNTIME_POLICIES_V1`. The deprecated public
+  `PHASE3_RUNTIME_POLICIES_V1` alias, durable `phase3-engine-v1` serialized
+  value, migration names, readiness columns, and database objects remain
+  intentionally unchanged compatibility contracts.
 - **Why it matters:** phase numbers describe project history, not the durable
   domain concept. New maintainers must know the implementation chronology to
   discover the persisted workflow checkpoint owner.
@@ -1550,7 +1570,7 @@ pnpm dlx jscpd@4.0.5 apps/*/test packages/*/test \
 ### C-28 — Clone evidence is not an automated reproducible ratchet
 
 - **Priority:** P3.
-- **Status:** open.
+- **Status:** complete.
 - **Evidence:** the audit previously recorded 35 source clone groups/1.12% and
   11 test groups/0.42%, while reproducible current commands report 45 source
   groups/1.15% and 25 test groups/2.08%. Source duplication remains low, but the
@@ -1569,6 +1589,13 @@ pnpm dlx jscpd@4.0.5 apps/*/test packages/*/test \
   are narrow and reviewed; the baseline contains a reason for every retained
   family; and new unexplained clones fail admission.
 
+`pnpm duplication:check` pins `jscpd` 4.0.5, expands deterministic inputs, and
+checks aggregate ceilings plus exact file-pair and fragment hashes. The
+reviewed baseline records all 45 source groups (992 lines, 1.15%) and all 5 test
+groups (159 lines, 0.17%). Stale evidence, semantic drift, new families, or
+aggregate/individual growth fail both the root `check` and protected quality
+CI jobs.
+
 Source reproduction used for the current baseline:
 
 ```sh
@@ -1580,17 +1607,10 @@ pnpm dlx jscpd@4.0.5 apps/*/src packages/*/src \
 
 ## 22. Current implementation-craft conclusion
 
-The codebase is strong and all original C-01 through C-20 correctness and
-high-value cleanup findings are complete. The complete current code-level
-register is no longer limited to that Top 20: C-21 through C-28 make the
-remaining test duplication, source locality, measured complexity, coverage
-breadth, implementation ceremony, terminology, tooling types, and clone-
-evidence work explicit.
-
-These remaining entries do not all mean “rewrite now.” C-21, C-22, and C-28
-have concrete repository work; C-23 should decline through focused feature-local
-refactors; C-24 is an ongoing risk-selection responsibility; C-25 requires
-mutation/profiling evidence; C-26 must preserve durable compatibility; and C-27
-activates when a large tool changes materially. A future audit may still find a
+The codebase is strong and all directly actionable C-01 through C-22, C-26,
+and C-28 repository findings are complete. C-23 remains measured, reasoned
+complexity debt; C-24 is continuous risk-selection work; C-25 now has an
+explicit policy and still requires mutation/profiling evidence before code
+removal; and C-27 activates only when a large tool changes materially. A future audit may still find a
 new issue because repository-wide inventories plus risk-based manual review are
 not a guarantee that every line has been exhaustively proved correct.

@@ -12,7 +12,7 @@ This register accounts for every occurrence accepted by `infrastructure/complexi
 | `apps/api/src/identity-infrastructure/oidc-adapter.ts` | 507 | OIDC discovery, callback, token, and identity validation remain one security boundary; retain to preserve validation order. |
 | `apps/worker/src/execution/node-runtime-capabilities.ts` | 503 | Worker attempt or transport lifecycle composition remains local; split only with cancellation, fencing, and redelivery characterization. |
 | `apps/worker/src/execution/preview-attempt-handler.ts` | 534 | Worker attempt or transport lifecycle composition remains local; split only with cancellation, fencing, and redelivery characterization. |
-| `apps/worker/src/transport/outbox-dispatcher.ts` | 540 | Worker attempt or transport lifecycle composition remains local; split only with cancellation, fencing, and redelivery characterization. |
+| `apps/worker/src/transport/outbox-dispatcher.ts` | 538 | Worker attempt or transport lifecycle composition remains local; split only with cancellation, fencing, and redelivery characterization. |
 | `packages/artifact-store/src/control-ledger.ts` | 997 | Append-only ledger integrity and replay rules share one owner; splitting requires hash-chain and concurrency characterization. |
 | `packages/artifact-store/src/store.ts` | 903 | Artifact streaming, metadata, checksum, and storage lifecycle share one adapter boundary; split only with object-store integration evidence. |
 | `packages/database/src/connections/connection-persistence.ts` | 652 | Capability-owned PostgreSQL composition or transaction surface; retain until a focused change can preserve SQL ordering, connection ownership, and atomicity with real-service characterization. |
@@ -27,7 +27,6 @@ This register accounts for every occurrence accepted by `infrastructure/complexi
 | `packages/database/src/execution/preview-execution-acceptance.ts` | 563 | Capability-owned PostgreSQL composition or transaction surface; retain until a focused change can preserve SQL ordering, connection ownership, and atomicity with real-service characterization. |
 | `packages/database/src/lifecycle/retention.ts` | 813 | Capability-owned PostgreSQL composition or transaction surface; retain until a focused change can preserve SQL ordering, connection ownership, and atomicity with real-service characterization. |
 | `packages/database/src/triggers/schedule-triggers.ts` | 662 | Capability-owned PostgreSQL composition or transaction surface; retain until a focused change can preserve SQL ordering, connection ownership, and atomicity with real-service characterization. |
-| `packages/database/src/testing.ts` | 567 | Capability-owned PostgreSQL composition or transaction surface; retain until a focused change can preserve SQL ordering, connection ownership, and atomicity with real-service characterization. |
 | `packages/database/src/triggers/webhook-triggers.ts` | 666 | Capability-owned PostgreSQL composition or transaction surface; retain until a focused change can preserve SQL ordering, connection ownership, and atomicity with real-service characterization. |
 | `packages/database/src/authoring/workflow-authoring.ts` | 624 | Capability-owned PostgreSQL composition or transaction surface; retain until a focused change can preserve SQL ordering, connection ownership, and atomicity with real-service characterization. |
 | `packages/database/src/execution/workflow-run-api.ts` | 517 | Capability-owned PostgreSQL composition or transaction surface; retain until a focused change can preserve SQL ordering, connection ownership, and atomicity with real-service characterization. |
@@ -92,4 +91,4 @@ This register accounts for every occurrence accepted by `infrastructure/complexi
 
 ## Verification
 
-`node infrastructure/validate-complexity.mjs` re-inventories all production TypeScript and fails for a new or worsened hotspot. At this register revision it reports 36 file and 40 function hotspots with no regression.
+`node infrastructure/validate-complexity.mjs` re-inventories all production TypeScript and fails for a new or worsened hotspot. At this register revision it reports 35 file and 40 function hotspots with no regression. The database testing entry point fell from 567 to 82 lines after its exact exports were delegated to capability-owned testing barrels.

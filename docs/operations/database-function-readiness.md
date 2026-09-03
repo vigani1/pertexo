@@ -20,7 +20,7 @@ body, and a different `md5(prosrc)` blocks startup.
 | `app.node_compatibility_artifact_set_valid(jsonb)` | `1ee6b6a001eb02b6b5a95f671240ae69` | invoker, `pg_catalog, app` | `0019_node_compatibility_preactivation.sql` |
 | `app.compatibility_preactivation_cohort_complete(character varying,integer,character varying,character varying,jsonb)` | `4bd8e8a005eebc013d41ae6b6a55b976` | invoker, `pg_catalog, app` | `0019_node_compatibility_preactivation.sql` |
 
-`packages/database/src/readiness.ts` is the executable inventory. This table is
+`packages/database/src/platform/readiness.ts` is the executable inventory. This table is
 an operator aid and must change in the same commit whenever that code changes.
 
 ## Synchronized update procedure
