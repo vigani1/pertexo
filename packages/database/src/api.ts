@@ -7,7 +7,7 @@ export {
   ConnectionTestInProgressError,
   ConnectionUnavailableError,
   createApiConnectionDatabase,
-} from './connections.js';
+} from './connections/connections.js';
 export type {
   ApiConnectionDatabase,
   ConnectionManagementDatabase,
@@ -15,7 +15,7 @@ export type {
   ConnectionRecord,
   ConnectionTestOutcome,
   ConnectionTestResult,
-} from './connections.js';
+} from './connections/connections.js';
 export type { DatabaseConfig } from './config.js';
 export { generatePersistedId } from './persisted-id.js';
 export { ExecutionStateConflictError } from './execution-state.js';

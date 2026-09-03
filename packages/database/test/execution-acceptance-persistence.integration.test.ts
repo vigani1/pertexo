@@ -140,7 +140,9 @@ describe('workflow run acceptance persistence and idempotency', () => {
           },
         }),
       ),
-    ).rejects.toMatchObject({ name: 'PersistedWorkflowCheckpointInvalidError' });
+    ).rejects.toMatchObject({
+      name: 'PersistedWorkflowCheckpointInvalidError',
+    });
     await expectAcceptanceRecordCounts(0);
   });
 

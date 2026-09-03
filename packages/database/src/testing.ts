@@ -130,7 +130,7 @@ export {
   createConnectionDatabase,
   createApiConnectionDatabase,
   createWorkerConnectionResolutionDatabase,
-} from './connections.js';
+} from './connections/connections.js';
 export type {
   ConnectionAuthType,
   ConnectionDatabase,
@@ -159,7 +159,7 @@ export type {
   RevokeConnectionInput,
   RotateConnectionSecretInput,
   SealedConnectionSecretRecord,
-} from './connections.js';
+} from './connections/connections.js';
 export {
   checkCompatibilityReleasePreactivationTarget,
   checkExpectedCompatibilityRelease,
@@ -499,14 +499,14 @@ export {
   WorkflowDefinitionPlacementError,
   WorkflowRevisionConflictError,
 } from './workflow-authoring.js';
-export { createWorkflowIntegrationUsageDatabase } from './workflow-integration-usage.js';
+export { createWorkflowIntegrationUsageDatabase } from './connections/workflow-integration-usage.js';
 export type {
   FindConnectionImpactInput,
   FindProviderOperationImpactInput,
   WorkflowIntegrationImpactPage,
   WorkflowIntegrationImpactRecord,
   WorkflowIntegrationUsageDatabase,
-} from './workflow-integration-usage.js';
+} from './connections/workflow-integration-usage.js';
 export type {
   CreateWorkflowInput,
   CreateWorkflowResult,

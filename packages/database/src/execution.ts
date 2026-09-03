@@ -11,11 +11,11 @@ export {
   CONNECTION_AUTH_TYPE,
   ConnectionUnavailableError,
   createWorkerConnectionResolutionDatabase,
-} from './connections.js';
+} from './connections/connections.js';
 export type {
   ConnectionResolutionDatabase,
   WorkerConnectionResolutionDatabase,
-} from './connections.js';
+} from './connections/connections.js';
 export {
   CoordinatorDeliveryMismatchError,
   createCoordinatorRunStore,
