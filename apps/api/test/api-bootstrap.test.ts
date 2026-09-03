@@ -8,7 +8,10 @@ import type {
 } from '@pertexo/observability';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createApiApplication } from '../src/app.js';
+import {
+  createApiApplication,
+  type ApiApplicationDependencies,
+} from '../src/app.js';
 import type { IdentityWorkspaceDependencies } from '../src/identity-workspace/index.js';
 import {
   GetPreviewRunUseCase,
@@ -16,6 +19,7 @@ import {
 } from '../src/node-testing/use-case.js';
 import { ApiDrainState } from '../src/platform/health/drain-state.js';
 import type { ApiIdentityRuntime } from '../src/platform/identity/identity-runtime.module.js';
+import type { ApiConnectionRuntime } from '../src/platform/connections/connection-runtime.module.js';
 import type { ApiWorkflowRuntime } from '../src/platform/workflow/workflow-runtime.module.js';
 import type { ApiWebhookRuntime } from '../src/platform/webhooks/webhook-runtime.module.js';
 import type { WebhookManagementService } from '../src/webhooks/service.js';
@@ -221,6 +225,93 @@ describe('API bootstrap', () => {
   afterEach(async () => {
     await application?.close();
     application = undefined;
+  });
+
+  it('rejects contradictory provided and create-time runtime dependencies', async () => {
+    const selectedIdentityRuntime = identityRuntime();
+    const selectedWorkflowRuntime = workflowRuntime(
+      selectedIdentityRuntime.dependencies.authorization,
+    );
+    const selectedConnectionRuntime = {
+      dependencies: {},
+      close: vi.fn().mockResolvedValue(undefined),
+    } as unknown as ApiConnectionRuntime;
+    const cases = [
+      {
+        dependencies: {
+          ...dependencies(),
+          identityRuntime: selectedIdentityRuntime,
+          identityOverrides: { clock: { now: () => new Date(0) } },
+        },
+        message: 'identity runtime cannot be provided with identity overrides',
+      },
+      {
+        dependencies: {
+          ...dependencies(),
+          workflowRuntime: selectedWorkflowRuntime,
+          workflowOverrides: {},
+        },
+        message: 'workflow runtime cannot be provided with workflow overrides',
+      },
+      {
+        dependencies: {
+          ...dependencies(),
+          connectionRuntime: selectedConnectionRuntime,
+          connectionOverrides: {},
+        },
+        message:
+          'connection runtime cannot be provided with connection overrides',
+      },
+    ];
+
+    for (const selected of cases)
+      await expect(
+        createApiApplication(
+          config,
+          selected.dependencies as unknown as ApiApplicationDependencies,
+        ),
+      ).rejects.toThrow(selected.message);
+  });
+
+  it('rejects runtime overrides that cannot participate in composition', async () => {
+    const cases = [
+      {
+        dependencies: { ...dependencies(), identityOverrides: {} },
+        message:
+          'identity overrides require configured identity runtime creation',
+      },
+      {
+        dependencies: { ...dependencies(), workflowOverrides: {} },
+        message:
+          'workflow overrides require available identity runtime creation',
+      },
+      {
+        dependencies: {
+          ...dependencies(),
+          identityRuntime: identityRuntime(),
+          connectionOverrides: {},
+        },
+        message:
+          'connection overrides require configured connection runtime creation',
+      },
+      {
+        dependencies: {
+          ...dependencies(),
+          workflowRuntime: workflowRuntime(
+            identityRuntime().dependencies.authorization,
+          ),
+        },
+        message: 'feature runtimes require an available identity runtime',
+      },
+    ];
+
+    for (const selected of cases)
+      await expect(
+        createApiApplication(
+          config,
+          selected.dependencies as unknown as ApiApplicationDependencies,
+        ),
+      ).rejects.toThrow(selected.message);
   });
 
   it('serves a stable bounded liveness response without dependency claims', async () => {
