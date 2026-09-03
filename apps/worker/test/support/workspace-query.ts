@@ -1,8 +1,6 @@
 import type { Pool } from 'pg';
 
-export async function queryAsWorkspaceRole<
-  Row extends Record<string, unknown>,
->(
+export async function queryAsWorkspaceRole<Row extends Record<string, unknown>>(
   pool: Pool,
   workspaceId: string,
   statement: string,
