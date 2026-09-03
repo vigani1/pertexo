@@ -1,10 +1,11 @@
 import { z } from 'zod';
 
+import { generatePersistedId } from '@pertexo/database/api';
+
 import {
   encodeBase64Url,
   digestSha256Hex,
   nodeIdentityCrypto,
-  randomUuid,
 } from './crypto.js';
 import { IdentityError } from './errors.js';
 import type {
@@ -99,7 +100,7 @@ export class OpaqueSessionService {
     }
     const rawToken = encodeBase64Url(this.crypto.randomBytes(32));
     const record = Object.freeze({
-      sessionId: randomUuid(this.crypto),
+      sessionId: generatePersistedId(),
       tokenDigest: digestSha256Hex(rawToken, this.crypto),
       userId: input.userId,
       expiresAt,
