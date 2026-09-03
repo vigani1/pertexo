@@ -6,6 +6,7 @@ import {
   mapDraft,
   mapVersion,
   mapWorkflow,
+  workflowVersionRowSelection,
 } from './workflow-authoring-rows.js';
 import type {
   ListWorkflowsInput,
@@ -111,7 +112,8 @@ export function createWorkflowAuthoringReadStore(
       context.transact(workspaceId, actorId, async (client) => {
         await context.requireReader(client, workspaceId, actorId);
         const result = await client.query<Record<string, unknown>>(
-          'select * from app.workflow_versions where workspace_id = $1 and workflow_id = $2 and id = $3',
+          `select ${workflowVersionRowSelection} from app.workflow_versions
+           where workspace_id = $1 and workflow_id = $2 and id = $3`,
           [
             workspaceId,
             uuidSchema.parse(workflowId),
@@ -143,7 +145,7 @@ export function createWorkflowAuthoringReadStore(
             ? null
             : z.number().int().positive().parse(input.beforeVersionNumber);
         const result = await client.query<Record<string, unknown>>(
-          `select * from app.workflow_versions
+          `select ${workflowVersionRowSelection} from app.workflow_versions
            where workspace_id = $1 and workflow_id = $2
              and ($3::integer is null or version_number < $3)
            order by version_number desc limit $4`,
