@@ -11,7 +11,7 @@ import {
   type AppendControlLedgerRecord,
   type ControlLedger,
   type ControlLedgerRecord,
-} from '../src/control-ledger-coordinator.js';
+} from '../src/lifecycle/control-ledger-coordinator.js';
 
 const workspaceId = randomUUID();
 const holdId = randomUUID();

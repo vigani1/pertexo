@@ -2,12 +2,12 @@ import type { Pool, PoolClient } from 'pg';
 import { v7 as uuidv7 } from 'uuid';
 import { z } from 'zod';
 
-import { canonicalOutboxPayloadChecksum } from './outbox.js';
+import { canonicalOutboxPayloadChecksum } from '../outbox.js';
 import {
   PreviewDeliveryMismatchError,
   type PreviewDelivery,
-} from './preview-execution.js';
-import { withTenantScopedClient } from './tenant-access/workspace.js';
+} from '../preview-execution.js';
+import { withTenantScopedClient } from '../tenant-access/workspace.js';
 
 const previewCleanupConsumerName = 'preview-retention-cleaner';
 const traceparentSchema = z

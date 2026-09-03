@@ -92,8 +92,8 @@
         },
         {
           "files": [
-            "packages/database/src/workspace-purge.ts",
-            "packages/database/src/workspace-purge.ts"
+            "packages/database/src/lifecycle/workspace-purge.ts",
+            "packages/database/src/lifecycle/workspace-purge.ts"
           ],
           "classification": "intentional-scenario-local",
           "reason": "The purge state machine keeps separate missing-command checks beside the transitions whose repair identifiers they validate.",
@@ -106,8 +106,8 @@
         },
         {
           "files": [
-            "packages/database/src/workspace-lifecycle-commands.ts",
-            "packages/database/src/workspace-purge.ts"
+            "packages/database/src/lifecycle/workspace-lifecycle-commands.ts",
+            "packages/database/src/lifecycle/workspace-purge.ts"
           ],
           "classification": "false-positive",
           "reason": "Lifecycle command admission and purge execution use similar transaction prologues but deliberately own different locks, roles, rollback semantics, and state machines.",
@@ -134,8 +134,8 @@
         },
         {
           "files": [
-            "packages/database/src/retention.ts",
-            "packages/database/src/workspace-purge.ts"
+            "packages/database/src/lifecycle/retention.ts",
+            "packages/database/src/lifecycle/workspace-purge.ts"
           ],
           "classification": "false-positive",
           "reason": "Abort-aware query wrappers remain private to two independent high-risk transaction owners so cancellation and error policy cannot drift through a generic repository layer.",
@@ -148,8 +148,8 @@
         },
         {
           "files": [
-            "packages/database/src/preview-retention.ts",
-            "packages/database/src/run-artifact-retention.ts"
+            "packages/database/src/lifecycle/preview-retention.ts",
+            "packages/database/src/lifecycle/run-artifact-retention.ts"
           ],
           "classification": "false-positive",
           "reason": "Preview and durable run-artifact retention share bounded configuration and transaction scaffolding but enforce different eligibility, ownership, and deletion policies.",
@@ -166,8 +166,8 @@
         },
         {
           "files": [
-            "packages/database/src/preview-retention.ts",
-            "packages/database/src/retention.ts"
+            "packages/database/src/lifecycle/preview-retention.ts",
+            "packages/database/src/lifecycle/retention.ts"
           ],
           "classification": "false-positive",
           "reason": "Both parse ledger high-water facts at separate retention boundaries; retaining local parsing keeps each fail-closed projection auditable.",
@@ -180,8 +180,8 @@
         },
         {
           "files": [
-            "packages/database/src/preview-cleanup.ts",
-            "packages/database/src/preview-cleanup.ts"
+            "packages/database/src/lifecycle/preview-cleanup.ts",
+            "packages/database/src/lifecycle/preview-cleanup.ts"
           ],
           "classification": "intentional-scenario-local",
           "reason": "Cleanup retry branches repeat clock and delivery construction beside distinct lease, quiescence, and terminal-state transitions to preserve review order.",

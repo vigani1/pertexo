@@ -6,7 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   CONTROL_LEDGER_ZERO_HASH,
   createControlLedgerCoordinator,
-} from '../src/control-ledger-coordinator.js';
+} from '../src/lifecycle/control-ledger-coordinator.js';
 import {
   MemoryLedger,
   createControlLedgerCoordinatorTestEnvironment,

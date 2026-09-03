@@ -7,7 +7,7 @@ import {
   CONTROL_LEDGER_ZERO_HASH,
   createControlLedgerCoordinator,
   type ControlLedgerRecord,
-} from '../src/control-ledger-coordinator.js';
+} from '../src/lifecycle/control-ledger-coordinator.js';
 import {
   MemoryLedger,
   createControlLedgerCoordinatorTestEnvironment,

@@ -8,12 +8,12 @@ import {
   createPendingPreviewArtifact,
 } from '../src/artifacts.js';
 import { parseDatabaseConfig } from '../src/config.js';
-import type { ControlLedger } from '../src/control-ledger-coordinator.js';
+import type { ControlLedger } from '../src/lifecycle/control-ledger-coordinator.js';
 import {
   completePreviewAttempt,
   PREVIEW_STATUS,
 } from '../src/preview-execution.js';
-import { createPreviewRetentionCoordinator } from '../src/preview-retention.js';
+import { createPreviewRetentionCoordinator } from '../src/lifecycle/preview-retention.js';
 import { databaseSchema } from '../src/schema.js';
 import {
   parseWorkspaceId,
