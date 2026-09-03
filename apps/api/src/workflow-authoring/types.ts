@@ -24,6 +24,7 @@ import {
   type WorkflowGraphContract,
 } from '@pertexo/contracts';
 import { idempotencyKeySchema } from '@pertexo/contracts/identity-workspace';
+import type { AuthorizedWorkspaceContext } from '../workspaces/index.js';
 
 export {
   strongEtagSchema,
@@ -69,6 +70,7 @@ export type WorkflowAuthoringRequest = Readonly<{
     expiresAt: Date;
     clientMetadata: Readonly<Record<string, string>>;
   }>;
+  authorizedWorkspace?: AuthorizedWorkspaceContext;
 }>;
 
 export interface WorkflowResponse {

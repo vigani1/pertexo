@@ -84,6 +84,7 @@ export class WorkflowAuthoringController {
       return await this.listWorkflows.execute({
         actor: actorFrom(request, workspaceId),
         routeWorkspaceId: workspaceId,
+        ...guardAuthorization(request),
         ...(input.limit === undefined ? {} : { limit: input.limit }),
         ...(input.after === undefined ? {} : { after: input.after }),
       });
@@ -112,6 +113,7 @@ export class WorkflowAuthoringController {
       const result = await this.createWorkflow.execute({
         actor: actorFrom(request, workspaceId),
         routeWorkspaceId: workspaceId,
+        ...guardAuthorization(request),
         name: input.name,
         idempotencyKey: parseIdempotencyKey(
           requestHeaderValue(request.headers, 'idempotency-key'),
@@ -137,6 +139,7 @@ export class WorkflowAuthoringController {
       const result = await this.getDraft.execute({
         actor: actorFrom(request, route.workspaceId),
         routeWorkspaceId: route.workspaceId,
+        ...guardAuthorization(request),
         workflowId: route.workflowId,
       });
       response.header('ETag', result.representationTag);
@@ -165,6 +168,7 @@ export class WorkflowAuthoringController {
       const result = await this.saveDraft.execute({
         actor: actorFrom(request, route.workspaceId),
         routeWorkspaceId: route.workspaceId,
+        ...guardAuthorization(request),
         workflowId: route.workflowId,
         representationTag: parseStrongIfMatch(
           requestHeaderValue(request.headers, 'if-match'),
@@ -192,6 +196,7 @@ export class WorkflowAuthoringController {
       return await this.validateDraft.execute({
         actor: actorFrom(request, route.workspaceId),
         routeWorkspaceId: route.workspaceId,
+        ...guardAuthorization(request),
         workflowId: route.workflowId,
       });
     } catch (error: unknown) {
@@ -216,6 +221,7 @@ export class WorkflowAuthoringController {
       return await this.publishWorkflow.execute({
         actor: actorFrom(request, route.workspaceId),
         routeWorkspaceId: route.workspaceId,
+        ...guardAuthorization(request),
         workflowId: route.workflowId,
         representationTag: parseStrongIfMatch(
           requestHeaderValue(request.headers, 'if-match'),
@@ -244,6 +250,7 @@ export class WorkflowAuthoringController {
       return await this.listVersions.execute({
         actor: actorFrom(request, route.workspaceId),
         routeWorkspaceId: route.workspaceId,
+        ...guardAuthorization(request),
         workflowId: route.workflowId,
         ...(input.limit === undefined ? {} : { limit: input.limit }),
         ...(input.after === undefined ? {} : { after: input.after }),
@@ -252,6 +259,14 @@ export class WorkflowAuthoringController {
       return throwWorkflowApplicationError(error);
     }
   }
+}
+
+function guardAuthorization(
+  request: WorkflowAuthoringRequest,
+): Pick<WorkflowAuthoringRequest, 'authorizedWorkspace'> {
+  return request.authorizedWorkspace === undefined
+    ? {}
+    : { authorizedWorkspace: request.authorizedWorkspace };
 }
 
 function workspaceParams(value: unknown): Readonly<{ workspaceId: string }> {
