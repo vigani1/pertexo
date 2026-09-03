@@ -521,6 +521,7 @@ describeIntegration(
         await expect(noConsumerDispatcher.dispatchOnce()).resolves.toEqual({
           claimed: 0,
           failed: 0,
+          outcomeUnknown: 0,
           published: 0,
           stale: 0,
         });

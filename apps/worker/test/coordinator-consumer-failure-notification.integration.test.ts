@@ -709,6 +709,7 @@ describeIntegration('Failure notification transport resilience', () => {
       await expect(dispatcher.dispatchOnce()).resolves.toEqual({
         claimed: 0,
         failed: 0,
+        outcomeUnknown: 0,
         published: 0,
         stale: 0,
       });
