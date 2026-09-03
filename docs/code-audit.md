@@ -111,13 +111,16 @@ workflow orchestration, leases, recovery, retention, external side effects,
 uncertain outcomes, and security-sensitive boundaries. Approximately **28% is
 implementation-created** and can be reduced without weakening the architecture.
 
-Repository facts used for calibration:
+Original-snapshot repository facts used for calibration (current residual
+measurements and superseding clone evidence are in section 21):
 
 - 448 production TypeScript files and approximately 86,429 source lines;
 - 340 TypeScript test/support files and approximately 92,827 test lines;
 - 45 production files above the repository's 500-line budget;
 - 42 function hotspots above 200 lines or 40 branches;
-- approximately 1.12% source duplication and 0.42% test duplication;
+- approximately 1.12% source duplication and the then-recorded 0.42% test
+  duplication, which the reproducible post-remediation scan in C-21/C-28
+  supersedes;
 - no package dependency cycle;
 - no generic `utils`, `common`, or `shared` dumping ground;
 - no production `any`, `as unknown as`, non-null assertion,
@@ -972,6 +975,11 @@ retroactively hidden inside C-01 through C-20.
 
 ## 6. File and folder structure
 
+Sections 6–19 preserve the broader original review reasoning, including work
+that C-01 through C-20 later completed. Individual remediation statuses and the
+current residual register in section 21 are authoritative when historical
+measurements or recommendations below differ from the current tree.
+
 ### 6.1 Structure that should remain
 
 - The application/package separation and acyclic package graph.
@@ -988,9 +996,10 @@ retroactively hidden inside C-01 through C-20.
 
 ### 6.2 Structure that should be reorganized
 
-`packages/database/src` has 104 TypeScript files in one directory. Prefixes
-identify families, but the filesystem does not provide locality. A reasonable
-target, without changing public export paths, is:
+Schema ownership has moved into `packages/database/src/schema`, but
+`packages/database/src` still has 122 TypeScript files at its root. Prefixes
+identify families, but the filesystem does not provide enough locality. A
+reasonable incremental target, without changing public export paths, is:
 
 ```text
 packages/database/src/
@@ -1034,17 +1043,14 @@ packages/database/src/
     readiness.ts
 ```
 
-Additional focused changes:
+Remaining focused changes:
 
-- move worker runtime provider construction under `transport/providers/`;
-- extract API compatibility/catalog construction from
-  `workflow-runtime.module.ts`;
 - rename `phase3-checkpoint.ts` to a durable domain name such as
   `persisted-workflow-checkpoint.ts`, while preserving stored compatibility
   version names where they are externally meaningful; and
-- split implementation portions of identity/workspace, workflow authoring,
-  operator commands, failure notifications, retention, and purge behind their
-  unchanged public interfaces.
+- continue splitting only the retained large database implementations named in
+  the complexity retention register when a focused change can preserve their
+  public interfaces and transaction ordering.
 
 ## 7. Duplicate-pattern inventory
 
@@ -1313,7 +1319,7 @@ generated contracts, all typechecks, and 1,567 package/application unit tests.
 - Current package boundaries.
 - The absence of generic shared utility packages.
 
-## 20. Final conclusion
+## 20. Original prioritized-scope conclusion
 
 The project was not built from a deficient or contradictory plan. The plan is
 unusually explicit about TypeScript quality, seam parsing, error mapping,
@@ -1330,3 +1336,261 @@ reopened whole-audit A-11 for duplicated split-suite setup. This conclusion does
 not claim that future craft debt is impossible; it records that the concrete
 C-01 through C-20 scope is complete without changing the section 19.4 state-
 machine and security-flow exclusions merely to reduce metrics.
+
+## 21. Remaining formal code findings
+
+The original C-01 through C-20 register captured the highest-value concrete
+defects found in the initial implementation-craft review. The broader
+inventories in sections 6–19 also contained residual work that was not assigned
+individual identifiers. This section formalizes every currently evidenced
+code-level remainder from those inventories so it can be implemented, retained,
+or closed explicitly rather than disappearing behind the phrase “Top 20.”
+
+Status meanings:
+
+- **Open:** repository work with a demonstrated current benefit.
+- **Controlled debt:** a measured non-ideal shape protected by a non-regression
+  ratchet; reduce it through focused changes, not a repository-wide rewrite.
+- **Continuous assurance:** an evidence surface that should grow with risk and
+  new behavior rather than terminate at one arbitrary percentage.
+- **Evidence-gated:** do not rewrite until profiling, mutation characterization,
+  or a material change demonstrates that the proposed cleanup is beneficial.
+- **Conditional:** the current form is acceptable; apply the recommendation
+  when the named trigger occurs.
+
+| ID | Priority | Status | Remaining finding |
+| --- | --- | --- | --- |
+| C-21 | P2 | Open | Split test suites duplicate substantial environment and fixture setup |
+| C-22 | P2 | Open incrementally | The database implementation remains concentrated in one flat source directory |
+| C-23 | P2 | Controlled debt | Thirty-six production files and forty functions remain above the complexity budgets |
+| C-24 | P2 | Continuous assurance | Coverage is exact and strong for selected critical modules, but intentionally narrow |
+| C-25 | P3 | Evidence-gated | Repeated freezing, copying, and exact-optional-property construction add ceremony at some trusted seams |
+| C-26 | P3 | Open incrementally | Historical Phase 3 source terminology remains in current domain implementation names |
+| C-27 | P3 | Conditional | Several large domain-shaped `.mjs` tools do not receive type-aware checking |
+| C-28 | P3 | Open | Source/test clone measurement is not a pinned reproducible non-regression gate |
+
+### C-21 — Split test suites duplicate substantial setup
+
+- **Priority:** P2.
+- **Status:** open; this is the code-audit counterpart of partially open
+  whole-repository finding A-11.
+- **Evidence:** the exact full-test-corpus command below reports 25 clone groups
+  and 1,977 duplicated lines, or 2.08% of the analyzed test corpus. The earlier
+  11-group/0.42% statement was not accompanied by a reproducible command or
+  exclusions and has been superseded.
+- **Main locations:** paired schedule-trigger, database control-ledger,
+  database transport, artifact control-ledger, worker transport, and worker
+  node-attempt-handler suites.
+- **Why it matters:** environment construction, database setup, lifecycle
+  cleanup, and fixture changes must be repeated consistently across companion
+  files. The split reduced navigation cost but increased change-locality cost.
+- **Required change:** extract genuinely identical owner-local setup and domain
+  fixture construction. Keep scenario state, actions, and assertions in each
+  suite; do not introduce a cross-package test framework or shared mutable
+  global fixture.
+- **Refactor risk:** medium because integration isolation, cleanup, and
+  independent test collection must remain intact.
+- **Acceptance evidence:** every paired suite collects and passes independently;
+  real-service cleanup remains deterministic; no test exceeds 1,000 lines; and
+  the pinned clone scan falls below the 2.08% baseline without broader ignores
+  or weaker thresholds.
+
+Reproduction:
+
+```sh
+pnpm dlx jscpd@4.0.5 apps/*/test packages/*/test \
+  --min-lines 18 --min-tokens 130 --format typescript \
+  --reporters console --ignore '**/dist/**'
+```
+
+### C-22 — Database implementation locality remains flat
+
+- **Priority:** P2.
+- **Status:** open incrementally; public database capability entry points are
+  already narrow and must remain stable.
+- **Evidence:** `packages/database/src` currently contains 122 TypeScript files
+  at its root and only the schema implementation has a capability subdirectory.
+  Prefix naming helps search, but related transaction, row-mapping, SQL, and
+  reconciliation files remain interleaved in one directory.
+- **Why it matters:** maintainers must reconstruct ownership from filenames and
+  imports, and a capability change frequently navigates a large unrelated file
+  list. This weakens locality without being a runtime correctness defect.
+- **Required change:** move internals by capability—tenant access, authoring,
+  execution/coordinator/node-attempt, triggers, connections, lifecycle,
+  compatibility, and public composition—while retaining existing package
+  export-map entry points and application import contracts.
+- **Do not do:** introduce generic repository base classes, expose new internal
+  package paths, or combine transactions merely to make the directory smaller.
+- **Refactor risk:** medium-high because internal moves can disturb migration,
+  test, package-export, and transaction-order assumptions.
+- **Acceptance evidence:** package-contract tests prove unchanged external
+  imports; Knip reports no orphaned files or accidental exports; database unit
+  and real-PostgreSQL suites pass; and each moved capability has one obvious
+  internal owner.
+
+### C-23 — Measured production complexity remains concentrated
+
+- **Priority:** P2.
+- **Status:** controlled debt, not a blanket instruction to split every entry.
+- **Evidence:** the enforced baseline contains 36 production files above 500
+  lines and 40 functions above 200 lines or 40 branches. The complete current
+  inventory and retention reason for every occurrence lives in
+  [`docs/operations/complexity-hotspot-retention.md`](./operations/complexity-hotspot-retention.md).
+  The largest current files include the database control-ledger coordinator,
+  artifact control ledger/store, Node SDK server/release, workflow graph, and
+  secure HTTP implementations.
+- **Why it matters:** several files legitimately own atomic correctness flows,
+  but large composition factories and multi-operation persistence facades still
+  increase review scope and make responsibility changes harder to isolate.
+- **Required change:** when a hotspot changes materially, characterize its
+  public interface first and extract only independently named owners or pure
+  row/parsing/construction stages. Lower the baseline after the focused change.
+- **Leave intact:** checkpoint grammar decisions, transition ordering, lease and
+  fence state machines, secure HTTP validation order, webhook verification,
+  purge ordering, and recovery semantics unless a demonstrated defect requires
+  change.
+- **Refactor risk:** ranges from medium to very high by hotspot.
+- **Acceptance evidence:** no public-interface widening, no new package edge,
+  unchanged behavioral/integration evidence, and a strictly lower or unchanged
+  ratchet with no worsened entry.
+
+### C-24 — Critical-file coverage remains intentionally narrow
+
+- **Priority:** P2.
+- **Status:** continuous assurance; current percentages are truthful but are not
+  whole-package or whole-repository coverage.
+- **Evidence:** coverage gates instrument 30 selected files with 1,736 coverable
+  lines. They provide strong decision coverage and source-fingerprinted review
+  for 116 uncovered branches, but the repository contains 506 production
+  TypeScript files.
+- **Why it matters:** a green selected-module percentage cannot reveal a newly
+  risky unselected adapter or capability. Coverage selection must evolve when
+  production behavior or failure consequences move.
+- **Required change:** expand the manifest by consequence, prioritizing newly
+  changed authentication/authorization, tenant transaction, persistence,
+  fencing, idempotency, retry, cancellation, provider, retention, and recovery
+  decisions. Continue using public behavior and real adapters rather than tests
+  coupled to private implementation statements.
+- **Do not do:** introduce a repository-wide vanity threshold, count generated
+  files, or add tests that merely execute lines without asserting behavior.
+- **Acceptance evidence:** every newly selected consequential decision is
+  executed or individually reviewed; mutation canaries fail when that decision
+  is inverted; denominators, skips, retries, failures, and duration remain
+  explicit; and thresholds only ratchet upward after meaningful coverage lands.
+
+### C-25 — Immutability and optional-property ceremony lacks one explicit policy
+
+- **Priority:** P3.
+- **Status:** evidence-gated.
+- **Evidence:** production code contains 1,027 `Object.freeze` calls and many
+  conditional spreads used solely to omit `undefined` under exact optional
+  property types. Freezing is valuable for exported catalogs, configuration,
+  authorization capabilities, and checksum-sensitive durable values, but some
+  transient row/response construction repeats shallow freeze/copy work after a
+  value has crossed a trusted seam.
+- **Why it matters:** repeated shallow freezing and conditional construction can
+  obscure the meaningful transition from untrusted/mutable input to trusted
+  immutable domain value. It may also copy large graphs repeatedly, although no
+  production bottleneck has been demonstrated.
+- **Required change:** document an immutability policy by seam. Normalize
+  optionality in owner interfaces where absent and explicit `undefined` are
+  semantically identical. Remove ceremonial freezing only after mutation tests
+  prove callers do not rely on thrown writes, and optimize large-value copying
+  only after profiling.
+- **Do not do:** add a magic optional-spread helper or mechanically remove
+  `Object.freeze` repository-wide.
+- **Acceptance evidence:** named trusted seams, mutation characterization for
+  changed values, no weaker checksum/configuration/capability immutability, and
+  measured allocation/latency improvement for performance-motivated changes.
+
+### C-26 — Historical Phase 3 terminology remains in current source names
+
+- **Priority:** P3.
+- **Status:** open incrementally and compatibility-sensitive.
+- **Evidence:** current code still uses source names such as
+  `packages/database/src/phase3-checkpoint.ts` and internal engine identifiers
+  such as `phase3-engine-v1`; readiness SQL and migration compatibility names
+  also preserve the historical phase label.
+- **Why it matters:** phase numbers describe project history, not the durable
+  domain concept. New maintainers must know the implementation chronology to
+  discover the persisted workflow checkpoint owner.
+- **Required change:** rename source-only files, symbols, and comments toward
+  durable domain terminology such as `persisted-workflow-checkpoint`. Preserve
+  stored schema versions, migration names, database objects, serialized values,
+  telemetry attributes, and compatibility identifiers wherever renaming would
+  break persisted or operational contracts.
+- **Refactor risk:** medium because apparently internal strings can be durable
+  compatibility data.
+- **Acceptance evidence:** repository-wide classification of every renamed or
+  retained occurrence, unchanged serialized/database contracts, and passing
+  checkpoint, compatibility, migration, database, worker, and API suites.
+
+### C-27 — Large domain-shaped `.mjs` tools lack type-aware checking
+
+- **Priority:** P3.
+- **Status:** conditional; `.mjs` remains the correct extension for small direct
+  Node entry points.
+- **Evidence:** the HTTP exercise runner, external-platform evidence validator,
+  risk-coverage reporter, and deployment validator are each above 300 lines.
+  Their tests provide behavioral confidence, but ESLint does not apply the
+  repository's type-aware TypeScript rules to these JavaScript implementations.
+- **Why it matters:** as these scripts accumulate domain models and cross-field
+  invariants, tests alone provide weaker refactoring feedback than checked
+  types. Converting untouched scripts solely for extension consistency would
+  add churn without current benefit.
+- **Required change:** on the next material change to one of these tools, add
+  checked JSDoc/`checkJs` or move its domain-shaped core to TypeScript behind a
+  tiny dependency-light `.mjs` executable wrapper.
+- **Refactor risk:** low-medium; executable startup and CI portability must stay
+  simple.
+- **Acceptance evidence:** unchanged CLI behavior and exit codes, direct Node
+  execution remains available, dedicated tests pass, and the changed core gains
+  type-aware checking.
+
+### C-28 — Clone evidence is not an automated reproducible ratchet
+
+- **Priority:** P3.
+- **Status:** open.
+- **Evidence:** the audit previously recorded 35 source clone groups/1.12% and
+  11 test groups/0.42%, while reproducible current commands report 45 source
+  groups/1.15% and 25 test groups/2.08%. Source duplication remains low, but the
+  earlier command, scope, exclusions, and classification were not preserved,
+  and clone detection is not part of the root or protected CI gate.
+- **Why it matters:** percentages cannot act as engineering evidence if another
+  reviewer cannot reproduce them. Tool or scope drift can look like a code
+  regression, while broad exclusions can conceal one.
+- **Required change:** pin the detector/version and maintain separate source and
+  test commands with explicit paths, formats, thresholds, and exclusions.
+  Review existing clone groups semantically, record intentional families, and
+  fail only on new/worsened unexplained duplication.
+- **Do not do:** require zero clones or centralize semantically different
+  transaction, schema, provider, or test behavior merely because text matches.
+- **Acceptance evidence:** local and CI runs produce the same totals; exclusions
+  are narrow and reviewed; the baseline contains a reason for every retained
+  family; and new unexplained clones fail admission.
+
+Source reproduction used for the current baseline:
+
+```sh
+pnpm dlx jscpd@4.0.5 apps/*/src packages/*/src \
+  --min-lines 12 --min-tokens 80 --format typescript \
+  --reporters console \
+  --ignore '**/*.test.ts,**/test/**,**/dist/**'
+```
+
+## 22. Current implementation-craft conclusion
+
+The codebase is strong and all original C-01 through C-20 correctness and
+high-value cleanup findings are complete. The complete current code-level
+register is no longer limited to that Top 20: C-21 through C-28 make the
+remaining test duplication, source locality, measured complexity, coverage
+breadth, implementation ceremony, terminology, tooling types, and clone-
+evidence work explicit.
+
+These remaining entries do not all mean “rewrite now.” C-21, C-22, and C-28
+have concrete repository work; C-23 should decline through focused feature-local
+refactors; C-24 is an ongoing risk-selection responsibility; C-25 requires
+mutation/profiling evidence; C-26 must preserve durable compatibility; and C-27
+activates when a large tool changes materially. A future audit may still find a
+new issue because repository-wide inventories plus risk-based manual review are
+not a guarantee that every line has been exhaustively proved correct.
