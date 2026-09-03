@@ -4761,18 +4761,21 @@ Fresh audit findings at the implementation tree named above:
       regression is complete and the image-level SIGTERM drill remains live
       Phase 7 evidence.
 - [x] Replace the polynomial-time logger redaction path, add bounded adversarial
-      tests, close the open high-severity CodeQL alert, and make high-severity
-      code-scanning results merge-blocking. The repository fix is complete;
-      default-branch alert/ruleset closure remains external governance work.
+      tests, and make high-severity code-scanning results merge-blocking.
+      Pull-request CodeQL is green and active repository ruleset `22213497`
+      blocks CodeQL errors and high/critical alerts on `main`; the historical
+      default-branch alert will close only after merge and exact-main analysis.
 - [x] Resolve both the direct Fastify 5.12.0 and Nest-transitive 5.11.3 paths to
       a fixed release, retain the proxy/validation regression behavior, and
       make unaccepted moderate production advisories fail admission.
 - [x] Enforce UUIDv7 for application-owned persisted IDs, account for all 67
       migration-owned application tables, and force RLS on the workspace-keyed
       retention scheduler state through forward-only migration `0074`.
-- [ ] Carry out the P2/P3 maintainability, selected-coverage, provenance,
-      package-surface, test-organization, and public-governance improvements in
-      `docs/whole-repository-audit.md` without weakening existing invariants.
+- [x] Carry out the repository-controlled P2/P3 maintainability,
+      selected-coverage, package-surface, test-organization, and public-
+      governance improvements in `docs/whole-repository-audit.md` without
+      weakening existing invariants. Hosted signed provenance and live provider
+      evidence remain the credential-dependent A-08/Phase 7 work below.
 
 Still open:
 

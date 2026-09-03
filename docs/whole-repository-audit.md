@@ -217,8 +217,9 @@ found.
 
 ### A-01 — Logger redaction can consume polynomial time
 
-**Remediation status (2026-09-03): repository implementation complete; remote
-CodeQL/ruleset evidence pending.** `redactText` now bounds every string to
+**Remediation status (2026-09-03): repository implementation and pull-request
+CodeQL evidence complete; default-branch alert closure pending merge.**
+`redactText` now bounds every string to
 16,384 characters before pattern matching, drops an incomplete trailing token,
 and appends an explicit truncation marker. URL-userinfo redaction is a
 monotonic scanner rather than the ambiguous repeated-character expression.
@@ -226,9 +227,10 @@ The same path sanitizes ordinary fields, error messages, stacks, and causes.
 Two adversarial regressions reproduce the former five-second scan, constrain
 output size, cover messages/stacks, and now complete with the full 41-test
 observability suite in under 300 ms; observability typecheck and the unchanged
-complexity ratchet pass. The high alert remains open against `main` until this
-commit is analyzed there or in a pull request, and code-scanning merge
-protection remains A-09 governance work.
+complexity ratchet pass. Pull-request CodeQL passes, and active repository
+ruleset `22213497` blocks `main` updates with CodeQL analysis errors or
+high/critical security alerts. The historical alert remains visible against
+`main` until the fixed tree is merged and analyzed on the default branch.
 
 GitHub CodeQL alert 2 is open on
 `packages/observability/src/logger.ts:89`. The first `redactText` expression
@@ -636,12 +638,14 @@ Required change:
 
 ### A-09 — Merge governance proves execution, not review or security state
 
-**Remediation status (2026-09-03): repository policy partly complete; GitHub
-ruleset pending.** Dependency review is now a pinned, moderate-severity pull-
-request gate, and `SECURITY.md` records triage and release-blocking policy.
-Code-scanning merge protection is a repository setting rather than a tree
-change. A non-author approval remains intentionally unavailable while the
-project has one maintainer; no fake approval is introduced.
+**Remediation status (2026-09-03): complete for the current solo-maintainer
+repository.** Dependency review is a pinned, moderate-severity pull-request
+gate, `SECURITY.md` records triage and release-blocking policy, and active
+repository ruleset `22213497` blocks `main` updates when CodeQL reports an
+analysis error or a high/critical security alert. A non-author approval remains
+intentionally unavailable while the project has one maintainer; no fake
+approval is introduced. The documented trigger to require one approval and
+code-owner review when a second maintainer exists remains in force.
 
 `main` protection is strict and requires 11 current checks, linear history,
 conversation resolution, admin enforcement, and no force pushes/deletion.
@@ -649,13 +653,14 @@ Every external action is SHA-pinned and workflow token permissions are narrow.
 The repository settings nevertheless allow all actions and do not require SHA
 pinning, so this safe state is convention rather than an enforced admission
 rule.
-However, required approving reviews are set to zero, code-owner review is not
-required, commit signatures are not required, and there is no ruleset requiring
-CodeQL alert thresholds. `CODEOWNERS` maps all paths to the same sole owner.
+Required approving reviews remain set to zero, code-owner review is not
+required, and commit signatures are not required. `CODEOWNERS` maps all paths
+to the same sole owner. Those review settings are a recorded solo-maintainer
+exception rather than a false claim of independent review.
 
 For a solo project, inventing a fake reviewer is worse than recording the
-limitation. Enable CodeQL merge protection now. When a real second maintainer
-exists, require one non-author approval and code-owner review for workflows,
+limitation. When a real second maintainer exists, require one non-author
+approval and code-owner review for workflows,
 identity, database migrations, integrations/credentials, infrastructure, and
 ADRs. For releases, use a separate signing/deployment identity rather than the
 source author. Document temporary exceptions with owner, reason, expiry, and
