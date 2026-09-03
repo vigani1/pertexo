@@ -319,7 +319,7 @@ describeIntegration('Linear node execution resilience', () => {
       ]);
       for (const fact of nodeFacts)
         expect(fact.attempt_id).toMatch(
-          /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u,
+          /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u,
         );
       const invocationKeys = ['manual', 'set', 'terminate'].map((nodeId) =>
         invocationKey({ workflowVersionId, nodeId }),

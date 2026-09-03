@@ -82,7 +82,7 @@ describe('opaque browser sessions', () => {
     expect(persisted.tokenDigest).not.toBe(sink.token);
     expect(persisted.tokenDigest).toMatch(/^[a-f0-9]{64}$/u);
     expect(persisted.sessionId).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u,
+      /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u,
     );
     expect(JSON.stringify(persisted)).not.toContain(defined(sink.token));
     await expect(

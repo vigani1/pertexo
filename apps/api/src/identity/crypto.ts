@@ -1,6 +1,6 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 
-export interface CryptographicRandomSource {
+interface CryptographicRandomSource {
   randomBytes(length: number): Uint8Array;
 }
 
@@ -40,18 +40,6 @@ export function digestSha256Hex(
   crypto: CryptographicHasher,
 ): string {
   return Buffer.from(crypto.sha256(value)).toString('hex');
-}
-
-/** Generates a canonical RFC 4122 version 4 UUID without making the domain depend on UUID SDKs. */
-export function randomUuid(crypto: CryptographicRandomSource): string {
-  const bytes = Buffer.from(crypto.randomBytes(16));
-  if (bytes.byteLength !== 16) {
-    throw new RangeError('UUID randomness must contain exactly 16 bytes');
-  }
-  bytes.writeUInt8((bytes.readUInt8(6) & 0x0f) | 0x40, 6);
-  bytes.writeUInt8((bytes.readUInt8(8) & 0x3f) | 0x80, 8);
-  const hex = bytes.toString('hex');
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
 export function constantTimeStringEqual(

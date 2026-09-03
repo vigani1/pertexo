@@ -2,7 +2,6 @@ export { IdentityError, isIdentityError } from './errors.js';
 export {
   digestBase64Url,
   nodeIdentityCrypto,
-  randomUuid,
   type IdentityCrypto,
 } from './crypto.js';
 export { OidcLoginService, type OidcLoginResult } from './oidc.js';
