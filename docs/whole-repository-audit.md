@@ -1258,9 +1258,13 @@ protection requires 11 strict contexts.
 
 Automation is layered: CI runs on every pull request, every push to `main`, and
 daily; CodeQL runs on pull requests, `main`, a weekly schedule, and manual
-dispatch; the release gate runs weekly and manually. Local editing alone does
-not run these checks, so contributors still need `pnpm check` before pushing.
-The protected pull-request run is the automatic admission mechanism.
+dispatch; the release gate runs weekly and manually. `pnpm install` activates a
+tracked pre-push hook that runs `pnpm check` plus the critical-file coverage
+gate. Contributors use `pnpm prepush:full` for service-backed changes because
+automatically starting or disrupting local Docker services on every push would
+be unsafe. The protected pull-request run remains the authoritative admission
+mechanism and covers integration, recovery, compatibility, deployment, image,
+and security checks that the default local hook intentionally does not duplicate.
 
 The repository-controlled policy gaps are closed: code-scanning alerts block at
 high/critical severity, production dependency audit and dependency review block

@@ -18,11 +18,14 @@ correctness constraints are clear. Security reports must follow
 - Never commit secrets, local environment files, generated runtime data, or
   unrelated formatting changes.
 
-Install dependencies with `pnpm install`. Before requesting review, run
-`pnpm check` and the narrow tests for the changed behavior. Run
-`pnpm test:integration` when PostgreSQL, Redis, queue, object-store, HTTP, or
-process behavior changes. Document any environment-dependent check that could
-not run.
+Install dependencies with `pnpm install`; it configures the tracked pre-push
+hook. Ordinary pushes automatically run `pnpm prepush:check`, covering the
+repository's static, unit, and critical-file coverage gates. Run the narrow
+tests for the changed behavior while developing. Run `pnpm prepush:full` when
+PostgreSQL, Redis, queue, object-store, HTTP, or process behavior changes; it
+adds the service-backed integration suite. Document any environment-dependent
+check that could not run. `PERTEXO_SKIP_PRE_PUSH_CHECKS=1 git push` is an
+emergency escape hatch, not a substitute for the protected GitHub checks.
 
 Pull requests should explain the behavior or invariant being changed, tests that
 prove it, operational or migration impact, and any intentionally retained
