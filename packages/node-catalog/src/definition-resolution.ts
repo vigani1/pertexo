@@ -6,7 +6,6 @@ import {
 import {
   definitionIdentitySchema,
   parseRegistryRelease,
-  type DefinitionIdentity,
 } from '@pertexo/node-sdk';
 import type { NodeDefinitionRegistration } from '@pertexo/node-sdk/server';
 import { CORE_NODE_DEFINITION_REGISTRATIONS } from '@pertexo/nodes-core';
@@ -37,7 +36,7 @@ export function parseSupportedPlatformRelease(releaseInput: unknown) {
 /** Resolve browser-safe schemas and metadata without loading any executor. */
 export function resolvePlatformNodeDefinitionForRelease(
   releaseInput: unknown,
-  definitionInput: DefinitionIdentity,
+  definitionInput: unknown,
 ): PlatformNodeDefinition {
   const release = parseSupportedPlatformRelease(releaseInput);
   const definition = definitionIdentitySchema.parse(definitionInput);

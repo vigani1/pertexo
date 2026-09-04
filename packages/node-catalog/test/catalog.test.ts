@@ -38,6 +38,7 @@ import {
   CORE_WAIT_EXECUTOR,
   CORE_WEBHOOK_DEFINITION,
   CORE_WEBHOOK_EXECUTOR,
+  CORE_REGISTRY_RELEASE_SUCCESSOR,
 } from '@pertexo/nodes-core';
 
 import {
@@ -96,6 +97,49 @@ import {
 } from '../src/server.js';
 
 describe('platform node compatibility catalog', () => {
+  it('constructs provider adapters only when the selected release requires them', () => {
+    const coreProviderAccess = vi.fn(() => {
+      throw new Error('core release must not access provider dependencies');
+    });
+    const coreDependencies = Object.defineProperties(
+      {},
+      {
+        httpRequest: { get: coreProviderAccess },
+        slackSendMessage: { get: coreProviderAccess },
+        emailSendNotification: { get: coreProviderAccess },
+      },
+    );
+    expect(() =>
+      createPlatformNodeRegistryForRelease(
+        CORE_REGISTRY_RELEASE_SUCCESSOR,
+        coreDependencies,
+      ),
+    ).not.toThrow();
+    expect(coreProviderAccess).not.toHaveBeenCalled();
+
+    const unrelatedProviderAccess = vi.fn(() => {
+      throw new Error('HTTP release must not access unrelated providers');
+    });
+    const httpDependencies = Object.defineProperties(
+      {
+        httpRequest: {
+          httpClient: { executeStreaming: vi.fn() } as never,
+        },
+      },
+      {
+        slackSendMessage: { get: unrelatedProviderAccess },
+        emailSendNotification: { get: unrelatedProviderAccess },
+      },
+    );
+    expect(() =>
+      createPlatformNodeRegistryForRelease(
+        PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+        httpDependencies,
+      ),
+    ).not.toThrow();
+    expect(unrelatedProviderAccess).not.toHaveBeenCalled();
+  });
+
   it('retains and executes staged-then-active generic Webhook releases', async () => {
     expect(PLATFORM_REGISTRY_RELEASE_WEBHOOK_STAGED.epoch).toBe(21);
     expect(PLATFORM_REGISTRY_RELEASE_WEBHOOK_ACTIVE.epoch).toBe(22);
