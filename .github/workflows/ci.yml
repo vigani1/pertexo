@@ -519,6 +519,7 @@ jobs:
             pnpm images:check
             docker compose config --quiet
             docker compose -f infrastructure/observability/compose.yaml config --quiet
+            pnpm observability:check
           } 2>&1 | tee artifacts/deployment-security.log
       - name: Upload deployment/security report
         if: always()
