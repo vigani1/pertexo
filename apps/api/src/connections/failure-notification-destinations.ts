@@ -20,7 +20,7 @@ import {
   failureNotificationDestinationStatusRequestSchema,
   type FailureNotificationDestinationResponse,
   workflowFailureNotificationPolicyRequestSchema,
-} from '@pertexo/contracts';
+} from '@pertexo/contracts/connections';
 import { idempotencyKeySchema } from '@pertexo/contracts/identity-workspace';
 import {
   generatePersistedId,

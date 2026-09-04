@@ -8,7 +8,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { webhookRotateSecretRequestSchema } from '@pertexo/contracts';
+import { webhookRotateSecretRequestSchema } from '@pertexo/contracts/webhooks';
 import { z } from 'zod';
 
 import {

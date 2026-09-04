@@ -8,7 +8,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { scheduleManagementCommandRequestSchema } from '@pertexo/contracts';
+import { scheduleManagementCommandRequestSchema } from '@pertexo/contracts/schedules';
 import { z } from 'zod';
 
 import {

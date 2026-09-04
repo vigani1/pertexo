@@ -26,6 +26,20 @@ describe('contracts package boundary', () => {
       './schedules',
     ]);
 
+    const repositoryRoot = new URL('../../../', import.meta.url);
+    const applicationSources = [
+      'apps/api/src/schedules/controllers.ts',
+      'apps/api/src/webhooks/controllers.ts',
+      'apps/api/src/workflow-authoring/types.ts',
+      'apps/api/src/connections/failure-notification-destinations.ts',
+      'apps/api/src/platform/observability/api-metrics.ts',
+    ];
+    for (const source of applicationSources) {
+      expect(
+        await readFile(new URL(source, repositoryRoot), 'utf8'),
+      ).not.toMatch(/from ['"]@pertexo\/contracts['"]/u);
+    }
+
     for (const source of [
       '../src/index.ts',
       '../src/connections.ts',
