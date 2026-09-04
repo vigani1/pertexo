@@ -105,6 +105,45 @@ describe('Redis rate-limit runtime', () => {
     expect(redisMock.disconnect).toHaveBeenCalledOnce();
   });
 
+  it('deduplicates concurrent connects and reconnects after a disconnect', async () => {
+    redisMock.connect.mockImplementation(() => {
+      redisMock.status = 'ready';
+      return Promise.resolve();
+    });
+    redisMock.eval.mockResolvedValue([1, 0, 0]);
+    const runtime = new RedisRateLimitRuntime('redis://example.test');
+
+    await Promise.all([runtime.consume(decision), runtime.consume(decision)]);
+    expect(redisMock.connect).toHaveBeenCalledOnce();
+
+    redisMock.status = 'end';
+    await expect(runtime.consume(decision)).resolves.toEqual({ allowed: true });
+    expect(redisMock.connect).toHaveBeenCalledTimes(2);
+  });
+
+  it('recovers from an initial connect rejection and never reconnects after close', async () => {
+    redisMock.connect
+      .mockRejectedValueOnce(new Error('redis unavailable'))
+      .mockImplementationOnce(() => {
+        redisMock.status = 'ready';
+        return Promise.resolve();
+      });
+    redisMock.eval.mockResolvedValue([1, 0, 0]);
+    redisMock.quit.mockImplementation(() => {
+      redisMock.status = 'end';
+      return Promise.resolve('OK');
+    });
+    const runtime = new RedisRateLimitRuntime('redis://example.test');
+
+    await expect(runtime.consume(decision)).rejects.toThrow(
+      'redis unavailable',
+    );
+    await expect(runtime.consume(decision)).resolves.toEqual({ allowed: true });
+    await runtime.close();
+    await expect(runtime.consume(decision)).rejects.toThrow(/closed/iu);
+    expect(redisMock.connect).toHaveBeenCalledTimes(2);
+  });
+
   it('rejects an operation budget outside the reviewed bounds', () => {
     expect(
       () =>

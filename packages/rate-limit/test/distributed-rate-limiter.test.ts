@@ -44,6 +44,11 @@ describe('distributed abuse rate limiter', () => {
     expect(script).toEqual(expect.stringContaining('redis.call'));
     expect(keyCount).toBe(3);
     expect(arguments_.slice(0, 3)).toHaveLength(3);
+    expect(arguments_.slice(0, 3)).toEqual([
+      expect.stringMatching(/^pertexo:abuse:v1:provider_test:actor:/u),
+      expect.stringMatching(/^pertexo:abuse:v1:provider_test:workspace:/u),
+      expect.stringMatching(/^pertexo:abuse:v1:provider_test:connection:/u),
+    ]);
     expect(arguments_.slice(0, 3).join(':')).not.toContain('secret');
     expect(arguments_.slice(3)).toEqual(['60000', '10', '20', '5']);
   });
@@ -66,5 +71,40 @@ describe('distributed abuse rate limiter', () => {
     await expect(limiter.consume(decision)).rejects.toThrow(
       'Invalid rate-limit script result',
     );
+  });
+
+  it.each([
+    ['zero window', { ...decision, windowSeconds: 0 }],
+    ['fractional window', { ...decision, windowSeconds: 1.5 }],
+    [
+      'blank identifier',
+      {
+        ...decision,
+        dimensions: [{ kind: 'actor' as const, identifier: ' ', limit: 1 }],
+      },
+    ],
+    [
+      'zero limit',
+      {
+        ...decision,
+        dimensions: [{ kind: 'actor' as const, identifier: 'actor', limit: 0 }],
+      },
+    ],
+    [
+      'duplicate dimension',
+      {
+        ...decision,
+        dimensions: [
+          { kind: 'actor' as const, identifier: 'actor', limit: 1 },
+          { kind: 'actor' as const, identifier: 'actor', limit: 1 },
+        ],
+      },
+    ],
+  ])('rejects invalid decision input: %s', async (_name, invalid) => {
+    const executor = new FakeExecutor([1, 0, 0]);
+    await expect(
+      new DistributedRateLimiter(executor).consume(invalid),
+    ).rejects.toThrow(/rate-limit decision/iu);
+    expect(executor.calls).toHaveLength(0);
   });
 });

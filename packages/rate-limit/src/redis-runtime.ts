@@ -17,6 +17,8 @@ export class RedisRateLimitRuntime {
   private readonly limiter: DistributedRateLimiter;
   private readonly operationTimeoutMs: number;
   private connection: Promise<void> | undefined;
+  private closed = false;
+  private closePromise: Promise<void> | undefined;
 
   public constructor(
     redisUrl: string,
@@ -48,20 +50,38 @@ export class RedisRateLimitRuntime {
     return this.limiter.consume(decision);
   }
 
-  public async close(): Promise<void> {
-    if (this.redis.status === 'ready') await this.redis.quit();
-    else this.redis.disconnect();
+  public close(): Promise<void> {
+    this.closed = true;
+    if (this.closePromise === undefined) {
+      if (this.redis.status === 'ready')
+        this.closePromise = this.redis.quit().then(() => undefined);
+      else {
+        this.redis.disconnect();
+        this.closePromise = Promise.resolve();
+      }
+    }
+    return this.closePromise;
   }
 
   private async connect(): Promise<void> {
+    if (this.closed) throw new Error('Redis rate-limit runtime is closed');
     if (this.redis.status === 'ready') return;
-    this.connection ??= this.redis.connect().then(() => undefined);
+    const connection =
+      this.connection ?? this.redis.connect().then(() => undefined);
+    this.connection = connection;
     try {
-      await this.connection;
-    } catch (error: unknown) {
-      this.connection = undefined;
-      throw error;
+      await connection;
+      if (this.isClosed()) {
+        this.redis.disconnect();
+        throw new Error('Redis rate-limit runtime is closed');
+      }
+    } finally {
+      if (this.connection === connection) this.connection = undefined;
     }
+  }
+
+  private isClosed(): boolean {
+    return this.closed;
   }
 
   private async withDeadline<T>(operation: () => Promise<T>): Promise<T> {

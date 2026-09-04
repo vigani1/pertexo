@@ -24,6 +24,109 @@ function subject(
 describe('abuse rate-limit policy', () => {
   const policy = new AbuseRateLimitPolicy();
 
+  it('locks every endpoint class to the reviewed one-minute policy table', () => {
+    const expected = {
+      identity_start: [
+        'closed',
+        [
+          ['client_address', 10],
+          ['origin', 30],
+        ],
+      ],
+      identity_callback: [
+        'closed',
+        [
+          ['client_address', 30],
+          ['origin', 60],
+        ],
+      ],
+      authenticated_read: [
+        'open',
+        [
+          ['actor', 600],
+          ['workspace', 1_200],
+        ],
+      ],
+      actor_mutation: ['closed', [['actor', 120]]],
+      ordinary_mutation: [
+        'closed',
+        [
+          ['actor', 120],
+          ['workspace', 300],
+        ],
+      ],
+      workflow_compile: [
+        'closed',
+        [
+          ['actor', 30],
+          ['workspace', 60],
+        ],
+      ],
+      run_admission: [
+        'closed',
+        [
+          ['actor', 60],
+          ['workspace', 120],
+        ],
+      ],
+      preview_test: [
+        'closed',
+        [
+          ['actor', 20],
+          ['workspace', 40],
+        ],
+      ],
+      connection_mutation: [
+        'closed',
+        [
+          ['actor', 30],
+          ['workspace', 60],
+          ['connection', 10],
+        ],
+      ],
+      provider_test: [
+        'closed',
+        [
+          ['actor', 10],
+          ['workspace', 20],
+          ['connection', 5],
+        ],
+      ],
+      trigger_mutation: [
+        'closed',
+        [
+          ['actor', 60],
+          ['workspace', 120],
+        ],
+      ],
+      provider_execution: [
+        'closed',
+        [
+          ['workspace', 300],
+          ['connection', 60],
+        ],
+      ],
+    } as const;
+
+    expect(
+      Object.fromEntries(
+        Object.keys(expected).map((endpointClass) => {
+          const decision = policy.evaluate(
+            endpointClass as keyof typeof expected,
+            subject(),
+          );
+          return [
+            endpointClass,
+            [
+              decision.failureMode,
+              decision.dimensions.map(({ kind, limit }) => [kind, limit]),
+            ],
+          ];
+        }),
+      ),
+    ).toEqual(expected);
+  });
+
   it('binds identity start to normalized origin and client address', () => {
     expect(
       policy.evaluate('identity_start', subject({ actorId: undefined })),
@@ -80,5 +183,25 @@ describe('abuse rate-limit policy', () => {
     expect(policy.evaluate('ordinary_mutation', subject()).failureMode).toBe(
       'closed',
     );
+  });
+
+  it('omits conditional workspace and connection dimensions when not scoped', () => {
+    expect(
+      policy.evaluate('authenticated_read', subject({ workspaceId: undefined }))
+        .dimensions,
+    ).toEqual([{ kind: 'actor', identifier: actorId, limit: 600 }]);
+    expect(
+      policy.evaluate('ordinary_mutation', subject({ workspaceId: undefined }))
+        .dimensions,
+    ).toEqual([{ kind: 'actor', identifier: actorId, limit: 120 }]);
+    expect(
+      policy.evaluate(
+        'connection_mutation',
+        subject({ connectionId: undefined }),
+      ).dimensions,
+    ).toEqual([
+      { kind: 'actor', identifier: actorId, limit: 30 },
+      { kind: 'workspace', identifier: workspaceId, limit: 60 },
+    ]);
   });
 });

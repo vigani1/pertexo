@@ -11,6 +11,7 @@ import {
   type DistributedRateLimitResult,
   type RateLimitEndpointClass,
   type RateLimitFailureMode,
+  type RateLimitDimensionKind,
   type RateLimitSubject,
 } from '@pertexo/rate-limit';
 
@@ -29,7 +30,7 @@ export type RateLimitMetricRecorder = Readonly<{
     endpointClass: RateLimitEndpointClass;
     failureMode: RateLimitFailureMode;
     outcome: 'allowed' | 'limited' | 'backend_error';
-    limitedDimension?: string;
+    limitedDimension?: RateLimitDimensionKind;
   }): void;
 }>;
 
