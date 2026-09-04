@@ -33,6 +33,7 @@ import {
   CORE_WAIT_DEFINITION,
   CORE_WAIT_EXECUTOR,
   CORE_WAIT_MANIFEST,
+  CORE_NODE_DEFINITION_REGISTRATIONS,
 } from '../src/index.js';
 import {
   createCoreNodeRegistry,
@@ -41,7 +42,22 @@ import {
 
 const signal = new AbortController().signal;
 
+function expectRecursivelyFrozen(
+  value: unknown,
+  visited = new Set<object>(),
+): void {
+  if (value === null || typeof value !== 'object' || visited.has(value)) return;
+  visited.add(value);
+  expect(Object.isFrozen(value)).toBe(true);
+  for (const nested of Object.values(value))
+    expectRecursivelyFrozen(nested, visited);
+}
+
 describe('core node release', () => {
+  it('recursively freezes every owned manifest tree', () => {
+    for (const { manifest } of CORE_NODE_DEFINITION_REGISTRATIONS)
+      expectRecursivelyFrozen(manifest);
+  });
   it('publishes exactly the first three active definitions with exact executors', () => {
     expect(CORE_DEFINITION_MANIFESTS.map((item) => item.definition)).toEqual([
       { key: 'core.manual', version: 1 },
@@ -114,7 +130,7 @@ describe('core node execution', () => {
           policies: CORE_REGISTRY_RELEASE.policies,
         }),
       ),
-    ).toThrow('next successor');
+    ).toThrow('compatibility release epoch must be contiguous');
   });
 
   it('does not expose placement or publication catalogs before vertical-slice completion', () => {

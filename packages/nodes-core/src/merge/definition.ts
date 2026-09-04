@@ -27,7 +27,7 @@ export const CORE_MERGE_MANIFEST: NodeManifest = Object.freeze({
   outputSchema: generateSchemaDocument(CORE_MERGE_OUTPUT_SCHEMA),
   ports: Object.freeze({
     inputs: CORE_PARALLEL_BRANCH_PORTS,
-    outputs: ['out'],
+    outputs: Object.freeze(['out']),
   }),
   credentialRequirements: Object.freeze([]),
   connectionRequirements: Object.freeze([]),
