@@ -219,6 +219,7 @@ describe('connection application use cases', () => {
         return Promise.resolve(sealed);
       }),
     };
+    const signal = new AbortController().signal;
     const result = await new CreateConnectionUseCase(
       store,
       authorization(),
@@ -229,11 +230,13 @@ describe('connection application use cases', () => {
       idempotencyKey: 'create-42',
       requestId: 'request-42',
       request: { providerKey: 'http', name: 'Operations API', credential },
+      signal,
     });
 
     expect(encryption.seal).toHaveBeenCalledWith(
       expect.any(Uint8Array),
       expect.objectContaining({ workspaceId }),
+      signal,
     );
     expect(createConnection).toHaveBeenCalledWith(
       expect.objectContaining({

@@ -659,6 +659,52 @@ describe('secure HTTP client', () => {
       },
     );
   });
+
+  it('does not report definite pre-dispatch cancellation while the marker can still commit', async () => {
+    const controller = new AbortController();
+    let releaseMarker: (() => void) | undefined;
+    let committed = false;
+    const markerStarted = vi.fn();
+    const markerGate = new Promise<void>((resolve) => {
+      releaseMarker = resolve;
+    });
+    const dispatch = vi.fn();
+    const execution = new SecureHttpClient(
+      new FakeResolver({
+        'api.example.test': [{ address: '8.8.8.8', family: 4 }],
+      }),
+      { dispatch },
+    ).execute(
+      request({
+        signal: controller.signal,
+        beforeDispatch: async () => {
+          markerStarted();
+          await markerGate;
+          committed = true;
+        },
+      }),
+    );
+    await vi.waitFor(() => {
+      expect(markerStarted).toHaveBeenCalledOnce();
+    });
+    let settled = false;
+    void execution
+      .finally(() => {
+        settled = true;
+      })
+      .catch(() => undefined);
+    controller.abort();
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    releaseMarker?.();
+    await expectSecureFailure(execution, {
+      code: SECURE_HTTP_ERROR_CODE.canceled,
+      classification: 'ambiguous',
+      possiblyDispatched: true,
+    });
+    expect(committed).toBe(true);
+    expect(dispatch).not.toHaveBeenCalled();
+  });
 });
 
 describe('Node HTTP transport', () => {

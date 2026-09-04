@@ -142,11 +142,15 @@ function connectionFactory(
           throw new ConnectionUnavailableError(
             'Connection is not compatible with this executor',
           );
-        const secret = await encryption.open(resolved.sealed, {
-          workspaceId: context.workspaceId,
-          connectionId: input.connectionId,
-          secretVersionId: resolved.secretVersionId,
-        });
+        const secret = await encryption.open(
+          resolved.sealed,
+          {
+            workspaceId: context.workspaceId,
+            connectionId: input.connectionId,
+            secretVersionId: resolved.secretVersionId,
+          },
+          input.signal,
+        );
         if (input.signal.aborted) {
           secret.fill(0);
           throw abortError();

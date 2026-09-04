@@ -13,6 +13,7 @@ import {
 import {
   SECURE_HTTP_ERROR_CODE,
   SecureHttpError,
+  secureHttpPreDispatchError,
 } from '../http/secure-http.js';
 import type { ResendApiResult, ResendClient } from './client.js';
 import {
@@ -201,7 +202,9 @@ async function execute(
               signal: invocation.signal,
             });
           } catch {
-            throw credentialFailure(runtime);
+            throw secureHttpPreDispatchError(
+              SECURE_HTTP_ERROR_CODE.connectionFenceFailed,
+            );
           }
           try {
             await runtime.beforeDispatch({
@@ -218,19 +221,17 @@ async function execute(
           } catch (error: unknown) {
             if (error instanceof NodeDispatchEvidenceError) {
               if (error.code === 'provider_dispatch_binding_mismatch')
-                throw new SecureHttpError(
+                throw secureHttpPreDispatchError(
                   SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch,
-                  'definite_failure',
-                  false,
                 );
               if (error.code === 'provider_connection_fence_failed')
-                throw new SecureHttpError(
+                throw secureHttpPreDispatchError(
                   SECURE_HTTP_ERROR_CODE.connectionFenceFailed,
-                  'definite_failure',
-                  false,
                 );
             }
-            throw error;
+            throw secureHttpPreDispatchError(
+              SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed,
+            );
           }
         },
       });

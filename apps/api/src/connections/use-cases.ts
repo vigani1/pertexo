@@ -53,7 +53,11 @@ type ConnectionCommandInput = Readonly<{
   authorizedWorkspace?: AuthorizedWorkspaceContext;
   requestId?: string;
   traceId?: string;
+  signal?: AbortSignal;
 }>;
+
+const encryptionSignal = (input: ConnectionCommandInput): AbortSignal =>
+  input.signal ?? AbortSignal.timeout(30_000);
 
 export type CreateConnectionCommand = ConnectionCommandInput &
   Readonly<{
@@ -102,11 +106,15 @@ export class CreateConnectionUseCase {
       const secretVersionId = generatePersistedId();
       const plaintext = encodeCredential(request.credential);
       try {
-        const sealed = await this.encryption.seal(plaintext, {
-          workspaceId: input.routeWorkspaceId,
-          connectionId,
-          secretVersionId,
-        });
+        const sealed = await this.encryption.seal(
+          plaintext,
+          {
+            workspaceId: input.routeWorkspaceId,
+            connectionId,
+            secretVersionId,
+          },
+          encryptionSignal(input),
+        );
         return toResponse(
           await this.persistence.createConnection({
             workspaceId: input.routeWorkspaceId,
@@ -161,11 +169,15 @@ export class RotateConnectionSecretUseCase {
       if (replay !== null) return toResponse(replay);
       const plaintext = encodeCredential(request.credential);
       try {
-        const sealed = await this.encryption.seal(plaintext, {
-          workspaceId: input.routeWorkspaceId,
-          connectionId: input.connectionId,
-          secretVersionId,
-        });
+        const sealed = await this.encryption.seal(
+          plaintext,
+          {
+            workspaceId: input.routeWorkspaceId,
+            connectionId: input.connectionId,
+            secretVersionId,
+          },
+          encryptionSignal(input),
+        );
         return toResponse(
           await this.persistence.rotateConnectionSecret({
             workspaceId: input.routeWorkspaceId,
@@ -268,11 +280,15 @@ export class TestConnectionUseCase {
           ...common,
           expectedProviderKey,
         });
-        plaintext = await this.encryption.open(resolved.sealed, {
-          workspaceId: input.routeWorkspaceId,
-          connectionId: input.connectionId,
-          secretVersionId: resolved.secretVersionId,
-        });
+        plaintext = await this.encryption.open(
+          resolved.sealed,
+          {
+            workspaceId: input.routeWorkspaceId,
+            connectionId: input.connectionId,
+            secretVersionId: resolved.secretVersionId,
+          },
+          encryptionSignal(input),
+        );
         const credential = decodeCredential(plaintext);
         try {
           if (expectedProviderKey === 'email') {

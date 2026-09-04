@@ -1,7 +1,7 @@
 import {
   DecryptCommand,
   GenerateDataKeyCommand,
-  KMSClient,
+  type KMSClient,
 } from '@aws-sdk/client-kms';
 import {
   createCipheriv,
@@ -11,6 +11,7 @@ import {
   timingSafeEqual,
 } from 'node:crypto';
 import { z } from 'zod';
+import { createBoundedKmsClient } from '../credentials/kms-client.js';
 
 const contextSchema = z
   .object({
@@ -190,10 +191,7 @@ export function createAwsWebhookTriggerEnvelopeEncryption(
     endpoint?: string;
   }>,
 ) {
-  const client = new KMSClient({
-    region: config.region,
-    ...(config.endpoint === undefined ? {} : { endpoint: config.endpoint }),
-  });
+  const client = createBoundedKmsClient(config);
   return Object.freeze({
     encryption: new WebhookTriggerEnvelopeEncryption(
       new AwsKmsWebhookEnvelopeKeyProvider(client, config.keyReference),

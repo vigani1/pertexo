@@ -322,6 +322,9 @@ importers:
       '@pertexo/node-sdk':
         specifier: workspace:*
         version: link:../node-sdk
+      '@smithy/node-http-handler':
+        specifier: 4.11.2
+        version: 4.11.2
       zod:
         specifier: 4.4.3
         version: 4.4.3

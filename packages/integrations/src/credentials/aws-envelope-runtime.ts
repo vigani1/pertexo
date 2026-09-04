@@ -1,10 +1,10 @@
-import { KMSClient } from '@aws-sdk/client-kms';
 import { z } from 'zod';
 
 import {
   AwsKmsEnvelopeKeyProvider,
   ConnectionEnvelopeEncryption,
 } from './envelope-encryption.js';
+import { createBoundedKmsClient } from './kms-client.js';
 
 const configSchema = z
   .object({
@@ -27,10 +27,7 @@ export function createAwsConnectionEnvelopeEncryption(
   config: AwsConnectionEnvelopeEncryptionConfig,
 ): AwsConnectionEnvelopeEncryptionRuntime {
   const parsed = configSchema.parse(config);
-  const client = new KMSClient({
-    region: parsed.region,
-    ...(parsed.endpoint === undefined ? {} : { endpoint: parsed.endpoint }),
-  });
+  const client = createBoundedKmsClient(parsed);
   return Object.freeze({
     encryption: new ConnectionEnvelopeEncryption(
       new AwsKmsEnvelopeKeyProvider(client, parsed.keyReference),

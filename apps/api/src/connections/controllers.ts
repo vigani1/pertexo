@@ -21,6 +21,7 @@ import {
 } from '../identity-workspace/index.js';
 import { createActorContext } from '../workspaces/index.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
+import { withRequestOperationSignal } from '../platform/http/index.js';
 import { ConnectionManageGuard, ConnectionUseGuard } from './guards.js';
 import {
   CreateConnectionUseCase,
@@ -58,14 +59,17 @@ export class ConnectionsController {
     @Body() body: unknown,
   ) {
     const { workspaceId } = workspaceParams(params);
-    return this.createConnection.execute({
-      actor: actorFrom(request, workspaceId),
-      routeWorkspaceId: workspaceId,
-      ...guardAuthorization(request),
-      request: body,
-      idempotencyKey: idempotencyKey(request),
-      ...requestMetadata(request),
-    });
+    return withRequestOperationSignal(request, (signal) =>
+      this.createConnection.execute({
+        actor: actorFrom(request, workspaceId),
+        routeWorkspaceId: workspaceId,
+        ...guardAuthorization(request),
+        request: body,
+        idempotencyKey: idempotencyKey(request),
+        ...requestMetadata(request),
+        signal,
+      }),
+    );
   }
 
   @Put(':connectionId/secret')
@@ -81,15 +85,18 @@ export class ConnectionsController {
     @Body() body: unknown,
   ) {
     const route = connectionIdParamSchema.parse(params);
-    return this.rotateSecret.execute({
-      actor: actorFrom(request, route.workspaceId),
-      routeWorkspaceId: route.workspaceId,
-      ...guardAuthorization(request),
-      connectionId: route.connectionId,
-      request: body,
-      idempotencyKey: idempotencyKey(request),
-      ...requestMetadata(request),
-    });
+    return withRequestOperationSignal(request, (signal) =>
+      this.rotateSecret.execute({
+        actor: actorFrom(request, route.workspaceId),
+        routeWorkspaceId: route.workspaceId,
+        ...guardAuthorization(request),
+        connectionId: route.connectionId,
+        request: body,
+        idempotencyKey: idempotencyKey(request),
+        ...requestMetadata(request),
+        signal,
+      }),
+    );
   }
 
   @Delete(':connectionId')
@@ -127,15 +134,18 @@ export class ConnectionsController {
     @Body() body: unknown,
   ) {
     const route = connectionIdParamSchema.parse(params);
-    return this.testConnection.execute({
-      actor: actorFrom(request, route.workspaceId),
-      routeWorkspaceId: route.workspaceId,
-      ...guardAuthorization(request),
-      connectionId: route.connectionId,
-      request: body,
-      idempotencyKey: idempotencyKey(request),
-      ...requestMetadata(request),
-    });
+    return withRequestOperationSignal(request, (signal) =>
+      this.testConnection.execute({
+        actor: actorFrom(request, route.workspaceId),
+        routeWorkspaceId: route.workspaceId,
+        ...guardAuthorization(request),
+        connectionId: route.connectionId,
+        request: body,
+        idempotencyKey: idempotencyKey(request),
+        ...requestMetadata(request),
+        signal,
+      }),
+    );
   }
 }
 

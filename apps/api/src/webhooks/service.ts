@@ -50,6 +50,8 @@ export class WebhookManagementService {
   }
 
   private async command(operation: Operation, input: CommandInput) {
+    const signal = input.signal ?? AbortSignal.timeout(30_000);
+    signal.throwIfAborted();
     const endpointBytes =
       operation === 'rotateSecret' ? undefined : randomBytes(32);
     const secretBytes =
@@ -81,12 +83,17 @@ export class WebhookManagementService {
           ? undefined
           : {
               id: secretVersionId,
-              ...(await this.encryption.seal(secretBytes, {
-                workspaceId: input.workspaceId,
-                triggerId: input.triggerId,
-                secretVersionId,
-              })),
+              ...(await this.encryption.seal(
+                secretBytes,
+                {
+                  workspaceId: input.workspaceId,
+                  triggerId: input.triggerId,
+                  secretVersionId,
+                },
+                signal,
+              )),
             };
+      signal.throwIfAborted();
       let trigger: WorkflowTriggerHealth;
       if (operation === 'provision') {
         if (endpointHash === undefined || secret === undefined)
@@ -153,6 +160,7 @@ type CommandInput = Readonly<{
   triggerId: string;
   idempotencyKey: string;
   endpointKey?: string;
+  signal?: AbortSignal;
 }>;
 
 function throwManagementError(

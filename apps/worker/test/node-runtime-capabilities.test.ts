@@ -175,11 +175,15 @@ describe('worker node runtime capabilities', () => {
         ],
       }),
     );
-    expect(open).toHaveBeenCalledWith(expect.anything(), {
-      workspaceId,
-      connectionId,
-      secretVersionId,
-    });
+    expect(open).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        workspaceId,
+        connectionId,
+        secretVersionId,
+      },
+      signal,
+    );
     expect(new TextDecoder().decode(resolved.secret)).toBe('secret');
 
     if (connections.assertCurrent === undefined)

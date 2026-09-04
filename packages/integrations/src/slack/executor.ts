@@ -2,6 +2,7 @@ import {
   DISPATCH_AWARE_EXECUTOR_ABI_VERSION,
   type NodeExecutionInvocation,
   type NodeExecutorRegistration,
+  NodeDispatchEvidenceError,
   NodeExecutorFailure,
   ProviderExecutionRateLimitError,
 } from '@pertexo/node-sdk/server';
@@ -9,6 +10,7 @@ import {
 import {
   SECURE_HTTP_ERROR_CODE,
   SecureHttpError,
+  secureHttpPreDispatchError,
 } from '../http/secure-http.js';
 import type { SlackApiResult, SlackClient } from './client.js';
 import {
@@ -181,19 +183,41 @@ async function execute(
         timeoutMillis: config.timeoutMillis,
         signal: invocation.signal,
         beforeDispatch: async () => {
-          await connections.assertCurrent?.({
-            connectionId,
-            expectedProviderKey: 'slack',
-            expectedAuthType: 'slack_bot_token',
-            secretVersionId: resolved.secretVersionId,
-            signal: invocation.signal,
-          });
-          await runtime.beforeDispatch();
+          try {
+            await connections.assertCurrent?.({
+              connectionId,
+              expectedProviderKey: 'slack',
+              expectedAuthType: 'slack_bot_token',
+              secretVersionId: resolved.secretVersionId,
+              signal: invocation.signal,
+            });
+          } catch {
+            throw secureHttpPreDispatchError(
+              SECURE_HTTP_ERROR_CODE.connectionFenceFailed,
+            );
+          }
+          try {
+            await runtime.beforeDispatch();
+          } catch (error: unknown) {
+            throw secureHttpPreDispatchError(
+              error instanceof NodeDispatchEvidenceError &&
+                error.code === 'provider_dispatch_binding_mismatch'
+                ? SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch
+                : error instanceof NodeDispatchEvidenceError &&
+                    error.code === 'provider_connection_fence_failed'
+                  ? SECURE_HTTP_ERROR_CODE.connectionFenceFailed
+                  : SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed,
+            );
+          }
         },
       });
     } catch (error: unknown) {
       if (error instanceof SlackSendMessageExecutorError) throw error;
       if (error instanceof SecureHttpError) {
+        if (error.code === SECURE_HTTP_ERROR_CODE.connectionFenceFailed)
+          throw failure('failed', 'authentication', false);
+        if (error.code === SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch)
+          throw failure('failed', 'configuration', false);
         if (error.code === SECURE_HTTP_ERROR_CODE.canceled) {
           if (!error.possiblyDispatched)
             throw failure('canceled', 'canceled', false);

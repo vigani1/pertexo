@@ -90,6 +90,15 @@ export class SecureHttpError extends Error {
   }
 }
 
+export function secureHttpPreDispatchError(
+  code:
+    | typeof SECURE_HTTP_ERROR_CODE.connectionFenceFailed
+    | typeof SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch
+    | typeof SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed,
+): SecureHttpError {
+  return new SecureHttpError(code, 'definite_failure', false);
+}
+
 export type SecureHttpRequest = Readonly<{
   url: string;
   method: 'DELETE' | 'GET' | 'HEAD' | 'PATCH' | 'POST' | 'PUT';
@@ -198,13 +207,9 @@ export class SecureHttpClient {
       );
       if (!markerCommitted) {
         try {
-          await raceWithSignal(
-            parsed.beforeDispatch(),
-            executionSignal,
-            false,
-            false,
-          );
+          await parsed.beforeDispatch();
           markerCommitted = true;
+          assertNotAborted(executionSignal, true, true);
         } catch (error: unknown) {
           if (error instanceof SecureHttpError) throw error;
           throw failure(

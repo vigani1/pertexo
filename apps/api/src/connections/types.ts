@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { IdentityWorkspaceRequest } from '../identity-workspace/types.js';
 
 export {
   connectionCreateRequestSchema,
@@ -19,4 +20,11 @@ export const connectionWorkspaceParamSchema = z
   .strict()
   .readonly();
 
-export type { IdentityWorkspaceRequest as ConnectionRequest } from '../identity-workspace/types.js';
+export type ConnectionRequest = IdentityWorkspaceRequest &
+  Readonly<{
+    raw?: Readonly<{
+      destroyed?: boolean;
+      once(event: 'aborted', listener: () => void): unknown;
+      off(event: 'aborted', listener: () => void): unknown;
+    }>;
+  }>;

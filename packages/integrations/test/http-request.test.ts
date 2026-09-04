@@ -601,9 +601,8 @@ describe('http.request@1 server executor', () => {
       registration.execute(invocation(executionRuntime)),
     ).rejects.toMatchObject({
       decision: {
-        kind: 'retry',
-        errorKind: 'internal',
-        reuseProviderKey: false,
+        kind: 'failed',
+        errorKind: 'authentication',
       },
       possiblyDispatched: false,
     });
@@ -611,6 +610,40 @@ describe('http.request@1 server executor', () => {
     expect(state.beforeDispatch).not.toHaveBeenCalled();
     expect(state.secret.every((byte) => byte === 0)).toBe(true);
   });
+
+  it.each([
+    ['invalid config', { config: config({ method: 'TRACE' }) }],
+    ['invalid input', { input: { body: { encoding: 'utf8' } } }],
+    ['unknown config field', { config: config({ unknown: true }) }],
+    [
+      'input above its bound',
+      { input: { body: { encoding: 'utf8', value: 'x'.repeat(1_048_577) } } },
+    ],
+  ])(
+    'normalizes %s admission as a configuration failure',
+    async (_name, overrides) => {
+      const state = runtime();
+      let executeStreamingCalls = 0;
+      const httpClient: HttpRequestExecutorDependencies['httpClient'] = {
+        executeStreaming: () => {
+          executeStreamingCalls += 1;
+          return Promise.reject(new Error('unexpected HTTP execution'));
+        },
+      };
+      const registration = createHttpRequestExecutorRegistration({
+        httpClient,
+      });
+
+      await expect(
+        registration.execute(invocation(state.value, overrides)),
+      ).rejects.toMatchObject({
+        decision: { kind: 'failed', errorKind: 'configuration' },
+        possiblyDispatched: false,
+      });
+      expect(state.resolve).not.toHaveBeenCalled();
+      expect(executeStreamingCalls).toBe(0);
+    },
+  );
 
   it('matches an exact ABI 2 registry identity without entering the production release', async () => {
     const state = runtime();
