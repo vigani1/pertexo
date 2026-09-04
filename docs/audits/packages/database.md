@@ -13,11 +13,23 @@
   entry/support modules under `src`, direct consumers in every application,
   package and repository checks, CI, the implementation plan, and applicable
   ADRs.
+- **Tooling scope:** `package.json`, `raw-sql-table-registry.json`, both
+  TypeScript configurations, and all three Vitest configurations (7 files and
+  264 physical lines).
+- **Granular certification:** every one of the package's 357 tracked files and
+  80,829 physical lines was included: 140 production files/33,154 lines, 135
+  test and fixture files/34,433 lines, 75 migrations/12,978 lines, and 7 local
+  package/tooling files/264 lines. Every export and meaningful internal
+  callable was assessed for responsibility, callers, invariants, control and
+  error flow, resource behavior, naming, readability, duplication, reuse,
+  abstraction depth, test evidence, and applicable security, tenancy,
+  concurrency, cancellation, performance, migration, and operational risk.
+  The findings below are the complete identified set, not a top-N selection.
 - **Architecture sources:** the authoritative backend plan; ADRs 002, 003,
   005-007, 010-016, 021-022, 025-027, and 029; the PostgreSQL operations and
   schema guidance used by this review; the complexity-retention register; and
   the raw-SQL table registry.
-- **Audit status:** complete for the pinned tree.
+- **Audit status:** granularly certified for the pinned tree.
 - **Implementation status:** four high-priority architectural/production-
   readiness issues, nine medium-priority performance, assurance, and
   maintainability issues, three low-priority cleanup/control issues, and one
@@ -54,6 +66,15 @@ line counts would make several modules worse.
 
 ## Evidence collected
 
+The review combined complete production, test, fixture, migration, package,
+and local-tooling file reading with export/internal-callable inventories,
+direct-consumer tracing, implementation-plan and ADR comparison, source and
+migration hygiene analysis, package build/typecheck/lint/tests, real-service
+PostgreSQL integration tests, enforced and full-source V8 coverage, schema and
+dependency checks, and focused capacity/architecture probes. The package diff
+against the audited implementation commit is empty, so the detailed file and
+callable conclusions still describe the exact current implementation.
+
 | Check | Result |
 | --- | --- |
 | `pnpm --filter @pertexo/database test` | 60 files and 175 tests passed |
@@ -67,6 +88,7 @@ line counts would make several modules worse.
 | Migration inventory | 75 ordered migrations; 102 normal indexes; no concurrent index lane |
 | Import graph | No runtime cycles; several erased type-only cycles at composition roots |
 | Source hygiene scan | No production `any`, suppression directive, or TODO/FIXME/HACK marker |
+| Baseline package diff | Empty against the audited implementation commit |
 | Pull-request CI immediately before this audit commit | All 14 reported checks passed, including integration, persistence unit tests, coverage, quality, recovery, image, dependency review, and CodeQL; the audit commit starts a fresh run |
 
 The two coverage rows measure different things. CI's high percentage covers
@@ -386,6 +408,18 @@ was found beyond a package-level finding explicitly referenced in the row.
 | `operator/operator-command-errors.ts` | Small stable execution error. Keep. |
 | `operator/operator-run-replay.ts` | Worker-side replay request resolution verifies source run, pinned executable, new identity, lineage, admission, and acknowledgement. Keep. |
 | `operator/testing.ts` | Focused test exports. Keep. |
+
+### Package and local tooling files
+
+| File | Review |
+| --- | --- |
+| `package.json` | Seven role-specific export subpaths prevent a broad production root from erasing authority boundaries. Dependencies are direct and current for the pinned lockfile; scripts clearly separate unit, selected coverage, and PostgreSQL integration execution. The missing combined coverage lane is DB-006, not an export-layout problem. |
+| `raw-sql-table-registry.json` | All 19 function-owned/raw-SQL tables have an explicit owner, permitted roles, RLS classification, and rationale. This is useful ownership evidence; extending it from table-name coverage to migrated shape/grant/policy proof is DB-012. |
+| `tsconfig.json` | Composite ESM declaration build is narrow to `src`, with test output excluded. Keep. |
+| `tsconfig.test.json` | Typechecks source, every TypeScript test, and every Vitest configuration without emitting. Keep. |
+| `vitest.config.ts` | Correctly routes non-integration tests and excludes build output. Keep. |
+| `vitest.coverage.config.ts` | Deliberately enforces a strong ratchet only on the shared tenant transaction engine. Its comment is accurate; it must not be presented as package-wide coverage. DB-006 owns the missing combined unit/integration evidence. |
+| `vitest.integration.config.ts` | Serial fork execution is appropriate for disposable-database migration, role, lock, and concurrency suites. The separate suffix/lane is purposeful test organization, not unnecessary directory structure. Keep. |
 
 ## SQL migration review
 

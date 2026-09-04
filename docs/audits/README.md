@@ -95,7 +95,7 @@ ones, with dependency order allowed to override raw size.
 | `apps/worker` | 53 | 7,983 | 71 | 21,249 | Not started |
 | `packages/workflow-engine` | 40 | 8,484 | 22 | 8,451 | [Granularly certified](packages/workflow-engine.md) |
 | `apps/api` | 121 | 14,993 | 74 | 15,480 | Not started |
-| `packages/database` | 140 | 33,154 | 135 | 34,433 | [Broad audit complete; granular certification pending](packages/database.md) |
+| `packages/database` | 140 | 33,154 | 135 | 34,433 | [Granularly certified](packages/database.md) |
 
 The inventory is a snapshot, so each later audit must refresh its own counts and
 pin its own reviewed tree. Application audits include their package-facing
