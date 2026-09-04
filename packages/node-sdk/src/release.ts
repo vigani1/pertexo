@@ -139,7 +139,7 @@ const identitySchema = z
   .strict();
 const policyReferenceSchema = identitySchema;
 
-export function isBoundedNodeJson(value: unknown): value is SchemaJson {
+function inspectBoundedNodeJson(value: unknown): value is SchemaJson {
   if (
     value === null ||
     typeof value === 'string' ||
@@ -207,6 +207,14 @@ export function isBoundedNodeJson(value: unknown): value is SchemaJson {
       new TextEncoder().encode(JSON.stringify(value)).byteLength <=
       NODE_JSON_LIMITS_V1.bytes
     );
+  } catch {
+    return false;
+  }
+}
+
+export function isBoundedNodeJson(value: unknown): value is SchemaJson {
+  try {
+    return inspectBoundedNodeJson(value);
   } catch {
     return false;
   }
@@ -391,7 +399,12 @@ function cloneAndFreeze<T>(value: T): T {
   }
   const copy: Record<string, unknown> = {};
   for (const [key, item] of Object.entries(value))
-    copy[key] = cloneAndFreeze(item);
+    Object.defineProperty(copy, key, {
+      configurable: true,
+      enumerable: true,
+      value: cloneAndFreeze(item),
+      writable: true,
+    });
   return Object.freeze(copy) as T;
 }
 
@@ -762,8 +775,10 @@ export function createRegistryReleaseSuccessor(
   const { previous: previousInput, ...successorInput } = input;
   const previous = parseRegistryRelease(previousInput);
   const next = createRegistryRelease(successorInput);
-  if (next.epoch <= previous.epoch)
-    throw new Error('compatibility release epoch must increase');
+  if (next.epoch !== previous.epoch + 1)
+    throw new Error('compatibility release epoch must be contiguous');
+  if (next.fingerprint === previous.fingerprint)
+    throw new Error('compatibility release successor must change');
 
   const nextDefinitions = new Map(
     next.definitions.map((manifest) => [

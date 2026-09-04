@@ -488,13 +488,13 @@ function primitiveJson(value: unknown): JsonValue | undefined {
  * Validate and normalize untrusted JSON with explicit stack frames. It never
  * follows user-controlled recursion and rejects cycles/accessors/prototypes.
  */
-export function canonicalizeBoundedJson(
+function canonicalizeBoundedJsonUnsafe(
   value: unknown,
   limits: Readonly<{
     bytes: number;
     depth: number;
     members: number;
-  }> = NODE_EXECUTION_LIMITS_V1,
+  }>,
 ): JsonValue {
   const primitive = primitiveJson(value);
   if (primitive !== undefined) {
@@ -515,6 +515,8 @@ export function canonicalizeBoundedJson(
     throw new InvalidBoundedJsonError('object must be plain');
   if (Object.getOwnPropertySymbols(value).length > 0)
     throw new InvalidBoundedJsonError('symbol properties are not JSON');
+  if (rootIsArray && Object.keys(value).length !== value.length)
+    throw new InvalidBoundedJsonError('array properties are not JSON');
   const root: MutableObject | JsonValue[] = rootIsArray ? [] : {};
   const rootKeys = rootIsArray
     ? Array.from({ length: value.length }, (_, index) => String(index))
@@ -540,13 +542,19 @@ export function canonicalizeBoundedJson(
     const descriptor = Object.getOwnPropertyDescriptor(frame.source, key);
     if (descriptor === undefined || !('value' in descriptor))
       throw new InvalidBoundedJsonError('accessors are not JSON');
-    if (Array.isArray(frame.source) && !(Number(key) in frame.source))
+    if (Array.isArray(frame.source) && !Object.hasOwn(frame.source, key))
       throw new InvalidBoundedJsonError('sparse arrays are not JSON');
     const child: unknown = descriptor.value as unknown;
     const scalar = primitiveJson(child);
     if (scalar !== undefined) {
       if (Array.isArray(frame.target)) frame.target[Number(key)] = scalar;
-      else frame.target[key] = scalar;
+      else
+        Object.defineProperty(frame.target, key, {
+          configurable: true,
+          enumerable: true,
+          value: scalar,
+          writable: true,
+        });
       continue;
     }
     if (typeof child !== 'object' || child === null)
@@ -563,9 +571,17 @@ export function canonicalizeBoundedJson(
     const childIsArray = Array.isArray(child);
     if (childIsArray && child.length > limits.members)
       throw new InvalidBoundedJsonError('JSON member limit exceeded');
+    if (childIsArray && Object.keys(child).length !== child.length)
+      throw new InvalidBoundedJsonError('array properties are not JSON');
     const childTarget: MutableObject | JsonValue[] = childIsArray ? [] : {};
     if (Array.isArray(frame.target)) frame.target[Number(key)] = childTarget;
-    else frame.target[key] = childTarget;
+    else
+      Object.defineProperty(frame.target, key, {
+        configurable: true,
+        enumerable: true,
+        value: childTarget,
+        writable: true,
+      });
     const childKeys = childIsArray
       ? Array.from({ length: child.length }, (_, index) => String(index))
       : Object.keys(child);
@@ -583,6 +599,33 @@ export function canonicalizeBoundedJson(
   if (new TextEncoder().encode(serialized).byteLength > limits.bytes)
     throw new InvalidBoundedJsonError('JSON byte limit exceeded');
   return result;
+}
+
+export function canonicalizeBoundedJson(
+  value: unknown,
+  limits: Readonly<{
+    bytes: number;
+    depth: number;
+    members: number;
+  }> = NODE_EXECUTION_LIMITS_V1,
+): JsonValue {
+  if (
+    !Number.isSafeInteger(limits.bytes) ||
+    limits.bytes <= 0 ||
+    !Number.isSafeInteger(limits.depth) ||
+    limits.depth <= 0 ||
+    !Number.isSafeInteger(limits.members) ||
+    limits.members <= 0
+  )
+    throw new InvalidBoundedJsonError(
+      'JSON limits must be positive safe integers',
+    );
+  try {
+    return canonicalizeBoundedJsonUnsafe(value, limits);
+  } catch (error) {
+    if (error instanceof InvalidBoundedJsonError) throw error;
+    throw new InvalidBoundedJsonError('value could not be inspected safely');
+  }
 }
 
 function mapSchemaError(
@@ -900,7 +943,9 @@ export function createNodeRegistry(options: NodeRegistryOptions): NodeRegistry {
       executor.registration.abiVersion === DISPATCH_AWARE_EXECUTOR_ABI_VERSION;
     if (dispatchAware && request.runtime === undefined)
       throw new NodeExecutionRuntimeRequiredError();
-    let dispatchCount = 0;
+    const dispatchState: {
+      value: 'unused' | 'in_flight' | 'committed' | 'failed';
+    } = { value: 'unused' };
     const runtime =
       request.runtime === undefined
         ? undefined
@@ -909,10 +954,16 @@ export function createNodeRegistry(options: NodeRegistryOptions): NodeRegistry {
             beforeDispatch: async (
               input?: Parameters<NodeExecutionRuntime['beforeDispatch']>[0],
             ): Promise<void> => {
-              if (dispatchCount !== 0)
+              if (dispatchState.value !== 'unused')
                 throw new NodeDispatchEvidenceError('duplicate_dispatch');
-              await request.runtime?.beforeDispatch(input);
-              dispatchCount += 1;
+              dispatchState.value = 'in_flight';
+              try {
+                await request.runtime?.beforeDispatch(input);
+                dispatchState.value = 'committed';
+              } catch (error) {
+                dispatchState.value = 'failed';
+                throw error;
+              }
             },
           });
     const result = await executor.registration.execute({
@@ -922,7 +973,7 @@ export function createNodeRegistry(options: NodeRegistryOptions): NodeRegistry {
       signal: request.signal,
       ...(runtime === undefined ? {} : { runtime }),
     });
-    if (dispatchAware && dispatchCount !== 1)
+    if (dispatchAware && dispatchState.value !== 'committed')
       throw new NodeDispatchEvidenceError('dispatch_evidence_missing');
     let output: unknown;
     try {
