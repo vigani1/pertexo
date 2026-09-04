@@ -50,6 +50,12 @@ describe('parseArtifactStoreConfig', () => {
     { ...REQUIRED_ENVIRONMENT, ARTIFACT_MAX_BYTES: '0' },
     { ...REQUIRED_ENVIRONMENT, ARTIFACT_STORE_FORCE_PATH_STYLE: 'yes' },
     { ...REQUIRED_ENVIRONMENT, ARTIFACT_STORE_REQUEST_TIMEOUT_MS: '0' },
+    {
+      ...REQUIRED_ENVIRONMENT,
+      ARTIFACT_STORE_ENDPOINT: 'https://user:secret@example.com',
+    },
+    { ...REQUIRED_ENVIRONMENT, ARTIFACT_STORE_BUCKET: 'invalid..bucket' },
+    { ...REQUIRED_ENVIRONMENT, ARTIFACT_STORE_BUCKET: '127.0.0.1' },
   ])('rejects invalid environment %#', (environment) => {
     expect(() => parseArtifactStoreConfig(environment)).toThrow();
   });
