@@ -183,8 +183,12 @@ function safeEventName(event: LogEventName): LogEventName {
 }
 
 function isSecretName(name: string): boolean {
-  return SECRET_NORMALIZED_NAMES.has(
-    name.replaceAll(/[^a-z0-9]/giu, '').toLowerCase(),
+  const normalized = name.replaceAll(/[^a-z0-9]/giu, '').toLowerCase();
+  return (
+    SECRET_NORMALIZED_NAMES.has(normalized) ||
+    /(?:access|auth|bearer|refresh|session|id)token$/u.test(normalized) ||
+    /(?:api|private|signing|encryption|secret|client)key$/u.test(normalized) ||
+    /(?:password|secret|credential)$/u.test(normalized)
   );
 }
 
@@ -193,22 +197,28 @@ function sanitizeError(
   depth: number,
   seen: WeakSet<object>,
 ): Error {
-  if (seen.has(error)) {
-    return new Error('[Circular error]');
-  }
-  seen.add(error);
+  try {
+    if (seen.has(error)) {
+      return new Error('[Circular error]');
+    }
+    seen.add(error);
 
-  const cause =
-    'cause' in error ? sanitizeValue(error.cause, depth + 1, seen) : undefined;
-  const sanitized =
-    cause === undefined
-      ? new Error(redactText(error.message))
-      : new Error(redactText(error.message), { cause });
-  sanitized.name = error.name;
-  if (error.stack !== undefined) {
-    sanitized.stack = redactText(error.stack);
+    const cause =
+      'cause' in error
+        ? sanitizeValue(error.cause, depth + 1, seen)
+        : undefined;
+    const sanitized =
+      cause === undefined
+        ? new Error(redactText(error.message))
+        : new Error(redactText(error.message), { cause });
+    sanitized.name = error.name;
+    if (error.stack !== undefined) {
+      sanitized.stack = redactText(error.stack);
+    }
+    return sanitized;
+  } catch {
+    return new Error('[Unserializable error]');
   }
-  return sanitized;
 }
 
 function sanitizeValue(
@@ -267,11 +277,15 @@ function safeFields(fields: LogFields | undefined): Record<string, unknown> {
     return {};
   }
 
-  const selected = Object.fromEntries(
-    Object.entries(fields).filter(([key]) => !RESERVED_FIELDS.has(key)),
-  );
-  const sanitized = sanitizeRecord(selected, 0, new WeakSet());
-  return typeof sanitized === 'string' ? {} : sanitized;
+  try {
+    const selected = Object.fromEntries(
+      Object.entries(fields).filter(([key]) => !RESERVED_FIELDS.has(key)),
+    );
+    const sanitized = sanitizeRecord(selected, 0, new WeakSet());
+    return typeof sanitized === 'string' ? {} : sanitized;
+  } catch {
+    return {};
+  }
 }
 
 function errorValue(error: unknown): Error | undefined {

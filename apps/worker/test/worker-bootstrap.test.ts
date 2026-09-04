@@ -126,6 +126,7 @@ function transportMetrics(): {
   const metrics = {
     addActiveConcurrency: vi.fn(),
     observeArtifacts: vi.fn(),
+    observeExecutionStorage: vi.fn(),
     observeOutbox: vi.fn(),
     observeQueue: vi.fn(),
     recordConsumerLifecycle: vi.fn(),

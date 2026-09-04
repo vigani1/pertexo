@@ -97,6 +97,7 @@ function transportMetrics(): TransportMetrics {
   return {
     addActiveConcurrency: vi.fn(),
     observeArtifacts: vi.fn(),
+    observeExecutionStorage: vi.fn(),
     observeOutbox: vi.fn(),
     observeQueue: vi.fn(),
     recordHandlerFinished: vi.fn(),

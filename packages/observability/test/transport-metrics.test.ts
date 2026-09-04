@@ -247,7 +247,7 @@ describe('createTransportMetrics', () => {
       queueName: 'node-attempts',
     });
     metrics.observeArtifacts({ bytes: 4096, count: 3, status: 'available' });
-    metrics.observeExecutionStorage?.({
+    metrics.observeExecutionStorage({
       bytes: 8192,
       count: 12,
       surface: 'event',

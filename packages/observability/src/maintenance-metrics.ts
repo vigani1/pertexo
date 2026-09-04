@@ -22,6 +22,11 @@ export interface MaintenanceMetrics {
   ): void;
 }
 
+function requireDuration(value: number): void {
+  if (!Number.isFinite(value) || value < 0)
+    throw new TypeError('durationSeconds must be finite and non-negative');
+}
+
 export function createMaintenanceMetrics(
   meter: Meter = metrics.getMeter('@pertexo/maintenance', '0.0.0'),
 ): MaintenanceMetrics {
@@ -53,6 +58,7 @@ export function createMaintenanceMetrics(
       outcome: 'agreed' | 'failed',
       durationSeconds: number,
     ) => {
+      requireDuration(durationSeconds);
       const attributes = { outcome };
       reconciliationCount.add(1, attributes);
       reconciliationDuration.record(durationSeconds, attributes);
@@ -62,6 +68,7 @@ export function createMaintenanceMetrics(
       outcome: 'completed' | 'failed' | 'released' | 'stale',
       durationSeconds: number,
     ) => {
+      requireDuration(durationSeconds);
       const attributes = { command_type: commandType, outcome };
       lifecycleCount.add(1, attributes);
       lifecycleDuration.record(durationSeconds, attributes);

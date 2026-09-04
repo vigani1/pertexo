@@ -142,7 +142,7 @@ export type ActiveConcurrencyChange = TransportJob & {
 export interface TransportMetrics {
   addActiveConcurrency(change: ActiveConcurrencyChange): void;
   observeArtifacts(observation: ArtifactObservation): void;
-  observeExecutionStorage?(observation: ExecutionStorageObservation): void;
+  observeExecutionStorage(observation: ExecutionStorageObservation): void;
   observeOutbox(observation: OutboxObservation): void;
   observeQueue(observation: QueueObservation): void;
   recordHandlerFinished(measurement: TransportHandlerMeasurement): void;
