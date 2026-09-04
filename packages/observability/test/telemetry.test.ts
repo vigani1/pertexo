@@ -2,9 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { parseObservabilityConfig } from '../src/config.js';
 import {
-  createNodeAutoInstrumentations,
+  createNodeInstrumentations,
   createTelemetryLifecycle,
-  type NodeAutoInstrumentationsFactory,
   type TelemetrySdk,
   type TelemetrySdkFactory,
 } from '../src/telemetry.js';
@@ -40,24 +39,22 @@ function sdkHarness(): {
   return { factory, sdk, shutdown, start };
 }
 
-describe('createNodeAutoInstrumentations', () => {
-  it('enables only process host metrics and configures runtime monitoring', () => {
-    const factory = vi.fn<NodeAutoInstrumentationsFactory>(() => []);
+describe('createNodeInstrumentations', () => {
+  it('constructs only the reviewed application instrumentation set', () => {
+    const instrumentations = createNodeInstrumentations();
 
-    const instrumentations = createNodeAutoInstrumentations(factory);
-
-    expect(instrumentations).toEqual([]);
-    expect(factory).toHaveBeenCalledOnce();
-    expect(factory).toHaveBeenCalledWith({
-      '@opentelemetry/instrumentation-host-metrics': {
-        enabled: true,
-        metricGroups: ['process.cpu', 'process.memory'],
-      },
-      '@opentelemetry/instrumentation-runtime-node': {
-        enabled: true,
-        monitoringPrecision: 10,
-      },
-    });
+    expect(
+      instrumentations.map(({ instrumentationName }) => instrumentationName),
+    ).toEqual([
+      '@opentelemetry/instrumentation-http',
+      '@opentelemetry/instrumentation-undici',
+      '@opentelemetry/instrumentation-nestjs-core',
+      '@opentelemetry/instrumentation-pino',
+      '@opentelemetry/instrumentation-pg',
+      '@opentelemetry/instrumentation-ioredis',
+      '@opentelemetry/instrumentation-host-metrics',
+      '@opentelemetry/instrumentation-runtime-node',
+    ]);
   });
 });
 

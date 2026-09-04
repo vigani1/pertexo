@@ -1,6 +1,13 @@
-import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
+import { HostMetricsInstrumentation } from '@opentelemetry/instrumentation-host-metrics';
+import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
+import { IORedisInstrumentation } from '@opentelemetry/instrumentation-ioredis';
+import { NestInstrumentation } from '@opentelemetry/instrumentation-nestjs-core';
+import { PgInstrumentation } from '@opentelemetry/instrumentation-pg';
+import { PinoInstrumentation } from '@opentelemetry/instrumentation-pino';
+import { RuntimeNodeInstrumentation } from '@opentelemetry/instrumentation-runtime-node';
+import { UndiciInstrumentation } from '@opentelemetry/instrumentation-undici';
 import {
   defaultResource,
   resourceFromAttributes,
@@ -28,22 +35,19 @@ export type TelemetrySdkFactory = (
   config: ObservabilityConfig & { readonly otlpHttpEndpoint: string },
 ) => TelemetrySdk;
 
-export type NodeAutoInstrumentationsFactory =
-  typeof getNodeAutoInstrumentations;
-
-export function createNodeAutoInstrumentations(
-  factory: NodeAutoInstrumentationsFactory = getNodeAutoInstrumentations,
-): ReturnType<NodeAutoInstrumentationsFactory> {
-  return factory({
-    '@opentelemetry/instrumentation-host-metrics': {
-      enabled: true,
+export function createNodeInstrumentations() {
+  return [
+    new HttpInstrumentation(),
+    new UndiciInstrumentation(),
+    new NestInstrumentation(),
+    new PinoInstrumentation(),
+    new PgInstrumentation(),
+    new IORedisInstrumentation(),
+    new HostMetricsInstrumentation({
       metricGroups: ['process.cpu', 'process.memory'],
-    },
-    '@opentelemetry/instrumentation-runtime-node': {
-      enabled: true,
-      monitoringPrecision: 10,
-    },
-  });
+    }),
+    new RuntimeNodeInstrumentation({ monitoringPrecision: 10 }),
+  ];
 }
 
 function signalEndpoint(baseEndpoint: string, signalPath: string): string {
@@ -65,7 +69,7 @@ export function createOpenTelemetrySdk(
   );
 
   return new NodeSDK({
-    instrumentations: [createNodeAutoInstrumentations()],
+    instrumentations: createNodeInstrumentations(),
     metricReaders: [
       new PeriodicExportingMetricReader({
         exporter: new OTLPMetricExporter({
