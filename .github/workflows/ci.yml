@@ -354,7 +354,7 @@ jobs:
           node infrastructure/validate-vitest-gate-report.mjs \
             artifacts/worker-gates.json 'worker integration gates' 21
           node infrastructure/validate-vitest-gate-report.mjs \
-            artifacts/api-gates.json 'API integration gates' 10
+            artifacts/api-gates.json 'API integration gates' 11
       - name: Capture integration logs
         if: failure()
         run: |
