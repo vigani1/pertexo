@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from 'pg';
+import { WORKFLOW_OBSERVATION_WINDOW_LIMITS_V1 } from '@pertexo/workflow-model/observation-window';
 
 import {
   CoordinatorRunStateCorruptError,
@@ -22,10 +23,12 @@ import {
 
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
-const maximumCanonicalEventPayloadBytes = 4096;
-export const maximumPersistedFacts = 10_000;
+const maximumCanonicalEventPayloadBytes =
+  WORKFLOW_OBSERVATION_WINDOW_LIMITS_V1.canonicalFactBytes;
+export const maximumPersistedFacts =
+  WORKFLOW_OBSERVATION_WINDOW_LIMITS_V1.facts;
 const maximumCanonicalPersistedFactBytes =
-  maximumCanonicalEventPayloadBytes * maximumPersistedFacts;
+  WORKFLOW_OBSERVATION_WINDOW_LIMITS_V1.canonicalWindowBytes;
 const maximumPersistedFactRowsPerFetch = 64;
 
 export function normalizedJson(value: unknown): unknown {

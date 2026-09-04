@@ -1,4 +1,5 @@
 import type { JsonValue } from '@pertexo/workflow-model/canonical-json';
+import { WORKFLOW_OBSERVATION_WINDOW_LIMITS_V1 } from '@pertexo/workflow-model/observation-window';
 
 import type { parseCheckpoint } from './checkpoint.js';
 import { normalizeBoundedEngineJson } from './executable-workflow.js';
@@ -77,6 +78,7 @@ export type AttemptFailureObservation = Readonly<{
 }>;
 
 export type ParsedPersistedObservations = Readonly<{
+  facts: readonly JsonValue[];
   observations: readonly WorkflowObservation[];
   deadlineExpiration?: DeadlineExpiredObservation;
   dueResumptions: readonly DueAtObservation[];
@@ -88,6 +90,39 @@ export type ParsedPersistedObservations = Readonly<{
 }>;
 
 export { uuidPattern } from './persisted-observation-parser.js';
+
+function normalizePersistedObservationWindow(
+  value: unknown,
+): readonly JsonValue[] {
+  if (!Array.isArray(value))
+    operationError('observation_invalid', 'observations must be an array');
+  if (value.length > WORKFLOW_OBSERVATION_WINDOW_LIMITS_V1.facts)
+    operationError('observation_invalid', 'observation window is too large');
+  let canonicalBytes = 0;
+  try {
+    return value.map((item) => {
+      const normalized = normalizeBoundedEngineJson(item);
+      const bytes = new TextEncoder().encode(JSON.stringify(normalized)).length;
+      if (bytes > WORKFLOW_OBSERVATION_WINDOW_LIMITS_V1.canonicalFactBytes)
+        operationError('observation_invalid', 'observation fact is too large');
+      canonicalBytes += bytes;
+      if (
+        canonicalBytes >
+        WORKFLOW_OBSERVATION_WINDOW_LIMITS_V1.canonicalWindowBytes
+      )
+        operationError(
+          'observation_invalid',
+          'observation window is too large',
+        );
+      return normalized;
+    });
+  } catch (error: unknown) {
+    operationError(
+      'observation_invalid',
+      error instanceof Error ? error.message : 'observations are invalid',
+    );
+  }
+}
 
 function samePersistedFact(
   left: PersistedWorkflowObservation,
@@ -192,18 +227,7 @@ export function parsePersistedObservations(
   value: unknown,
   checkpoint: ReturnType<typeof parseCheckpoint>,
 ): ParsedPersistedObservations {
-  let normalized: JsonValue;
-  try {
-    normalized = normalizeBoundedEngineJson(value ?? []);
-  } catch (error) {
-    operationError(
-      'observation_invalid',
-      error instanceof Error ? error.message : 'observations are invalid',
-    );
-  }
-  if (!Array.isArray(normalized))
-    operationError('observation_invalid', 'observations must be an array');
-  const items = normalized as readonly JsonValue[];
+  const items = normalizePersistedObservationWindow(value ?? []);
   const parsed = items.map(parsePersistedObservation);
   let deadlineExpiration: DeadlineExpiredObservation | undefined;
   const dueResumptions: DueAtObservation[] = [];
@@ -305,6 +329,7 @@ export function parsePersistedObservations(
       operationError('observation_invalid', 'observation attempt is stale');
   }
   return {
+    facts: items,
     observations: fresh.map((observation): WorkflowObservation => {
       if (observation.kind === 'cancel_requested')
         return { kind: observation.kind };

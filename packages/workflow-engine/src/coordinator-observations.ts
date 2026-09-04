@@ -50,23 +50,20 @@ function completedOutputReference(
 
 export function branchSelectionObservations(
   value: unknown,
-  persistedValue: unknown,
+  persistedItems: readonly JsonValue[],
   checkpoint: ReturnType<typeof parseCheckpoint>,
   executable: CompiledWorkflowExecutableV2,
 ): readonly WorkflowObservation[] {
   if (value === undefined) return [];
   let normalized: JsonValue;
-  let persisted: JsonValue;
   try {
     normalized = normalizeBoundedEngineJson(value);
-    persisted = normalizeBoundedEngineJson(persistedValue ?? []);
   } catch {
     operationError('observation_invalid', 'completed outputs are invalid');
   }
-  if (!Array.isArray(normalized) || !Array.isArray(persisted))
+  if (!Array.isArray(normalized))
     operationError('observation_invalid', 'completed outputs must be an array');
   const completedItems = normalized as readonly JsonValue[];
-  const persistedItems = persisted as readonly JsonValue[];
   const seen = new Map<string, string>();
   return completedItems.flatMap((item): WorkflowObservation[] => {
     const material = record(item, 'observation_invalid', 'completed output');
@@ -166,7 +163,7 @@ export function branchSelectionObservations(
 
 export function forEachCoordinatorObservations(
   value: unknown,
-  persistedValue: unknown,
+  persistedItems: readonly JsonValue[],
   checkpoint: ReturnType<typeof parseCheckpoint>,
   executable: CompiledWorkflowExecutableV2,
   derivedObservations: readonly WorkflowObservation[] = [],
@@ -175,17 +172,14 @@ export function forEachCoordinatorObservations(
   declarationInvocationKeys: ReadonlySet<string>;
 }> {
   let completed: JsonValue;
-  let persisted: JsonValue;
   try {
     completed = normalizeBoundedEngineJson(value ?? []);
-    persisted = normalizeBoundedEngineJson(persistedValue ?? []);
   } catch {
     operationError('observation_invalid', 'completed outputs are invalid');
   }
-  if (!Array.isArray(completed) || !Array.isArray(persisted))
+  if (!Array.isArray(completed))
     operationError('observation_invalid', 'completed outputs must be an array');
   const completedItems = completed as readonly JsonValue[];
-  const persistedItems = persisted as readonly JsonValue[];
   const nodes = new Map(
     executableNodes(executable.envelope.graph).map((node) => [node.id, node]),
   );

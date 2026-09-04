@@ -323,7 +323,7 @@ export async function advanceWorkflow(
   );
   const branchSelections = branchSelectionObservations(
     input.completedOutputs,
-    input.observations,
+    persistedObservations.facts,
     checkpoint,
     input.executable,
   );
@@ -423,7 +423,7 @@ export async function advanceWorkflow(
     });
   const forEach = forEachCoordinatorObservations(
     input.completedOutputs,
-    input.observations,
+    persistedObservations.facts,
     checkpoint,
     input.executable,
     resolvedFailures,
