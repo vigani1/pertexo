@@ -95,8 +95,23 @@ import {
   createPlatformNodeRegistryForRelease,
   resolvePlatformNodeDefinitionForRelease,
 } from '../src/server.js';
+import { PLATFORM_RELEASE_FINGERPRINT_GOLDEN } from './release-history.golden.js';
 
 describe('platform node compatibility catalog', () => {
+  it('pins every retained compatibility identity independently of manifests', () => {
+    expect(
+      PLATFORM_REGISTRY_RELEASE_HISTORY.map(({ epoch, fingerprint }) => ({
+        epoch,
+        fingerprint,
+      })),
+    ).toEqual(
+      PLATFORM_RELEASE_FINGERPRINT_GOLDEN.map((fingerprint, index) => ({
+        epoch: index + 1,
+        fingerprint,
+      })),
+    );
+  });
+
   it('constructs provider adapters only when the selected release requires them', () => {
     const coreProviderAccess = vi.fn(() => {
       throw new Error('core release must not access provider dependencies');
