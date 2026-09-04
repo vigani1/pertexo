@@ -102,8 +102,19 @@ class CoordinatedDualRegionArtifactStore implements DualRegionArtifactStore {
     if (this.closed) return;
     this.closed = true;
     if (!this.ownsStores) return;
-    this.primary.close();
-    this.recovery.close();
+    const failures: unknown[] = [];
+    try {
+      this.primary.close();
+    } catch (error: unknown) {
+      failures.push(error);
+    }
+    try {
+      this.recovery.close();
+    } catch (error: unknown) {
+      failures.push(error);
+    }
+    if (failures.length > 0)
+      throw new AggregateError(failures, 'Failed to close artifact stores');
   }
 
   public async delete(request: ArtifactRequest): Promise<void> {

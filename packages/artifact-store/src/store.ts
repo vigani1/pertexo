@@ -419,6 +419,7 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
     private readonly config: ArtifactStoreConfig,
     private readonly client: S3ClientLike,
     private readonly presignPutObject: PutObjectPresigner,
+    private readonly ownsClient: boolean,
   ) {}
 
   public async beginDirectUpload(
@@ -489,7 +490,7 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
       return;
     }
     this.closed = true;
-    this.client.destroy();
+    if (this.ownsClient) this.client.destroy();
   }
 
   public async delete(request: ArtifactRequest): Promise<void> {
@@ -863,6 +864,7 @@ export function createArtifactStore(
   config: ArtifactStoreConfig,
   options: Readonly<{
     client?: S3ClientLike;
+    clientOwnership?: 'borrowed' | 'owned';
     observer?: ObjectStoreObserver;
     presignPutObject?: PutObjectPresigner;
     regionRole?: ObjectStoreRegionRole;
@@ -881,6 +883,8 @@ export function createArtifactStore(
       region: config.region,
     });
   const regionRole = options.regionRole ?? 'artifact';
+  const ownsClient =
+    options.client === undefined || options.clientOwnership === 'owned';
   const client = new ObservedS3Client(
     rawClient,
     observer,
@@ -897,6 +901,11 @@ export function createArtifactStore(
       }));
   const presignPutObject: PutObjectPresigner = (request) =>
     observePresign(observer, regionRole, () => rawPresignPutObject(request));
-  const store = new AwsArtifactStore(config, client, presignPutObject);
+  const store = new AwsArtifactStore(
+    config,
+    client,
+    presignPutObject,
+    ownsClient,
+  );
   return new ObservedArtifactStore(store, observer, regionRole);
 }

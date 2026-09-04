@@ -31,6 +31,7 @@ const metadata = Object.freeze({
 
 class FakeArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
   public closeCalls = 0;
+  public closeError: Error | undefined;
   public deleteCalls = 0;
   public failNextPut = false;
   public purgeResult: WorkspaceObjectPurgePage = {
@@ -63,6 +64,7 @@ class FakeArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
 
   public close(): void {
     this.closeCalls += 1;
+    if (this.closeError !== undefined) throw this.closeError;
   }
 
   public delete(request: ArtifactRequest): Promise<void> {
@@ -190,5 +192,26 @@ describe('dual-region artifact store', () => {
     expect(() => createDualRegionArtifactStore(primary, recovery)).toThrow(
       'explicit ownership',
     );
+  });
+
+  it('attempts both owned closes and aggregates their failures once', () => {
+    const primary = new FakeArtifactStore('artifacts-primary', 'eu-central-1');
+    const recovery = new FakeArtifactStore('artifacts-recovery', 'eu-west-1');
+    primary.closeError = new Error('primary close failed');
+    recovery.closeError = new Error('recovery close failed');
+    const store = createDualRegionArtifactStore(primary, recovery, {
+      artifactOwnership: 'owned',
+    });
+
+    expect(() => {
+      store.close();
+    }).toThrow(AggregateError);
+    expect(primary.closeCalls).toBe(1);
+    expect(recovery.closeCalls).toBe(1);
+    expect(() => {
+      store.close();
+    }).not.toThrow();
+    expect(primary.closeCalls).toBe(1);
+    expect(recovery.closeCalls).toBe(1);
   });
 });

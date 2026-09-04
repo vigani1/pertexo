@@ -216,6 +216,7 @@ function createStore(client = new MemoryS3Client()) {
       },
       {
         client,
+        clientOwnership: 'owned',
         presignPutObject: (request) => {
           presignRequest = request;
           return Promise.resolve('https://uploads.example.test/signed');
@@ -735,6 +736,48 @@ describe('ArtifactStore', () => {
     await expect(
       store.head({ artifactId: ARTIFACT_ID, workspaceId: WORKSPACE_ID }),
     ).rejects.toBeInstanceOf(ArtifactStoreClosedError);
+  });
+
+  it('borrows injected clients by default and can explicitly own them', () => {
+    const borrowed = new MemoryS3Client();
+    const borrowedStore = createArtifactStore(
+      {
+        accessKeyId: 'access',
+        bucket: 'pertexo-artifacts',
+        endpoint: 'http://localhost:9090',
+        forcePathStyle: true,
+        maxObjectBytes: 10 * 1024 * 1024,
+        region: 'us-east-1',
+        requestTimeoutMs: 100,
+        secretAccessKey: 'secret',
+      },
+      { client: borrowed, presignPutObject: () => Promise.resolve('signed') },
+    );
+    borrowedStore.close();
+    borrowedStore.close();
+    expect(borrowed.destroyCalls).toBe(0);
+
+    const owned = new MemoryS3Client();
+    const ownedStore = createArtifactStore(
+      {
+        accessKeyId: 'access',
+        bucket: 'pertexo-artifacts',
+        endpoint: 'http://localhost:9090',
+        forcePathStyle: true,
+        maxObjectBytes: 10 * 1024 * 1024,
+        region: 'us-east-1',
+        requestTimeoutMs: 100,
+        secretAccessKey: 'secret',
+      },
+      {
+        client: owned,
+        clientOwnership: 'owned',
+        presignPutObject: () => Promise.resolve('signed'),
+      },
+    );
+    ownedStore.close();
+    ownedStore.close();
+    expect(owned.destroyCalls).toBe(1);
   });
 
   it('reports readiness without exposing credentials', async () => {
