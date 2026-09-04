@@ -69,15 +69,43 @@ export const FailureNotificationContextV1Schema = z
   })
   .strict();
 
-export const FailureNotificationDeliveryResultV1Schema = z
-  .object({
-    schemaVersion: z.literal(1),
-    kind: z.enum(['delivered', 'definite_failure', 'retry', 'outcome_unknown']),
-    safeErrorCode: safeCodeSchema.optional(),
-    possiblyDispatched: z.boolean(),
-    providerReference: z.string().min(1).max(256).optional(),
-  })
-  .strict();
+export const FailureNotificationDeliveryResultV1Schema = z.discriminatedUnion(
+  'kind',
+  [
+    z
+      .object({
+        schemaVersion: z.literal(1),
+        kind: z.literal('delivered'),
+        possiblyDispatched: z.literal(true),
+        providerReference: z.string().min(1).max(256).optional(),
+      })
+      .strict(),
+    z
+      .object({
+        schemaVersion: z.literal(1),
+        kind: z.literal('definite_failure'),
+        safeErrorCode: safeCodeSchema,
+        possiblyDispatched: z.literal(false),
+      })
+      .strict(),
+    z
+      .object({
+        schemaVersion: z.literal(1),
+        kind: z.literal('retry'),
+        safeErrorCode: safeCodeSchema,
+        possiblyDispatched: z.boolean(),
+      })
+      .strict(),
+    z
+      .object({
+        schemaVersion: z.literal(1),
+        kind: z.literal('outcome_unknown'),
+        safeErrorCode: safeCodeSchema,
+        possiblyDispatched: z.literal(true),
+      })
+      .strict(),
+  ],
+);
 
 export type FailureNotificationPolicyV1 = Readonly<
   z.output<typeof FailureNotificationPolicyV1Schema>

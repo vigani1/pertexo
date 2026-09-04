@@ -882,31 +882,46 @@ export class InvalidInvocationScopeError extends TypeError {
     this.name = 'InvalidInvocationScopeError';
   }
 }
+const invocationIdentityInputSchema = z
+  .object({
+    workflowRunId: z.string().min(1),
+    workflowVersionId: z.string().min(1),
+    nodeId: z.string().min(1),
+    scope: z.array(
+      z.discriminatedUnion('kind', [
+        z
+          .object({
+            kind: z.literal('branch'),
+            branchId: z.string().min(1),
+          })
+          .strict(),
+        z
+          .object({
+            kind: z.literal('iteration'),
+            loopNodeId: z.string().min(1),
+            ordinal: z
+              .number()
+              .int()
+              .nonnegative()
+              .max(Number.MAX_SAFE_INTEGER),
+          })
+          .strict(),
+      ]),
+    ),
+  })
+  .strict();
 export function invocationIdentity(input: InvocationIdentityInput): {
   readonly workflowRunId: string;
   readonly canonicalScope: string;
   readonly invocationKey: string;
 } {
-  if (!input.workflowRunId || !input.workflowVersionId || !input.nodeId)
+  const parsed = invocationIdentityInputSchema.safeParse(input);
+  if (!parsed.success)
     throw new InvalidInvocationScopeError(
-      'run, version, and node identifiers must be non-empty',
+      'invocation scope must use exact branch or loop fields with non-empty identifiers and zero-based safe ordinals',
     );
-  for (const part of input.scope) {
-    if (part.kind === 'branch' && !part.branchId)
-      throw new InvalidInvocationScopeError(
-        'branch identifiers must be non-empty',
-      );
-    if (
-      part.kind === 'iteration' &&
-      (!part.loopNodeId ||
-        !Number.isSafeInteger(part.ordinal) ||
-        part.ordinal < 0)
-    )
-      throw new InvalidInvocationScopeError(
-        'loop scopes require a non-empty node and zero-based safe ordinal',
-      );
-  }
-  const canonicalScope = input.scope
+  const identity = parsed.data;
+  const canonicalScope = identity.scope
     .map((part) =>
       part.kind === 'branch'
         ? `branch:${encodeURIComponent(part.branchId)}`
@@ -916,11 +931,15 @@ export function invocationIdentity(input: InvocationIdentityInput): {
   const invocationKey = createHash('sha256')
     .update(
       canonicalJson({
-        version: input.workflowVersionId,
-        node: input.nodeId,
-        scope: input.scope,
+        version: identity.workflowVersionId,
+        node: identity.nodeId,
+        scope: identity.scope,
       }),
     )
     .digest('hex');
-  return { workflowRunId: input.workflowRunId, canonicalScope, invocationKey };
+  return {
+    workflowRunId: identity.workflowRunId,
+    canonicalScope,
+    invocationKey,
+  };
 }

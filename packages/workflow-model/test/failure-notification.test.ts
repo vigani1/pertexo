@@ -91,4 +91,26 @@ describe('failure notification contracts', () => {
       }).success,
     ).toBe(false);
   });
+
+  it.each([
+    ['delivered without dispatch', 'delivered', false, undefined],
+    ['definite failure after dispatch', 'definite_failure', true, 'failure'],
+    ['unknown before dispatch', 'outcome_unknown', false, 'unknown'],
+    ['failure with provider reference', 'definite_failure', false, 'failure'],
+  ])(
+    'rejects contradictory delivery state: %s',
+    (_name, kind, possiblyDispatched, safeErrorCode) => {
+      expect(
+        FailureNotificationDeliveryResultV1Schema.safeParse({
+          schemaVersion: 1,
+          kind,
+          possiblyDispatched,
+          ...(safeErrorCode === undefined ? {} : { safeErrorCode }),
+          ...(kind === 'definite_failure' && !possiblyDispatched
+            ? { providerReference: 'not-valid-on-failure' }
+            : {}),
+        }).success,
+      ).toBe(false);
+    },
+  );
 });

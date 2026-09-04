@@ -38,19 +38,31 @@ function normalize(
   ancestors.add(value);
   try {
     if (Array.isArray(value)) {
+      if (Object.getOwnPropertySymbols(value).length > 0)
+        throw new InvalidJsonValueError(path, 'symbol properties are not JSON');
+      if (Object.getOwnPropertyNames(value).length !== value.length + 1)
+        throw new InvalidJsonValueError(
+          path,
+          'array must contain only dense index properties',
+        );
       const result: JsonValue[] = [];
       for (let index = 0; index < value.length; index += 1) {
-        if (!(index in value))
+        const descriptor = Object.getOwnPropertyDescriptor(
+          value,
+          String(index),
+        );
+        if (!descriptor)
           throw new InvalidJsonValueError(
             `${path}[${String(index)}]`,
             'sparse array',
           );
-        result.push(
-          normalize(
-            (value as unknown[])[index],
+        if (!('value' in descriptor))
+          throw new InvalidJsonValueError(
             `${path}[${String(index)}]`,
-            ancestors,
-          ),
+            'accessors are not JSON',
+          );
+        result.push(
+          normalize(descriptor.value, `${path}[${String(index)}]`, ancestors),
         );
       }
       return result;

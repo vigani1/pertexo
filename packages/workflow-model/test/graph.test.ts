@@ -295,5 +295,16 @@ describe('workflow graph validation', () => {
         scope: [{ kind: 'iteration', loopNodeId: 'loop', ordinal: -1 }],
       }),
     ).toThrow('zero-based');
+    expect(() =>
+      invocationIdentity({
+        ...input,
+        scope: [
+          { kind: 'unexpected', loopNodeId: 'loop', ordinal: 0 } as never,
+        ],
+      }),
+    ).toThrow('scope');
+    expect(() =>
+      invocationIdentity({ ...input, unexpected: true } as never),
+    ).toThrow('scope');
   });
 });

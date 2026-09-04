@@ -293,7 +293,7 @@ function nullObjects(value) { if (Array.isArray(value)) return value.map(nullObj
     const imported=await import(workerData.moduleUrl); const compile=imported.default || imported;
     parentPort.postMessage({ ready:true });
     parentPort.once('message', async ({ expression, context }) => {
-      try { const input=nullObjects(context); parentPort.postMessage({ started:true }); const value=await compile(expression).evaluate(input); parentPort.postMessage({ ok:true, missing:value === undefined, value }); }
+      try { const input=nullObjects(context); parentPort.postMessage({ started:true }); const value=await compile(expression).evaluate(input); parentPort.postMessage({ ok:true, missing:value === undefined, value:nullObjects(value) }); }
       catch (caught) { parentPort.postMessage({ ok:false, message:caught instanceof Error ? caught.message : 'evaluation failed' }); }
     });
   } catch (caught) { parentPort.postMessage({ ok:false, message:caught instanceof Error ? caught.message : 'evaluator startup failed' }); }

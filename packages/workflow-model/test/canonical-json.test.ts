@@ -33,4 +33,17 @@ describe('canonical JSON', () => {
     ])
       expect(() => canonicalJson(value)).toThrow();
   });
+
+  it('rejects inherited array elements and non-index array properties', () => {
+    const inherited = new Array<unknown>(1);
+    Object.setPrototypeOf(inherited, { 0: 'inherited' });
+    const extra: unknown[] & { note?: string } = [];
+    extra.note = 'discarded';
+    const hidden: unknown[] = [];
+    Object.defineProperty(hidden, 'note', { value: 'discarded' });
+    const symbol = Object.assign([], { [Symbol('extra')]: true });
+
+    for (const value of [inherited, extra, hidden, symbol])
+      expect(() => canonicalJson(value)).toThrow();
+  });
 });
