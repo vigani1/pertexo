@@ -2,8 +2,29 @@ const problem = (status: number, code: string) => ({
   description: code,
   content: { 'application/problem+json': { schema: { type: 'object' } } },
   'x-pertexo-code': code,
-  status,
+  'x-pertexo-status': status,
 });
+
+function pathParameter(name: string, pattern?: string) {
+  return {
+    name,
+    in: 'path',
+    required: true,
+    schema: {
+      type: 'string',
+      ...(pattern === undefined ? { format: 'uuid' } : { pattern }),
+    },
+  } as const;
+}
+
+const workspaceParameter = pathParameter('workspaceId');
+const workflowParameter = pathParameter('workflowId');
+const triggerParameter = pathParameter('triggerId');
+const managementParameters = [
+  workspaceParameter,
+  workflowParameter,
+  triggerParameter,
+] as const;
 
 export const webhooksClientContract = Object.freeze({
   schemaVersion: 1,
@@ -42,6 +63,7 @@ export const webhooksClientContract = Object.freeze({
 
 const managementPath = {
   post: {
+    parameters: managementParameters,
     responses: {
       '200': { description: 'Webhook trigger command completed' },
       '400': problem(400, 'request.invalid'),
@@ -81,6 +103,7 @@ export const webhooksOpenApiDocument = Object.freeze({
   paths: {
     '/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers': {
       get: {
+        parameters: [workspaceParameter, workflowParameter],
         responses: { '200': { description: 'Published trigger health' } },
       },
     },
@@ -92,6 +115,7 @@ export const webhooksOpenApiDocument = Object.freeze({
       rotateSecretPath,
     '/hooks/{endpointKey}': {
       post: {
+        parameters: [pathParameter('endpointKey', '^[A-Za-z0-9_-]{43}$')],
         requestBody: {
           required: true,
           content: { 'application/json': { schema: {} } },

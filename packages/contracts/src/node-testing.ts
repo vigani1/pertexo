@@ -10,28 +10,62 @@ import {
   previewRunResponseSchema,
   previewRunSummarySchema,
 } from './http/node-testing.js';
+import { projectContractSchema } from './schema-projection.js';
 
 export * from './http/node-testing.js';
 
-const schemas = Object.freeze({
-  ApiProblem: jsonSchema(apiProblemSchema, 'output'),
-  NodeTestRequest: jsonSchema(nodeTestRequestSchema, 'input'),
-  NodeSideEffectDisclosure: jsonSchema(
-    nodeSideEffectDisclosureSchema,
-    'output',
-  ),
-  NodeValidationResponse: jsonSchema(nodeValidationResponseSchema, 'output'),
-  NodeTestExecuteAcceptedResponse: jsonSchema(
-    nodeTestExecuteAcceptedResponseSchema,
-    'output',
-  ),
-  PreviewRunSummary: jsonSchema(previewRunSummarySchema, 'output'),
-  PreviewRunResponse: jsonSchema(previewRunResponseSchema, 'output'),
-});
+function contractSchemas(target: 'client' | 'openapi') {
+  return Object.freeze({
+    ApiProblem: projectContractSchema(
+      'ApiProblem',
+      apiProblemSchema,
+      'output',
+      target,
+    ),
+    NodeTestRequest: projectContractSchema(
+      'NodeTestRequest',
+      nodeTestRequestSchema,
+      'input',
+      target,
+    ),
+    NodeSideEffectDisclosure: projectContractSchema(
+      'NodeSideEffectDisclosure',
+      nodeSideEffectDisclosureSchema,
+      'output',
+      target,
+    ),
+    NodeValidationResponse: projectContractSchema(
+      'NodeValidationResponse',
+      nodeValidationResponseSchema,
+      'output',
+      target,
+    ),
+    NodeTestExecuteAcceptedResponse: projectContractSchema(
+      'NodeTestExecuteAcceptedResponse',
+      nodeTestExecuteAcceptedResponseSchema,
+      'output',
+      target,
+    ),
+    PreviewRunSummary: projectContractSchema(
+      'PreviewRunSummary',
+      previewRunSummarySchema,
+      'output',
+      target,
+    ),
+    PreviewRunResponse: projectContractSchema(
+      'PreviewRunResponse',
+      previewRunResponseSchema,
+      'output',
+      target,
+    ),
+  });
+}
+const clientSchemas = contractSchemas('client');
+const openApiSchemas = contractSchemas('openapi');
 
 export const nodeTestingClientContract = Object.freeze({
   schemaVersion: '1.0.0',
-  schemas,
+  schemas: clientSchemas,
 });
 
 const problemResponses = Object.freeze({
@@ -124,7 +158,7 @@ export const nodeTestingOpenApiDocument = Object.freeze({
     },
   },
   components: {
-    schemas,
+    schemas: openApiSchemas,
     responses: problemResponses,
     securitySchemes: {
       cookieSession: {
@@ -136,7 +170,7 @@ export const nodeTestingOpenApiDocument = Object.freeze({
   },
 });
 
-type SchemaName = keyof typeof schemas;
+type SchemaName = keyof typeof openApiSchemas;
 type ProblemResponseName = keyof typeof problemResponses;
 
 function jsonSchema(schema: z.ZodType, io: 'input' | 'output') {

@@ -313,7 +313,7 @@
                   "maxItems": 1000,
                   "type": "array",
                   "items": {
-                    "$ref": "#/$defs/__schema0"
+                    "$ref": "#/schemas/WorkflowCreateResponse/properties/draft/properties/graph/$defs/__schema0"
                   }
                 },
                 "edges": {
@@ -389,7 +389,402 @@
                 "edges",
                 "settings"
               ],
-              "additionalProperties": false
+              "additionalProperties": false,
+              "$defs": {
+                "__schema0": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "definition": {
+                      "type": "object",
+                      "properties": {
+                        "key": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "version": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "position": {
+                      "type": "object",
+                      "properties": {
+                        "x": {
+                          "type": "number"
+                        },
+                        "y": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "x",
+                        "y"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "configVersion": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "config": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "$ref": "#/schemas/WorkflowCreateResponse/properties/draft/properties/graph/$defs/__schema1"
+                      }
+                    },
+                    "inputMappings": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "const": "literal"
+                              },
+                              "value": {
+                                "$ref": "#/schemas/WorkflowCreateResponse/properties/draft/properties/graph/$defs/__schema2"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "value"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "const": "run_input"
+                              },
+                              "path": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "path"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "const": "node_output"
+                              },
+                              "nodeId": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "path": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "nodeId",
+                              "path"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "const": "expression"
+                              },
+                              "language": {
+                                "type": "string",
+                                "const": "jsonata"
+                              },
+                              "expression": {
+                                "type": "string"
+                              },
+                              "policyVersion": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "language",
+                              "expression",
+                              "policyVersion"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "const": "structured_input"
+                              },
+                              "port": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "path": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "port",
+                              "path"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      }
+                    },
+                    "connectionRefs": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "disabled": {
+                      "type": "boolean"
+                    },
+                    "structured": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "for_each"
+                        },
+                        "maxIterations": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "maximum": 1000
+                        },
+                        "maxConcurrency": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "maximum": 1000
+                        },
+                        "body": {
+                          "type": "object",
+                          "properties": {
+                            "schemaVersion": {
+                              "type": "number",
+                              "const": 1
+                            },
+                            "nodes": {
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/schemas/WorkflowCreateResponse/properties/draft/properties/graph/$defs/__schema0"
+                              }
+                            },
+                            "edges": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "source": {
+                                    "type": "object",
+                                    "properties": {
+                                      "nodeId": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "port": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      }
+                                    },
+                                    "required": [
+                                      "nodeId",
+                                      "port"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "target": {
+                                    "type": "object",
+                                    "properties": {
+                                      "nodeId": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "port": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      }
+                                    },
+                                    "required": [
+                                      "nodeId",
+                                      "port"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "source",
+                                  "target"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "settings": {
+                              "type": "object",
+                              "properties": {
+                                "maxRunDurationMs": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 3600000
+                                }
+                              },
+                              "additionalProperties": false
+                            },
+                            "inputPorts": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1
+                              }
+                            },
+                            "outputPorts": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1
+                              }
+                            }
+                          },
+                          "required": [
+                            "schemaVersion",
+                            "nodes",
+                            "edges",
+                            "settings",
+                            "inputPorts",
+                            "outputPorts"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "maxIterations",
+                        "maxConcurrency",
+                        "body"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "definition",
+                    "position",
+                    "configVersion",
+                    "config",
+                    "inputMappings",
+                    "connectionRefs"
+                  ],
+                  "additionalProperties": false
+                },
+                "__schema1": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/schemas/WorkflowCreateResponse/properties/draft/properties/graph/$defs/__schema1"
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "$ref": "#/schemas/WorkflowCreateResponse/properties/draft/properties/graph/$defs/__schema1"
+                      }
+                    }
+                  ]
+                },
+                "__schema2": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/schemas/WorkflowCreateResponse/properties/draft/properties/graph/$defs/__schema2"
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "$ref": "#/schemas/WorkflowCreateResponse/properties/draft/properties/graph/$defs/__schema2"
+                      }
+                    }
+                  ]
+                }
+              },
+              "description": "Structural workflow graph contract. Runtime validation additionally enforces aggregate node/edge, nesting-depth, and encoded-byte limits.",
+              "x-pertexo-runtime-bounds": true
             },
             "compatibility": {
               "type": "object",
@@ -514,7 +909,7 @@
                 "type": "string"
               },
               "additionalProperties": {
-                "$ref": "#/$defs/__schema1"
+                "$ref": "#/schemas/WorkflowCreateResponse/$defs/__schema1"
               }
             },
             "inputMappings": {
@@ -532,7 +927,7 @@
                         "const": "literal"
                       },
                       "value": {
-                        "$ref": "#/$defs/__schema2"
+                        "$ref": "#/schemas/WorkflowCreateResponse/$defs/__schema2"
                       }
                     },
                     "required": [
@@ -676,7 +1071,7 @@
                     "nodes": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/$defs/__schema0"
+                        "$ref": "#/schemas/WorkflowCreateResponse/$defs/__schema0"
                       }
                     },
                     "edges": {
@@ -807,7 +1202,7 @@
             {
               "type": "array",
               "items": {
-                "$ref": "#/$defs/__schema1"
+                "$ref": "#/schemas/WorkflowCreateResponse/$defs/__schema1"
               }
             },
             {
@@ -816,7 +1211,7 @@
                 "type": "string"
               },
               "additionalProperties": {
-                "$ref": "#/$defs/__schema1"
+                "$ref": "#/schemas/WorkflowCreateResponse/$defs/__schema1"
               }
             }
           ]
@@ -838,7 +1233,7 @@
             {
               "type": "array",
               "items": {
-                "$ref": "#/$defs/__schema2"
+                "$ref": "#/schemas/WorkflowCreateResponse/$defs/__schema2"
               }
             },
             {
@@ -847,7 +1242,7 @@
                 "type": "string"
               },
               "additionalProperties": {
-                "$ref": "#/$defs/__schema2"
+                "$ref": "#/schemas/WorkflowCreateResponse/$defs/__schema2"
               }
             }
           ]
@@ -1010,31 +1405,6 @@
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
       "properties": {
-        "graph": {}
-      },
-      "required": [
-        "graph"
-      ],
-      "additionalProperties": false
-    },
-    "WorkflowDraftResponse": {
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "type": "object",
-      "properties": {
-        "workflowId": {
-          "type": "string",
-          "format": "uuid",
-          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-        },
-        "revision": {
-          "type": "integer",
-          "exclusiveMinimum": 0,
-          "maximum": 9007199254740991
-        },
-        "schemaVersion": {
-          "type": "number",
-          "const": 1
-        },
         "graph": {
           "type": "object",
           "properties": {
@@ -1046,7 +1416,7 @@
               "maxItems": 1000,
               "type": "array",
               "items": {
-                "$ref": "#/$defs/__schema0"
+                "$ref": "#/schemas/WorkflowDraftSaveRequest/properties/graph/$defs/__schema0"
               }
             },
             "edges": {
@@ -1122,7 +1492,910 @@
             "edges",
             "settings"
           ],
-          "additionalProperties": false
+          "additionalProperties": false,
+          "$defs": {
+            "__schema0": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "definition": {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "version": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "key",
+                    "version"
+                  ],
+                  "additionalProperties": false
+                },
+                "position": {
+                  "type": "object",
+                  "properties": {
+                    "x": {
+                      "type": "number"
+                    },
+                    "y": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "x",
+                    "y"
+                  ],
+                  "additionalProperties": false
+                },
+                "configVersion": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "config": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {
+                    "$ref": "#/schemas/WorkflowDraftSaveRequest/properties/graph/$defs/__schema1"
+                  }
+                },
+                "inputMappings": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "literal"
+                          },
+                          "value": {
+                            "$ref": "#/schemas/WorkflowDraftSaveRequest/properties/graph/$defs/__schema2"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "value"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "run_input"
+                          },
+                          "path": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "path"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "node_output"
+                          },
+                          "nodeId": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "path": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "nodeId",
+                          "path"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "expression"
+                          },
+                          "language": {
+                            "type": "string",
+                            "const": "jsonata"
+                          },
+                          "expression": {
+                            "type": "string"
+                          },
+                          "policyVersion": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "language",
+                          "expression",
+                          "policyVersion"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "structured_input"
+                          },
+                          "port": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "path": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "port",
+                          "path"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  }
+                },
+                "connectionRefs": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "label": {
+                  "type": "string"
+                },
+                "disabled": {
+                  "type": "boolean"
+                },
+                "structured": {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "for_each"
+                    },
+                    "maxIterations": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 1000
+                    },
+                    "maxConcurrency": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 1000
+                    },
+                    "body": {
+                      "type": "object",
+                      "properties": {
+                        "schemaVersion": {
+                          "type": "number",
+                          "const": 1
+                        },
+                        "nodes": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/schemas/WorkflowDraftSaveRequest/properties/graph/$defs/__schema0"
+                          }
+                        },
+                        "edges": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "source": {
+                                "type": "object",
+                                "properties": {
+                                  "nodeId": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "port": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": [
+                                  "nodeId",
+                                  "port"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "target": {
+                                "type": "object",
+                                "properties": {
+                                  "nodeId": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "port": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": [
+                                  "nodeId",
+                                  "port"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "source",
+                              "target"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "settings": {
+                          "type": "object",
+                          "properties": {
+                            "maxRunDurationMs": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "maximum": 3600000
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "inputPorts": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "outputPorts": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      },
+                      "required": [
+                        "schemaVersion",
+                        "nodes",
+                        "edges",
+                        "settings",
+                        "inputPorts",
+                        "outputPorts"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "maxIterations",
+                    "maxConcurrency",
+                    "body"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "id",
+                "definition",
+                "position",
+                "configVersion",
+                "config",
+                "inputMappings",
+                "connectionRefs"
+              ],
+              "additionalProperties": false
+            },
+            "__schema1": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/schemas/WorkflowDraftSaveRequest/properties/graph/$defs/__schema1"
+                  }
+                },
+                {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {
+                    "$ref": "#/schemas/WorkflowDraftSaveRequest/properties/graph/$defs/__schema1"
+                  }
+                }
+              ]
+            },
+            "__schema2": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/schemas/WorkflowDraftSaveRequest/properties/graph/$defs/__schema2"
+                  }
+                },
+                {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {
+                    "$ref": "#/schemas/WorkflowDraftSaveRequest/properties/graph/$defs/__schema2"
+                  }
+                }
+              ]
+            }
+          },
+          "description": "Structural workflow graph contract. Runtime validation additionally enforces aggregate node/edge, nesting-depth, and encoded-byte limits.",
+          "x-pertexo-runtime-bounds": true
+        }
+      },
+      "required": [
+        "graph"
+      ],
+      "additionalProperties": false
+    },
+    "WorkflowDraftResponse": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "workflowId": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "revision": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "schemaVersion": {
+          "type": "number",
+          "const": 1
+        },
+        "graph": {
+          "type": "object",
+          "properties": {
+            "schemaVersion": {
+              "type": "number",
+              "const": 1
+            },
+            "nodes": {
+              "maxItems": 1000,
+              "type": "array",
+              "items": {
+                "$ref": "#/schemas/WorkflowDraftResponse/properties/graph/$defs/__schema0"
+              }
+            },
+            "edges": {
+              "maxItems": 4000,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "source": {
+                    "type": "object",
+                    "properties": {
+                      "nodeId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "port": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "nodeId",
+                      "port"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "target": {
+                    "type": "object",
+                    "properties": {
+                      "nodeId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "port": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "nodeId",
+                      "port"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "id",
+                  "source",
+                  "target"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "settings": {
+              "type": "object",
+              "properties": {
+                "maxRunDurationMs": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 3600000
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "nodes",
+            "edges",
+            "settings"
+          ],
+          "additionalProperties": false,
+          "$defs": {
+            "__schema0": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "definition": {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "version": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "key",
+                    "version"
+                  ],
+                  "additionalProperties": false
+                },
+                "position": {
+                  "type": "object",
+                  "properties": {
+                    "x": {
+                      "type": "number"
+                    },
+                    "y": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "x",
+                    "y"
+                  ],
+                  "additionalProperties": false
+                },
+                "configVersion": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "config": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {
+                    "$ref": "#/schemas/WorkflowDraftResponse/properties/graph/$defs/__schema1"
+                  }
+                },
+                "inputMappings": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "literal"
+                          },
+                          "value": {
+                            "$ref": "#/schemas/WorkflowDraftResponse/properties/graph/$defs/__schema2"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "value"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "run_input"
+                          },
+                          "path": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "path"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "node_output"
+                          },
+                          "nodeId": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "path": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "nodeId",
+                          "path"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "expression"
+                          },
+                          "language": {
+                            "type": "string",
+                            "const": "jsonata"
+                          },
+                          "expression": {
+                            "type": "string"
+                          },
+                          "policyVersion": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "language",
+                          "expression",
+                          "policyVersion"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "structured_input"
+                          },
+                          "port": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "path": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "port",
+                          "path"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  }
+                },
+                "connectionRefs": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "label": {
+                  "type": "string"
+                },
+                "disabled": {
+                  "type": "boolean"
+                },
+                "structured": {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "for_each"
+                    },
+                    "maxIterations": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 1000
+                    },
+                    "maxConcurrency": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 1000
+                    },
+                    "body": {
+                      "type": "object",
+                      "properties": {
+                        "schemaVersion": {
+                          "type": "number",
+                          "const": 1
+                        },
+                        "nodes": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/schemas/WorkflowDraftResponse/properties/graph/$defs/__schema0"
+                          }
+                        },
+                        "edges": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "source": {
+                                "type": "object",
+                                "properties": {
+                                  "nodeId": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "port": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": [
+                                  "nodeId",
+                                  "port"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "target": {
+                                "type": "object",
+                                "properties": {
+                                  "nodeId": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "port": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": [
+                                  "nodeId",
+                                  "port"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "source",
+                              "target"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "settings": {
+                          "type": "object",
+                          "properties": {
+                            "maxRunDurationMs": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "maximum": 3600000
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "inputPorts": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "outputPorts": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      },
+                      "required": [
+                        "schemaVersion",
+                        "nodes",
+                        "edges",
+                        "settings",
+                        "inputPorts",
+                        "outputPorts"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "maxIterations",
+                    "maxConcurrency",
+                    "body"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "id",
+                "definition",
+                "position",
+                "configVersion",
+                "config",
+                "inputMappings",
+                "connectionRefs"
+              ],
+              "additionalProperties": false
+            },
+            "__schema1": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/schemas/WorkflowDraftResponse/properties/graph/$defs/__schema1"
+                  }
+                },
+                {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {
+                    "$ref": "#/schemas/WorkflowDraftResponse/properties/graph/$defs/__schema1"
+                  }
+                }
+              ]
+            },
+            "__schema2": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/schemas/WorkflowDraftResponse/properties/graph/$defs/__schema2"
+                  }
+                },
+                {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {
+                    "$ref": "#/schemas/WorkflowDraftResponse/properties/graph/$defs/__schema2"
+                  }
+                }
+              ]
+            }
+          },
+          "description": "Structural workflow graph contract. Runtime validation additionally enforces aggregate node/edge, nesting-depth, and encoded-byte limits.",
+          "x-pertexo-runtime-bounds": true
         },
         "compatibility": {
           "type": "object",
@@ -1240,7 +2513,7 @@
                 "type": "string"
               },
               "additionalProperties": {
-                "$ref": "#/$defs/__schema1"
+                "$ref": "#/schemas/WorkflowDraftResponse/$defs/__schema1"
               }
             },
             "inputMappings": {
@@ -1258,7 +2531,7 @@
                         "const": "literal"
                       },
                       "value": {
-                        "$ref": "#/$defs/__schema2"
+                        "$ref": "#/schemas/WorkflowDraftResponse/$defs/__schema2"
                       }
                     },
                     "required": [
@@ -1402,7 +2675,7 @@
                     "nodes": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/$defs/__schema0"
+                        "$ref": "#/schemas/WorkflowDraftResponse/$defs/__schema0"
                       }
                     },
                     "edges": {
@@ -1533,7 +2806,7 @@
             {
               "type": "array",
               "items": {
-                "$ref": "#/$defs/__schema1"
+                "$ref": "#/schemas/WorkflowDraftResponse/$defs/__schema1"
               }
             },
             {
@@ -1542,7 +2815,7 @@
                 "type": "string"
               },
               "additionalProperties": {
-                "$ref": "#/$defs/__schema1"
+                "$ref": "#/schemas/WorkflowDraftResponse/$defs/__schema1"
               }
             }
           ]
@@ -1564,7 +2837,7 @@
             {
               "type": "array",
               "items": {
-                "$ref": "#/$defs/__schema2"
+                "$ref": "#/schemas/WorkflowDraftResponse/$defs/__schema2"
               }
             },
             {
@@ -1573,7 +2846,7 @@
                 "type": "string"
               },
               "additionalProperties": {
-                "$ref": "#/$defs/__schema2"
+                "$ref": "#/schemas/WorkflowDraftResponse/$defs/__schema2"
               }
             }
           ]
@@ -1757,7 +3030,7 @@
                   "maxItems": 1000,
                   "type": "array",
                   "items": {
-                    "$ref": "#/$defs/__schema0"
+                    "$ref": "#/schemas/WorkflowPublishResponse/properties/version/properties/graph/$defs/__schema0"
                   }
                 },
                 "edges": {
@@ -1833,7 +3106,402 @@
                 "edges",
                 "settings"
               ],
-              "additionalProperties": false
+              "additionalProperties": false,
+              "$defs": {
+                "__schema0": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "definition": {
+                      "type": "object",
+                      "properties": {
+                        "key": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "version": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "position": {
+                      "type": "object",
+                      "properties": {
+                        "x": {
+                          "type": "number"
+                        },
+                        "y": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "x",
+                        "y"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "configVersion": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "config": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "$ref": "#/schemas/WorkflowPublishResponse/properties/version/properties/graph/$defs/__schema1"
+                      }
+                    },
+                    "inputMappings": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "const": "literal"
+                              },
+                              "value": {
+                                "$ref": "#/schemas/WorkflowPublishResponse/properties/version/properties/graph/$defs/__schema2"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "value"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "const": "run_input"
+                              },
+                              "path": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "path"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "const": "node_output"
+                              },
+                              "nodeId": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "path": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "nodeId",
+                              "path"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "const": "expression"
+                              },
+                              "language": {
+                                "type": "string",
+                                "const": "jsonata"
+                              },
+                              "expression": {
+                                "type": "string"
+                              },
+                              "policyVersion": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "language",
+                              "expression",
+                              "policyVersion"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "const": "structured_input"
+                              },
+                              "port": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "path": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "port",
+                              "path"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      }
+                    },
+                    "connectionRefs": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "disabled": {
+                      "type": "boolean"
+                    },
+                    "structured": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "for_each"
+                        },
+                        "maxIterations": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "maximum": 1000
+                        },
+                        "maxConcurrency": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "maximum": 1000
+                        },
+                        "body": {
+                          "type": "object",
+                          "properties": {
+                            "schemaVersion": {
+                              "type": "number",
+                              "const": 1
+                            },
+                            "nodes": {
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/schemas/WorkflowPublishResponse/properties/version/properties/graph/$defs/__schema0"
+                              }
+                            },
+                            "edges": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "source": {
+                                    "type": "object",
+                                    "properties": {
+                                      "nodeId": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "port": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      }
+                                    },
+                                    "required": [
+                                      "nodeId",
+                                      "port"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "target": {
+                                    "type": "object",
+                                    "properties": {
+                                      "nodeId": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "port": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      }
+                                    },
+                                    "required": [
+                                      "nodeId",
+                                      "port"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "source",
+                                  "target"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "settings": {
+                              "type": "object",
+                              "properties": {
+                                "maxRunDurationMs": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 3600000
+                                }
+                              },
+                              "additionalProperties": false
+                            },
+                            "inputPorts": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1
+                              }
+                            },
+                            "outputPorts": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1
+                              }
+                            }
+                          },
+                          "required": [
+                            "schemaVersion",
+                            "nodes",
+                            "edges",
+                            "settings",
+                            "inputPorts",
+                            "outputPorts"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "maxIterations",
+                        "maxConcurrency",
+                        "body"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "definition",
+                    "position",
+                    "configVersion",
+                    "config",
+                    "inputMappings",
+                    "connectionRefs"
+                  ],
+                  "additionalProperties": false
+                },
+                "__schema1": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/schemas/WorkflowPublishResponse/properties/version/properties/graph/$defs/__schema1"
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "$ref": "#/schemas/WorkflowPublishResponse/properties/version/properties/graph/$defs/__schema1"
+                      }
+                    }
+                  ]
+                },
+                "__schema2": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/schemas/WorkflowPublishResponse/properties/version/properties/graph/$defs/__schema2"
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "$ref": "#/schemas/WorkflowPublishResponse/properties/version/properties/graph/$defs/__schema2"
+                      }
+                    }
+                  ]
+                }
+              },
+              "description": "Structural workflow graph contract. Runtime validation additionally enforces aggregate node/edge, nesting-depth, and encoded-byte limits.",
+              "x-pertexo-runtime-bounds": true
             },
             "checksum": {
               "type": "string",
@@ -1919,7 +3587,7 @@
                 "type": "string"
               },
               "additionalProperties": {
-                "$ref": "#/$defs/__schema1"
+                "$ref": "#/schemas/WorkflowPublishResponse/$defs/__schema1"
               }
             },
             "inputMappings": {
@@ -1937,7 +3605,7 @@
                         "const": "literal"
                       },
                       "value": {
-                        "$ref": "#/$defs/__schema2"
+                        "$ref": "#/schemas/WorkflowPublishResponse/$defs/__schema2"
                       }
                     },
                     "required": [
@@ -2081,7 +3749,7 @@
                     "nodes": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/$defs/__schema0"
+                        "$ref": "#/schemas/WorkflowPublishResponse/$defs/__schema0"
                       }
                     },
                     "edges": {
@@ -2212,7 +3880,7 @@
             {
               "type": "array",
               "items": {
-                "$ref": "#/$defs/__schema1"
+                "$ref": "#/schemas/WorkflowPublishResponse/$defs/__schema1"
               }
             },
             {
@@ -2221,7 +3889,7 @@
                 "type": "string"
               },
               "additionalProperties": {
-                "$ref": "#/$defs/__schema1"
+                "$ref": "#/schemas/WorkflowPublishResponse/$defs/__schema1"
               }
             }
           ]
@@ -2243,7 +3911,7 @@
             {
               "type": "array",
               "items": {
-                "$ref": "#/$defs/__schema2"
+                "$ref": "#/schemas/WorkflowPublishResponse/$defs/__schema2"
               }
             },
             {
@@ -2252,7 +3920,7 @@
                 "type": "string"
               },
               "additionalProperties": {
-                "$ref": "#/$defs/__schema2"
+                "$ref": "#/schemas/WorkflowPublishResponse/$defs/__schema2"
               }
             }
           ]
@@ -2293,7 +3961,7 @@
               "maxItems": 1000,
               "type": "array",
               "items": {
-                "$ref": "#/$defs/__schema0"
+                "$ref": "#/schemas/WorkflowVersionResponse/properties/graph/$defs/__schema0"
               }
             },
             "edges": {
@@ -2369,7 +4037,402 @@
             "edges",
             "settings"
           ],
-          "additionalProperties": false
+          "additionalProperties": false,
+          "$defs": {
+            "__schema0": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "definition": {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "version": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "key",
+                    "version"
+                  ],
+                  "additionalProperties": false
+                },
+                "position": {
+                  "type": "object",
+                  "properties": {
+                    "x": {
+                      "type": "number"
+                    },
+                    "y": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "x",
+                    "y"
+                  ],
+                  "additionalProperties": false
+                },
+                "configVersion": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "config": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {
+                    "$ref": "#/schemas/WorkflowVersionResponse/properties/graph/$defs/__schema1"
+                  }
+                },
+                "inputMappings": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "literal"
+                          },
+                          "value": {
+                            "$ref": "#/schemas/WorkflowVersionResponse/properties/graph/$defs/__schema2"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "value"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "run_input"
+                          },
+                          "path": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "path"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "node_output"
+                          },
+                          "nodeId": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "path": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "nodeId",
+                          "path"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "expression"
+                          },
+                          "language": {
+                            "type": "string",
+                            "const": "jsonata"
+                          },
+                          "expression": {
+                            "type": "string"
+                          },
+                          "policyVersion": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "language",
+                          "expression",
+                          "policyVersion"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "structured_input"
+                          },
+                          "port": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "path": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "port",
+                          "path"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  }
+                },
+                "connectionRefs": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "label": {
+                  "type": "string"
+                },
+                "disabled": {
+                  "type": "boolean"
+                },
+                "structured": {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "for_each"
+                    },
+                    "maxIterations": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 1000
+                    },
+                    "maxConcurrency": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 1000
+                    },
+                    "body": {
+                      "type": "object",
+                      "properties": {
+                        "schemaVersion": {
+                          "type": "number",
+                          "const": 1
+                        },
+                        "nodes": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/schemas/WorkflowVersionResponse/properties/graph/$defs/__schema0"
+                          }
+                        },
+                        "edges": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "source": {
+                                "type": "object",
+                                "properties": {
+                                  "nodeId": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "port": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": [
+                                  "nodeId",
+                                  "port"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "target": {
+                                "type": "object",
+                                "properties": {
+                                  "nodeId": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "port": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": [
+                                  "nodeId",
+                                  "port"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "source",
+                              "target"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "settings": {
+                          "type": "object",
+                          "properties": {
+                            "maxRunDurationMs": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "maximum": 3600000
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "inputPorts": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "outputPorts": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      },
+                      "required": [
+                        "schemaVersion",
+                        "nodes",
+                        "edges",
+                        "settings",
+                        "inputPorts",
+                        "outputPorts"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "maxIterations",
+                    "maxConcurrency",
+                    "body"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "id",
+                "definition",
+                "position",
+                "configVersion",
+                "config",
+                "inputMappings",
+                "connectionRefs"
+              ],
+              "additionalProperties": false
+            },
+            "__schema1": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/schemas/WorkflowVersionResponse/properties/graph/$defs/__schema1"
+                  }
+                },
+                {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {
+                    "$ref": "#/schemas/WorkflowVersionResponse/properties/graph/$defs/__schema1"
+                  }
+                }
+              ]
+            },
+            "__schema2": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/schemas/WorkflowVersionResponse/properties/graph/$defs/__schema2"
+                  }
+                },
+                {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {
+                    "$ref": "#/schemas/WorkflowVersionResponse/properties/graph/$defs/__schema2"
+                  }
+                }
+              ]
+            }
+          },
+          "description": "Structural workflow graph contract. Runtime validation additionally enforces aggregate node/edge, nesting-depth, and encoded-byte limits.",
+          "x-pertexo-runtime-bounds": true
         },
         "checksum": {
           "type": "string",
@@ -2445,7 +4508,7 @@
                 "type": "string"
               },
               "additionalProperties": {
-                "$ref": "#/$defs/__schema1"
+                "$ref": "#/schemas/WorkflowVersionResponse/$defs/__schema1"
               }
             },
             "inputMappings": {
@@ -2463,7 +4526,7 @@
                         "const": "literal"
                       },
                       "value": {
-                        "$ref": "#/$defs/__schema2"
+                        "$ref": "#/schemas/WorkflowVersionResponse/$defs/__schema2"
                       }
                     },
                     "required": [
@@ -2607,7 +4670,7 @@
                     "nodes": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/$defs/__schema0"
+                        "$ref": "#/schemas/WorkflowVersionResponse/$defs/__schema0"
                       }
                     },
                     "edges": {
@@ -2738,7 +4801,7 @@
             {
               "type": "array",
               "items": {
-                "$ref": "#/$defs/__schema1"
+                "$ref": "#/schemas/WorkflowVersionResponse/$defs/__schema1"
               }
             },
             {
@@ -2747,7 +4810,7 @@
                 "type": "string"
               },
               "additionalProperties": {
-                "$ref": "#/$defs/__schema1"
+                "$ref": "#/schemas/WorkflowVersionResponse/$defs/__schema1"
               }
             }
           ]
@@ -2769,7 +4832,7 @@
             {
               "type": "array",
               "items": {
-                "$ref": "#/$defs/__schema2"
+                "$ref": "#/schemas/WorkflowVersionResponse/$defs/__schema2"
               }
             },
             {
@@ -2778,7 +4841,7 @@
                 "type": "string"
               },
               "additionalProperties": {
-                "$ref": "#/$defs/__schema2"
+                "$ref": "#/schemas/WorkflowVersionResponse/$defs/__schema2"
               }
             }
           ]
@@ -2825,7 +4888,7 @@
                     "maxItems": 1000,
                     "type": "array",
                     "items": {
-                      "$ref": "#/$defs/__schema0"
+                      "$ref": "#/schemas/WorkflowVersionsResponse/properties/items/items/properties/graph/$defs/__schema0"
                     }
                   },
                   "edges": {
@@ -2901,7 +4964,402 @@
                   "edges",
                   "settings"
                 ],
-                "additionalProperties": false
+                "additionalProperties": false,
+                "$defs": {
+                  "__schema0": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "definition": {
+                        "type": "object",
+                        "properties": {
+                          "key": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "version": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "key",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "position": {
+                        "type": "object",
+                        "properties": {
+                          "x": {
+                            "type": "number"
+                          },
+                          "y": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "x",
+                          "y"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "configVersion": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "config": {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {
+                          "$ref": "#/schemas/WorkflowVersionsResponse/properties/items/items/properties/graph/$defs/__schema1"
+                        }
+                      },
+                      "inputMappings": {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "literal"
+                                },
+                                "value": {
+                                  "$ref": "#/schemas/WorkflowVersionsResponse/properties/items/items/properties/graph/$defs/__schema2"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "value"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "run_input"
+                                },
+                                "path": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "path"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "node_output"
+                                },
+                                "nodeId": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "path": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "nodeId",
+                                "path"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "expression"
+                                },
+                                "language": {
+                                  "type": "string",
+                                  "const": "jsonata"
+                                },
+                                "expression": {
+                                  "type": "string"
+                                },
+                                "policyVersion": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "language",
+                                "expression",
+                                "policyVersion"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "structured_input"
+                                },
+                                "port": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "path": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "port",
+                                "path"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        }
+                      },
+                      "connectionRefs": {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "label": {
+                        "type": "string"
+                      },
+                      "disabled": {
+                        "type": "boolean"
+                      },
+                      "structured": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "for_each"
+                          },
+                          "maxIterations": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 1000
+                          },
+                          "maxConcurrency": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 1000
+                          },
+                          "body": {
+                            "type": "object",
+                            "properties": {
+                              "schemaVersion": {
+                                "type": "number",
+                                "const": 1
+                              },
+                              "nodes": {
+                                "type": "array",
+                                "items": {
+                                  "$ref": "#/schemas/WorkflowVersionsResponse/properties/items/items/properties/graph/$defs/__schema0"
+                                }
+                              },
+                              "edges": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "source": {
+                                      "type": "object",
+                                      "properties": {
+                                        "nodeId": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        "port": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        }
+                                      },
+                                      "required": [
+                                        "nodeId",
+                                        "port"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "target": {
+                                      "type": "object",
+                                      "properties": {
+                                        "nodeId": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        "port": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        }
+                                      },
+                                      "required": [
+                                        "nodeId",
+                                        "port"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "source",
+                                    "target"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "settings": {
+                                "type": "object",
+                                "properties": {
+                                  "maxRunDurationMs": {
+                                    "type": "integer",
+                                    "exclusiveMinimum": 0,
+                                    "maximum": 3600000
+                                  }
+                                },
+                                "additionalProperties": false
+                              },
+                              "inputPorts": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1
+                                }
+                              },
+                              "outputPorts": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1
+                                }
+                              }
+                            },
+                            "required": [
+                              "schemaVersion",
+                              "nodes",
+                              "edges",
+                              "settings",
+                              "inputPorts",
+                              "outputPorts"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "maxIterations",
+                          "maxConcurrency",
+                          "body"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "definition",
+                      "position",
+                      "configVersion",
+                      "config",
+                      "inputMappings",
+                      "connectionRefs"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "__schema1": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/schemas/WorkflowVersionsResponse/properties/items/items/properties/graph/$defs/__schema1"
+                        }
+                      },
+                      {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {
+                          "$ref": "#/schemas/WorkflowVersionsResponse/properties/items/items/properties/graph/$defs/__schema1"
+                        }
+                      }
+                    ]
+                  },
+                  "__schema2": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/schemas/WorkflowVersionsResponse/properties/items/items/properties/graph/$defs/__schema2"
+                        }
+                      },
+                      {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {
+                          "$ref": "#/schemas/WorkflowVersionsResponse/properties/items/items/properties/graph/$defs/__schema2"
+                        }
+                      }
+                    ]
+                  }
+                },
+                "description": "Structural workflow graph contract. Runtime validation additionally enforces aggregate node/edge, nesting-depth, and encoded-byte limits.",
+                "x-pertexo-runtime-bounds": true
               },
               "checksum": {
                 "type": "string",
@@ -2997,7 +5455,7 @@
                 "type": "string"
               },
               "additionalProperties": {
-                "$ref": "#/$defs/__schema1"
+                "$ref": "#/schemas/WorkflowVersionsResponse/$defs/__schema1"
               }
             },
             "inputMappings": {
@@ -3015,7 +5473,7 @@
                         "const": "literal"
                       },
                       "value": {
-                        "$ref": "#/$defs/__schema2"
+                        "$ref": "#/schemas/WorkflowVersionsResponse/$defs/__schema2"
                       }
                     },
                     "required": [
@@ -3159,7 +5617,7 @@
                     "nodes": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/$defs/__schema0"
+                        "$ref": "#/schemas/WorkflowVersionsResponse/$defs/__schema0"
                       }
                     },
                     "edges": {
@@ -3290,7 +5748,7 @@
             {
               "type": "array",
               "items": {
-                "$ref": "#/$defs/__schema1"
+                "$ref": "#/schemas/WorkflowVersionsResponse/$defs/__schema1"
               }
             },
             {
@@ -3299,7 +5757,7 @@
                 "type": "string"
               },
               "additionalProperties": {
-                "$ref": "#/$defs/__schema1"
+                "$ref": "#/schemas/WorkflowVersionsResponse/$defs/__schema1"
               }
             }
           ]
@@ -3321,7 +5779,7 @@
             {
               "type": "array",
               "items": {
-                "$ref": "#/$defs/__schema2"
+                "$ref": "#/schemas/WorkflowVersionsResponse/$defs/__schema2"
               }
             },
             {
@@ -3330,7 +5788,7 @@
                 "type": "string"
               },
               "additionalProperties": {
-                "$ref": "#/$defs/__schema2"
+                "$ref": "#/schemas/WorkflowVersionsResponse/$defs/__schema2"
               }
             }
           ]

@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { isSupportedHttpFieldValue } from './http-field-value.js';
+
 export const connectionIdentifierSchema = z.uuid();
 export const connectionSecretVersionIdentifierSchema = z.uuid();
 export const connectionProviderKeySchema = z.enum(['http', 'slack', 'email']);
@@ -24,8 +26,8 @@ const httpHeaderValueSchema = z
   .string()
   .min(1)
   .max(8_192)
-  .refine((value) => !/[\r\n\0]/u.test(value), {
-    message: 'header values cannot contain control delimiters',
+  .refine(isSupportedHttpFieldValue, {
+    message: 'header value contains a byte unsupported by HTTP transport',
   });
 const prohibitedConnectionHeaders = new Set([
   'accept-encoding',

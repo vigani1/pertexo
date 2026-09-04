@@ -7,6 +7,26 @@
   "paths": {
     "/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers": {
       "get": {
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workflowId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Published trigger health"
@@ -16,6 +36,35 @@
     },
     "/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers/{triggerId}/webhook/provision": {
       "post": {
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workflowId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "triggerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Webhook trigger command completed"
@@ -30,7 +79,7 @@
               }
             },
             "x-pertexo-code": "request.invalid",
-            "status": 400
+            "x-pertexo-status": 400
           },
           "401": {
             "description": "auth.unauthenticated",
@@ -42,7 +91,7 @@
               }
             },
             "x-pertexo-code": "auth.unauthenticated",
-            "status": 401
+            "x-pertexo-status": 401
           },
           "404": {
             "description": "resource.not_found",
@@ -54,7 +103,7 @@
               }
             },
             "x-pertexo-code": "resource.not_found",
-            "status": 404
+            "x-pertexo-status": 404
           },
           "409": {
             "description": "request.idempotency_conflict",
@@ -66,13 +115,42 @@
               }
             },
             "x-pertexo-code": "request.idempotency_conflict",
-            "status": 409
+            "x-pertexo-status": 409
           }
         }
       }
     },
     "/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers/{triggerId}/webhook/rotate-endpoint": {
       "post": {
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workflowId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "triggerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Webhook trigger command completed"
@@ -87,7 +165,7 @@
               }
             },
             "x-pertexo-code": "request.invalid",
-            "status": 400
+            "x-pertexo-status": 400
           },
           "401": {
             "description": "auth.unauthenticated",
@@ -99,7 +177,7 @@
               }
             },
             "x-pertexo-code": "auth.unauthenticated",
-            "status": 401
+            "x-pertexo-status": 401
           },
           "404": {
             "description": "resource.not_found",
@@ -111,7 +189,7 @@
               }
             },
             "x-pertexo-code": "resource.not_found",
-            "status": 404
+            "x-pertexo-status": 404
           },
           "409": {
             "description": "request.idempotency_conflict",
@@ -123,13 +201,42 @@
               }
             },
             "x-pertexo-code": "request.idempotency_conflict",
-            "status": 409
+            "x-pertexo-status": 409
           }
         }
       }
     },
     "/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers/{triggerId}/webhook/rotate-secret": {
       "post": {
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "workflowId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "triggerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Webhook trigger command completed"
@@ -144,7 +251,7 @@
               }
             },
             "x-pertexo-code": "request.invalid",
-            "status": 400
+            "x-pertexo-status": 400
           },
           "401": {
             "description": "auth.unauthenticated",
@@ -156,7 +263,7 @@
               }
             },
             "x-pertexo-code": "auth.unauthenticated",
-            "status": 401
+            "x-pertexo-status": 401
           },
           "404": {
             "description": "resource.not_found",
@@ -168,7 +275,7 @@
               }
             },
             "x-pertexo-code": "resource.not_found",
-            "status": 404
+            "x-pertexo-status": 404
           },
           "409": {
             "description": "request.idempotency_conflict",
@@ -180,7 +287,7 @@
               }
             },
             "x-pertexo-code": "request.idempotency_conflict",
-            "status": 409
+            "x-pertexo-status": 409
           }
         },
         "requestBody": {
@@ -207,6 +314,17 @@
     },
     "/hooks/{endpointKey}": {
       "post": {
+        "parameters": [
+          {
+            "name": "endpointKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{43}$"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -229,7 +347,7 @@
               }
             },
             "x-pertexo-code": "webhook.invalid_json",
-            "status": 400
+            "x-pertexo-status": 400
           },
           "401": {
             "description": "webhook.authentication_failed",
@@ -241,7 +359,7 @@
               }
             },
             "x-pertexo-code": "webhook.authentication_failed",
-            "status": 401
+            "x-pertexo-status": 401
           },
           "409": {
             "description": "webhook.idempotency_conflict",
@@ -253,7 +371,7 @@
               }
             },
             "x-pertexo-code": "webhook.idempotency_conflict",
-            "status": 409
+            "x-pertexo-status": 409
           },
           "413": {
             "description": "webhook.payload_too_large",
@@ -265,7 +383,7 @@
               }
             },
             "x-pertexo-code": "webhook.payload_too_large",
-            "status": 413
+            "x-pertexo-status": 413
           },
           "415": {
             "description": "webhook.unsupported_media_type",
@@ -277,7 +395,7 @@
               }
             },
             "x-pertexo-code": "webhook.unsupported_media_type",
-            "status": 415
+            "x-pertexo-status": 415
           },
           "429": {
             "description": "webhook.rate_limited",
@@ -289,7 +407,7 @@
               }
             },
             "x-pertexo-code": "webhook.rate_limited",
-            "status": 429
+            "x-pertexo-status": 429
           }
         }
       }

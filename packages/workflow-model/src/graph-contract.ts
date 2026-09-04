@@ -178,19 +178,25 @@ const structuredBodySchema: z.ZodType<StructuredBody> = z.lazy(() =>
     .strict(),
 );
 
-const rawWorkflowGraphSchemaV1: z.ZodType<WorkflowGraph> = z.lazy(() =>
-  z
-    .object({
-      schemaVersion: z.literal(1),
-      nodes: z
-        .array(workflowNodeSchema)
-        .max(WORKFLOW_GRAPH_CONTRACT_LIMITS.nodes),
-      edges: z
-        .array(workflowEdgeSchema)
-        .max(WORKFLOW_GRAPH_CONTRACT_LIMITS.edges),
-      settings: workflowSettingsSchemaV1,
-    })
-    .strict(),
+/**
+ * Structurally representable projection for contract generators. Runtime
+ * callers must continue to use workflowGraphSchema, which adds hostile-input
+ * and aggregate preflight before this parser executes.
+ */
+export const workflowGraphStructuralSchemaV1: z.ZodType<WorkflowGraph> = z.lazy(
+  () =>
+    z
+      .object({
+        schemaVersion: z.literal(1),
+        nodes: z
+          .array(workflowNodeSchema)
+          .max(WORKFLOW_GRAPH_CONTRACT_LIMITS.nodes),
+        edges: z
+          .array(workflowEdgeSchema)
+          .max(WORKFLOW_GRAPH_CONTRACT_LIMITS.edges),
+        settings: workflowSettingsSchemaV1,
+      })
+      .strict(),
 );
 
 function utf8Bytes(value: string): number {
@@ -342,4 +348,4 @@ const workflowGraphPreflightSchema = z.custom<unknown>(preflightWorkflowGraph, {
 });
 
 export const workflowGraphSchema: z.ZodType<WorkflowGraph> =
-  workflowGraphPreflightSchema.pipe(rawWorkflowGraphSchemaV1);
+  workflowGraphPreflightSchema.pipe(workflowGraphStructuralSchemaV1);
