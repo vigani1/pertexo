@@ -5,6 +5,7 @@ import * as queue from '../src/index.js';
 describe('public package surface', () => {
   it('matches the reviewed root runtime export manifest', () => {
     expect(Object.keys(queue).sort()).toEqual([
+      'ACTIVE_QUEUE_JOB_NAMES',
       'AdvanceWorkflowRunJobSchema',
       'BullMqQueueConsumer',
       'BullMqQueueProducer',
@@ -41,6 +42,7 @@ describe('public package surface', () => {
       'createRedisTelemetryObserver',
       'encodeRunEventReference',
       'encodeRunEventResync',
+      'isActiveQueueJobName',
       'jobIdForOutboxEvent',
       'normalizeRedisEndpoint',
       'parseQueueJob',

@@ -349,7 +349,6 @@ describe('parseWorkerConfig', () => {
         'postgresql://pertexo_worker:secret@localhost:5432/pertexo',
       REDIS_URL: 'redis://:secret@localhost:6379/0',
       OUTBOX_DISPATCH_JOB_NAMES: [
-        JOB_NAME.expireArtifacts,
         JOB_NAME.advanceWorkflowRun,
         JOB_NAME.reconcilePreviewAttempt,
         JOB_NAME.reconcileWorkflowTriggers,
@@ -357,7 +356,6 @@ describe('parseWorkerConfig', () => {
     });
 
     expect(config.outboxDispatcher.enabledJobNames).toEqual([
-      JOB_NAME.expireArtifacts,
       JOB_NAME.advanceWorkflowRun,
       JOB_NAME.reconcilePreviewAttempt,
       JOB_NAME.reconcileWorkflowTriggers,
@@ -367,6 +365,8 @@ describe('parseWorkerConfig', () => {
 
   it.each([
     `${JOB_NAME.advanceWorkflowRun},${JOB_NAME.advanceWorkflowRun}`,
+    JOB_NAME.expireArtifacts,
+    JOB_NAME.sweepExpiredPreviews,
     'unknown-job',
   ])('rejects an invalid dispatcher allowlist (%s)', (jobNames) => {
     expect(() =>

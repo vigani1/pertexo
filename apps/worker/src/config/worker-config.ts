@@ -9,7 +9,7 @@ import {
   platformServingReleaseRequiresHttpCapabilities,
 } from '@pertexo/node-catalog';
 import { parseObservabilityConfig } from '@pertexo/observability/config';
-import { JOB_NAME, type JobName } from '@pertexo/queue';
+import { ACTIVE_QUEUE_JOB_NAMES, JOB_NAME, type JobName } from '@pertexo/queue';
 
 const workerEnvironments = [
   'development',
@@ -27,21 +27,7 @@ const workerLogLevels = [
   'trace',
 ] as const;
 
-const SUPPORTED_DISPATCH_CAPABILITIES = Object.freeze([
-  JOB_NAME.advanceWorkflowRun,
-  JOB_NAME.executeNodeAttempt,
-  JOB_NAME.executePreviewAttempt,
-  JOB_NAME.reconcilePreviewAttempt,
-  JOB_NAME.reconcileUnknownOutcome,
-  JOB_NAME.replayWorkflowRun,
-  JOB_NAME.expireArtifacts,
-  JOB_NAME.deliverRunFailureNotification,
-  JOB_NAME.reconcileWorkflowTriggers,
-] as const satisfies readonly JobName[]);
-
-const supportedDispatchCapabilitySet = new Set<JobName>(
-  SUPPORTED_DISPATCH_CAPABILITIES,
-);
+const supportedDispatchCapabilitySet = new Set<JobName>(ACTIVE_QUEUE_JOB_NAMES);
 
 export function isSupportedDispatchCapability(jobName: JobName): boolean {
   return supportedDispatchCapabilitySet.has(jobName);

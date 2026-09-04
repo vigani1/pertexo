@@ -1,6 +1,7 @@
 import './server-only.js';
 
 export {
+  ACTIVE_QUEUE_JOB_NAMES,
   AdvanceWorkflowRunJobSchema,
   ExecuteNodeAttemptJobSchema,
   ExecutePreviewAttemptJobSchema,
@@ -16,8 +17,10 @@ export {
   UnknownQueueJobError,
   parseQueueJob,
   safeParseQueueJob,
+  isActiveQueueJobName,
 } from './contracts.js';
 export type {
+  ActiveQueueJobName,
   AdvanceWorkflowRunJob,
   ExecuteNodeAttemptJob,
   ExecutePreviewAttemptJob,

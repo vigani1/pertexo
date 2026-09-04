@@ -148,7 +148,28 @@ export type QueueJob = {
   };
 }[JobName];
 
-export const QUEUE_JOB_REGISTRY = Object.freeze({
+export const ACTIVE_QUEUE_JOB_NAMES = Object.freeze([
+  JOB_NAME.advanceWorkflowRun,
+  JOB_NAME.executeNodeAttempt,
+  JOB_NAME.executePreviewAttempt,
+  JOB_NAME.reconcilePreviewAttempt,
+  JOB_NAME.reconcileUnknownOutcome,
+  JOB_NAME.replayWorkflowRun,
+  JOB_NAME.reconcileWorkflowTriggers,
+  JOB_NAME.deliverRunFailureNotification,
+] as const satisfies readonly JobName[]);
+
+export type ActiveQueueJobName = (typeof ACTIVE_QUEUE_JOB_NAMES)[number];
+
+const activeQueueJobNames = new Set<JobName>(ACTIVE_QUEUE_JOB_NAMES);
+
+export function isActiveQueueJobName(
+  jobName: JobName,
+): jobName is ActiveQueueJobName {
+  return activeQueueJobNames.has(jobName);
+}
+
+const QUEUE_JOB_COMPATIBILITY_REGISTRY = Object.freeze({
   [JOB_NAME.advanceWorkflowRun]: {
     queueName: QUEUE_FOR_JOB[JOB_NAME.advanceWorkflowRun],
     schema: AdvanceWorkflowRunJobSchema,
@@ -191,7 +212,17 @@ export const QUEUE_JOB_REGISTRY = Object.freeze({
   },
 } as const);
 
-for (const entry of Object.values(QUEUE_JOB_REGISTRY)) Object.freeze(entry);
+for (const entry of Object.values(QUEUE_JOB_COMPATIBILITY_REGISTRY))
+  Object.freeze(entry);
+
+export const QUEUE_JOB_REGISTRY = Object.freeze(
+  Object.fromEntries(
+    ACTIVE_QUEUE_JOB_NAMES.map((jobName) => [
+      jobName,
+      QUEUE_JOB_COMPATIBILITY_REGISTRY[jobName],
+    ]),
+  ) as Pick<typeof QUEUE_JOB_COMPATIBILITY_REGISTRY, ActiveQueueJobName>,
+);
 
 export class UnknownQueueJobError extends Error {
   public override readonly name = 'UnknownQueueJobError';
@@ -230,8 +261,8 @@ export function parseQueueJob(value: unknown): QueueJob {
 
   const registryEntry =
     typeof value.name === 'string' &&
-    Object.hasOwn(QUEUE_JOB_REGISTRY, value.name)
-      ? QUEUE_JOB_REGISTRY[value.name as JobName]
+    Object.hasOwn(QUEUE_JOB_COMPATIBILITY_REGISTRY, value.name)
+      ? QUEUE_JOB_COMPATIBILITY_REGISTRY[value.name as JobName]
       : undefined;
 
   if (registryEntry === undefined) {

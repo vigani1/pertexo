@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { JOB_NAME, type QueueJob } from '../src/index.js';
 import {
+  ACTIVE_QUEUE_JOB_NAMES,
   parseQueueJob,
   QUEUE_JOB_REGISTRY,
   safeParseQueueJob,
@@ -25,6 +26,24 @@ const IDS = {
 const TRACEPARENT = '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01';
 
 describe('versioned queue contracts', () => {
+  it('keeps historical contracts parseable without advertising them as active', () => {
+    expect(ACTIVE_QUEUE_JOB_NAMES).not.toContain(JOB_NAME.sweepExpiredPreviews);
+    expect(ACTIVE_QUEUE_JOB_NAMES).not.toContain(JOB_NAME.expireArtifacts);
+    expect(Object.isFrozen(ACTIVE_QUEUE_JOB_NAMES)).toBe(true);
+
+    expect(() =>
+      parseQueueJob({
+        name: JOB_NAME.sweepExpiredPreviews,
+        data: {
+          schemaVersion: 1,
+          workspaceId: IDS.workspaceId,
+          outboxEventId: IDS.outboxEventId,
+          previewRunId: IDS.previewRunId,
+        },
+      }),
+    ).not.toThrow();
+  });
+
   it('requires exact own envelope fields and immutable registry entries', () => {
     const inherited = Object.create({
       name: JOB_NAME.advanceWorkflowRun,
