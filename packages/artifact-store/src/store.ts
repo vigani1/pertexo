@@ -2,6 +2,7 @@ import {
   DeleteObjectCommand,
   DeleteObjectsCommand,
   GetObjectCommand,
+  GetBucketLocationCommand,
   HeadBucketCommand,
   HeadObjectCommand,
   ListObjectVersionsCommand,
@@ -37,6 +38,7 @@ type S3Command =
   | DeleteObjectCommand
   | DeleteObjectsCommand
   | GetObjectCommand
+  | GetBucketLocationCommand
   | HeadBucketCommand
   | HeadObjectCommand
   | ListObjectVersionsCommand
@@ -513,13 +515,31 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
     signal?: AbortSignal,
   ): Promise<ArtifactStoreReadiness> {
     this.assertOpen();
+    const options = {
+      abortSignal: requestSignal(this.config.requestTimeoutMs, signal),
+    };
     await this.client.send(
       new HeadBucketCommand({ Bucket: this.config.bucket }),
-      { abortSignal: requestSignal(this.config.requestTimeoutMs, signal) },
+      options,
     );
+    const location = (await this.client.send(
+      new GetBucketLocationCommand({ Bucket: this.config.bucket }),
+      options,
+    )) as { readonly LocationConstraint?: string | null };
+    const reportedRegion = location.LocationConstraint ?? '';
+    const actualRegion =
+      reportedRegion === ''
+        ? 'us-east-1'
+        : reportedRegion === 'EU'
+          ? 'eu-west-1'
+          : reportedRegion;
+    if (actualRegion !== this.config.region)
+      throw new ArtifactIntegrityError(
+        'Artifact bucket region does not match the configured region',
+      );
     return Object.freeze({
       bucket: this.config.bucket,
-      region: this.config.region,
+      region: actualRegion,
     });
   }
 

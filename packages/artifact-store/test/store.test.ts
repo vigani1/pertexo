@@ -2,6 +2,7 @@ import {
   DeleteObjectCommand,
   DeleteObjectsCommand,
   GetObjectCommand,
+  GetBucketLocationCommand,
   HeadBucketCommand,
   HeadObjectCommand,
   ListObjectVersionsCommand,
@@ -67,6 +68,7 @@ class MemoryS3Client implements S3ClientLike {
       }>[]
     | undefined;
   public hangReadiness = false;
+  public locationConstraint: string | null = null;
   public hangHead = false;
   public lastGetBody: Readable | undefined;
   public getCalls = 0;
@@ -191,6 +193,8 @@ class MemoryS3Client implements S3ClientLike {
       }
       return {};
     }
+    if (command instanceof GetBucketLocationCommand)
+      return { LocationConstraint: this.locationConstraint };
     throw new Error('Unsupported S3 command');
   }
 
@@ -909,5 +913,11 @@ describe('ArtifactStore', () => {
       bucket: 'pertexo-artifacts',
       region: 'us-east-1',
     });
+  });
+
+  it('rejects a configured region that disagrees with provider location', async () => {
+    const { client, store } = createStore();
+    client.locationConstraint = 'eu-west-1';
+    await expect(store.checkReadiness()).rejects.toThrow(/region/u);
   });
 });
