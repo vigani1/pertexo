@@ -23,7 +23,6 @@ export const JOB_NAME = Object.freeze({
 } as const);
 
 export type JobName = (typeof JOB_NAME)[keyof typeof JOB_NAME];
-export type QueueJobName = JobName;
 
 export const QUEUE_FOR_JOB = Object.freeze({
   [JOB_NAME.advanceWorkflowRun]: QUEUE_NAME.workflowCoordinator,

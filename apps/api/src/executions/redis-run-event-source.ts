@@ -2,8 +2,8 @@ import { Buffer } from 'node:buffer';
 import { performance } from 'node:perf_hooks';
 
 import { Redis } from 'ioredis';
-import { runEventChannel } from '@pertexo/queue/run-event-notifications';
-export { runEventChannel } from '@pertexo/queue/run-event-notifications';
+import { runEventChannel } from '@pertexo/queue';
+export { runEventChannel } from '@pertexo/queue';
 import type {
   RedisOperation,
   RedisOperationErrorClass,
