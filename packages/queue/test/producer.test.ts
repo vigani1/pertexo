@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => {
     options: unknown;
     add: ReturnType<typeof vi.fn>;
     close: ReturnType<typeof vi.fn>;
+    disconnect: ReturnType<typeof vi.fn>;
     getJobCountByTypes: ReturnType<typeof vi.fn>;
     getJobs: ReturnType<typeof vi.fn>;
     waitUntilReady: ReturnType<typeof vi.fn>;
@@ -45,6 +46,7 @@ const mocks = vi.hoisted(() => {
       options,
       add: vi.fn(() => Promise.resolve({ id: 'mock-job-id' })),
       close: vi.fn(() => Promise.resolve()),
+      disconnect: vi.fn(() => Promise.resolve()),
       getJobCountByTypes: vi.fn(() => Promise.resolve(0)),
       getJobs: vi.fn(() => Promise.resolve([])),
       waitUntilReady: vi.fn(() => Promise.resolve()),
@@ -327,5 +329,35 @@ describe('BullMQ queue producer', () => {
     }
     expect(mocks.redisClient.quit).toHaveBeenCalledTimes(1);
     expect(producer.isReady()).toBe(false);
+  });
+
+  it('shares concurrent close settlement and disconnects after a bounded timeout', async () => {
+    vi.useFakeTimers();
+    try {
+      const producer = createQueueProducer({
+        closeTimeoutMs: 25,
+        redisUrl: 'redis://localhost:6379/0',
+      });
+      mocks.queueInstances[0]?.close.mockReturnValue(
+        new Promise<void>(() => undefined),
+      );
+
+      const first = producer.close();
+      const second = producer.close();
+      const firstRejection = expect(first).rejects.toThrow(/close.*timeout/iu);
+      const secondRejection =
+        expect(second).rejects.toThrow(/close.*timeout/iu);
+      await vi.advanceTimersByTimeAsync(25);
+
+      await Promise.all([firstRejection, secondRejection]);
+      for (const queue of mocks.queueInstances) {
+        expect(queue.close).toHaveBeenCalledOnce();
+        expect(queue.disconnect).toHaveBeenCalledOnce();
+      }
+      expect(mocks.redisClient.quit).toHaveBeenCalledOnce();
+      expect(mocks.redisClient.disconnect).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

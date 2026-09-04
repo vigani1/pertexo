@@ -191,6 +191,8 @@ export const QUEUE_JOB_REGISTRY = Object.freeze({
   },
 } as const);
 
+for (const entry of Object.values(QUEUE_JOB_REGISTRY)) Object.freeze(entry);
+
 export class UnknownQueueJobError extends Error {
   public override readonly name = 'UnknownQueueJobError';
 
@@ -205,13 +207,20 @@ interface QueueJobEnvelope {
 }
 
 function isQueueJobEnvelope(value: unknown): value is QueueJobEnvelope {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'name' in value &&
-    'data' in value &&
-    Object.keys(value).length === 2
-  );
+  if (typeof value !== 'object' || value === null || Array.isArray(value))
+    return false;
+  try {
+    const keys = Object.keys(value);
+    return (
+      keys.length === 2 &&
+      Object.hasOwn(value, 'name') &&
+      Object.hasOwn(value, 'data') &&
+      keys.includes('name') &&
+      keys.includes('data')
+    );
+  } catch {
+    return false;
+  }
 }
 
 export function parseQueueJob(value: unknown): QueueJob {

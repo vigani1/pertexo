@@ -90,22 +90,6 @@ describe('trigger reconciliation handler', () => {
     );
   });
 
-  it('rejects a forged BullMQ job identity without touching PostgreSQL', async () => {
-    const selected = dependencies();
-    const handler = createTriggerReconciliationHandler(selected);
-
-    await expect(
-      handler.handle(
-        {
-          ...delivery(),
-          transport: { attemptsMade: 1, jobId: 'forged' },
-        },
-        context,
-      ),
-    ).rejects.toMatchObject({ name: 'InvalidQueueDeliveryError' });
-    expect(selected.reader.readForExecution).not.toHaveBeenCalled();
-  });
-
   it('safely acknowledges a stale publication job', async () => {
     const selected = dependencies();
     vi.mocked(selected.reconciliation.reconcile).mockRejectedValue(

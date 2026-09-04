@@ -472,6 +472,10 @@ export class BullMqQueueConsumer implements QueueConsumer {
     }
 
     const transportJobId = jobId(job);
+    if (transportJobId !== `outbox-${parsed.data.outboxEventId}`)
+      throw new InvalidQueueDeliveryError(
+        'Queue delivery job ID does not match its outbox event',
+      );
 
     const execution: ActiveExecution = {
       abortFailureClass: undefined,

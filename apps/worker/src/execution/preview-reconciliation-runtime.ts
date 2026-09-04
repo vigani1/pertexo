@@ -8,8 +8,6 @@ import {
   PreviewDeliveryMismatchError,
 } from '@pertexo/database/execution';
 import {
-  InvalidQueueDeliveryError,
-  jobIdForOutboxEvent,
   unrecoverableQueueError,
   type QueueDelivery,
   type QueueHandlerContext,
@@ -70,13 +68,6 @@ export function createPreviewReconciliationHandler(
       delivery: PreviewReconciliationDelivery,
       context: QueueHandlerContext,
     ): Promise<PreviewDeliveryReconciliationResult> => {
-      if (
-        delivery.transport.jobId !==
-        jobIdForOutboxEvent(delivery.data.outboxEventId)
-      )
-        throw new InvalidQueueDeliveryError(
-          'Preview reconciliation transport identity is invalid',
-        );
       const result = await store.reconcile({
         attemptFenceToken: delivery.data.attemptFenceToken,
         delivery: {

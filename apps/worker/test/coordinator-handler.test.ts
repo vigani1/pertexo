@@ -219,40 +219,6 @@ describe('coordinator handler', () => {
     expect(engine.advance).not.toHaveBeenCalled();
   });
 
-  it('rejects a delivery whose BullMQ identity is not derived from its outbox event', async () => {
-    const runStore: CoordinatorRunStore = {
-      acknowledgeAdvanceDelivery: vi.fn(),
-      close: vi.fn().mockResolvedValue(undefined),
-      loadAdvanceState: vi.fn(),
-      commitAdvancePlan: vi.fn(),
-    };
-    const handler = createCoordinatorHandler({
-      clock: { now: () => '2026-08-21T00:00:00.000Z' },
-      engine: { advance: vi.fn() },
-      maximumAdmissions: 32,
-      reader: {
-        close: vi.fn().mockResolvedValue(undefined),
-        readForExecution: vi.fn(),
-      },
-      runStore,
-    });
-    const mismatched = delivery();
-
-    await expect(
-      handler.handle(
-        {
-          ...mismatched,
-          transport: { ...mismatched.transport, jobId: 'foreign-job' },
-        },
-        { signal: new AbortController().signal },
-      ),
-    ).rejects.toMatchObject({
-      code: 'transport_identity_mismatch',
-      name: 'CoordinatorHandlerStateError',
-    });
-    expect(runStore.loadAdvanceState).not.toHaveBeenCalled();
-  });
-
   it('acknowledges a semantic no-op without churning the checkpoint revision', async () => {
     const commitAdvancePlan = vi.fn();
     const acknowledgeAdvanceDelivery = vi

@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import { JOB_NAME, type QueueJob } from '../src/index.js';
-import { parseQueueJob, safeParseQueueJob } from '../src/contracts.js';
+import {
+  parseQueueJob,
+  QUEUE_JOB_REGISTRY,
+  safeParseQueueJob,
+} from '../src/contracts.js';
 
 const IDS = {
   workspaceId: '11111111-1111-4111-8111-111111111111',
@@ -21,6 +25,25 @@ const IDS = {
 const TRACEPARENT = '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01';
 
 describe('versioned queue contracts', () => {
+  it('requires exact own envelope fields and immutable registry entries', () => {
+    const inherited = Object.create({
+      name: JOB_NAME.advanceWorkflowRun,
+      data: {
+        schemaVersion: 1,
+        workspaceId: IDS.workspaceId,
+        runId: IDS.runId,
+        outboxEventId: IDS.outboxEventId,
+      },
+    }) as Record<string, unknown>;
+    inherited.x = 1;
+    inherited.y = 2;
+
+    expect(() => parseQueueJob(inherited)).toThrow(TypeError);
+    expect(Object.isFrozen(QUEUE_JOB_REGISTRY)).toBe(true);
+    for (const entry of Object.values(QUEUE_JOB_REGISTRY))
+      expect(Object.isFrozen(entry)).toBe(true);
+  });
+
   it('parses every supported identifier-only job', () => {
     const jobs: readonly [string, unknown][] = [
       [

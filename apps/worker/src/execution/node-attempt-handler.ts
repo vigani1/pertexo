@@ -9,11 +9,10 @@ import {
   type PublishedWorkflowReader,
   type PublishedWorkflowV2Projection,
 } from '@pertexo/database/execution';
-import {
-  jobIdForOutboxEvent,
-  type QueueDelivery,
-  type QueueHandlerContext,
-  type RunEventNotificationPublisher,
+import type {
+  QueueDelivery,
+  QueueHandlerContext,
+  RunEventNotificationPublisher,
 } from '@pertexo/queue';
 import type {
   NodeAttemptOutcome,
@@ -174,11 +173,6 @@ export function createNodeAttemptHandler(
       delivery: AttemptDelivery,
       context: QueueHandlerContext,
     ): Promise<NodeAttemptHandlerResult> => {
-      if (
-        delivery.transport.jobId !==
-        jobIdForOutboxEvent(delivery.data.outboxEventId)
-      )
-        throw new NodeAttemptHandlerStateError('transport_identity_mismatch');
       const claimed = await dependencies.runStore.claimDelivery({
         workspaceId: delivery.data.workspaceId,
         runId: delivery.data.runId,

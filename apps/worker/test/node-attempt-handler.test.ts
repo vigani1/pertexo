@@ -50,35 +50,6 @@ describe('NodeAttemptHandler', () => {
     },
   );
 
-  it('rejects transport identity before claiming durable state', async () => {
-    const claimDelivery = vi.fn();
-    const handler = createNodeAttemptHandler({
-      engine: { prepare: vi.fn().mockReturnValue(registryPreparedAttempt()) },
-      heartbeatIntervalMillis: 1_000,
-      leaseDurationSeconds: 30,
-      reader: { close: vi.fn(), readForExecution: vi.fn() },
-      registry: { execute: vi.fn() },
-      runStore: {
-        claimDelivery,
-        close: vi.fn(),
-        complete: vi.fn(),
-        heartbeat: vi.fn(),
-        loadInputs: vi.fn(),
-        markDispatched: vi.fn(),
-      },
-      workerId: 'worker-1',
-    });
-    const original = delivery();
-    const mismatched = {
-      ...original,
-      transport: { ...original.transport, jobId: 'wrong' },
-    };
-    await expect(
-      handler.handle(mismatched, { signal: new AbortController().signal }),
-    ).rejects.toMatchObject({ code: 'transport_identity_mismatch' });
-    expect(claimDelivery).not.toHaveBeenCalled();
-  });
-
   it.each([
     [{ kind: 'not_found' as const }, 'workflow_not_found'],
     [

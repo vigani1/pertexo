@@ -193,6 +193,7 @@ export class RedisRunEventNotificationPublisher implements RunEventNotificationP
               new RunEventNotificationPublishError('Redis publish timed out'),
             );
           }, this.publishTimeoutMs);
+          timer.unref();
         }),
       ]);
       return { receivers };

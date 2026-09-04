@@ -4,11 +4,10 @@ import type {
   PublishedWorkflowV2Projection,
 } from '@pertexo/database/execution';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/execution';
-import {
-  jobIdForOutboxEvent,
-  type QueueDelivery,
-  type QueueHandlerContext,
-  type RunEventNotificationPublisher,
+import type {
+  QueueDelivery,
+  QueueHandlerContext,
+  RunEventNotificationPublisher,
 } from '@pertexo/queue';
 import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 
@@ -87,12 +86,6 @@ export function createCoordinatorHandler(
       delivery: AdvanceWorkflowDelivery,
       context: QueueHandlerContext,
     ): Promise<CoordinatorHandlerResult> => {
-      if (
-        delivery.transport.jobId !==
-        jobIdForOutboxEvent(delivery.data.outboxEventId)
-      ) {
-        throw new CoordinatorHandlerStateError('transport_identity_mismatch');
-      }
       const durableDelivery = Object.freeze({
         outboxEventId: delivery.data.outboxEventId,
         payloadChecksum: canonicalOutboxPayloadChecksum(delivery.data),

@@ -15,8 +15,6 @@ import {
   type PlatformReleaseCohort,
 } from '@pertexo/node-catalog';
 import {
-  InvalidQueueDeliveryError,
-  jobIdForOutboxEvent,
   unrecoverableQueueError,
   type QueueDelivery,
   type QueueHandlerContext,
@@ -119,13 +117,6 @@ function initialCheckpoint(
 export function createOperatorRunReplayHandler(store: OperatorRunReplayStore) {
   return Object.freeze({
     handle: async (delivery: ReplayDelivery, context: QueueHandlerContext) => {
-      if (
-        delivery.transport.jobId !==
-        jobIdForOutboxEvent(delivery.data.outboxEventId)
-      )
-        throw new InvalidQueueDeliveryError(
-          'Run replay transport identity is invalid',
-        );
       try {
         return await store.replay({
           commandId: delivery.data.commandId,

@@ -10,8 +10,6 @@ import {
   UnknownOutcomeReconciliationStateError,
 } from '@pertexo/database/execution';
 import {
-  InvalidQueueDeliveryError,
-  jobIdForOutboxEvent,
   unrecoverableQueueError,
   type QueueDelivery,
   type QueueHandlerContext,
@@ -59,13 +57,6 @@ export function createUnknownOutcomeReconciliationHandler(
 }> {
   return Object.freeze({
     handle: async (delivery, context) => {
-      if (
-        delivery.transport.jobId !==
-        jobIdForOutboxEvent(delivery.data.outboxEventId)
-      )
-        throw new InvalidQueueDeliveryError(
-          'Unknown-outcome reconciliation transport identity is invalid',
-        );
       return store.reconcile({
         attemptId: delivery.data.attemptId,
         delivery: {
