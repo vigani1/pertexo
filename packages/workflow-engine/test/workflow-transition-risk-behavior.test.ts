@@ -80,6 +80,25 @@ describe('workflow transition public risk behavior', () => {
     ).toThrow(expect.objectContaining({ code: 'join_invalid' }));
   });
 
+  it.each([
+    { joinId: 'other' },
+    { branchPath: [{ nodeId: 'condition', outputPort: 'true' }] },
+    { iterationPath: [{ loopNodeId: 'loop', ordinal: 0 }] },
+  ])('rejects a join replay with changed durable identity %#', (changed) => {
+    const declaration = {
+      kind: 'join_declared' as const,
+      joinId: 'join',
+      joinInvocationKey: 'join-scope',
+      branchIds: ['a'],
+      branchPath: [],
+      iterationPath: [],
+      policy: { kind: 'all' as const },
+    };
+    expect(() =>
+      advance(checkpoint(), [declaration, { ...declaration, ...changed }]),
+    ).toThrow(expect.objectContaining({ code: 'join_invalid' }));
+  });
+
   it('rejects a disposition for an undeclared join', () => {
     expect(() =>
       advance(checkpoint(), [
@@ -144,6 +163,32 @@ describe('workflow transition public risk behavior', () => {
         declaration,
         { ...declaration, collectionChecksum: 'different' },
       ]),
+    ).toThrow(expect.objectContaining({ code: 'loop_state_invalid' }));
+  });
+
+  it.each([
+    { loopId: 'other' },
+    { branchPath: [{ nodeId: 'condition', outputPort: 'true' }] },
+    { iterationPath: [{ loopNodeId: 'outer', ordinal: 0 }] },
+    { bodyRootNodeIds: ['different'] },
+    { bodySinkNodeId: 'different' },
+  ])('rejects a loop replay with changed durable topology %#', (changed) => {
+    const declaration = {
+      kind: 'loop_started' as const,
+      loopId: 'loop',
+      controlInvocationKey: 'loop-control',
+      branchPath: [],
+      iterationPath: [],
+      bodyRootNodeIds: ['body'],
+      bodySinkNodeId: 'body',
+      collection: inline(ATTEMPT_ID),
+      collectionChecksum: 'sum',
+      collectionSize: 1,
+      maxConcurrency: 1,
+      maxIterations: 1,
+    };
+    expect(() =>
+      advance(checkpoint(), [declaration, { ...declaration, ...changed }]),
     ).toThrow(expect.objectContaining({ code: 'loop_state_invalid' }));
   });
 

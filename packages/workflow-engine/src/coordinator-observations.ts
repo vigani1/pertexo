@@ -22,6 +22,7 @@ import {
   record,
 } from './operation-values.js';
 import { compareOrdinal } from './ordering.js';
+import { branchPathHasPrefix, sameIterationPath } from './scope.js';
 import { uuidPattern } from './persisted-observations.js';
 import { invocationKey as createInvocationKey } from './scheduling.js';
 import type {
@@ -343,8 +344,7 @@ export function forEachCoordinatorObservations(
       });
       const failedInvocation = checkpoint.invocations.find(
         (invocation) =>
-          JSON.stringify(invocation.iterationPath ?? []) ===
-            JSON.stringify(iterationPath) &&
+          sameIterationPath(invocation.iterationPath, iterationPath) &&
           ['failed', 'canceled', 'timed_out', 'outcome_unknown'].includes(
             terminalOutcomes.get(invocation.invocationKey) ?? '',
           ),
@@ -473,15 +473,14 @@ export function mergeCoordinatorObservations(
               )?.source.nodeId;
               const scoped = [...projected.values()].filter(
                 (invocation) =>
-                  JSON.stringify(invocation.iterationPath ?? []) ===
-                    JSON.stringify(parallelInvocation.iterationPath ?? []) &&
-                  expectedBranchPath.every((part, index) => {
-                    const candidatePart = invocation.branchPath?.[index];
-                    return (
-                      candidatePart?.nodeId === part.nodeId &&
-                      candidatePart.outputPort === part.outputPort
-                    );
-                  }),
+                  sameIterationPath(
+                    invocation.iterationPath,
+                    parallelInvocation.iterationPath,
+                  ) &&
+                  branchPathHasPrefix(
+                    invocation.branchPath,
+                    expectedBranchPath,
+                  ),
               );
               if (scoped.length === 0 && mergeSourceNodeId === parallelNodeId)
                 return [

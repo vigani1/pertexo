@@ -37,6 +37,7 @@ import {
   type SchedulerState,
 } from './graph-scheduler.js';
 import { compareOrdinal } from './ordering.js';
+import { branchPathHasPrefix, sameIterationPath } from './scope.js';
 import { operationError, record } from './operation-values.js';
 import { parsePersistedObservations } from './persisted-observations.js';
 import {
@@ -83,12 +84,11 @@ function assertIdentity(
     operationError(code, `${label} is invalid`);
 }
 
-function schedulerState(
-  executable: CompiledWorkflowExecutableV2,
+export function projectSchedulerState(
+  graph: WorkflowExecutableGraphV2,
 ): SchedulerState {
-  const projectGraph = (graph: WorkflowExecutableGraphV2): SchedulerState => ({
-    deriveReadiness: true,
-    nodes: graph.nodes.map(
+  const projectGraph = (graph: WorkflowExecutableGraphV2): SchedulerState => {
+    const nodes = graph.nodes.map(
       ({
         id,
         definition,
@@ -102,24 +102,28 @@ function schedulerState(
         disabled,
         sideEffectClass: pinnedSideEffectClass,
       }),
-    ),
-    edges: graph.edges.map(({ source, target }) => ({
+    );
+    const edges = graph.edges.map(({ source, target }) => ({
       source: { nodeId: source.nodeId, port: source.port },
       target: { nodeId: target.nodeId, port: target.port },
-    })),
-    structuredBodies: graph.nodes.flatMap((node) =>
-      node.structured === undefined
-        ? []
-        : [
-            {
-              loopNodeId: node.id,
-              ...projectGraph(node.structured.body),
-            },
-            ...(projectGraph(node.structured.body).structuredBodies ?? []),
-          ],
-    ),
-  });
-  return projectGraph(executable.envelope.graph);
+    }));
+    const structuredBodies = graph.nodes.flatMap((node) => {
+      if (node.structured === undefined) return [];
+      const body = projectGraph(node.structured.body);
+      return [
+        { loopNodeId: node.id, nodes: body.nodes, edges: body.edges },
+        ...(body.structuredBodies ?? []),
+      ];
+    });
+    return { deriveReadiness: true, nodes, edges, structuredBodies };
+  };
+  return projectGraph(graph);
+}
+
+function schedulerState(
+  executable: CompiledWorkflowExecutableV2,
+): SchedulerState {
+  return projectSchedulerState(executable.envelope.graph);
 }
 
 function assertCheckpointMatchesExecutable(
@@ -228,15 +232,8 @@ function assertCheckpointMatchesExecutable(
       const declaredLoop = checkpoint.loops.find(
         (loop) =>
           loop.loopId === scope.loopNodeId &&
-          JSON.stringify(loop.iterationPath) ===
-            JSON.stringify(enclosingPath) &&
-          loop.branchPath.every((part, branchIndex) => {
-            const invocationPart = branchPath[branchIndex];
-            return (
-              invocationPart?.nodeId === part.nodeId &&
-              invocationPart.outputPort === part.outputPort
-            );
-          }),
+          sameIterationPath(loop.iterationPath, enclosingPath) &&
+          branchPathHasPrefix(branchPath, loop.branchPath),
       );
       if (
         declaredLoop === undefined ||
