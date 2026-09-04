@@ -9,7 +9,7 @@
   direct API/worker consumers, retained-workflow fixtures, compatibility
   integration suites, package configuration, and CI execution were also traced.
 - **Architecture sources:** the authoritative backend plan and ADR-010.
-- **Audit status:** complete for the pinned tree.
+- **Audit status:** granularly certified for the pinned implementation tree.
 - **Implementation status:** no reproduced runtime defect; two important
   compatibility-maintenance risks and four focused design/test improvements are
   open.
@@ -31,6 +31,23 @@ The 766-line `registry.ts` is therefore a maintainability finding because it
 contains parallel sources of truth, not because 766 is inherently too many
 lines. `server.ts` is a cohesive composition module and should not be split just
 to reduce its size.
+
+### Granular certification record
+
+The package was recertified under the stricter component-audit contract after
+the initial audit. The reviewer read the complete contents of all 11 tracked
+package files: 5 production files, 2 test files, `package.json`, both TypeScript
+configurations, and the Vitest configuration. The pass inspected every export,
+internal function, callback, constructor path, test fixture, and test case; it
+also retraced browser/server export separation and all repository consumers in
+API and worker code. Automated inventory and symbol searches supported, but did
+not replace, the content review.
+
+Fresh recertification checks passed: typecheck, all 16 tests, build, and package
+ESLint. No additional finding was discovered. NC-001 through NC-006 remain the
+complete known finding set for the pinned implementation. Certification refers
+to review coverage, not implementation completion; those open findings still
+require remediation or explicit disposition.
 
 ## Evidence collected
 

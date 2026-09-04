@@ -82,7 +82,7 @@ ones, with dependency order allowed to override raw size.
 | `packages/rate-limit` | 4 | 403 | 3 | 270 | [Granularly certified](packages/rate-limit.md) |
 | `apps/recovery` | 3 | 486 | 2 | 388 | Not started |
 | `apps/operator-command` | 3 | 695 | 2 | 251 | Not started |
-| `packages/node-catalog` | 5 | 987 | 2 | 1,010 | [Broad audit complete; granular certification pending](packages/node-catalog.md) |
+| `packages/node-catalog` | 5 | 987 | 2 | 1,010 | [Granularly certified](packages/node-catalog.md) |
 | `apps/retention` | 5 | 1,181 | 3 | 558 | Not started |
 | `packages/observability` | 10 | 1,304 | 10 | 1,309 | [Broad audit complete; granular certification pending](packages/observability.md) |
 | `packages/nodes-core` | 50 | 1,388 | 2 | 478 | [Broad audit complete; granular certification pending](packages/nodes-core.md) |
