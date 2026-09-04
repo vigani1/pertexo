@@ -47,6 +47,7 @@
     "contracts:check": "tsx scripts/generate-artifacts.ts --check && redocly lint artifacts/*.openapi.json --config redocly.yaml --format stylish",
     "contracts:generate": "tsx scripts/generate-artifacts.ts --write",
     "test": "vitest run",
+    "test:coverage": "vitest run --config vitest.coverage.config.ts --coverage",
     "typecheck": "tsc -p tsconfig.test.json --noEmit"
   },
   "dependencies": {
