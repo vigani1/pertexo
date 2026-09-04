@@ -218,8 +218,8 @@ describeIntegration(
       if (address === null || typeof address === 'string')
         throw new Error('No provider');
       const dispatcher = createDispatcher('integration-unsafe');
-      const coordinatorCompleted = deferred();
-      const ambiguityPersisted = deferred();
+      const coordinatorCompleted = deferred('unsafe coordinator completion');
+      const ambiguityPersisted = deferred('unsafe ambiguity persistence');
       const coordinator = createQueueConsumer({
         handler: async (delivery) => {
           if (delivery.transport.jobId !== `outbox-${id}`) return;
