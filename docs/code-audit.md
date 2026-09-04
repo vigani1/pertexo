@@ -2,7 +2,7 @@
 
 Recorded: 2026-09-04
 
-Audited implementation tree: `8fa2a2df36cd125c275919914add3f25e3f49c22`
+Audited implementation tree: `efe56da1837189aae0c2e65244cebb9702c956f8`
 
 Status: current disposition with original-snapshot findings retained for traceability
 

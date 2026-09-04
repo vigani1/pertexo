@@ -35,7 +35,7 @@ tests. The exact report schema and validator already live under
 
 ## Current engineering remediation
 
-Audited implementation tree: `8fa2a2df36cd125c275919914add3f25e3f49c22`
+Audited implementation tree: `efe56da1837189aae0c2e65244cebb9702c956f8`
 
 The 2026-09-03 whole-repository audit's repository-controlled correctness,
 security, and runtime findings are complete at the implementation tree above.
