@@ -9,10 +9,20 @@
 - **Test scope:** all 22 test/support files and all 8,451 physical test lines,
   direct API/worker/database consumers, worker/database integration coverage,
   root/package checks, CI, the implementation plan, and applicable ADRs.
+- **Tooling scope:** `package.json`, both TypeScript configurations, the
+  ordinary Vitest configuration, and the selected-source coverage
+  configuration (5 files and 104 physical lines).
+- **Granular certification:** every one of the package's 67 tracked files and
+  17,039 physical lines was read in full. Every export and meaningful internal
+  callable was reviewed for responsibility, callers, invariants, branch/error
+  behavior, naming, readability, duplication, reuse, abstraction depth, test
+  evidence, and applicable correctness, security, concurrency, cancellation,
+  and performance concerns. Findings below are the complete identified set,
+  not a top-N selection.
 - **Architecture sources:** the authoritative backend plan; ADRs 001, 007, 008,
   010, 012, 016, and 017; the complexity-retention register; and the
   phase-terminology compatibility ledger.
-- **Audit status:** complete for the pinned tree.
+- **Audit status:** granularly certified for the pinned tree.
 - **Implementation status:** one high-priority cross-package capacity defect,
   seven medium performance, boundary, coverage, and assurance issues, and four
   low-priority API/locality/compatibility issues remain open.
@@ -56,11 +66,11 @@ is useful, but it is not package-wide coverage.
 
 ## Evidence collected
 
-The review used complete source/test reading, export and internal-callable
-inventory, direct-consumer tracing, implementation-plan and ADR comparison,
-package build/typecheck/lint/tests, enforced and full-source V8 coverage,
-complexity/risk controls, focused capacity and timestamp probes, and a nested
-structured-workflow timing probe.
+The review used complete source, test, fixture, package, and local-tooling file
+reading; an export and internal-callable inventory; direct-consumer tracing;
+implementation-plan and ADR comparison; package build/typecheck/lint/tests;
+enforced and full-source V8 coverage; complexity/risk controls; focused
+capacity and timestamp probes; and a nested structured-workflow timing probe.
 
 | Check | Result |
 | --- | --- |
@@ -76,6 +86,7 @@ structured-workflow timing probe.
 | Checkpoint timestamp probe | `parseCheckpoint` accepted `resumeAt: "0"`; persistence requires ISO datetime |
 | Nested scheduler projection probe | valid depth 14 took roughly 5–9 ms after warm-up; depth 15 was rejected by executable JSON depth before scheduling |
 | Existing maximum-size tests | 300-node compilation under 2 seconds; wide checkpoint rejection under 1 second |
+| Baseline package diff | Empty against the audited commit; findings describe that exact implementation |
 
 Timing values are development-host diagnostics, not production SLOs. The
 persisted-fact limit mismatch is structural and does not depend on timing. The
@@ -640,6 +651,28 @@ Production supplies canonical database facts; the testing entry should document
 this trusted typed boundary.
 
 ## Tests, coverage, and CI
+
+### Package and local-tooling assessment
+
+- `package.json` exposes only the intended root and `./testing` subpath, marks
+  the package server-only for browser resolution, publishes compiled output,
+  and keeps runtime dependencies limited to `node-sdk` and `workflow-model`.
+  Its build, typecheck, test, and coverage commands follow repository
+  conventions; no package-local dependency or script is obsolete.
+- `tsconfig.json` correctly extends the shared production configuration,
+  narrows compilation to `src`, and writes declarations and JavaScript to
+  `dist`. `tsconfig.test.json` adds the test tree without weakening production
+  compiler settings. There is no package-specific compiler escape hatch.
+- `vitest.config.ts` is a deliberately minimal Node test configuration.
+  `vitest.coverage.config.ts` uses V8 and exact ratcheted thresholds, but its
+  13-file include is narrower than the consequence-bearing implementation;
+  that is the assurance gap recorded as WFE-004, not a Vitest misuse.
+- Tooling is TypeScript rather than ad hoc shell or `.mjs`; configuration is
+  small, local, and non-duplicative. The package lint passed when run in
+  isolation with an 8 GiB Node heap. A simultaneous test/build/coverage/lint
+  diagnostic exhausted the default 4 GiB lint process, which is an artifact of
+  that intentionally concurrent diagnostic rather than the repository's
+  sequential pre-push or GitHub workflow.
 
 ### Test-file assessment
 
