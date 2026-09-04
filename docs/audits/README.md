@@ -71,7 +71,7 @@ ones, with dependency order allowed to override raw size.
 | `packages/node-sdk` | 4 | 1,803 | 2 | 967 | [Audited](packages/node-sdk.md) |
 | `packages/queue` | 10 | 2,081 | 7 | 1,402 | [Audited](packages/queue.md) |
 | `packages/workflow-model` | 10 | 2,475 | 9 | 1,924 | [Audited](packages/workflow-model.md) |
-| `packages/contracts` | 18 | 2,890 | 5 | 836 | Not started |
+| `packages/contracts` | 18 | 2,890 | 5 | 836 | [Audited](packages/contracts.md) |
 | `packages/artifact-store` | 10 | 3,214 | 11 | 3,543 | Not started |
 | `packages/integrations` | 24 | 3,940 | 8 | 2,760 | Not started |
 | `apps/worker` | 53 | 7,983 | 71 | 21,249 | Not started |
