@@ -67,7 +67,7 @@ line counts would make several modules worse.
 | Migration inventory | 75 ordered migrations; 102 normal indexes; no concurrent index lane |
 | Import graph | No runtime cycles; several erased type-only cycles at composition roots |
 | Source hygiene scan | No production `any`, suppression directive, or TODO/FIXME/HACK marker |
-| Current pull-request CI | All 14 reported checks passed, including integration, persistence unit tests, coverage, quality, recovery, image, dependency review, and CodeQL |
+| Pull-request CI immediately before this audit commit | All 14 reported checks passed, including integration, persistence unit tests, coverage, quality, recovery, image, dependency review, and CodeQL; the audit commit starts a fresh run |
 
 The two coverage rows measure different things. CI's high percentage covers
 only `src/tenant-access/workspace.ts`. The low full-source row instruments all
@@ -494,9 +494,10 @@ modules plus the queue duplicate-proof SQL fixture.
 
 CI organization is sound: static quality, unit groups, selected coverage, and
 service-backed integration/recovery jobs are separate and run on pinned Node,
-pnpm, and action versions. The current pull request is green. A green CI result
-means the encoded contracts passed; it does not invalidate uncovered capacity,
-resource-budget, online-migration, or production-operations findings.
+pnpm, and action versions. The prior pull-request run was green, and this audit
+commit starts a fresh run. A green CI result means the encoded contracts passed;
+it does not invalidate uncovered capacity, resource-budget, online-migration,
+or production-operations findings.
 
 ### Reviewed SQL and test file manifest
 
