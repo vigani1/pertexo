@@ -10,7 +10,7 @@
   suites, worker composition and provider-admission tests, package scripts, and
   CI jobs that execute them.
 - **Architecture sources:** the authoritative backend plan and ADR-012.
-- **Audit status:** complete for the pinned tree.
+- **Audit status:** granularly certified for the pinned implementation tree.
 - **Implementation status:** one confirmed high-severity recovery defect, two
   unverified/underspecified production risks, and five test or maintainability
   improvements remain open.
@@ -28,6 +28,22 @@ The audit does not recommend splitting these files. No function is difficult
 because of size, no repeated production algorithm warrants extraction, and no
 dead production abstraction was found. The necessary work is behavioral and
 verification-focused.
+
+### Granular certification record
+
+This package was recertified under the stricter component-audit contract after
+the initial audit. The reviewer read the complete contents of all 11 tracked
+package files: 4 production files, 3 test files, `package.json`, both TypeScript
+configurations, and the Vitest configuration. The pass inspected every exported
+symbol and every internal callable, constructor, closure, test fake, fixture
+helper, and test case; it also retraced all repository imports and direct API
+and worker consumers. Automated search and test evidence were used to verify the
+manual reading rather than as a replacement for it.
+
+No additional finding was discovered in this recertification. RL-001 through
+RL-008 remain the complete known finding set for the pinned implementation.
+“Complete” here describes the review coverage, not the implementation status:
+the open findings below still require remediation or explicit disposition.
 
 ## Evidence collected
 

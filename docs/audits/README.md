@@ -35,6 +35,24 @@ merely because it is short. Reviews use the deletion test for abstractions and
 judge whether each module presents a small interface that hides substantial,
 coherent implementation detail.
 
+### Granular review certification
+
+The audit contract above describes the required destination, but a package is
+labelled **granularly certified** only after a reviewer has read the complete
+contents of every tracked production, test, fixture, package, and local tooling
+file in that component. Certification additionally requires an explicit pass
+over every exported symbol and meaningful internal callable, including small
+helpers that are not architectural hotspots. Repository searches and automated
+inventories support that reading; they do not substitute for it.
+
+For each file, the pass checks responsibility, imports and dependency direction,
+callers, public and internal callables, invariants, branches, error and resource
+behavior, naming and readability, duplication and reuse, abstraction depth,
+test evidence, and any applicable security, concurrency, performance, or
+operational concerns. A prior broad audit can remain useful while this stricter
+certification is pending, but it must not be represented as equal manual
+scrutiny of every line.
+
 ## Finding classifications
 
 - **Confirmed defect:** current behavior is incorrect or unsafe.
@@ -61,23 +79,23 @@ ones, with dependency order allowed to override raw size.
 | Component | Production files | Production lines | Test files | Test lines | Audit status |
 | --- | ---: | ---: | ---: | ---: | --- |
 | `apps/lifecycle-command` | 4 | 331 | 2 | 229 | Not started |
-| `packages/rate-limit` | 4 | 403 | 3 | 270 | [Audited](packages/rate-limit.md) |
+| `packages/rate-limit` | 4 | 403 | 3 | 270 | [Granularly certified](packages/rate-limit.md) |
 | `apps/recovery` | 3 | 486 | 2 | 388 | Not started |
 | `apps/operator-command` | 3 | 695 | 2 | 251 | Not started |
-| `packages/node-catalog` | 5 | 987 | 2 | 1,010 | [Audited](packages/node-catalog.md) |
+| `packages/node-catalog` | 5 | 987 | 2 | 1,010 | [Broad audit complete; granular certification pending](packages/node-catalog.md) |
 | `apps/retention` | 5 | 1,181 | 3 | 558 | Not started |
-| `packages/observability` | 10 | 1,304 | 10 | 1,309 | [Audited](packages/observability.md) |
-| `packages/nodes-core` | 50 | 1,388 | 2 | 478 | [Audited](packages/nodes-core.md) |
-| `packages/node-sdk` | 4 | 1,803 | 2 | 967 | [Audited](packages/node-sdk.md) |
-| `packages/queue` | 10 | 2,081 | 7 | 1,402 | [Audited](packages/queue.md) |
-| `packages/workflow-model` | 10 | 2,475 | 9 | 1,924 | [Audited](packages/workflow-model.md) |
-| `packages/contracts` | 18 | 2,890 | 5 | 836 | [Audited](packages/contracts.md) |
-| `packages/artifact-store` | 10 | 3,214 | 11 | 3,543 | [Audited](packages/artifact-store.md) |
-| `packages/integrations` | 24 | 3,940 | 8 | 2,760 | [Audited](packages/integrations.md) |
+| `packages/observability` | 10 | 1,304 | 10 | 1,309 | [Broad audit complete; granular certification pending](packages/observability.md) |
+| `packages/nodes-core` | 50 | 1,388 | 2 | 478 | [Broad audit complete; granular certification pending](packages/nodes-core.md) |
+| `packages/node-sdk` | 4 | 1,803 | 2 | 967 | [Broad audit complete; granular certification pending](packages/node-sdk.md) |
+| `packages/queue` | 10 | 2,081 | 7 | 1,402 | [Broad audit complete; granular certification pending](packages/queue.md) |
+| `packages/workflow-model` | 10 | 2,475 | 9 | 1,924 | [Broad audit complete; granular certification pending](packages/workflow-model.md) |
+| `packages/contracts` | 18 | 2,890 | 5 | 836 | [Broad audit complete; granular certification pending](packages/contracts.md) |
+| `packages/artifact-store` | 10 | 3,214 | 11 | 3,543 | [Broad audit complete; granular certification pending](packages/artifact-store.md) |
+| `packages/integrations` | 24 | 3,940 | 8 | 2,760 | [Broad audit complete; granular certification pending](packages/integrations.md) |
 | `apps/worker` | 53 | 7,983 | 71 | 21,249 | Not started |
-| `packages/workflow-engine` | 40 | 8,484 | 22 | 8,451 | [Audited](packages/workflow-engine.md) |
+| `packages/workflow-engine` | 40 | 8,484 | 22 | 8,451 | [Broad audit complete; granular certification pending](packages/workflow-engine.md) |
 | `apps/api` | 121 | 14,993 | 74 | 15,480 | Not started |
-| `packages/database` | 140 | 33,154 | 135 | 34,433 | [Audited](packages/database.md) |
+| `packages/database` | 140 | 33,154 | 135 | 34,433 | [Broad audit complete; granular certification pending](packages/database.md) |
 
 The inventory is a snapshot, so each later audit must refresh its own counts and
 pin its own reviewed tree. Application audits include their package-facing
