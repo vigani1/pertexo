@@ -89,7 +89,7 @@ ones, with dependency order allowed to override raw size.
 | `packages/node-sdk` | 4 | 1,803 | 2 | 967 | [Granularly certified](packages/node-sdk.md) |
 | `packages/queue` | 10 | 2,081 | 7 | 1,402 | [Granularly certified](packages/queue.md) |
 | `packages/workflow-model` | 10 | 2,475 | 9 | 1,924 | [Granularly certified](packages/workflow-model.md) |
-| `packages/contracts` | 18 | 2,890 | 5 | 836 | [Broad audit complete; granular certification pending](packages/contracts.md) |
+| `packages/contracts` | 18 | 2,890 | 5 | 836 | [Granularly certified](packages/contracts.md) |
 | `packages/artifact-store` | 10 | 3,214 | 11 | 3,543 | [Broad audit complete; granular certification pending](packages/artifact-store.md) |
 | `packages/integrations` | 24 | 3,940 | 8 | 2,760 | [Broad audit complete; granular certification pending](packages/integrations.md) |
 | `apps/worker` | 53 | 7,983 | 71 | 21,249 | Not started |
