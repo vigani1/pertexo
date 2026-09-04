@@ -66,6 +66,8 @@ export class MemoryS3 implements ControlLedgerS3Client {
   public retentionYears: number | undefined;
   public versioningEnabled = true;
   public getFailure: Error | undefined;
+  public getDelayMs = 0;
+  public maxConcurrentGets = 0;
   public getChecksumOverride: string | undefined;
   public headFailure: Error | undefined;
   public hangReadiness = false;
@@ -83,6 +85,7 @@ export class MemoryS3 implements ControlLedgerS3Client {
   public putChecksumOverride: string | undefined;
   public streamFailure: Error | undefined;
   private readonly objects = new Map<string, StoredObject>();
+  private activeGets = 0;
 
   public async send(
     command:
@@ -170,7 +173,13 @@ export class MemoryS3 implements ControlLedgerS3Client {
     }
     if (this.getFailure !== undefined) throw this.getFailure;
     if (this.hangGets) await this.waitForAbort(options?.abortSignal);
+    this.activeGets += 1;
+    this.maxConcurrentGets = Math.max(this.maxConcurrentGets, this.activeGets);
+    if (this.getDelayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, this.getDelayMs));
+    }
     const object = this.objects.get(String(command.input.Key));
+    this.activeGets -= 1;
     if (object === undefined) {
       throw Object.assign(new Error('missing'), {
         $metadata: { httpStatusCode: 404 },

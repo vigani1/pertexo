@@ -31,7 +31,10 @@ import type { ObjectStoreS3Client } from './s3-client-contract.js';
 const ZERO_HASH = '0'.repeat(64);
 const MAX_RECORD_BYTES = 4 * 1024;
 const MAX_RECONCILIATION_RECORDS = 100;
+const RECONCILIATION_GET_CONCURRENCY = 8;
 const SEQUENCE_WIDTH = 20;
+const DEFAULT_READINESS_ATTESTATION_TTL_MS = 30_000;
+const MAX_READINESS_ATTESTATION_TTL_MS = 5 * 60_000;
 
 const uuidSchema = z.uuid();
 const sequenceSchema = z.number().int().min(1).max(Number.MAX_SAFE_INTEGER);
@@ -472,19 +475,26 @@ function parseRecord(
 
 class AwsControlLedger implements ControlLedger {
   private closed = false;
+  private readinessAttestation:
+    | Readonly<{
+        expiresAt: number;
+        readiness: ControlLedgerReadiness;
+      }>
+    | undefined;
 
   public constructor(
     private readonly config: ControlLedgerConfig,
     private readonly client: ControlLedgerS3Client,
     private readonly ownsClient: boolean,
     private readonly now: () => Date,
+    private readonly readinessAttestationTtlMs: number,
   ) {}
 
   public async append(
     request: AppendControlLedgerRecord,
   ): Promise<ControlLedgerRecord> {
     this.assertOpen();
-    await this.checkReadiness(request.signal);
+    await this.ensureReadiness(request.signal);
     const { signal: requestAbortSignal, ...untrustedCommand } = request;
     requestAbortSignal?.throwIfAborted();
     const command = appendSchema.parse(untrustedCommand);
@@ -682,6 +692,7 @@ class AwsControlLedger implements ControlLedger {
         );
       }
     } catch (error: unknown) {
+      this.readinessAttestation = undefined;
       if (options.abortSignal.aborted) {
         options.abortSignal.throwIfAborted();
       }
@@ -691,17 +702,23 @@ class AwsControlLedger implements ControlLedger {
       );
     }
     options.abortSignal.throwIfAborted();
-    return Object.freeze({
+    const readiness = Object.freeze({
       bucket: this.config.bucket,
       minRetentionDays: this.config.minRetentionDays,
       prefix: 'control-ledger/workspaces/' as const,
       region: actualRegion,
     });
+    this.readinessAttestation = Object.freeze({
+      expiresAt: this.now().getTime() + this.readinessAttestationTtlMs,
+      readiness,
+    });
+    return readiness;
   }
 
   public close(): void {
     if (this.closed) return;
     this.closed = true;
+    this.readinessAttestation = undefined;
     if (this.ownsClient) this.client.destroy();
   }
 
@@ -739,7 +756,7 @@ class AwsControlLedger implements ControlLedger {
     request: ReconcileControlLedgerRequest,
   ): Promise<ControlLedgerReconciliation> {
     this.assertOpen();
-    await this.checkReadiness(request.signal);
+    await this.ensureReadiness(request.signal);
     const parsed = z
       .object({
         maxRecords: z.number().int().min(1).max(MAX_RECONCILIATION_RECORDS),
@@ -829,12 +846,32 @@ class AwsControlLedger implements ControlLedger {
     let pageEndSequence = parsed.projectedSequence;
     let pageEndHash = parsed.projectedHash;
     const returnedCount = Math.min(contents.length, parsed.maxRecords);
-    for (let index = 0; index < returnedCount; index += 1) {
-      const next = await this.read({
-        sequence: pageEndSequence + 1,
-        ...(request.signal === undefined ? {} : { signal: request.signal }),
-        workspaceId: parsed.workspaceId,
-      });
+    for (
+      let offset = 0;
+      offset < returnedCount;
+      offset += RECONCILIATION_GET_CONCURRENCY
+    ) {
+      const batchSize = Math.min(
+        RECONCILIATION_GET_CONCURRENCY,
+        returnedCount - offset,
+      );
+      const batch = await Promise.all(
+        Array.from({ length: batchSize }, (_, index) =>
+          this.read({
+            sequence: parsed.projectedSequence + offset + index + 1,
+            ...(request.signal === undefined ? {} : { signal: request.signal }),
+            workspaceId: parsed.workspaceId,
+          }),
+        ),
+      );
+      records.push(...batch.filter((record) => record !== null));
+      if (batch.some((record) => record === null)) {
+        throw new ControlLedgerIntegrityError(
+          'Control ledger listed record is missing',
+        );
+      }
+    }
+    for (const next of records) {
       if (next === null) {
         throw new ControlLedgerIntegrityError(
           'Control ledger listed record is missing',
@@ -845,7 +882,6 @@ class AwsControlLedger implements ControlLedger {
           'Control ledger reconciliation hash chain is invalid',
         );
       }
-      records.push(next);
       pageEndSequence = next.sequence;
       pageEndHash = next.recordHash;
     }
@@ -874,6 +910,18 @@ class AwsControlLedger implements ControlLedger {
 
   private assertOpen(): void {
     if (this.closed) throw new ControlLedgerClosedError();
+  }
+
+  private async ensureReadiness(signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted();
+    const attestation = this.readinessAttestation;
+    if (
+      attestation !== undefined &&
+      attestation.expiresAt > this.now().getTime()
+    ) {
+      return;
+    }
+    await this.checkReadiness(signal);
   }
 }
 
@@ -939,6 +987,7 @@ export function createControlLedger(
     clientOwnership?: 'borrowed' | 'owned';
     now?: () => Date;
     observer?: ObjectStoreObserver;
+    readinessAttestationTtlMs?: number;
     regionRole?: ObjectStoreRegionRole;
   }> = {},
 ): ControlLedger {
@@ -963,11 +1012,20 @@ export function createControlLedger(
   );
   const ownsClient =
     options.client === undefined || options.clientOwnership === 'owned';
+  const readinessAttestationTtlMs = z
+    .number()
+    .int()
+    .min(1)
+    .max(MAX_READINESS_ATTESTATION_TTL_MS)
+    .parse(
+      options.readinessAttestationTtlMs ?? DEFAULT_READINESS_ATTESTATION_TTL_MS,
+    );
   const ledger = new AwsControlLedger(
     config,
     client,
     ownsClient,
     options.now ?? (() => new Date()),
+    readinessAttestationTtlMs,
   );
   return new ObservedControlLedger(ledger, observer, regionRole);
 }
