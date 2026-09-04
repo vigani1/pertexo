@@ -78,7 +78,7 @@ ones, with dependency order allowed to override raw size.
 
 | Component | Production files | Production lines | Test files | Test lines | Audit status |
 | --- | ---: | ---: | ---: | ---: | --- |
-| `apps/lifecycle-command` | 4 | 331 | 2 | 229 | Not started |
+| `apps/lifecycle-command` | 4 | 331 | 2 | 229 | [Granularly certified](apps/lifecycle-command.md) |
 | `packages/rate-limit` | 4 | 403 | 3 | 270 | [Granularly certified](packages/rate-limit.md) |
 | `apps/recovery` | 3 | 486 | 2 | 388 | Not started |
 | `apps/operator-command` | 3 | 695 | 2 | 251 | Not started |
