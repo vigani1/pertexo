@@ -65,6 +65,7 @@ class MemoryS3Client implements S3ClientLike {
       }>[]
     | undefined;
   public hangReadiness = false;
+  public hangHead = false;
   public lastGetBody: Readable | undefined;
   public getCalls = 0;
   public provideProviderChecksum = true;
@@ -110,6 +111,22 @@ class MemoryS3Client implements S3ClientLike {
       return {};
     }
     if (command instanceof HeadObjectCommand) {
+      if (this.hangHead)
+        await new Promise<never>((_resolve, reject) => {
+          const abort = () => {
+            const reason: unknown = options?.abortSignal?.reason;
+            reject(
+              reason instanceof Error
+                ? reason
+                : new Error('Head request aborted', { cause: reason }),
+            );
+          };
+          if (options?.abortSignal?.aborted === true) abort();
+          else
+            options?.abortSignal?.addEventListener('abort', abort, {
+              once: true,
+            });
+        });
       const object = this.object(String(command.input.Key));
       return {
         ChecksumSHA256: this.provideProviderChecksum
@@ -426,6 +443,75 @@ describe('ArtifactStore', () => {
     expect(fixture.presignRequest?.unhoistableHeaders).toContain(
       'x-amz-checksum-sha256',
     );
+  });
+
+  it('bounds a hung presigner and remains usable after cancellation', async () => {
+    const client = new MemoryS3Client();
+    const controller = new AbortController();
+    const cancellation = new Error('request cancelled');
+    let calls = 0;
+    const store = createArtifactStore(
+      {
+        accessKeyId: 'access',
+        bucket: 'pertexo-artifacts',
+        endpoint: 'http://localhost:9090',
+        forcePathStyle: true,
+        maxObjectBytes: 10 * 1024 * 1024,
+        region: 'us-east-1',
+        requestTimeoutMs: 100,
+        secretAccessKey: 'secret',
+      },
+      {
+        client,
+        presignPutObject: () => {
+          calls += 1;
+          return calls === 1
+            ? new Promise<string>(() => undefined)
+            : Promise.resolve('https://uploads.example.test/signed');
+        },
+      },
+    );
+    const pending = store.beginDirectUpload({
+      artifactId: ARTIFACT_ID,
+      byteLength: 5,
+      expiresInSeconds: 300,
+      mediaType: 'text/plain',
+      sha256: HELLO_SHA256,
+      signal: controller.signal,
+      workspaceId: WORKSPACE_ID,
+    });
+    controller.abort(cancellation);
+    await expect(pending).rejects.toBe(cancellation);
+    await expect(
+      store.beginDirectUpload({
+        artifactId: ARTIFACT_ID,
+        byteLength: 5,
+        expiresInSeconds: 300,
+        mediaType: 'text/plain',
+        sha256: HELLO_SHA256,
+        workspaceId: WORKSPACE_ID,
+      }),
+    ).resolves.toMatchObject({ method: 'PUT' });
+  });
+
+  it('preserves caller cancellation through post-upload verification', async () => {
+    const client = new MemoryS3Client();
+    client.hangHead = true;
+    const { store } = createStore(client);
+    const controller = new AbortController();
+    const cancellation = new Error('caller stopped waiting');
+    const pending = store.put({
+      artifactId: ARTIFACT_ID,
+      body: Readable.from(['hello']),
+      byteLength: 5,
+      mediaType: 'text/plain',
+      sha256: HELLO_SHA256,
+      signal: controller.signal,
+      workspaceId: WORKSPACE_ID,
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+    controller.abort(cancellation);
+    await expect(pending).rejects.toBe(cancellation);
   });
 
   it('validates direct upload bytes using the provider full-object checksum', async () => {

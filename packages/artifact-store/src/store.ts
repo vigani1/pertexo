@@ -95,6 +95,7 @@ export interface DirectUpload {
 export interface PutObjectPresignRequest {
   readonly command: PutObjectCommand;
   readonly expiresInSeconds: number;
+  readonly signal: AbortSignal;
   readonly signableHeaders: ReadonlySet<string>;
   readonly unhoistableHeaders: ReadonlySet<string>;
 }
@@ -221,6 +222,38 @@ function requestSignal(
   return externalSignal === undefined
     ? timeoutSignal
     : AbortSignal.any([externalSignal, timeoutSignal]);
+}
+
+function awaitWithSignal<T>(
+  operation: Promise<T>,
+  signal: AbortSignal,
+): Promise<T> {
+  signal.throwIfAborted();
+  return new Promise<T>((resolve, reject) => {
+    const aborted = () => {
+      const reason: unknown = signal.reason;
+      reject(
+        reason instanceof Error
+          ? reason
+          : new Error('Artifact operation aborted', { cause: reason }),
+      );
+    };
+    signal.addEventListener('abort', aborted, { once: true });
+    void operation.then(
+      (value) => {
+        signal.removeEventListener('abort', aborted);
+        resolve(value);
+      },
+      (error: unknown) => {
+        signal.removeEventListener('abort', aborted);
+        reject(
+          error instanceof Error
+            ? error
+            : new Error('Artifact operation failed', { cause: error }),
+        );
+      },
+    );
+  });
 }
 
 function isNotFound(error: unknown): boolean {
@@ -426,7 +459,8 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
     request: BeginDirectUploadRequest,
   ): Promise<DirectUpload> {
     this.assertOpen();
-    request.signal?.throwIfAborted();
+    const signal = requestSignal(this.config.requestTimeoutMs, request.signal);
+    signal.throwIfAborted();
     const issuedAt = Date.now();
     const metadata = beginDirectUploadSchema.parse(request);
     this.assertWithinLimit(metadata);
@@ -441,13 +475,17 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
       Key: storageKey(metadata),
       Metadata: storedMetadata,
     });
-    const url = await this.presignPutObject({
-      command,
-      expiresInSeconds: metadata.expiresInSeconds,
-      signableHeaders: DIRECT_UPLOAD_SIGNABLE_HEADERS,
-      unhoistableHeaders: DIRECT_UPLOAD_UNHOISTABLE_HEADERS,
-    });
-    request.signal?.throwIfAborted();
+    const url = await awaitWithSignal(
+      this.presignPutObject({
+        command,
+        expiresInSeconds: metadata.expiresInSeconds,
+        signal,
+        signableHeaders: DIRECT_UPLOAD_SIGNABLE_HEADERS,
+        unhoistableHeaders: DIRECT_UPLOAD_UNHOISTABLE_HEADERS,
+      }),
+      signal,
+    );
+    signal.throwIfAborted();
     const headers = Object.freeze({
       'content-length': String(metadata.byteLength),
       'content-type': metadata.mediaType,
@@ -567,18 +605,23 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
   ): Promise<ArtifactMetadata | null> {
     this.assertOpen();
     const identity = identitySchema.parse(request);
+    return this.headWithSignal(
+      identity,
+      requestSignal(this.config.requestTimeoutMs, request.signal),
+    );
+  }
+
+  private async headWithSignal(
+    identity: ArtifactIdentity,
+    signal: AbortSignal,
+  ): Promise<ArtifactMetadata | null> {
     try {
       const output = (await this.client.send(
         new HeadObjectCommand({
           Bucket: this.config.bucket,
           Key: storageKey(identity),
         }),
-        {
-          abortSignal: requestSignal(
-            this.config.requestTimeoutMs,
-            request.signal,
-          ),
-        },
+        { abortSignal: signal },
       )) as HeadObjectCommandOutput;
       return metadataFromHead(identity, output, this.config.maxObjectBytes);
     } catch (error: unknown) {
@@ -620,7 +663,7 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
         },
       );
 
-      const verified = await this.head(metadata);
+      const verified = await this.headWithSignal(metadata, signal);
       if (verified === null) {
         throw new ArtifactIntegrityError('Uploaded artifact is unavailable');
       }
