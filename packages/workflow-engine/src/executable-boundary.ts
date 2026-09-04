@@ -1,10 +1,10 @@
 import { parseRegistryRelease } from '@pertexo/node-sdk';
 import { parseWorkflowGraphForPublish } from '@pertexo/workflow-model/graph';
 import {
-  allExecutableNodes,
   computeWorkflowExecutableChecksumV2,
   selectionFingerprint,
 } from './executable-compilation.js';
+import { executableNodes } from './executable-graph.js';
 import {
   type CompiledWorkflowExecutableV2,
   type VerifiedWorkflowExecutableV2,
@@ -94,7 +94,7 @@ export function parseBoundary(input: {
   );
   const expectedSelection = selectionFingerprint(
     admission,
-    allExecutableNodes(executableGraph),
+    executableNodes(executableGraph),
     runtimePolicies,
   );
   if (envelope.compatibilitySelectionFingerprint !== expectedSelection)

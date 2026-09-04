@@ -18,6 +18,7 @@ import {
   nodePortKey,
   type GraphValidationIndex,
 } from './executable-graph-validation-index.js';
+import { executableNodes } from './executable-graph.js';
 import { parseBoundary } from './executable-boundary.js';
 import {
   type CompiledWorkflowExecutableV2,
@@ -47,17 +48,6 @@ function uniqueDefinitions(
   const unique = new Map<string, DefinitionIdentity>();
   for (const { definition } of nodes) unique.set(token(definition), definition);
   return [...unique.values()].sort(compareIdentity);
-}
-
-export function allExecutableNodes(
-  graph: WorkflowExecutableGraphV2,
-): readonly WorkflowExecutableNodeV2[] {
-  return graph.nodes.flatMap((node) => [
-    node,
-    ...(node.structured === undefined
-      ? []
-      : allExecutableNodes(node.structured.body)),
-  ]);
 }
 
 export function selectionFingerprint(
@@ -403,7 +393,7 @@ function buildBoundary(input: {
     configMigrations: [],
     compatibilitySelectionFingerprint: selectionFingerprint(
       release,
-      allExecutableNodes(executableGraph),
+      executableNodes(executableGraph),
       BASELINE_RUNTIME_POLICIES_V1,
     ),
     compatibilityReleaseEpoch: release.epoch,
