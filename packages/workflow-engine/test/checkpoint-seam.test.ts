@@ -8,10 +8,18 @@ import {
   WORKFLOW_CHECKPOINT_LIMITS_V1,
 } from '../src/index.js';
 import {
-  advanceWorkflow,
+  withExplicitSchedulerState,
   checkpoint,
   occurredAt,
 } from './support/advance-workflow.fixture.js';
+import {
+  advanceWorkflow as advanceWorkflowAtSeam,
+  type AdvanceWorkflowInput,
+} from '../src/testing.js';
+
+function advanceWorkflow(input: AdvanceWorkflowInput) {
+  return advanceWorkflowAtSeam(withExplicitSchedulerState(input));
+}
 
 describe('checkpoint seam', () => {
   it('defaults the additive retained deadline flag to false', () => {

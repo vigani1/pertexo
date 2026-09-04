@@ -5,12 +5,18 @@ import {
   advanceWorkflow as advanceWorkflowForTesting,
   deriveReadyNodes,
   parseSchedulerGraph,
+  type AdvanceWorkflowInput,
 } from '../src/testing.js';
 import {
   chainGraph,
   checkpoint,
   occurredAt,
+  withExplicitSchedulerState,
 } from './support/advance-workflow.fixture.js';
+
+function advanceWorkflow(input: AdvanceWorkflowInput) {
+  return advanceWorkflowForTesting(withExplicitSchedulerState(input));
+}
 
 describe('AdvanceWorkflow branching', () => {
   it('retains edge ports in the scheduler projection', () => {

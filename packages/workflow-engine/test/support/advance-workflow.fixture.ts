@@ -4,7 +4,6 @@ import {
   type WorkflowCheckpointV1,
 } from '../../src/index.js';
 import {
-  advanceWorkflow as advanceWorkflowForTesting,
   parseSchedulerGraph,
   type AdvanceWorkflowInput,
   type SchedulerGraph,
@@ -62,9 +61,11 @@ function explicitSchedulerState(input: AdvanceWorkflowInput): SchedulerGraph {
   };
 }
 
-export function advanceWorkflow(input: AdvanceWorkflowInput) {
+export function withExplicitSchedulerState(
+  input: AdvanceWorkflowInput,
+): AdvanceWorkflowInput {
   const schedulerState = explicitSchedulerState(input);
   const { graph: _, ...withoutGraph } = input;
   void _;
-  return advanceWorkflowForTesting({ ...withoutGraph, schedulerState });
+  return { ...withoutGraph, schedulerState };
 }

@@ -1,11 +1,19 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  advanceWorkflow,
+  advanceWorkflow as advanceWorkflowAtSeam,
+  type AdvanceWorkflowInput,
+} from '../src/testing.js';
+import {
   chainGraph,
   checkpoint,
   occurredAt,
+  withExplicitSchedulerState,
 } from './support/advance-workflow.fixture.js';
+
+function advanceWorkflow(input: AdvanceWorkflowInput) {
+  return advanceWorkflowAtSeam(withExplicitSchedulerState(input));
+}
 
 describe('AdvanceWorkflow transitions', () => {
   it('fails closed on malformed scheduler graph input', () => {
