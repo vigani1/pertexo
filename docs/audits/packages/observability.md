@@ -11,7 +11,7 @@
   the alert runbook, package scripts, and relevant GitHub Actions jobs.
 - **Architecture sources:** the authoritative backend plan, ADR-001, ADR-005,
   ADR-015, and the Phase 0C evidence in the implementation progress record.
-- **Audit status:** complete for the pinned tree.
+- **Audit status:** granularly certified for the pinned implementation tree.
 - **Implementation status:** two confirmed logger defects, one unverified
   production assumption, two continuous-control gaps, and five maintainability
   improvements remain open.
@@ -30,6 +30,24 @@ non-`Error` diagnostic content. CI checks the shape of operations assets but
 does not parse alert rules or collector configuration with their real binaries,
 and package coverage is measured only on demand. The default auto-instrumentation
 surface is also much broader than its test description suggests.
+
+### Granular certification record
+
+The package was recertified under the stricter component-audit contract after
+the initial audit. The reviewer read the complete contents of all 24 tracked
+package files: 10 production files, 10 test files, `package.json`, both
+TypeScript configurations, and the Vitest configuration. The pass inspected
+every export, internal sanitizer and validation helper, class method, lifecycle
+branch, metric recorder, injected callback, test harness, and test case. It also
+rechecked the server-only export map and the package's direct process-role
+consumers. Automated inventories supported, but did not replace, the content
+review.
+
+Fresh recertification checks passed: typecheck, all 41 tests, build, and package
+ESLint. No additional finding was discovered. OBS-001 through OBS-010 remain
+the complete known finding set for the pinned implementation. Certification
+describes review coverage, not implementation completion; the confirmed logger
+defects and other open findings below remain actionable.
 
 ## Evidence collected
 

@@ -84,7 +84,7 @@ ones, with dependency order allowed to override raw size.
 | `apps/operator-command` | 3 | 695 | 2 | 251 | Not started |
 | `packages/node-catalog` | 5 | 987 | 2 | 1,010 | [Granularly certified](packages/node-catalog.md) |
 | `apps/retention` | 5 | 1,181 | 3 | 558 | Not started |
-| `packages/observability` | 10 | 1,304 | 10 | 1,309 | [Broad audit complete; granular certification pending](packages/observability.md) |
+| `packages/observability` | 10 | 1,304 | 10 | 1,309 | [Granularly certified](packages/observability.md) |
 | `packages/nodes-core` | 50 | 1,388 | 2 | 478 | [Broad audit complete; granular certification pending](packages/nodes-core.md) |
 | `packages/node-sdk` | 4 | 1,803 | 2 | 967 | [Broad audit complete; granular certification pending](packages/node-sdk.md) |
 | `packages/queue` | 10 | 2,081 | 7 | 1,402 | [Broad audit complete; granular certification pending](packages/queue.md) |
