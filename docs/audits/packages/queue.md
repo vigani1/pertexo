@@ -11,8 +11,8 @@
   API run-event use, service-backed transport tests, package scripts, and CI.
 - **Architecture sources:** the authoritative backend plan and ADRs 001, 002,
   004, 007, 012, 014, 018, 019, 021, 023, and 025.
-- **Audit status:** complete for the pinned tree.
-- **Implementation status:** one high-priority lifecycle defect, six medium
+- **Audit status:** granularly certified for the pinned implementation tree.
+- **Implementation status:** one high-priority lifecycle defect, seven medium
   contract/architecture/test gaps, and four lower-priority cleanup or
   robustness improvements remain open.
 
@@ -39,6 +39,28 @@ No recommendation below is based on line count alone. `producer.ts` and
 `consumer.ts` contain substantial cohesive behavior. The useful refactors are
 the ones that centralize a real invariant or separate a distinct owner, not
 mechanical extraction into thin forwarding helpers.
+
+### Granular certification record
+
+The package was recertified under the stricter component-audit contract after
+the initial audit. The reviewer read the complete contents of all 21 tracked
+package files: 10 production files, 7 test files, `package.json`, both
+TypeScript configurations, and the Vitest configuration. The 684-line consumer,
+454-line producer, 599-line consumer suite, and every smaller contract,
+telemetry, notification, barrel, configuration, fixture, callback, and test
+case were reviewed in bounded contiguous sections. Every export and meaningful
+internal callable was included. Direct API and worker consumers were retraced,
+including runtime composition, supported dispatch capabilities, deterministic
+transport-ID checks, notification publication/subscription, and real-service
+integration entry points.
+
+Fresh recertification checks passed: typecheck, all 39 tests, build, and package
+ESLint. The package source is unchanged from the pinned implementation tree.
+No additional finding was discovered. QUEUE-001 through QUEUE-012 remain the
+complete known finding set for that tree. Certification describes review
+coverage, not implementation completion; the open lifecycle, parsing,
+architecture, coverage, compatibility, and test-harness findings below remain
+actionable.
 
 ## Evidence collected
 
@@ -326,8 +348,9 @@ manifest. Narrow unused subpaths and aliases after consumer verification
 - `names.test.ts` proves exact name/routing maps and immutable roots.
 - `defaults.test.ts` proves the intended class defaults.
 - `producer.test.ts` covers validation, readiness, deterministic publication,
-  queue policy, timeout ambiguity, observations, and close failures with useful
-  stateful fakes.
+  queue policy, timeout ambiguity, observations, and successful idempotent
+  close with useful stateful fakes. It does not cover concurrent, timed-out, or
+  rejected close behavior.
 - `consumer.test.ts` covers validation, readiness, parsing, handler errors,
   timeout/abort, telemetry isolation, graceful and forced drain, and lifecycle.
 - `redis-telemetry.test.ts` covers event and async command observations and
