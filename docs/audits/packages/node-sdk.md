@@ -12,7 +12,7 @@
   consumers, worker execution consumers, package scripts, and CI execution.
 - **Architecture sources:** the authoritative backend plan and ADRs 001, 005,
   007, 010, 011, 016, and 022 through 025.
-- **Audit status:** complete for the pinned tree.
+- **Audit status:** granularly certified for the pinned implementation tree.
 - **Implementation status:** two high-priority correctness/security defects,
   five medium contract/design/control gaps, and three lower-priority robustness
   or maintainability improvements remain open.
@@ -43,6 +43,24 @@ files even though compatibility lifecycle, hashing, schema projection, JSON
 admission, runtime capabilities, error taxonomy, and execution are distinct
 owners. Those files should be split along those seams while preserving the
 current small package export map.
+
+### Granular certification record
+
+The package was recertified under the stricter component-audit contract after
+the initial audit. The reviewer read the complete contents of all 10 tracked
+package files: 4 production files, 2 test files, `package.json`, both
+TypeScript configurations, and the Vitest configuration. The 845-line release
+implementation, 953-line server implementation, and 902-line registry suite
+were reviewed in bounded contiguous sections so output truncation could not
+substitute for content inspection. Every export, internal callable, callback,
+error path, lifecycle branch, test fixture, and test case was included, along
+with browser/server exports and repository consumers.
+
+Fresh recertification checks passed: typecheck, all 24 tests, build, and package
+ESLint. No additional finding was discovered. SDK-001 through SDK-010 remain
+the complete known finding set for the pinned implementation. Certification
+describes review coverage, not implementation completion; the dispatch race,
+unsafe object-copy behavior, and other open findings below remain actionable.
 
 ## Evidence collected
 
