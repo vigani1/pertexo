@@ -102,6 +102,7 @@ export interface PreviewNodeInvoker {
       signal: AbortSignal;
     }>,
   ): Promise<PreviewInvocationOutcome>;
+  close?(): Promise<void>;
 }
 
 export type PreviewInvocationOutcome =

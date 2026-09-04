@@ -150,7 +150,14 @@ describe('wait and control production operations', () => {
     const release = composeExecutableCompatibilityRelease(nodeRelease());
     const sourceGraph = graph();
     const executable = buildWorkflowExecutableV2({
-      graph: { ...sourceGraph, edges: [] },
+      graph: {
+        ...sourceGraph,
+        edges: [],
+        nodes: sourceGraph.nodes.map((node) => ({
+          ...node,
+          inputMappings: {},
+        })),
+      },
       release,
     });
     const started = await advanceWorkflow({
@@ -421,7 +428,14 @@ describe('wait and control production operations', () => {
       }),
     );
     const sourceGraph = graph();
-    const parallel = { ...sourceGraph, edges: [] };
+    const parallel = {
+      ...sourceGraph,
+      edges: [],
+      nodes: sourceGraph.nodes.map((node) => ({
+        ...node,
+        inputMappings: {},
+      })),
+    };
     const executable = buildWorkflowExecutableV2({ graph: parallel, release });
     const input = {
       runId: 'run-1',

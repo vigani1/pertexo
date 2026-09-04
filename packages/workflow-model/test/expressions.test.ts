@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { Worker } from 'node:worker_threads';
 import jsonata from 'jsonata';
 import { afterEach, describe, expect, it } from 'vitest';
 import { canonicalJson, type JsonValue } from '../src/canonical-json.js';
@@ -15,6 +16,40 @@ afterEach(async () => {
 });
 
 describe('restricted JSONata policy v1', () => {
+  it('executes the compiled and typechecked worker artifact', async () => {
+    const worker = new Worker(
+      new URL('../dist/expression-worker-runtime.js', import.meta.url),
+    );
+    try {
+      const result = await new Promise<unknown>((resolve, reject) => {
+        worker.once('error', reject);
+        worker.on('message', (message: unknown) => {
+          if (
+            message !== null &&
+            typeof message === 'object' &&
+            Reflect.get(message, 'ready') === true
+          ) {
+            worker.postMessage({
+              expression: 'runInput.value + 1',
+              context: { runInput: { value: 1 }, nodeOutputs: {} },
+            });
+          } else if (
+            message !== null &&
+            typeof message === 'object' &&
+            Object.hasOwn(message, 'ok')
+          ) {
+            resolve(message);
+          }
+        });
+      });
+      expect(result).toEqual(
+        expect.objectContaining({ ok: true, missing: false, value: 2 }),
+      );
+    } finally {
+      await worker.terminate();
+    }
+  });
+
   it('keeps the pinned JSONata AST contract behind the policy boundary', () => {
     expect(JSONATA_EVALUATOR_DIAGNOSTICS.libraryVersion).toBe('2.2.2');
     expect(jsonata('runInput.name').ast()).toMatchObject({
@@ -458,6 +493,52 @@ describe('restricted JSONata policy v1', () => {
       expect.objectContaining({ kind: 'error', code: 'canceled' }),
     );
   });
+  it('returns typed failures and releases capacity after worker setup and startup failures', async () => {
+    const constructionFailure = new JsonataEvaluator({
+      maxActive: 1,
+      workerFactory: () => {
+        throw new Error('construction unavailable');
+      },
+    });
+    evaluators.push(constructionFailure);
+    for (let attempt = 0; attempt < 2; attempt += 1)
+      await expect(
+        constructionFailure.evaluate({
+          expression: '1',
+          policyVersion: 1,
+          context: { runInput: null, nodeOutputs: {} },
+        }),
+      ).resolves.toEqual(
+        expect.objectContaining({
+          kind: 'error',
+          code: 'evaluation_failed',
+        }),
+      );
+
+    const startupFailure = new JsonataEvaluator({
+      maxActive: 1,
+      startupTimeoutMs: 10,
+      workerFactory: () =>
+        new Worker('setInterval(() => {}, 1000)', { eval: true }),
+    });
+    evaluators.push(startupFailure);
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const result = await startupFailure.evaluate({
+        expression: '1',
+        policyVersion: 1,
+        context: { runInput: null, nodeOutputs: {} },
+      });
+      expect(result).toEqual(
+        expect.objectContaining({
+          kind: 'error',
+          code: 'evaluation_failed',
+        }),
+      );
+      if (result.kind !== 'error') throw new Error('expected startup failure');
+      expect(result.message).toContain('startup');
+    }
+    expect(startupFailure.diagnostics().workerCreations).toBe(2);
+  });
   it('is byte-deterministic across two workers and a pool restart', async () => {
     const request = {
       expression: '{"b": runInput.b, "a": runInput.a}',
@@ -497,7 +578,9 @@ describe('restricted JSONata policy v1', () => {
         evaluatorPackageVersion: JSONATA_EVALUATOR_DIAGNOSTICS.libraryVersion,
         policyVersion: JSONATA_EVALUATOR_DIAGNOSTICS.policyVersion,
         evaluations: 101,
-        workers: 2,
+        isolation: first.diagnostics().isolation,
+        workerCreations: first.diagnostics().workerCreations,
+        peakWorkers: first.diagnostics().peakWorkers,
         poolRestarted: true,
       }),
     );

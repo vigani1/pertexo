@@ -8,6 +8,7 @@ export interface JsonInspection {
   readonly depth: number;
   readonly members: number;
 }
+export const CANONICAL_JSON_MAX_DEPTH = 256;
 
 export class InvalidJsonValueError extends TypeError {
   constructor(
@@ -23,7 +24,10 @@ function normalize(
   value: unknown,
   path: string,
   ancestors: Set<object>,
+  depth: number,
 ): JsonValue {
+  if (depth > CANONICAL_JSON_MAX_DEPTH)
+    throw new InvalidJsonValueError(path, 'JSON depth exceeds canonical limit');
   if (value === null || typeof value === 'string' || typeof value === 'boolean')
     return value;
   if (typeof value === 'number') {
@@ -62,7 +66,12 @@ function normalize(
             'accessors are not JSON',
           );
         result.push(
-          normalize(descriptor.value, `${path}[${String(index)}]`, ancestors),
+          normalize(
+            descriptor.value,
+            `${path}[${String(index)}]`,
+            ancestors,
+            depth + 1,
+          ),
         );
       }
       return result;
@@ -83,7 +92,12 @@ function normalize(
           `${path}.${key}`,
           'accessors are not JSON',
         );
-      result[key] = normalize(descriptor.value, `${path}.${key}`, ancestors);
+      result[key] = normalize(
+        descriptor.value,
+        `${path}.${key}`,
+        ancestors,
+        depth + 1,
+      );
     }
     return result;
   } finally {
@@ -92,7 +106,7 @@ function normalize(
 }
 
 export function canonicalizeJson(value: unknown): JsonValue {
-  return normalize(value, '$', new Set());
+  return normalize(value, '$', new Set(), 0);
 }
 export function canonicalJson(value: unknown): string {
   return JSON.stringify(canonicalizeJson(value));

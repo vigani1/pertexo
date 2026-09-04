@@ -51,6 +51,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "pretest": "pnpm build",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.test.json --noEmit"
   },

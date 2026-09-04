@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { canonicalJson, inspectJsonValue } from '../src/canonical-json.js';
+import {
+  CANONICAL_JSON_MAX_DEPTH,
+  InvalidJsonValueError,
+  canonicalJson,
+  inspectJsonValue,
+} from '../src/canonical-json.js';
 
 describe('canonical JSON', () => {
   it('sorts every object and reports stable UTF-8 bytes', () => {
@@ -45,5 +50,12 @@ describe('canonical JSON', () => {
 
     for (const value of [inherited, extra, hidden, symbol])
       expect(() => canonicalJson(value)).toThrow();
+  });
+
+  it('returns its typed boundary error for excessively deep direct input', () => {
+    let value: unknown = null;
+    for (let depth = 0; depth <= CANONICAL_JSON_MAX_DEPTH; depth += 1)
+      value = { value };
+    expect(() => canonicalJson(value)).toThrow(InvalidJsonValueError);
   });
 });

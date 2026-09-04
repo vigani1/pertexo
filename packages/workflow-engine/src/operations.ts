@@ -7,6 +7,7 @@ import {
   type NodeExecutionRuntime,
 } from '@pertexo/node-sdk/server';
 import type { JsonValue } from '@pertexo/workflow-model/canonical-json';
+import type { ExpressionEvaluator } from '@pertexo/workflow-model/expressions';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model/graph';
 import {
   resolveValueSource,
@@ -531,6 +532,7 @@ export interface ExecuteNodeAttemptInput {
   readonly registry: NodeExecutionRegistry;
   readonly signal: AbortSignal;
   readonly runtime?: NodeExecutionRuntime;
+  readonly expressionEvaluator?: ExpressionEvaluator;
 }
 
 export interface NodeAttemptOutcome {
@@ -567,6 +569,7 @@ async function resolveMappedNodeInput(
   completedOutputs: Readonly<Record<string, JsonValue>>,
   directUpstream: ReadonlySet<string>,
   signal: AbortSignal,
+  expressionEvaluator?: ExpressionEvaluator,
   structuredInputs?: Readonly<Record<string, JsonValue>>,
 ): Promise<JsonValue> {
   if (
@@ -598,7 +601,7 @@ async function resolveMappedNodeInput(
           nodeOutputs: completedOutputs,
           ...(structuredInputs === undefined ? {} : { structuredInputs }),
         },
-        undefined,
+        expressionEvaluator,
         signal,
       );
     } catch (error) {
@@ -628,6 +631,7 @@ export async function resolveSingleNodePreviewInput(
     node: unknown;
     runInput: unknown;
     signal: AbortSignal;
+    expressionEvaluator?: ExpressionEvaluator;
   }>,
 ): Promise<JsonValue> {
   let node: Pick<WorkflowExecutableNodeV2, 'definition' | 'inputMappings'>;
@@ -661,6 +665,7 @@ export async function resolveSingleNodePreviewInput(
     Object.freeze({}),
     new Set(),
     input.signal,
+    input.expressionEvaluator,
     undefined,
   );
 }
@@ -688,6 +693,7 @@ export async function executeNodeAttempt(
     completedOutputs,
     directUpstream,
     input.signal,
+    input.expressionEvaluator,
     structuredInputs,
   );
   let executionInput = resolvedInput;

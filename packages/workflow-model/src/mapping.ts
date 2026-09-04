@@ -1,9 +1,9 @@
 import './server-only.js';
 import { canonicalizeJson, type JsonValue } from './canonical-json.js';
-import {
-  JsonataEvaluator,
-  type ExpressionContextV1,
-  type ExpressionResult,
+import type {
+  ExpressionContextV1,
+  ExpressionEvaluator,
+  ExpressionResult,
 } from './expressions.js';
 import type { ValueSource } from './graph.js';
 
@@ -83,11 +83,10 @@ export function resolveJsonPath(
   }
   return value === undefined ? { kind: 'missing' } : { kind: 'value', value };
 }
-const sharedEvaluator = new JsonataEvaluator();
 export async function resolveValueSource(
   source: ValueSource,
   context: ValueResolutionContext,
-  evaluator: JsonataEvaluator = sharedEvaluator,
+  evaluator?: ExpressionEvaluator,
   signal?: AbortSignal,
 ): Promise<ValueResolution> {
   if (source.kind === 'literal')
@@ -112,6 +111,12 @@ export async function resolveValueSource(
     context,
     ...(signal === undefined ? {} : { signal }),
   };
+  if (evaluator === undefined)
+    return {
+      kind: 'error',
+      code: 'expression_error',
+      message: 'expression evaluator is not configured',
+    };
   const result = await evaluator.evaluate(request);
   return result.kind === 'error'
     ? {

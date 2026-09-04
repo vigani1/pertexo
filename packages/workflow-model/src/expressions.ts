@@ -1,8 +1,6 @@
 import './server-only.js';
 import { availableParallelism } from 'node:os';
-import { createRequire } from 'node:module';
-import { Worker } from 'node:worker_threads';
-import { pathToFileURL } from 'node:url';
+import { Worker, type WorkerOptions } from 'node:worker_threads';
 import jsonata from 'jsonata';
 import {
   canonicalizeJson,
@@ -19,6 +17,7 @@ export const EXPRESSION_POLICY_V1 = Object.freeze({
   inputDepth: 64,
   inputMembers: 10_000,
   timeoutMs: 100,
+  startupTimeoutMs: 5_000,
   maxActive: Math.min(4, availableParallelism()),
   maxQueued: 128,
   outputBytes: 1_048_576,
@@ -285,27 +284,26 @@ export function validateExpression(
   }
 }
 
-const WORKER_SOURCE = String.raw`
-const { parentPort, workerData } = require('node:worker_threads');
-function nullObjects(value) { if (Array.isArray(value)) return value.map(nullObjects); if (value && typeof value === 'object') { const out=Object.create(null); for (const key of Object.keys(value).sort()) out[key]=nullObjects(value[key]); return out; } return value; }
-(async () => {
-  try {
-    const imported=await import(workerData.moduleUrl); const compile=imported.default || imported;
-    parentPort.postMessage({ ready:true });
-    parentPort.once('message', async ({ expression, context }) => {
-      try { const input=nullObjects(context); parentPort.postMessage({ started:true }); const value=await compile(expression).evaluate(input); parentPort.postMessage({ ok:true, missing:value === undefined, value:nullObjects(value) }); }
-      catch (caught) { parentPort.postMessage({ ok:false, message:caught instanceof Error ? caught.message : 'evaluation failed' }); }
-    });
-  } catch (caught) { parentPort.postMessage({ ok:false, message:caught instanceof Error ? caught.message : 'evaluator startup failed' }); }
-})();`;
-
-const require = createRequire(import.meta.url);
-const JSONATA_MODULE_URL = pathToFileURL(require.resolve('jsonata')).href;
+const WORKER_RUNTIME_URL = new URL(
+  import.meta.url.endsWith('.ts')
+    ? './expression-worker-runtime.ts'
+    : './expression-worker-runtime.js',
+  import.meta.url,
+);
 export const JSONATA_EVALUATOR_DIAGNOSTICS = Object.freeze({
   library: 'jsonata',
   libraryVersion: '2.2.2',
   policyVersion: 1 as const,
+  isolation: 'bounded_one_shot_worker' as const,
 });
+
+export interface ExpressionEvaluator {
+  evaluate(request: ExpressionRequest): Promise<ExpressionResult>;
+}
+export type ExpressionWorkerFactory = (
+  runtimeUrl: URL,
+  options: WorkerOptions,
+) => Worker;
 
 interface Pending {
   readonly request: ExpressionRequest;
@@ -347,27 +345,55 @@ function projectExpressionContext(value: unknown): ExpressionContextV1 {
     nodeOutputs,
   };
 }
-export class JsonataEvaluator {
+export class JsonataEvaluator implements ExpressionEvaluator {
   readonly #maxActive: number;
   readonly #maxQueued: number;
+  readonly #startupTimeoutMs: number;
+  readonly #workerFactory: ExpressionWorkerFactory;
   #active = 0;
+  #workerCreations = 0;
+  #peakWorkers = 0;
   #closed = false;
   readonly #queue: Pending[] = [];
   readonly #workers = new Set<Worker>();
   constructor(
-    options: { readonly maxActive?: number; readonly maxQueued?: number } = {},
+    options: {
+      readonly maxActive?: number;
+      readonly maxQueued?: number;
+      readonly startupTimeoutMs?: number;
+      readonly workerFactory?: ExpressionWorkerFactory;
+    } = {},
   ) {
     this.#maxActive = options.maxActive ?? EXPRESSION_POLICY_V1.maxActive;
     this.#maxQueued = options.maxQueued ?? EXPRESSION_POLICY_V1.maxQueued;
+    this.#startupTimeoutMs =
+      options.startupTimeoutMs ?? EXPRESSION_POLICY_V1.startupTimeoutMs;
+    this.#workerFactory =
+      options.workerFactory ??
+      ((runtimeUrl, workerOptions) => new Worker(runtimeUrl, workerOptions));
     if (
       !Number.isSafeInteger(this.#maxActive) ||
       this.#maxActive < 1 ||
       this.#maxActive > EXPRESSION_POLICY_V1.maxActive ||
       !Number.isSafeInteger(this.#maxQueued) ||
       this.#maxQueued < 0 ||
-      this.#maxQueued > EXPRESSION_POLICY_V1.maxQueued
+      this.#maxQueued > EXPRESSION_POLICY_V1.maxQueued ||
+      !Number.isSafeInteger(this.#startupTimeoutMs) ||
+      this.#startupTimeoutMs < 1 ||
+      this.#startupTimeoutMs > EXPRESSION_POLICY_V1.startupTimeoutMs
     )
       throw new RangeError('evaluator pool options exceed policy v1 bounds');
+  }
+  diagnostics(): Readonly<{
+    isolation: 'bounded_one_shot_worker';
+    workerCreations: number;
+    peakWorkers: number;
+  }> {
+    return Object.freeze({
+      isolation: JSONATA_EVALUATOR_DIAGNOSTICS.isolation,
+      workerCreations: this.#workerCreations,
+      peakWorkers: this.#peakWorkers,
+    });
   }
   evaluate(request: ExpressionRequest): Promise<ExpressionResult> {
     if (this.#closed)
@@ -477,10 +503,20 @@ export class JsonataEvaluator {
         continue;
       }
       this.#active += 1;
-      void this.#run(pending).finally(() => {
+      try {
+        void this.#run(pending).finally(() => {
+          this.#active -= 1;
+          this.#drain();
+        });
+      } catch (cause: unknown) {
         this.#active -= 1;
-        this.#drain();
-      });
+        pending.resolve(
+          error(
+            'evaluation_failed',
+            cause instanceof Error ? cause.message : 'worker setup failed',
+          ),
+        );
+      }
     }
   }
   #run(pending: Pending): Promise<void> {
@@ -488,18 +524,20 @@ export class JsonataEvaluator {
     const completion = new Promise<void>((resolve) => {
       complete = resolve;
     });
-    const worker = new Worker(WORKER_SOURCE, {
-      eval: true,
-      workerData: { moduleUrl: JSONATA_MODULE_URL },
+    const worker = this.#workerFactory(WORKER_RUNTIME_URL, {
       resourceLimits: {
         maxOldGenerationSizeMb: 32,
         maxYoungGenerationSizeMb: 8,
         stackSizeMb: 4,
       },
     });
+    this.#workerCreations += 1;
     this.#workers.add(worker);
+    this.#peakWorkers = Math.max(this.#peakWorkers, this.#workers.size);
     let settled = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined = setTimeout(() => {
+      void finish(error('evaluation_failed', 'evaluator startup timed out'));
+    }, this.#startupTimeoutMs);
     const finish = async (result: ExpressionResult): Promise<void> => {
       if (settled) return;
       settled = true;
@@ -550,10 +588,21 @@ export class JsonataEvaluator {
         message?: string;
       };
       if (response.ready) {
-        worker.postMessage({
-          expression: pending.request.expression,
-          context: pending.request.context,
-        });
+        if (timer) clearTimeout(timer);
+        timer = undefined;
+        try {
+          worker.postMessage({
+            expression: pending.request.expression,
+            context: pending.request.context,
+          });
+        } catch (cause: unknown) {
+          void finish(
+            error(
+              'evaluation_failed',
+              cause instanceof Error ? cause.message : 'worker handoff failed',
+            ),
+          );
+        }
         return;
       }
       if (response.started) {

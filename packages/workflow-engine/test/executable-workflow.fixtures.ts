@@ -195,6 +195,7 @@ export function nodeRelease(input?: {
   readonly forEach?: boolean;
   readonly schedule?: boolean;
   readonly webhook?: boolean;
+  readonly extraPolicyVersion?: number;
 }): RegistryRelease {
   const definitions = [
     manifest('core.manual'),
@@ -235,7 +236,13 @@ export function nodeRelease(input?: {
       lifecycle: input?.executorLifecycle ?? 'active',
       policyReferences: definition.policyReferences,
     })),
-    policies: [boundedPolicy, jsonataPolicy],
+    policies: [
+      boundedPolicy,
+      jsonataPolicy,
+      ...(input?.extraPolicyVersion === undefined
+        ? []
+        : [{ key: 'test.rollout', version: input.extraPolicyVersion }]),
+    ],
   });
 }
 
@@ -253,7 +260,16 @@ export function conditionGraph(sourcePort: string) {
           condition: { kind: 'literal' as const, value: true },
         },
       },
-      base.nodes[2],
+      {
+        ...base.nodes[2],
+        inputMappings: {
+          result: {
+            kind: 'node_output' as const,
+            nodeId: 'condition',
+            path: '$',
+          },
+        },
+      },
     ],
     edges: [
       {
@@ -290,7 +306,16 @@ export function switchGraph(sourcePort: string) {
           value: { kind: 'literal' as const, value: 'selected' },
         },
       },
-      base.nodes[2],
+      {
+        ...base.nodes[2],
+        inputMappings: {
+          result: {
+            kind: 'node_output' as const,
+            nodeId: 'switch',
+            path: '$',
+          },
+        },
+      },
     ],
     edges: [
       {
@@ -324,7 +349,17 @@ export function parallelGraph(secondPort = 'branch-02') {
         inputMappings: {},
       },
       { ...base.nodes[1], id: 'left' },
-      { ...base.nodes[2], id: 'right' },
+      {
+        ...base.nodes[2],
+        id: 'right',
+        inputMappings: {
+          result: {
+            kind: 'node_output' as const,
+            nodeId: 'parallel',
+            path: '$',
+          },
+        },
+      },
     ],
     edges: [
       {
@@ -371,7 +406,16 @@ export function pairedParallelGraph() {
         config: { parallelNodeId: 'parallel', policy: { kind: 'all' } },
         inputMappings: {},
       },
-      base.nodes[2],
+      {
+        ...base.nodes[2],
+        inputMappings: {
+          result: {
+            kind: 'node_output' as const,
+            nodeId: 'merge',
+            path: '$',
+          },
+        },
+      },
     ],
     edges: [
       {
@@ -539,7 +583,20 @@ export function forEachGraph(reverse = false) {
       },
     },
   };
-  const nodes = [base.nodes[0], loop, base.nodes[2]];
+  const nodes = [
+    base.nodes[0],
+    loop,
+    {
+      ...base.nodes[2],
+      inputMappings: {
+        result: {
+          kind: 'node_output' as const,
+          nodeId: 'loop',
+          path: '$',
+        },
+      },
+    },
+  ];
   const edges = [
     {
       id: 'manual-loop',

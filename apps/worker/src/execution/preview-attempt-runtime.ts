@@ -15,6 +15,7 @@ import {
   resolveSingleNodePreviewInput,
   WorkflowEngineError,
 } from '@pertexo/workflow-engine';
+import { JsonataEvaluator } from '@pertexo/workflow-model/expressions';
 import type { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
 import { unrecoverableQueueError } from '@pertexo/queue';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
@@ -131,6 +132,7 @@ export function createPlatformPreviewNodeInvoker(
     releaseCohort: PlatformReleaseCohort;
   }>,
 ): PreviewNodeInvoker {
+  const expressionEvaluator = new JsonataEvaluator();
   // The durable authority binds engine-composed release identities (node
   // catalogs plus this artifact's engine runtime policies), so the supported
   // set derives from exactly the same composition production uses.
@@ -196,6 +198,7 @@ export function createPlatformPreviewNodeInvoker(
           node,
           runInput: lease.input.value,
           signal,
+          expressionEvaluator,
         });
         const result = await dependencies.registry.execute({
           config: node.config,
@@ -239,6 +242,7 @@ export function createPlatformPreviewNodeInvoker(
       }
     },
   };
+  invoker.close = (): Promise<void> => expressionEvaluator.shutdown();
   return Object.freeze(invoker);
 }
 

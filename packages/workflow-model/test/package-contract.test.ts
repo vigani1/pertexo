@@ -4,7 +4,10 @@ import {
   WorkflowGraphContractError,
   safeParseWorkflowGraphDraft,
 } from '../src/index.js';
-import { workflowGraphSchema } from '../src/graph-contract.js';
+import {
+  WORKFLOW_GRAPH_CONTRACT_LIMITS,
+  workflowGraphSchema,
+} from '../src/graph-contract.js';
 
 describe('workflow-model package contract', () => {
   it('keeps canonical graph ownership browser-safe while server implementation exports remain protected', async () => {
@@ -97,5 +100,49 @@ describe('workflow-model package contract', () => {
 
     const publicEntry = await import('../src/index.js');
     expect(publicEntry).not.toHaveProperty('WorkflowGraphInputSchemaV1');
+  });
+
+  it('applies aggregate nested node limits identically in browser and server entrypoints', () => {
+    const innerNode = (index: number) => ({
+      id: `inner-${String(index)}`,
+      definition: { key: 'core.set', version: 1 },
+      position: { x: 0, y: 0 },
+      configVersion: 1,
+      config: {},
+      inputMappings: {},
+      connectionRefs: {},
+    });
+    const candidate = (innerCount: number) => ({
+      schemaVersion: 1,
+      nodes: [
+        {
+          ...innerNode(-1),
+          structured: {
+            kind: 'for_each',
+            maxIterations: 1,
+            maxConcurrency: 1,
+            body: {
+              schemaVersion: 1,
+              nodes: Array.from({ length: innerCount }, (_, index) =>
+                innerNode(index),
+              ),
+              edges: [],
+              settings: {},
+              inputPorts: [],
+              outputPorts: [],
+            },
+          },
+        },
+      ],
+      edges: [],
+      settings: {},
+    });
+    const exact = candidate(WORKFLOW_GRAPH_CONTRACT_LIMITS.nodes - 1);
+    const over = candidate(WORKFLOW_GRAPH_CONTRACT_LIMITS.nodes);
+
+    expect(workflowGraphSchema.safeParse(exact).success).toBe(true);
+    expect(safeParseWorkflowGraphDraft(exact).success).toBe(true);
+    expect(workflowGraphSchema.safeParse(over).success).toBe(false);
+    expect(safeParseWorkflowGraphDraft(over).success).toBe(false);
   });
 });

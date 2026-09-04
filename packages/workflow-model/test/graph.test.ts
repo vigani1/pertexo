@@ -4,6 +4,7 @@ import {
   validateWorkflowGraph,
   type WorkflowGraph,
 } from '../src/graph.js';
+import { WORKFLOW_VALIDATION_MAX_ISSUES } from '../src/graph-contract.js';
 
 const node = (id: string) => ({
   id,
@@ -200,6 +201,71 @@ describe('workflow graph validation', () => {
         expect.objectContaining({ code: 'invalid_structured_body' }),
       ]),
     );
+  });
+  it('requires node-output mappings to reference a direct local predecessor', () => {
+    const mapped = (id: string, sourceId: string) => ({
+      ...node(id),
+      inputMappings: {
+        value: {
+          kind: 'node_output' as const,
+          nodeId: sourceId,
+          path: '$',
+        },
+      },
+    });
+    const edges = [
+      {
+        id: 'source-middle',
+        source: { nodeId: 'source', port: 'out' },
+        target: { nodeId: 'middle', port: 'in' },
+      },
+      {
+        id: 'middle-target',
+        source: { nodeId: 'middle', port: 'out' },
+        target: { nodeId: 'target', port: 'in' },
+      },
+    ];
+
+    expect(
+      validateWorkflowGraph(
+        graph(
+          [node('source'), node('middle'), mapped('target', 'middle')],
+          edges,
+        ),
+      ).ok,
+    ).toBe(true);
+    for (const sourceId of ['missing', 'target', 'source'])
+      expect(
+        validateWorkflowGraph(
+          graph(
+            [node('source'), node('middle'), mapped('target', sourceId)],
+            edges,
+          ),
+        ).issues,
+      ).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ code: 'invalid_mapping' }),
+        ]),
+      );
+  });
+  it('caps issue cardinality and rejects invalid public limit overrides', () => {
+    const duplicated = graph(
+      Array.from({ length: WORKFLOW_VALIDATION_MAX_ISSUES + 2 }, () =>
+        node('x'),
+      ),
+    );
+    expect(validateWorkflowGraph(duplicated).issues).toHaveLength(
+      WORKFLOW_VALIDATION_MAX_ISSUES,
+    );
+    for (const overrides of [
+      { nodes: 0 },
+      { edges: Number.POSITIVE_INFINITY },
+      { graphBytes: 1.5 },
+      { unknown: 1 },
+    ])
+      expect(() =>
+        validateWorkflowGraph(graph([]), overrides as never),
+      ).toThrow();
   });
   it('caps worst-case loop iterations separately from expanded invocations', () => {
     const nested = forEachNode('outer', [forEachNode('inner')]);

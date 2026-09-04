@@ -5,6 +5,7 @@ import type {
 } from '@pertexo/database/execution';
 import type { NodeExecutionRegistry } from '@pertexo/workflow-engine';
 import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
+import type { ExpressionEvaluator } from '@pertexo/workflow-model/expressions';
 import {
   executeNodeAttempt,
   invocationKey,
@@ -22,6 +23,7 @@ export type NodeAttemptExecutionEngineOptions = Readonly<{
   admissionRelease: unknown;
   currentRelease?: unknown;
   releaseSupport?: ExecutableCompatibilityReleaseSupport;
+  expressionEvaluator?: ExpressionEvaluator;
 }>;
 
 function verifyProjection(
@@ -327,6 +329,9 @@ function prepareNode(
           ? {}
           : { coordinatorInput: input.coordinatorInput }),
         registry: input.registry,
+        ...(options.expressionEvaluator === undefined
+          ? {}
+          : { expressionEvaluator: options.expressionEvaluator }),
         ...(input.runtime === undefined ? {} : { runtime: input.runtime }),
         signal: input.signal,
       });

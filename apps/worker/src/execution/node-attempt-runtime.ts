@@ -35,6 +35,7 @@ import {
   type NodeExecutionRegistry,
 } from '@pertexo/workflow-engine';
 import type { AwsConnectionEnvelopeEncryptionConfig } from '@pertexo/integrations/server';
+import { JsonataEvaluator } from '@pertexo/workflow-model/expressions';
 import {
   createNodeAttemptExecutionEngine,
   type NodeAttemptExecutionEngineOptions,
@@ -192,9 +193,12 @@ export async function createNodeAttemptRuntime(
     firstDescription.epoch,
     firstDescription.fingerprint,
   );
+  const expressionEvaluator =
+    dependencies.engine === undefined ? new JsonataEvaluator() : undefined;
   const engineOptions: NodeAttemptExecutionEngineOptions = {
     admissionRelease: firstRelease,
     releaseSupport,
+    ...(expressionEvaluator === undefined ? {} : { expressionEvaluator }),
   };
   const engine =
     dependencies.engine ?? createNodeAttemptExecutionEngine(engineOptions);
@@ -242,6 +246,8 @@ export async function createNodeAttemptRuntime(
       notifications.close(),
       reader.close(),
       runStore.close(),
+      expressionEvaluator?.shutdown(),
+      options.preview?.invoker.close?.(),
     ]);
     throw error;
   }
@@ -304,6 +310,8 @@ export async function createNodeAttemptRuntime(
       runStore.close(),
       capabilityRuntime?.close(),
       previewClose?.(),
+      options.preview?.invoker.close?.(),
+      expressionEvaluator?.shutdown(),
     ]);
     throw error;
   }
@@ -321,6 +329,8 @@ export async function createNodeAttemptRuntime(
           runStore.close(),
           capabilityRuntime?.close(),
           previewClose?.(),
+          options.preview?.invoker.close?.(),
+          expressionEvaluator?.shutdown(),
         ]);
         const failure = results.find((result) => result.status === 'rejected');
         if (failure?.status === 'rejected') throw failure.reason;

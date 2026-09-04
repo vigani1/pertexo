@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { JsonataEvaluator } from '../src/expressions.js';
+import type { ExpressionEvaluator } from '../src/expressions.js';
 import { resolveJsonPath, resolveValueSource } from '../src/mapping.js';
 
 describe('value sources', () => {
@@ -69,7 +69,7 @@ describe('value sources', () => {
           canonicalBytes: 4,
         });
       },
-    } as unknown as JsonataEvaluator;
+    } satisfies ExpressionEvaluator;
     await resolveValueSource(
       {
         kind: 'expression',
