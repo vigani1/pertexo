@@ -6,7 +6,9 @@ import type {
 import { CORE_BOUNDED_JSON_POLICY } from '../policies.js';
 import {
   CORE_PARALLEL_DEFINITION,
+  CORE_PARALLEL_DEFINITION_V2,
   CORE_PARALLEL_EXECUTOR,
+  CORE_PARALLEL_EXECUTOR_V2,
 } from './definition.js';
 import type { CoreParallelConfig } from './validation.js';
 
@@ -22,4 +24,10 @@ export const coreParallelExecutor: NodeExecutorRegistration = Object.freeze({
       branchIds: config.branches.map(({ id }) => id),
     });
   },
+});
+
+export const coreParallelExecutorV2: NodeExecutorRegistration = Object.freeze({
+  ...coreParallelExecutor,
+  definitions: Object.freeze([CORE_PARALLEL_DEFINITION_V2]),
+  executor: CORE_PARALLEL_EXECUTOR_V2,
 });

@@ -1,10 +1,17 @@
-import { generateSchemaDocument, type NodeManifest } from '@pertexo/node-sdk';
+import {
+  generateSchemaDocument,
+  type NodeManifest,
+  type NodeManifestV2,
+} from '@pertexo/node-sdk';
 
 import { CORE_BOUNDED_JSON_POLICY } from '../policies.js';
 import {
   CORE_SCHEDULE_CONFIG_SCHEMA,
+  CORE_SCHEDULE_CONFIG_SCHEMA_V2,
   CORE_SCHEDULE_INPUT_SCHEMA,
+  CORE_SCHEDULE_INPUT_SCHEMA_V2,
   CORE_SCHEDULE_OUTPUT_SCHEMA,
+  CORE_SCHEDULE_OUTPUT_SCHEMA_V2,
 } from './validation.js';
 
 export const CORE_SCHEDULE_DEFINITION = Object.freeze({
@@ -36,4 +43,24 @@ export const CORE_SCHEDULE_MANIFEST: NodeManifest = Object.freeze({
   executor: CORE_SCHEDULE_EXECUTOR,
   executorAbi: 1,
   policyReferences: Object.freeze([CORE_BOUNDED_JSON_POLICY]),
+});
+
+export const CORE_SCHEDULE_DEFINITION_V2 = Object.freeze({
+  key: 'core.schedule',
+  version: 2,
+});
+export const CORE_SCHEDULE_EXECUTOR_V2 = Object.freeze({
+  key: 'core.schedule',
+  version: 2,
+});
+export const CORE_SCHEDULE_MANIFEST_V2: NodeManifestV2 = Object.freeze({
+  ...CORE_SCHEDULE_MANIFEST,
+  schemaVersion: 2,
+  definition: CORE_SCHEDULE_DEFINITION_V2,
+  configVersion: 2,
+  configSchema: generateSchemaDocument(CORE_SCHEDULE_CONFIG_SCHEMA_V2),
+  inputSchema: generateSchemaDocument(CORE_SCHEDULE_INPUT_SCHEMA_V2),
+  outputSchema: generateSchemaDocument(CORE_SCHEDULE_OUTPUT_SCHEMA_V2),
+  executor: CORE_SCHEDULE_EXECUTOR_V2,
+  executorAbi: 1,
 });
