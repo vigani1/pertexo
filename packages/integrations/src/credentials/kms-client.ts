@@ -1,7 +1,7 @@
 import { KMSClient } from '@aws-sdk/client-kms';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
 
-export const KMS_OPERATION_BUDGET = Object.freeze({
+const KMS_OPERATION_BUDGET = Object.freeze({
   connectionTimeoutMs: 5_000,
   requestTimeoutMs: 10_000,
   maxAttempts: 2,

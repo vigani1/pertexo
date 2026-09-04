@@ -1,4 +1,4 @@
-export const EXTERNAL_OPERATION_TIMEOUT_MS = 30_000;
+const EXTERNAL_OPERATION_TIMEOUT_MS = 30_000;
 
 type AbortableRequest = Readonly<{
   raw?: Readonly<{
