@@ -12,9 +12,9 @@
   seams.
 - **Architecture sources:** the authoritative backend plan and ADRs 002, 005,
   007 through 011, 016 through 022, and 025.
-- **Audit status:** complete for the pinned tree.
+- **Audit status:** granularly certified for the pinned implementation tree.
 - **Implementation status:** two high-priority publish/evaluator defects, six
-  medium contract/design/control gaps, and three lower-priority API or
+  medium contract/design/control gaps, and four lower-priority API or
   maintainability improvements remain open.
 
 This is a necessary, high-Leverage domain Module. It owns the versioned authoring
@@ -42,6 +42,27 @@ contract while permanently consuming an active slot. Browser and server graph
 admission also disagree on aggregate nested node/edge limits, and graph
 validation can produce more issues than the API response schema accepts.
 
+### Granular certification record
+
+The package was recertified under the stricter component-audit contract after
+the initial audit. The reviewer read the complete contents of all 23 tracked
+package files: 10 production files, 8 executable test files, the retained JSON
+fixture, `package.json`, both TypeScript configurations, and the Vitest
+configuration. The 926-line graph implementation, 610-line expression
+implementation, 713-line public-contract suite, and every smaller schema,
+validator, helper, worker callback, fixture, and test case were reviewed in
+bounded contiguous sections. Every export and meaningful internal callable was
+included. Direct contracts, API, database, workflow-engine, and worker consumers
+were retraced through their purpose-specific subpaths.
+
+Fresh recertification checks passed: typecheck, all 59 tests, build, and package
+ESLint. The package source is unchanged from the pinned implementation tree.
+The granular pass discovered WM-012, a low-priority runtime-validation defect
+in the currently unused public invocation-identity helper. WM-001 through
+WM-012 are now the complete known finding set for that tree. Certification
+describes review coverage, not implementation completion; all open findings
+below remain actionable.
+
 ## Evidence collected
 
 The review used complete source/test reading, export and internal-callable
@@ -62,6 +83,7 @@ counterexamples, and a local evaluator throughput probe.
 | Validation cardinality | 102 duplicate-ID nodes produced 101 issues; API response contract allows at most 100 |
 | Expression throughput probe | 100 trivial expressions took about 361 ms at concurrency four on this host |
 | Worker construction | source creates one `Worker` inside every `#run`; the “workers: 2” proof field records configured concurrency, not created workers |
+| Invocation-scope counterexample | an unknown scope kind was accepted, rendered as `loop:loop[0]`, and hashed as the unknown variant |
 
 The throughput number is diagnostic evidence from one development machine, not
 a production SLO. It proves the implementation shape and gives a baseline; it
@@ -268,10 +290,19 @@ active. This is an excellent compatibility seam and should remain isolated
 during the file split.
 
 Draft representation tags validate workflow/revision/fingerprint inputs and
-cover graph plus compatibility identity. Invocation identity validates ordered
+cover graph plus compatibility identity. Invocation identity models ordered
 branch/iteration scope and intentionally excludes run ID from the digest
 because database uniqueness is `(workflow_run_id, invocation_key)`. Those
 choices match ADRs 007, 008, 011, 017, 019, and 020.
+
+The invocation helper does not fully enforce that runtime claim. Its validation
+checks only recognized `branch` and `iteration` cases, while canonical-scope
+formatting treats every non-branch value as an iteration. An object with
+`kind: 'unexpected'`, `loopNodeId: 'loop'`, and `ordinal: 0` is accepted and
+rendered as `loop:loop[0]`, although the invocation hash retains the unknown
+kind. The helper currently has no production consumer, which limits immediate
+impact, but its exported validation boundary is internally inconsistent
+(WM-012).
 
 Returned parsed graphs are TypeScript-readonly but not recursively frozen. That
 is acceptable while callers treat them as values and persistence serializes
@@ -601,6 +632,28 @@ where implementation or evidence does not fully meet that blueprint.
   unchanged public type/behavior fixtures.
 - **Status:** Open.
 
+### WM-012 — Invocation scope validation accepts unknown runtime variants
+
+- **Severity:** P3
+- **Classification:** Confirmed public-contract defect
+- **Evidence:** `invocationIdentity` validates fields only when `kind` is
+  exactly `branch` or `iteration`, then formats every non-branch variant as a
+  loop. A compiled-runtime counterexample with `kind: 'unexpected'` returned
+  canonical scope `loop:loop[0]` while hashing the unknown variant. Repository
+  search found no production caller.
+- **Impact:** an untyped or future caller can create internally inconsistent
+  audit/display and identity representations instead of receiving the helper's
+  advertised `InvalidInvocationScopeError`. Current production behavior is not
+  affected because the export is unused outside its package tests.
+- **Remediation:** parse the complete input and scope as a strict discriminated
+  union; require bounded strings and safe ordinals; reject unknown kinds before
+  either formatting or hashing. Decide whether the unused public helper should
+  instead be removed through the package's compatibility process.
+- **Verification:** valid branch/iteration sequences plus unknown kind,
+  non-string identifier, malformed scope, extra-field, and canonical-scope/hash
+  consistency tests.
+- **Status:** Open.
+
 ## What should remain unchanged
 
 - Keep graph ownership in this package and database representation as one JSONB
@@ -626,7 +679,8 @@ where implementation or evidence does not fully meet that blueprint.
 5. add startup supervision and move worker runtime into checked TypeScript
    (WM-007, WM-008).
 6. introduce the evaluator port and composition-owned lifecycle (WM-006).
-7. add risk coverage and perform the ownership split without public API churn
+7. harden or retire the unused invocation-identity export (WM-012).
+8. add risk coverage and perform the ownership split without public API churn
    (WM-010, WM-011).
 
 After remediation, run package build, typecheck, lint, unit/coverage gates,
