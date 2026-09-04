@@ -11,9 +11,9 @@
   coverage controls, the implementation plan, and applicable ADRs.
 - **Architecture sources:** the authoritative backend plan; ADRs 001, 007, 010,
   012, 016, 022, 025, and 026; and the credential-boundary operating guide.
-- **Audit status:** complete for the pinned tree.
+- **Audit status:** granularly certified for the pinned tree.
 - **Implementation status:** three high-priority correctness/lifecycle issues,
-  eight medium security, performance, test, or maintainability issues, and two
+  nine medium security, performance, test, or maintainability issues, and two
   low-priority cleanup/design issues remain open. Two external-provider
   assumptions also remain unverified.
 
@@ -74,6 +74,23 @@ runtime counterexamples.
 | Real provider/KMS evidence | None in ordinary, nightly, or release CI |
 | Root risk-coverage manifest | No `packages/integrations` cohort or reviewed branch entries |
 | Complexity ratchet | Tracks the 808-line secure-HTTP implementation as intentional complexity |
+
+### Granular certification record
+
+This certification read the complete contents of every one of the package's 36
+tracked files: all 24 production files (3,940 lines), all 8 test files (2,760
+lines), `package.json`, both TypeScript configurations, and the Vitest
+configuration (70 lines). It accounted for every exported declaration, schema,
+class method, internal helper, encryption and network lifecycle path, provider
+executor, test fake, assertion, and package script. Browser/server export seams
+and the direct API, worker, and node-catalog consumers were retraced after the
+file reading.
+
+The package is byte-for-byte unchanged from the pinned implementation commit.
+Fresh evidence produced 8 passing files and 119 passing tests, a passing build
+and typecheck, a clean direct ESLint run, and V8 coverage of 84.40% statements,
+74.66% branches, 90.55% functions, and 85.99% lines. INT-001 through INT-014 are
+the complete findings from this file-level certification, not a top-N list.
 
 Coverage percentages describe executed lines, not behavioral completeness. The
 weakest files are precisely the AWS webhook adapter and low-level network
@@ -246,7 +263,8 @@ The duplication has produced observable drift:
 
 - the webhook factory accepts an invalid endpoint URL and validates an empty
   region only through a generic thrown error;
-- webhook KMS operations expose no cancellation option and do not check aborts;
+- webhook KMS methods accept and forward an optional signal but, unlike the
+  connection implementation, do not check it around local cryptographic work;
 - webhook `seal` clears the caller's input buffer, whereas connection `seal`
   copies and preserves it; and
 - KMS result validation and test coverage differ.
@@ -553,10 +571,11 @@ an arbitrary percentage alone.
 
 The file meaningfully covers schemas, header merging, credential handling,
 side-effect classification, inline versus artifact output, response streaming,
-artifact failure, dispatch identity, retries, and secret clearing. Its fake HTTP
-client invokes `beforeDispatch` directly, so it does not prove behavior through
-`SecureHttpClient`. The “candidate definition”/“absent from any release” title
-is stale because the catalog now registers HTTP Request.
+artifact failure, dispatch identity, retries, and secret clearing. Most cases
+use a fake HTTP client; one final-fence case does use `SecureHttpClient` and
+demonstrates the current generic internal classification. It does not cover all
+typed fence outcomes. The “candidate definition”/“absent from any release”
+title is stale because the catalog now registers HTTP Request.
 
 ### `test/slack-send-message.test.ts`
 
@@ -570,10 +589,11 @@ HTTP callback error wrapping.
 
 This is the largest provider suite and covers mailbox/schema bounds, client
 requests, provider results, idempotency, credential rotation, retry horizon,
-dispatch binding, telemetry, and secret cleanup. The breadth is useful, but
-many cases exercise the executor with a client fake. Add a compact composition
-suite through the real client and fake resolver/transport instead of duplicating
-more direct-fake cases.
+dispatch binding, telemetry, and secret cleanup. The breadth is useful, and one
+compact group composes the real client with a fake resolver/transport. That
+group covers runtime dispatch-evidence errors but not rejection from the
+preceding `assertCurrent` call, and Slack still has no equivalent composition
+case. Extend this matrix instead of duplicating more direct-fake cases.
 
 ### Coverage enforcement
 
@@ -628,7 +648,7 @@ package. The implementation deviates or lacks evidence in these areas:
   and truthfulness required by ADRs 007, 016, and 025;
 - application cancellation is not propagated into managed KMS despite the plan's
   bounded external-call requirement;
-- provider executor tests do not cover the real HTTP/fence composition;
+- provider executor tests do not cover every real HTTP/fence composition;
 - gated credentialed provider suites required by the testing strategy do not
   exist; and
 - registry-driven SSRF maintenance and worst-case response redaction are not
@@ -648,15 +668,15 @@ conflict between the plan and modern code quality.
   SDK `abortSignal`, but API connection use cases and webhook service call
   `seal`/`open` without one. The worker connection resolver receives
   `input.signal` and calls `encryption.open` without forwarding it. Webhook
-  encryption exposes no signal at all. The default KMS client also has no
-  explicit retry or socket/request budget.
+  encryption accepts a signal, but API management and ingress callers omit it.
+  The default KMS client also has no explicit retry or socket/request budget.
 - **Impact:** a canceled or expired request/attempt can retain an unsettled KMS
   call and resource ownership beyond its lifecycle. Worker lease/retry timing
   can diverge from credential resolution.
 - **Remediation:** make signal/deadline required at application encryption
-  ports; forward worker/API signals; add equivalent support to webhook crypto;
-  configure a bounded SDK retry and HTTP handler policy within the aggregate
-  operation deadline.
+  ports; forward worker/API signals; add webhook pre/post-local-work abort
+  checks; configure a bounded SDK retry and HTTP handler policy within the
+  aggregate operation deadline.
 - **Verification:** API and worker integration tests with a KMS fake that blocks
   until aborted; assert no late state transition and bounded completion.
 - **Status:** open.
@@ -866,6 +886,28 @@ conflict between the plan and modern code quality.
 - **Verification:** load test before/after with SSRF rebinding regression tests.
 - **Status:** open evidence gap; no refactor until measured.
 
+### INT-014 — HTTP executor leaks raw schema errors outside its failure contract
+
+- **Severity:** P2
+- **Classification:** confirmed defect
+- **Evidence:** `executeHttpRequest` parses invocation config and input before
+  entering any translation boundary. A direct registration probe with invalid
+  config rejects with `ZodError`, not `HttpRequestExecutorError` or another
+  `NodeExecutorFailure`. The email and Slack executors translate equivalent
+  admission failures to a bounded configuration outcome.
+- **Impact:** malformed or version-skewed persisted input can be reported as an
+  unexpected internal exception instead of a stable non-retryable configuration
+  failure, producing inconsistent engine and telemetry behavior across
+  integrations.
+- **Remediation:** catch both invocation schema parses at the executor boundary
+  and throw `failedConfiguration`; keep detailed Zod issues out of runtime
+  errors because values may contain user data.
+- **Verification:** table-test invalid config, input, unknown fields, and bounds
+  through the registration's public `execute` function; every case must produce
+  the same typed, definite, pre-dispatch configuration outcome and zero
+  credential/network calls.
+- **Status:** open.
+
 ## What should remain unchanged
 
 - Keep browser and server export boundaries explicit.
@@ -892,9 +934,9 @@ conflict between the plan and modern code quality.
 2. Fix INT-001 by propagating cancellation/deadlines across API, worker,
    webhook crypto, and KMS configuration.
 3. Fix INT-004 before other header work because it can create false dispatch
-   evidence.
-4. Add INT-006 risk/coverage ratchets and regression tests for the first three
-   fixes.
+   evidence, and normalize HTTP executor admission failures under INT-014.
+4. Add INT-006 risk/coverage ratchets and regression tests for the preceding
+   correctness fixes.
 5. Consolidate envelope internals for INT-005 while preserving distinct public
    domain contracts.
 6. Fix INT-007 and INT-008, then run adversarial body/redaction benchmarks.
