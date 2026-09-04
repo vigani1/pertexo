@@ -83,8 +83,7 @@ export interface NodeIntegrationOperation {
   readonly operationKey: string;
 }
 
-export interface NodeManifest {
-  readonly schemaVersion: 1;
+export interface NodeManifestFields {
   readonly definition: DefinitionIdentity;
   readonly family: NodeFamily;
   readonly configVersion: number;
@@ -100,9 +99,26 @@ export interface NodeManifest {
   readonly capabilities: readonly string[];
   readonly lifecycle: DefinitionLifecycle;
   readonly executor: ExecutorIdentity;
-  readonly executorAbi?: number | undefined;
   readonly policyReferences: readonly PolicyReference[];
 }
+
+/** Retained manifest grammar. Its optional ABI is preserved for old fingerprints. */
+export type NodeManifestV1 = Readonly<
+  NodeManifestFields & {
+    readonly schemaVersion: 1;
+    readonly executorAbi?: number | undefined;
+  }
+>;
+
+/** Current manifest grammar. New definitions must pin their executor ABI. */
+export type NodeManifestV2 = Readonly<
+  NodeManifestFields & {
+    readonly schemaVersion: 2;
+    readonly executorAbi: number;
+  }
+>;
+
+export type NodeManifest = NodeManifestV1 | NodeManifestV2;
 
 export interface ExecutorManifest {
   readonly executor: ExecutorIdentity;
@@ -296,33 +312,57 @@ export function generateSchemaDocument(schema: z.ZodType): SchemaDocument {
   return cloneAndFreeze(schemaDocumentSchema.parse(z.toJSONSchema(schema)));
 }
 
-export const nodeManifestSchema = z
-  .object({
-    schemaVersion: z.literal(1),
-    definition: definitionIdentitySchema,
-    family: z.enum(['trigger', 'action', 'logic', 'transform', 'output']),
-    configVersion: z.number().int().positive(),
-    configSchema: schemaDocumentSchema,
-    inputSchema: schemaDocumentSchema,
-    outputSchema: schemaDocumentSchema,
-    ports: portsSchema,
-    credentialRequirements: identifiersSchema,
-    connectionRequirements: identifiersSchema,
-    integration: integrationOperationSchema.optional(),
-    retryClass: z.enum(['safe', 'idempotent-with-key', 'unsafe']),
-    resourceClass: z.enum(['io', 'cpu']),
-    capabilities: identifiersSchema,
-    lifecycle: z.enum([
-      'active',
-      'deprecated',
-      'migration_required',
-      'retired',
-    ]),
-    executor: executorIdentitySchema,
-    executorAbi: z.number().int().positive().optional(),
-    policyReferences: z.array(policyReferenceSchema),
-  })
-  .strict();
+const nodeManifestShape = {
+  definition: definitionIdentitySchema,
+  family: z.enum(['trigger', 'action', 'logic', 'transform', 'output']),
+  configVersion: z.number().int().positive(),
+  configSchema: schemaDocumentSchema,
+  inputSchema: schemaDocumentSchema,
+  outputSchema: schemaDocumentSchema,
+  ports: portsSchema,
+  credentialRequirements: identifiersSchema,
+  connectionRequirements: identifiersSchema,
+  integration: integrationOperationSchema.optional(),
+  retryClass: z.enum(['safe', 'idempotent-with-key', 'unsafe']),
+  resourceClass: z.enum(['io', 'cpu']),
+  capabilities: identifiersSchema,
+  lifecycle: z.enum(['active', 'deprecated', 'migration_required', 'retired']),
+  executor: executorIdentitySchema,
+  policyReferences: z.array(policyReferenceSchema),
+} as const;
+
+export const nodeManifestSchema = z.discriminatedUnion('schemaVersion', [
+  z
+    .object({
+      schemaVersion: z.literal(1),
+      ...nodeManifestShape,
+      executorAbi: z.number().int().positive().optional(),
+    })
+    .strict(),
+  z
+    .object({
+      schemaVersion: z.literal(2),
+      ...nodeManifestShape,
+      executorAbi: z.number().int().positive(),
+    })
+    .strict(),
+]);
+
+export function createNodeManifestV2(
+  manifest: NodeManifestV1,
+  executorAbi: number,
+): NodeManifestV2 {
+  if (!Number.isSafeInteger(executorAbi) || executorAbi <= 0)
+    throw new TypeError('executor ABI must be a positive safe integer');
+  if (
+    manifest.executorAbi !== undefined &&
+    manifest.executorAbi !== executorAbi
+  )
+    throw new TypeError('executor ABI migration conflicts with manifest');
+  return cloneAndFreeze(
+    nodeManifestSchema.parse({ ...manifest, schemaVersion: 2, executorAbi }),
+  ) as NodeManifestV2;
+}
 
 export const executorManifestSchema = z
   .object({

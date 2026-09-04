@@ -9,6 +9,7 @@ import {
   computeCompatibilitySelectionFingerprint,
   createRegistryReleaseSuccessor,
   createRegistryRelease,
+  createNodeManifestV2,
   DEFINITION_LIFECYCLE_TRANSITIONS,
   EXECUTOR_LIFECYCLE_TRANSITIONS,
   generateSchemaDocument,
@@ -105,6 +106,19 @@ function release(): ReturnType<typeof createRegistryRelease> {
 }
 
 describe('node-sdk registry release contracts', () => {
+  it('requires an explicit ABI in current manifests without changing retained V1', () => {
+    expect(nodeManifestSchema.safeParse(manifest).success).toBe(true);
+    expect(
+      nodeManifestSchema.safeParse({ ...manifest, schemaVersion: 2 }).success,
+    ).toBe(false);
+    const current = createNodeManifestV2(manifest, 1);
+    expect(current).toMatchObject({ schemaVersion: 2, executorAbi: 1 });
+    expect(Object.isFrozen(current)).toBe(true);
+    expect(() =>
+      createNodeManifestV2({ ...manifest, executorAbi: 2 }, 1),
+    ).toThrow(/conflicts/u);
+  });
+
   it('rejects malformed and unbounded executor failure kinds', () => {
     expect(
       () =>
