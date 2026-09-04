@@ -2,7 +2,6 @@ import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 
 import {
-  consumeInboxMessage,
   canonicalOutboxPayloadChecksum,
   createOutboxDispatcherDatabase,
   createWorkspaceDatabase,
@@ -178,83 +177,6 @@ export function createWorkerTransportTestEnvironment() {
       consumerCapabilities,
     );
 
-  const consumeProof = (
-    messageId: string,
-    logicalAttemptId: string,
-    providerIntent?: Readonly<{
-      attemptId: string;
-      idempotencyKey: string;
-      nodeRunId: string;
-      outboxEventId: string;
-      runId: string;
-      traceparent?: string;
-    }>,
-  ) =>
-    consumeInboxMessage(
-      workerDatabase,
-      workspaceId,
-      {
-        consumerName: 'worker.phase0-proof',
-        messageId,
-        payloadChecksum: checksum({ logicalAttemptId }),
-      },
-      async (transaction) => {
-        const { db, workspaceId: activeWorkspaceId } = transaction;
-        await db.execute(sql`
-          insert into app.queue_duplicate_probe_attempts
-            (id, workspace_id, logical_attempt_id)
-          values (${randomUUID()}, ${activeWorkspaceId}, ${logicalAttemptId})
-        `);
-        await db.execute(sql`
-          insert into app.queue_duplicate_probe_events
-            (id, workspace_id, logical_attempt_id, sequence)
-          values (${randomUUID()}, ${activeWorkspaceId}, ${logicalAttemptId}, 1)
-        `);
-        await db.execute(sql`
-          insert into app.queue_duplicate_probe_usage
-            (id, workspace_id, idempotency_key, quantity)
-          values (${randomUUID()}, ${activeWorkspaceId}, ${`usage:${logicalAttemptId}`}, 1)
-        `);
-        if (providerIntent !== undefined) {
-          const payload = {
-            attemptId: providerIntent.attemptId,
-            nodeRunId: providerIntent.nodeRunId,
-            runId: providerIntent.runId,
-            ...(providerIntent.traceparent
-              ? { traceparent: providerIntent.traceparent }
-              : {}),
-          };
-          await insertOutboxEvent(transaction, {
-            aggregateId: providerIntent.attemptId,
-            aggregateType: 'provider-intent',
-            id: providerIntent.outboxEventId,
-            jobName: JOB_NAME.executeNodeAttempt,
-            payload,
-            payloadChecksum: checksum(payload),
-            schemaVersion: 1,
-          });
-          await db.execute(sql`
-            insert into app.queue_duplicate_probe_provider_intents
-              (
-                id,
-                workspace_id,
-                logical_attempt_id,
-                outbox_event_id,
-                idempotency_key
-              )
-            values (
-              ${providerIntent.attemptId},
-              ${activeWorkspaceId},
-              ${logicalAttemptId},
-              ${providerIntent.outboxEventId},
-              ${providerIntent.idempotencyKey}
-            )
-          `);
-        }
-        return logicalAttemptId;
-      },
-    );
-
   const deferred = (): Readonly<{
     promise: Promise<void>;
     resolve(): void;
@@ -267,30 +189,6 @@ export function createWorkerTransportTestEnvironment() {
       promise,
       resolve: () => resolvePromise?.(),
     };
-  };
-
-  const dispatchFairRounds = async (
-    dispatchers: readonly OutboxDispatcher[],
-    expectedClaims: number,
-  ): Promise<
-    Readonly<{ claimed: number; failed: number; published: number }>
-  > => {
-    const totals = { claimed: 0, failed: 0, published: 0 };
-    const maximumRounds = expectedClaims + 2;
-    for (let round = 0; round < maximumRounds; round += 1) {
-      const results = await Promise.all(
-        dispatchers.map((dispatcher) => dispatcher.dispatchOnce()),
-      );
-      for (const result of results) {
-        totals.claimed += result.claimed;
-        totals.failed += result.failed;
-        totals.published += result.published;
-      }
-      if (totals.claimed >= expectedClaims) return totals;
-    }
-    throw new Error(
-      `Fair dispatch did not claim ${String(expectedClaims)} events within ${String(maximumRounds)} rounds: ${JSON.stringify(totals)}`,
-    );
   };
 
   const cleanup = async (): Promise<void> => {
@@ -346,11 +244,9 @@ export function createWorkerTransportTestEnvironment() {
     apiDatabase,
     checksum,
     close,
-    consumeProof,
     createDispatcher,
     deferred,
     dispatcherUrl,
-    dispatchFairRounds,
     initialize: applyLedgerFixture,
     insertRunEvent,
     redisConnection,

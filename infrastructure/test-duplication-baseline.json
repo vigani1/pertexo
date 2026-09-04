@@ -560,11 +560,25 @@
       "minLines": 18,
       "minTokens": 130,
       "maximums": {
-        "clones": 5,
-        "duplicatedLines": 159,
-        "duplicatedTokens": 1425
+        "clones": 6,
+        "duplicatedLines": 267,
+        "duplicatedTokens": 2192
       },
       "families": [
+        {
+          "files": [
+            "apps/worker/test/transport-part-2.integration.test.ts",
+            "apps/worker/test/transport.integration.test.ts"
+          ],
+          "classification": "intentional-scenario-local",
+          "reason": "The paired transport proofs deliberately keep inbox transaction writes and bounded dispatcher actions in each scenario file so atomicity, redelivery, and fair-claim behavior remain visible at the tested seam.",
+          "clones": [
+            {
+              "hash": "138352a795ebb59cb474f9ce60d4fdd848915aa6a774faf97c25067dc0fa871c",
+              "maxLines": 109
+            }
+          ]
+        },
         {
           "files": [
             "packages/workflow-engine/test/executable-workflow-foreach.test.ts",
