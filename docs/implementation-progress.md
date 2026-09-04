@@ -9,7 +9,7 @@ vertical-slice completion criteria have passed. Commits or scaffolding alone do
 not complete a phase.
 
 Current audit note: the whole-repository review at implementation tree
-`efe56da1837189aae0c2e65244cebb9702c956f8` is recorded in
+`d1b41b6e9b6122de9914298e486c4b4635742f28` is recorded in
 [the engineering audit](./whole-repository-audit.md). It does not change the
 completed status of Phases 0–6. It confirms that Phase 7 remains **In progress**
 because live AWS, provider, provenance, load, pager, backup, failover, and
@@ -4699,7 +4699,7 @@ That historical documentation-only audit did not change a Phase 7 completion
 box. Its repository P1 findings are now closed; the live-production checklist
 below remains the release blocker.
 
-## Current whole-repository audit — implementation tree `efe56da1837189aae0c2e65244cebb9702c956f8`
+## Current whole-repository audit — implementation tree `d1b41b6e9b6122de9914298e486c4b4635742f28`
 
 Status: **Repository-controlled audit blockers are complete; external
 production/control evidence remains open**

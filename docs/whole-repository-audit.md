@@ -2,7 +2,7 @@
 
 Recorded: 2026-09-04
 
-Audited implementation tree: `efe56da1837189aae0c2e65244cebb9702c956f8`
+Audited implementation tree: `d1b41b6e9b6122de9914298e486c4b4635742f28`
 
 Status: current resolution and remaining external-evidence plan
 
