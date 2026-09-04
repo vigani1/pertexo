@@ -164,7 +164,7 @@ function boundText(value: string): string {
   return `${safeEnd < 0 ? '' : prefix.slice(0, safeEnd + 1)}${TRUNCATED}`;
 }
 
-function redactText(value: string): string {
+export function redactLogText(value: string): string {
   return redactUrlUserInfo(boundText(value))
     .replace(
       /(authorization\s*[:=]\s*(?:(?:basic|bearer)\s+)?)[^\s,;]+/giu,
@@ -209,11 +209,11 @@ function sanitizeError(
         : undefined;
     const sanitized =
       cause === undefined
-        ? new Error(redactText(error.message))
-        : new Error(redactText(error.message), { cause });
+        ? new Error(redactLogText(error.message))
+        : new Error(redactLogText(error.message), { cause });
     sanitized.name = error.name;
     if (error.stack !== undefined) {
-      sanitized.stack = redactText(error.stack);
+      sanitized.stack = redactLogText(error.stack);
     }
     return sanitized;
   } catch {
@@ -227,7 +227,7 @@ function sanitizeValue(
   seen: WeakSet<object>,
 ): unknown {
   if (typeof value === 'string') {
-    return redactText(value);
+    return redactLogText(value);
   }
   if (typeof value !== 'object' || value === null) {
     return value;

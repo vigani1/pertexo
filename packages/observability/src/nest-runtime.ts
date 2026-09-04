@@ -1,4 +1,4 @@
-import type { StructuredLogger } from './logger.js';
+import { redactLogText, type StructuredLogger } from './logger.js';
 import type { TelemetryLifecycle } from './telemetry.js';
 
 export class NestLoggerAdapter {
@@ -9,19 +9,13 @@ export class NestLoggerAdapter {
   }
 
   public error(message: unknown, ...optional: unknown[]): void {
-    this.logger.error(
-      'nest.error',
-      this.fields(message, optional),
-      message instanceof Error ? message : undefined,
-    );
+    const normalized = this.normalize(message, optional);
+    this.logger.error('nest.error', normalized.fields, normalized.error);
   }
 
   public fatal(message: unknown, ...optional: unknown[]): void {
-    this.logger.fatal(
-      'nest.fatal',
-      this.fields(message, optional),
-      message instanceof Error ? message : undefined,
-    );
+    const normalized = this.normalize(message, optional);
+    this.logger.fatal('nest.fatal', normalized.fields, normalized.error);
   }
 
   public log(message: unknown, ...optional: unknown[]): void {
@@ -40,12 +34,64 @@ export class NestLoggerAdapter {
     message: unknown,
     optional: readonly unknown[],
   ): Readonly<Record<string, unknown>> {
-    const context = optional.findLast((value) => typeof value === 'string');
+    return this.normalize(message, optional).fields;
+  }
+
+  private normalize(message: unknown, optional: readonly unknown[]) {
+    const strings = optional.filter(
+      (value): value is string => typeof value === 'string',
+    );
+    const onlyString = strings.length === 1 ? strings[0] : undefined;
+    const onlyStringIsStack =
+      onlyString !== undefined && resemblesStack(onlyString);
+    const context =
+      strings.length > 1
+        ? strings.at(-1)
+        : onlyStringIsStack
+          ? undefined
+          : onlyString;
+    const stack =
+      strings.length > 1
+        ? strings.at(-2)
+        : onlyStringIsStack
+          ? onlyString
+          : undefined;
+    const summary =
+      typeof message === 'string' ? boundedNestText(message) : undefined;
     return {
-      messageType: message instanceof Error ? 'error' : typeof message,
-      ...(typeof context === 'string' ? { context } : {}),
+      fields: {
+        messageType: message instanceof Error ? 'error' : typeof message,
+        ...(summary === undefined ? {} : { summary }),
+        ...(context === undefined ? {} : { context: boundedNestText(context) }),
+      },
+      error:
+        message instanceof Error
+          ? message
+          : summary !== undefined && stack !== undefined
+            ? nestError(summary, stack)
+            : undefined,
     };
   }
+}
+
+const MAX_NEST_TEXT_LENGTH = 1_024;
+
+function boundedNestText(value: string): string {
+  const bounded =
+    value.length <= MAX_NEST_TEXT_LENGTH
+      ? value
+      : `${value.slice(0, MAX_NEST_TEXT_LENGTH)}[Truncated]`;
+  return redactLogText(bounded);
+}
+
+function nestError(summary: string, stack: string): Error {
+  const error = new Error(summary);
+  error.stack = boundedNestText(stack);
+  return error;
+}
+
+function resemblesStack(value: string): boolean {
+  return /(?:^|\n)\s*(?:[A-Za-z]*Error\b|at\s+\S+)/u.test(value);
 }
 
 export class TelemetryShutdown {
