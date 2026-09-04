@@ -2,7 +2,7 @@
 
 Recorded: 2026-09-04
 
-Audited implementation tree: `f496da01e66f0dfdc6a1225d54790c33305db0f7`
+Audited implementation tree: `8fa2a2df36cd125c275919914add3f25e3f49c22`
 
 Status: current resolution and remaining external-evidence plan
 
@@ -178,7 +178,7 @@ of the evidence and priorities below.
   duplicated lines, **1.15%** of the analyzed source.
 - A reproducible post-remediation scan of every `apps/*/test` and
   `packages/*/test` TypeScript file at the 18-line/130-token threshold reports
-  5 reviewed clone groups and 159 duplicated lines, **0.17%** of the analyzed
+  6 reviewed clone groups and 267 duplicated lines, **0.29%** of the analyzed
   test corpus, down from 25 groups/1,977 lines (2.08%).
 - Current static unused-code/package-boundary analysis passes without unused
   files, dependencies, unsupported exports, or duplicate-export findings. The
@@ -750,9 +750,9 @@ pnpm dlx jscpd@4.0.5 apps/*/test packages/*/test \
   --reporters console --ignore '**/dist/**'
 ```
 
-The same command now reports 5 reviewed groups, 159 duplicated lines (0.17%),
-and 1,425 duplicated tokens (0.18%) across 362 files and 93,397 lines. The five
-retained groups are individually classified: three are scenario-local
+The same command now reports 6 reviewed groups, 267 duplicated lines (0.29%),
+and 2,192 duplicated tokens (0.28%) across 362 files and 93,514 lines. The six
+retained groups are individually classified: four are scenario-local
 repetition whose visible state/actions/assertions aid review, and two are false
 positives across distinct public or deployable-owner contracts. A pinned
 `pnpm duplication:check` validates exact file pairs and fragment hashes plus
@@ -783,9 +783,10 @@ a build, and they should not be renamed merely for consistency with application
 TypeScript. Most are small and have dedicated `node:test` coverage.
 
 The tradeoff is that ESLint disables type-aware TypeScript rules for `.mjs`.
-Four tools now exceed 300 lines: the HTTP exercise runner (481), external
-platform evidence validator (401), risk-coverage test (398), and risk-coverage
-reporter (309). When materially changing these tools, either add checked JSDoc
+Five tooling files now exceed 300 lines: the HTTP exercise runner (481),
+external platform evidence validator (401), risk-coverage test (456),
+risk-coverage reporter (387), and deployment validator (336). When materially
+changing these tools, either add checked JSDoc
 and `checkJs` coverage or convert the domain-shaped core to TypeScript while
 keeping a tiny executable wrapper. Keep small dependency-light validators as
 `.mjs`.
@@ -1391,9 +1392,9 @@ Local commands at the audited implementation tree:
 - `pnpm dlx jscpd@4.0.5 apps/*/test packages/*/test --min-lines 18
   --min-tokens 130 --format typescript --reporters console --ignore
   '**/dist/**'` — the original baseline was 25 groups/1,977 lines (2.08%);
-  owner-local extraction now reports 5 groups/159 lines (0.17%).
+  owner-local extraction now reports 6 groups/267 lines (0.29%).
 - `pnpm duplication:check` — passed the pinned semantic source/test ratchet:
-  45 reviewed source groups/992 lines and 5 reviewed test groups/159 lines.
+  45 reviewed source groups/992 lines and 6 reviewed test groups/267 lines.
 - `gh api` security inspection — zero open Dependabot alerts and zero open
   CodeQL alerts on the default branch.
 - branch-protection/ruleset inspection — 11 strict required contexts plus
@@ -1403,6 +1404,20 @@ Local commands at the audited implementation tree:
 
 Remote evidence:
 
+- Pull request #40 CI run
+  [33818101198](https://github.com/vigani1/pertexo/actions/runs/33818101198)
+  passed every protected context for commit `2c68aab935da8f3bd9d33cc76d895d8d85e53ed8`.
+  Its complete tree `9069604bae2c15267bcdf7c3d6bcdd2ec56e2b14` is identical to
+  rebased `main` commit `4e8585b6835520f5493a407d084b5b4c6bda881e`.
+- Exact-main CodeQL run
+  [33818839834](https://github.com/vigani1/pertexo/actions/runs/33818839834)
+  passed for `4e8585b`. The corresponding push CI run
+  [33818839787](https://github.com/vigani1/pertexo/actions/runs/33818839787)
+  failed only in `deployment-security` after the npm advisory endpoint timed
+  out; all other jobs passed. Scheduled CI run
+  [33848095363](https://github.com/vigani1/pertexo/actions/runs/33848095363)
+  subsequently passed every configured job on the same exact commit, including
+  `deployment-security`.
 - GitHub CI run
   [33795441965](https://github.com/vigani1/pertexo/actions/runs/33795441965)
   succeeded for exact `main` commit

@@ -9,7 +9,7 @@ vertical-slice completion criteria have passed. Commits or scaffolding alone do
 not complete a phase.
 
 Current audit note: the whole-repository review at implementation tree
-`f496da01e66f0dfdc6a1225d54790c33305db0f7` is recorded in
+`8fa2a2df36cd125c275919914add3f25e3f49c22` is recorded in
 [the engineering audit](./whole-repository-audit.md). It does not change the
 completed status of Phases 0–6. It confirms that Phase 7 remains **In progress**
 because live AWS, provider, provenance, load, pager, backup, failover, and
@@ -4699,7 +4699,7 @@ That historical documentation-only audit did not change a Phase 7 completion
 box. Its repository P1 findings are now closed; the live-production checklist
 below remains the release blocker.
 
-## Current whole-repository audit — implementation tree `f496da01e66f0dfdc6a1225d54790c33305db0f7`
+## Current whole-repository audit — implementation tree `8fa2a2df36cd125c275919914add3f25e3f49c22`
 
 Status: **Repository-controlled audit blockers are complete; external
 production/control evidence remains open**
@@ -4795,9 +4795,10 @@ Fresh audit findings at the implementation tree named above:
 - [x] Complete the partially reopened A-11 test-maintainability work: extract
       genuinely shared setup from paired split suites into owner-local support
       modules, keep scenario state/assertions local, document and automate the
-      exact full-corpus clone scan from 25 groups/1,977 lines (2.08%) to 5
-      groups/159 lines (0.17%) without weakening independent collection or
-      integration isolation.
+      exact full-corpus clone scan from 25 groups/1,977 lines (2.08%) to 6
+      groups/267 lines (0.29%) without weakening independent collection or
+      integration isolation. The paired worker transport actions remain local
+      to their scenario files rather than being hidden in shared setup.
 - [x] Implement code-audit C-22 through focused capability-local database
       source moves that preserve package entry points, transaction ordering,
       migration behavior, and real-PostgreSQL evidence; do not perform one
@@ -4820,6 +4821,11 @@ Fresh audit findings at the implementation tree named above:
       `pnpm release:check`, and `pnpm images:check` pass. Enabled real-service
       cohorts pass 320 database, 22 worker, 15 API, and 5 artifact-store tests;
       provider-specific local skips remain distinct from live Phase 7 evidence.
+- [x] Observe protected pull request #40 CI run `33818101198` pass every
+      required context, exact-main CodeQL run `33818839834` pass at `4e8585b`,
+      and scheduled CI run `33848095363` pass every configured job on the same
+      exact commit. Push CI run `33818839787` is retained as failed external
+      evidence because only its fail-closed npm advisory lookup timed out.
 
 Code-audit C-23 through C-25 and C-27 are controlled, continuous,
 evidence-gated, or conditional work rather than unconditional completion

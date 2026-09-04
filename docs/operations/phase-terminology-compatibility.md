@@ -4,14 +4,14 @@ Recorded: 2026-09-04
 
 Current source names describe durable workflow concepts rather than delivery
 phases. The remaining `phase3`/`Phase 3` occurrences below are retained only
-where the text is itself a compatibility contract or a test that verifies that
-contract.
+where the text is itself a compatibility contract, immutable migration history,
+historical planning record, or a test that verifies one of those contracts.
 
 Repository-wide inventory command:
 
 ```sh
 rg -n -i 'phase[ _-]?3|phase three|PHASE3' \
-  apps/*/src packages/*/src apps/*/test packages/*/test infrastructure .github \
+  apps packages infrastructure .github docs \
   --glob '!**/dist/**' --glob '!**/node_modules/**'
 ```
 
@@ -28,6 +28,10 @@ rg -n -i 'phase[ _-]?3|phase three|PHASE3' \
 | `packages/database/src/platform/readiness-probe-2.sql.ts` | Persisted readiness column aliases introduced by deployed migrations and consumed by the readiness row contract. |
 | `packages/database/src/platform/readiness-probe.ts` | Typed parsing of those retained readiness column aliases. |
 | `packages/database/src/platform/readiness.ts` | Exact deployed trigger and function identities from migration `0018_phase3_core_executor_non_removal.sql`; readiness must verify the existing database objects by name. |
+| `packages/database/migrations/0013_published_workflow_execution.sql` | Immutable migration history describing the delivery phase that introduced the executable projection; changing an applied migration would break checksum verification. |
+| `packages/database/migrations/0016_engine_invocation_keys.sql` | Immutable migration history describing the phase that introduced invocation keys. |
+| `packages/database/migrations/0017_node_compatibility_releases.sql` | Immutable migration history and persisted bootstrap-release description; changing either would alter applied migration checksums or durable seed data. |
+| `packages/database/migrations/0018_phase3_core_executor_non_removal.sql` | Applied migration filename, function, trigger, exception text, and comments define the deployed non-removal guard and are checksum- and database-object-sensitive. |
 | `apps/worker/test/coordinator-consumer.fixtures.ts` | Fixture exercises the retained serialized engine identity. |
 | `apps/worker/test/coordinator-engine.test.ts` | Regression expectations for the retained serialized engine identity. |
 | `apps/worker/test/coordinator-handler.test.ts` | Regression expectation for the retained serialized engine identity. |
@@ -36,6 +40,7 @@ rg -n -i 'phase[ _-]?3|phase three|PHASE3' \
 | `packages/database/test/compatibility-release.integration.test.ts` | Real-PostgreSQL non-removal and readiness tests exercise the exact deployed Phase 3 database guard identities; descriptive names retain the historical policy name because that is the object under test. |
 | `packages/database/test/readiness-probe.test.ts` | Row fixture and assertions verify the retained readiness column aliases. |
 | `packages/database/test/workflow-run-api.integration.test.ts` | Real-PostgreSQL run reconstruction verifies the retained serialized engine identity. |
+| `docs/operations/database-function-readiness.md` | Operational readiness evidence intentionally names the deployed `0018` migration, function, and trigger guard exactly as operators must inspect them. |
 
 ## Removed source-only terminology
 
@@ -50,3 +55,12 @@ baseline or compatibility terminology.
 
 Any new phase-number occurrence fails review unless it is added to this ledger
 with a persisted, operational, or supported-public compatibility reason.
+
+## Historical documentation
+
+`docs/workflow-platform-backend-plan.md`, `docs/implementation-progress.md`,
+`docs/current-implementation-status.md`, ADR 002, and ADR 010 intentionally
+retain Phase 3 headings and narrative because they record the named delivery
+phase and its decisions. They do not define current source owners. Audit
+documents may also quote or classify the historical term; those occurrences
+are evidence about this finding rather than implementation terminology.

@@ -35,7 +35,7 @@ tests. The exact report schema and validator already live under
 
 ## Current engineering remediation
 
-Audited implementation tree: `f496da01e66f0dfdc6a1225d54790c33305db0f7`
+Audited implementation tree: `8fa2a2df36cd125c275919914add3f25e3f49c22`
 
 The 2026-09-03 whole-repository audit's repository-controlled correctness,
 security, and runtime findings are complete at the implementation tree above.
@@ -45,8 +45,8 @@ admission, selected risk coverage, production complexity decomposition,
 UUIDv7/schema/RLS conventions, bounded async outcomes, package surfaces, and
 public governance. A-11 is now complete: owner-local support modules remove
 genuinely shared split-suite setup, while scenario state and assertions remain
-visible. The exact scan fell from 25 groups/1,977 lines (2.08%) to 5 groups/159
-lines (0.17%), and a pinned semantic baseline now rejects unexplained drift in
+visible. The exact scan fell from 25 groups/1,977 lines (2.08%) to 6 groups/267
+lines (0.29%), and a pinned semantic baseline now rejects unexplained drift in
 the root and protected CI checks. Database internals moved from 122 flat root
 files to ten capability directories behind 12 stable entry points; the public
 testing barrel fell from 567 to 85 physical lines. The latest

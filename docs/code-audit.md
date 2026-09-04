@@ -2,7 +2,7 @@
 
 Recorded: 2026-09-04
 
-Audited implementation tree: `f496da01e66f0dfdc6a1225d54790c33305db0f7`
+Audited implementation tree: `8fa2a2df36cd125c275919914add3f25e3f49c22`
 
 Status: current disposition with original-snapshot findings retained for traceability
 
@@ -1049,11 +1049,11 @@ packages/database/src/
     readiness.ts
 ```
 
-Remaining focused changes:
+Current disposition of the earlier focused changes:
 
-- rename `phase3-checkpoint.ts` to a durable domain name such as
-  `persisted-workflow-checkpoint.ts`, while preserving stored compatibility
-  version names where they are externally meaningful; and
+- the former `phase3-checkpoint.ts` source owner is now
+  `compatibility/persisted-workflow-checkpoint.ts`; stored compatibility names
+  remain unchanged and are classified in the C-26 compatibility ledger; and
 - continue splitting only the retained large database implementations named in
   the complexity retention register when a focused change can preserve their
   public interfaces and transaction ordering.
@@ -1381,8 +1381,8 @@ Status meanings:
 - **Status:** complete for repository-controlled work; this is the code-audit
   counterpart of whole-repository finding A-11.
 - **Evidence:** the unchanged full-test-corpus command below fell from 25 clone
-  groups and 1,977 duplicated lines (2.08%) to 5 groups and 159 duplicated
-  lines (0.17%) across 362 files and 93,397 lines. The six priority split-suite
+  groups and 1,977 duplicated lines (2.08%) to 6 groups and 267 duplicated
+  lines (0.29%) across 362 files and 93,514 lines. The six priority split-suite
   pairs and additional repeated environment, lifecycle, and domain-fixture
   construction now use owner-local support modules.
 - **Main locations:** paired schedule-trigger, database control-ledger,
@@ -1399,10 +1399,12 @@ Status meanings:
   independent test collection must remain intact.
 - **Acceptance evidence:** every priority suite collected and passed
   independently and together, including PostgreSQL, Redis, and object-store
-  integrations; no test exceeds 1,000 lines. The five retained groups are
+  integrations; no test exceeds 1,000 lines. The six retained groups are
   individually classified in `infrastructure/test-duplication-baseline.json`
   as scenario-local repetition or false positives. No threshold or exclusion
-  was weakened.
+  was weakened to conceal implementation duplication. One reviewed group was
+  deliberately restored so the paired worker transport suites keep their
+  transaction writes and dispatch actions in the scenario files.
 
 The [A-11 baseline disposition ledger](./operations/test-duplication-review.md)
 accounts for every one of the original 25 reports and names the extracted owner
@@ -1531,6 +1533,8 @@ No freeze or copy was removed without the evidence required by that policy.
   `PHASE3_RUNTIME_POLICIES_V1` alias, durable `phase3-engine-v1` serialized
   value, migration names, readiness columns, and database objects remain
   intentionally unchanged compatibility contracts.
+  [`docs/operations/phase-terminology-compatibility.md`](./operations/phase-terminology-compatibility.md)
+  classifies every retained occurrence and its contract reason.
 - **Why it matters:** phase numbers describe project history, not the durable
   domain concept. New maintainers must know the implementation chronology to
   discover the persisted workflow checkpoint owner.
@@ -1591,8 +1595,8 @@ No freeze or copy was removed without the evidence required by that policy.
 
 `pnpm duplication:check` pins `jscpd` 4.0.5, expands deterministic inputs, and
 checks aggregate ceilings plus exact file-pair and fragment hashes. The
-reviewed baseline records all 45 source groups (992 lines, 1.15%) and all 5 test
-groups (159 lines, 0.17%). Stale evidence, semantic drift, new families, or
+reviewed baseline records all 45 source groups (992 lines, 1.15%) and all 6 test
+groups (267 lines, 0.29%). Stale evidence, semantic drift, new families, or
 aggregate/individual growth fail both the root `check` and protected quality
 CI jobs.
 
