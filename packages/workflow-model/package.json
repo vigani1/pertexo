@@ -53,6 +53,7 @@
     "build": "tsc -p tsconfig.json",
     "pretest": "pnpm build",
     "test": "vitest run",
+    "test:coverage": "vitest run --config vitest.coverage.config.ts --coverage",
     "typecheck": "tsc -p tsconfig.test.json --noEmit"
   },
   "dependencies": {
