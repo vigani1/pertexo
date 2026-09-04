@@ -20,11 +20,11 @@ import {
   type RedisTelemetryObserver,
 } from './redis-telemetry-contracts.js';
 import { createProductionRedisTelemetryObserver } from './redis-telemetry.js';
+import { normalizeRedisEndpoint } from './redis-endpoint.js';
 
 const DEFAULT_READY_TIMEOUT_MS = 5_000;
 const DEFAULT_PUBLISH_TIMEOUT_MS = 5_000;
 const DEFAULT_CLOSE_TIMEOUT_MS = 5_000;
-const REDIS_PROTOCOLS = new Set(['redis:', 'rediss:']);
 
 const queueProducerOptionsSchema = z
   .object({
@@ -94,21 +94,15 @@ export class QueueNotReadyError extends Error {
 type QueueMap = Readonly<Record<QueueName, Queue>>;
 
 function parseRedisUrl(value: string): string {
-  let parsed: URL;
-
-  try {
-    parsed = new URL(value);
-  } catch {
-    throw new QueueConfigurationError('Redis URL is invalid');
-  }
-
-  if (!REDIS_PROTOCOLS.has(parsed.protocol) || parsed.hostname.length === 0) {
-    throw new QueueConfigurationError(
-      'Redis URL must use redis:// or rediss:// with a hostname',
-    );
-  }
-
-  return value;
+  return normalizeRedisEndpoint(
+    value,
+    (reason) =>
+      new QueueConfigurationError(
+        reason === 'invalid_url'
+          ? 'Redis URL is invalid'
+          : 'Redis URL must use redis:// or rediss:// with a hostname',
+      ),
+  );
 }
 
 function parseProducerOptions(options: QueueProducerOptions): {

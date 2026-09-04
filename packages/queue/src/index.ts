@@ -24,6 +24,8 @@ export type {
 } from './contracts.js';
 export { JOB_NAME, QUEUE_FOR_JOB, QUEUE_NAME } from './names.js';
 export type { JobName, QueueJobName, QueueName } from './names.js';
+export { normalizeRedisEndpoint } from './redis-endpoint.js';
+export type { RedisEndpointErrorReason } from './redis-endpoint.js';
 export {
   QUEUE_CLASS_DEFAULTS,
   type QueueClassJobDefaults,
