@@ -75,7 +75,7 @@ ones, with dependency order allowed to override raw size.
 | `packages/artifact-store` | 10 | 3,214 | 11 | 3,543 | [Audited](packages/artifact-store.md) |
 | `packages/integrations` | 24 | 3,940 | 8 | 2,760 | [Audited](packages/integrations.md) |
 | `apps/worker` | 53 | 7,983 | 71 | 21,249 | Not started |
-| `packages/workflow-engine` | 40 | 8,484 | 22 | 8,451 | Not started |
+| `packages/workflow-engine` | 40 | 8,484 | 22 | 8,451 | [Audited](packages/workflow-engine.md) |
 | `apps/api` | 121 | 14,993 | 74 | 15,480 | Not started |
 | `packages/database` | 140 | 33,154 | 135 | 34,433 | Not started |
 
