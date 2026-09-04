@@ -30,6 +30,9 @@ The review concentrates on:
 
 Architecture, distributed correctness, security, CI, coverage, and production
 readiness remain covered by [the whole-repository audit](./whole-repository-audit.md).
+Exhaustive file, callable, test, and integration-seam reviews for each package
+and application are tracked separately in the
+[component audit series](./audits/README.md).
 
 ## 2. Review coverage and limitations
 

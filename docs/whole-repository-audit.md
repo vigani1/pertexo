@@ -6,6 +6,11 @@ Audited implementation tree: `d1b41b6e9b6122de9914298e486c4b4635742f28`
 
 Status: current resolution and remaining external-evidence plan
 
+Detailed line-by-line package and application reviews are tracked in the
+[component audit series](./audits/README.md). Those component audits supplement
+this systemic assessment and may identify local findings after this audit's
+pinned tree.
+
 ## 1. Executive verdict
 
 This is a strong, serious backend codebase. Every repository-fixable correctness,
