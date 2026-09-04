@@ -151,13 +151,7 @@ export function safelyObserveSafetyViolation(
   }
 }
 
-interface S3ClientShape {
-  destroy(): void;
-  send(
-    command: never,
-    options?: { readonly abortSignal?: AbortSignal },
-  ): Promise<unknown>;
-}
+import type { ObjectStoreS3Client } from './s3-client-contract.js';
 
 const OPERATIONS: Readonly<Record<string, ObjectStoreOperation>> =
   Object.freeze({
@@ -215,9 +209,9 @@ function errorClass(
   return 'unknown';
 }
 
-export class ObservedS3Client<TClient extends S3ClientShape> {
+export class ObservedS3Client {
   public constructor(
-    private readonly client: TClient,
+    private readonly client: ObjectStoreS3Client,
     private readonly observer: ObjectStoreObserver | undefined,
     private readonly surface: ObjectStoreSurface,
     private readonly regionRole: ObjectStoreRegionRole,
@@ -228,17 +222,13 @@ export class ObservedS3Client<TClient extends S3ClientShape> {
   }
 
   public async send(
-    command: object,
+    command: Parameters<ObjectStoreS3Client['send']>[0],
     options?: { readonly abortSignal?: AbortSignal },
   ): Promise<unknown> {
     const startedAt = performance.now();
     const operation = operationFor(command);
     try {
-      const send = this.client.send.bind(this.client) as (
-        command: object,
-        options?: { readonly abortSignal?: AbortSignal },
-      ) => Promise<unknown>;
-      const result = await send(command, options);
+      const result = await this.client.send(command, options);
       safelyObserveRequest(this.observer, {
         durationSeconds: (performance.now() - startedAt) / 1_000,
         errorClass: 'none',

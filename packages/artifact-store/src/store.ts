@@ -10,10 +10,8 @@ import {
   S3Client,
 } from '@aws-sdk/client-s3';
 import type {
-  DeleteObjectsCommandOutput,
   GetObjectCommandOutput,
   HeadObjectCommandOutput,
-  ListObjectVersionsCommandOutput,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { createHash } from 'node:crypto';
@@ -33,24 +31,10 @@ import type {
   ObjectStoreObserver,
   ObjectStoreRegionRole,
 } from './object-store-telemetry.js';
+import { sendS3 } from './s3-client-contract.js';
+import type { ObjectStoreS3Client } from './s3-client-contract.js';
 
-type S3Command =
-  | DeleteObjectCommand
-  | DeleteObjectsCommand
-  | GetObjectCommand
-  | GetBucketLocationCommand
-  | HeadBucketCommand
-  | HeadObjectCommand
-  | ListObjectVersionsCommand
-  | PutObjectCommand;
-
-export interface S3ClientLike {
-  destroy(): void;
-  send(
-    command: S3Command,
-    options?: { readonly abortSignal?: AbortSignal },
-  ): Promise<unknown>;
-}
+export type S3ClientLike = ObjectStoreS3Client;
 
 export interface ArtifactIdentity {
   readonly artifactId: string;
@@ -518,14 +502,16 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
     const options = {
       abortSignal: requestSignal(this.config.requestTimeoutMs, signal),
     };
-    await this.client.send(
+    await sendS3(
+      this.client,
       new HeadBucketCommand({ Bucket: this.config.bucket }),
       options,
     );
-    const location = (await this.client.send(
+    const location = await sendS3(
+      this.client,
       new GetBucketLocationCommand({ Bucket: this.config.bucket }),
       options,
-    )) as { readonly LocationConstraint?: string | null };
+    );
     const reportedRegion = location.LocationConstraint ?? '';
     const actualRegion =
       reportedRegion === ''
@@ -571,7 +557,8 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
   ): Promise<ArtifactDownload> {
     let output: GetObjectCommandOutput;
     try {
-      output = (await this.client.send(
+      output = await sendS3(
+        this.client,
         new GetObjectCommand({
           Bucket: this.config.bucket,
           Key: storageKey(identity),
@@ -579,7 +566,7 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
         {
           abortSignal: signal,
         },
-      )) as GetObjectCommandOutput;
+      );
     } catch (error: unknown) {
       if (isNotFound(error)) {
         throw new ArtifactNotFoundError();
@@ -636,13 +623,14 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
     signal: AbortSignal,
   ): Promise<ArtifactMetadata | null> {
     try {
-      const output = (await this.client.send(
+      const output = await sendS3(
+        this.client,
         new HeadObjectCommand({
           Bucket: this.config.bucket,
           Key: storageKey(identity),
         }),
         { abortSignal: signal },
-      )) as HeadObjectCommandOutput;
+      );
       return metadataFromHead(identity, output, this.config.maxObjectBytes);
     } catch (error: unknown) {
       if (isNotFound(error)) {
@@ -667,7 +655,8 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
       signal,
     );
     try {
-      await this.client.send(
+      await sendS3(
+        this.client,
         new PutObjectCommand({
           Body: body,
           Bucket: this.config.bucket,
@@ -701,14 +690,15 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
     const input = purgeWorkspaceSchema.parse(request);
     const prefix = workspacePrefix(input.workspaceId);
     const signal = requestSignal(this.config.requestTimeoutMs, request.signal);
-    const listed = (await this.client.send(
+    const listed = await sendS3(
+      this.client,
       new ListObjectVersionsCommand({
         Bucket: this.config.bucket,
         MaxKeys: input.maxObjects,
         Prefix: prefix,
       }),
       { abortSignal: signal },
-    )) as ListObjectVersionsCommandOutput;
+    );
     const entries = [
       ...(listed.Versions ?? []),
       ...(listed.DeleteMarkers ?? []),
@@ -747,13 +737,14 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
       seen.add(identity);
       return { Key: entry.Key, VersionId: entry.VersionId };
     });
-    const deleted = (await this.client.send(
+    const deleted = await sendS3(
+      this.client,
       new DeleteObjectsCommand({
         Bucket: this.config.bucket,
         Delete: { Objects: objects, Quiet: false },
       }),
       { abortSignal: signal },
-    )) as DeleteObjectsCommandOutput;
+    );
     if ((deleted.Errors?.length ?? 0) > 0) {
       throw new ArtifactIntegrityError(
         'Object version deletion reported one or more failures',
@@ -792,14 +783,15 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
     const signal = requestSignal(this.config.requestTimeoutMs, request.signal);
     let output: HeadObjectCommandOutput;
     try {
-      output = (await this.client.send(
+      output = await sendS3(
+        this.client,
         new HeadObjectCommand({
           Bucket: this.config.bucket,
           ChecksumMode: 'ENABLED',
           Key: storageKey(expected),
         }),
         { abortSignal: signal },
-      )) as HeadObjectCommandOutput;
+      );
     } catch (error: unknown) {
       if (isNotFound(error)) {
         throw new ArtifactNotFoundError();
@@ -853,7 +845,8 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
     identity: ArtifactIdentity,
     signal?: AbortSignal,
   ): Promise<void> {
-    await this.client.send(
+    await sendS3(
+      this.client,
       new DeleteObjectCommand({
         Bucket: this.config.bucket,
         Key: storageKey(identity),
