@@ -405,8 +405,21 @@ describe('For Each production operations', () => {
   });
 
   it('keeps the generic scheduler graph seam on the server-only testing entry', () => {
-    expect(productionEngine).not.toHaveProperty('deriveReadyNodes');
-    expect(productionEngine).not.toHaveProperty('parseSchedulerGraph');
+    for (const internalName of [
+      'assertAttemptTransition',
+      'assertNodeTransition',
+      'assertRunTransition',
+      'createLoopState',
+      'decideCancellation',
+      'decideRetry',
+      'deriveReadyNodes',
+      'parseSchedulerGraph',
+      'planDurableWait',
+      'settleJoin',
+    ]) {
+      expect(productionEngine).not.toHaveProperty(internalName);
+      expect(testingEngine).toHaveProperty(internalName);
+    }
     expect(testingEngine).toHaveProperty('deriveReadyNodes');
     expect(testingEngine.advanceWorkflow).not.toBe(
       productionEngine.advanceWorkflow,

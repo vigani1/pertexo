@@ -9,7 +9,7 @@ import {
   planDurableWait,
   providerIdempotencyKey,
   WorkflowEngineError,
-} from '../src/index.js';
+} from '../src/testing.js';
 
 const occurredAt = '2026-08-20T10:00:00.000Z';
 

@@ -10,8 +10,8 @@ export function sameIterationPath(
     leftPath.length === rightPath.length &&
     leftPath.every(
       (part, index) =>
-        part.loopNodeId === rightPath[index].loopNodeId &&
-        part.ordinal === rightPath[index].ordinal,
+        part.loopNodeId === rightPath.at(index)?.loopNodeId &&
+        part.ordinal === rightPath.at(index)?.ordinal,
     )
   );
 }
@@ -33,8 +33,8 @@ export function branchPathHasPrefix(
     candidate.length >= expected.length &&
     expected.every(
       (part, index) =>
-        part.nodeId === candidate[index].nodeId &&
-        part.outputPort === candidate[index].outputPort,
+        part.nodeId === candidate.at(index)?.nodeId &&
+        part.outputPort === candidate.at(index)?.outputPort,
     )
   );
 }

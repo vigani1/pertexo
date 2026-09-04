@@ -21,11 +21,11 @@ import {
   executeNodeAttempt,
   invocationKey,
   parseWorkflowExecutableV2,
-  providerIdempotencyKey,
   resolveSingleNodePreviewInput,
   verifyWorkflowExecutableV2,
   WORKFLOW_EXECUTABLE_LIMITS_V2,
 } from '../src/index.js';
+import { providerIdempotencyKey } from '../src/testing.js';
 import { createHash } from 'node:crypto';
 
 export {

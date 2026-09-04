@@ -4,7 +4,7 @@ import {
   assertAttemptTransition,
   assertNodeTransition,
   assertRunTransition,
-} from '../src/index.js';
+} from '../src/testing.js';
 
 const policies = [
   {

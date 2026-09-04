@@ -5,7 +5,7 @@ import {
   completeLoopIteration,
   createLoopState,
   invocationKey,
-} from '../src/index.js';
+} from '../src/testing.js';
 
 describe('bounded ForEach scheduling', () => {
   it('pins a collection reference and admits canonical bounded batches', () => {
