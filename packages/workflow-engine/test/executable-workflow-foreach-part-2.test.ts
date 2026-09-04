@@ -15,7 +15,7 @@ import {
   nestedForEachGraph,
 } from './executable-workflow.fixtures.js';
 
-describe('Phase 3 For Each production operations', () => {
+describe('For Each production operations', () => {
   it('advances a nested For Each through inner and outer completion', async () => {
     const executable = buildWorkflowExecutableV2({
       graph: nestedForEachGraph(),

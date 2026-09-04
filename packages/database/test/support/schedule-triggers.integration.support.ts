@@ -14,7 +14,7 @@ import {
   createScheduleTriggerScanner,
 } from '../../src/triggers/schedule-triggers.js';
 import { createWorkflowTriggerReconciliationDatabase } from '../../src/triggers/workflow-triggers.js';
-import { PHASE3_COMPATIBILITY_EXPECTATION } from '../phase3-compatibility-fixture.js';
+import { BASELINE_COMPATIBILITY_EXPECTATION } from '../baseline-compatibility-fixture.js';
 import { dropDisconnectedDatabase } from './disposable-database.js';
 
 export function createScheduleTriggerTestEnvironment() {
@@ -70,12 +70,12 @@ export function createScheduleTriggerTestEnvironment() {
   const schedules = createScheduleTriggerDatabase(apiConfig);
   const scannerOne = createScheduleTriggerScanner(
     workerConfig,
-    PHASE3_COMPATIBILITY_EXPECTATION,
+    BASELINE_COMPATIBILITY_EXPECTATION,
     apiConfig,
   );
   const scannerTwo = createScheduleTriggerScanner(
     workerConfig,
-    PHASE3_COMPATIBILITY_EXPECTATION,
+    BASELINE_COMPATIBILITY_EXPECTATION,
     apiConfig,
   );
   const owner = new Pool({ connectionString: url(migrationBaseUrl), max: 1 });
@@ -128,7 +128,7 @@ export function createScheduleTriggerTestEnvironment() {
   });
   const replayStore = createOperatorRunReplayStore(
     workerConfig,
-    [PHASE3_COMPATIBILITY_EXPECTATION],
+    [BASELINE_COMPATIBILITY_EXPECTATION],
     checkpointFactory,
   );
   const sourceRunDatabase = createWorkspaceDatabase(apiConfig);

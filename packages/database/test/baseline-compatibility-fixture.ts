@@ -11,9 +11,9 @@ const migration = readFileSync(
 );
 const catalogMatch = /\$catalog\$([\s\S]+?)\$catalog\$::jsonb/u.exec(migration);
 if (catalogMatch?.[1] === undefined)
-  throw new Error('Phase 3 compatibility catalog fixture is unavailable');
+  throw new Error('Baseline compatibility catalog fixture is unavailable');
 
-export const PHASE3_COMPATIBILITY_EXPECTATION = Object.freeze({
+export const BASELINE_COMPATIBILITY_EXPECTATION = Object.freeze({
   epoch: 1,
   fingerprint:
     'node-compat:v1:sha256:cf21b2e644563beb8b031481e9d5182b361b4ae2d4abd1d7d86d7b3fe0299f59',

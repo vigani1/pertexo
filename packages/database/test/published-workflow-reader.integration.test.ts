@@ -10,7 +10,7 @@ import { migrateDatabase } from '../src/migrations.js';
 import { createPublishedWorkflowReader } from '../src/execution/published-workflow-reader.js';
 import { checkDatabaseReadiness } from '../src/platform/readiness.js';
 import { createWorkflowAuthoringDatabase } from '../src/authoring/workflow-authoring.js';
-import { PHASE3_COMPATIBILITY_EXPECTATION } from './phase3-compatibility-fixture.js';
+import { BASELINE_COMPATIBILITY_EXPECTATION } from './baseline-compatibility-fixture.js';
 
 const migrationUrl =
   process.env.DATABASE_MIGRATION_URL ??
@@ -42,11 +42,11 @@ const authoring = createWorkflowAuthoringDatabase(
 );
 const apiReader = createPublishedWorkflowReader(
   parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
-  PHASE3_COMPATIBILITY_EXPECTATION,
+  BASELINE_COMPATIBILITY_EXPECTATION,
 );
 const workerReader = createPublishedWorkflowReader(
   parseDatabaseConfig({ connectionString: workerUrl, max: 2 }),
-  PHASE3_COMPATIBILITY_EXPECTATION,
+  BASELINE_COMPATIBILITY_EXPECTATION,
 );
 
 const actorId = randomUUID();
@@ -216,7 +216,7 @@ describe('PublishedWorkflowReader', () => {
       workflowVersion: {
         checksum: `wf:v2:sha256:${'2'.repeat(64)}`,
         compatibilityReleaseEpoch: 7,
-        currentCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
+        currentCompatibilityRelease: BASELINE_COMPATIBILITY_EXPECTATION,
         executableJson: { schemaVersion: 2, nodes: [], edges: [] },
         executableSchemaVersion: 2,
         id: v2VersionId,

@@ -43,7 +43,7 @@ export const CORE_REGISTRY_RELEASE = createRegistryRelease({
 });
 
 /**
- * The additive Phase 3 overlap shipped by one API/worker artifact. The
+ * The additive baseline-runtime overlap shipped by one API/worker artifact. The
  * successor changes lifecycle metadata only; identities, schemas, policies,
  * and executor implementations remain byte-for-byte compatible.
  */

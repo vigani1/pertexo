@@ -360,7 +360,7 @@ describe('execution value persistence migration', () => {
   it('persists an engine-range checkpoint above the legacy bound and rejects a clearly over-limit body', async () => {
     const engineRangeCheckpoint = JSON.stringify({
       schemaVersion: 1,
-      engineVersion: `phase3-${'x'.repeat(32_768)}`,
+      engineVersion: `oversized-${'x'.repeat(32_768)}`,
       workflowVersionId,
       revision: 1,
       runStatus: 'running',

@@ -1,0 +1,52 @@
+# Phase terminology compatibility ledger
+
+Recorded: 2026-09-04
+
+Current source names describe durable workflow concepts rather than delivery
+phases. The remaining `phase3`/`Phase 3` occurrences below are retained only
+where the text is itself a compatibility contract or a test that verifies that
+contract.
+
+Repository-wide inventory command:
+
+```sh
+rg -n -i 'phase[ _-]?3|phase three|PHASE3' \
+  apps/*/src packages/*/src apps/*/test packages/*/test infrastructure .github \
+  --glob '!**/dist/**' --glob '!**/node_modules/**'
+```
+
+## Retained occurrences
+
+| Location | Classification and reason |
+| --- | --- |
+| `apps/api/src/executions/initial-workflow-checkpoint.ts` | Durable serialized engine identity. Existing checkpoints and runs store `phase3-engine-v1`; changing it would create a different engine contract. |
+| `apps/worker/src/execution/operator-run-replay-runtime.ts` | Durable serialized engine identity used to reconstruct retained runs. |
+| `apps/worker/src/triggers/trigger-runtime.ts` | Durable serialized engine identity written for trigger-accepted runs. |
+| `packages/workflow-engine/src/executable-foundation.ts` | Deprecated public `PHASE3_RUNTIME_POLICIES_V1` compatibility alias; new implementation code uses `BASELINE_RUNTIME_POLICIES_V1`. |
+| `packages/workflow-engine/src/executable-workflow.ts` | Re-export of the deprecated public alias through the existing supported entry point. |
+| `packages/workflow-engine/src/index.ts` | Package-root re-export of the deprecated public alias. |
+| `packages/database/src/platform/readiness-probe-2.sql.ts` | Persisted readiness column aliases introduced by deployed migrations and consumed by the readiness row contract. |
+| `packages/database/src/platform/readiness-probe.ts` | Typed parsing of those retained readiness column aliases. |
+| `packages/database/src/platform/readiness.ts` | Exact deployed trigger and function identities from migration `0018_phase3_core_executor_non_removal.sql`; readiness must verify the existing database objects by name. |
+| `apps/worker/test/coordinator-consumer.fixtures.ts` | Fixture exercises the retained serialized engine identity. |
+| `apps/worker/test/coordinator-engine.test.ts` | Regression expectations for the retained serialized engine identity. |
+| `apps/worker/test/coordinator-handler.test.ts` | Regression expectation for the retained serialized engine identity. |
+| `apps/worker/test/schedule-trigger.integration.test.ts` | Real-service proof that trigger acceptance persists the retained engine identity. |
+| `packages/database/test/compatibility-release.test.ts` | Verifies the exact deployed migration, function, and trigger names. |
+| `packages/database/test/compatibility-release.integration.test.ts` | Real-PostgreSQL non-removal and readiness tests exercise the exact deployed Phase 3 database guard identities; descriptive names retain the historical policy name because that is the object under test. |
+| `packages/database/test/readiness-probe.test.ts` | Row fixture and assertions verify the retained readiness column aliases. |
+| `packages/database/test/workflow-run-api.integration.test.ts` | Real-PostgreSQL run reconstruction verifies the retained serialized engine identity. |
+
+## Removed source-only terminology
+
+The current checkpoint owner is
+`packages/database/src/compatibility/persisted-workflow-checkpoint.ts`; the
+engine's current internal policy is `BASELINE_RUNTIME_POLICIES_V1`; baseline
+compatibility test construction is owned by
+`packages/database/test/baseline-compatibility-fixture.ts`; and workflow test
+descriptions use domain behavior rather than a project phase. Test-only actor,
+deployment, oversized-value, and catalog identifiers likewise use durable
+baseline or compatibility terminology.
+
+Any new phase-number occurrence fails review unless it is added to this ledger
+with a persisted, operational, or supported-public compatibility reason.

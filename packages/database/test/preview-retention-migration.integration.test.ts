@@ -8,7 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { migrateDatabase, MIGRATIONS_DIRECTORY } from '../src/migrations.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';
-import { PHASE3_COMPATIBILITY_EXPECTATION } from './phase3-compatibility-fixture.js';
+import { BASELINE_COMPATIBILITY_EXPECTATION } from './baseline-compatibility-fixture.js';
 
 const adminUrl =
   process.env.DATABASE_ADMIN_URL ??
@@ -143,8 +143,8 @@ describe('preview retention migration', () => {
           workspaceId,
           workflowId,
           'c'.repeat(64),
-          PHASE3_COMPATIBILITY_EXPECTATION.epoch,
-          PHASE3_COMPATIBILITY_EXPECTATION.fingerprint,
+          BASELINE_COMPATIBILITY_EXPECTATION.epoch,
+          BASELINE_COMPATIBILITY_EXPECTATION.fingerprint,
           actorUserId,
           'd'.repeat(64),
           'e'.repeat(64),
@@ -173,8 +173,8 @@ describe('preview retention migration', () => {
           workspaceId,
           workflowId,
           'f'.repeat(64),
-          PHASE3_COMPATIBILITY_EXPECTATION.epoch,
-          PHASE3_COMPATIBILITY_EXPECTATION.fingerprint,
+          BASELINE_COMPATIBILITY_EXPECTATION.epoch,
+          BASELINE_COMPATIBILITY_EXPECTATION.fingerprint,
           actorUserId,
           '1'.repeat(64),
           '2'.repeat(64),

@@ -20,7 +20,7 @@ import {
   checkDatabasePreactivationReadiness,
   checkDatabaseReadiness,
 } from '../src/platform/readiness.js';
-import { PHASE3_COMPATIBILITY_EXPECTATION } from './phase3-compatibility-fixture.js';
+import { BASELINE_COMPATIBILITY_EXPECTATION } from './baseline-compatibility-fixture.js';
 
 const adminUrl =
   process.env.DATABASE_ADMIN_URL ??
@@ -164,18 +164,18 @@ describe('durable node compatibility release authority', () => {
       max: 1,
     });
     const targetEpoch = 2;
-    const targetFingerprint = PHASE3_COMPATIBILITY_EXPECTATION.fingerprint;
-    const deploymentId = `phase3-rollout-${randomUUID()}`;
+    const targetFingerprint = BASELINE_COMPATIBILITY_EXPECTATION.fingerprint;
+    const deploymentId = `compatibility-rollout-${randomUUID()}`;
     const approvalId = randomUUID();
     const activationId = randomUUID();
     const apiArtifactIds = ['api-a', 'api-b'] as const;
     const workerArtifactIds = ['worker-a', 'worker-b'] as const;
     const targetExpectation = {
-      ...PHASE3_COMPATIBILITY_EXPECTATION,
+      ...BASELINE_COMPATIBILITY_EXPECTATION,
       epoch: targetEpoch,
     };
     const rollingExpectations = [
-      PHASE3_COMPATIBILITY_EXPECTATION,
+      BASELINE_COMPATIBILITY_EXPECTATION,
       targetExpectation,
     ] as const;
     try {
@@ -188,9 +188,9 @@ describe('durable node compatibility release authority', () => {
         [
           targetEpoch,
           targetFingerprint,
-          PHASE3_COMPATIBILITY_EXPECTATION.catalogJson,
-          PHASE3_COMPATIBILITY_EXPECTATION.fingerprint,
-          'phase3-rollout-controller',
+          BASELINE_COMPATIBILITY_EXPECTATION.catalogJson,
+          BASELINE_COMPATIBILITY_EXPECTATION.fingerprint,
+          'compatibility-rollout-controller',
           'Prepare an additive rolling-overlap release',
         ],
       );
@@ -224,7 +224,7 @@ describe('durable node compatibility release authority', () => {
             targetFingerprint,
             roleKind,
             artifactId,
-            PHASE3_COMPATIBILITY_EXPECTATION.catalogJson,
+            BASELINE_COMPATIBILITY_EXPECTATION.catalogJson,
           ],
         );
         await owner.query('commit');
@@ -244,7 +244,7 @@ describe('durable node compatibility release authority', () => {
             targetFingerprint,
             JSON.stringify(apiArtifactIds),
             JSON.stringify(workerArtifactIds),
-            'phase3-rollout-controller',
+            'compatibility-rollout-controller',
             'Approve only after the complete named cohorts report ready',
           ],
         ),
@@ -268,7 +268,7 @@ describe('durable node compatibility release authority', () => {
             targetFingerprint,
             roleKind,
             artifactId,
-            PHASE3_COMPATIBILITY_EXPECTATION.catalogJson,
+            BASELINE_COMPATIBILITY_EXPECTATION.catalogJson,
           ],
         );
         await owner.query('commit');
@@ -287,7 +287,7 @@ describe('durable node compatibility release authority', () => {
           targetFingerprint,
           JSON.stringify(apiArtifactIds),
           JSON.stringify(workerArtifactIds),
-          'phase3-rollout-controller',
+          'compatibility-rollout-controller',
           'Approve the fully ready rolling cohort',
         ],
       );
@@ -297,10 +297,10 @@ describe('durable node compatibility release authority', () => {
          )`,
         [
           activationId,
-          PHASE3_COMPATIBILITY_EXPECTATION.fingerprint,
+          BASELINE_COMPATIBILITY_EXPECTATION.fingerprint,
           approvalId,
           'deployment',
-          'phase3-rollout-controller',
+          'compatibility-rollout-controller',
           'Activate the prevalidated additive release',
         ],
       );
@@ -333,7 +333,7 @@ describe('durable node compatibility release authority', () => {
         checkDatabaseReadiness(api, {
           ownerRole: 'pertexo_owner',
           workerRuntimeRole: 'pertexo_worker',
-          expectedCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
+          expectedCompatibilityRelease: BASELINE_COMPATIBILITY_EXPECTATION,
         }),
       ).rejects.toBeInstanceOf(CompatibilityReleaseMismatchError);
     } finally {
@@ -352,15 +352,15 @@ describe('durable node compatibility release authority', () => {
       }),
     );
     const predecessor = {
-      ...PHASE3_COMPATIBILITY_EXPECTATION,
+      ...BASELINE_COMPATIBILITY_EXPECTATION,
       epoch: 2,
     };
     const target = { ...predecessor, epoch: 3 };
-    const deploymentId = `phase3-maintenance-${randomUUID()}`;
+    const deploymentId = `compatibility-maintenance-${randomUUID()}`;
     const approvalId = randomUUID();
     try {
       const preparation = {
-        actorId: 'phase3-rollout-controller',
+        actorId: 'compatibility-rollout-controller',
         actorKind: 'deployment',
         expectedPredecessor: predecessor,
         reason: 'Prepare through the behavior-named maintenance boundary',
@@ -385,7 +385,7 @@ describe('durable node compatibility release authority', () => {
         ),
       );
       await maintenance.approve({
-        actorId: 'phase3-rollout-controller',
+        actorId: 'compatibility-rollout-controller',
         approvalId,
         deploymentId,
         reason: 'Approve the exact API and worker artifacts',
@@ -394,7 +394,7 @@ describe('durable node compatibility release authority', () => {
         target,
       });
       await maintenance.approve({
-        actorId: 'phase3-rollout-controller',
+        actorId: 'compatibility-rollout-controller',
         approvalId,
         deploymentId,
         reason: 'Approve the exact API and worker artifacts',
@@ -404,7 +404,7 @@ describe('durable node compatibility release authority', () => {
       });
       const activation = {
         activationId: randomUUID(),
-        actorId: 'phase3-rollout-controller',
+        actorId: 'compatibility-rollout-controller',
         actorKind: 'deployment',
         approvalId,
         expectedPredecessor: predecessor,
@@ -437,14 +437,14 @@ describe('durable node compatibility release authority', () => {
           checkDatabaseReadiness(pool, {
             ownerRole: 'pertexo_owner',
             workerRuntimeRole: 'pertexo_worker',
-            expectedCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
+            expectedCompatibilityRelease: BASELINE_COMPATIBILITY_EXPECTATION,
           }),
         ).resolves.toMatchObject({
           migrationHead: '0074_retention_schedule_state_rls.sql',
         });
         await expect(
           checkExpectedCompatibilityRelease(pool, {
-            ...PHASE3_COMPATIBILITY_EXPECTATION,
+            ...BASELINE_COMPATIBILITY_EXPECTATION,
             fingerprint:
               'node-compat:v1:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
           }),
@@ -465,7 +465,7 @@ describe('durable node compatibility release authority', () => {
         checkDatabaseReadiness(pool, {
           ownerRole: 'pertexo_owner',
           workerRuntimeRole: 'pertexo_worker',
-          expectedCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
+          expectedCompatibilityRelease: BASELINE_COMPATIBILITY_EXPECTATION,
         }),
       ).resolves.toMatchObject({
         migrationHead: '0074_retention_schedule_state_rls.sql',
@@ -495,8 +495,8 @@ describe('durable node compatibility release authority', () => {
                2, $1, $2::jsonb, 1, $1, 'deployment', 'forbidden', 'forbidden'
              )`,
             [
-              PHASE3_COMPATIBILITY_EXPECTATION.fingerprint,
-              PHASE3_COMPATIBILITY_EXPECTATION.catalogJson,
+              BASELINE_COMPATIBILITY_EXPECTATION.fingerprint,
+              BASELINE_COMPATIBILITY_EXPECTATION.catalogJson,
             ],
           ),
         ).rejects.toSatisfy(pgCode('42501'));
@@ -529,7 +529,7 @@ describe('durable node compatibility release authority', () => {
              (epoch, schema_version, fingerprint, catalog_json,
               predecessor_epoch, prepared_by_kind, prepared_by, reason)
            values ($1, 1, $2, $3::jsonb, 1, 'deployment',
-                   'phase3-non-removal-test', 'candidate')`,
+                   'baseline-non-removal-test', 'candidate')`,
           [epoch, fingerprint, JSON.stringify(catalog)],
         );
         await owner.query('commit');
@@ -540,7 +540,7 @@ describe('durable node compatibility release authority', () => {
     };
     try {
       const retained = catalogSchema.parse(
-        JSON.parse(PHASE3_COMPATIBILITY_EXPECTATION.catalogJson) as unknown,
+        JSON.parse(BASELINE_COMPATIBILITY_EXPECTATION.catalogJson) as unknown,
       );
       retained.executors = retained.executors.map((executor) => ({
         ...executor,
@@ -615,7 +615,7 @@ describe('durable node compatibility release authority', () => {
         checkDatabaseReadiness(api, {
           ownerRole: 'pertexo_owner',
           workerRuntimeRole: 'pertexo_worker',
-          expectedCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
+          expectedCompatibilityRelease: BASELINE_COMPATIBILITY_EXPECTATION,
         }),
       ).rejects.toThrow('compatibility release authority');
     } finally {
@@ -649,7 +649,7 @@ describe('durable node compatibility release authority', () => {
         checkDatabaseReadiness(api, {
           ownerRole: 'pertexo_owner',
           workerRuntimeRole: 'pertexo_worker',
-          expectedCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
+          expectedCompatibilityRelease: BASELINE_COMPATIBILITY_EXPECTATION,
         }),
       ).rejects.toThrow('compatibility release authority');
     } finally {
@@ -694,7 +694,7 @@ describe('durable node compatibility release authority', () => {
         checkDatabaseReadiness(api, {
           ownerRole: 'pertexo_owner',
           workerRuntimeRole: 'pertexo_worker',
-          expectedCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
+          expectedCompatibilityRelease: BASELINE_COMPATIBILITY_EXPECTATION,
         }),
       ).rejects.toThrow('compatibility release authority');
     } finally {
@@ -724,7 +724,7 @@ describe('durable node compatibility release authority', () => {
         checkDatabaseReadiness(api, {
           ownerRole: 'pertexo_owner',
           workerRuntimeRole: 'pertexo_worker',
-          expectedCompatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
+          expectedCompatibilityRelease: BASELINE_COMPATIBILITY_EXPECTATION,
         }),
       ).rejects.toThrow('preactivation authority');
     } finally {

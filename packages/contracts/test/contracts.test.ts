@@ -545,7 +545,7 @@ describe('public contracts package', () => {
     expect(workflowGraphSchema.safeParse(graph).success).toBe(false);
   });
 
-  it('defines strict Phase 3 run contracts without exposing engine state', () => {
+  it('defines strict workflow-run contracts without exposing engine state', () => {
     expect(
       workflowRunStartRequestSchema.safeParse({
         input: { customerId: 'customer-42' },

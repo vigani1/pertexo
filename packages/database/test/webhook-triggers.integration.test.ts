@@ -24,7 +24,7 @@ import {
   WebhookTriggerNotFoundError,
 } from '../src/triggers/webhook-triggers.js';
 import { createWorkflowTriggerReconciliationDatabase } from '../src/triggers/workflow-triggers.js';
-import { PHASE3_COMPATIBILITY_EXPECTATION } from './phase3-compatibility-fixture.js';
+import { BASELINE_COMPATIBILITY_EXPECTATION } from './baseline-compatibility-fixture.js';
 import { dropDisconnectedDatabase } from './support/disposable-database.js';
 
 const adminUrl =
@@ -92,7 +92,7 @@ const reconciliation =
   createWorkflowTriggerReconciliationDatabase(workerConfig);
 const webhook = createWebhookTriggerDatabase(
   apiConfig,
-  PHASE3_COMPATIBILITY_EXPECTATION,
+  BASELINE_COMPATIBILITY_EXPECTATION,
 );
 const owner = new Pool({ connectionString: url(migrationBaseUrl), max: 1 });
 const readinessPool = new Pool({ connectionString: url(apiBaseUrl), max: 1 });

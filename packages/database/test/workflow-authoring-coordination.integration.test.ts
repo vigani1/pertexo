@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  PHASE3_COMPATIBILITY_EXPECTATION,
+  BASELINE_COMPATIBILITY_EXPECTATION,
   Pool,
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
@@ -17,7 +17,7 @@ import {
   migrationUrl,
   otherWorkflowId,
   parseDatabaseConfig,
-  phase3EmptyDefinitionCatalog,
+  baselineEmptyDefinitionCatalog,
   queryAsOwner,
   workflowId,
   workspaceId,
@@ -35,20 +35,20 @@ describe('workflow authoring coordination', () => {
       schemaVersion: 2,
       compatibilityReleaseEpoch: 1,
       compatibilityReleaseFingerprint:
-        PHASE3_COMPATIBILITY_EXPECTATION.fingerprint,
+        BASELINE_COMPATIBILITY_EXPECTATION.fingerprint,
     };
     const lockingAuthoring = createWorkflowAuthoringDatabase(
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
       {
-        compatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
-        definitionCatalog: phase3EmptyDefinitionCatalog,
+        compatibilityRelease: BASELINE_COMPATIBILITY_EXPECTATION,
+        definitionCatalog: baselineEmptyDefinitionCatalog,
         executableCompiler: () => ({
           checksum,
           executableSchemaVersion: 2,
           executableJson,
           compatibilityReleaseEpoch: 1,
           compatibilityReleaseFingerprint:
-            PHASE3_COMPATIBILITY_EXPECTATION.fingerprint,
+            BASELINE_COMPATIBILITY_EXPECTATION.fingerprint,
         }),
         testHooks: {
           afterCompatibilityReleaseLock: async () => {
@@ -76,7 +76,7 @@ describe('workflow authoring coordination', () => {
         workspaceId,
         created.workflowId,
         actorId,
-        phase3EmptyDefinitionCatalog,
+        baselineEmptyDefinitionCatalog,
       );
       const publication = lockingAuthoring.publishWorkflow({
         actorId,

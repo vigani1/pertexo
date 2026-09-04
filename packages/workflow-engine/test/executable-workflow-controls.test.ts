@@ -9,7 +9,7 @@ import {
   graph,
 } from './executable-workflow.fixtures.js';
 
-describe('Phase 3 wait and control production operations', () => {
+describe('wait and control production operations', () => {
   it('consumes persisted waits with attempt fencing and resumes due work as engine-owned readiness', async () => {
     const release = composeExecutableCompatibilityRelease(
       nodeRelease({ manualRetryClass: 'idempotent-with-key' }),

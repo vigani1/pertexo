@@ -16,7 +16,7 @@ import {
   graph,
 } from './executable-workflow.fixtures.js';
 
-describe('Phase 3 branching production operations', () => {
+describe('branching production operations', () => {
   it('advances only through the verified V2 graph and rejects malformed observations', async () => {
     const release = composeExecutableCompatibilityRelease(nodeRelease());
     const executable = buildWorkflowExecutableV2({ graph: graph(), release });
