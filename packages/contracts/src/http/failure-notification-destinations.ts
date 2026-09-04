@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT,
   FailureNotificationDestinationConfigSchema,
   type FailureNotificationDestinationConfig,
 } from '@pertexo/workflow-model/failure-notification';
@@ -38,7 +39,11 @@ export const failureNotificationDestinationResponseSchema = z
   })
   .strict();
 export const failureNotificationDestinationListResponseSchema = z
-  .object({ items: z.array(failureNotificationDestinationResponseSchema) })
+  .object({
+    items: z
+      .array(failureNotificationDestinationResponseSchema)
+      .max(FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT),
+  })
   .strict();
 export const workflowFailureNotificationPolicyRequestSchema = z
   .object({ destinationId: z.uuid() })

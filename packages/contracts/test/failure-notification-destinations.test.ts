@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT } from '@pertexo/workflow-model/failure-notification';
 
 import {
   failureNotificationDestinationAppendVersionRequestSchema,
   failureNotificationDestinationCreateRequestSchema,
+  failureNotificationDestinationListResponseSchema,
 } from '../src/http/failure-notification-destinations.js';
 import {
   connectionsClientContract,
@@ -71,5 +73,39 @@ describe('failure notification destination contracts', () => {
     expect(connectionsClientContract.schemas).toHaveProperty(
       'FailureNotificationDestinationResponse',
     );
+  });
+
+  it('matches the database-owned destination page bound', () => {
+    const destination = {
+      id: '11111111-1111-4111-8111-111111111111',
+      workspaceId: '22222222-2222-4222-8222-222222222222',
+      kind: 'slack' as const,
+      status: 'enabled' as const,
+      currentVersion: 1,
+      config: {
+        kind: 'slack' as const,
+        connectionId: '33333333-3333-4333-8333-333333333333',
+        channelId: 'C12345',
+      },
+      createdAt: '2026-09-05T00:00:00.000Z',
+      updatedAt: '2026-09-05T00:00:00.000Z',
+    };
+
+    expect(
+      failureNotificationDestinationListResponseSchema.safeParse({
+        items: Array.from(
+          { length: FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT },
+          () => destination,
+        ),
+      }).success,
+    ).toBe(true);
+    expect(
+      failureNotificationDestinationListResponseSchema.safeParse({
+        items: Array.from(
+          { length: FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT + 1 },
+          () => destination,
+        ),
+      }).success,
+    ).toBe(false);
   });
 });

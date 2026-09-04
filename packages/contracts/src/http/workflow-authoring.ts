@@ -78,7 +78,6 @@ export const workflowSummarySchema = z
     updatedAt: z.iso.datetime(),
   })
   .strict();
-export const workflowResponseSchema = workflowSummarySchema;
 
 export const workflowDraftResponseSchema = z
   .object({
@@ -90,12 +89,10 @@ export const workflowDraftResponseSchema = z
     updatedAt: z.iso.datetime(),
   })
   .strict();
-export const workflowDraftSchema = workflowDraftResponseSchema;
 export const workflowDraftSaveRequestSchema = z
   .object({ graph: workflowGraphSchema })
   .strict();
 export const workflowValidateResponseSchema = workflowValidationReportSchema;
-export const workflowValidationResponseSchema = workflowValidationReportSchema;
 
 export const workflowVersionResponseSchema = z
   .object({
@@ -108,7 +105,6 @@ export const workflowVersionResponseSchema = z
     publishedAt: z.iso.datetime(),
   })
   .strict();
-export const workflowVersionSchema = workflowVersionResponseSchema;
 export const workflowPublishResponseSchema = z
   .object({
     version: workflowVersionResponseSchema,
@@ -121,7 +117,6 @@ export const workflowVersionsResponseSchema = z
     nextCursor: workflowCursorSchema.nullable(),
   })
   .strict();
-export const workflowVersionListResponseSchema = workflowVersionsResponseSchema;
 export const workflowListResponseSchema = z
   .object({
     items: z.array(workflowSummarySchema).max(100),

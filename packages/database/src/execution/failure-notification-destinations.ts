@@ -6,6 +6,7 @@ import { generatePersistedId } from '../platform/persisted-id.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import {
+  FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT,
   FailureNotificationDestinationConfigSchema,
   type FailureNotificationDestinationConfig,
 } from '@pertexo/workflow-model/failure-notification';
@@ -432,8 +433,8 @@ export function createFailureNotificationDestinationDatabase(
              on version.workspace_id=destination.workspace_id
             and version.destination_id=destination.id
             and version.version=destination.current_config_version
-          where destination.workspace_id=$1 order by destination.created_at,destination.id limit 100`,
-          [input.workspaceId],
+          where destination.workspace_id=$1 order by destination.created_at,destination.id limit $2`,
+          [input.workspaceId, FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT],
         );
         return Object.freeze(result.rows.map(map));
       }),

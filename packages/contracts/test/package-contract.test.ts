@@ -40,16 +40,10 @@ describe('contracts package boundary', () => {
       ).not.toMatch(/from ['"]@pertexo\/contracts['"]/u);
     }
 
-    for (const source of [
-      '../src/index.ts',
-      '../src/connections.ts',
-      '../src/http/connections.ts',
-      '../src/errors/api-problem.ts',
-      '../src/http/identity-workspace.ts',
-      '../src/identity-workspace.ts',
-      '../src/workflow-authoring.ts',
-      '../src/http/workflow-authoring.ts',
-    ]) {
+    for (const exported of Object.values(manifest.exports)) {
+      const source = exported.default
+        .replace('./dist/', '../src/')
+        .replace(/\.js$/u, '.ts');
       expect(
         await readFile(new URL(source, import.meta.url), 'utf8'),
       ).not.toMatch(/from ['"]node:/u);
