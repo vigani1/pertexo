@@ -58,6 +58,8 @@ class MemoryS3Client implements S3ClientLike {
   public deleteVersionsErrors:
     | readonly Readonly<{ Code: string; Key: string; VersionId: string }>[]
     | undefined;
+  public deleteVersionsAcknowledgements:
+    readonly Readonly<{ Key?: string; VersionId?: string }>[] | undefined;
   public deletedVersions:
     | readonly Readonly<{
         Key?: string | undefined;
@@ -164,7 +166,11 @@ class MemoryS3Client implements S3ClientLike {
     }
     if (command instanceof DeleteObjectsCommand) {
       this.deletedVersions = command.input.Delete?.Objects;
-      return { Errors: this.deleteVersionsErrors };
+      return {
+        Deleted:
+          this.deleteVersionsAcknowledgements ?? command.input.Delete?.Objects,
+        Errors: this.deleteVersionsErrors,
+      };
     }
     if (command instanceof HeadBucketCommand) {
       if (this.hangReadiness) {
@@ -809,6 +815,37 @@ describe('ArtifactStore', () => {
       store.purgeWorkspacePage({ maxObjects: 1, workspaceId: WORKSPACE_ID }),
     ).rejects.toBeInstanceOf(ArtifactIntegrityError);
   });
+
+  it.each([
+    { acknowledgements: [] },
+    { acknowledgements: [{ Key: 'foreign', VersionId: 'version-1' }] },
+    {
+      acknowledgements: [
+        {
+          Key: `workspaces/${WORKSPACE_ID}/artifacts/${ARTIFACT_ID}`,
+          VersionId: 'version-1',
+        },
+        {
+          Key: `workspaces/${WORKSPACE_ID}/artifacts/${ARTIFACT_ID}`,
+          VersionId: 'version-1',
+        },
+      ],
+    },
+    { acknowledgements: [{ VersionId: 'version-1' }] },
+  ])(
+    'rejects an invalid delete acknowledgement set: %#',
+    async ({ acknowledgements }) => {
+      const { client, store } = createStore();
+      const key = `workspaces/${WORKSPACE_ID}/artifacts/${ARTIFACT_ID}`;
+      client.versionListOutput = {
+        Versions: [{ Key: key, VersionId: 'version-1' }],
+      };
+      client.deleteVersionsAcknowledgements = acknowledgements;
+      await expect(
+        store.purgeWorkspacePage({ maxObjects: 1, workspaceId: WORKSPACE_ID }),
+      ).rejects.toBeInstanceOf(ArtifactIntegrityError);
+    },
+  );
 
   it('bounds readiness and closes the client exactly once', async () => {
     const client = new MemoryS3Client();

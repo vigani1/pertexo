@@ -739,9 +739,27 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
         'Object version deletion reported one or more failures',
       );
     }
+    const acknowledged = deleted.Deleted;
+    if (acknowledged?.length !== objects.length)
+      throw new ArtifactIntegrityError(
+        'Object version deletion acknowledgements were incomplete',
+      );
+    const acknowledgedIdentities = new Set<string>();
+    for (const entry of acknowledged) {
+      if (typeof entry.Key !== 'string' || typeof entry.VersionId !== 'string')
+        throw new ArtifactIntegrityError(
+          'Object version deletion acknowledgement was malformed',
+        );
+      const identity = `${entry.Key}\u0000${entry.VersionId}`;
+      if (!seen.has(identity) || acknowledgedIdentities.has(identity))
+        throw new ArtifactIntegrityError(
+          'Object version deletion acknowledgement did not match the request',
+        );
+      acknowledgedIdentities.add(identity);
+    }
     return Object.freeze({
       completed: false,
-      deletedCount: objects.length,
+      deletedCount: acknowledgedIdentities.size,
     });
   }
 
