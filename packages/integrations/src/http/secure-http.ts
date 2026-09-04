@@ -79,6 +79,27 @@ export const SECURE_HTTP_ERROR_CODE = Object.freeze({
 export type SecureHttpErrorCode =
   (typeof SECURE_HTTP_ERROR_CODE)[keyof typeof SECURE_HTTP_ERROR_CODE];
 
+export type SecureHttpFailureStage =
+  | 'admission'
+  | 'cancellation'
+  | 'dns'
+  | 'pre_dispatch'
+  | 'redirect'
+  | 'response'
+  | 'transport';
+
+export type SecureHttpFailureObservation = Readonly<{
+  classification: 'ambiguous' | 'definite_failure';
+  durationSeconds: number;
+  possiblyDispatched: boolean;
+  reason: SecureHttpErrorCode;
+  stage: SecureHttpFailureStage;
+}>;
+
+export interface SecureHttpObserver {
+  observeFailure(observation: SecureHttpFailureObservation): void;
+}
+
 export class SecureHttpError extends Error {
   public override readonly name = 'SecureHttpError';
 
@@ -167,6 +188,7 @@ export class SecureHttpClient {
   public constructor(
     private readonly resolver: SecureHttpResolver,
     private readonly transport: SecureHttpTransport,
+    private readonly observer?: SecureHttpObserver,
   ) {}
 
   public execute(input: SecureHttpRequest): Promise<SecureHttpResponse> {
@@ -186,11 +208,28 @@ export class SecureHttpClient {
     input: SecureHttpRequest,
     consume: SecureHttpBodyConsumer<Body>,
   ): Promise<SecureHttpResponse<Body>> {
-    const parsed = parseRequest(input);
+    const startedAt = performance.now();
+    let parsed: ReturnType<typeof parseRequest> | undefined;
     try {
+      parsed = parseRequest(input);
       return await this.executeOwnedRequest(parsed, consume);
+    } catch (error: unknown) {
+      if (error instanceof SecureHttpError) {
+        try {
+          this.observer?.observeFailure({
+            classification: error.classification,
+            durationSeconds: (performance.now() - startedAt) / 1_000,
+            possiblyDispatched: error.possiblyDispatched,
+            reason: error.code,
+            stage: failureStage(error.code),
+          });
+        } catch {
+          // Diagnostics must never alter provider request behavior.
+        }
+      }
+      throw error;
     } finally {
-      parsed.body?.fill(0);
+      parsed?.body?.fill(0);
     }
   }
 
@@ -397,6 +436,30 @@ export class SecureHttpClient {
         false,
       );
     return selected;
+  }
+}
+
+function failureStage(code: SecureHttpErrorCode): SecureHttpFailureStage {
+  switch (code) {
+    case SECURE_HTTP_ERROR_CODE.invalidRequest:
+    case SECURE_HTTP_ERROR_CODE.ssrfBlocked:
+      return 'admission';
+    case SECURE_HTTP_ERROR_CODE.canceled:
+    case SECURE_HTTP_ERROR_CODE.timedOut:
+      return 'cancellation';
+    case SECURE_HTTP_ERROR_CODE.dnsFailed:
+      return 'dns';
+    case SECURE_HTTP_ERROR_CODE.connectionFenceFailed:
+    case SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch:
+    case SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed:
+      return 'pre_dispatch';
+    case SECURE_HTTP_ERROR_CODE.redirectRejected:
+      return 'redirect';
+    case SECURE_HTTP_ERROR_CODE.responseEncodingRejected:
+    case SECURE_HTTP_ERROR_CODE.responseTooLarge:
+      return 'response';
+    case SECURE_HTTP_ERROR_CODE.networkFailed:
+      return 'transport';
   }
 }
 

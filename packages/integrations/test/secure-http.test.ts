@@ -8,6 +8,7 @@ import {
   SECURE_HTTP_ERROR_CODE,
   SecureHttpClient,
   type SecureHttpError,
+  type SecureHttpFailureObservation,
   type SecureHttpRequest,
   type SecureHttpResolver,
   type SecureHttpTransport,
@@ -145,6 +146,41 @@ describe('public network address policy', () => {
 });
 
 describe('secure HTTP client', () => {
+  it('emits bounded categorical diagnostics without request data', async () => {
+    const observations: SecureHttpFailureObservation[] = [];
+    const client = new SecureHttpClient(
+      new FakeResolver({
+        'secret-host.example.test': new Error(
+          'resolver exposed secret-token and 192.0.2.9',
+        ),
+      }),
+      new FakeTransport(() => Promise.reject(new Error('must not dispatch'))),
+      { observeFailure: (observation) => observations.push(observation) },
+    );
+
+    await expectSecureFailure(
+      client.execute(
+        request({
+          headers: { authorization: 'Bearer secret-token' },
+          url: 'https://secret-host.example.test/private?token=secret-token',
+        }),
+      ),
+      { code: SECURE_HTTP_ERROR_CODE.dnsFailed, possiblyDispatched: false },
+    );
+
+    expect(observations).toEqual([
+      expect.objectContaining({
+        classification: 'definite_failure',
+        possiblyDispatched: false,
+        reason: 'dns_failed',
+        stage: 'dns',
+      }),
+    ]);
+    expect(JSON.stringify(observations)).not.toContain('secret-token');
+    expect(JSON.stringify(observations)).not.toContain('192.0.2.9');
+    expect(observations[0]?.durationSeconds).toBeGreaterThanOrEqual(0);
+  });
+
   it('commits dispatch evidence before one pinned request and redacts bounded output', async () => {
     const order: string[] = [];
     const resolver = new FakeResolver({
