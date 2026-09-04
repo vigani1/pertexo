@@ -26,6 +26,10 @@ export function createFailureNotificationCompletionStore(
       const result = FailureNotificationDeliveryResultV1Schema.parse(
         raw.result,
       );
+      const safeErrorCode =
+        result.kind === 'delivered' ? undefined : result.safeErrorCode;
+      const providerReference =
+        result.kind === 'delivered' ? result.providerReference : undefined;
       return withTenantScopedClient(pool, { workspaceId }, async (client) => {
         const locked = await client.query<{
           delivery_attempts: number;
@@ -80,7 +84,7 @@ export function createFailureNotificationCompletionStore(
               workspaceId,
               intentId,
               raw.retryDelaySeconds,
-              result.safeErrorCode ?? null,
+              safeErrorCode ?? null,
               deliveryUnresolved,
             ],
           );
@@ -100,9 +104,9 @@ export function createFailureNotificationCompletionStore(
             intentId,
             factType: 'retry_scheduled',
             attemptNumber: raw.attemptNumber,
-            ...(result.safeErrorCode === undefined
+            ...(safeErrorCode === undefined
               ? {}
-              : { safeErrorCode: result.safeErrorCode }),
+              : { safeErrorCode }),
             possiblyDispatched: deliveryUnresolved,
           });
           return 'completed' as const;
@@ -126,9 +130,9 @@ export function createFailureNotificationCompletionStore(
             workspaceId,
             intentId,
             terminalStatus,
-            result.safeErrorCode ?? null,
+            safeErrorCode ?? null,
             deliveryUnresolved,
-            result.providerReference ?? null,
+            providerReference ?? null,
           ],
         );
         await auditFailureNotification(client, {
@@ -141,9 +145,9 @@ export function createFailureNotificationCompletionStore(
                 ? 'outcome_unknown'
                 : 'dead_lettered',
           attemptNumber: raw.attemptNumber,
-          ...(result.safeErrorCode === undefined
+          ...(safeErrorCode === undefined
             ? {}
-            : { safeErrorCode: result.safeErrorCode }),
+            : { safeErrorCode }),
           possiblyDispatched: deliveryUnresolved,
         });
         return 'completed' as const;
