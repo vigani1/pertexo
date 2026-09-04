@@ -5,6 +5,7 @@ import {
   normalizeUrlHostname,
   type ResolvedAddress,
 } from './address-policy.js';
+import { isSerializableHttpHeaderValue } from './header-value.js';
 
 const MAX_URL_BYTES = 2_048;
 const MAX_REQUEST_BODY_BYTES = 1_048_576;
@@ -186,6 +187,17 @@ export class SecureHttpClient {
     consume: SecureHttpBodyConsumer<Body>,
   ): Promise<SecureHttpResponse<Body>> {
     const parsed = parseRequest(input);
+    try {
+      return await this.executeOwnedRequest(parsed, consume);
+    } finally {
+      parsed.body?.fill(0);
+    }
+  }
+
+  private async executeOwnedRequest<Body>(
+    parsed: ReturnType<typeof parseRequest>,
+    consume: SecureHttpBodyConsumer<Body>,
+  ): Promise<SecureHttpResponse<Body>> {
     const timeoutSignal = AbortSignal.timeout(parsed.timeoutMillis);
     const executionSignal =
       parsed.signal === undefined
@@ -468,7 +480,7 @@ function parseHeaders(
       blockedRequestHeaders.has(lower) ||
       value.length < 1 ||
       value.length > 8_192 ||
-      /[\r\n\0]/u.test(value) ||
+      !isSerializableHttpHeaderValue(value) ||
       normalized.has(lower)
     )
       throw new Error('invalid request header');
@@ -569,32 +581,45 @@ function redactAvailable(
   value: Uint8Array,
   patterns: readonly Uint8Array[],
   final: boolean,
+  outputBudget: number,
 ): Readonly<{ emitted: Uint8Array; remaining: Uint8Array }> {
-  if (patterns.length === 0)
+  if (patterns.length === 0) {
+    if (value.byteLength > outputBudget)
+      throw failure(SECURE_HTTP_ERROR_CODE.responseTooLarge, true, false);
     return Object.freeze({
       emitted: new Uint8Array(value),
       remaining: new Uint8Array(),
     });
+  }
   const maximumPatternBytes = patterns[0]?.byteLength ?? 0;
-  const emitted: number[] = [];
+  const emitted = new Uint8Array(
+    Math.min(outputBudget, value.byteLength * REDACTED_BYTES.byteLength),
+  );
+  let emittedLength = 0;
+  const append = (bytes: Uint8Array): void => {
+    if (emittedLength + bytes.byteLength > outputBudget)
+      throw failure(SECURE_HTTP_ERROR_CODE.responseTooLarge, true, false);
+    emitted.set(bytes, emittedLength);
+    emittedLength += bytes.byteLength;
+  };
   let index = 0;
   while (index < value.byteLength) {
     const match = patterns.find((pattern) =>
       matchesBytes(value, pattern, index),
     );
     if (match !== undefined) {
-      emitted.push(...REDACTED_BYTES);
+      append(REDACTED_BYTES);
       index += match.byteLength;
       continue;
     }
     if (!final && value.byteLength - index < maximumPatternBytes) break;
     const byte = value[index];
     if (byte === undefined) break;
-    emitted.push(byte);
+    append(Uint8Array.of(byte));
     index += 1;
   }
   return Object.freeze({
-    emitted: Uint8Array.from(emitted),
+    emitted: emitted.slice(0, emittedLength),
     remaining: value.slice(index),
   });
 }
@@ -603,9 +628,10 @@ function redactAndClear(
   value: Uint8Array,
   patterns: readonly Uint8Array[],
   final: boolean,
+  outputBudget: number,
 ): ReturnType<typeof redactAvailable> {
   try {
-    return redactAvailable(value, patterns, final);
+    return redactAvailable(value, patterns, final, outputBudget);
   } finally {
     value.fill(0);
   }
@@ -644,13 +670,23 @@ async function* boundedRedactedBody(
         chunk.fill(0);
       }
       const candidate = pending;
-      const redacted = redactAndClear(candidate, patterns, false);
+      const redacted = redactAndClear(
+        candidate,
+        patterns,
+        false,
+        limit - emittedBytes,
+      );
       pending = redacted.remaining;
       const output = emit(redacted.emitted);
       if (output !== undefined) yield output;
     }
     const candidate = pending;
-    const redacted = redactAndClear(candidate, patterns, true);
+    const redacted = redactAndClear(
+      candidate,
+      patterns,
+      true,
+      limit - emittedBytes,
+    );
     pending = redacted.remaining;
     const output = emit(redacted.emitted);
     if (output !== undefined) yield output;

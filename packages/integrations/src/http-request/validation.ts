@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { isSerializableHttpHeaderValue } from '../http/header-value.js';
+
 const MAX_URL_BYTES = 2_048;
 const MAX_REQUEST_BODY_BYTES = 1_048_576;
 const MAX_RESPONSE_BYTES = 10_485_760;
@@ -15,7 +17,7 @@ const headerValueSchema = z
   .string()
   .min(1)
   .max(8_192)
-  .refine((value) => !/[\r\n\0]/u.test(value));
+  .refine(isSerializableHttpHeaderValue);
 const blockedConfiguredHeaders = new Set([
   'accept-encoding',
   'authorization',

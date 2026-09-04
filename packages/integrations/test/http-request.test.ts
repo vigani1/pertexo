@@ -156,7 +156,7 @@ function streamingHttpClient(
   return { executeStreaming };
 }
 
-describe('http.request@1 candidate definition', () => {
+describe('http.request@1 definition', () => {
   it('is browser-safe, exact, conservative, and absent from any release', () => {
     expect(HTTP_REQUEST_MANIFEST).toMatchObject({
       definition: { key: 'http.request', version: 1 },
@@ -197,6 +197,26 @@ describe('http.request@1 candidate definition', () => {
       httpRequestInputSchema.safeParse({ body: undefined, unknown: true })
         .success,
     ).toBe(false);
+  });
+
+  it('rejects every forbidden HTTP field-value control byte', () => {
+    const forbidden = [
+      ...Array.from({ length: 32 }, (_, codePoint) => codePoint),
+      0x7f,
+    ].filter((codePoint) => codePoint !== 0x09);
+    for (const codePoint of forbidden) {
+      const value = `left${String.fromCharCode(codePoint)}right`;
+      expect(
+        httpRequestConfigSchema.safeParse(
+          config({ headers: { 'x-test': value } }),
+        ).success,
+      ).toBe(false);
+    }
+    expect(
+      httpRequestConfigSchema.safeParse(
+        config({ headers: { 'x-test': 'left\tright' } }),
+      ).success,
+    ).toBe(true);
   });
 });
 

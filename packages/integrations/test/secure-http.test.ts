@@ -1,4 +1,4 @@
-import { createServer } from 'node:http';
+import { createServer, validateHeaderValue } from 'node:http';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -276,6 +276,86 @@ describe('secure HTTP client', () => {
     expect(resolver.calls).toEqual([]);
     expect(beforeDispatch).not.toHaveBeenCalled();
     expect(transport.requests).toEqual([]);
+  });
+
+  it('admits exactly the control-byte header values Node can serialize', async () => {
+    const invalidCodePoints = [
+      ...Array.from({ length: 32 }, (_, codePoint) => codePoint),
+      0x7f,
+    ].filter((codePoint) => codePoint !== 0x09);
+    const resolver = new FakeResolver({
+      'api.example.test': [{ address: '8.8.8.8', family: 4 }],
+    });
+
+    for (const codePoint of invalidCodePoints) {
+      const value = `left${String.fromCharCode(codePoint)}right`;
+      expect(() => {
+        validateHeaderValue('x-test', value);
+      }).toThrow();
+      await expectSecureFailure(
+        new SecureHttpClient(
+          resolver,
+          new FakeTransport(() =>
+            Promise.reject(new Error('must not dispatch')),
+          ),
+        ).execute(request({ headers: { 'x-test': value } })),
+        {
+          code: SECURE_HTTP_ERROR_CODE.invalidRequest,
+          possiblyDispatched: false,
+        },
+      );
+    }
+
+    expect(() => {
+      validateHeaderValue('x-test', 'left\tright');
+    }).not.toThrow();
+  });
+
+  it('clears the owned request body after success and failure', async () => {
+    const resolver = new FakeResolver({
+      'api.example.test': [{ address: '8.8.8.8', family: 4 }],
+    });
+    const observed: Uint8Array[] = [];
+    const successfulTransport = new FakeTransport((transportRequest) => {
+      if (transportRequest.body !== undefined)
+        observed.push(transportRequest.body);
+      return Promise.resolve(transportResponse(200).response);
+    });
+    await new SecureHttpClient(resolver, successfulTransport).execute(
+      request({ method: 'POST', body: encoder.encode('secret-body') }),
+    );
+    expect(observed[0]?.every((byte) => byte === 0)).toBe(true);
+
+    const failedTransport = new FakeTransport((transportRequest) => {
+      if (transportRequest.body !== undefined)
+        observed.push(transportRequest.body);
+      return Promise.reject(new Error('network failure'));
+    });
+    await expectSecureFailure(
+      new SecureHttpClient(resolver, failedTransport).execute(
+        request({ method: 'POST', body: encoder.encode('secret-body') }),
+      ),
+      { code: SECURE_HTTP_ERROR_CODE.networkFailed, possiblyDispatched: true },
+    );
+    expect(observed[1]?.every((byte) => byte === 0)).toBe(true);
+  });
+
+  it('enforces the output budget while expanding redactions', async () => {
+    const resolver = new FakeResolver({
+      'api.example.test': [{ address: '8.8.8.8', family: 4 }],
+    });
+    const response = transportResponse(200, {}, ['aaaaaaaaaa']);
+    await expectSecureFailure(
+      new SecureHttpClient(
+        resolver,
+        new FakeTransport(() => Promise.resolve(response.response)),
+      ).execute(request({ maxResponseBytes: 10, sensitiveValues: ['a'] })),
+      {
+        code: SECURE_HTTP_ERROR_CODE.responseTooLarge,
+        possiblyDispatched: true,
+      },
+    );
+    expect(response.close).toHaveBeenCalledOnce();
   });
 
   it('rejects blocked literals, private DNS answers, and mixed answer sets', async () => {
