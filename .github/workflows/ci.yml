@@ -95,6 +95,7 @@ env:
   API_IDENTITY_INTEGRATION: 'true'
   API_WEBHOOK_INTEGRATION: 'true'
   REDIS_RATE_LIMIT_INTEGRATION: 'true'
+  QUEUE_INTEGRATION: 'true'
   WORKER_TRANSPORT_INTEGRATION: 'true'
   WORKER_TRIGGER_INTEGRATION: 'true'
 
@@ -335,6 +336,8 @@ jobs:
           pnpm db:migrate
           pnpm --filter @pertexo/artifact-store exec vitest run --config vitest.integration.config.ts \
             --reporter=json --outputFile=../../artifacts/artifact-store-gates.json
+          pnpm --filter @pertexo/queue exec vitest run --config vitest.integration.config.ts \
+            --reporter=json --outputFile=../../artifacts/queue-gates.json
           pnpm --filter @pertexo/database exec vitest run --config vitest.integration.config.ts \
             --reporter=json --outputFile=../../artifacts/database-gates.json
           pnpm --filter @pertexo/worker exec vitest run --config vitest.integration.config.ts \
@@ -349,6 +352,8 @@ jobs:
         run: |
           node infrastructure/validate-vitest-gate-report.mjs \
             artifacts/artifact-store-gates.json 'artifact-store integration gates' 5 3
+          node infrastructure/validate-vitest-gate-report.mjs \
+            artifacts/queue-gates.json 'queue integration gates' 1
           node infrastructure/validate-vitest-gate-report.mjs \
             artifacts/database-gates.json 'database integration gates' 288
           node infrastructure/validate-vitest-gate-report.mjs \
