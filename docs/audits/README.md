@@ -73,7 +73,7 @@ ones, with dependency order allowed to override raw size.
 | `packages/workflow-model` | 10 | 2,475 | 9 | 1,924 | [Audited](packages/workflow-model.md) |
 | `packages/contracts` | 18 | 2,890 | 5 | 836 | [Audited](packages/contracts.md) |
 | `packages/artifact-store` | 10 | 3,214 | 11 | 3,543 | [Audited](packages/artifact-store.md) |
-| `packages/integrations` | 24 | 3,940 | 8 | 2,760 | Not started |
+| `packages/integrations` | 24 | 3,940 | 8 | 2,760 | [Audited](packages/integrations.md) |
 | `apps/worker` | 53 | 7,983 | 71 | 21,249 | Not started |
 | `packages/workflow-engine` | 40 | 8,484 | 22 | 8,451 | Not started |
 | `apps/api` | 121 | 14,993 | 74 | 15,480 | Not started |
