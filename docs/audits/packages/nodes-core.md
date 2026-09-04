@@ -12,7 +12,7 @@
   and CI execution.
 - **Architecture sources:** the authoritative backend plan and ADRs 010, 014,
   and 017 through 021 and 026.
-- **Audit status:** complete for the pinned tree.
+- **Audit status:** granularly certified for the pinned implementation tree.
 - **Implementation status:** three confirmed contract/immutability defects and
   five interface, maintainability, verification, or cleanliness improvements
   remain open.
@@ -38,6 +38,23 @@ accepts states that ADR-019 explicitly says must never reach the executor. The
 repeated manifest/registration boilerplate has already allowed one deep-freeze
 inconsistency, and package-local tests do not directly execute eight of eleven
 node implementations even though node-catalog tests mitigate that gap.
+
+### Granular certification record
+
+The package was recertified under the stricter component-audit contract after
+the initial audit. The reviewer read the complete contents of all 56 tracked
+package files: 50 production files, 2 test files, `package.json`, both
+TypeScript configurations, and the Vitest configuration. This included every
+small per-node barrel as well as every definition, schema, refinement, manifest,
+executor callback, registry branch, fixture, and test case. Browser/server
+exports and direct node-catalog, API, and worker consumers were retraced.
+Automated inventories supported, but did not replace, the content review.
+
+Fresh recertification checks passed: typecheck, all 19 tests, build, and package
+ESLint. No additional finding was discovered. CORE-001 through CORE-008 remain
+the complete known finding set for the pinned implementation. Certification
+describes review coverage, not implementation completion; the confirmed
+contract and immutability defects below remain actionable.
 
 ## Evidence collected
 
