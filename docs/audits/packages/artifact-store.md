@@ -13,9 +13,9 @@
 - **Architecture sources:** the authoritative backend plan, ADRs 013, 015, 028,
   and 030, and the regional-recovery, production-data-policy, release-security,
   and external-platform runbooks.
-- **Audit status:** complete for the pinned tree.
-- **Implementation status:** one high-priority regional-assurance defect, seven
-  medium operational/test/observability or API issues, and three lower-priority
+- **Audit status:** granularly certified for the pinned tree.
+- **Implementation status:** one high-priority regional-assurance defect, eight
+  medium operational/test/observability or API issues, and four lower-priority
   maintainability improvements remain open. Two production assumptions remain
   explicitly unverified and must not be represented as implementation defects
   that local code can close.
@@ -77,6 +77,25 @@ probe.
 | Built root-module cold import probe | about 53 ms and 16.2 MiB heap growth on this host |
 | Source duplication gate | Records the configuration-schema clone between `config.ts` and `control-ledger-config.ts` |
 | Complexity ratchet | Accepts `store.ts` and `control-ledger.ts` as reviewed large-file baselines |
+
+### Granular certification record
+
+This certification is not a hotspot sample. The review read the complete
+contents of every one of the package's 26 tracked files: 10 production files
+(3,214 lines), 11 test/fixture files (3,543 lines), `package.json`, both
+TypeScript configurations, and both Vitest configurations (73 lines). It
+accounted for every exported declaration, class method, internal helper,
+factory, schema, error path, resource-lifecycle path, test, fake, and package
+script. The direct lifecycle-command, recovery, retention, and worker consumer
+seams were retraced after the package reading.
+
+The source tree is byte-for-byte unchanged from the pinned implementation
+commit. Fresh package-local evidence produced 8 passing files and 138 passing
+tests, a passing build and typecheck, a clean direct ESLint run, and V8 coverage
+of 88.38% statements, 82.77% branches, 92.06% functions, and 90.45% lines. The
+existing real-service and CI evidence below remains applicable because the
+implementation did not change. ART-001 through ART-013 are the complete
+findings from this file-level certification, not a top-N selection.
 
 The timing and heap values are development-host diagnostics, not production
 SLOs. The request count is structural: it was recorded through the real
@@ -240,8 +259,11 @@ headers. Tests explicitly prove timeout, caller abort, abandoned downstream,
 upstream error, metadata failure, and checksum corruption. This is strong code.
 
 `put` uses conditional creation, never deletes after an ambiguous failure, and
-verifies with a separate HEAD before success. `validateDirectUpload` prefers a
-full-object provider checksum and otherwise consumes a bounded verified GET.
+verifies with a separate HEAD before success. That verification passes parsed
+metadata rather than the original request, dropping the caller's signal and
+starting a fresh timeout budget after the upload (ART-012).
+`validateDirectUpload` prefers a full-object provider checksum and otherwise
+consumes a bounded verified GET.
 Presigned uploads bind length, media type, conditional create, checksum, and
 every identity metadata field.
 
@@ -279,8 +301,10 @@ attempted count (ART-010).
 
 `ObservedArtifactStore` reports stored-integrity failures without letting
 observer exceptions alter behavior. Stream errors are observed after the method
-returns. Factory ownership is correct: internally constructed clients are
-destroyed; injected clients remain usable unless explicitly wrapped elsewhere.
+returns. `AwsArtifactStore.close` always destroys its client, including an
+injected client. Unlike the ledger and dual-region factories, the single-store
+factory has no ownership option, so an injected shared client is implicitly
+owned (ART-013).
 
 The root facade eagerly loads AWS S3, presigning, ledger, and telemetry modules.
 The measured built import cost is nontrivial, but current runtime consumers load
@@ -491,7 +515,7 @@ measured recovery drills (ART-008).
 | Dual-ledger exact agreement before projection/serve/destruction | Satisfied at the package Interface; consumers reviewed separately |
 | Frankfurt/Ireland artifact-region proof | Not satisfied by artifact readiness (ART-001) and externally unverified (ART-008) |
 | Five-minute object-storage RPO and 24-hour RTO | Architecture supports it; production measurement remains open |
-| Bounded cancellation, failure closure, and no secret/tenant telemetry | Satisfied |
+| Bounded cancellation, failure closure, and no secret/tenant telemetry | Partially satisfied; post-PUT verification drops caller cancellation (ART-012) |
 | Full startup compatibility separated from lightweight recurring health | Not cleanly satisfied for nested ledger operations (ART-002) |
 
 The plan is not contradicted by the package boundary. The implementation goes
@@ -658,6 +682,45 @@ where the code or evidence has not yet fully delivered its later ADR promises.
 - **Verification:** built-artifact import and metric-smoke tests protect the
   selected deployment shape.
 
+### ART-012 — Post-upload verification drops caller cancellation and resets its budget
+
+- **Severity:** P2
+- **Classification:** Confirmed defect
+- **Status:** Open
+- **Evidence:** `AwsArtifactStore.put` uses the request signal for `PutObject`,
+  parses the request into metadata, then calls `head(metadata)`. Zod strips the
+  signal, so HEAD receives only a new internal timeout. A deterministic client
+  probe aborted the caller after PUT and observed a later `TimeoutError` rather
+  than the exact caller cancellation reason.
+- **Impact:** after bytes are accepted, a cancelled request can retain work and
+  resources until the second timeout; total PUT-plus-HEAD wall time can also
+  exceed the configured per-operation budget.
+- **Remediation:** create one operation-scoped signal/deadline for PUT and
+  verification, preserve the caller's exact abort reason, and pass the remaining
+  budget into an internal HEAD helper instead of opening a new full budget.
+- **Verification:** block HEAD after a successful PUT, abort the caller, and
+  require prompt rejection with the exact reason. Retain separate timeout,
+  successful verification, and listener-cleanup assertions.
+
+### ART-013 — Injected single-store client ownership is implicit and inconsistent
+
+- **Severity:** P3
+- **Classification:** Maintainability improvement
+- **Status:** Open
+- **Evidence:** `createArtifactStore` accepts an injected client, but
+  `AwsArtifactStore.close` always destroys it and exposes no `clientOwnership`
+  option. `createControlLedger` and the dual-region facades explicitly model
+  owned versus borrowed resources.
+- **Impact:** a caller can accidentally destroy a shared or wrapped client, and
+  resource conventions differ within one package. Current production consumers
+  construct the dual-region facades, so this is not presently traced to an
+  active production failure.
+- **Remediation:** make injected ownership explicit and use the package's
+  borrowed-by-default convention, while keeping internally created clients
+  owned.
+- **Verification:** prove borrowed, owned, internally created, repeated-close,
+  and close-failure behavior with focused tests.
+
 ## What should remain unchanged
 
 - Keep object storage behind this dedicated server-only Module.
@@ -672,7 +735,8 @@ where the code or evidence has not yet fully delivered its later ADR promises.
 - Keep dual writes synchronous and fail closed on either-region uncertainty.
 - Keep exact-command retry as the only one-sided ledger repair path.
 - Keep telemetry low-cardinality and unable to alter storage behavior.
-- Keep injected-resource ownership explicit.
+- Keep injected-resource ownership explicit, extending that rule to the
+  single-store factory (ART-013).
 - Keep MinIO limitations truthful; do not convert compatibility evidence into an
   AWS or regional claim.
 
@@ -686,11 +750,13 @@ where the code or evidence has not yet fully delivered its later ADR promises.
    weakening failure closure (ART-002).
 4. cover the missing regional/failure matrices and enforce risk coverage
    (ART-005).
-5. bound presigning and restore command/result type precision (ART-006,
-   ART-007).
-6. consolidate only proven private duplication and improve purge acknowledgement
+5. preserve cancellation across post-upload verification and bound presigning
+   (ART-012, ART-006).
+6. restore command/result type precision and make injected-client ownership
+   explicit (ART-007, ART-013).
+7. consolidate only proven private duplication and improve purge acknowledgement
    truth (ART-009, ART-010).
-7. preserve the current deployment contract and watch broad-import/operation
+8. preserve the current deployment contract and watch broad-import/operation
    dispatch assumptions (ART-011).
 
 After remediation, run format, build, typecheck, lint, package unit/coverage,
