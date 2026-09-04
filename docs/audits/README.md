@@ -68,7 +68,7 @@ ones, with dependency order allowed to override raw size.
 | `apps/retention` | 5 | 1,181 | 3 | 558 | Not started |
 | `packages/observability` | 10 | 1,304 | 10 | 1,309 | [Audited](packages/observability.md) |
 | `packages/nodes-core` | 50 | 1,388 | 2 | 478 | [Audited](packages/nodes-core.md) |
-| `packages/node-sdk` | 4 | 1,803 | 2 | 967 | Not started |
+| `packages/node-sdk` | 4 | 1,803 | 2 | 967 | [Audited](packages/node-sdk.md) |
 | `packages/queue` | 10 | 2,081 | 7 | 1,402 | Not started |
 | `packages/workflow-model` | 10 | 2,475 | 9 | 1,924 | Not started |
 | `packages/contracts` | 18 | 2,890 | 5 | 836 | Not started |
