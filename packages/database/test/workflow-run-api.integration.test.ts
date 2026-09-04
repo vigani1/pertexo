@@ -11,7 +11,7 @@ import {
   createWorkflowRunDatabase,
   WorkflowRunNotExecutableError,
 } from '../src/execution/workflow-run-api.js';
-import { PHASE3_COMPATIBILITY_EXPECTATION } from './phase3-compatibility-fixture.js';
+import { BASELINE_COMPATIBILITY_EXPECTATION } from './baseline-compatibility-fixture.js';
 
 const migrationUrl =
   process.env.DATABASE_MIGRATION_URL ??
@@ -28,7 +28,7 @@ const owner = new Pool({ connectionString: migrationUrl, max: 1 });
 const api = new Pool({ connectionString: apiUrl, max: 1 });
 const database = createWorkflowRunDatabase(
   parseDatabaseConfig({ connectionString: apiUrl, max: 4 }),
-  PHASE3_COMPATIBILITY_EXPECTATION,
+  BASELINE_COMPATIBILITY_EXPECTATION,
 );
 const migrationConfig = {
   apiRuntimeRole: 'pertexo_api',
@@ -207,7 +207,7 @@ describe('workflow run API persistence', () => {
     const drifted = createWorkflowRunDatabase(
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
       {
-        ...PHASE3_COMPATIBILITY_EXPECTATION,
+        ...BASELINE_COMPATIBILITY_EXPECTATION,
         fingerprint:
           'node-compat:v1:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
       },

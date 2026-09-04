@@ -10,7 +10,7 @@ import {
   graph,
 } from './executable-workflow.fixtures.js';
 
-describe('Phase 3 attempt outcome production operations', () => {
+describe('attempt outcome production operations', () => {
   it('carries exact pinned side-effect classes into attempt admissions', async () => {
     const release = composeExecutableCompatibilityRelease(
       nodeRelease({

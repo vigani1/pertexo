@@ -10,7 +10,7 @@ import {
   forEachGraph,
 } from './executable-workflow.fixtures.js';
 
-describe('Phase 3 For Each production operations', () => {
+describe('For Each production operations', () => {
   it('schedules a For Each structured body by stable scoped ordinals', async () => {
     const executable = buildWorkflowExecutableV2({
       graph: forEachGraph(),

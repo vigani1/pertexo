@@ -261,11 +261,11 @@ describe.runIf(enabled)('additive compatibility release rollout', () => {
       undefined,
       'http_activation',
     );
-    const deploymentId = `phase3-rollout-${randomUUID()}`;
+    const deploymentId = `compatibility-rollout-${randomUUID()}`;
     const approvalId = randomUUID();
     try {
       await maintenance.prepare({
-        actorId: 'phase3-rollout-integration',
+        actorId: 'compatibility-rollout-integration',
         actorKind: 'deployment',
         expectedPredecessor: currentDescription,
         reason: 'Prepare the real lifecycle-only additive target',
@@ -292,7 +292,7 @@ describe.runIf(enabled)('additive compatibility release rollout', () => {
         target: targetDescription,
       });
       await maintenance.approve({
-        actorId: 'phase3-rollout-integration',
+        actorId: 'compatibility-rollout-integration',
         approvalId,
         deploymentId,
         reason: 'Approve the exact preactivated API and worker cohort',
@@ -374,7 +374,7 @@ describe.runIf(enabled)('additive compatibility release rollout', () => {
       );
       await maintenance.activate({
         activationId: randomUUID(),
-        actorId: 'phase3-rollout-integration',
+        actorId: 'compatibility-rollout-integration',
         actorKind: 'deployment',
         approvalId,
         expectedPredecessor: currentDescription,

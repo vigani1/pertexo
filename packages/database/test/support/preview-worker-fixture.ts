@@ -14,7 +14,7 @@ import {
 } from '../../src/execution/preview-execution.js';
 import { canonicalOutboxPayloadChecksum } from '../../src/execution/outbox.js';
 import { migrateDatabase } from '../../src/migrations.js';
-import { PHASE3_COMPATIBILITY_EXPECTATION } from '../phase3-compatibility-fixture.js';
+import { BASELINE_COMPATIBILITY_EXPECTATION } from '../baseline-compatibility-fixture.js';
 import { databaseSchema } from '../../src/schema.js';
 import {
   parseWorkspaceId,
@@ -169,9 +169,9 @@ function acceptanceInput(
     new Date(Math.min(now + 5 * 60 * 1_000, expiresAt.getTime()));
   return {
     actorUserId,
-    compatibilityReleaseEpoch: PHASE3_COMPATIBILITY_EXPECTATION.epoch,
+    compatibilityReleaseEpoch: BASELINE_COMPATIBILITY_EXPECTATION.epoch,
     compatibilityReleaseFingerprint:
-      PHASE3_COMPATIBILITY_EXPECTATION.fingerprint,
+      BASELINE_COMPATIBILITY_EXPECTATION.fingerprint,
     definitionKey: 'http.request',
     definitionVersion: 1,
     draftFingerprint: 'b'.repeat(64),

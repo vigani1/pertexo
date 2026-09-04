@@ -13,7 +13,7 @@ import {
   graph,
 } from './executable-workflow.fixtures.js';
 
-describe('Phase 3 input resolution production operations', () => {
+describe('input resolution production operations', () => {
   it('requires canonical UUID output locators bound to inline attempt identity', async () => {
     const release = composeExecutableCompatibilityRelease(nodeRelease());
     const executable = buildWorkflowExecutableV2({ graph: graph(), release });

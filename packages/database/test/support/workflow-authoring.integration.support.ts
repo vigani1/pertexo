@@ -17,7 +17,7 @@ import {
 import { CompatibilityReleaseMismatchError } from '../../src/compatibility/compatibility-release.js';
 import { createIdentityWorkspaceDatabase } from '../../src/tenant-access/identity-workspace.js';
 import { migrateDatabase } from '../../src/migrations.js';
-import { PHASE3_COMPATIBILITY_EXPECTATION } from '../phase3-compatibility-fixture.js';
+import { BASELINE_COMPATIBILITY_EXPECTATION } from '../baseline-compatibility-fixture.js';
 import { checkDatabaseReadiness } from '../../src/platform/readiness.js';
 import {
   createWorkflowAuthoringDatabase,
@@ -95,9 +95,9 @@ export const testDefinitionCatalog = Object.freeze({
     Object.freeze({ key: 'test.placeholder', version: 1 }),
   ]),
 });
-export const phase3EmptyDefinitionCatalog = Object.freeze({
+export const baselineEmptyDefinitionCatalog = Object.freeze({
   schemaVersion: 1 as const,
-  releaseFingerprint: PHASE3_COMPATIBILITY_EXPECTATION.fingerprint,
+  releaseFingerprint: BASELINE_COMPATIBILITY_EXPECTATION.fingerprint,
   definitions: Object.freeze([]),
 });
 export const authoring = createWorkflowAuthoringDatabase(
@@ -224,8 +224,8 @@ beforeAll(async () => {
             activation_approval_id = null
       where singleton`,
     [
-      PHASE3_COMPATIBILITY_EXPECTATION.epoch,
-      PHASE3_COMPATIBILITY_EXPECTATION.fingerprint,
+      BASELINE_COMPATIBILITY_EXPECTATION.epoch,
+      BASELINE_COMPATIBILITY_EXPECTATION.fingerprint,
     ],
   );
   await identity.createUser({
@@ -299,7 +299,7 @@ export {
   CONNECTION_AUTH_TYPE,
   CompatibilityReleaseMismatchError,
   EMPTY_DEFINITION_CATALOG_V1,
-  PHASE3_COMPATIBILITY_EXPECTATION,
+  BASELINE_COMPATIBILITY_EXPECTATION,
   Pool,
   WorkflowIdempotencyConflictError,
   WorkflowNotFoundError,

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CONNECTION_AUTH_TYPE,
   CompatibilityReleaseMismatchError,
-  PHASE3_COMPATIBILITY_EXPECTATION,
+  BASELINE_COMPATIBILITY_EXPECTATION,
   actorId,
   apiPool,
   apiUrl,
@@ -17,7 +17,7 @@ import {
   emptyGraph,
   otherWorkspaceId,
   parseDatabaseConfig,
-  phase3EmptyDefinitionCatalog,
+  baselineEmptyDefinitionCatalog,
   queryAsOwner,
   randomUUID,
   testDefinitionCatalog,
@@ -167,18 +167,18 @@ describe('workflow publication projections', () => {
 
   it('atomically persists an injected executable V2 publication projection', async () => {
     const checksum = `wf:v2:sha256:${'a'.repeat(64)}` as const;
-    const executableDefinitionCatalog = phase3EmptyDefinitionCatalog;
+    const executableDefinitionCatalog = baselineEmptyDefinitionCatalog;
     const executableJson = {
       schemaVersion: 2,
       marker: 'compiled-in-api',
       compatibilityReleaseEpoch: 1,
       compatibilityReleaseFingerprint:
-        PHASE3_COMPATIBILITY_EXPECTATION.fingerprint,
+        BASELINE_COMPATIBILITY_EXPECTATION.fingerprint,
     };
     const executableAuthoring = createWorkflowAuthoringDatabase(
       parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
       {
-        compatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
+        compatibilityRelease: BASELINE_COMPATIBILITY_EXPECTATION,
         definitionCatalog: executableDefinitionCatalog,
         executableCompiler: () => ({
           checksum,
@@ -186,7 +186,7 @@ describe('workflow publication projections', () => {
           executableJson,
           compatibilityReleaseEpoch: 1,
           compatibilityReleaseFingerprint:
-            PHASE3_COMPATIBILITY_EXPECTATION.fingerprint,
+            BASELINE_COMPATIBILITY_EXPECTATION.fingerprint,
         }),
       },
     );
@@ -238,7 +238,7 @@ describe('workflow publication projections', () => {
         parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
         {
           compatibilityRelease: {
-            ...PHASE3_COMPATIBILITY_EXPECTATION,
+            ...BASELINE_COMPATIBILITY_EXPECTATION,
             fingerprint:
               'node-compat:v1:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
           },
@@ -254,7 +254,7 @@ describe('workflow publication projections', () => {
             executableJson,
             compatibilityReleaseEpoch: 1,
             compatibilityReleaseFingerprint:
-              PHASE3_COMPATIBILITY_EXPECTATION.fingerprint,
+              BASELINE_COMPATIBILITY_EXPECTATION.fingerprint,
           }),
         },
       );
@@ -277,10 +277,10 @@ describe('workflow publication projections', () => {
       const corruptCompiler = createWorkflowAuthoringDatabase(
         parseDatabaseConfig({ connectionString: apiUrl, max: 2 }),
         {
-          compatibilityRelease: PHASE3_COMPATIBILITY_EXPECTATION,
+          compatibilityRelease: BASELINE_COMPATIBILITY_EXPECTATION,
           definitionCatalog: {
             schemaVersion: 1,
-            releaseFingerprint: PHASE3_COMPATIBILITY_EXPECTATION.fingerprint,
+            releaseFingerprint: BASELINE_COMPATIBILITY_EXPECTATION.fingerprint,
             definitions: [],
           },
           executableCompiler: () => ({
@@ -293,7 +293,7 @@ describe('workflow publication projections', () => {
             },
             compatibilityReleaseEpoch: 1,
             compatibilityReleaseFingerprint:
-              PHASE3_COMPATIBILITY_EXPECTATION.fingerprint,
+              BASELINE_COMPATIBILITY_EXPECTATION.fingerprint,
           }),
         },
       );
