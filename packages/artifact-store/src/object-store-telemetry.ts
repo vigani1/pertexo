@@ -36,6 +36,9 @@ export type ObjectStoreErrorClass =
   | 'unknown';
 export type ObjectStoreSafetyCheck =
   | 'artifact_integrity'
+  | 'artifact_replication'
+  | 'artifact_read_consistency'
+  | 'artifact_purge_consistency'
   | 'control_ledger_integrity'
   | 'control_ledger_readiness'
   | 'region_isolation';
@@ -51,6 +54,17 @@ export interface ObjectStoreRequestObservation {
 
 export interface ObjectStoreSafetyObservation {
   readonly check: ObjectStoreSafetyCheck;
+  readonly failedRegionRole?: 'primary' | 'recovery' | 'both' | 'none';
+  readonly operation?:
+    | 'append'
+    | 'read'
+    | 'readiness'
+    | 'reconcile'
+    | 'delete'
+    | 'purge'
+    | 'replicate'
+    | 'verify';
+  readonly outcome?: 'diverged' | 'partial' | 'unavailable';
   readonly regionRole: ObjectStoreRegionRole;
   readonly surface: ObjectStoreSurface;
 }
@@ -98,6 +112,9 @@ export function createOpenTelemetryObjectStoreObserver(
     observeSafetyViolation(observation: ObjectStoreSafetyObservation): void {
       safetyViolationCount.add(1, {
         check: observation.check,
+        failed_region_role: observation.failedRegionRole ?? 'none',
+        operation: observation.operation ?? 'unknown',
+        outcome: observation.outcome ?? 'unknown',
         region_role: observation.regionRole,
         surface: observation.surface,
       });

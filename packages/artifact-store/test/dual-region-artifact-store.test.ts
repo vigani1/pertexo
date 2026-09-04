@@ -20,6 +20,7 @@ import type {
   WorkspaceObjectPurgePage,
   WorkspaceObjectPurgeStore,
 } from '../src/store.js';
+import type { ObjectStoreObserver } from '../src/object-store-telemetry.js';
 
 const metadata = Object.freeze({
   artifactId: '018f47a0-7b5c-7e2d-8c3f-12ad4e8b9c02',
@@ -120,7 +121,7 @@ class FakeArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
   }
 }
 
-function fixture() {
+function fixture(observer?: ObjectStoreObserver) {
   const primary = new FakeArtifactStore('artifacts-primary', 'eu-central-1');
   const recovery = new FakeArtifactStore('artifacts-recovery', 'eu-west-1');
   return {
@@ -128,6 +129,7 @@ function fixture() {
     recovery,
     store: createDualRegionArtifactStore(primary, recovery, {
       artifactOwnership: 'borrowed',
+      ...(observer === undefined ? {} : { observer }),
     }),
   };
 }
@@ -184,6 +186,33 @@ describe('dual-region artifact store', () => {
         workspaceId: metadata.workspaceId,
       }),
     ).rejects.toBeInstanceOf(ArtifactIntegrityError);
+  });
+
+  it('records one bounded coordinator signal for a purge disagreement', async () => {
+    const observations: unknown[] = [];
+    const { primary, recovery, store } = fixture({
+      observeRequest: () => undefined,
+      observeSafetyViolation: (observation) => observations.push(observation),
+    });
+    primary.purgeResult = { completed: false, deletedCount: 2 };
+    recovery.purgeResult = { completed: false, deletedCount: 1 };
+
+    await expect(
+      store.purgeWorkspacePage({
+        maxObjects: 10,
+        workspaceId: metadata.workspaceId,
+      }),
+    ).rejects.toBeInstanceOf(ArtifactIntegrityError);
+    expect(observations).toEqual([
+      {
+        check: 'artifact_purge_consistency',
+        failedRegionRole: 'both',
+        operation: 'purge',
+        outcome: 'diverged',
+        regionRole: 'primary',
+        surface: 'artifact',
+      },
+    ]);
   });
 
   it('requires explicit ownership for injected stores', () => {
