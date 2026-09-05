@@ -528,7 +528,9 @@ describe('ArtifactStore', () => {
         presignPutObject: () => {
           calls += 1;
           return calls === 1
-            ? Promise.reject('provider-failed')
+            ? // Deliberately model an untrusted provider rejecting a primitive.
+              // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+              Promise.reject('provider-failed')
             : new Promise<string>(() => undefined);
         },
       },
