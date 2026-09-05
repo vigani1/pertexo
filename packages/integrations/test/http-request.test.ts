@@ -533,6 +533,17 @@ describe('http.request@1 server executor', () => {
         input: { body: { encoding: 'base64', value: 'not-base64' } },
       }),
       invocation(state.value, {
+        input: { body: { encoding: 'base64', value: 'Zh==' } },
+      }),
+      invocation(state.value, {
+        input: {
+          body: {
+            encoding: 'base64',
+            value: Buffer.alloc(1_048_577).toString('base64'),
+          },
+        },
+      }),
+      invocation(state.value, {
         config: config({ headers: { 'X-Tenant': 'configured' } }),
         runtime: runtime({
           connections: {

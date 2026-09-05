@@ -221,6 +221,7 @@ describe('secure HTTP client', () => {
       200,
       {
         'content-type': 'application/json; charset=utf-8',
+        'content-language': ['en', 'de'],
         etag: 'Bearer provider-secret',
         'set-cookie': 'session=provider-secret',
       },
@@ -262,6 +263,7 @@ describe('secure HTTP client', () => {
       redirectCount: 0,
       headers: {
         'content-type': 'application/json; charset=utf-8',
+        'content-language': 'en, de',
         etag: 'Bearer [Redacted]',
       },
     });
