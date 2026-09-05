@@ -2931,27 +2931,27 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:7534955d406bbb1a34cadfd51d1cebb634635658bacf69b08a9796779d110112",
+          "sourceFingerprint": "sha256:8f9b30740966156b76a5d6fb3759275345c950a1f2d67fef39519af9b5c5b05d",
           "classification": "generated",
           "justification": "V8 branch 15 in packages/artifact-store/src/store.ts has no source coordinate; explicit adjacent decisions are separately covered by the package tests."
         },
         {
-          "branchId": "28",
+          "branchId": "29",
           "locationIndex": 1,
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:2cb2a6c12b58463739eecb59080b502220c0affe9e6c13cc1da25e58a583aa77",
+          "sourceFingerprint": "sha256:ddc010aaf88e89d50094b68bd6b050acdab4f82a88eabd198ff8296fed7b7d24",
           "classification": "generated",
           "justification": "V8 branch 28 in packages/artifact-store/src/store.ts has no source coordinate; explicit adjacent decisions are separately covered by the package tests."
         },
         {
-          "branchId": "50",
+          "branchId": "51",
           "locationIndex": 1,
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:2cb2a6c12b58463739eecb59080b502220c0affe9e6c13cc1da25e58a583aa77",
+          "sourceFingerprint": "sha256:ddc010aaf88e89d50094b68bd6b050acdab4f82a88eabd198ff8296fed7b7d24",
           "classification": "generated",
           "justification": "V8 branch 50 in packages/artifact-store/src/store.ts has no source coordinate; explicit adjacent decisions are separately covered by the package tests."
         },
@@ -3006,7 +3006,7 @@
           "justification": "AbortSignal allows non-Error reasons, so the transfer boundary substitutes a stable generic error instead of leaking arbitrary values."
         },
         {
-          "branchId": "24",
+          "branchId": "25",
           "locationIndex": 0,
           "branchType": "cond-expr",
           "line": 520,
@@ -3016,7 +3016,7 @@
           "justification": "AWS reports eu-west-1 as EU for legacy location APIs; the readiness adapter normalizes that provider-specific value."
         },
         {
-          "branchId": "30",
+          "branchId": "31",
           "locationIndex": 0,
           "branchType": "if",
           "line": 586,
@@ -3026,7 +3026,7 @@
           "justification": "Head/Get metadata is accepted only when schema, exact user keys, identity, byte limit, ContentLength, and ContentType all agree."
         },
         {
-          "branchId": "34",
+          "branchId": "35",
           "locationIndex": 0,
           "branchType": "if",
           "line": 676,
@@ -3036,7 +3036,7 @@
           "justification": "A successful PutObject followed by a missing strong HEAD cannot prove durable availability and fails closed."
         },
         {
-          "branchId": "50",
+          "branchId": "51",
           "locationIndex": 0,
           "branchType": "if",
           "line": 796,
@@ -3046,7 +3046,7 @@
           "justification": "Direct-upload validation maps only exact provider not-found evidence to ArtifactNotFoundError; other failures escape unchanged."
         },
         {
-          "branchId": "51",
+          "branchId": "52",
           "locationIndex": 0,
           "branchType": "if",
           "line": 806,
@@ -3056,7 +3056,7 @@
           "justification": "A directly uploaded object must match every expected immutable metadata field before it can be accepted."
         },
         {
-          "branchId": "53",
+          "branchId": "54",
           "locationIndex": 0,
           "branchType": "if",
           "line": 813,
@@ -3066,7 +3066,7 @@
           "justification": "A provider checksum is accepted only as FULL_OBJECT and only when it equals the expected SHA-256 encoding."
         },
         {
-          "branchId": "61",
+          "branchId": "62",
           "locationIndex": 1,
           "branchType": "binary-expr",
           "line": 950,
@@ -3076,7 +3076,7 @@
           "justification": "The default path creates the real S3 client; package tests inject the typed client port and deployed-provider behavior remains ART-008 evidence."
         },
         {
-          "branchId": "64",
+          "branchId": "65",
           "locationIndex": 1,
           "branchType": "binary-expr",
           "line": 970,

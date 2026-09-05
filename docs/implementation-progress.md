@@ -5110,8 +5110,8 @@ status changed.
       unbundled Node consumers and actual AWS command constructors are tested;
       no speculative public subpath or generic telemetry layer was added.
 - [x] Add all artifact-store source to the package coverage gate and root
-      source-hashed risk report. Fresh 8-file / 176-test package coverage is
-      90.89% statements (859/945), 84.18% branches (612/727), 95.10% functions
+      source-hashed risk report. Fresh 8-file / 177-test package coverage is
+      90.89% statements (859/945), 84.22% branches (614/729), 95.10% functions
       (175/184), and 92.30% lines (816/884).
 - [x] Finish ART-005 with public telemetry and post-close regressions plus exact
       source-hashed review of all 115 residual provider-corruption, regional
@@ -5123,7 +5123,7 @@ status changed.
       the exact release artifact. Local MinIO/S3Mock compatibility is not a
       substitute.
 
-Implementation commits include `3289414`, `b45d960`, `dcc96b1`, `e208935`,
+Implementation commits include `3289414`, `639b508`, `b45d960`, `dcc96b1`, `e208935`,
 `19ae523`, `0f1c8a9`, `87827a8`, `8c85107`, `f522666`, `10b9561`, `db66903`,
 `2fe46fd`, `b15801e`, and `f2a813c`. No phase status changed.
 

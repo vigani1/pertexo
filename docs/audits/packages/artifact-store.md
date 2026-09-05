@@ -23,11 +23,11 @@
 
 | Finding | Final status | Current evidence |
 | --- | --- | --- |
-| ART-001 | Fixed in code; live geography remains ART-008 | `3289414`; readiness uses the provider-reported bucket region and rejects configured drift before dual-region comparison. |
+| ART-001 | Fixed in code; live geography remains ART-008 | `3289414`, `639b508`; readiness uses the provider-reported bucket region, normalizes AWS and S3-compatible root-region representations, and rejects configured drift before dual-region comparison. |
 | ART-002 | Fixed locally; production latency evidence remains external | `b45d960`; bounded readiness attestations expire/invalidate, append request counts drop from repeated full proofs, and reconciliation GET concurrency is capped at eight while preserving chain order. |
 | ART-003 | Fixed | `dcc96b1`; both dual coordinators emit one bounded safety observation for unavailable, partial, or divergent regional outcomes. |
 | ART-004 | Fixed | `e208935`; owned close always attempts both stores, aggregates failures, and remains idempotent. |
-| ART-005 | Fixed; continuous gate | `19ae523`, `0f1c8a9`, `2fe46fd`, `b15801e`, `f2a813c`; all package source is thresholded, meaningful telemetry and post-close gaps are tested, and all residual branches have exact reviewed evidence. |
+| ART-005 | Fixed; continuous gate | `19ae523`, `0f1c8a9`, `2fe46fd`, `b15801e`, `f2a813c`, `639b508`; all package source is thresholded, meaningful telemetry, root-region compatibility, and post-close gaps are tested, and all residual branches have exact reviewed evidence. |
 | ART-006 | Fixed | `87827a8`, `8c85107`; presigning shares the caller/timeout signal, ignores late settlement, preserves exact cancellation, and recovers on the next call. |
 | ART-007 | Fixed | `f522666`; one command/output map drives typed sends, with compile-time mismatch tests and runtime provider validation retained. |
 | ART-008 | External production evidence required | The three AWS-only tests, Frankfurt/Ireland identity, version lifecycle, one-sided outage, restore, and measured RPO/RTO drills still require deployed resources and credentials. |
@@ -558,6 +558,11 @@ where the code or evidence has not yet fully delivered its later ADR promises.
   provider facts. Keep S3Mock evidence labeled as compatibility, not geography.
 - **Verification:** a same-region/different-string fixture must fail; live AWS
   Frankfurt/Ireland buckets must pass with captured non-secret identity.
+- **Implementation evidence:** provider location is read and compared rather
+  than copied from configuration. AWS's empty and `EU` legacy values and the
+  documented S3Mock literal `null` root-region response are normalized; an
+  explicit foreign region still fails. The public unit regression and the
+  five enabled S3/MinIO integration assertions pass (`3289414`, `639b508`).
 
 ### ART-002 — Nested ledger operations repeatedly execute full readiness proofs
 
@@ -616,8 +621,8 @@ where the code or evidence has not yet fully delivered its later ADR promises.
   unreachable/provider-only branches; prioritize regional matrices.
 - **Verification:** CI fails on a removed regional/cancellation/cleanup assertion
   and reports exact denominators.
-- **Implementation evidence:** the fresh 8-file / 176-test run records 90.89%
-  statements (859/945), 84.18% branches (612/727), 95.10% functions (175/184),
+- **Implementation evidence:** the fresh 8-file / 177-test run records 90.89%
+  statements (859/945), 84.22% branches (614/729), 95.10% functions (175/184),
   and 92.30% lines (816/884). Public regressions now cover unknown/abort/timeout
   telemetry and reject operations after regional coordinator close. All 115
   residual branches have exact source fingerprints and narrow rationales for
