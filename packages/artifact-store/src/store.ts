@@ -514,7 +514,7 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
     );
     const reportedRegion = location.LocationConstraint ?? '';
     const actualRegion =
-      reportedRegion === ''
+      reportedRegion === '' || reportedRegion === 'null'
         ? 'us-east-1'
         : reportedRegion === 'EU'
           ? 'eu-west-1'

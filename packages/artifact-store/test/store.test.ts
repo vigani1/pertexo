@@ -1002,6 +1002,15 @@ describe('ArtifactStore', () => {
     });
   });
 
+  it('normalizes the S3-compatible root-region location response', async () => {
+    const { client, store } = createStore();
+    client.locationConstraint = 'null';
+    await expect(store.checkReadiness()).resolves.toEqual({
+      bucket: 'pertexo-artifacts',
+      region: 'us-east-1',
+    });
+  });
+
   it('rejects a configured region that disagrees with provider location', async () => {
     const { client, store } = createStore();
     client.locationConstraint = 'eu-west-1';
