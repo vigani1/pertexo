@@ -23,9 +23,27 @@
   010, 012, 016, and 017; the complexity-retention register; and the
   phase-terminology compatibility ledger.
 - **Audit status:** granularly certified for the pinned tree.
-- **Implementation status:** one high-priority cross-package capacity defect,
-  seven medium performance, boundary, coverage, and assurance issues, and four
-  low-priority API/locality/compatibility issues remain open.
+- **Implementation status (2026-09-05):** ten findings are implemented and
+  verified, WFE-004 remains partially open while newly selected uncovered
+  branches receive public-behavior tests or narrow source-hashed review, and
+  WFE-012 is intentionally retained with an exact breaking-release milestone.
+
+## Remediation reconciliation
+
+| Finding | Final status | Current evidence |
+| --- | --- | --- |
+| WFE-001 | Fixed | `8406d1e`; persisted facts use the shared bounded fact-window contract instead of generic executable JSON limits. |
+| WFE-002 | Fixed | `5a7ed49`; each structured body is projected once and the traversal-count regression proves linear visitation. |
+| WFE-003 | Fixed | `182f754`, `ce1c809`; completed outputs and persisted outcomes are normalized/indexed once, executable nodes are flattened once, and invocation lookup reuses one prepared map. |
+| WFE-004 | Partially fixed; continuous gate | `667554a`; all 24 consequence-selected files and per-file floors are enforced. Fresh coverage is 90.31% statements (1,838/2,035), 85.13% branches (1,775/2,085), 93.33% functions (336/360), and 91.47% lines (1,760/1,924). The source-hashed review backlog remains actionable. |
+| WFE-005 | Fixed | `182f754`; current checkpoint construction/parsing enforce database-compatible engine IDs, UUID workflow IDs, canonical timestamps, and byte bounds. |
+| WFE-006 | Fixed | `182f754`; checkpoint and executable public boundaries perform one hostile-object traversal before trusted parsing/normalization. |
+| WFE-007 | Fixed | `5a7ed49`; scope equality/prefix identity has one engine owner and allocation-free structural helpers. |
+| WFE-008 | Fixed; continuous model check | `132c8e1`; all 64 forward-edge subsets of a bounded four-node DAG prove deterministic plans, contiguous event sequences, once-only admission, and terminal conservation. |
+| WFE-009 | Fixed | `5a7ed49`; duplicate loop/join declarations compare the complete durable scope and topology identity. |
+| WFE-010 | Fixed | `3adf2e1`; the production facade is narrowed and the exact public surface is snapshot-tested. |
+| WFE-011 | Fixed | `68485d8`; exact engine primitives have one purpose-named owner while trust-boundary-specific checks remain separate. |
+| WFE-012 | Intentionally retained compatibility | The compatibility ledger now requires removal at the first deliberately breaking engine interface release after a zero-consumer scan and replacement release note; durable serialized identities remain unchanged. |
 
 The workflow engine is one of the strongest architectural Modules in the
 repository. It is a deterministic, mostly pure domain boundary between durable

@@ -5056,6 +5056,30 @@ Implementation commits: `4e95575`, `fd42afe`, `c8127bf`, `44cd628`,
 Implementation commits: `078cd53`, `bfb4862`, `7da5a4c`, and `5652981`. No
 phase status changed.
 
+### Granular package-audit remediation — workflow-engine
+
+- [x] Implement WFE-001 through WFE-003 and WFE-005 through WFE-011. Fact
+      windows now align with persistence; structured projections, observation
+      parsing, executable flattening, and invocation lookup avoid repeated
+      work; checkpoint/executable boundaries align and scan once; scope and
+      declaration identity have one owner; the production facade is narrow;
+      and a bounded exhaustive DAG model proves transition invariants.
+- [x] Define the WFE-012 compatibility exit precisely. The deprecated source
+      alias is removed only in an explicitly breaking engine interface release
+      after a zero-consumer scan and replacement release note; durable stored
+      identities and applied migrations are not renamed.
+- [x] Expand the enforced workflow-engine coverage cohort to all 24
+      consequence-selected files with per-file floors. Fresh coverage is
+      90.31% statements (1,838/2,035), 85.13% branches (1,775/2,085), 93.33%
+      functions (336/360), and 91.47% lines (1,760/1,924).
+- [ ] Finish WFE-004 by exercising every testable public branch and recording
+      narrow source-hashed evidence for only genuinely defensive, unreachable,
+      generated, or real-integration branches. The expanded cohort exposed a
+      real review backlog; threshold passage alone is not completion.
+
+Implementation commits: `8406d1e`, `5a7ed49`, `3adf2e1`, `68485d8`,
+`667554a`, `132c8e1`, `182f754`, and `ce1c809`. No phase status changed.
+
 ## Update protocol
 
 When a checkpoint changes status:
