@@ -38,7 +38,7 @@ const executionPlanSchema = z
   })
   .strict();
 
-export type NonTransactionalMigration = z.infer<
+type NonTransactionalMigration = z.infer<
   typeof onlineMigrationSchema | typeof resumableMigrationSchema
 >;
 
