@@ -382,6 +382,21 @@ describe('public contracts package', () => {
         headers: { authorization: 'left\tright' },
       }).success,
     ).toBe(true);
+    expect(
+      httpHeadersCredentialSchema.parse({
+        schemaVersion: 1,
+        type: 'http_headers',
+        headers: { 'x-latin1': 'é' },
+      }).headers,
+    ).toEqual({ 'x-latin1': 'é' });
+    expect(
+      resendApiKeyCredentialSchema.safeParse({
+        schemaVersion: 1,
+        type: 'resend_api_key',
+        apiKey: 're_credential',
+        fromEmail: 'invalid:mailbox@example.com',
+      }).success,
+    ).toBe(false);
   });
 
   it('documents connection and failure-notification destination operations', () => {

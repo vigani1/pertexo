@@ -317,6 +317,7 @@ export function createRiskCoverageReport(
 async function main() {
   const cohorts = [
     'artifact-store',
+    'contracts',
     'workflow-engine',
     'database',
     'worker',

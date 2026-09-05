@@ -19,6 +19,22 @@
   },
   "reviewGroups": [
     {
+      "cohort": "contracts",
+      "file": "packages/contracts/src/http/webhooks.ts",
+      "reviews": [
+        {
+          "branchId": "0",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:ce10879d6e92d477c6c588ea42050612a360093979016026bae777707f6ccf3b",
+          "classification": "generated",
+          "justification": "V8 reports an implicit module-initialization fallthrough without a source location; every explicit webhook credential-disclosure decision is exercised through the public schema."
+        }
+      ]
+    },
+    {
       "cohort": "workflow-engine",
       "file": "packages/workflow-engine/src/advance-workflow.ts",
       "reviews": [

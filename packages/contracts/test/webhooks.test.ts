@@ -25,6 +25,24 @@ describe('webhook public contracts', () => {
         },
       }),
     ).toThrow();
+    expect(() =>
+      webhookManagementCommandResponseSchema.parse({
+        replayed: true,
+        signingSecret: 'b'.repeat(43),
+        trigger: {
+          id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+          workflowId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+          workflowVersionId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+          nodeId: 'trigger',
+          kind: 'webhook',
+          status: 'active',
+          healthStatus: 'healthy',
+          lastErrorCode: null,
+          endpointReady: true,
+          reconciledAt: null,
+        },
+      }),
+    ).toThrow();
   });
 
   it('keeps ingress success strict', () => {
