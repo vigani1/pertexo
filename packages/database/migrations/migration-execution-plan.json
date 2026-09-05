@@ -1,0 +1,5 @@
+{
+  "schemaVersion": 1,
+  "transactionalThrough": "0075_workspace_purge_step_release.sql",
+  "migrations": {}
+}
