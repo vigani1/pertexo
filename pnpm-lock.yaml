@@ -295,6 +295,9 @@ importers:
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
+      '@pertexo/nodes-core':
+        specifier: workspace:*
+        version: link:../nodes-core
       '@pertexo/workflow-model':
         specifier: workspace:*
         version: link:../workflow-model
