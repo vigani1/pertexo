@@ -16,6 +16,13 @@
       "packages/workflow-engine/src/executable-foundation.ts": [
         "duplicates"
       ]
+    },
+    "workspaces": {
+      "packages/workflow-model": {
+        "entry": [
+          "src/expression-worker-runtime.ts"
+        ]
+      }
     }
   },
   "scripts": {

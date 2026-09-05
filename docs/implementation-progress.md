@@ -5158,6 +5158,12 @@ Implementation commits: `b4f2b22`, `078cd53`, `47b7fa6`, `1e8ec80`,
 `9969ff7`, `1153d3f`, `19ae523`, `6c49c7e`, `325fd88`, `dc4dea1`, and
 `59a1dca`. No phase status changed.
 
+Clean-checkout CI additionally proved that Knip could not infer the private
+workflow-model expression worker from its source/emitted runtime URL switch.
+That private worker entry is now declared explicitly alongside Knip's inferred
+public package exports, so dependency ownership is checked identically before
+and after a local build rather than depending on ignored `dist` output.
+
 ### Granular package-audit remediation — integrations
 
 - [x] Implement INT-001 through INT-005, INT-007, INT-008, INT-011,

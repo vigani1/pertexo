@@ -49,7 +49,7 @@ reuse merely to satisfy the word “pool.”
 | WM-005 | Fixed | `078cd53` and `bfb4862`; arrays require own indexed data descriptors and reject sparse, inherited, accessor, symbol, and extra-key input. |
 | WM-006 | Fixed | `078cd53`; mapping depends on the minimal `ExpressionEvaluator` port and tests use a type-safe structural fake. |
 | WM-007 | Fixed | `078cd53`; startup has an independent bounded supervisor timer, termination, typed failure, and recovery tests. |
-| WM-008 | Fixed | `078cd53`; the checked `expression-worker-runtime.ts` entry is compiled, linted, and exercised through the emitted/runtime URL. |
+| WM-008 | Fixed | `078cd53`; the checked `expression-worker-runtime.ts` entry is compiled, linted, and exercised through the emitted/runtime URL. Because its worker URL is selected dynamically for source versus emitted execution, the private runtime is also declared explicitly to Knip so a clean checkout validates the same ownership as a built tree. |
 | WM-009 | Fixed | `bfb4862`; delivery results are a strict kind-discriminated state machine with contradictory combinations rejected. |
 | WM-010 | Fixed; continuous gate | `bfb4862` and `7da5a4c`; direct canonical depth and override inputs are bounded and package coverage is enforced. Fresh coverage: 86.73% statements (778/897), 78.99% branches (519/657), 94.49% functions (103/109), and 89.98% lines (746/829). |
 | WM-011 | Fixed with intentionally retained cohesive complexity | `078cd53` extracted the typed worker owner; `5652981` extracted invocation identity and replaced wildcard root exports with a snapshot-tested explicit facade. The remaining graph validation and evaluator supervisor code stays colocated because their sequencing is review-critical. |
