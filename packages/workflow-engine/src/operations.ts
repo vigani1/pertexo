@@ -56,6 +56,10 @@ import type {
   IterationScopePart,
   WorkflowTransitionPlan,
 } from './types.js';
+import {
+  isCoreMergeDefinition,
+  isTriggerSourceDefinition,
+} from './core-definition-identities.js';
 
 export type {
   AttemptFailureObservation,
@@ -136,10 +140,7 @@ function assertCheckpointMatchesExecutable(
   const nodesById = new Map(allNodes.map((node) => [node.id, node]));
   for (const join of checkpoint.joins) {
     const merge = nodesById.get(join.joinId);
-    if (
-      merge?.definition.key !== 'core.merge' ||
-      merge.definition.version !== 1
-    )
+    if (merge === undefined || !isCoreMergeDefinition(merge.definition))
       operationError(
         'workflow_identity_invalid',
         'checkpoint join does not belong to a Merge node',
@@ -497,12 +498,6 @@ function isAbortError(error: unknown): boolean {
   );
 }
 
-const TRIGGER_SOURCE_IDENTITIES = new Set([
-  'core.manual@1',
-  'core.schedule@1',
-  'core.webhook@1',
-]);
-
 async function resolveMappedNodeInput(
   node: Pick<WorkflowExecutableNodeV2, 'definition' | 'inputMappings'>,
   runInput: JsonValue,
@@ -512,12 +507,7 @@ async function resolveMappedNodeInput(
   expressionEvaluator?: ExpressionEvaluator,
   structuredInputs?: Readonly<Record<string, JsonValue>>,
 ): Promise<JsonValue> {
-  if (
-    TRIGGER_SOURCE_IDENTITIES.has(
-      `${node.definition.key}@${String(node.definition.version)}`,
-    )
-  )
-    return runInput;
+  if (isTriggerSourceDefinition(node.definition)) return runInput;
   const mapped: Record<string, JsonValue> = {};
   for (const key of Object.keys(node.inputMappings).sort()) {
     assertNotAborted(signal);
@@ -626,7 +616,7 @@ export async function executeNodeAttempt(
   const { node, runInput, completedOutputs, directUpstream, structuredInputs } =
     prepareNodeAttemptInput(input);
   const resolvedInput = await resolveMappedNodeInput(
-    node.definition.key === 'core.merge' && node.definition.version === 1
+    isCoreMergeDefinition(node.definition)
       ? { ...node, inputMappings: {} }
       : node,
     runInput,
@@ -637,7 +627,7 @@ export async function executeNodeAttempt(
     structuredInputs,
   );
   let executionInput = resolvedInput;
-  if (node.definition.key === 'core.merge' && node.definition.version === 1) {
+  if (isCoreMergeDefinition(node.definition)) {
     if (input.coordinatorInput === undefined)
       operationError('attempt_invalid', 'settled Merge input is missing');
     try {

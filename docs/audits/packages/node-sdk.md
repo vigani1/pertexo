@@ -24,7 +24,7 @@
 | SDK-001 | Open P1 defect | **Fixed** | `server.ts`, registry tests | Synchronous `unused -> in_flight -> committed/failed` transition permits one marker only. Tests cover eight simultaneous calls, sequential duplicates, rejection, and executor failure in flight; `7371664`, `436eaa3`. |
 | SDK-002 | Open P1 defect | **Fixed** | release canonical copy, server JSON boundary, hostile-key tests | Own root/nested `__proto__`, `constructor`, and `prototype` keys remain enumerable data with ordinary prototypes and stable release round trips; `7371664`. |
 | SDK-003 | Open contract defect | **Fixed** | JSON boundary and parity tests | Dense-array key checks now reject sparse, accessor, symbol, and extra enumerable properties instead of truncating them; `7371664`. |
-| SDK-004 | Open design gap | **Fixed under retained-compatibility policy** | `release.ts`, `server.ts`, schema tests | Registry errors now state that projection equality is being checked. `generateSchemaDocument` accepts bounded, immutable `x-pertexo-runtime-only-semantics` evidence for new or versioned contracts. Existing fingerprints remain unchanged; current runtime refinements are inventoried below and remain enforced by Zod at publication/execution; `d40b583`, `4fe3f8e`. |
+| SDK-004 | Open design gap | **Fixed under retained-compatibility policy** | `release.ts`, `server.ts`, nodes-core V3 manifests, schema/catalog tests | Projection equality ignores only the documented runtime-semantics annotation while retaining structural equality. Schedule, Parallel, and Merge V3 publish the missing refinement evidence; all V1/V2 fingerprints remain unchanged and V3 successors are pinned. | `d40b583`, `4fe3f8e`, `156f18f` |
 | SDK-005 | Open type-safety improvement | **Resolved by deletion/explicit boundary** | `server.ts`, three provider executors | Removed unused `TypedExecutorRegistration`, phantom `__types`, `NodeExecutionHandler`, and double-parsing helper after a repository-wide zero-consumer search. Heterogeneous registry parsing remains authoritative; provider adapters intentionally re-parse because they are also isolated callable trust boundaries; `d6277f2`, `3d2838f`. |
 | SDK-006 | Open locality improvement | **Fixed** | `compatibility-canonical.ts`, `executor-contracts.ts`, `executor-errors.ts`, `identity.ts`, `json-boundary.ts`, facades | The 900/961-line pair is now owner modules plus 707-line release and 520-line registry facades. Identity primitives have one browser-safe owner; export paths are unchanged. Package, catalog, core, workspace type, Knip, and duplication gates pass; `8b919d9`, `63ac0f7`, `4d26978`, `6b20ffd`. |
 | SDK-007 | Open continuous-control gap | **Fixed; continuous safeguard** | package/root scripts, coverage config, adversarial tests | Root coverage executes the package. Current result: 88.78% statements, 77.57% branches, 97.39% functions, 90.03% lines; SHA-256 vectors cover UTF-8, padding boundaries, and long input; `19ae523`, `436eaa3`. |
@@ -675,7 +675,8 @@ versions and preserve all supported historical releases.
 
 - **Severity:** P2.
 - **Classification:** confirmed contract/design gap.
-- **Status:** fixed under the retained-compatibility projection policy (`d40b583`, `4fe3f8e`).
+- **Status:** fixed under the retained-compatibility projection policy
+  (`d40b583`, `4fe3f8e`, `156f18f`).
 - **Evidence:** `release.ts:283-288` uses `z.toJSONSchema`; custom refinements
   disappear. `server.ts:642-655` compares the manifest with the same generated
   projection. A refined string rejected `denied` at runtime while its document

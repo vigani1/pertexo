@@ -123,17 +123,20 @@ describe('workflow executable V2 identity', () => {
     ).toThrow(expect.objectContaining({ code: 'executable_invalid' }));
   });
 
-  it('accepts direct Parallel branches into their paired Merge inputs', () => {
-    const release = composeExecutableCompatibilityRelease(
-      nodeRelease({ parallel: true, merge: true }),
-    );
-    expect(() =>
-      buildWorkflowExecutableV2({
-        graph: directPairedParallelGraph(),
-        release,
-      }),
-    ).not.toThrow();
-  });
+  it.each([1, 2, 3] as const)(
+    'accepts direct Parallel V%s branches into paired Merge inputs',
+    (structuredVersion) => {
+      const release = composeExecutableCompatibilityRelease(
+        nodeRelease({ parallel: true, merge: true, structuredVersion }),
+      );
+      expect(() =>
+        buildWorkflowExecutableV2({
+          graph: directPairedParallelGraph(structuredVersion),
+          release,
+        }),
+      ).not.toThrow();
+    },
+  );
 
   it('describes the exact durable compatibility authority for a deployment artifact', () => {
     const release = composeExecutableCompatibilityRelease(nodeRelease());

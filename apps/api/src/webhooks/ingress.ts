@@ -24,11 +24,11 @@ import {
   createWebhookIngressTelemetry,
   type WebhookIngressTelemetry,
 } from './telemetry.js';
+import { withRequestOperationSignal } from '../platform/http/index.js';
 
 const MAX_BODY = 256 * 1024;
 const JSON_MEDIA_TYPE = /^application\/json(?:\s*;\s*charset=utf-8)?$/iu;
 const IDEMPOTENCY_KEY = /^[\x21-\x2b\x2d-\x7e]{1,128}$/u;
-const ENCRYPTION_TIMEOUT_MS = 30_000;
 
 export type WebhookIngressDependencies = Readonly<{
   database: WebhookTriggerDatabase;
@@ -79,11 +79,22 @@ export function registerWebhookIngress(
       { bodyLimit: MAX_BODY + 1 },
       (request, reply) =>
         telemetry.trace(singleHeader(request, 'traceparent'), () =>
-          acceptWebhook(request, reply, dependencies, telemetry),
+          acceptWebhookRequest(request, reply, dependencies, telemetry),
         ),
     );
     done();
   });
+}
+
+async function acceptWebhookRequest(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  dependencies: WebhookIngressDependencies,
+  telemetry: WebhookIngressTelemetry,
+): Promise<void> {
+  return withRequestOperationSignal(request, (signal) =>
+    acceptWebhook(request, reply, dependencies, telemetry, signal),
+  );
 }
 
 async function acceptWebhook(
@@ -91,17 +102,8 @@ async function acceptWebhook(
   reply: FastifyReply,
   dependencies: WebhookIngressDependencies,
   telemetry: WebhookIngressTelemetry,
+  encryptionSignal: AbortSignal,
 ): Promise<void> {
-  const disconnected = new AbortController();
-  const onAborted = (): void => {
-    disconnected.abort(new DOMException('Request aborted', 'AbortError'));
-  };
-  request.raw.once('aborted', onAborted);
-  if (request.raw.destroyed) onAborted();
-  const encryptionSignal = AbortSignal.any([
-    disconnected.signal,
-    AbortSignal.timeout(ENCRYPTION_TIMEOUT_MS),
-  ]);
   const requestId =
     safeRequestId(request.headers['x-request-id']) ?? randomUUID();
   const body = request.body;
@@ -247,6 +249,7 @@ async function acceptWebhook(
         await authenticationFailed(reply, requestId, telemetry);
         return;
       }
+      encryptionSignal.throwIfAborted();
       const result = await dependencies.database.acceptVerifiedDelivery({
         verification,
         verifiedSecretVersionId,
@@ -308,7 +311,6 @@ async function acceptWebhook(
       throw error;
     }
   } finally {
-    request.raw.off('aborted', onAborted);
     current?.fill(0);
     previous?.fill(0);
   }

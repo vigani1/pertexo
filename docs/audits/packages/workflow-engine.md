@@ -6,9 +6,10 @@
 - **Audited tree:** `8481ebf86f4b36ff70687f86a2bb7933a00d65b8`
 - **Production scope:** all 40 source files and all 8,484 physical source
   lines.
-- **Test scope:** all 22 test/support files and all 8,451 physical test lines,
-  direct API/worker/database consumers, worker/database integration coverage,
-  root/package checks, CI, the implementation plan, and applicable ADRs.
+- **Test scope:** all 23 test/support files, including the seeded generative
+  state-machine model, direct API/worker/database consumers, worker/database
+  integration coverage, root/package checks, CI, the implementation plan, and
+  applicable ADRs.
 - **Tooling scope:** `package.json`, both TypeScript configurations, the
   ordinary Vitest configuration, and the selected-source coverage
   configuration (5 files and 104 physical lines).
@@ -34,11 +35,11 @@
 | WFE-001 | Fixed | `8406d1e`; persisted facts use the shared bounded fact-window contract instead of generic executable JSON limits. |
 | WFE-002 | Fixed | `5a7ed49`; each structured body is projected once and the traversal-count regression proves linear visitation. |
 | WFE-003 | Fixed | `182f754`, `ce1c809`, `f8c3655`; completed outputs and persisted outcomes are normalized/indexed once, executable nodes are flattened once, invocation lookup reuses one prepared map, and failure/output preparation have purpose-named owners. |
-| WFE-004 | Fixed; continuous gate | `667554a`, `5a71c1c`; all consequence-selected files and per-file floors are enforced. Fresh coverage is 90.56% statements (1,844/2,036), 85.32% branches (1,779/2,085), 93.62% functions (338/361), and 91.74% lines (1,766/1,925). Public compatibility-history boundary tests were added, and all 225 residual workflow-engine branches have exact source-hashed defensive, unreachable, or generated reviews. |
+| WFE-004 | Fixed; continuous gate | `667554a`, `5a71c1c`, `3bd3ecc`; all consequence-selected files and per-file floors are enforced. Fresh coverage is 90.71% statements (1,846/2,035), 85.45% branches (1,774/2,076), 93.62% functions (338/361), and 91.78% lines (1,765/1,923). Public compatibility-history boundary tests were added, and all 302 residual workflow-engine branches have exact source-hashed defensive, unreachable, or generated reviews. |
 | WFE-005 | Fixed | `182f754`; current checkpoint construction/parsing enforce database-compatible engine IDs, UUID workflow IDs, canonical timestamps, and byte bounds. |
 | WFE-006 | Fixed | `182f754`; checkpoint and executable public boundaries perform one hostile-object traversal before trusted parsing/normalization. |
 | WFE-007 | Fixed | `5a7ed49`; scope equality/prefix identity has one engine owner and allocation-free structural helpers. |
-| WFE-008 | Fixed; continuous model check | `132c8e1`; all 64 forward-edge subsets of a bounded four-node DAG prove deterministic plans, contiguous event sequences, once-only admission, and terminal conservation. |
+| WFE-008 | Fixed; continuous model check | `132c8e1`, `1f0359e`, `3bd3ecc`; the exhaustive 64-DAG corpus is supplemented by 2,048 seeded, shrinkable cases over six-node DAGs, invalid/replayed observations, cancellation, terminal replay, structured scope identity, retry bounds, and fail-closed generated Parallel projection checks. Existing public Parallel/Merge and For Each suites retain branch/loop lifecycle coverage. |
 | WFE-009 | Fixed | `5a7ed49`; duplicate loop/join declarations compare the complete durable scope and topology identity. |
 | WFE-010 | Fixed | `3adf2e1`; the production facade is narrowed and the exact public surface is snapshot-tested. |
 | WFE-011 | Fixed | `68485d8`; exact engine primitives have one purpose-named owner while trust-boundary-specific checks remain separate. |
@@ -58,20 +59,22 @@ The recent split from two thousand-line source owners into 40 purpose-named
 files materially improved navigation. Most files now correspond to a grammar,
 decision family, or transition phase. The remaining long functions are often
 atomic parsers or state-machine stages whose order is correctness-sensitive.
-They should not be divided merely to satisfy line counts. The appropriate next
-work is to remove repeated traversals, index repeated lookups, centralize scope
-identity, align external capacity contracts, and extend assurance around the
-whole transition surface.
+They should not be divided merely to satisfy line counts. The remediations
+below removed repeated traversals, indexed repeated lookups, centralized scope
+identity, aligned external capacity contracts, and extended assurance around
+the transition surface.
 
-The most serious defect is not visible in the package's 226 passing tests. The
-database deliberately accepts up to 10,000 persisted facts, with each event
+The original audit's most serious defect was not visible in the package's 226
+passing tests. The database deliberately accepts up to 10,000 persisted facts, with each event
 bounded independently. `parsePersistedObservations` first feeds the entire
 array through the generic one-MiB/10,000-member executable JSON normalizer. A
 runtime probe of 6,000 valid-shaped `node.progress` facts—well within the
 database row limit—was rejected as `observation_invalid` after exceeding the
 generic member limit. Roughly 1,500 seven-field progress facts already exceed
 10,000 members. A legal run backlog can therefore load successfully from the
-database and then fail permanently at the engine boundary.
+database and then fail permanently at the engine boundary. WFE-001 resolved
+this with the shared bounded fact-window contract and exact-limit integration
+evidence.
 
 The stated coverage number also needs precise interpretation. CI enforces
 91.02% branch coverage over a selected 13-file cohort. Full-source execution is
@@ -95,9 +98,9 @@ capacity and timestamp probes; and a nested structured-workflow timing probe.
 | Package build and typecheck | Passed in the repository pre-push gate |
 | Repository lint, complexity, duplication, and dependency checks | Passed |
 | Enforced selected-source coverage | 94.43% statements, 91.02% branches, 93.58% functions, 94.91% lines |
-| Full `src/**/*.ts` coverage | 90.56% statements, 85.32% branches, 93.62% functions, 91.74% lines |
-| Root risk report | 504 reviewed and 0 unreviewed uncovered branches repository-wide |
-| Workflow-engine risk cohort | All 26 consequence-selected files are included; 225 residual branches have exact source fingerprints and branch-specific defensive, unreachable, or generated evidence |
+| Full `src/**/*.ts` coverage | 90.71% statements, 85.45% branches, 93.62% functions, 91.78% lines |
+| Root risk report | 501 reviewed and 0 unreviewed uncovered branches repository-wide |
+| Workflow-engine risk cohort | All 26 consequence-selected files are included; 302 residual branches have exact source fingerprints and branch-specific defensive, unreachable, or generated evidence |
 | Persisted-fact capacity probe | 6,000 valid-shaped progress facts, 1,186,897 serialized bytes, rejected as `observation_invalid` for member overflow |
 | Database contract comparison | Database accepts up to 10,000 persisted facts and 4,096 canonical bytes per fact |
 | Checkpoint timestamp probe | `parseCheckpoint` accepted `resumeAt: "0"`; persistence requires ISO datetime |
@@ -758,8 +761,8 @@ The tests are useful: they target state transitions, persisted truth,
 idempotency, malformed inputs, and recovery behavior rather than checking only
 constructors or snapshots. Database/worker integration suites also execute the
 engine with PostgreSQL, queues, redelivery, process death, retries, branching,
-and For Each cancellation. The main missing technique is generative/model-based
-sequence testing.
+and For Each cancellation. WFE-008 added seeded, shrinkable generative/model-
+based sequence testing while retaining those public scenario suites.
 
 ### Coverage interpretation
 
@@ -817,10 +820,10 @@ production image, and exercises engine behavior indirectly in service-backed
 database/worker jobs. The local pre-push hook runs static/unit/coverage gates;
 `prepush:full` additionally runs service integration.
 
-This is good automation. It does not currently protect the omitted full-source
-coverage, fact-capacity compatibility, nested scheduler complexity, or
-generative invariants. “CI passed” therefore means the declared gates passed,
-not that every engine branch or maximum contract was tested.
+This automation now protects consequence-selected source coverage,
+fact-capacity compatibility, nested scheduler traversal, and seeded generative
+invariants. “CI passed” still means the declared gates passed, not that every
+possible engine state or production workload was observed.
 
 ## Plan and ADR compliance
 
@@ -840,15 +843,10 @@ The implementation strongly follows the blueprint:
 - replay/redelivery does not duplicate logical attempts or events; and
 - no speculative queue-per-node, provider framework, or microservice exists.
 
-The package is not contradicted by the plan. The plan was correct to require
-versioned deterministic behavior and explicit side-effect semantics. The
-remaining gaps are implementation/control details:
-
-- database/engine fact capacities are not one contract;
-- full transition/compatibility risk coverage is narrower than the engine's
-  actual consequence surface;
-- no model-based invariant suite explores combinations beyond fixtures; and
-- repeated projection/scanning/stringification adds avoidable runtime work.
+The package is not contradicted by the plan. Its versioned deterministic
+behavior and explicit side-effect semantics are now reinforced by shared fact
+capacity, consequence-selected coverage, seeded model checks, and single-pass
+projection/admission paths.
 
 ## Findings
 
@@ -871,7 +869,7 @@ remaining gaps are implementation/control details:
 - **Verification:** real database/worker integration at exact limit and one
   over for count, aggregate bytes, and members; prove forward progress across
   pages and exact cursor/event sequencing.
-- **Status:** open.
+- **Status:** fixed (`8406d1e`).
 
 ### WFE-002 — Nested scheduler projection recomputes each body twice per ancestor
 
@@ -890,7 +888,7 @@ remaining gaps are implementation/control details:
   time.
 - **Verification:** invocation-count instrumentation proves every graph visited
   once; depth/width benchmarks scale linearly.
-- **Status:** open.
+- **Status:** fixed (`5a7ed49`).
 
 ### WFE-003 — Coordinator advancement repeatedly scans and normalizes the same data
 
@@ -908,7 +906,7 @@ remaining gaps are implementation/control details:
   to derivation stages.
 - **Verification:** characterization tests remain byte-identical; maximum-size
   benchmarks demonstrate bounded near-linear scaling.
-- **Status:** open.
+- **Status:** fixed (`182f754`, `ce1c809`, `f8c3655`).
 
 ### WFE-004 — The coverage score excludes central engine decisions
 
@@ -932,10 +930,10 @@ remaining gaps are implementation/control details:
   original checkpoint/operation cohort. The original 13-file cohort retains
   its stronger aggregate thresholds, each newly admitted decision owner has a
   file-specific branch floor, and the expanded cohort has a separate aggregate
-  ratchet. Fresh coverage is 90.56% statements (1,844/2,036), 85.32% branches
-  (1,779/2,085), 93.62% functions (338/361), and 91.74% lines (1,766/1,925).
+  ratchet. Fresh coverage is 90.71% statements (1,846/2,035), 85.45% branches
+  (1,774/2,076), 93.62% functions (338/361), and 91.78% lines (1,765/1,923).
   Compatibility-history admission gained public boundary tests. Every one of
-  the remaining 225 workflow-engine branches now carries an exact source hash
+  the remaining 302 workflow-engine branches now carry an exact source hash
   and branch-specific defensive, unreachable, or generated justification; the
   repository report rejects semantic drift and records zero unreviewed sites.
 
@@ -956,7 +954,7 @@ remaining gaps are implementation/control details:
   explicitly.
 - **Verification:** a shared exact/one-over corpus runs through engine and
   database parsers with identical acceptance for current schemas.
-- **Status:** open.
+- **Status:** fixed (`182f754`).
 
 ### WFE-006 — Checkpoint and executable boundaries repeat full hostile-input scans
 
@@ -974,7 +972,7 @@ remaining gaps are implementation/control details:
   allocation and one final semantic parse.
 - **Verification:** instrument scanners at V1/V2/executable exact limits and
   assert one admission traversal while all hostile-object tests remain green.
-- **Status:** open.
+- **Status:** fixed (`182f754`).
 
 ### WFE-007 — Structured scope equality is duplicated through JSON serialization
 
@@ -991,7 +989,7 @@ remaining gaps are implementation/control details:
   indexes. Do not export it as a repository-generic utility.
 - **Verification:** property tests for equality, inequality, prefix, delimiter,
   Unicode, and nested ordinals; all transition fixtures stay byte-identical.
-- **Status:** open.
+- **Status:** fixed (`5a7ed49`).
 
 ### WFE-008 — Deterministic state-machine invariants lack generative testing
 
@@ -1007,7 +1005,15 @@ remaining gaps are implementation/control details:
   invariants listed above.
 - **Verification:** seeded reproducibility in PR CI and a larger scheduled seed
   budget; mutation canaries demonstrate the properties detect policy changes.
-- **Status:** open.
+- **Status:** fixed as a continuous seeded model check (`132c8e1`, `1f0359e`).
+- **Implemented evidence (2026-09-05):** CI runs an exhaustive four-node DAG
+  corpus plus deterministic `fast-check` properties with pinned seeds and
+  shrinking. The properties exercise 512 larger legal DAGs and terminal
+  replays, 256 duplicate/invalid observation cases, 256 cancellation and
+  non-resurrection cases, 512 branch/loop scope-identity cases, and 512 retry
+  combinations. Existing public executable suites cover complete
+  Parallel/Merge and For Each branch/loop lifecycles, and mutation canaries
+  continue to prove high-consequence policy sensitivity.
 
 ### WFE-009 — Duplicate declaration equality omits scope and topology
 
@@ -1025,7 +1031,7 @@ remaining gaps are implementation/control details:
   using canonical scope/output helpers.
 - **Verification:** public behavior tests mutate one field at a time and require
   typed conflict errors with unchanged state.
-- **Status:** open.
+- **Status:** fixed (`5a7ed49`).
 
 ### WFE-010 — The production export surface includes unused shallow primitives
 
@@ -1043,7 +1049,7 @@ remaining gaps are implementation/control details:
   or package-internal files where appropriate.
 - **Verification:** package export contract plus repository import scan; API and
   worker build without deep/internal imports.
-- **Status:** open.
+- **Status:** fixed (`3adf2e1`).
 
 ### WFE-011 — Small duplicated primitives reduce ownership clarity
 
@@ -1059,7 +1065,7 @@ remaining gaps are implementation/control details:
   engine. Preserve separate helpers where error code or trust boundary differs.
 - **Verification:** deletion test: one implementation remains for each exact
   semantic rule and no generic “utils” dumping ground is introduced.
-- **Status:** open.
+- **Status:** fixed (`68485d8`).
 
 ### WFE-012 — Phase 3 public compatibility has no removal milestone
 
@@ -1105,13 +1111,13 @@ remaining gaps are implementation/control details:
    WFE-003, and WFE-007 with byte-identical characterization tests.
 4. Align checkpoint boundaries for WFE-005 and remove redundant scans for
    WFE-006 without weakening hostile-input defenses.
-5. Add WFE-008 model-based invariants and maximum-contract performance tests.
+5. Preserve the WFE-008 model-based invariants and maximum-contract
+   performance tests as continuous safeguards.
 6. Tighten duplicate declaration comparison for WFE-009.
 7. Reduce public/duplicate surface under WFE-010 and WFE-011.
 8. Retire WFE-012 only at its documented breaking compatibility milestone.
 
-Completion means current-schema engine/database acceptance is aligned, maximum
-fact windows advance, consequence-selected coverage is enforced, generated
-state sequences preserve invariants, and performance work is measured. The
-existing 226 passing tests are strong evidence, but not sufficient evidence for
-those open contracts.
+Current-schema engine/database acceptance is aligned, maximum fact windows
+advance, consequence-selected coverage is enforced, generated state sequences
+preserve invariants, and performance work is measured. WFE-012 remains an
+intentional compatibility retainer with a documented removal milestone.

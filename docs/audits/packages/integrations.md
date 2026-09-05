@@ -680,12 +680,15 @@ conflict between the plan and modern code quality.
   aggregate operation deadline.
 - **Verification:** API and worker integration tests with a KMS fake that blocks
   until aborted; assert no late state transition and bounded completion.
-- **Status:** Fixed by `51bed2c`.
+- **Status:** Fixed by `51bed2c`; disconnect-race correction `b077c5a`.
 - **Implementation evidence:** API request lifecycles and worker attempts now
   propagate their bounded `AbortSignal` through connection and webhook
   encryption, and `createBoundedKmsClient` applies explicit attempt, connect,
   request, and socket budgets. Blocking-KMS regressions prove cancellation and
-  late-plaintext zeroization.
+  late-plaintext zeroization. The follow-up correction centralizes webhook
+  ingress on `withRequestOperationSignal`, observes both request abort and TCP
+  socket close after body consumption, checks the signal again after KMS, and
+  proves with a real Fastify HTTP disconnect that persistence is not reached.
 
 ### INT-002 — A dispatch marker can commit after a definite pre-dispatch timeout
 
@@ -800,9 +803,9 @@ conflict between the plan and modern code quality.
   and `65f516f`; future review remains a continuous gate.
 - **Implementation evidence:** package coverage is thresholded and now feeds
   exact test-health and source-fingerprinted branch records into the root risk
-  report. The current 196-test run records 94.30% statements (1,044/1,107),
-  91.06% branches (642/705), 92.82% functions (181/195), and 94.98% lines
-  (1,004/1,057). Public tests cover provider response matrices, credential and
+  report. The current 196-test run records 94.25% statements (1,050/1,114),
+  90.89% branches (639/703), 92.85% functions (182/196), and 94.92% lines
+  (1,010/1,064). Public tests cover provider response matrices, credential and
   configuration admission, retry/ambiguity decisions, dispatch-fence errors,
   encoded body limits, SSRF/DNS policy, literal-address dispatch, bounded
   transport behavior, and every diagnostic failure stage. The 63 residual

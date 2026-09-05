@@ -40,7 +40,7 @@ centralized merely to satisfy the detector.
 | 24–25 | 49/32 | API bootstrap ↔ connection HTTP stack | Shared setup; moved API configuration, readiness, and workflow-runtime construction to `apps/api/test/support/api-platform.fixture.ts`. |
 
 The current exact scan reports 6 occurrences/267 aggregate duplicated lines
-(0.29%) across 362 files/93,514 lines. Their pair identities, fragment hashes,
+(0.28%) across the current test corpus. Their pair identities, fragment hashes,
 individual line ceilings, classifications, and narrow reasons are enforced by
 `infrastructure/test-duplication-baseline.json` through
 `pnpm duplication:check`. The source-side baseline is reviewed in the same

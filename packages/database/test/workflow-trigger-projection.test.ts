@@ -6,9 +6,10 @@ const node = (
   id: string,
   key: string,
   config: unknown,
+  version = 1,
 ): Record<string, unknown> => ({
   id,
-  definition: { key, version: 1 },
+  definition: { key, version },
   position: { x: 0, y: 0 },
   configVersion: 1,
   config,
@@ -56,6 +57,57 @@ describe('workflow trigger projection', () => {
       },
     ]);
   });
+
+  it.each([2, 3] as const)(
+    'projects strict Schedule V%s definitions for reconciliation',
+    (version) => {
+      const projected = workflowTriggerProjection({
+        schemaVersion: 1,
+        settings: {},
+        nodes: [
+          node(
+            `schedule-v${String(version)}`,
+            'core.schedule',
+            {
+              kind: 'cron',
+              expression: '0 9 * * 1',
+              timezone: 'Europe/Zurich',
+              misfirePolicy: 'skip',
+            },
+            version,
+          ),
+        ],
+        edges: [],
+      });
+
+      expect(projected).toEqual([
+        expect.objectContaining({
+          nodeId: `schedule-v${String(version)}`,
+          kind: 'schedule',
+        }),
+      ]);
+      expect(() =>
+        workflowTriggerProjection({
+          schemaVersion: 1,
+          settings: {},
+          nodes: [
+            node(
+              `schedule-v${String(version)}`,
+              'core.schedule',
+              {
+                kind: 'cron',
+                expression: '0 9 * * 1',
+                timezone: 'Etc/GMT+1',
+                misfirePolicy: 'skip',
+              },
+              version,
+            ),
+          ],
+          edges: [],
+        }),
+      ).toThrow();
+    },
+  );
 
   it('rejects trigger config outside the published contracts', () => {
     expect(() =>

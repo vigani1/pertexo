@@ -18,6 +18,10 @@ import {
   nodePortKey,
   type GraphValidationIndex,
 } from './executable-graph-validation-index.js';
+import {
+  isCoreMergeDefinition,
+  isCoreParallelDefinition,
+} from './core-definition-identities.js';
 import { executableNodes } from './executable-graph.js';
 import { parseBoundary } from './executable-boundary.js';
 import {
@@ -170,9 +174,9 @@ export function assertGraphPorts(
     const sourceNode = index.nodesById.get(edge.source.nodeId);
     if (
       sourceNode !== undefined &&
-      (sourceNode.definition.key === 'core.switch' ||
-        sourceNode.definition.key === 'core.parallel') &&
-      sourceNode.definition.version === 1 &&
+      ((sourceNode.definition.key === 'core.switch' &&
+        sourceNode.definition.version === 1) ||
+        isCoreParallelDefinition(sourceNode.definition)) &&
       !configuredStructuredOutputPorts(sourceNode).includes(edge.source.port)
     )
       fail('workflow edge source port is not configured');
@@ -204,8 +208,7 @@ function configuredBranchPorts(
 function configuredParallelPorts(
   node: WorkflowGraph['nodes'][number],
 ): readonly string[] {
-  if (node.definition.key !== 'core.parallel' || node.definition.version !== 1)
-    return [];
+  if (!isCoreParallelDefinition(node.definition)) return [];
   const branches = Reflect.get(node.config, 'branches') as unknown;
   if (!Array.isArray(branches)) return [];
   return branches.flatMap((item) => {
@@ -242,9 +245,8 @@ export function assertBranchesDoNotReconverge(
     return reached;
   };
 
-  for (const merge of graph.nodes.filter(
-    ({ definition }) =>
-      definition.key === 'core.merge' && definition.version === 1,
+  for (const merge of graph.nodes.filter(({ definition }) =>
+    isCoreMergeDefinition(definition),
   )) {
     const parallelNodeId = Reflect.get(
       merge.config,
@@ -255,8 +257,8 @@ export function assertBranchesDoNotReconverge(
         ? index.nodesById.get(parallelNodeId)
         : undefined;
     if (
-      parallel?.definition.key !== 'core.parallel' ||
-      parallel.definition.version !== 1
+      !isCoreParallelDefinition(parallel?.definition) ||
+      parallel?.definition.version !== merge.definition.version
     )
       fail('Merge must reference a pinned Parallel node');
   }
@@ -265,7 +267,7 @@ export function assertBranchesDoNotReconverge(
     const ports = configuredStructuredOutputPorts(node);
     if (ports.length === 0) continue;
     if (
-      node.definition.key === 'core.parallel' &&
+      isCoreParallelDefinition(node.definition) &&
       ports.some(
         (port) =>
           (index.outgoingByNodePort.get(nodePortKey(node.id, port))?.length ??
@@ -273,11 +275,10 @@ export function assertBranchesDoNotReconverge(
       )
     )
       fail('every Parallel branch must have an outgoing edge');
-    const pairedMerges =
-      node.definition.key === 'core.parallel'
-        ? (index.mergesByParallelNode.get(node.id) ?? [])
-        : [];
-    if (node.definition.key === 'core.parallel' && pairedMerges.length !== 1)
+    const pairedMerges = isCoreParallelDefinition(node.definition)
+      ? (index.mergesByParallelNode.get(node.id) ?? [])
+      : [];
+    if (isCoreParallelDefinition(node.definition) && pairedMerges.length !== 1)
       fail('Parallel requires exactly one paired Merge');
     const pairedMerge = pairedMerges[0];
     if (pairedMerge !== undefined) {

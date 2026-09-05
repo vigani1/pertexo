@@ -7,9 +7,9 @@
       "minLines": 12,
       "minTokens": 80,
       "maximums": {
-        "clones": 32,
-        "duplicatedLines": 638,
-        "duplicatedTokens": 5579
+        "clones": 31,
+        "duplicatedLines": 605,
+        "duplicatedTokens": 5340
       },
       "families": [
         {
@@ -165,20 +165,6 @@
             {
               "hash": "fc3bd5c2c348628313a8de63916e84d1ee583931bcbe010e023636f6819cccbf",
               "maxLines": 14
-            }
-          ]
-        },
-        {
-          "files": [
-            "apps/worker/src/execution/operator-run-replay-runtime.ts",
-            "apps/worker/src/triggers/trigger-runtime.ts"
-          ],
-          "classification": "false-positive",
-          "reason": "Operator replay and trigger reconciliation independently verify executable compatibility before entering different dispatch and recovery flows.",
-          "clones": [
-            {
-              "hash": "cba84a944598fd845996bf250fb7a268ec18b3f917364e6f242d2948ecb047d4",
-              "maxLines": 34
             }
           ]
         },

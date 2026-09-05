@@ -30,6 +30,18 @@ INT-009, and the package coverage/model gates remain continuous safeguards;
 DB-013, WFE-012, and the explicitly documented compatibility/locality choices
 remain intentionally retained rather than mechanically refactored.
 
+The 2026-09-05 post-remediation correction pass closed the independently
+reproduced gaps that the first reconciliation overstated: request cancellation
+now observes post-body socket closure and prevents post-KMS persistence;
+expression previews receive the composition-owned evaluator and ready-without-
+started workers remain bounded; strict Schedule, Parallel, and Merge contracts
+have immutable, metadata-complete V3 successors consumed by the database,
+engine, API, worker, SDK, and catalog; the environment-free artifact integration
+suite collects as skipped; and WFE-008 now includes pinned-seed, shrinkable
+generative checks. Evidence is in `b077c5a`, `8d740e2`, `9bfe545`, `e3f8619`,
+`156f18f`, `1f0359e`, `f5f5d48`, and `3bd3ecc`. This correction does not
+change the external Phase 7 obligations below.
+
 External obligations remain external: ART-002 production latency, ART-008 live
 AWS/regional recovery, DB-011 workload/planner evidence, DB-017 deployed
 backup/PITR/failover evidence, INT-010 provider/KMS sandboxes, INT-013 measured
@@ -45,8 +57,9 @@ must use and demonstrate a non-clustered replicated Redis primary compatible
 with the atomic multi-key Lua policy.
 
 Node-catalog remediation has fixed NC-001 through NC-006.
-All 30 retained compatibility fingerprints remain byte-identical after release
-construction and cohort selection were centralized behind private helpers;
+All 30 pre-existing retained compatibility fingerprints remain byte-identical;
+six additive V3 stage/activation fingerprints extend the history to 36 after
+release construction and cohort selection were centralized behind private helpers;
 selective adapter construction, unknown-input parsing, and package coverage are
 also enforced. The package passes 19 tests with 96.69% statements/lines, 87.23%
 branches, and 100% functions. Its 19 assertions now collect independently in
@@ -4828,7 +4841,7 @@ Fresh audit findings at the implementation tree named above:
       genuinely shared setup from paired split suites into owner-local support
       modules, keep scenario state/assertions local, document and automate the
       exact full-corpus clone scan from 25 groups/1,977 lines (2.08%) to 6
-      groups/267 lines (0.29%) without weakening independent collection or
+      groups/267 lines (0.28%) without weakening independent collection or
       integration isolation. The paired worker transport actions remain local
       to their scenario files rather than being hidden in shared setup.
 - [x] Implement code-audit C-22 through focused capability-local database
@@ -5084,18 +5097,18 @@ phase status changed.
       identities and applied migrations are not renamed.
 - [x] Expand the enforced workflow-engine coverage cohort to all 26
       consequence-selected files with per-file floors. Fresh coverage is
-      90.56% statements (1,844/2,036), 85.32% branches (1,779/2,085), 93.62%
-      functions (338/361), and 91.74% lines (1,766/1,925).
+      90.71% statements (1,846/2,035), 85.45% branches (1,774/2,076), 93.62%
+      functions (338/361), and 91.78% lines (1,765/1,923).
 - [x] Finish WFE-004 with public compatibility-history admission regressions
-      and exact source-hashed review of all 225 residual workflow-engine
+      and exact source-hashed review of all 302 residual workflow-engine
       branches. Every retained entry is classified narrowly as defensive,
       unreachable, or V8-generated, semantic source drift invalidates the
-      review, and the root report records 504 reviewed and zero unreviewed
-      branches across 105 selected files and 4,933 coverable lines.
+      review, and the root report records 501 reviewed and zero unreviewed
+      branches across 105 selected files and 4,938 coverable lines.
 
 Implementation commits: `8406d1e`, `5a7ed49`, `3adf2e1`, `68485d8`,
-`667554a`, `132c8e1`, `182f754`, `ce1c809`, `f8c3655`, and `5a71c1c`. No phase
-status changed.
+`667554a`, `132c8e1`, `182f754`, `ce1c809`, `f8c3655`, `5a71c1c`, and
+`3bd3ecc`. No phase status changed.
 
 ### Granular package-audit remediation — artifact-store
 
@@ -5193,9 +5206,9 @@ root source-hashed risk report pass.
 - [x] Preserve INT-009 as a scheduled, pinned IANA-registry drift safeguard.
       Upstream allocation changes still require human security review.
 - [x] Add the entire integrations source tree to package coverage and the root
-      source-hashed risk report. The fresh 8-file / 196-test run records 94.30%
-      statements (1,044/1,107), 91.06% branches (642/705), 92.82% functions
-      (181/195), and 94.98% lines (1,004/1,057).
+      source-hashed risk report. The fresh 8-file / 196-test run records 94.25%
+      statements (1,050/1,114), 90.89% branches (639/703), 92.85% functions
+      (182/196), and 94.92% lines (1,010/1,064).
 - [x] Finish INT-006 through public provider-response, credential admission,
       retry/ambiguity, fence, body-bound, SSRF/DNS, transport, and diagnostic
       tests. All 63 residual branches have exact fingerprints and narrow

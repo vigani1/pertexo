@@ -26,8 +26,6 @@ import {
 } from '@pertexo/queue';
 import {
   composeExecutableCompatibilityRelease,
-  createCheckpoint,
-  createCheckpointV2,
   createExecutableCompatibilityReleaseHistory,
   createExecutableCompatibilityReleaseSupport,
   verifyWorkflowExecutableV2,
@@ -39,6 +37,7 @@ import {
   type TriggerRuntimeTelemetry,
 } from './trigger-telemetry.js';
 import { waitForSupervisorDelay } from '../runtime/abortable-delay.js';
+import { createWorkerInitialCheckpoint } from '../execution/core-definition-identities.js';
 
 export interface TriggerRuntime {
   readonly consumer: QueueConsumer;
@@ -120,24 +119,7 @@ export async function createTriggerRuntime(
           currentCompatibilityRelease.fingerprint,
         ),
       });
-      const engineVersion = 'phase3-engine-v1';
-      return Object.freeze({
-        engineVersion,
-        checkpoint: (executable.envelope.graph.nodes.some(
-          ({ definition }) =>
-            (definition.key === 'core.condition' ||
-              definition.key === 'core.switch' ||
-              definition.key === 'core.parallel') &&
-            definition.version === 1,
-        )
-          ? createCheckpointV2
-          : createCheckpoint)({
-          engineVersion,
-          workflowVersionId: projection.id,
-          iterationBudget: 1_000,
-          nextEventSequence: 2,
-        }),
-      });
+      return createWorkerInitialCheckpoint(executable, projection.id);
     });
   const reconciliation =
     dependencies.reconciliation ??

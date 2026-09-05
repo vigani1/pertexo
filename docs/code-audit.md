@@ -1478,9 +1478,9 @@ pnpm dlx jscpd@4.0.5 apps/*/test packages/*/test \
 - **Priority:** P2.
 - **Status:** continuous assurance; current percentages are truthful but are not
   whole-package or whole-repository coverage.
-- **Evidence:** coverage gates instrument 105 selected files with 4,933
+- **Evidence:** coverage gates instrument 105 selected files with 4,938
   coverable lines. They provide strong decision coverage and
-  source-fingerprinted review for 504 uncovered branches, but the repository
+  source-fingerprinted review for 501 uncovered branches, but the repository
   contains 514 production
   TypeScript files.
 - **Why it matters:** a green selected-module percentage cannot reveal a newly
@@ -1580,8 +1580,9 @@ No freeze or copy was removed without the evidence required by that policy.
 - **Priority:** P3.
 - **Status:** complete.
 - **Evidence:** the audit previously recorded 35 source clone groups/1.12% and
-  11 test groups/0.42%, while reproducible current commands report 45 source
-  groups/1.15% and 25 test groups/2.08%. Source duplication remains low, but the
+  11 test groups/0.42%, while the reproducible discovery scan reported 45
+  source groups/1.15% and 25 test groups/2.08%. Source duplication remains low,
+  but the
   earlier command, scope, exclusions, and classification were not preserved,
   and clone detection is not part of the root or protected CI gate.
 - **Why it matters:** percentages cannot act as engineering evidence if another
@@ -1599,8 +1600,8 @@ No freeze or copy was removed without the evidence required by that policy.
 
 `pnpm duplication:check` pins `jscpd` 4.0.5, expands deterministic inputs, and
 checks aggregate ceilings plus exact file-pair and fragment hashes. The
-reviewed baseline records all 45 source groups (992 lines, 1.15%) and all 6 test
-groups (267 lines, 0.29%). Stale evidence, semantic drift, new families, or
+reviewed baseline now records all 31 source groups (605 lines, 0.68%) and all 6
+test groups (267 lines, 0.28%). Stale evidence, semantic drift, new families, or
 aggregate/individual growth fail both the root `check` and protected quality
 CI jobs.
 

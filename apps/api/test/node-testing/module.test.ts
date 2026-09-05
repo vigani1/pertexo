@@ -23,6 +23,9 @@ describe('node testing Nest module', () => {
           readPreview: () => Promise.resolve(null),
         },
         release: PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+        expressionEvaluator: {
+          evaluate: () => Promise.reject(new Error('not exercised')),
+        },
       },
       { module: FakeIdentityModule },
     );

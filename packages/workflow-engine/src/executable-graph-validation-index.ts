@@ -3,6 +3,7 @@ import type {
   WorkflowGraph,
   WorkflowNode,
 } from '@pertexo/workflow-model/graph';
+import { isCoreMergeDefinition } from './core-definition-identities.js';
 
 export type GraphValidationIndex = Readonly<{
   nodesById: ReadonlyMap<string, WorkflowNode>;
@@ -53,8 +54,7 @@ export function graphValidationIndex(
     adjacency.get(edge.source.nodeId)?.push(edge.target.nodeId);
   }
   for (const node of graph.nodes) {
-    if (node.definition.key !== 'core.merge' || node.definition.version !== 1)
-      continue;
+    if (!isCoreMergeDefinition(node.definition)) continue;
     const parallelNodeId = Reflect.get(node.config, 'parallelNodeId');
     if (typeof parallelNodeId === 'string')
       appendIndexValue(mergesByParallelNode, parallelNodeId, node);

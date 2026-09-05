@@ -18,6 +18,10 @@ import type {
   NodeAttemptExecutionEngine,
   PreparedNodeAttempt,
 } from './node-attempt-handler.js';
+import {
+  isWorkerCoreMergeDefinition,
+  isWorkerCoreParallelDefinition,
+} from './core-definition-identities.js';
 
 export type NodeAttemptExecutionEngineOptions = Readonly<{
   admissionRelease: unknown;
@@ -139,10 +143,7 @@ function scopedOutputPorts(
       ? [...ports, 'default']
       : undefined;
   }
-  if (
-    node.definition.key === 'core.parallel' &&
-    node.definition.version === 1
-  ) {
+  if (isWorkerCoreParallelDefinition(node.definition)) {
     const branches = Reflect.get(node.config, 'branches') as unknown;
     if (!Array.isArray(branches)) return undefined;
     const ports = branches.map((item): unknown =>
@@ -175,8 +176,7 @@ function branchReachesTarget(
     if (nodeId === targetNodeId) return true;
     reached.add(nodeId);
     const node = graph.nodes.find(({ id }) => id === nodeId);
-    if (node?.definition.key === 'core.merge' && node.definition.version === 1)
-      continue;
+    if (isWorkerCoreMergeDefinition(node?.definition)) continue;
     pending.push(
       ...graph.edges
         .filter(({ source }) => source.nodeId === nodeId)
@@ -250,7 +250,7 @@ function prepareNode(
       'Node attempt side-effect class does not match its pin',
     );
   const upstreamNodeOutputs = Object.freeze(
-    node.definition.key === 'core.merge' && node.definition.version === 1
+    isWorkerCoreMergeDefinition(node.definition)
       ? []
       : [
           ...new Map(

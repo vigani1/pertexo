@@ -21,6 +21,7 @@ import {
   parseWorkflowGraphDraft,
   workflowDraftRepresentationTag,
 } from '@pertexo/workflow-model/graph';
+import type { ExpressionEvaluator } from '@pertexo/workflow-model/expressions';
 import { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';
 import { z } from 'zod';
 
@@ -66,6 +67,7 @@ export class TestWorkflowNodeUseCase {
     private readonly authorization: Authorization,
     private readonly release: RegistryRelease,
     private readonly now: () => Date = () => new Date(),
+    private readonly expressionEvaluator?: ExpressionEvaluator,
   ) {}
 
   public async execute(
@@ -89,6 +91,9 @@ export class TestWorkflowNodeUseCase {
       graph,
       nodeId: input.nodeId,
       release: this.release,
+      ...(this.expressionEvaluator === undefined
+        ? {}
+        : { expressionEvaluator: this.expressionEvaluator }),
       ...(request.mode === 'validate'
         ? request.sampleInput === undefined
           ? {}

@@ -44,6 +44,7 @@
   },
   "dependencies": {
     "@opentelemetry/api": "1.9.0",
+    "@pertexo/nodes-core": "workspace:*",
     "@pertexo/workflow-model": "workspace:*",
     "cron-parser": "5.10.0",
     "drizzle-orm": "0.45.2",
