@@ -3,6 +3,7 @@ import fc from 'fast-check';
 
 import {
   createCheckpoint,
+  createCheckpointV2,
   invocationKey,
   type WorkflowCheckpoint,
 } from '../src/index.js';
@@ -20,6 +21,11 @@ const FOUR_NODE_EDGES = FOUR_NODE_IDS.flatMap((source, sourceIndex) =>
   FOUR_NODE_IDS.slice(sourceIndex + 1).map((target) => ({ source, target })),
 );
 const MODEL_SEED = 0x50_45_52_54;
+const MODEL_RUN_MULTIPLIER =
+  process.env.WORKFLOW_MODEL_RUN_MULTIPLIER === '4' ? 4 : 1;
+const modelRuns = (base: number): number => base * MODEL_RUN_MULTIPLIER;
+const WORKFLOW_VERSION_ID = '00000000-0000-4000-8000-000000000001';
+const COLLECTION_ATTEMPT_ID = '00000000-0000-4000-8000-000000000101';
 
 function graphForMask(
   mask: number,
@@ -48,9 +54,94 @@ function graphForMask(
 function freshCheckpoint(): WorkflowCheckpoint {
   return createCheckpoint({
     engineVersion: 'engine-v1',
-    workflowVersionId: '00000000-0000-4000-8000-000000000001',
+    workflowVersionId: WORKFLOW_VERSION_ID,
     iterationBudget: 64,
   });
+}
+
+function structuredGraph(bodyNodeCount: number): SchedulerGraph {
+  const bodyNodeIds = Array.from(
+    { length: bodyNodeCount },
+    (_, index) => `body-${String(index)}`,
+  );
+  return {
+    deriveReadiness: true,
+    nodes: [{ id: 'loop', sideEffectClass: 'safe' }],
+    edges: [],
+    structuredBodies: [
+      {
+        loopNodeId: 'loop',
+        nodes: bodyNodeIds.map((id) => ({ id, sideEffectClass: 'safe' })),
+        edges: bodyNodeIds.slice(1).map((target, index) => ({
+          source: { nodeId: bodyNodeIds[index] ?? '', port: 'output' },
+          target: { nodeId: target, port: 'input' },
+        })),
+      },
+    ],
+  };
+}
+
+function startStructuredLoop(input: {
+  readonly bodyNodeCount: number;
+  readonly collectionSize: number;
+  readonly maxConcurrency: number;
+  readonly reserveBudget: number;
+}) {
+  const schedulerState = structuredGraph(input.bodyNodeCount);
+  const initialIterationBudget = input.collectionSize + input.reserveBudget;
+  const started = advanceWorkflow({
+    checkpoint: createCheckpointV2({
+      engineVersion: 'engine-v2',
+      workflowVersionId: WORKFLOW_VERSION_ID,
+      iterationBudget: initialIterationBudget,
+    }),
+    schedulerState,
+    occurredAt: '2026-08-20T10:00:00.000Z',
+    maximumAdmissions: 16,
+    observations: [],
+  });
+  const control = started.attempts[0];
+  if (control === undefined)
+    throw new Error('For Each control was not admitted');
+  const declared = advanceWorkflow({
+    checkpoint: started.checkpoint,
+    schedulerState,
+    occurredAt: '2026-08-20T10:01:00.000Z',
+    maximumAdmissions: 16,
+    observations: [
+      {
+        kind: 'loop_started',
+        loopId: 'loop',
+        controlInvocationKey: control.invocationKey,
+        branchPath: [],
+        iterationPath: [],
+        bodyRootNodeIds: ['body-0'],
+        bodySinkNodeId: `body-${String(input.bodyNodeCount - 1)}`,
+        collection: { kind: 'inline', attemptId: COLLECTION_ATTEMPT_ID },
+        collectionChecksum: `collection-${String(input.collectionSize)}`,
+        collectionSize: input.collectionSize,
+        maxIterations: Math.max(1, input.collectionSize),
+        maxConcurrency: input.maxConcurrency,
+      },
+    ],
+  });
+  return { declared, initialIterationBudget, schedulerState };
+}
+
+function expectLoopBudgetConserved(
+  checkpoint: WorkflowCheckpoint,
+  initialIterationBudget: number,
+  collectionSize: number,
+): void {
+  expect(initialIterationBudget - checkpoint.remainingIterationBudget).toBe(
+    collectionSize,
+  );
+  const loop = checkpoint.loops[0];
+  if (loop === undefined) throw new Error('structured loop state is missing');
+  const accountedOrdinals = [...loop.activeOrdinals, ...loop.terminalOrdinals];
+  expect(new Set(accountedOrdinals).size).toBe(accountedOrdinals.length);
+  expect(accountedOrdinals).toHaveLength(loop.nextOrdinal);
+  expect(loop.nextOrdinal).toBeLessThanOrEqual(collectionSize);
 }
 
 function successfulRun(
@@ -146,7 +237,7 @@ describe('bounded workflow state-machine model', () => {
         expect(replay.checkpoint.invocations).toEqual(terminal.invocations);
         expect(replay.checkpoint.revision).toBe(terminal.revision + 1);
       }),
-      { seed: MODEL_SEED, numRuns: 512 },
+      { seed: MODEL_SEED, numRuns: modelRuns(512) },
     );
   });
 
@@ -199,7 +290,7 @@ describe('bounded workflow state-machine model', () => {
           }),
         ).toThrow();
       }),
-      { seed: MODEL_SEED + 1, numRuns: 256 },
+      { seed: MODEL_SEED + 1, numRuns: modelRuns(256) },
     );
   });
 
@@ -256,7 +347,7 @@ describe('bounded workflow state-machine model', () => {
           expect(replay.attempts).toEqual([]);
         },
       ),
-      { seed: MODEL_SEED + 2, numRuns: 256 },
+      { seed: MODEL_SEED + 2, numRuns: modelRuns(256) },
     );
   });
 
@@ -305,7 +396,7 @@ describe('bounded workflow state-machine model', () => {
             expect(right).not.toBe(left);
         },
       ),
-      { seed: MODEL_SEED + 3, numRuns: 512 },
+      { seed: MODEL_SEED + 3, numRuns: modelRuns(512) },
     );
   });
 
@@ -344,7 +435,154 @@ describe('bounded workflow state-machine model', () => {
           }
         },
       ),
-      { seed: MODEL_SEED + 4, numRuns: 512 },
+      { seed: MODEL_SEED + 4, numRuns: modelRuns(512) },
+    );
+  });
+
+  it('conserves loop budgets through generated structured execution sequences', () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 0, max: 8 }),
+        fc.integer({ min: 1, max: 3 }),
+        fc.integer({ min: 0, max: 8 }),
+        fc.integer({ min: 1, max: 8 }),
+        (
+          collectionSize,
+          bodyNodeCount,
+          reserveBudget,
+          concurrencyCandidate,
+        ) => {
+          const maxConcurrency = Math.min(
+            Math.max(1, collectionSize),
+            concurrencyCandidate,
+          );
+          const { declared, initialIterationBudget, schedulerState } =
+            startStructuredLoop({
+              bodyNodeCount,
+              collectionSize,
+              maxConcurrency,
+              reserveBudget,
+            });
+          let checkpoint = declared.checkpoint;
+          expectLoopBudgetConserved(
+            checkpoint,
+            initialIterationBudget,
+            collectionSize,
+          );
+
+          for (
+            let turn = 0;
+            turn < collectionSize * (bodyNodeCount + 1) + 1;
+            turn += 1
+          ) {
+            if (checkpoint.runStatus === 'succeeded') break;
+            const running = checkpoint.invocations.filter(
+              ({ iterationPath, status }) =>
+                iterationPath !== undefined && status === 'running',
+            );
+            if (running.length === 0)
+              throw new Error('structured sequence made no progress');
+            const sinkNodeId = `body-${String(bodyNodeCount - 1)}`;
+            const loop = checkpoint.loops[0];
+            if (loop === undefined)
+              throw new Error('structured loop state is missing');
+            const observations: WorkflowObservation[] = running.map(
+              (invocation) =>
+                invocation.nodeId === sinkNodeId
+                  ? {
+                      kind: 'loop_iteration_completed',
+                      loopId: 'loop',
+                      controlInvocationKey: loop.controlInvocationKey,
+                      invocationKey: invocation.invocationKey,
+                      ordinal: invocation.iterationPath?.at(-1)?.ordinal ?? -1,
+                      status: 'succeeded',
+                    }
+                  : {
+                      kind: 'outcome',
+                      invocationKey: invocation.invocationKey,
+                      status: 'succeeded',
+                    },
+            );
+            checkpoint = advanceWorkflow({
+              checkpoint,
+              schedulerState,
+              occurredAt: '2026-08-20T10:02:00.000Z',
+              maximumAdmissions: 16,
+              observations,
+            }).checkpoint;
+            expectLoopBudgetConserved(
+              checkpoint,
+              initialIterationBudget,
+              collectionSize,
+            );
+          }
+
+          expect(checkpoint.runStatus).toBe('succeeded');
+          expect(checkpoint.loops[0]?.terminalOrdinals).toEqual(
+            Array.from({ length: collectionSize }, (_, ordinal) => ordinal),
+          );
+        },
+      ),
+      { seed: MODEL_SEED + 5, numRuns: modelRuns(256) },
+    );
+  });
+
+  it('never resumes generated structured retries after cancellation', () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 1, max: 8 }),
+        fc.integer({ min: 1, max: 8 }),
+        (collectionSize, concurrencyCandidate) => {
+          const { declared, schedulerState } = startStructuredLoop({
+            bodyNodeCount: 1,
+            collectionSize,
+            maxConcurrency: Math.min(collectionSize, concurrencyCandidate),
+            reserveBudget: 0,
+          });
+          const retrying = declared.checkpoint.invocations.find(
+            ({ iterationPath, status }) =>
+              iterationPath !== undefined && status === 'running',
+          );
+          if (retrying === undefined)
+            throw new Error('structured iteration was not admitted');
+          const waiting = advanceWorkflow({
+            checkpoint: declared.checkpoint,
+            schedulerState,
+            occurredAt: '2026-08-20T10:02:00.000Z',
+            maximumAdmissions: 16,
+            observations: [
+              {
+                kind: 'wait',
+                invocationKey: retrying.invocationKey,
+                resumeAt: '2026-08-20T10:03:00.000Z',
+                waitKind: 'retry_backoff',
+              },
+            ],
+          });
+          const canceled = advanceWorkflow({
+            checkpoint: waiting.checkpoint,
+            schedulerState,
+            occurredAt: '2026-08-20T10:02:30.000Z',
+            maximumAdmissions: 16,
+            observations: [{ kind: 'cancel_requested' }],
+            dueResumptions: [
+              {
+                invocationKey: retrying.invocationKey,
+                occurredAt: '2026-08-20T10:03:00.000Z',
+              },
+            ],
+          });
+          expect(canceled.checkpoint.runStatus).toBe('canceled');
+          expect(canceled.checkpoint.cancelRequested).toBe(true);
+          expect(canceled.attempts).toEqual([]);
+          expect(
+            canceled.checkpoint.invocations.find(
+              ({ invocationKey: key }) => key === retrying.invocationKey,
+            )?.status,
+          ).toBe('canceled');
+        },
+      ),
+      { seed: MODEL_SEED + 6, numRuns: modelRuns(256) },
     );
   });
 });
