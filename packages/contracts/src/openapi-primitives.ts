@@ -7,7 +7,7 @@ export function jsonSchema(schema: z.ZodType, io: 'input' | 'output') {
   return z.toJSONSchema(schema, { io, target: 'draft-2020-12' });
 }
 
-export function schemaReference<Name extends string>(name: Name) {
+function schemaReference<Name extends string>(name: Name) {
   return { $ref: `#/components/schemas/${name}` as const };
 }
 
