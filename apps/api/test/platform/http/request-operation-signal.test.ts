@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { withRequestOperationSignal } from '../../../src/platform/http/request-operation-signal.js';
 
 class RequestStream extends EventEmitter {
+  public complete = false;
   public destroyed = false;
   public readonly socket = new RequestSocket();
 }
@@ -45,5 +46,17 @@ describe('request operation signal', () => {
         Promise.resolve(signal.aborted),
       ),
     ).resolves.toBe(true);
+  });
+
+  it('keeps work active after a request body is fully consumed on a healthy socket', async () => {
+    const raw = new RequestStream();
+    raw.complete = true;
+    raw.destroyed = true;
+
+    await expect(
+      withRequestOperationSignal({ raw }, (signal) =>
+        Promise.resolve(signal.aborted),
+      ),
+    ).resolves.toBe(false);
   });
 });

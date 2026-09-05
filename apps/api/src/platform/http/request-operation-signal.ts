@@ -23,11 +23,7 @@ export async function withRequestOperationSignal<T>(
   };
   request.raw?.once('aborted', onDisconnected);
   request.raw?.socket?.once('close', onDisconnected);
-  if (
-    request.raw?.destroyed === true ||
-    request.raw?.socket?.destroyed === true
-  )
-    onDisconnected();
+  if (request.raw?.socket?.destroyed === true) onDisconnected();
   const signal = AbortSignal.any([
     disconnected.signal,
     AbortSignal.timeout(EXTERNAL_OPERATION_TIMEOUT_MS),
