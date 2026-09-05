@@ -5110,6 +5110,31 @@ Implementation commits: `3289414`, `b45d960`, `dcc96b1`, `e208935`,
 `19ae523`, `0f1c8a9`, `87827a8`, `8c85107`, `f522666`, `10b9561`, and
 `db66903`. No phase status changed.
 
+### Granular package-audit remediation — contracts
+
+- [x] Reconcile and implement CON-001 through CON-011. All generated client
+      schemas and seven OpenAPI documents are structurally valid; the workflow
+      graph and runtime-only refinements are represented honestly; shared
+      assembly, authenticated components, problem metadata, bounds, and
+      artifact registries each have one package-private owner.
+- [x] Keep runtime consumers on narrow domain subpaths, preserve strict
+      browser-safe request/response parsing, and reject HTTP control bytes and
+      contradictory public state combinations through public schemas.
+- [x] Enforce deterministic artifact generation plus pinned Redocly validation,
+      full-package coverage, and source-hashed root risk review. Fresh coverage
+      is 100% statements (301/301), 98.36% branches (60/61), 100% functions
+      (50/50), and 100% lines (293/293); the sole uncovered branch is V8's
+      source-less generated module fallthrough and has narrow fingerprinted
+      evidence.
+- [x] Focused verification passes: 5 files / 26 tests, typecheck, build,
+      package coverage, deterministic artifact comparison, all seven Redocly
+      validations, and zero unreviewed contract branches in the root risk
+      report.
+
+Implementation commits: `b4f2b22`, `078cd53`, `47b7fa6`, `1e8ec80`,
+`9969ff7`, `1153d3f`, `19ae523`, `6c49c7e`, `325fd88`, `dc4dea1`, and
+`59a1dca`. No phase status changed.
+
 ## Update protocol
 
 When a checkpoint changes status:

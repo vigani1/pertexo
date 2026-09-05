@@ -14,9 +14,26 @@
   3.1; and applicable ADRs 002, 004, 011, 014, 016, 022, 025, and 026.
 - **Independent validation:** Redocly CLI 2.11.1 with its minimal ruleset.
 - **Audit status:** granularly certified for the pinned implementation tree.
-- **Implementation status:** two high-priority public-artifact defects, seven
-  medium contract/architecture/control gaps, and two lower-priority precision
-  or maintainability improvements remain open.
+- **Implementation status (2026-09-05):** CON-001 through CON-011 are
+  implemented and verified. Contract validity, semantic projection, import
+  boundaries, problem metadata, registries, package coverage, and the root
+  source-hashed risk ledger are continuous gates.
+
+## Remediation reconciliation
+
+| Finding | Final status | Current evidence |
+| --- | --- | --- |
+| CON-001 | Fixed | `b4f2b22`; all client/OpenAPI references resolve, Response Objects are valid, path parameters are declared, and seven OpenAPI documents pass pinned Redocly validation. |
+| CON-002 | Fixed | `b4f2b22`, `078cd53`; the generated workflow graph is recursive and structurally represents the authoritative workflow-model contract and limits. |
+| CON-003 | Fixed; continuous gate | `b4f2b22`; `contracts:check` verifies deterministic bytes and structurally lints every OpenAPI artifact in protected CI. |
+| CON-004 | Fixed | `47b7fa6`, `1e8ec80`; one package-private typed assembly owner supplies shared OpenAPI and authenticated components while routes remain domain-local. |
+| CON-005 | Fixed | `b4f2b22`, `9969ff7`; expressible bounds are projected, runtime-only refinements are explicit, and differential boundary tests cover header/list/graph semantics. |
+| CON-006 | Fixed | `1153d3f`; applications import domain subpaths and a boundary test forbids runtime root aggregation imports. |
+| CON-007 | Fixed | `b4f2b22`, `9969ff7`; credential values enforce the Node HTTP field-value set with exhaustive control-byte and accepted Latin-1 coverage. |
+| CON-008 | Fixed | `078cd53`; public lifecycle/delivery result contracts use strict discriminated states and reject contradictory combinations. |
+| CON-009 | Fixed; continuous gate | `19ae523`, `6c49c7e`; all package source is thresholded and root source-hashed review has zero unreviewed contract branches. Fresh coverage is 100% statements/lines/functions and 98.36% branches (60/61). |
+| CON-010 | Fixed | `325fd88`; one browser-safe problem manifest owns code/status/type/title and is consumed by schemas, API mapping, documentation, and tests. |
+| CON-011 | Fixed | `dc4dea1`, `59a1dca`; list bounds and artifact/export registries have one owner, unused aliases are removed, and schema-reference helpers remain package-private. |
 
 The package is necessary. It is the browser-safe Interface for request,
 response, problem, client-schema, and OpenAPI contracts. Runtime Zod schemas
@@ -432,7 +449,7 @@ generation.
   define every path parameter.
 - **Verification:** pinned OpenAPI 3.1 lint, bundle/dereference, and typed-client
   generation all pass for all seven documents.
-- **Status:** Open.
+- **Status:** Fixed.
 
 ### CON-002 — Generated workflow graph schema is empty
 
@@ -447,7 +464,7 @@ generation.
   against the authoritative parser.
 - **Verification:** generated schema contains recursive node/edge/settings
   structure and passes exact/one-over browser/server parity tests.
-- **Status:** Open.
+- **Status:** Fixed.
 
 ### CON-003 — CI checks artifact sameness, not validity
 
@@ -460,7 +477,7 @@ generation.
 - **Remediation:** add the pinned gates listed above to `contracts:check` and CI.
 - **Verification:** corrupt reference, invalid response field, and empty critical
   schema mutations each fail CI.
-- **Status:** Open.
+- **Status:** Fixed; continuous gate.
 
 ### CON-004 — OpenAPI assembly is repeated and has drifted into two implementations
 
@@ -474,7 +491,7 @@ generation.
   keep route declarations domain-local.
 - **Verification:** duplication ratchet decreases and all domains share one
   structural gate without losing readability.
-- **Status:** Open.
+- **Status:** Fixed.
 
 ### CON-005 — Generated schemas omit bounded JSON and runtime refinements
 
@@ -489,7 +506,7 @@ generation.
   behavior corpus.
 - **Verification:** Zod/JSON Schema differential tests categorize every
   intentional difference.
-- **Status:** Open.
+- **Status:** Fixed.
 
 ### CON-006 — Root imports eagerly construct every contract document
 
@@ -502,7 +519,7 @@ generation.
   aggregation behind a tooling-only entry.
 - **Verification:** import graph and cold-start/heap comparison; package boundary
   test forbids application root imports.
-- **Status:** Open.
+- **Status:** Fixed.
 
 ### CON-007 — HTTP credential values admit invalid control bytes
 
@@ -515,7 +532,7 @@ generation.
   and resolved credential schemas.
 - **Verification:** exhaustive byte table through contract, encrypted round
   trip, and real Node transport.
-- **Status:** Open.
+- **Status:** Fixed.
 
 ### CON-008 — Public state/result schemas admit contradictory combinations
 
@@ -529,7 +546,7 @@ generation.
   invariants, especially credential disclosure and event payloads.
 - **Verification:** exhaustive valid matrix plus impossible-combination
   rejection, aligned with database/API producers.
-- **Status:** Open.
+- **Status:** Fixed.
 
 ### CON-009 — Contract package has no risk-coverage threshold
 
@@ -542,7 +559,7 @@ generation.
 - **Remediation:** add branch-focused V8 coverage and a risk manifest for
   projection/contract seams.
 - **Verification:** CI threshold and mutation cases for unions/refinements.
-- **Status:** Open.
+- **Status:** Fixed; continuous gate.
 
 ### CON-010 — Problem code/status/type mapping has no single manifest
 
@@ -554,7 +571,7 @@ generation.
 - **Remediation:** create one browser-safe bounded manifest consumed by schema,
   filter assertions, docs, and telemetry.
 - **Verification:** every emitted application error maps exactly once.
-- **Status:** Open.
+- **Status:** Fixed.
 
 ### CON-011 — Alias, list-bound, export, and artifact registries need cleanup
 
@@ -568,7 +585,7 @@ generation.
   artifact/export checks from one registry, and inspect every exported source.
 - **Verification:** consumer search, export snapshot, exact list-limit tests,
   and registry completeness test.
-- **Status:** Open.
+- **Status:** Fixed.
 
 ## What should remain unchanged
 
