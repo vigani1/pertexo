@@ -76,6 +76,13 @@ from this shell. Coverage remains explicitly limited to 105 selected
 files/4,938 coverable lines with 501 reviewed and zero unreviewed uncovered
 branches.
 
+The protected recovery fixture keeps its original Parallel/Merge V1 graph
+paired with the epoch-12 Merge-active release. The V3 contract addition is
+verified separately through additive release-history and public consumer tests;
+it does not rewrite retained V1 recovery evidence. The focused Retry/Wait loop
+and the combined Retry/Wait, Parallel/Merge, and For Each recovery cohort pass
+against local PostgreSQL and Redis after this correction.
+
 The 2026-09-01 audit refresh is implemented at fixed ancestor `0865633` and
 merged to `main` through pull request #7. It
 stabilizes destructive PostgreSQL service control, aligns Node 24 ambient and

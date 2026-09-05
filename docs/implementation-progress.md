@@ -39,8 +39,12 @@ have immutable, metadata-complete V3 successors consumed by the database,
 engine, API, worker, SDK, and catalog; the environment-free artifact integration
 suite collects as skipped; and WFE-008 now includes pinned-seed, shrinkable
 generative checks. Evidence is in `b077c5a`, `8d740e2`, `9bfe545`, `e3f8619`,
-`156f18f`, `1f0359e`, `f5f5d48`, and `3bd3ecc`. This correction does not
-change the external Phase 7 obligations below.
+`156f18f`, `1f0359e`, `f5f5d48`, `3bd3ecc`, and `c632d37`. The retained
+Parallel/Merge recovery fixture remains pinned to its epoch-12 V1 identities;
+V3 behavior is covered by the additive release-history and public engine/worker
+compatibility tests instead of mutating retained evidence. The three structured
+recovery suites pass together against PostgreSQL and Redis. This correction
+does not change the external Phase 7 obligations below.
 
 External obligations remain external: ART-002 production latency, ART-008 live
 AWS/regional recovery, DB-011 workload/planner evidence, DB-017 deployed
