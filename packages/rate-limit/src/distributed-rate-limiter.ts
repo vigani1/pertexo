@@ -1,6 +1,11 @@
 import { createHash } from 'node:crypto';
 
-import type { RateLimitDecision, RateLimitDimensionKind } from './policy.js';
+import {
+  ABUSE_RATE_LIMIT_COUNTER_SCHEMA_VERSION,
+  RATE_LIMIT_ENDPOINT_CLASSES,
+  type RateLimitDecision,
+  type RateLimitDimensionKind,
+} from './policy.js';
 
 export type RateLimitScriptExecutor = Readonly<{
   eval(
@@ -46,6 +51,8 @@ end
 return {1, 0, 0}
 `;
 
+const MAX_WINDOW_SECONDS = Math.floor(Number.MAX_SAFE_INTEGER / 1_000);
+
 function counterKey(decision: RateLimitDecision, index: number): string {
   const dimension = decision.dimensions[index];
   if (dimension === undefined) {
@@ -58,7 +65,38 @@ function counterKey(decision: RateLimitDecision, index: number): string {
     .update('\0')
     .update(dimension.identifier)
     .digest('hex');
-  return `pertexo:abuse:v1:${decision.endpointClass}:${dimension.kind}:${digest}`;
+  return `pertexo:abuse:v${String(ABUSE_RATE_LIMIT_COUNTER_SCHEMA_VERSION)}:${decision.endpointClass}:${dimension.kind}:${digest}`;
+}
+
+function assertDecision(decision: RateLimitDecision): void {
+  if (!RATE_LIMIT_ENDPOINT_CLASSES.includes(decision.endpointClass))
+    throw new Error('Rate-limit decision endpoint class is invalid');
+  if (
+    !Number.isSafeInteger(decision.windowSeconds) ||
+    decision.windowSeconds <= 0 ||
+    decision.windowSeconds > MAX_WINDOW_SECONDS
+  )
+    throw new Error(
+      'Rate-limit decision window must be a positive integer with a safe millisecond projection',
+    );
+  if (decision.dimensions.length === 0)
+    throw new Error('Rate-limit decision requires at least one dimension');
+  const keys = new Set<string>();
+  for (const dimension of decision.dimensions) {
+    if (
+      dimension.identifier.length === 0 ||
+      dimension.identifier.trim() !== dimension.identifier
+    )
+      throw new Error('Rate-limit decision identifier must be normalized');
+    if (!Number.isSafeInteger(dimension.limit) || dimension.limit <= 0)
+      throw new Error(
+        'Rate-limit decision limit must be a positive safe integer',
+      );
+    const key = `${dimension.kind}\0${dimension.identifier}`;
+    if (keys.has(key))
+      throw new Error('Rate-limit decision dimensions must be unique');
+    keys.add(key);
+  }
 }
 
 function parseScriptResult(value: unknown): readonly [number, number, number] {
@@ -78,9 +116,7 @@ export class DistributedRateLimiter {
   async consume(
     decision: RateLimitDecision,
   ): Promise<DistributedRateLimitResult> {
-    if (decision.dimensions.length === 0) {
-      throw new Error('Rate-limit decision requires at least one dimension');
-    }
+    assertDecision(decision);
     const keys = decision.dimensions.map((_, index) =>
       counterKey(decision, index),
     );

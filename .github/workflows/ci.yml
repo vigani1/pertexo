@@ -95,6 +95,7 @@ env:
   API_IDENTITY_INTEGRATION: 'true'
   API_WEBHOOK_INTEGRATION: 'true'
   REDIS_RATE_LIMIT_INTEGRATION: 'true'
+  QUEUE_INTEGRATION: 'true'
   WORKER_TRANSPORT_INTEGRATION: 'true'
   WORKER_TRIGGER_INTEGRATION: 'true'
 
@@ -127,6 +128,7 @@ jobs:
             pnpm docs:check
             pnpm format:check
             pnpm runtime:check
+            pnpm network-registry:check
             pnpm dependencies:check
             pnpm database:schema:check
             pnpm build
@@ -143,6 +145,9 @@ jobs:
           name: quality-log
           path: artifacts/
           if-no-files-found: ignore
+      - name: Compare approved IANA address registries with upstream
+        if: github.event_name == 'schedule'
+        run: pnpm network-registry:check-upstream
 
   # Unit tests are independent and partitioned by workspace group. Integration
   # tests remain in the service-backed jobs below.
@@ -335,8 +340,12 @@ jobs:
           pnpm db:migrate
           pnpm --filter @pertexo/artifact-store exec vitest run --config vitest.integration.config.ts \
             --reporter=json --outputFile=../../artifacts/artifact-store-gates.json
-          pnpm --filter @pertexo/database exec vitest run --config vitest.integration.config.ts \
+          pnpm --filter @pertexo/queue exec vitest run --config vitest.integration.config.ts \
+            --reporter=json --outputFile=../../artifacts/queue-gates.json
+          pnpm --filter @pertexo/database exec vitest run --config vitest.integration-coverage.config.ts --coverage \
             --reporter=json --outputFile=../../artifacts/database-gates.json
+          pnpm --filter @pertexo/database test:coverage
+          pnpm database:coverage:merge
           pnpm --filter @pertexo/worker exec vitest run --config vitest.integration.config.ts \
             --reporter=json --outputFile=../../artifacts/worker-gates.json
           pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts \
@@ -350,11 +359,13 @@ jobs:
           node infrastructure/validate-vitest-gate-report.mjs \
             artifacts/artifact-store-gates.json 'artifact-store integration gates' 5 3
           node infrastructure/validate-vitest-gate-report.mjs \
+            artifacts/queue-gates.json 'queue integration gates' 1
+          node infrastructure/validate-vitest-gate-report.mjs \
             artifacts/database-gates.json 'database integration gates' 288
           node infrastructure/validate-vitest-gate-report.mjs \
             artifacts/worker-gates.json 'worker integration gates' 21
           node infrastructure/validate-vitest-gate-report.mjs \
-            artifacts/api-gates.json 'API integration gates' 10
+            artifacts/api-gates.json 'API integration gates' 11
       - name: Capture integration logs
         if: failure()
         run: |
@@ -367,6 +378,15 @@ jobs:
           name: integration-reports
           path: artifacts/
           if-no-files-found: ignore
+      - name: Upload database integration coverage
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: database-integration-coverage
+          path: |
+            coverage/database-integration/
+            coverage/database-combined/
+          if-no-files-found: error
       - name: Stop disposable dependencies
         if: always()
         run: docker compose down -v --remove-orphans
@@ -519,6 +539,7 @@ jobs:
             pnpm images:check
             docker compose config --quiet
             docker compose -f infrastructure/observability/compose.yaml config --quiet
+            pnpm observability:check
           } 2>&1 | tee artifacts/deployment-security.log
       - name: Upload deployment/security report
         if: always()

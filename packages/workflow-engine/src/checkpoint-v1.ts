@@ -3,7 +3,6 @@ import { WorkflowEngineError } from './errors.js';
 import { compareOrdinal } from './ordering.js';
 import { invocationKey } from './scheduling.js';
 import {
-  assertBoundedCheckpointJson,
   assertCheckpoint,
   assertExactKeys,
   isInteger,
@@ -12,13 +11,16 @@ import {
   parseInvocation,
   sortedUnique,
 } from './checkpoint-shared.js';
+import {
+  assertPersistedEngineVersion,
+  assertPersistedWorkflowVersionId,
+} from './checkpoint-identity.js';
 import { parseJoin } from './checkpoint-v1-join.js';
 import { parseLoop } from './checkpoint-v1-loop.js';
 
 export function parseCheckpointV1Boundary(
   value: unknown,
 ): WorkflowCheckpointV1 {
-  assertBoundedCheckpointJson(value);
   if (isRecord(value) && value.schemaVersion !== 1) {
     throw new WorkflowEngineError(
       'checkpoint_unsupported',
@@ -49,14 +51,9 @@ export function parseCheckpointV1Boundary(
     value.schemaVersion === 1,
     'checkpoint schemaVersion must be 1',
   );
-  assertCheckpoint(
-    typeof value.engineVersion === 'string' && value.engineVersion.length > 0,
-    'engineVersion is required',
-  );
-  assertCheckpoint(
-    typeof value.workflowVersionId === 'string' &&
-      value.workflowVersionId.length > 0,
-    'workflowVersionId is required',
+  const engineVersion = assertPersistedEngineVersion(value.engineVersion);
+  const workflowVersionId = assertPersistedWorkflowVersionId(
+    value.workflowVersionId,
   );
   assertCheckpoint(
     isInteger(value.revision) && value.revision >= 0,
@@ -111,7 +108,6 @@ export function parseCheckpointV1Boundary(
       joins.length,
     'join invocation keys must be unique',
   );
-  const workflowVersionId = value.workflowVersionId;
   const loops = value.loops
     .map((loop) => parseLoop(loop, workflowVersionId))
     .sort((left, right) =>
@@ -150,12 +146,12 @@ export function parseCheckpointV1Boundary(
     const joinInvocation = invocationByKey.get(
       join.joinInvocationKey === join.joinId
         ? invocationKey({
-            workflowVersionId: value.workflowVersionId,
+            workflowVersionId,
             nodeId: join.joinId,
           })
         : (join.joinInvocationKey ??
             invocationKey({
-              workflowVersionId: value.workflowVersionId,
+              workflowVersionId,
               nodeId: join.joinId,
             })),
     );
@@ -206,10 +202,10 @@ export function parseCheckpointV1Boundary(
       loop.bodyRootNodeIds[0] === loop.loopId &&
       loop.bodySinkNodeId === loop.loopId;
     if (!syntheticLegacyLoop) continue;
-    for (const ordinal of loop.activeOrdinals) {
-      const iteration = invocationByKey.get(
+    const iterationFor = (ordinal: number) =>
+      invocationByKey.get(
         invocationKey({
-          workflowVersionId: value.workflowVersionId,
+          workflowVersionId,
           nodeId: loop.loopId,
           branchPath: loop.branchPath.map(
             ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
@@ -220,6 +216,8 @@ export function parseCheckpointV1Boundary(
           ],
         }),
       );
+    for (const ordinal of loop.activeOrdinals) {
+      const iteration = iterationFor(ordinal);
       assertCheckpoint(
         iteration !== undefined &&
           ['ready', 'running', 'waiting'].includes(iteration.status),
@@ -227,19 +225,7 @@ export function parseCheckpointV1Boundary(
       );
     }
     for (const ordinal of loop.terminalOrdinals) {
-      const iteration = invocationByKey.get(
-        invocationKey({
-          workflowVersionId: value.workflowVersionId,
-          nodeId: loop.loopId,
-          branchPath: loop.branchPath.map(
-            ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
-          ),
-          iterationPath: [
-            ...loop.iterationPath,
-            { loopNodeId: loop.loopId, ordinal },
-          ],
-        }),
-      );
+      const iteration = iterationFor(ordinal);
       assertCheckpoint(
         iteration !== undefined &&
           [
@@ -269,8 +255,8 @@ export function parseCheckpointV1Boundary(
 
   return {
     schemaVersion: 1,
-    engineVersion: value.engineVersion,
-    workflowVersionId: value.workflowVersionId,
+    engineVersion,
+    workflowVersionId,
     revision: value.revision,
     runStatus: value.runStatus,
     nextEventSequence: value.nextEventSequence,

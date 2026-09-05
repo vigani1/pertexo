@@ -20,16 +20,18 @@ import {
   type RedisTelemetryObserver,
 } from './redis-telemetry-contracts.js';
 import { createProductionRedisTelemetryObserver } from './redis-telemetry.js';
+import { normalizeRedisEndpoint } from './redis-endpoint.js';
 
 const DEFAULT_READY_TIMEOUT_MS = 5_000;
 const DEFAULT_PUBLISH_TIMEOUT_MS = 5_000;
-const REDIS_PROTOCOLS = new Set(['redis:', 'rediss:']);
+const DEFAULT_CLOSE_TIMEOUT_MS = 5_000;
 
 const queueProducerOptionsSchema = z
   .object({
     redisUrl: z.string().trim().min(1),
     readyTimeoutMs: z.number().int().positive().max(120_000).optional(),
     publishTimeoutMs: z.number().int().positive().max(120_000).optional(),
+    closeTimeoutMs: z.number().int().positive().max(120_000).optional(),
   })
   .strict();
 
@@ -37,6 +39,7 @@ export type QueueProducerOptions = Readonly<{
   readonly redisUrl: string;
   readonly readyTimeoutMs?: number;
   readonly publishTimeoutMs?: number;
+  readonly closeTimeoutMs?: number;
   readonly redisTelemetry?: RedisTelemetryObserver;
 }>;
 
@@ -91,30 +94,26 @@ export class QueueNotReadyError extends Error {
 type QueueMap = Readonly<Record<QueueName, Queue>>;
 
 function parseRedisUrl(value: string): string {
-  let parsed: URL;
-
-  try {
-    parsed = new URL(value);
-  } catch {
-    throw new QueueConfigurationError('Redis URL is invalid');
-  }
-
-  if (!REDIS_PROTOCOLS.has(parsed.protocol) || parsed.hostname.length === 0) {
-    throw new QueueConfigurationError(
-      'Redis URL must use redis:// or rediss:// with a hostname',
-    );
-  }
-
-  return value;
+  return normalizeRedisEndpoint(
+    value,
+    (reason) =>
+      new QueueConfigurationError(
+        reason === 'invalid_url'
+          ? 'Redis URL is invalid'
+          : 'Redis URL must use redis:// or rediss:// with a hostname',
+      ),
+  );
 }
 
 function parseProducerOptions(options: QueueProducerOptions): {
   readonly redisUrl: string;
   readonly readyTimeoutMs: number;
   readonly publishTimeoutMs: number;
+  readonly closeTimeoutMs: number;
 } {
   const parsed = queueProducerOptionsSchema.safeParse({
     publishTimeoutMs: options.publishTimeoutMs,
+    closeTimeoutMs: options.closeTimeoutMs,
     readyTimeoutMs: options.readyTimeoutMs,
     redisUrl: options.redisUrl,
   });
@@ -128,6 +127,7 @@ function parseProducerOptions(options: QueueProducerOptions): {
     readyTimeoutMs: parsed.data.readyTimeoutMs ?? DEFAULT_READY_TIMEOUT_MS,
     publishTimeoutMs:
       parsed.data.publishTimeoutMs ?? DEFAULT_PUBLISH_TIMEOUT_MS,
+    closeTimeoutMs: parsed.data.closeTimeoutMs ?? DEFAULT_CLOSE_TIMEOUT_MS,
   };
 }
 
@@ -182,8 +182,10 @@ export class BullMqQueueProducer implements QueueProducer {
   private readonly queues: QueueMap;
   private readonly readyTimeoutMs: number;
   private readonly publishTimeoutMs: number;
+  private readonly closeTimeoutMs: number;
   private readonly redisTelemetry: RedisTelemetryObserver | undefined;
-  private lifecycle: 'open' | 'closed' = 'open';
+  private lifecycle: 'open' | 'closing' | 'closed' = 'open';
+  private closePromise: Promise<void> | undefined;
   private redisReady = false;
 
   public constructor(options: QueueProducerOptions) {
@@ -191,6 +193,7 @@ export class BullMqQueueProducer implements QueueProducer {
 
     this.readyTimeoutMs = parsedOptions.readyTimeoutMs;
     this.publishTimeoutMs = parsedOptions.publishTimeoutMs;
+    this.closeTimeoutMs = parsedOptions.closeTimeoutMs;
     this.redisTelemetry =
       options.redisTelemetry ?? createProductionRedisTelemetryObserver();
     this.redis = instrumentRedisCommands(
@@ -382,33 +385,41 @@ export class BullMqQueueProducer implements QueueProducer {
     );
   }
 
-  public async close(): Promise<void> {
-    if (this.lifecycle === 'closed') {
-      return;
-    }
-
-    this.lifecycle = 'closed';
-    this.redisReady = false;
-
-    await observeRedisOperation(
+  public close(): Promise<void> {
+    this.closePromise ??= observeRedisOperation(
       this.redisTelemetry,
       'queue_producer',
       'close',
-      async () => {
-        const closeResults = await Promise.allSettled([
-          ...Object.values(this.queues).map((queue) => queue.close()),
-          this.redis.quit(),
-        ]);
-        const rejected = closeResults.find(
-          (result): result is PromiseRejectedResult =>
-            result.status === 'rejected',
-        );
-
-        if (rejected !== undefined) {
-          throw rejected.reason;
-        }
-      },
+      () => this.performClose(),
     );
+    return this.closePromise;
+  }
+
+  private async performClose(): Promise<void> {
+    this.lifecycle = 'closing';
+    this.redisReady = false;
+    const settlement = Promise.allSettled([
+      ...Object.values(this.queues).map((queue) => queue.close()),
+      this.redis.quit(),
+    ]);
+    try {
+      const closeResults = await this.withTimeout(
+        settlement,
+        this.closeTimeoutMs,
+        new Error('Queue producer close exceeded its bounded timeout'),
+      );
+      const rejected = closeResults.find(
+        (result): result is PromiseRejectedResult =>
+          result.status === 'rejected',
+      );
+      if (rejected !== undefined) throw rejected.reason;
+    } catch (error) {
+      for (const queue of Object.values(this.queues)) void queue.disconnect();
+      this.redis.disconnect();
+      throw error;
+    } finally {
+      this.lifecycle = 'closed';
+    }
   }
 
   private queueFor(job: QueueJob): Queue {
@@ -428,6 +439,7 @@ export class BullMqQueueProducer implements QueueProducer {
       const timeout = setTimeout(() => {
         reject(timeoutError);
       }, timeoutMs);
+      timeout.unref();
 
       operation.then(
         (value) => {

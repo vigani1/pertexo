@@ -16,6 +16,13 @@
       "packages/workflow-engine/src/executable-foundation.ts": [
         "duplicates"
       ]
+    },
+    "workspaces": {
+      "packages/workflow-model": {
+        "entry": [
+          "src/expression-worker-runtime.ts"
+        ]
+      }
     }
   },
   "scripts": {
@@ -27,7 +34,7 @@
     "dev:api": "pnpm --filter @pertexo/api dev",
     "dev:worker": "pnpm --filter @pertexo/worker dev",
     "dependencies:check": "knip",
-    "deployment:check": "node infrastructure/ecs/validate-deployment.mjs && node infrastructure/ecs/validate-render.mjs && node --test infrastructure/ecs/validate-external-platform-evidence.test.mjs",
+    "deployment:check": "node --test infrastructure/ecs/validate-database-connection-budget.test.mjs infrastructure/ecs/validate-external-platform-evidence.test.mjs && node infrastructure/ecs/validate-deployment.mjs && node infrastructure/ecs/validate-render.mjs",
     "deployment:evidence:check": "node infrastructure/ecs/validate-external-platform-evidence.mjs",
     "deployment:render": "node infrastructure/ecs/render-task-definitions.mjs",
     "docs:check": "node --test infrastructure/validate-documentation.test.mjs && node infrastructure/validate-documentation.mjs",
@@ -35,6 +42,7 @@
     "db:migrate": "pnpm --filter @pertexo/database db:migrate",
     "db:provision-operator": "node infrastructure/postgres/provision-operator-role.mjs",
     "database:schema:check": "node --test infrastructure/validate-database-schema.test.mjs && node infrastructure/validate-database-schema.mjs",
+    "database:coverage:merge": "node --test infrastructure/merge-istanbul-coverage.test.mjs && node infrastructure/merge-istanbul-coverage.mjs coverage/database/coverage-final.json coverage/database-integration/coverage-final.json coverage/database-combined/coverage-final.json",
     "exercise:check": "node infrastructure/exercises/validate-exercises.mjs && node --check infrastructure/exercises/run-http-exercise.mjs && node --test infrastructure/exercises/run-http-exercise.test.mjs",
     "images:check": "node infrastructure/validate-image-pins.mjs && node --test infrastructure/validate-image-pins.test.mjs infrastructure/create-image-provenance.test.mjs",
     "exercise:http": "node infrastructure/exercises/run-http-exercise.mjs",
@@ -43,19 +51,22 @@
     "hooks:install": "node infrastructure/install-git-hooks.mjs",
     "lint": "NODE_OPTIONS=--max-old-space-size=8192 eslint .",
     "lifecycle-command:start": "pnpm --filter @pertexo/lifecycle-command start",
+    "network-registry:check": "node --test infrastructure/validate-iana-address-registry.test.mjs && node infrastructure/validate-iana-address-registry.mjs",
+    "network-registry:check-upstream": "node infrastructure/validate-iana-address-registry.mjs --upstream",
+    "observability:check": "node infrastructure/observability/validate-config.mjs && docker compose -f infrastructure/observability/compose.yaml run --rm --no-deps --entrypoint promtool prometheus check config /etc/prometheus/prometheus.yaml && docker compose -f infrastructure/observability/compose.yaml run --rm --no-deps --entrypoint promtool prometheus check rules /etc/prometheus/pertexo-alerts.yaml && docker compose -f infrastructure/observability/compose.yaml run --rm --no-deps otel-collector validate --config=/etc/otelcol/config.yaml",
     "operator-command:start": "pnpm --filter @pertexo/operator-command start",
     "prepare": "pnpm hooks:install",
     "prepush:check": "pnpm check && pnpm test:coverage",
     "prepush:full": "pnpm prepush:check && pnpm test:integration",
     "restore:before-serve": "pnpm --filter @pertexo/recovery start",
     "retention:start": "pnpm --filter @pertexo/retention start",
-    "release:check": "pnpm security:audit && pnpm check && pnpm deployment:check && pnpm exercise:check",
+    "release:check": "pnpm security:audit && pnpm check && pnpm deployment:check && pnpm exercise:check && pnpm observability:check",
     "runtime:check": "node infrastructure/validate-runtime-major.mjs && node --test infrastructure/validate-runtime-major.test.mjs",
     "security:audit": "pnpm audit --prod --audit-level moderate",
     "test": "pnpm --recursive --if-present test",
-    "test:coverage": "pnpm --filter @pertexo/workflow-engine test:coverage && pnpm --filter @pertexo/database test:coverage && pnpm --filter @pertexo/worker test:coverage && pnpm --filter @pertexo/api test:coverage && pnpm coverage:risk-report",
+    "test:coverage": "pnpm --filter @pertexo/artifact-store test:coverage && pnpm --filter @pertexo/contracts test:coverage && pnpm --filter @pertexo/integrations test:coverage && pnpm --filter @pertexo/node-sdk test:coverage && pnpm --filter @pertexo/nodes-core test:coverage && pnpm --filter @pertexo/observability test:coverage && pnpm --filter @pertexo/queue test:coverage && pnpm --filter @pertexo/rate-limit test:coverage && pnpm --filter @pertexo/node-catalog test:coverage && pnpm --filter @pertexo/workflow-model test:coverage && pnpm --filter @pertexo/workflow-engine test:coverage && pnpm --filter @pertexo/database test:coverage && pnpm --filter @pertexo/worker test:coverage && pnpm --filter @pertexo/api test:coverage && pnpm coverage:risk-report",
     "coverage:risk-report": "node --test infrastructure/report-risk-coverage.test.mjs && node infrastructure/report-risk-coverage.mjs",
-    "test:integration": "pnpm --filter @pertexo/artifact-store test:integration && pnpm --filter @pertexo/database test:integration && pnpm --filter @pertexo/worker test:integration && pnpm --filter @pertexo/api test:integration",
+    "test:integration": "pnpm --filter @pertexo/artifact-store test:integration && pnpm --filter @pertexo/queue test:integration && pnpm --filter @pertexo/database test:integration && pnpm --filter @pertexo/worker test:integration && pnpm --filter @pertexo/api test:integration",
     "typecheck": "tsc --build --pretty false && pnpm --recursive --if-present typecheck"
   },
   "devDependencies": {

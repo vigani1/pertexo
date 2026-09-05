@@ -5,6 +5,7 @@ import {
   normalizeUrlHostname,
   type ResolvedAddress,
 } from './address-policy.js';
+import { isSerializableHttpHeaderValue } from './header-value.js';
 
 const MAX_URL_BYTES = 2_048;
 const MAX_REQUEST_BODY_BYTES = 1_048_576;
@@ -78,6 +79,27 @@ export const SECURE_HTTP_ERROR_CODE = Object.freeze({
 export type SecureHttpErrorCode =
   (typeof SECURE_HTTP_ERROR_CODE)[keyof typeof SECURE_HTTP_ERROR_CODE];
 
+export type SecureHttpFailureStage =
+  | 'admission'
+  | 'cancellation'
+  | 'dns'
+  | 'pre_dispatch'
+  | 'redirect'
+  | 'response'
+  | 'transport';
+
+export type SecureHttpFailureObservation = Readonly<{
+  classification: 'ambiguous' | 'definite_failure';
+  durationSeconds: number;
+  possiblyDispatched: boolean;
+  reason: SecureHttpErrorCode;
+  stage: SecureHttpFailureStage;
+}>;
+
+export interface SecureHttpObserver {
+  observeFailure(observation: SecureHttpFailureObservation): void;
+}
+
 export class SecureHttpError extends Error {
   public override readonly name = 'SecureHttpError';
 
@@ -88,6 +110,15 @@ export class SecureHttpError extends Error {
   ) {
     super(`Secure HTTP request failed: ${code}`);
   }
+}
+
+export function secureHttpPreDispatchError(
+  code:
+    | typeof SECURE_HTTP_ERROR_CODE.connectionFenceFailed
+    | typeof SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch
+    | typeof SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed,
+): SecureHttpError {
+  return new SecureHttpError(code, 'definite_failure', false);
 }
 
 export type SecureHttpRequest = Readonly<{
@@ -157,6 +188,7 @@ export class SecureHttpClient {
   public constructor(
     private readonly resolver: SecureHttpResolver,
     private readonly transport: SecureHttpTransport,
+    private readonly observer?: SecureHttpObserver,
   ) {}
 
   public execute(input: SecureHttpRequest): Promise<SecureHttpResponse> {
@@ -176,7 +208,35 @@ export class SecureHttpClient {
     input: SecureHttpRequest,
     consume: SecureHttpBodyConsumer<Body>,
   ): Promise<SecureHttpResponse<Body>> {
-    const parsed = parseRequest(input);
+    const startedAt = performance.now();
+    let parsed: ReturnType<typeof parseRequest> | undefined;
+    try {
+      parsed = parseRequest(input);
+      return await this.executeOwnedRequest(parsed, consume);
+    } catch (error: unknown) {
+      if (error instanceof SecureHttpError) {
+        try {
+          this.observer?.observeFailure({
+            classification: error.classification,
+            durationSeconds: (performance.now() - startedAt) / 1_000,
+            possiblyDispatched: error.possiblyDispatched,
+            reason: error.code,
+            stage: failureStage(error.code),
+          });
+        } catch {
+          // Diagnostics must never alter provider request behavior.
+        }
+      }
+      throw error;
+    } finally {
+      parsed?.body?.fill(0);
+    }
+  }
+
+  private async executeOwnedRequest<Body>(
+    parsed: ReturnType<typeof parseRequest>,
+    consume: SecureHttpBodyConsumer<Body>,
+  ): Promise<SecureHttpResponse<Body>> {
     const timeoutSignal = AbortSignal.timeout(parsed.timeoutMillis);
     const executionSignal =
       parsed.signal === undefined
@@ -198,13 +258,9 @@ export class SecureHttpClient {
       );
       if (!markerCommitted) {
         try {
-          await raceWithSignal(
-            parsed.beforeDispatch(),
-            executionSignal,
-            false,
-            false,
-          );
+          await parsed.beforeDispatch();
           markerCommitted = true;
+          assertNotAborted(executionSignal, true, true);
         } catch (error: unknown) {
           if (error instanceof SecureHttpError) throw error;
           throw failure(
@@ -383,6 +439,30 @@ export class SecureHttpClient {
   }
 }
 
+function failureStage(code: SecureHttpErrorCode): SecureHttpFailureStage {
+  switch (code) {
+    case SECURE_HTTP_ERROR_CODE.invalidRequest:
+    case SECURE_HTTP_ERROR_CODE.ssrfBlocked:
+      return 'admission';
+    case SECURE_HTTP_ERROR_CODE.canceled:
+    case SECURE_HTTP_ERROR_CODE.timedOut:
+      return 'cancellation';
+    case SECURE_HTTP_ERROR_CODE.dnsFailed:
+      return 'dns';
+    case SECURE_HTTP_ERROR_CODE.connectionFenceFailed:
+    case SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch:
+    case SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed:
+      return 'pre_dispatch';
+    case SECURE_HTTP_ERROR_CODE.redirectRejected:
+      return 'redirect';
+    case SECURE_HTTP_ERROR_CODE.responseEncodingRejected:
+    case SECURE_HTTP_ERROR_CODE.responseTooLarge:
+      return 'response';
+    case SECURE_HTTP_ERROR_CODE.networkFailed:
+      return 'transport';
+  }
+}
+
 function parseRequest(input: SecureHttpRequest): Required<
   Omit<SecureHttpRequest, 'body' | 'headers' | 'sensitiveValues' | 'signal'>
 > &
@@ -463,7 +543,7 @@ function parseHeaders(
       blockedRequestHeaders.has(lower) ||
       value.length < 1 ||
       value.length > 8_192 ||
-      /[\r\n\0]/u.test(value) ||
+      !isSerializableHttpHeaderValue(value) ||
       normalized.has(lower)
     )
       throw new Error('invalid request header');
@@ -564,32 +644,45 @@ function redactAvailable(
   value: Uint8Array,
   patterns: readonly Uint8Array[],
   final: boolean,
+  outputBudget: number,
 ): Readonly<{ emitted: Uint8Array; remaining: Uint8Array }> {
-  if (patterns.length === 0)
+  if (patterns.length === 0) {
+    if (value.byteLength > outputBudget)
+      throw failure(SECURE_HTTP_ERROR_CODE.responseTooLarge, true, false);
     return Object.freeze({
       emitted: new Uint8Array(value),
       remaining: new Uint8Array(),
     });
+  }
   const maximumPatternBytes = patterns[0]?.byteLength ?? 0;
-  const emitted: number[] = [];
+  const emitted = new Uint8Array(
+    Math.min(outputBudget, value.byteLength * REDACTED_BYTES.byteLength),
+  );
+  let emittedLength = 0;
+  const append = (bytes: Uint8Array): void => {
+    if (emittedLength + bytes.byteLength > outputBudget)
+      throw failure(SECURE_HTTP_ERROR_CODE.responseTooLarge, true, false);
+    emitted.set(bytes, emittedLength);
+    emittedLength += bytes.byteLength;
+  };
   let index = 0;
   while (index < value.byteLength) {
     const match = patterns.find((pattern) =>
       matchesBytes(value, pattern, index),
     );
     if (match !== undefined) {
-      emitted.push(...REDACTED_BYTES);
+      append(REDACTED_BYTES);
       index += match.byteLength;
       continue;
     }
     if (!final && value.byteLength - index < maximumPatternBytes) break;
     const byte = value[index];
     if (byte === undefined) break;
-    emitted.push(byte);
+    append(Uint8Array.of(byte));
     index += 1;
   }
   return Object.freeze({
-    emitted: Uint8Array.from(emitted),
+    emitted: emitted.slice(0, emittedLength),
     remaining: value.slice(index),
   });
 }
@@ -598,9 +691,10 @@ function redactAndClear(
   value: Uint8Array,
   patterns: readonly Uint8Array[],
   final: boolean,
+  outputBudget: number,
 ): ReturnType<typeof redactAvailable> {
   try {
-    return redactAvailable(value, patterns, final);
+    return redactAvailable(value, patterns, final, outputBudget);
   } finally {
     value.fill(0);
   }
@@ -639,13 +733,23 @@ async function* boundedRedactedBody(
         chunk.fill(0);
       }
       const candidate = pending;
-      const redacted = redactAndClear(candidate, patterns, false);
+      const redacted = redactAndClear(
+        candidate,
+        patterns,
+        false,
+        limit - emittedBytes,
+      );
       pending = redacted.remaining;
       const output = emit(redacted.emitted);
       if (output !== undefined) yield output;
     }
     const candidate = pending;
-    const redacted = redactAndClear(candidate, patterns, true);
+    const redacted = redactAndClear(
+      candidate,
+      patterns,
+      true,
+      limit - emittedBytes,
+    );
     pending = redacted.remaining;
     const output = emit(redacted.emitted);
     if (output !== undefined) yield output;

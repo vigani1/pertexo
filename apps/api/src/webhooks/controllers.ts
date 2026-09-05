@@ -8,7 +8,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { webhookRotateSecretRequestSchema } from '@pertexo/contracts';
+import { webhookRotateSecretRequestSchema } from '@pertexo/contracts/webhooks';
 import { z } from 'zod';
 
 import {
@@ -17,7 +17,10 @@ import {
   authenticatedSession,
 } from '../identity-workspace/index.js';
 import type { IdentityWorkspaceRequest } from '../identity-workspace/types.js';
-import { parseIdempotencyKey } from '../platform/http/index.js';
+import {
+  parseIdempotencyKey,
+  withRequestOperationSignal,
+} from '../platform/http/index.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { WebhookReadGuard, WebhookUpdateGuard } from './guards.js';
 import { WebhookManagementService } from './service.js';
@@ -28,7 +31,14 @@ const commandRouteSchema = z
   .object({ ...routeShape, triggerId: z.uuid() })
   .strict()
   .readonly();
-type Request = IdentityWorkspaceRequest;
+type Request = IdentityWorkspaceRequest &
+  Readonly<{
+    raw?: Readonly<{
+      destroyed?: boolean;
+      once(event: 'aborted', listener: () => void): unknown;
+      off(event: 'aborted', listener: () => void): unknown;
+    }>;
+  }>;
 
 @Controller('v1/workspaces/:workspaceId/workflows/:workflowId/triggers')
 @RateLimit('trigger_mutation')
@@ -92,13 +102,18 @@ export class WebhookManagementController {
     endpointKey?: string,
   ) {
     const route = commandRouteSchema.parse(params);
-    return this.service[operation]({
-      workspaceId: route.workspaceId,
-      triggerId: route.triggerId,
-      actorId: authenticatedSession(request).userId,
-      idempotencyKey: parseIdempotencyKey(request.headers?.['idempotency-key']),
-      ...(endpointKey === undefined ? {} : { endpointKey }),
-    });
+    return withRequestOperationSignal(request, (signal) =>
+      this.service[operation]({
+        workspaceId: route.workspaceId,
+        triggerId: route.triggerId,
+        actorId: authenticatedSession(request).userId,
+        idempotencyKey: parseIdempotencyKey(
+          request.headers?.['idempotency-key'],
+        ),
+        ...(endpointKey === undefined ? {} : { endpointKey }),
+        signal,
+      }),
+    );
   }
 }
 

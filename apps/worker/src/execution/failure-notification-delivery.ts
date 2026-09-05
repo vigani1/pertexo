@@ -103,7 +103,9 @@ function render(context: FailureNotificationContextV1): Readonly<{
   return Object.freeze({ subject, text: text.slice(0, 4_000) });
 }
 
-function slackResult(result: SlackApiResult) {
+function slackResult(
+  result: SlackApiResult,
+): FailureNotificationDeliveryResultV1 {
   switch (result.kind) {
     case 'succeeded':
       return {
@@ -174,7 +176,9 @@ function slackResult(result: SlackApiResult) {
   }
 }
 
-function emailResult(result: ResendApiResult) {
+function emailResult(
+  result: ResendApiResult,
+): FailureNotificationDeliveryResultV1 {
   switch (result.kind) {
     case 'succeeded':
       return {
@@ -413,16 +417,19 @@ async function deliverEmail(
       );
     } catch (error: unknown) {
       if (error instanceof FailureNotificationStateError)
-        return {
-          schemaVersion: 1,
-          kind: input.deliveryUnresolved
-            ? 'outcome_unknown'
-            : 'definite_failure',
-          safeErrorCode: input.deliveryUnresolved
-            ? 'delivery.identity_changed'
-            : 'delivery.dispatch_fence_failed',
-          possiblyDispatched: input.deliveryUnresolved,
-        };
+        return input.deliveryUnresolved
+          ? {
+              schemaVersion: 1,
+              kind: 'outcome_unknown',
+              safeErrorCode: 'delivery.identity_changed',
+              possiblyDispatched: true,
+            }
+          : {
+              schemaVersion: 1,
+              kind: 'definite_failure',
+              safeErrorCode: 'delivery.dispatch_fence_failed',
+              possiblyDispatched: false,
+            };
       return settleUnresolvedDelivery(
         localFailure(error, 'email'),
         input.deliveryUnresolved,
@@ -454,16 +461,19 @@ export function createProviderFailureNotificationDelivery(
       } catch (error: unknown) {
         if (input.signal.aborted) return canceled(input);
         if (error instanceof FailureNotificationStateError)
-          return {
-            schemaVersion: 1 as const,
-            kind: !input.deliveryUnresolved
-              ? ('definite_failure' as const)
-              : ('outcome_unknown' as const),
-            safeErrorCode: !input.deliveryUnresolved
-              ? 'delivery.destination_unavailable'
-              : 'delivery.identity_changed',
-            possiblyDispatched: input.deliveryUnresolved,
-          };
+          return input.deliveryUnresolved
+            ? {
+                schemaVersion: 1,
+                kind: 'outcome_unknown',
+                safeErrorCode: 'delivery.identity_changed',
+                possiblyDispatched: true,
+              }
+            : {
+                schemaVersion: 1,
+                kind: 'definite_failure',
+                safeErrorCode: 'delivery.destination_unavailable',
+                possiblyDispatched: false,
+              };
         return settleUnresolvedDelivery(
           {
             schemaVersion: 1,

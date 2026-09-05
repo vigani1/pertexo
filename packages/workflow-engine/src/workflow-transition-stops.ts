@@ -1,5 +1,6 @@
 import { WorkflowEngineError } from './errors.js';
 import { compareOrdinal } from './ordering.js';
+import { sameIterationPath } from './scope.js';
 import { completeLoopIteration } from './scheduling.js';
 import { assertNodeTransition } from './transitions.js';
 import {
@@ -44,10 +45,7 @@ export function applyWorkflowStops(
         ];
         let iterationFound = false;
         for (const invocation of invocations.values()) {
-          if (
-            JSON.stringify(invocation.iterationPath ?? []) !==
-            JSON.stringify(iterationPath)
-          )
+          if (!sameIterationPath(invocation.iterationPath, iterationPath))
             continue;
           iterationFound = true;
           if (isTerminalNodeStatus(invocation.status)) continue;

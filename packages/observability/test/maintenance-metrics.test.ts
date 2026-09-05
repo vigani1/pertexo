@@ -35,4 +35,28 @@ describe('maintenance metrics', () => {
     });
     expect(record).toHaveBeenNthCalledWith(2, 1.5, { outcome: 'agreed' });
   });
+
+  it('rejects invalid duration measurements before recording anything', () => {
+    const add = vi.fn();
+    const record = vi.fn();
+    const metrics = createMaintenanceMetrics({
+      createCounter: vi.fn(() => ({ add })),
+      createHistogram: vi.fn(() => ({ record })),
+    } as unknown as Meter);
+
+    for (const invalid of [-1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(() => {
+        metrics.recordLifecycleCommand(
+          'deletion_requested',
+          'completed',
+          invalid,
+        );
+      }).toThrow(TypeError);
+      expect(() => {
+        metrics.recordControlLedgerReconciliation('agreed', invalid);
+      }).toThrow(TypeError);
+    }
+    expect(add).not.toHaveBeenCalled();
+    expect(record).not.toHaveBeenCalled();
+  });
 });

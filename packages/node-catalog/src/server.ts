@@ -80,47 +80,79 @@ export function createPlatformNodeRegistryForRelease(
     return Object.freeze({ ...registration, manifest });
   });
 
-  const httpRequestDependencies = dependencies.httpRequest ?? {
-    httpClient: createNodeSecureHttpClient(),
-  };
-  const httpExecutor = createHttpRequestExecutorRegistration(
-    {
-      ...httpRequestDependencies,
-      ...(dependencies.httpRequestTelemetry === undefined
-        ? {}
-        : { telemetry: dependencies.httpRequestTelemetry }),
-    },
-    'active',
+  const requiredExecutors = new Set(
+    release.executors.map(({ executor }) => platformIdentityToken(executor)),
   );
-  const slackDependencies = dependencies.slackSendMessage ?? {
-    client: createSlackClient(createNodeSecureHttpClient()),
-  };
-  const slackExecutor = createSlackSendMessageExecutorRegistration(
-    {
-      ...slackDependencies,
-      ...(dependencies.slackSendMessageTelemetry === undefined
-        ? {}
-        : { telemetry: dependencies.slackSendMessageTelemetry }),
-    },
-    'active',
-  );
-  const emailDependencies = dependencies.emailSendNotification ?? {
-    client: createResendClient(createNodeSecureHttpClient()),
-  };
-  const emailExecutor = createEmailSendNotificationExecutorRegistration(
-    {
-      ...emailDependencies,
-      ...(dependencies.emailSendNotificationTelemetry === undefined
-        ? {}
-        : { telemetry: dependencies.emailSendNotificationTelemetry }),
-    },
-    'active',
-  );
+  const providerExecutors: NodeExecutorRegistration[] = [];
+  if (
+    requiredExecutors.has(
+      platformIdentityToken(
+        HTTP_REQUEST_DEFINITION_REGISTRATION.manifest.executor,
+      ),
+    )
+  ) {
+    const httpRequestDependencies = dependencies.httpRequest ?? {
+      httpClient: createNodeSecureHttpClient(),
+    };
+    providerExecutors.push(
+      createHttpRequestExecutorRegistration(
+        {
+          ...httpRequestDependencies,
+          ...(dependencies.httpRequestTelemetry === undefined
+            ? {}
+            : { telemetry: dependencies.httpRequestTelemetry }),
+        },
+        'active',
+      ),
+    );
+  }
+  if (
+    requiredExecutors.has(
+      platformIdentityToken(
+        SLACK_SEND_MESSAGE_DEFINITION_REGISTRATION.manifest.executor,
+      ),
+    )
+  ) {
+    const slackDependencies = dependencies.slackSendMessage ?? {
+      client: createSlackClient(createNodeSecureHttpClient()),
+    };
+    providerExecutors.push(
+      createSlackSendMessageExecutorRegistration(
+        {
+          ...slackDependencies,
+          ...(dependencies.slackSendMessageTelemetry === undefined
+            ? {}
+            : { telemetry: dependencies.slackSendMessageTelemetry }),
+        },
+        'active',
+      ),
+    );
+  }
+  if (
+    requiredExecutors.has(
+      platformIdentityToken(
+        EMAIL_SEND_NOTIFICATION_DEFINITION_REGISTRATION.manifest.executor,
+      ),
+    )
+  ) {
+    const emailDependencies = dependencies.emailSendNotification ?? {
+      client: createResendClient(createNodeSecureHttpClient()),
+    };
+    providerExecutors.push(
+      createEmailSendNotificationExecutorRegistration(
+        {
+          ...emailDependencies,
+          ...(dependencies.emailSendNotificationTelemetry === undefined
+            ? {}
+            : { telemetry: dependencies.emailSendNotificationTelemetry }),
+        },
+        'active',
+      ),
+    );
+  }
   const executorRegistrations: readonly NodeExecutorRegistration[] = [
     ...CORE_NODE_EXECUTOR_REGISTRATIONS,
-    httpExecutor,
-    slackExecutor,
-    emailExecutor,
+    ...providerExecutors,
   ];
   const executorsByIdentity = new Map(
     executorRegistrations.map((registration) => [

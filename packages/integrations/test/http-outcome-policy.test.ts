@@ -82,6 +82,13 @@ describe('ADR 007 HTTP outcome policy', () => {
     ).toEqual({ kind: 'failed', errorKind: 'configuration' });
     expect(
       classifySecureHttpError(
+        new SecureHttpError('network_failed', 'definite_failure', false),
+        'idempotent_with_key',
+        false,
+      ),
+    ).toEqual({ kind: 'failed', errorKind: 'configuration' });
+    expect(
+      classifySecureHttpError(
         new SecureHttpError('response_too_large', 'definite_failure', true),
         'unsafe',
         false,
@@ -147,5 +154,40 @@ describe('ADR 007 HTTP outcome policy', () => {
     expect(Object.values(SECURE_HTTP_ERROR_CODE)).toContain(
       'response_encoding_rejected',
     );
+  });
+
+  it('classifies every admitted response family for every side-effect policy', () => {
+    for (const status of [
+      200, 299, 400, 401, 403, 408, 425, 429, 500, 599, 600,
+    ])
+      for (const sideEffectClass of CLASSES) {
+        const decision = classifySecureHttpResponse(
+          status,
+          sideEffectClass,
+          sideEffectClass === 'idempotent_with_key',
+        );
+        expect(['succeeded', 'failed', 'retry', 'outcome_unknown']).toContain(
+          decision.kind,
+        );
+      }
+  });
+
+  it('classifies every secure-client error code without widening the vocabulary', () => {
+    for (const code of Object.values(SECURE_HTTP_ERROR_CODE))
+      for (const sideEffectClass of CLASSES)
+        for (const [classification, possiblyDispatched] of [
+          ['definite_failure', false],
+          ['definite_failure', true],
+          ['ambiguous', true],
+        ] as const) {
+          const decision = classifySecureHttpError(
+            new SecureHttpError(code, classification, possiblyDispatched),
+            sideEffectClass,
+            sideEffectClass === 'idempotent_with_key',
+          );
+          expect(['failed', 'retry', 'canceled', 'outcome_unknown']).toContain(
+            decision.kind,
+          );
+        }
   });
 });

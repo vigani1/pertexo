@@ -33,18 +33,22 @@ async function persistPendingFailureDecisions(
       invocation,
     ]),
   );
+  const decisionEvents = new Map(
+    plan.events.flatMap((event) =>
+      event.invocationKey !== undefined &&
+      [
+        'node.retry_scheduled',
+        'node.failed',
+        'node.canceled',
+        'node.timed_out',
+        'node.outcome_unknown',
+      ].includes(event.name)
+        ? [[event.invocationKey, event] as const]
+        : [],
+    ),
+  );
   for (const failure of pendingFailures) {
-    const event = plan.events.find(
-      (candidate) =>
-        candidate.invocationKey === failure.invocation_key &&
-        [
-          'node.retry_scheduled',
-          'node.failed',
-          'node.canceled',
-          'node.timed_out',
-          'node.outcome_unknown',
-        ].includes(candidate.name),
-    );
+    const event = decisionEvents.get(failure.invocation_key);
     if (event === undefined || !invocations.has(failure.invocation_key))
       throw new CoordinatorPlanInvalidError();
     const decision =
@@ -103,56 +107,69 @@ async function persistNodeAdmissions(
       invocation,
     ]),
   );
+  const attempts = new Map(
+    plan.attempts.map((attempt) => [attempt.invocationKey, attempt]),
+  );
   const physical: ExecutionIdentityMap = new Map();
+  const rows: Readonly<Record<string, unknown>>[] = [];
   for (const admission of plan.nodeRunAdmissions) {
     const invocation = invocations.get(admission.invocationKey);
     if (invocation === undefined) throw new CoordinatorPlanInvalidError();
-    const attempt = plan.attempts.find(
-      ({ invocationKey }) => invocationKey === admission.invocationKey,
-    );
+    const attempt = attempts.get(admission.invocationKey);
     const nodeRunId = generatePersistedId();
     const attemptId = attempt === undefined ? undefined : generatePersistedId();
-    await client.query(
-      `insert into app.node_runs (
-         id, workspace_id, workflow_run_id, node_id, invocation_key,
-         branch_context, status, side_effect_class, provider_idempotency_key,
-         current_attempt_id, current_attempt_number, completed_at
-       ) values (
-         $1,$2,$3,$4,$5,$6::jsonb,$7::varchar,$8,$9,$10,$11,
-         case when $7::varchar = 'skipped' then clock_timestamp() else null end
-       )`,
-      [
-        nodeRunId,
-        workspaceId,
-        runId,
-        admission.nodeId,
-        admission.invocationKey,
-        serializeStoredExecutionJsonValue({
-          ...('branchPath' in invocation && invocation.branchPath !== undefined
-            ? { branchPath: invocation.branchPath }
-            : {}),
-          ...('iterationPath' in invocation &&
-          invocation.iterationPath !== undefined
-            ? { iterationPath: invocation.iterationPath }
-            : {}),
-        }),
-        invocation.status === 'pending'
-          ? 'pending'
-          : invocation.status === 'skipped'
-            ? 'skipped'
-            : 'ready',
-        admission.sideEffectClass,
-        admission.providerIdempotencyKey ?? null,
-        attemptId ?? null,
-        attempt?.attemptNumber ?? null,
-      ],
-    );
+    const status =
+      invocation.status === 'pending'
+        ? 'pending'
+        : invocation.status === 'skipped'
+          ? 'skipped'
+          : 'ready';
+    rows.push({
+      id: nodeRunId,
+      node_id: admission.nodeId,
+      invocation_key: admission.invocationKey,
+      branch_context: serializeStoredExecutionJsonValue({
+        ...('branchPath' in invocation && invocation.branchPath !== undefined
+          ? { branchPath: invocation.branchPath }
+          : {}),
+        ...('iterationPath' in invocation &&
+        invocation.iterationPath !== undefined
+          ? { iterationPath: invocation.iterationPath }
+          : {}),
+      }),
+      status,
+      side_effect_class: admission.sideEffectClass,
+      provider_idempotency_key: admission.providerIdempotencyKey ?? null,
+      current_attempt_id: attemptId ?? null,
+      current_attempt_number: attempt?.attemptNumber ?? null,
+    });
     physical.set(admission.invocationKey, {
       nodeRunId,
       ...(attemptId === undefined || attempt === undefined
         ? {}
         : { attemptId, attemptNumber: attempt.attemptNumber }),
     });
+  }
+  if (rows.length > 0) {
+    const inserted = await client.query(
+      `insert into app.node_runs (
+         id,workspace_id,workflow_run_id,node_id,invocation_key,
+         branch_context,status,side_effect_class,provider_idempotency_key,
+         current_attempt_id,current_attempt_number,completed_at)
+       select item.id,$1,$2,item.node_id,item.invocation_key,
+         item.branch_context::jsonb,item.status,item.side_effect_class,
+         item.provider_idempotency_key,item.current_attempt_id,
+         item.current_attempt_number,
+         case when item.status='skipped' then clock_timestamp() else null end
+       from jsonb_to_recordset($3::jsonb) as item(
+         id uuid,node_id varchar(128),invocation_key varchar(256),
+         branch_context text,status varchar(32),side_effect_class varchar(32),
+         provider_idempotency_key varchar(256),current_attempt_id uuid,
+         current_attempt_number integer)`,
+      [workspaceId, runId, JSON.stringify(rows)],
+    );
+    if (inserted.rowCount !== rows.length)
+      throw new CoordinatorRunStateCorruptError();
   }
   return physical;
 }
@@ -168,6 +185,8 @@ async function persistAttemptAdmissions(
   }>,
 ): Promise<void> {
   const { physical, plan, runId, traceparent, workspaceId } = input;
+  const attemptRows: Readonly<Record<string, unknown>>[] = [];
+  const outboxRows: Readonly<Record<string, unknown>>[] = [];
   for (const attempt of plan.attempts) {
     let ids = physical.get(attempt.invocationKey);
     if (ids === undefined) {
@@ -224,21 +243,14 @@ async function persistAttemptAdmissions(
       );
     }
     if (ids.attemptId === undefined) throw new CoordinatorPlanInvalidError();
-    await client.query(
-      `insert into app.node_attempts (
-         id, workspace_id, node_run_id, attempt_number, status,
-         side_effect_class, provider_idempotency_key, admission_kind
-       ) values ($1,$2,$3,$4,'ready',$5,$6,$7)`,
-      [
-        ids.attemptId,
-        workspaceId,
-        ids.nodeRunId,
-        attempt.attemptNumber,
-        attempt.sideEffectClass,
-        attempt.providerIdempotencyKey ?? null,
-        attempt.admissionKind,
-      ],
-    );
+    attemptRows.push({
+      id: ids.attemptId,
+      node_run_id: ids.nodeRunId,
+      attempt_number: attempt.attemptNumber,
+      side_effect_class: attempt.sideEffectClass,
+      provider_idempotency_key: attempt.providerIdempotencyKey ?? null,
+      admission_kind: attempt.admissionKind,
+    });
     const outboxEventId = generatePersistedId();
     const payload = {
       schemaVersion: 1,
@@ -249,19 +261,40 @@ async function persistAttemptAdmissions(
       outboxEventId,
       ...(traceparent === undefined ? {} : { traceparent }),
     } as const;
-    await client.query(
-      `insert into app.outbox_events (
-         id, workspace_id, job_name, schema_version, aggregate_type,
-         aggregate_id, payload, payload_checksum
-       ) values ($1,$2,'execute-node-attempt',1,'node-attempt',$3,$4::jsonb,$5)`,
-      [
-        outboxEventId,
-        workspaceId,
-        ids.attemptId,
-        serializeStoredExecutionJsonValue(payload),
-        canonicalOutboxPayloadChecksum(payload),
-      ],
+    outboxRows.push({
+      id: outboxEventId,
+      aggregate_id: ids.attemptId,
+      payload: serializeStoredExecutionJsonValue(payload),
+      payload_checksum: canonicalOutboxPayloadChecksum(payload),
+    });
+  }
+  if (attemptRows.length > 0) {
+    const insertedAttempts = await client.query(
+      `insert into app.node_attempts (
+         id,workspace_id,node_run_id,attempt_number,status,side_effect_class,
+         provider_idempotency_key,admission_kind)
+       select item.id,$1,item.node_run_id,item.attempt_number,'ready',
+         item.side_effect_class,item.provider_idempotency_key,item.admission_kind
+       from jsonb_to_recordset($2::jsonb) as item(
+         id uuid,node_run_id uuid,attempt_number integer,
+         side_effect_class varchar(32),provider_idempotency_key varchar(256),
+         admission_kind varchar(32))`,
+      [workspaceId, JSON.stringify(attemptRows)],
     );
+    if (insertedAttempts.rowCount !== attemptRows.length)
+      throw new CoordinatorRunStateCorruptError();
+    const insertedOutbox = await client.query(
+      `insert into app.outbox_events (
+         id,workspace_id,job_name,schema_version,aggregate_type,aggregate_id,
+         payload,payload_checksum)
+       select item.id,$1,'execute-node-attempt',1,'node-attempt',
+         item.aggregate_id,item.payload::jsonb,item.payload_checksum
+       from jsonb_to_recordset($2::jsonb) as item(
+         id uuid,aggregate_id uuid,payload text,payload_checksum char(64))`,
+      [workspaceId, JSON.stringify(outboxRows)],
+    );
+    if (insertedOutbox.rowCount !== outboxRows.length)
+      throw new CoordinatorRunStateCorruptError();
   }
 }
 
@@ -322,7 +355,10 @@ async function persistRunEvents(
   }>,
 ): Promise<void> {
   const { pendingFailures, physical, plan, runId, workspaceId } = input;
-  for (const event of plan.events) {
+  const pendingFailureInvocations = new Set(
+    pendingFailures.map(({ invocation_key: invocationKey }) => invocationKey),
+  );
+  const persistedEvents = plan.events.map((event) => {
     const ids =
       event.invocationKey === undefined
         ? undefined
@@ -346,26 +382,31 @@ async function persistRunEvents(
         ? { attemptId: ids.attemptId }
         : {}),
     };
-    await client.query(
+    return {
+      sequence: event.sequence,
+      type: event.name,
+      payload: serializeStoredExecutionJsonValue(payload),
+      created_at: event.occurredAt,
+    };
+  });
+  if (persistedEvents.length > 0) {
+    const inserted = await client.query(
       `insert into app.run_events (
-         workspace_id, workflow_run_id, sequence, type, payload, created_at
-       ) values ($1,$2,$3,$4,$5::jsonb,$6)`,
-      [
-        workspaceId,
-        runId,
-        event.sequence,
-        event.name,
-        serializeStoredExecutionJsonValue(payload),
-        event.occurredAt,
-      ],
+         workspace_id,workflow_run_id,sequence,type,payload,created_at)
+       select $1,$2,item.sequence,item.type,item.payload::jsonb,item.created_at
+       from jsonb_to_recordset($3::jsonb) as item(
+         sequence integer,type varchar(64),payload text,created_at timestamptz)`,
+      [workspaceId, runId, JSON.stringify(persistedEvents)],
     );
+    if (inserted.rowCount !== persistedEvents.length)
+      throw new CoordinatorRunStateCorruptError();
+  }
+  for (const event of plan.events) {
     const terminalNodeStatus = terminalStatus(event.name);
     if (
       terminalNodeStatus !== undefined &&
       event.invocationKey !== undefined &&
-      !pendingFailures.some(
-        (failure) => failure.invocation_key === event.invocationKey,
-      )
+      !pendingFailureInvocations.has(event.invocationKey)
     ) {
       const updatedNode = await client.query(
         `update app.node_runs

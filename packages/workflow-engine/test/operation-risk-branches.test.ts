@@ -38,9 +38,9 @@ function setAttempt(overrides: Record<string, unknown> = {}) {
     nodeRunId: 'node-run-1',
     attemptId: 'attempt-1',
     executable: standardExecutable(),
-    workflowVersionId: 'version-1',
+    workflowVersionId: '00000000-0000-4000-8000-000000000001',
     invocationKey: invocationKey({
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       nodeId: 'set',
     }),
     nodeId: 'set',
@@ -53,6 +53,54 @@ function setAttempt(overrides: Record<string, unknown> = {}) {
 }
 
 describe('node operation risk branches', () => {
+  it('advances the complete shared persisted-fact window', async () => {
+    const observations = Array.from({ length: 10_000 }, (_, index) => ({
+      kind: 'cancel_requested' as const,
+      sequence: index + 2,
+      occurredAt: '2026-08-20T10:00:00.000Z',
+    }));
+    await expect(
+      advanceWorkflow({
+        runId: 'run-observation-window',
+        executable: standardExecutable(),
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
+        checkpoint: createCheckpoint({
+          engineVersion: 'engine-v1',
+          workflowVersionId: '00000000-0000-4000-8000-000000000001',
+          iterationBudget: 100,
+        }),
+        observations,
+        occurredAt: '2026-08-20T10:00:00.000Z',
+        maximumAdmissions: 0,
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toMatchObject({ consumedThroughEventSequence: 10_001 });
+  });
+
+  it('rejects one persisted fact over the shared window limit', async () => {
+    const observations = Array.from({ length: 10_001 }, (_, index) => ({
+      kind: 'cancel_requested' as const,
+      sequence: index + 2,
+      occurredAt: '2026-08-20T10:00:00.000Z',
+    }));
+    await expect(
+      advanceWorkflow({
+        runId: 'run-observation-window',
+        executable: standardExecutable(),
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
+        checkpoint: createCheckpoint({
+          engineVersion: 'engine-v1',
+          workflowVersionId: '00000000-0000-4000-8000-000000000001',
+          iterationBudget: 100,
+        }),
+        observations,
+        occurredAt: '2026-08-20T10:00:00.000Z',
+        maximumAdmissions: 0,
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toMatchObject({ code: 'observation_invalid' });
+  });
+
   it.each([
     {
       name: 'unknown invocation node',
@@ -60,7 +108,7 @@ describe('node operation risk branches', () => {
         invocations: [
           {
             invocationKey: invocationKey({
-              workflowVersionId: 'version-1',
+              workflowVersionId: '00000000-0000-4000-8000-000000000001',
               nodeId: 'unknown',
             }),
             nodeId: 'unknown',
@@ -93,7 +141,7 @@ describe('node operation risk branches', () => {
         invocations: [
           {
             invocationKey: invocationKey({
-              workflowVersionId: 'version-1',
+              workflowVersionId: '00000000-0000-4000-8000-000000000001',
               nodeId: 'set',
             }),
             nodeId: 'set',
@@ -116,7 +164,7 @@ describe('node operation risk branches', () => {
         invocations: [
           {
             invocationKey: invocationKey({
-              workflowVersionId: 'version-1',
+              workflowVersionId: '00000000-0000-4000-8000-000000000001',
               nodeId: 'set',
             }),
             nodeId: 'set',
@@ -148,7 +196,7 @@ describe('node operation risk branches', () => {
       const checkpoint = {
         ...createCheckpoint({
           engineVersion: 'engine-v1',
-          workflowVersionId: 'version-1',
+          workflowVersionId: '00000000-0000-4000-8000-000000000001',
           iterationBudget: 100,
         }),
         ...change,
@@ -157,7 +205,7 @@ describe('node operation risk branches', () => {
         advanceWorkflow({
           runId: 'run-identity',
           executable: standardExecutable(),
-          workflowVersionId: 'version-1',
+          workflowVersionId: '00000000-0000-4000-8000-000000000001',
           checkpoint,
           observations: [],
           occurredAt: '2026-08-20T10:00:00.000Z',
@@ -218,7 +266,7 @@ describe('node operation risk branches', () => {
           completedNodeOutputs: [
             {
               invocationKey: invocationKey({
-                workflowVersionId: 'version-1',
+                workflowVersionId: '00000000-0000-4000-8000-000000000001',
                 nodeId: 'manual',
               }),
               nodeId: 'manual',
@@ -252,7 +300,7 @@ describe('node operation risk branches', () => {
         ...setAttempt({ executable }),
         nodeId: 'body-first',
         invocationKey: invocationKey({
-          workflowVersionId: 'version-1',
+          workflowVersionId: '00000000-0000-4000-8000-000000000001',
           nodeId: 'body-first',
           iterationPath,
         }),
@@ -282,7 +330,7 @@ describe('node operation risk branches', () => {
         ...setAttempt({ executable }),
         nodeId: 'body-first',
         invocationKey: invocationKey({
-          workflowVersionId: 'version-1',
+          workflowVersionId: '00000000-0000-4000-8000-000000000001',
           nodeId: 'body-first',
           iterationPath,
         }),

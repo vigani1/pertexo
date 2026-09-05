@@ -26,7 +26,7 @@ describe('For Each production operations', () => {
     const base = {
       runId: 'run-nested-foreach',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       occurredAt: '2026-08-24T11:00:00.000Z',
       maximumAdmissions: 10,
       signal: new AbortController().signal,
@@ -35,7 +35,7 @@ describe('For Each production operations', () => {
       ...base,
       checkpoint: createCheckpointV2({
         engineVersion: 'engine-v1',
-        workflowVersionId: 'version-1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
         iterationBudget: 3,
       }),
       observations: [],
@@ -247,9 +247,9 @@ describe('For Each production operations', () => {
       nodeRunId: 'node-run-body',
       attemptId: 'attempt-body',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       invocationKey: invocationKey({
-        workflowVersionId: 'version-1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
         nodeId: 'body-sink',
         iterationPath,
       }),
@@ -266,7 +266,7 @@ describe('For Each production operations', () => {
       completedNodeOutputs: [
         {
           invocationKey: invocationKey({
-            workflowVersionId: 'version-1',
+            workflowVersionId: '00000000-0000-4000-8000-000000000001',
             nodeId: 'body-first',
             iterationPath,
           }),
@@ -293,9 +293,9 @@ describe('For Each production operations', () => {
         nodeRunId: 'node-run-root',
         attemptId: 'attempt-root',
         executable,
-        workflowVersionId: 'version-1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
         invocationKey: invocationKey({
-          workflowVersionId: 'version-1',
+          workflowVersionId: '00000000-0000-4000-8000-000000000001',
           nodeId: 'body-first',
           iterationPath,
         }),
@@ -330,9 +330,9 @@ describe('For Each production operations', () => {
         nodeRunId: 'node-run-tampered',
         attemptId: 'attempt-tampered',
         executable,
-        workflowVersionId: 'version-1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
         invocationKey: invocationKey({
-          workflowVersionId: 'version-1',
+          workflowVersionId: '00000000-0000-4000-8000-000000000001',
           nodeId: 'body-first',
           iterationPath,
         }),
@@ -371,9 +371,9 @@ describe('For Each production operations', () => {
         nodeRunId: 'node-run-nested',
         attemptId: 'attempt-nested',
         executable: nestedExecutable,
-        workflowVersionId: 'version-1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
         invocationKey: invocationKey({
-          workflowVersionId: 'version-1',
+          workflowVersionId: '00000000-0000-4000-8000-000000000001',
           nodeId: 'nested-body',
           iterationPath: nestedIterationPath,
         }),
@@ -405,8 +405,21 @@ describe('For Each production operations', () => {
   });
 
   it('keeps the generic scheduler graph seam on the server-only testing entry', () => {
-    expect(productionEngine).not.toHaveProperty('deriveReadyNodes');
-    expect(productionEngine).not.toHaveProperty('parseSchedulerGraph');
+    for (const internalName of [
+      'assertAttemptTransition',
+      'assertNodeTransition',
+      'assertRunTransition',
+      'createLoopState',
+      'decideCancellation',
+      'decideRetry',
+      'deriveReadyNodes',
+      'parseSchedulerGraph',
+      'planDurableWait',
+      'settleJoin',
+    ]) {
+      expect(productionEngine).not.toHaveProperty(internalName);
+      expect(testingEngine).toHaveProperty(internalName);
+    }
     expect(testingEngine).toHaveProperty('deriveReadyNodes');
     expect(testingEngine.advanceWorkflow).not.toBe(
       productionEngine.advanceWorkflow,

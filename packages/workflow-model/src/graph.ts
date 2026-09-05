@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import {
   WORKFLOW_EXECUTION_LIMITS_V1,
   WORKFLOW_GRAPH_CONTRACT_LIMITS,
+  WORKFLOW_VALIDATION_MAX_ISSUES,
   workflowGraphSchema,
   workflowSettingsSchemaV1,
   type ForEachStructure,
@@ -22,6 +23,13 @@ import {
   type JsonValue,
 } from './canonical-json.js';
 import { validateGraphStructure } from './graph-validation.js';
+
+export {
+  InvalidInvocationScopeError,
+  invocationIdentity,
+  type InvocationIdentityInput,
+  type InvocationScopePart,
+} from './invocation-identity.js';
 
 export type {
   ForEachStructure,
@@ -333,29 +341,6 @@ function preflightWorkflowGraph(input: unknown): void {
   }
 }
 
-function enforceDraftResourceLimits(graph: WorkflowGraph): void {
-  const stack: WorkflowGraph[] = [graph];
-  let nodes = 0;
-  let edges = 0;
-  while (stack.length > 0) {
-    const current = stack.pop();
-    if (current === undefined) continue;
-    nodes += current.nodes.length;
-    edges += current.edges.length;
-    if (
-      nodes > WORKFLOW_GRAPH_LIMITS.nodes ||
-      edges > WORKFLOW_GRAPH_LIMITS.edges
-    )
-      throw new WorkflowGraphContractError(
-        'graph_limit',
-        '$',
-        'aggregate node or edge count exceeds the graph limit',
-      );
-    for (const node of current.nodes)
-      if (node.structured !== undefined) stack.push(node.structured.body);
-  }
-}
-
 export function parseWorkflowGraphDraft(input: unknown): WorkflowGraph {
   const bytes = preflightJsonDocument(input);
   if (bytes > WORKFLOW_GRAPH_LIMITS.graphBytes)
@@ -365,9 +350,7 @@ export function parseWorkflowGraphDraft(input: unknown): WorkflowGraph {
       'graph bytes exceed the graph limit',
     );
   preflightWorkflowGraph(input);
-  const graph = workflowGraphInputSchemaV1.parse(input);
-  enforceDraftResourceLimits(graph);
-  return graph;
+  return workflowGraphInputSchemaV1.parse(input);
 }
 
 export type WorkflowGraphDraftParseResult =
@@ -413,6 +396,7 @@ export type GraphIssueCode =
   | 'invalid_loop_limit'
   | 'loop_iteration_limit'
   | 'invalid_structured_body'
+  | 'invalid_mapping'
   | 'expansion_limit'
   | 'graph_limit'
   | 'unknown_definition'
@@ -440,7 +424,45 @@ export function validateWorkflowGraph(
   graph: WorkflowGraph,
   overrides: Partial<WorkflowGraphLimits> = {},
 ): GraphValidationResult {
-  const limits = { ...WORKFLOW_GRAPH_LIMITS, ...overrides };
+  const overrideSchema = z
+    .object({
+      nodes: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+      edges: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+      graphBytes: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+      maxLoopIterations: z
+        .number()
+        .int()
+        .positive()
+        .max(Number.MAX_SAFE_INTEGER),
+      maxLoopConcurrency: z
+        .number()
+        .int()
+        .positive()
+        .max(Number.MAX_SAFE_INTEGER),
+      maxTotalLoopIterations: z
+        .number()
+        .int()
+        .positive()
+        .max(Number.MAX_SAFE_INTEGER),
+      maxExpandedInvocations: z
+        .number()
+        .int()
+        .positive()
+        .max(Number.MAX_SAFE_INTEGER),
+      structuredDepth: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+      jsonValueDepth: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+      inputDepth: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+    })
+    .partial()
+    .strict();
+  const parsedOverrides = overrideSchema.parse(overrides);
+  const definedOverrides = Object.fromEntries(
+    Object.entries(parsedOverrides).filter((entry) => entry[1] !== undefined),
+  ) as Partial<WorkflowGraphLimits>;
+  const limits: WorkflowGraphLimits = {
+    ...WORKFLOW_GRAPH_LIMITS,
+    ...definedOverrides,
+  };
   const issues: GraphValidationIssue[] = [];
   const globalNodeIds = new Set<string>();
   const allNodeIds = new Set<string>();
@@ -456,7 +478,8 @@ export function validateWorkflowGraph(
   }
   const aggregate = { nodes: 0, edges: 0 };
   const issue = (code: GraphIssueCode, path: string, message: string): void => {
-    issues.push({ code, path, message });
+    if (issues.length < WORKFLOW_VALIDATION_MAX_ISSUES)
+      issues.push({ code, path, message });
   };
   let expandedInvocations = 0;
   let worstCaseLoopIterations = 0;
@@ -688,9 +711,11 @@ export function parseWorkflowGraphForPublish(
       message: `unknown definition ${issue.definitionKey}@${String(issue.version)}`,
     }),
   );
-  const issues = validation.ok
-    ? compatibilityIssues
-    : [...validation.issues, ...compatibilityIssues];
+  const issues = (
+    validation.ok
+      ? compatibilityIssues
+      : [...validation.issues, ...compatibilityIssues]
+  ).slice(0, WORKFLOW_VALIDATION_MAX_ISSUES);
   if (issues.length > 0) throw new InvalidWorkflowGraphError(issues);
   return graph;
 }
@@ -861,66 +886,4 @@ export function workflowDraftRepresentationTag(input: {
     )
     .digest('base64url');
   return `"draft-v1.${digest}"`;
-}
-
-export type InvocationScopePart =
-  | { readonly kind: 'branch'; readonly branchId: string }
-  | {
-      readonly kind: 'iteration';
-      readonly loopNodeId: string;
-      readonly ordinal: number;
-    };
-export interface InvocationIdentityInput {
-  readonly workflowRunId: string;
-  readonly workflowVersionId: string;
-  readonly nodeId: NodeId;
-  readonly scope: readonly InvocationScopePart[];
-}
-export class InvalidInvocationScopeError extends TypeError {
-  constructor(message: string) {
-    super(message);
-    this.name = 'InvalidInvocationScopeError';
-  }
-}
-export function invocationIdentity(input: InvocationIdentityInput): {
-  readonly workflowRunId: string;
-  readonly canonicalScope: string;
-  readonly invocationKey: string;
-} {
-  if (!input.workflowRunId || !input.workflowVersionId || !input.nodeId)
-    throw new InvalidInvocationScopeError(
-      'run, version, and node identifiers must be non-empty',
-    );
-  for (const part of input.scope) {
-    if (part.kind === 'branch' && !part.branchId)
-      throw new InvalidInvocationScopeError(
-        'branch identifiers must be non-empty',
-      );
-    if (
-      part.kind === 'iteration' &&
-      (!part.loopNodeId ||
-        !Number.isSafeInteger(part.ordinal) ||
-        part.ordinal < 0)
-    )
-      throw new InvalidInvocationScopeError(
-        'loop scopes require a non-empty node and zero-based safe ordinal',
-      );
-  }
-  const canonicalScope = input.scope
-    .map((part) =>
-      part.kind === 'branch'
-        ? `branch:${encodeURIComponent(part.branchId)}`
-        : `loop:${encodeURIComponent(part.loopNodeId)}[${String(part.ordinal)}]`,
-    )
-    .join('/');
-  const invocationKey = createHash('sha256')
-    .update(
-      canonicalJson({
-        version: input.workflowVersionId,
-        node: input.nodeId,
-        scope: input.scope,
-      }),
-    )
-    .digest('hex');
-  return { workflowRunId: input.workflowRunId, canonicalScope, invocationKey };
 }

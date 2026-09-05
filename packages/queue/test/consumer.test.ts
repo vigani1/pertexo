@@ -174,6 +174,9 @@ describe('BullMQ queue consumer', () => {
       processor?.({ ...validJob, data: { schemaVersion: 99 } }),
     ).rejects.toBeInstanceOf(InvalidQueueDeliveryError);
     await expect(
+      processor?.({ ...validJob, id: 'outbox-wrong' }),
+    ).rejects.toBeInstanceOf(InvalidQueueDeliveryError);
+    await expect(
       processor?.({
         ...validJob,
         name: JOB_NAME.executeNodeAttempt,

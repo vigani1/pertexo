@@ -4,7 +4,7 @@ import { Redis } from 'ioredis';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
-  DistributedRateLimiter,
+  RedisRateLimitRuntime,
   type RateLimitDecision,
 } from '@pertexo/rate-limit';
 import { assertIntegrationGateConfigured } from '../support/integration-gate.js';
@@ -20,7 +20,7 @@ const describeIntegration = requested ? describe : describe.skip;
 
 describeIntegration('distributed abuse rate limit integration', () => {
   let redis: Redis;
-  let limiter: DistributedRateLimiter;
+  let limiter: RedisRateLimitRuntime;
 
   beforeAll(async () => {
     redis = new Redis(redisUrl ?? '', {
@@ -30,12 +30,45 @@ describeIntegration('distributed abuse rate limit integration', () => {
     });
     await redis.connect();
     await redis.ping();
-    limiter = new DistributedRateLimiter(redis);
+    limiter = new RedisRateLimitRuntime(redisUrl ?? '', {
+      operationTimeoutMs: 2_000,
+    });
   });
 
   afterAll(async () => {
+    await limiter.close();
     if (redis.status === 'ready') await redis.quit();
     else redis.disconnect();
+  });
+
+  it('recovers the production runtime after Redis drops its connection', async () => {
+    const beforeDrop: RateLimitDecision = {
+      endpointClass: 'ordinary_mutation',
+      failureMode: 'closed',
+      windowSeconds: 60,
+      dimensions: [{ kind: 'actor', identifier: randomUUID(), limit: 1 }],
+    };
+    await expect(limiter.consume(beforeDrop)).resolves.toEqual({
+      allowed: true,
+    });
+
+    const killed = await redis.call(
+      'CLIENT',
+      'KILL',
+      'TYPE',
+      'normal',
+      'SKIPME',
+      'yes',
+    );
+    expect(Number(killed)).toBeGreaterThanOrEqual(1);
+
+    const afterDrop: RateLimitDecision = {
+      ...beforeDrop,
+      dimensions: [{ kind: 'actor', identifier: randomUUID(), limit: 1 }],
+    };
+    await expect
+      .poll(async () => limiter.consume(afterDrop), { timeout: 5_000 })
+      .toEqual({ allowed: true });
   });
 
   it('enforces an exact concurrent threshold and recovers after the window', async () => {

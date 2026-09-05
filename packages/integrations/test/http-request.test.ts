@@ -156,8 +156,8 @@ function streamingHttpClient(
   return { executeStreaming };
 }
 
-describe('http.request@1 candidate definition', () => {
-  it('is browser-safe, exact, conservative, and absent from any release', () => {
+describe('http.request@1 definition', () => {
+  it('is browser-safe, exact, conservative, and release-ready', () => {
     expect(HTTP_REQUEST_MANIFEST).toMatchObject({
       definition: { key: 'http.request', version: 1 },
       executor: { key: 'http.request', version: 1 },
@@ -191,12 +191,46 @@ describe('http.request@1 candidate definition', () => {
       config({ maxRedirects: 6 }),
       config({ maxResponseBytes: 10_485_761 }),
       config({ maxResponseBytes: 1_024, inlineResponseBytes: 2_048 }),
+      config({
+        headers: Object.fromEntries(
+          Array.from({ length: 65 }, (_, index) => [`x-${String(index)}`, 'x']),
+        ),
+      }),
+      config({ headers: { 'X-Duplicate': 'a', 'x-duplicate': 'b' } }),
+      config({
+        headers: Object.fromEntries(
+          Array.from({ length: 5 }, (_, index) => [
+            `x-large-${String(index)}`,
+            'x'.repeat(8_192),
+          ]),
+        ),
+      }),
     ])
       expect(httpRequestConfigSchema.safeParse(candidate).success).toBe(false);
     expect(
       httpRequestInputSchema.safeParse({ body: undefined, unknown: true })
         .success,
     ).toBe(false);
+  });
+
+  it('rejects every forbidden HTTP field-value control byte', () => {
+    const forbidden = [
+      ...Array.from({ length: 32 }, (_, codePoint) => codePoint),
+      0x7f,
+    ].filter((codePoint) => codePoint !== 0x09);
+    for (const codePoint of forbidden) {
+      const value = `left${String.fromCharCode(codePoint)}right`;
+      expect(
+        httpRequestConfigSchema.safeParse(
+          config({ headers: { 'x-test': value } }),
+        ).success,
+      ).toBe(false);
+    }
+    expect(
+      httpRequestConfigSchema.safeParse(
+        config({ headers: { 'x-test': 'left\tright' } }),
+      ).success,
+    ).toBe(true);
   });
 });
 
@@ -468,9 +502,46 @@ describe('http.request@1 server executor', () => {
     void _runtime;
     for (const candidate of [
       candidateWithoutRuntime,
+      invocation(runtime({ sideEffectClass: 'safe' }).value),
+      invocation(runtime({ providerIdempotencyKey: 'unexpected' }).value),
+      invocation(
+        runtime({
+          connections: {
+            resolve: state.resolve,
+          },
+        }).value,
+      ),
+      invocation(state.value, {
+        connectionRefs: { unexpected: connectionId },
+      }),
+      invocation(state.value, {
+        connectionRefs: {
+          [HTTP_REQUEST_CONNECTION_SLOT]: connectionId,
+          unexpected: connectionId,
+        },
+      }),
+      invocation(state.value, {
+        config: config({ method: 'GET' }),
+        input: { body: { encoding: 'utf8', value: 'unexpected' } },
+      }),
+      invocation(state.value, {
+        config: config({ method: 'HEAD' }),
+        input: { body: { encoding: 'utf8', value: 'unexpected' } },
+      }),
       invocation(state.value, {
         config: config({ headers: { accept: 'application/json' } }),
         input: { body: { encoding: 'base64', value: 'not-base64' } },
+      }),
+      invocation(state.value, {
+        input: { body: { encoding: 'base64', value: 'Zh==' } },
+      }),
+      invocation(state.value, {
+        input: {
+          body: {
+            encoding: 'base64',
+            value: Buffer.alloc(1_048_577).toString('base64'),
+          },
+        },
       }),
       invocation(state.value, {
         config: config({ headers: { 'X-Tenant': 'configured' } }),
@@ -499,6 +570,53 @@ describe('http.request@1 server executor', () => {
         HttpRequestExecutorError,
       );
     expect(dispatch).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['empty header set', {}],
+    [
+      'too many headers',
+      Object.fromEntries(
+        Array.from({ length: 33 }, (_, index) => [`x-${String(index)}`, 'x']),
+      ),
+    ],
+    ['case-insensitive duplicate', { Authorization: 'a', authorization: 'b' }],
+    ['transport-owned header', { host: 'provider.example.test' }],
+    [
+      'aggregate bytes above the credential limit',
+      { first: 'x'.repeat(8_192), second: 'x'.repeat(8_192) },
+    ],
+  ])('rejects a resolved credential with %s', async (_name, headers) => {
+    const state = runtime({
+      connections: {
+        assertCurrent: () => Promise.resolve(),
+        resolve: () =>
+          Promise.resolve({
+            connectionId,
+            providerKey: 'http',
+            authType: 'http_headers',
+            secretVersionId,
+            secret: encoder.encode(
+              JSON.stringify({
+                schemaVersion: 1,
+                type: 'http_headers',
+                headers,
+              }),
+            ),
+          }),
+      },
+    });
+    const executeStreaming = vi.fn();
+
+    await expect(
+      createHttpRequestExecutorRegistration({
+        httpClient: { executeStreaming },
+      }).execute(invocation(state.value)),
+    ).rejects.toMatchObject({
+      decision: { kind: 'failed', errorKind: 'authentication' },
+      possiblyDispatched: false,
+    });
+    expect(executeStreaming).not.toHaveBeenCalled();
   });
 
   it('collapses unexpected connection, transport, and artifact failures into safe outcomes', async () => {
@@ -557,6 +675,45 @@ describe('http.request@1 server executor', () => {
       ),
     );
 
+    const mismatchedConnection = runtime({
+      connections: {
+        assertCurrent: () => Promise.resolve(),
+        resolve: () =>
+          Promise.resolve({
+            connectionId,
+            providerKey: 'email',
+            authType: 'http_headers',
+            secretVersionId,
+            secret: credentialBytes(),
+          }),
+      },
+    });
+    await expect(
+      createHttpRequestExecutorRegistration({
+        httpClient: streamingHttpClient(neverCalled),
+      }).execute(invocation(mismatchedConnection.value)),
+    ).rejects.toMatchObject({
+      decision: { kind: 'failed', errorKind: 'configuration' },
+      possiblyDispatched: false,
+    });
+
+    await expect(
+      createHttpRequestExecutorRegistration({
+        httpClient: streamingHttpClient(() =>
+          Promise.reject(
+            new SecureHttpError(
+              SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch,
+              'definite_failure',
+              false,
+            ),
+          ),
+        ),
+      }).execute(invocation(runtime().value)),
+    ).rejects.toMatchObject({
+      decision: { kind: 'failed', errorKind: 'configuration' },
+      possiblyDispatched: false,
+    });
+
     const artifactState = runtime({
       artifacts: {
         write: () => Promise.reject(new Error('storage-secret')),
@@ -574,6 +731,38 @@ describe('http.request@1 server executor', () => {
         { kind: 'outcome_unknown', errorKind: 'provider' },
         true,
       ),
+    );
+
+    const noArtifactState = runtime();
+    const { artifacts: _artifacts, ...runtimeWithoutArtifacts } =
+      noArtifactState.value;
+    void _artifacts;
+    await expect(
+      createHttpRequestExecutorRegistration({
+        httpClient: streamingHttpClient(async (request: SecureHttpRequest) => {
+          await request.beforeDispatch();
+          return response(new Uint8Array(70_000));
+        }),
+      }).execute(invocation(runtimeWithoutArtifacts)),
+    ).rejects.toEqual(
+      new HttpRequestExecutorError(
+        { kind: 'outcome_unknown', errorKind: 'provider' },
+        true,
+      ),
+    );
+
+    const defaultMediaType = runtime();
+    await createHttpRequestExecutorRegistration({
+      httpClient: streamingHttpClient(async (request: SecureHttpRequest) => {
+        await request.beforeDispatch();
+        return {
+          ...response(new Uint8Array(70_000)),
+          headers: {},
+        };
+      }),
+    }).execute(invocation(defaultMediaType.value));
+    expect(defaultMediaType.write).toHaveBeenCalledWith(
+      expect.objectContaining({ mediaType: 'application/octet-stream' }),
     );
   });
 
@@ -601,9 +790,8 @@ describe('http.request@1 server executor', () => {
       registration.execute(invocation(executionRuntime)),
     ).rejects.toMatchObject({
       decision: {
-        kind: 'retry',
-        errorKind: 'internal',
-        reuseProviderKey: false,
+        kind: 'failed',
+        errorKind: 'authentication',
       },
       possiblyDispatched: false,
     });
@@ -611,6 +799,40 @@ describe('http.request@1 server executor', () => {
     expect(state.beforeDispatch).not.toHaveBeenCalled();
     expect(state.secret.every((byte) => byte === 0)).toBe(true);
   });
+
+  it.each([
+    ['invalid config', { config: config({ method: 'TRACE' }) }],
+    ['invalid input', { input: { body: { encoding: 'utf8' } } }],
+    ['unknown config field', { config: config({ unknown: true }) }],
+    [
+      'input above its bound',
+      { input: { body: { encoding: 'utf8', value: 'x'.repeat(1_048_577) } } },
+    ],
+  ])(
+    'normalizes %s admission as a configuration failure',
+    async (_name, overrides) => {
+      const state = runtime();
+      let executeStreamingCalls = 0;
+      const httpClient: HttpRequestExecutorDependencies['httpClient'] = {
+        executeStreaming: () => {
+          executeStreamingCalls += 1;
+          return Promise.reject(new Error('unexpected HTTP execution'));
+        },
+      };
+      const registration = createHttpRequestExecutorRegistration({
+        httpClient,
+      });
+
+      await expect(
+        registration.execute(invocation(state.value, overrides)),
+      ).rejects.toMatchObject({
+        decision: { kind: 'failed', errorKind: 'configuration' },
+        possiblyDispatched: false,
+      });
+      expect(state.resolve).not.toHaveBeenCalled();
+      expect(executeStreamingCalls).toBe(0);
+    },
+  );
 
   it('matches an exact ABI 2 registry identity without entering the production release', async () => {
     const state = runtime();

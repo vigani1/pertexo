@@ -11,7 +11,6 @@ import {
   CORE_TERMINATE_OUTPUT_SCHEMA,
 } from './validation.js';
 
-export const CORE_TERMINAL_CAPABILITY = TERMINATES_RUN_CAPABILITY;
 export const CORE_TERMINATE_DEFINITION = Object.freeze({
   key: 'core.terminate',
   version: 1,
@@ -37,7 +36,7 @@ export const CORE_TERMINATE_MANIFEST: NodeManifest = Object.freeze({
   connectionRequirements: Object.freeze([]),
   retryClass: 'safe',
   resourceClass: 'cpu',
-  capabilities: Object.freeze([CORE_TERMINAL_CAPABILITY]),
+  capabilities: Object.freeze([TERMINATES_RUN_CAPABILITY]),
   lifecycle: 'active',
   executor: CORE_TERMINATE_EXECUTOR,
   executorAbi: 1,

@@ -1,7 +1,8 @@
 import { z } from 'zod';
+import { sha256HexSchema } from '../validation/persisted-primitives.js';
 
 export const coordinatorIdentitySchema = z.uuid();
-const checksumSchema = z.string().regex(/^[0-9a-f]{64}$/u);
+const checksumSchema = sha256HexSchema;
 export const coordinatorDeliverySchema = z
   .object({
     outboxEventId: z.uuid(),

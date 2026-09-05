@@ -1,4 +1,5 @@
-import { createDatabasePool } from '../platform/postgres-telemetry.js';
+import { acquireDatabasePool } from '../platform/database-runtime.js';
+import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -86,8 +87,10 @@ export type WorkflowIntegrationUsageDatabase = Readonly<{
 
 export function createWorkflowIntegrationUsageDatabase(
   config: DatabaseConfig,
+  runtime?: DatabaseRuntime,
 ): WorkflowIntegrationUsageDatabase {
-  const pool = createDatabasePool(config);
+  const lease = acquireDatabasePool(config, runtime);
+  const { pool } = lease;
   return Object.freeze({
     findProviderOperationImpact: async (input) => {
       const providerKey = providerKeySchema.parse(input.providerKey);
@@ -158,6 +161,6 @@ export function createWorkflowIntegrationUsageDatabase(
         },
       );
     },
-    close: () => pool.end(),
+    close: () => lease.close(),
   });
 }

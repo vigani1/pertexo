@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { createDatabasePool } from '../platform/postgres-telemetry.js';
+import { acquireDatabasePool } from '../platform/database-runtime.js';
+import type { DatabaseRuntime } from '../platform/database-runtime.js';
 
 import { generatePersistedId } from '../platform/persisted-id.js';
 
@@ -381,8 +382,10 @@ async function completeWorkspaceCreationCommand(
 
 export function createIdentityWorkspaceDatabase(
   config: DatabaseConfig,
+  runtime?: DatabaseRuntime,
 ): IdentityWorkspaceDatabase {
-  const pool = createDatabasePool(config);
+  const lease = acquireDatabasePool(config, runtime);
+  const { pool } = lease;
 
   const database = {
     ...createIdentityWorkspaceIdentityStore(pool),
@@ -583,7 +586,7 @@ export function createIdentityWorkspaceDatabase(
       }
     },
 
-    close: async (): Promise<void> => pool.end(),
+    close: () => lease.close(),
   } satisfies IdentityWorkspaceDatabase;
 
   return Object.freeze(database);

@@ -19,7 +19,7 @@ describe('queue package contract', () => {
     );
     const packageJson = packageSchema.parse(JSON.parse(raw));
 
-    expect(packageJson.exports['./consumer']).toBeDefined();
+    expect(Object.keys(packageJson.exports)).toEqual(['.']);
     for (const exported of Object.values(packageJson.exports)) {
       expect(exported.default).toBe(exported.node);
       expect(packageJson.browser[exported.node]).toBe(false);

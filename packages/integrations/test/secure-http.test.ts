@@ -1,4 +1,4 @@
-import { createServer } from 'node:http';
+import { createServer, validateHeaderValue } from 'node:http';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -7,7 +7,8 @@ import {
   NodeHttpTransport,
   SECURE_HTTP_ERROR_CODE,
   SecureHttpClient,
-  type SecureHttpError,
+  SecureHttpError,
+  type SecureHttpFailureObservation,
   type SecureHttpRequest,
   type SecureHttpResolver,
   type SecureHttpTransport,
@@ -145,6 +146,69 @@ describe('public network address policy', () => {
 });
 
 describe('secure HTTP client', () => {
+  it('emits bounded categorical diagnostics without request data', async () => {
+    const observations: SecureHttpFailureObservation[] = [];
+    const client = new SecureHttpClient(
+      new FakeResolver({
+        'secret-host.example.test': new Error(
+          'resolver exposed secret-token and 192.0.2.9',
+        ),
+      }),
+      new FakeTransport(() => Promise.reject(new Error('must not dispatch'))),
+      { observeFailure: (observation) => observations.push(observation) },
+    );
+
+    await expectSecureFailure(
+      client.execute(
+        request({
+          headers: { authorization: 'Bearer secret-token' },
+          url: 'https://secret-host.example.test/private?token=secret-token',
+        }),
+      ),
+      { code: SECURE_HTTP_ERROR_CODE.dnsFailed, possiblyDispatched: false },
+    );
+
+    expect(observations).toEqual([
+      expect.objectContaining({
+        classification: 'definite_failure',
+        possiblyDispatched: false,
+        reason: 'dns_failed',
+        stage: 'dns',
+      }),
+    ]);
+    expect(JSON.stringify(observations)).not.toContain('secret-token');
+    expect(JSON.stringify(observations)).not.toContain('192.0.2.9');
+    expect(observations[0]?.durationSeconds).toBeGreaterThanOrEqual(0);
+  });
+
+  it.each([
+    [SECURE_HTTP_ERROR_CODE.invalidRequest, 'admission'],
+    [SECURE_HTTP_ERROR_CODE.ssrfBlocked, 'admission'],
+    [SECURE_HTTP_ERROR_CODE.canceled, 'cancellation'],
+    [SECURE_HTTP_ERROR_CODE.timedOut, 'cancellation'],
+    [SECURE_HTTP_ERROR_CODE.dnsFailed, 'dns'],
+    [SECURE_HTTP_ERROR_CODE.connectionFenceFailed, 'pre_dispatch'],
+    [SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch, 'pre_dispatch'],
+    [SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed, 'pre_dispatch'],
+    [SECURE_HTTP_ERROR_CODE.redirectRejected, 'redirect'],
+    [SECURE_HTTP_ERROR_CODE.responseEncodingRejected, 'response'],
+    [SECURE_HTTP_ERROR_CODE.responseTooLarge, 'response'],
+    [SECURE_HTTP_ERROR_CODE.networkFailed, 'transport'],
+  ] as const)('maps diagnostic reason %s to stage %s', async (code, stage) => {
+    const observations: SecureHttpFailureObservation[] = [];
+    const injected = new SecureHttpError(code, 'definite_failure', false);
+    const client = new SecureHttpClient(
+      { resolve: () => Promise.reject(injected) },
+      new FakeTransport(() => Promise.reject(new Error('must not dispatch'))),
+      { observeFailure: (observation) => observations.push(observation) },
+    );
+
+    await expect(client.execute(request())).rejects.toBe(injected);
+    expect(observations).toEqual([
+      expect.objectContaining({ reason: code, stage }),
+    ]);
+  });
+
   it('commits dispatch evidence before one pinned request and redacts bounded output', async () => {
     const order: string[] = [];
     const resolver = new FakeResolver({
@@ -157,6 +221,7 @@ describe('secure HTTP client', () => {
       200,
       {
         'content-type': 'application/json; charset=utf-8',
+        'content-language': ['en', 'de'],
         etag: 'Bearer provider-secret',
         'set-cookie': 'session=provider-secret',
       },
@@ -198,6 +263,7 @@ describe('secure HTTP client', () => {
       redirectCount: 0,
       headers: {
         'content-type': 'application/json; charset=utf-8',
+        'content-language': 'en, de',
         etag: 'Bearer [Redacted]',
       },
     });
@@ -257,6 +323,22 @@ describe('secure HTTP client', () => {
     { maxRedirects: 6 },
     { maxResponseBytes: 10_485_761 },
     { sensitiveValues: [42 as never] },
+    { sensitiveValues: [''] },
+    { sensitiveValues: Array.from({ length: 33 }, () => 'secret') },
+    {
+      headers: Object.fromEntries(
+        Array.from({ length: 65 }, (_, index) => [`x-${String(index)}`, 'x']),
+      ),
+    },
+    {
+      headers: Object.fromEntries(
+        Array.from({ length: 5 }, (_, index) => [
+          `x-large-${String(index)}`,
+          'x'.repeat(8_192),
+        ]),
+      ),
+    },
+    { url: `https://api.example.test/${'x'.repeat(2_100)}` },
     { unexpected: true },
   ])('rejects invalid input before DNS or dispatch: $url', async (override) => {
     const resolver = new FakeResolver({});
@@ -278,6 +360,86 @@ describe('secure HTTP client', () => {
     expect(transport.requests).toEqual([]);
   });
 
+  it('admits exactly the control-byte header values Node can serialize', async () => {
+    const invalidCodePoints = [
+      ...Array.from({ length: 32 }, (_, codePoint) => codePoint),
+      0x7f,
+    ].filter((codePoint) => codePoint !== 0x09);
+    const resolver = new FakeResolver({
+      'api.example.test': [{ address: '8.8.8.8', family: 4 }],
+    });
+
+    for (const codePoint of invalidCodePoints) {
+      const value = `left${String.fromCharCode(codePoint)}right`;
+      expect(() => {
+        validateHeaderValue('x-test', value);
+      }).toThrow();
+      await expectSecureFailure(
+        new SecureHttpClient(
+          resolver,
+          new FakeTransport(() =>
+            Promise.reject(new Error('must not dispatch')),
+          ),
+        ).execute(request({ headers: { 'x-test': value } })),
+        {
+          code: SECURE_HTTP_ERROR_CODE.invalidRequest,
+          possiblyDispatched: false,
+        },
+      );
+    }
+
+    expect(() => {
+      validateHeaderValue('x-test', 'left\tright');
+    }).not.toThrow();
+  });
+
+  it('clears the owned request body after success and failure', async () => {
+    const resolver = new FakeResolver({
+      'api.example.test': [{ address: '8.8.8.8', family: 4 }],
+    });
+    const observed: Uint8Array[] = [];
+    const successfulTransport = new FakeTransport((transportRequest) => {
+      if (transportRequest.body !== undefined)
+        observed.push(transportRequest.body);
+      return Promise.resolve(transportResponse(200).response);
+    });
+    await new SecureHttpClient(resolver, successfulTransport).execute(
+      request({ method: 'POST', body: encoder.encode('secret-body') }),
+    );
+    expect(observed[0]?.every((byte) => byte === 0)).toBe(true);
+
+    const failedTransport = new FakeTransport((transportRequest) => {
+      if (transportRequest.body !== undefined)
+        observed.push(transportRequest.body);
+      return Promise.reject(new Error('network failure'));
+    });
+    await expectSecureFailure(
+      new SecureHttpClient(resolver, failedTransport).execute(
+        request({ method: 'POST', body: encoder.encode('secret-body') }),
+      ),
+      { code: SECURE_HTTP_ERROR_CODE.networkFailed, possiblyDispatched: true },
+    );
+    expect(observed[1]?.every((byte) => byte === 0)).toBe(true);
+  });
+
+  it('enforces the output budget while expanding redactions', async () => {
+    const resolver = new FakeResolver({
+      'api.example.test': [{ address: '8.8.8.8', family: 4 }],
+    });
+    const response = transportResponse(200, {}, ['aaaaaaaaaa']);
+    await expectSecureFailure(
+      new SecureHttpClient(
+        resolver,
+        new FakeTransport(() => Promise.resolve(response.response)),
+      ).execute(request({ maxResponseBytes: 10, sensitiveValues: ['a'] })),
+      {
+        code: SECURE_HTTP_ERROR_CODE.responseTooLarge,
+        possiblyDispatched: true,
+      },
+    );
+    expect(response.close).toHaveBeenCalledOnce();
+  });
+
   it('rejects blocked literals, private DNS answers, and mixed answer sets', async () => {
     const resolver = new FakeResolver({
       'private.example.test': [{ address: '10.0.0.8', family: 4 }],
@@ -285,6 +447,7 @@ describe('secure HTTP client', () => {
         { address: '8.8.8.8', family: 4 },
         { address: '169.254.169.254', family: 4 },
       ],
+      'mismatch.example.test': [{ address: '8.8.8.8', family: 6 }],
     });
     const transport = new FakeTransport(() =>
       Promise.reject(new Error('must not dispatch')),
@@ -295,6 +458,7 @@ describe('secure HTTP client', () => {
       'http://[::1]/',
       'https://private.example.test/',
       'https://mixed.example.test/',
+      'https://mismatch.example.test/',
     ]) {
       await expectSecureFailure(client.execute(request({ url })), {
         code: SECURE_HTTP_ERROR_CODE.ssrfBlocked,
@@ -304,13 +468,32 @@ describe('secure HTTP client', () => {
     expect(transport.requests).toEqual([]);
   });
 
+  it('dispatches a public literal without consulting DNS', async () => {
+    const resolver = new FakeResolver({});
+    const fixture = transportResponse(204, {}, []);
+    const transport = new FakeTransport(() =>
+      Promise.resolve(fixture.response),
+    );
+
+    await expect(
+      new SecureHttpClient(resolver, transport).execute(
+        request({ url: 'https://8.8.8.8/health' }),
+      ),
+    ).resolves.toMatchObject({ status: 204 });
+    expect(resolver.calls).toEqual([]);
+    expect(transport.requests[0]?.address).toEqual({
+      address: '8.8.8.8',
+      family: 4,
+    });
+  });
+
   it('re-resolves and pins every redirect hop without inheriting trust', async () => {
     const resolver = new FakeResolver({
       'first.example.test': [{ address: '8.8.8.8', family: 4 }],
       'second.example.test': [{ address: '2606:4700:4700::1111', family: 6 }],
     });
     const first = transportResponse(307, {
-      location: 'https://second.example.test/final?redirect-secret=value',
+      location: ['https://second.example.test/final?redirect-secret=value'],
     });
     const second = transportResponse(204, {}, []);
     const transport = new FakeTransport((_input, index) =>
@@ -659,6 +842,52 @@ describe('secure HTTP client', () => {
       },
     );
   });
+
+  it('does not report definite pre-dispatch cancellation while the marker can still commit', async () => {
+    const controller = new AbortController();
+    let releaseMarker: (() => void) | undefined;
+    let committed = false;
+    const markerStarted = vi.fn();
+    const markerGate = new Promise<void>((resolve) => {
+      releaseMarker = resolve;
+    });
+    const dispatch = vi.fn();
+    const execution = new SecureHttpClient(
+      new FakeResolver({
+        'api.example.test': [{ address: '8.8.8.8', family: 4 }],
+      }),
+      { dispatch },
+    ).execute(
+      request({
+        signal: controller.signal,
+        beforeDispatch: async () => {
+          markerStarted();
+          await markerGate;
+          committed = true;
+        },
+      }),
+    );
+    await vi.waitFor(() => {
+      expect(markerStarted).toHaveBeenCalledOnce();
+    });
+    let settled = false;
+    void execution
+      .finally(() => {
+        settled = true;
+      })
+      .catch(() => undefined);
+    controller.abort();
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    releaseMarker?.();
+    await expectSecureFailure(execution, {
+      code: SECURE_HTTP_ERROR_CODE.canceled,
+      classification: 'ambiguous',
+      possiblyDispatched: true,
+    });
+    expect(committed).toBe(true);
+    expect(dispatch).not.toHaveBeenCalled();
+  });
 });
 
 describe('Node HTTP transport', () => {
@@ -704,5 +933,17 @@ describe('Node HTTP transport', () => {
     expect(decoder.decode(Buffer.concat(chunks))).toBe(
       `does-not-resolve.invalid:${String(address.port)}`,
     );
+
+    const posted = encoder.encode('request-body');
+    const postResponse = await transport.dispatch({
+      url: new URL(`http://does-not-resolve.invalid:${String(address.port)}/`),
+      address: { address: '127.0.0.1', family: 4 },
+      method: 'POST',
+      headers: {},
+      body: posted,
+      timeoutMillis: 1_000,
+    });
+    for await (const _chunk of postResponse.body) void _chunk;
+    postResponse.close();
   });
 });

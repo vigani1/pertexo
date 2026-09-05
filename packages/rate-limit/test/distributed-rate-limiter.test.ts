@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  ABUSE_RATE_LIMIT_COUNTER_SCHEMA_VERSION,
   DistributedRateLimiter,
   type RateLimitDecision,
   type RateLimitScriptExecutor,
@@ -44,8 +45,14 @@ describe('distributed abuse rate limiter', () => {
     expect(script).toEqual(expect.stringContaining('redis.call'));
     expect(keyCount).toBe(3);
     expect(arguments_.slice(0, 3)).toHaveLength(3);
+    expect(arguments_.slice(0, 3)).toEqual([
+      expect.stringMatching(/^pertexo:abuse:v1:provider_test:actor:/u),
+      expect.stringMatching(/^pertexo:abuse:v1:provider_test:workspace:/u),
+      expect.stringMatching(/^pertexo:abuse:v1:provider_test:connection:/u),
+    ]);
     expect(arguments_.slice(0, 3).join(':')).not.toContain('secret');
     expect(arguments_.slice(3)).toEqual(['60000', '10', '20', '5']);
+    expect(ABUSE_RATE_LIMIT_COUNTER_SCHEMA_VERSION).toBe(1);
   });
 
   it('returns a bounded retry and the rejected dimension', async () => {
@@ -66,5 +73,62 @@ describe('distributed abuse rate limiter', () => {
     await expect(limiter.consume(decision)).rejects.toThrow(
       'Invalid rate-limit script result',
     );
+  });
+
+  it.each([
+    ['empty dimensions', { ...decision, dimensions: [] }],
+    ['zero window', { ...decision, windowSeconds: 0 }],
+    ['negative window', { ...decision, windowSeconds: -1 }],
+    ['fractional window', { ...decision, windowSeconds: 1.5 }],
+    [
+      'window whose millisecond projection is unsafe',
+      {
+        ...decision,
+        windowSeconds: Math.floor(Number.MAX_SAFE_INTEGER / 1_000) + 1,
+      },
+    ],
+    [
+      'blank identifier',
+      {
+        ...decision,
+        dimensions: [{ kind: 'actor' as const, identifier: ' ', limit: 1 }],
+      },
+    ],
+    [
+      'zero limit',
+      {
+        ...decision,
+        dimensions: [{ kind: 'actor' as const, identifier: 'actor', limit: 0 }],
+      },
+    ],
+    [
+      'unsafe limit',
+      {
+        ...decision,
+        dimensions: [
+          {
+            kind: 'actor' as const,
+            identifier: 'actor',
+            limit: Number.MAX_SAFE_INTEGER + 1,
+          },
+        ],
+      },
+    ],
+    [
+      'duplicate dimension',
+      {
+        ...decision,
+        dimensions: [
+          { kind: 'actor' as const, identifier: 'actor', limit: 1 },
+          { kind: 'actor' as const, identifier: 'actor', limit: 1 },
+        ],
+      },
+    ],
+  ])('rejects invalid decision input: %s', async (_name, invalid) => {
+    const executor = new FakeExecutor([1, 0, 0]);
+    await expect(
+      new DistributedRateLimiter(executor).consume(invalid),
+    ).rejects.toThrow(/rate-limit decision/iu);
+    expect(executor.calls).toHaveLength(0);
   });
 });

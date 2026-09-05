@@ -1,4 +1,5 @@
-import { createDatabasePool } from '../platform/postgres-telemetry.js';
+import { acquireDatabasePool } from '../platform/database-runtime.js';
+import type { DatabaseRuntime } from '../platform/database-runtime.js';
 
 import type { DatabaseConfig } from '../config.js';
 import {
@@ -32,8 +33,10 @@ export type {
 };
 export function createCoordinatorRunStore(
   config: DatabaseConfig,
+  runtime?: DatabaseRuntime,
 ): CoordinatorRunStore {
-  const pool = createDatabasePool(config);
+  const lease = acquireDatabasePool(config, runtime);
+  const { pool } = lease;
   return Object.freeze({
     acknowledgeAdvanceDelivery: (input: AcknowledgeAdvanceDeliveryInput) =>
       acknowledgeCoordinatorDelivery(pool, input),
@@ -41,6 +44,6 @@ export function createCoordinatorRunStore(
       loadCoordinatorAdvanceState(pool, input),
     commitAdvancePlan: (input: CommitAdvancePlanInput) =>
       commitCoordinatorAdvancePlan(pool, input),
-    close: async (): Promise<void> => pool.end(),
+    close: () => lease.close(),
   });
 }

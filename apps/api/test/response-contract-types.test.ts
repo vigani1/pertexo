@@ -2,9 +2,11 @@ import type {
   nodeTestExecuteAcceptedResponseSchema,
   nodeValidationResponseSchema,
   previewRunResponseSchema,
+} from '@pertexo/contracts/node-testing';
+import type {
   workflowValidateResponseSchema,
   workflowVersionsResponseSchema,
-} from '@pertexo/contracts';
+} from '@pertexo/contracts/workflow-authoring';
 import { describe, expectTypeOf, it } from 'vitest';
 import type { z } from 'zod';
 

@@ -86,6 +86,9 @@ export const oidcLoginTransactions = appSchema.table(
   'oidc_login_transactions',
   {
     stateDigest: varchar('state_digest', { length: 64 }).primaryKey(),
+    browserBindingDigest: char('browser_binding_digest', {
+      length: 64,
+    }).notNull(),
     codeVerifierCiphertext: text('code_verifier_ciphertext').notNull(),
     codeVerifierNonce: varchar('code_verifier_nonce', {
       length: 128,

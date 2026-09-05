@@ -22,6 +22,7 @@ import {
   type ConnectionResolutionDatabase,
   type WorkerConnectionResolutionDatabase,
   type DatabaseConfig,
+  type DatabaseRuntime,
   type WorkspaceDatabase,
 } from '@pertexo/database/execution';
 import {
@@ -58,6 +59,7 @@ export type WorkerNodeRuntimeCapabilityOptions = Readonly<{
 }>;
 
 export type WorkerNodeRuntimeCapabilityDependencies = Readonly<{
+  databaseRuntime?: DatabaseRuntime;
   connectionDatabase?: ConnectionResolutionDatabase;
   connectionEncryption?: Pick<ConnectionEnvelopeEncryption, 'open'>;
   artifactPersistence?: WorkerArtifactPersistence;
@@ -142,11 +144,15 @@ function connectionFactory(
           throw new ConnectionUnavailableError(
             'Connection is not compatible with this executor',
           );
-        const secret = await encryption.open(resolved.sealed, {
-          workspaceId: context.workspaceId,
-          connectionId: input.connectionId,
-          secretVersionId: resolved.secretVersionId,
-        });
+        const secret = await encryption.open(
+          resolved.sealed,
+          {
+            workspaceId: context.workspaceId,
+            connectionId: input.connectionId,
+            secretVersionId: resolved.secretVersionId,
+          },
+          input.signal,
+        );
         if (input.signal.aborted) {
           secret.fill(0);
           throw abortError();
@@ -442,6 +448,7 @@ export async function createWorkerNodeRuntimeCapabilities(
         dependencies.connectionDatabase ??
         (ownedConnectionDatabase = createWorkerConnectionResolutionDatabase(
           options.database,
+          dependencies.databaseRuntime,
         ));
       const encryption =
         dependencies.connectionEncryption ??
@@ -462,7 +469,12 @@ export async function createWorkerNodeRuntimeCapabilities(
       const persistence =
         dependencies.artifactPersistence ??
         artifactPersistence(
-          (ownedArtifactDatabase = createWorkspaceDatabase(options.database)),
+          (ownedArtifactDatabase = createWorkspaceDatabase(
+            options.database,
+            dependencies.databaseRuntime === undefined
+              ? {}
+              : { runtime: dependencies.databaseRuntime },
+          )),
         );
       const store =
         dependencies.artifactStore ??

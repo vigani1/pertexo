@@ -1,6 +1,12 @@
-import { z } from 'zod';
-
 import { apiProblemSchema } from './errors/api-problem.js';
+import {
+  authenticatedComponents,
+  jsonRequest,
+  jsonResponse,
+  jsonSchema,
+  problemResponse,
+  responseReference,
+} from './openapi-primitives.js';
 import {
   connectionCreateRequestSchema,
   connectionIdentifierSchema,
@@ -355,53 +361,5 @@ export const connectionsOpenApiDocument = Object.freeze({
         },
       },
   },
-  components: {
-    schemas,
-    responses: problemResponses,
-    securitySchemes: {
-      cookieSession: {
-        type: 'apiKey',
-        in: 'cookie',
-        name: 'pertexo_session',
-      },
-    },
-  },
+  components: authenticatedComponents(schemas, problemResponses),
 });
-
-type SchemaName = keyof typeof schemas;
-type ProblemResponseName = keyof typeof problemResponses;
-
-function jsonSchema(schema: z.ZodType, io: 'input' | 'output') {
-  return z.toJSONSchema(schema, { io, target: 'draft-2020-12' });
-}
-
-function schemaReference(name: SchemaName): Readonly<{ $ref: string }> {
-  return { $ref: `#/components/schemas/${name}` };
-}
-
-function responseReference(name: ProblemResponseName) {
-  return { $ref: `#/components/responses/${name}` } as const;
-}
-
-function jsonRequest(name: SchemaName) {
-  return {
-    required: true,
-    content: { 'application/json': { schema: schemaReference(name) } },
-  } as const;
-}
-
-function jsonResponse(description: string, name: SchemaName) {
-  return {
-    description,
-    content: { 'application/json': { schema: schemaReference(name) } },
-  } as const;
-}
-
-function problemResponse(description: string) {
-  return {
-    description,
-    content: {
-      'application/problem+json': { schema: schemaReference('ApiProblem') },
-    },
-  } as const;
-}

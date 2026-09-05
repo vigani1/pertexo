@@ -1,59 +1,34 @@
 import { z } from 'zod';
 
-const endpointSchema = z.url().refine((value) => {
-  const url = new URL(value);
-  return (
-    (url.protocol === 'http:' || url.protocol === 'https:') &&
-    url.username === '' &&
-    url.password === ''
-  );
-}, 'must be an HTTP(S) URL without embedded credentials');
-
-const bucketSchema = z
-  .string()
-  .min(3)
-  .max(63)
-  .regex(/^[a-z0-9][a-z0-9.-]*[a-z0-9]$/u)
-  .refine((value) => !value.includes('..'), 'must not contain adjacent dots')
-  .refine(
-    (value) => !/^\d{1,3}(?:\.\d{1,3}){3}$/u.test(value),
-    'must not be formatted as an IP address',
-  );
+import {
+  objectStoreBucketSchema,
+  objectStoreEndpointSchema,
+  objectStoreForcePathStyleSchema,
+  objectStoreRequestTimeoutSchema,
+} from './config-primitives.js';
 
 const controlLedgerEnvironmentSchema = z.object({
   CONTROL_LEDGER_ACCESS_KEY_ID: z.string().trim().min(1),
-  CONTROL_LEDGER_BUCKET: bucketSchema,
-  CONTROL_LEDGER_ENDPOINT: endpointSchema,
-  CONTROL_LEDGER_FORCE_PATH_STYLE: z.enum(['true', 'false']).default('true'),
+  CONTROL_LEDGER_BUCKET: objectStoreBucketSchema,
+  CONTROL_LEDGER_ENDPOINT: objectStoreEndpointSchema,
+  CONTROL_LEDGER_FORCE_PATH_STYLE: objectStoreForcePathStyleSchema,
   CONTROL_LEDGER_MIN_RETENTION_DAYS: z.coerce.number().int().positive(),
   CONTROL_LEDGER_REGION: z.string().trim().min(1),
-  CONTROL_LEDGER_REQUEST_TIMEOUT_MS: z.coerce
-    .number()
-    .int()
-    .min(100)
-    .max(60_000)
-    .default(5_000),
+  CONTROL_LEDGER_REQUEST_TIMEOUT_MS: objectStoreRequestTimeoutSchema,
   CONTROL_LEDGER_SECRET_ACCESS_KEY: z.string().min(1),
 });
 
 const recoveryControlLedgerEnvironmentSchema = z.object({
   CONTROL_LEDGER_RECOVERY_ACCESS_KEY_ID: z.string().trim().min(1),
-  CONTROL_LEDGER_RECOVERY_BUCKET: bucketSchema,
-  CONTROL_LEDGER_RECOVERY_ENDPOINT: endpointSchema,
-  CONTROL_LEDGER_RECOVERY_FORCE_PATH_STYLE: z
-    .enum(['true', 'false'])
-    .default('true'),
+  CONTROL_LEDGER_RECOVERY_BUCKET: objectStoreBucketSchema,
+  CONTROL_LEDGER_RECOVERY_ENDPOINT: objectStoreEndpointSchema,
+  CONTROL_LEDGER_RECOVERY_FORCE_PATH_STYLE: objectStoreForcePathStyleSchema,
   CONTROL_LEDGER_RECOVERY_MIN_RETENTION_DAYS: z.coerce
     .number()
     .int()
     .positive(),
   CONTROL_LEDGER_RECOVERY_REGION: z.string().trim().min(1),
-  CONTROL_LEDGER_RECOVERY_REQUEST_TIMEOUT_MS: z.coerce
-    .number()
-    .int()
-    .min(100)
-    .max(60_000)
-    .default(5_000),
+  CONTROL_LEDGER_RECOVERY_REQUEST_TIMEOUT_MS: objectStoreRequestTimeoutSchema,
   CONTROL_LEDGER_RECOVERY_SECRET_ACCESS_KEY: z.string().min(1),
 });
 

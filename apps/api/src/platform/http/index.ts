@@ -14,3 +14,4 @@ export {
   RequestContextStore,
 } from './request-context.js';
 export * from './idempotency-key.js';
+export { withRequestOperationSignal } from './request-operation-signal.js';

@@ -15,7 +15,7 @@ describe('operator outbox redispatch migration', () => {
     );
 
     expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0074_retention_schedule_state_rls.sql',
+      '0075_workspace_purge_step_release.sql',
     );
     expect(migration).toContain('CREATE TABLE app.operator_commands');
     expect(migration).toContain('pg_advisory_xact_lock');

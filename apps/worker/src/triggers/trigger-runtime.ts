@@ -3,6 +3,7 @@ import {
   createScheduleTriggerScanner,
   createWorkflowTriggerReconciliationDatabase,
   type DatabaseConfig,
+  type DatabaseRuntime,
   type PublishedWorkflowReader,
   type ScheduleCheckpointFactory,
   type ScheduleTriggerScanner,
@@ -48,6 +49,7 @@ export interface TriggerRuntime {
 export type TriggerRuntimeOptions = Readonly<{
   batchSize: number;
   database: DatabaseConfig;
+  databaseRuntime?: DatabaseRuntime;
   leaseDurationSeconds: number;
   leaseOwner: string;
   observer?: QueueConsumerObserver;
@@ -139,12 +141,16 @@ export async function createTriggerRuntime(
     });
   const reconciliation =
     dependencies.reconciliation ??
-    createWorkflowTriggerReconciliationDatabase(options.database);
+    createWorkflowTriggerReconciliationDatabase(
+      options.database,
+      options.databaseRuntime,
+    );
   const reader =
     dependencies.reader ??
     createPublishedWorkflowReader(
       options.database,
       releaseSupport.descriptions,
+      options.databaseRuntime,
     );
   const scanner =
     dependencies.scanner ??
@@ -152,6 +158,12 @@ export async function createTriggerRuntime(
       options.database,
       releaseSupport.descriptions,
       options.database,
+      options.databaseRuntime === undefined
+        ? {}
+        : {
+            acceptance: options.databaseRuntime,
+            claim: options.databaseRuntime,
+          },
     );
   const handler = createTriggerReconciliationHandler({
     reader,

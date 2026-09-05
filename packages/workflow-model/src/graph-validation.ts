@@ -58,6 +58,15 @@ function validateMappings(
   structuredInputPorts: ReadonlySet<string> | undefined,
   context: ValidationContext,
 ): void {
+  const directUpstream = new Map<string, Set<string>>();
+  for (const edge of graph.edges) {
+    if (!localIds.has(edge.source.nodeId) || !localIds.has(edge.target.nodeId))
+      continue;
+    const upstream =
+      directUpstream.get(edge.target.nodeId) ?? new Set<string>();
+    upstream.add(edge.source.nodeId);
+    directUpstream.set(edge.target.nodeId, upstream);
+  }
   for (const node of graph.nodes) {
     for (const [mappingKey, source] of Object.entries(node.inputMappings)) {
       const mappingPath = `${path}.nodes.${node.id}.inputMappings.${mappingKey}`;
@@ -80,6 +89,15 @@ function validateMappings(
           'invalid_structured_body',
           mappingPath,
           'node output mappings cannot cross a structured-body seam',
+        );
+      } else if (
+        source.kind === 'node_output' &&
+        !directUpstream.get(node.id)?.has(source.nodeId)
+      ) {
+        context.issue(
+          'invalid_mapping',
+          mappingPath,
+          'node output mappings must reference a direct local predecessor',
         );
       }
     }

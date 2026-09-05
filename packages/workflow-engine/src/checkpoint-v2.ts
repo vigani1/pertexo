@@ -5,7 +5,6 @@ import type {
 } from './types.js';
 import { compareOrdinal } from './ordering.js';
 import {
-  assertBoundedCheckpointJson,
   assertCheckpoint,
   assertExactKeys,
   isInteger,
@@ -74,7 +73,6 @@ function parseBranchSelections(
 export function parseCheckpointV2Boundary(
   value: unknown,
 ): WorkflowCheckpointV2 {
-  assertBoundedCheckpointJson(value);
   assertCheckpoint(isRecord(value), 'checkpoint must be an object');
   assertExactKeys(
     value,

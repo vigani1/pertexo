@@ -152,6 +152,7 @@ function capturingTransportMetrics(): TransportMetrics {
   return {
     addActiveConcurrency: vi.fn(),
     observeArtifacts: vi.fn(),
+    observeExecutionStorage: vi.fn(),
     observeOutbox: vi.fn(),
     observeQueue: vi.fn(),
     recordHandlerFinished: vi.fn(),
@@ -284,8 +285,8 @@ describeIntegration(
       const heldQueue = new Queue(QUEUE_NAME.triggerLifecycle, {
         connection: redisConnection(),
       });
-      const consumerStarted = deferred();
-      const releaseConsumer = deferred();
+      const consumerStarted = deferred('ready consumer started');
+      const releaseConsumer = deferred('ready consumer released');
       const consumer = createQueueConsumer({
         handler: async (delivery) => {
           if (delivery.data.outboxEventId !== enabledId) return;
@@ -402,9 +403,11 @@ describeIntegration(
       });
       const dispatcher = createDispatcher('integration-reclaimer');
       const receiptStatuses: string[] = [];
-      const firstCoordinatorCommit = deferred();
-      const duplicateCoordinatorCommit = deferred();
-      const providerCompleted = deferred();
+      const firstCoordinatorCommit = deferred('first coordinator commit');
+      const duplicateCoordinatorCommit = deferred(
+        'duplicate coordinator commit',
+      );
+      const providerCompleted = deferred('provider completion');
       let coordinatorDeliveries = 0;
       let providerDeliveries = 0;
       const consumerMetrics = capturingTransportMetrics();

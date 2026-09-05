@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
+import { sha256HexSchema } from '../validation/persisted-primitives.js';
 
 import {
   lockExpectedCompatibilityReleaseSet,
@@ -8,6 +9,7 @@ import {
   type CompatibilityReleaseExpectationSet,
 } from '../compatibility/compatibility-release.js';
 import type { DatabaseConfig } from '../config.js';
+import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import { createWorkspaceDatabase } from '../database.js';
 import { acceptWorkflowRun } from '../execution/execution-acceptance.js';
 import { consumeInboxMessage } from '../execution/inbox.js';
@@ -23,7 +25,7 @@ const inputSchema = z
     delivery: z
       .object({
         outboxEventId: z.uuid(),
-        payloadChecksum: z.string().regex(/^[0-9a-f]{64}$/u),
+        payloadChecksum: sha256HexSchema,
       })
       .strict(),
     signal: z.custom<AbortSignal>().optional(),
@@ -40,7 +42,7 @@ const payloadSchema = z
   .strict();
 const requestRowSchema = z
   .object({
-    request_fingerprint: z.string().regex(/^[0-9a-f]{64}$/u),
+    request_fingerprint: sha256HexSchema,
     run_input: z.json(),
     source_run_id: z.uuid(),
     status: z.enum(['pending', 'completed', 'failed']),
@@ -89,8 +91,12 @@ export function createOperatorRunReplayStore(
   config: DatabaseConfig,
   compatibilityReleaseInput: CompatibilityReleaseExpectationSet,
   checkpointFactory: OperatorRunReplayCheckpointFactory,
+  runtime?: DatabaseRuntime,
 ): OperatorRunReplayStore {
-  const database = createWorkspaceDatabase(config);
+  const database = createWorkspaceDatabase(
+    config,
+    runtime === undefined ? {} : { runtime },
+  );
   const compatibilityReleases = parseCompatibilityReleaseExpectationSet(
     compatibilityReleaseInput,
   );

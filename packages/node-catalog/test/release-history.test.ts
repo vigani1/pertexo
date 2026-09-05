@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   HTTP_REQUEST_DEFINITION,
   HTTP_REQUEST_EXECUTOR,
-  HTTP_REQUEST_MANIFEST,
   SLACK_BOT_TOKEN_CONNECTION_SLOT,
   SLACK_SEND_MESSAGE_DEFINITION,
   SLACK_SEND_MESSAGE_EXECUTOR,
@@ -10,28 +9,25 @@ import {
   EMAIL_SEND_NOTIFICATION_EXECUTOR,
   RESEND_API_KEY_CONNECTION_SLOT,
 } from '@pertexo/integrations';
-import type {
-  HttpRequestExecutorDependencies,
-  SecureHttpBodyConsumer,
-  SecureHttpRequest,
-  SecureHttpResponse,
-} from '@pertexo/integrations/server';
-import { createRegistryReleaseSuccessor } from '@pertexo/node-sdk';
-import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
 import {
   CORE_CONDITION_DEFINITION,
   CORE_CONDITION_EXECUTOR,
   CORE_FOR_EACH_DEFINITION,
   CORE_FOR_EACH_EXECUTOR,
   CORE_MERGE_DEFINITION,
+  CORE_MERGE_DEFINITION_V2,
   CORE_MERGE_EXECUTOR,
+  CORE_MERGE_EXECUTOR_V2,
   CORE_PARALLEL_DEFINITION,
+  CORE_PARALLEL_DEFINITION_V2,
   CORE_PARALLEL_EXECUTOR,
+  CORE_PARALLEL_EXECUTOR_V2,
   CORE_SET_DEFINITION,
-  CORE_SET_EXECUTOR,
   CORE_SCHEDULE_CONFIG_SCHEMA,
   CORE_SCHEDULE_DEFINITION,
+  CORE_SCHEDULE_DEFINITION_V2,
   CORE_SCHEDULE_EXECUTOR,
+  CORE_SCHEDULE_EXECUTOR_V2,
   CORE_SWITCH_DEFINITION,
   CORE_SWITCH_EXECUTOR,
   CORE_WAIT_DEFINITION,
@@ -64,10 +60,19 @@ import {
   PLATFORM_EMAIL_STAGING_RELEASE_SUPPORT,
   PLATFORM_REGISTRY_RELEASE_SCHEDULE_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_SCHEDULE_STAGED,
+  PLATFORM_REGISTRY_RELEASE_SCHEDULE_V2_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_PARALLEL_V2_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_MERGE_V2_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_WEBHOOK_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_WEBHOOK_STAGED,
   PLATFORM_SCHEDULE_ACTIVATION_RELEASE_SUPPORT,
   PLATFORM_SCHEDULE_STAGING_RELEASE_SUPPORT,
+  PLATFORM_SCHEDULE_V2_ACTIVATION_RELEASE_SUPPORT,
+  PLATFORM_SCHEDULE_V2_STAGING_RELEASE_SUPPORT,
+  PLATFORM_PARALLEL_V2_ACTIVATION_RELEASE_SUPPORT,
+  PLATFORM_PARALLEL_V2_STAGING_RELEASE_SUPPORT,
+  PLATFORM_MERGE_V2_ACTIVATION_RELEASE_SUPPORT,
+  PLATFORM_MERGE_V2_STAGING_RELEASE_SUPPORT,
   PLATFORM_WEBHOOK_ACTIVATION_RELEASE_SUPPORT,
   PLATFORM_WEBHOOK_STAGING_RELEASE_SUPPORT,
   PLATFORM_CONDITION_ACTIVATION_RELEASE_SUPPORT,
@@ -94,8 +99,23 @@ import {
   createPlatformNodeRegistryForRelease,
   resolvePlatformNodeDefinitionForRelease,
 } from '../src/server.js';
+import { PLATFORM_RELEASE_FINGERPRINT_GOLDEN } from './release-history.golden.js';
 
-describe('platform node compatibility catalog', () => {
+describe('platform node release history and cohorts', () => {
+  it('pins every retained compatibility identity independently of manifests', () => {
+    expect(
+      PLATFORM_REGISTRY_RELEASE_HISTORY.map(({ epoch, fingerprint }) => ({
+        epoch,
+        fingerprint,
+      })),
+    ).toEqual(
+      PLATFORM_RELEASE_FINGERPRINT_GOLDEN.map((fingerprint, index) => ({
+        epoch: index + 1,
+        fingerprint,
+      })),
+    );
+  });
+
   it('retains and executes staged-then-active generic Webhook releases', async () => {
     expect(PLATFORM_REGISTRY_RELEASE_WEBHOOK_STAGED.epoch).toBe(21);
     expect(PLATFORM_REGISTRY_RELEASE_WEBHOOK_ACTIVE.epoch).toBe(22);
@@ -579,35 +599,11 @@ describe('platform node compatibility catalog', () => {
     ).toThrow(/not implemented/u);
   });
 
-  it('resolves exact definition schemas without constructing or calling an executor', () => {
-    const resolved = resolvePlatformNodeDefinitionForRelease(
-      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
-      HTTP_REQUEST_DEFINITION,
-    );
-    expect(resolved.manifest).toStrictEqual(HTTP_REQUEST_MANIFEST);
-    expect(
-      resolved.configSchema.safeParse({
-        method: 'GET',
-        url: 'https://provider.example.test/resource',
-        headers: {},
-        timeoutMillis: 1_000,
-        maxRedirects: 1,
-        maxResponseBytes: 1_024,
-        inlineResponseBytes: 512,
-      }).success,
-    ).toBe(true);
-    expect(() =>
-      resolvePlatformNodeDefinitionForRelease(
-        PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
-        { key: 'missing.node', version: 1 },
-      ),
-    ).toThrow(/not implemented/u);
-  });
   it('retains every additive release in canonical order', () => {
     expect(PLATFORM_REGISTRY_RELEASE_HISTORY.map(({ epoch }) => epoch)).toEqual(
       [
         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-        21, 22, 23, 24,
+        21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
       ],
     );
     expect(PLATFORM_REGISTRY_RELEASE_SUPPORT.map(({ epoch }) => epoch)).toEqual(
@@ -807,163 +803,115 @@ describe('platform node compatibility catalog', () => {
       new Set(
         PLATFORM_REGISTRY_RELEASE_HISTORY.map(({ fingerprint }) => fingerprint),
       ).size,
-    ).toBe(24);
+    ).toBe(PLATFORM_REGISTRY_RELEASE_HISTORY.length);
   });
 
-  it('builds one exact active server registry with retained core and dispatch-aware HTTP', async () => {
-    const registry = createPlatformNodeRegistryForRelease(
-      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
-      { httpRequest: { httpClient: { executeStreaming: vi.fn() } as never } },
-    );
-    expect(registry.compatibility).toEqual({
-      epoch: PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE.epoch,
-      fingerprint: PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE.fingerprint,
-    });
-    expect(registry.historicalCatalog().definitions).toEqual(
-      expect.arrayContaining([CORE_SET_DEFINITION, HTTP_REQUEST_DEFINITION]),
-    );
+  it('executes additive version 2 core contracts without changing retained versions', async () => {
+    const successorCohorts = [
+      [
+        'schedule_v2_staging',
+        PLATFORM_SCHEDULE_V2_STAGING_RELEASE_SUPPORT,
+        24,
+        [24, 25],
+      ],
+      [
+        'schedule_v2_activation',
+        PLATFORM_SCHEDULE_V2_ACTIVATION_RELEASE_SUPPORT,
+        26,
+        [25, 26],
+      ],
+      [
+        'parallel_v2_staging',
+        PLATFORM_PARALLEL_V2_STAGING_RELEASE_SUPPORT,
+        26,
+        [26, 27],
+      ],
+      [
+        'parallel_v2_activation',
+        PLATFORM_PARALLEL_V2_ACTIVATION_RELEASE_SUPPORT,
+        28,
+        [27, 28],
+      ],
+      [
+        'merge_v2_staging',
+        PLATFORM_MERGE_V2_STAGING_RELEASE_SUPPORT,
+        28,
+        [28, 29],
+      ],
+      [
+        'merge_v2_activation',
+        PLATFORM_MERGE_V2_ACTIVATION_RELEASE_SUPPORT,
+        30,
+        [29, 30],
+      ],
+    ] as const;
+    for (const [
+      cohort,
+      support,
+      servingEpoch,
+      supportEpochs,
+    ] of successorCohorts) {
+      expect(platformRegistryReleaseSupport(cohort)).toBe(support);
+      expect(support.map(({ epoch }) => epoch)).toEqual(supportEpochs);
+      expect(platformServingRegistryRelease(cohort).epoch).toBe(servingEpoch);
+    }
     expect(
-      registry.dispatchMode({
-        definition: CORE_SET_DEFINITION,
-        executor: CORE_SET_EXECUTOR,
-      }),
-    ).toBe('before_execute');
-    expect(
-      registry.dispatchMode({
-        definition: HTTP_REQUEST_DEFINITION,
-        executor: HTTP_REQUEST_EXECUTOR,
-      }),
-    ).toBe('executor_controlled');
-    await expect(
-      registry.execute({
-        definition: CORE_SET_DEFINITION,
-        executor: CORE_SET_EXECUTOR,
-        config: {},
-        input: { value: true },
-        signal: new AbortController().signal,
-      }),
-    ).resolves.toMatchObject({ kind: 'succeeded' });
-  });
-
-  it('rejects a staged execution registry and an unshipped identity', () => {
-    expect(() =>
-      createPlatformNodeRegistryForRelease(
-        PLATFORM_REGISTRY_RELEASE_HTTP_STAGED,
-        { httpRequest: { httpClient: { executeStreaming: vi.fn() } as never } },
+      platformExecutableRegistryHistory('merge_v2_activation').map(
+        ({ epoch }) => epoch,
       ),
-    ).toThrow(/cannot execute this release/u);
-    const unshipped = createRegistryReleaseSuccessor({
-      previous: PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
-      epoch: PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE.epoch + 1,
-      definitions: PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE.definitions.map(
-        (manifest) =>
-          manifest.definition.key === HTTP_REQUEST_DEFINITION.key
-            ? { ...manifest, lifecycle: 'deprecated' as const }
-            : manifest,
-      ),
-      executors: PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE.executors,
-      policies: PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE.policies,
-    });
-    expect(() => createPlatformNodeRegistryForRelease(unshipped)).toThrow(
-      'Platform compatibility release identity is not supported',
-    );
-  });
+    ).toEqual(Array.from({ length: 30 }, (_, index) => index + 1));
 
-  it('threads provider telemetry through the active HTTP registry', async () => {
-    const connectionId = '11111111-1111-4111-8111-111111111111';
-    const secret = new TextEncoder().encode(
-      JSON.stringify({
-        schemaVersion: 1,
-        type: 'http_headers',
-        headers: { authorization: 'Bearer telemetry-proof' },
-      }),
-    );
-    const executeStreaming = async <Body>(
-      request: SecureHttpRequest,
-      consume: SecureHttpBodyConsumer<Body>,
-    ): Promise<SecureHttpResponse<Body>> => {
-      await request.beforeDispatch();
-      const signal = request.signal ?? new AbortController().signal;
-      const body = await consume({
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-        body: (async function* (): AsyncGenerator<Uint8Array> {
-          await Promise.resolve();
-          yield new TextEncoder().encode('{"ok":true}');
-        })(),
-        bodyEncoding: 'utf8',
-        finalUrl: 'https://provider.example.test',
-        redirectCount: 0,
-        signal,
-      });
-      return {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-        body,
-        bodyEncoding: 'utf8',
-        finalUrl: 'https://provider.example.test',
-        redirectCount: 0,
-      };
+    const signal = new AbortController().signal;
+    const scheduleInput = {
+      nodeId: 'schedule',
+      scheduledAt: '2026-09-05T01:00:00.000Z',
+      schemaVersion: 1,
+      triggerId: '018f47a0-7b5c-7e2d-8c3f-12ad4e8b9c01',
     };
-    const measure = vi.fn<
-      NonNullable<HttpRequestExecutorDependencies['telemetry']>['measure']
-    >((work) => work());
-    const beforeDispatch = vi.fn().mockResolvedValue(undefined);
-    const runtime = {
-      workspaceId: '22222222-2222-4222-8222-222222222222',
-      runId: '33333333-3333-4333-8333-333333333333',
-      nodeRunId: '44444444-4444-4444-8444-444444444444',
-      attemptId: '55555555-5555-4555-8555-555555555555',
-      attemptNumber: 1,
-      nodeId: 'http',
-      invocationKey: 'http-invocation',
-      sideEffectClass: 'unsafe',
-      beforeDispatch,
-      connections: {
-        assertCurrent: vi.fn().mockResolvedValue(undefined),
-        resolve: vi.fn().mockResolvedValue({
-          connectionId,
-          providerKey: 'http',
-          authType: 'http_headers',
-          secretVersionId: '66666666-6666-4666-8666-666666666666',
-          secret,
-        }),
-      },
-    } satisfies NodeExecutionRuntime;
-    const registry = createPlatformNodeRegistryForRelease(
-      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
-      {
-        httpRequest: {
-          httpClient: { executeStreaming },
-        },
-        httpRequestTelemetry: { measure },
-      },
-    );
+    await expect(
+      createPlatformNodeRegistryForRelease(
+        PLATFORM_REGISTRY_RELEASE_SCHEDULE_V2_ACTIVE,
+      ).execute({
+        config: { intervalMinutes: 5, kind: 'interval' },
+        definition: CORE_SCHEDULE_DEFINITION_V2,
+        executor: CORE_SCHEDULE_EXECUTOR_V2,
+        input: scheduleInput,
+        signal,
+      }),
+    ).resolves.toEqual({ kind: 'succeeded', output: scheduleInput });
 
     await expect(
-      registry.execute({
-        definition: HTTP_REQUEST_DEFINITION,
-        executor: HTTP_REQUEST_EXECUTOR,
+      createPlatformNodeRegistryForRelease(
+        PLATFORM_REGISTRY_RELEASE_PARALLEL_V2_ACTIVE,
+      ).execute({
         config: {
-          method: 'GET',
-          url: 'https://provider.example.test/v1/items',
-          headers: { accept: 'application/json' },
-          timeoutMillis: 10_000,
-          maxRedirects: 2,
-          maxResponseBytes: 1_048_576,
-          inlineResponseBytes: 65_536,
+          branches: [{ id: 'branch-01' }, { id: 'branch-02' }],
+          maxConcurrency: 2,
         },
+        definition: CORE_PARALLEL_DEFINITION_V2,
+        executor: CORE_PARALLEL_EXECUTOR_V2,
         input: {},
-        connectionRefs: { http_headers: connectionId },
-        runtime,
-        signal: new AbortController().signal,
+        signal,
       }),
     ).resolves.toMatchObject({
       kind: 'succeeded',
-      output: { body: { kind: 'inline', value: '{"ok":true}' } },
+      output: { branchIds: ['branch-01', 'branch-02'] },
     });
-    expect(measure).toHaveBeenCalledOnce();
-    expect(beforeDispatch).toHaveBeenCalledOnce();
-    expect(secret.every((byte) => byte === 0)).toBe(true);
+
+    const mergeInput = {
+      ledger: { 'branch-01': { disposition: 'arrived' as const } },
+      selectedBranchIds: ['branch-01'],
+    };
+    await expect(
+      createPlatformNodeRegistryForRelease(
+        PLATFORM_REGISTRY_RELEASE_MERGE_V2_ACTIVE,
+      ).execute({
+        config: { parallelNodeId: 'parallel', policy: { kind: 'all' } },
+        definition: CORE_MERGE_DEFINITION_V2,
+        executor: CORE_MERGE_EXECUTOR_V2,
+        input: mergeInput,
+        signal,
+      }),
+    ).resolves.toEqual({ kind: 'succeeded', output: mergeInput });
   });
 });

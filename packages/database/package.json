@@ -39,6 +39,7 @@
     "test": "vitest run --exclude '**/*.integration.test.ts'",
     "test:coverage": "vitest run --config vitest.coverage.config.ts --coverage --reporter=default --reporter=json --outputFile.json=../../coverage/database/test-results.json",
     "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:integration:coverage": "vitest run --config vitest.integration-coverage.config.ts --coverage",
     "typecheck": "tsc -p tsconfig.test.json --noEmit"
   },
   "dependencies": {

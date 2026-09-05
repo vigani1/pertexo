@@ -2,6 +2,7 @@ import {
   DeleteObjectCommand,
   DeleteObjectsCommand,
   GetObjectCommand,
+  GetBucketLocationCommand,
   HeadBucketCommand,
   HeadObjectCommand,
   ListObjectVersionsCommand,
@@ -9,10 +10,8 @@ import {
   S3Client,
 } from '@aws-sdk/client-s3';
 import type {
-  DeleteObjectsCommandOutput,
   GetObjectCommandOutput,
   HeadObjectCommandOutput,
-  ListObjectVersionsCommandOutput,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { createHash } from 'node:crypto';
@@ -32,23 +31,10 @@ import type {
   ObjectStoreObserver,
   ObjectStoreRegionRole,
 } from './object-store-telemetry.js';
+import { sendS3 } from './s3-client-contract.js';
+import type { ObjectStoreS3Client } from './s3-client-contract.js';
 
-type S3Command =
-  | DeleteObjectCommand
-  | DeleteObjectsCommand
-  | GetObjectCommand
-  | HeadBucketCommand
-  | HeadObjectCommand
-  | ListObjectVersionsCommand
-  | PutObjectCommand;
-
-export interface S3ClientLike {
-  destroy(): void;
-  send(
-    command: S3Command,
-    options?: { readonly abortSignal?: AbortSignal },
-  ): Promise<unknown>;
-}
+export type S3ClientLike = ObjectStoreS3Client;
 
 export interface ArtifactIdentity {
   readonly artifactId: string;
@@ -95,6 +81,7 @@ export interface DirectUpload {
 export interface PutObjectPresignRequest {
   readonly command: PutObjectCommand;
   readonly expiresInSeconds: number;
+  readonly signal: AbortSignal;
   readonly signableHeaders: ReadonlySet<string>;
   readonly unhoistableHeaders: ReadonlySet<string>;
 }
@@ -221,6 +208,38 @@ function requestSignal(
   return externalSignal === undefined
     ? timeoutSignal
     : AbortSignal.any([externalSignal, timeoutSignal]);
+}
+
+function awaitWithSignal<T>(
+  operation: Promise<T>,
+  signal: AbortSignal,
+): Promise<T> {
+  signal.throwIfAborted();
+  return new Promise<T>((resolve, reject) => {
+    const aborted = () => {
+      const reason: unknown = signal.reason;
+      reject(
+        reason instanceof Error
+          ? reason
+          : new Error('Artifact operation aborted', { cause: reason }),
+      );
+    };
+    signal.addEventListener('abort', aborted, { once: true });
+    void operation.then(
+      (value) => {
+        signal.removeEventListener('abort', aborted);
+        resolve(value);
+      },
+      (error: unknown) => {
+        signal.removeEventListener('abort', aborted);
+        reject(
+          error instanceof Error
+            ? error
+            : new Error('Artifact operation failed', { cause: error }),
+        );
+      },
+    );
+  });
 }
 
 function isNotFound(error: unknown): boolean {
@@ -419,13 +438,15 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
     private readonly config: ArtifactStoreConfig,
     private readonly client: S3ClientLike,
     private readonly presignPutObject: PutObjectPresigner,
+    private readonly ownsClient: boolean,
   ) {}
 
   public async beginDirectUpload(
     request: BeginDirectUploadRequest,
   ): Promise<DirectUpload> {
     this.assertOpen();
-    request.signal?.throwIfAborted();
+    const signal = requestSignal(this.config.requestTimeoutMs, request.signal);
+    signal.throwIfAborted();
     const issuedAt = Date.now();
     const metadata = beginDirectUploadSchema.parse(request);
     this.assertWithinLimit(metadata);
@@ -440,13 +461,17 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
       Key: storageKey(metadata),
       Metadata: storedMetadata,
     });
-    const url = await this.presignPutObject({
-      command,
-      expiresInSeconds: metadata.expiresInSeconds,
-      signableHeaders: DIRECT_UPLOAD_SIGNABLE_HEADERS,
-      unhoistableHeaders: DIRECT_UPLOAD_UNHOISTABLE_HEADERS,
-    });
-    request.signal?.throwIfAborted();
+    const url = await awaitWithSignal(
+      this.presignPutObject({
+        command,
+        expiresInSeconds: metadata.expiresInSeconds,
+        signal,
+        signableHeaders: DIRECT_UPLOAD_SIGNABLE_HEADERS,
+        unhoistableHeaders: DIRECT_UPLOAD_UNHOISTABLE_HEADERS,
+      }),
+      signal,
+    );
+    signal.throwIfAborted();
     const headers = Object.freeze({
       'content-length': String(metadata.byteLength),
       'content-type': metadata.mediaType,
@@ -474,13 +499,33 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
     signal?: AbortSignal,
   ): Promise<ArtifactStoreReadiness> {
     this.assertOpen();
-    await this.client.send(
+    const options = {
+      abortSignal: requestSignal(this.config.requestTimeoutMs, signal),
+    };
+    await sendS3(
+      this.client,
       new HeadBucketCommand({ Bucket: this.config.bucket }),
-      { abortSignal: requestSignal(this.config.requestTimeoutMs, signal) },
+      options,
     );
+    const location = await sendS3(
+      this.client,
+      new GetBucketLocationCommand({ Bucket: this.config.bucket }),
+      options,
+    );
+    const reportedRegion: string = location.LocationConstraint ?? '';
+    const actualRegion =
+      reportedRegion === '' || reportedRegion === 'null'
+        ? 'us-east-1'
+        : reportedRegion === 'EU'
+          ? 'eu-west-1'
+          : reportedRegion;
+    if (actualRegion !== this.config.region)
+      throw new ArtifactIntegrityError(
+        'Artifact bucket region does not match the configured region',
+      );
     return Object.freeze({
       bucket: this.config.bucket,
-      region: this.config.region,
+      region: actualRegion,
     });
   }
 
@@ -489,7 +534,7 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
       return;
     }
     this.closed = true;
-    this.client.destroy();
+    if (this.ownsClient) this.client.destroy();
   }
 
   public async delete(request: ArtifactRequest): Promise<void> {
@@ -512,7 +557,8 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
   ): Promise<ArtifactDownload> {
     let output: GetObjectCommandOutput;
     try {
-      output = (await this.client.send(
+      output = await sendS3(
+        this.client,
         new GetObjectCommand({
           Bucket: this.config.bucket,
           Key: storageKey(identity),
@@ -520,7 +566,7 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
         {
           abortSignal: signal,
         },
-      )) as GetObjectCommandOutput;
+      );
     } catch (error: unknown) {
       if (isNotFound(error)) {
         throw new ArtifactNotFoundError();
@@ -566,19 +612,25 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
   ): Promise<ArtifactMetadata | null> {
     this.assertOpen();
     const identity = identitySchema.parse(request);
+    return this.headWithSignal(
+      identity,
+      requestSignal(this.config.requestTimeoutMs, request.signal),
+    );
+  }
+
+  private async headWithSignal(
+    identity: ArtifactIdentity,
+    signal: AbortSignal,
+  ): Promise<ArtifactMetadata | null> {
     try {
-      const output = (await this.client.send(
+      const output = await sendS3(
+        this.client,
         new HeadObjectCommand({
           Bucket: this.config.bucket,
           Key: storageKey(identity),
         }),
-        {
-          abortSignal: requestSignal(
-            this.config.requestTimeoutMs,
-            request.signal,
-          ),
-        },
-      )) as HeadObjectCommandOutput;
+        { abortSignal: signal },
+      );
       return metadataFromHead(identity, output, this.config.maxObjectBytes);
     } catch (error: unknown) {
       if (isNotFound(error)) {
@@ -603,7 +655,8 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
       signal,
     );
     try {
-      await this.client.send(
+      await sendS3(
+        this.client,
         new PutObjectCommand({
           Body: body,
           Bucket: this.config.bucket,
@@ -619,7 +672,7 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
         },
       );
 
-      const verified = await this.head(metadata);
+      const verified = await this.headWithSignal(metadata, signal);
       if (verified === null) {
         throw new ArtifactIntegrityError('Uploaded artifact is unavailable');
       }
@@ -637,14 +690,15 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
     const input = purgeWorkspaceSchema.parse(request);
     const prefix = workspacePrefix(input.workspaceId);
     const signal = requestSignal(this.config.requestTimeoutMs, request.signal);
-    const listed = (await this.client.send(
+    const listed = await sendS3(
+      this.client,
       new ListObjectVersionsCommand({
         Bucket: this.config.bucket,
         MaxKeys: input.maxObjects,
         Prefix: prefix,
       }),
       { abortSignal: signal },
-    )) as ListObjectVersionsCommandOutput;
+    );
     const entries = [
       ...(listed.Versions ?? []),
       ...(listed.DeleteMarkers ?? []),
@@ -683,21 +737,40 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
       seen.add(identity);
       return { Key: entry.Key, VersionId: entry.VersionId };
     });
-    const deleted = (await this.client.send(
+    const deleted = await sendS3(
+      this.client,
       new DeleteObjectsCommand({
         Bucket: this.config.bucket,
         Delete: { Objects: objects, Quiet: false },
       }),
       { abortSignal: signal },
-    )) as DeleteObjectsCommandOutput;
+    );
     if ((deleted.Errors?.length ?? 0) > 0) {
       throw new ArtifactIntegrityError(
         'Object version deletion reported one or more failures',
       );
     }
+    const acknowledged = deleted.Deleted;
+    if (acknowledged?.length !== objects.length)
+      throw new ArtifactIntegrityError(
+        'Object version deletion acknowledgements were incomplete',
+      );
+    const acknowledgedIdentities = new Set<string>();
+    for (const entry of acknowledged) {
+      if (typeof entry.Key !== 'string' || typeof entry.VersionId !== 'string')
+        throw new ArtifactIntegrityError(
+          'Object version deletion acknowledgement was malformed',
+        );
+      const identity = `${entry.Key}\u0000${entry.VersionId}`;
+      if (!seen.has(identity) || acknowledgedIdentities.has(identity))
+        throw new ArtifactIntegrityError(
+          'Object version deletion acknowledgement did not match the request',
+        );
+      acknowledgedIdentities.add(identity);
+    }
     return Object.freeze({
       completed: false,
-      deletedCount: objects.length,
+      deletedCount: acknowledgedIdentities.size,
     });
   }
 
@@ -710,14 +783,15 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
     const signal = requestSignal(this.config.requestTimeoutMs, request.signal);
     let output: HeadObjectCommandOutput;
     try {
-      output = (await this.client.send(
+      output = await sendS3(
+        this.client,
         new HeadObjectCommand({
           Bucket: this.config.bucket,
           ChecksumMode: 'ENABLED',
           Key: storageKey(expected),
         }),
         { abortSignal: signal },
-      )) as HeadObjectCommandOutput;
+      );
     } catch (error: unknown) {
       if (isNotFound(error)) {
         throw new ArtifactNotFoundError();
@@ -771,7 +845,8 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
     identity: ArtifactIdentity,
     signal?: AbortSignal,
   ): Promise<void> {
-    await this.client.send(
+    await sendS3(
+      this.client,
       new DeleteObjectCommand({
         Bucket: this.config.bucket,
         Key: storageKey(identity),
@@ -863,6 +938,7 @@ export function createArtifactStore(
   config: ArtifactStoreConfig,
   options: Readonly<{
     client?: S3ClientLike;
+    clientOwnership?: 'borrowed' | 'owned';
     observer?: ObjectStoreObserver;
     presignPutObject?: PutObjectPresigner;
     regionRole?: ObjectStoreRegionRole;
@@ -881,6 +957,8 @@ export function createArtifactStore(
       region: config.region,
     });
   const regionRole = options.regionRole ?? 'artifact';
+  const ownsClient =
+    options.client === undefined || options.clientOwnership === 'owned';
   const client = new ObservedS3Client(
     rawClient,
     observer,
@@ -897,6 +975,11 @@ export function createArtifactStore(
       }));
   const presignPutObject: PutObjectPresigner = (request) =>
     observePresign(observer, regionRole, () => rawPresignPutObject(request));
-  const store = new AwsArtifactStore(config, client, presignPutObject);
+  const store = new AwsArtifactStore(
+    config,
+    client,
+    presignPutObject,
+    ownsClient,
+  );
   return new ObservedArtifactStore(store, observer, regionRole);
 }

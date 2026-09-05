@@ -526,6 +526,9 @@ describe('workspace lifecycle command intents', () => {
   it('binds projection, session revocation, and completion to one live lease', async () => {
     const ledgerCalls: string[] = [];
     let durableRecord: WorkspaceLifecycleLedgerRecord | undefined;
+    const reconcileStarted = Promise.withResolvers<undefined>();
+    const releaseReconcile = Promise.withResolvers<undefined>();
+    let blockFirstReconcile = true;
     const coordinator = createWorkspaceLifecycleCommandCoordinator(
       {
         connectionString: lifecycleUrl,
@@ -545,9 +548,14 @@ describe('workspace lifecycle command intents', () => {
           };
           return Promise.reject(new Error('append response was lost'));
         },
-        reconcile: () => {
+        reconcile: async () => {
           ledgerCalls.push('reconcile');
-          return Promise.resolve({
+          if (blockFirstReconcile) {
+            blockFirstReconcile = false;
+            reconcileStarted.resolve(undefined);
+            await releaseReconcile.promise;
+          }
+          return {
             hasMore: false,
             pageEndHash: durableRecord?.recordHash ?? '0'.repeat(64),
             pageEndSequence: durableRecord?.sequence ?? 0,
@@ -556,7 +564,7 @@ describe('workspace lifecycle command intents', () => {
               durableRecord === undefined
                 ? ([] as WorkspaceLifecycleLedgerRecord[])
                 : [durableRecord],
-          });
+          };
         },
       },
       {
@@ -577,7 +585,22 @@ describe('workspace lifecycle command intents', () => {
       }),
     ).resolves.toBeUndefined();
     try {
-      await expect(coordinator.processNext()).resolves.toEqual({
+      const firstAttempt = coordinator.processNext();
+      await reconcileStarted.promise;
+      const admin = new Pool({ connectionString: adminUrl, max: 1 });
+      try {
+        const activity = await admin.query<{ count: string }>(
+          `select count(*)::text count from pg_stat_activity
+           where datname=$1 and usename='pertexo_lifecycle_command'
+             and xact_start is not null`,
+          [databaseName],
+        );
+        expect(activity.rows[0]?.count).toBe('0');
+      } finally {
+        await admin.end();
+        releaseReconcile.resolve(undefined);
+      }
+      await expect(firstAttempt).resolves.toEqual({
         commandType: 'deletion_requested',
         operationId: firstOperationId,
         status: 'released',

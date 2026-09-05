@@ -1,5 +1,11 @@
 import { metrics, type Histogram, type Meter } from '@opentelemetry/api';
 import { Pool, type PoolClient, type PoolConfig } from 'pg';
+import {
+  type DatabasePoolRole,
+  withDatabaseDeadlineBudget,
+} from './postgres-pool-policy.js';
+
+export type { DatabasePoolRole } from './postgres-pool-policy.js';
 
 export const DATABASE_METRIC_NAME = Object.freeze({
   lockWaitActive: 'pertexo.database.lock_wait.active',
@@ -12,21 +18,26 @@ export const DATABASE_METRIC_NAME = Object.freeze({
 } as const);
 
 export interface DatabasePoolOptions {
+  /** Bounded, secret-free infrastructure failure reporting. */
+  readonly diagnostics?: DatabasePoolDiagnostics;
   /** Injection seam for SDK-backed production meters and deterministic tests. */
   readonly meter?: Meter;
   /** Disable only when this process is not permitted to read pg_stat_activity. */
   readonly monitorLockWaits?: boolean;
   readonly lockWaitSampleIntervalMs?: number;
+  /** Stable process authority; required for custom PostgreSQL role names. */
+  readonly role?: DatabasePoolRole;
 }
 
-export type DatabasePoolRole =
-  | 'api'
-  | 'dispatcher'
-  | 'lifecycle_command'
-  | 'maintenance'
-  | 'operator'
-  | 'other'
-  | 'worker';
+export interface DatabasePoolDiagnostics {
+  record(event: DatabasePoolDiagnosticEvent): void;
+}
+
+type DatabasePoolDiagnosticEvent = Readonly<{
+  operation: 'idle_pool_error' | 'lock_wait_sample';
+  poolRole: DatabasePoolRole;
+  errorType: string;
+}>;
 
 type QueryOperation =
   | 'begin'
@@ -69,6 +80,21 @@ function safeRecord(
   } catch {
     // Observability must never affect a database operation's result.
   }
+}
+
+function safeDiagnostic(
+  diagnostics: DatabasePoolDiagnostics | undefined,
+  event: DatabasePoolDiagnosticEvent,
+): void {
+  try {
+    diagnostics?.record(event);
+  } catch {
+    // Diagnostics must never affect database availability or shutdown.
+  }
+}
+
+function errorType(error: unknown): string {
+  return error instanceof Error ? error.name : typeof error;
 }
 
 function stateFor(meter: Meter): MeterState {
@@ -123,16 +149,19 @@ function stateFor(meter: Meter): MeterState {
   });
   saturation.addCallback((result) => {
     for (const role of databasePoolRoles) {
-      let maximum = 0;
+      let active = 0;
+      let capacity = 0;
       let present = false;
       for (const [pool, poolRole] of pools) {
         if (poolRole !== role) continue;
         present = true;
-        const capacity = pool.options.max;
-        const active = pool.totalCount - pool.idleCount;
-        maximum = Math.max(maximum, capacity === 0 ? 0 : active / capacity);
+        capacity += pool.options.max;
+        active += pool.totalCount - pool.idleCount;
       }
-      if (present) result.observe(maximum, { pool_role: role });
+      if (present)
+        result.observe(capacity === 0 ? 0 : active / capacity, {
+          pool_role: role,
+        });
     }
   });
   waiters.addCallback((result) => {
@@ -392,6 +421,8 @@ function startLockWaitMonitor(
   state: MeterState,
   intervalMs: number,
   backendPids: Set<number>,
+  role: DatabasePoolRole,
+  diagnostics: DatabasePoolDiagnostics | undefined,
 ): LockWaitMonitor {
   const monitorPool = new Pool({ ...config, max: 1 });
   const observations = new Map<
@@ -448,9 +479,14 @@ function startLockWaitMonitor(
         );
         observations.delete(pid);
       }
-    } catch {
+    } catch (error: unknown) {
       monitor.active = 0;
       observations.clear();
+      safeDiagnostic(diagnostics, {
+        operation: 'lock_wait_sample',
+        poolRole: role,
+        errorType: errorType(error),
+      });
       // A failed sample is unknown, not evidence that a prior wait is active.
     } finally {
       sampling = false;
@@ -464,13 +500,19 @@ function startLockWaitMonitor(
   return monitor;
 }
 
-function monitorKey(config: PoolConfig): string {
+function monitorKey(
+  config: PoolConfig,
+  intervalMs: number,
+  role: DatabasePoolRole,
+): string {
   return JSON.stringify({
     connectionString: config.connectionString,
     database: config.database,
     host: config.host,
     port: config.port,
     user: config.user,
+    intervalMs,
+    role,
   });
 }
 
@@ -478,14 +520,23 @@ function acquireLockWaitMonitor(
   config: PoolConfig,
   state: MeterState,
   intervalMs: number,
+  role: DatabasePoolRole,
+  diagnostics: DatabasePoolDiagnostics | undefined,
 ): LockWaitMonitor {
-  const key = monitorKey(config);
+  const key = monitorKey(config, intervalMs, role);
   const existing = state.monitors.get(key);
   if (existing !== undefined) {
     existing.references += 1;
     return existing;
   }
-  const monitor = startLockWaitMonitor(config, state, intervalMs, new Set());
+  const monitor = startLockWaitMonitor(
+    config,
+    state,
+    intervalMs,
+    new Set(),
+    role,
+    diagnostics,
+  );
   state.monitors.set(key, monitor);
   const close = monitor.close.bind(monitor);
   monitor.close = async (): Promise<void> => {
@@ -510,15 +561,29 @@ export function createDatabasePool(
   const meter =
     options.meter ?? metrics.getMeter('@pertexo/database.postgres', '0.0.0');
   const state = stateFor(meter);
-  const pool = new Pool(config);
-  pool.on('error', () => undefined);
+  const role = options.role ?? databasePoolRole(config);
+  const boundedConfig = withDatabaseDeadlineBudget(config, role);
+  const pool = new Pool(boundedConfig);
+  pool.on('error', (error) => {
+    safeDiagnostic(options.diagnostics, {
+      operation: 'idle_pool_error',
+      poolRole: role,
+      errorType: errorType(error),
+    });
+  });
   instrumentPoolConnect(pool, state);
   const monitor =
     options.monitorLockWaits === false
       ? undefined
-      : acquireLockWaitMonitor(config, state, intervalMs);
+      : acquireLockWaitMonitor(
+          boundedConfig,
+          state,
+          intervalMs,
+          role,
+          options.diagnostics,
+        );
   const backendPids = monitor?.backendPids;
-  state.pools.set(pool, databasePoolRole(config));
+  state.pools.set(pool, role);
   pool.on('connect', (client) => {
     instrumentClient(client, state);
     const processId = (client as PoolClient & { processID?: number }).processID;

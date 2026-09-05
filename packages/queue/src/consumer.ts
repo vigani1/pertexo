@@ -17,10 +17,10 @@ import {
   type RedisTelemetryObserver,
 } from './redis-telemetry-contracts.js';
 import { createProductionRedisTelemetryObserver } from './redis-telemetry.js';
+import { normalizeRedisEndpoint } from './redis-endpoint.js';
 
 const DEFAULT_READY_TIMEOUT_MS = 5_000;
 const MAX_CONFIGURED_TIMEOUT_MS = 60 * 60_000;
-const REDIS_PROTOCOLS = new Set(['redis:', 'rediss:']);
 
 const consumerOptionsSchema = z
   .object({
@@ -213,21 +213,15 @@ interface ActiveExecution {
 const TIMED_OUT = Symbol('timed-out');
 
 function parseRedisUrl(value: string): string {
-  let parsed: URL;
-
-  try {
-    parsed = new URL(value);
-  } catch {
-    throw new QueueConsumerConfigurationError('Redis URL is invalid');
-  }
-
-  if (!REDIS_PROTOCOLS.has(parsed.protocol) || parsed.hostname.length === 0) {
-    throw new QueueConsumerConfigurationError(
-      'Redis URL must use redis:// or rediss:// with a hostname',
-    );
-  }
-
-  return value;
+  return normalizeRedisEndpoint(
+    value,
+    (reason) =>
+      new QueueConsumerConfigurationError(
+        reason === 'invalid_url'
+          ? 'Redis URL is invalid'
+          : 'Redis URL must use redis:// or rediss:// with a hostname',
+      ),
+  );
 }
 
 function parseConsumerOptions(
@@ -472,6 +466,10 @@ export class BullMqQueueConsumer implements QueueConsumer {
     }
 
     const transportJobId = jobId(job);
+    if (transportJobId !== `outbox-${parsed.data.outboxEventId}`)
+      throw new InvalidQueueDeliveryError(
+        'Queue delivery job ID does not match its outbox event',
+      );
 
     const execution: ActiveExecution = {
       abortFailureClass: undefined,

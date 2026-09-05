@@ -13,7 +13,6 @@ import { withTenantScopedClient } from '../tenant-access/workspace.js';
  */
 
 export const uuidSchema = z.uuid();
-export const digestSchema = z.string().regex(/^[0-9a-f]{64}$/u);
 export const providerKeySchema = z
   .string()
   .min(1)

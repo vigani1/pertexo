@@ -1,5 +1,15 @@
 import { z } from 'zod';
 
+import {
+  authenticatedComponents,
+  jsonRequest,
+  jsonResponse,
+  jsonSchema,
+  problemResponse,
+  responseReference,
+  uuidPathParameter as pathParameter,
+} from './openapi-primitives.js';
+
 import { apiProblemSchema } from './errors/api-problem.js';
 import { idempotencyKeySchema } from './http/identity-workspace.js';
 import {
@@ -10,28 +20,62 @@ import {
   previewRunResponseSchema,
   previewRunSummarySchema,
 } from './http/node-testing.js';
+import { projectContractSchema } from './schema-projection.js';
 
 export * from './http/node-testing.js';
 
-const schemas = Object.freeze({
-  ApiProblem: jsonSchema(apiProblemSchema, 'output'),
-  NodeTestRequest: jsonSchema(nodeTestRequestSchema, 'input'),
-  NodeSideEffectDisclosure: jsonSchema(
-    nodeSideEffectDisclosureSchema,
-    'output',
-  ),
-  NodeValidationResponse: jsonSchema(nodeValidationResponseSchema, 'output'),
-  NodeTestExecuteAcceptedResponse: jsonSchema(
-    nodeTestExecuteAcceptedResponseSchema,
-    'output',
-  ),
-  PreviewRunSummary: jsonSchema(previewRunSummarySchema, 'output'),
-  PreviewRunResponse: jsonSchema(previewRunResponseSchema, 'output'),
-});
+function contractSchemas(target: 'client' | 'openapi') {
+  return Object.freeze({
+    ApiProblem: projectContractSchema(
+      'ApiProblem',
+      apiProblemSchema,
+      'output',
+      target,
+    ),
+    NodeTestRequest: projectContractSchema(
+      'NodeTestRequest',
+      nodeTestRequestSchema,
+      'input',
+      target,
+    ),
+    NodeSideEffectDisclosure: projectContractSchema(
+      'NodeSideEffectDisclosure',
+      nodeSideEffectDisclosureSchema,
+      'output',
+      target,
+    ),
+    NodeValidationResponse: projectContractSchema(
+      'NodeValidationResponse',
+      nodeValidationResponseSchema,
+      'output',
+      target,
+    ),
+    NodeTestExecuteAcceptedResponse: projectContractSchema(
+      'NodeTestExecuteAcceptedResponse',
+      nodeTestExecuteAcceptedResponseSchema,
+      'output',
+      target,
+    ),
+    PreviewRunSummary: projectContractSchema(
+      'PreviewRunSummary',
+      previewRunSummarySchema,
+      'output',
+      target,
+    ),
+    PreviewRunResponse: projectContractSchema(
+      'PreviewRunResponse',
+      previewRunResponseSchema,
+      'output',
+      target,
+    ),
+  });
+}
+const clientSchemas = contractSchemas('client');
+const openApiSchemas = contractSchemas('openapi');
 
 export const nodeTestingClientContract = Object.freeze({
   schemaVersion: '1.0.0',
-  schemas,
+  schemas: clientSchemas,
 });
 
 const problemResponses = Object.freeze({
@@ -123,67 +167,5 @@ export const nodeTestingOpenApiDocument = Object.freeze({
       },
     },
   },
-  components: {
-    schemas,
-    responses: problemResponses,
-    securitySchemes: {
-      cookieSession: {
-        type: 'apiKey',
-        in: 'cookie',
-        name: 'pertexo_session',
-      },
-    },
-  },
+  components: authenticatedComponents(openApiSchemas, problemResponses),
 });
-
-type SchemaName = keyof typeof schemas;
-type ProblemResponseName = keyof typeof problemResponses;
-
-function jsonSchema(schema: z.ZodType, io: 'input' | 'output') {
-  return z.toJSONSchema(schema, { io, target: 'draft-2020-12' });
-}
-
-function schemaReference(name: SchemaName): Readonly<{ $ref: string }> {
-  return { $ref: `#/components/schemas/${name}` };
-}
-
-function responseReference(
-  name: ProblemResponseName,
-): Readonly<{ $ref: string }> {
-  return { $ref: `#/components/responses/${name}` };
-}
-
-function jsonRequest(name: SchemaName) {
-  return {
-    required: true,
-    content: { 'application/json': { schema: schemaReference(name) } },
-  } as const;
-}
-
-function jsonResponse(description: string, name: SchemaName) {
-  return {
-    description,
-    content: { 'application/json': { schema: schemaReference(name) } },
-  } as const;
-}
-
-function problemResponse(description: string) {
-  return {
-    description,
-    content: {
-      'application/problem+json': {
-        schema: { $ref: '#/components/schemas/ApiProblem' },
-      },
-    },
-  } as const;
-}
-
-function pathParameter(name: string, description: string) {
-  return {
-    name,
-    in: 'path',
-    required: true,
-    description,
-    schema: jsonSchema(z.uuid(), 'input'),
-  } as const;
-}

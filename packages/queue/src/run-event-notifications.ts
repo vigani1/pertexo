@@ -11,10 +11,10 @@ import {
   type RedisTelemetryObserver,
 } from './redis-telemetry-contracts.js';
 import { createProductionRedisTelemetryObserver } from './redis-telemetry.js';
+import { normalizeRedisEndpoint } from './redis-endpoint.js';
 
 const DEFAULT_PUBLISH_TIMEOUT_MS = 2_000;
 const MAX_LIVE_MESSAGE_BYTES = 512;
-const REDIS_PROTOCOLS = new Set(['redis:', 'rediss:']);
 
 const optionsSchema = z
   .object({
@@ -57,17 +57,15 @@ export class RunEventNotificationPublishError extends Error {
 }
 
 function parseRedisUrl(value: string): string {
-  let url: URL;
-  try {
-    url = new URL(value);
-  } catch {
-    throw new RunEventNotificationConfigurationError('Redis URL is invalid');
-  }
-  if (!REDIS_PROTOCOLS.has(url.protocol) || url.hostname.length === 0)
-    throw new RunEventNotificationConfigurationError(
-      'Redis URL must use redis:// or rediss:// with a hostname',
-    );
-  return value;
+  return normalizeRedisEndpoint(
+    value,
+    (reason) =>
+      new RunEventNotificationConfigurationError(
+        reason === 'invalid_url'
+          ? 'Redis URL is invalid'
+          : 'Redis URL must use redis:// or rediss:// with a hostname',
+      ),
+  );
 }
 
 export function runEventChannel(workspaceId: string, runId: string): string {
@@ -193,6 +191,7 @@ export class RedisRunEventNotificationPublisher implements RunEventNotificationP
               new RunEventNotificationPublishError('Redis publish timed out'),
             );
           }, this.publishTimeoutMs);
+          timer.unref();
         }),
       ]);
       return { receivers };

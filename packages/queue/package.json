@@ -8,50 +8,16 @@
       "types": "./dist/index.d.ts",
       "node": "./dist/index.js",
       "default": "./dist/index.js"
-    },
-    "./contracts": {
-      "types": "./dist/contracts.d.ts",
-      "node": "./dist/contracts.js",
-      "default": "./dist/contracts.js"
-    },
-    "./names": {
-      "types": "./dist/names.d.ts",
-      "node": "./dist/names.js",
-      "default": "./dist/names.js"
-    },
-    "./producer": {
-      "types": "./dist/producer.d.ts",
-      "node": "./dist/producer.js",
-      "default": "./dist/producer.js"
-    },
-    "./consumer": {
-      "types": "./dist/consumer.d.ts",
-      "node": "./dist/consumer.js",
-      "default": "./dist/consumer.js"
-    },
-    "./defaults": {
-      "types": "./dist/defaults.d.ts",
-      "node": "./dist/defaults.js",
-      "default": "./dist/defaults.js"
-    },
-    "./run-event-notifications": {
-      "types": "./dist/run-event-notifications.d.ts",
-      "node": "./dist/run-event-notifications.js",
-      "default": "./dist/run-event-notifications.js"
     }
   },
   "browser": {
-    "./dist/index.js": false,
-    "./dist/contracts.js": false,
-    "./dist/names.js": false,
-    "./dist/producer.js": false,
-    "./dist/consumer.js": false,
-    "./dist/defaults.js": false,
-    "./dist/run-event-notifications.js": false
+    "./dist/index.js": false
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "vitest run",
+    "test": "vitest run --exclude '**/*.integration.test.ts'",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:coverage": "vitest run --config vitest.coverage.config.ts --coverage",
     "typecheck": "tsc -p tsconfig.test.json --noEmit"
   },
   "dependencies": {

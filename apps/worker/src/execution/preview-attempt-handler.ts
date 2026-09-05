@@ -2,11 +2,7 @@ import {
   canonicalOutboxPayloadChecksum,
   isValidStoredExecutionOutput,
 } from '@pertexo/database/execution';
-import {
-  jobIdForOutboxEvent,
-  type QueueDelivery,
-  type QueueHandlerContext,
-} from '@pertexo/queue';
+import type { QueueDelivery, QueueHandlerContext } from '@pertexo/queue';
 import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
 import { NodeDispatchEvidenceError } from '@pertexo/node-sdk/server';
 import type {
@@ -106,6 +102,7 @@ export interface PreviewNodeInvoker {
       signal: AbortSignal;
     }>,
   ): Promise<PreviewInvocationOutcome>;
+  close?(): Promise<void>;
 }
 
 export type PreviewInvocationOutcome =
@@ -290,11 +287,6 @@ export function createPreviewAttemptHandler(
       delivery: PreviewQueueDelivery,
       context: QueueHandlerContext,
     ): Promise<PreviewAttemptHandlerResult> => {
-      if (
-        delivery.transport.jobId !==
-        jobIdForOutboxEvent(delivery.data.outboxEventId)
-      )
-        throw new PreviewAttemptStateError('transport_identity_mismatch');
       const claimed: PreviewClaimResult = await dependencies.runStore.claim({
         delivery: {
           outboxEventId: delivery.data.outboxEventId,

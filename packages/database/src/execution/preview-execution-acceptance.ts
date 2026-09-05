@@ -17,8 +17,8 @@ import {
   serializeStoredExecutionValueV1,
 } from './stored-execution-value.js';
 import type { WorkspaceTransaction } from '../tenant-access/workspace.js';
+import { sha256HexSchema } from '../validation/persisted-primitives.js';
 
-export const sha256Schema = z.string().regex(/^[0-9a-f]{64}$/u);
 const compatibilityFingerprintSchema = z
   .string()
   .regex(/^node-compat:v1:sha256:[0-9a-f]{64}$/u);
@@ -70,7 +70,7 @@ const acceptPreviewRunInputSchema = z
     compatibilityReleaseFingerprint: compatibilityFingerprintSchema,
     definitionKey: identityKeySchema,
     definitionVersion: z.number().int().positive(),
-    draftFingerprint: sha256Schema,
+    draftFingerprint: sha256HexSchema,
     draftRevision: z.number().int().positive(),
     dryRun: z.enum(['not_supported', 'provider_supported']),
     executableNode: executableNodeSchema,
@@ -79,7 +79,7 @@ const acceptPreviewRunInputSchema = z
     executionDeadlineAt: z.date(),
     expiresAt: z.date(),
     input: inputSourceSchema,
-    keyHash: sha256Schema,
+    keyHash: sha256HexSchema,
     mayContactProvider: z.boolean(),
     mayCauseExternalSideEffect: z.boolean(),
     nodeId: z.string().min(1).max(256),
@@ -87,7 +87,7 @@ const acceptPreviewRunInputSchema = z
     operationKey: integrationKeySchema.max(128).optional(),
     providerKey: integrationKeySchema.max(64).optional(),
     providerIdempotencyKey: z.string().min(1).max(256).optional(),
-    requestHash: sha256Schema,
+    requestHash: sha256HexSchema,
     requestId: z.string().min(1).max(128).optional(),
     scope: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u),
     sideEffectClass: z.enum(['safe', 'idempotent_with_key', 'unsafe']),

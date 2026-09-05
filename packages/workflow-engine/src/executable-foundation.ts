@@ -17,6 +17,7 @@ import type {
 } from '@pertexo/workflow-model/graph';
 import { WorkflowEngineError } from './errors.js';
 import type { SideEffectClass } from './types.js';
+export { compareOrdinal } from './ordering.js';
 
 export const BASELINE_RUNTIME_POLICIES_V1 = Object.freeze({
   scheduler: Object.freeze({ key: 'engine.scheduler', version: 1 }),
@@ -128,9 +129,6 @@ export const sameIdentity = (
   left: DefinitionIdentity | ExecutorIdentity | PolicyReference,
   right: DefinitionIdentity | ExecutorIdentity | PolicyReference,
 ): boolean => left.key === right.key && left.version === right.version;
-export const compareOrdinal = (left: string, right: string): number =>
-  left < right ? -1 : left > right ? 1 : 0;
-
 export function fail(message: string): never {
   throw new WorkflowEngineError('executable_invalid', message);
 }

@@ -6,12 +6,13 @@ import { z } from 'zod';
 import type { WorkspaceDatabase } from '../database.js';
 import { inboxReceipts, transportSecurityAuditFacts } from '../schema.js';
 import type { WorkspaceTransaction } from '../tenant-access/workspace.js';
+import { sha256HexSchema } from '../validation/persisted-primitives.js';
 
 const inboxMessageSchema = z
   .object({
     consumerName: z.string().regex(/^[a-z][a-z0-9._:-]{0,127}$/u),
     messageId: z.uuid(),
-    payloadChecksum: z.string().regex(/^[0-9a-f]{64}$/u),
+    payloadChecksum: sha256HexSchema,
   })
   .strict();
 

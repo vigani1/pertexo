@@ -96,7 +96,16 @@ function forEachGraph() {
           },
         },
       },
-      base.nodes[1],
+      {
+        ...base.nodes[1],
+        inputMappings: {
+          result: {
+            kind: 'node_output' as const,
+            nodeId: 'loop',
+            path: '$',
+          },
+        },
+      },
     ],
     edges: [
       {

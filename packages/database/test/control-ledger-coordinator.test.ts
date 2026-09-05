@@ -343,7 +343,7 @@ function record(
 }
 
 describe('control ledger coordinator', () => {
-  it('locks before external I/O and projects before commit', async () => {
+  it('performs external I/O between short fenced transactions', async () => {
     const events: string[] = [];
     const database = fakeDatabase(events);
     const ledger = new MemoryLedger();
@@ -357,22 +357,18 @@ describe('control ledger coordinator', () => {
     await expect(coordinator.placeLegalHold(input())).resolves.toMatchObject({
       sequence: 1,
     });
-    expect(events).toEqual([
-      'BEGIN',
-      'TIMEOUTS',
-      'LOCK',
-      'reconcile:0',
-      'LOOKUP',
-      'VALIDATE',
-      'append',
-      'PROJECT',
-      'COMMIT',
-      'RELEASE',
-    ]);
+    for (const externalEvent of ['reconcile:0', 'append']) {
+      const index = events.indexOf(externalEvent);
+      expect(events[index - 1]).toBe('RELEASE');
+      expect(events.slice(index + 1)).toContain('BEGIN');
+    }
+    expect(events.indexOf('PROJECT')).toBeGreaterThan(events.indexOf('append'));
+    expect(events.at(-2)).toBe('COMMIT');
+    expect(events.at(-1)).toBe('RELEASE');
     expect(database.timeouts[0]).toContain("lock_timeout='1234ms'");
     expect(database.timeouts[0]).toContain("statement_timeout='2345ms'");
-    expect(database.timeouts[0]).toContain(
-      "idle_in_transaction_session_timeout='0'",
+    expect(database.timeouts[0]).not.toContain(
+      'idle_in_transaction_session_timeout',
     );
   });
 
@@ -388,8 +384,8 @@ describe('control ledger coordinator', () => {
     await expect(coordinator.placeLegalHold(input())).rejects.toThrow(
       'append failed',
     );
-    expect(events).toContain('ROLLBACK');
-    expect(events).not.toContain('COMMIT');
+    expect(events).toContain('COMMIT');
+    expect(events.at(-1)).toBe('RELEASE');
     expect(database.projections.size).toBe(0);
   });
 
@@ -682,13 +678,15 @@ describe('control ledger coordinator', () => {
     await expect(coordinator.placeLegalHold(input())).resolves.toMatchObject({
       sequence: 3,
     });
-    expect(events.filter((event) => event === 'COMMIT')).toHaveLength(2);
+    expect(events.filter((event) => event === 'COMMIT').length).toBeGreaterThan(
+      2,
+    );
     expect(events.lastIndexOf('reconcile:2')).toBeLessThan(
       events.indexOf('append'),
     );
   });
 
-  it('times out a noncooperative reconciliation and releases after rollback', async () => {
+  it('times out noncooperative reconciliation after releasing its transaction', async () => {
     const events: string[] = [];
     const database = fakeDatabase(events);
     const ledger = new MemoryLedger();
@@ -701,9 +699,8 @@ describe('control ledger coordinator', () => {
     await expect(
       coordinator.reconcileWorkspace({ workspaceId }),
     ).rejects.toMatchObject({ name: 'TimeoutError' });
-    expect(events).toContain('ROLLBACK');
+    expect(events).toContain('COMMIT');
     expect(events.at(-1)).toBe('RELEASE');
-    expect(events).not.toContain('COMMIT');
   });
 
   it('times out a noncooperative ambiguous append without local projection', async () => {
@@ -721,12 +718,12 @@ describe('control ledger coordinator', () => {
     });
     expect(ledger.records).toHaveLength(1);
     expect(database.projections.size).toBe(0);
-    expect(events).toContain('ROLLBACK');
+    expect(events).toContain('COMMIT');
     expect(events.at(-1)).toBe('RELEASE');
     expect(events).not.toContain('PROJECT');
   });
 
-  it('does not await the backend cancellation side channel before rollback', async () => {
+  it('aborts external reconciliation after its prepare transaction closes', async () => {
     const events: string[] = [];
     const database = fakeDatabase(events, 12_345);
     const ledger = new MemoryLedger();
@@ -752,8 +749,8 @@ describe('control ledger coordinator', () => {
 
     await expect(pending).rejects.toBe(reason);
     expect(performance.now() - abortedAt).toBeLessThan(500);
-    expect(events.slice(-2)).toEqual(['ROLLBACK', 'RELEASE']);
-    expect(database.releaseErrors.at(-1)).toBeInstanceOf(Error);
+    expect(events.slice(-2)).toEqual(['COMMIT', 'RELEASE']);
+    expect(database.releaseErrors.at(-1)).toBeUndefined();
   });
 
   it('aborts bounded pool acquisition promptly and releases the eventual client', async () => {

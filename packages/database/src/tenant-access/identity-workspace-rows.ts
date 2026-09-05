@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { sha256HexSchema } from '../validation/persisted-primitives.js';
 
 import type {
   AuthIdentityRecord,
@@ -37,7 +38,7 @@ const sessionRowSchema = z
   .object({
     id: uuidSchema,
     user_id: uuidSchema,
-    token_digest: z.string().regex(/^[0-9a-f]{64}$/u),
+    token_digest: sha256HexSchema,
     expires_at: z.coerce.date(),
     revoked_at: z.coerce.date().nullable(),
     user_agent: z.string().max(512).nullable(),

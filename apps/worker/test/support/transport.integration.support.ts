@@ -177,18 +177,50 @@ export function createWorkerTransportTestEnvironment() {
       consumerCapabilities,
     );
 
-  const deferred = (): Readonly<{
+  const deferred = (
+    stage: string,
+    timeoutMillis = 10_000,
+  ): Readonly<{
     promise: Promise<void>;
     resolve(): void;
   }> => {
     let resolvePromise: (() => void) | undefined;
-    const promise = new Promise<void>((resolve) => {
-      resolvePromise = resolve;
+    let timer: NodeJS.Timeout | undefined;
+    const promise = new Promise<void>((resolve, reject) => {
+      resolvePromise = () => {
+        if (timer !== undefined) clearTimeout(timer);
+        resolve();
+      };
+      timer = setTimeout(() => {
+        reject(new Error(`Worker transport stage timed out: ${stage}`));
+      }, timeoutMillis);
+      timer.unref();
     });
     return {
       promise,
       resolve: () => resolvePromise?.(),
     };
+  };
+
+  const bounded = async <T>(
+    stage: string,
+    operation: Promise<T>,
+    timeoutMillis = 10_000,
+  ): Promise<T> => {
+    let timer: NodeJS.Timeout | undefined;
+    try {
+      return await Promise.race([
+        operation,
+        new Promise<never>((_resolve, reject) => {
+          timer = setTimeout(() => {
+            reject(new Error(`Worker transport stage timed out: ${stage}`));
+          }, timeoutMillis);
+          timer.unref();
+        }),
+      ]);
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+    }
   };
 
   const cleanup = async (): Promise<void> => {
@@ -223,17 +255,63 @@ export function createWorkerTransportTestEnvironment() {
   };
 
   const close = async (): Promise<void> => {
-    const queue = new Queue(QUEUE_NAME.workflowCoordinator, {
-      connection: redisConnection(),
-    });
+    const pool = new Pool({ connectionString: migrationUrl, max: 1 });
+    const client = await pool.connect();
+    let discovered: Readonly<{ rows: readonly { id: string }[] }>;
     try {
-      for (const id of proofIds) {
-        await queue.getJob(`outbox-${id}`).then((job) => job?.remove());
+      await client.query('begin');
+      await client.query('set local role pertexo_owner');
+      discovered = await client.query<{ id: string }>(
+        'select id from app.outbox_events where workspace_id = $1',
+        [workspaceId],
+      );
+      await client.query('commit');
+    } catch (error: unknown) {
+      await client.query('rollback').catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+      await pool.end();
+    }
+    for (const { id } of discovered.rows) proofIds.add(id);
+    const queues = [...new Set(Object.values(QUEUE_NAME))].map(
+      (queueName) =>
+        new Queue(queueName, {
+          connection: redisConnection(),
+        }),
+    );
+    try {
+      for (const queue of queues) {
+        for (const id of proofIds) {
+          await bounded(
+            `remove ${queue.name}/outbox-${id}`,
+            queue.getJob(`outbox-${id}`).then((job) => job?.remove()),
+          );
+        }
       }
-      await cleanup();
+      const residualJobs: string[] = [];
+      for (const queue of queues) {
+        for (const id of proofIds) {
+          const jobId = `outbox-${id}`;
+          if (
+            (await bounded(
+              `verify removal ${queue.name}/${jobId}`,
+              queue.getJob(jobId),
+            )) !== undefined
+          ) {
+            residualJobs.push(`${queue.name}/${jobId}`);
+          }
+        }
+      }
+      if (residualJobs.length > 0) {
+        throw new Error(
+          `Worker transport cleanup left Bull jobs: ${residualJobs.join(', ')}`,
+        );
+      }
+      await bounded('database cleanup', cleanup());
     } finally {
       await Promise.all([
-        queue.close(),
+        ...queues.map((queue) => queue.close()),
         apiDatabase.close(),
         workerDatabase.close(),
       ]);
@@ -242,6 +320,7 @@ export function createWorkerTransportTestEnvironment() {
 
   return {
     apiDatabase,
+    bounded,
     checksum,
     close,
     createDispatcher,

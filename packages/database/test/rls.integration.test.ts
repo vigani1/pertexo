@@ -430,7 +430,7 @@ describe.each([
 describe('database compatibility and readiness', () => {
   it('verifies bounded steady-state migration, PostgreSQL, and role readiness', async () => {
     await expect(database.checkReadiness()).resolves.toEqual({
-      migrationHead: '0074_retention_schedule_state_rls.sql',
+      migrationHead: '0075_workspace_purge_step_release.sql',
       postgresMajor: 18,
       role: 'pertexo_api',
     });

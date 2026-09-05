@@ -7,6 +7,7 @@ import {
   type NodeExecutionRuntime,
 } from '@pertexo/node-sdk/server';
 import type { JsonValue } from '@pertexo/workflow-model/canonical-json';
+import type { ExpressionEvaluator } from '@pertexo/workflow-model/expressions';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model/graph';
 import {
   resolveValueSource,
@@ -15,11 +16,16 @@ import {
 
 import { advanceWorkflowFromSchedulerState } from './advance-workflow.js';
 import { WorkflowEngineError } from './errors.js';
+import { resolveAttemptFailures } from './coordinator-failures.js';
 import {
   branchSelectionObservations,
   forEachCoordinatorObservations,
   mergeCoordinatorObservations,
 } from './coordinator-observations.js';
+import {
+  indexPersistedSuccessfulOutcomes,
+  parseCompletedOutputItems,
+} from './coordinator-output.js';
 import { executableNodes } from './executable-graph.js';
 import {
   assertAuthenticExecutableIdentity,
@@ -36,13 +42,10 @@ import {
   type SchedulerState,
 } from './graph-scheduler.js';
 import { compareOrdinal } from './ordering.js';
+import { branchPathHasPrefix, sameIterationPath } from './scope.js';
 import { operationError, record } from './operation-values.js';
 import { parsePersistedObservations } from './persisted-observations.js';
-import {
-  decideRetry,
-  providerIdempotencyKey,
-  resolveRetryPolicy,
-} from './retries.js';
+import { providerIdempotencyKey } from './retries.js';
 import { invocationKey as createInvocationKey } from './scheduling.js';
 import {
   prepareNodeAttemptInput,
@@ -82,12 +85,11 @@ function assertIdentity(
     operationError(code, `${label} is invalid`);
 }
 
-function schedulerState(
-  executable: CompiledWorkflowExecutableV2,
+export function projectSchedulerState(
+  graph: WorkflowExecutableGraphV2,
 ): SchedulerState {
-  const projectGraph = (graph: WorkflowExecutableGraphV2): SchedulerState => ({
-    deriveReadiness: true,
-    nodes: graph.nodes.map(
+  const projectGraph = (graph: WorkflowExecutableGraphV2): SchedulerState => {
+    const nodes = graph.nodes.map(
       ({
         id,
         definition,
@@ -101,31 +103,35 @@ function schedulerState(
         disabled,
         sideEffectClass: pinnedSideEffectClass,
       }),
-    ),
-    edges: graph.edges.map(({ source, target }) => ({
+    );
+    const edges = graph.edges.map(({ source, target }) => ({
       source: { nodeId: source.nodeId, port: source.port },
       target: { nodeId: target.nodeId, port: target.port },
-    })),
-    structuredBodies: graph.nodes.flatMap((node) =>
-      node.structured === undefined
-        ? []
-        : [
-            {
-              loopNodeId: node.id,
-              ...projectGraph(node.structured.body),
-            },
-            ...(projectGraph(node.structured.body).structuredBodies ?? []),
-          ],
-    ),
-  });
-  return projectGraph(executable.envelope.graph);
+    }));
+    const structuredBodies = graph.nodes.flatMap((node) => {
+      if (node.structured === undefined) return [];
+      const body = projectGraph(node.structured.body);
+      return [
+        { loopNodeId: node.id, nodes: body.nodes, edges: body.edges },
+        ...(body.structuredBodies ?? []),
+      ];
+    });
+    return { deriveReadiness: true, nodes, edges, structuredBodies };
+  };
+  return projectGraph(graph);
+}
+
+function schedulerState(
+  executable: CompiledWorkflowExecutableV2,
+): SchedulerState {
+  return projectSchedulerState(executable.envelope.graph);
 }
 
 function assertCheckpointMatchesExecutable(
   checkpoint: ReturnType<typeof parseCheckpoint>,
   executable: CompiledWorkflowExecutableV2,
+  allNodes: readonly WorkflowExecutableNodeV2[],
 ): void {
-  const allNodes = executableNodes(executable.envelope.graph);
   const nodeIds = new Set(allNodes.map(({ id }) => id));
   const nodesById = new Map(allNodes.map((node) => [node.id, node]));
   for (const join of checkpoint.joins) {
@@ -227,15 +233,8 @@ function assertCheckpointMatchesExecutable(
       const declaredLoop = checkpoint.loops.find(
         (loop) =>
           loop.loopId === scope.loopNodeId &&
-          JSON.stringify(loop.iterationPath) ===
-            JSON.stringify(enclosingPath) &&
-          loop.branchPath.every((part, branchIndex) => {
-            const invocationPart = branchPath[branchIndex];
-            return (
-              invocationPart?.nodeId === part.nodeId &&
-              invocationPart.outputPort === part.outputPort
-            );
-          }),
+          sameIterationPath(loop.iterationPath, enclosingPath) &&
+          branchPathHasPrefix(branchPath, loop.branchPath),
       );
       if (
         declaredLoop === undefined ||
@@ -318,16 +317,34 @@ export async function advanceWorkflow(
       'workflow_identity_invalid',
       'checkpoint workflow version does not match executable identity',
     );
-  assertCheckpointMatchesExecutable(checkpoint, input.executable);
+  const executableNodeList = executableNodes(input.executable.envelope.graph);
+  const nodesById = new Map(executableNodeList.map((node) => [node.id, node]));
+  const invocationsByKey = new Map(
+    checkpoint.invocations.map((invocation) => [
+      invocation.invocationKey,
+      invocation,
+    ]),
+  );
+  assertCheckpointMatchesExecutable(
+    checkpoint,
+    input.executable,
+    executableNodeList,
+  );
   const persistedObservations = parsePersistedObservations(
     input.observations,
     checkpoint,
   );
-  const branchSelections = branchSelectionObservations(
+  const completedOutputItems = parseCompletedOutputItems(
     input.completedOutputs,
-    input.observations,
-    checkpoint,
-    input.executable,
+  );
+  const successfulOutcomes = indexPersistedSuccessfulOutcomes(
+    persistedObservations.facts,
+  );
+  const branchSelections = branchSelectionObservations(
+    completedOutputItems,
+    successfulOutcomes,
+    invocationsByKey,
+    nodesById,
   );
   const controlCanceled =
     checkpoint.cancelRequested ||
@@ -337,97 +354,22 @@ export async function advanceWorkflow(
   const controlDeadline =
     checkpoint.deadlineExpired ||
     persistedObservations.deadlineExpiration !== undefined;
-  const retryPolicyReference = input.executable.envelope.runtimePolicies.retry;
-  let retryPolicy: ReturnType<typeof resolveRetryPolicy>;
-  try {
-    retryPolicy = resolveRetryPolicy(retryPolicyReference);
-  } catch {
-    operationError('workflow_identity_invalid', 'retry policy is unsupported');
-  }
-  const resolvedFailures: WorkflowObservation[] =
-    persistedObservations.attemptFailures.map((failure) => {
-      const invocation = checkpoint.invocations.find(
-        (candidate) => candidate.invocationKey === failure.invocationKey,
-      );
-      const node = executableNodes(input.executable.envelope.graph).find(
-        (candidate) => candidate.id === invocation?.nodeId,
-      );
-      if (
-        invocation?.status !== 'running' ||
-        invocation.attemptNumber !== failure.attemptNumber ||
-        node === undefined
-      )
-        operationError('observation_invalid', 'attempt failure is stale');
-      const nonSafeUnknown =
-        node.sideEffectClass !== 'safe' && failure.possiblyDispatched;
-      if (controlCanceled || controlDeadline) {
-        return {
-          kind: 'outcome',
-          invocationKey: failure.invocationKey,
-          status: nonSafeUnknown
-            ? 'outcome_unknown'
-            : controlCanceled
-              ? 'canceled'
-              : 'timed_out',
-          reasonCode: failure.safeErrorCode,
-          coordinatorDerived: true,
-        };
-      }
-      if (failure.failureKind === 'outcome_unknown') {
-        return {
-          kind: 'outcome',
-          invocationKey: failure.invocationKey,
-          status: 'outcome_unknown',
-          reasonCode: failure.safeErrorCode,
-          coordinatorDerived: true,
-        };
-      }
-      if (failure.failureKind === 'canceled') {
-        return {
-          kind: 'outcome',
-          invocationKey: failure.invocationKey,
-          status: nonSafeUnknown ? 'outcome_unknown' : 'canceled',
-          reasonCode: failure.safeErrorCode,
-          coordinatorDerived: true,
-        };
-      }
-      const decision = decideRetry({
-        sideEffectClass: node.sideEffectClass,
-        currentAttemptNumber: failure.attemptNumber,
-        policy: retryPolicy,
-        observation: {
-          kind: 'executor_failure',
-          recommendation: failure.failureKind,
-          errorKind: failure.errorKind,
-          possiblyDispatched: failure.possiblyDispatched,
-        },
-        jitterIdentity: `${input.runId}\u0000${failure.invocationKey}\u0000${String(failure.attemptNumber)}\u0000${retryPolicyReference.key}@${String(retryPolicyReference.version)}`,
-      });
-      if (decision.kind === 'retry') {
-        return {
-          kind: 'wait',
-          invocationKey: failure.invocationKey,
-          resumeAt: new Date(
-            Date.parse(failure.occurredAt) + decision.delayMs,
-          ).toISOString(),
-          waitKind: 'retry_backoff',
-          coordinatorDerived: true,
-        };
-      }
-      return {
-        kind: 'outcome',
-        invocationKey: failure.invocationKey,
-        status:
-          decision.kind === 'outcome_unknown' ? 'outcome_unknown' : 'failed',
-        reasonCode: failure.safeErrorCode,
-        coordinatorDerived: true,
-      };
-    });
+  const resolvedFailures = resolveAttemptFailures({
+    runId: input.runId,
+    failures: persistedObservations.attemptFailures,
+    invocations: invocationsByKey,
+    nodes: nodesById,
+    retryPolicyReference: input.executable.envelope.runtimePolicies.retry,
+    controlCanceled,
+    controlDeadline,
+  });
   const forEach = forEachCoordinatorObservations(
-    input.completedOutputs,
-    input.observations,
+    completedOutputItems,
+    persistedObservations.facts,
+    successfulOutcomes,
     checkpoint,
-    input.executable,
+    invocationsByKey,
+    nodesById,
     resolvedFailures,
   );
   const executionObservations = persistedObservations.observations.map(
@@ -441,6 +383,7 @@ export async function advanceWorkflow(
     input.executable,
     checkpoint,
     [...executionObservations, ...resolvedFailures],
+    nodesById,
   );
   const plan = advanceWorkflowFromSchedulerState({
     checkpoint,
@@ -469,9 +412,7 @@ export async function advanceWorkflow(
     nodeId: string,
     invocationKey: string,
   ): string | undefined => {
-    const node = executableNodes(input.executable.envelope.graph).find(
-      (candidate) => candidate.id === nodeId,
-    );
+    const node = nodesById.get(nodeId);
     if (node?.sideEffectClass !== 'idempotent_with_key') return undefined;
     return providerIdempotencyKey({
       invocationKey,
@@ -531,6 +472,7 @@ export interface ExecuteNodeAttemptInput {
   readonly registry: NodeExecutionRegistry;
   readonly signal: AbortSignal;
   readonly runtime?: NodeExecutionRuntime;
+  readonly expressionEvaluator?: ExpressionEvaluator;
 }
 
 export interface NodeAttemptOutcome {
@@ -567,6 +509,7 @@ async function resolveMappedNodeInput(
   completedOutputs: Readonly<Record<string, JsonValue>>,
   directUpstream: ReadonlySet<string>,
   signal: AbortSignal,
+  expressionEvaluator?: ExpressionEvaluator,
   structuredInputs?: Readonly<Record<string, JsonValue>>,
 ): Promise<JsonValue> {
   if (
@@ -598,7 +541,7 @@ async function resolveMappedNodeInput(
           nodeOutputs: completedOutputs,
           ...(structuredInputs === undefined ? {} : { structuredInputs }),
         },
-        undefined,
+        expressionEvaluator,
         signal,
       );
     } catch (error) {
@@ -628,6 +571,7 @@ export async function resolveSingleNodePreviewInput(
     node: unknown;
     runInput: unknown;
     signal: AbortSignal;
+    expressionEvaluator?: ExpressionEvaluator;
   }>,
 ): Promise<JsonValue> {
   let node: Pick<WorkflowExecutableNodeV2, 'definition' | 'inputMappings'>;
@@ -661,6 +605,7 @@ export async function resolveSingleNodePreviewInput(
     Object.freeze({}),
     new Set(),
     input.signal,
+    input.expressionEvaluator,
     undefined,
   );
 }
@@ -688,6 +633,7 @@ export async function executeNodeAttempt(
     completedOutputs,
     directUpstream,
     input.signal,
+    input.expressionEvaluator,
     structuredInputs,
   );
   let executionInput = resolvedInput;

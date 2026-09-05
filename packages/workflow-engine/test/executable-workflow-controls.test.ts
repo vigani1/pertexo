@@ -18,10 +18,10 @@ describe('wait and control production operations', () => {
     const started = await advanceWorkflow({
       runId: 'run-1',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: createCheckpoint({
         engineVersion: 'engine-v1',
-        workflowVersionId: 'version-1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
         iterationBudget: 0,
       }),
       occurredAt: '2026-08-20T10:00:00.000Z',
@@ -45,7 +45,7 @@ describe('wait and control production operations', () => {
     const input = {
       runId: 'run-1',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: started.checkpoint,
       occurredAt: '2026-08-20T10:02:00.000Z',
       maximumAdmissions: 1,
@@ -150,16 +150,23 @@ describe('wait and control production operations', () => {
     const release = composeExecutableCompatibilityRelease(nodeRelease());
     const sourceGraph = graph();
     const executable = buildWorkflowExecutableV2({
-      graph: { ...sourceGraph, edges: [] },
+      graph: {
+        ...sourceGraph,
+        edges: [],
+        nodes: sourceGraph.nodes.map((node) => ({
+          ...node,
+          inputMappings: {},
+        })),
+      },
       release,
     });
     const started = await advanceWorkflow({
       runId: 'run-1',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: createCheckpoint({
         engineVersion: 'engine-v1',
-        workflowVersionId: 'version-1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
         iterationBudget: 0,
       }),
       occurredAt: '2026-08-20T10:00:00.000Z',
@@ -187,7 +194,7 @@ describe('wait and control production operations', () => {
     const input = {
       runId: 'run-1',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: waiting,
       occurredAt: '2026-08-20T10:05:00.000Z',
       maximumAdmissions: 2,
@@ -211,13 +218,13 @@ describe('wait and control production operations', () => {
     const executable = buildWorkflowExecutableV2({ graph: graph(), release });
     const initial = createCheckpoint({
       engineVersion: 'engine-v1',
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       iterationBudget: 0,
     });
     const canceled = await advanceWorkflow({
       runId: 'run-1',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: initial,
       occurredAt: '2026-08-20T10:01:00.000Z',
       maximumAdmissions: 10,
@@ -239,7 +246,7 @@ describe('wait and control production operations', () => {
     const timedOut = await advanceWorkflow({
       runId: 'run-2',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: initial,
       occurredAt: '2026-08-20T10:01:00.000Z',
       maximumAdmissions: 10,
@@ -273,10 +280,10 @@ describe('wait and control production operations', () => {
     const started = await advanceWorkflow({
       runId: 'run-1',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: createCheckpoint({
         engineVersion: 'engine-v1',
-        workflowVersionId: 'version-1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
         iterationBudget: 0,
       }),
       occurredAt: '2026-08-20T10:00:00.000Z',
@@ -289,7 +296,7 @@ describe('wait and control production operations', () => {
     const expired = await advanceWorkflow({
       runId: 'run-1',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: started.checkpoint,
       occurredAt: '2026-08-20T10:02:00.000Z',
       maximumAdmissions: 10,
@@ -312,7 +319,7 @@ describe('wait and control production operations', () => {
     const reconciled = await advanceWorkflow({
       runId: 'run-1',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: expired.checkpoint,
       occurredAt: '2026-08-20T10:03:00.000Z',
       maximumAdmissions: 10,
@@ -341,10 +348,10 @@ describe('wait and control production operations', () => {
     const started = await advanceWorkflow({
       runId: 'run-1',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: createCheckpoint({
         engineVersion: 'engine-v1',
-        workflowVersionId: 'version-1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
         iterationBudget: 0,
       }),
       occurredAt: '2026-08-20T10:00:00.000Z',
@@ -364,7 +371,7 @@ describe('wait and control production operations', () => {
     const expired = await advanceWorkflow({
       runId: 'run-1',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: waiting,
       occurredAt: '2026-08-20T10:02:00.000Z',
       maximumAdmissions: 1,
@@ -389,7 +396,7 @@ describe('wait and control production operations', () => {
     const canceled = await advanceWorkflow({
       runId: 'run-2',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: waiting,
       occurredAt: '2026-08-20T10:02:00.000Z',
       maximumAdmissions: 1,
@@ -421,15 +428,22 @@ describe('wait and control production operations', () => {
       }),
     );
     const sourceGraph = graph();
-    const parallel = { ...sourceGraph, edges: [] };
+    const parallel = {
+      ...sourceGraph,
+      edges: [],
+      nodes: sourceGraph.nodes.map((node) => ({
+        ...node,
+        inputMappings: {},
+      })),
+    };
     const executable = buildWorkflowExecutableV2({ graph: parallel, release });
     const input = {
       runId: 'run-1',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: createCheckpoint({
         engineVersion: 'engine-v1',
-        workflowVersionId: 'version-1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
         iterationBudget: 0,
       }),
       occurredAt: '2026-08-20T10:00:00.000Z',

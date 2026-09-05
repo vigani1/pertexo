@@ -55,6 +55,23 @@ describe('parseControlLedgerConfig', () => {
       }),
     ).toThrow('must be distinct');
   });
+
+  it.each([
+    ['endpoint scheme', { CONTROL_LEDGER_ENDPOINT: 'ftp://localhost' }],
+    [
+      'endpoint credentials',
+      { CONTROL_LEDGER_ENDPOINT: 'https://user:secret@example.com' },
+    ],
+    ['bucket characters', { CONTROL_LEDGER_BUCKET: 'INVALID_BUCKET' }],
+    ['bucket adjacency', { CONTROL_LEDGER_BUCKET: 'invalid..bucket' }],
+    ['IP-shaped bucket', { CONTROL_LEDGER_BUCKET: '127.0.0.1' }],
+    ['path style', { CONTROL_LEDGER_FORCE_PATH_STYLE: 'yes' }],
+    ['request timeout', { CONTROL_LEDGER_REQUEST_TIMEOUT_MS: '99' }],
+  ])('applies shared object-store grammar to %s', (_name, override) => {
+    expect(() =>
+      parseControlLedgerConfig({ ...ENVIRONMENT, ...override }),
+    ).toThrow();
+  });
 });
 
 describe('parseDualRegionControlLedgerConfig', () => {

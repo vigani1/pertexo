@@ -4,8 +4,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const pg = vi.hoisted(() => {
   class FakePool {
     static instances: FakePool[] = [];
+    static queryErrors: unknown[] = [];
     static queryResults: { rows: { pid: number }[] }[] = [];
-    readonly options: { max: number };
+    readonly options: Readonly<{
+      idle_in_transaction_session_timeout?: number;
+      lock_timeout?: number;
+      max: number;
+      query_timeout?: number;
+      statement_timeout?: false | number;
+    }>;
     readonly queries: string[] = [];
     readonly queryValues: unknown[][] = [];
     totalCount = 0;
@@ -16,8 +23,14 @@ const pg = vi.hoisted(() => {
       ((value: unknown) => void)[]
     >();
 
-    constructor(config: { max?: number }) {
-      this.options = { max: config.max ?? 10 };
+    constructor(config: {
+      idle_in_transaction_session_timeout?: number;
+      lock_timeout?: number;
+      max?: number;
+      query_timeout?: number;
+      statement_timeout?: false | number;
+    }) {
+      this.options = { ...config, max: config.max ?? 10 };
       FakePool.instances.push(this);
     }
 
@@ -42,6 +55,10 @@ const pg = vi.hoisted(() => {
     ): Promise<{ rows: { pid: number }[] }> {
       this.queries.push(query);
       if (values !== undefined) this.queryValues.push(values);
+      const error = FakePool.queryErrors.shift();
+      // Exercise bounded telemetry for hostile non-Error adapter rejections.
+      // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+      if (error !== undefined) return Promise.reject(error);
       if (Array.isArray(values?.[0]) && (values[0] as unknown[]).length === 0)
         return Promise.resolve({ rows: [] });
       return Promise.resolve(FakePool.queryResults.shift() ?? { rows: [] });
@@ -143,7 +160,44 @@ function poolAt(index: number): InstanceType<typeof pg.FakePool> {
 describe('PostgreSQL telemetry pool', () => {
   beforeEach(() => {
     pg.FakePool.instances.length = 0;
+    pg.FakePool.queryErrors.length = 0;
     pg.FakePool.queryResults.length = 0;
+  });
+
+  it('applies bounded role deadlines and preserves narrower explicit values', async () => {
+    const first = createDatabasePool(
+      { lock_timeout: 750, max: 1 },
+      { monitorLockWaits: false, role: 'api' },
+    );
+    const second = createDatabasePool(
+      { max: 1 },
+      { monitorLockWaits: false, role: 'maintenance' },
+    );
+
+    expect(poolAt(0).options).toMatchObject({
+      idle_in_transaction_session_timeout: 35_000,
+      lock_timeout: 750,
+      query_timeout: 35_000,
+      statement_timeout: 30_000,
+    });
+    expect(poolAt(1).options).toMatchObject({
+      idle_in_transaction_session_timeout: 305_000,
+      lock_timeout: 15_000,
+      query_timeout: 305_000,
+      statement_timeout: 300_000,
+    });
+
+    await first.end();
+    await second.end();
+  });
+
+  it('rejects disabled or invalid caller deadline overrides', () => {
+    expect(() =>
+      createDatabasePool(
+        { lock_timeout: -1 },
+        { monitorLockWaits: false, role: 'worker' },
+      ),
+    ).toThrow('lock_timeout must be a positive safe integer');
   });
 
   it('reports pool state by bounded database authority', async () => {
@@ -199,6 +253,30 @@ describe('PostgreSQL telemetry pool', () => {
     await second.end();
   });
 
+  it('uses an explicit role and aggregates saturation across its process budget', async () => {
+    const telemetry = fakeMeter();
+    const first = createDatabasePool(
+      { max: 4, user: 'custom_runtime' },
+      { meter: telemetry.meter, monitorLockWaits: false, role: 'api' },
+    );
+    const second = createDatabasePool(
+      { max: 6, user: 'another_custom_runtime' },
+      { meter: telemetry.meter, monitorLockWaits: false, role: 'api' },
+    );
+    Object.assign(poolAt(0), { idleCount: 0, totalCount: 4 });
+    Object.assign(poolAt(1), { idleCount: 5, totalCount: 6 });
+
+    expect(
+      observableMeasurements(
+        telemetry.callbacks,
+        DATABASE_METRIC_NAME.poolSaturation,
+      ),
+    ).toEqual([{ attributes: { pool_role: 'api' }, value: 0.5 }]);
+
+    await first.end();
+    await second.end();
+  });
+
   it('records bounded query and transaction outcomes without SQL', async () => {
     const telemetry = fakeMeter();
     const pool = createDatabasePool(
@@ -239,6 +317,38 @@ describe('PostgreSQL telemetry pool', () => {
     ).toEqual({ outcome: 'committed' });
     expect(JSON.stringify(queries)).not.toContain('secret_table');
     expect(JSON.stringify(queries)).not.toContain('identity');
+
+    await pool.end();
+  });
+
+  it('reports sanitized idle-client and monitor failures without changing pool behavior', async () => {
+    const telemetry = fakeMeter();
+    const record = vi.fn();
+    pg.FakePool.queryErrors.push(new Error('secret monitor detail'));
+    const pool = createDatabasePool(
+      { connectionString: 'postgresql://secret@db/app' },
+      {
+        diagnostics: { record },
+        lockWaitSampleIntervalMs: 100,
+        meter: telemetry.meter,
+        role: 'worker',
+      },
+    );
+    poolAt(0).emit('error', new TypeError('secret idle detail'));
+
+    await vi.waitFor(() => {
+      expect(record).toHaveBeenCalledWith({
+        errorType: 'Error',
+        operation: 'lock_wait_sample',
+        poolRole: 'worker',
+      });
+    });
+    expect(record).toHaveBeenCalledWith({
+      errorType: 'TypeError',
+      operation: 'idle_pool_error',
+      poolRole: 'worker',
+    });
+    expect(JSON.stringify(record.mock.calls)).not.toContain('secret');
 
     await pool.end();
   });
@@ -301,6 +411,23 @@ describe('PostgreSQL telemetry pool', () => {
     expect(pg.FakePool.instances).toHaveLength(3);
     await first.end();
     expect(pg.FakePool.instances[1]?.queries.length).toBeGreaterThan(0);
+    await second.end();
+  });
+
+  it('does not silently share a lock sampler with a different cadence', async () => {
+    const telemetry = fakeMeter();
+    const config = { connectionString: 'postgresql://runtime:test@db/app' };
+    const first = createDatabasePool(config, {
+      lockWaitSampleIntervalMs: 100,
+      meter: telemetry.meter,
+    });
+    const second = createDatabasePool(config, {
+      lockWaitSampleIntervalMs: 200,
+      meter: telemetry.meter,
+    });
+
+    expect(pg.FakePool.instances).toHaveLength(4);
+    await first.end();
     await second.end();
   });
 });

@@ -5,13 +5,12 @@ import {
   InboxReceiptUnavailableError,
   reconcileUnknownOutcomeEvidence,
   type DatabaseConfig,
+  type DatabaseRuntime,
   type UnknownOutcomeReconciliationResult,
   UnknownOutcomeReconciliationMismatchError,
   UnknownOutcomeReconciliationStateError,
 } from '@pertexo/database/execution';
 import {
-  InvalidQueueDeliveryError,
-  jobIdForOutboxEvent,
   unrecoverableQueueError,
   type QueueDelivery,
   type QueueHandlerContext,
@@ -39,8 +38,12 @@ export interface UnknownOutcomeReconciliationStore {
 
 export function createDatabaseUnknownOutcomeReconciliationStore(
   config: DatabaseConfig,
+  runtime?: DatabaseRuntime,
 ): UnknownOutcomeReconciliationStore & { close(): Promise<void> } {
-  const database = createWorkspaceDatabase(config);
+  const database = createWorkspaceDatabase(
+    config,
+    runtime === undefined ? {} : { runtime },
+  );
   return Object.freeze({
     reconcile: (
       input: Parameters<UnknownOutcomeReconciliationStore['reconcile']>[0],
@@ -59,13 +62,6 @@ export function createUnknownOutcomeReconciliationHandler(
 }> {
   return Object.freeze({
     handle: async (delivery, context) => {
-      if (
-        delivery.transport.jobId !==
-        jobIdForOutboxEvent(delivery.data.outboxEventId)
-      )
-        throw new InvalidQueueDeliveryError(
-          'Unknown-outcome reconciliation transport identity is invalid',
-        );
       return store.reconcile({
         attemptId: delivery.data.attemptId,
         delivery: {

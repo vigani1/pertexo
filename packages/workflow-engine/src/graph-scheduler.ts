@@ -1,6 +1,7 @@
 import { invocationKey } from './scheduling.js';
 import { WorkflowEngineError } from './errors.js';
 import { compareOrdinal } from './ordering.js';
+import { sameIterationPath } from './scope.js';
 import type {
   BranchScopePart,
   BranchSelection,
@@ -172,8 +173,7 @@ export function deriveReadyNodes(input: {
     const invocation = invocationByKey.get(selection.invocationKey);
     return (
       invocation !== undefined &&
-      JSON.stringify(invocation.iterationPath ?? []) ===
-        JSON.stringify(input.iterationPath ?? []) &&
+      sameIterationPath(invocation.iterationPath, input.iterationPath) &&
       (invocation.branchPath?.length ?? 0) ===
         (input.branchPath?.length ?? 0) &&
       (input.branchPath ?? []).every((part, index) => {
@@ -205,8 +205,7 @@ export function deriveReadyNodes(input: {
   const invocationByNode = new Map<string, InvocationState>();
   for (const invocation of input.invocations.filter(
     (candidate) =>
-      JSON.stringify(candidate.iterationPath ?? []) ===
-        JSON.stringify(input.iterationPath ?? []) &&
+      sameIterationPath(candidate.iterationPath, input.iterationPath) &&
       (input.branchPath ?? []).every(
         (part, index) =>
           candidate.branchPath?.[index]?.nodeId === part.nodeId &&

@@ -49,19 +49,4 @@ describe('unknown-outcome reconciliation handler', () => {
       workspaceId: selected.data.workspaceId,
     });
   });
-
-  it('rejects transport identity not derived from the outbox event', async () => {
-    const reconcile = vi.fn();
-    const selected = delivery();
-    await expect(
-      createUnknownOutcomeReconciliationHandler({ reconcile }).handle(
-        {
-          ...selected,
-          transport: { ...selected.transport, jobId: 'forged' },
-        },
-        { signal: new AbortController().signal },
-      ),
-    ).rejects.toThrow('transport identity is invalid');
-    expect(reconcile).not.toHaveBeenCalled();
-  });
 });

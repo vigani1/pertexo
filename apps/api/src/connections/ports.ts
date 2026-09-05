@@ -25,10 +25,12 @@ export interface ConnectionSecretEncryptionPort {
   seal(
     plaintext: Uint8Array,
     context: ConnectionSecretContext,
+    signal: AbortSignal,
   ): Promise<SealedConnectionSecret>;
   open(
     sealed: SealedConnectionSecret,
     context: ConnectionSecretContext,
+    signal: AbortSignal,
   ): Promise<Uint8Array>;
 }
 

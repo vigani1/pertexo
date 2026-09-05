@@ -11,6 +11,30 @@ import {
 } from './executable-workflow.fixtures.js';
 
 describe('attempt outcome production operations', () => {
+  it('rejects a non-array completed-output boundary before derivation', async () => {
+    const executable = buildWorkflowExecutableV2({
+      graph: graph(),
+      release: composeExecutableCompatibilityRelease(nodeRelease()),
+    });
+    await expect(
+      advanceWorkflow({
+        runId: 'run-1',
+        executable,
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
+        checkpoint: createCheckpoint({
+          engineVersion: 'engine-v1',
+          workflowVersionId: '00000000-0000-4000-8000-000000000001',
+          iterationBudget: 0,
+        }),
+        occurredAt: '2026-08-20T10:00:00.000Z',
+        maximumAdmissions: 1,
+        observations: [],
+        completedOutputs: {},
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toMatchObject({ code: 'observation_invalid' });
+  });
+
   it('carries exact pinned side-effect classes into attempt admissions', async () => {
     const release = composeExecutableCompatibilityRelease(
       nodeRelease({
@@ -21,13 +45,13 @@ describe('attempt outcome production operations', () => {
     const executable = buildWorkflowExecutableV2({ graph: graph(), release });
     const checkpoint = createCheckpoint({
       engineVersion: 'engine-v1',
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       iterationBudget: 0,
     });
     const manual = await advanceWorkflow({
       runId: 'run-1',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint,
       occurredAt: '2026-08-20T10:00:00.000Z',
       maximumAdmissions: 1,
@@ -43,7 +67,7 @@ describe('attempt outcome production operations', () => {
     const completedManual = await advanceWorkflow({
       runId: 'run-1',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: manual.checkpoint,
       occurredAt: '2026-08-20T10:01:00.000Z',
       maximumAdmissions: 1,
@@ -88,7 +112,7 @@ describe('attempt outcome production operations', () => {
     const input = {
       runId: 'capacity-run',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       occurredAt: '2026-08-20T10:00:00.000Z',
       observations: [],
       signal: new AbortController().signal,
@@ -97,7 +121,7 @@ describe('attempt outcome production operations', () => {
       ...input,
       checkpoint: createCheckpoint({
         engineVersion: 'engine-v1',
-        workflowVersionId: 'version-1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
         iterationBudget: 0,
       }),
       maximumAdmissions: 0,
@@ -120,10 +144,10 @@ describe('attempt outcome production operations', () => {
     const started = await advanceWorkflow({
       runId: 'retry-run',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: createCheckpoint({
         engineVersion: 'engine-v1',
-        workflowVersionId: 'version-1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
         iterationBudget: 0,
       }),
       occurredAt: '2026-08-20T10:00:00.000Z',
@@ -137,7 +161,7 @@ describe('attempt outcome production operations', () => {
     const retried = await advanceWorkflow({
       runId: 'retry-run',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: started.checkpoint,
       occurredAt: '2026-08-20T10:01:00.000Z',
       maximumAdmissions: 1,
@@ -160,7 +184,7 @@ describe('attempt outcome production operations', () => {
     const scheduled = retried.events.find(
       ({ name }) => name === 'node.retry_scheduled',
     );
-    expect(scheduled?.dueAt).toBe('2026-08-20T10:00:30.897Z');
+    expect(scheduled?.dueAt).toBe('2026-08-20T10:00:31.200Z');
     expect(retried.attempts).toEqual([]);
     expect(retried.checkpoint.invocations[0]).toMatchObject({
       status: 'waiting',
@@ -177,10 +201,10 @@ describe('attempt outcome production operations', () => {
     const started = await advanceWorkflow({
       runId: 'canceled-attempt-run',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: createCheckpoint({
         engineVersion: 'engine-v1',
-        workflowVersionId: 'version-1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
         iterationBudget: 0,
       }),
       occurredAt: '2026-08-20T10:00:00.000Z',
@@ -194,7 +218,7 @@ describe('attempt outcome production operations', () => {
     const canceled = await advanceWorkflow({
       runId: 'canceled-attempt-run',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: started.checkpoint,
       occurredAt: '2026-08-20T10:01:00.000Z',
       maximumAdmissions: 1,
@@ -230,10 +254,10 @@ describe('attempt outcome production operations', () => {
     const started = await advanceWorkflow({
       runId: 'idempotent-canceled-attempt-run',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: createCheckpoint({
         engineVersion: 'engine-v1',
-        workflowVersionId: 'version-1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
         iterationBudget: 0,
       }),
       occurredAt: '2026-08-20T10:00:00.000Z',
@@ -247,7 +271,7 @@ describe('attempt outcome production operations', () => {
     const settled = await advanceWorkflow({
       runId: 'idempotent-canceled-attempt-run',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: started.checkpoint,
       occurredAt: '2026-08-20T10:01:00.000Z',
       maximumAdmissions: 1,
@@ -285,10 +309,10 @@ describe('attempt outcome production operations', () => {
     const started = await advanceWorkflow({
       runId: 'unknown-attempt-run',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: createCheckpoint({
         engineVersion: 'engine-v1',
-        workflowVersionId: 'version-1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
         iterationBudget: 0,
       }),
       occurredAt: '2026-08-20T10:00:00.000Z',
@@ -302,7 +326,7 @@ describe('attempt outcome production operations', () => {
     const settled = await advanceWorkflow({
       runId: 'unknown-attempt-run',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: started.checkpoint,
       occurredAt: '2026-08-20T10:01:00.000Z',
       maximumAdmissions: 1,
@@ -339,10 +363,10 @@ describe('attempt outcome production operations', () => {
       advanceWorkflow({
         runId: 'invalid-retry-run',
         executable,
-        workflowVersionId: 'version-1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
         checkpoint: createCheckpoint({
           engineVersion: 'engine-v1',
-          workflowVersionId: 'version-1',
+          workflowVersionId: '00000000-0000-4000-8000-000000000001',
           iterationBudget: 0,
         }),
         occurredAt: '2026-08-20T10:00:00.000Z',
@@ -358,13 +382,13 @@ describe('attempt outcome production operations', () => {
     const executable = buildWorkflowExecutableV2({ graph: graph(), release });
     const checkpoint = createCheckpoint({
       engineVersion: 'engine-v1',
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       iterationBudget: 0,
     });
     const started = await advanceWorkflow({
       runId: 'run-1',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint,
       occurredAt: '2026-08-20T10:00:00.000Z',
       maximumAdmissions: 1,
@@ -377,7 +401,7 @@ describe('attempt outcome production operations', () => {
     const advanced = await advanceWorkflow({
       runId: 'run-1',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: started.checkpoint,
       occurredAt: '2026-08-20T10:02:00.000Z',
       maximumAdmissions: 0,
@@ -422,10 +446,10 @@ describe('attempt outcome production operations', () => {
     const started = await advanceWorkflow({
       runId: 'run-1',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: createCheckpoint({
         engineVersion: 'engine-v1',
-        workflowVersionId: 'version-1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
         iterationBudget: 0,
       }),
       occurredAt: '2026-08-20T10:00:00.000Z',
@@ -448,7 +472,7 @@ describe('attempt outcome production operations', () => {
     const input = {
       runId: 'run-1',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: started.checkpoint,
       occurredAt: '2026-08-20T10:02:00.000Z',
       maximumAdmissions: 0,
@@ -527,10 +551,10 @@ describe('attempt outcome production operations', () => {
     const started = await advanceWorkflow({
       runId: 'run-1',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: createCheckpoint({
         engineVersion: 'engine-v1',
-        workflowVersionId: 'version-1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
         iterationBudget: 0,
       }),
       occurredAt: '2026-08-20T10:00:00.000Z',
@@ -544,7 +568,7 @@ describe('attempt outcome production operations', () => {
     const completed = await advanceWorkflow({
       runId: 'run-1',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: started.checkpoint,
       occurredAt: '2026-08-20T10:02:00.000Z',
       maximumAdmissions: 0,

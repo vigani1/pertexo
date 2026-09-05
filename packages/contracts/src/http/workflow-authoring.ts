@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  WORKFLOW_VALIDATION_MAX_ISSUES,
   workflowGraphSchema,
   type WorkflowGraph,
 } from '@pertexo/workflow-model/graph-contract';
@@ -58,7 +59,9 @@ export const workflowValidationIssueSchema = apiProblemIssueSchema;
 export const workflowValidationReportSchema = z
   .object({
     valid: z.boolean(),
-    issues: z.array(workflowValidationIssueSchema).max(100),
+    issues: z
+      .array(workflowValidationIssueSchema)
+      .max(WORKFLOW_VALIDATION_MAX_ISSUES),
     compatibility: workflowCompatibilityReportSchema,
   })
   .strict();
@@ -75,7 +78,6 @@ export const workflowSummarySchema = z
     updatedAt: z.iso.datetime(),
   })
   .strict();
-export const workflowResponseSchema = workflowSummarySchema;
 
 export const workflowDraftResponseSchema = z
   .object({
@@ -87,12 +89,10 @@ export const workflowDraftResponseSchema = z
     updatedAt: z.iso.datetime(),
   })
   .strict();
-export const workflowDraftSchema = workflowDraftResponseSchema;
 export const workflowDraftSaveRequestSchema = z
   .object({ graph: workflowGraphSchema })
   .strict();
 export const workflowValidateResponseSchema = workflowValidationReportSchema;
-export const workflowValidationResponseSchema = workflowValidationReportSchema;
 
 export const workflowVersionResponseSchema = z
   .object({
@@ -105,7 +105,6 @@ export const workflowVersionResponseSchema = z
     publishedAt: z.iso.datetime(),
   })
   .strict();
-export const workflowVersionSchema = workflowVersionResponseSchema;
 export const workflowPublishResponseSchema = z
   .object({
     version: workflowVersionResponseSchema,
@@ -118,7 +117,6 @@ export const workflowVersionsResponseSchema = z
     nextCursor: workflowCursorSchema.nullable(),
   })
   .strict();
-export const workflowVersionListResponseSchema = workflowVersionsResponseSchema;
 export const workflowListResponseSchema = z
   .object({
     items: z.array(workflowSummarySchema).max(100),

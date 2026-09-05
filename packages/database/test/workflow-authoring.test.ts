@@ -17,7 +17,7 @@ const integrationUsageMigrationUrl = new URL(
 describe('workflow authoring migration contract', () => {
   it('advances the reviewed migration head', () => {
     expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0074_retention_schedule_state_rls.sql',
+      '0075_workspace_purge_step_release.sql',
     );
   });
 

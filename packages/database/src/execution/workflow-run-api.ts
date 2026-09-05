@@ -1,4 +1,5 @@
-import { createDatabasePool } from '../platform/postgres-telemetry.js';
+import { acquireDatabasePool } from '../platform/database-runtime.js';
+import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -20,11 +21,11 @@ import {
   classifyPublishedWorkflowVersionRow,
   type PublishedWorkflowV2Projection,
 } from './published-workflow-reader.js';
+import { sha256HexSchema as digestSchema } from '../validation/persisted-primitives.js';
 import { withWorkspaceTransaction } from '../tenant-access/workspace.js';
 import type { WorkspaceTransaction } from '../tenant-access/workspace.js';
 import { requestWorkflowRunCancellation } from './workflow-run-cancellation.js';
 
-const digestSchema = z.string().regex(/^[0-9a-f]{64}$/u);
 const traceparentSchema = z
   .string()
   .regex(/^00-[\da-f]{32}-[\da-f]{16}-[\da-f]{2}$/u)
@@ -213,8 +214,10 @@ export function createWorkflowRunDatabase(
   config: DatabaseConfig,
   compatibilityReleaseInput:
     CompatibilityReleaseExpectation | CompatibilityReleaseExpectationSet,
+  runtime?: DatabaseRuntime,
 ): WorkflowRunDatabase {
-  const pool = createDatabasePool(config);
+  const lease = acquireDatabasePool(config, runtime);
+  const { pool } = lease;
   const compatibilityReleases = Array.isArray(compatibilityReleaseInput)
     ? parseCompatibilityReleaseExpectationSet(compatibilityReleaseInput)
     : Object.freeze([
@@ -249,7 +252,7 @@ export function createWorkflowRunDatabase(
         parsed.signal === undefined ? {} : { signal: parsed.signal },
       );
     },
-    close: async (): Promise<void> => pool.end(),
+    close: () => lease.close(),
   });
 }
 

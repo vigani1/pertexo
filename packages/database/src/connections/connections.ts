@@ -1,4 +1,5 @@
-import { createDatabasePool } from '../platform/postgres-telemetry.js';
+import { acquireDatabasePool } from '../platform/database-runtime.js';
+import type { DatabaseRuntime } from '../platform/database-runtime.js';
 
 import type { DatabaseConfig } from '../config.js';
 import { createConnectionHealthPersistence } from './connection-health-persistence.js';
@@ -55,22 +56,25 @@ export type {
 
 export function createConnectionDatabase(
   config: DatabaseConfig,
+  runtime?: DatabaseRuntime,
 ): ConnectionDatabase {
-  const pool = createDatabasePool(config);
+  const lease = acquireDatabasePool(config, runtime);
+  const { pool } = lease;
   return Object.freeze({
     ...createConnectionManagementPersistence(pool),
     ...createConnectionSecretPersistence(pool),
     ...createConnectionResolutionPersistence(pool),
     ...createConnectionHealthPersistence(pool),
     ...createConnectionTestPersistence(pool),
-    close: () => pool.end(),
+    close: () => lease.close(),
   });
 }
 
 export function createApiConnectionDatabase(
   config: DatabaseConfig,
+  runtime?: DatabaseRuntime,
 ): ApiConnectionDatabase {
-  const database = createConnectionDatabase(config);
+  const database = createConnectionDatabase(config, runtime);
   return Object.freeze({
     createConnection: database.createConnection.bind(database),
     findConnectionCreateReplay:
@@ -92,8 +96,9 @@ export function createApiConnectionDatabase(
 
 export function createWorkerConnectionResolutionDatabase(
   config: DatabaseConfig,
+  runtime?: DatabaseRuntime,
 ): WorkerConnectionResolutionDatabase {
-  const database = createConnectionDatabase(config);
+  const database = createConnectionDatabase(config, runtime);
   return Object.freeze({
     assertConnectionSecretCurrent:
       database.assertConnectionSecretCurrent.bind(database),

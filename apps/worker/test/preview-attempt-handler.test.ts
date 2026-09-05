@@ -269,18 +269,6 @@ describe('preview attempt handler', () => {
     expect(recordTerminal).not.toHaveBeenCalled();
   });
 
-  it('rejects a transport identity mismatch before any durable work', async () => {
-    const { calls, store } = fakeStore();
-    const forged = deliveryFixture() as { transport: { jobId: string } };
-    forged.transport.jobId = jobIdForOutboxEvent(randomUUID());
-    await expect(
-      createPreviewAttemptHandler(
-        deps(store, succeededInvoker({}).invoker),
-      ).handle(forged as never, context()),
-    ).rejects.toMatchObject({ code: 'transport_identity_mismatch' });
-    expect(calls.claims).toBe(0);
-  });
-
   it.each([
     [
       'failed pre-dispatch retryable network truth',

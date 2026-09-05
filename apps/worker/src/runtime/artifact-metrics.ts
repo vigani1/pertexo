@@ -23,6 +23,6 @@ export async function observeWorkspaceArtifactCapacity(
     readExecutionStorageCapacity,
   );
   for (const observation of executionStorage)
-    metrics.observeExecutionStorage?.(observation);
+    metrics.observeExecutionStorage(observation);
   return observations;
 }

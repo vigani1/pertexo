@@ -22,6 +22,61 @@ import {
 } from './support/control-ledger.fixture.js';
 
 describe('external control ledger', () => {
+  it('reuses a bounded readiness attestation and re-proves it after expiry', async () => {
+    const client = new MemoryS3();
+    let now = new Date('2026-08-26T00:00:00.000Z');
+    const ledger = createControlLedger(
+      {
+        accessKeyId: 'access',
+        bucket: 'pertexo-control-ledger',
+        endpoint: 'http://localhost:9090',
+        forcePathStyle: true,
+        minRetentionDays: 30,
+        region: 'us-east-1',
+        requestTimeoutMs: 50,
+        secretAccessKey: 'secret',
+      },
+      {
+        client,
+        now: () => now,
+        readinessAttestationTtlMs: 1_000,
+      },
+    );
+
+    await ledger.checkReadiness();
+    expect(client.commands).toHaveLength(6);
+
+    await ledger.append(command());
+    expect(client.commands).toHaveLength(7);
+
+    now = new Date(now.getTime() + 1_001);
+    client.versioningEnabled = false;
+    await expect(
+      ledger.append(
+        command({
+          commandId: '018f47a0-7b5c-7e2d-8c3f-12ad4e8b9c09',
+        }),
+      ),
+    ).rejects.toThrow('versioning must be Enabled');
+    expect(client.commands).toHaveLength(10);
+  });
+
+  it('invalidates an attestation when an explicit readiness proof fails', async () => {
+    const client = new MemoryS3();
+    const { ledger } = fixture(client);
+    await ledger.checkReadiness();
+    expect(client.commands).toHaveLength(6);
+
+    client.versioningEnabled = false;
+    await expect(ledger.checkReadiness()).rejects.toThrow(
+      'versioning must be Enabled',
+    );
+    client.versioningEnabled = true;
+    const beforeAppend = client.commands.length;
+    await ledger.append(command());
+    expect(client.commands.length - beforeAppend).toBe(7);
+  });
+
   it('rejects legal authority on deletion records', async () => {
     const { ledger } = fixture();
     await expect(
@@ -299,6 +354,34 @@ describe('external control ledger', () => {
         (candidate) => candidate instanceof ListObjectsV2Command,
       ),
     ).toBe(true);
+  });
+
+  it('bounds reconciliation GET concurrency while preserving chain order', async () => {
+    const { client, ledger } = fixture();
+    let previousHash = ZERO_HASH;
+    for (let sequence = 1; sequence <= 10; sequence += 1) {
+      const record = await ledger.append(
+        command({
+          commandId: `018f47a0-7b5c-7e2d-8c3f-${String(sequence).padStart(12, '0')}`,
+          previousHash,
+          sequence,
+        }),
+      );
+      previousHash = record.recordHash;
+    }
+    client.getDelayMs = 2;
+
+    const reconciliation = await ledger.reconcile({
+      maxRecords: 10,
+      projectedHash: ZERO_HASH,
+      projectedSequence: 0,
+      workspaceId: WORKSPACE_ID,
+    });
+
+    expect(reconciliation.records.map((record) => record.sequence)).toEqual([
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+    ]);
+    expect(client.maxConcurrentGets).toBe(8);
   });
 
   it('fails closed on reconciliation chain mismatch', async () => {

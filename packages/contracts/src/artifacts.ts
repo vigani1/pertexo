@@ -24,61 +24,33 @@ import {
   schedulesOpenApiDocument,
 } from './schedules.js';
 
-export const CONTRACT_ARTIFACTS = Object.freeze([
-  Object.freeze({
-    fileName: 'connections.client-schema.json',
-    content: `${JSON.stringify(connectionsClientContract, undefined, 2)}\n`,
-  }),
-  Object.freeze({
-    fileName: 'connections.openapi.json',
-    content: `${JSON.stringify(connectionsOpenApiDocument, undefined, 2)}\n`,
-  }),
-  Object.freeze({
-    fileName: 'identity-workspace.client-schema.json',
-    content: `${JSON.stringify(identityWorkspaceClientContract, undefined, 2)}\n`,
-  }),
-  Object.freeze({
-    fileName: 'identity-workspace.openapi.json',
-    content: `${JSON.stringify(identityWorkspaceOpenApiDocument, undefined, 2)}\n`,
-  }),
-  Object.freeze({
-    fileName: 'node-testing.client-schema.json',
-    content: `${JSON.stringify(nodeTestingClientContract, undefined, 2)}\n`,
-  }),
-  Object.freeze({
-    fileName: 'node-testing.openapi.json',
-    content: `${JSON.stringify(nodeTestingOpenApiDocument, undefined, 2)}\n`,
-  }),
-  Object.freeze({
-    fileName: 'workflow-authoring.client-schema.json',
-    content: `${JSON.stringify(workflowAuthoringClientContract, undefined, 2)}\n`,
-  }),
-  Object.freeze({
-    fileName: 'workflow-authoring.openapi.json',
-    content: `${JSON.stringify(workflowAuthoringOpenApiDocument, undefined, 2)}\n`,
-  }),
-  Object.freeze({
-    fileName: 'workflow-runs.client-schema.json',
-    content: `${JSON.stringify(workflowRunsClientContract, undefined, 2)}\n`,
-  }),
-  Object.freeze({
-    fileName: 'workflow-runs.openapi.json',
-    content: `${JSON.stringify(workflowRunsOpenApiDocument, undefined, 2)}\n`,
-  }),
-  Object.freeze({
-    fileName: 'schedules.client-schema.json',
-    content: `${JSON.stringify(schedulesClientContract, undefined, 2)}\n`,
-  }),
-  Object.freeze({
-    fileName: 'schedules.openapi.json',
-    content: `${JSON.stringify(schedulesOpenApiDocument, undefined, 2)}\n`,
-  }),
-  Object.freeze({
-    fileName: 'webhooks.client-schema.json',
-    content: `${JSON.stringify(webhooksClientContract, undefined, 2)}\n`,
-  }),
-  Object.freeze({
-    fileName: 'webhooks.openapi.json',
-    content: `${JSON.stringify(webhooksOpenApiDocument, undefined, 2)}\n`,
-  }),
-]);
+const CONTRACT_DOMAINS = Object.freeze([
+  ['connections', connectionsClientContract, connectionsOpenApiDocument],
+  [
+    'identity-workspace',
+    identityWorkspaceClientContract,
+    identityWorkspaceOpenApiDocument,
+  ],
+  ['node-testing', nodeTestingClientContract, nodeTestingOpenApiDocument],
+  [
+    'workflow-authoring',
+    workflowAuthoringClientContract,
+    workflowAuthoringOpenApiDocument,
+  ],
+  ['workflow-runs', workflowRunsClientContract, workflowRunsOpenApiDocument],
+  ['schedules', schedulesClientContract, schedulesOpenApiDocument],
+  ['webhooks', webhooksClientContract, webhooksOpenApiDocument],
+] as const);
+
+export const CONTRACT_ARTIFACTS = Object.freeze(
+  CONTRACT_DOMAINS.flatMap(([domain, client, openapi]) => [
+    Object.freeze({
+      fileName: `${domain}.client-schema.json`,
+      content: `${JSON.stringify(client, undefined, 2)}\n`,
+    }),
+    Object.freeze({
+      fileName: `${domain}.openapi.json`,
+      content: `${JSON.stringify(openapi, undefined, 2)}\n`,
+    }),
+  ]),
+);

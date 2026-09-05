@@ -1,5 +1,5 @@
 import { metrics, type Meter } from '@opentelemetry/api';
-import { API_PROBLEM_CODES } from '@pertexo/contracts';
+import { API_PROBLEM_CODES } from '@pertexo/contracts/errors';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
 export const API_METRIC_NAME = Object.freeze({

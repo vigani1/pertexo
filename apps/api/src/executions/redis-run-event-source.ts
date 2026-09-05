@@ -2,14 +2,17 @@ import { Buffer } from 'node:buffer';
 import { performance } from 'node:perf_hooks';
 
 import { Redis } from 'ioredis';
-import { runEventChannel } from '@pertexo/queue/run-event-notifications';
-export { runEventChannel } from '@pertexo/queue/run-event-notifications';
+import { runEventChannel } from '@pertexo/queue';
+export { runEventChannel } from '@pertexo/queue';
 import type {
   RedisOperation,
   RedisOperationErrorClass,
   RedisTelemetryObserver,
 } from '@pertexo/queue';
-import { createProductionRedisTelemetryObserver } from '@pertexo/queue';
+import {
+  createProductionRedisTelemetryObserver,
+  normalizeRedisEndpoint,
+} from '@pertexo/queue';
 import { z } from 'zod';
 
 import {
@@ -23,7 +26,6 @@ const DEFAULT_BUFFER_CAPACITY = 1_024;
 const DEFAULT_SUBSCRIBE_TIMEOUT_MS = 5_000;
 const MAX_BUFFER_CAPACITY = 4_096;
 const MAX_LIVE_MESSAGE_BYTES = 512;
-const REDIS_PROTOCOLS = new Set(['redis:', 'rediss:']);
 
 const optionsSchema = z
   .object({
@@ -107,18 +109,15 @@ class RedisRunEventSubscribeError extends Error {
 }
 
 function parseRedisUrl(value: string): string {
-  let url: URL;
-  try {
-    url = new URL(value);
-  } catch {
-    throw new RedisRunEventSourceConfigurationError('Redis URL is invalid');
-  }
-  if (!REDIS_PROTOCOLS.has(url.protocol) || url.hostname.length === 0) {
-    throw new RedisRunEventSourceConfigurationError(
-      'Redis URL must use redis:// or rediss:// with a hostname',
-    );
-  }
-  return value;
+  return normalizeRedisEndpoint(
+    value,
+    (reason) =>
+      new RedisRunEventSourceConfigurationError(
+        reason === 'invalid_url'
+          ? 'Redis URL is invalid'
+          : 'Redis URL must use redis:// or rediss:// with a hostname',
+      ),
+  );
 }
 
 class BoundedNotificationQueue implements AsyncIterable<LiveRunEventNotification> {

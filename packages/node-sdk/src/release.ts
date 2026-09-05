@@ -1,5 +1,20 @@
 import { z } from 'zod';
 
+import {
+  cloneAndFreeze,
+  computeCompatibilityReleaseFingerprint,
+  computeSelectionFingerprintFromParsedRelease,
+  definitionProjection,
+  executorProjection,
+  stableJson,
+} from './compatibility-canonical.js';
+import { compareIdentity, identityToken } from './identity.js';
+
+export {
+  canonicalCompatibilityReleaseJson,
+  computeCompatibilityReleaseFingerprint,
+} from './compatibility-canonical.js';
+
 /** A stable identity is never resolved by version ordering or by a latest fallback. */
 export interface DefinitionIdentity {
   readonly key: string;
@@ -83,8 +98,7 @@ export interface NodeIntegrationOperation {
   readonly operationKey: string;
 }
 
-export interface NodeManifest {
-  readonly schemaVersion: 1;
+export interface NodeManifestFields {
   readonly definition: DefinitionIdentity;
   readonly family: NodeFamily;
   readonly configVersion: number;
@@ -100,9 +114,26 @@ export interface NodeManifest {
   readonly capabilities: readonly string[];
   readonly lifecycle: DefinitionLifecycle;
   readonly executor: ExecutorIdentity;
-  readonly executorAbi?: number | undefined;
   readonly policyReferences: readonly PolicyReference[];
 }
+
+/** Retained manifest grammar. Its optional ABI is preserved for old fingerprints. */
+export type NodeManifestV1 = Readonly<
+  NodeManifestFields & {
+    readonly schemaVersion: 1;
+    readonly executorAbi?: number | undefined;
+  }
+>;
+
+/** Current manifest grammar. New definitions must pin their executor ABI. */
+export type NodeManifestV2 = Readonly<
+  NodeManifestFields & {
+    readonly schemaVersion: 2;
+    readonly executorAbi: number;
+  }
+>;
+
+export type NodeManifest = NodeManifestV1 | NodeManifestV2;
 
 export interface ExecutorManifest {
   readonly executor: ExecutorIdentity;
@@ -139,7 +170,7 @@ const identitySchema = z
   .strict();
 const policyReferenceSchema = identitySchema;
 
-export function isBoundedNodeJson(value: unknown): value is SchemaJson {
+function inspectBoundedNodeJson(value: unknown): value is SchemaJson {
   if (
     value === null ||
     typeof value === 'string' ||
@@ -207,6 +238,14 @@ export function isBoundedNodeJson(value: unknown): value is SchemaJson {
       new TextEncoder().encode(JSON.stringify(value)).byteLength <=
       NODE_JSON_LIMITS_V1.bytes
     );
+  } catch {
+    return false;
+  }
+}
+
+export function isBoundedNodeJson(value: unknown): value is SchemaJson {
+  try {
+    return inspectBoundedNodeJson(value);
   } catch {
     return false;
   }
@@ -280,41 +319,95 @@ export const BOUNDED_NODE_JSON_SCHEMA_DOCUMENT = boundedSchemaDocument('value');
 export const BOUNDED_NODE_JSON_RECORD_SCHEMA_DOCUMENT =
   boundedSchemaDocument('record');
 
-export function generateSchemaDocument(schema: z.ZodType): SchemaDocument {
-  if (schema === boundedNodeJsonSchema)
-    return BOUNDED_NODE_JSON_SCHEMA_DOCUMENT;
-  if (schema === boundedNodeJsonRecordSchema)
-    return BOUNDED_NODE_JSON_RECORD_SCHEMA_DOCUMENT;
-  return cloneAndFreeze(schemaDocumentSchema.parse(z.toJSONSchema(schema)));
+export interface SchemaProjectionOptions {
+  readonly runtimeOnlySemantics?: readonly [string, ...string[]];
 }
 
-export const nodeManifestSchema = z
-  .object({
-    schemaVersion: z.literal(1),
-    definition: definitionIdentitySchema,
-    family: z.enum(['trigger', 'action', 'logic', 'transform', 'output']),
-    configVersion: z.number().int().positive(),
-    configSchema: schemaDocumentSchema,
-    inputSchema: schemaDocumentSchema,
-    outputSchema: schemaDocumentSchema,
-    ports: portsSchema,
-    credentialRequirements: identifiersSchema,
-    connectionRequirements: identifiersSchema,
-    integration: integrationOperationSchema.optional(),
-    retryClass: z.enum(['safe', 'idempotent-with-key', 'unsafe']),
-    resourceClass: z.enum(['io', 'cpu']),
-    capabilities: identifiersSchema,
-    lifecycle: z.enum([
-      'active',
-      'deprecated',
-      'migration_required',
-      'retired',
-    ]),
-    executor: executorIdentitySchema,
-    executorAbi: z.number().int().positive().optional(),
-    policyReferences: z.array(policyReferenceSchema),
-  })
-  .strict();
+export function generateSchemaDocument(
+  schema: z.ZodType,
+  options: SchemaProjectionOptions = {},
+): SchemaDocument {
+  if (
+    options.runtimeOnlySemantics !== undefined &&
+    (options.runtimeOnlySemantics.length === 0 ||
+      options.runtimeOnlySemantics.some(
+        (semantic) => semantic.length === 0 || semantic.length > 256,
+      ))
+  )
+    throw new TypeError(
+      'runtime-only schema semantics must be non-empty bounded descriptions',
+    );
+  const projection =
+    schema === boundedNodeJsonSchema
+      ? BOUNDED_NODE_JSON_SCHEMA_DOCUMENT
+      : schema === boundedNodeJsonRecordSchema
+        ? BOUNDED_NODE_JSON_RECORD_SCHEMA_DOCUMENT
+        : schemaDocumentSchema.parse(z.toJSONSchema(schema));
+  return cloneAndFreeze(
+    schemaDocumentSchema.parse({
+      ...projection,
+      ...(options.runtimeOnlySemantics === undefined
+        ? {}
+        : {
+            'x-pertexo-runtime-only-semantics': [
+              ...options.runtimeOnlySemantics,
+            ],
+          }),
+    }),
+  );
+}
+
+const nodeManifestShape = {
+  definition: definitionIdentitySchema,
+  family: z.enum(['trigger', 'action', 'logic', 'transform', 'output']),
+  configVersion: z.number().int().positive(),
+  configSchema: schemaDocumentSchema,
+  inputSchema: schemaDocumentSchema,
+  outputSchema: schemaDocumentSchema,
+  ports: portsSchema,
+  credentialRequirements: identifiersSchema,
+  connectionRequirements: identifiersSchema,
+  integration: integrationOperationSchema.optional(),
+  retryClass: z.enum(['safe', 'idempotent-with-key', 'unsafe']),
+  resourceClass: z.enum(['io', 'cpu']),
+  capabilities: identifiersSchema,
+  lifecycle: z.enum(['active', 'deprecated', 'migration_required', 'retired']),
+  executor: executorIdentitySchema,
+  policyReferences: z.array(policyReferenceSchema),
+} as const;
+
+export const nodeManifestSchema = z.discriminatedUnion('schemaVersion', [
+  z
+    .object({
+      schemaVersion: z.literal(1),
+      ...nodeManifestShape,
+      executorAbi: z.number().int().positive().optional(),
+    })
+    .strict(),
+  z
+    .object({
+      schemaVersion: z.literal(2),
+      ...nodeManifestShape,
+      executorAbi: z.number().int().positive(),
+    })
+    .strict(),
+]);
+
+export function createNodeManifestV2(
+  manifest: NodeManifestV1,
+  executorAbi: number,
+): NodeManifestV2 {
+  if (!Number.isSafeInteger(executorAbi) || executorAbi <= 0)
+    throw new TypeError('executor ABI must be a positive safe integer');
+  if (
+    manifest.executorAbi !== undefined &&
+    manifest.executorAbi !== executorAbi
+  )
+    throw new TypeError('executor ABI migration conflicts with manifest');
+  return cloneAndFreeze(
+    nodeManifestSchema.parse({ ...manifest, schemaVersion: 2, executorAbi }),
+  ) as NodeManifestV2;
+}
 
 export const executorManifestSchema = z
   .object({
@@ -348,23 +441,6 @@ export const registryReleaseSchema = registryReleaseInputSchema
   })
   .strict();
 
-function identityToken(
-  identity: DefinitionIdentity | ExecutorIdentity | PolicyReference,
-): string {
-  return `${identity.key}\u0000${String(identity.version)}`;
-}
-
-function compareIdentity(
-  left: DefinitionIdentity | ExecutorIdentity | PolicyReference,
-  right: DefinitionIdentity | ExecutorIdentity | PolicyReference,
-): number {
-  return left.key < right.key
-    ? -1
-    : left.key > right.key
-      ? 1
-      : left.version - right.version;
-}
-
 function rejectDuplicateIdentities(
   label: string,
   identities: readonly (
@@ -380,184 +456,6 @@ function rejectDuplicateIdentities(
       );
     seen.add(token);
   }
-}
-
-function cloneAndFreeze<T>(value: T): T {
-  if (value === null || typeof value !== 'object') return value;
-  if (Array.isArray(value)) {
-    const copy: unknown[] = [];
-    for (const item of value) copy.push(cloneAndFreeze(item));
-    return Object.freeze(copy) as T;
-  }
-  const copy: Record<string, unknown> = {};
-  for (const [key, item] of Object.entries(value))
-    copy[key] = cloneAndFreeze(item);
-  return Object.freeze(copy) as T;
-}
-
-function stableJson(value: unknown): string {
-  if (value === null || typeof value !== 'object') return JSON.stringify(value);
-  if (Array.isArray(value))
-    return `[${value.map((item) => stableJson(item)).join(',')}]`;
-  const entries = Object.entries(value).sort(([left], [right]) =>
-    left < right ? -1 : left > right ? 1 : 0,
-  );
-  return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${stableJson(item)}`).join(',')}}`;
-}
-
-/** Small synchronous SHA-256 implementation so the browser contract has no Node dependency. */
-function sha256Hex(input: string): string {
-  const constants = [
-    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1,
-    0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
-    0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786,
-    0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
-    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147,
-    0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13,
-    0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b,
-    0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
-    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a,
-    0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
-    0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
-  ];
-  const bytes = new TextEncoder().encode(input);
-  const bitLength = bytes.length * 8;
-  const paddedLength = ((bytes.length + 9 + 63) >> 6) << 6;
-  const padded = new Uint8Array(paddedLength);
-  padded.set(bytes);
-  padded[bytes.length] = 0x80;
-  const view = new DataView(padded.buffer);
-  view.setUint32(padded.length - 4, bitLength >>> 0);
-  view.setUint32(padded.length - 8, Math.floor(bitLength / 0x100000000));
-  let h0 = 0x6a09e667;
-  let h1 = 0xbb67ae85;
-  let h2 = 0x3c6ef372;
-  let h3 = 0xa54ff53a;
-  let h4 = 0x510e527f;
-  let h5 = 0x9b05688c;
-  let h6 = 0x1f83d9ab;
-  let h7 = 0x5be0cd19;
-  const schedule = new Uint32Array(64);
-  const rotateRight = (value: number, amount: number): number =>
-    (value >>> amount) | (value << (32 - amount));
-  for (let offset = 0; offset < padded.length; offset += 64) {
-    for (let index = 0; index < 16; index += 1)
-      schedule[index] = view.getUint32(offset + index * 4);
-    for (let index = 16; index < 64; index += 1) {
-      const previous = schedule[index - 15] ?? 0;
-      const older = schedule[index - 2] ?? 0;
-      const sigma0 =
-        rotateRight(previous, 7) ^ rotateRight(previous, 18) ^ (previous >>> 3);
-      const sigma1 =
-        rotateRight(older, 17) ^ rotateRight(older, 19) ^ (older >>> 10);
-      const oldest = schedule[index - 16] ?? 0;
-      const recent = schedule[index - 7] ?? 0;
-      schedule[index] = (oldest + sigma0 + recent + sigma1) >>> 0;
-    }
-    let a = h0;
-    let b = h1;
-    let c = h2;
-    let d = h3;
-    let e = h4;
-    let f = h5;
-    let g = h6;
-    let h = h7;
-    for (let index = 0; index < 64; index += 1) {
-      const bigSigma1 =
-        rotateRight(e, 6) ^ rotateRight(e, 11) ^ rotateRight(e, 25);
-      const choose = (e & f) ^ (~e & g);
-      const constant = constants[index] ?? 0;
-      const scheduled = schedule[index] ?? 0;
-      const temporary1 = (h + bigSigma1 + choose + constant + scheduled) >>> 0;
-      const bigSigma0 =
-        rotateRight(a, 2) ^ rotateRight(a, 13) ^ rotateRight(a, 22);
-      const majority = (a & b) ^ (a & c) ^ (b & c);
-      const temporary2 = (bigSigma0 + majority) >>> 0;
-      h = g;
-      g = f;
-      f = e;
-      e = (d + temporary1) >>> 0;
-      d = c;
-      c = b;
-      b = a;
-      a = (temporary1 + temporary2) >>> 0;
-    }
-    h0 = (h0 + a) >>> 0;
-    h1 = (h1 + b) >>> 0;
-    h2 = (h2 + c) >>> 0;
-    h3 = (h3 + d) >>> 0;
-    h4 = (h4 + e) >>> 0;
-    h5 = (h5 + f) >>> 0;
-    h6 = (h6 + g) >>> 0;
-    h7 = (h7 + h) >>> 0;
-  }
-  return [h0, h1, h2, h3, h4, h5, h6, h7]
-    .map((word) => word.toString(16).padStart(8, '0'))
-    .join('');
-}
-
-function definitionProjection(manifest: NodeManifest) {
-  return {
-    schemaVersion: manifest.schemaVersion,
-    definition: manifest.definition,
-    family: manifest.family,
-    configVersion: manifest.configVersion,
-    configSchema: manifest.configSchema,
-    inputSchema: manifest.inputSchema,
-    outputSchema: manifest.outputSchema,
-    ports: {
-      inputs: [...manifest.ports.inputs].sort(),
-      outputs: [...manifest.ports.outputs].sort(),
-    },
-    credentialRequirements: [...manifest.credentialRequirements].sort(),
-    connectionRequirements: [...manifest.connectionRequirements].sort(),
-    ...(manifest.integration === undefined
-      ? {}
-      : { integration: manifest.integration }),
-    retryClass: manifest.retryClass,
-    resourceClass: manifest.resourceClass,
-    capabilities: [...manifest.capabilities].sort(),
-    lifecycle: manifest.lifecycle,
-    executor: manifest.executor,
-    executorAbi: manifest.executorAbi ?? null,
-    policyReferences: [...manifest.policyReferences].sort(compareIdentity),
-  };
-}
-
-function executorProjection(executor: ExecutorManifest) {
-  return {
-    executor: executor.executor,
-    abiVersion: executor.abiVersion,
-    definitions: [...executor.definitions].sort(compareIdentity),
-    lifecycle: executor.lifecycle,
-    policyReferences: [...executor.policyReferences].sort(compareIdentity),
-  };
-}
-
-function releaseProjection(input: RegistryReleaseInput): unknown {
-  return {
-    domain: 'pertexo.node-compatibility-release',
-    schemaVersion: 1,
-    definitions: [...input.definitions]
-      .sort((left, right) => compareIdentity(left.definition, right.definition))
-      .map(definitionProjection),
-    executors: [...input.executors]
-      .sort((left, right) => compareIdentity(left.executor, right.executor))
-      .map(executorProjection),
-    policies: [...input.policies].sort(compareIdentity),
-  };
-}
-
-export function canonicalCompatibilityReleaseJson(
-  release: RegistryReleaseInput,
-): string {
-  return stableJson(releaseProjection(release));
-}
-
-export function computeCompatibilityReleaseFingerprint(
-  release: RegistryReleaseInput,
-): string {
-  return `node-compat:v1:sha256:${sha256Hex(canonicalCompatibilityReleaseJson(release))}`;
 }
 
 function validateReleaseEdges(input: RegistryReleaseInput): void {
@@ -646,49 +544,11 @@ export function computeCompatibilitySelectionFingerprint(
   selectedDefinitions: readonly DefinitionIdentity[],
 ): string {
   const parsedRelease = parseRegistryRelease(release);
-  const definitions = new Map(
-    parsedRelease.definitions.map((manifest) => [
-      identityToken(manifest.definition),
-      manifest,
-    ]),
-  );
-  const executors = new Map(
-    parsedRelease.executors.map((manifest) => [
-      identityToken(manifest.executor),
-      manifest,
-    ]),
-  );
-  const policies = new Map(
-    parsedRelease.policies.map((policy) => [identityToken(policy), policy]),
-  );
   rejectDuplicateIdentities('selected definition', selectedDefinitions);
-  const projection = [...selectedDefinitions]
-    .sort(compareIdentity)
-    .map((selection) => {
-      const definition = definitions.get(identityToken(selection));
-      const executor =
-        definition === undefined
-          ? undefined
-          : executors.get(identityToken(definition.executor));
-      if (definition === undefined || executor === undefined)
-        throw new Error('compatibility selection contains an unknown identity');
-      const selectedPolicies = [...definition.policyReferences]
-        .sort(compareIdentity)
-        .map((policy) => {
-          const known = policies.get(identityToken(policy));
-          if (known === undefined)
-            throw new Error(
-              'compatibility selection contains an unknown policy',
-            );
-          return known;
-        });
-      return {
-        definition: definitionProjection(definition),
-        executor: executorProjection(executor),
-        policies: selectedPolicies,
-      };
-    });
-  return `node-select:v1:sha256:${sha256Hex(stableJson({ domain: 'pertexo.node-compatibility-selection', selections: projection }))}`;
+  return computeSelectionFingerprintFromParsedRelease(
+    parsedRelease,
+    selectedDefinitions,
+  );
 }
 
 export function createRegistryRelease(
@@ -762,8 +622,10 @@ export function createRegistryReleaseSuccessor(
   const { previous: previousInput, ...successorInput } = input;
   const previous = parseRegistryRelease(previousInput);
   const next = createRegistryRelease(successorInput);
-  if (next.epoch <= previous.epoch)
-    throw new Error('compatibility release epoch must increase');
+  if (next.epoch !== previous.epoch + 1)
+    throw new Error('compatibility release epoch must be contiguous');
+  if (next.fingerprint === previous.fingerprint)
+    throw new Error('compatibility release successor must change');
 
   const nextDefinitions = new Map(
     next.definitions.map((manifest) => [

@@ -1,10 +1,6 @@
 import type { FailureNotificationStore } from '@pertexo/database/execution';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/execution';
-import {
-  jobIdForOutboxEvent,
-  type QueueDelivery,
-  type QueueHandlerContext,
-} from '@pertexo/queue';
+import type { QueueDelivery, QueueHandlerContext } from '@pertexo/queue';
 import {
   FailureNotificationDeliveryResultV1Schema,
   type FailureNotificationContextV1,
@@ -49,11 +45,6 @@ export function createFailureNotificationHandler(
       delivery: Delivery,
       queueContext: QueueHandlerContext,
     ): Promise<void> => {
-      if (
-        delivery.transport.jobId !==
-        jobIdForOutboxEvent(delivery.data.outboxEventId)
-      )
-        throw new TypeError('Failure notification transport identity mismatch');
       const claim = await dependencies.store.claimDelivery({
         workspaceId: delivery.data.workspaceId,
         intentId: delivery.data.notificationIntentId,

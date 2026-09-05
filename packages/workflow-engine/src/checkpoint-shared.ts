@@ -10,6 +10,7 @@ import {
 import { types as nodeTypes } from 'node:util';
 import { invocationKey } from './scheduling.js';
 import { compareOrdinal } from './ordering.js';
+import { assertCanonicalTimestamp } from './checkpoint-identity.js';
 
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -305,13 +306,10 @@ export function parseInvocation(value: unknown): InvocationState {
     isInteger(value.attemptNumber) && value.attemptNumber >= 0,
     'attemptNumber must be a non-negative integer',
   );
-  if (value.resumeAt !== undefined) {
-    assertCheckpoint(
-      typeof value.resumeAt === 'string' &&
-        Number.isFinite(Date.parse(value.resumeAt)),
-      'resumeAt must be a valid timestamp',
-    );
-  }
+  const resumeAt =
+    value.resumeAt === undefined
+      ? undefined
+      : assertCanonicalTimestamp(value.resumeAt, 'resumeAt');
   assertCheckpoint(
     value.resumeAt === undefined || value.status === 'waiting',
     'resumeAt must exist only for a waiting invocation',
@@ -331,7 +329,7 @@ export function parseInvocation(value: unknown): InvocationState {
     nodeId: value.nodeId,
     status: value.status,
     attemptNumber: value.attemptNumber,
-    ...(value.resumeAt === undefined ? {} : { resumeAt: value.resumeAt }),
+    ...(resumeAt === undefined ? {} : { resumeAt }),
     ...(value.waitKind === undefined ? {} : { waitKind: value.waitKind }),
     ...(output === undefined ? {} : { output }),
   };

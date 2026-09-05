@@ -2,6 +2,7 @@ import {
   DeleteObjectCommand,
   DeleteObjectsCommand,
   GetObjectCommand,
+  GetBucketLocationCommand,
   HeadBucketCommand,
   HeadObjectCommand,
   ListObjectVersionsCommand,
@@ -23,6 +24,7 @@ const WORKSPACE_ID = '018f47a0-7b5c-7e2d-8c3f-12ad4e8b9c01';
 const ARTIFACT_ID = '018f47a0-7b5c-7e2d-8c3f-12ad4e8b9c02';
 const HELLO_SHA256 =
   '2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824';
+const USE_STORED_BODY = Symbol('use-stored-body');
 
 interface StoredObject {
   readonly body: Buffer;
@@ -58,6 +60,8 @@ class MemoryS3Client implements S3ClientLike {
   public deleteVersionsErrors:
     | readonly Readonly<{ Code: string; Key: string; VersionId: string }>[]
     | undefined;
+  public deleteVersionsAcknowledgements:
+    readonly Readonly<{ Key?: string; VersionId?: string }>[] | undefined;
   public deletedVersions:
     | readonly Readonly<{
         Key?: string | undefined;
@@ -65,6 +69,8 @@ class MemoryS3Client implements S3ClientLike {
       }>[]
     | undefined;
   public hangReadiness = false;
+  public locationConstraint: string | null = null;
+  public hangHead = false;
   public lastGetBody: Readable | undefined;
   public getCalls = 0;
   public provideProviderChecksum = true;
@@ -79,6 +85,7 @@ class MemoryS3Client implements S3ClientLike {
   public useInvalidHeadMetadata = false;
   public useInvalidGetMetadata = false;
   public getBodyFactory: ((object: StoredObject) => Readable) | undefined;
+  public getBodyOverride: unknown = USE_STORED_BODY;
 
   public async send(
     command: unknown,
@@ -110,6 +117,22 @@ class MemoryS3Client implements S3ClientLike {
       return {};
     }
     if (command instanceof HeadObjectCommand) {
+      if (this.hangHead)
+        await new Promise<never>((_resolve, reject) => {
+          const abort = () => {
+            const reason: unknown = options?.abortSignal?.reason;
+            reject(
+              reason instanceof Error
+                ? reason
+                : new Error('Head request aborted', { cause: reason }),
+            );
+          };
+          if (options?.abortSignal?.aborted === true) abort();
+          else
+            options?.abortSignal?.addEventListener('abort', abort, {
+              once: true,
+            });
+        });
       const object = this.object(String(command.input.Key));
       return {
         ChecksumSHA256: this.provideProviderChecksum
@@ -130,7 +153,10 @@ class MemoryS3Client implements S3ClientLike {
         this.getBodyFactory?.(object) ?? Readable.from([object.body]);
       this.lastGetBody = body;
       return {
-        Body: body,
+        Body:
+          this.getBodyOverride === USE_STORED_BODY
+            ? body
+            : this.getBodyOverride,
         ContentLength: object.body.byteLength,
         ContentType: object.contentType,
         ETag: 'etag-is-not-a-checksum',
@@ -147,7 +173,11 @@ class MemoryS3Client implements S3ClientLike {
     }
     if (command instanceof DeleteObjectsCommand) {
       this.deletedVersions = command.input.Delete?.Objects;
-      return { Errors: this.deleteVersionsErrors };
+      return {
+        Deleted:
+          this.deleteVersionsAcknowledgements ?? command.input.Delete?.Objects,
+        Errors: this.deleteVersionsErrors,
+      };
     }
     if (command instanceof HeadBucketCommand) {
       if (this.hangReadiness) {
@@ -168,6 +198,8 @@ class MemoryS3Client implements S3ClientLike {
       }
       return {};
     }
+    if (command instanceof GetBucketLocationCommand)
+      return { LocationConstraint: this.locationConstraint };
     throw new Error('Unsupported S3 command');
   }
 
@@ -216,6 +248,7 @@ function createStore(client = new MemoryS3Client()) {
       },
       {
         client,
+        clientOwnership: 'owned',
         presignPutObject: (request) => {
           presignRequest = request;
           return Promise.resolve('https://uploads.example.test/signed');
@@ -426,6 +459,157 @@ describe('ArtifactStore', () => {
       'x-amz-checksum-sha256',
     );
   });
+
+  it('bounds a hung presigner and remains usable after cancellation', async () => {
+    const client = new MemoryS3Client();
+    const controller = new AbortController();
+    const cancellation = new Error('request cancelled');
+    let calls = 0;
+    const store = createArtifactStore(
+      {
+        accessKeyId: 'access',
+        bucket: 'pertexo-artifacts',
+        endpoint: 'http://localhost:9090',
+        forcePathStyle: true,
+        maxObjectBytes: 10 * 1024 * 1024,
+        region: 'us-east-1',
+        requestTimeoutMs: 100,
+        secretAccessKey: 'secret',
+      },
+      {
+        client,
+        presignPutObject: () => {
+          calls += 1;
+          return calls === 1
+            ? new Promise<string>(() => undefined)
+            : Promise.resolve('https://uploads.example.test/signed');
+        },
+      },
+    );
+    const pending = store.beginDirectUpload({
+      artifactId: ARTIFACT_ID,
+      byteLength: 5,
+      expiresInSeconds: 300,
+      mediaType: 'text/plain',
+      sha256: HELLO_SHA256,
+      signal: controller.signal,
+      workspaceId: WORKSPACE_ID,
+    });
+    controller.abort(cancellation);
+    await expect(pending).rejects.toBe(cancellation);
+    await expect(
+      store.beginDirectUpload({
+        artifactId: ARTIFACT_ID,
+        byteLength: 5,
+        expiresInSeconds: 300,
+        mediaType: 'text/plain',
+        sha256: HELLO_SHA256,
+        workspaceId: WORKSPACE_ID,
+      }),
+    ).resolves.toMatchObject({ method: 'PUT' });
+  });
+
+  it('normalizes non-Error presign failures and abort reasons', async () => {
+    const client = new MemoryS3Client();
+    let calls = 0;
+    const store = createArtifactStore(
+      {
+        accessKeyId: 'access',
+        bucket: 'pertexo-artifacts',
+        endpoint: 'http://localhost:9090',
+        forcePathStyle: true,
+        maxObjectBytes: 10 * 1024 * 1024,
+        region: 'us-east-1',
+        requestTimeoutMs: 100,
+        secretAccessKey: 'secret',
+      },
+      {
+        client,
+        presignPutObject: () => {
+          calls += 1;
+          return calls === 1
+            ? // Deliberately model an untrusted provider rejecting a primitive.
+              // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+              Promise.reject('provider-failed')
+            : new Promise<string>(() => undefined);
+        },
+      },
+    );
+    const request = {
+      artifactId: ARTIFACT_ID,
+      byteLength: 5,
+      expiresInSeconds: 300,
+      mediaType: 'text/plain',
+      sha256: HELLO_SHA256,
+      workspaceId: WORKSPACE_ID,
+    } as const;
+
+    await expect(store.beginDirectUpload(request)).rejects.toMatchObject({
+      message: 'Artifact operation failed',
+      cause: 'provider-failed',
+    });
+
+    const controller = new AbortController();
+    const pending = store.beginDirectUpload({
+      ...request,
+      signal: controller.signal,
+    });
+    controller.abort('caller-stopped');
+    await expect(pending).rejects.toMatchObject({
+      message: 'Artifact operation aborted',
+      cause: 'caller-stopped',
+    });
+  });
+
+  it('preserves caller cancellation through post-upload verification', async () => {
+    const client = new MemoryS3Client();
+    client.hangHead = true;
+    const { store } = createStore(client);
+    const controller = new AbortController();
+    const cancellation = new Error('caller stopped waiting');
+    const pending = store.put({
+      artifactId: ARTIFACT_ID,
+      body: Readable.from(['hello']),
+      byteLength: 5,
+      mediaType: 'text/plain',
+      sha256: HELLO_SHA256,
+      signal: controller.signal,
+      workspaceId: WORKSPACE_ID,
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+    controller.abort(cancellation);
+    await expect(pending).rejects.toBe(cancellation);
+  });
+
+  it.each([
+    ['primitive', 'not-a-stream', false],
+    ['destroyable', { destroy: () => undefined }, true],
+  ] as const)(
+    'rejects a %s provider body and destroys it when supported',
+    async (_name, body, destroyable) => {
+      const { client, store } = createStore();
+      await store.put({
+        artifactId: ARTIFACT_ID,
+        body: Readable.from(['hello']),
+        byteLength: 5,
+        mediaType: 'text/plain',
+        sha256: HELLO_SHA256,
+        workspaceId: WORKSPACE_ID,
+      });
+      let destroyed = false;
+      client.getBodyOverride = destroyable
+        ? { destroy: () => (destroyed = true) }
+        : body;
+
+      await expect(
+        store.getStream({
+          artifactId: ARTIFACT_ID,
+          workspaceId: WORKSPACE_ID,
+        }),
+      ).rejects.toThrow('not streamable');
+      expect(destroyed).toBe(destroyable);
+    },
+  );
 
   it('validates direct upload bytes using the provider full-object checksum', async () => {
     const { client, store } = createStore();
@@ -723,6 +907,37 @@ describe('ArtifactStore', () => {
     ).rejects.toBeInstanceOf(ArtifactIntegrityError);
   });
 
+  it.each([
+    { acknowledgements: [] },
+    { acknowledgements: [{ Key: 'foreign', VersionId: 'version-1' }] },
+    {
+      acknowledgements: [
+        {
+          Key: `workspaces/${WORKSPACE_ID}/artifacts/${ARTIFACT_ID}`,
+          VersionId: 'version-1',
+        },
+        {
+          Key: `workspaces/${WORKSPACE_ID}/artifacts/${ARTIFACT_ID}`,
+          VersionId: 'version-1',
+        },
+      ],
+    },
+    { acknowledgements: [{ VersionId: 'version-1' }] },
+  ])(
+    'rejects an invalid delete acknowledgement set: %#',
+    async ({ acknowledgements }) => {
+      const { client, store } = createStore();
+      const key = `workspaces/${WORKSPACE_ID}/artifacts/${ARTIFACT_ID}`;
+      client.versionListOutput = {
+        Versions: [{ Key: key, VersionId: 'version-1' }],
+      };
+      client.deleteVersionsAcknowledgements = acknowledgements;
+      await expect(
+        store.purgeWorkspacePage({ maxObjects: 1, workspaceId: WORKSPACE_ID }),
+      ).rejects.toBeInstanceOf(ArtifactIntegrityError);
+    },
+  );
+
   it('bounds readiness and closes the client exactly once', async () => {
     const client = new MemoryS3Client();
     client.hangReadiness = true;
@@ -737,11 +952,68 @@ describe('ArtifactStore', () => {
     ).rejects.toBeInstanceOf(ArtifactStoreClosedError);
   });
 
+  it('borrows injected clients by default and can explicitly own them', () => {
+    const borrowed = new MemoryS3Client();
+    const borrowedStore = createArtifactStore(
+      {
+        accessKeyId: 'access',
+        bucket: 'pertexo-artifacts',
+        endpoint: 'http://localhost:9090',
+        forcePathStyle: true,
+        maxObjectBytes: 10 * 1024 * 1024,
+        region: 'us-east-1',
+        requestTimeoutMs: 100,
+        secretAccessKey: 'secret',
+      },
+      { client: borrowed, presignPutObject: () => Promise.resolve('signed') },
+    );
+    borrowedStore.close();
+    borrowedStore.close();
+    expect(borrowed.destroyCalls).toBe(0);
+
+    const owned = new MemoryS3Client();
+    const ownedStore = createArtifactStore(
+      {
+        accessKeyId: 'access',
+        bucket: 'pertexo-artifacts',
+        endpoint: 'http://localhost:9090',
+        forcePathStyle: true,
+        maxObjectBytes: 10 * 1024 * 1024,
+        region: 'us-east-1',
+        requestTimeoutMs: 100,
+        secretAccessKey: 'secret',
+      },
+      {
+        client: owned,
+        clientOwnership: 'owned',
+        presignPutObject: () => Promise.resolve('signed'),
+      },
+    );
+    ownedStore.close();
+    ownedStore.close();
+    expect(owned.destroyCalls).toBe(1);
+  });
+
   it('reports readiness without exposing credentials', async () => {
     const { store } = createStore();
     await expect(store.checkReadiness()).resolves.toEqual({
       bucket: 'pertexo-artifacts',
       region: 'us-east-1',
     });
+  });
+
+  it('normalizes the S3-compatible root-region location response', async () => {
+    const { client, store } = createStore();
+    client.locationConstraint = 'null';
+    await expect(store.checkReadiness()).resolves.toEqual({
+      bucket: 'pertexo-artifacts',
+      region: 'us-east-1',
+    });
+  });
+
+  it('rejects a configured region that disagrees with provider location', async () => {
+    const { client, store } = createStore();
+    client.locationConstraint = 'eu-west-1';
+    await expect(store.checkReadiness()).rejects.toThrow(/region/u);
   });
 });

@@ -40,6 +40,9 @@ export {
 } from './http/secure-http.js';
 export type {
   SecureHttpErrorCode,
+  SecureHttpFailureObservation,
+  SecureHttpFailureStage,
+  SecureHttpObserver,
   SecureHttpBodyConsumer,
   SecureHttpRequest,
   SecureHttpResolver,

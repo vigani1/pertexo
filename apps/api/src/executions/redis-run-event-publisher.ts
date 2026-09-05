@@ -3,5 +3,5 @@ export {
   RunEventNotificationConfigurationError as RedisRunEventPublisherConfigurationError,
   RunEventNotificationPublishError as RedisRunEventPublishError,
   encodeRunEventReference,
-} from '@pertexo/queue/run-event-notifications';
-export type { RunEventNotificationPublisher } from '@pertexo/queue/run-event-notifications';
+} from '@pertexo/queue';
+export type { RunEventNotificationPublisher } from '@pertexo/queue';

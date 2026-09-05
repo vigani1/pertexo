@@ -95,13 +95,32 @@ function isConflict(result: PromiseSettledResult<unknown>): boolean {
   );
 }
 
+function failedRegionRole(
+  primary: PromiseSettledResult<unknown>,
+  recovery: PromiseSettledResult<unknown>,
+): 'primary' | 'recovery' | 'both' | 'none' {
+  if (primary.status === 'rejected' && recovery.status === 'rejected')
+    return 'both';
+  if (primary.status === 'rejected') return 'primary';
+  if (recovery.status === 'rejected') return 'recovery';
+  return 'none';
+}
+
+type ObserveCoordinatorFailure = (
+  operation: 'append' | 'read' | 'readiness' | 'reconcile',
+  outcome: 'diverged' | 'partial' | 'unavailable',
+  failedRole: 'primary' | 'recovery' | 'both' | 'none',
+) => void;
+
 function classifyAppend(
   primary: PromiseSettledResult<ControlLedgerRecord>,
   recovery: PromiseSettledResult<ControlLedgerRecord>,
   signal?: AbortSignal,
+  observe?: ObserveCoordinatorFailure,
 ): ControlLedgerRecord {
   if (primary.status === 'fulfilled' && recovery.status === 'fulfilled') {
     if (!exactEqual(primary.value, recovery.value)) {
+      observe?.('append', 'diverged', 'both');
       throw new ControlLedgerIntegrityError(
         'Dual-region control ledger append results differ',
       );
@@ -111,10 +130,12 @@ function classifyAppend(
   if (primary.status === 'fulfilled' || recovery.status === 'fulfilled') {
     const rejected = primary.status === 'rejected' ? primary : recovery;
     if (isConflict(rejected)) {
+      observe?.('append', 'diverged', failedRegionRole(primary, recovery));
       throw new ControlLedgerIntegrityError(
         'Dual-region control ledger append diverged at the target sequence',
       );
     }
+    observe?.('append', 'partial', failedRegionRole(primary, recovery));
     throw new ControlLedgerPartialReplicationError();
   }
   if (isConflict(primary) && isConflict(recovery)) {
@@ -123,6 +144,7 @@ function classifyAppend(
   if (signal?.aborted === true) {
     throwCancellation(signal);
   }
+  observe?.('append', 'unavailable', 'both');
   throw new ControlLedgerIntegrityError(
     'Dual-region control ledger append could not be proven',
   );
@@ -137,6 +159,21 @@ class CoordinatedDualRegionControlLedger implements DualRegionControlLedger {
     private readonly ownsLedgers: boolean,
     private readonly observer?: ObjectStoreObserver,
   ) {}
+
+  private readonly observeCoordinatorFailure: ObserveCoordinatorFailure = (
+    operation,
+    outcome,
+    failedRole,
+  ) => {
+    safelyObserveSafetyViolation(this.observer, {
+      check: 'control_ledger_integrity',
+      failedRegionRole: failedRole,
+      operation,
+      outcome,
+      regionRole: 'primary',
+      surface: 'control_ledger',
+    });
+  };
 
   public async append(
     request: AppendControlLedgerRecord,
@@ -157,6 +194,11 @@ class CoordinatedDualRegionControlLedger implements DualRegionControlLedger {
       recoveryExisting.status === 'rejected'
     ) {
       if (request.signal?.aborted === true) throwCancellation(request.signal);
+      this.observeCoordinatorFailure(
+        'append',
+        'unavailable',
+        failedRegionRole(primaryExisting, recoveryExisting),
+      );
       throw new ControlLedgerIntegrityError(
         'Dual-region control ledger append pre-read could not be proven',
       );
@@ -165,6 +207,7 @@ class CoordinatedDualRegionControlLedger implements DualRegionControlLedger {
     const recoveryRecord = recoveryExisting.value;
     if (primaryRecord !== null && recoveryRecord !== null) {
       if (!exactEqual(primaryRecord, recoveryRecord)) {
+        this.observeCoordinatorFailure('append', 'diverged', 'both');
         throw new ControlLedgerIntegrityError(
           'Dual-region control ledger records differ at the target sequence',
         );
@@ -187,13 +230,23 @@ class CoordinatedDualRegionControlLedger implements DualRegionControlLedger {
           ? this.recovery.append(request)
           : Promise.resolve(recoveryRecord),
       ]);
-      return classifyAppend(repaired[0], repaired[1], request.signal);
+      return classifyAppend(
+        repaired[0],
+        repaired[1],
+        request.signal,
+        this.observeCoordinatorFailure,
+      );
     }
     const appended = await Promise.allSettled([
       this.primary.append(request),
       this.recovery.append(request),
     ]);
-    return classifyAppend(appended[0], appended[1], request.signal);
+    return classifyAppend(
+      appended[0],
+      appended[1],
+      request.signal,
+      this.observeCoordinatorFailure,
+    );
   }
 
   public async checkReadiness(
@@ -206,6 +259,11 @@ class CoordinatedDualRegionControlLedger implements DualRegionControlLedger {
     ]);
     if (signal?.aborted === true) throwCancellation(signal);
     if (primary.status === 'rejected' || recovery.status === 'rejected') {
+      this.observeCoordinatorFailure(
+        'readiness',
+        'unavailable',
+        failedRegionRole(primary, recovery),
+      );
       throw new ControlLedgerReadinessError(
         'Dual-region control ledger readiness could not be verified',
       );
@@ -216,6 +274,9 @@ class CoordinatedDualRegionControlLedger implements DualRegionControlLedger {
     ) {
       safelyObserveSafetyViolation(this.observer, {
         check: 'region_isolation',
+        failedRegionRole: 'both',
+        operation: 'readiness',
+        outcome: 'diverged',
         regionRole: 'primary',
         surface: 'control_ledger',
       });
@@ -270,11 +331,17 @@ class CoordinatedDualRegionControlLedger implements DualRegionControlLedger {
     ]);
     if (primary.status === 'rejected' || recovery.status === 'rejected') {
       if (request.signal?.aborted === true) throwCancellation(request.signal);
+      this.observeCoordinatorFailure(
+        'read',
+        'unavailable',
+        failedRegionRole(primary, recovery),
+      );
       throw new ControlLedgerIntegrityError(
         'Dual-region control ledger read could not be proven',
       );
     }
     if (!exactEqual(primary.value, recovery.value)) {
+      this.observeCoordinatorFailure('read', 'diverged', 'both');
       throw new ControlLedgerIntegrityError(
         'Dual-region control ledger records differ',
       );
@@ -293,6 +360,11 @@ class CoordinatedDualRegionControlLedger implements DualRegionControlLedger {
     ]);
     if (primary.status === 'rejected' || recovery.status === 'rejected') {
       if (request.signal?.aborted === true) throwCancellation(request.signal);
+      this.observeCoordinatorFailure(
+        'reconcile',
+        'unavailable',
+        failedRegionRole(primary, recovery),
+      );
       throw new ControlLedgerIntegrityError(
         'Dual-region control ledger reconciliation could not be proven',
       );
@@ -306,6 +378,7 @@ class CoordinatedDualRegionControlLedger implements DualRegionControlLedger {
         ? primary.value
         : recovery.value;
     }
+    this.observeCoordinatorFailure('reconcile', 'diverged', 'both');
     throw new ControlLedgerIntegrityError(
       'Dual-region control ledger reconciliation results differ',
     );

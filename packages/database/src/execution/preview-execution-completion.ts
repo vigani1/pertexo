@@ -4,9 +4,9 @@ import { z } from 'zod';
 
 import {
   PREVIEW_STATUS,
-  sha256Schema,
   type PreviewStatus,
 } from './preview-execution-acceptance.js';
+import { sha256HexSchema } from '../validation/persisted-primitives.js';
 import {
   PreviewAttemptStateError,
   optionsFor,
@@ -127,7 +127,7 @@ export async function completePreviewAttempt(
       attemptFenceToken: z.number().int().nonnegative(),
       delivery: z.object({
         outboxEventId: z.uuid(),
-        payloadChecksum: sha256Schema,
+        payloadChecksum: sha256HexSchema,
       }),
       previewAttemptId: z.uuid(),
       previewRunId: z.uuid(),

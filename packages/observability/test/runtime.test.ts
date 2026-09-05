@@ -27,4 +27,18 @@ describe('waitForAbortableDelay', () => {
     controller.abort(new Error('stop'));
     await expect(delayed).resolves.toBeUndefined();
   });
+
+  it('rejects silently coerced timer durations', () => {
+    for (const invalid of [
+      -1,
+      1.5,
+      Number.NaN,
+      Number.POSITIVE_INFINITY,
+      2_147_483_648,
+    ]) {
+      expect(() =>
+        waitForAbortableDelay(invalid, new AbortController().signal),
+      ).toThrow(TypeError);
+    }
+  });
 });

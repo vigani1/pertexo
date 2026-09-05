@@ -2,6 +2,29 @@ import './server-only.js';
 
 import { z, type ZodType } from 'zod';
 
+import type {
+  NodeDefinitionRegistration,
+  NodeExecutionRequest,
+  NodeExecutionResult,
+  NodeExecutionRuntime,
+  NodeExecutorRegistration,
+  NodeRegistryOptions,
+} from './executor-contracts.js';
+import {
+  DefinitionNotFoundError,
+  ExecutorNotFoundError,
+  InvalidBoundedJsonError,
+  NodeConfigValidationError,
+  NodeDispatchEvidenceError,
+  NodeExecutionAbortedError,
+  NodeExecutionRuntimeRequiredError,
+  NodeInputValidationError,
+  NodeOutputValidationError,
+  NodeRegistryCompatibilityError,
+  type NodeSdkError,
+} from './executor-errors.js';
+import { canonicalizeBoundedJson, isJsonObject } from './json-boundary.js';
+
 import {
   type DefinitionIdentity,
   definitionIdentitySchema,
@@ -11,7 +34,6 @@ import {
   type ExecutorLifecycle,
   type ExecutorManifest,
   type NodeManifest,
-  NODE_JSON_LIMITS_V1,
   nodeManifestSchema,
   type PolicyReference,
   type RegistryRelease,
@@ -20,218 +42,51 @@ import {
   TERMINATES_RUN_CAPABILITY,
 } from './release.js';
 
-export type JsonValue =
-  null | boolean | number | string | readonly JsonValue[] | JsonObject;
+export type {
+  JsonValue,
+  NodeArtifactReference,
+  NodeArtifactRuntime,
+  NodeConnectionRuntime,
+  NodeDefinitionRegistration,
+  NodeExecutionInvocation,
+  NodeExecutionKind,
+  NodeExecutionRequest,
+  NodeExecutionResult,
+  NodeExecutionRuntime,
+  NodeExecutorRegistration,
+  NodeRegistryOptions,
+  NodeSideEffectClass,
+  ResolvedNodeConnection,
+} from './executor-contracts.js';
+export {
+  DefinitionNotFoundError,
+  ExecutorNotFoundError,
+  InvalidBoundedJsonError,
+  NodeConfigValidationError,
+  NodeDispatchEvidenceError,
+  NodeExecutionAbortedError,
+  NodeExecutionRuntimeRequiredError,
+  NodeExecutorFailure,
+  NodeInputValidationError,
+  NodeOutputValidationError,
+  NodeRegistryCompatibilityError,
+  NodeSdkError,
+  ProviderExecutionRateLimitError,
+  type NodeErrorCode,
+  type NodeExecutorErrorKind,
+  type NodeExecutorFailureOutcome,
+} from './executor-errors.js';
+export {
+  canonicalizeBoundedJson,
+  NODE_EXECUTION_LIMITS_V1,
+} from './json-boundary.js';
+import { compareIdentity, identityToken, sameIdentity } from './identity.js';
 
-// Recursive JSON contracts cannot be expressed through a finite Record alias.
-interface JsonObject {
-  readonly [key: string]: JsonValue;
-}
-
-export const NODE_EXECUTION_LIMITS_V1 = NODE_JSON_LIMITS_V1;
 export const DISPATCH_AWARE_EXECUTOR_ABI_VERSION = 2 as const;
 const SUPPORTED_EXECUTOR_ABI_VERSIONS = new Set<number>([
   1,
   DISPATCH_AWARE_EXECUTOR_ABI_VERSION,
 ]);
-
-export type NodeExecutionKind = 'succeeded' | 'terminal_success';
-
-export type NodeExecutorErrorKind =
-  | 'authentication'
-  | 'canceled'
-  | 'configuration'
-  | 'internal'
-  | 'network'
-  | 'provider'
-  | 'rate_limit'
-  | 'timeout';
-export type NodeExecutorFailureOutcome = Readonly<{
-  kind: 'failed' | 'canceled' | 'retry' | 'outcome_unknown';
-  errorKind: NodeExecutorErrorKind;
-  possiblyDispatched: boolean;
-}>;
-const nodeExecutorFailureSchema = z
-  .object({
-    kind: z.enum(['failed', 'canceled', 'retry', 'outcome_unknown']),
-    errorKind: z.enum([
-      'authentication',
-      'canceled',
-      'configuration',
-      'internal',
-      'network',
-      'provider',
-      'rate_limit',
-      'timeout',
-    ]),
-    possiblyDispatched: z.boolean(),
-  })
-  .strict();
-export class NodeExecutorFailure extends Error {
-  public override readonly name: string = 'NodeExecutorFailure';
-  public readonly kind: NodeExecutorFailureOutcome['kind'];
-  public readonly errorKind: NodeExecutorErrorKind;
-  public readonly possiblyDispatched: boolean;
-  public constructor(outcome: unknown) {
-    const parsed = nodeExecutorFailureSchema.safeParse(outcome);
-    if (!parsed.success) throw new TypeError('Invalid node executor failure');
-    super(`Node executor failed: ${parsed.data.kind}`);
-    this.kind = parsed.data.kind;
-    this.errorKind = parsed.data.errorKind;
-    this.possiblyDispatched = parsed.data.possiblyDispatched;
-  }
-}
-
-export class ProviderExecutionRateLimitError extends Error {
-  public override readonly name = 'ProviderExecutionRateLimitError';
-  public constructor(readonly retryAfterSeconds: number) {
-    if (
-      !Number.isSafeInteger(retryAfterSeconds) ||
-      retryAfterSeconds < 1 ||
-      retryAfterSeconds > 60
-    )
-      throw new TypeError('Invalid provider rate-limit retry duration');
-    super('Provider execution rate limit reached');
-  }
-}
-
-export interface NodeExecutionInvocation<Config, Input> {
-  readonly config: Config;
-  readonly input: Input;
-  readonly connectionRefs: Readonly<Record<string, string>>;
-  readonly signal: AbortSignal;
-  readonly runtime?: NodeExecutionRuntime;
-}
-
-export type NodeSideEffectClass = 'safe' | 'idempotent_with_key' | 'unsafe';
-
-export type ResolvedNodeConnection = Readonly<{
-  connectionId: string;
-  providerKey: string;
-  authType: string;
-  secretVersionId: string;
-  secret: Uint8Array;
-}>;
-
-export interface NodeConnectionRuntime {
-  resolve(
-    input: Readonly<{
-      connectionId: string;
-      expectedProviderKey: string;
-      expectedAuthType: string;
-      purpose: string;
-      signal: AbortSignal;
-    }>,
-  ): Promise<ResolvedNodeConnection>;
-  readonly assertCurrent?: (
-    input: Readonly<{
-      connectionId: string;
-      expectedProviderKey: string;
-      expectedAuthType: string;
-      secretVersionId: string;
-      signal: AbortSignal;
-    }>,
-  ) => Promise<void>;
-}
-
-export type NodeArtifactReference = Readonly<{
-  artifactId: string;
-  byteLength: number;
-  mediaType: string;
-  sha256: string;
-}>;
-
-export interface NodeArtifactRuntime {
-  write(
-    input: Readonly<{
-      body: AsyncIterable<Uint8Array>;
-      maxBytes: number;
-      mediaType: string;
-      purpose: string;
-      signal: AbortSignal;
-    }>,
-  ): Promise<NodeArtifactReference>;
-}
-
-export interface NodeExecutionRuntime {
-  readonly workspaceId: string;
-  readonly runId: string;
-  readonly nodeRunId: string;
-  readonly attemptId: string;
-  readonly attemptNumber: number;
-  readonly nodeId: string;
-  readonly invocationKey: string;
-  readonly sideEffectClass: NodeSideEffectClass;
-  readonly providerIdempotencyKey?: string;
-  readonly providerDispatchBinding?: string;
-  readonly providerDispatchUnresolved?: true;
-  readonly connections?: NodeConnectionRuntime;
-  readonly artifacts?: NodeArtifactRuntime;
-  beforeDispatch(
-    input?: Readonly<{
-      connectionFence?: Readonly<{
-        connectionId: string;
-        expectedProviderKey: string;
-        expectedAuthType: string;
-        secretVersionId: string;
-      }>;
-      providerDispatchBinding?: string;
-    }>,
-  ): Promise<void>;
-}
-
-export type NodeExecutionHandler<Config, Input, Output> = (
-  invocation: NodeExecutionInvocation<Config, Input>,
-) => Promise<Output> | Output;
-
-export interface NodeExecutorRegistration {
-  readonly abiVersion: number;
-  readonly definitions: readonly DefinitionIdentity[];
-  readonly executor: ExecutorIdentity;
-  readonly lifecycle: ExecutorLifecycle;
-  readonly policyReferences: readonly PolicyReference[];
-  readonly execute: (
-    invocation: NodeExecutionInvocation<unknown, unknown>,
-  ) => Promise<unknown>;
-}
-
-export interface TypedExecutorRegistration<Config, Input, Output> extends Omit<
-  NodeExecutorRegistration,
-  'execute'
-> {
-  readonly execute: (
-    invocation: NodeExecutionInvocation<unknown, unknown>,
-  ) => Promise<unknown>;
-  readonly __types?: (config: Config, input: Input, output: Output) => void;
-}
-
-export interface NodeDefinitionRegistration {
-  readonly manifest: NodeManifest;
-  readonly configSchema: ZodType;
-  readonly inputSchema: ZodType;
-  readonly outputSchema: ZodType;
-}
-
-export interface NodeRegistryOptions {
-  readonly release: RegistryRelease;
-  readonly definitions: readonly NodeDefinitionRegistration[];
-  readonly executors: readonly NodeExecutorRegistration[];
-}
-
-export interface NodeExecutionRequest {
-  readonly definition: DefinitionIdentity;
-  readonly executor: ExecutorIdentity;
-  readonly config: unknown;
-  readonly input: unknown;
-  readonly connectionRefs?: Readonly<Record<string, string>>;
-  readonly signal: AbortSignal;
-  readonly runtime?: NodeExecutionRuntime;
-}
-
-export interface NodeExecutionResult {
-  readonly kind: NodeExecutionKind;
-  readonly output: JsonValue;
-}
 
 interface PinnedNodeDefinition {
   readonly manifest: NodeManifest;
@@ -266,148 +121,10 @@ export interface NodeRegistry {
   ) => Promise<NodeExecutionResult>;
 }
 
-export type NodeErrorCode =
-  | 'registry_compatibility'
-  | 'definition_not_found'
-  | 'executor_not_found'
-  | 'aborted'
-  | 'invalid_config'
-  | 'invalid_input'
-  | 'invalid_output'
-  | 'invalid_json'
-  | 'runtime_required'
-  | 'dispatch_evidence_missing'
-  | 'duplicate_dispatch'
-  | 'provider_connection_fence_failed'
-  | 'provider_dispatch_binding_mismatch';
-
-export class NodeSdkError extends Error {
-  constructor(
-    readonly code: NodeErrorCode,
-    message: string,
-    readonly details?: Readonly<Record<string, unknown>>,
-  ) {
-    super(message);
-    this.name = 'NodeSdkError';
-  }
-}
-
-export class NodeRegistryCompatibilityError extends NodeSdkError {
-  constructor(message: string, details?: Readonly<Record<string, unknown>>) {
-    super('registry_compatibility', message, details);
-    this.name = 'NodeRegistryCompatibilityError';
-  }
-}
-
-export class DefinitionNotFoundError extends NodeSdkError {
-  constructor(readonly definition: DefinitionIdentity) {
-    super(
-      'definition_not_found',
-      `definition ${definition.key}@${String(definition.version)} is not in the release`,
-    );
-    this.name = 'DefinitionNotFoundError';
-  }
-}
-
-export class ExecutorNotFoundError extends NodeSdkError {
-  constructor(readonly executor: ExecutorIdentity) {
-    super(
-      'executor_not_found',
-      `executor ${executor.key}@${String(executor.version)} is not in the release`,
-    );
-    this.name = 'ExecutorNotFoundError';
-  }
-}
-
-export class NodeExecutionAbortedError extends NodeSdkError {
-  constructor() {
-    super('aborted', 'node execution was canceled before it started');
-    this.name = 'NodeExecutionAbortedError';
-  }
-}
-
-export class NodeConfigValidationError extends NodeSdkError {
-  constructor(override readonly cause: unknown) {
-    super(
-      'invalid_config',
-      'node configuration does not match its versioned schema',
-    );
-    this.name = 'NodeConfigValidationError';
-  }
-}
-
-export class NodeInputValidationError extends NodeSdkError {
-  constructor(override readonly cause: unknown) {
-    super('invalid_input', 'node input does not match its versioned schema');
-    this.name = 'NodeInputValidationError';
-  }
-}
-
-export class NodeOutputValidationError extends NodeSdkError {
-  constructor(override readonly cause: unknown) {
-    super('invalid_output', 'node output does not match its versioned schema');
-    this.name = 'NodeOutputValidationError';
-  }
-}
-
-export class InvalidBoundedJsonError extends NodeSdkError {
-  constructor(override readonly cause: string) {
-    super('invalid_json', cause);
-    this.name = 'InvalidBoundedJsonError';
-  }
-}
-
-export class NodeExecutionRuntimeRequiredError extends NodeSdkError {
-  constructor() {
-    super(
-      'runtime_required',
-      'dispatch-aware executor requires a node execution runtime',
-    );
-    this.name = 'NodeExecutionRuntimeRequiredError';
-  }
-}
-
-export class NodeDispatchEvidenceError extends NodeSdkError {
-  constructor(
-    code:
-      | 'dispatch_evidence_missing'
-      | 'duplicate_dispatch'
-      | 'provider_connection_fence_failed'
-      | 'provider_dispatch_binding_mismatch',
-  ) {
-    super(code, `node provider dispatch evidence failed: ${code}`);
-    this.name = 'NodeDispatchEvidenceError';
-  }
-}
-
 const connectionRefsSchema = z
   .record(z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u), z.uuid())
   .refine((value) => Object.keys(value).length <= 16)
   .transform((value) => Object.freeze({ ...value }));
-
-function identityToken(
-  identity: DefinitionIdentity | ExecutorIdentity | PolicyReference,
-): string {
-  return `${identity.key}\u0000${String(identity.version)}`;
-}
-
-function compareIdentity(
-  left: DefinitionIdentity | ExecutorIdentity | PolicyReference,
-  right: DefinitionIdentity | ExecutorIdentity | PolicyReference,
-): number {
-  return left.key < right.key
-    ? -1
-    : left.key > right.key
-      ? 1
-      : left.version - right.version;
-}
-
-function sameIdentity(
-  left: DefinitionIdentity | ExecutorIdentity | PolicyReference,
-  right: DefinitionIdentity | ExecutorIdentity | PolicyReference,
-): boolean {
-  return left.key === right.key && left.version === right.version;
-}
 
 function sameIdentitySet(
   left: readonly (DefinitionIdentity | ExecutorIdentity | PolicyReference)[],
@@ -456,135 +173,6 @@ function validateUnique(
   }
 }
 
-function isPlainObject(value: object): boolean {
-  const prototype: object | null = Object.getPrototypeOf(value) as
-    object | null;
-  return prototype === Object.prototype || prototype === null;
-}
-
-function isJsonObject(value: JsonValue): value is JsonObject {
-  return value !== null && !Array.isArray(value) && typeof value === 'object';
-}
-
-type MutableObject = Record<string, JsonValue>;
-
-interface JsonFrame {
-  readonly source: object;
-  readonly target: MutableObject | JsonValue[];
-  readonly keys: readonly string[];
-  index: number;
-  readonly depth: number;
-}
-
-function primitiveJson(value: unknown): JsonValue | undefined {
-  if (value === null || typeof value === 'string' || typeof value === 'boolean')
-    return value;
-  if (typeof value === 'number' && Number.isFinite(value))
-    return Object.is(value, -0) ? 0 : value;
-  return undefined;
-}
-
-/**
- * Validate and normalize untrusted JSON with explicit stack frames. It never
- * follows user-controlled recursion and rejects cycles/accessors/prototypes.
- */
-export function canonicalizeBoundedJson(
-  value: unknown,
-  limits: Readonly<{
-    bytes: number;
-    depth: number;
-    members: number;
-  }> = NODE_EXECUTION_LIMITS_V1,
-): JsonValue {
-  const primitive = primitiveJson(value);
-  if (primitive !== undefined) {
-    if (
-      new TextEncoder().encode(JSON.stringify(primitive)).byteLength >
-      limits.bytes
-    )
-      throw new InvalidBoundedJsonError('JSON byte limit exceeded');
-    return primitive;
-  }
-  if (typeof value !== 'object' || value === null)
-    throw new InvalidBoundedJsonError('value is not JSON');
-
-  const rootIsArray = Array.isArray(value);
-  if (rootIsArray && value.length > limits.members)
-    throw new InvalidBoundedJsonError('JSON member limit exceeded');
-  if (!rootIsArray && !isPlainObject(value))
-    throw new InvalidBoundedJsonError('object must be plain');
-  if (Object.getOwnPropertySymbols(value).length > 0)
-    throw new InvalidBoundedJsonError('symbol properties are not JSON');
-  const root: MutableObject | JsonValue[] = rootIsArray ? [] : {};
-  const rootKeys = rootIsArray
-    ? Array.from({ length: value.length }, (_, index) => String(index))
-    : Object.keys(value);
-  const seen = new Set<object>([value]);
-  const stack: JsonFrame[] = [
-    { source: value, target: root, keys: rootKeys, index: 0, depth: 1 },
-  ];
-  let members = 0;
-  while (stack.length > 0) {
-    const frame = stack[stack.length - 1];
-    if (frame === undefined) break;
-    if (frame.index >= frame.keys.length) {
-      stack.pop();
-      continue;
-    }
-    const key = frame.keys[frame.index];
-    frame.index += 1;
-    if (key === undefined) continue;
-    members += 1;
-    if (members > limits.members)
-      throw new InvalidBoundedJsonError('JSON member limit exceeded');
-    const descriptor = Object.getOwnPropertyDescriptor(frame.source, key);
-    if (descriptor === undefined || !('value' in descriptor))
-      throw new InvalidBoundedJsonError('accessors are not JSON');
-    if (Array.isArray(frame.source) && !(Number(key) in frame.source))
-      throw new InvalidBoundedJsonError('sparse arrays are not JSON');
-    const child: unknown = descriptor.value as unknown;
-    const scalar = primitiveJson(child);
-    if (scalar !== undefined) {
-      if (Array.isArray(frame.target)) frame.target[Number(key)] = scalar;
-      else frame.target[key] = scalar;
-      continue;
-    }
-    if (typeof child !== 'object' || child === null)
-      throw new InvalidBoundedJsonError('value is not JSON');
-    const childDepth = frame.depth + 1;
-    if (childDepth > limits.depth)
-      throw new InvalidBoundedJsonError('JSON depth limit exceeded');
-    if (seen.has(child))
-      throw new InvalidBoundedJsonError('repeated object reference');
-    if (!Array.isArray(child) && !isPlainObject(child))
-      throw new InvalidBoundedJsonError('object must be plain');
-    if (Object.getOwnPropertySymbols(child).length > 0)
-      throw new InvalidBoundedJsonError('symbol properties are not JSON');
-    const childIsArray = Array.isArray(child);
-    if (childIsArray && child.length > limits.members)
-      throw new InvalidBoundedJsonError('JSON member limit exceeded');
-    const childTarget: MutableObject | JsonValue[] = childIsArray ? [] : {};
-    if (Array.isArray(frame.target)) frame.target[Number(key)] = childTarget;
-    else frame.target[key] = childTarget;
-    const childKeys = childIsArray
-      ? Array.from({ length: child.length }, (_, index) => String(index))
-      : Object.keys(child);
-    seen.add(child);
-    stack.push({
-      source: child,
-      target: childTarget,
-      keys: childKeys,
-      index: 0,
-      depth: childDepth,
-    });
-  }
-  const result = root as JsonValue;
-  const serialized = JSON.stringify(result);
-  if (new TextEncoder().encode(serialized).byteLength > limits.bytes)
-    throw new InvalidBoundedJsonError('JSON byte limit exceeded');
-  return result;
-}
-
 function mapSchemaError(
   error: unknown,
   kind: 'config' | 'input' | 'output',
@@ -592,35 +180,6 @@ function mapSchemaError(
   if (kind === 'config') return new NodeConfigValidationError(error);
   if (kind === 'input') return new NodeInputValidationError(error);
   return new NodeOutputValidationError(error);
-}
-
-export function defineNodeExecutor<Config, Input, Output>(options: {
-  readonly abiVersion: number;
-  readonly definitions: readonly DefinitionIdentity[];
-  readonly executor: ExecutorIdentity;
-  readonly lifecycle: ExecutorLifecycle;
-  readonly policyReferences: readonly PolicyReference[];
-  readonly configSchema: ZodType<Config>;
-  readonly inputSchema: ZodType<Input>;
-  readonly execute: NodeExecutionHandler<Config, Input, Output>;
-}): TypedExecutorRegistration<Config, Input, Output> {
-  return {
-    abiVersion: options.abiVersion,
-    definitions: options.definitions,
-    executor: options.executor,
-    lifecycle: options.lifecycle,
-    policyReferences: options.policyReferences,
-    execute: async (invocation) =>
-      options.execute({
-        config: options.configSchema.parse(invocation.config),
-        input: options.inputSchema.parse(invocation.input),
-        connectionRefs: invocation.connectionRefs,
-        signal: invocation.signal,
-        ...(invocation.runtime === undefined
-          ? {}
-          : { runtime: invocation.runtime }),
-      }),
-  };
 }
 
 function assertNotAborted(signal: AbortSignal): void {
@@ -651,7 +210,7 @@ function validateDefinitionRegistration(
       JSON.stringify(stableComparable(generated))
     )
       throw new NodeRegistryCompatibilityError(
-        `${label} JSON Schema document does not match the registered Zod schema`,
+        `${label} JSON Schema projection does not match the registered Zod schema projection`,
       );
   }
   return {
@@ -900,7 +459,9 @@ export function createNodeRegistry(options: NodeRegistryOptions): NodeRegistry {
       executor.registration.abiVersion === DISPATCH_AWARE_EXECUTOR_ABI_VERSION;
     if (dispatchAware && request.runtime === undefined)
       throw new NodeExecutionRuntimeRequiredError();
-    let dispatchCount = 0;
+    const dispatchState: {
+      value: 'unused' | 'in_flight' | 'committed' | 'failed';
+    } = { value: 'unused' };
     const runtime =
       request.runtime === undefined
         ? undefined
@@ -909,10 +470,16 @@ export function createNodeRegistry(options: NodeRegistryOptions): NodeRegistry {
             beforeDispatch: async (
               input?: Parameters<NodeExecutionRuntime['beforeDispatch']>[0],
             ): Promise<void> => {
-              if (dispatchCount !== 0)
+              if (dispatchState.value !== 'unused')
                 throw new NodeDispatchEvidenceError('duplicate_dispatch');
-              await request.runtime?.beforeDispatch(input);
-              dispatchCount += 1;
+              dispatchState.value = 'in_flight';
+              try {
+                await request.runtime?.beforeDispatch(input);
+                dispatchState.value = 'committed';
+              } catch (error) {
+                dispatchState.value = 'failed';
+                throw error;
+              }
             },
           });
     const result = await executor.registration.execute({
@@ -922,7 +489,7 @@ export function createNodeRegistry(options: NodeRegistryOptions): NodeRegistry {
       signal: request.signal,
       ...(runtime === undefined ? {} : { runtime }),
     });
-    if (dispatchAware && dispatchCount !== 1)
+    if (dispatchAware && dispatchState.value !== 'committed')
       throw new NodeDispatchEvidenceError('dispatch_evidence_missing');
     let output: unknown;
     try {

@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from 'pg';
+import { WORKFLOW_OBSERVATION_WINDOW_LIMITS_V1 } from '@pertexo/workflow-model/observation-window';
 
 import {
   CoordinatorRunStateCorruptError,
@@ -19,14 +20,24 @@ import {
   parseStoredExecutionValueV1,
   serializeStoredExecutionJsonValue,
 } from './stored-execution-value.js';
+import {
+  attachPhysicalAttempts,
+  readPhysicalAttempts,
+  type CoordinatorEventRow,
+  type PersistedCoordinatorEventRow,
+} from './coordinator-run-store-fact-physical-state.js';
 
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
-const maximumCanonicalEventPayloadBytes = 4096;
-export const maximumPersistedFacts = 10_000;
+const maximumCanonicalEventPayloadBytes =
+  WORKFLOW_OBSERVATION_WINDOW_LIMITS_V1.canonicalFactBytes;
+export const maximumPersistedFacts =
+  WORKFLOW_OBSERVATION_WINDOW_LIMITS_V1.facts;
 const maximumCanonicalPersistedFactBytes =
-  maximumCanonicalEventPayloadBytes * maximumPersistedFacts;
-const maximumPersistedFactRowsPerFetch = 64;
+  WORKFLOW_OBSERVATION_WINDOW_LIMITS_V1.canonicalWindowBytes;
+// Keep each result bounded while avoiding a long-lived coordinator snapshot
+// spending hundreds of network round trips on the accepted observation window.
+const maximumPersistedFactRowsPerFetch = 1_000;
 
 export function normalizedJson(value: unknown): unknown {
   try {
@@ -134,26 +145,7 @@ function eventIdentity(payload: Readonly<Record<string, unknown>>): Readonly<{
   return { attemptId: payload.attemptId, nodeRunId: payload.nodeRunId };
 }
 
-type EventRow = Readonly<{
-  sequence: number;
-  type: string;
-  payload: unknown;
-  created_at: Date;
-  attempt_id: string | null;
-  attempt_number: number | null;
-  attempt_status: string | null;
-  attempt_output_ref: unknown;
-  executor_failure_kind: string | null;
-  node_output_ref: unknown;
-  invocation_key: string | null;
-  node_run_id: string | null;
-  current_attempt_id: string | null;
-  node_status: string | null;
-  resume_at: Date | null;
-  retry_due_at: Date | null;
-  retry_decision: string | null;
-  wait_kind: 'node_wait' | 'retry_backoff' | null;
-}>;
+type EventRow = CoordinatorEventRow;
 
 export async function readPersistedFacts(
   client: PoolClient,
@@ -165,29 +157,18 @@ export async function readPersistedFacts(
     workspaceId: string;
   }>,
 ): Promise<readonly EventRow[]> {
-  const facts: EventRow[] = [];
+  const persistedEvents: PersistedCoordinatorEventRow[] = [];
+  const identitiesBySequence = new Map<
+    number,
+    Readonly<{ attemptId: string; nodeRunId: string }>
+  >();
+  const attemptIds = new Set<string>();
   let canonicalBytes = 0;
   let nextSequence = input.firstSequence;
-  while (facts.length < input.count) {
-    const result = await client.query<EventRow>(
-      `select event.sequence, event.type, event.payload, event.created_at,
-              attempt.id as attempt_id, attempt.attempt_number,
-              attempt.status as attempt_status,
-              attempt.output_ref as attempt_output_ref,
-              attempt.executor_failure_kind,attempt.retry_decision,
-              node.id as node_run_id, node.invocation_key,
-              node.current_attempt_id, node.status as node_status,
-              node.output_ref as node_output_ref,
-               node.resume_at, node.retry_due_at, node.wait_kind
+  while (persistedEvents.length < input.count) {
+    const result = await client.query<PersistedCoordinatorEventRow>(
+      `select event.sequence, event.type, event.payload, event.created_at
        from app.run_events event
-       left join app.node_attempts attempt
-         on attempt.workspace_id=event.workspace_id
-        and attempt.id::text=event.payload->>'attemptId'
-       left join app.node_runs node
-         on node.workspace_id=event.workspace_id
-        and node.id::text=event.payload->>'nodeRunId'
-        and attempt.node_run_id=node.id
-        and node.workflow_run_id=event.workflow_run_id
        where event.workspace_id=$1 and event.workflow_run_id=$2
          and event.sequence >= $3
          and ($4::int is null or event.sequence <= $4::int)
@@ -207,11 +188,27 @@ export async function readPersistedFacts(
       canonicalBytes += canonical.bytes;
       if (canonicalBytes > maximumCanonicalPersistedFactBytes)
         throw new CoordinatorRunStateCorruptError();
-      facts.push(Object.freeze({ ...row, payload: canonical.payload }));
+      const event = Object.freeze({ ...row, payload: canonical.payload });
+      persistedEvents.push(event);
+      if (row.type !== 'run.cancel_requested') {
+        const identity = eventIdentity(canonical.payload);
+        identitiesBySequence.set(row.sequence, identity);
+        attemptIds.add(identity.attemptId);
+      }
       nextSequence = row.sequence + 1;
     }
   }
-  return Object.freeze(facts);
+  const physicalByAttemptId = await readPhysicalAttempts(
+    client,
+    input.workspaceId,
+    input.runId,
+    [...attemptIds],
+  );
+  return attachPhysicalAttempts(
+    persistedEvents,
+    identitiesBySequence,
+    physicalByAttemptId,
+  );
 }
 
 export function terminalStatus(type: string): string | undefined {

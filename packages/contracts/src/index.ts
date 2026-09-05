@@ -6,12 +6,14 @@ export * from './http/connections.js';
 export * from './http/failure-notification-destinations.js';
 export {
   API_PROBLEM_CODES,
+  API_PROBLEM_MANIFEST,
   apiProblemCodeSchema,
   apiProblemIssueSchema,
   apiProblemSchema,
   type ApiProblem,
   type ApiProblemCode,
   type ApiProblemIssue,
+  type ApiProblemManifestEntry,
 } from './errors/api-problem.js';
 export {
   identityWorkspaceClientContract,

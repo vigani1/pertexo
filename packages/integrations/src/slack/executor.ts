@@ -24,6 +24,7 @@ import {
   slackSendMessageOutputSchema,
   type SlackSendMessageOutput,
 } from './validation.js';
+import { createProviderBeforeDispatch } from '../provider-dispatch-fence.js';
 
 const AUTH_ERRORS = new Set([
   'account_inactive',
@@ -117,6 +118,8 @@ async function execute(
   let config;
   let input;
   try {
+    // Executors are also callable as isolated adapter boundaries, so they
+    // retain fail-closed parsing even though createNodeRegistry parses first.
     config = slackSendMessageConfigSchema.parse(invocation.config);
     input = slackSendMessageInputSchema.parse(invocation.input);
   } catch {
@@ -180,20 +183,23 @@ async function execute(
         text: input.text,
         timeoutMillis: config.timeoutMillis,
         signal: invocation.signal,
-        beforeDispatch: async () => {
-          await connections.assertCurrent?.({
-            connectionId,
-            expectedProviderKey: 'slack',
-            expectedAuthType: 'slack_bot_token',
-            secretVersionId: resolved.secretVersionId,
-            signal: invocation.signal,
-          });
-          await runtime.beforeDispatch();
-        },
+        beforeDispatch: createProviderBeforeDispatch({
+          assertCurrent: connections.assertCurrent,
+          connectionId,
+          expectedProviderKey: 'slack',
+          expectedAuthType: 'slack_bot_token',
+          secretVersionId: resolved.secretVersionId,
+          signal: invocation.signal,
+          runtime,
+        }),
       });
     } catch (error: unknown) {
       if (error instanceof SlackSendMessageExecutorError) throw error;
       if (error instanceof SecureHttpError) {
+        if (error.code === SECURE_HTTP_ERROR_CODE.connectionFenceFailed)
+          throw failure('failed', 'authentication', false);
+        if (error.code === SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch)
+          throw failure('failed', 'configuration', false);
         if (error.code === SECURE_HTTP_ERROR_CODE.canceled) {
           if (!error.possiblyDispatched)
             throw failure('canceled', 'canceled', false);

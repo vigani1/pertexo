@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { isSupportedHttpFieldValue } from './http-field-value.js';
+
 export const connectionIdentifierSchema = z.uuid();
 export const connectionSecretVersionIdentifierSchema = z.uuid();
 export const connectionProviderKeySchema = z.enum(['http', 'slack', 'email']);
@@ -24,8 +26,8 @@ const httpHeaderValueSchema = z
   .string()
   .min(1)
   .max(8_192)
-  .refine((value) => !/[\r\n\0]/u.test(value), {
-    message: 'header values cannot contain control delimiters',
+  .refine(isSupportedHttpFieldValue, {
+    message: 'header value contains a byte unsupported by HTTP transport',
   });
 const prohibitedConnectionHeaders = new Set([
   'accept-encoding',
@@ -57,17 +59,11 @@ const unsafeMailboxCharacters = [
 
 function utf8ByteLength(value: string): number {
   let bytes = 0;
-  for (const character of value) {
-    const codePoint = character.codePointAt(0) ?? 0;
-    bytes +=
-      codePoint <= 0x7f
-        ? 1
-        : codePoint <= 0x7ff
-          ? 2
-          : codePoint <= 0xffff
-            ? 3
-            : 4;
-  }
+  // The field-value schema admits only ASCII and U+0080..U+00FF, so accepted
+  // code points occupy one or two UTF-8 bytes. Broader Unicode is rejected by
+  // that boundary before this byte total can make the credential valid.
+  for (const character of value)
+    bytes += character.charCodeAt(0) <= 0x7f ? 1 : 2;
   return bytes;
 }
 

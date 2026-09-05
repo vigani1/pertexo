@@ -1,16 +1,17 @@
-import {
-  DecryptCommand,
-  GenerateDataKeyCommand,
-  KMSClient,
-} from '@aws-sdk/client-kms';
-import {
-  createCipheriv,
-  createDecipheriv,
-  createHmac,
-  randomBytes,
-  timingSafeEqual,
-} from 'node:crypto';
+import type { KMSClient } from '@aws-sdk/client-kms';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
+import { createBoundedKmsClient } from '../credentials/kms-client.js';
+import {
+  AwsKmsEnvelopeKeyProviderCore,
+  EnvelopeCipher,
+  encodedEnvelopeSchemaFields,
+  type EnvelopeKeyMaterial,
+  type EnvelopeKeyProviderCore,
+  type KmsSendLike,
+} from '../crypto/envelope-cipher.js';
+
+const WEBHOOK_SECRET_BYTES = 32;
 
 const contextSchema = z
   .object({
@@ -19,13 +20,10 @@ const contextSchema = z
     secretVersionId: z.uuid(),
   })
   .strict();
+
 const sealedSchema = z
   .object({
-    schemaVersion: z.literal(1),
-    kmsKeyReference: z.string().min(1).max(2_048),
-    encryptedDataKey: z.string().min(1),
-    ciphertext: z.string().min(1),
-    nonce: z.string().min(1),
+    ...encodedEnvelopeSchemaFields,
     authTag: z.string().min(1),
   })
   .strict();
@@ -36,39 +34,33 @@ export type WebhookTriggerSecretContext = Readonly<
 export type SealedWebhookTriggerSecretEnvelope = Readonly<
   z.output<typeof sealedSchema>
 >;
-export type GeneratedWebhookEnvelopeKey = Readonly<{
-  plaintextKey: Uint8Array;
-  encryptedDataKey: Uint8Array;
-  keyReference: string;
-}>;
-export interface WebhookEnvelopeKeyProvider {
-  generateDataKey(
-    context: WebhookTriggerSecretContext,
-    signal?: AbortSignal,
-  ): Promise<GeneratedWebhookEnvelopeKey>;
-  decryptDataKey(
-    encryptedDataKey: Uint8Array,
-    keyReference: string,
-    context: WebhookTriggerSecretContext,
-    signal?: AbortSignal,
-  ): Promise<Uint8Array>;
-}
+export type GeneratedWebhookEnvelopeKey = EnvelopeKeyMaterial;
+export type WebhookKmsClientLike = KmsSendLike;
+export type WebhookEnvelopeKeyProvider =
+  EnvelopeKeyProviderCore<WebhookTriggerSecretContext>;
 
 export class WebhookTriggerSecretEncryptionError extends Error {
   public override readonly name = 'WebhookTriggerSecretEncryptionError';
+
   public constructor() {
     super('Webhook trigger secret encryption failed');
   }
 }
 
-function encryptionContext(context: WebhookTriggerSecretContext) {
-  return {
+function failure(): WebhookTriggerSecretEncryptionError {
+  return new WebhookTriggerSecretEncryptionError();
+}
+
+function encryptionContext(
+  context: WebhookTriggerSecretContext,
+): Readonly<Record<string, string>> {
+  return Object.freeze({
     purpose: 'pertexo-webhook-trigger-secret',
     schemaVersion: '1',
     workspaceId: context.workspaceId,
     triggerId: context.triggerId,
     secretVersionId: context.secretVersionId,
-  };
+  });
 }
 
 export function webhookTriggerSecretAssociatedData(
@@ -81,73 +73,36 @@ export function webhookTriggerSecretAssociatedData(
       parsed.workspaceId,
       parsed.triggerId,
       parsed.secretVersionId,
-    ].join('\0'),
+    ].join('\u0000'),
   );
 }
 
-function copyBytes(value: unknown, maximum: number): Uint8Array {
-  if (
-    !(value instanceof Uint8Array) ||
-    value.byteLength < 1 ||
-    value.byteLength > maximum
-  )
-    throw new WebhookTriggerSecretEncryptionError();
-  return new Uint8Array(value);
-}
-
-function encode(value: Uint8Array): string {
-  return Buffer.from(value).toString('base64url');
-}
-
-function decode(value: string, maximum: number): Uint8Array {
-  if (!/^[A-Za-z0-9_-]+$/u.test(value))
-    throw new WebhookTriggerSecretEncryptionError();
-  const bytes = Buffer.from(value, 'base64url');
-  if (bytes.byteLength > maximum || bytes.toString('base64url') !== value)
-    throw new WebhookTriggerSecretEncryptionError();
-  return new Uint8Array(bytes);
-}
-
 export class AwsKmsWebhookEnvelopeKeyProvider implements WebhookEnvelopeKeyProvider {
+  private readonly core: AwsKmsEnvelopeKeyProviderCore<WebhookTriggerSecretContext>;
+
   public constructor(
-    private readonly client: Pick<KMSClient, 'send'>,
-    private readonly keyReference: string,
+    client: Pick<KMSClient, 'send'> | WebhookKmsClientLike,
+    keyReference: string,
   ) {
-    if (keyReference.length < 1 || Buffer.byteLength(keyReference) > 2_048)
-      throw new TypeError('KMS key reference is invalid');
+    this.core = new AwsKmsEnvelopeKeyProviderCore(
+      client,
+      keyReference,
+      (context) => encryptionContext(contextSchema.parse(context)),
+      failure,
+    );
   }
 
   public async generateDataKey(
     context: WebhookTriggerSecretContext,
     signal?: AbortSignal,
-  ) {
-    const parsed = contextSchema.parse(context);
-    let providerPlaintext: Uint8Array | undefined;
-    let plaintextKey: Uint8Array | undefined;
+  ): Promise<GeneratedWebhookEnvelopeKey> {
     try {
-      const response = await this.client.send(
-        new GenerateDataKeyCommand({
-          KeyId: this.keyReference,
-          KeySpec: 'AES_256',
-          EncryptionContext: encryptionContext(parsed),
-        }),
-        signal === undefined ? undefined : { abortSignal: signal },
+      return await this.core.generateDataKey(
+        contextSchema.parse(context),
+        signal,
       );
-      providerPlaintext = response.Plaintext;
-      plaintextKey = copyBytes(providerPlaintext, 32);
-      const encryptedDataKey = copyBytes(response.CiphertextBlob, 8_192);
-      providerPlaintext?.fill(0);
-      if (plaintextKey.byteLength !== 32)
-        throw new WebhookTriggerSecretEncryptionError();
-      return Object.freeze({
-        plaintextKey,
-        encryptedDataKey,
-        keyReference: response.KeyId ?? this.keyReference,
-      });
     } catch {
-      providerPlaintext?.fill(0);
-      plaintextKey?.fill(0);
-      throw new WebhookTriggerSecretEncryptionError();
+      throw failure();
     }
   }
 
@@ -157,28 +112,15 @@ export class AwsKmsWebhookEnvelopeKeyProvider implements WebhookEnvelopeKeyProvi
     context: WebhookTriggerSecretContext,
     signal?: AbortSignal,
   ): Promise<Uint8Array> {
-    let providerPlaintext: Uint8Array | undefined;
-    let result: Uint8Array | undefined;
     try {
-      const response = await this.client.send(
-        new DecryptCommand({
-          CiphertextBlob: copyBytes(encryptedDataKey, 8_192),
-          KeyId: keyReference,
-          EncryptionAlgorithm: 'SYMMETRIC_DEFAULT',
-          EncryptionContext: encryptionContext(contextSchema.parse(context)),
-        }),
-        signal === undefined ? undefined : { abortSignal: signal },
+      return await this.core.decryptDataKey(
+        encryptedDataKey,
+        keyReference,
+        contextSchema.parse(context),
+        signal,
       );
-      providerPlaintext = response.Plaintext;
-      result = copyBytes(providerPlaintext, 32);
-      providerPlaintext?.fill(0);
-      if (result.byteLength !== 32)
-        throw new WebhookTriggerSecretEncryptionError();
-      return result;
     } catch {
-      providerPlaintext?.fill(0);
-      result?.fill(0);
-      throw new WebhookTriggerSecretEncryptionError();
+      throw failure();
     }
   }
 }
@@ -190,10 +132,7 @@ export function createAwsWebhookTriggerEnvelopeEncryption(
     endpoint?: string;
   }>,
 ) {
-  const client = new KMSClient({
-    region: config.region,
-    ...(config.endpoint === undefined ? {} : { endpoint: config.endpoint }),
-  });
+  const client = createBoundedKmsClient(config);
   return Object.freeze({
     encryption: new WebhookTriggerEnvelopeEncryption(
       new AwsKmsWebhookEnvelopeKeyProvider(client, config.keyReference),
@@ -205,46 +144,41 @@ export function createAwsWebhookTriggerEnvelopeEncryption(
 }
 
 export class WebhookTriggerEnvelopeEncryption {
-  public constructor(private readonly keys: WebhookEnvelopeKeyProvider) {}
+  private readonly cipher: EnvelopeCipher<WebhookTriggerSecretContext>;
+
+  public constructor(keys: WebhookEnvelopeKeyProvider) {
+    this.cipher = new EnvelopeCipher(keys, {
+      associatedData: webhookTriggerSecretAssociatedData,
+      createFailure: failure,
+      maximumPlaintextBytes: WEBHOOK_SECRET_BYTES,
+      exactPlaintextBytes: WEBHOOK_SECRET_BYTES,
+      clearCallerPlaintext: true,
+    });
+  }
 
   public async seal(
     plaintext: Uint8Array,
     context: WebhookTriggerSecretContext,
     signal?: AbortSignal,
   ): Promise<SealedWebhookTriggerSecretEnvelope> {
-    const parsed = contextSchema.parse(context);
-    const secret = copyBytes(plaintext, 32);
-    let key: Uint8Array | undefined;
-    let providerKey: Uint8Array | undefined;
     try {
-      if (secret.byteLength !== 32)
-        throw new WebhookTriggerSecretEncryptionError();
-      const generated = await this.keys.generateDataKey(parsed, signal);
-      providerKey = generated.plaintextKey;
-      key = copyBytes(providerKey, 32);
-      providerKey.fill(0);
-      const nonce = randomBytes(12);
-      const cipher = createCipheriv('aes-256-gcm', key, nonce);
-      cipher.setAAD(webhookTriggerSecretAssociatedData(parsed));
-      const ciphertext = cipher.update(secret);
-      cipher.final();
-      const authTag = cipher.getAuthTag();
+      const sealed = await this.cipher.seal(
+        plaintext,
+        contextSchema.parse(context),
+        signal,
+      );
       return sealedSchema.parse({
         schemaVersion: 1,
-        kmsKeyReference: generated.keyReference,
-        encryptedDataKey: encode(generated.encryptedDataKey),
-        ciphertext: encode(ciphertext),
-        nonce: encode(nonce),
-        authTag: encode(authTag),
+        kmsKeyReference: sealed.keyReference,
+        encryptedDataKey: sealed.encryptedDataKey,
+        ciphertext: sealed.ciphertext,
+        nonce: sealed.nonce,
+        authTag: sealed.authTag,
       });
-    } catch (error) {
-      if (error instanceof WebhookTriggerSecretEncryptionError) throw error;
-      throw new WebhookTriggerSecretEncryptionError();
+    } catch {
+      throw failure();
     } finally {
       plaintext.fill(0);
-      secret.fill(0);
-      key?.fill(0);
-      providerKey?.fill(0);
     }
   }
 
@@ -253,39 +187,21 @@ export class WebhookTriggerEnvelopeEncryption {
     context: WebhookTriggerSecretContext,
     signal?: AbortSignal,
   ): Promise<Uint8Array> {
-    let key: Uint8Array | undefined;
-    let providerKey: Uint8Array | undefined;
-    let plaintextBuffer: Buffer | undefined;
     try {
       const parsed = sealedSchema.parse(sealed);
-      const parsedContext = contextSchema.parse(context);
-      providerKey = await this.keys.decryptDataKey(
-        decode(parsed.encryptedDataKey, 8_192),
-        parsed.kmsKeyReference,
-        parsedContext,
+      return await this.cipher.open(
+        {
+          keyReference: parsed.kmsKeyReference,
+          encryptedDataKey: parsed.encryptedDataKey,
+          ciphertext: parsed.ciphertext,
+          nonce: parsed.nonce,
+          authTag: parsed.authTag,
+        },
+        contextSchema.parse(context),
         signal,
       );
-      key = copyBytes(providerKey, 32);
-      providerKey.fill(0);
-      const decipher = createDecipheriv(
-        'aes-256-gcm',
-        key,
-        decode(parsed.nonce, 12),
-      );
-      decipher.setAAD(webhookTriggerSecretAssociatedData(parsedContext));
-      decipher.setAuthTag(decode(parsed.authTag, 16));
-      plaintextBuffer = decipher.update(decode(parsed.ciphertext, 32));
-      decipher.final();
-      if (plaintextBuffer.byteLength !== 32)
-        throw new WebhookTriggerSecretEncryptionError();
-      return new Uint8Array(plaintextBuffer);
-    } catch (error) {
-      if (error instanceof WebhookTriggerSecretEncryptionError) throw error;
-      throw new WebhookTriggerSecretEncryptionError();
-    } finally {
-      plaintextBuffer?.fill(0);
-      key?.fill(0);
-      providerKey?.fill(0);
+    } catch {
+      throw failure();
     }
   }
 }

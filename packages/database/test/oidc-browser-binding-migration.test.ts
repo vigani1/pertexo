@@ -12,7 +12,7 @@ describe('OIDC browser binding migration', () => {
     );
 
     expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0074_retention_schedule_state_rls.sql',
+      '0075_workspace_purge_step_release.sql',
     );
     expect(sql).toContain('ADD COLUMN browser_binding_digest char(64)');
     expect(sql).toContain("browser_binding_digest = repeat('0', 64)");

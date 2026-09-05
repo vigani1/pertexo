@@ -6,11 +6,10 @@ import { z } from 'zod';
 
 import { canonicalOutboxPayloadChecksum } from './outbox.js';
 import { serializeStoredExecutionJsonValue } from './stored-execution-value.js';
+import { sha256HexSchema } from '../validation/persisted-primitives.js';
 
 export const failureNotificationIdentitySchema = z.uuid();
-export const failureNotificationChecksumSchema = z
-  .string()
-  .regex(/^[0-9a-f]{64}$/u);
+export const failureNotificationChecksumSchema = sha256HexSchema;
 
 export async function insertFailureNotificationDeliveryOutbox(
   client: PoolClient,

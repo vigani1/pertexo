@@ -1,5 +1,6 @@
 import type { Pool } from 'pg';
-import { createDatabasePool } from '../platform/postgres-telemetry.js';
+import { acquireDatabasePool } from '../platform/database-runtime.js';
+import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from '../config.js';
@@ -219,10 +220,13 @@ async function checkDispatcherReadiness(
 
 export function createOutboxDispatcherDatabase(
   config: DatabaseConfig,
+  runtime?: DatabaseRuntime,
 ): OutboxDispatcherDatabase {
   const { ownerRole, ...poolConfig } = config;
-  const pool = createDatabasePool(poolConfig);
-  pool.on('error', () => undefined);
+  const lease = acquireDatabasePool({ ...config, ...poolConfig }, runtime, {
+    role: 'dispatcher',
+  });
+  const { pool } = lease;
 
   return Object.freeze({
     claimBatch: async (
@@ -502,6 +506,6 @@ export function createOutboxDispatcherDatabase(
     },
     checkReadiness: async (): Promise<void> =>
       checkDispatcherReadiness(pool, ownerRole),
-    close: async (): Promise<void> => pool.end(),
+    close: () => lease.close(),
   });
 }

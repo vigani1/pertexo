@@ -27,6 +27,7 @@ import {
   maintenanceBaseUrl,
   ownerPool,
   scopedQuery,
+  withAdmin,
   withOwnerRole,
   workerPool,
   workspaceId,
@@ -237,7 +238,15 @@ describe('preview artifact retention lifecycle', () => {
         }),
       ),
     };
-    const remove = vi.fn(() => Promise.resolve());
+    let releaseDelete: (() => void) | undefined;
+    const deleteStarted = Promise.withResolvers<undefined>();
+    const remove = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          releaseDelete = resolve;
+          deleteStarted.resolve(undefined);
+        }),
+    );
     const coordinator = createPreviewRetentionCoordinator(
       parseDatabaseConfig({
         connectionString: databaseUrl(maintenanceBaseUrl),
@@ -278,7 +287,19 @@ describe('preview artifact retention lifecycle', () => {
           [workspaceId, artifactId],
         );
       });
-      await expect(processTarget()).resolves.toMatchObject({
+      const completion = processTarget();
+      await deleteStarted.promise;
+      const openTransactions = await withAdmin((admin) =>
+        admin.query<{ count: string }>(
+          `select count(*)::text count from pg_stat_activity
+            where datname=current_database()
+              and usename='pertexo_maintenance'
+              and xact_start is not null`,
+        ),
+      );
+      expect(openTransactions.rows[0]).toEqual({ count: '0' });
+      releaseDelete?.();
+      await expect(completion).resolves.toMatchObject({
         artifactId,
         previewRunId: accepted.previewRunId,
         status: 'completed',
@@ -293,6 +314,7 @@ describe('preview artifact retention lifecycle', () => {
       );
       expect(removed.rows[0]).toEqual({ artifacts: '0', runs: '0' });
     } finally {
+      releaseDelete?.();
       await coordinator.close();
     }
   });

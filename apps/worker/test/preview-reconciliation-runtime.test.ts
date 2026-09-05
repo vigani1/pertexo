@@ -103,22 +103,6 @@ describe('preview reconciliation handler', () => {
     });
   });
 
-  it('rejects a transport identity that is not derived from the outbox row', async () => {
-    const reconcile = vi.fn();
-    const selected = delivery();
-
-    await expect(
-      createPreviewReconciliationHandler({ reconcile }).handle(
-        {
-          ...selected,
-          transport: { ...selected.transport, jobId: 'forged-job' },
-        },
-        { signal: new AbortController().signal },
-      ),
-    ).rejects.toThrow(/transport identity/i);
-    expect(reconcile).not.toHaveBeenCalled();
-  });
-
   it('closes the durable store when consumer construction fails', async () => {
     const close = vi.fn().mockResolvedValue(undefined);
     const store = { close, reconcile: vi.fn() };

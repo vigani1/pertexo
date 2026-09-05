@@ -1,11 +1,14 @@
 import {
   claimPreviewDelivery,
   completePreviewAttempt,
-  createDatabasePool,
+  acquireDatabasePool,
   heartbeatPreviewLease,
   markPreviewDispatched,
 } from '@pertexo/database/execution';
-import type { DatabaseConfig } from '@pertexo/database/execution';
+import type {
+  DatabaseConfig,
+  DatabaseRuntime,
+} from '@pertexo/database/execution';
 import {
   platformExecutableRegistryHistory,
   type PlatformReleaseCohort,
@@ -15,6 +18,7 @@ import {
   resolveSingleNodePreviewInput,
   WorkflowEngineError,
 } from '@pertexo/workflow-engine';
+import { JsonataEvaluator } from '@pertexo/workflow-model/expressions';
 import type { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
 import { unrecoverableQueueError } from '@pertexo/queue';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
@@ -58,8 +62,10 @@ const previewExecutableNodeSchema = z
  */
 export function createDatabasePreviewAttemptRunStore(
   config: DatabaseConfig,
+  runtime?: DatabaseRuntime,
 ): PreviewAttemptRunStore & { close(): Promise<void> } {
-  const pool = createDatabasePool(config);
+  const lease = acquireDatabasePool(config, runtime);
+  const { pool } = lease;
   const store: PreviewAttemptRunStore = {
     claim: (input) => claimPreviewDelivery(pool, input),
     markDispatched: async ({ lease, signal, workerId }) => {
@@ -110,9 +116,7 @@ export function createDatabasePreviewAttemptRunStore(
   };
   return Object.freeze({
     ...store,
-    close: async (): Promise<void> => {
-      await pool.end();
-    },
+    close: () => lease.close(),
   });
 }
 
@@ -131,6 +135,7 @@ export function createPlatformPreviewNodeInvoker(
     releaseCohort: PlatformReleaseCohort;
   }>,
 ): PreviewNodeInvoker {
+  const expressionEvaluator = new JsonataEvaluator();
   // The durable authority binds engine-composed release identities (node
   // catalogs plus this artifact's engine runtime policies), so the supported
   // set derives from exactly the same composition production uses.
@@ -196,6 +201,7 @@ export function createPlatformPreviewNodeInvoker(
           node,
           runInput: lease.input.value,
           signal,
+          expressionEvaluator,
         });
         const result = await dependencies.registry.execute({
           config: node.config,
@@ -239,6 +245,7 @@ export function createPlatformPreviewNodeInvoker(
       }
     },
   };
+  invoker.close = (): Promise<void> => expressionEvaluator.shutdown();
   return Object.freeze(invoker);
 }
 

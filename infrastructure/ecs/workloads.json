@@ -13,6 +13,7 @@
       "desiredCount": { "eu-central-1": 2, "eu-west-1": 0 },
       "command": ["node", "apps/api/dist/main.js"],
       "environment": {
+        "DATABASE_POOL_MAX": "5",
         "HOST": "0.0.0.0",
         "NODE_ENV": "production",
         "PORT": "3000"
@@ -48,6 +49,8 @@
         "export WORKER_INSTANCE_ID=$HOSTNAME; exec node apps/worker/dist/main.js"
       ],
       "environment": {
+        "DATABASE_DISPATCHER_POOL_MAX": "2",
+        "DATABASE_POOL_MAX": "5",
         "NODE_ENV": "production",
         "WORKER_MAX_EVENT_LOOP_DELAY_MILLIS": "200",
         "WORKER_MAX_RSS_BYTES": "805306368",
@@ -87,7 +90,10 @@
         "-c",
         "export LIFECYCLE_COMMAND_LEASE_OWNER=$HOSTNAME; exec node apps/lifecycle-command/dist/main.js"
       ],
-      "environment": { "NODE_ENV": "production" },
+      "environment": {
+        "DATABASE_LIFECYCLE_COMMAND_POOL_MAX": "2",
+        "NODE_ENV": "production"
+      },
       "configuration": [
         "CONTROL_LEDGER_BUCKET",
         "CONTROL_LEDGER_ENDPOINT",
@@ -123,7 +129,10 @@
         "-c",
         "export RETENTION_LEASE_OWNER=$HOSTNAME; exec node apps/retention/dist/main.js"
       ],
-      "environment": { "NODE_ENV": "production" },
+      "environment": {
+        "DATABASE_MAINTENANCE_POOL_MAX": "2",
+        "NODE_ENV": "production"
+      },
       "configuration": [
         "ARTIFACT_STORE_BUCKET",
         "ARTIFACT_STORE_ENDPOINT",
@@ -161,7 +170,10 @@
     "recovery": {
       "kind": "job",
       "command": ["node", "apps/recovery/dist/main.js"],
-      "environment": { "NODE_ENV": "production" },
+      "environment": {
+        "DATABASE_MAINTENANCE_POOL_MAX": "2",
+        "NODE_ENV": "production"
+      },
       "configuration": [
         "ARTIFACT_STORE_BUCKET",
         "ARTIFACT_STORE_ENDPOINT",

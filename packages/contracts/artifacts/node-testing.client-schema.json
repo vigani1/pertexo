@@ -129,7 +129,7 @@
               "maximum": 9007199254740991
             },
             "sampleInput": {
-              "$ref": "#/$defs/__schema0"
+              "$ref": "#/schemas/NodeTestRequest/$defs/__schema0"
             }
           },
           "required": [
@@ -160,7 +160,7 @@
                       "const": "manual"
                     },
                     "value": {
-                      "$ref": "#/$defs/__schema1"
+                      "$ref": "#/schemas/NodeTestRequest/$defs/__schema1"
                     }
                   },
                   "required": [
@@ -222,7 +222,7 @@
             {
               "type": "array",
               "items": {
-                "$ref": "#/$defs/__schema0"
+                "$ref": "#/schemas/NodeTestRequest/$defs/__schema0"
               }
             },
             {
@@ -231,7 +231,7 @@
                 "type": "string"
               },
               "additionalProperties": {
-                "$ref": "#/$defs/__schema0"
+                "$ref": "#/schemas/NodeTestRequest/$defs/__schema0"
               }
             }
           ]
@@ -253,7 +253,7 @@
             {
               "type": "array",
               "items": {
-                "$ref": "#/$defs/__schema1"
+                "$ref": "#/schemas/NodeTestRequest/$defs/__schema1"
               }
             },
             {
@@ -262,7 +262,7 @@
                 "type": "string"
               },
               "additionalProperties": {
-                "$ref": "#/$defs/__schema1"
+                "$ref": "#/schemas/NodeTestRequest/$defs/__schema1"
               }
             }
           ]
@@ -491,7 +491,7 @@
                           "const": "inline"
                         },
                         "value": {
-                          "$ref": "#/$defs/__schema0"
+                          "$ref": "#/schemas/NodeTestExecuteAcceptedResponse/$defs/__schema0"
                         }
                       },
                       "required": [
@@ -618,7 +618,7 @@
             {
               "type": "array",
               "items": {
-                "$ref": "#/$defs/__schema0"
+                "$ref": "#/schemas/NodeTestExecuteAcceptedResponse/$defs/__schema0"
               }
             },
             {
@@ -627,7 +627,7 @@
                 "type": "string"
               },
               "additionalProperties": {
-                "$ref": "#/$defs/__schema0"
+                "$ref": "#/schemas/NodeTestExecuteAcceptedResponse/$defs/__schema0"
               }
             }
           ]
@@ -720,7 +720,7 @@
                       "const": "inline"
                     },
                     "value": {
-                      "$ref": "#/$defs/__schema0"
+                      "$ref": "#/schemas/PreviewRunSummary/$defs/__schema0"
                     }
                   },
                   "required": [
@@ -836,7 +836,7 @@
             {
               "type": "array",
               "items": {
-                "$ref": "#/$defs/__schema0"
+                "$ref": "#/schemas/PreviewRunSummary/$defs/__schema0"
               }
             },
             {
@@ -845,7 +845,7 @@
                 "type": "string"
               },
               "additionalProperties": {
-                "$ref": "#/$defs/__schema0"
+                "$ref": "#/schemas/PreviewRunSummary/$defs/__schema0"
               }
             }
           ]
@@ -941,7 +941,7 @@
                           "const": "inline"
                         },
                         "value": {
-                          "$ref": "#/$defs/__schema0"
+                          "$ref": "#/schemas/PreviewRunResponse/$defs/__schema0"
                         }
                       },
                       "required": [
@@ -1063,7 +1063,7 @@
             {
               "type": "array",
               "items": {
-                "$ref": "#/$defs/__schema0"
+                "$ref": "#/schemas/PreviewRunResponse/$defs/__schema0"
               }
             },
             {
@@ -1072,7 +1072,7 @@
                 "type": "string"
               },
               "additionalProperties": {
-                "$ref": "#/$defs/__schema0"
+                "$ref": "#/schemas/PreviewRunResponse/$defs/__schema0"
               }
             }
           ]

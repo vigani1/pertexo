@@ -6,8 +6,6 @@ import {
   type WorkflowTriggerReconciliationDatabase,
 } from '@pertexo/database/execution';
 import {
-  InvalidQueueDeliveryError,
-  jobIdForOutboxEvent,
   unrecoverableQueueError,
   type QueueDelivery,
   type QueueHandlerContext,
@@ -36,14 +34,6 @@ export function createTriggerReconciliationHandler(
       delivery: TriggerReconciliationDelivery,
       context: QueueHandlerContext,
     ) => {
-      if (
-        delivery.transport.jobId !==
-        jobIdForOutboxEvent(delivery.data.outboxEventId)
-      )
-        throw new InvalidQueueDeliveryError(
-          'Trigger reconciliation transport identity is invalid',
-        );
-
       const publication = await dependencies.reader.readForExecution({
         workspaceId: delivery.data.workspaceId,
         workflowVersionId: delivery.data.publishedVersionId,

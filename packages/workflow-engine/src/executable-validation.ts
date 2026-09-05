@@ -39,7 +39,7 @@ export function exactKeys(
     fail('executable envelope contains missing or unknown fields');
 }
 
-export function assertSafeExecutableJson(value: unknown): void {
+function assertSafeExecutableJson(value: unknown): void {
   type Frame =
     | {
         readonly kind: 'value';

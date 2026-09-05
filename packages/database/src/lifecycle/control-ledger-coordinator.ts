@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 
 import type { PoolClient, QueryConfig, QueryResult } from 'pg';
 import { z } from 'zod';
+import { sha256HexSchema as hashSchema } from '../validation/persisted-primitives.js';
 
 import type { DatabaseConfig } from '../config.js';
 import {
@@ -13,7 +14,6 @@ import {
 const ZERO_HASH = '0'.repeat(64);
 const BACKEND_CANCELLATION_TIMEOUT_MS = 1_000;
 const uuidSchema = z.uuid().transform((value) => value.toLowerCase());
-const hashSchema = z.string().regex(/^[0-9a-f]{64}$/u);
 const boundedText = (maximum: number) => z.string().trim().min(1).max(maximum);
 const occurredAtSchema = z.iso
   .datetime({ offset: true })
@@ -204,6 +204,14 @@ interface HighWater {
   hash: string;
   sequence: number;
 }
+
+interface ReconcileChunk {
+  readonly highWater: HighWater;
+  readonly reachedHighWater: boolean;
+  readonly records: readonly ControlLedgerRecord[];
+}
+
+class ControlLedgerAnchorChangedError extends Error {}
 
 const optionsSchema = z.object({
   externalOperationTimeoutMs: z
@@ -519,8 +527,7 @@ export function createControlLedgerCoordinator(
       await query(
         client,
         `set local lock_timeout='${String(parsedOptions.lockTimeoutMs)}ms';
-         set local statement_timeout='${String(parsedOptions.statementTimeoutMs)}ms';
-         set local idle_in_transaction_session_timeout='0'`,
+         set local statement_timeout='${String(parsedOptions.statementTimeoutMs)}ms'`,
         [],
         signal,
       );
@@ -576,18 +583,14 @@ export function createControlLedgerCoordinator(
     }
   };
 
-  const reconcileChunk = async (
-    client: PoolClient,
+  const fetchReconcileChunk = async (
     workspaceId: string,
     initial: HighWater,
     maximumRecords: number,
     signal?: AbortSignal,
     repairCommandId?: string,
-  ): Promise<
-    ControlLedgerReconcileResult & { readonly reachedHighWater: boolean }
-  > => {
+  ): Promise<ReconcileChunk> => {
     let highWater = initial;
-    let projectedCount = 0;
     const requested = Math.min(parsedOptions.pageSize, maximumRecords);
     const operationSignal = externalSignal(
       signal,
@@ -614,9 +617,7 @@ export function createControlLedgerCoordinator(
       );
     for (const record of response.records) {
       assertRecord(record, workspaceId, highWater);
-      await project(client, record, signal);
       highWater = { hash: record.recordHash, sequence: record.sequence };
-      projectedCount += 1;
     }
     if (
       response.pageEndSequence !== highWater.sequence ||
@@ -626,30 +627,89 @@ export function createControlLedgerCoordinator(
         'External control ledger page high water is invalid',
       );
     return Object.freeze({
+      highWater: Object.freeze(highWater),
+      reachedHighWater: response.reachedHighWater,
+      records: Object.freeze([...response.records]),
+    });
+  };
+
+  const projectReconcileChunk = async (
+    client: PoolClient,
+    workspaceId: string,
+    initial: HighWater,
+    chunk: ReconcileChunk,
+    signal?: AbortSignal,
+  ): Promise<
+    ControlLedgerReconcileResult & { readonly reachedHighWater: boolean }
+  > => {
+    let highWater = initial;
+    for (const record of chunk.records) {
+      await project(client, record, signal);
+      highWater = { hash: record.recordHash, sequence: record.sequence };
+    }
+    return Object.freeze({
       highWaterHash: highWater.hash,
       highWaterSequence: highWater.sequence,
-      projectedCount,
-      reachedHighWater: response.reachedHighWater,
+      projectedCount: chunk.records.length,
+      reachedHighWater: chunk.reachedHighWater,
       workspaceId,
     });
   };
+
+  const sameHighWater = (left: HighWater, right: HighWater): boolean =>
+    left.sequence === right.sequence && left.hash === right.hash;
 
   const reconcileWorkspace = async (
     workspaceId: string,
     signal?: AbortSignal,
   ): Promise<ControlLedgerReconcileResult> => {
     let projectedCount = 0;
+    let anchorAttempts = 0;
     for (let page = 0; page < parsedOptions.maxPages; page += 1) {
       const remaining = parsedOptions.maxRecords - projectedCount;
       if (remaining < 1) break;
-      const chunk = await transact(workspaceId, signal, (client, highWater) =>
-        reconcileChunk(client, workspaceId, highWater, remaining, signal),
+      const initial = await transact(
+        workspaceId,
+        signal,
+        (_client, highWater) => Promise.resolve(Object.freeze(highWater)),
       );
-      projectedCount += chunk.projectedCount;
-      if (chunk.reachedHighWater)
+      const fetched = await fetchReconcileChunk(
+        workspaceId,
+        initial,
+        remaining,
+        signal,
+      );
+      const applied = await transact(
+        workspaceId,
+        signal,
+        (client, highWater) => {
+          if (!sameHighWater(highWater, initial))
+            throw new ControlLedgerAnchorChangedError();
+          return projectReconcileChunk(
+            client,
+            workspaceId,
+            initial,
+            fetched,
+            signal,
+          );
+        },
+      ).catch((error: unknown) => {
+        if (error instanceof ControlLedgerAnchorChangedError) return undefined;
+        throw error;
+      });
+      if (applied === undefined) {
+        anchorAttempts += 1;
+        if (anchorAttempts >= parsedOptions.maxWorkspaceReconcileAttempts)
+          throw new ControlLedgerReconciliationBoundError();
+        page -= 1;
+        continue;
+      }
+      anchorAttempts = 0;
+      projectedCount += applied.projectedCount;
+      if (applied.reachedHighWater)
         return Object.freeze({
-          highWaterHash: chunk.highWaterHash,
-          highWaterSequence: chunk.highWaterSequence,
+          highWaterHash: applied.highWaterHash,
+          highWaterSequence: applied.highWaterSequence,
           projectedCount,
           workspaceId,
         });
@@ -743,23 +803,10 @@ export function createControlLedgerCoordinator(
     for (let page = 0; page < parsedOptions.maxPages; page += 1) {
       const remaining = parsedOptions.maxRecords - projectedCount;
       if (remaining < 1) break;
-      const outcome = await transact(
+      const prepared = await transact(
         parsed.workspaceId,
         parsed.signal,
         async (client, initial) => {
-          const reconciled = await reconcileChunk(
-            client,
-            parsed.workspaceId,
-            initial,
-            remaining,
-            parsed.signal,
-            parsed.commandId,
-          );
-          if (!reconciled.reachedHighWater)
-            return {
-              kind: 'progress' as const,
-              projectedCount: reconciled.projectedCount,
-            };
           const existing = await query<ProjectionRow>(
             client,
             'select * from app.read_workspace_control_command($1,$2)',
@@ -779,8 +826,7 @@ export function createControlLedgerCoordinator(
             )
               throw new ControlLedgerCommandConflictError();
             return {
-              kind: 'command' as const,
-              result: Object.freeze({
+              existing: Object.freeze({
                 commandId: row.command_id,
                 commandType,
                 holdId: row.subject_id,
@@ -789,6 +835,7 @@ export function createControlLedgerCoordinator(
                 sequence: numberSequence(row.sequence),
                 workspaceId: parsed.workspaceId,
               }),
+              initial: Object.freeze(initial),
             };
           }
 
@@ -798,60 +845,150 @@ export function createControlLedgerCoordinator(
             [parsed.workspaceId, commandType, parsed.holdId],
             parsed.signal,
           );
-
-          const appendSignal = externalSignal(
-            parsed.signal,
-            parsedOptions.externalOperationTimeoutMs,
-          );
-          const appendInput: AppendControlLedgerRecord = {
-            actorRef: parsed.actorRef,
-            commandId: parsed.commandId,
-            commandType,
-            legalAuthority: parsed.legalAuthority,
-            occurredAt: parsed.occurredAt,
-            previousHash: reconciled.highWaterHash,
-            reason: parsed.reason,
-            sequence: reconciled.highWaterSequence + 1,
-            signal: appendSignal,
-            subjectId: parsed.holdId,
-            workspaceId: parsed.workspaceId,
-          };
-          // A timed-out conditional append is recovered by reconciliation on retry.
-          const appended = await raceWithSignal(
-            ledger.append(appendInput),
-            appendSignal,
-          );
-          assertRecord(appended, parsed.workspaceId, {
-            hash: reconciled.highWaterHash,
-            sequence: reconciled.highWaterSequence,
-          });
-          if (
-            appended.commandId !== appendInput.commandId ||
-            appended.commandType !== appendInput.commandType ||
-            appended.subjectId !== appendInput.subjectId ||
-            appended.actorRef !== appendInput.actorRef ||
-            appended.legalAuthority !== appendInput.legalAuthority ||
-            appended.reason !== appendInput.reason ||
-            appended.occurredAt !== appendInput.occurredAt
-          )
-            throw new ControlLedgerCommandConflictError();
-          await project(client, appended, parsed.signal);
           return {
-            kind: 'command' as const,
-            result: Object.freeze({
-              commandId: appended.commandId,
-              commandType,
-              holdId: appended.subjectId,
-              recordHash: appended.recordHash,
-              replayed: false,
-              sequence: appended.sequence,
-              workspaceId: appended.workspaceId,
-            }),
+            existing: undefined,
+            initial: Object.freeze(initial),
           };
         },
       );
-      if (outcome.kind === 'command') return outcome.result;
-      projectedCount += outcome.projectedCount;
+      if (prepared.existing !== undefined) return prepared.existing;
+
+      const fetched = await fetchReconcileChunk(
+        parsed.workspaceId,
+        prepared.initial,
+        remaining,
+        parsed.signal,
+        parsed.commandId,
+      );
+      const projected = await transact(
+        parsed.workspaceId,
+        parsed.signal,
+        async (client, highWater) => {
+          if (!sameHighWater(highWater, prepared.initial))
+            throw new ControlLedgerAnchorChangedError();
+          return projectReconcileChunk(
+            client,
+            parsed.workspaceId,
+            prepared.initial,
+            fetched,
+            parsed.signal,
+          );
+        },
+      ).catch((error: unknown) => {
+        if (error instanceof ControlLedgerAnchorChangedError) return undefined;
+        throw error;
+      });
+      if (projected === undefined) continue;
+      projectedCount += projected.projectedCount;
+      if (!projected.reachedHighWater) continue;
+
+      const repaired = await transact(
+        parsed.workspaceId,
+        parsed.signal,
+        async (client) => {
+          const existing = await query<ProjectionRow>(
+            client,
+            'select * from app.read_workspace_control_command($1,$2)',
+            [parsed.workspaceId, parsed.commandId],
+            parsed.signal,
+          );
+          const row = existing.rows[0];
+          if (row === undefined) {
+            await query(
+              client,
+              'select app.validate_workspace_legal_hold_command($1,$2,$3)',
+              [parsed.workspaceId, commandType, parsed.holdId],
+              parsed.signal,
+            );
+            return undefined;
+          }
+          const rowOccurredAt = new Date(row.occurred_at).toISOString();
+          if (
+            row.command_type !== commandType ||
+            row.subject_id !== parsed.holdId ||
+            row.actor_ref !== parsed.actorRef ||
+            row.legal_authority !== parsed.legalAuthority ||
+            row.reason !== parsed.reason ||
+            rowOccurredAt !== parsed.occurredAt
+          )
+            throw new ControlLedgerCommandConflictError();
+          return Object.freeze({
+            commandId: row.command_id,
+            commandType,
+            holdId: row.subject_id,
+            recordHash: row.record_hash,
+            replayed: true,
+            sequence: numberSequence(row.sequence),
+            workspaceId: parsed.workspaceId,
+          });
+        },
+      );
+      if (repaired !== undefined) return repaired;
+
+      const appendSignal = externalSignal(
+        parsed.signal,
+        parsedOptions.externalOperationTimeoutMs,
+      );
+      const appendInput: AppendControlLedgerRecord = {
+        actorRef: parsed.actorRef,
+        commandId: parsed.commandId,
+        commandType,
+        legalAuthority: parsed.legalAuthority,
+        occurredAt: parsed.occurredAt,
+        previousHash: projected.highWaterHash,
+        reason: parsed.reason,
+        sequence: projected.highWaterSequence + 1,
+        signal: appendSignal,
+        subjectId: parsed.holdId,
+        workspaceId: parsed.workspaceId,
+      };
+      const appended = await raceWithSignal(
+        ledger.append(appendInput),
+        appendSignal,
+      );
+      assertRecord(appended, parsed.workspaceId, {
+        hash: projected.highWaterHash,
+        sequence: projected.highWaterSequence,
+      });
+      if (
+        appended.commandId !== appendInput.commandId ||
+        appended.commandType !== appendInput.commandType ||
+        appended.subjectId !== appendInput.subjectId ||
+        appended.actorRef !== appendInput.actorRef ||
+        appended.legalAuthority !== appendInput.legalAuthority ||
+        appended.reason !== appendInput.reason ||
+        appended.occurredAt !== appendInput.occurredAt
+      )
+        throw new ControlLedgerCommandConflictError();
+
+      const completed = await transact(
+        parsed.workspaceId,
+        parsed.signal,
+        async (client, highWater) => {
+          if (
+            highWater.sequence !== appended.sequence - 1 ||
+            highWater.hash !== appended.previousHash
+          )
+            return undefined;
+          await query(
+            client,
+            'select app.validate_workspace_legal_hold_command($1,$2,$3)',
+            [parsed.workspaceId, commandType, parsed.holdId],
+            parsed.signal,
+          );
+          await project(client, appended, parsed.signal);
+          return Object.freeze({
+            commandId: appended.commandId,
+            commandType,
+            holdId: appended.subjectId,
+            recordHash: appended.recordHash,
+            replayed: false,
+            sequence: appended.sequence,
+            workspaceId: appended.workspaceId,
+          });
+        },
+      );
+      if (completed !== undefined) return completed;
     }
     throw new ControlLedgerReconciliationBoundError();
   };
@@ -897,6 +1034,7 @@ export function createControlLedgerCoordinator(
                 and has_function_privilege(current_user,'app.find_due_workspace_purge_step()','EXECUTE')
                 and has_function_privilege(current_user,'app.execute_workspace_tenant_rows_page(uuid,uuid,bigint,integer,bigint,character)','EXECUTE')
                 and has_function_privilege(current_user,'app.checkpoint_workspace_object_versions_page(uuid,uuid,bigint,integer,boolean,bigint,character)','EXECUTE')
+                and has_function_privilege(current_user,'app.release_workspace_purge_step(uuid,uuid,bigint)','EXECUTE')
                 and has_function_privilege(current_user,'app.find_due_workspace_purge_completion()','EXECUTE')
                 and has_function_privilege(current_user,'app.prepare_workspace_purge_completion(uuid,bigint,character,character varying,interval)','EXECUTE')
                 and has_function_privilege(current_user,'app.authorize_workspace_purge_completion_append(uuid,uuid,bigint,bigint,character)','EXECUTE')

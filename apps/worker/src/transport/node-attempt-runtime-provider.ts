@@ -46,11 +46,13 @@ export function nodeAttemptRuntimeProvider(
         if (previewEnabled) {
           previewRunStore = createDatabasePreviewAttemptRunStore(
             config.database,
+            dependencies.databaseRuntime,
           );
         }
         return await composeNodeAttemptRuntime(
           config,
           observer,
+          dependencies.databaseRuntime,
           previewEnabled && previewRunStore !== undefined
             ? { runStore: previewRunStore }
             : undefined,
@@ -66,6 +68,7 @@ export function nodeAttemptRuntimeProvider(
 async function composeNodeAttemptRuntime(
   config: WorkerConfig,
   observer: QueueConsumerObserver,
+  databaseRuntime: TransportModuleDependencies['databaseRuntime'],
   preview:
     | Readonly<{
         runStore: ReturnType<typeof createDatabasePreviewAttemptRunStore>;
@@ -80,6 +83,7 @@ async function composeNodeAttemptRuntime(
       ? {}
       : { connectionEncryption: config.connectionEncryption }),
     database: config.database,
+    ...(databaseRuntime === undefined ? {} : { databaseRuntime }),
     heartbeatIntervalMillis: config.nodeAttempt.heartbeatIntervalMillis,
     leaseDurationSeconds: config.nodeAttempt.leaseDurationSeconds,
     observer,

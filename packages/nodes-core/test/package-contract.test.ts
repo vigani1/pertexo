@@ -42,7 +42,19 @@ describe('@pertexo/nodes-core package contract', () => {
   });
 
   it('keeps each core node behind definition, validation, and executor modules', async () => {
-    for (const node of ['manual', 'schedule', 'set', 'terminate', 'webhook'])
+    for (const node of [
+      'condition',
+      'for-each',
+      'manual',
+      'merge',
+      'parallel',
+      'schedule',
+      'set',
+      'switch',
+      'terminate',
+      'wait',
+      'webhook',
+    ])
       for (const file of ['definition.ts', 'executor.ts', 'validation.ts'])
         await expect(
           readFile(resolve(packageDirectory, 'src', node, file), 'utf8'),

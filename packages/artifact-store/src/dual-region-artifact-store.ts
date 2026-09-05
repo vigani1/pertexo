@@ -1,6 +1,11 @@
 import type { ArtifactStoreConfig } from './config.js';
 import { artifactMetadataMatches } from './artifact-metadata.js';
 import {
+  createProductionObjectStoreObserver,
+  safelyObserveSafetyViolation,
+  type ObjectStoreObserver,
+} from './object-store-telemetry.js';
+import {
   ArtifactIntegrityError,
   ArtifactStoreClosedError,
   createArtifactStore,
@@ -61,7 +66,29 @@ class CoordinatedDualRegionArtifactStore implements DualRegionArtifactStore {
     private readonly primary: ArtifactStoreWithPurge,
     private readonly recovery: ArtifactStoreWithPurge,
     private readonly ownsStores: boolean,
+    private readonly observer: ObjectStoreObserver,
   ) {}
+
+  private observe(
+    check:
+      | 'artifact_integrity'
+      | 'artifact_replication'
+      | 'artifact_read_consistency'
+      | 'artifact_purge_consistency'
+      | 'region_isolation',
+    operation: 'readiness' | 'delete' | 'purge' | 'replicate' | 'verify',
+    outcome: 'diverged' | 'partial' | 'unavailable',
+    failedRegionRole: 'primary' | 'recovery' | 'both' | 'none',
+  ): void {
+    safelyObserveSafetyViolation(this.observer, {
+      check,
+      failedRegionRole,
+      operation,
+      outcome,
+      regionRole: 'primary',
+      surface: 'artifact',
+    });
+  }
 
   public beginDirectUpload(
     request: BeginDirectUploadRequest,
@@ -79,17 +106,30 @@ class CoordinatedDualRegionArtifactStore implements DualRegionArtifactStore {
       this.recovery.checkReadiness(signal),
     ]);
     signal?.throwIfAborted();
-    if (primary.status === 'rejected' || recovery.status === 'rejected')
+    if (primary.status === 'rejected' || recovery.status === 'rejected') {
+      this.observe(
+        'artifact_read_consistency',
+        'readiness',
+        'unavailable',
+        primary.status === 'rejected' && recovery.status === 'rejected'
+          ? 'both'
+          : primary.status === 'rejected'
+            ? 'primary'
+            : 'recovery',
+      );
       throw new ArtifactIntegrityError(
         'Dual-region artifact readiness could not be verified',
       );
+    }
     if (
       primary.value.bucket === recovery.value.bucket ||
       primary.value.region === recovery.value.region
-    )
+    ) {
+      this.observe('region_isolation', 'readiness', 'diverged', 'both');
       throw new ArtifactIntegrityError(
         'Artifact primary and recovery regions and buckets must be distinct',
       );
+    }
     return Object.freeze({
       bucket: primary.value.bucket,
       primary: primary.value,
@@ -102,8 +142,19 @@ class CoordinatedDualRegionArtifactStore implements DualRegionArtifactStore {
     if (this.closed) return;
     this.closed = true;
     if (!this.ownsStores) return;
-    this.primary.close();
-    this.recovery.close();
+    const failures: unknown[] = [];
+    try {
+      this.primary.close();
+    } catch (error: unknown) {
+      failures.push(error);
+    }
+    try {
+      this.recovery.close();
+    } catch (error: unknown) {
+      failures.push(error);
+    }
+    if (failures.length > 0)
+      throw new AggregateError(failures, 'Failed to close artifact stores');
   }
 
   public async delete(request: ArtifactRequest): Promise<void> {
@@ -112,8 +163,19 @@ class CoordinatedDualRegionArtifactStore implements DualRegionArtifactStore {
       this.primary.delete(request),
       this.recovery.delete(request),
     ]);
-    if (deleted.some((result) => result.status === 'rejected'))
+    if (deleted.some((result) => result.status === 'rejected')) {
+      this.observe(
+        'artifact_replication',
+        'delete',
+        'partial',
+        deleted.every((result) => result.status === 'rejected')
+          ? 'both'
+          : deleted[0].status === 'rejected'
+            ? 'primary'
+            : 'recovery',
+      );
       throw new ArtifactPartialReplicationError();
+    }
   }
 
   public getStream(request: ArtifactRequest): Promise<ArtifactDownload> {
@@ -134,15 +196,28 @@ class CoordinatedDualRegionArtifactStore implements DualRegionArtifactStore {
       this.primary.purgeWorkspacePage(request),
       this.recovery.purgeWorkspacePage(request),
     ]);
-    if (purged[0].status === 'rejected' || purged[1].status === 'rejected')
+    if (purged[0].status === 'rejected' || purged[1].status === 'rejected') {
+      this.observe(
+        'artifact_purge_consistency',
+        'purge',
+        'unavailable',
+        purged[0].status === 'rejected' && purged[1].status === 'rejected'
+          ? 'both'
+          : purged[0].status === 'rejected'
+            ? 'primary'
+            : 'recovery',
+      );
       throw new ArtifactPartialReplicationError();
+    }
     if (
       purged[0].value.completed !== purged[1].value.completed ||
       purged[0].value.deletedCount !== purged[1].value.deletedCount
-    )
+    ) {
+      this.observe('artifact_purge_consistency', 'purge', 'diverged', 'both');
       throw new ArtifactIntegrityError(
         'Artifact primary and recovery purge results differ',
       );
+    }
     return purged[0].value;
   }
 
@@ -186,12 +261,28 @@ class CoordinatedDualRegionArtifactStore implements DualRegionArtifactStore {
       this.primary.validateDirectUpload(request),
       this.recovery.validateDirectUpload(request),
     ]);
-    if (verified[0].status === 'rejected' || verified[1].status === 'rejected')
+    if (
+      verified[0].status === 'rejected' ||
+      verified[1].status === 'rejected'
+    ) {
+      this.observe(
+        'artifact_read_consistency',
+        'verify',
+        'unavailable',
+        verified[0].status === 'rejected' && verified[1].status === 'rejected'
+          ? 'both'
+          : verified[0].status === 'rejected'
+            ? 'primary'
+            : 'recovery',
+      );
       throw new ArtifactIntegrityError(
         'Artifact replicas could not both be checksum-validated',
       );
-    if (!artifactMetadataMatches(verified[0].value, verified[1].value))
+    }
+    if (!artifactMetadataMatches(verified[0].value, verified[1].value)) {
+      this.observe('artifact_read_consistency', 'verify', 'diverged', 'both');
       throw new ArtifactIntegrityError('Artifact replica metadata differs');
+    }
     return verified[0].value;
   }
 
@@ -228,6 +319,7 @@ class CoordinatedDualRegionArtifactStore implements DualRegionArtifactStore {
       });
     } catch (error: unknown) {
       if (error instanceof ArtifactIntegrityError) throw error;
+      this.observe('artifact_replication', 'replicate', 'partial', 'recovery');
       throw new ArtifactPartialReplicationError();
     }
   }
@@ -236,7 +328,10 @@ class CoordinatedDualRegionArtifactStore implements DualRegionArtifactStore {
 export function createDualRegionArtifactStore(
   primary: ArtifactStoreConfig | ArtifactStoreWithPurge,
   recovery: ArtifactStoreConfig | ArtifactStoreWithPurge,
-  options: Readonly<{ artifactOwnership?: 'borrowed' | 'owned' }> = {},
+  options: Readonly<{
+    artifactOwnership?: 'borrowed' | 'owned';
+    observer?: ObjectStoreObserver;
+  }> = {},
 ): DualRegionArtifactStore {
   const injected = isArtifactStore(primary) && isArtifactStore(recovery);
   if (isArtifactStore(primary) !== isArtifactStore(recovery))
@@ -247,13 +342,24 @@ export function createDualRegionArtifactStore(
     throw new TypeError('Injected artifact stores require explicit ownership');
   const primaryStore = isArtifactStore(primary)
     ? primary
-    : createArtifactStore(primary, { regionRole: 'primary' });
+    : createArtifactStore(primary, {
+        ...(options.observer === undefined
+          ? {}
+          : { observer: options.observer }),
+        regionRole: 'primary',
+      });
   const recoveryStore = isArtifactStore(recovery)
     ? recovery
-    : createArtifactStore(recovery, { regionRole: 'recovery' });
+    : createArtifactStore(recovery, {
+        ...(options.observer === undefined
+          ? {}
+          : { observer: options.observer }),
+        regionRole: 'recovery',
+      });
   return new CoordinatedDualRegionArtifactStore(
     primaryStore,
     recoveryStore,
     injected ? options.artifactOwnership === 'owned' : true,
+    options.observer ?? createProductionObjectStoreObserver(),
   );
 }

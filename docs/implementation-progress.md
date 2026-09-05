@@ -1,6 +1,6 @@
 # Backend Implementation Progress
 
-Last updated: 2026-09-04
+Last updated: 2026-09-05
 
 This file tracks delivery against
 [the authoritative backend plan](./workflow-platform-backend-plan.md). A phase
@@ -21,6 +21,38 @@ coverage, immutability, and tooling entries are controlled, continuous,
 evidence-gated, or conditional rather than unperformed repository defects.
 Green repository checks are not represented as a substitute for live
 production evidence.
+
+All 133 findings in the 12 granular package audits are now reconciled. Every
+repository-actionable defect is implemented and verified; WFE-004 was the last
+partially open repository item and now has public compatibility-history tests
+plus exact source-hashed review of every residual branch. ART-011, DB-016,
+INT-009, and the package coverage/model gates remain continuous safeguards;
+DB-013, WFE-012, and the explicitly documented compatibility/locality choices
+remain intentionally retained rather than mechanically refactored.
+
+External obligations remain external: ART-002 production latency, ART-008 live
+AWS/regional recovery, DB-011 workload/planner evidence, DB-017 deployed
+backup/PITR/failover evidence, INT-010 provider/KMS sandboxes, INT-013 measured
+network lifecycle policy, OBS-006 production telemetry retrieval, and RL-002
+deployed Redis topology. None is represented as complete from a local mock or
+repository fixture.
+
+The rate-limit audit has seven repository-controlled findings fixed (RL-001
+and RL-003 through RL-008), backed by 29 package tests and enforced coverage of
+95.04% statements, 91.42% branches, 92.3% functions, and 95.69% lines. RL-002
+remains correctly classified as an external evidence obligation: production
+must use and demonstrate a non-clustered replicated Redis primary compatible
+with the atomic multi-key Lua policy.
+
+Node-catalog remediation has fixed NC-001 through NC-006.
+All 30 retained compatibility fingerprints remain byte-identical after release
+construction and cohort selection were centralized behind private helpers;
+selective adapter construction, unknown-input parsing, and package coverage are
+also enforced. The package passes 19 tests with 96.69% statements/lines, 87.23%
+branches, and 100% functions. Its 19 assertions now collect independently in
+release/cohort history, definition-resolution, server-registry, and
+package-contract suites; the largest is 917 lines and repository test
+duplication remains within its ratchet at 6 groups, 267 lines, and 0.28%.
 
 ## Status summary
 
@@ -4907,6 +4939,317 @@ and its audit publication branch:
 
 No phase status changes. Phase 7 remains **In progress**. Repository work must
 not be mistaken for the live deployment evidence required by the plan.
+
+### Granular package-audit remediation — nodes-core
+
+- [x] Reconcile CORE-001 through CORE-008 against current code rather than the
+      original pinned audit tree. All eight repository-actionable findings are
+      now implemented; CORE-006 remains a continuously enforced safeguard.
+- [x] Preserve ADR-010 compatibility by adding Schedule, Parallel, and Merge V2
+      definitions instead of mutating retained identities. Active release tests
+      prove the V2 trigger envelope and structured-node contracts while V1
+      fingerprints and behavior remain retained.
+- [x] Replace the separately ordered executor registry with a server-only typed
+      registration join. Browser-safe definitions remain free of executor code,
+      and startup fails closed for duplicate, missing, or orphan executors.
+- [x] Split package tests by retained-registry, trigger, data, orchestration,
+      public-execution, and package-contract ownership. The six files collect
+      independently and run 55 tests without shared mutable fixtures.
+- [x] Execute all 41 package functions locally through public SDK/server
+      boundaries. Coverage is 96.83% statements, 81.81% branches, 100%
+      functions, and 96.78% lines; enforced thresholds are now 96/80/100/96.
+- [x] Focused checks pass: package test, typecheck, build, ESLint, coverage,
+      Knip, and repository duplication validation. Test duplication remains at
+      6 groups / 267 lines / 0.28%.
+
+Implementation commits: `5f9ce84`, `400dfe8`, `37594a4`, `19ae523`,
+`fd5fd10`, `3c98fa9`, and `554502d`. No phase status changed and no local
+repository evidence is substituted for Phase 7 external production proof.
+
+### Granular package-audit remediation — node-sdk
+
+- [x] Reconcile SDK-001 through SDK-010 against current implementation. The
+      dispatch race, hostile-key copy, array parity, limit handling, manifest
+      ABI, successor, and coverage findings were already substantively fixed;
+      adversarial tests now cover eight-way dispatch concurrency, marker
+      failure, reflection traps, and SHA boundary vectors.
+- [x] Remove the unused typed-executor abstraction after a repository-wide
+      consumer search. Provider adapters intentionally keep fail-closed parsing
+      because they are callable isolation boundaries as well as registry
+      handlers.
+- [x] Split release/execution ownership into compatibility hashing, executor
+      contracts, error taxonomy, identity, bounded JSON, and the existing
+      release/server facades. Public package paths and fingerprints are
+      unchanged; the duplication gate remains at its accepted baseline.
+- [x] Make schema-projection evidence honest and compatibility safe. New or
+      versioned schemas can carry bounded runtime-only semantic descriptions;
+      retained fingerprints are not rewritten and current refinement owners
+      remain enumerated in the package audit.
+- [x] Focused checks pass: 38 package tests, typecheck, build, ESLint, Knip,
+      node-catalog/core compatibility suites, workspace typecheck, coverage,
+      and duplication validation. Coverage is 88.78% statements, 77.57%
+      branches, 97.39% functions, and 90.03% lines.
+
+Implementation commits: `7371664`, `f6c7a53`, `19ae523`, `d6277f2`,
+`8b919d9`, `63ac0f7`, `4d26978`, `436eaa3`, `d40b583`, `4fe3f8e`,
+`6b20ffd`, and `3d2838f`. No phase status changed.
+
+### Granular package-audit remediation — observability
+
+- [x] Reconcile OBS-001 through OBS-010 against current code. Nine
+      repository-actionable findings are implemented; OBS-006 is explicitly
+      retained as external production evidence rather than misreported as a
+      local code defect.
+- [x] Harden structured logging against secret-name variants and hostile
+      reflection/property access, preserve bounded safe Nest diagnostics, and
+      enforce delay and metric numeric invariants.
+- [x] Require execution-storage telemetry and explicitly pin the eight
+      supported OpenTelemetry instrumentations instead of inheriting a mutable
+      meta-package default.
+- [x] Enforce package risk coverage and semantic operations-asset checks in
+      protected CI. Fresh coverage is 92.10% statements, 90.00% branches,
+      89.88% functions, and 92.64% lines.
+- [x] Fresh focused verification passes: 10 files / 53 tests, package
+      typecheck, build, ESLint, coverage, structural YAML/JSON validation,
+      Prometheus configuration plus 24 alert rules, and collector validation.
+- [ ] Before production launch, identify the deployed trace-backend owner and
+      prove retention, access, sampling, sensitive-attribute handling, and
+      trace-ID retrieval for one real API-to-outbox-to-worker trace (OBS-006).
+
+Implementation commits: `5dc09c3`, `5c639d8`, `bf62f10`, `19ae523`, and
+`ae377ca`. No phase status changed; local collector debug output is not treated
+as production trace-retention evidence.
+
+### Granular package-audit remediation — queue
+
+- [x] Reconcile QUEUE-001 through QUEUE-012 against current code. All twelve
+      findings are implemented; coverage and pinned ioredis behavior remain
+      continuous gates rather than one-time closure claims.
+- [x] Bound and memoize producer shutdown, close hostile envelope parsing,
+      centralize deterministic transport-ID validation, and freeze registry
+      entries without mutating Zod internals.
+- [x] Separate active queue capabilities from retained V1 compatibility. The
+      obsolete preview and future artifact-expiry contracts remain readable
+      for already-enqueued work but are not advertised as composed jobs.
+- [x] Centralize Redis endpoint policy across queue and API owners, unreference
+      advisory timers, document/pin Redis instrumentation behavior, and reduce
+      the package to one explicit snapshot-tested public surface.
+- [x] Enforce queue risk coverage at 80.78% statements, 68.98% branches,
+      82.44% functions, and 81.60% lines; retain all historical V1 job examples
+      as a compatibility corpus.
+- [x] Make real transport proofs bounded and hermetic. The pinned Redis test
+      passes, and two consecutive real PostgreSQL/Redis worker runs each pass
+      2 files / 5 tests with complete tracked-job removal.
+
+Implementation commits: `4e95575`, `fd42afe`, `c8127bf`, `44cd628`,
+`4e338b9`, `f48eeef`, `a107d8d`, and `19ae523`. No phase status changed.
+
+### Granular package-audit remediation — workflow-model
+
+- [x] Reconcile WM-001 through WM-012 against current code. All twelve
+      findings are implemented; retained schema/identity compatibility and
+      package risk coverage remain continuous controls.
+- [x] Align publish and execution topology, aggregate browser/server admission,
+      and the 100-issue model/HTTP response bound so authoring cannot accept a
+      graph that is statically guaranteed to fail or cannot be serialized.
+- [x] Specify JSONata execution honestly as bounded one-shot worker isolation.
+      Construction/startup/handoff/timeout failures are total, hard termination
+      remains available, diagnostics report actual creations and peak workers,
+      and mapping depends on a small evaluator port.
+- [x] Close canonical-array, notification-result, limit-override, direct-depth,
+      and invocation-scope boundaries with adversarial tests.
+- [x] Improve ownership without hiding sequencing: compile the worker runtime
+      separately, isolate invocation identity, and replace root wildcard
+      exports with an exact tested facade. Cohesive graph validation and worker
+      supervision remain intentionally colocated.
+- [x] Fresh checks pass: 8 package files / 72 tests, typecheck, build,
+      repository-budget ESLint, package coverage, 22 workflow-engine files /
+      239 tests, and 5 contracts files / 26 tests. Coverage is 86.73%
+      statements, 78.99% branches, 94.49% functions, and 89.98% lines.
+
+Implementation commits: `078cd53`, `bfb4862`, `7da5a4c`, and `5652981`. No
+phase status changed.
+
+### Granular package-audit remediation — workflow-engine
+
+- [x] Implement WFE-001 through WFE-003 and WFE-005 through WFE-011. Fact
+      windows now align with persistence; structured projections, observation
+      parsing, executable flattening, and invocation lookup avoid repeated
+      work; checkpoint/executable boundaries align and scan once; scope and
+      declaration identity have one owner; the production facade is narrow;
+      and a bounded exhaustive DAG model proves transition invariants.
+- [x] Define the WFE-012 compatibility exit precisely. The deprecated source
+      alias is removed only in an explicitly breaking engine interface release
+      after a zero-consumer scan and replacement release note; durable stored
+      identities and applied migrations are not renamed.
+- [x] Expand the enforced workflow-engine coverage cohort to all 26
+      consequence-selected files with per-file floors. Fresh coverage is
+      90.56% statements (1,844/2,036), 85.32% branches (1,779/2,085), 93.62%
+      functions (338/361), and 91.74% lines (1,766/1,925).
+- [x] Finish WFE-004 with public compatibility-history admission regressions
+      and exact source-hashed review of all 225 residual workflow-engine
+      branches. Every retained entry is classified narrowly as defensive,
+      unreachable, or V8-generated, semantic source drift invalidates the
+      review, and the root report records 504 reviewed and zero unreviewed
+      branches across 105 selected files and 4,933 coverable lines.
+
+Implementation commits: `8406d1e`, `5a7ed49`, `3adf2e1`, `68485d8`,
+`667554a`, `132c8e1`, `182f754`, `ce1c809`, `f8c3655`, and `5a71c1c`. No phase
+status changed.
+
+### Granular package-audit remediation — artifact-store
+
+- [x] Implement ART-001 through ART-004, ART-006, ART-007, ART-009,
+      ART-010, ART-012, and ART-013. Provider-reported region identity,
+      expiring readiness attestations, bounded reconciliation concurrency,
+      coordinator safety observations, aggregate close, bounded presigning,
+      typed S3 results, shared configuration grammar, exact purge
+      acknowledgements, operation-scoped cancellation, and explicit resource
+      ownership are all covered by focused tests.
+- [x] Preserve ART-011 as a continuous deployment-shape safeguard. The current
+      unbundled Node consumers and actual AWS command constructors are tested;
+      no speculative public subpath or generic telemetry layer was added.
+- [x] Add all artifact-store source to the package coverage gate and root
+      source-hashed risk report. Fresh 8-file / 177-test package coverage is
+      90.89% statements (859/945), 84.22% branches (614/729), 95.10% functions
+      (175/184), and 92.30% lines (816/884).
+- [x] Finish ART-005 with public telemetry and post-close regressions plus exact
+      source-hashed review of all 115 residual provider-corruption, regional
+      matrix, cancellation-race, SDK seam, invariant, and V8-generated
+      branches. The artifact-store cohort has zero unreviewed branches.
+- [ ] Supply ART-008 from deployed AWS resources: execute the three AWS-only
+      assertions and capture Frankfurt/Ireland bucket identity, version
+      lifecycle, one-sided outage, restore, and measured RPO/RTO evidence for
+      the exact release artifact. Local MinIO/S3Mock compatibility is not a
+      substitute.
+
+Implementation commits include `3289414`, `639b508`, `93bbd89`, `b45d960`, `dcc96b1`, `e208935`,
+`19ae523`, `0f1c8a9`, `87827a8`, `8c85107`, `f522666`, `10b9561`, `db66903`,
+`2fe46fd`, `b15801e`, and `f2a813c`. No phase status changed.
+
+### Granular package-audit remediation — contracts
+
+- [x] Reconcile and implement CON-001 through CON-011. All generated client
+      schemas and seven OpenAPI documents are structurally valid; the workflow
+      graph and runtime-only refinements are represented honestly; shared
+      assembly, authenticated components, problem metadata, bounds, and
+      artifact registries each have one package-private owner.
+- [x] Keep runtime consumers on narrow domain subpaths, preserve strict
+      browser-safe request/response parsing, and reject HTTP control bytes and
+      contradictory public state combinations through public schemas.
+- [x] Enforce deterministic artifact generation plus pinned Redocly validation,
+      full-package coverage, and source-hashed root risk review. Fresh coverage
+      is 100% statements (301/301), 98.36% branches (60/61), 100% functions
+      (50/50), and 100% lines (293/293); the sole uncovered branch is V8's
+      source-less generated module fallthrough and has narrow fingerprinted
+      evidence.
+- [x] Focused verification passes: 5 files / 26 tests, typecheck, build,
+      package coverage, deterministic artifact comparison, all seven Redocly
+      validations, and zero unreviewed contract branches in the root risk
+      report.
+- [x] Upgrade the pinned Redocly validator from 1.34.5 to 2.51.2 after the
+      protected dependency review identified the newly disclosed
+      `@faker-js/faker` advisory in the old development-only transitive graph.
+      All seven documents, 26 contract tests, contract typecheck, and the full
+      dependency audit pass with no known vulnerabilities; the upgrade also
+      removes 173 obsolete transitive packages from the lockfile.
+
+Implementation commits: `b4f2b22`, `078cd53`, `47b7fa6`, `1e8ec80`,
+`9969ff7`, `1153d3f`, `19ae523`, `6c49c7e`, `325fd88`, `dc4dea1`, and
+`59a1dca`. No phase status changed.
+
+Clean-checkout CI additionally proved that Knip could not infer the private
+workflow-model expression worker from its source/emitted runtime URL switch.
+That private worker entry is now declared explicitly alongside Knip's inferred
+public package exports, so dependency ownership is checked identically before
+and after a local build rather than depending on ignored `dist` output.
+
+Protected CI also proved two service-boundary regressions that a warm local
+environment had masked. Queue unit and coverage commands now exclude the
+real-Redis integration file explicitly, while the dedicated integration command
+continues to run it. The destructive transport resilience proof now dispatches
+the active failure-notification job contract instead of the retained but
+intentionally inactive `expire-artifacts` compatibility contract.
+
+CodeQL then identified polynomial stack-classification regex work on
+Nest-controlled log text. The adapter now bounds inspection to 1,024 characters
+and uses a linear line parser with an adversarial 200,000-newline regression
+test. All 54 observability tests, typecheck, ESLint, package coverage, and the
+root source-hashed risk report pass.
+
+### Granular package-audit remediation — integrations
+
+- [x] Implement INT-001 through INT-005, INT-007, INT-008, INT-011,
+      INT-012, and INT-014. Request/attempt cancellation reaches bounded KMS,
+      durable pre-dispatch truth is preserved, provider fence failures retain
+      their typed meaning, HTTP field values are serializable, request copies
+      and redaction stay bounded, diagnostics are safe, and malformed HTTP
+      invocations produce one stable pre-dispatch failure.
+- [x] Consolidate connection and webhook envelope encryption behind one
+      private KMS/AES-GCM core while retaining separate domain contexts,
+      public envelope shapes, opaque errors, and caller-buffer ownership.
+      Public-facade tests cover both KMS contexts, tampering, cancellation,
+      late-provider zeroization, and cleanup after failed admission.
+- [x] Preserve INT-009 as a scheduled, pinned IANA-registry drift safeguard.
+      Upstream allocation changes still require human security review.
+- [x] Add the entire integrations source tree to package coverage and the root
+      source-hashed risk report. The fresh 8-file / 196-test run records 94.30%
+      statements (1,044/1,107), 91.06% branches (642/705), 92.82% functions
+      (181/195), and 94.98% lines (1,004/1,057).
+- [x] Finish INT-006 through public provider-response, credential admission,
+      retry/ambiguity, fence, body-bound, SSRF/DNS, transport, and diagnostic
+      tests. All 63 residual branches have exact fingerprints and narrow
+      source-specific defensive, unreachable, or generated reviews; the
+      integrations cohort has zero unreviewed branches.
+- [ ] Supply protected Slack, Resend, and AWS KMS sandbox evidence for INT-010;
+      local fakes do not prove provider compatibility.
+- [ ] Supply measured production-like DNS/connect/TLS concurrency and latency
+      evidence for INT-013 before changing the safe no-pooling policy.
+
+Implementation commits include `51bed2c`, `1a57c8b`, `692cf9e`, `dcbf7b4`,
+`14bcaf2`, `19ae523`, `c23afd6`, `a97ae90`, `855b2c8`, `ee8c599`, `d3b8e5b`,
+`c47b435`, `8514451`, `3f41deb`, `d225a2f`, `202319f`, `91c5248`, `7f7e181`,
+and `65f516f`. Focused typecheck, package coverage, and source-hashed risk
+validation pass. No phase status changed.
+
+### Granular package-audit remediation — database
+
+- [x] Implement DB-001 through DB-010, DB-012, DB-014, and DB-015 while
+      preserving PostgreSQL authority, forced RLS, transaction/CAS semantics,
+      cancellation, leases, and fencing. DB-013 is explicitly retained as
+      cohesive, erased type-level complexity after an acyclic graph review.
+- [x] Share one role pool per process, enforce aggregate deployment capacity
+      and role-specific transaction/query deadlines, emit bounded
+      infrastructure diagnostics, release database locks before external
+      lifecycle I/O, and support declared transactional/online/resumable
+      migration modes.
+- [x] Bound hot local work: observation windows share one cross-package
+      contract, fact loading uses 1,000-row pages plus one UUID lookup,
+      publication batches trigger projection, and coordinator commits index
+      plans once and batch admissions, attempts, outbox rows, and run events.
+      Per-row CAS updates and the retained-version integrity scan remain where
+      consolidation would weaken fail-closed corruption detection.
+- [x] Compare the fully migrated catalog against all 48 typed tables and 19
+      raw-SQL contracts. The first run found and fixed four missing typed
+      columns; column/nullability, RLS, ACL, primary-key, and index drift now
+      fails the real-service suite.
+- [x] Publish separate unit and 330-test PostgreSQL coverage plus a verified
+      merged 145-file report. Current combined coverage is 79.96% statements
+      (4,956/6,198), 71.20% branches (3,036/4,264), 85.42% functions
+      (967/1,132), and 81.91% lines (4,832/5,899).
+- [ ] Supply DB-011 representative production workload, planner, cache, WAL,
+      lock, vacuum, and index-usage evidence at expected and burst cardinality.
+- [ ] Supply DB-017 deployed backup/PITR, restore, pooler, failover, RPO/RTO,
+      autovacuum, and replica-admission evidence. Keep the DB-016 compatibility
+      retirement inventory current until deployed populations permit removal.
+
+Implementation commits include `8406d1e`, `d4ee342`, `9069470`, `4f8d194`,
+`9c52139`, `3d64220`, `f4163cf`, `dadaaf1`, `b88a53d`, `cf5dad7`, `29f8e2e`,
+`ac54cbc`, `c185f32`, `fa3cfc4`, `5d13a13`, `8cda911`, `a0b6c60`, `64e03fb`,
+and `bf0f00c`.
+Focused unit/type checks, 330/330 full PostgreSQL integration tests with
+coverage, schema-shape tests, and coordinator concurrency suites pass. No phase
+status changed.
 
 ## Update protocol
 

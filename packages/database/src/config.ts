@@ -1,22 +1,50 @@
 import { z } from 'zod';
 
+function postgresUrl(message: string) {
+  return z.url().refine((value) => value.startsWith('postgresql://'), {
+    message,
+  });
+}
+
+function postgresRole(defaultRole: string) {
+  return z
+    .string()
+    .regex(/^[a-z_][a-z0-9_]*$/u)
+    .default(defaultRole);
+}
+
+const connectionTimeoutMillis = z.number().int().positive().default(5_000);
+const idleTimeoutMillis = z.number().int().positive().default(30_000);
+const environmentConnectionTimeoutMillis = z.coerce
+  .number()
+  .int()
+  .positive()
+  .default(5_000);
+const environmentIdleTimeoutMillis = z.coerce
+  .number()
+  .int()
+  .positive()
+  .default(30_000);
+const conservativePoolMax = z.coerce
+  .number()
+  .int()
+  .positive()
+  .max(10)
+  .default(2);
+const runtimeEnvironmentFields = Object.freeze({
+  DATABASE_CONNECTION_TIMEOUT_MILLIS: environmentConnectionTimeoutMillis,
+  DATABASE_IDLE_TIMEOUT_MILLIS: environmentIdleTimeoutMillis,
+  POSTGRES_OWNER_USER: postgresRole('pertexo_owner'),
+  POSTGRES_WORKER_RUNTIME_USER: postgresRole('pertexo_worker'),
+});
+
 const databaseConfigSchema = z.object({
-  connectionString: z
-    .url()
-    .refine((value) => value.startsWith('postgresql://'), {
-      message: 'must be a postgresql:// URL',
-    }),
-  connectionTimeoutMillis: z.number().int().positive().default(5_000),
-  idleTimeoutMillis: z.number().int().positive().default(30_000),
+  connectionString: postgresUrl('must be a postgresql:// URL'),
+  connectionTimeoutMillis,
+  idleTimeoutMillis,
   max: z.number().int().positive().max(100).default(10),
-  ownerRole: z
-    .string()
-    .regex(/^[a-z_][a-z0-9_]*$/u)
-    .default('pertexo_owner'),
-  workerRuntimeRole: z
-    .string()
-    .regex(/^[a-z_][a-z0-9_]*$/u)
-    .default('pertexo_worker'),
+  ownerRole: postgresRole('pertexo_owner'),
+  workerRuntimeRole: postgresRole('pertexo_worker'),
 });
 
 export type DatabaseConfig = Readonly<z.output<typeof databaseConfigSchema>>;
@@ -29,42 +57,19 @@ export function parseDatabaseConfig(
 
 const migrationEnvironmentSchema = z
   .object({
-    DATABASE_MIGRATION_URL: z
-      .url()
-      .refine((value) => value.startsWith('postgresql://'), {
-        message: 'DATABASE_MIGRATION_URL must be a postgresql:// URL',
-      }),
+    DATABASE_MIGRATION_URL: postgresUrl(
+      'DATABASE_MIGRATION_URL must be a postgresql:// URL',
+    ),
     NODE_ENV: z
       .enum(['development', 'test', 'staging', 'production'])
       .default('development'),
-    POSTGRES_OWNER_USER: z
-      .string()
-      .regex(/^[a-z_][a-z0-9_]*$/u)
-      .default('pertexo_owner'),
-    POSTGRES_API_RUNTIME_USER: z
-      .string()
-      .regex(/^[a-z_][a-z0-9_]*$/u)
-      .default('pertexo_api'),
-    POSTGRES_DISPATCHER_RUNTIME_USER: z
-      .string()
-      .regex(/^[a-z_][a-z0-9_]*$/u)
-      .default('pertexo_dispatcher'),
-    POSTGRES_MAINTENANCE_USER: z
-      .string()
-      .regex(/^[a-z_][a-z0-9_]*$/u)
-      .default('pertexo_maintenance'),
-    POSTGRES_LIFECYCLE_COMMAND_USER: z
-      .string()
-      .regex(/^[a-z_][a-z0-9_]*$/u)
-      .default('pertexo_lifecycle_command'),
-    POSTGRES_OPERATOR_USER: z
-      .string()
-      .regex(/^[a-z_][a-z0-9_]*$/u)
-      .default('pertexo_operator'),
-    POSTGRES_WORKER_RUNTIME_USER: z
-      .string()
-      .regex(/^[a-z_][a-z0-9_]*$/u)
-      .default('pertexo_worker'),
+    POSTGRES_OWNER_USER: postgresRole('pertexo_owner'),
+    POSTGRES_API_RUNTIME_USER: postgresRole('pertexo_api'),
+    POSTGRES_DISPATCHER_RUNTIME_USER: postgresRole('pertexo_dispatcher'),
+    POSTGRES_MAINTENANCE_USER: postgresRole('pertexo_maintenance'),
+    POSTGRES_LIFECYCLE_COMMAND_USER: postgresRole('pertexo_lifecycle_command'),
+    POSTGRES_OPERATOR_USER: postgresRole('pertexo_operator'),
+    POSTGRES_WORKER_RUNTIME_USER: postgresRole('pertexo_worker'),
     REGIONAL_WRITE_ADMISSION_ENFORCED: z
       .enum(['true', 'false'])
       .transform((value) => value === 'true')
@@ -113,125 +118,37 @@ export function parseMigrationConfig(
 }
 
 const dispatcherEnvironmentSchema = z.object({
-  DATABASE_DISPATCHER_URL: z
-    .url()
-    .refine((value) => value.startsWith('postgresql://'), {
-      message: 'DATABASE_DISPATCHER_URL must be a postgresql:// URL',
-    }),
-  DATABASE_CONNECTION_TIMEOUT_MILLIS: z.coerce
-    .number()
-    .int()
-    .positive()
-    .default(5_000),
-  DATABASE_IDLE_TIMEOUT_MILLIS: z.coerce
-    .number()
-    .int()
-    .positive()
-    .default(30_000),
-  DATABASE_DISPATCHER_POOL_MAX: z.coerce
-    .number()
-    .int()
-    .positive()
-    .max(10)
-    .default(2),
-  POSTGRES_OWNER_USER: z
-    .string()
-    .regex(/^[a-z_][a-z0-9_]*$/u)
-    .default('pertexo_owner'),
-  POSTGRES_WORKER_RUNTIME_USER: z
-    .string()
-    .regex(/^[a-z_][a-z0-9_]*$/u)
-    .default('pertexo_worker'),
+  ...runtimeEnvironmentFields,
+  DATABASE_DISPATCHER_URL: postgresUrl(
+    'DATABASE_DISPATCHER_URL must be a postgresql:// URL',
+  ),
+  DATABASE_DISPATCHER_POOL_MAX: conservativePoolMax,
 });
 
 const maintenanceEnvironmentSchema = z.object({
-  DATABASE_MAINTENANCE_URL: z
-    .url()
-    .refine((value) => value.startsWith('postgresql://'), {
-      message: 'DATABASE_MAINTENANCE_URL must be a postgresql:// URL',
-    }),
-  DATABASE_CONNECTION_TIMEOUT_MILLIS: z.coerce
-    .number()
-    .int()
-    .positive()
-    .default(5_000),
-  DATABASE_IDLE_TIMEOUT_MILLIS: z.coerce
-    .number()
-    .int()
-    .positive()
-    .default(30_000),
-  DATABASE_MAINTENANCE_POOL_MAX: z.coerce
-    .number()
-    .int()
-    .positive()
-    .max(10)
-    .default(2),
-  POSTGRES_OWNER_USER: z
-    .string()
-    .regex(/^[a-z_][a-z0-9_]*$/u)
-    .default('pertexo_owner'),
-  POSTGRES_WORKER_RUNTIME_USER: z
-    .string()
-    .regex(/^[a-z_][a-z0-9_]*$/u)
-    .default('pertexo_worker'),
+  ...runtimeEnvironmentFields,
+  DATABASE_MAINTENANCE_URL: postgresUrl(
+    'DATABASE_MAINTENANCE_URL must be a postgresql:// URL',
+  ),
+  DATABASE_MAINTENANCE_POOL_MAX: conservativePoolMax,
 });
 
 const lifecycleCommandEnvironmentSchema = z.object({
-  DATABASE_LIFECYCLE_COMMAND_URL: z
-    .url()
-    .refine((value) => value.startsWith('postgresql://'), {
-      message: 'DATABASE_LIFECYCLE_COMMAND_URL must be a postgresql:// URL',
-    }),
-  DATABASE_CONNECTION_TIMEOUT_MILLIS: z.coerce
-    .number()
-    .int()
-    .positive()
-    .default(5_000),
-  DATABASE_IDLE_TIMEOUT_MILLIS: z.coerce
-    .number()
-    .int()
-    .positive()
-    .default(30_000),
-  DATABASE_LIFECYCLE_COMMAND_POOL_MAX: z.coerce
-    .number()
-    .int()
-    .positive()
-    .max(10)
-    .default(2),
-  POSTGRES_OWNER_USER: z
-    .string()
-    .regex(/^[a-z_][a-z0-9_]*$/u)
-    .default('pertexo_owner'),
-  POSTGRES_WORKER_RUNTIME_USER: z
-    .string()
-    .regex(/^[a-z_][a-z0-9_]*$/u)
-    .default('pertexo_worker'),
+  ...runtimeEnvironmentFields,
+  DATABASE_LIFECYCLE_COMMAND_URL: postgresUrl(
+    'DATABASE_LIFECYCLE_COMMAND_URL must be a postgresql:// URL',
+  ),
+  DATABASE_LIFECYCLE_COMMAND_POOL_MAX: conservativePoolMax,
 });
 
 const operatorEnvironmentSchema = z.object({
-  DATABASE_OPERATOR_URL: z
-    .url()
-    .refine((value) => value.startsWith('postgresql://'), {
-      message: 'DATABASE_OPERATOR_URL must be a postgresql:// URL',
-    }),
-  DATABASE_CONNECTION_TIMEOUT_MILLIS: z.coerce
-    .number()
-    .int()
-    .positive()
-    .default(5_000),
-  DATABASE_IDLE_TIMEOUT_MILLIS: z.coerce
-    .number()
-    .int()
-    .positive()
-    .default(30_000),
-  POSTGRES_OPERATOR_USER: z
-    .string()
-    .regex(/^[a-z_][a-z0-9_]*$/u)
-    .default('pertexo_operator'),
-  POSTGRES_OWNER_USER: z
-    .string()
-    .regex(/^[a-z_][a-z0-9_]*$/u)
-    .default('pertexo_owner'),
+  DATABASE_CONNECTION_TIMEOUT_MILLIS: environmentConnectionTimeoutMillis,
+  DATABASE_IDLE_TIMEOUT_MILLIS: environmentIdleTimeoutMillis,
+  DATABASE_OPERATOR_URL: postgresUrl(
+    'DATABASE_OPERATOR_URL must be a postgresql:// URL',
+  ),
+  POSTGRES_OPERATOR_USER: postgresRole('pertexo_operator'),
+  POSTGRES_OWNER_USER: postgresRole('pertexo_owner'),
 });
 
 export function parseLifecycleCommandDatabaseConfig(

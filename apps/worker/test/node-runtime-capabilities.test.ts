@@ -4,8 +4,10 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import type { PutArtifactRequest } from '@pertexo/artifact-store';
+import { createDatabaseRuntime } from '@pertexo/database/execution';
 import type { ConnectionDatabase } from '@pertexo/database/testing';
 import { ProviderExecutionRateLimitError } from '@pertexo/node-sdk/server';
+import { RedisRateLimitRuntime } from '@pertexo/rate-limit';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createWorkerNodeRuntimeCapabilities } from '../src/testing.js';
@@ -97,6 +99,82 @@ describe('worker node runtime capabilities', () => {
     ).rejects.toThrow('Worker artifact capability is incomplete');
   });
 
+  it('closes partial capability assembly after a database authority failure', async () => {
+    const databaseRuntime = createDatabaseRuntime(
+      { ...databaseConfig, max: 2 },
+      { monitorLockWaits: false, role: 'worker' },
+    );
+    try {
+      await expect(
+        createWorkerNodeRuntimeCapabilities(
+          { database: databaseConfig },
+          {
+            connectionEncryption: { open: vi.fn() },
+            databaseRuntime,
+            providerRateLimiter: {
+              consume: vi.fn().mockResolvedValue({ allowed: true }),
+            },
+          },
+        ),
+      ).rejects.toThrow(
+        'Database runtime authority does not match repository config',
+      );
+    } finally {
+      await databaseRuntime.close();
+    }
+  });
+
+  it('owns the default artifact persistence database lifecycle', async () => {
+    const runtime = await createWorkerNodeRuntimeCapabilities(
+      { database: databaseConfig },
+      { artifactStore: { put: vi.fn() } },
+    );
+
+    expect(runtime.factories.artifacts).toBeTypeOf('function');
+    await runtime.close();
+    await runtime.close();
+  });
+
+  it('borrows one process database runtime for default capabilities', async () => {
+    const databaseRuntime = createDatabaseRuntime(databaseConfig, {
+      monitorLockWaits: false,
+      role: 'worker',
+    });
+    const runtime = await createWorkerNodeRuntimeCapabilities(
+      { database: databaseConfig },
+      {
+        artifactStore: { put: vi.fn() },
+        connectionEncryption: { open: vi.fn() },
+        databaseRuntime,
+        providerRateLimiter: {
+          consume: vi.fn().mockResolvedValue({ allowed: true }),
+        },
+      },
+    );
+
+    await runtime.close();
+    await databaseRuntime.close();
+  });
+
+  it('reports failures while closing owned capability resources', async () => {
+    const close = vi
+      .spyOn(RedisRateLimitRuntime.prototype, 'close')
+      .mockRejectedValueOnce(new Error('injected Redis close failure'));
+    const runtime = await createWorkerNodeRuntimeCapabilities({
+      connectionEncryption: {
+        keyReference: 'alias/pertexo',
+        region: 'eu-central-1',
+      },
+      database: databaseConfig,
+      redisUrl: 'redis://localhost:6379/0',
+    });
+
+    await expect(runtime.close()).rejects.toThrow(
+      'Worker node runtime capability shutdown failed',
+    );
+    close.mockRestore();
+  });
+
   it('binds JIT connection resolution and pre-dispatch currency checks to the attempt workspace', async () => {
     const resolveConnectionSecret = vi.fn(() =>
       Promise.resolve({
@@ -175,11 +253,15 @@ describe('worker node runtime capabilities', () => {
         ],
       }),
     );
-    expect(open).toHaveBeenCalledWith(expect.anything(), {
-      workspaceId,
-      connectionId,
-      secretVersionId,
-    });
+    expect(open).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        workspaceId,
+        connectionId,
+        secretVersionId,
+      },
+      signal,
+    );
     expect(new TextDecoder().decode(resolved.secret)).toBe('secret');
 
     if (connections.assertCurrent === undefined)

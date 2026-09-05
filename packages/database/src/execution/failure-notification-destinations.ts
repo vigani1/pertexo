@@ -1,4 +1,5 @@
-import { createDatabasePool } from '../platform/postgres-telemetry.js';
+import { acquireDatabasePool } from '../platform/database-runtime.js';
+import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import { createHash } from 'node:crypto';
 
 import { generatePersistedId } from '../platform/persisted-id.js';
@@ -6,6 +7,7 @@ import { generatePersistedId } from '../platform/persisted-id.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import {
+  FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT,
   FailureNotificationDestinationConfigSchema,
   type FailureNotificationDestinationConfig,
 } from '@pertexo/workflow-model/failure-notification';
@@ -16,6 +18,7 @@ import {
   type FailureNotificationDestinationErrorCode,
 } from './failure-notification-destination-errors.js';
 import { withTenantScopedClient } from '../tenant-access/workspace.js';
+import { sha256HexSchema as digestSchema } from '../validation/persisted-primitives.js';
 
 export { FailureNotificationDestinationError } from './failure-notification-destination-errors.js';
 
@@ -94,7 +97,6 @@ function destinationError(
   return new FailureNotificationDestinationError(code, message);
 }
 
-const digestSchema = z.string().regex(/^[0-9a-f]{64}$/u);
 const replaySchema = z
   .object({
     schemaVersion: z.literal(1),
@@ -348,8 +350,10 @@ async function insertVersion(
 
 export function createFailureNotificationDestinationDatabase(
   config: DatabaseConfig,
+  runtime?: DatabaseRuntime,
 ): FailureNotificationDestinationDatabase {
-  const pool = createDatabasePool(config);
+  const lease = acquireDatabasePool(config, runtime);
+  const { pool } = lease;
   const transaction = <T>(
     input: CommandMetadata,
     work: (client: PoolClient) => Promise<T>,
@@ -432,8 +436,8 @@ export function createFailureNotificationDestinationDatabase(
              on version.workspace_id=destination.workspace_id
             and version.destination_id=destination.id
             and version.version=destination.current_config_version
-          where destination.workspace_id=$1 order by destination.created_at,destination.id limit 100`,
-          [input.workspaceId],
+          where destination.workspace_id=$1 order by destination.created_at,destination.id limit $2`,
+          [input.workspaceId, FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT],
         );
         return Object.freeze(result.rows.map(map));
       }),
@@ -627,6 +631,6 @@ export function createFailureNotificationDestinationDatabase(
           );
         await completeCommand(client, input, operation, scope, null);
       }),
-    close: () => pool.end(),
+    close: () => lease.close(),
   });
 }

@@ -16,7 +16,7 @@ import {
   type WorkflowVersionResponse,
   type WorkflowVersionsResponse,
   type WorkflowSummary,
-} from '@pertexo/contracts';
+} from '@pertexo/contracts/workflow-authoring';
 import type { AuthorizedWorkspaceContext } from '../workspaces/index.js';
 
 export {

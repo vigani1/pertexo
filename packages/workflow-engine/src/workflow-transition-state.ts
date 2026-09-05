@@ -1,6 +1,7 @@
 import { WorkflowEngineError } from './errors.js';
 import type { SchedulerState } from './graph-scheduler.js';
 import { compareOrdinal } from './ordering.js';
+import { sameBranchPath, sameIterationPath } from './scope.js';
 import { invocationKey as createInvocationKey } from './scheduling.js';
 import type {
   AttemptAdmissionPlan,
@@ -146,6 +147,10 @@ export function sameJoinDeclaration(
   right: JoinState,
 ): boolean {
   return (
+    left.joinInvocationKey === right.joinInvocationKey &&
+    left.joinId === right.joinId &&
+    sameBranchPath(left.branchPath, right.branchPath) &&
+    sameIterationPath(left.iterationPath, right.iterationPath) &&
     JSON.stringify(left.policy) === JSON.stringify(right.policy) &&
     left.ledger.length === right.ledger.length &&
     left.ledger.every(
@@ -159,7 +164,15 @@ export function sameLoopDeclaration(
   right: LoopState,
 ): boolean {
   return (
+    left.controlInvocationKey === right.controlInvocationKey &&
     left.loopId === right.loopId &&
+    sameBranchPath(left.branchPath, right.branchPath) &&
+    sameIterationPath(left.iterationPath, right.iterationPath) &&
+    left.bodySinkNodeId === right.bodySinkNodeId &&
+    left.bodyRootNodeIds.length === right.bodyRootNodeIds.length &&
+    left.bodyRootNodeIds.every(
+      (nodeId, index) => nodeId === right.bodyRootNodeIds[index],
+    ) &&
     left.collection.kind === right.collection.kind &&
     sameOutputReference(left.collection, right.collection) &&
     left.collectionChecksum === right.collectionChecksum &&
@@ -239,10 +252,8 @@ export function assertLoopInvocations(
             iterationPath,
           }),
         )
-      : [...invocations.values()].find(
-          (candidate) =>
-            JSON.stringify(candidate.iterationPath ?? []) ===
-            JSON.stringify(iterationPath),
+      : [...invocations.values()].find((candidate) =>
+          sameIterationPath(candidate.iterationPath, iterationPath),
         );
     if (invocation === undefined)
       throw new WorkflowEngineError(
@@ -269,8 +280,7 @@ export function assertLoopInvocations(
           )
         : [...invocations.values()].find(
             (candidate) =>
-              JSON.stringify(candidate.iterationPath ?? []) ===
-                JSON.stringify(iterationPath) &&
+              sameIterationPath(candidate.iterationPath, iterationPath) &&
               isTerminalNodeStatus(candidate.status),
           );
     if (invocation === undefined || !isTerminalNodeStatus(invocation.status))

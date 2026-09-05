@@ -5,6 +5,7 @@ import {
   createIdentityWorkspaceDatabase,
   createOidcLoginTransactionStore,
   type DatabaseConfig,
+  type DatabaseRuntime,
   type IdentityWorkspaceDatabase,
   type OidcLoginTransactionStore,
 } from '@pertexo/database/api';
@@ -45,6 +46,7 @@ export function createApiIdentityRuntime(
   config: ApiIdentityConfig,
   databaseConfig: DatabaseConfig,
   overrides: ApiIdentityRuntimeOverrides = {},
+  runtime?: DatabaseRuntime,
 ): ApiIdentityRuntime {
   const provider =
     overrides.provider ??
@@ -64,10 +66,11 @@ export function createApiIdentityRuntime(
     });
   const encryption = createOidcSecretEncryptionAdapter(config.secretEncryption);
   const identityDatabase =
-    overrides.database ?? createIdentityWorkspaceDatabase(databaseConfig);
+    overrides.database ??
+    createIdentityWorkspaceDatabase(databaseConfig, runtime);
   const transactions =
     overrides.transactions ??
-    createOidcLoginTransactionStore(databaseConfig, encryption);
+    createOidcLoginTransactionStore(databaseConfig, encryption, runtime);
   const persistence = new DatabaseIdentityWorkspaceAdapter(identityDatabase);
   const telemetry =
     overrides.telemetry ??

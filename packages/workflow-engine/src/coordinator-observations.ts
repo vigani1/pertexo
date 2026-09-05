@@ -6,11 +6,12 @@ import {
 } from '@pertexo/workflow-model/canonical-json';
 
 import type { parseCheckpoint } from './checkpoint.js';
-import { executableEdges, executableNodes } from './executable-graph.js';
-import {
-  normalizeBoundedEngineJson,
-  type CompiledWorkflowExecutableV2,
+import { executableEdges } from './executable-graph.js';
+import type {
+  CompiledWorkflowExecutableV2,
+  WorkflowExecutableNodeV2,
 } from './executable-workflow.js';
+import { completedOutputReference } from './coordinator-output.js';
 import {
   configuredBranchOutputPorts,
   configuredParallelOutputPorts,
@@ -22,50 +23,21 @@ import {
   record,
 } from './operation-values.js';
 import { compareOrdinal } from './ordering.js';
+import { branchPathHasPrefix, sameIterationPath } from './scope.js';
 import { uuidPattern } from './persisted-observations.js';
 import { invocationKey as createInvocationKey } from './scheduling.js';
-import type {
-  JoinPolicy,
-  OutputReference,
-  WorkflowObservation,
-} from './types.js';
+import type { JoinPolicy, WorkflowObservation } from './types.js';
 
-function completedOutputReference(
-  outcome: Readonly<Record<string, JsonValue>>,
-  attemptId: string,
-): OutputReference | undefined {
-  const output = outcome.output;
-  if (!isJsonRecord(output)) return undefined;
-  if (output.kind === 'inline' && output.attemptId === attemptId)
-    return { kind: 'inline', attemptId };
-  if (
-    output.kind === 'artifact' &&
-    typeof output.artifactId === 'string' &&
-    uuidPattern.test(output.artifactId)
-  )
-    return { kind: 'artifact', artifactId: output.artifactId };
-  return undefined;
-}
+type CheckpointInvocation = ReturnType<
+  typeof parseCheckpoint
+>['invocations'][number];
 
 export function branchSelectionObservations(
-  value: unknown,
-  persistedValue: unknown,
-  checkpoint: ReturnType<typeof parseCheckpoint>,
-  executable: CompiledWorkflowExecutableV2,
+  completedItems: readonly JsonValue[],
+  successfulOutcomes: ReadonlyMap<string, Readonly<Record<string, JsonValue>>>,
+  invocations: ReadonlyMap<string, CheckpointInvocation>,
+  nodes: ReadonlyMap<string, WorkflowExecutableNodeV2>,
 ): readonly WorkflowObservation[] {
-  if (value === undefined) return [];
-  let normalized: JsonValue;
-  let persisted: JsonValue;
-  try {
-    normalized = normalizeBoundedEngineJson(value);
-    persisted = normalizeBoundedEngineJson(persistedValue ?? []);
-  } catch {
-    operationError('observation_invalid', 'completed outputs are invalid');
-  }
-  if (!Array.isArray(normalized) || !Array.isArray(persisted))
-    operationError('observation_invalid', 'completed outputs must be an array');
-  const completedItems = normalized as readonly JsonValue[];
-  const persistedItems = persisted as readonly JsonValue[];
   const seen = new Map<string, string>();
   return completedItems.flatMap((item): WorkflowObservation[] => {
     const material = record(item, 'observation_invalid', 'completed output');
@@ -92,28 +64,19 @@ export function branchSelectionObservations(
       return [];
     }
     seen.set(identity, canonicalMaterial);
-    const correspondingOutcome = persistedItems.some((candidate) => {
-      if (!isJsonRecord(candidate)) return false;
-      return (
-        candidate.kind === 'outcome' &&
-        candidate.sequence === material.sequence &&
-        candidate.attemptId === material.attemptId &&
-        candidate.invocationKey === material.invocationKey &&
-        candidate.status === 'succeeded' &&
-        completedOutputReference(candidate, attemptId) !== undefined
-      );
-    });
-    if (!correspondingOutcome)
+    const correspondingOutcome = successfulOutcomes.get(
+      `${String(material.sequence)}\u0000${material.attemptId}\u0000${material.invocationKey}`,
+    );
+    if (
+      correspondingOutcome === undefined ||
+      completedOutputReference(correspondingOutcome, attemptId) === undefined
+    )
       operationError(
         'observation_invalid',
         'completed output has no matching persisted outcome',
       );
-    const invocation = checkpoint.invocations.find(
-      ({ invocationKey }) => invocationKey === material.invocationKey,
-    );
-    const node = executableNodes(executable.envelope.graph).find(
-      ({ id }) => id === invocation?.nodeId,
-    );
+    const invocation = invocations.get(material.invocationKey);
+    const node = nodes.get(invocation?.nodeId ?? '');
     if (node === undefined) return [];
     const parallelPorts = configuredParallelOutputPorts(node);
     if (parallelPorts !== undefined) {
@@ -164,30 +127,17 @@ export function branchSelectionObservations(
 }
 
 export function forEachCoordinatorObservations(
-  value: unknown,
-  persistedValue: unknown,
+  completedItems: readonly JsonValue[],
+  persistedItems: readonly JsonValue[],
+  successfulOutcomes: ReadonlyMap<string, Readonly<Record<string, JsonValue>>>,
   checkpoint: ReturnType<typeof parseCheckpoint>,
-  executable: CompiledWorkflowExecutableV2,
+  invocations: ReadonlyMap<string, CheckpointInvocation>,
+  nodes: ReadonlyMap<string, WorkflowExecutableNodeV2>,
   derivedObservations: readonly WorkflowObservation[] = [],
 ): Readonly<{
   observations: readonly WorkflowObservation[];
   declarationInvocationKeys: ReadonlySet<string>;
 }> {
-  let completed: JsonValue;
-  let persisted: JsonValue;
-  try {
-    completed = normalizeBoundedEngineJson(value ?? []);
-    persisted = normalizeBoundedEngineJson(persistedValue ?? []);
-  } catch {
-    operationError('observation_invalid', 'completed outputs are invalid');
-  }
-  if (!Array.isArray(completed) || !Array.isArray(persisted))
-    operationError('observation_invalid', 'completed outputs must be an array');
-  const completedItems = completed as readonly JsonValue[];
-  const persistedItems = persisted as readonly JsonValue[];
-  const nodes = new Map(
-    executableNodes(executable.envelope.graph).map((node) => [node.id, node]),
-  );
   const declarations = new Set<string>();
   const declarationMaterials = new Map<string, string>();
   const observations: WorkflowObservation[] = [];
@@ -238,23 +188,15 @@ export function forEachCoordinatorObservations(
         'observation_invalid',
         'completed output identity is invalid',
       );
-    const outcome = persistedItems.find(
-      (candidate) =>
-        isJsonRecord(candidate) &&
-        candidate.kind === 'outcome' &&
-        candidate.sequence === material.sequence &&
-        candidate.attemptId === material.attemptId &&
-        candidate.invocationKey === material.invocationKey &&
-        candidate.status === 'succeeded',
+    const outcome = successfulOutcomes.get(
+      `${String(material.sequence)}\u0000${material.attemptId}\u0000${material.invocationKey}`,
     );
-    if (!isJsonRecord(outcome))
+    if (outcome === undefined)
       operationError(
         'observation_invalid',
         'completed output has no matching persisted outcome',
       );
-    const invocation = checkpoint.invocations.find(
-      ({ invocationKey }) => invocationKey === material.invocationKey,
-    );
+    const invocation = invocations.get(material.invocationKey);
     const node = nodes.get(invocation?.nodeId ?? '');
     if (
       invocation === undefined ||
@@ -343,16 +285,13 @@ export function forEachCoordinatorObservations(
       });
       const failedInvocation = checkpoint.invocations.find(
         (invocation) =>
-          JSON.stringify(invocation.iterationPath ?? []) ===
-            JSON.stringify(iterationPath) &&
+          sameIterationPath(invocation.iterationPath, iterationPath) &&
           ['failed', 'canceled', 'timed_out', 'outcome_unknown'].includes(
             terminalOutcomes.get(invocation.invocationKey) ?? '',
           ),
       );
       const terminalInvocationKey = failedInvocation?.invocationKey ?? sinkKey;
-      const checkpointSink = checkpoint.invocations.find(
-        ({ invocationKey }) => invocationKey === sinkKey,
-      );
+      const checkpointSink = invocations.get(sinkKey);
       const terminalStatus =
         terminalOutcomes.get(terminalInvocationKey) ??
         (checkpointSink?.status === 'skipped' ? 'skipped' : undefined);
@@ -387,6 +326,7 @@ export function mergeCoordinatorObservations(
   executable: CompiledWorkflowExecutableV2,
   checkpoint: ReturnType<typeof parseCheckpoint>,
   observations: readonly WorkflowObservation[],
+  nodes: ReadonlyMap<string, WorkflowExecutableNodeV2>,
 ): readonly WorkflowObservation[] {
   const projected = new Map(
     checkpoint.invocations.map((invocation) => [
@@ -406,9 +346,12 @@ export function mergeCoordinatorObservations(
         : { output: observation.output }),
     });
   }
-  const nodes = new Map(
-    executableNodes(executable.envelope.graph).map((node) => [node.id, node]),
-  );
+  const succeededByNode = new Map<string, typeof checkpoint.invocations>();
+  for (const invocation of projected.values()) {
+    if (invocation.status !== 'succeeded') continue;
+    const group = succeededByNode.get(invocation.nodeId) ?? [];
+    succeededByNode.set(invocation.nodeId, [...group, invocation]);
+  }
   const edges = executableEdges(executable.envelope.graph);
   return [...nodes.values()]
     .filter(
@@ -434,11 +377,7 @@ export function mergeCoordinatorObservations(
           : configuredParallelOutputPorts(parallel);
       if (branchIds === undefined)
         operationError('workflow_identity_invalid', 'Merge pairing is invalid');
-      const parallelInvocations = [...projected.values()].filter(
-        (invocation) =>
-          invocation.nodeId === parallelNodeId &&
-          invocation.status === 'succeeded',
-      );
+      const parallelInvocations = succeededByNode.get(parallelNodeId) ?? [];
       return parallelInvocations.flatMap(
         (parallelInvocation): WorkflowObservation[] => {
           const joinInvocationKey = createInvocationKey({
@@ -473,15 +412,14 @@ export function mergeCoordinatorObservations(
               )?.source.nodeId;
               const scoped = [...projected.values()].filter(
                 (invocation) =>
-                  JSON.stringify(invocation.iterationPath ?? []) ===
-                    JSON.stringify(parallelInvocation.iterationPath ?? []) &&
-                  expectedBranchPath.every((part, index) => {
-                    const candidatePart = invocation.branchPath?.[index];
-                    return (
-                      candidatePart?.nodeId === part.nodeId &&
-                      candidatePart.outputPort === part.outputPort
-                    );
-                  }),
+                  sameIterationPath(
+                    invocation.iterationPath,
+                    parallelInvocation.iterationPath,
+                  ) &&
+                  branchPathHasPrefix(
+                    invocation.branchPath,
+                    expectedBranchPath,
+                  ),
               );
               if (scoped.length === 0 && mergeSourceNodeId === parallelNodeId)
                 return [

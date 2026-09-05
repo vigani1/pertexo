@@ -17,41 +17,93 @@ import {
   strongEtagSchema,
 } from './http/workflow-authoring.js';
 import { idempotencyKeySchema } from './http/identity-workspace.js';
+import { projectContractSchema } from './schema-projection.js';
+import {
+  authenticatedComponents,
+  jsonRequest,
+  jsonResponse,
+  jsonSchema,
+  problemResponse,
+  responseReference,
+  uuidPathParameter as pathParameter,
+} from './openapi-primitives.js';
 import { z } from 'zod';
 
 export * from './http/workflow-authoring.js';
 
-const schemas = Object.freeze({
-  ApiProblem: jsonSchema(apiProblemSchema, 'output'),
-  WorkflowRevisionConflictProblem: jsonSchema(
-    workflowRevisionConflictProblemSchema,
-    'output',
-  ),
-  WorkflowCreateRequest: jsonSchema(workflowCreateRequestSchema, 'input'),
-  WorkflowCreateResponse: jsonSchema(workflowCreateResponseSchema, 'output'),
-  WorkflowSummary: jsonSchema(workflowSummarySchema, 'output'),
-  WorkflowListResponse: jsonSchema(workflowListResponseSchema, 'output'),
-  WorkflowDraftSaveRequest: jsonSchema(workflowDraftSaveRequestSchema, 'input'),
-  WorkflowDraftResponse: jsonSchema(workflowDraftResponseSchema, 'output'),
-  WorkflowCompatibilityReport: jsonSchema(
-    workflowCompatibilityReportSchema,
-    'output',
-  ),
-  WorkflowValidationResponse: jsonSchema(
-    workflowValidateResponseSchema,
-    'output',
-  ),
-  WorkflowPublishResponse: jsonSchema(workflowPublishResponseSchema, 'output'),
-  WorkflowVersionResponse: jsonSchema(workflowVersionResponseSchema, 'output'),
-  WorkflowVersionsResponse: jsonSchema(
-    workflowVersionsResponseSchema,
-    'output',
-  ),
-});
+function contractSchemas(target: 'client' | 'openapi') {
+  const project = (name: string, schema: z.ZodType, io: 'input' | 'output') =>
+    projectContractSchema(name, schema, io, target);
+  return Object.freeze({
+    ApiProblem: project('ApiProblem', apiProblemSchema, 'output'),
+    WorkflowRevisionConflictProblem: project(
+      'WorkflowRevisionConflictProblem',
+      workflowRevisionConflictProblemSchema,
+      'output',
+    ),
+    WorkflowCreateRequest: project(
+      'WorkflowCreateRequest',
+      workflowCreateRequestSchema,
+      'input',
+    ),
+    WorkflowCreateResponse: project(
+      'WorkflowCreateResponse',
+      workflowCreateResponseSchema,
+      'output',
+    ),
+    WorkflowSummary: project(
+      'WorkflowSummary',
+      workflowSummarySchema,
+      'output',
+    ),
+    WorkflowListResponse: project(
+      'WorkflowListResponse',
+      workflowListResponseSchema,
+      'output',
+    ),
+    WorkflowDraftSaveRequest: project(
+      'WorkflowDraftSaveRequest',
+      workflowDraftSaveRequestSchema,
+      'input',
+    ),
+    WorkflowDraftResponse: project(
+      'WorkflowDraftResponse',
+      workflowDraftResponseSchema,
+      'output',
+    ),
+    WorkflowCompatibilityReport: project(
+      'WorkflowCompatibilityReport',
+      workflowCompatibilityReportSchema,
+      'output',
+    ),
+    WorkflowValidationResponse: project(
+      'WorkflowValidationResponse',
+      workflowValidateResponseSchema,
+      'output',
+    ),
+    WorkflowPublishResponse: project(
+      'WorkflowPublishResponse',
+      workflowPublishResponseSchema,
+      'output',
+    ),
+    WorkflowVersionResponse: project(
+      'WorkflowVersionResponse',
+      workflowVersionResponseSchema,
+      'output',
+    ),
+    WorkflowVersionsResponse: project(
+      'WorkflowVersionsResponse',
+      workflowVersionsResponseSchema,
+      'output',
+    ),
+  });
+}
+const clientSchemas = contractSchemas('client');
+const openApiSchemas = contractSchemas('openapi');
 
 export const workflowAuthoringClientContract = Object.freeze({
   schemaVersion: '1.0.0',
-  schemas,
+  schemas: clientSchemas,
 });
 
 const etagResponseHeader = {
@@ -253,75 +305,16 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
       },
     },
   },
-  components: {
-    schemas,
-    responses: problemResponses,
-    securitySchemes: {
-      cookieSession: {
-        type: 'apiKey',
-        in: 'cookie',
-        name: 'pertexo_session',
-      },
-    },
-  },
+  components: authenticatedComponents(openApiSchemas, problemResponses),
 });
 
-type SchemaName = keyof typeof schemas;
-type ProblemResponseName = keyof typeof problemResponses;
-
-function jsonSchema(schema: z.ZodType, io: 'input' | 'output') {
-  return z.toJSONSchema(schema, {
-    io,
-    target: 'draft-2020-12',
-    unrepresentable: 'any',
-  });
-}
-function schemaReference(name: SchemaName): Readonly<{ $ref: string }> {
-  return { $ref: `#/components/schemas/${name}` };
-}
-function responseReference(
-  name: ProblemResponseName,
-): Readonly<{ $ref: string }> {
-  return { $ref: `#/components/responses/${name}` };
-}
-function jsonRequest(name: SchemaName) {
-  return {
-    required: true,
-    content: { 'application/json': { schema: schemaReference(name) } },
-  } as const;
-}
-function jsonResponse(description: string, name: SchemaName) {
-  return {
-    description,
-    content: { 'application/json': { schema: schemaReference(name) } },
-  } as const;
-}
+type SchemaName = keyof typeof openApiSchemas;
 function jsonResponseWithHeaders(
   description: string,
   name: SchemaName,
   headers: Readonly<Record<string, unknown>>,
 ) {
   return { ...jsonResponse(description, name), headers } as const;
-}
-function problemResponse(description: string) {
-  return {
-    description,
-    content: {
-      'application/problem+json': { schema: schemaReference('ApiProblem') },
-    },
-  } as const;
-}
-function pathParameter(
-  name: 'workspaceId' | 'workflowId',
-  description: string,
-) {
-  return {
-    name,
-    in: 'path',
-    required: true,
-    description,
-    schema: jsonSchema(z.uuid(), 'input'),
-  } as const;
 }
 function queryParameter(name: 'limit' | 'after', schema: z.ZodType) {
   return {

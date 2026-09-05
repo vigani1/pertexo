@@ -1,7 +1,11 @@
 import type { INestApplicationContext } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import type { WorkspaceDatabase } from '@pertexo/database/execution';
-import type { OutboxDispatcherDatabase } from '@pertexo/database/execution';
+import {
+  createDatabaseRuntime,
+  type DatabaseRuntime,
+  type OutboxDispatcherDatabase,
+  type WorkspaceDatabase,
+} from '@pertexo/database/execution';
 import type { QueueProducer } from '@pertexo/queue';
 import type {
   StructuredLogger,
@@ -32,8 +36,10 @@ export type WorkerApplicationDependencies = Readonly<{
   previewMaintenanceRuntime?: PreviewMaintenanceRuntime;
   triggerRuntime?: TriggerRuntime;
   database?: WorkspaceDatabase;
+  databaseRuntime?: DatabaseRuntime;
   dispatchConsumerCapabilities?: DispatchConsumerCapabilityRegistry;
   dispatcherDatabase?: OutboxDispatcherDatabase;
+  dispatcherDatabaseRuntime?: DatabaseRuntime;
   queueProducer?: QueueProducer;
   logger: StructuredLogger;
   telemetry: TelemetryLifecycle;
@@ -44,10 +50,40 @@ export async function createWorkerApplication(
   config: WorkerConfig,
   dependencies: WorkerApplicationDependencies,
 ): Promise<INestApplicationContext> {
-  const application = await NestFactory.createApplicationContext(
-    WorkerModule.register(config, dependencies),
-    { abortOnError: false, logger: new NestLoggerAdapter(dependencies.logger) },
-  );
+  const databaseRuntime =
+    dependencies.databaseRuntime ??
+    (dependencies.database === undefined
+      ? createDatabaseRuntime(config.database, { role: 'worker' })
+      : undefined);
+  const dispatcherDatabaseRuntime =
+    dependencies.dispatcherDatabaseRuntime ??
+    (dependencies.dispatcherDatabase === undefined
+      ? createDatabaseRuntime(config.dispatcherDatabase, {
+          role: 'dispatcher',
+        })
+      : undefined);
+  let application: INestApplicationContext;
+  try {
+    application = await NestFactory.createApplicationContext(
+      WorkerModule.register(config, {
+        ...dependencies,
+        ...(databaseRuntime === undefined ? {} : { databaseRuntime }),
+        ...(dispatcherDatabaseRuntime === undefined
+          ? {}
+          : { dispatcherDatabaseRuntime }),
+      }),
+      {
+        abortOnError: false,
+        logger: new NestLoggerAdapter(dependencies.logger),
+      },
+    );
+  } catch (error: unknown) {
+    await Promise.allSettled([
+      databaseRuntime?.close(),
+      dispatcherDatabaseRuntime?.close(),
+    ]);
+    throw error;
+  }
 
   try {
     await application

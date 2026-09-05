@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 
 import {
   NodeDispatchEvidenceError,
+  ProviderExecutionRateLimitError,
   type NodeExecutionRuntime,
 } from '@pertexo/node-sdk/server';
 import { describe, expect, it, vi } from 'vitest';
@@ -15,6 +16,7 @@ import {
 import {
   createEmailSendNotificationExecutorRegistration,
   createResendClient,
+  EmailSendNotificationExecutorError,
   SECURE_HTTP_ERROR_CODE,
   SecureHttpClient,
   SecureHttpError,
@@ -123,6 +125,8 @@ describe('email.send_notification@1', () => {
       'a@example.com\r\nBcc:x@example.com',
       'a\0@example.com',
       'a@localhost',
+      'missing-at.example.com',
+      'a@@example.com',
       `${'a'.repeat(65)}@example.com`,
     ])
       expect(providerEmailMailboxSchema.safeParse(invalid).success).toBe(false);
@@ -252,6 +256,66 @@ describe('email.send_notification@1', () => {
   });
 
   it.each([
+    [429, {}, '{}', { kind: 'rate_limited', retryAfterMillis: 1_000 }],
+    [
+      429,
+      { 'retry-after': 'invalid' },
+      '{}',
+      { kind: 'rate_limited', retryAfterMillis: 1_000 },
+    ],
+    [
+      429,
+      { 'retry-after': '0' },
+      '{}',
+      { kind: 'rate_limited', retryAfterMillis: 1_000 },
+    ],
+    [200, {}, '{', { kind: 'invalid_response' }],
+    [200, {}, '{"id":"not-a-uuid"}', { kind: 'invalid_response' }],
+    [
+      400,
+      {},
+      '{"name":"validation_error"}',
+      { kind: 'rejected', error: 'validation_error', status: 400 },
+    ],
+    [500, {}, '{}', { kind: 'http_failure', status: 500 }],
+  ] as const)(
+    'classifies Resend HTTP %s response and clears request and response bytes',
+    async (status, headers, payload, expected) => {
+      const responseBody = new TextEncoder().encode(payload);
+      let requestBody: Uint8Array | undefined;
+      const client = createResendClient({
+        execute: (request) => {
+          requestBody = request.body;
+          expect(request.signal).toBeUndefined();
+          return Promise.resolve({
+            status,
+            headers,
+            body: responseBody,
+            bodyEncoding: 'utf8',
+            finalUrl: request.url,
+            redirectCount: 0,
+          });
+        },
+      });
+
+      await expect(
+        client.sendNotification({
+          apiKey: 're_123456789_secret',
+          fromEmail: 'sender@example.com',
+          toEmail: 'recipient@example.com',
+          subject: 'Deployment complete',
+          text: 'Production is healthy.',
+          idempotencyKey: providerIdempotencyKey,
+          timeoutMillis: 30_000,
+          beforeDispatch: () => Promise.resolve(),
+        }),
+      ).resolves.toEqual(expected);
+      expect(requestBody?.every((byte) => byte === 0)).toBe(true);
+      expect(responseBody.every((byte) => byte === 0)).toBe(true);
+    },
+  );
+
+  it.each([
     [{ kind: 'http_failure', status: 400 }, 'failed', 'provider', false],
     [{ kind: 'http_failure', status: 401 }, 'failed', 'authentication', false],
     [{ kind: 'http_failure', status: 422 }, 'failed', 'provider', false],
@@ -262,6 +326,16 @@ describe('email.send_notification@1', () => {
       false,
     ],
     [{ kind: 'http_failure', status: 503 }, 'retry', 'provider', true],
+    [
+      {
+        kind: 'rejected',
+        error: 'invalid_api_key',
+        status: 401,
+      },
+      'failed',
+      'authentication',
+      false,
+    ],
     [
       {
         kind: 'rejected',
@@ -401,6 +475,103 @@ describe('email.send_notification@1', () => {
       errorKind: 'authentication',
       possiblyDispatched: true,
     });
+  });
+
+  it('classifies credential admission failures before provider dispatch', async () => {
+    const invalidRuntime = runtime(undefined);
+    invalidRuntime.value = Object.freeze({
+      ...invalidRuntime.value,
+      sideEffectClass: 'unsafe',
+    });
+    await expect(
+      createEmailSendNotificationExecutorRegistration({
+        client: { sendNotification: invalidRuntime.sendNotification },
+      }).execute(invocation(invalidRuntime.value)),
+    ).rejects.toMatchObject({
+      kind: 'failed',
+      errorKind: 'configuration',
+      possiblyDispatched: false,
+    });
+    expect(invalidRuntime.sendNotification).not.toHaveBeenCalled();
+
+    const missingFence = runtime(undefined);
+    const connections = missingFence.value.connections;
+    if (connections === undefined)
+      throw new Error('Expected the runtime fixture to include connections');
+    const resolve = connections.resolve.bind(connections);
+    missingFence.value = Object.freeze({
+      ...missingFence.value,
+      connections: { resolve },
+    });
+    await expect(
+      createEmailSendNotificationExecutorRegistration({
+        client: { sendNotification: missingFence.sendNotification },
+      }).execute(invocation(missingFence.value)),
+    ).rejects.toMatchObject({
+      kind: 'failed',
+      errorKind: 'authentication',
+      possiblyDispatched: false,
+    });
+
+    const limited = runtime(undefined);
+    limited.value = Object.freeze({
+      ...limited.value,
+      connections: {
+        assertCurrent: limited.assertCurrent,
+        resolve: () => Promise.reject(new ProviderExecutionRateLimitError(7)),
+      },
+    });
+    await expect(
+      createEmailSendNotificationExecutorRegistration({
+        client: { sendNotification: limited.sendNotification },
+      }).execute(invocation(limited.value)),
+    ).rejects.toMatchObject({
+      kind: 'retry',
+      errorKind: 'rate_limit',
+      possiblyDispatched: false,
+      retryAfterMillis: 7_000,
+    });
+
+    const mismatched = runtime(undefined);
+    mismatched.value = Object.freeze({
+      ...mismatched.value,
+      connections: {
+        assertCurrent: mismatched.assertCurrent,
+        resolve: () =>
+          Promise.resolve({
+            connectionId,
+            providerKey: 'slack',
+            authType: 'resend_api_key',
+            secretVersionId,
+            secret: mismatched.secret,
+          }),
+      },
+    });
+    await expect(
+      createEmailSendNotificationExecutorRegistration({
+        client: { sendNotification: mismatched.sendNotification },
+      }).execute(invocation(mismatched.value)),
+    ).rejects.toMatchObject({
+      kind: 'failed',
+      errorKind: 'configuration',
+      possiblyDispatched: false,
+    });
+  });
+
+  it('preserves an executor failure returned by an injected provider adapter', async () => {
+    const state = runtime(
+      new EmailSendNotificationExecutorError({
+        kind: 'retry',
+        errorKind: 'provider',
+        possiblyDispatched: true,
+      }),
+    );
+
+    await expect(
+      createEmailSendNotificationExecutorRegistration({
+        client: { sendNotification: state.sendNotification },
+      }).execute(invocation(state.value)),
+    ).rejects.toBeInstanceOf(EmailSendNotificationExecutorError);
   });
 
   it('preserves dispatch identity through the real secure HTTP boundary', async () => {
@@ -592,6 +763,24 @@ describe('email.send_notification@1', () => {
       }).execute(invocation(state.value)),
     ).rejects.toMatchObject({
       kind: 'outcome_unknown',
+      possiblyDispatched: true,
+    });
+  });
+
+  it('preserves earlier dispatch ambiguity for an unexpected adapter failure', async () => {
+    const state = runtime(
+      new Error('provider adapter failed'),
+      secretVersionId,
+      originalBinding,
+      true,
+    );
+    await expect(
+      createEmailSendNotificationExecutorRegistration({
+        client: { sendNotification: state.sendNotification },
+      }).execute(invocation(state.value)),
+    ).rejects.toMatchObject({
+      kind: 'outcome_unknown',
+      errorKind: 'provider',
       possiblyDispatched: true,
     });
   });

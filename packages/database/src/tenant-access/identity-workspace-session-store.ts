@@ -2,6 +2,7 @@ import { generatePersistedId } from '../platform/persisted-id.js';
 
 import type { DatabaseError, Pool } from 'pg';
 import { z } from 'zod';
+import { sha256HexSchema } from '../validation/persisted-primitives.js';
 
 import type {
   CreateSessionInput,
@@ -15,7 +16,7 @@ import {
 import { mapSession } from './identity-workspace-rows.js';
 
 const uuidSchema = z.uuid();
-const digestSchema = z.string().regex(/^[0-9a-f]{64}$/u);
+const digestSchema = sha256HexSchema;
 
 type SessionStore = Pick<
   IdentityWorkspaceDatabase,

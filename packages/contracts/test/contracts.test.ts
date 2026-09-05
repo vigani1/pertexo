@@ -12,9 +12,13 @@ import {
   connectionResponseSchema,
   connectionTestRequestSchema,
   connectionTestResponseSchema,
+  httpHeaderCredentialSchema,
   httpHeadersCredentialSchema,
+  resendApiKeyCredentialSchema,
 } from '../src/http/connections.js';
 import {
+  API_PROBLEM_CODES,
+  API_PROBLEM_MANIFEST,
   apiProblemSchema,
   apiProblemShape,
 } from '../src/errors/api-problem.js';
@@ -32,7 +36,11 @@ import {
   nodeTestingClientContract,
   nodeTestingOpenApiDocument,
 } from '../src/node-testing.js';
-import { workspaceCreateRequestSchema } from '../src/http/identity-workspace.js';
+import {
+  idempotencyKeySchema,
+  workspaceCreateRequestSchema,
+} from '../src/http/identity-workspace.js';
+import { manifestProblemResponse } from '../src/openapi-primitives.js';
 import {
   strongEtagSchema,
   workflowCompatibilityReportSchema,
@@ -54,7 +62,99 @@ import {
   workflowRunStartRequestSchema,
 } from '../src/http/workflow-runs.js';
 
+function collectReferences(
+  value: unknown,
+  references: string[] = [],
+): string[] {
+  if (value === null || typeof value !== 'object') return references;
+  if (Array.isArray(value)) {
+    for (const item of value) collectReferences(item, references);
+    return references;
+  }
+  const record = value as Record<string, unknown>;
+  if (typeof record.$ref === 'string') references.push(record.$ref);
+  for (const nested of Object.values(record))
+    collectReferences(nested, references);
+  return references;
+}
+
+function resolvesLocalReference(document: unknown, reference: string): boolean {
+  if (!reference.startsWith('#/')) return true;
+  let current = document;
+  for (const encodedPart of reference.slice(2).split('/')) {
+    if (current === null || typeof current !== 'object') return false;
+    const part = encodedPart.replaceAll('~1', '/').replaceAll('~0', '~');
+    current = (current as Record<string, unknown>)[part];
+    if (current === undefined) return false;
+  }
+  return true;
+}
+
 describe('public contracts package', () => {
+  it('fails closed for mismatched problem metadata', () => {
+    expect(() => manifestProblemResponse(500, 'auth.unauthenticated')).toThrow(
+      'status does not match',
+    );
+  });
+
+  it('enforces credential and idempotency boundary refinements', () => {
+    expect(httpHeaderCredentialSchema.safeParse({}).success).toBe(false);
+    expect(
+      httpHeaderCredentialSchema.safeParse({
+        Authorization: 'first',
+        authorization: 'second',
+      }).success,
+    ).toBe(false);
+    expect(
+      httpHeaderCredentialSchema.safeParse({ host: 'provider.test' }).success,
+    ).toBe(false);
+    expect(
+      httpHeaderCredentialSchema.safeParse({
+        authorization: `Bearer ${'x'.repeat(16_384)}`,
+      }).success,
+    ).toBe(false);
+
+    expect(
+      resendApiKeyCredentialSchema.parse({
+        schemaVersion: 1,
+        type: 'resend_api_key',
+        apiKey: 're_example_key',
+        fromEmail: 'Alerts@Example.COM',
+      }).fromEmail,
+    ).toBe('Alerts@example.com');
+    for (const fromEmail of [
+      'bad email@example.com',
+      'missing-domain@example',
+      'two@@example.com',
+      `${'a'.repeat(65)}@example.com`,
+      'alerts@-example.com',
+    ])
+      expect(
+        resendApiKeyCredentialSchema.safeParse({
+          schemaVersion: 1,
+          type: 'resend_api_key',
+          apiKey: 're_example_key',
+          fromEmail,
+        }).success,
+      ).toBe(false);
+
+    expect(idempotencyKeySchema.safeParse('one,two').success).toBe(false);
+    expect(idempotencyKeySchema.safeParse('one-two').success).toBe(true);
+  });
+
+  it('maps every problem code exactly once to stable HTTP metadata', () => {
+    expect(Object.keys(API_PROBLEM_MANIFEST)).toEqual(API_PROBLEM_CODES);
+    for (const code of API_PROBLEM_CODES) {
+      const entry = API_PROBLEM_MANIFEST[code];
+      expect(entry.status).toBeGreaterThanOrEqual(400);
+      expect(entry.status).toBeLessThan(600);
+      expect(entry.title.length).toBeGreaterThan(0);
+      expect(entry.type).toBe(`urn:pertexo:problem:${code}`);
+      expect(Object.isFrozen(entry)).toBe(true);
+    }
+    expect(Object.isFrozen(API_PROBLEM_MANIFEST)).toBe(true);
+  });
+
   it('separates pure validation from acknowledged durable test execution', () => {
     expect(
       nodeTestRequestSchema.parse({
@@ -259,6 +359,46 @@ describe('public contracts package', () => {
     ).toBe(false);
   });
 
+  it('rejects every HTTP field-value control byte unsupported by transport', () => {
+    const forbidden = [
+      ...Array.from({ length: 32 }, (_, codePoint) => codePoint),
+      0x7f,
+    ].filter((codePoint) => codePoint !== 0x09);
+    for (const codePoint of forbidden) {
+      expect(
+        httpHeadersCredentialSchema.safeParse({
+          schemaVersion: 1,
+          type: 'http_headers',
+          headers: {
+            authorization: `left${String.fromCharCode(codePoint)}right`,
+          },
+        }).success,
+      ).toBe(false);
+    }
+    expect(
+      httpHeadersCredentialSchema.safeParse({
+        schemaVersion: 1,
+        type: 'http_headers',
+        headers: { authorization: 'left\tright' },
+      }).success,
+    ).toBe(true);
+    expect(
+      httpHeadersCredentialSchema.parse({
+        schemaVersion: 1,
+        type: 'http_headers',
+        headers: { 'x-latin1': 'é' },
+      }).headers,
+    ).toEqual({ 'x-latin1': 'é' });
+    expect(
+      resendApiKeyCredentialSchema.safeParse({
+        schemaVersion: 1,
+        type: 'resend_api_key',
+        apiKey: 're_credential',
+        fromEmail: 'invalid:mailbox@example.com',
+      }).success,
+    ).toBe(false);
+  });
+
   it('documents connection and failure-notification destination operations', () => {
     expect(connectionsClientContract.schemas).toHaveProperty(
       'ConnectionCreateRequest',
@@ -393,6 +533,30 @@ describe('public contracts package', () => {
       );
       expect(committed).toBe(artifact.content);
     }
+  });
+
+  it('publishes structurally resolvable documents and a real graph schema', () => {
+    for (const artifact of CONTRACT_ARTIFACTS) {
+      const document = JSON.parse(artifact.content) as unknown;
+      for (const reference of collectReferences(document))
+        expect(
+          resolvesLocalReference(document, reference),
+          `${artifact.fileName}: ${reference}`,
+        ).toBe(true);
+    }
+    const saveRequest = workflowAuthoringClientContract.schemas
+      .WorkflowDraftSaveRequest as {
+      properties?: { graph?: Record<string, unknown> };
+    };
+    expect(saveRequest.properties?.graph).toMatchObject({
+      type: 'object',
+      'x-pertexo-runtime-bounds': true,
+    });
+    expect(saveRequest.properties?.graph?.properties).toMatchObject({
+      nodes: { type: 'array', maxItems: 1_000 },
+      edges: { type: 'array', maxItems: 4_000 },
+      settings: { type: 'object' },
+    });
   });
 
   it('defines strict workflow authoring seams with strong ETag preconditions', () => {

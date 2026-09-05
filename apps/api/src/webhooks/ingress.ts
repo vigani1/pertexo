@@ -1,5 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
 
+import { API_PROBLEM_MANIFEST } from '@pertexo/contracts/errors';
+import type { ApiProblemCode } from '@pertexo/contracts/errors';
+
 import {
   WebhookDeliveryIneligibleError,
   WebhookDeliveryReplayMismatchError,
@@ -25,6 +28,7 @@ import {
 const MAX_BODY = 256 * 1024;
 const JSON_MEDIA_TYPE = /^application\/json(?:\s*;\s*charset=utf-8)?$/iu;
 const IDEMPOTENCY_KEY = /^[\x21-\x2b\x2d-\x7e]{1,128}$/u;
+const ENCRYPTION_TIMEOUT_MS = 30_000;
 
 export type WebhookIngressDependencies = Readonly<{
   database: WebhookTriggerDatabase;
@@ -88,6 +92,16 @@ async function acceptWebhook(
   dependencies: WebhookIngressDependencies,
   telemetry: WebhookIngressTelemetry,
 ): Promise<void> {
+  const disconnected = new AbortController();
+  const onAborted = (): void => {
+    disconnected.abort(new DOMException('Request aborted', 'AbortError'));
+  };
+  request.raw.once('aborted', onAborted);
+  if (request.raw.destroyed) onAborted();
+  const encryptionSignal = AbortSignal.any([
+    disconnected.signal,
+    AbortSignal.timeout(ENCRYPTION_TIMEOUT_MS),
+  ]);
   const requestId =
     safeRequestId(request.headers['x-request-id']) ?? randomUUID();
   const body = request.body;
@@ -168,6 +182,7 @@ async function acceptWebhook(
       dependencies.encryption,
       verification.currentSecret,
       verification,
+      encryptionSignal,
     );
     const currentValid = verifyWebhookSignature({
       secret: current,
@@ -186,6 +201,7 @@ async function acceptWebhook(
         dependencies.encryption,
         previousReference,
         verification,
+        encryptionSignal,
       );
       previousValid = verifyWebhookSignature({
         secret: previous,
@@ -292,6 +308,7 @@ async function acceptWebhook(
       throw error;
     }
   } finally {
+    request.raw.off('aborted', onAborted);
     current?.fill(0);
     previous?.fill(0);
   }
@@ -301,6 +318,7 @@ async function openSecret(
   encryption: WebhookTriggerEnvelopeEncryption,
   sealed: WebhookVerificationReference['currentSecret'],
   verification: Pick<WebhookVerificationReference, 'workspaceId' | 'triggerId'>,
+  signal: AbortSignal,
 ) {
   return encryption.open(
     {
@@ -316,6 +334,7 @@ async function openSecret(
       triggerId: verification.triggerId,
       secretVersionId: sealed.id,
     },
+    signal,
   );
 }
 
@@ -382,20 +401,17 @@ function record(operation: () => void): void {
 async function problem(
   reply: FastifyReply,
   status: number,
-  code: string,
+  code: ApiProblemCode,
   requestId: string,
 ): Promise<void> {
-  await reply
-    .code(status)
-    .type('application/problem+json')
-    .send({
-      type: `urn:pertexo:problem:${code}`,
-      title:
-        status === 401
-          ? 'Webhook authentication failed'
-          : 'Webhook request rejected',
-      status,
-      code,
-      requestId,
-    });
+  const definition = API_PROBLEM_MANIFEST[code];
+  if (definition.status !== status)
+    throw new Error('Webhook problem status does not match its manifest');
+  await reply.code(definition.status).type('application/problem+json').send({
+    type: definition.type,
+    title: definition.title,
+    status: definition.status,
+    code,
+    requestId,
+  });
 }

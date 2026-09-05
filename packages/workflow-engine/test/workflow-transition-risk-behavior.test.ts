@@ -33,7 +33,7 @@ function advance(
 function checkpoint(): ReturnType<typeof createCheckpointV2> {
   return createCheckpointV2({
     engineVersion: 'engine-v2',
-    workflowVersionId: 'version-1',
+    workflowVersionId: '00000000-0000-4000-8000-000000000001',
     iterationBudget: 100,
   });
 }
@@ -77,6 +77,25 @@ describe('workflow transition public risk behavior', () => {
         declaration,
         { ...declaration, branchIds: ['b'] },
       ]),
+    ).toThrow(expect.objectContaining({ code: 'join_invalid' }));
+  });
+
+  it.each([
+    { joinId: 'other' },
+    { branchPath: [{ nodeId: 'condition', outputPort: 'true' }] },
+    { iterationPath: [{ loopNodeId: 'loop', ordinal: 0 }] },
+  ])('rejects a join replay with changed durable identity %#', (changed) => {
+    const declaration = {
+      kind: 'join_declared' as const,
+      joinId: 'join',
+      joinInvocationKey: 'join-scope',
+      branchIds: ['a'],
+      branchPath: [],
+      iterationPath: [],
+      policy: { kind: 'all' as const },
+    };
+    expect(() =>
+      advance(checkpoint(), [declaration, { ...declaration, ...changed }]),
     ).toThrow(expect.objectContaining({ code: 'join_invalid' }));
   });
 
@@ -148,6 +167,32 @@ describe('workflow transition public risk behavior', () => {
   });
 
   it.each([
+    { loopId: 'other' },
+    { branchPath: [{ nodeId: 'condition', outputPort: 'true' }] },
+    { iterationPath: [{ loopNodeId: 'outer', ordinal: 0 }] },
+    { bodyRootNodeIds: ['different'] },
+    { bodySinkNodeId: 'different' },
+  ])('rejects a loop replay with changed durable topology %#', (changed) => {
+    const declaration = {
+      kind: 'loop_started' as const,
+      loopId: 'loop',
+      controlInvocationKey: 'loop-control',
+      branchPath: [],
+      iterationPath: [],
+      bodyRootNodeIds: ['body'],
+      bodySinkNodeId: 'body',
+      collection: inline(ATTEMPT_ID),
+      collectionChecksum: 'sum',
+      collectionSize: 1,
+      maxConcurrency: 1,
+      maxIterations: 1,
+    };
+    expect(() =>
+      advance(checkpoint(), [declaration, { ...declaration, ...changed }]),
+    ).toThrow(expect.objectContaining({ code: 'loop_state_invalid' }));
+  });
+
+  it.each([
     { controlInvocationKey: 'scoped' },
     { branchPath: [] },
     { iterationPath: [] },
@@ -158,7 +203,7 @@ describe('workflow transition public risk behavior', () => {
       advance(
         createCheckpoint({
           engineVersion: 'engine-v1',
-          workflowVersionId: 'version-1',
+          workflowVersionId: '00000000-0000-4000-8000-000000000001',
           iterationBudget: 100,
         }),
         [
@@ -296,7 +341,7 @@ describe('workflow transition public risk behavior', () => {
 
   it('accepts an identical terminal loop replay through checkpoint state', () => {
     const iterationInvocationKey = invocationKey({
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       nodeId: 'body',
       branchPath: [],
       iterationPath: [{ loopNodeId: 'loop', ordinal: 0 }],
@@ -385,7 +430,7 @@ describe('workflow transition public risk behavior', () => {
       advance(
         createCheckpoint({
           engineVersion: 'engine-v1',
-          workflowVersionId: 'version-1',
+          workflowVersionId: '00000000-0000-4000-8000-000000000001',
           iterationBudget: 100,
         }),
         [

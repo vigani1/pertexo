@@ -5,6 +5,7 @@ import {
 import {
   createFailureNotificationStore,
   type DatabaseConfig,
+  type DatabaseRuntime,
   type FailureNotificationStore,
   type OperatorRunReplayStore,
 } from '@pertexo/database/execution';
@@ -46,6 +47,7 @@ export interface PreviewMaintenanceRuntime {
 export async function createPreviewMaintenanceRuntime(
   options: Readonly<{
     database: DatabaseConfig;
+    databaseRuntime?: DatabaseRuntime;
     observer?: QueueConsumerObserver;
     redisUrl: string;
     failureNotificationDelivery?: FailureNotificationDeliveryCapability;
@@ -68,16 +70,25 @@ export async function createPreviewMaintenanceRuntime(
 ): Promise<PreviewMaintenanceRuntime> {
   const reconciliationStore =
     dependencies.reconciliationStore ??
-    createDatabasePreviewReconciliationStore(options.database);
+    createDatabasePreviewReconciliationStore(
+      options.database,
+      options.databaseRuntime,
+    );
   const failureNotificationStore =
     options.failureNotificationDelivery === undefined
       ? undefined
       : (dependencies.failureNotificationStore ??
-        createFailureNotificationStore(options.database));
+        createFailureNotificationStore(
+          options.database,
+          options.databaseRuntime,
+        ));
   const unknownOutcomeStore =
     options.unknownOutcomeReconciliation === true
       ? (dependencies.unknownOutcomeStore ??
-        createDatabaseUnknownOutcomeReconciliationStore(options.database))
+        createDatabaseUnknownOutcomeReconciliationStore(
+          options.database,
+          options.databaseRuntime,
+        ))
       : undefined;
   const runReplayStore =
     options.runReplay === true
@@ -85,6 +96,7 @@ export async function createPreviewMaintenanceRuntime(
         createDatabaseOperatorRunReplayStore(
           options.database,
           options.releaseCohort,
+          options.databaseRuntime,
         ))
       : undefined;
   const failureNotification =

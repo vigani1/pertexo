@@ -5,7 +5,7 @@ import {
   settleJoin,
   type BranchLedgerEntry,
   type JoinPolicy,
-} from '../src/index.js';
+} from '../src/testing.js';
 
 describe('branch and join scheduling', () => {
   const ledger = (

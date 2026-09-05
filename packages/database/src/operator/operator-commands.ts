@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { sha256HexSchema } from '../validation/persisted-primitives.js';
 
 import type { DatabaseConfig } from '../config.js';
 import { OperatorCommandConflictError } from './operator-command-errors.js';
@@ -288,10 +289,7 @@ export function createOperatorCommandDatabase(
           .nullable()
           .parse(commandResult.priorPublishAttempts ?? null),
         result: Object.freeze(commandResult),
-        requestFingerprint: z
-          .string()
-          .regex(/^[0-9a-f]{64}$/u)
-          .parse(row.request_fingerprint),
+        requestFingerprint: sha256HexSchema.parse(row.request_fingerprint),
         status: z
           .enum(['completed', 'failed', 'pending'])
           .parse(row.command_status),

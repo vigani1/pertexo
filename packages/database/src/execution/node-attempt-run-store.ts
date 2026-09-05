@@ -1,4 +1,5 @@
-import { createDatabasePool } from '../platform/postgres-telemetry.js';
+import { acquireDatabasePool } from '../platform/database-runtime.js';
+import type { DatabaseRuntime } from '../platform/database-runtime.js';
 
 import type { DatabaseConfig } from '../config.js';
 import { claimNodeAttemptDelivery } from './node-attempt-run-store-claim.js';
@@ -43,8 +44,10 @@ export type {
 
 export function createNodeAttemptRunStore(
   config: DatabaseConfig,
+  runtime?: DatabaseRuntime,
 ): NodeAttemptRunStore {
-  const pool = createDatabasePool(config);
+  const lease = acquireDatabasePool(config, runtime);
+  const { pool } = lease;
   return Object.freeze({
     claimDelivery: (
       input: Parameters<NodeAttemptRunStore['claimDelivery']>[0],
@@ -58,6 +61,6 @@ export function createNodeAttemptRunStore(
       heartbeatNodeAttempt(pool, input),
     complete: (input: Parameters<NodeAttemptRunStore['complete']>[0]) =>
       completeNodeAttempt(pool, input),
-    close: async (): Promise<void> => pool.end(),
+    close: () => lease.close(),
   });
 }

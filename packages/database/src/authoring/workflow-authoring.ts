@@ -1,4 +1,5 @@
-import { createDatabasePool } from '../platform/postgres-telemetry.js';
+import { acquireDatabasePool } from '../platform/database-runtime.js';
+import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import { createHash } from 'node:crypto';
 
 import type { Pool } from 'pg';
@@ -234,6 +235,7 @@ export type WorkflowAuthoringDatabaseOptions = Readonly<{
   compatibilityReadinessReleases?: readonly CompatibilityReleaseExpectation[];
   definitionCatalog?: WorkflowDefinitionCatalogV1;
   placementDefinitionCatalog?: WorkflowDefinitionCatalogV1;
+  runtime?: DatabaseRuntime;
   executableCompiler?: WorkflowExecutableCompiler;
   testHooks?: WorkflowAuthoringTestHooks;
 }>;
@@ -578,7 +580,8 @@ export function createWorkflowAuthoringDatabase(
     return variant;
   };
   // Runtime import is kept here so the public package remains straightforward to test.
-  const pool = createDatabasePool(config);
+  const lease = acquireDatabasePool(config, options.runtime);
+  const { pool } = lease;
   const publishWorkflow = createWorkflowPublisher({
     durableResult: durablePublishResult,
     keyDigest,
@@ -618,6 +621,6 @@ export function createWorkflowAuthoringDatabase(
         withAuthorTransaction(pool, workspaceId, actorId, operation),
     }),
     publishWorkflow,
-    close: async () => pool.end(),
+    close: () => lease.close(),
   });
 }

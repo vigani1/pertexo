@@ -118,6 +118,60 @@ describe('createStructuredLogger', () => {
     expect(JSON.stringify(capture.records[0])).not.toContain('nested-password');
   });
 
+  it('redacts common key and token variants without hiding ordinary counters', () => {
+    const capture = captureDestination();
+    const logger = createStructuredLogger(testConfig(), capture.destination);
+
+    logger.info('provider.called', {
+      authToken: 'auth-token-value',
+      privateKey: 'private-key-value',
+      signing_key: 'signing-key-value',
+      tokenCount: 7,
+      xApiKey: 'api-key-value',
+    });
+
+    expect(capture.records[0]).toMatchObject({
+      authToken: '[Redacted]',
+      privateKey: '[Redacted]',
+      signing_key: '[Redacted]',
+      tokenCount: 7,
+      xApiKey: '[Redacted]',
+    });
+    const serialized = JSON.stringify(capture.records[0]);
+    expect(serialized).not.toContain('auth-token-value');
+    expect(serialized).not.toContain('private-key-value');
+    expect(serialized).not.toContain('signing-key-value');
+    expect(serialized).not.toContain('api-key-value');
+  });
+
+  it('never lets hostile fields or error properties escape into business code', () => {
+    const capture = captureDestination();
+    const logger = createStructuredLogger(testConfig(), capture.destination);
+    const hostileFields = new Proxy(
+      {},
+      {
+        ownKeys: () => {
+          throw new Error('field trap secret');
+        },
+      },
+    );
+    const hostileError = new Error('safe');
+    Object.defineProperty(hostileError, 'message', {
+      get: () => {
+        throw new Error('error trap secret');
+      },
+    });
+
+    expect(() => {
+      logger.info('fields.hostile', hostileFields);
+    }).not.toThrow();
+    expect(() => {
+      logger.error('error.hostile', {}, hostileError);
+    }).not.toThrow();
+    expect(capture.records).toHaveLength(2);
+    expect(JSON.stringify(capture.records)).not.toContain('trap secret');
+  });
+
   it('serializes errors with their causes', () => {
     const capture = captureDestination();
     const logger = createStructuredLogger(testConfig(), capture.destination);

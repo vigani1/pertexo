@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "databaseMaximumConnections": 400,
+  "reservedAdministrationConnections": 20,
+  "regionalFailoverHeadroomConnections": 40,
+  "externalPooler": {
+    "mode": "none",
+    "maximumBackendConnections": 0
+  },
+  "workloads": {
+    "api": {
+      "replicas": "autoscaling",
+      "poolEnvironment": ["DATABASE_POOL_MAX"],
+      "monitorConnectionsPerPool": 1,
+      "transientConnectionsPerTask": 0
+    },
+    "worker": {
+      "replicas": "autoscaling",
+      "poolEnvironment": ["DATABASE_POOL_MAX", "DATABASE_DISPATCHER_POOL_MAX"],
+      "monitorConnectionsPerPool": 1,
+      "transientConnectionsPerTask": 0
+    },
+    "lifecycle-command": {
+      "replicas": "desired",
+      "poolEnvironment": ["DATABASE_LIFECYCLE_COMMAND_POOL_MAX"],
+      "monitorConnectionsPerPool": 1,
+      "transientConnectionsPerTask": 2
+    },
+    "retention": {
+      "replicas": "desired",
+      "poolEnvironment": ["DATABASE_MAINTENANCE_POOL_MAX"],
+      "monitorConnectionsPerPool": 1,
+      "transientConnectionsPerTask": 0
+    },
+    "recovery": {
+      "replicas": 1,
+      "poolEnvironment": ["DATABASE_MAINTENANCE_POOL_MAX"],
+      "monitorConnectionsPerPool": 1,
+      "transientConnectionsPerTask": 0
+    },
+    "operator-command": {
+      "replicas": 1,
+      "fixedPoolConnectionsPerTask": 1,
+      "monitorConnectionsPerPool": 1,
+      "transientConnectionsPerTask": 0
+    },
+    "migration": {
+      "replicas": 1,
+      "fixedPoolConnectionsPerTask": 1,
+      "monitorConnectionsPerPool": 0,
+      "transientConnectionsPerTask": 0
+    }
+  }
+}

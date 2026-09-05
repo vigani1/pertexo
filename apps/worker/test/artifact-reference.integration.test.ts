@@ -223,6 +223,7 @@ describeIntegration('Phase 0D artifact reference delivery proof', () => {
       const metrics = {
         addActiveConcurrency: vi.fn(),
         observeArtifacts,
+        observeExecutionStorage: vi.fn(),
         observeOutbox: vi.fn(),
         observeQueue: vi.fn(),
         recordConsumerLifecycle: vi.fn(),

@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
+import { JsonataEvaluator } from '@pertexo/workflow-model/expressions';
 
 import {
   NodeExecutionAbortedError,
@@ -13,6 +14,9 @@ import {
   graph,
 } from './executable-workflow.fixtures.js';
 
+const expressionEvaluator = new JsonataEvaluator();
+afterAll(async () => expressionEvaluator.shutdown());
+
 describe('input resolution production operations', () => {
   it('requires canonical UUID output locators bound to inline attempt identity', async () => {
     const release = composeExecutableCompatibilityRelease(nodeRelease());
@@ -20,10 +24,10 @@ describe('input resolution production operations', () => {
     const started = await advanceWorkflow({
       runId: 'run-1',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: createCheckpoint({
         engineVersion: 'engine-v1',
-        workflowVersionId: 'version-1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
         iterationBudget: 0,
       }),
       occurredAt: '2026-08-20T10:00:00.000Z',
@@ -45,7 +49,7 @@ describe('input resolution production operations', () => {
     const input = {
       runId: 'run-1',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint: started.checkpoint,
       occurredAt: '2026-08-20T10:02:00.000Z',
       maximumAdmissions: 0,
@@ -101,14 +105,15 @@ describe('input resolution production operations', () => {
       nodeRunId: 'node-run-1',
       attemptId: 'attempt-1',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       invocationKey: invocationKey({
-        workflowVersionId: 'version-1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
         nodeId: 'set',
       }),
       nodeId: 'set',
       runInput: { name: 'Ada', count: 2 },
       completedNodeOutputs: { manual: { base: 3 } },
+      expressionEvaluator,
       registry,
       signal: new AbortController().signal,
     });
@@ -131,9 +136,9 @@ describe('input resolution production operations', () => {
         nodeRunId: 'node-run-branch',
         attemptId: 'attempt-branch',
         executable,
-        workflowVersionId: 'version-1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
         invocationKey: invocationKey({
-          workflowVersionId: 'version-1',
+          workflowVersionId: '00000000-0000-4000-8000-000000000001',
           nodeId: 'set',
           branchPath: ['condition:true'],
         }),
@@ -141,11 +146,13 @@ describe('input resolution production operations', () => {
         branchPath: [{ nodeId: 'condition', outputPort: 'true' }],
         runInput: { name: 'Ada', count: 2 },
         completedNodeOutputs: { manual: { base: 3 } },
+        expressionEvaluator,
         registry,
         signal: new AbortController().signal,
       }),
     ).resolves.toMatchObject({
-      invocationKey: 'version-1|set|b:condition%3Atrue|i:',
+      invocationKey:
+        '00000000-0000-4000-8000-000000000001|set|b:condition%3Atrue|i:',
       kind: 'succeeded',
     });
     await expect(
@@ -154,11 +161,12 @@ describe('input resolution production operations', () => {
         nodeRunId: 'node-run-1',
         attemptId: 'attempt-1',
         executable,
-        workflowVersionId: 'version-1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
         invocationKey: 'node:set',
         nodeId: 'set',
         runInput: { name: 'Ada', count: 2 },
         completedNodeOutputs: { manual: { base: 3 } },
+        expressionEvaluator,
         registry,
         signal: new AbortController().signal,
       }),
@@ -169,9 +177,9 @@ describe('input resolution production operations', () => {
         nodeRunId: 'node-run-1',
         attemptId: 'attempt-1',
         executable,
-        workflowVersionId: 'version-1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
         invocationKey: invocationKey({
-          workflowVersionId: 'version-1',
+          workflowVersionId: '00000000-0000-4000-8000-000000000001',
           nodeId: 'set',
         }),
         nodeId: 'set',
@@ -189,14 +197,15 @@ describe('input resolution production operations', () => {
         nodeRunId: 'node-run-1',
         attemptId: 'attempt-1',
         executable,
-        workflowVersionId: 'version-1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
         invocationKey: invocationKey({
-          workflowVersionId: 'version-1',
+          workflowVersionId: '00000000-0000-4000-8000-000000000001',
           nodeId: 'set',
         }),
         nodeId: 'set',
         runInput: { name: 'Ada', count: 2 },
         completedNodeOutputs: { manual: { base: 3 } },
+        expressionEvaluator,
         registry: {
           execute: (request: { readonly input: unknown }) => {
             controller.abort();
@@ -219,14 +228,15 @@ describe('input resolution production operations', () => {
         nodeRunId: 'node-run-1',
         attemptId: 'attempt-2',
         executable,
-        workflowVersionId: 'version-1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
         invocationKey: invocationKey({
-          workflowVersionId: 'version-1',
+          workflowVersionId: '00000000-0000-4000-8000-000000000001',
           nodeId: 'set',
         }),
         nodeId: 'set',
         runInput: { name: 'Ada', count: 2 },
         completedNodeOutputs: { manual: { base: 3 } },
+        expressionEvaluator,
         registry: {
           execute: () => Promise.reject(new NodeExecutionAbortedError()),
         },
@@ -246,14 +256,15 @@ describe('input resolution production operations', () => {
         nodeRunId: 'node-run-1',
         attemptId: 'attempt-unknown',
         executable,
-        workflowVersionId: 'version-1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
         invocationKey: invocationKey({
-          workflowVersionId: 'version-1',
+          workflowVersionId: '00000000-0000-4000-8000-000000000001',
           nodeId: 'set',
         }),
         nodeId: 'set',
         runInput: { name: 'Ada', count: 2 },
         completedNodeOutputs: { manual: { base: 3 } },
+        expressionEvaluator,
         registry: { execute: () => Promise.reject(unknownOutcome) },
         signal: new AbortController().signal,
       }),
@@ -270,14 +281,15 @@ describe('input resolution production operations', () => {
         nodeRunId: 'node-run-1',
         attemptId: 'attempt-retry',
         executable,
-        workflowVersionId: 'version-1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
         invocationKey: invocationKey({
-          workflowVersionId: 'version-1',
+          workflowVersionId: '00000000-0000-4000-8000-000000000001',
           nodeId: 'set',
         }),
         nodeId: 'set',
         runInput: { name: 'Ada', count: 2 },
         completedNodeOutputs: { manual: { base: 3 } },
+        expressionEvaluator,
         registry: { execute: () => Promise.reject(retry) },
         signal: new AbortController().signal,
       }),
@@ -289,14 +301,15 @@ describe('input resolution production operations', () => {
         nodeRunId: 'node-run-1',
         attemptId: 'attempt-3',
         executable,
-        workflowVersionId: 'version-1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
         invocationKey: invocationKey({
-          workflowVersionId: 'version-1',
+          workflowVersionId: '00000000-0000-4000-8000-000000000001',
           nodeId: 'set',
         }),
         nodeId: 'set',
         runInput: { name: 'Ada', count: 2 },
         completedNodeOutputs: { manual: { base: 3 } },
+        expressionEvaluator,
         registry: {
           execute: () =>
             Promise.reject(new DOMException('aborted', 'AbortError')),
@@ -311,14 +324,15 @@ describe('input resolution production operations', () => {
         nodeRunId: 'node-run-1',
         attemptId: 'attempt-4',
         executable,
-        workflowVersionId: 'version-1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
         invocationKey: invocationKey({
-          workflowVersionId: 'version-1',
+          workflowVersionId: '00000000-0000-4000-8000-000000000001',
           nodeId: 'set',
         }),
         nodeId: 'set',
         runInput: { name: 'Ada', count: 2 },
         completedNodeOutputs: { manual: { base: 3 } },
+        expressionEvaluator,
         registry: {
           execute: () => Promise.reject(new Error('invalid output')),
         },
@@ -354,9 +368,9 @@ describe('input resolution production operations', () => {
           nodeRunId: 'node-run-trigger',
           attemptId: 'attempt-trigger',
           executable,
-          workflowVersionId: 'version-1',
+          workflowVersionId: '00000000-0000-4000-8000-000000000001',
           invocationKey: invocationKey({
-            workflowVersionId: 'version-1',
+            workflowVersionId: '00000000-0000-4000-8000-000000000001',
             nodeId: 'manual',
           }),
           nodeId: 'manual',
@@ -397,6 +411,7 @@ describe('input resolution production operations', () => {
           },
         },
         runInput: { count: 4, name: 'Ada' },
+        expressionEvaluator,
         signal: new AbortController().signal,
       }),
     ).resolves.toEqual({ expression: 8, fromRun: 'Ada', literal: true });
@@ -443,9 +458,9 @@ describe('input resolution production operations', () => {
         nodeRunId: 'node-run-1',
         attemptId: 'attempt-1',
         executable,
-        workflowVersionId: 'version-1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
         invocationKey: invocationKey({
-          workflowVersionId: 'version-1',
+          workflowVersionId: '00000000-0000-4000-8000-000000000001',
           nodeId: 'set',
         }),
         nodeId: 'set',

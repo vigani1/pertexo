@@ -22,6 +22,11 @@ export {
 } from './execution/coordinator-run-store.js';
 export type { CoordinatorRunStore } from './execution/coordinator-run-store.js';
 export type { DatabaseConfig } from './config.js';
+export { createDatabaseRuntime } from './platform/database-runtime.js';
+export type {
+  DatabaseRuntime,
+  DatabaseRuntimeOptions,
+} from './platform/database-runtime.js';
 export { createWorkspaceDatabase } from './database.js';
 export type { WorkspaceDatabase } from './database.js';
 export { generatePersistedId } from './platform/persisted-id.js';
@@ -66,7 +71,7 @@ export {
 } from './operator/operator-run-replay.js';
 export type { OperatorRunReplayStore } from './operator/operator-run-replay.js';
 export { canonicalOutboxPayloadChecksum } from './execution/outbox.js';
-export { createDatabasePool } from './platform/postgres-telemetry.js';
+export { acquireDatabasePool } from './platform/database-runtime.js';
 export {
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,

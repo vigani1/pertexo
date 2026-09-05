@@ -1,9 +1,18 @@
-const problem = (status: number, code: string) => ({
-  description: code,
-  content: { 'application/problem+json': { schema: { type: 'object' } } },
-  'x-pertexo-code': code,
-  status,
-});
+export * from './http/schedules.js';
+
+import {
+  manifestProblemResponse as problem,
+  simpleUuidPathParameter as pathParameter,
+} from './openapi-primitives.js';
+
+const workspaceParameter = pathParameter('workspaceId');
+const workflowParameter = pathParameter('workflowId');
+const triggerParameter = pathParameter('triggerId');
+const commandParameters = [
+  workspaceParameter,
+  workflowParameter,
+  triggerParameter,
+] as const;
 
 export const schedulesClientContract = Object.freeze({
   schemaVersion: 1,
@@ -27,6 +36,7 @@ export const schedulesClientContract = Object.freeze({
 
 const command = {
   post: {
+    parameters: commandParameters,
     requestBody: {
       required: true,
       content: {
@@ -52,6 +62,7 @@ export const schedulesOpenApiDocument = Object.freeze({
   paths: {
     '/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers/schedules': {
       get: {
+        parameters: [workspaceParameter, workflowParameter],
         responses: {
           '200': { description: 'Published schedule trigger health' },
           '401': problem(401, 'auth.unauthenticated'),

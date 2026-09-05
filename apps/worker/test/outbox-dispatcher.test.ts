@@ -97,6 +97,7 @@ function transportMetrics(): TransportMetrics {
   return {
     addActiveConcurrency: vi.fn(),
     observeArtifacts: vi.fn(),
+    observeExecutionStorage: vi.fn(),
     observeOutbox: vi.fn(),
     observeQueue: vi.fn(),
     recordHandlerFinished: vi.fn(),
@@ -116,7 +117,7 @@ function createDispatcher(
   metrics = transportMetrics(),
   consumerCapabilities: DispatchConsumerCapabilityRegistry = readyCapabilities([
     JOB_NAME.advanceWorkflowRun,
-    JOB_NAME.expireArtifacts,
+    JOB_NAME.reconcileWorkflowTriggers,
   ]),
 ): OutboxDispatcher {
   return new OutboxDispatcher(
@@ -125,7 +126,10 @@ function createDispatcher(
     drainState,
     {
       batchSize: 10,
-      enabledJobNames: [JOB_NAME.advanceWorkflowRun, JOB_NAME.expireArtifacts],
+      enabledJobNames: [
+        JOB_NAME.advanceWorkflowRun,
+        JOB_NAME.reconcileWorkflowTriggers,
+      ],
       leaseDurationMillis: 30_000,
       leaseOwner: 'worker-a',
       maxAttempts: 3,
@@ -266,7 +270,7 @@ describe('outbox dispatcher', () => {
       expect.objectContaining({
         enabledJobNames: [
           JOB_NAME.advanceWorkflowRun,
-          JOB_NAME.expireArtifacts,
+          JOB_NAME.reconcileWorkflowTriggers,
         ],
       }),
     );
@@ -294,7 +298,10 @@ describe('outbox dispatcher', () => {
       oldestAgeSeconds: 12,
     });
     expect(selected.database.observeBacklog).toHaveBeenCalledWith({
-      enabledJobNames: [JOB_NAME.advanceWorkflowRun, JOB_NAME.expireArtifacts],
+      enabledJobNames: [
+        JOB_NAME.advanceWorkflowRun,
+        JOB_NAME.reconcileWorkflowTriggers,
+      ],
     });
   });
 
@@ -397,7 +404,7 @@ describe('outbox dispatcher', () => {
       {
         depth: 99,
         oldestJobAgeSeconds: 90,
-        queueName: 'trigger-lifecycle',
+        queueName: 'maintenance',
       },
     ]);
     const metrics = transportMetrics();
@@ -447,18 +454,8 @@ describe('outbox dispatcher', () => {
     sample.resolve(undefined);
   });
 
-  it('does not change durable publication when artifact sampling fails', async () => {
-    const artifactId = '55555555-5555-4555-8555-555555555555';
-    const payload = { artifactId };
-    const selected = boundaries([
-      event({
-        aggregateId: artifactId,
-        aggregateType: 'artifact',
-        jobName: JOB_NAME.expireArtifacts,
-        payload,
-        payloadChecksum: checksum(payload),
-      }),
-    ]);
+  it('does not change durable publication when capacity sampling fails', async () => {
+    const selected = boundaries([event()]);
     const dispatcher = createDispatcher(selected);
     dispatcher.configureRuntimeHooks({
       observeWorkspaceCapacity: vi

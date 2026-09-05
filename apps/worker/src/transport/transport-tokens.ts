@@ -1,4 +1,7 @@
-import type { OutboxDispatcherDatabase } from '@pertexo/database/execution';
+import type {
+  DatabaseRuntime,
+  OutboxDispatcherDatabase,
+} from '@pertexo/database/execution';
 import type { StructuredLogger } from '@pertexo/observability';
 import type { TransportMetrics } from '@pertexo/observability/transport-metrics';
 import type { QueueProducer } from '@pertexo/queue';
@@ -30,6 +33,8 @@ export type TransportModuleDependencies = Readonly<{
   triggerRuntime?: TriggerRuntime;
   dispatchConsumerCapabilities?: DispatchConsumerCapabilityRegistry;
   dispatcherDatabase?: OutboxDispatcherDatabase;
+  databaseRuntime?: DatabaseRuntime;
+  dispatcherDatabaseRuntime?: DatabaseRuntime;
   queueProducer?: QueueProducer;
   transportMetrics?: TransportMetrics;
   failureNotificationDelivery?: FailureNotificationDeliveryCapability;

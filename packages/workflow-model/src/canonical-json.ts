@@ -8,6 +8,7 @@ export interface JsonInspection {
   readonly depth: number;
   readonly members: number;
 }
+export const CANONICAL_JSON_MAX_DEPTH = 256;
 
 export class InvalidJsonValueError extends TypeError {
   constructor(
@@ -23,7 +24,10 @@ function normalize(
   value: unknown,
   path: string,
   ancestors: Set<object>,
+  depth: number,
 ): JsonValue {
+  if (depth > CANONICAL_JSON_MAX_DEPTH)
+    throw new InvalidJsonValueError(path, 'JSON depth exceeds canonical limit');
   if (value === null || typeof value === 'string' || typeof value === 'boolean')
     return value;
   if (typeof value === 'number') {
@@ -38,18 +42,35 @@ function normalize(
   ancestors.add(value);
   try {
     if (Array.isArray(value)) {
+      if (Object.getOwnPropertySymbols(value).length > 0)
+        throw new InvalidJsonValueError(path, 'symbol properties are not JSON');
+      if (Object.getOwnPropertyNames(value).length !== value.length + 1)
+        throw new InvalidJsonValueError(
+          path,
+          'array must contain only dense index properties',
+        );
       const result: JsonValue[] = [];
       for (let index = 0; index < value.length; index += 1) {
-        if (!(index in value))
+        const descriptor = Object.getOwnPropertyDescriptor(
+          value,
+          String(index),
+        );
+        if (!descriptor)
           throw new InvalidJsonValueError(
             `${path}[${String(index)}]`,
             'sparse array',
           );
+        if (!('value' in descriptor))
+          throw new InvalidJsonValueError(
+            `${path}[${String(index)}]`,
+            'accessors are not JSON',
+          );
         result.push(
           normalize(
-            (value as unknown[])[index],
+            descriptor.value,
             `${path}[${String(index)}]`,
             ancestors,
+            depth + 1,
           ),
         );
       }
@@ -71,7 +92,12 @@ function normalize(
           `${path}.${key}`,
           'accessors are not JSON',
         );
-      result[key] = normalize(descriptor.value, `${path}.${key}`, ancestors);
+      result[key] = normalize(
+        descriptor.value,
+        `${path}.${key}`,
+        ancestors,
+        depth + 1,
+      );
     }
     return result;
   } finally {
@@ -80,7 +106,7 @@ function normalize(
 }
 
 export function canonicalizeJson(value: unknown): JsonValue {
-  return normalize(value, '$', new Set());
+  return normalize(value, '$', new Set(), 0);
 }
 export function canonicalJson(value: unknown): string {
   return JSON.stringify(canonicalizeJson(value));

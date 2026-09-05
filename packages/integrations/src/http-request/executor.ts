@@ -15,7 +15,11 @@ import {
   HTTP_SIDE_EFFECT_CLASS,
   type HttpOutcomeDecision,
 } from '../http/outcome-policy.js';
-import { SecureHttpError, type SecureHttpClient } from '../http/secure-http.js';
+import {
+  SECURE_HTTP_ERROR_CODE,
+  SecureHttpError,
+  type SecureHttpClient,
+} from '../http/secure-http.js';
 import {
   HTTP_REQUEST_CONNECTION_SLOT,
   HTTP_REQUEST_DEFINITION,
@@ -31,6 +35,7 @@ import {
   resolvedHttpHeadersCredentialSchema,
   type HttpRequestOutput,
 } from './validation.js';
+import { createProviderBeforeDispatch } from '../provider-dispatch-fence.js';
 
 export class HttpRequestExecutorError extends NodeExecutorFailure {
   public override readonly name = 'HttpRequestExecutorError';
@@ -154,8 +159,16 @@ async function executeHttpRequest(
   dependencies: HttpRequestExecutorDependencies,
   invocation: NodeExecutionInvocation<unknown, unknown>,
 ): Promise<HttpRequestOutput> {
-  const config = httpRequestConfigSchema.parse(invocation.config);
-  const input = httpRequestInputSchema.parse(invocation.input);
+  let config: z.output<typeof httpRequestConfigSchema>;
+  let input: z.output<typeof httpRequestInputSchema>;
+  try {
+    // Executors are also callable as isolated adapter boundaries, so they
+    // retain fail-closed parsing even though createNodeRegistry parses first.
+    config = httpRequestConfigSchema.parse(invocation.config);
+    input = httpRequestInputSchema.parse(invocation.input);
+  } catch {
+    throw failedConfiguration();
+  }
   const runtime = invocation.runtime;
   if (runtime === undefined) throw failedConfiguration();
   const connections = runtime.connections;
@@ -171,6 +184,7 @@ async function executeHttpRequest(
   if (connectionId === undefined) throw failedConfiguration();
   const target = new URL(config.url);
   if (target.protocol !== 'https:') throw failedConfiguration();
+  const body = requestBody(input, config.method);
 
   let resolved;
   try {
@@ -182,6 +196,7 @@ async function executeHttpRequest(
       signal: invocation.signal,
     });
   } catch (error: unknown) {
+    body?.fill(0);
     if (error instanceof ProviderExecutionRateLimitError)
       throw new HttpRequestExecutorError(
         Object.freeze({
@@ -196,7 +211,6 @@ async function executeHttpRequest(
       false,
     );
   }
-  let body: Uint8Array | undefined;
   try {
     if (
       resolved.connectionId !== connectionId ||
@@ -205,7 +219,6 @@ async function executeHttpRequest(
     )
       throw failedConfiguration();
     const credential = decodeCredential(resolved.secret);
-    body = requestBody(input, config.method);
     let response;
     try {
       response = await dependencies.httpClient.executeStreaming(
@@ -219,16 +232,15 @@ async function executeHttpRequest(
           maxResponseBytes: config.maxResponseBytes,
           sensitiveValues: Object.values(credential.headers),
           signal: invocation.signal,
-          beforeDispatch: async () => {
-            await assertCurrent({
-              connectionId,
-              expectedProviderKey: 'http',
-              expectedAuthType: 'http_headers',
-              secretVersionId: resolved.secretVersionId,
-              signal: invocation.signal,
-            });
-            await runtime.beforeDispatch();
-          },
+          beforeDispatch: createProviderBeforeDispatch({
+            assertCurrent,
+            connectionId,
+            expectedProviderKey: 'http',
+            expectedAuthType: 'http_headers',
+            secretVersionId: resolved.secretVersionId,
+            signal: invocation.signal,
+            runtime,
+          }),
         },
         (stream) =>
           consumeResponseBody(
@@ -245,6 +257,13 @@ async function executeHttpRequest(
           Object.freeze({ kind: 'outcome_unknown', errorKind: 'network' }),
           true,
         );
+      if (error.code === SECURE_HTTP_ERROR_CODE.connectionFenceFailed)
+        throw new HttpRequestExecutorError(
+          Object.freeze({ kind: 'failed', errorKind: 'authentication' }),
+          false,
+        );
+      if (error.code === SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch)
+        throw failedConfiguration();
       throw new HttpRequestExecutorError(
         classifySecureHttpError(error, HTTP_SIDE_EFFECT_CLASS.unsafe, false),
         error.possiblyDispatched,

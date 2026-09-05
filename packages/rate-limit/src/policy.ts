@@ -19,6 +19,13 @@ export type RateLimitFailureMode = 'open' | 'closed';
 export type RateLimitDimensionKind =
   'client_address' | 'origin' | 'actor' | 'workspace' | 'connection';
 
+/**
+ * Counter compatibility identity for rolling deployments. Bump this only when
+ * counter semantics become incompatible (for example, a windowing-algorithm
+ * change), not for tuning-only limit changes.
+ */
+export const ABUSE_RATE_LIMIT_COUNTER_SCHEMA_VERSION = 1 as const;
+
 export type RateLimitSubject = Readonly<{
   clientAddress?: string;
   origin?: string;
@@ -44,6 +51,7 @@ type DimensionRule = Readonly<{
   kind: RateLimitDimensionKind;
   subject: keyof RateLimitSubject;
   limit: number;
+  optional?: true;
 }>;
 
 type EndpointRule = Readonly<{
@@ -70,7 +78,12 @@ const RULES: Readonly<Record<RateLimitEndpointClass, EndpointRule>> = {
     failureMode: 'open',
     dimensions: [
       { kind: 'actor', subject: 'actorId', limit: 600 },
-      { kind: 'workspace', subject: 'workspaceId', limit: 1_200 },
+      {
+        kind: 'workspace',
+        subject: 'workspaceId',
+        limit: 1_200,
+        optional: true,
+      },
     ],
   },
   actor_mutation: {
@@ -81,7 +94,12 @@ const RULES: Readonly<Record<RateLimitEndpointClass, EndpointRule>> = {
     failureMode: 'closed',
     dimensions: [
       { kind: 'actor', subject: 'actorId', limit: 120 },
-      { kind: 'workspace', subject: 'workspaceId', limit: 300 },
+      {
+        kind: 'workspace',
+        subject: 'workspaceId',
+        limit: 300,
+        optional: true,
+      },
     ],
   },
   workflow_compile: {
@@ -110,7 +128,12 @@ const RULES: Readonly<Record<RateLimitEndpointClass, EndpointRule>> = {
     dimensions: [
       { kind: 'actor', subject: 'actorId', limit: 30 },
       { kind: 'workspace', subject: 'workspaceId', limit: 60 },
-      { kind: 'connection', subject: 'connectionId', limit: 10 },
+      {
+        kind: 'connection',
+        subject: 'connectionId',
+        limit: 10,
+        optional: true,
+      },
     ],
   },
   provider_test: {
@@ -166,11 +189,12 @@ export class AbuseRateLimitPolicy {
       endpointClass,
       failureMode: rule.failureMode,
       windowSeconds: 60,
-      dimensions: rule.dimensions.map(({ kind, subject: key, limit }) => ({
-        kind,
-        identifier: requiredSubject(subject, key),
-        limit,
-      })),
+      dimensions: rule.dimensions.flatMap(
+        ({ kind, subject: key, limit, optional }) => {
+          if (optional === true && subject[key] === undefined) return [];
+          return [{ kind, identifier: requiredSubject(subject, key), limit }];
+        },
+      ),
     };
   }
 }

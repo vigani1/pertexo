@@ -151,7 +151,7 @@ describe('workflow executable V2 identity', () => {
       nodeRelease({ epoch: 1 }),
     );
     const target = composeExecutableCompatibilityRelease(
-      nodeRelease({ epoch: 2 }),
+      nodeRelease({ epoch: 2, extraPolicyVersion: 1 }),
     );
     const support = createExecutableCompatibilityReleaseSupport([
       current,
@@ -177,22 +177,41 @@ describe('workflow executable V2 identity', () => {
     expect(() =>
       createExecutableCompatibilityReleaseSupport([
         current,
-        composeExecutableCompatibilityRelease(nodeRelease({ epoch: 3 })),
+        composeExecutableCompatibilityRelease(
+          nodeRelease({ epoch: 3, extraPolicyVersion: 2 }),
+        ),
       ]),
     ).toThrow('successor');
     expect(() =>
       createExecutableCompatibilityReleaseSupport([
         current,
         target,
-        composeExecutableCompatibilityRelease(nodeRelease({ epoch: 3 })),
+        composeExecutableCompatibilityRelease(
+          nodeRelease({ epoch: 3, extraPolicyVersion: 2 }),
+        ),
       ]),
     ).toThrow('one rolling overlap');
+    expect(() => createExecutableCompatibilityReleaseSupport([])).toThrow(
+      'one rolling overlap',
+    );
+    expect(() => support.resolve(0, current.fingerprint)).toThrow(
+      'not supported by this artifact',
+    );
+    expect(() => support.resolve(1.5, current.fingerprint)).toThrow(
+      'not supported by this artifact',
+    );
   });
 
   it('keeps retained executable history separate from the rolling readiness overlap', () => {
-    const releases = [1, 2, 3].map((epoch) =>
-      composeExecutableCompatibilityRelease(nodeRelease({ epoch })),
-    );
+    const releases = [
+      composeExecutableCompatibilityRelease(nodeRelease({ epoch: 1 })),
+      composeExecutableCompatibilityRelease(
+        nodeRelease({ epoch: 2, extraPolicyVersion: 1 }),
+      ),
+      composeExecutableCompatibilityRelease(
+        nodeRelease({ epoch: 3, extraPolicyVersion: 2 }),
+      ),
+    ];
     const history = createExecutableCompatibilityReleaseHistory(releases);
 
     expect(history.descriptions.map(({ epoch }) => epoch)).toEqual([1, 2, 3]);
@@ -206,6 +225,12 @@ describe('workflow executable V2 identity', () => {
         composeExecutableCompatibilityRelease(nodeRelease({ epoch: 4 })),
       ]),
     ).toThrow('successor');
+    expect(() => createExecutableCompatibilityReleaseHistory([])).toThrow(
+      'must not be empty',
+    );
+    expect(() =>
+      createExecutableCompatibilityReleaseHistory([releases[0], releases[0]]),
+    ).toThrow('epochs must be unique');
   });
 
   it('composes engine-owned policies and produces the pre-publication golden checksum', () => {
@@ -477,7 +502,16 @@ describe('workflow executable V2 identity', () => {
         base.nodes[0],
         base.nodes[1],
         { ...base.nodes[1], id: 'set-again', position: { x: 15, y: 0 } },
-        base.nodes[2],
+        {
+          ...base.nodes[2],
+          inputMappings: {
+            result: {
+              kind: 'node_output',
+              nodeId: 'set-again',
+              path: '$',
+            },
+          },
+        },
       ],
       edges: [
         base.edges[0],

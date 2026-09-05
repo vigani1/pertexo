@@ -64,6 +64,38 @@ describe('object-store telemetry', () => {
     );
   });
 
+  it.each([
+    [
+      Object.assign(new Error('private abort detail'), { name: 'AbortError' }),
+      'aborted',
+    ],
+    [
+      Object.assign(new Error('private timeout detail'), {
+        name: 'TimeoutError',
+      }),
+      'timeout',
+    ],
+  ] as const)(
+    'classifies provider %s without leaking its message',
+    async (failure, errorClass) => {
+      const recording = recordingObserver();
+      const client = new ObservedS3Client(
+        { destroy: vi.fn(), send: () => Promise.reject(failure) },
+        recording.observer,
+        'artifact',
+        'artifact',
+      );
+
+      await expect(
+        client.send({ constructor: { name: 'FutureS3Command' } } as never),
+      ).rejects.toBe(failure);
+      expect(recording.requests).toEqual([
+        expect.objectContaining({ operation: 'unknown', errorClass }),
+      ]);
+      expect(JSON.stringify(recording.requests)).not.toContain(failure.message);
+    },
+  );
+
   it('isolates observer failures from requests and safety enforcement', async () => {
     const observer: ObjectStoreObserver = {
       observeRequest() {

@@ -1,10 +1,15 @@
-import { createDatabasePool } from '../platform/postgres-telemetry.js';
+import { acquireDatabasePool } from '../platform/database-runtime.js';
+import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import type { Pool } from 'pg';
 import type { PoolClient, QueryResult } from 'pg';
 import { z } from 'zod';
 
 import type { DatabaseConfig } from '../config.js';
 import type { ControlLedger } from './control-ledger-coordinator.js';
+import {
+  inRetentionTransaction,
+  lockWorkspaceRetentionControl,
+} from './retention-transaction.js';
 import { EXPECTED_MIGRATION_HEAD } from '../platform/readiness.js';
 import {
   reapTransientData,
@@ -167,7 +172,7 @@ const optionsSchema = z
   .strict();
 
 function query<Row extends Record<string, unknown>>(
-  pool: Pool,
+  pool: Pool | PoolClient,
   text: string,
   values: readonly unknown[],
   signal?: AbortSignal,
@@ -222,14 +227,11 @@ const retentionTupleSchema = z
 export function createRetentionDatabase(
   config: DatabaseConfig,
   inputOptions: RetentionDatabaseOptions,
+  runtime?: DatabaseRuntime,
 ): RetentionDatabase {
   const options = optionsSchema.parse(inputOptions);
-  const pool = createDatabasePool({
-    connectionString: config.connectionString,
-    connectionTimeoutMillis: config.connectionTimeoutMillis,
-    idleTimeoutMillis: config.idleTimeoutMillis,
-    max: config.max,
-  });
+  const lease = acquireDatabasePool(config, runtime, { role: 'maintenance' });
+  const { pool } = lease;
 
   const claim = async (signal?: AbortSignal) => {
     const result = await query(
@@ -417,8 +419,10 @@ export function createRetentionDatabase(
               'app.release_workspace_purge_job(uuid,uuid,bigint)','EXECUTE')
             and has_function_privilege(current_user,
               'app.project_workspace_purge_started(uuid,uuid,bigint,bigint,character,character)','EXECUTE')
-            and has_function_privilege(current_user,
-              'app.claim_workspace_purge_step(uuid,bigint,character,character varying,interval)','EXECUTE')
+              and has_function_privilege(current_user,
+                'app.claim_workspace_purge_step(uuid,bigint,character,character varying,interval)','EXECUTE')
+              and has_function_privilege(current_user,
+                'app.release_workspace_purge_step(uuid,uuid,bigint)','EXECUTE')
             and has_function_privilege(current_user,
               'app.find_due_workspace_purge_step()','EXECUTE')
             and has_function_privilege(current_user,
@@ -504,7 +508,7 @@ export function createRetentionDatabase(
       });
     },
     claimDryRuns: claim,
-    close: () => pool.end(),
+    close: () => lease.close(),
     executeDryRunPage,
     processOperatorRerun: async (signal?: AbortSignal) => {
       const result = await query(
@@ -605,32 +609,15 @@ const enforcementOptionsSchema = optionsSchema.extend({
   statementTimeoutMs: z.number().int().min(1_000).max(300_000).default(30_000),
 });
 
-function transactionQuery<Row extends Record<string, unknown>>(
-  client: PoolClient,
-  text: string,
-  values: readonly unknown[],
-  signal?: AbortSignal,
-): Promise<QueryResult<Row>> {
-  signal?.throwIfAborted();
-  return client.query<Row>({
-    text,
-    values: [...values],
-    ...(signal === undefined ? {} : { signal }),
-  });
-}
-
 export function createRetentionEnforcementCoordinator(
   config: DatabaseConfig,
   ledger: ControlLedger,
   inputOptions: RetentionEnforcementCoordinatorOptions,
+  runtime?: DatabaseRuntime,
 ): RetentionEnforcementCoordinator {
   const options = enforcementOptionsSchema.parse(inputOptions);
-  const pool = createDatabasePool({
-    connectionString: config.connectionString,
-    connectionTimeoutMillis: config.connectionTimeoutMillis,
-    idleTimeoutMillis: config.idleTimeoutMillis,
-    max: config.max,
-  });
+  const lease = acquireDatabasePool(config, runtime, { role: 'maintenance' });
+  const { pool } = lease;
 
   const claim = async (signal?: AbortSignal) => {
     const result = await query(
@@ -655,7 +642,7 @@ export function createRetentionEnforcementCoordinator(
   };
 
   return Object.freeze({
-    close: () => pool.end(),
+    close: () => lease.close(),
     processNext: async (signal?: AbortSignal) => {
       const claimed = await claim(signal);
       if (claimed === undefined) return { status: 'idle' as const };
@@ -666,41 +653,14 @@ export function createRetentionEnforcementCoordinator(
         pageCount <= options.maxPagesPerBatch;
         pageCount += 1
       ) {
-        const client = await pool.connect();
-        let transactionComplete = false;
         try {
-          await transactionQuery(client, 'begin', [], signal);
-          await transactionQuery(
-            client,
-            `set local lock_timeout='${String(options.lockTimeoutMs)}ms';
-             set local statement_timeout='${String(options.statementTimeoutMs)}ms';
-             set local idle_in_transaction_session_timeout='0'`,
-            [],
+          const highWater = await lockWorkspaceRetentionControl(
+            pool,
+            options,
             signal,
+            claimed.workspaceId,
+            'Retention workspace control lock was not returned',
           );
-          const lock = await transactionQuery<{
-            retention_control_hash: string;
-            retention_control_sequence: string | number;
-          }>(
-            client,
-            'select * from app.lock_workspace_control_ledger($1)',
-            [claimed.workspaceId],
-            signal,
-          );
-          const highWater = lock.rows[0];
-          if (highWater === undefined)
-            throw new Error(
-              'Retention workspace control lock was not returned',
-            );
-          const sequence = z.coerce
-            .number()
-            .int()
-            .nonnegative()
-            .parse(highWater.retention_control_sequence);
-          const hash = z
-            .string()
-            .regex(/^[0-9a-f]{64}$/u)
-            .parse(highWater.retention_control_hash);
           const timeoutSignal = AbortSignal.timeout(
             options.externalOperationTimeoutMs,
           );
@@ -710,8 +670,8 @@ export function createRetentionEnforcementCoordinator(
               : AbortSignal.any([signal, timeoutSignal]);
           const reconciliation = await ledger.reconcile({
             maxRecords: 1,
-            projectedHash: hash,
-            projectedSequence: sequence,
+            projectedHash: highWater.hash,
+            projectedSequence: highWater.sequence,
             signal: externalSignal,
             workspaceId: claimed.workspaceId,
           });
@@ -719,39 +679,64 @@ export function createRetentionEnforcementCoordinator(
             !reconciliation.reachedHighWater ||
             reconciliation.hasMore ||
             reconciliation.records.length !== 0 ||
-            reconciliation.pageEndSequence !== sequence ||
-            reconciliation.pageEndHash !== hash
+            reconciliation.pageEndSequence !== highWater.sequence ||
+            reconciliation.pageEndHash !== highWater.hash
           ) {
             throw new Error(
               'Retention control ledger is not exactly projected',
             );
           }
-          const page = await transactionQuery<{
-            cursor_expires_at: Date | string | null;
-            cursor_id: string | null;
-            eligible_delta: string | number;
-            examined_delta: string | number;
-            outcome: string;
-          }>(
-            client,
-            claimed.retentionKind === 'workflow_run_input'
-              ? `select * from app.execute_workflow_run_input_retention_page(
-                  $1,$2,$3,$4,$5,$6)`
-              : `select * from app.execute_standard_retention_page(
-                  $1,$2,$3,$4,$5,$6)`,
-            [
-              claimed.batchId,
-              claimed.leaseToken,
-              claimed.leaseFence,
-              options.pageSize,
-              sequence,
-              hash,
-            ],
+          const row = await inRetentionTransaction(
+            pool,
+            options,
             signal,
+            async (client) => {
+              const lock = await query<{
+                retention_control_hash: string;
+                retention_control_sequence: string | number;
+              }>(
+                client,
+                'select * from app.lock_workspace_control_ledger($1)',
+                [claimed.workspaceId],
+                signal,
+              );
+              const current = lock.rows[0];
+              if (
+                current === undefined ||
+                z.coerce.number().parse(current.retention_control_sequence) !==
+                  highWater.sequence ||
+                current.retention_control_hash !== highWater.hash
+              )
+                throw new Error('Retention control fence changed');
+              const page = await query<{
+                cursor_expires_at: Date | string | null;
+                cursor_id: string | null;
+                eligible_delta: string | number;
+                examined_delta: string | number;
+                outcome: string;
+              }>(
+                client,
+                claimed.retentionKind === 'workflow_run_input'
+                  ? `select * from app.execute_workflow_run_input_retention_page(
+                      $1,$2,$3,$4,$5,$6)`
+                  : `select * from app.execute_standard_retention_page(
+                      $1,$2,$3,$4,$5,$6)`,
+                [
+                  claimed.batchId,
+                  claimed.leaseToken,
+                  claimed.leaseFence,
+                  options.pageSize,
+                  highWater.sequence,
+                  highWater.hash,
+                ],
+                signal,
+              );
+              const row = page.rows[0];
+              if (row === undefined)
+                throw new Error('Destructive retention page was not returned');
+              return row;
+            },
           );
-          const row = page.rows[0];
-          if (row === undefined)
-            throw new Error('Destructive retention page was not returned');
           const outcome = z
             .enum(['completed', 'paused', 'progressed', 'stale'])
             .parse(row.outcome);
@@ -765,8 +750,6 @@ export function createRetentionEnforcementCoordinator(
             .int()
             .nonnegative()
             .parse(row.eligible_delta);
-          await transactionQuery(client, 'commit', [], signal);
-          transactionComplete = true;
           examinedCount += examinedDelta;
           eligibleCount += eligibleDelta;
           if (outcome !== 'progressed') {
@@ -781,8 +764,6 @@ export function createRetentionEnforcementCoordinator(
             });
           }
         } catch {
-          if (!transactionComplete)
-            await client.query('rollback').catch(() => undefined);
           await release(claimed, signal).catch(() => undefined);
           return Object.freeze({
             batchId: claimed.batchId,
@@ -793,8 +774,6 @@ export function createRetentionEnforcementCoordinator(
             status: 'released' as const,
             workspaceId: claimed.workspaceId,
           });
-        } finally {
-          client.release();
         }
       }
       await release(claimed, signal);

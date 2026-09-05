@@ -56,6 +56,22 @@ baseline or compatibility terminology.
 Any new phase-number occurrence fails review unless it is added to this ledger
 with a persisted, operational, or supported-public compatibility reason.
 
+### Source-alias removal milestone
+
+`PHASE3_RUNTIME_POLICIES_V1` is a source-compatibility alias only. Remove it at
+the first explicitly breaking `@pertexo/workflow-engine` public-interface
+release after both of these conditions are met:
+
+1. a repository-wide import search at that release candidate finds no source
+   consumer of the alias; and
+2. the release notes name `BASELINE_RUNTIME_POLICIES_V1` as the replacement.
+
+The removal change must update the package-surface snapshot and retain the
+checkpoint/executable compatibility corpus. It must not rename the durable
+`phase3-engine-v1` value or any applied migration/database object. Until that
+breaking release is deliberately scheduled, retaining the deprecated alias is
+an accepted compatibility obligation rather than an actionable code defect.
+
 ## Historical documentation
 
 `docs/workflow-platform-backend-plan.md`, `docs/implementation-progress.md`,

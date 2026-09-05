@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  ControlLedgerClosedError,
   ControlLedgerConflictError,
   ControlLedgerIntegrityError,
 } from '../src/control-ledger.js';
@@ -13,6 +14,7 @@ import type {
   ControlLedgerRecord,
   ReconcileControlLedgerRequest,
 } from '../src/control-ledger.js';
+import type { ObjectStoreObserver } from '../src/object-store-telemetry.js';
 import {
   ControlLedgerPartialReplicationError,
   createDualRegionControlLedger,
@@ -137,12 +139,13 @@ class FakeLedger implements ControlLedger {
   }
 }
 
-function fixture() {
+function fixture(observer?: ObjectStoreObserver) {
   const primary = new FakeLedger('ledger-primary', 'eu-central-1');
   const recovery = new FakeLedger('ledger-recovery', 'eu-west-1');
   return {
     ledger: createDualRegionControlLedger(primary, recovery, {
       ledgerOwnership: 'borrowed',
+      ...(observer === undefined ? {} : { observer }),
     }),
     primary,
     recovery,
@@ -443,6 +446,30 @@ describe('dual-region control ledger', () => {
     ).rejects.toBeInstanceOf(ControlLedgerIntegrityError);
   });
 
+  it('records one bounded coordinator signal for a regional read outage', async () => {
+    const observations: unknown[] = [];
+    const { ledger, recovery } = fixture({
+      observeRequest: () => undefined,
+      observeSafetyViolation: (observation) => observations.push(observation),
+    });
+    recovery.readImplementation = () =>
+      Promise.reject(new Error('region unavailable'));
+
+    await expect(
+      ledger.read({ sequence: 1, workspaceId: WORKSPACE_ID }),
+    ).rejects.toBeInstanceOf(ControlLedgerIntegrityError);
+    expect(observations).toEqual([
+      {
+        check: 'control_ledger_integrity',
+        failedRegionRole: 'recovery',
+        operation: 'read',
+        outcome: 'unavailable',
+        regionRole: 'primary',
+        surface: 'control_ledger',
+      },
+    ]);
+  });
+
   it('exposes only an exact common prefix for matching one-sided repair', async () => {
     const { ledger, primary, recovery } = fixture();
     primary.reconcileImplementation = () =>
@@ -474,7 +501,7 @@ describe('dual-region control ledger', () => {
     expect(primary.reconcileRequests[0]).toBe(recovery.reconcileRequests[0]);
   });
 
-  it('closes owned ledgers and leaves explicitly borrowed ledgers open', () => {
+  it('closes owned ledgers and leaves explicitly borrowed ledgers open', async () => {
     const borrowed = fixture();
     borrowed.ledger.close();
     borrowed.ledger.close();
@@ -493,6 +520,9 @@ describe('dual-region control ledger', () => {
     expect('delete' in owned).toBe(false);
     expect('list' in owned).toBe(false);
     expect('repair' in owned).toBe(false);
+    await expect(
+      owned.read({ sequence: 1, workspaceId: WORKSPACE_ID }),
+    ).rejects.toBeInstanceOf(ControlLedgerClosedError);
   });
 
   it('attempts both owned closes and aggregates failures', () => {

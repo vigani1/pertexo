@@ -1,22 +1,9 @@
 import { isIP } from 'node:net';
 
-const IPV4_BLOCKS = [
-  ['0.0.0.0', 8],
-  ['10.0.0.0', 8],
-  ['100.64.0.0', 10],
-  ['127.0.0.0', 8],
-  ['169.254.0.0', 16],
-  ['172.16.0.0', 12],
-  ['192.0.0.0', 24],
-  ['192.0.2.0', 24],
-  ['192.88.99.0', 24],
-  ['192.168.0.0', 16],
-  ['198.18.0.0', 15],
-  ['198.51.100.0', 24],
-  ['203.0.113.0', 24],
-  ['224.0.0.0', 4],
-  ['240.0.0.0', 4],
-] as const;
+import {
+  BLOCKED_IPV4_PREFIXES,
+  BLOCKED_IPV6_PREFIXES,
+} from './iana-address-policy-snapshot.js';
 
 export type ResolvedAddress = Readonly<{
   address: string;
@@ -34,7 +21,7 @@ export function assertPublicAddress(address: string): 4 | 6 {
   if (family === 4) {
     const value = ipv4Number(address);
     if (
-      IPV4_BLOCKS.some(([network, prefix]) =>
+      BLOCKED_IPV4_PREFIXES.some(([network, prefix]) =>
         matchesIpv4Prefix(value, ipv4Number(network), prefix),
       )
     )
@@ -45,13 +32,11 @@ export function assertPublicAddress(address: string): 4 | 6 {
     const words = ipv6Words(address);
     const first = words[0] ?? 0;
     if ((first & 0xe000) !== 0x2000) throw new Error('blocked address');
-    if (matchesIpv6Prefix(words, [0x2001, 0x0], 23))
-      throw new Error('blocked address');
-    if (matchesIpv6Prefix(words, [0x2001, 0x0db8], 32))
-      throw new Error('blocked address');
-    if (matchesIpv6Prefix(words, [0x2002], 16))
-      throw new Error('blocked address');
-    if (matchesIpv6Prefix(words, [0x3fff], 20))
+    if (
+      BLOCKED_IPV6_PREFIXES.some(({ network, prefix }) =>
+        matchesIpv6Prefix(words, network, prefix),
+      )
+    )
       throw new Error('blocked address');
     return 6;
   }

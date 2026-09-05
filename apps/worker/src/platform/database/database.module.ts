@@ -7,6 +7,7 @@ import { Module } from '@nestjs/common';
 import type {
   DatabaseReadiness,
   DatabaseConfig,
+  DatabaseRuntime,
   WorkspaceDatabase,
 } from '@pertexo/database/execution';
 import { createWorkspaceDatabase } from '@pertexo/database/execution';
@@ -61,6 +62,7 @@ export class NestWorkspaceDatabase
 
 type DatabaseModuleOptions = Readonly<{
   database?: WorkspaceDatabase;
+  runtime?: DatabaseRuntime;
   releaseCohort: PlatformReleaseCohort;
 }>;
 
@@ -79,6 +81,9 @@ function createDatabaseProvider(
                 composeExecutableCompatibilityRelease,
               ),
             ).descriptions,
+            ...(options.runtime === undefined
+              ? {}
+              : { runtime: options.runtime }),
           }),
         config.workerRuntimeRole,
       ),

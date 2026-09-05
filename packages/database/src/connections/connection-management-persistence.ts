@@ -4,7 +4,6 @@ import type { Pool } from 'pg';
 import { z } from 'zod';
 import {
   uuidSchema,
-  digestSchema,
   providerKeySchema,
   connectionNameSchema,
   sealedSecretSchema,
@@ -24,6 +23,7 @@ import {
   durableConnectionSnapshot,
   serializeConnectionSnapshot,
 } from './connection-persistence.js';
+import { sha256HexSchema as digestSchema } from '../validation/persisted-primitives.js';
 import type {
   ConnectionDatabase,
   ConnectionRecord,

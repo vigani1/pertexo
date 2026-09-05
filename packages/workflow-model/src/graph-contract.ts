@@ -70,11 +70,13 @@ export const WORKFLOW_GRAPH_CONTRACT_LIMITS = Object.freeze({
   graphBytes: 1_048_576,
   maxLoopIterations: 1_000,
   maxLoopConcurrency: 1_000,
+  structuredDepth: 32,
   inputDepth: 256,
 });
 export const WORKFLOW_EXECUTION_LIMITS_V1 = Object.freeze({
   maxRunDurationMs: 3_600_000,
 });
+export const WORKFLOW_VALIDATION_MAX_ISSUES = 100;
 
 const identifierSchema = z.string().min(1);
 const positiveVersionSchema = z.number().int().positive();
@@ -176,19 +178,25 @@ const structuredBodySchema: z.ZodType<StructuredBody> = z.lazy(() =>
     .strict(),
 );
 
-const rawWorkflowGraphSchemaV1: z.ZodType<WorkflowGraph> = z.lazy(() =>
-  z
-    .object({
-      schemaVersion: z.literal(1),
-      nodes: z
-        .array(workflowNodeSchema)
-        .max(WORKFLOW_GRAPH_CONTRACT_LIMITS.nodes),
-      edges: z
-        .array(workflowEdgeSchema)
-        .max(WORKFLOW_GRAPH_CONTRACT_LIMITS.edges),
-      settings: workflowSettingsSchemaV1,
-    })
-    .strict(),
+/**
+ * Structurally representable projection for contract generators. Runtime
+ * callers must continue to use workflowGraphSchema, which adds hostile-input
+ * and aggregate preflight before this parser executes.
+ */
+export const workflowGraphStructuralSchemaV1: z.ZodType<WorkflowGraph> = z.lazy(
+  () =>
+    z
+      .object({
+        schemaVersion: z.literal(1),
+        nodes: z
+          .array(workflowNodeSchema)
+          .max(WORKFLOW_GRAPH_CONTRACT_LIMITS.nodes),
+        edges: z
+          .array(workflowEdgeSchema)
+          .max(WORKFLOW_GRAPH_CONTRACT_LIMITS.edges),
+        settings: workflowSettingsSchemaV1,
+      })
+      .strict(),
 );
 
 function utf8Bytes(value: string): number {
@@ -266,9 +274,70 @@ function preflightWorkflowGraphUnsafe(input: unknown): boolean {
   return true;
 }
 
+function hasBoundedGraphAggregateUnsafe(input: unknown): boolean {
+  const pending: readonly [unknown, number][] = [[input, 0]];
+  const graphs = [...pending];
+  let nodes = 0;
+  let edges = 0;
+  while (graphs.length > 0) {
+    const entry = graphs.pop();
+    if (entry === undefined) continue;
+    const [value, depth] = entry;
+    if (depth > WORKFLOW_GRAPH_CONTRACT_LIMITS.structuredDepth) return false;
+    if (value === null || typeof value !== 'object' || Array.isArray(value))
+      continue;
+    const nodeDescriptor = Object.getOwnPropertyDescriptor(value, 'nodes');
+    const edgeDescriptor = Object.getOwnPropertyDescriptor(value, 'edges');
+    if (!nodeDescriptor || !('value' in nodeDescriptor)) continue;
+    if (!edgeDescriptor || !('value' in edgeDescriptor)) continue;
+    const graphNodes = nodeDescriptor.value as unknown;
+    const graphEdges = edgeDescriptor.value as unknown;
+    if (!Array.isArray(graphNodes) || !Array.isArray(graphEdges)) continue;
+    nodes += graphNodes.length;
+    edges += graphEdges.length;
+    if (
+      nodes > WORKFLOW_GRAPH_CONTRACT_LIMITS.nodes ||
+      edges > WORKFLOW_GRAPH_CONTRACT_LIMITS.edges
+    )
+      return false;
+    for (let index = graphNodes.length - 1; index >= 0; index -= 1) {
+      const nodeDescriptor = Object.getOwnPropertyDescriptor(
+        graphNodes,
+        String(index),
+      );
+      if (!nodeDescriptor || !('value' in nodeDescriptor)) continue;
+      const node = nodeDescriptor.value as unknown;
+      if (node === null || typeof node !== 'object' || Array.isArray(node))
+        continue;
+      const structuredDescriptor = Object.getOwnPropertyDescriptor(
+        node,
+        'structured',
+      );
+      if (!structuredDescriptor || !('value' in structuredDescriptor)) continue;
+      const structured = structuredDescriptor.value as unknown;
+      if (
+        structured === null ||
+        typeof structured !== 'object' ||
+        Array.isArray(structured)
+      )
+        continue;
+      const bodyDescriptor = Object.getOwnPropertyDescriptor(
+        structured,
+        'body',
+      );
+      if (bodyDescriptor && 'value' in bodyDescriptor)
+        graphs.push([bodyDescriptor.value, depth + 1]);
+    }
+  }
+  return true;
+}
+
 function preflightWorkflowGraph(input: unknown): boolean {
   try {
-    return preflightWorkflowGraphUnsafe(input);
+    return (
+      preflightWorkflowGraphUnsafe(input) &&
+      hasBoundedGraphAggregateUnsafe(input)
+    );
   } catch {
     return false;
   }
@@ -279,4 +348,4 @@ const workflowGraphPreflightSchema = z.custom<unknown>(preflightWorkflowGraph, {
 });
 
 export const workflowGraphSchema: z.ZodType<WorkflowGraph> =
-  workflowGraphPreflightSchema.pipe(rawWorkflowGraphSchemaV1);
+  workflowGraphPreflightSchema.pipe(workflowGraphStructuralSchemaV1);
