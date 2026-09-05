@@ -404,7 +404,7 @@ describe('outbox dispatcher', () => {
       {
         depth: 99,
         oldestJobAgeSeconds: 90,
-        queueName: 'artifact-retention',
+        queueName: 'maintenance',
       },
     ]);
     const metrics = transportMetrics();
