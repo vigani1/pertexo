@@ -7,9 +7,9 @@ import {
 
 import type { parseCheckpoint } from './checkpoint.js';
 import { executableEdges } from './executable-graph.js';
-import {
-  type CompiledWorkflowExecutableV2,
-  type WorkflowExecutableNodeV2,
+import type {
+  CompiledWorkflowExecutableV2,
+  WorkflowExecutableNodeV2,
 } from './executable-workflow.js';
 import { completedOutputReference } from './coordinator-output.js';
 import {
