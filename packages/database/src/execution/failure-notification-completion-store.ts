@@ -104,9 +104,7 @@ export function createFailureNotificationCompletionStore(
             intentId,
             factType: 'retry_scheduled',
             attemptNumber: raw.attemptNumber,
-            ...(safeErrorCode === undefined
-              ? {}
-              : { safeErrorCode }),
+            ...(safeErrorCode === undefined ? {} : { safeErrorCode }),
             possiblyDispatched: deliveryUnresolved,
           });
           return 'completed' as const;
@@ -145,9 +143,7 @@ export function createFailureNotificationCompletionStore(
                 ? 'outcome_unknown'
                 : 'dead_lettered',
           attemptNumber: raw.attemptNumber,
-          ...(safeErrorCode === undefined
-            ? {}
-            : { safeErrorCode }),
+          ...(safeErrorCode === undefined ? {} : { safeErrorCode }),
           possiblyDispatched: deliveryUnresolved,
         });
         return 'completed' as const;

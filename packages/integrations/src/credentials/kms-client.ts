@@ -10,7 +10,7 @@ const KMS_OPERATION_BUDGET = Object.freeze({
 export function createBoundedKmsClient(
   config: Readonly<{
     region: string;
-  endpoint?: string | undefined;
+    endpoint?: string | undefined;
   }>,
 ): KMSClient {
   return new KMSClient({
