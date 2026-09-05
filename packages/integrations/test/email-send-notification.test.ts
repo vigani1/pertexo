@@ -123,6 +123,8 @@ describe('email.send_notification@1', () => {
       'a@example.com\r\nBcc:x@example.com',
       'a\0@example.com',
       'a@localhost',
+      'missing-at.example.com',
+      'a@@example.com',
       `${'a'.repeat(65)}@example.com`,
     ])
       expect(providerEmailMailboxSchema.safeParse(invalid).success).toBe(false);

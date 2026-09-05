@@ -191,6 +191,20 @@ describe('http.request@1 definition', () => {
       config({ maxRedirects: 6 }),
       config({ maxResponseBytes: 10_485_761 }),
       config({ maxResponseBytes: 1_024, inlineResponseBytes: 2_048 }),
+      config({
+        headers: Object.fromEntries(
+          Array.from({ length: 65 }, (_, index) => [`x-${String(index)}`, 'x']),
+        ),
+      }),
+      config({ headers: { 'X-Duplicate': 'a', 'x-duplicate': 'b' } }),
+      config({
+        headers: Object.fromEntries(
+          Array.from({ length: 5 }, (_, index) => [
+            `x-large-${String(index)}`,
+            'x'.repeat(8_192),
+          ]),
+        ),
+      }),
     ])
       expect(httpRequestConfigSchema.safeParse(candidate).success).toBe(false);
     expect(
@@ -519,6 +533,53 @@ describe('http.request@1 server executor', () => {
         HttpRequestExecutorError,
       );
     expect(dispatch).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['empty header set', {}],
+    [
+      'too many headers',
+      Object.fromEntries(
+        Array.from({ length: 33 }, (_, index) => [`x-${String(index)}`, 'x']),
+      ),
+    ],
+    ['case-insensitive duplicate', { Authorization: 'a', authorization: 'b' }],
+    ['transport-owned header', { host: 'provider.example.test' }],
+    [
+      'aggregate bytes above the credential limit',
+      { first: 'x'.repeat(8_192), second: 'x'.repeat(8_192) },
+    ],
+  ])('rejects a resolved credential with %s', async (_name, headers) => {
+    const state = runtime({
+      connections: {
+        assertCurrent: () => Promise.resolve(),
+        resolve: () =>
+          Promise.resolve({
+            connectionId,
+            providerKey: 'http',
+            authType: 'http_headers',
+            secretVersionId,
+            secret: encoder.encode(
+              JSON.stringify({
+                schemaVersion: 1,
+                type: 'http_headers',
+                headers,
+              }),
+            ),
+          }),
+      },
+    });
+    const executeStreaming = vi.fn();
+
+    await expect(
+      createHttpRequestExecutorRegistration({
+        httpClient: { executeStreaming },
+      }).execute(invocation(state.value)),
+    ).rejects.toMatchObject({
+      decision: { kind: 'failed', errorKind: 'authentication' },
+      possiblyDispatched: false,
+    });
+    expect(executeStreaming).not.toHaveBeenCalled();
   });
 
   it('collapses unexpected connection, transport, and artifact failures into safe outcomes', async () => {
