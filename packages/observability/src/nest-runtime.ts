@@ -44,18 +44,11 @@ export class NestLoggerAdapter {
     const onlyString = strings.length === 1 ? strings[0] : undefined;
     const onlyStringIsStack =
       onlyString !== undefined && resemblesStack(onlyString);
-    const context =
-      strings.length > 1
-        ? strings.at(-1)
-        : onlyStringIsStack
-          ? undefined
-          : onlyString;
-    const stack =
-      strings.length > 1
-        ? strings.at(-2)
-        : onlyStringIsStack
-          ? onlyString
-          : undefined;
+    const { context, stack } = classifyNestOptionalStrings(
+      strings,
+      onlyString,
+      onlyStringIsStack,
+    );
     const summary =
       typeof message === 'string' ? boundedNestText(message) : undefined;
     return {
@@ -64,17 +57,40 @@ export class NestLoggerAdapter {
         ...(summary === undefined ? {} : { summary }),
         ...(context === undefined ? {} : { context: boundedNestText(context) }),
       },
-      error:
-        message instanceof Error
-          ? message
-          : summary !== undefined && stack !== undefined
-            ? nestError(summary, stack)
-            : undefined,
+      error: nestLogError(message, summary, stack),
     };
   }
 }
 
 const MAX_NEST_TEXT_LENGTH = 1_024;
+
+function classifyNestOptionalStrings(
+  strings: readonly string[],
+  onlyString: string | undefined,
+  onlyStringIsStack: boolean,
+): Readonly<{ context?: string; stack?: string }> {
+  if (strings.length > 1) {
+    const context = strings.at(-1);
+    const stack = strings.at(-2);
+    return {
+      ...(context === undefined ? {} : { context }),
+      ...(stack === undefined ? {} : { stack }),
+    };
+  }
+  if (onlyString === undefined) return {};
+  if (onlyStringIsStack) return { stack: onlyString };
+  return { context: onlyString };
+}
+
+function nestLogError(
+  message: unknown,
+  summary: string | undefined,
+  stack: string | undefined,
+): Error | undefined {
+  if (message instanceof Error) return message;
+  if (summary === undefined || stack === undefined) return undefined;
+  return nestError(summary, stack);
+}
 
 function boundedNestText(value: string): string {
   const bounded =
