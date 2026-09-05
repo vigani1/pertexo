@@ -512,7 +512,7 @@ class AwsArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
       new GetBucketLocationCommand({ Bucket: this.config.bucket }),
       options,
     );
-    const reportedRegion = location.LocationConstraint ?? '';
+    const reportedRegion = String(location.LocationConstraint ?? '');
     const actualRegion =
       reportedRegion === '' || reportedRegion === 'null'
         ? 'us-east-1'
