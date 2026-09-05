@@ -97,6 +97,17 @@ describe('worker node runtime capabilities', () => {
     ).rejects.toThrow('Worker artifact capability is incomplete');
   });
 
+  it('owns the default artifact persistence database lifecycle', async () => {
+    const runtime = await createWorkerNodeRuntimeCapabilities(
+      { database: databaseConfig },
+      { artifactStore: { put: vi.fn() } },
+    );
+
+    expect(runtime.factories.artifacts).toBeTypeOf('function');
+    await runtime.close();
+    await runtime.close();
+  });
+
   it('binds JIT connection resolution and pre-dispatch currency checks to the attempt workspace', async () => {
     const resolveConnectionSecret = vi.fn(() =>
       Promise.resolve({
