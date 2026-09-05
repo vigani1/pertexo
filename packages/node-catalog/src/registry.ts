@@ -710,100 +710,132 @@ export const PLATFORM_MERGE_V2_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
   PLATFORM_REGISTRY_RELEASE_MERGE_V2_ACTIVE,
 ]);
 
-export const PLATFORM_RELEASE_COHORTS = Object.freeze([
-  'core',
-  'http_staging',
-  'http_activation',
-  'condition_staging',
-  'condition_activation',
-  'switch_staging',
-  'switch_activation',
-  'parallel_staging',
-  'parallel_activation',
-  'merge_staging',
-  'merge_activation',
-  'for_each_staging',
-  'for_each_activation',
-  'wait_staging',
-  'wait_activation',
-  'slack_staging',
-  'slack_activation',
-  'email_staging',
-  'email_activation',
-  'webhook_staging',
-  'webhook_activation',
-  'schedule_staging',
-  'schedule_activation',
-  'schedule_v2_staging',
-  'schedule_v2_activation',
-  'parallel_v2_staging',
-  'parallel_v2_activation',
-  'merge_v2_staging',
-  'merge_v2_activation',
-] as const);
-export type PlatformReleaseCohort = (typeof PLATFORM_RELEASE_COHORTS)[number];
+const platformReleaseCohortConfig = Object.freeze({
+  core: Object.freeze({
+    support: PLATFORM_REGISTRY_RELEASE_SUPPORT,
+    serving: CORE_REGISTRY_RELEASE_SUCCESSOR,
+  }),
+  http_staging: Object.freeze({
+    support: PLATFORM_HTTP_STAGING_RELEASE_SUPPORT,
+    serving: CORE_REGISTRY_RELEASE_SUCCESSOR,
+  }),
+  http_activation: Object.freeze({
+    support: PLATFORM_HTTP_ACTIVATION_RELEASE_SUPPORT,
+    serving: PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+  }),
+  condition_staging: Object.freeze({
+    support: PLATFORM_CONDITION_STAGING_RELEASE_SUPPORT,
+    serving: PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+  }),
+  condition_activation: Object.freeze({
+    support: PLATFORM_CONDITION_ACTIVATION_RELEASE_SUPPORT,
+    serving: PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
+  }),
+  switch_staging: Object.freeze({
+    support: PLATFORM_SWITCH_STAGING_RELEASE_SUPPORT,
+    serving: PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE,
+  }),
+  switch_activation: Object.freeze({
+    support: PLATFORM_SWITCH_ACTIVATION_RELEASE_SUPPORT,
+    serving: PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
+  }),
+  parallel_staging: Object.freeze({
+    support: PLATFORM_PARALLEL_STAGING_RELEASE_SUPPORT,
+    serving: PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE,
+  }),
+  parallel_activation: Object.freeze({
+    support: PLATFORM_PARALLEL_ACTIVATION_RELEASE_SUPPORT,
+    serving: PLATFORM_REGISTRY_RELEASE_PARALLEL_ACTIVE,
+  }),
+  merge_staging: Object.freeze({
+    support: PLATFORM_MERGE_STAGING_RELEASE_SUPPORT,
+    serving: PLATFORM_REGISTRY_RELEASE_PARALLEL_ACTIVE,
+  }),
+  merge_activation: Object.freeze({
+    support: PLATFORM_MERGE_ACTIVATION_RELEASE_SUPPORT,
+    serving: PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
+  }),
+  for_each_staging: Object.freeze({
+    support: PLATFORM_FOR_EACH_STAGING_RELEASE_SUPPORT,
+    serving: PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE,
+  }),
+  for_each_activation: Object.freeze({
+    support: PLATFORM_FOR_EACH_ACTIVATION_RELEASE_SUPPORT,
+    serving: PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
+  }),
+  wait_staging: Object.freeze({
+    support: PLATFORM_WAIT_STAGING_RELEASE_SUPPORT,
+    serving: PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE,
+  }),
+  wait_activation: Object.freeze({
+    support: PLATFORM_WAIT_ACTIVATION_RELEASE_SUPPORT,
+    serving: PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE,
+  }),
+  slack_staging: Object.freeze({
+    support: PLATFORM_SLACK_STAGING_RELEASE_SUPPORT,
+    serving: PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE,
+  }),
+  slack_activation: Object.freeze({
+    support: PLATFORM_SLACK_ACTIVATION_RELEASE_SUPPORT,
+    serving: PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE,
+  }),
+  email_staging: Object.freeze({
+    support: PLATFORM_EMAIL_STAGING_RELEASE_SUPPORT,
+    serving: PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE,
+  }),
+  email_activation: Object.freeze({
+    support: PLATFORM_EMAIL_ACTIVATION_RELEASE_SUPPORT,
+    serving: PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE,
+  }),
+  webhook_staging: Object.freeze({
+    support: PLATFORM_WEBHOOK_STAGING_RELEASE_SUPPORT,
+    serving: PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE,
+  }),
+  webhook_activation: Object.freeze({
+    support: PLATFORM_WEBHOOK_ACTIVATION_RELEASE_SUPPORT,
+    serving: PLATFORM_REGISTRY_RELEASE_WEBHOOK_ACTIVE,
+  }),
+  schedule_staging: Object.freeze({
+    support: PLATFORM_SCHEDULE_STAGING_RELEASE_SUPPORT,
+    serving: PLATFORM_REGISTRY_RELEASE_WEBHOOK_ACTIVE,
+  }),
+  schedule_activation: Object.freeze({
+    support: PLATFORM_SCHEDULE_ACTIVATION_RELEASE_SUPPORT,
+    serving: PLATFORM_REGISTRY_RELEASE_SCHEDULE_ACTIVE,
+  }),
+  schedule_v2_staging: Object.freeze({
+    support: PLATFORM_SCHEDULE_V2_STAGING_RELEASE_SUPPORT,
+    serving: PLATFORM_REGISTRY_RELEASE_SCHEDULE_ACTIVE,
+  }),
+  schedule_v2_activation: Object.freeze({
+    support: PLATFORM_SCHEDULE_V2_ACTIVATION_RELEASE_SUPPORT,
+    serving: PLATFORM_REGISTRY_RELEASE_SCHEDULE_V2_ACTIVE,
+  }),
+  parallel_v2_staging: Object.freeze({
+    support: PLATFORM_PARALLEL_V2_STAGING_RELEASE_SUPPORT,
+    serving: PLATFORM_REGISTRY_RELEASE_SCHEDULE_V2_ACTIVE,
+  }),
+  parallel_v2_activation: Object.freeze({
+    support: PLATFORM_PARALLEL_V2_ACTIVATION_RELEASE_SUPPORT,
+    serving: PLATFORM_REGISTRY_RELEASE_PARALLEL_V2_ACTIVE,
+  }),
+  merge_v2_staging: Object.freeze({
+    support: PLATFORM_MERGE_V2_STAGING_RELEASE_SUPPORT,
+    serving: PLATFORM_REGISTRY_RELEASE_PARALLEL_V2_ACTIVE,
+  }),
+  merge_v2_activation: Object.freeze({
+    support: PLATFORM_MERGE_V2_ACTIVATION_RELEASE_SUPPORT,
+    serving: PLATFORM_REGISTRY_RELEASE_MERGE_V2_ACTIVE,
+  }),
+});
+
+export type PlatformReleaseCohort = keyof typeof platformReleaseCohortConfig;
+export const PLATFORM_RELEASE_COHORTS = Object.freeze(
+  Object.keys(platformReleaseCohortConfig) as PlatformReleaseCohort[],
+);
 
 export function platformRegistryReleaseSupport(cohort: PlatformReleaseCohort) {
-  switch (cohort) {
-    case 'core':
-      return PLATFORM_REGISTRY_RELEASE_SUPPORT;
-    case 'http_staging':
-      return PLATFORM_HTTP_STAGING_RELEASE_SUPPORT;
-    case 'http_activation':
-      return PLATFORM_HTTP_ACTIVATION_RELEASE_SUPPORT;
-    case 'condition_staging':
-      return PLATFORM_CONDITION_STAGING_RELEASE_SUPPORT;
-    case 'condition_activation':
-      return PLATFORM_CONDITION_ACTIVATION_RELEASE_SUPPORT;
-    case 'switch_staging':
-      return PLATFORM_SWITCH_STAGING_RELEASE_SUPPORT;
-    case 'switch_activation':
-      return PLATFORM_SWITCH_ACTIVATION_RELEASE_SUPPORT;
-    case 'parallel_staging':
-      return PLATFORM_PARALLEL_STAGING_RELEASE_SUPPORT;
-    case 'parallel_activation':
-      return PLATFORM_PARALLEL_ACTIVATION_RELEASE_SUPPORT;
-    case 'merge_staging':
-      return PLATFORM_MERGE_STAGING_RELEASE_SUPPORT;
-    case 'merge_activation':
-      return PLATFORM_MERGE_ACTIVATION_RELEASE_SUPPORT;
-    case 'for_each_staging':
-      return PLATFORM_FOR_EACH_STAGING_RELEASE_SUPPORT;
-    case 'for_each_activation':
-      return PLATFORM_FOR_EACH_ACTIVATION_RELEASE_SUPPORT;
-    case 'wait_staging':
-      return PLATFORM_WAIT_STAGING_RELEASE_SUPPORT;
-    case 'wait_activation':
-      return PLATFORM_WAIT_ACTIVATION_RELEASE_SUPPORT;
-    case 'slack_staging':
-      return PLATFORM_SLACK_STAGING_RELEASE_SUPPORT;
-    case 'slack_activation':
-      return PLATFORM_SLACK_ACTIVATION_RELEASE_SUPPORT;
-    case 'email_staging':
-      return PLATFORM_EMAIL_STAGING_RELEASE_SUPPORT;
-    case 'email_activation':
-      return PLATFORM_EMAIL_ACTIVATION_RELEASE_SUPPORT;
-    case 'webhook_staging':
-      return PLATFORM_WEBHOOK_STAGING_RELEASE_SUPPORT;
-    case 'webhook_activation':
-      return PLATFORM_WEBHOOK_ACTIVATION_RELEASE_SUPPORT;
-    case 'schedule_staging':
-      return PLATFORM_SCHEDULE_STAGING_RELEASE_SUPPORT;
-    case 'schedule_activation':
-      return PLATFORM_SCHEDULE_ACTIVATION_RELEASE_SUPPORT;
-    case 'schedule_v2_staging':
-      return PLATFORM_SCHEDULE_V2_STAGING_RELEASE_SUPPORT;
-    case 'schedule_v2_activation':
-      return PLATFORM_SCHEDULE_V2_ACTIVATION_RELEASE_SUPPORT;
-    case 'parallel_v2_staging':
-      return PLATFORM_PARALLEL_V2_STAGING_RELEASE_SUPPORT;
-    case 'parallel_v2_activation':
-      return PLATFORM_PARALLEL_V2_ACTIVATION_RELEASE_SUPPORT;
-    case 'merge_v2_staging':
-      return PLATFORM_MERGE_V2_STAGING_RELEASE_SUPPORT;
-    case 'merge_v2_activation':
-      return PLATFORM_MERGE_V2_ACTIVATION_RELEASE_SUPPORT;
-  }
+  return platformReleaseCohortConfig[cohort].support;
 }
 
 /** Retained immutable releases executable by a cohort, distinct from readiness. */
@@ -822,65 +854,7 @@ export function platformExecutableRegistryHistory(
 
 /** Release whose executors the cohort's worker actually dispatches. */
 export function platformServingRegistryRelease(cohort: PlatformReleaseCohort) {
-  switch (cohort) {
-    case 'core':
-    case 'http_staging':
-      return CORE_REGISTRY_RELEASE_SUCCESSOR;
-    case 'http_activation':
-      return PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE;
-    case 'condition_staging':
-      return PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE;
-    case 'condition_activation':
-      return PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE;
-    case 'switch_staging':
-      return PLATFORM_REGISTRY_RELEASE_CONDITION_ACTIVE;
-    case 'switch_activation':
-      return PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE;
-    case 'parallel_staging':
-      return PLATFORM_REGISTRY_RELEASE_SWITCH_ACTIVE;
-    case 'parallel_activation':
-      return PLATFORM_REGISTRY_RELEASE_PARALLEL_ACTIVE;
-    case 'merge_staging':
-      return PLATFORM_REGISTRY_RELEASE_PARALLEL_ACTIVE;
-    case 'merge_activation':
-      return PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE;
-    case 'for_each_staging':
-      return PLATFORM_REGISTRY_RELEASE_MERGE_ACTIVE;
-    case 'for_each_activation':
-      return PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE;
-    case 'wait_staging':
-      return PLATFORM_REGISTRY_RELEASE_FOR_EACH_ACTIVE;
-    case 'wait_activation':
-      return PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE;
-    case 'slack_staging':
-      return PLATFORM_REGISTRY_RELEASE_WAIT_ACTIVE;
-    case 'slack_activation':
-      return PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE;
-    case 'email_staging':
-      return PLATFORM_REGISTRY_RELEASE_SLACK_ACTIVE;
-    case 'email_activation':
-      return PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE;
-    case 'webhook_staging':
-      return PLATFORM_REGISTRY_RELEASE_EMAIL_ACTIVE;
-    case 'webhook_activation':
-      return PLATFORM_REGISTRY_RELEASE_WEBHOOK_ACTIVE;
-    case 'schedule_staging':
-      return PLATFORM_REGISTRY_RELEASE_WEBHOOK_ACTIVE;
-    case 'schedule_activation':
-      return PLATFORM_REGISTRY_RELEASE_SCHEDULE_ACTIVE;
-    case 'schedule_v2_staging':
-      return PLATFORM_REGISTRY_RELEASE_SCHEDULE_ACTIVE;
-    case 'schedule_v2_activation':
-      return PLATFORM_REGISTRY_RELEASE_SCHEDULE_V2_ACTIVE;
-    case 'parallel_v2_staging':
-      return PLATFORM_REGISTRY_RELEASE_SCHEDULE_V2_ACTIVE;
-    case 'parallel_v2_activation':
-      return PLATFORM_REGISTRY_RELEASE_PARALLEL_V2_ACTIVE;
-    case 'merge_v2_staging':
-      return PLATFORM_REGISTRY_RELEASE_PARALLEL_V2_ACTIVE;
-    case 'merge_v2_activation':
-      return PLATFORM_REGISTRY_RELEASE_MERGE_V2_ACTIVE;
-  }
+  return platformReleaseCohortConfig[cohort].serving;
 }
 
 export function platformServingReleaseRequiresHttpCapabilities(

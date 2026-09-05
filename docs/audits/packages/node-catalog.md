@@ -263,6 +263,13 @@ does not prevent future package coverage regression.
 - **Severity:** P2.
 - **Classification:** maintainability improvement.
 - **Status:** open.
+- **Implemented evidence (2026-09-05, partial):** cohort support and serving
+  selection now come from one typed `platformReleaseCohortConfig`; the exported
+  cohort vocabulary is derived from that record. The prior two exhaustive
+  switches were removed, while named support constants remain for compatibility
+  and review. The older epoch 3–24 staged/active construction is still explicit
+  and repetitive, so this finding remains open until those pairs use the same
+  small helpers already used by the V2 successors.
 - **Evidence:** `registry.ts:24-475` repeats staged/active creation for eleven
   nodes; lines 507–612 define support pairs; lines 641–689 and 707–754 separately
   map the same cohorts to support and serving releases.
