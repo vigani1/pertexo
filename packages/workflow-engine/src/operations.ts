@@ -344,7 +344,7 @@ export async function advanceWorkflow(
   const branchSelections = branchSelectionObservations(
     completedOutputItems,
     successfulOutcomes,
-    checkpoint,
+    invocationsByKey,
     nodesById,
   );
   const controlCanceled =
@@ -442,6 +442,7 @@ export async function advanceWorkflow(
     persistedObservations.facts,
     successfulOutcomes,
     checkpoint,
+    invocationsByKey,
     nodesById,
     resolvedFailures,
   );

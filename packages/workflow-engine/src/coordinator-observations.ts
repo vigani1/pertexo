@@ -91,7 +91,10 @@ export function indexPersistedSuccessfulOutcomes(
 export function branchSelectionObservations(
   completedItems: readonly JsonValue[],
   successfulOutcomes: ReadonlyMap<string, Readonly<Record<string, JsonValue>>>,
-  checkpoint: ReturnType<typeof parseCheckpoint>,
+  invocations: ReadonlyMap<
+    string,
+    ReturnType<typeof parseCheckpoint>['invocations'][number]
+  >,
   nodes: ReadonlyMap<string, WorkflowExecutableNodeV2>,
 ): readonly WorkflowObservation[] {
   const seen = new Map<string, string>();
@@ -131,9 +134,7 @@ export function branchSelectionObservations(
         'observation_invalid',
         'completed output has no matching persisted outcome',
       );
-    const invocation = checkpoint.invocations.find(
-      ({ invocationKey }) => invocationKey === material.invocationKey,
-    );
+    const invocation = invocations.get(material.invocationKey);
     const node = nodes.get(invocation?.nodeId ?? '');
     if (node === undefined) return [];
     const parallelPorts = configuredParallelOutputPorts(node);
@@ -189,6 +190,10 @@ export function forEachCoordinatorObservations(
   persistedItems: readonly JsonValue[],
   successfulOutcomes: ReadonlyMap<string, Readonly<Record<string, JsonValue>>>,
   checkpoint: ReturnType<typeof parseCheckpoint>,
+  invocations: ReadonlyMap<
+    string,
+    ReturnType<typeof parseCheckpoint>['invocations'][number]
+  >,
   nodes: ReadonlyMap<string, WorkflowExecutableNodeV2>,
   derivedObservations: readonly WorkflowObservation[] = [],
 ): Readonly<{
@@ -253,9 +258,7 @@ export function forEachCoordinatorObservations(
         'observation_invalid',
         'completed output has no matching persisted outcome',
       );
-    const invocation = checkpoint.invocations.find(
-      ({ invocationKey }) => invocationKey === material.invocationKey,
-    );
+    const invocation = invocations.get(material.invocationKey);
     const node = nodes.get(invocation?.nodeId ?? '');
     if (
       invocation === undefined ||
@@ -350,9 +353,7 @@ export function forEachCoordinatorObservations(
           ),
       );
       const terminalInvocationKey = failedInvocation?.invocationKey ?? sinkKey;
-      const checkpointSink = checkpoint.invocations.find(
-        ({ invocationKey }) => invocationKey === sinkKey,
-      );
+      const checkpointSink = invocations.get(sinkKey);
       const terminalStatus =
         terminalOutcomes.get(terminalInvocationKey) ??
         (checkpointSink?.status === 'skipped' ? 'skipped' : undefined);
