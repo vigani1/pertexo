@@ -256,6 +256,35 @@ describe('connection application use cases', () => {
     expect(result).not.toHaveProperty('credential');
   });
 
+  it('does not persist a connection when cancellation races KMS completion', async () => {
+    const controller = new AbortController();
+    let plaintext: Uint8Array | undefined;
+    const store = persistence();
+    const encryption = {
+      seal: vi.fn((value: Uint8Array) => {
+        plaintext = value;
+        controller.abort();
+        return Promise.resolve(sealed);
+      }),
+    };
+
+    await expect(
+      new CreateConnectionUseCase(
+        store,
+        authorization(),
+        encryption,
+      ).execute({
+        actor,
+        routeWorkspaceId: workspaceId,
+        idempotencyKey: 'create-canceled',
+        request: { providerKey: 'http', name: 'Operations API', credential },
+        signal: controller.signal,
+      }),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    expect(store.createConnection).not.toHaveBeenCalled();
+    expect(plaintext?.every((byte) => byte === 0)).toBe(true);
+  });
+
   it('returns an exact create replay without generating IDs or contacting KMS', async () => {
     const store = persistence({
       findConnectionCreateReplay: vi.fn().mockResolvedValue(record()),

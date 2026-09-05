@@ -115,6 +115,7 @@ export class CreateConnectionUseCase {
           },
           encryptionSignal(input),
         );
+        input.signal?.throwIfAborted();
         return toResponse(
           await this.persistence.createConnection({
             workspaceId: input.routeWorkspaceId,
@@ -178,6 +179,7 @@ export class RotateConnectionSecretUseCase {
           },
           encryptionSignal(input),
         );
+        input.signal?.throwIfAborted();
         return toResponse(
           await this.persistence.rotateConnectionSecret({
             workspaceId: input.routeWorkspaceId,
@@ -212,6 +214,7 @@ export class RevokeConnectionUseCase {
   public execute(input: RevokeConnectionCommand): Promise<ConnectionResponse> {
     return this.telemetry.measure(CONNECTION_OPERATION.revoke, async () => {
       await authorizeConnectionOperation(input, this.authorization);
+      input.signal?.throwIfAborted();
       return toResponse(
         await this.persistence.revokeConnection({
           workspaceId: input.routeWorkspaceId,

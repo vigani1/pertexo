@@ -1,4 +1,5 @@
 import { createHmac } from 'node:crypto';
+import { request as sendHttpRequest } from 'node:http';
 
 import type {
   WebhookTriggerDatabase,
@@ -248,6 +249,45 @@ describe('generic webhook ingress', () => {
       code: 'webhook.unavailable',
     });
     expect(response.body).not.toContain('sensitive database failure');
+    expect(database.acceptVerifiedDelivery).not.toHaveBeenCalled();
+  });
+
+  it('does not persist a delivery after the client socket closes during secret opening', async () => {
+    const { application, database, openSecret } = setup();
+    let releaseSecret: (() => void) | undefined;
+    let operationSignal: AbortSignal | undefined;
+    openSecret.mockImplementationOnce(
+      (_value: unknown, _context: unknown, signal: AbortSignal) =>
+        new Promise<Uint8Array>((resolve) => {
+          operationSignal = signal;
+          releaseSecret = () => resolve(new Uint8Array(32).fill(4));
+        }),
+    );
+    await application.listen({ host: '127.0.0.1', port: 0 });
+    const address = application.server.address();
+    if (address === null || typeof address === 'string')
+      throw new Error('Expected a TCP listening address');
+
+    const body = '{}';
+    const input = request(body, currentSecret);
+    const clientRequest = sendHttpRequest({
+      host: '127.0.0.1',
+      port: address.port,
+      method: input.method,
+      path: input.url,
+      headers: {
+        ...input.headers,
+        'content-length': Buffer.byteLength(body),
+      },
+    });
+    clientRequest.on('error', () => undefined);
+    clientRequest.end(body);
+    await vi.waitFor(() => expect(openSecret).toHaveBeenCalledOnce());
+
+    clientRequest.destroy();
+    await vi.waitFor(() => expect(operationSignal?.aborted).toBe(true));
+    releaseSecret?.();
+    await application.close();
     expect(database.acceptVerifiedDelivery).not.toHaveBeenCalled();
   });
 
