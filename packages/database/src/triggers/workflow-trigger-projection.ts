@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import { CronExpressionParser } from 'cron-parser';
+import { CORE_SCHEDULE_CONFIG_SCHEMA_V2 } from '@pertexo/nodes-core';
 import { z } from 'zod';
 
 const webhookConfigSchema = z.object({}).strict();
@@ -19,52 +19,6 @@ const scheduleConfigSchema = z.discriminatedUnion('kind', [
       misfirePolicy: z.enum(['catch_up_once', 'skip']),
     })
     .strict(),
-  z
-    .object({
-      kind: z.literal('interval'),
-      intervalMinutes: z.number().int().min(1).max(43_200),
-      misfirePolicy: z.enum(['catch_up_once', 'skip']),
-    })
-    .strict(),
-]);
-const canonicalIanaTimezones = new Set(Intl.supportedValuesOf('timeZone'));
-const scheduleConfigSchemaV2 = z.discriminatedUnion('kind', [
-  z
-    .object({
-      kind: z.literal('cron'),
-      expression: z
-        .string()
-        .min(9)
-        .max(255)
-        .refine((value) => value === value.trim())
-        .refine((value) => value.split(' ').length === 5)
-        .refine((value) => !/[H?#L]/u.test(value)),
-      timezone: z
-        .string()
-        .min(1)
-        .max(255)
-        .refine(
-          (value) =>
-            canonicalIanaTimezones.has(value) && !value.startsWith('Etc/GMT'),
-        ),
-      misfirePolicy: z.enum(['catch_up_once', 'skip']),
-    })
-    .strict()
-    .superRefine(({ expression, timezone }, context) => {
-      try {
-        CronExpressionParser.parse(`0 ${expression}`, {
-          currentDate: new Date(0),
-          strict: true,
-          tz: timezone,
-        });
-      } catch {
-        context.addIssue({
-          code: 'custom',
-          path: ['expression'],
-          message: 'Invalid strict cron expression',
-        });
-      }
-    }),
   z
     .object({
       kind: z.literal('interval'),
@@ -136,7 +90,7 @@ export function workflowTriggerProjection(
           identity === 'core.schedule@2' ||
           identity === 'core.schedule@3'
         )
-          config = scheduleConfigSchemaV2.parse(node.config);
+          config = CORE_SCHEDULE_CONFIG_SCHEMA_V2.parse(node.config);
         else config = scheduleConfigSchema.parse(node.config);
         const digest = createHash('sha256')
           .update(canonicalJson({ config, kind }))

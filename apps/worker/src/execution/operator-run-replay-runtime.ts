@@ -22,15 +22,13 @@ import {
 } from '@pertexo/queue';
 import {
   composeExecutableCompatibilityRelease,
-  createCheckpoint,
-  createCheckpointV2,
   createExecutableCompatibilityReleaseHistory,
   createExecutableCompatibilityReleaseSupport,
   verifyWorkflowExecutableV2,
   WorkflowEngineError,
 } from '@pertexo/workflow-engine';
 
-import { requiresStructuredCheckpoint } from './core-definition-identities.js';
+import { createWorkerInitialCheckpoint } from './core-definition-identities.js';
 
 type ReplayDelivery = Extract<
   QueueDelivery,
@@ -99,20 +97,7 @@ function initialCheckpoint(
       currentCompatibilityRelease.fingerprint,
     ),
   });
-  const engineVersion = 'phase3-engine-v1';
-  return Object.freeze({
-    engineVersion,
-    checkpoint: (executable.envelope.graph.nodes.some(({ definition }) =>
-      requiresStructuredCheckpoint(definition),
-    )
-      ? createCheckpointV2
-      : createCheckpoint)({
-      engineVersion,
-      workflowVersionId: projection.id,
-      iterationBudget: 1_000,
-      nextEventSequence: 2,
-    }),
-  });
+  return createWorkerInitialCheckpoint(executable, projection.id);
 }
 
 export function createOperatorRunReplayHandler(store: OperatorRunReplayStore) {
