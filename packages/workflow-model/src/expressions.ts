@@ -535,6 +535,7 @@ export class JsonataEvaluator implements ExpressionEvaluator {
     this.#workers.add(worker);
     this.#peakWorkers = Math.max(this.#peakWorkers, this.#workers.size);
     let settled = false;
+    let handedOff = false;
     let timer: ReturnType<typeof setTimeout> | undefined = setTimeout(() => {
       void finish(error('evaluation_failed', 'evaluator startup timed out'));
     }, this.#startupTimeoutMs);
@@ -588,8 +589,11 @@ export class JsonataEvaluator implements ExpressionEvaluator {
         message?: string;
       };
       if (response.ready) {
-        if (timer) clearTimeout(timer);
-        timer = undefined;
+        if (handedOff) {
+          void finish(error('evaluation_failed', 'duplicate evaluator readiness'));
+          return;
+        }
+        handedOff = true;
         try {
           worker.postMessage({
             expression: pending.request.expression,
@@ -606,6 +610,13 @@ export class JsonataEvaluator implements ExpressionEvaluator {
         return;
       }
       if (response.started) {
+        if (!handedOff) {
+          void finish(
+            error('evaluation_failed', 'evaluator started before readiness'),
+          );
+          return;
+        }
+        if (timer) clearTimeout(timer);
         timer = setTimeout(() => {
           void finish(
             error(

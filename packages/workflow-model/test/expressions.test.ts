@@ -539,6 +539,33 @@ describe('restricted JSONata policy v1', () => {
     }
     expect(startupFailure.diagnostics().workerCreations).toBe(2);
   });
+  it('terminates a worker that becomes ready but never starts evaluation', async () => {
+    const evaluator = new JsonataEvaluator({
+      maxActive: 1,
+      startupTimeoutMs: 10,
+      workerFactory: () =>
+        new Worker(
+          'const { parentPort } = require("node:worker_threads"); parentPort.postMessage({ ready: true }); parentPort.on("message", () => {});',
+          { eval: true },
+        ),
+    });
+    evaluators.push(evaluator);
+
+    await expect(
+      evaluator.evaluate({
+        expression: '1',
+        policyVersion: 1,
+        context: { runInput: null, nodeOutputs: {} },
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        kind: 'error',
+        code: 'evaluation_failed',
+        message: expect.stringContaining('startup'),
+      }),
+    );
+    expect(evaluator.diagnostics().workerCreations).toBe(1);
+  });
   it('is byte-deterministic across two workers and a pool restart', async () => {
     const request = {
       expression: '{"b": runInput.b, "a": runInput.a}',

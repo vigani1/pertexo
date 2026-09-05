@@ -8,6 +8,7 @@ import type {
   WorkflowGraph,
   WorkflowNode,
 } from '@pertexo/workflow-model/graph-contract';
+import type { ExpressionEvaluator } from '@pertexo/workflow-model/expressions';
 import { resolveValueSource } from '@pertexo/workflow-model/mapping';
 
 export type NodeValidationIssue = Readonly<{
@@ -92,6 +93,7 @@ export async function prepareNodeValidation(
     release: RegistryRelease;
     sampleInput?: JsonValue;
     deferInput?: boolean;
+    expressionEvaluator?: ExpressionEvaluator;
   }>,
 ): Promise<
   PreparedNodePreview | Readonly<{ issues: readonly NodeValidationIssue[] }>
@@ -160,10 +162,11 @@ export async function prepareNodeValidation(
     for (const key of Object.keys(node.inputMappings).sort()) {
       const source = node.inputMappings[key];
       if (source === undefined) continue;
-      const resolution = await resolveValueSource(source, {
-        runInput,
-        nodeOutputs: {},
-      });
+      const resolution = await resolveValueSource(
+        source,
+        { runInput, nodeOutputs: {} },
+        input.expressionEvaluator,
+      );
       if (resolution.kind === 'value') mapped[key] = resolution.value;
       else
         issue(issues, {

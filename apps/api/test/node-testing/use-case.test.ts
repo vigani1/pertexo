@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE } from '@pertexo/node-catalog';
 import { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';
+import type { ExpressionEvaluator } from '@pertexo/workflow-model/expressions';
 import type {
   AcceptedPreviewRun,
   WorkflowDraftRecord,
@@ -124,6 +125,59 @@ function requestInput() {
 }
 
 describe('node test application use case', () => {
+  it('uses the composition-owned evaluator for expression mappings', async () => {
+    const evaluator: ExpressionEvaluator = {
+      evaluate: vi.fn().mockResolvedValue({
+        kind: 'value',
+        value: { encoding: 'utf8', value: 'evaluated' },
+        canonicalBytes: 39,
+      }),
+    };
+    const store = persistence({
+      getDraft: vi.fn().mockResolvedValue(
+        draft({
+          graphJson: {
+            ...graph(),
+            nodes: [
+              {
+                ...graph().nodes[0],
+                inputMappings: {
+                  body: {
+                    kind: 'expression',
+                    language: 'jsonata',
+                    expression: 'runInput.body',
+                    policyVersion: 1,
+                  },
+                },
+              },
+            ],
+          },
+        }),
+      ),
+    });
+    const useCase = new TestWorkflowNodeUseCase(
+      store,
+      authorization(),
+      PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+      undefined,
+      evaluator,
+    );
+
+    await expect(
+      useCase.execute({
+        ...requestInput(),
+        request: {
+          mode: 'validate',
+          expectedRevision: 3,
+          sampleInput: { body: 'source' },
+        },
+      }),
+    ).resolves.toMatchObject({ valid: true, issues: [] });
+    expect(evaluator.evaluate).toHaveBeenCalledWith(
+      expect.objectContaining({ expression: 'runInput.body' }),
+    );
+  });
+
   it('returns pure bounded validation and never accepts execution', async () => {
     const store = persistence();
     const access = authorization();

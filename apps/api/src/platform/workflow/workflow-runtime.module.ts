@@ -21,6 +21,7 @@ import {
   type WorkspaceDatabase,
   type WorkflowAuthoringDatabase,
 } from '@pertexo/database/api';
+import { JsonataEvaluator } from '@pertexo/workflow-model/expressions';
 
 import type { ApiIdentityRuntime } from '../identity/identity-runtime.module.js';
 import {
@@ -316,6 +317,7 @@ export function createApiWorkflowRuntime(
     throw new Error('Workflow run runtime composition is incomplete');
   }
   const telemetry = overrides.telemetry ?? productionTelemetry();
+  const expressionEvaluator = new JsonataEvaluator();
   let closePromise: Promise<void> | undefined;
   return Object.freeze({
     dependencies: Object.freeze({
@@ -328,6 +330,7 @@ export function createApiWorkflowRuntime(
       persistence: database,
       authorization: identityRuntime.dependencies.authorization,
       release: platformServingRegistryRelease(releaseCohort),
+      expressionEvaluator,
     }),
     runDependencies: Object.freeze({
       persistence: runPersistence,
@@ -347,6 +350,7 @@ export function createApiWorkflowRuntime(
         runAdapter,
         eventDatabase,
         notifications,
+        expressionEvaluator,
       );
       return closePromise;
     },
@@ -358,12 +362,14 @@ async function closeWorkflowResources(
   runs: ReturnType<typeof createPostgresWorkflowRunPersistence> | undefined,
   events: WorkspaceDatabase | undefined,
   notifications: RunEventNotificationPublisher | undefined,
+  expressionEvaluator: JsonataEvaluator,
 ): Promise<void> {
   const results = await Promise.allSettled([
     authoring.close(),
     runs?.close(),
     events?.close(),
     notifications?.close(),
+    expressionEvaluator.shutdown(),
   ]);
   const failures = results.flatMap((result) =>
     result.status === 'rejected' ? [result.reason as unknown] : [],
