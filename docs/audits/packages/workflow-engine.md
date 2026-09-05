@@ -39,7 +39,7 @@
 | WFE-005 | Fixed | `182f754`; current checkpoint construction/parsing enforce database-compatible engine IDs, UUID workflow IDs, canonical timestamps, and byte bounds. |
 | WFE-006 | Fixed | `182f754`; checkpoint and executable public boundaries perform one hostile-object traversal before trusted parsing/normalization. |
 | WFE-007 | Fixed | `5a7ed49`; scope equality/prefix identity has one engine owner and allocation-free structural helpers. |
-| WFE-008 | Fixed; continuous model check | `132c8e1`, `1f0359e`, `3bd3ecc`; the exhaustive 64-DAG corpus is supplemented by 2,048 seeded, shrinkable cases over six-node DAGs, invalid/replayed observations, cancellation, terminal replay, structured scope identity, retry bounds, and fail-closed generated Parallel projection checks. Existing public Parallel/Merge and For Each suites retain branch/loop lifecycle coverage. |
+| WFE-008 | Fixed; continuous model check | `132c8e1`, `1f0359e`, `3bd3ecc`, `b04e0c0`; the exhaustive 64-DAG corpus is supplemented by 2,560 seeded, shrinkable PR cases over six-node DAGs, invalid/replayed observations, cancellation, terminal replay, structured execution, loop-budget conservation, retry/cancellation interaction, scope identity, retry bounds, and fail-closed generated Parallel projection checks. Scheduled CI raises the same deterministic budget to 10,240 cases. Existing public Parallel/Merge and For Each suites retain branch/loop lifecycle coverage. |
 | WFE-009 | Fixed | `5a7ed49`; duplicate loop/join declarations compare the complete durable scope and topology identity. |
 | WFE-010 | Fixed | `3adf2e1`; the production facade is narrowed and the exact public surface is snapshot-tested. |
 | WFE-011 | Fixed | `68485d8`; exact engine primitives have one purpose-named owner while trust-boundary-specific checks remain separate. |
@@ -1005,15 +1005,19 @@ projection/admission paths.
   invariants listed above.
 - **Verification:** seeded reproducibility in PR CI and a larger scheduled seed
   budget; mutation canaries demonstrate the properties detect policy changes.
-- **Status:** fixed as a continuous seeded model check (`132c8e1`, `1f0359e`).
-- **Implemented evidence (2026-09-05):** CI runs an exhaustive four-node DAG
+- **Status:** fixed as a continuous seeded model check (`132c8e1`, `1f0359e`,
+  `b04e0c0`).
+- **Implemented evidence (updated 2026-09-06):** CI runs an exhaustive four-node DAG
   corpus plus deterministic `fast-check` properties with pinned seeds and
-  shrinking. The properties exercise 512 larger legal DAGs and terminal
+  shrinking. The PR properties exercise 512 larger legal DAGs and terminal
   replays, 256 duplicate/invalid observation cases, 256 cancellation and
-  non-resurrection cases, 512 branch/loop scope-identity cases, and 512 retry
-  combinations. Existing public executable suites cover complete
-  Parallel/Merge and For Each branch/loop lifecycles, and mutation canaries
-  continue to prove high-consequence policy sensitivity.
+  non-resurrection cases, 512 branch/loop scope-identity cases, 512 retry
+  combinations, 256 generated structured-body execution sequences with loop
+  budget/ordinal conservation, and 256 structured retry-backoff/cancellation
+  interactions. Scheduled CI repeats the same seeds at four times those run
+  counts. Existing public executable suites cover complete Parallel/Merge and
+  For Each branch/loop lifecycles, and mutation canaries continue to prove
+  high-consequence policy sensitivity.
 
 ### WFE-009 — Duplicate declaration equality omits scope and topology
 

@@ -1,6 +1,6 @@
 # Backend Implementation Progress
 
-Last updated: 2026-09-05
+Last updated: 2026-09-06
 
 This file tracks delivery against
 [the authoritative backend plan](./workflow-platform-backend-plan.md). A phase
@@ -45,6 +45,18 @@ V3 behavior is covered by the additive release-history and public engine/worker
 compatibility tests instead of mutating retained evidence. The three structured
 recovery suites pass together against PostgreSQL and Redis. This correction
 does not change the external Phase 7 obligations below.
+
+The 2026-09-06 correction pass re-opened and closed three overstated package
+findings. INT-001 no longer treats a fully consumed/destroyed request stream as
+a disconnected client while its socket is healthy (`4f23df4`). CORE-001 now
+rejects tab/newline separators at publication with the same canonical
+single-space behavior as database recurrence parsing (`7fc148b`). WFE-008 now
+executes generated structured body chains, proves loop-budget and ordinal
+conservation, combines retry backoff with cancellation, and runs the same
+pinned seeds at a four-times budget in scheduled CI (`b04e0c0`). The misplaced
+WM-006 evaluator-composition and WM-007 ready-to-start evidence is also attached
+to its correct audit finding. These corrections remain repository evidence and
+do not satisfy any live Phase 7 obligation.
 
 External obligations remain external: ART-002 production latency, ART-008 live
 AWS/regional recovery, DB-011 workload/planner evidence, DB-017 deployed
