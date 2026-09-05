@@ -10,22 +10,19 @@
   integration suites, package configuration, and CI execution were also traced.
 - **Architecture sources:** the authoritative backend plan and ADR-010.
 - **Audit status:** granularly certified for the pinned implementation tree.
-- **Implementation status:** no reproduced runtime defect; two important
-  compatibility-maintenance risks and four focused design/test improvements are
-  open.
+- **Implementation status:** NC-001, NC-002, NC-003, NC-005, and NC-006 are
+  fixed in the repository. NC-004 remains actionable test-ownership work.
 
 The package implements the correct architectural role. It is the platform-owned
 composition module between browser-safe node metadata, immutable compatibility
 releases, and server-only executors. Its root/server export split is sound, its
 dependency direction is correct, and current release behavior is well tested.
 
-The main weakness is representation, not the compatibility model. Immutable
-history is expressed through hundreds of lines of repeated staged/active object
-construction, separate support arrays, and two large cohort switches. That
-repetition creates several places that must change consistently for every node
-release. Historical fingerprints are derived from live manifest imports and are
-not pinned in package-owned golden fixtures, so an accidental in-place manifest
-change can recompute old release identities rather than fail immediately.
+Immutable history now keeps explicit named releases while sharing one private
+staging/activation implementation and one cohort configuration. Package-owned
+golden fingerprints independently pin every retained release. The remaining
+weakness is test ownership: one broad test module still combines release,
+definition-resolution, and server-composition behavior.
 
 The 766-line `registry.ts` is therefore a maintainability finding because it
 contains parallel sources of truth, not because 766 is inherently too many
@@ -43,28 +40,27 @@ also retraced browser/server export separation and all repository consumers in
 API and worker code. Automated inventory and symbol searches supported, but did
 not replace, the content review.
 
-Fresh recertification checks passed: typecheck, all 16 tests, build, and package
+Fresh remediation checks passed: typecheck, all 19 tests, build, and package
 ESLint. No additional finding was discovered. NC-001 through NC-006 remain the
 complete known finding set for the pinned implementation. Certification refers
-to review coverage, not implementation completion; those open findings still
-require remediation or explicit disposition.
+to review coverage, not implementation completion; the current disposition is
+recorded below.
 
 ## Evidence collected
 
 | Check | Result |
 | --- | --- |
 | `pnpm --filter @pertexo/node-catalog typecheck` | Passed |
-| `pnpm --filter @pertexo/node-catalog test` | 2 files and 16 tests passed |
+| `pnpm --filter @pertexo/node-catalog test` | 2 files and 19 tests passed |
 | `pnpm --filter @pertexo/node-catalog build` | Passed |
 | `pnpm exec eslint packages/node-catalog` | Passed |
-| Ad hoc package V8 coverage | 86.09% statements/lines, 81.08% branches, 100% functions |
+| Enforced package V8 coverage | 96.69% statements/lines, 87.23% branches, 100% functions |
 | Dependency/cycle inspection | One-way imports; no internal or workspace cycle found |
 | Export/consumer tracing | Root used by API and worker; server entry used only by worker and tests |
-| Compatibility evidence search | Core epochs have external retained fixtures; platform-added epochs 3–24 have no exact golden fingerprint |
+| Compatibility evidence | Exact package-owned golden fingerprints pin all 30 retained releases |
 
-Coverage is a measurement, not an enforced package baseline. Instrumented line
-coverage was 100% for `definition-resolution.ts`, 84.13% for `registry.ts`, 50%
-for the Node-only guard, and 92% for `server.ts`.
+Coverage is enforced by the package-owned configuration and root
+`test:coverage` command.
 
 ## Architecture, module depth, and dependency direction
 
@@ -238,8 +234,8 @@ does not prevent future package coverage regression.
 
 - **Severity:** P1.
 - **Classification:** maintainability improvement with durable-compatibility risk.
-- **Status:** open.
-- **Evidence:** `registry.ts` recomputes every platform release from currently
+- **Status:** fixed in the repository by `fade038`.
+- **Original evidence (audited tree):** `registry.ts` recomputes every platform release from currently
   imported manifests. Tests assert epochs and fingerprint uniqueness. Core
   epochs 1/2 have exact evidence in database migration/baseline and retained-V2
   fixtures, but the repository contains no exact expected fingerprint for the
@@ -262,15 +258,14 @@ does not prevent future package coverage regression.
 
 - **Severity:** P2.
 - **Classification:** maintainability improvement.
-- **Status:** open.
-- **Implemented evidence (2026-09-05, partial):** cohort support and serving
+- **Status:** fixed in the repository by `f881f8c` and `d003ed2`.
+- **Implemented evidence (2026-09-05):** cohort support and serving
   selection now come from one typed `platformReleaseCohortConfig`; the exported
   cohort vocabulary is derived from that record. The prior two exhaustive
   switches were removed, while named support constants remain for compatibility
-  and review. The older epoch 3–24 staged/active construction is still explicit
-  and repetitive, so this finding remains open until those pairs use the same
-  small helpers already used by the V2 successors.
-- **Evidence:** `registry.ts:24-475` repeats staged/active creation for eleven
+  and review. All staged/active pairs now use the same private transition
+  helpers; the 30 golden fingerprints remain byte-identical.
+- **Original evidence (audited tree):** `registry.ts:24-475` repeats staged/active creation for eleven
   nodes; lines 507–612 define support pairs; lines 641–689 and 707–754 separately
   map the same cohorts to support and serving releases.
 - **Impact:** adding a node requires synchronized edits across construction,
@@ -291,8 +286,8 @@ does not prevent future package coverage regression.
 
 - **Severity:** P2.
 - **Classification:** maintainability and startup-efficiency improvement.
-- **Status:** open.
-- **Evidence:** `server.ts:83-124` creates HTTP, Slack, and email executor
+- **Status:** fixed in the repository by `496230a`.
+- **Original evidence (audited tree):** `server.ts:83-124` creates HTTP, Slack, and email executor
   adapters for every supported release, including core and early cohorts that do
   not contain those executors. Release filtering occurs afterward.
 - **Impact:** registry construction does work and creates dependency graphs that
@@ -326,8 +321,8 @@ does not prevent future package coverage regression.
 
 - **Severity:** P2.
 - **Classification:** continuous control gap.
-- **Status:** open.
-- **Evidence:** the package has no `test:coverage` script or coverage config and
+- **Status:** fixed as a continuous repository control by `fade038`.
+- **Original evidence (audited tree):** the package has no `test:coverage` script or coverage config and
   is absent from root critical coverage. Ad hoc branch coverage is 81.08%.
 - **Impact:** historical selection or fail-closed branches can regress while all
   mandatory coverage checks pass.
@@ -341,8 +336,8 @@ does not prevent future package coverage regression.
 
 - **Severity:** P3.
 - **Classification:** maintainability improvement.
-- **Status:** open.
-- **Evidence:** `resolvePlatformNodeDefinitionForRelease` accepts
+- **Status:** fixed in the repository by `496230a`.
+- **Original evidence (audited tree):** `resolvePlatformNodeDefinitionForRelease` accepts
   `definitionInput: DefinitionIdentity` and immediately parses it with
   `definitionIdentitySchema`.
 - **Impact:** callers may infer that input is trusted even though this function
@@ -353,6 +348,17 @@ does not prevent future package coverage regression.
   module's leverage.
 - **Verification:** typecheck all callers and retain valid/malformed identity
   tests.
+
+### Current remediation evidence
+
+| Finding | Repository evidence | Verification |
+| --- | --- | --- |
+| NC-001 | `release-history.golden.ts` independently pins all 30 release fingerprints | The package golden test passes without snapshot regeneration |
+| NC-002 | One private staged/active transition implementation and one cohort record replace parallel algorithms while preserving named history | 30 golden fingerprints, every cohort assertion, 19 package tests, typecheck, ESLint, and coverage pass |
+| NC-003 | `server.ts` constructs only executors named by the selected release | Dependency getter spies prove core touches no provider and HTTP touches no unrelated provider |
+| NC-004 | Still open: `catalog.test.ts` owns multiple behavioral interfaces | Split without assertion loss or duplication regression |
+| NC-005 | Package-owned coverage thresholds execute from root `test:coverage` and CI | 96.69% statements/lines, 87.23% branches, 100% functions |
+| NC-006 | Definition resolution accepts `unknown` and owns runtime parsing | Package and repository consumer typechecks pass |
 
 ## Non-findings and rejected refactors
 

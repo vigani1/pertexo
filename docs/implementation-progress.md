@@ -30,6 +30,15 @@ external evidence obligation: production must use and demonstrate a
 non-clustered replicated Redis primary compatible with the atomic multi-key Lua
 policy. Local mocks and repository fixtures are not treated as that evidence.
 
+Node-catalog remediation has fixed NC-001, NC-002, NC-003, NC-005, and NC-006.
+All 30 retained compatibility fingerprints remain byte-identical after release
+construction and cohort selection were centralized behind private helpers;
+selective adapter construction, unknown-input parsing, and package coverage are
+also enforced. The package passes 19 tests with 96.69% statements/lines, 87.23%
+branches, and 100% functions. NC-004 remains open until the broad catalog test
+module is split by release history, definition resolution, and server registry
+ownership without assertion or duplication regression.
+
 ## Status summary
 
 | Checkpoint | Status | Evidence |
