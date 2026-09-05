@@ -859,7 +859,8 @@ review.
 ### DB-005 — Fact loading uses many round trips and non-index-friendly joins
 
 - **Severity/classification:** P2 performance/scale improvement.
-- **Status:** open.
+- **Status:** fixed in the repository on 2026-09-05; production-cardinality
+  monitoring remains part of DB-011.
 - **Evidence:** `readPersistedFacts` reads at most 64 rows per query, so the
   accepted 10,000 rows require up to 157 queries inside one repeatable-read
   transaction. Joins compare `attempt.id::text` and `node.id::text` to JSON
@@ -872,6 +873,25 @@ review.
 - **Verification:** `EXPLAIN (ANALYZE, BUFFERS)` with representative tenant/run
   cardinality and 1/1,500/10,000 facts, plus round-trip and transaction-duration
   benchmarks. Confirm malformed legacy payloads still fail closed.
+- **Implemented:** event rows are fetched in bounded 1,000-row pages and their
+  canonical payloads/UUID identities are validated in application memory.
+  Unique validated attempt IDs are then resolved in one relational
+  `uuid[]` lookup scoped by workspace and workflow run. This removes JSON joins,
+  prevents malformed legacy values from reaching a PostgreSQL UUID cast, and
+  reduces the maximum legal window from 157 event fetches to ten plus one
+  physical-state lookup. The 40 MiB canonical observation-window bound remains
+  unchanged.
+- **Repository evidence:**
+  `coordinator-run-store-observations.integration.test.ts` exercises public
+  loading at 1, 1,500, and 10,000 facts, runs
+  `EXPLAIN (ANALYZE, BUFFERS)` for both relational queries, and verifies index
+  scans remain available with sequential scans disabled. On the disposable
+  PostgreSQL fixture used on 2026-09-05, the three end-to-end cases completed in
+  27 ms, 97 ms, and 373 ms respectively. The same suite proves malformed legacy
+  identities fail with `CoordinatorRunStateCorruptError`, not a database cast
+  error. Command: `pnpm --filter @pertexo/database exec vitest run
+  test/coordinator-run-store-observations.integration.test.ts --config
+  vitest.integration.config.ts --reporter=verbose` (16/16).
 
 ### DB-006 — Coverage reporting does not describe the whole package
 
