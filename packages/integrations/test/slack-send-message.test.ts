@@ -1,5 +1,8 @@
-import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
-import { ProviderExecutionRateLimitError } from '@pertexo/node-sdk/server';
+import {
+  NodeDispatchEvidenceError,
+  ProviderExecutionRateLimitError,
+  type NodeExecutionRuntime,
+} from '@pertexo/node-sdk/server';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -139,6 +142,39 @@ describe('slack.send_message@1', () => {
     });
     expect(state.secret.every((byte) => byte === 0)).toBe(true);
   });
+
+  it.each([
+    [
+      'provider_dispatch_binding_mismatch',
+      { kind: 'failed', errorKind: 'configuration', possiblyDispatched: false },
+    ],
+    [
+      'provider_connection_fence_failed',
+      {
+        kind: 'failed',
+        errorKind: 'authentication',
+        possiblyDispatched: false,
+      },
+    ],
+  ] as const)(
+    'maps dispatch evidence failure %s before provider bytes',
+    async (code, expected) => {
+      const state = runtime({
+        kind: 'succeeded',
+        channelId: 'C123ABC',
+        messageTs: '1724412345.000100',
+      });
+      state.beforeDispatch.mockRejectedValueOnce(
+        new NodeDispatchEvidenceError(code),
+      );
+
+      await expect(
+        createSlackSendMessageExecutorRegistration({
+          client: { sendMessage: state.sendMessage },
+        }).execute(invocation(state.value)),
+      ).rejects.toMatchObject(expected);
+    },
+  );
 
   it('uses only the fixed endpoint, one bounded request, no redirects, and inaccessible unfurls', async () => {
     let requestBody: Uint8Array | undefined;

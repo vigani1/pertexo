@@ -293,6 +293,22 @@ describe('secure HTTP client', () => {
     { maxRedirects: 6 },
     { maxResponseBytes: 10_485_761 },
     { sensitiveValues: [42 as never] },
+    { sensitiveValues: [''] },
+    { sensitiveValues: Array.from({ length: 33 }, () => 'secret') },
+    {
+      headers: Object.fromEntries(
+        Array.from({ length: 65 }, (_, index) => [`x-${String(index)}`, 'x']),
+      ),
+    },
+    {
+      headers: Object.fromEntries(
+        Array.from({ length: 5 }, (_, index) => [
+          `x-large-${String(index)}`,
+          'x'.repeat(8_192),
+        ]),
+      ),
+    },
+    { url: `https://api.example.test/${'x'.repeat(2_100)}` },
     { unexpected: true },
   ])('rejects invalid input before DNS or dispatch: $url', async (override) => {
     const resolver = new FakeResolver({});
@@ -401,6 +417,7 @@ describe('secure HTTP client', () => {
         { address: '8.8.8.8', family: 4 },
         { address: '169.254.169.254', family: 4 },
       ],
+      'mismatch.example.test': [{ address: '8.8.8.8', family: 6 }],
     });
     const transport = new FakeTransport(() =>
       Promise.reject(new Error('must not dispatch')),
@@ -411,6 +428,7 @@ describe('secure HTTP client', () => {
       'http://[::1]/',
       'https://private.example.test/',
       'https://mixed.example.test/',
+      'https://mismatch.example.test/',
     ]) {
       await expectSecureFailure(client.execute(request({ url })), {
         code: SECURE_HTTP_ERROR_CODE.ssrfBlocked,
@@ -420,13 +438,32 @@ describe('secure HTTP client', () => {
     expect(transport.requests).toEqual([]);
   });
 
+  it('dispatches a public literal without consulting DNS', async () => {
+    const resolver = new FakeResolver({});
+    const fixture = transportResponse(204, {}, []);
+    const transport = new FakeTransport(() =>
+      Promise.resolve(fixture.response),
+    );
+
+    await expect(
+      new SecureHttpClient(resolver, transport).execute(
+        request({ url: 'https://8.8.8.8/health' }),
+      ),
+    ).resolves.toMatchObject({ status: 204 });
+    expect(resolver.calls).toEqual([]);
+    expect(transport.requests[0]?.address).toEqual({
+      address: '8.8.8.8',
+      family: 4,
+    });
+  });
+
   it('re-resolves and pins every redirect hop without inheriting trust', async () => {
     const resolver = new FakeResolver({
       'first.example.test': [{ address: '8.8.8.8', family: 4 }],
       'second.example.test': [{ address: '2606:4700:4700::1111', family: 6 }],
     });
     const first = transportResponse(307, {
-      location: 'https://second.example.test/final?redirect-secret=value',
+      location: ['https://second.example.test/final?redirect-secret=value'],
     });
     const second = transportResponse(204, {}, []);
     const transport = new FakeTransport((_input, index) =>
@@ -866,5 +903,17 @@ describe('Node HTTP transport', () => {
     expect(decoder.decode(Buffer.concat(chunks))).toBe(
       `does-not-resolve.invalid:${String(address.port)}`,
     );
+
+    const posted = encoder.encode('request-body');
+    const postResponse = await transport.dispatch({
+      url: new URL(`http://does-not-resolve.invalid:${String(address.port)}/`),
+      address: { address: '127.0.0.1', family: 4 },
+      method: 'POST',
+      headers: {},
+      body: posted,
+      timeoutMillis: 1_000,
+    });
+    for await (const _chunk of postResponse.body) void _chunk;
+    postResponse.close();
   });
 });
