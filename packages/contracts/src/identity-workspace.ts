@@ -2,6 +2,7 @@ import type { z } from 'zod';
 
 import { apiProblemSchema } from './errors/api-problem.js';
 import {
+  authenticatedComponents,
   jsonRequest,
   jsonResponse,
   jsonSchema,
@@ -168,17 +169,7 @@ export const identityWorkspaceOpenApiDocument = Object.freeze({
       },
     },
   },
-  components: {
-    schemas,
-    responses: problemResponses,
-    securitySchemes: {
-      cookieSession: {
-        type: 'apiKey',
-        in: 'cookie',
-        name: 'pertexo_session',
-      },
-    },
-  },
+  components: authenticatedComponents(schemas, problemResponses),
 });
 
 function queryParameter(name: 'code' | 'state', schema: z.ZodType) {

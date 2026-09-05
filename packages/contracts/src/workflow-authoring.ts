@@ -19,6 +19,7 @@ import {
 import { idempotencyKeySchema } from './http/identity-workspace.js';
 import { projectContractSchema } from './schema-projection.js';
 import {
+  authenticatedComponents,
   jsonRequest,
   jsonResponse,
   jsonSchema,
@@ -304,17 +305,7 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
       },
     },
   },
-  components: {
-    schemas: openApiSchemas,
-    responses: problemResponses,
-    securitySchemes: {
-      cookieSession: {
-        type: 'apiKey',
-        in: 'cookie',
-        name: 'pertexo_session',
-      },
-    },
-  },
+  components: authenticatedComponents(openApiSchemas, problemResponses),
 });
 
 type SchemaName = keyof typeof openApiSchemas;

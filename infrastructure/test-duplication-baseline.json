@@ -7,9 +7,9 @@
       "minLines": 12,
       "minTokens": 80,
       "maximums": {
-        "clones": 45,
-        "duplicatedLines": 992,
-        "duplicatedTokens": 8438
+        "clones": 36,
+        "duplicatedLines": 707,
+        "duplicatedTokens": 6142
       },
       "families": [
         {
@@ -23,20 +23,6 @@
             {
               "hash": "c155b6228f106ce4fc47b7a9ee968ecb5cefb60e32669989fedf9e2360d64624",
               "maxLines": 18
-            }
-          ]
-        },
-        {
-          "files": [
-            "packages/node-sdk/src/release.ts",
-            "packages/node-sdk/src/server.ts"
-          ],
-          "classification": "false-positive",
-          "reason": "Release validation and server registration independently tokenize identities at separate public trust boundaries; sharing would couple browser-safe and server-only modules.",
-          "clones": [
-            {
-              "hash": "4f5b31520a1781fc74338cb78707ab919a1226a4e505e7fddc33e395911470b0",
-              "maxLines": 20
             }
           ]
         },
@@ -230,84 +216,6 @@
         },
         {
           "files": [
-            "packages/contracts/src/workflow-authoring.ts",
-            "packages/contracts/src/workflow-runs.ts"
-          ],
-          "classification": "false-positive",
-          "reason": "Separate generated-contract owners repeat OpenAPI references and security components so each entry point remains independently generated and consumable.",
-          "clones": [
-            {
-              "hash": "5170a03e2e47c8345bc2baad80aece40a3cb539f885fcc187a8e68394e69c5c5",
-              "maxLines": 26
-            },
-            {
-              "hash": "1f58289893a3262467e7dda162d388a68ccb807c55b217497293fc7ffe36c7c3",
-              "maxLines": 23
-            }
-          ]
-        },
-        {
-          "files": [
-            "packages/contracts/src/node-testing.ts",
-            "packages/contracts/src/workflow-authoring.ts"
-          ],
-          "classification": "false-positive",
-          "reason": "Node-testing and workflow-authoring OpenAPI documents intentionally emit self-contained response maps and component sections for separate public artifacts.",
-          "clones": [
-            {
-              "hash": "057dcd7e22932ec60071e845192b60d2a7eaec528f0a77b04311718c62a65684",
-              "maxLines": 73
-            }
-          ]
-        },
-        {
-          "files": [
-            "packages/contracts/src/identity-workspace.ts",
-            "packages/contracts/src/workflow-runs.ts"
-          ],
-          "classification": "false-positive",
-          "reason": "Identity and workflow-run OpenAPI documents intentionally retain complete independent security and response component declarations.",
-          "clones": [
-            {
-              "hash": "7e35de0a21dbcc6bb5541a3c0174d883480c4603f43be7715b7e771fa49b7c06",
-              "maxLines": 55
-            }
-          ]
-        },
-        {
-          "files": [
-            "packages/contracts/src/connections.ts",
-            "packages/contracts/src/workflow-runs.ts"
-          ],
-          "classification": "false-positive",
-          "reason": "Connections and workflow-run contract generators use matching OpenAPI request/response helpers but produce distinct standalone public artifacts.",
-          "clones": [
-            {
-              "hash": "d3a0be2c2822c441da43ad5329ac78facba386e592d632573cce3ae9964cf8a3",
-              "maxLines": 36
-            },
-            {
-              "hash": "a7ee85546022912c1fde3023275601e248065a4e4a62df81497ebf38d862d38f",
-              "maxLines": 25
-            }
-          ]
-        },
-        {
-          "files": [
-            "packages/artifact-store/src/config.ts",
-            "packages/artifact-store/src/control-ledger-config.ts"
-          ],
-          "classification": "false-positive",
-          "reason": "Artifact data and control-ledger endpoints share URL hardening while retaining different required environment variables, regions, buckets, and lifecycle policy.",
-          "clones": [
-            {
-              "hash": "b00c804bbc97c17965a3fce68b63b2b89c6c4c5d1385c2861dd581eaac00c4b5",
-              "maxLines": 23
-            }
-          ]
-        },
-        {
-          "files": [
             "apps/worker/src/execution/operator-run-replay-runtime.ts",
             "apps/worker/src/triggers/trigger-runtime.ts"
           ],
@@ -489,20 +397,6 @@
             {
               "hash": "80bf7a1f36ee2d62b512e79e615e5355826bc81033f82d5c6c9c5535f6b83e5a",
               "maxLines": 21
-            }
-          ]
-        },
-        {
-          "files": [
-            "apps/api/src/schedules/controllers.ts",
-            "apps/api/src/webhooks/controllers.ts"
-          ],
-          "classification": "false-positive",
-          "reason": "Schedule and webhook routes intentionally own separate strict route schemas despite sharing workspace and workflow identifiers.",
-          "clones": [
-            {
-              "hash": "b38558840a127d40386e907528cfa24485b65ffd53fa9f9f3ecd84cad789e178",
-              "maxLines": 13
             }
           ]
         },

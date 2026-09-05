@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import {
+  authenticatedComponents,
   jsonRequest,
   jsonResponse,
   jsonSchema,
@@ -166,15 +167,5 @@ export const nodeTestingOpenApiDocument = Object.freeze({
       },
     },
   },
-  components: {
-    schemas: openApiSchemas,
-    responses: problemResponses,
-    securitySchemes: {
-      cookieSession: {
-        type: 'apiKey',
-        in: 'cookie',
-        name: 'pertexo_session',
-      },
-    },
-  },
+  components: authenticatedComponents(openApiSchemas, problemResponses),
 });

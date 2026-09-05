@@ -75,3 +75,20 @@ export function pathParameter(
     schema,
   } as const;
 }
+
+export function authenticatedComponents<
+  Schemas extends Readonly<Record<string, unknown>>,
+  Responses extends Readonly<Record<string, unknown>>,
+>(schemas: Schemas, responses: Responses) {
+  return {
+    schemas,
+    responses,
+    securitySchemes: {
+      cookieSession: {
+        type: 'apiKey',
+        in: 'cookie',
+        name: 'pertexo_session',
+      },
+    },
+  } as const;
+}
