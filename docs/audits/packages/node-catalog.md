@@ -10,8 +10,7 @@
   integration suites, package configuration, and CI execution were also traced.
 - **Architecture sources:** the authoritative backend plan and ADR-010.
 - **Audit status:** granularly certified for the pinned implementation tree.
-- **Implementation status:** NC-001, NC-002, NC-003, NC-005, and NC-006 are
-  fixed in the repository. NC-004 remains actionable test-ownership work.
+- **Implementation status:** all six repository-controlled findings are fixed.
 
 The package implements the correct architectural role. It is the platform-owned
 composition module between browser-safe node metadata, immutable compatibility
@@ -20,9 +19,9 @@ dependency direction is correct, and current release behavior is well tested.
 
 Immutable history now keeps explicit named releases while sharing one private
 staging/activation implementation and one cohort configuration. Package-owned
-golden fingerprints independently pin every retained release. The remaining
-weakness is test ownership: one broad test module still combines release,
-definition-resolution, and server-composition behavior.
+golden fingerprints independently pin every retained release. Tests are split
+by release/cohort history, definition resolution, server composition, and
+package-contract ownership.
 
 The 766-line `registry.ts` is therefore a maintainability finding because it
 contains parallel sources of truth, not because 766 is inherently too many
@@ -51,7 +50,7 @@ recorded below.
 | Check | Result |
 | --- | --- |
 | `pnpm --filter @pertexo/node-catalog typecheck` | Passed |
-| `pnpm --filter @pertexo/node-catalog test` | 2 files and 19 tests passed |
+| `pnpm --filter @pertexo/node-catalog test` | 4 files and 19 tests passed |
 | `pnpm --filter @pertexo/node-catalog build` | Passed |
 | `pnpm exec eslint packages/node-catalog` | Passed |
 | Enforced package V8 coverage | 96.69% statements/lines, 87.23% branches, 100% functions |
@@ -304,8 +303,8 @@ does not prevent future package coverage regression.
 
 - **Severity:** P3.
 - **Classification:** maintainability improvement.
-- **Status:** open.
-- **Evidence:** `test/catalog.test.ts` is 969 lines and combines compatibility
+- **Status:** fixed in the repository by `1d4cff9`.
+- **Original evidence (audited tree):** `test/catalog.test.ts` is 969 lines and combines compatibility
   topology, schema resolution, core node execution, provider credential/runtime
   fixtures, telemetry, and server composition.
 - **Impact:** finding the characterization for one interface requires navigating
@@ -356,7 +355,7 @@ does not prevent future package coverage regression.
 | NC-001 | `release-history.golden.ts` independently pins all 30 release fingerprints | The package golden test passes without snapshot regeneration |
 | NC-002 | One private staged/active transition implementation and one cohort record replace parallel algorithms while preserving named history | 30 golden fingerprints, every cohort assertion, 19 package tests, typecheck, ESLint, and coverage pass |
 | NC-003 | `server.ts` constructs only executors named by the selected release | Dependency getter spies prove core touches no provider and HTTP touches no unrelated provider |
-| NC-004 | Still open: `catalog.test.ts` owns multiple behavioral interfaces | Split without assertion loss or duplication regression |
+| NC-004 | Tests are split into release/cohort history, definition resolution, server composition, and package-contract owners | 4 files and 19 tests pass independently; largest file is 917 lines; test clones improve to 6 groups/267 lines/0.28% |
 | NC-005 | Package-owned coverage thresholds execute from root `test:coverage` and CI | 96.69% statements/lines, 87.23% branches, 100% functions |
 | NC-006 | Definition resolution accepts `unknown` and owns runtime parsing | Package and repository consumer typechecks pass |
 
