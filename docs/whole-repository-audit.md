@@ -1389,7 +1389,7 @@ Local commands at the audited implementation tree:
 
 - `pnpm check` — passed; build, formatting, documentation, runtime alignment,
   lint, complexity ratchet, generated contracts, project/test typechecks, and
-  all 1,604 configured non-integration tests passed.
+  all 1,892 configured non-integration tests passed.
 - `pnpm test:coverage` — passed for the 105 selected critical files;
   percentages are recorded in A-05; 501 reviewed and zero unreviewed uncovered
   branches.
@@ -1399,10 +1399,10 @@ Local commands at the audited implementation tree:
   passed.
 - `pnpm dependencies:check` — passed with no unused files, dependencies, or
   unsupported internal exports.
-- Enabled real-service integration cohorts — database 63 files/320 tests;
-  worker 18 files/22 tests; API 4 files/15 tests with one SSE-only suite
-  skipped; artifact store 2 files/5 tests with three provider-specific cases
-  skipped.
+- `pnpm test:integration` — database passed 66 files/330 PostgreSQL tests. The
+  artifact-store, queue, worker, and API cohorts collected cleanly and skipped
+  because their opt-in service configuration was absent from the verification
+  shell; this run is not live-provider evidence.
 - `pnpm dlx jscpd@4.0.5 apps/*/test packages/*/test --min-lines 18
   --min-tokens 130 --format typescript --reporters console --ignore
   '**/dist/**'` — the original baseline was 25 groups/1,977 lines (2.08%);
