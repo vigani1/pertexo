@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { JOB_NAME, type QueueJob } from '../src/index.js';
 import {
   ACTIVE_QUEUE_JOB_NAMES,
+  isActiveQueueJobName,
   parseQueueJob,
   QUEUE_JOB_REGISTRY,
   safeParseQueueJob,
@@ -30,6 +31,8 @@ describe('versioned queue contracts', () => {
     expect(ACTIVE_QUEUE_JOB_NAMES).not.toContain(JOB_NAME.sweepExpiredPreviews);
     expect(ACTIVE_QUEUE_JOB_NAMES).not.toContain(JOB_NAME.expireArtifacts);
     expect(Object.isFrozen(ACTIVE_QUEUE_JOB_NAMES)).toBe(true);
+    expect(isActiveQueueJobName(JOB_NAME.advanceWorkflowRun)).toBe(true);
+    expect(isActiveQueueJobName(JOB_NAME.expireArtifacts)).toBe(false);
 
     expect(() =>
       parseQueueJob({
