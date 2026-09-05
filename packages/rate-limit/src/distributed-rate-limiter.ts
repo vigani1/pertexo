@@ -51,6 +51,8 @@ end
 return {1, 0, 0}
 `;
 
+const MAX_WINDOW_SECONDS = Math.floor(Number.MAX_SAFE_INTEGER / 1_000);
+
 function counterKey(decision: RateLimitDecision, index: number): string {
   const dimension = decision.dimensions[index];
   if (dimension === undefined) {
@@ -71,10 +73,11 @@ function assertDecision(decision: RateLimitDecision): void {
     throw new Error('Rate-limit decision endpoint class is invalid');
   if (
     !Number.isSafeInteger(decision.windowSeconds) ||
-    decision.windowSeconds <= 0
+    decision.windowSeconds <= 0 ||
+    decision.windowSeconds > MAX_WINDOW_SECONDS
   )
     throw new Error(
-      'Rate-limit decision window must be a positive safe integer',
+      'Rate-limit decision window must be a positive integer with a safe millisecond projection',
     );
   if (decision.dimensions.length === 0)
     throw new Error('Rate-limit decision requires at least one dimension');

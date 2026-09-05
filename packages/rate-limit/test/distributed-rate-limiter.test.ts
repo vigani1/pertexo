@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  ABUSE_RATE_LIMIT_COUNTER_SCHEMA_VERSION,
   DistributedRateLimiter,
   type RateLimitDecision,
   type RateLimitScriptExecutor,
@@ -51,6 +52,7 @@ describe('distributed abuse rate limiter', () => {
     ]);
     expect(arguments_.slice(0, 3).join(':')).not.toContain('secret');
     expect(arguments_.slice(3)).toEqual(['60000', '10', '20', '5']);
+    expect(ABUSE_RATE_LIMIT_COUNTER_SCHEMA_VERSION).toBe(1);
   });
 
   it('returns a bounded retry and the rejected dimension', async () => {
@@ -74,8 +76,17 @@ describe('distributed abuse rate limiter', () => {
   });
 
   it.each([
+    ['empty dimensions', { ...decision, dimensions: [] }],
     ['zero window', { ...decision, windowSeconds: 0 }],
+    ['negative window', { ...decision, windowSeconds: -1 }],
     ['fractional window', { ...decision, windowSeconds: 1.5 }],
+    [
+      'window whose millisecond projection is unsafe',
+      {
+        ...decision,
+        windowSeconds: Math.floor(Number.MAX_SAFE_INTEGER / 1_000) + 1,
+      },
+    ],
     [
       'blank identifier',
       {
@@ -88,6 +99,19 @@ describe('distributed abuse rate limiter', () => {
       {
         ...decision,
         dimensions: [{ kind: 'actor' as const, identifier: 'actor', limit: 0 }],
+      },
+    ],
+    [
+      'unsafe limit',
+      {
+        ...decision,
+        dimensions: [
+          {
+            kind: 'actor' as const,
+            identifier: 'actor',
+            limit: Number.MAX_SAFE_INTEGER + 1,
+          },
+        ],
       },
     ],
     [

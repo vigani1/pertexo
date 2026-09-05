@@ -19,6 +19,11 @@ export type RateLimitFailureMode = 'open' | 'closed';
 export type RateLimitDimensionKind =
   'client_address' | 'origin' | 'actor' | 'workspace' | 'connection';
 
+/**
+ * Counter compatibility identity for rolling deployments. Bump this only when
+ * counter semantics become incompatible (for example, a windowing-algorithm
+ * change), not for tuning-only limit changes.
+ */
 export const ABUSE_RATE_LIMIT_COUNTER_SCHEMA_VERSION = 1 as const;
 
 export type RateLimitSubject = Readonly<{
