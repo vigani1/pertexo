@@ -86,7 +86,7 @@ describe('bounded ForEach scheduling', () => {
 
   it('derives stable invocation identity only from version, node, and canonical scope', () => {
     const input = {
-      workflowVersionId: 'version',
+      workflowVersionId: '00000000-0000-4000-8000-000000000006',
       nodeId: 'node',
       branchPath: ['branch-b'],
       iterationPath: [{ loopNodeId: 'loop', ordinal: 2 }],

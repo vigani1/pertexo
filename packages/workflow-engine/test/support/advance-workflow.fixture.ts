@@ -34,7 +34,7 @@ export const chainGraph = {
 export function checkpoint(): WorkflowCheckpointV1 {
   return createCheckpoint({
     engineVersion: 'engine-v1',
-    workflowVersionId: 'version-1',
+    workflowVersionId: '00000000-0000-4000-8000-000000000001',
     iterationBudget: 1_000,
   });
 }

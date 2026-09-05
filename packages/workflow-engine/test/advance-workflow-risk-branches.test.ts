@@ -8,7 +8,7 @@ function input() {
   return {
     checkpoint: createCheckpoint({
       engineVersion: 'engine-v1',
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       iterationBudget: 100,
     }),
     schedulerState: { deriveReadiness: false, nodes: [], edges: [] } as const,

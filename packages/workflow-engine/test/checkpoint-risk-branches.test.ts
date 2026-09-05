@@ -7,7 +7,7 @@ import {
   parseCheckpoint,
 } from '../src/testing.js';
 
-const workflowVersionId = 'version-1';
+const workflowVersionId = '00000000-0000-4000-8000-000000000001';
 
 function baseV1() {
   return createCheckpoint({
@@ -73,11 +73,11 @@ const emptyLoop = {
 
 describe('checkpoint risk branches', () => {
   it.each(['\u001f', '\u007f', '\u07ff', '\u0800', '\ud800', '\udc00', '-0'])(
-    'accepts a bounded engine version containing %j',
+    'rejects a persistence-invalid engine version containing %j',
     (engineVersion) => {
-      expect(
-        parseCheckpoint({ ...baseV1(), engineVersion }).engineVersion,
-      ).toBe(engineVersion);
+      expect(() => parseCheckpoint({ ...baseV1(), engineVersion })).toThrow(
+        expect.objectContaining({ code: 'checkpoint_invalid' }),
+      );
     },
   );
 

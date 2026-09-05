@@ -33,7 +33,7 @@ function advance(
 function checkpoint(): ReturnType<typeof createCheckpointV2> {
   return createCheckpointV2({
     engineVersion: 'engine-v2',
-    workflowVersionId: 'version-1',
+    workflowVersionId: '00000000-0000-4000-8000-000000000001',
     iterationBudget: 100,
   });
 }
@@ -203,7 +203,7 @@ describe('workflow transition public risk behavior', () => {
       advance(
         createCheckpoint({
           engineVersion: 'engine-v1',
-          workflowVersionId: 'version-1',
+          workflowVersionId: '00000000-0000-4000-8000-000000000001',
           iterationBudget: 100,
         }),
         [
@@ -341,7 +341,7 @@ describe('workflow transition public risk behavior', () => {
 
   it('accepts an identical terminal loop replay through checkpoint state', () => {
     const iterationInvocationKey = invocationKey({
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       nodeId: 'body',
       branchPath: [],
       iterationPath: [{ loopNodeId: 'loop', ordinal: 0 }],
@@ -430,7 +430,7 @@ describe('workflow transition public risk behavior', () => {
       advance(
         createCheckpoint({
           engineVersion: 'engine-v1',
-          workflowVersionId: 'version-1',
+          workflowVersionId: '00000000-0000-4000-8000-000000000001',
           iterationBudget: 100,
         }),
         [

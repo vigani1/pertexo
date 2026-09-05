@@ -6,10 +6,11 @@ import {
 } from '@pertexo/workflow-model/canonical-json';
 
 import type { parseCheckpoint } from './checkpoint.js';
-import { executableEdges, executableNodes } from './executable-graph.js';
+import { executableEdges } from './executable-graph.js';
 import {
   normalizeBoundedEngineJson,
   type CompiledWorkflowExecutableV2,
+  type WorkflowExecutableNodeV2,
 } from './executable-workflow.js';
 import {
   configuredBranchOutputPorts,
@@ -48,22 +49,51 @@ function completedOutputReference(
   return undefined;
 }
 
-export function branchSelectionObservations(
+export function parseCompletedOutputItems(
   value: unknown,
-  persistedItems: readonly JsonValue[],
-  checkpoint: ReturnType<typeof parseCheckpoint>,
-  executable: CompiledWorkflowExecutableV2,
-): readonly WorkflowObservation[] {
-  if (value === undefined) return [];
+): readonly JsonValue[] {
   let normalized: JsonValue;
   try {
-    normalized = normalizeBoundedEngineJson(value);
+    normalized = normalizeBoundedEngineJson(value ?? []);
   } catch {
     operationError('observation_invalid', 'completed outputs are invalid');
   }
   if (!Array.isArray(normalized))
     operationError('observation_invalid', 'completed outputs must be an array');
-  const completedItems = normalized as readonly JsonValue[];
+  return normalized as readonly JsonValue[];
+}
+
+export function indexPersistedSuccessfulOutcomes(
+  persistedItems: readonly JsonValue[],
+): ReadonlyMap<string, Readonly<Record<string, JsonValue>>> {
+  const outcomes = new Map<string, Readonly<Record<string, JsonValue>>>();
+  for (const candidate of persistedItems) {
+    if (
+      isJsonRecord(candidate) &&
+      candidate.kind === 'outcome' &&
+      candidate.status === 'succeeded'
+    ) {
+      const outcome = candidate as Readonly<{
+        sequence: number;
+        attemptId: string;
+        invocationKey: string;
+      }> &
+        Readonly<Record<string, JsonValue>>;
+      outcomes.set(
+        `${String(outcome.sequence)}\u0000${outcome.attemptId}\u0000${outcome.invocationKey}`,
+        outcome,
+      );
+    }
+  }
+  return outcomes;
+}
+
+export function branchSelectionObservations(
+  completedItems: readonly JsonValue[],
+  successfulOutcomes: ReadonlyMap<string, Readonly<Record<string, JsonValue>>>,
+  checkpoint: ReturnType<typeof parseCheckpoint>,
+  nodes: ReadonlyMap<string, WorkflowExecutableNodeV2>,
+): readonly WorkflowObservation[] {
   const seen = new Map<string, string>();
   return completedItems.flatMap((item): WorkflowObservation[] => {
     const material = record(item, 'observation_invalid', 'completed output');
@@ -90,18 +120,13 @@ export function branchSelectionObservations(
       return [];
     }
     seen.set(identity, canonicalMaterial);
-    const correspondingOutcome = persistedItems.some((candidate) => {
-      if (!isJsonRecord(candidate)) return false;
-      return (
-        candidate.kind === 'outcome' &&
-        candidate.sequence === material.sequence &&
-        candidate.attemptId === material.attemptId &&
-        candidate.invocationKey === material.invocationKey &&
-        candidate.status === 'succeeded' &&
-        completedOutputReference(candidate, attemptId) !== undefined
-      );
-    });
-    if (!correspondingOutcome)
+    const correspondingOutcome = successfulOutcomes.get(
+      `${String(material.sequence)}\u0000${material.attemptId}\u0000${material.invocationKey}`,
+    );
+    if (
+      correspondingOutcome === undefined ||
+      completedOutputReference(correspondingOutcome, attemptId) === undefined
+    )
       operationError(
         'observation_invalid',
         'completed output has no matching persisted outcome',
@@ -109,9 +134,7 @@ export function branchSelectionObservations(
     const invocation = checkpoint.invocations.find(
       ({ invocationKey }) => invocationKey === material.invocationKey,
     );
-    const node = executableNodes(executable.envelope.graph).find(
-      ({ id }) => id === invocation?.nodeId,
-    );
+    const node = nodes.get(invocation?.nodeId ?? '');
     if (node === undefined) return [];
     const parallelPorts = configuredParallelOutputPorts(node);
     if (parallelPorts !== undefined) {
@@ -162,27 +185,16 @@ export function branchSelectionObservations(
 }
 
 export function forEachCoordinatorObservations(
-  value: unknown,
+  completedItems: readonly JsonValue[],
   persistedItems: readonly JsonValue[],
+  successfulOutcomes: ReadonlyMap<string, Readonly<Record<string, JsonValue>>>,
   checkpoint: ReturnType<typeof parseCheckpoint>,
-  executable: CompiledWorkflowExecutableV2,
+  nodes: ReadonlyMap<string, WorkflowExecutableNodeV2>,
   derivedObservations: readonly WorkflowObservation[] = [],
 ): Readonly<{
   observations: readonly WorkflowObservation[];
   declarationInvocationKeys: ReadonlySet<string>;
 }> {
-  let completed: JsonValue;
-  try {
-    completed = normalizeBoundedEngineJson(value ?? []);
-  } catch {
-    operationError('observation_invalid', 'completed outputs are invalid');
-  }
-  if (!Array.isArray(completed))
-    operationError('observation_invalid', 'completed outputs must be an array');
-  const completedItems = completed as readonly JsonValue[];
-  const nodes = new Map(
-    executableNodes(executable.envelope.graph).map((node) => [node.id, node]),
-  );
   const declarations = new Set<string>();
   const declarationMaterials = new Map<string, string>();
   const observations: WorkflowObservation[] = [];
@@ -233,16 +245,10 @@ export function forEachCoordinatorObservations(
         'observation_invalid',
         'completed output identity is invalid',
       );
-    const outcome = persistedItems.find(
-      (candidate) =>
-        isJsonRecord(candidate) &&
-        candidate.kind === 'outcome' &&
-        candidate.sequence === material.sequence &&
-        candidate.attemptId === material.attemptId &&
-        candidate.invocationKey === material.invocationKey &&
-        candidate.status === 'succeeded',
+    const outcome = successfulOutcomes.get(
+      `${String(material.sequence)}\u0000${material.attemptId}\u0000${material.invocationKey}`,
     );
-    if (!isJsonRecord(outcome))
+    if (outcome === undefined)
       operationError(
         'observation_invalid',
         'completed output has no matching persisted outcome',
@@ -381,6 +387,7 @@ export function mergeCoordinatorObservations(
   executable: CompiledWorkflowExecutableV2,
   checkpoint: ReturnType<typeof parseCheckpoint>,
   observations: readonly WorkflowObservation[],
+  nodes: ReadonlyMap<string, WorkflowExecutableNodeV2>,
 ): readonly WorkflowObservation[] {
   const projected = new Map(
     checkpoint.invocations.map((invocation) => [
@@ -400,9 +407,12 @@ export function mergeCoordinatorObservations(
         : { output: observation.output }),
     });
   }
-  const nodes = new Map(
-    executableNodes(executable.envelope.graph).map((node) => [node.id, node]),
-  );
+  const succeededByNode = new Map<string, typeof checkpoint.invocations>();
+  for (const invocation of projected.values()) {
+    if (invocation.status !== 'succeeded') continue;
+    const group = succeededByNode.get(invocation.nodeId) ?? [];
+    succeededByNode.set(invocation.nodeId, [...group, invocation]);
+  }
   const edges = executableEdges(executable.envelope.graph);
   return [...nodes.values()]
     .filter(
@@ -428,11 +438,7 @@ export function mergeCoordinatorObservations(
           : configuredParallelOutputPorts(parallel);
       if (branchIds === undefined)
         operationError('workflow_identity_invalid', 'Merge pairing is invalid');
-      const parallelInvocations = [...projected.values()].filter(
-        (invocation) =>
-          invocation.nodeId === parallelNodeId &&
-          invocation.status === 'succeeded',
-      );
+      const parallelInvocations = succeededByNode.get(parallelNodeId) ?? [];
       return parallelInvocations.flatMap(
         (parallelInvocation): WorkflowObservation[] => {
           const joinInvocationKey = createInvocationKey({

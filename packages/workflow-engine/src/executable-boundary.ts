@@ -21,7 +21,6 @@ import {
   validateExecutableGraph,
 } from './executable-graph-boundary.js';
 import {
-  assertSafeExecutableJson,
   exactKeys,
   normalizeBoundedEngineJson,
   parseGlobals,
@@ -34,7 +33,6 @@ export function parseBoundary(input: {
   readonly currentRelease?: unknown;
   readonly execution?: { readonly alreadyAdmitted: boolean };
 }): WorkflowExecutableV2 {
-  assertSafeExecutableJson(input.envelope);
   const normalizedEnvelope: unknown = normalizeBoundedEngineJson(
     input.envelope,
   );
@@ -57,7 +55,6 @@ export function parseBoundary(input: {
   );
   let alreadyAdmitted = false;
   if (input.execution !== undefined) {
-    assertSafeExecutableJson(input.execution);
     const normalizedExecution: unknown = normalizeBoundedEngineJson(
       input.execution,
     );

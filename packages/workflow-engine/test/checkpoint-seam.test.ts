@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  createCheckpoint,
   createCheckpointV2,
   invocationKey,
   parseCheckpoint,
@@ -264,7 +265,7 @@ describe('checkpoint seam', () => {
             kind: 'loop_started',
             loopId: 'loop',
             controlInvocationKey: invocationKey({
-              workflowVersionId: 'version-1',
+              workflowVersionId: '00000000-0000-4000-8000-000000000001',
               nodeId: 'loop',
             }),
             bodyRootNodeIds: ['body'],
@@ -355,7 +356,7 @@ describe('checkpoint seam', () => {
     expect(
       createCheckpointV2({
         engineVersion: 'engine-v2',
-        workflowVersionId: 'version-2',
+        workflowVersionId: '00000000-0000-4000-8000-000000000002',
         iterationBudget: 1_000,
       }),
     ).toMatchObject({ schemaVersion: 2, branchSelections: [] });
@@ -577,28 +578,64 @@ describe('checkpoint seam', () => {
     ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
   });
 
-  it('accepts exact 256 KiB including escaped and surrogate string bytes', () => {
+  it('enforces the persisted engine identity bound before storage', () => {
     const base = checkpoint();
-    const encoder = new TextEncoder();
-    const baseBytes = encoder.encode(JSON.stringify(base)).byteLength;
-    const originalValueBytes = encoder.encode(
-      JSON.stringify(base.engineVersion),
-    ).byteLength;
-    const escapedPrefix = '"\\\n\ud800😀';
-    const escapedPrefixBytes = encoder.encode(
-      JSON.stringify(escapedPrefix),
-    ).byteLength;
-    const requiredValueBytes =
-      WORKFLOW_CHECKPOINT_LIMITS_V1.bytes - baseBytes + originalValueBytes;
-    const exact = {
-      ...base,
-      engineVersion:
-        escapedPrefix + 'x'.repeat(requiredValueBytes - escapedPrefixBytes),
-    };
-    expect(encoder.encode(JSON.stringify(exact)).byteLength).toBe(
-      WORKFLOW_CHECKPOINT_LIMITS_V1.bytes,
-    );
+    const exact = { ...base, engineVersion: `e${'x'.repeat(63)}` };
     expect(parseCheckpoint(exact).engineVersion).toBe(exact.engineVersion);
+    expect(() =>
+      parseCheckpoint({ ...base, engineVersion: `e${'x'.repeat(64)}` }),
+    ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
+  });
+
+  it('admits only checkpoint identities and timestamps accepted by persistence', () => {
+    expect(() =>
+      createCheckpoint({
+        engineVersion: '',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
+        iterationBudget: 0,
+      }),
+    ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
+    expect(() =>
+      createCheckpoint({
+        engineVersion: 'engine-v1',
+        workflowVersionId: 'version-1',
+        iterationBudget: 0,
+      }),
+    ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
+
+    const waiting = {
+      ...checkpoint(),
+      runStatus: 'waiting',
+      invocations: [
+        {
+          invocationKey: 'wait',
+          nodeId: 'wait',
+          status: 'waiting',
+          attemptNumber: 1,
+          resumeAt: '0',
+          waitKind: 'node_wait',
+        },
+      ],
+    };
+    expect(() => parseCheckpoint(waiting)).toThrow(
+      expect.objectContaining({ code: 'checkpoint_invalid' }),
+    );
+  });
+
+  it('accounts for escaped and surrogate-pair bytes in bounded identifiers', () => {
+    const invocationKey = 'quoted"\n😀';
+    const parsed = parseCheckpoint({
+      ...checkpoint(),
+      invocations: [
+        {
+          invocationKey,
+          nodeId: 'node',
+          status: 'succeeded',
+          attemptNumber: 1,
+        },
+      ],
+    });
+    expect(parsed.invocations[0]?.invocationKey).toBe(invocationKey);
   });
 
   it('never invokes inherited toJSON while measuring checkpoint bytes', () => {

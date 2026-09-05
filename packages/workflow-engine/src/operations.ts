@@ -19,7 +19,9 @@ import { WorkflowEngineError } from './errors.js';
 import {
   branchSelectionObservations,
   forEachCoordinatorObservations,
+  indexPersistedSuccessfulOutcomes,
   mergeCoordinatorObservations,
+  parseCompletedOutputItems,
 } from './coordinator-observations.js';
 import { executableNodes } from './executable-graph.js';
 import {
@@ -129,8 +131,8 @@ function schedulerState(
 function assertCheckpointMatchesExecutable(
   checkpoint: ReturnType<typeof parseCheckpoint>,
   executable: CompiledWorkflowExecutableV2,
+  allNodes: readonly WorkflowExecutableNodeV2[],
 ): void {
-  const allNodes = executableNodes(executable.envelope.graph);
   const nodeIds = new Set(allNodes.map(({ id }) => id));
   const nodesById = new Map(allNodes.map((node) => [node.id, node]));
   for (const join of checkpoint.joins) {
@@ -316,16 +318,34 @@ export async function advanceWorkflow(
       'workflow_identity_invalid',
       'checkpoint workflow version does not match executable identity',
     );
-  assertCheckpointMatchesExecutable(checkpoint, input.executable);
+  const executableNodeList = executableNodes(input.executable.envelope.graph);
+  const nodesById = new Map(executableNodeList.map((node) => [node.id, node]));
+  const invocationsByKey = new Map(
+    checkpoint.invocations.map((invocation) => [
+      invocation.invocationKey,
+      invocation,
+    ]),
+  );
+  assertCheckpointMatchesExecutable(
+    checkpoint,
+    input.executable,
+    executableNodeList,
+  );
   const persistedObservations = parsePersistedObservations(
     input.observations,
     checkpoint,
   );
-  const branchSelections = branchSelectionObservations(
+  const completedOutputItems = parseCompletedOutputItems(
     input.completedOutputs,
+  );
+  const successfulOutcomes = indexPersistedSuccessfulOutcomes(
     persistedObservations.facts,
+  );
+  const branchSelections = branchSelectionObservations(
+    completedOutputItems,
+    successfulOutcomes,
     checkpoint,
-    input.executable,
+    nodesById,
   );
   const controlCanceled =
     checkpoint.cancelRequested ||
@@ -344,12 +364,8 @@ export async function advanceWorkflow(
   }
   const resolvedFailures: WorkflowObservation[] =
     persistedObservations.attemptFailures.map((failure) => {
-      const invocation = checkpoint.invocations.find(
-        (candidate) => candidate.invocationKey === failure.invocationKey,
-      );
-      const node = executableNodes(input.executable.envelope.graph).find(
-        (candidate) => candidate.id === invocation?.nodeId,
-      );
+      const invocation = invocationsByKey.get(failure.invocationKey);
+      const node = nodesById.get(invocation?.nodeId ?? '');
       if (
         invocation?.status !== 'running' ||
         invocation.attemptNumber !== failure.attemptNumber ||
@@ -422,10 +438,11 @@ export async function advanceWorkflow(
       };
     });
   const forEach = forEachCoordinatorObservations(
-    input.completedOutputs,
+    completedOutputItems,
     persistedObservations.facts,
+    successfulOutcomes,
     checkpoint,
-    input.executable,
+    nodesById,
     resolvedFailures,
   );
   const executionObservations = persistedObservations.observations.map(
@@ -439,6 +456,7 @@ export async function advanceWorkflow(
     input.executable,
     checkpoint,
     [...executionObservations, ...resolvedFailures],
+    nodesById,
   );
   const plan = advanceWorkflowFromSchedulerState({
     checkpoint,
@@ -467,9 +485,7 @@ export async function advanceWorkflow(
     nodeId: string,
     invocationKey: string,
   ): string | undefined => {
-    const node = executableNodes(input.executable.envelope.graph).find(
-      (candidate) => candidate.id === nodeId,
-    );
+    const node = nodesById.get(nodeId);
     if (node?.sideEffectClass !== 'idempotent_with_key') return undefined;
     return providerIdempotencyKey({
       invocationKey,

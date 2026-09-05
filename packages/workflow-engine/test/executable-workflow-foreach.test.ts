@@ -21,7 +21,7 @@ describe('For Each production operations', () => {
     const base = {
       runId: 'run-foreach',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       occurredAt: '2026-08-24T10:00:00.000Z',
       maximumAdmissions: 1,
       signal: new AbortController().signal,
@@ -30,7 +30,7 @@ describe('For Each production operations', () => {
       ...base,
       checkpoint: createCheckpointV2({
         engineVersion: 'engine-v1',
-        workflowVersionId: 'version-1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
         iterationBudget: 2,
       }),
       observations: [],
@@ -506,7 +506,7 @@ describe('For Each production operations', () => {
     );
     if (unscopedBody === undefined) throw new Error('body root missing');
     const unscopedBodyKey = invocationKey({
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       nodeId: unscopedBody.nodeId,
     });
     Object.assign(unscopedBody, { invocationKey: unscopedBodyKey });
@@ -532,7 +532,7 @@ describe('For Each production operations', () => {
     if (wrongOrdinalBody === undefined) throw new Error('body root missing');
     const undeclaredIterationPath = [{ loopNodeId: 'loop', ordinal: 1 }];
     const wrongOrdinalKey = invocationKey({
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       nodeId: wrongOrdinalBody.nodeId,
       iterationPath: undeclaredIterationPath,
     });
@@ -555,7 +555,7 @@ describe('For Each production operations', () => {
     );
     if (scopedControl === undefined) throw new Error('control missing');
     const scopedControlKey = invocationKey({
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       nodeId: scopedControl.nodeId,
       iterationPath: [{ loopNodeId: 'loop', ordinal: 0 }],
     });

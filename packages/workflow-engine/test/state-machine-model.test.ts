@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createCheckpoint } from '../src/index.js';
+import { createCheckpoint, type WorkflowCheckpoint } from '../src/index.js';
 import {
   advanceWorkflow,
   type SchedulerGraph,
@@ -19,7 +19,12 @@ function graphForMask(mask: number): SchedulerGraph {
     edges: POSSIBLE_EDGES.flatMap(({ source, target }, index) =>
       (mask & (1 << index)) === 0
         ? []
-        : [{ source: { nodeId: source }, target: { nodeId: target } }],
+        : [
+            {
+              source: { nodeId: source, port: 'output' },
+              target: { nodeId: target, port: 'input' },
+            },
+          ],
     ),
     structuredBodies: [],
   };
@@ -29,7 +34,7 @@ describe('bounded workflow state-machine model', () => {
   it('exhaustively preserves deterministic and monotonic transition invariants for every four-node DAG', () => {
     for (let mask = 0; mask < 1 << POSSIBLE_EDGES.length; mask += 1) {
       const schedulerState = graphForMask(mask);
-      let checkpoint = createCheckpoint({
+      let checkpoint: WorkflowCheckpoint = createCheckpoint({
         engineVersion: 'engine-v1',
         workflowVersionId: '00000000-0000-4000-8000-000000000001',
         iterationBudget: 16,

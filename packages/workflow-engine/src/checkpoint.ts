@@ -11,6 +11,10 @@ import {
 } from './checkpoint-shared.js';
 import { parseCheckpointV1Boundary } from './checkpoint-v1.js';
 import { parseCheckpointV2Boundary } from './checkpoint-v2.js';
+import {
+  assertPersistedEngineVersion,
+  assertPersistedWorkflowVersionId,
+} from './checkpoint-identity.js';
 
 export function parseCheckpoint(value: unknown): WorkflowCheckpoint {
   try {
@@ -61,6 +65,10 @@ export function createCheckpoint(input: {
   readonly iterationBudget: number;
   readonly nextEventSequence?: number;
 }): WorkflowCheckpointV1 {
+  const engineVersion = assertPersistedEngineVersion(input.engineVersion);
+  const workflowVersionId = assertPersistedWorkflowVersionId(
+    input.workflowVersionId,
+  );
   assertCheckpoint(
     Number.isSafeInteger(input.iterationBudget) && input.iterationBudget >= 0,
     'iterationBudget is invalid',
@@ -73,8 +81,8 @@ export function createCheckpoint(input: {
   );
   return {
     schemaVersion: 1,
-    engineVersion: input.engineVersion,
-    workflowVersionId: input.workflowVersionId,
+    engineVersion,
+    workflowVersionId,
     revision: 0,
     runStatus: 'queued',
     nextEventSequence: input.nextEventSequence ?? 2,

@@ -22,13 +22,13 @@ describe('branching production operations', () => {
     const executable = buildWorkflowExecutableV2({ graph: graph(), release });
     const checkpoint = createCheckpoint({
       engineVersion: 'engine-v1',
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       iterationBudget: 0,
     });
     const first = await advanceWorkflow({
       runId: 'run-1',
       executable,
-      workflowVersionId: 'version-1',
+      workflowVersionId: '00000000-0000-4000-8000-000000000001',
       checkpoint,
       occurredAt: '2026-08-20T10:00:00.000Z',
       maximumAdmissions: 1,
@@ -42,7 +42,7 @@ describe('branching production operations', () => {
       advanceWorkflow({
         runId: 'run-1',
         executable,
-        workflowVersionId: 'version-1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
         checkpoint: foreignCheckpoint,
         occurredAt: '2026-08-20T10:00:00.000Z',
         maximumAdmissions: 1,
@@ -54,7 +54,7 @@ describe('branching production operations', () => {
       await advanceWorkflow({
         runId: 'run-1',
         executable,
-        workflowVersionId: 'version-1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
         checkpoint,
         occurredAt: '2026-08-20T10:00:00.000Z',
         maximumAdmissions: 1,
@@ -66,7 +66,7 @@ describe('branching production operations', () => {
       advanceWorkflow({
         runId: 'run-1',
         executable,
-        workflowVersionId: 'version-1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
         checkpoint,
         occurredAt: '2026-08-20T10:00:00.000Z',
         maximumAdmissions: 1,
@@ -78,7 +78,7 @@ describe('branching production operations', () => {
       advanceWorkflow({
         runId: 'run-1',
         executable,
-        workflowVersionId: 'version-2',
+        workflowVersionId: '00000000-0000-4000-8000-000000000002',
         checkpoint,
         occurredAt: '2026-08-20T10:00:00.000Z',
         maximumAdmissions: 1,
@@ -93,7 +93,7 @@ describe('branching production operations', () => {
           envelope: executable.envelope,
           checksum: executable.checksum,
         },
-        workflowVersionId: 'version-1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
         checkpoint,
         occurredAt: '2026-08-20T10:00:00.000Z',
         maximumAdmissions: 1,
@@ -104,7 +104,7 @@ describe('branching production operations', () => {
   });
 
   it('accepts canonical branch-scoped checkpoint V2 identity', async () => {
-    const workflowVersionId = 'version-condition';
+    const workflowVersionId = '00000000-0000-4000-8000-000000000007';
     const release = composeExecutableCompatibilityRelease(
       nodeRelease({ condition: true }),
     );
@@ -174,7 +174,7 @@ describe('branching production operations', () => {
   });
 
   it('derives a Condition selection only from its persisted inline output', async () => {
-    const workflowVersionId = 'version-condition';
+    const workflowVersionId = '00000000-0000-4000-8000-000000000007';
     const release = composeExecutableCompatibilityRelease(
       nodeRelease({ condition: true }),
     );
@@ -280,7 +280,7 @@ describe('branching production operations', () => {
   });
 
   it('derives a Switch selection only from its persisted inline output', async () => {
-    const workflowVersionId = 'version-switch';
+    const workflowVersionId = '00000000-0000-4000-8000-000000000005';
     const release = composeExecutableCompatibilityRelease(
       nodeRelease({ switch: true }),
     );
@@ -393,7 +393,7 @@ describe('branching production operations', () => {
   });
 
   it('fans out Parallel only from its exact persisted declaration output', async () => {
-    const workflowVersionId = 'version-parallel';
+    const workflowVersionId = '00000000-0000-4000-8000-000000000003';
     const release = composeExecutableCompatibilityRelease(
       nodeRelease({ parallel: true, merge: true }),
     );
@@ -601,7 +601,7 @@ describe('branching production operations', () => {
   });
 
   it('settles direct Parallel-to-Merge branches as explicitly missing', async () => {
-    const workflowVersionId = 'version-direct-parallel';
+    const workflowVersionId = '00000000-0000-4000-8000-000000000008';
     const release = composeExecutableCompatibilityRelease(
       nodeRelease({ parallel: true, merge: true }),
     );

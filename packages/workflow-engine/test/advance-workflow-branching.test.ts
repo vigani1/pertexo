@@ -51,7 +51,7 @@ describe('AdvanceWorkflow branching', () => {
           ],
           edges: [],
         },
-        workflowVersionId: 'version-1',
+        workflowVersionId: '00000000-0000-4000-8000-000000000001',
         invocations: [],
       }).map(({ nodeId }) => nodeId),
     ).toEqual(['Z', 'a']);
@@ -59,7 +59,7 @@ describe('AdvanceWorkflow branching', () => {
 
   it('derives selected Condition readiness and explicit non-selected skips', () => {
     const conditionKey = invocationKey({
-      workflowVersionId: 'version-2',
+      workflowVersionId: '00000000-0000-4000-8000-000000000002',
       nodeId: 'condition',
     });
 
@@ -87,7 +87,7 @@ describe('AdvanceWorkflow branching', () => {
             },
           ],
         },
-        workflowVersionId: 'version-2',
+        workflowVersionId: '00000000-0000-4000-8000-000000000002',
         invocations: [
           {
             invocationKey: conditionKey,
@@ -111,7 +111,7 @@ describe('AdvanceWorkflow branching', () => {
     ).toEqual([
       {
         invocationKey: invocationKey({
-          workflowVersionId: 'version-2',
+          workflowVersionId: '00000000-0000-4000-8000-000000000002',
           nodeId: 'selected',
           branchPath: ['condition:true'],
         }),
@@ -121,7 +121,7 @@ describe('AdvanceWorkflow branching', () => {
       },
       {
         invocationKey: invocationKey({
-          workflowVersionId: 'version-2',
+          workflowVersionId: '00000000-0000-4000-8000-000000000002',
           nodeId: 'unselected',
           branchPath: ['condition:false'],
         }),
@@ -157,11 +157,11 @@ describe('AdvanceWorkflow branching', () => {
     };
     const iterationPath = [{ loopNodeId: 'loop', ordinal: 0 }] as const;
     const rootKey = invocationKey({
-      workflowVersionId: 'version-scoped',
+      workflowVersionId: '00000000-0000-4000-8000-000000000004',
       nodeId: 'condition',
     });
     const bodyKey = invocationKey({
-      workflowVersionId: 'version-scoped',
+      workflowVersionId: '00000000-0000-4000-8000-000000000004',
       nodeId: 'condition',
       iterationPath,
     });
@@ -204,7 +204,7 @@ describe('AdvanceWorkflow branching', () => {
     expect(
       deriveReadyNodes({
         graph,
-        workflowVersionId: 'version-scoped',
+        workflowVersionId: '00000000-0000-4000-8000-000000000004',
         invocations,
         branchSelections,
       }).find(({ nodeId }) => nodeId === 'selected'),
@@ -212,7 +212,7 @@ describe('AdvanceWorkflow branching', () => {
     expect(
       deriveReadyNodes({
         graph,
-        workflowVersionId: 'version-scoped',
+        workflowVersionId: '00000000-0000-4000-8000-000000000004',
         invocations,
         branchSelections,
         iterationPath,
@@ -222,7 +222,7 @@ describe('AdvanceWorkflow branching', () => {
 
   it('derives one selected Switch branch and skips every configured alternative', () => {
     const switchKey = invocationKey({
-      workflowVersionId: 'version-switch',
+      workflowVersionId: '00000000-0000-4000-8000-000000000005',
       nodeId: 'switch',
     });
 
@@ -261,7 +261,7 @@ describe('AdvanceWorkflow branching', () => {
             },
           ],
         },
-        workflowVersionId: 'version-switch',
+        workflowVersionId: '00000000-0000-4000-8000-000000000005',
         invocations: [
           {
             invocationKey: switchKey,
@@ -285,7 +285,7 @@ describe('AdvanceWorkflow branching', () => {
     ).toEqual([
       {
         invocationKey: invocationKey({
-          workflowVersionId: 'version-switch',
+          workflowVersionId: '00000000-0000-4000-8000-000000000005',
           nodeId: 'default',
           branchPath: ['switch:default'],
         }),
@@ -295,7 +295,7 @@ describe('AdvanceWorkflow branching', () => {
       },
       {
         invocationKey: invocationKey({
-          workflowVersionId: 'version-switch',
+          workflowVersionId: '00000000-0000-4000-8000-000000000005',
           nodeId: 'selected',
           branchPath: ['switch:case-02'],
         }),
@@ -305,7 +305,7 @@ describe('AdvanceWorkflow branching', () => {
       },
       {
         invocationKey: invocationKey({
-          workflowVersionId: 'version-switch',
+          workflowVersionId: '00000000-0000-4000-8000-000000000005',
           nodeId: 'unselected',
           branchPath: ['switch:case-01'],
         }),
@@ -318,7 +318,7 @@ describe('AdvanceWorkflow branching', () => {
 
   it('makes every declared Parallel branch ready with stable scope', () => {
     const parallelKey = invocationKey({
-      workflowVersionId: 'version-parallel',
+      workflowVersionId: '00000000-0000-4000-8000-000000000003',
       nodeId: 'parallel',
     });
     expect(
@@ -349,7 +349,7 @@ describe('AdvanceWorkflow branching', () => {
             },
           ],
         },
-        workflowVersionId: 'version-parallel',
+        workflowVersionId: '00000000-0000-4000-8000-000000000003',
         invocations: [
           {
             invocationKey: parallelKey,
@@ -366,7 +366,7 @@ describe('AdvanceWorkflow branching', () => {
     ).toEqual([
       {
         invocationKey: invocationKey({
-          workflowVersionId: 'version-parallel',
+          workflowVersionId: '00000000-0000-4000-8000-000000000003',
           nodeId: 'left',
           branchPath: ['parallel:branch-02'],
         }),
@@ -376,7 +376,7 @@ describe('AdvanceWorkflow branching', () => {
       },
       {
         invocationKey: invocationKey({
-          workflowVersionId: 'version-parallel',
+          workflowVersionId: '00000000-0000-4000-8000-000000000003',
           nodeId: 'right',
           branchPath: ['parallel:branch-01'],
         }),
@@ -390,7 +390,7 @@ describe('AdvanceWorkflow branching', () => {
   it('bounds Parallel attempt admissions below the run-wide admission cap', () => {
     const branchKeys = ['branch-01', 'branch-02'].map((port) =>
       invocationKey({
-        workflowVersionId: 'version-parallel',
+        workflowVersionId: '00000000-0000-4000-8000-000000000003',
         nodeId: port,
         branchPath: [`parallel:${port}`],
       }),
@@ -399,7 +399,7 @@ describe('AdvanceWorkflow branching', () => {
       checkpoint: {
         ...createCheckpointV2({
           engineVersion: 'engine-v2',
-          workflowVersionId: 'version-parallel',
+          workflowVersionId: '00000000-0000-4000-8000-000000000003',
           iterationBudget: 0,
         }),
         runStatus: 'running',
@@ -407,7 +407,7 @@ describe('AdvanceWorkflow branching', () => {
         invocations: [
           {
             invocationKey: invocationKey({
-              workflowVersionId: 'version-parallel',
+              workflowVersionId: '00000000-0000-4000-8000-000000000003',
               nodeId: 'parallel',
             }),
             nodeId: 'parallel',
@@ -459,7 +459,7 @@ describe('AdvanceWorkflow branching', () => {
 
   it('rejects branch selections outside the pinned Condition contract', () => {
     const conditionKey = invocationKey({
-      workflowVersionId: 'version-2',
+      workflowVersionId: '00000000-0000-4000-8000-000000000002',
       nodeId: 'condition',
     });
     expect(() =>
@@ -475,7 +475,7 @@ describe('AdvanceWorkflow branching', () => {
           ],
           edges: [],
         },
-        workflowVersionId: 'version-2',
+        workflowVersionId: '00000000-0000-4000-8000-000000000002',
         invocations: [
           {
             invocationKey: conditionKey,
@@ -501,14 +501,14 @@ describe('AdvanceWorkflow branching', () => {
 
   it('persists selected and skipped Condition branches in checkpoint V2', () => {
     const conditionKey = invocationKey({
-      workflowVersionId: 'version-2',
+      workflowVersionId: '00000000-0000-4000-8000-000000000002',
       nodeId: 'condition',
     });
     const plan = advanceWorkflowForTesting({
       checkpoint: {
         ...createCheckpointV2({
           engineVersion: 'engine-v2',
-          workflowVersionId: 'version-2',
+          workflowVersionId: '00000000-0000-4000-8000-000000000002',
           iterationBudget: 1_000,
         }),
         revision: 1,
