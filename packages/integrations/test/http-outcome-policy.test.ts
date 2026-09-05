@@ -82,6 +82,13 @@ describe('ADR 007 HTTP outcome policy', () => {
     ).toEqual({ kind: 'failed', errorKind: 'configuration' });
     expect(
       classifySecureHttpError(
+        new SecureHttpError('network_failed', 'definite_failure', false),
+        'idempotent_with_key',
+        false,
+      ),
+    ).toEqual({ kind: 'failed', errorKind: 'configuration' });
+    expect(
+      classifySecureHttpError(
         new SecureHttpError('response_too_large', 'definite_failure', true),
         'unsafe',
         false,
