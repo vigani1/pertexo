@@ -803,9 +803,9 @@ conflict between the plan and modern code quality.
   and `65f516f`; future review remains a continuous gate.
 - **Implementation evidence:** package coverage is thresholded and now feeds
   exact test-health and source-fingerprinted branch records into the root risk
-  report. The current 196-test run records 94.30% statements (1,044/1,107),
-  91.06% branches (642/705), 92.82% functions (181/195), and 94.98% lines
-  (1,004/1,057). Public tests cover provider response matrices, credential and
+  report. The current 196-test run records 94.25% statements (1,050/1,114),
+  90.89% branches (639/703), 92.85% functions (182/196), and 94.92% lines
+  (1,010/1,064). Public tests cover provider response matrices, credential and
   configuration admission, retry/ambiguity decisions, dispatch-fence errors,
   encoded body limits, SSRF/DNS policy, literal-address dispatch, bounded
   transport behavior, and every diagnostic failure stage. The 63 residual

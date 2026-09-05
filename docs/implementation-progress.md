@@ -5097,7 +5097,7 @@ phase status changed.
       identities and applied migrations are not renamed.
 - [x] Expand the enforced workflow-engine coverage cohort to all 26
       consequence-selected files with per-file floors. Fresh coverage is
-      90.71% statements (1,846/2,035), 85.45% branches (1,774/2,076), 93.63%
+      90.71% statements (1,846/2,035), 85.45% branches (1,774/2,076), 93.62%
       functions (338/361), and 91.78% lines (1,765/1,923).
 - [x] Finish WFE-004 with public compatibility-history admission regressions
       and exact source-hashed review of all 302 residual workflow-engine
@@ -5206,9 +5206,9 @@ root source-hashed risk report pass.
 - [x] Preserve INT-009 as a scheduled, pinned IANA-registry drift safeguard.
       Upstream allocation changes still require human security review.
 - [x] Add the entire integrations source tree to package coverage and the root
-      source-hashed risk report. The fresh 8-file / 196-test run records 94.30%
-      statements (1,044/1,107), 91.06% branches (642/705), 92.82% functions
-      (181/195), and 94.98% lines (1,004/1,057).
+      source-hashed risk report. The fresh 8-file / 196-test run records 94.25%
+      statements (1,050/1,114), 90.89% branches (639/703), 92.85% functions
+      (182/196), and 94.92% lines (1,010/1,064).
 - [x] Finish INT-006 through public provider-response, credential admission,
       retry/ambiguity, fence, body-bound, SSRF/DNS, transport, and diagnostic
       tests. All 63 residual branches have exact fingerprints and narrow

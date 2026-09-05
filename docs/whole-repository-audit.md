@@ -469,13 +469,13 @@ The selected coverage gates currently report:
 
 | Cohort | Selected files | Coverable lines | Statements | Branches | Functions | Lines |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Workflow engine | 26 | 1,923 | 90.71% | 85.45% | 93.63% | 91.78% |
+| Workflow engine | 26 | 1,923 | 90.71% | 85.45% | 93.62% | 91.78% |
 | Database | 1 | 99 | 96.36% | 95.38% | 100.00% | 97.97% |
 | Worker | 4 | 358 | 93.22% | 94.95% | 80.33% | 93.58% |
 | API | 12 | 317 | 100.00% | 100.00% | 100.00% | 100.00% |
 | Artifact store | 12 | 884 | 90.90% | 84.22% | 95.11% | 92.31% |
 | Contracts | 21 | 293 | 100.00% | 98.36% | 100.00% | 100.00% |
-| Integrations | 29 | 1,057 | 94.31% | 91.06% | 92.82% | 94.99% |
+| Integrations | 29 | 1,064 | 94.25% | 90.89% | 92.85% | 94.92% |
 
 Those are valid results for 105 selected files and 4,938 coverable lines. In
 particular, “database 95.38% branch coverage” currently means

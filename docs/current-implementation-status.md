@@ -100,7 +100,7 @@ candidate on a different parent to prove the supported rebase-style flow.
 Pull request #26 and exact-main CI both executed that protected gate
 successfully, closing C-12. Risk coverage names 105 exact selected files with
 repository-relative paths. Public-interface tests measure 85.45% workflow-
-engine, 95.38% database, 94.95% worker, 91.06% integrations, 84.22%
+engine, 95.38% database, 94.95% worker, 90.89% integrations, 84.22%
 artifact-store, 98.36% contracts, and 100% API branch coverage across 4,938
 coverable lines. All 501 uncovered instrumentation
 branches have exact source-fingerprinted reviews; the eight integration-only
