@@ -5151,20 +5151,24 @@ Implementation commits: `b4f2b22`, `078cd53`, `47b7fa6`, `1e8ec80`,
 - [x] Preserve INT-009 as a scheduled, pinned IANA-registry drift safeguard.
       Upstream allocation changes still require human security review.
 - [x] Add the entire integrations source tree to package coverage and the root
-      source-hashed risk report. The fresh 8-file / 134-test run records 87.61%
-      statements (969/1,106), 76.59% branches (540/705), 92.30% functions
-      (180/195), and 88.82% lines (938/1,056).
-- [ ] Finish INT-006 by resolving the 165 newly exposed uncovered branches
-      through public behavior tests or narrow source-hashed classification.
+      source-hashed risk report. The fresh 8-file / 196-test run records 94.30%
+      statements (1,044/1,107), 91.06% branches (642/705), 92.82% functions
+      (181/195), and 94.98% lines (1,004/1,057).
+- [x] Finish INT-006 through public provider-response, credential admission,
+      retry/ambiguity, fence, body-bound, SSRF/DNS, transport, and diagnostic
+      tests. All 63 residual branches have exact fingerprints and narrow
+      source-specific defensive, unreachable, or generated reviews; the
+      integrations cohort has zero unreviewed branches.
 - [ ] Supply protected Slack, Resend, and AWS KMS sandbox evidence for INT-010;
       local fakes do not prove provider compatibility.
 - [ ] Supply measured production-like DNS/connect/TLS concurrency and latency
       evidence for INT-013 before changing the safe no-pooling policy.
 
-Implementation commits: `51bed2c`, `1a57c8b`, `692cf9e`, `dcbf7b4`,
-`14bcaf2`, `19ae523`, `c23afd6`, and `a97ae90`. Focused typecheck, build,
-ESLint, package tests/coverage, and repository duplication validation pass. No
-phase status changed.
+Implementation commits include `51bed2c`, `1a57c8b`, `692cf9e`, `dcbf7b4`,
+`14bcaf2`, `19ae523`, `c23afd6`, `a97ae90`, `855b2c8`, `ee8c599`, `d3b8e5b`,
+`c47b435`, `8514451`, `3f41deb`, `d225a2f`, `202319f`, `91c5248`, `7f7e181`,
+and `65f516f`. Focused typecheck, package coverage, and source-hashed risk
+validation pass. No phase status changed.
 
 ### Granular package-audit remediation — database
 

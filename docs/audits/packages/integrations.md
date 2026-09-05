@@ -13,10 +13,10 @@
   012, 016, 022, 025, and 026; and the credential-boundary operating guide.
 - **Audit status:** granularly certified for the pinned tree.
 - **Implementation status:** all confirmed correctness, lifecycle, security,
-  and maintainability defects are fixed in the repository. INT-006 remains a
-  partially completed continuous branch-review control. INT-010 and INT-013
-  remain honest external provider/performance evidence obligations, and
-  INT-009 remains a continuously enforced registry-drift safeguard.
+  and maintainability defects, including INT-006, are fixed in the repository.
+  INT-010 and INT-013 remain honest external provider/performance evidence
+  obligations, and INT-009 remains a continuously enforced registry-drift
+  safeguard.
 
 This package is useful and appropriately owns the boundary between platform
 node contracts and external provider/network behavior. It contains four deep
@@ -795,13 +795,20 @@ conflict between the plan and modern code quality.
   infeasible branches with fingerprints and reasons.
 - **Verification:** CI fails when a covered risk branch is removed or a new
   unreviewed branch appears.
-- **Status:** Partially fixed by `19ae523` and `c23afd6`; continuous branch
-  review remains actionable.
+- **Status:** Fixed by `19ae523`, `c23afd6`, `855b2c8`, `ee8c599`, `d3b8e5b`,
+  `c47b435`, `8514451`, `3f41deb`, `d225a2f`, `202319f`, `91c5248`, `7f7e181`,
+  and `65f516f`; future review remains a continuous gate.
 - **Implementation evidence:** package coverage is thresholded and now feeds
   exact test-health and source-fingerprinted branch records into the root risk
-  report. The current 134-test run records 87.61% statements, 76.59% branches,
-  92.30% functions, and 88.82% lines. It exposes 165 unreviewed branches rather
-  than claiming those decisions are reviewed.
+  report. The current 196-test run records 94.30% statements (1,044/1,107),
+  91.06% branches (642/705), 92.82% functions (181/195), and 94.98% lines
+  (1,004/1,057). Public tests cover provider response matrices, credential and
+  configuration admission, retry/ambiguity decisions, dispatch-fence errors,
+  encoded body limits, SSRF/DNS policy, literal-address dispatch, bounded
+  transport behavior, and every diagnostic failure stage. The 63 residual
+  branches have exact source fingerprints and narrow source-specific
+  defensive, unreachable, or V8-generated rationales; integrations has zero
+  unreviewed branches.
 
 ### INT-007 — The secure HTTP request-body copy is not cleared
 
@@ -1003,5 +1010,6 @@ conflict between the plan and modern code quality.
    it.
 
 Completion requires code, targeted regression/integration evidence, green
-repository checks, and updated status in this audit. A passing 119-test package
-suite by itself is not completion.
+repository checks, and updated status in this audit. The 196-test package suite
+and zero-unreviewed risk cohort establish repository completion; INT-010 and
+INT-013 still require their separately identified external evidence.
