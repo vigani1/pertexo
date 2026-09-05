@@ -103,7 +103,7 @@ export const CORE_SCHEDULE_CONFIG_SCHEMA_V2 = z.discriminatedUnion('kind', [
     .strict(),
 ]);
 
-export const CORE_SCHEDULE_TRIGGER_ENVELOPE_SCHEMA = z
+const scheduleTriggerEnvelopeSchema = z
   .object({
     schemaVersion: z.literal(1),
     triggerId: z.uuid(),
@@ -112,10 +112,9 @@ export const CORE_SCHEDULE_TRIGGER_ENVELOPE_SCHEMA = z
   })
   .strict();
 
-export const CORE_SCHEDULE_INPUT_SCHEMA_V2 =
-  CORE_SCHEDULE_TRIGGER_ENVELOPE_SCHEMA;
+export const CORE_SCHEDULE_INPUT_SCHEMA_V2 = scheduleTriggerEnvelopeSchema;
 export const CORE_SCHEDULE_OUTPUT_SCHEMA_V2 =
-  CORE_SCHEDULE_TRIGGER_ENVELOPE_SCHEMA;
+  scheduleTriggerEnvelopeSchema.describe('Core Schedule event output');
 
 export type CoreScheduleConfig = Readonly<
   z.output<typeof CORE_SCHEDULE_CONFIG_SCHEMA>
