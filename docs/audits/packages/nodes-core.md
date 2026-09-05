@@ -23,7 +23,7 @@
 | ID | Previous status | Final status | Affected locations | Implementation and test evidence | Verification / commit |
 | --- | --- | --- | --- | --- | --- |
 | CORE-001 | Open confirmed defect | **Fixed** | Schedule validation/definition/executor, database trigger projection, engine trigger input, node-catalog release history | V2 introduced strict cron semantics. Metadata-complete V3 preserves the immutable V2 fingerprint while publishing its runtime-only semantics; database, engine, and catalog execute V1–V3. The database projection now consumes the node-owned strict schema directly. | Package/database/engine/catalog tests and typechecks; `5f9ce84`, `400dfe8`, `156f18f`, `f5f5d48` |
-| CORE-002 | Open confirmed contract defect | **Fixed** | Parallel/Merge definitions/executors, engine/worker consumers, node-catalog release history | V2 introduced strict settled-ledger contracts. Metadata-complete V3 preserves V2 identities while advertising runtime-only invariants; engine and worker apply configured ports and settled Merge input for V1–V3. | Package/engine/catalog tests and worker typecheck; `5f9ce84`, `156f18f` |
+| CORE-002 | Open confirmed contract defect | **Fixed** | Parallel/Merge definitions/executors, engine/worker consumers, node-catalog release history | V2 introduced strict settled-ledger contracts. Metadata-complete V3 preserves V2 identities while advertising runtime-only invariants; engine and worker apply configured ports and settled Merge input for V1–V3. The epoch-12 recovery fixture remains V1 so retained evidence is not silently rebound to a later release. | Package/engine/catalog tests, worker typecheck, and three real-service structured recovery suites; `5f9ce84`, `156f18f`, `c632d37` |
 | CORE-003 | Open maintainability improvement | **Fixed** | `src/registrations.ts`, `src/server.ts`, retained-registry tests | Browser-safe definitions remain isolated as required by ADR-010. A server-only typed bundle joins definitions to executor implementations by exact identity, derives canonical executor order, and fails on duplicate, missing, or orphan implementations. | 55 tests, typecheck, build, ESLint, Knip; `3c98fa9` |
 | CORE-004 | Open interface improvement | **Fixed** | Schedule V2/V3 definitions/executors, database and engine consumers, release history | V2/V3 advertise the strict trigger envelope; V3 adds explicit runtime-only cron metadata. V1/V2 fingerprints remain unchanged, all retained versions remain executable, and database projection shares the node-owned strict schema. | Trigger, projection, engine, and active-release execution tests; `5f9ce84`, `400dfe8`, `156f18f`, `f5f5d48` |
 | CORE-005 | Open immutability defect | **Fixed** | `merge/definition.ts`, `terminate/definition.ts`, package tests | The remaining mutable nested port array is frozen. A recursive test now checks every owned manifest tree, and the layout inventory covers all eleven node owners. | Package tests and fingerprints; `37594a4` |
@@ -438,8 +438,9 @@ of meaningful higher-level testing.
 
 - **Severity:** P2.
 - **Classification:** confirmed contract defect; current engine integration is independently fail-closed.
-- **Status:** fixed by additive V2/V3 contracts and engine/worker integration
-  (`5f9ce84`, `156f18f`).
+- **Status:** fixed by additive V2/V3 contracts and engine/worker integration;
+  retained V1 recovery identity corrected in `c632d37` (`5f9ce84`, `156f18f`,
+  `c632d37`).
 - **Evidence:** `merge/validation.ts:15-50` allows `pending`, optional arbitrary
   outputs, partial ledgers, and any bounded selected array. Direct schema calls
   accepted empty, pending, selected-skipped, selected-not-in-ledger, and

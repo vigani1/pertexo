@@ -1403,6 +1403,11 @@ Local commands at the audited implementation tree:
   artifact-store, queue, worker, and API cohorts collected cleanly and skipped
   because their opt-in service configuration was absent from the verification
   shell; this run is not live-provider evidence.
+- With PostgreSQL and Redis enabled, the focused Retry/Wait recovery loop and
+  the combined Retry/Wait, Parallel/Merge, and For Each recovery cohort passed
+  3/3 tests. Retained Parallel/Merge fixtures remain bound to their original V1
+  release identity; V3 is verified through separate additive compatibility
+  tests.
 - `pnpm dlx jscpd@4.0.5 apps/*/test packages/*/test --min-lines 18
   --min-tokens 130 --format typescript --reporters console --ignore
   '**/dist/**'` — the original baseline was 25 groups/1,977 lines (2.08%);
