@@ -34,8 +34,8 @@
 | --- | --- | --- |
 | WFE-001 | Fixed | `8406d1e`; persisted facts use the shared bounded fact-window contract instead of generic executable JSON limits. |
 | WFE-002 | Fixed | `5a7ed49`; each structured body is projected once and the traversal-count regression proves linear visitation. |
-| WFE-003 | Fixed | `182f754`, `ce1c809`; completed outputs and persisted outcomes are normalized/indexed once, executable nodes are flattened once, and invocation lookup reuses one prepared map. |
-| WFE-004 | Partially fixed; continuous gate | `667554a`; all 24 consequence-selected files and per-file floors are enforced. Fresh coverage is 90.31% statements (1,838/2,035), 85.13% branches (1,775/2,085), 93.33% functions (336/360), and 91.47% lines (1,760/1,924). The source-hashed review backlog remains actionable. |
+| WFE-003 | Fixed | `182f754`, `ce1c809`, `f8c3655`; completed outputs and persisted outcomes are normalized/indexed once, executable nodes are flattened once, invocation lookup reuses one prepared map, and failure/output preparation have purpose-named owners. |
+| WFE-004 | Partially fixed; continuous gate | `667554a`; all consequence-selected files and per-file floors are enforced. Fresh coverage is 90.36% statements (1,839/2,035), 85.17% branches (1,776/2,085), 93.35% functions (337/361), and 91.52% lines (1,761/1,924). The source-hashed review backlog remains actionable. |
 | WFE-005 | Fixed | `182f754`; current checkpoint construction/parsing enforce database-compatible engine IDs, UUID workflow IDs, canonical timestamps, and byte bounds. |
 | WFE-006 | Fixed | `182f754`; checkpoint and executable public boundaries perform one hostile-object traversal before trusted parsing/normalization. |
 | WFE-007 | Fixed | `5a7ed49`; scope equality/prefix identity has one engine owner and allocation-free structural helpers. |

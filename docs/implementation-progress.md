@@ -5070,15 +5070,16 @@ phase status changed.
       identities and applied migrations are not renamed.
 - [x] Expand the enforced workflow-engine coverage cohort to all 24
       consequence-selected files with per-file floors. Fresh coverage is
-      90.31% statements (1,838/2,035), 85.13% branches (1,775/2,085), 93.33%
-      functions (336/360), and 91.47% lines (1,760/1,924).
+      90.36% statements (1,839/2,035), 85.17% branches (1,776/2,085), 93.35%
+      functions (337/361), and 91.52% lines (1,761/1,924).
 - [ ] Finish WFE-004 by exercising every testable public branch and recording
       narrow source-hashed evidence for only genuinely defensive, unreachable,
       generated, or real-integration branches. The expanded cohort exposed a
       real review backlog; threshold passage alone is not completion.
 
 Implementation commits: `8406d1e`, `5a7ed49`, `3adf2e1`, `68485d8`,
-`667554a`, `132c8e1`, `182f754`, and `ce1c809`. No phase status changed.
+`667554a`, `132c8e1`, `182f754`, `ce1c809`, and `f8c3655`. No phase status
+changed.
 
 ## Update protocol
 
