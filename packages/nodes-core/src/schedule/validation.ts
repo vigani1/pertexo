@@ -23,9 +23,13 @@ const strictCronExpressionSchema = z
   .refine((expression) => expression === expression.trim(), {
     message: 'Cron expression must not contain surrounding whitespace',
   })
-  .refine((expression) => expression.split(' ').length === 5, {
-    message: 'Expected a strict five-field cron expression',
-  })
+  .refine(
+    (expression) => {
+      const fields = expression.trim().split(/\s+/u);
+      return fields.length === 5 && expression === fields.join(' ');
+    },
+    { message: 'Expected a strict five-field cron expression' },
+  )
   .refine((expression) => !/[H?#L]/u.test(expression), {
     message: 'Cron expression contains an unsupported token',
   });
