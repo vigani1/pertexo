@@ -8,6 +8,7 @@ import {
   EMAIL_SEND_NOTIFICATION_POLICY,
 } from '@pertexo/integrations';
 import { createRegistryReleaseSuccessor } from '@pertexo/node-sdk';
+import type { NodeManifestV2 } from '@pertexo/node-sdk';
 import {
   CORE_CONDITION_MANIFEST,
   CORE_FOR_EACH_MANIFEST,
@@ -479,10 +480,7 @@ export const PLATFORM_REGISTRY_RELEASE_SCHEDULE_ACTIVE =
 
 function stageDefinition(
   previous: Parameters<typeof createRegistryReleaseSuccessor>[0]['previous'],
-  manifest:
-    | typeof CORE_SCHEDULE_MANIFEST_V2
-    | typeof CORE_PARALLEL_MANIFEST_V2
-    | typeof CORE_MERGE_MANIFEST_V2,
+  manifest: NodeManifestV2,
 ) {
   return createRegistryReleaseSuccessor({
     previous,
@@ -504,10 +502,7 @@ function stageDefinition(
 
 function activateDefinition(
   previous: ReturnType<typeof stageDefinition>,
-  manifest:
-    | typeof CORE_SCHEDULE_MANIFEST_V2
-    | typeof CORE_PARALLEL_MANIFEST_V2
-    | typeof CORE_MERGE_MANIFEST_V2,
+  manifest: NodeManifestV2,
 ) {
   return createRegistryReleaseSuccessor({
     previous,

@@ -42,7 +42,9 @@ export type ObjectStoreS3Command =
   | ListObjectVersionsCommand
   | PutObjectCommand;
 
-type SendOptions = { readonly abortSignal?: AbortSignal };
+interface SendOptions {
+  readonly abortSignal?: AbortSignal;
+}
 
 export interface ObjectStoreS3Client {
   destroy(): void;

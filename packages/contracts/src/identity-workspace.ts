@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import type { z } from 'zod';
 
 import { apiProblemSchema } from './errors/api-problem.js';
 import {
@@ -7,7 +7,6 @@ import {
   jsonSchema,
   problemResponse,
   responseReference,
-  schemaReference,
 } from './openapi-primitives.js';
 import {
   idempotencyKeySchema,

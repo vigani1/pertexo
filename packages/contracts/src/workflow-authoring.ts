@@ -24,7 +24,6 @@ import {
   jsonSchema,
   problemResponse,
   responseReference,
-  schemaReference,
   uuidPathParameter as pathParameter,
 } from './openapi-primitives.js';
 import { z } from 'zod';

@@ -191,10 +191,9 @@ export function createWorkerTransportTestEnvironment() {
         if (timer !== undefined) clearTimeout(timer);
         resolve();
       };
-      timer = setTimeout(
-        () => reject(new Error(`Worker transport stage timed out: ${stage}`)),
-        timeoutMillis,
-      );
+      timer = setTimeout(() => {
+        reject(new Error(`Worker transport stage timed out: ${stage}`));
+      }, timeoutMillis);
       timer.unref();
     });
     return {
@@ -213,11 +212,9 @@ export function createWorkerTransportTestEnvironment() {
       return await Promise.race([
         operation,
         new Promise<never>((_resolve, reject) => {
-          timer = setTimeout(
-            () =>
-              reject(new Error(`Worker transport stage timed out: ${stage}`)),
-            timeoutMillis,
-          );
+          timer = setTimeout(() => {
+            reject(new Error(`Worker transport stage timed out: ${stage}`));
+          }, timeoutMillis);
           timer.unref();
         }),
       ]);

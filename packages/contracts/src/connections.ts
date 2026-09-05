@@ -1,5 +1,3 @@
-import { z } from 'zod';
-
 import { apiProblemSchema } from './errors/api-problem.js';
 import {
   jsonRequest,
@@ -7,7 +5,6 @@ import {
   jsonSchema,
   problemResponse,
   responseReference,
-  schemaReference,
 } from './openapi-primitives.js';
 import {
   connectionCreateRequestSchema,

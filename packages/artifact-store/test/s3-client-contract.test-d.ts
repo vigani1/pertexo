@@ -25,12 +25,16 @@ const headOutput: Promise<HeadObjectCommandOutput> = sendS3(
 );
 void headOutput;
 
-sendS3(client, new HeadObjectCommand({ Bucket: 'bucket', Key: 'key' })).then(
+void sendS3(
+  client,
+  new HeadObjectCommand({ Bucket: 'bucket', Key: 'key' }),
+).then(
   (output) => {
     // @ts-expect-error A HEAD result cannot expose a GET response body.
     void output.Body;
   },
+  () => undefined,
 );
 
 // @ts-expect-error Unsupported commands require an explicit typed adapter.
-sendS3(client, new CopyObjectCommand({ Bucket: 'bucket', Key: 'key' }));
+void sendS3(client, new CopyObjectCommand({ Bucket: 'bucket', Key: 'key' }));

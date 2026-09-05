@@ -20,23 +20,32 @@ const port = parentPort;
 if (port === null) throw new Error('expression worker requires a parent port');
 
 port.postMessage({ ready: true });
+async function evaluateExpression(
+  message: Readonly<{ expression: string; context: unknown }>,
+  targetPort: NonNullable<typeof parentPort>,
+): Promise<void> {
+  try {
+    const input = copyJsonataValue(message.context);
+    targetPort.postMessage({ started: true });
+    const value = (await jsonata(message.expression).evaluate(
+      input,
+    )) as unknown;
+    targetPort.postMessage({
+      ok: true,
+      missing: value === undefined,
+      value: copyJsonataValue(value),
+    });
+  } catch (caught: unknown) {
+    targetPort.postMessage({
+      ok: false,
+      message: caught instanceof Error ? caught.message : 'evaluation failed',
+    });
+  }
+}
+
 port.once(
   'message',
-  async (message: Readonly<{ expression: string; context: unknown }>) => {
-    try {
-      const input = copyJsonataValue(message.context);
-      port.postMessage({ started: true });
-      const value = await jsonata(message.expression).evaluate(input);
-      port.postMessage({
-        ok: true,
-        missing: value === undefined,
-        value: copyJsonataValue(value),
-      });
-    } catch (caught: unknown) {
-      port.postMessage({
-        ok: false,
-        message: caught instanceof Error ? caught.message : 'evaluation failed',
-      });
-    }
+  (message: Readonly<{ expression: string; context: unknown }>) => {
+    void evaluateExpression(message, port);
   },
 );

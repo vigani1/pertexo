@@ -872,11 +872,6 @@ class AwsControlLedger implements ControlLedger {
       }
     }
     for (const next of records) {
-      if (next === null) {
-        throw new ControlLedgerIntegrityError(
-          'Control ledger listed record is missing',
-        );
-      }
       if (next.previousHash !== pageEndHash) {
         throw new ControlLedgerIntegrityError(
           'Control ledger reconciliation hash chain is invalid',
