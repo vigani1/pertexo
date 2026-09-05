@@ -23,6 +23,9 @@ describe('schedule recurrence', () => {
       { kind: 'cron', expression: '30 9 * * *', timezone: 'US/Eastern' },
       { kind: 'cron', expression: '30 9 * * *', timezone: 'UTC' },
       { kind: 'cron', expression: '30 9 * * *', timezone: '+02:00' },
+      { kind: 'cron', expression: '0\t 9 * * *', timezone: 'Europe/Paris' },
+      { kind: 'cron', expression: '0 \t9 * * *', timezone: 'Europe/Paris' },
+      { kind: 'cron', expression: '0\n 9 * * *', timezone: 'Europe/Paris' },
     ]) {
       expect(() => parseScheduleRecurrence(input)).toThrow(TypeError);
     }

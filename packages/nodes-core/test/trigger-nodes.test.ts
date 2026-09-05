@@ -30,6 +30,9 @@ describe('core Schedule trigger contract', () => {
     '0 0 * *',
     '0  0 * * *',
     ' 0 0 * * *',
+    '0\t 9 * * *',
+    '0 \t9 * * *',
+    '0\n 9 * * *',
   ])('rejects cron text that cannot be materialized: %s', (expression) => {
     expect(
       CORE_SCHEDULE_CONFIG_SCHEMA_V2.safeParse({
