@@ -3,11 +3,13 @@ import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import type { Pool } from 'pg';
 import type { PoolClient, QueryResult } from 'pg';
 import { z } from 'zod';
-import { sha256HexSchema } from '../validation/persisted-primitives.js';
 
 import type { DatabaseConfig } from '../config.js';
 import type { ControlLedger } from './control-ledger-coordinator.js';
-import { inRetentionTransaction } from './retention-transaction.js';
+import {
+  inRetentionTransaction,
+  lockWorkspaceRetentionControl,
+} from './retention-transaction.js';
 
 const uuidSchema = z.uuid();
 
@@ -131,32 +133,12 @@ export function createPreviewRetentionCoordinator(
         lockTimeoutMs: options.lockTimeoutMs,
         statementTimeoutMs: options.statementTimeoutMs,
       };
-      const highWater = await inRetentionTransaction(
+      const highWater = await lockWorkspaceRetentionControl(
         pool,
         transactionOptions,
         signal,
-        async (client) => {
-          const locked = await query<{
-            retention_control_hash: string;
-            retention_control_sequence: string | number;
-          }>(
-            client,
-            'select * from app.lock_workspace_control_ledger($1)',
-            [workspaceId],
-            signal,
-          );
-          const row = locked.rows[0];
-          if (row === undefined)
-            throw new Error('Preview workspace control lock was not returned');
-          return Object.freeze({
-            hash: sha256HexSchema.parse(row.retention_control_hash),
-            sequence: z.coerce
-              .number()
-              .int()
-              .nonnegative()
-              .parse(row.retention_control_sequence),
-          });
-        },
+        workspaceId,
+        'Preview workspace control lock was not returned',
       );
       const timeoutSignal = AbortSignal.timeout(
         options.externalOperationTimeoutMs,

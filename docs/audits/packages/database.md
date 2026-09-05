@@ -1079,7 +1079,11 @@ review.
   with exact returned shapes/defaults, invalid URL behavior, shared override
   coercion, and the conservative pool maximum; the full database unit suite is
   188/188; database type checking,
-  Knip, formatting, and the complexity ratchet pass.
+  Knip, formatting, and the complexity ratchet pass. Extracting the genuinely
+  shared retention-control lock/read policy also reduced the source clone
+  baseline from 36 groups/711 lines to 33 groups/655 lines; the remaining
+  preview/run-artifact configuration/query clone is explicitly retained because
+  the two owners enforce different eligibility and deletion contracts.
 
 ### DB-015 — Pool telemetry role and monitor identity are configuration-sensitive
 

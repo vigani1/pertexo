@@ -3,11 +3,13 @@ import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import type { Pool } from 'pg';
 import type { PoolClient, QueryResult } from 'pg';
 import { z } from 'zod';
-import { sha256HexSchema } from '../validation/persisted-primitives.js';
 
 import type { DatabaseConfig } from '../config.js';
 import type { ControlLedger } from './control-ledger-coordinator.js';
-import { inRetentionTransaction } from './retention-transaction.js';
+import {
+  inRetentionTransaction,
+  lockWorkspaceRetentionControl,
+} from './retention-transaction.js';
 import { EXPECTED_MIGRATION_HEAD } from '../platform/readiness.js';
 import {
   reapTransientData,
@@ -652,34 +654,12 @@ export function createRetentionEnforcementCoordinator(
         pageCount += 1
       ) {
         try {
-          const highWater = await inRetentionTransaction(
+          const highWater = await lockWorkspaceRetentionControl(
             pool,
             options,
             signal,
-            async (client) => {
-              const lock = await query<{
-                retention_control_hash: string;
-                retention_control_sequence: string | number;
-              }>(
-                client,
-                'select * from app.lock_workspace_control_ledger($1)',
-                [claimed.workspaceId],
-                signal,
-              );
-              const row = lock.rows[0];
-              if (row === undefined)
-                throw new Error(
-                  'Retention workspace control lock was not returned',
-                );
-              return Object.freeze({
-                hash: sha256HexSchema.parse(row.retention_control_hash),
-                sequence: z.coerce
-                  .number()
-                  .int()
-                  .nonnegative()
-                  .parse(row.retention_control_sequence),
-              });
-            },
+            claimed.workspaceId,
+            'Retention workspace control lock was not returned',
           );
           const timeoutSignal = AbortSignal.timeout(
             options.externalOperationTimeoutMs,

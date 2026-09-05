@@ -7,9 +7,9 @@
       "minLines": 12,
       "minTokens": 80,
       "maximums": {
-        "clones": 36,
-        "duplicatedLines": 711,
-        "duplicatedTokens": 6183
+        "clones": 33,
+        "duplicatedLines": 655,
+        "duplicatedTokens": 5717
       },
       "families": [
         {
@@ -120,33 +120,15 @@
         },
         {
           "files": [
-            "packages/database/src/lifecycle/retention.ts",
-            "packages/database/src/lifecycle/run-artifact-retention.ts"
-          ],
-          "classification": "false-positive",
-          "reason": "Standard retention and run-artifact retention locally parse the same control anchor before applying different destructive eligibility and completion contracts.",
-          "clones": [
-            {
-              "hash": "4297ffb039b14e29ffa8b5a06e321b82cb20385543851c048f6c7a357608090a",
-              "maxLines": 28
-            }
-          ]
-        },
-        {
-          "files": [
             "packages/database/src/lifecycle/preview-retention.ts",
             "packages/database/src/lifecycle/run-artifact-retention.ts"
           ],
           "classification": "false-positive",
-          "reason": "Preview and durable run-artifact retention share bounded configuration and transaction scaffolding but enforce different eligibility, ownership, and deletion policies.",
+          "reason": "Preview and durable run-artifact retention share bounded configuration and abort-aware query plumbing but enforce different eligibility, ownership, and deletion policies.",
           "clones": [
             {
               "hash": "eb99cfb009d7fed09fbbe046eb65e32c6b2ccd4fdcf37a6740eae301ca742410",
               "maxLines": 31
-            },
-            {
-              "hash": "75ac11f624a235233bf48742fcf45bfbe1ad2d1e31feb727a8600c7972f0f6d3",
-              "maxLines": 30
             }
           ]
         },
