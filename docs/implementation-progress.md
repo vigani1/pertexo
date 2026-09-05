@@ -5006,6 +5006,30 @@ Implementation commits: `5dc09c3`, `5c639d8`, `bf62f10`, `19ae523`, and
 `ae377ca`. No phase status changed; local collector debug output is not treated
 as production trace-retention evidence.
 
+### Granular package-audit remediation — queue
+
+- [x] Reconcile QUEUE-001 through QUEUE-012 against current code. All twelve
+      findings are implemented; coverage and pinned ioredis behavior remain
+      continuous gates rather than one-time closure claims.
+- [x] Bound and memoize producer shutdown, close hostile envelope parsing,
+      centralize deterministic transport-ID validation, and freeze registry
+      entries without mutating Zod internals.
+- [x] Separate active queue capabilities from retained V1 compatibility. The
+      obsolete preview and future artifact-expiry contracts remain readable
+      for already-enqueued work but are not advertised as composed jobs.
+- [x] Centralize Redis endpoint policy across queue and API owners, unreference
+      advisory timers, document/pin Redis instrumentation behavior, and reduce
+      the package to one explicit snapshot-tested public surface.
+- [x] Enforce queue risk coverage at 80.78% statements, 68.98% branches,
+      82.44% functions, and 81.60% lines; retain all historical V1 job examples
+      as a compatibility corpus.
+- [x] Make real transport proofs bounded and hermetic. The pinned Redis test
+      passes, and two consecutive real PostgreSQL/Redis worker runs each pass
+      2 files / 5 tests with complete tracked-job removal.
+
+Implementation commits: `4e95575`, `fd42afe`, `c8127bf`, `44cd628`,
+`4e338b9`, `f48eeef`, `a107d8d`, and `19ae523`. No phase status changed.
+
 ## Update protocol
 
 When a checkpoint changes status:

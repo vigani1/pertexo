@@ -11,10 +11,9 @@
   API run-event use, service-backed transport tests, package scripts, and CI.
 - **Architecture sources:** the authoritative backend plan and ADRs 001, 002,
   004, 007, 012, 014, 018, 019, 021, 023, and 025.
-- **Audit status:** granularly certified for the pinned implementation tree.
-- **Implementation status:** one high-priority lifecycle defect, seven medium
-  contract/architecture/test gaps, and four lower-priority cleanup or
-  robustness improvements remain open.
+- **Audit status:** reconciled against the current implementation on 2026-06-18.
+- **Implementation status:** all twelve findings are implemented and verified;
+  QUEUE-006 and QUEUE-009 remain continuously enforced safeguards.
 
 The package is necessary and has high Leverage. It owns the server-only
 transport Interface between the durable PostgreSQL outbox and BullMQ, plus the
@@ -25,15 +24,35 @@ IDs support idempotent enqueue; business retry remains database-owned; consumer
 shutdown is bounded and abort-aware; and telemetry is deliberately unable to
 change delivery behavior.
 
-The package is not, however, finished to a best-practice standard. Producer
-shutdown is neither bounded nor safe for concurrent callers. An inherited-key
-object can pass the queue envelope guard even though it has neither `name` nor
-`data` as own properties. The public registry advertises two maintenance jobs
-that current production composition cannot deliver. A transport identity
-invariant is repeated in at least eight worker handlers instead of being
-enforced once at the consumer Seam. Package-local coverage omits almost all of
-the run-event publisher, and two explicitly enabled transport proofs
-reproducibly time out while their intended Bull work has already completed.
+The original audit identified twelve repository changes. They have since
+landed as cohesive lifecycle, boundary, active-capability, compatibility,
+coverage, Redis-policy, telemetry, public-surface, and integration-harness
+changes. Historical V1 contracts remain parseable for rolling-deployment and
+queued-message compatibility, while only composed jobs appear in the active
+capability registry.
+
+## Current remediation record
+
+| ID | Final status | Implementation and verification evidence |
+| --- | --- | --- |
+| QUEUE-001 | Fixed | `4e95575`; producer close is memoized, bounded, fallback-disconnects, and exposes one settlement to concurrent callers. |
+| QUEUE-002 | Fixed | `4e95575`; exact own-key parsing catches inherited and hostile-reflection envelopes. |
+| QUEUE-003 | Fixed compatibly | `4e338b9`; active jobs are separated from retained V1 compatibility schemas and worker configuration derives from active capabilities. |
+| QUEUE-004 | Fixed | `4e95575`; deterministic transport identity is enforced once in the consumer before domain dispatch; duplicate worker checks were removed. |
+| QUEUE-005 | Fixed | `fd42afe`; the producer, consumer, publisher, and API subscriber share one bounded endpoint policy and corpus. |
+| QUEUE-006 | Fixed; continuous gate | `19ae523`; queue coverage is part of root risk coverage. Fresh result: 80.78% statements (391/484), 68.98% branches (149/216), 82.44% functions (108/131), and 81.60% lines (386/473). |
+| QUEUE-007 | Fixed; continuous gate | `c8127bf`; retained V1 golden fixtures and a public-surface manifest run in CI. |
+| QUEUE-008 | Fixed | `4e95575`; the advisory publisher timeout is unreferenced and tests cover settlement behavior. |
+| QUEUE-009 | Fixed; continuous integration contract | `44cd628`; first-owner instrumentation semantics are documented and the pinned real ioredis success/failure/duplicate behavior runs in CI. |
+| QUEUE-010 | Fixed | `4e95575`; registry entry records are frozen without deep-freezing Zod schemas. |
+| QUEUE-011 | Fixed | `c8127bf`; the unused alias and five unused subpaths were removed and one explicit root surface is snapshot-tested. |
+| QUEUE-012 | Fixed | `f48eeef`; named bounds, complete job tracking/removal, residual checks, and bounded cleanup make transport proofs hermetic and diagnostic. |
+
+Fresh verification on 2026-06-18 passed 11 unit files / 55 tests (the one
+real-service file is intentionally skipped in the unit cohort), package
+typecheck, build, ESLint, package coverage, the pinned real-Redis integration,
+and two consecutive real PostgreSQL/Redis worker transport runs (2 files / 5
+tests each) including a dirty-state rerun.
 
 No recommendation below is based on line count alone. `producer.ts` and
 `consumer.ts` contain substantial cohesive behavior. The useful refactors are
@@ -458,7 +477,7 @@ expected.
   observe one result.
 - **Verification:** concurrent-close, timeout, partial-rejection, retry/fallback,
   and no-open-handle tests with real Redis coverage.
-- **Status:** Open.
+- **Status:** Fixed in `4e95575`.
 
 ### QUEUE-002 — Queue envelope accepts inherited `name` and `data`
 
@@ -472,7 +491,7 @@ expected.
   normalize reflection failures if hostile proxies are supported.
 - **Verification:** inherited, null-prototype, array, accessor, symbol, proxy,
   and extra-key contract tests.
-- **Status:** Open.
+- **Status:** Fixed in `4e95575`.
 
 ### QUEUE-003 — Registry advertises non-deliverable maintenance work
 
@@ -490,7 +509,7 @@ expected.
 - **Verification:** generate producer, dispatcher, capability, and handler
   inventories from one active-job manifest and assert every active job has an
   owner.
-- **Status:** Open.
+- **Status:** Fixed compatibly in `4e338b9`.
 
 ### QUEUE-004 — Transport job identity is duplicated across handlers
 
@@ -505,7 +524,7 @@ expected.
   checksum/fence validation.
 - **Verification:** mismatch rejection in consumer plus handler tests proving
   domain logic never starts.
-- **Status:** Open.
+- **Status:** Fixed in `4e95575`.
 
 ### QUEUE-005 — Redis endpoint policy is copied across four owners
 
@@ -517,7 +536,7 @@ expected.
 - **Remediation:** introduce one narrow internal validator returning a
   normalized URL; let each owner map its domain-specific configuration error.
 - **Verification:** one table-driven endpoint corpus used by all four callers.
-- **Status:** Open.
+- **Status:** Fixed in `fd42afe`.
 
 ### QUEUE-006 — Risk-critical package code has no coverage gate
 
@@ -531,7 +550,7 @@ expected.
   package in the repository risk report.
 - **Verification:** CI fails when required queue lifecycle/contract branches are
   uncovered.
-- **Status:** Open.
+- **Status:** Fixed in `19ae523`; continuously enforced.
 
 ### QUEUE-007 — Versioned queue schemas lack compatibility snapshots
 
@@ -545,7 +564,7 @@ expected.
   require deliberate versioning for breaking changes.
 - **Verification:** previous supported fixtures parse on every CI run and schema
   diffs are reviewable.
-- **Status:** Open.
+- **Status:** Fixed in `c8127bf`; continuously enforced.
 
 ### QUEUE-008 — Live notification timeouts retain referenced timers
 
@@ -558,7 +577,7 @@ expected.
 - **Remediation:** unref the timer and document that timeout does not cancel the
   underlying Redis operation.
 - **Verification:** fake-timer and open-handle shutdown test.
-- **Status:** Open.
+- **Status:** Fixed in `4e95575`.
 
 ### QUEUE-009 — Public Redis monkey patch relies on undocumented ioredis behavior
 
@@ -572,7 +591,7 @@ expected.
 - **Remediation:** document ownership, narrow visibility if internal, and add a
   pinned-library contract test.
 - **Verification:** real-client success/failure/event test.
-- **Status:** Open.
+- **Status:** Fixed in `44cd628`; retained as a pinned real-service contract.
 
 ### QUEUE-010 — Registry entry records are mutable
 
@@ -583,7 +602,7 @@ expected.
   long-lived process.
 - **Remediation:** freeze entry records without deep-freezing Zod internals.
 - **Verification:** immutability test for root and every entry.
-- **Status:** Open.
+- **Status:** Fixed in `4e95575`.
 
 ### QUEUE-011 — Public API contains unused aliases/subpaths and inconsistent contract exports
 
@@ -595,7 +614,7 @@ expected.
 - **Remediation:** define a public-surface rule, retain only demonstrated seams,
   and add an explicit export manifest test.
 - **Verification:** repository import search plus API-extractor-style snapshot.
-- **Status:** Open.
+- **Status:** Fixed in `c8127bf`.
 
 ### QUEUE-012 — Transport integration harness is non-hermetic and masks its stalled stage
 
@@ -611,7 +630,7 @@ expected.
   IDs, bound cleanup, and print relevant Bull state on failure.
 - **Verification:** repeated clean and dirty-state runs of the exact CI command
   complete within budget with no residual keys.
-- **Status:** Open.
+- **Status:** Fixed in `f48eeef`.
 
 ## What should remain unchanged
 
