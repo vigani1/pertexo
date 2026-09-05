@@ -329,6 +329,16 @@ describe('email.send_notification@1', () => {
     [
       {
         kind: 'rejected',
+        error: 'invalid_api_key',
+        status: 401,
+      },
+      'failed',
+      'authentication',
+      false,
+    ],
+    [
+      {
+        kind: 'rejected',
         error: 'invalid_idempotent_request',
         status: 409,
       },
@@ -733,6 +743,24 @@ describe('email.send_notification@1', () => {
       }).execute(invocation(state.value)),
     ).rejects.toMatchObject({
       kind: 'outcome_unknown',
+      possiblyDispatched: true,
+    });
+  });
+
+  it('preserves earlier dispatch ambiguity for an unexpected adapter failure', async () => {
+    const state = runtime(
+      new Error('provider adapter failed'),
+      secretVersionId,
+      originalBinding,
+      true,
+    );
+    await expect(
+      createEmailSendNotificationExecutorRegistration({
+        client: { sendNotification: state.sendNotification },
+      }).execute(invocation(state.value)),
+    ).rejects.toMatchObject({
+      kind: 'outcome_unknown',
+      errorKind: 'provider',
       possiblyDispatched: true,
     });
   });

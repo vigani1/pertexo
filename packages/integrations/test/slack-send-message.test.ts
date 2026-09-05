@@ -1,4 +1,5 @@
 import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
+import { ProviderExecutionRateLimitError } from '@pertexo/node-sdk/server';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -505,6 +506,52 @@ describe('slack.send_message@1', () => {
       kind: 'outcome_unknown',
       errorKind: 'provider',
       possiblyDispatched: true,
+    });
+  });
+
+  it('fails closed on rate-limited resolution and mismatched resolved credentials', async () => {
+    const limited = runtime(undefined);
+    limited.value = Object.freeze({
+      ...limited.value,
+      connections: {
+        assertCurrent: limited.assertCurrent,
+        resolve: () => Promise.reject(new ProviderExecutionRateLimitError(7)),
+      },
+    });
+    await expect(
+      createSlackSendMessageExecutorRegistration({
+        client: { sendMessage: limited.sendMessage },
+      }).execute(invocation(limited.value)),
+    ).rejects.toMatchObject({
+      kind: 'retry',
+      errorKind: 'rate_limit',
+      retryAfterMillis: 7_000,
+      possiblyDispatched: false,
+    });
+
+    const mismatched = runtime(undefined);
+    mismatched.value = Object.freeze({
+      ...mismatched.value,
+      connections: {
+        assertCurrent: mismatched.assertCurrent,
+        resolve: () =>
+          Promise.resolve({
+            connectionId,
+            providerKey: 'email',
+            authType: 'slack_bot_token',
+            secretVersionId,
+            secret: mismatched.secret,
+          }),
+      },
+    });
+    await expect(
+      createSlackSendMessageExecutorRegistration({
+        client: { sendMessage: mismatched.sendMessage },
+      }).execute(invocation(mismatched.value)),
+    ).rejects.toMatchObject({
+      kind: 'failed',
+      errorKind: 'configuration',
+      possiblyDispatched: false,
     });
   });
 });
