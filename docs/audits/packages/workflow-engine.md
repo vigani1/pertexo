@@ -907,7 +907,16 @@ remaining gaps are implementation/control details:
   ratchets; keep reviewed exceptions fingerprinted.
 - **Verification:** deleting a test from each critical family fails CI or
   creates a new unreviewed risk entry.
-- **Status:** open.
+- **Status:** fixed as a continuous repository control.
+- **Implemented evidence (2026-09-05):** enforced coverage now includes all 24
+  consequence-selected engine files: persisted observation admission/parsing,
+  coordinator derivation, scheduler projection, transition derivation/stops/
+  planning, executable boundary/validation/compatibility, scheduling, and the
+  original checkpoint/operation cohort. The original 13-file cohort retains
+  its stronger aggregate thresholds, each newly admitted decision owner has a
+  file-specific branch floor, and the expanded cohort has a separate aggregate
+  ratchet. The baseline is 2,094 branches at 85.19%, rather than the prior
+  1,018-branch selected score.
 
 ### WFE-005 — Engine checkpoint admission is weaker than persistence admission
 
