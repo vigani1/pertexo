@@ -1105,7 +1105,8 @@ review.
 ### DB-016 — Historical migration exceptions need an explicit retirement ledger
 
 - **Severity/classification:** P3 continuous-control/compatibility debt.
-- **Status:** open as lifecycle documentation, not a request to rewrite history.
+- **Status:** fixed as repository lifecycle documentation; retirement remains a
+  continuous deployed-inventory obligation.
 - **Evidence:** the runner accepts historical published checksums for migrations
   0037, 0038, and 0070; migration 0067 reconciles affected states. Seven
   constraints intentionally remain unvalidated for historical rows, and
@@ -1119,6 +1120,13 @@ review.
 - **Verification:** inventory every deployed schema checksum/constraint state;
   remove compatibility exceptions only after no supported database needs them
   and a restore/upgrade rehearsal proves the retirement path.
+- **Implemented evidence (2026-09-05):**
+  `docs/operations/compatibility-retirement-inventory.md` now accounts for each
+  of the five accepted historical checksums and all seven deliberately
+  unvalidated constraints. It records affected populations, forward behavior,
+  new-row invariants, exact inventory queries, owners, and retirement or
+  permanent-exception criteria. The accepted hashes are tied to the Git commits
+  containing their exact immutable bytes. No published migration was edited.
 
 ### DB-017 — Backup, restore, pooler, vacuum, and failover claims require deployed evidence
 

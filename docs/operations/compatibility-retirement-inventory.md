@@ -45,3 +45,88 @@ A retirement pull request must record:
 
 Absence from current source call graphs, queue emptiness, deployment age, and
 low traffic are not retirement evidence.
+
+## Database migration compatibility exceptions
+
+Published migration bytes are immutable. The hashes below identify the exact
+historical bytes retained in Git, and the current runner accepts no other
+non-current value. A release inventory must run query M1 against every supported
+database before any row can be retired.
+
+| Migration | Accepted historical SHA-256 | Affected population | Forward repair / new-database invariant | Owner | Retirement criterion |
+| --- | --- | --- | --- | --- | --- |
+| `0037_failure_notification_destinations.sql` | `9f76e5fefc3914a808cb000f796760e17902876a4418d006bb82674d7778eede` | Databases that applied the first published 0037 bytes (Git commit `0cef4f6b9fb234d60042f2289fc5c92ba4565153`) | Migration 0067 installs the destination dispatch lock and corrected owner-inclusive RLS policies. New databases receive the current 0037 bytes and still converge through 0067. | Database migration owner | M1 reports zero supported databases with this value and a prior-release restore/upgrade rehearsal rejects its removal nowhere. |
+| `0038_execution_admission.sql` | `89117c0311337b655503557f7a66f63c04aa9eb6736be6ddfc4b02dea4eedf95` | Databases that applied the first published 0038 bytes (Git commit `37b218154ceef2766a268419f6f96028035771a3`) | Migration 0067 creates or repairs active-admission reservation state, functions, grants, RLS, and the bigint recovery counter. | Database migration owner | M1 reports zero supported databases with this value and the 0038-to-head restore/upgrade rehearsal passes without accepting it. |
+| `0038_execution_admission.sql` | `0b7c70eee52daefeacbd092e1831852aa4260b60b899832b565ec524e47b2be2` | Databases that applied the second published 0038 variant (Git commit `9110363c89ba9b8b01096d1d763e0026baf5f148`) | Same forward-only 0067 convergence; current inserts are protected by the repaired entitlement/admission functions and constraints. | Database migration owner | Same as the preceding 0038 row, demonstrated for this exact hash. |
+| `0038_execution_admission.sql` | `27ca68dc5e20560d80fbaab2524b3cd0c9fe0361b68792538a69aac30d4f9857` | Databases that applied the third published 0038 variant (Git commit `ae609d228965023116b97592869cb3798818fb4b`) | Same forward-only 0067 convergence; current databases receive the final 0038 bytes and 0067 remains idempotent. | Database migration owner | Same as the preceding 0038 row, demonstrated for this exact hash. |
+| `0070_preview_execution_deadline.sql` | `beabac6354d519a98878e57645d74c8afa8c46454bf13fc3886835774da0c914` | Databases that successfully applied the first 0070 bytes (Git commit `3a96742a9706ccad78db1ef5bf1640a13ba08316`). Because forced RLS hid retained rows from its backfill, successful databases in this cohort necessarily had no retained preview rows requiring repair. | The accepted schema is identical for that cohort. Current 0070 temporarily disables and restores forced RLS so populated upgrades backfill every row; the populated prior-head integration test protects this path. | Database migration owner | M1 reports zero supported databases with this value and populated and empty prior-head restore/upgrade rehearsals pass after removing acceptance. |
+
+M1 — deployed checksum inventory (run once per database and retain the result
+with database identity, application release, and observation time):
+
+```sql
+SELECT name, checksum
+FROM pertexo_internal.schema_migrations
+WHERE (name = '0037_failure_notification_destinations.sql'
+       AND checksum = '9f76e5fefc3914a808cb000f796760e17902876a4418d006bb82674d7778eede')
+   OR (name = '0038_execution_admission.sql'
+       AND checksum IN (
+         '89117c0311337b655503557f7a66f63c04aa9eb6736be6ddfc4b02dea4eedf95',
+         '0b7c70eee52daefeacbd092e1831852aa4260b60b899832b565ec524e47b2be2',
+         '27ca68dc5e20560d80fbaab2524b3cd0c9fe0361b68792538a69aac30d4f9857'
+       ))
+   OR (name = '0070_preview_execution_deadline.sql'
+       AND checksum = 'beabac6354d519a98878e57645d74c8afa8c46454bf13fc3886835774da0c914')
+ORDER BY name, checksum;
+```
+
+## Unvalidated database constraints
+
+`NOT VALID` preserves historical rows but PostgreSQL enforces each constraint
+for every insert and update after creation. These seven states are deliberate;
+`workflow_runs_input_ref_expiry_valid` is not listed because migration 0043
+validates it immediately.
+
+| Table / constraint | Historical population and detection | Forward invariant | Owner | Permanent-exception / validation criterion |
+| --- | --- | --- | --- | --- |
+| `audit_events.audit_events_preview_terminal_uuid_v7` | Audit facts predating migration 0028 may use non-v7 identifiers; C1 detects violating retained rows. | New `preview.execution_terminal` facts must use UUIDv7. | Preview execution owner | Retain while immutable audit history is retained; validate only after C1 is zero for a full audit-retention window or formally keep permanent. |
+| `usage_events.usage_events_preview_uuid_v7` | Usage facts predating migration 0028 may use non-v7 identifiers; C1 detects violations. | New `preview_execution` facts must use UUIDv7. | Usage/billing owner | Retain while immutable billing history is retained; validate only after C1 is zero for the complete billing-retention window or formally keep permanent. |
+| `workflow_runs.workflow_runs_failure_notification_destination_version_fk` | Runs created before migration 0037 may lack a resolvable destination-version pin; C1 detects violations. | Every new non-null run pin references its workspace-scoped immutable destination version. | Failure-notification owner | Validate after C1 is zero on every supported database and rollback/retained-run tests pass. |
+| `run_failure_notification_intents.run_failure_notification_intents_destination_version_fk` | Historical intents created before migration 0037 may lack a destination-version row; C1 detects violations. | Every new intent references its immutable destination version. | Failure-notification owner | Validate after C1 is zero beyond the intent retention/redelivery window on every supported database. |
+| `run_failure_notification_intents.run_failure_notification_intents_run_pin_fk` | Historical intents may not match the full immutable run pin introduced by 0037; C1 detects violations. | Every new intent is bound to the exact run policy/destination/secret pin. | Failure-notification owner | Validate together with the other 0037 notification constraints after C1 is zero and delivery recovery is rehearsed. |
+| `workflow_runs.workflow_runs_execution_entitlement_fk` | Runs predating migration 0038 were backfilled to entitlement version 1; C1 detects any row whose version cannot be resolved. | Every new run references the immutable workspace entitlement version used for admission. | Execution-admission owner | Validate after C1 is zero on every supported database and retained-run replay plus rollback rehearsals pass. |
+| `workflow_runs.workflow_runs_replay_lineage_valid` | Runs predating migration 0065 may not satisfy the replay/source-command equivalence; C1 detects violations. | New replay runs have both source and command; non-replay runs have neither. | Operator/replay owner | Validate after C1 is zero beyond retained replay eligibility and prior-release replay/rollback rehearsals pass. |
+
+C1 — constraint-state and violation inventory. Run the first query on every
+supported database. For each returned row, execute
+`ALTER TABLE app.<table> VALIDATE CONSTRAINT <constraint>` inside a disposable
+restore: success proves zero violations without mutating production; failure is
+the retained evidence that the exception remains necessary.
+
+```sql
+SELECT ns.nspname AS schema_name,
+       relation.relname AS table_name,
+       constraint_record.conname AS constraint_name,
+       constraint_record.convalidated,
+       pg_get_constraintdef(constraint_record.oid) AS definition
+FROM pg_constraint constraint_record
+JOIN pg_class relation ON relation.oid = constraint_record.conrelid
+JOIN pg_namespace ns ON ns.oid = relation.relnamespace
+WHERE ns.nspname = 'app'
+  AND constraint_record.conname IN (
+    'audit_events_preview_terminal_uuid_v7',
+    'usage_events_preview_uuid_v7',
+    'workflow_runs_failure_notification_destination_version_fk',
+    'run_failure_notification_intents_destination_version_fk',
+    'run_failure_notification_intents_run_pin_fk',
+    'workflow_runs_execution_entitlement_fk',
+    'workflow_runs_replay_lineage_valid'
+  )
+ORDER BY table_name, constraint_name;
+```
+
+The readiness probe pins the exact definitions and validation states for the
+two UUIDv7 exceptions and verifies the remaining schema contract. Any proposal
+to validate or permanently retain an exception must update this ledger, the
+readiness contract where applicable, and the compatibility test evidence in
+the same change.
