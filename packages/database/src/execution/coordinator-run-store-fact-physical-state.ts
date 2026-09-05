@@ -27,7 +27,7 @@ export type PersistedCoordinatorEventRow = Readonly<{
 export type CoordinatorEventRow = PersistedCoordinatorEventRow &
   PhysicalAttemptRow;
 
-export const missingPhysicalAttempt: PhysicalAttemptRow = Object.freeze({
+const missingPhysicalAttempt: PhysicalAttemptRow = Object.freeze({
   attempt_id: null,
   attempt_number: null,
   attempt_status: null,
