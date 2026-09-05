@@ -64,7 +64,7 @@ function utf8ByteLength(value: string): number {
   // that boundary before this byte total can make the credential valid.
   for (const character of value)
     bytes += character.charCodeAt(0) <= 0x7f ? 1 : 2;
- return bytes;
+  return bytes;
 }
 
 export const httpHeaderCredentialSchema = z
