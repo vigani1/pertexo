@@ -9,6 +9,7 @@ import type {
   PreviewRetentionCoordinator,
   RunArtifactRetentionCoordinator,
   WorkspacePurgeCoordinator,
+  DatabaseRuntime,
 } from '@pertexo/database/maintenance';
 import type { StructuredLogger } from '@pertexo/observability/logging';
 import { createTelemetryLifecycle } from '@pertexo/observability/telemetry';
@@ -26,6 +27,7 @@ async function bootstrap(): Promise<void> {
   process.once('SIGINT', stop);
   process.once('SIGTERM', stop);
   let database: RetentionDatabase | undefined;
+  let databaseRuntime: DatabaseRuntime | undefined;
   let enforcement: RetentionEnforcementCoordinator | undefined;
   let ledger: DualRegionControlLedger | undefined;
   let logger: StructuredLogger | undefined;
@@ -53,14 +55,19 @@ async function bootstrap(): Promise<void> {
       config.artifactStore.primary,
       config.artifactStore.recovery,
     );
+    databaseRuntime = databasePackage.createDatabaseRuntime(config.database, {
+      role: 'maintenance',
+    });
     database = databasePackage.createRetentionDatabase(
       config.database,
       config.options,
+      databaseRuntime,
     );
     enforcement = databasePackage.createRetentionEnforcementCoordinator(
       config.database,
       ledger,
       config.options,
+      databaseRuntime,
     );
     preview = databasePackage.createPreviewRetentionCoordinator(
       config.database,
@@ -80,6 +87,7 @@ async function bootstrap(): Promise<void> {
         lockTimeoutMs: config.options.lockTimeoutMs,
         statementTimeoutMs: config.options.statementTimeoutMs,
       },
+      databaseRuntime,
     );
     runArtifacts = databasePackage.createRunArtifactRetentionCoordinator(
       config.database,
@@ -90,17 +98,20 @@ async function bootstrap(): Promise<void> {
         lockTimeoutMs: config.options.lockTimeoutMs,
         statementTimeoutMs: config.options.statementTimeoutMs,
       },
+      databaseRuntime,
     );
     workspacePurge = databasePackage.createWorkspacePurgeCoordinator(
       config.database,
       ledger,
       artifacts,
       config.options,
+      databaseRuntime,
     );
     workerInvoked = true;
     await worker.runRetentionWorker({
       artifacts,
       database,
+      databaseRuntime,
       enforcement,
       expectedMaintenanceRole: config.expectedMaintenanceRole,
       logger,
@@ -126,6 +137,7 @@ async function bootstrap(): Promise<void> {
       await runArtifacts?.close().catch(() => undefined);
       await workspacePurge?.close().catch(() => undefined);
       await database?.close().catch(() => undefined);
+      await databaseRuntime?.close().catch(() => undefined);
       artifacts?.close();
       ledger?.close();
       await telemetry.shutdown().catch(() => undefined);

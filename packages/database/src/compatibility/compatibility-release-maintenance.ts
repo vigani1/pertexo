@@ -1,4 +1,5 @@
-import { createDatabasePool } from '../platform/postgres-telemetry.js';
+import { acquireDatabasePool } from '../platform/database-runtime.js';
+import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
@@ -79,8 +80,10 @@ function quoteIdentifier(identifier: string): string {
 
 export function createCompatibilityReleaseMaintenance(
   config: DatabaseConfig,
+  runtime?: DatabaseRuntime,
 ): CompatibilityReleaseMaintenance {
-  const pool = createDatabasePool(config);
+  const lease = acquireDatabasePool(config, runtime);
+  const { pool } = lease;
 
   const transact = async (
     operation: (client: PoolClient) => Promise<void>,
@@ -214,6 +217,6 @@ export function createCompatibilityReleaseMaintenance(
         );
       });
     },
-    close: async (): Promise<void> => pool.end(),
+    close: () => lease.close(),
   });
 }

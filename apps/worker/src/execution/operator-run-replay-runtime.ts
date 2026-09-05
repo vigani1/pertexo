@@ -6,6 +6,7 @@ import {
   OperatorRunReplayMismatchError,
   OperatorRunReplayNotExecutableError,
   type DatabaseConfig,
+  type DatabaseRuntime,
   type OperatorRunReplayStore,
   type PublishedWorkflowV2Projection,
 } from '@pertexo/database/execution';
@@ -37,6 +38,7 @@ type ReplayDelivery = Extract<
 export function createDatabaseOperatorRunReplayStore(
   database: DatabaseConfig,
   releaseCohort: PlatformReleaseCohort = 'core',
+  runtime?: DatabaseRuntime,
 ): OperatorRunReplayStore {
   const releaseHistory = createExecutableCompatibilityReleaseHistory(
     platformExecutableRegistryHistory(releaseCohort).map(
@@ -64,6 +66,7 @@ export function createDatabaseOperatorRunReplayStore(
         throw error;
       }
     },
+    runtime,
   );
 }
 

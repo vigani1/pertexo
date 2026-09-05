@@ -2,7 +2,7 @@ import 'reflect-metadata';
 
 import type { DynamicModule } from '@nestjs/common';
 import { Module } from '@nestjs/common';
-import type { WorkspaceDatabase } from '@pertexo/database/api';
+import type { DatabaseRuntime, WorkspaceDatabase } from '@pertexo/database/api';
 import type {
   StructuredLogger,
   TelemetryLifecycle,
@@ -45,6 +45,7 @@ import { APPLICATION_ERROR_MAPPERS } from './application-error-mappers.js';
 
 export type ApiModuleDependencies = Readonly<{
   database?: WorkspaceDatabase;
+  databaseRuntime?: DatabaseRuntime;
   identityRuntime?: ApiIdentityRuntime;
   connectionRuntime?: ApiConnectionRuntime;
   workflowRuntime?: ApiWorkflowRuntime;
@@ -68,7 +69,12 @@ export class AppModule {
   ): DynamicModule {
     const databaseOptions =
       dependencies.database === undefined
-        ? { releaseCohort: config.nodeCompatibilityCohort }
+        ? {
+            releaseCohort: config.nodeCompatibilityCohort,
+            ...(dependencies.databaseRuntime === undefined
+              ? {}
+              : { runtime: dependencies.databaseRuntime }),
+          }
         : {
             database: dependencies.database,
             releaseCohort: config.nodeCompatibilityCohort,
@@ -193,6 +199,17 @@ export class AppModule {
                 provide: Symbol('SCHEDULE_RUNTIME_SHUTDOWN'),
                 useValue: {
                   onApplicationShutdown: () => scheduleRuntime.close(),
+                },
+              },
+            ]),
+        ...(dependencies.databaseRuntime === undefined
+          ? []
+          : [
+              {
+                provide: Symbol('DATABASE_RUNTIME_SHUTDOWN'),
+                useValue: {
+                  onApplicationShutdown: () =>
+                    dependencies.databaseRuntime?.close(),
                 },
               },
             ]),

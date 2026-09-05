@@ -22,6 +22,7 @@ import {
   type ConnectionResolutionDatabase,
   type WorkerConnectionResolutionDatabase,
   type DatabaseConfig,
+  type DatabaseRuntime,
   type WorkspaceDatabase,
 } from '@pertexo/database/execution';
 import {
@@ -58,6 +59,7 @@ export type WorkerNodeRuntimeCapabilityOptions = Readonly<{
 }>;
 
 export type WorkerNodeRuntimeCapabilityDependencies = Readonly<{
+  databaseRuntime?: DatabaseRuntime;
   connectionDatabase?: ConnectionResolutionDatabase;
   connectionEncryption?: Pick<ConnectionEnvelopeEncryption, 'open'>;
   artifactPersistence?: WorkerArtifactPersistence;
@@ -446,6 +448,7 @@ export async function createWorkerNodeRuntimeCapabilities(
         dependencies.connectionDatabase ??
         (ownedConnectionDatabase = createWorkerConnectionResolutionDatabase(
           options.database,
+          dependencies.databaseRuntime,
         ));
       const encryption =
         dependencies.connectionEncryption ??
@@ -466,7 +469,12 @@ export async function createWorkerNodeRuntimeCapabilities(
       const persistence =
         dependencies.artifactPersistence ??
         artifactPersistence(
-          (ownedArtifactDatabase = createWorkspaceDatabase(options.database)),
+          (ownedArtifactDatabase = createWorkspaceDatabase(
+            options.database,
+            dependencies.databaseRuntime === undefined
+              ? {}
+              : { runtime: dependencies.databaseRuntime },
+          )),
         );
       const store =
         dependencies.artifactStore ??

@@ -1,4 +1,5 @@
-import { createDatabasePool } from '../platform/postgres-telemetry.js';
+import { acquireDatabasePool } from '../platform/database-runtime.js';
+import type { DatabaseRuntime } from '../platform/database-runtime.js';
 
 import type { DatabaseConfig } from '../config.js';
 
@@ -9,8 +10,10 @@ export interface DeadlineWakeupScanner {
 
 export function createDeadlineWakeupScanner(
   config: DatabaseConfig,
+  runtime?: DatabaseRuntime,
 ): DeadlineWakeupScanner {
-  const pool = createDatabasePool(config);
+  const lease = acquireDatabasePool(config, runtime);
+  const { pool } = lease;
   return Object.freeze({
     claimDueWakeups: async (limit: number): Promise<number> => {
       if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100)
@@ -21,6 +24,6 @@ export function createDeadlineWakeupScanner(
       );
       return result.rows[0]?.claimed ?? 0;
     },
-    close: async (): Promise<void> => pool.end(),
+    close: () => lease.close(),
   });
 }

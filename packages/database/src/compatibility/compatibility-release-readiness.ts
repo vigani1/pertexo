@@ -1,4 +1,5 @@
-import { createDatabasePool } from '../platform/postgres-telemetry.js';
+import { acquireDatabasePool } from '../platform/database-runtime.js';
+import type { DatabaseRuntime } from '../platform/database-runtime.js';
 
 import type { DatabaseConfig } from '../config.js';
 import type {
@@ -22,8 +23,10 @@ export interface CompatibilityReleaseReadinessProbe {
 export function createCompatibilityReleaseReadinessProbe(
   config: DatabaseConfig,
   supported: CompatibilityReleaseExpectationSet,
+  runtime?: DatabaseRuntime,
 ): CompatibilityReleaseReadinessProbe {
-  const pool = createDatabasePool(config);
+  const lease = acquireDatabasePool(config, runtime);
+  const { pool } = lease;
   const options = Object.freeze({
     ownerRole: config.ownerRole,
     workerRuntimeRole: config.workerRuntimeRole,
@@ -39,6 +42,6 @@ export function createCompatibilityReleaseReadinessProbe(
         ...options,
         preactivationTarget: target,
       }),
-    close: (): Promise<void> => pool.end(),
+    close: () => lease.close(),
   });
 }

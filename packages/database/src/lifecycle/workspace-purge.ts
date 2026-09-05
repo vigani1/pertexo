@@ -1,4 +1,5 @@
-import { createDatabasePool } from '../platform/postgres-telemetry.js';
+import { acquireDatabasePool } from '../platform/database-runtime.js';
+import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import type { PoolClient, QueryResult } from 'pg';
 import { z } from 'zod';
 
@@ -216,11 +217,19 @@ export function createWorkspacePurgeCoordinator(
   ledger: WorkspacePurgeLedger,
   objectStore: WorkspacePurgeObjectStore,
   inputOptions: WorkspacePurgeOptions,
+  runtime?: DatabaseRuntime,
 ): WorkspacePurgeCoordinator {
   const { pool: suppliedPool, ...rawOptions } = inputOptions;
   const options = optionsSchema.parse(rawOptions);
-  const pool = suppliedPool ?? createDatabasePool(config);
-  const ownsPool = suppliedPool === undefined;
+  if (suppliedPool !== undefined && runtime !== undefined)
+    throw new TypeError('Workspace purge database ownership is ambiguous');
+  const lease =
+    suppliedPool === undefined
+      ? acquireDatabasePool(config, runtime, { role: 'maintenance' })
+      : undefined;
+  const pool = suppliedPool ?? lease?.pool;
+  if (pool === undefined)
+    throw new Error('Workspace purge database pool was not initialized');
 
   const transaction = async <T>(
     signal: AbortSignal | undefined,
@@ -259,7 +268,7 @@ export function createWorkspacePurgeCoordinator(
   };
 
   return Object.freeze({
-    close: () => (ownsPool ? pool.end() : Promise.resolve()),
+    close: () => lease?.close() ?? Promise.resolve(),
     processNext: async (signal?: AbortSignal) => {
       signal?.throwIfAborted();
       const dueStep = await pool.query<{

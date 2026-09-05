@@ -8,6 +8,7 @@ import {
   WorkflowRunNotFoundError as DatabaseWorkflowRunNotFoundError,
   createWorkflowRunDatabase,
   type DatabaseConfig,
+  type DatabaseRuntime,
   type WorkflowRunDatabase,
 } from '@pertexo/database/api';
 import {
@@ -50,6 +51,7 @@ export function createPostgresWorkflowRunPersistence(
   databaseInput?: WorkflowRunDatabase,
   notifications?: RunEventNotificationPublisher,
   releaseCohort: PlatformReleaseCohort = 'core',
+  runtime?: DatabaseRuntime,
 ): PostgresWorkflowRunPersistence {
   const releaseSupport = createExecutableCompatibilityReleaseHistory(
     platformExecutableRegistryHistory(releaseCohort).map(
@@ -65,6 +67,7 @@ export function createPostgresWorkflowRunPersistence(
           composeExecutableCompatibilityRelease,
         ),
       ).descriptions,
+      runtime,
     );
   const persistence: WorkflowRunPersistence = Object.freeze({
     start: async (input: StartWorkflowRunCommand) => {

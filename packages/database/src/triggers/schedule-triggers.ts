@@ -1,4 +1,5 @@
-import { createDatabasePool } from '../platform/postgres-telemetry.js';
+import { acquireDatabasePool } from '../platform/database-runtime.js';
+import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import { createHash } from 'node:crypto';
 
 import { generatePersistedId } from '../platform/persisted-id.js';
@@ -269,8 +270,10 @@ function idempotencyKeyHash(value: string): string {
 
 export function createScheduleTriggerDatabase(
   config: DatabaseConfig,
+  runtime?: DatabaseRuntime,
 ): ScheduleTriggerDatabase {
-  const pool = createDatabasePool(config);
+  const lease = acquireDatabasePool(config, runtime);
+  const { pool } = lease;
   return Object.freeze({
     list: (input: Parameters<ScheduleTriggerDatabase['list']>[0]) =>
       withTenantScopedClient(
@@ -482,7 +485,7 @@ export function createScheduleTriggerDatabase(
     checkReadiness: async () => {
       await pool.query('select 1 from app.trigger_schedules limit 0');
     },
-    close: () => pool.end(),
+    close: () => lease.close(),
   });
 }
 
@@ -491,9 +494,18 @@ export function createScheduleTriggerScanner(
   compatibilityReleaseInput:
     CompatibilityReleaseExpectation | CompatibilityReleaseExpectationSet,
   acceptanceConfig: DatabaseConfig,
+  runtimes: Readonly<{
+    acceptance?: DatabaseRuntime;
+    claim?: DatabaseRuntime;
+  }> = {},
 ): ScheduleTriggerScanner {
-  const claimPool = createDatabasePool(claimConfig);
-  const acceptancePool = createDatabasePool(acceptanceConfig);
+  const claimLease = acquireDatabasePool(claimConfig, runtimes.claim);
+  const acceptanceLease = acquireDatabasePool(
+    acceptanceConfig,
+    runtimes.acceptance,
+  );
+  const claimPool = claimLease.pool;
+  const acceptancePool = acceptanceLease.pool;
   const compatibilityReleases = Array.isArray(compatibilityReleaseInput)
     ? parseCompatibilityReleaseExpectationSet(compatibilityReleaseInput)
     : Object.freeze([
@@ -655,7 +667,7 @@ export function createScheduleTriggerScanner(
       });
     },
     close: async () => {
-      await Promise.all([claimPool.end(), acceptancePool.end()]);
+      await Promise.all([claimLease.close(), acceptanceLease.close()]);
     },
   });
 }

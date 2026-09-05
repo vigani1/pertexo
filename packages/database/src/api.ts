@@ -17,6 +17,11 @@ export type {
   ConnectionTestResult,
 } from './connections/connections.js';
 export type { DatabaseConfig } from './config.js';
+export { createDatabaseRuntime } from './platform/database-runtime.js';
+export type {
+  DatabaseRuntime,
+  DatabaseRuntimeOptions,
+} from './platform/database-runtime.js';
 export { generatePersistedId } from './platform/persisted-id.js';
 export { ExecutionStateConflictError } from './execution/execution-state.js';
 export { readRunEventsAfter } from './execution/run-events.js';

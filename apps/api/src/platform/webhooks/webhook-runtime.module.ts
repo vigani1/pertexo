@@ -2,6 +2,7 @@ import {
   createWebhookTriggerDatabase,
   type WebhookCheckpointFactory,
   type WebhookTriggerDatabase,
+  type DatabaseRuntime,
 } from '@pertexo/database/api';
 import { createAwsWebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
 import {
@@ -31,6 +32,7 @@ export function createApiWebhookRuntime(
   databaseConfig: ApiConfig['database'],
   releaseCohort: PlatformReleaseCohort,
   databaseOverride?: WebhookTriggerDatabase,
+  runtime?: DatabaseRuntime,
 ): ApiWebhookRuntime {
   const releaseSupport = createExecutableCompatibilityReleaseHistory(
     platformExecutableRegistryHistory(releaseCohort).map(
@@ -44,7 +46,11 @@ export function createApiWebhookRuntime(
   );
   const database =
     databaseOverride ??
-    createWebhookTriggerDatabase(databaseConfig, compatibility.descriptions);
+    createWebhookTriggerDatabase(
+      databaseConfig,
+      compatibility.descriptions,
+      runtime,
+    );
   const envelope = createAwsWebhookTriggerEnvelopeEncryption({
     keyReference: config.kmsKeyReference,
     region: config.region,

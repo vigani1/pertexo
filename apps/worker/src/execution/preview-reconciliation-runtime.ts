@@ -1,8 +1,9 @@
 import {
   canonicalOutboxPayloadChecksum,
-  createDatabasePool,
+  acquireDatabasePool,
   reconcilePreviewDelivery,
   type DatabaseConfig,
+  type DatabaseRuntime,
   type PreviewDeliveryReconciliationResult,
   PreviewAttemptStateError,
   PreviewDeliveryMismatchError,
@@ -47,15 +48,15 @@ export interface PreviewReconciliationHandler {
 
 export function createDatabasePreviewReconciliationStore(
   config: DatabaseConfig,
+  runtime?: DatabaseRuntime,
 ): PreviewReconciliationStore & { close(): Promise<void> } {
-  const pool = createDatabasePool(config);
+  const lease = acquireDatabasePool(config, runtime);
+  const { pool } = lease;
   return Object.freeze({
     reconcile: (
       input: Parameters<PreviewReconciliationStore['reconcile']>[0],
     ) => reconcilePreviewDelivery(pool, input),
-    close: async (): Promise<void> => {
-      await pool.end();
-    },
+    close: () => lease.close(),
   });
 }
 

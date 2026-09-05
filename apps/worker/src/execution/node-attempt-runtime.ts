@@ -2,6 +2,7 @@ import {
   createNodeAttemptRunStore,
   createPublishedWorkflowReader,
   type DatabaseConfig,
+  type DatabaseRuntime,
   NodeAttemptDeliveryMismatchError,
   type NodeAttemptRunStore,
   NodeAttemptStateCorruptError,
@@ -92,6 +93,7 @@ export type NodeAttemptRuntimeOptions = Readonly<{
   artifactStore?: DualRegionArtifactStoreConfig;
   connectionEncryption?: AwsConnectionEnvelopeEncryptionConfig;
   database: DatabaseConfig;
+  databaseRuntime?: DatabaseRuntime;
   heartbeatIntervalMillis: number;
   leaseDurationSeconds: number;
   observer?: QueueConsumerObserver;
@@ -210,7 +212,8 @@ export async function createNodeAttemptRuntime(
       emailSendNotificationTelemetry: createProductionEmailProviderTelemetry(),
     });
   const runStore =
-    dependencies.runStore ?? createNodeAttemptRunStore(options.database);
+    dependencies.runStore ??
+    createNodeAttemptRunStore(options.database, options.databaseRuntime);
   const reader =
     dependencies.reader ??
     createPublishedWorkflowReader(
@@ -220,6 +223,7 @@ export async function createNodeAttemptRuntime(
           composeExecutableCompatibilityRelease,
         ),
       ).descriptions,
+      options.databaseRuntime,
     );
   const notifications =
     dependencies.notifications ??
@@ -231,16 +235,21 @@ export async function createNodeAttemptRuntime(
       (options.connectionEncryption !== undefined ||
         options.artifactStore !== undefined)
     )
-      capabilityRuntime = await createWorkerNodeRuntimeCapabilities({
-        database: options.database,
-        redisUrl: options.redisUrl,
-        ...(options.connectionEncryption === undefined
+      capabilityRuntime = await createWorkerNodeRuntimeCapabilities(
+        {
+          database: options.database,
+          redisUrl: options.redisUrl,
+          ...(options.connectionEncryption === undefined
+            ? {}
+            : { connectionEncryption: options.connectionEncryption }),
+          ...(options.artifactStore === undefined
+            ? {}
+            : { artifactStore: options.artifactStore }),
+        },
+        options.databaseRuntime === undefined
           ? {}
-          : { connectionEncryption: options.connectionEncryption }),
-        ...(options.artifactStore === undefined
-          ? {}
-          : { artifactStore: options.artifactStore }),
-      });
+          : { databaseRuntime: options.databaseRuntime },
+      );
   } catch (error: unknown) {
     await Promise.allSettled([
       notifications.close(),

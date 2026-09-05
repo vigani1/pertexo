@@ -52,7 +52,10 @@ export function dispatcherProvider(
     ): OutboxDispatcher =>
       new OutboxDispatcher(
         dependencies.dispatcherDatabase ??
-          createOutboxDispatcherDatabase(config.dispatcherDatabase),
+          createOutboxDispatcherDatabase(
+            config.dispatcherDatabase,
+            dependencies.dispatcherDatabaseRuntime,
+          ),
         dependencies.queueProducer ??
           createQueueProducer({ redisUrl: config.redisUrl }),
         drainState,

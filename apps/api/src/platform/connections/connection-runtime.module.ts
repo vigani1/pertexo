@@ -6,6 +6,7 @@ import {
   createFailureNotificationDestinationDatabase,
   type ApiConnectionDatabase,
   type DatabaseConfig,
+  type DatabaseRuntime,
 } from '@pertexo/database/api';
 import {
   createAwsConnectionEnvelopeEncryption,
@@ -47,11 +48,14 @@ export function createApiConnectionRuntime(
   databaseConfig: DatabaseConfig,
   identityRuntime: ApiIdentityRuntime,
   overrides: ApiConnectionRuntimeOverrides = {},
+  runtime?: DatabaseRuntime,
 ): ApiConnectionRuntime {
   const database =
-    overrides.database ?? createApiConnectionDatabase(databaseConfig);
-  const destinationDatabase =
-    createFailureNotificationDestinationDatabase(databaseConfig);
+    overrides.database ?? createApiConnectionDatabase(databaseConfig, runtime);
+  const destinationDatabase = createFailureNotificationDestinationDatabase(
+    databaseConfig,
+    runtime,
+  );
   const encryptionRuntime =
     overrides.encryption === undefined
       ? createAwsConnectionEnvelopeEncryption({

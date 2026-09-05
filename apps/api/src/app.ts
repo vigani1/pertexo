@@ -1,4 +1,8 @@
-import type { WorkspaceDatabase } from '@pertexo/database/api';
+import {
+  createDatabaseRuntime,
+  type DatabaseRuntime,
+  type WorkspaceDatabase,
+} from '@pertexo/database/api';
 import type {
   StructuredLogger,
   TelemetryLifecycle,
@@ -41,6 +45,7 @@ import type { RateLimitConsumer } from './platform/rate-limit/interceptor.js';
 
 type ApiApplicationDependencyCore = Readonly<{
   database?: WorkspaceDatabase;
+  databaseRuntime?: DatabaseRuntime;
   webhookRuntime?: ApiWebhookRuntime;
   scheduleRuntime?: ApiScheduleRuntime;
   rateLimitConsumer?: RateLimitConsumer;
@@ -89,6 +94,11 @@ export async function createApiApplication(
 ): Promise<NestFastifyApplication> {
   assertValidRuntimeSources(config, dependencies);
   const nestLogger = new NestLoggerAdapter(dependencies.logger);
+  const databaseRuntime =
+    dependencies.databaseRuntime ??
+    (dependencies.database === undefined
+      ? createDatabaseRuntime(config.database, { role: 'api' })
+      : undefined);
   const identityRuntime =
     dependencies.identityRuntime ??
     (config.identity === undefined
@@ -97,6 +107,7 @@ export async function createApiApplication(
           config.identity,
           config.database,
           dependencies.identityOverrides,
+          databaseRuntime,
         ));
   const workflowRuntime =
     dependencies.workflowRuntime ??
@@ -110,6 +121,7 @@ export async function createApiApplication(
             ...dependencies.workflowOverrides,
             releaseCohort: config.nodeCompatibilityCohort,
           },
+          databaseRuntime,
         ));
   const connectionRuntime =
     dependencies.connectionRuntime ??
@@ -120,6 +132,7 @@ export async function createApiApplication(
           config.database,
           identityRuntime,
           dependencies.connectionOverrides,
+          databaseRuntime,
         ));
   const webhookRuntime =
     dependencies.webhookRuntime ??
@@ -129,12 +142,14 @@ export async function createApiApplication(
           config.webhooks,
           config.database,
           config.nodeCompatibilityCohort,
+          undefined,
+          databaseRuntime,
         ));
   const scheduleRuntime =
     dependencies.scheduleRuntime ??
     (identityRuntime === undefined || dependencies.database !== undefined
       ? undefined
-      : createApiScheduleRuntime(config.database));
+      : createApiScheduleRuntime(config.database, undefined, databaseRuntime));
   const fastifyAdapter = new FastifyAdapter({
     trustProxy:
       config.trustedProxyCidrs === undefined ||
@@ -148,6 +163,7 @@ export async function createApiApplication(
       AppModule.register(config, {
         logger: dependencies.logger,
         telemetry: dependencies.telemetry,
+        ...(databaseRuntime === undefined ? {} : { databaseRuntime }),
         ...(dependencies.database === undefined
           ? {}
           : { database: dependencies.database }),
@@ -170,6 +186,7 @@ export async function createApiApplication(
       connectionRuntime?.close(),
       webhookRuntime?.close(),
       scheduleRuntime?.close(),
+      databaseRuntime?.close(),
     ]);
     throw error;
   }

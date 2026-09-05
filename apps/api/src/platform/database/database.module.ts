@@ -4,7 +4,11 @@ import type {
   Provider,
 } from '@nestjs/common';
 import { Module } from '@nestjs/common';
-import type { DatabaseConfig, WorkspaceDatabase } from '@pertexo/database/api';
+import type {
+  DatabaseConfig,
+  DatabaseRuntime,
+  WorkspaceDatabase,
+} from '@pertexo/database/api';
 import { createWorkspaceDatabase } from '@pertexo/database/api';
 import {
   platformRegistryReleaseSupport,
@@ -49,6 +53,7 @@ class NestWorkspaceDatabase
 
 type DatabaseModuleOptions = Readonly<{
   database?: WorkspaceDatabase;
+  runtime?: DatabaseRuntime;
   releaseCohort: PlatformReleaseCohort;
 }>;
 
@@ -67,6 +72,9 @@ function createDatabaseProvider(
                 composeExecutableCompatibilityRelease,
               ),
             ).descriptions,
+            ...(options.runtime === undefined
+              ? {}
+              : { runtime: options.runtime }),
           }),
       ),
   };

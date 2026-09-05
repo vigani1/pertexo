@@ -17,6 +17,7 @@ import {
   createWorkspaceDatabase,
   createWorkflowAuthoringDatabase,
   type DatabaseConfig,
+  type DatabaseRuntime,
   type WorkspaceDatabase,
   type WorkflowAuthoringDatabase,
 } from '@pertexo/database/api';
@@ -247,15 +248,16 @@ function coreAuthoringOptions(
 export function createCoreWorkflowAuthoringDatabase(
   databaseConfig: DatabaseConfig,
   releaseCohort: PlatformReleaseCohort = 'core',
+  runtime?: DatabaseRuntime,
 ): WorkflowAuthoringDatabase {
   const compatibility = coreWorkflowCompatibility(releaseCohort);
-  return createWorkflowAuthoringDatabase(
-    databaseConfig,
-    coreAuthoringOptions(
+  return createWorkflowAuthoringDatabase(databaseConfig, {
+    ...coreAuthoringOptions(
       compatibility.variants,
       compatibility.readinessSupport.descriptions,
     ),
-  );
+    ...(runtime === undefined ? {} : { runtime }),
+  });
 }
 
 export function createApiWorkflowRuntime(
@@ -263,16 +265,17 @@ export function createApiWorkflowRuntime(
   identityRuntime: ApiIdentityRuntime,
   redisUrl: string,
   overrides: ApiWorkflowRuntimeOverrides = {},
+  runtime?: DatabaseRuntime,
 ): ApiWorkflowRuntime {
   const releaseCohort = overrides.releaseCohort ?? 'core';
   const { readinessSupport, variants, definitionCatalog } =
     coreWorkflowCompatibility(releaseCohort);
   const database =
     overrides.database ??
-    createWorkflowAuthoringDatabase(
-      databaseConfig,
-      coreAuthoringOptions(variants, readinessSupport.descriptions),
-    );
+    createWorkflowAuthoringDatabase(databaseConfig, {
+      ...coreAuthoringOptions(variants, readinessSupport.descriptions),
+      ...(runtime === undefined ? {} : { runtime }),
+    });
   const notifications =
     overrides.notifications ??
     (overrides.runPersistence === undefined
@@ -285,6 +288,7 @@ export function createApiWorkflowRuntime(
           undefined,
           notifications,
           overrides.releaseCohort,
+          runtime,
         )
       : undefined;
   const eventDatabase =
@@ -292,6 +296,7 @@ export function createApiWorkflowRuntime(
       ? (overrides.eventDatabase ??
         createWorkspaceDatabase(databaseConfig, {
           compatibilityReleases: readinessSupport.descriptions,
+          ...(runtime === undefined ? {} : { runtime }),
         }))
       : undefined;
   const liveSource =

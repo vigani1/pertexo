@@ -1,4 +1,5 @@
-import { createDatabasePool } from '../platform/postgres-telemetry.js';
+import { acquireDatabasePool } from '../platform/database-runtime.js';
+import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 
@@ -183,8 +184,10 @@ async function readHealth(
 
 export function createWorkflowTriggerReconciliationDatabase(
   config: DatabaseConfig,
+  runtime?: DatabaseRuntime,
 ): WorkflowTriggerReconciliationDatabase {
-  const pool = createDatabasePool(config);
+  const lease = acquireDatabasePool(config, runtime);
+  const { pool } = lease;
   return Object.freeze({
     reconcile: async (
       input: Parameters<WorkflowTriggerReconciliationDatabase['reconcile']>[0],
@@ -495,7 +498,7 @@ export function createWorkflowTriggerReconciliationDatabase(
           );
         },
       ),
-    close: () => pool.end(),
+    close: () => lease.close(),
   });
 }
 

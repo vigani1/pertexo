@@ -33,6 +33,9 @@ export function coordinatorRuntimeProvider(
         return undefined;
       return createCoordinatorRuntime({
         database: config.database,
+        ...(dependencies.databaseRuntime === undefined
+          ? {}
+          : { databaseRuntime: dependencies.databaseRuntime }),
         dueWakeupBatchSize: config.coordinator.dueWakeupBatchSize,
         dueWakeupPollIntervalMillis:
           config.coordinator.dueWakeupPollIntervalMillis,

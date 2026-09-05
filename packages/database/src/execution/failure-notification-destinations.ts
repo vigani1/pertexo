@@ -1,4 +1,5 @@
-import { createDatabasePool } from '../platform/postgres-telemetry.js';
+import { acquireDatabasePool } from '../platform/database-runtime.js';
+import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import { createHash } from 'node:crypto';
 
 import { generatePersistedId } from '../platform/persisted-id.js';
@@ -349,8 +350,10 @@ async function insertVersion(
 
 export function createFailureNotificationDestinationDatabase(
   config: DatabaseConfig,
+  runtime?: DatabaseRuntime,
 ): FailureNotificationDestinationDatabase {
-  const pool = createDatabasePool(config);
+  const lease = acquireDatabasePool(config, runtime);
+  const { pool } = lease;
   const transaction = <T>(
     input: CommandMetadata,
     work: (client: PoolClient) => Promise<T>,
@@ -628,6 +631,6 @@ export function createFailureNotificationDestinationDatabase(
           );
         await completeCommand(client, input, operation, scope, null);
       }),
-    close: () => pool.end(),
+    close: () => lease.close(),
   });
 }

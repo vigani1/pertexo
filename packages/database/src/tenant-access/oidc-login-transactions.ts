@@ -1,6 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 
-import { createDatabasePool } from '../platform/postgres-telemetry.js';
+import { acquireDatabasePool } from '../platform/database-runtime.js';
+import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import { withPlatformTransaction } from './workspace.js';
 import { z } from 'zod';
 
@@ -87,8 +88,10 @@ function isCapacityExhausted(error: unknown): boolean {
 export function createOidcLoginTransactionStore(
   config: DatabaseConfig,
   encryption: OidcSecretEncryptionAdapter,
+  runtime?: DatabaseRuntime,
 ): OidcLoginTransactionStore {
-  const pool = createDatabasePool(config);
+  const lease = acquireDatabasePool(config, runtime);
+  const { pool } = lease;
 
   return Object.freeze({
     create: async (transaction: OidcLoginTransaction): Promise<void> => {
@@ -237,7 +240,7 @@ export function createOidcLoginTransactionStore(
       }
     },
 
-    close: async (): Promise<void> => pool.end(),
+    close: () => lease.close(),
   });
 }
 

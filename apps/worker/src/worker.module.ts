@@ -4,6 +4,7 @@ import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
 import type {
   OutboxDispatcherDatabase,
+  DatabaseRuntime,
   WorkspaceDatabase,
 } from '@pertexo/database/execution';
 import type { QueueProducer } from '@pertexo/queue';
@@ -34,8 +35,10 @@ export type WorkerModuleDependencies = Readonly<{
   previewMaintenanceRuntime?: PreviewMaintenanceRuntime;
   triggerRuntime?: TriggerRuntime;
   database?: WorkspaceDatabase;
+  databaseRuntime?: DatabaseRuntime;
   dispatchConsumerCapabilities?: DispatchConsumerCapabilityRegistry;
   dispatcherDatabase?: OutboxDispatcherDatabase;
+  dispatcherDatabaseRuntime?: DatabaseRuntime;
   queueProducer?: QueueProducer;
   logger: StructuredLogger;
   telemetry: TelemetryLifecycle;
@@ -52,7 +55,12 @@ export class WorkerModule {
   ): DynamicModule {
     const databaseOptions =
       dependencies.database === undefined
-        ? { releaseCohort: config.nodeCompatibilityCohort }
+        ? {
+            releaseCohort: config.nodeCompatibilityCohort,
+            ...(dependencies.databaseRuntime === undefined
+              ? {}
+              : { runtime: dependencies.databaseRuntime }),
+          }
         : {
             database: dependencies.database,
             releaseCohort: config.nodeCompatibilityCohort,
@@ -88,6 +96,15 @@ export class WorkerModule {
           ...(dependencies.dispatcherDatabase === undefined
             ? {}
             : { dispatcherDatabase: dependencies.dispatcherDatabase }),
+          ...(dependencies.databaseRuntime === undefined
+            ? {}
+            : { databaseRuntime: dependencies.databaseRuntime }),
+          ...(dependencies.dispatcherDatabaseRuntime === undefined
+            ? {}
+            : {
+                dispatcherDatabaseRuntime:
+                  dependencies.dispatcherDatabaseRuntime,
+              }),
           ...(dependencies.queueProducer === undefined
             ? {}
             : { queueProducer: dependencies.queueProducer }),
@@ -119,6 +136,28 @@ export class WorkerModule {
               dependencies.logger,
             ),
         },
+        ...(dependencies.databaseRuntime === undefined
+          ? []
+          : [
+              {
+                provide: Symbol('DATABASE_RUNTIME_SHUTDOWN'),
+                useValue: {
+                  onApplicationShutdown: () =>
+                    dependencies.databaseRuntime?.close(),
+                },
+              },
+            ]),
+        ...(dependencies.dispatcherDatabaseRuntime === undefined
+          ? []
+          : [
+              {
+                provide: Symbol('DISPATCHER_DATABASE_RUNTIME_SHUTDOWN'),
+                useValue: {
+                  onApplicationShutdown: () =>
+                    dependencies.dispatcherDatabaseRuntime?.close(),
+                },
+              },
+            ]),
       ],
     };
   }

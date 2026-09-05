@@ -1,4 +1,5 @@
-import { createDatabasePool } from '../platform/postgres-telemetry.js';
+import { acquireDatabasePool } from '../platform/database-runtime.js';
+import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import type { Pool } from 'pg';
 import type { PoolClient, QueryResult } from 'pg';
 import { z } from 'zod';
@@ -78,17 +79,14 @@ export function createRunArtifactRetentionCoordinator(
   ledger: ControlLedger,
   artifacts: RunArtifactRetentionStore,
   inputOptions: RunArtifactRetentionCoordinatorOptions = {},
+  runtime?: DatabaseRuntime,
 ): RunArtifactRetentionCoordinator {
   const options = optionsSchema.parse(inputOptions);
-  const pool = createDatabasePool({
-    connectionString: config.connectionString,
-    connectionTimeoutMillis: config.connectionTimeoutMillis,
-    idleTimeoutMillis: config.idleTimeoutMillis,
-    max: config.max,
-  });
+  const lease = acquireDatabasePool(config, runtime, { role: 'maintenance' });
+  const { pool } = lease;
 
   return Object.freeze({
-    close: () => pool.end(),
+    close: () => lease.close(),
     processNext: async (signal?: AbortSignal) => {
       const due = await query<{ artifact_id: string; workspace_id: string }>(
         pool,

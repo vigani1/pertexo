@@ -2,6 +2,7 @@ import { metrics } from '@opentelemetry/api';
 import {
   createScheduleTriggerDatabase,
   type DatabaseConfig,
+  type DatabaseRuntime,
   type ScheduleTriggerDatabase,
 } from '@pertexo/database/api';
 
@@ -17,8 +18,9 @@ export type ApiScheduleRuntime = Readonly<{
 export function createApiScheduleRuntime(
   config: DatabaseConfig,
   override?: ScheduleTriggerDatabase,
+  runtime?: DatabaseRuntime,
 ): ApiScheduleRuntime {
-  const database = override ?? createScheduleTriggerDatabase(config);
+  const database = override ?? createScheduleTriggerDatabase(config, runtime);
   const meter = metrics.getMeter('@pertexo/api.schedules', '0.0.0');
   const count = meter.createCounter('pertexo.schedule.operation.count', {
     description: 'Completed schedule operations by bounded operation/outcome',

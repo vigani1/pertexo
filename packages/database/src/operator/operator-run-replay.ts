@@ -8,6 +8,7 @@ import {
   type CompatibilityReleaseExpectationSet,
 } from '../compatibility/compatibility-release.js';
 import type { DatabaseConfig } from '../config.js';
+import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import { createWorkspaceDatabase } from '../database.js';
 import { acceptWorkflowRun } from '../execution/execution-acceptance.js';
 import { consumeInboxMessage } from '../execution/inbox.js';
@@ -89,8 +90,12 @@ export function createOperatorRunReplayStore(
   config: DatabaseConfig,
   compatibilityReleaseInput: CompatibilityReleaseExpectationSet,
   checkpointFactory: OperatorRunReplayCheckpointFactory,
+  runtime?: DatabaseRuntime,
 ): OperatorRunReplayStore {
-  const database = createWorkspaceDatabase(config);
+  const database = createWorkspaceDatabase(
+    config,
+    runtime === undefined ? {} : { runtime },
+  );
   const compatibilityReleases = parseCompatibilityReleaseExpectationSet(
     compatibilityReleaseInput,
   );

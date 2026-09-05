@@ -1,11 +1,14 @@
 import {
   claimPreviewDelivery,
   completePreviewAttempt,
-  createDatabasePool,
+  acquireDatabasePool,
   heartbeatPreviewLease,
   markPreviewDispatched,
 } from '@pertexo/database/execution';
-import type { DatabaseConfig } from '@pertexo/database/execution';
+import type {
+  DatabaseConfig,
+  DatabaseRuntime,
+} from '@pertexo/database/execution';
 import {
   platformExecutableRegistryHistory,
   type PlatformReleaseCohort,
@@ -59,8 +62,10 @@ const previewExecutableNodeSchema = z
  */
 export function createDatabasePreviewAttemptRunStore(
   config: DatabaseConfig,
+  runtime?: DatabaseRuntime,
 ): PreviewAttemptRunStore & { close(): Promise<void> } {
-  const pool = createDatabasePool(config);
+  const lease = acquireDatabasePool(config, runtime);
+  const { pool } = lease;
   const store: PreviewAttemptRunStore = {
     claim: (input) => claimPreviewDelivery(pool, input),
     markDispatched: async ({ lease, signal, workerId }) => {
@@ -111,9 +116,7 @@ export function createDatabasePreviewAttemptRunStore(
   };
   return Object.freeze({
     ...store,
-    close: async (): Promise<void> => {
-      await pool.end();
-    },
+    close: () => lease.close(),
   });
 }
 

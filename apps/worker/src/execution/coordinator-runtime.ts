@@ -6,6 +6,7 @@ import {
   createPublishedWorkflowReader,
   type CoordinatorRunStore,
   type DatabaseConfig,
+  type DatabaseRuntime,
   type DueNodeWakeupScanner,
   type DeadlineWakeupScanner,
   type PublishedWorkflowReader,
@@ -54,6 +55,7 @@ export interface CoordinatorRuntime {
 
 export type CoordinatorRuntimeOptions = Readonly<{
   database: DatabaseConfig;
+  databaseRuntime?: DatabaseRuntime;
   dueWakeupBatchSize?: number;
   dueWakeupPollIntervalMillis?: number;
   maximumAdmissions: number;
@@ -149,7 +151,8 @@ export async function createCoordinatorRuntime(
       releaseSupport,
     });
   const runStore =
-    dependencies.runStore ?? createCoordinatorRunStore(options.database);
+    dependencies.runStore ??
+    createCoordinatorRunStore(options.database, options.databaseRuntime);
   const reader =
     dependencies.reader ??
     createPublishedWorkflowReader(
@@ -159,16 +162,17 @@ export async function createCoordinatorRuntime(
           composeExecutableCompatibilityRelease,
         ),
       ).descriptions,
+      options.databaseRuntime,
     );
   const notifications =
     dependencies.notifications ??
     new RedisRunEventNotificationPublisher({ redisUrl: options.redisUrl });
   const dueWakeupScanner =
     dependencies.dueWakeupScanner ??
-    createDueNodeWakeupScanner(options.database);
+    createDueNodeWakeupScanner(options.database, options.databaseRuntime);
   const deadlineWakeupScanner =
     dependencies.deadlineWakeupScanner ??
-    createDeadlineWakeupScanner(options.database);
+    createDeadlineWakeupScanner(options.database, options.databaseRuntime);
   const handler = createCoordinatorHandler({
     clock: dependencies.clock ?? systemClock(),
     engine,

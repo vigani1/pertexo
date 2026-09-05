@@ -1,4 +1,5 @@
-import { createDatabasePool } from '../platform/postgres-telemetry.js';
+import { acquireDatabasePool } from '../platform/database-runtime.js';
+import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import type { Pool } from 'pg';
 import type { PoolClient, QueryResult } from 'pg';
 import { z } from 'zod';
@@ -222,14 +223,11 @@ const retentionTupleSchema = z
 export function createRetentionDatabase(
   config: DatabaseConfig,
   inputOptions: RetentionDatabaseOptions,
+  runtime?: DatabaseRuntime,
 ): RetentionDatabase {
   const options = optionsSchema.parse(inputOptions);
-  const pool = createDatabasePool({
-    connectionString: config.connectionString,
-    connectionTimeoutMillis: config.connectionTimeoutMillis,
-    idleTimeoutMillis: config.idleTimeoutMillis,
-    max: config.max,
-  });
+  const lease = acquireDatabasePool(config, runtime, { role: 'maintenance' });
+  const { pool } = lease;
 
   const claim = async (signal?: AbortSignal) => {
     const result = await query(
@@ -504,7 +502,7 @@ export function createRetentionDatabase(
       });
     },
     claimDryRuns: claim,
-    close: () => pool.end(),
+    close: () => lease.close(),
     executeDryRunPage,
     processOperatorRerun: async (signal?: AbortSignal) => {
       const result = await query(
@@ -623,14 +621,11 @@ export function createRetentionEnforcementCoordinator(
   config: DatabaseConfig,
   ledger: ControlLedger,
   inputOptions: RetentionEnforcementCoordinatorOptions,
+  runtime?: DatabaseRuntime,
 ): RetentionEnforcementCoordinator {
   const options = enforcementOptionsSchema.parse(inputOptions);
-  const pool = createDatabasePool({
-    connectionString: config.connectionString,
-    connectionTimeoutMillis: config.connectionTimeoutMillis,
-    idleTimeoutMillis: config.idleTimeoutMillis,
-    max: config.max,
-  });
+  const lease = acquireDatabasePool(config, runtime, { role: 'maintenance' });
+  const { pool } = lease;
 
   const claim = async (signal?: AbortSignal) => {
     const result = await query(
@@ -655,7 +650,7 @@ export function createRetentionEnforcementCoordinator(
   };
 
   return Object.freeze({
-    close: () => pool.end(),
+    close: () => lease.close(),
     processNext: async (signal?: AbortSignal) => {
       const claimed = await claim(signal);
       if (claimed === undefined) return { status: 'idle' as const };

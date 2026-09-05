@@ -63,7 +63,10 @@ export function previewMaintenanceRuntimeProvider(
       const notificationStore =
         notificationEnabled &&
         dependencies.failureNotificationDelivery === undefined
-          ? createFailureNotificationStore(config.database)
+          ? createFailureNotificationStore(
+              config.database,
+              dependencies.databaseRuntime,
+            )
           : undefined;
       const encryptionRuntime =
         notificationStore === undefined ||
@@ -95,6 +98,9 @@ export function previewMaintenanceRuntimeProvider(
       try {
         runtime = await createPreviewMaintenanceRuntime({
           database: config.database,
+          ...(dependencies.databaseRuntime === undefined
+            ? {}
+            : { databaseRuntime: dependencies.databaseRuntime }),
           observer,
           redisUrl: config.redisUrl,
           unknownOutcomeReconciliation: unknownOutcomeEnabled,

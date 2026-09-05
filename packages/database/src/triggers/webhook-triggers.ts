@@ -1,4 +1,5 @@
-import { createDatabasePool } from '../platform/postgres-telemetry.js';
+import { acquireDatabasePool } from '../platform/database-runtime.js';
+import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import { createHash } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import type { PoolClient } from 'pg';
@@ -315,8 +316,10 @@ export function createWebhookTriggerDatabase(
   config: DatabaseConfig,
   compatibilityReleaseInput:
     CompatibilityReleaseExpectation | CompatibilityReleaseExpectationSet,
+  runtime?: DatabaseRuntime,
 ): WebhookTriggerDatabase {
-  const pool = createDatabasePool(config);
+  const lease = acquireDatabasePool(config, runtime);
+  const { pool } = lease;
   const compatibilityReleases = Array.isArray(compatibilityReleaseInput)
     ? parseCompatibilityReleaseExpectationSet(compatibilityReleaseInput)
     : Object.freeze([
@@ -660,6 +663,6 @@ export function createWebhookTriggerDatabase(
         },
       );
     },
-    close: () => pool.end(),
+    close: () => lease.close(),
   });
 }

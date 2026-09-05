@@ -1,6 +1,7 @@
 import type { DualRegionControlLedger } from '@pertexo/artifact-store';
 import type {
   RetentionDatabase,
+  DatabaseRuntime,
   RetentionEnforcementCoordinator,
   PreviewRetentionCoordinator,
   RunArtifactRetentionCoordinator,
@@ -16,6 +17,7 @@ import type { RetentionMetrics } from './metrics.js';
 export interface RetentionWorkerResources {
   readonly artifacts: { checkReadiness(): Promise<unknown>; close(): void };
   readonly database: RetentionDatabase;
+  readonly databaseRuntime?: DatabaseRuntime;
   readonly enforcement: RetentionEnforcementCoordinator;
   readonly expectedMaintenanceRole: string;
   readonly logger: StructuredLogger;
@@ -75,6 +77,7 @@ export async function runRetentionWorker(
     },
     () => resources.enforcement.close(),
     () => resources.database.close(),
+    () => resources.databaseRuntime?.close(),
     () => {
       resources.ledger.close();
     },

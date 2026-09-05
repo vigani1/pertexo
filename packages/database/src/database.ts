@@ -1,4 +1,5 @@
-import { createDatabasePool } from './platform/postgres-telemetry.js';
+import { acquireDatabasePool } from './platform/database-runtime.js';
+import type { DatabaseRuntime } from './platform/database-runtime.js';
 
 import type { DatabaseConfig } from './config.js';
 import type { CompatibilityReleaseExpectation } from './compatibility/compatibility-release.js';
@@ -30,6 +31,7 @@ export function createWorkspaceDatabase(
   options: Readonly<{
     compatibilityRelease?: CompatibilityReleaseExpectation;
     compatibilityReleases?: CompatibilityReleaseExpectationSet;
+    runtime?: DatabaseRuntime;
   }> = {},
 ): WorkspaceDatabase {
   if (
@@ -39,8 +41,8 @@ export function createWorkspaceDatabase(
     throw new Error(
       'Compatibility release database configuration is ambiguous',
     );
-  const pool = createDatabasePool(config);
-  pool.on('error', () => undefined);
+  const lease = acquireDatabasePool(config, options.runtime);
+  const { pool } = lease;
   const readinessOptions = {
     ownerRole: config.ownerRole,
     workerRuntimeRole: config.workerRuntimeRole,
@@ -63,6 +65,6 @@ export function createWorkspaceDatabase(
       checkDatabaseReadiness(pool, readinessOptions),
     checkReadiness: async (): Promise<DatabaseReadiness> =>
       checkDatabaseServingReadiness(pool, readinessOptions),
-    close: async (): Promise<void> => pool.end(),
+    close: (): Promise<void> => lease.close(),
   });
 }

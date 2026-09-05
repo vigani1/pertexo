@@ -35,6 +35,9 @@ export function triggerRuntimeProvider(
         {
           ...config.triggerRuntime,
           database: config.database,
+          ...(dependencies.databaseRuntime === undefined
+            ? {}
+            : { databaseRuntime: dependencies.databaseRuntime }),
           observer,
           redisUrl: config.redisUrl,
           releaseCohort: config.nodeCompatibilityCohort,

@@ -3,12 +3,20 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
+import { calculateDatabaseConnectionBudget } from './validate-database-connection-budget.mjs';
+
 const root = resolve(import.meta.dirname, '../..');
 const manifest = JSON.parse(
   await readFile(resolve(root, 'infrastructure/ecs/workloads.json'), 'utf8'),
 );
 const autoscaling = JSON.parse(
   await readFile(resolve(root, 'infrastructure/ecs/autoscaling.json'), 'utf8'),
+);
+const databaseConnectionBudget = JSON.parse(
+  await readFile(
+    resolve(root, 'infrastructure/ecs/database-connection-budget.json'),
+    'utf8',
+  ),
 );
 const externalPlatform = JSON.parse(
   await readFile(
@@ -333,4 +341,9 @@ if (
   throw new Error(
     'release job must wait for and verify migration task success',
   );
+calculateDatabaseConnectionBudget(
+  databaseConnectionBudget,
+  manifest,
+  autoscaling,
+);
 process.stdout.write('ECS deployment contract is valid.\n');

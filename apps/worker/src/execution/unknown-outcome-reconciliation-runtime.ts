@@ -5,6 +5,7 @@ import {
   InboxReceiptUnavailableError,
   reconcileUnknownOutcomeEvidence,
   type DatabaseConfig,
+  type DatabaseRuntime,
   type UnknownOutcomeReconciliationResult,
   UnknownOutcomeReconciliationMismatchError,
   UnknownOutcomeReconciliationStateError,
@@ -37,8 +38,12 @@ export interface UnknownOutcomeReconciliationStore {
 
 export function createDatabaseUnknownOutcomeReconciliationStore(
   config: DatabaseConfig,
+  runtime?: DatabaseRuntime,
 ): UnknownOutcomeReconciliationStore & { close(): Promise<void> } {
-  const database = createWorkspaceDatabase(config);
+  const database = createWorkspaceDatabase(
+    config,
+    runtime === undefined ? {} : { runtime },
+  );
   return Object.freeze({
     reconcile: (
       input: Parameters<UnknownOutcomeReconciliationStore['reconcile']>[0],

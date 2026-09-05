@@ -1,4 +1,5 @@
-import { createDatabasePool } from '../platform/postgres-telemetry.js';
+import { acquireDatabasePool } from '../platform/database-runtime.js';
+import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import { createHash } from 'node:crypto';
 
 import { z } from 'zod';
@@ -104,14 +105,10 @@ export interface FailureNotificationStore {
 
 export function createFailureNotificationStore(
   config: DatabaseConfig,
+  runtime?: DatabaseRuntime,
 ): FailureNotificationStore {
-  const pool = createDatabasePool({
-    connectionString: config.connectionString,
-    max: config.max,
-    connectionTimeoutMillis: config.connectionTimeoutMillis,
-    idleTimeoutMillis: config.idleTimeoutMillis,
-  });
-  pool.on('error', () => undefined);
+  const lease = acquireDatabasePool(config, runtime, { role: 'worker' });
+  const { pool } = lease;
   return Object.freeze({
     claimDelivery: async (
       raw: Parameters<FailureNotificationStore['claimDelivery']>[0],
@@ -298,6 +295,6 @@ export function createFailureNotificationStore(
       );
       return result.rows[0]?.recovered ?? 0;
     },
-    close: async () => pool.end(),
+    close: () => lease.close(),
   });
 }

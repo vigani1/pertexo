@@ -27,7 +27,7 @@
     "dev:api": "pnpm --filter @pertexo/api dev",
     "dev:worker": "pnpm --filter @pertexo/worker dev",
     "dependencies:check": "knip",
-    "deployment:check": "node infrastructure/ecs/validate-deployment.mjs && node infrastructure/ecs/validate-render.mjs && node --test infrastructure/ecs/validate-external-platform-evidence.test.mjs",
+    "deployment:check": "node --test infrastructure/ecs/validate-database-connection-budget.test.mjs infrastructure/ecs/validate-external-platform-evidence.test.mjs && node infrastructure/ecs/validate-deployment.mjs && node infrastructure/ecs/validate-render.mjs",
     "deployment:evidence:check": "node infrastructure/ecs/validate-external-platform-evidence.mjs",
     "deployment:render": "node infrastructure/ecs/render-task-definitions.mjs",
     "docs:check": "node --test infrastructure/validate-documentation.test.mjs && node infrastructure/validate-documentation.mjs",
