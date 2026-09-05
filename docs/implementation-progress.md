@@ -5147,6 +5147,12 @@ Implementation commits include `3289414`, `639b508`, `93bbd89`, `b45d960`, `dcc9
       package coverage, deterministic artifact comparison, all seven Redocly
       validations, and zero unreviewed contract branches in the root risk
       report.
+- [x] Upgrade the pinned Redocly validator from 1.34.5 to 2.51.2 after the
+      protected dependency review identified the newly disclosed
+      `@faker-js/faker` advisory in the old development-only transitive graph.
+      All seven documents, 26 contract tests, contract typecheck, and the full
+      dependency audit pass with no known vulnerabilities; the upgrade also
+      removes 173 obsolete transitive packages from the lockfile.
 
 Implementation commits: `b4f2b22`, `078cd53`, `47b7fa6`, `1e8ec80`,
 `9969ff7`, `1153d3f`, `19ae523`, `6c49c7e`, `325fd88`, `dc4dea1`, and

@@ -12,7 +12,7 @@
   downstream schema parsing, package scripts, and CI.
 - **Architecture sources:** the authoritative backend plan; RFC 9457; OpenAPI
   3.1; and applicable ADRs 002, 004, 011, 014, 016, 022, 025, and 026.
-- **Independent validation:** Redocly CLI 2.11.1 with its minimal ruleset.
+- **Independent validation:** Redocly CLI 2.51.2 with its minimal ruleset.
 - **Audit status:** granularly certified for the pinned implementation tree.
 - **Implementation status (2026-09-05):** CON-001 through CON-011 are
   implemented and verified. Contract validity, semantic projection, import
@@ -25,7 +25,7 @@
 | --- | --- | --- |
 | CON-001 | Fixed | `b4f2b22`; all client/OpenAPI references resolve, Response Objects are valid, path parameters are declared, and seven OpenAPI documents pass pinned Redocly validation. |
 | CON-002 | Fixed | `b4f2b22`, `078cd53`; the generated workflow graph is recursive and structurally represents the authoritative workflow-model contract and limits. |
-| CON-003 | Fixed; continuous gate | `b4f2b22`; `contracts:check` verifies deterministic bytes and structurally lints every OpenAPI artifact in protected CI. |
+| CON-003 | Fixed; continuous gate | `b4f2b22`; `contracts:check` verifies deterministic bytes and structurally lints every OpenAPI artifact in protected CI. The validator is pinned to Redocly CLI 2.51.2; the protected dependency review rejected the former 1.34.5 toolchain after a high-severity Faker advisory, and the upgrade removed that vulnerable transitive graph. |
 | CON-004 | Fixed | `47b7fa6`, `1e8ec80`; one package-private typed assembly owner supplies shared OpenAPI and authenticated components while routes remain domain-local. |
 | CON-005 | Fixed | `b4f2b22`, `9969ff7`; expressible bounds are projected, runtime-only refinements are explicit, and differential boundary tests cover header/list/graph semantics. |
 | CON-006 | Fixed | `1153d3f`; applications import domain subpaths and a boundary test forbids runtime root aggregation imports. |
