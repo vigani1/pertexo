@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   FailureNotificationContextV1Schema,
+  FailureNotificationDestinationConfigSchema,
   FailureNotificationDeliveryResultV1Schema,
   FailureNotificationPolicyV1Schema,
 } from '../src/failure-notification.js';
@@ -10,6 +11,20 @@ const id = (digit: string): string =>
   `${digit.repeat(8)}-${digit.repeat(4)}-4${digit.repeat(3)}-8${digit.repeat(3)}-${digit.repeat(12)}`;
 
 describe('failure notification contracts', () => {
+  it('canonicalizes the destination email domain', () => {
+    expect(
+      FailureNotificationDestinationConfigSchema.parse({
+        kind: 'email',
+        connectionId: id('1'),
+        toEmail: 'Alerts@Example.COM',
+      }),
+    ).toEqual({
+      kind: 'email',
+      connectionId: id('1'),
+      toEmail: 'Alerts@example.com',
+    });
+  });
+
   it('accepts bounded channel-neutral policy, context, and results', () => {
     expect(
       FailureNotificationPolicyV1Schema.parse({
