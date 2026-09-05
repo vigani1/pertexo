@@ -1,5 +1,15 @@
 import { z } from 'zod';
 
+import {
+  jsonRequest,
+  jsonResponse,
+  jsonSchema,
+  problemResponse,
+  responseReference,
+  schemaReference,
+  uuidPathParameter as pathParameter,
+} from './openapi-primitives.js';
+
 import { apiProblemSchema } from './errors/api-problem.js';
 import { idempotencyKeySchema } from './http/identity-workspace.js';
 import {
@@ -176,55 +186,3 @@ export const workflowRunsOpenApiDocument = Object.freeze({
     },
   },
 });
-
-type SchemaName = keyof typeof schemas;
-type ProblemResponseName = keyof typeof problemResponses;
-
-function jsonSchema(schema: z.ZodType, io: 'input' | 'output') {
-  return z.toJSONSchema(schema, { io, target: 'draft-2020-12' });
-}
-
-function schemaReference(name: SchemaName): Readonly<{ $ref: string }> {
-  return { $ref: `#/components/schemas/${name}` };
-}
-
-function responseReference(
-  name: ProblemResponseName,
-): Readonly<{ $ref: string }> {
-  return { $ref: `#/components/responses/${name}` };
-}
-
-function jsonRequest(name: SchemaName) {
-  return {
-    required: true,
-    content: { 'application/json': { schema: schemaReference(name) } },
-  } as const;
-}
-
-function jsonResponse(description: string, name: SchemaName) {
-  return {
-    description,
-    content: { 'application/json': { schema: schemaReference(name) } },
-  } as const;
-}
-
-function problemResponse(description: string) {
-  return {
-    description,
-    content: {
-      'application/problem+json': {
-        schema: { $ref: '#/components/schemas/ApiProblem' },
-      },
-    },
-  } as const;
-}
-
-function pathParameter(name: string, description: string) {
-  return {
-    name,
-    in: 'path',
-    required: true,
-    description,
-    schema: jsonSchema(z.uuid(), 'input'),
-  } as const;
-}

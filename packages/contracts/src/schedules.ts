@@ -1,20 +1,9 @@
 export * from './http/schedules.js';
 
-import { API_PROBLEM_MANIFEST } from './errors/api-problem.js';
-import type { ApiProblemCode } from './errors/api-problem.js';
-
-const problem = (status: number, code: ApiProblemCode) => {
-  const definition = API_PROBLEM_MANIFEST[code];
-  if (definition.status !== status)
-    throw new Error('Schedule problem status does not match its manifest');
-  return {
-    description: definition.title,
-    content: { 'application/problem+json': { schema: { type: 'object' } } },
-    'x-pertexo-code': code,
-    'x-pertexo-status': definition.status,
-    'x-pertexo-type': definition.type,
-  } as const;
-};
+import {
+  manifestProblemResponse as problem,
+  simpleUuidPathParameter as pathParameter,
+} from './openapi-primitives.js';
 
 const workspaceParameter = pathParameter('workspaceId');
 const workflowParameter = pathParameter('workflowId');
@@ -24,15 +13,6 @@ const commandParameters = [
   workflowParameter,
   triggerParameter,
 ] as const;
-
-function pathParameter(name: string) {
-  return {
-    name,
-    in: 'path',
-    required: true,
-    schema: { type: 'string', format: 'uuid' },
-  } as const;
-}
 
 export const schedulesClientContract = Object.freeze({
   schemaVersion: 1,

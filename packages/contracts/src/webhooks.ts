@@ -1,31 +1,15 @@
 export * from './http/webhooks.js';
 
-import { API_PROBLEM_MANIFEST } from './errors/api-problem.js';
-import type { ApiProblemCode } from './errors/api-problem.js';
-
-const problem = (status: number, code: ApiProblemCode) => {
-  const definition = API_PROBLEM_MANIFEST[code];
-  if (definition.status !== status)
-    throw new Error('Webhook problem status does not match its manifest');
-  return {
-    description: definition.title,
-    content: { 'application/problem+json': { schema: { type: 'object' } } },
-    'x-pertexo-code': code,
-    'x-pertexo-status': definition.status,
-    'x-pertexo-type': definition.type,
-  } as const;
-};
+import {
+  manifestProblemResponse as problem,
+  pathParameter as openApiPathParameter,
+} from './openapi-primitives.js';
 
 function pathParameter(name: string, pattern?: string) {
-  return {
-    name,
-    in: 'path',
-    required: true,
-    schema: {
-      type: 'string',
-      ...(pattern === undefined ? { format: 'uuid' } : { pattern }),
-    },
-  } as const;
+  return openApiPathParameter(name, {
+    type: 'string',
+    ...(pattern === undefined ? { format: 'uuid' } : { pattern }),
+  });
 }
 
 const workspaceParameter = pathParameter('workspaceId');
