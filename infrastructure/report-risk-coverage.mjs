@@ -315,7 +315,13 @@ export function createRiskCoverageReport(
 }
 
 async function main() {
-  const cohorts = ['workflow-engine', 'database', 'worker', 'api'];
+  const cohorts = [
+    'artifact-store',
+    'workflow-engine',
+    'database',
+    'worker',
+    'api',
+  ];
   const reports = new Map();
   const sourceByFile = new Map();
   const testHealthByCohort = new Map();
