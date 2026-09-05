@@ -12,6 +12,8 @@ export const DATABASE_METRIC_NAME = Object.freeze({
 } as const);
 
 export interface DatabasePoolOptions {
+  /** Bounded, secret-free infrastructure failure reporting. */
+  readonly diagnostics?: DatabasePoolDiagnostics;
   /** Injection seam for SDK-backed production meters and deterministic tests. */
   readonly meter?: Meter;
   /** Disable only when this process is not permitted to read pg_stat_activity. */
@@ -20,6 +22,16 @@ export interface DatabasePoolOptions {
   /** Stable process authority; required for custom PostgreSQL role names. */
   readonly role?: DatabasePoolRole;
 }
+
+export interface DatabasePoolDiagnostics {
+  record(event: DatabasePoolDiagnosticEvent): void;
+}
+
+export type DatabasePoolDiagnosticEvent = Readonly<{
+  operation: 'idle_pool_error' | 'lock_wait_sample';
+  poolRole: DatabasePoolRole;
+  errorType: string;
+}>;
 
 export type DatabasePoolRole =
   | 'api'
@@ -71,6 +83,21 @@ function safeRecord(
   } catch {
     // Observability must never affect a database operation's result.
   }
+}
+
+function safeDiagnostic(
+  diagnostics: DatabasePoolDiagnostics | undefined,
+  event: DatabasePoolDiagnosticEvent,
+): void {
+  try {
+    diagnostics?.record(event);
+  } catch {
+    // Diagnostics must never affect database availability or shutdown.
+  }
+}
+
+function errorType(error: unknown): string {
+  return error instanceof Error ? error.name : typeof error;
 }
 
 function stateFor(meter: Meter): MeterState {
@@ -397,6 +424,8 @@ function startLockWaitMonitor(
   state: MeterState,
   intervalMs: number,
   backendPids: Set<number>,
+  role: DatabasePoolRole,
+  diagnostics: DatabasePoolDiagnostics | undefined,
 ): LockWaitMonitor {
   const monitorPool = new Pool({ ...config, max: 1 });
   const observations = new Map<
@@ -453,9 +482,14 @@ function startLockWaitMonitor(
         );
         observations.delete(pid);
       }
-    } catch {
+    } catch (error: unknown) {
       monitor.active = 0;
       observations.clear();
+      safeDiagnostic(diagnostics, {
+        operation: 'lock_wait_sample',
+        poolRole: role,
+        errorType: errorType(error),
+      });
       // A failed sample is unknown, not evidence that a prior wait is active.
     } finally {
       sampling = false;
@@ -469,7 +503,11 @@ function startLockWaitMonitor(
   return monitor;
 }
 
-function monitorKey(config: PoolConfig, intervalMs: number): string {
+function monitorKey(
+  config: PoolConfig,
+  intervalMs: number,
+  role: DatabasePoolRole,
+): string {
   return JSON.stringify({
     connectionString: config.connectionString,
     database: config.database,
@@ -477,6 +515,7 @@ function monitorKey(config: PoolConfig, intervalMs: number): string {
     port: config.port,
     user: config.user,
     intervalMs,
+    role,
   });
 }
 
@@ -484,14 +523,23 @@ function acquireLockWaitMonitor(
   config: PoolConfig,
   state: MeterState,
   intervalMs: number,
+  role: DatabasePoolRole,
+  diagnostics: DatabasePoolDiagnostics | undefined,
 ): LockWaitMonitor {
-  const key = monitorKey(config, intervalMs);
+  const key = monitorKey(config, intervalMs, role);
   const existing = state.monitors.get(key);
   if (existing !== undefined) {
     existing.references += 1;
     return existing;
   }
-  const monitor = startLockWaitMonitor(config, state, intervalMs, new Set());
+  const monitor = startLockWaitMonitor(
+    config,
+    state,
+    intervalMs,
+    new Set(),
+    role,
+    diagnostics,
+  );
   state.monitors.set(key, monitor);
   const close = monitor.close.bind(monitor);
   monitor.close = async (): Promise<void> => {
@@ -516,15 +564,28 @@ export function createDatabasePool(
   const meter =
     options.meter ?? metrics.getMeter('@pertexo/database.postgres', '0.0.0');
   const state = stateFor(meter);
+  const role = options.role ?? databasePoolRole(config);
   const pool = new Pool(config);
-  pool.on('error', () => undefined);
+  pool.on('error', (error) => {
+    safeDiagnostic(options.diagnostics, {
+      operation: 'idle_pool_error',
+      poolRole: role,
+      errorType: errorType(error),
+    });
+  });
   instrumentPoolConnect(pool, state);
   const monitor =
     options.monitorLockWaits === false
       ? undefined
-      : acquireLockWaitMonitor(config, state, intervalMs);
+      : acquireLockWaitMonitor(
+          config,
+          state,
+          intervalMs,
+          role,
+          options.diagnostics,
+        );
   const backendPids = monitor?.backendPids;
-  state.pools.set(pool, options.role ?? databasePoolRole(config));
+  state.pools.set(pool, role);
   pool.on('connect', (client) => {
     instrumentClient(client, state);
     const processId = (client as PoolClient & { processID?: number }).processID;

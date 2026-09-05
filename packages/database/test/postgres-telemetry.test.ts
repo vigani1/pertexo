@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const pg = vi.hoisted(() => {
   class FakePool {
     static instances: FakePool[] = [];
+    static queryErrors: unknown[] = [];
     static queryResults: { rows: { pid: number }[] }[] = [];
     readonly options: { max: number };
     readonly queries: string[] = [];
@@ -42,6 +43,8 @@ const pg = vi.hoisted(() => {
     ): Promise<{ rows: { pid: number }[] }> {
       this.queries.push(query);
       if (values !== undefined) this.queryValues.push(values);
+      const error = FakePool.queryErrors.shift();
+      if (error !== undefined) return Promise.reject(error);
       if (Array.isArray(values?.[0]) && (values[0] as unknown[]).length === 0)
         return Promise.resolve({ rows: [] });
       return Promise.resolve(FakePool.queryResults.shift() ?? { rows: [] });
@@ -143,6 +146,7 @@ function poolAt(index: number): InstanceType<typeof pg.FakePool> {
 describe('PostgreSQL telemetry pool', () => {
   beforeEach(() => {
     pg.FakePool.instances.length = 0;
+    pg.FakePool.queryErrors.length = 0;
     pg.FakePool.queryResults.length = 0;
   });
 
@@ -263,6 +267,38 @@ describe('PostgreSQL telemetry pool', () => {
     ).toEqual({ outcome: 'committed' });
     expect(JSON.stringify(queries)).not.toContain('secret_table');
     expect(JSON.stringify(queries)).not.toContain('identity');
+
+    await pool.end();
+  });
+
+  it('reports sanitized idle-client and monitor failures without changing pool behavior', async () => {
+    const telemetry = fakeMeter();
+    const record = vi.fn();
+    pg.FakePool.queryErrors.push(new Error('secret monitor detail'));
+    const pool = createDatabasePool(
+      { connectionString: 'postgresql://secret@db/app' },
+      {
+        diagnostics: { record },
+        lockWaitSampleIntervalMs: 100,
+        meter: telemetry.meter,
+        role: 'worker',
+      },
+    );
+    poolAt(0).emit('error', new TypeError('secret idle detail'));
+
+    await vi.waitFor(() => {
+      expect(record).toHaveBeenCalledWith({
+        errorType: 'Error',
+        operation: 'lock_wait_sample',
+        poolRole: 'worker',
+      });
+    });
+    expect(record).toHaveBeenCalledWith({
+      errorType: 'TypeError',
+      operation: 'idle_pool_error',
+      poolRole: 'worker',
+    });
+    expect(JSON.stringify(record.mock.calls)).not.toContain('secret');
 
     await pool.end();
   });
