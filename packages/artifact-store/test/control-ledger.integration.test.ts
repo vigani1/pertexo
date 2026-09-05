@@ -175,21 +175,26 @@ function status(error: unknown): number | undefined {
 }
 
 integrationDescribe('dual-region control ledger MinIO integration', () => {
-  const config = parseDualRegionControlLedgerConfig(process.env);
-  const primary = client(config.primary);
-  const recovery = client(config.recovery);
-  const primaryAdmin = adminClient(
-    config.primary,
-    process.env.CONTROL_LEDGER_ADMIN_ACCESS_KEY_ID,
-    process.env.CONTROL_LEDGER_ADMIN_SECRET_ACCESS_KEY,
-  );
-  const recoveryAdmin = adminClient(
-    config.recovery,
-    process.env.CONTROL_LEDGER_RECOVERY_ADMIN_ACCESS_KEY_ID,
-    process.env.CONTROL_LEDGER_RECOVERY_ADMIN_SECRET_ACCESS_KEY,
-  );
+  let config!: ReturnType<typeof parseDualRegionControlLedgerConfig>;
+  let primary!: S3Client;
+  let recovery!: S3Client;
+  let primaryAdmin!: S3Client;
+  let recoveryAdmin!: S3Client;
 
   beforeAll(async () => {
+    config = parseDualRegionControlLedgerConfig(process.env);
+    primary = client(config.primary);
+    recovery = client(config.recovery);
+    primaryAdmin = adminClient(
+      config.primary,
+      process.env.CONTROL_LEDGER_ADMIN_ACCESS_KEY_ID,
+      process.env.CONTROL_LEDGER_ADMIN_SECRET_ACCESS_KEY,
+    );
+    recoveryAdmin = adminClient(
+      config.recovery,
+      process.env.CONTROL_LEDGER_RECOVERY_ADMIN_ACCESS_KEY_ID,
+      process.env.CONTROL_LEDGER_RECOVERY_ADMIN_SECRET_ACCESS_KEY,
+    );
     await Promise.all([
       prepareBucket(
         primaryAdmin,
@@ -321,12 +326,11 @@ integrationDescribe('dual-region control ledger MinIO integration', () => {
     },
   );
 
-  exactPolicyIt.each([
-    ['primary', primary, config.primary.bucket],
-    ['recovery', recovery, config.recovery.bucket],
-  ])(
+  exactPolicyIt.each(['primary', 'recovery'] as const)(
     'enforces immutable conditional creation in %s',
-    async (_name, s3, bucket) => {
+    async (name) => {
+      const s3 = name === 'primary' ? primary : recovery;
+      const bucket = config[name].bucket;
       const key = `control-ledger/integration-policy/${randomUUID()}.json`;
       const conditional = new PutObjectCommand({
         Body: '{}',
@@ -355,12 +359,12 @@ integrationDescribe('dual-region control ledger MinIO integration', () => {
     },
   );
 
-  minioIt.each([
-    ['primary', primaryAdmin, primary, config.primary],
-    ['recovery', recoveryAdmin, recovery, config.recovery],
-  ])(
+  minioIt.each(['primary', 'recovery'] as const)(
     'proves supported controls and the fail-closed boundary in %s',
-    async (_name, admin, s3, ledgerConfig) => {
+    async (name) => {
+      const admin = name === 'primary' ? primaryAdmin : recoveryAdmin;
+      const s3 = name === 'primary' ? primary : recovery;
+      const ledgerConfig = config[name];
       await expect(
         admin.send(
           new PutBucketPolicyCommand({
