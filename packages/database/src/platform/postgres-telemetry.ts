@@ -17,6 +17,8 @@ export interface DatabasePoolOptions {
   /** Disable only when this process is not permitted to read pg_stat_activity. */
   readonly monitorLockWaits?: boolean;
   readonly lockWaitSampleIntervalMs?: number;
+  /** Stable process authority; required for custom PostgreSQL role names. */
+  readonly role?: DatabasePoolRole;
 }
 
 export type DatabasePoolRole =
@@ -123,16 +125,19 @@ function stateFor(meter: Meter): MeterState {
   });
   saturation.addCallback((result) => {
     for (const role of databasePoolRoles) {
-      let maximum = 0;
+      let active = 0;
+      let capacity = 0;
       let present = false;
       for (const [pool, poolRole] of pools) {
         if (poolRole !== role) continue;
         present = true;
-        const capacity = pool.options.max;
-        const active = pool.totalCount - pool.idleCount;
-        maximum = Math.max(maximum, capacity === 0 ? 0 : active / capacity);
+        capacity += pool.options.max;
+        active += pool.totalCount - pool.idleCount;
       }
-      if (present) result.observe(maximum, { pool_role: role });
+      if (present)
+        result.observe(capacity === 0 ? 0 : active / capacity, {
+          pool_role: role,
+        });
     }
   });
   waiters.addCallback((result) => {
@@ -464,13 +469,14 @@ function startLockWaitMonitor(
   return monitor;
 }
 
-function monitorKey(config: PoolConfig): string {
+function monitorKey(config: PoolConfig, intervalMs: number): string {
   return JSON.stringify({
     connectionString: config.connectionString,
     database: config.database,
     host: config.host,
     port: config.port,
     user: config.user,
+    intervalMs,
   });
 }
 
@@ -479,7 +485,7 @@ function acquireLockWaitMonitor(
   state: MeterState,
   intervalMs: number,
 ): LockWaitMonitor {
-  const key = monitorKey(config);
+  const key = monitorKey(config, intervalMs);
   const existing = state.monitors.get(key);
   if (existing !== undefined) {
     existing.references += 1;
@@ -518,7 +524,7 @@ export function createDatabasePool(
       ? undefined
       : acquireLockWaitMonitor(config, state, intervalMs);
   const backendPids = monitor?.backendPids;
-  state.pools.set(pool, databasePoolRole(config));
+  state.pools.set(pool, options.role ?? databasePoolRole(config));
   pool.on('connect', (client) => {
     instrumentClient(client, state);
     const processId = (client as PoolClient & { processID?: number }).processID;

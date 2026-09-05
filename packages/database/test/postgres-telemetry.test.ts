@@ -199,6 +199,30 @@ describe('PostgreSQL telemetry pool', () => {
     await second.end();
   });
 
+  it('uses an explicit role and aggregates saturation across its process budget', async () => {
+    const telemetry = fakeMeter();
+    const first = createDatabasePool(
+      { max: 4, user: 'custom_runtime' },
+      { meter: telemetry.meter, monitorLockWaits: false, role: 'api' },
+    );
+    const second = createDatabasePool(
+      { max: 6, user: 'another_custom_runtime' },
+      { meter: telemetry.meter, monitorLockWaits: false, role: 'api' },
+    );
+    Object.assign(poolAt(0), { idleCount: 0, totalCount: 4 });
+    Object.assign(poolAt(1), { idleCount: 5, totalCount: 6 });
+
+    expect(
+      observableMeasurements(
+        telemetry.callbacks,
+        DATABASE_METRIC_NAME.poolSaturation,
+      ),
+    ).toEqual([{ attributes: { pool_role: 'api' }, value: 0.5 }]);
+
+    await first.end();
+    await second.end();
+  });
+
   it('records bounded query and transaction outcomes without SQL', async () => {
     const telemetry = fakeMeter();
     const pool = createDatabasePool(
@@ -301,6 +325,23 @@ describe('PostgreSQL telemetry pool', () => {
     expect(pg.FakePool.instances).toHaveLength(3);
     await first.end();
     expect(pg.FakePool.instances[1]?.queries.length).toBeGreaterThan(0);
+    await second.end();
+  });
+
+  it('does not silently share a lock sampler with a different cadence', async () => {
+    const telemetry = fakeMeter();
+    const config = { connectionString: 'postgresql://runtime:test@db/app' };
+    const first = createDatabasePool(config, {
+      lockWaitSampleIntervalMs: 100,
+      meter: telemetry.meter,
+    });
+    const second = createDatabasePool(config, {
+      lockWaitSampleIntervalMs: 200,
+      meter: telemetry.meter,
+    });
+
+    expect(pg.FakePool.instances).toHaveLength(4);
+    await first.end();
     await second.end();
   });
 });
