@@ -191,6 +191,15 @@ describe('workflow executable V2 identity', () => {
         ),
       ]),
     ).toThrow('one rolling overlap');
+    expect(() => createExecutableCompatibilityReleaseSupport([])).toThrow(
+      'one rolling overlap',
+    );
+    expect(() => support.resolve(0, current.fingerprint)).toThrow(
+      'not supported by this artifact',
+    );
+    expect(() => support.resolve(1.5, current.fingerprint)).toThrow(
+      'not supported by this artifact',
+    );
   });
 
   it('keeps retained executable history separate from the rolling readiness overlap', () => {
@@ -216,6 +225,12 @@ describe('workflow executable V2 identity', () => {
         composeExecutableCompatibilityRelease(nodeRelease({ epoch: 4 })),
       ]),
     ).toThrow('successor');
+    expect(() => createExecutableCompatibilityReleaseHistory([])).toThrow(
+      'must not be empty',
+    );
+    expect(() =>
+      createExecutableCompatibilityReleaseHistory([releases[0], releases[0]]),
+    ).toThrow('epochs must be unique');
   });
 
   it('composes engine-owned policies and produces the pre-publication golden checksum', () => {
