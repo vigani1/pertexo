@@ -4,7 +4,7 @@ export default defineConfig({
   root: import.meta.dirname,
   test: {
     environment: 'node',
-    exclude: ['dist/**', 'node_modules/**'],
+    exclude: ['dist/**', 'node_modules/**', 'test/**/*.integration.test.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text-summary', 'json-summary', 'json'],

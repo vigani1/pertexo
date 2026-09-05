@@ -227,19 +227,19 @@ async function insertProofEvent(
       max: 1,
     }),
   );
-  const artifactId = randomUUID();
-  const payload = { artifactId };
+  const notificationIntentId = randomUUID();
+  const payload = { notificationIntentId };
   try {
     await database.withWorkspace(workspaceId, async (transaction) => {
       await insertOutboxEvent(transaction, {
-        aggregateId: artifactId,
-        aggregateType: 'artifact',
+        aggregateId: notificationIntentId,
+        aggregateType: 'run-failure-notification',
         // The dispatcher is intentionally cross-workspace. Make this proof row
         // deterministically earlier than unrelated local development rows so
         // a bounded global claim always includes the row under test.
         availableAt: new Date('1900-01-01T00:00:00.000Z'),
         id,
-        jobName: JOB_NAME.expireArtifacts,
+        jobName: JOB_NAME.deliverRunFailureNotification,
         payload,
         payloadChecksum: canonicalOutboxPayloadChecksum(payload),
         schemaVersion: 1,
@@ -348,7 +348,7 @@ function createDispatcher(
         isReady: () => true,
         waitUntilReady: () => Promise.resolve(),
       },
-      jobName: JOB_NAME.expireArtifacts,
+      jobName: JOB_NAME.deliverRunFailureNotification,
     },
   ]);
   return {
@@ -359,7 +359,7 @@ function createDispatcher(
       drainState,
       {
         batchSize: 100,
-        enabledJobNames: [JOB_NAME.expireArtifacts],
+        enabledJobNames: [JOB_NAME.deliverRunFailureNotification],
         leaseDurationMillis: 1_000,
         leaseOwner,
         maxAttempts: 5,
@@ -473,7 +473,7 @@ describeResilience(
         // PostgreSQL outbox row, and every Redis key is then lost.
         await insertProofEvent(workspaceId, queueLossEventId);
         const claimed = await redisBoundaries.database.claimBatch({
-          enabledJobNames: [JOB_NAME.expireArtifacts],
+          enabledJobNames: [JOB_NAME.deliverRunFailureNotification],
           leaseDurationMillis: 1_000,
           leaseOwner: 'resilience-crashed',
           leaseToken: randomUUID(),

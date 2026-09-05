@@ -5164,6 +5164,13 @@ That private worker entry is now declared explicitly alongside Knip's inferred
 public package exports, so dependency ownership is checked identically before
 and after a local build rather than depending on ignored `dist` output.
 
+Protected CI also proved two service-boundary regressions that a warm local
+environment had masked. Queue unit and coverage commands now exclude the
+real-Redis integration file explicitly, while the dedicated integration command
+continues to run it. The destructive transport resilience proof now dispatches
+the active failure-notification job contract instead of the retained but
+intentionally inactive `expire-artifacts` compatibility contract.
+
 ### Granular package-audit remediation — integrations
 
 - [x] Implement INT-001 through INT-005, INT-007, INT-008, INT-011,

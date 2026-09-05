@@ -43,7 +43,7 @@ capability registry.
 | QUEUE-006 | Fixed; continuous gate | `19ae523`; queue coverage is part of root risk coverage. Fresh result: 80.78% statements (391/484), 68.98% branches (149/216), 82.44% functions (108/131), and 81.60% lines (386/473). |
 | QUEUE-007 | Fixed; continuous gate | `c8127bf`; retained V1 golden fixtures and a public-surface manifest run in CI. |
 | QUEUE-008 | Fixed | `4e95575`; the advisory publisher timeout is unreferenced and tests cover settlement behavior. |
-| QUEUE-009 | Fixed; continuous integration contract | `44cd628`; first-owner instrumentation semantics are documented and the pinned real ioredis success/failure/duplicate behavior runs in CI. |
+| QUEUE-009 | Fixed; continuous integration contract | `44cd628`; first-owner instrumentation semantics are documented and the pinned real ioredis success/failure/duplicate behavior runs only in the service-backed integration cohort. Unit and coverage commands explicitly exclude integration files, so globally present CI opt-in variables cannot make service tests depend on ambient Redis. |
 | QUEUE-010 | Fixed | `4e95575`; registry entry records are frozen without deep-freezing Zod schemas. |
 | QUEUE-011 | Fixed | `c8127bf`; the unused alias and five unused subpaths were removed and one explicit root surface is snapshot-tested. |
 | QUEUE-012 | Fixed | `f48eeef`; named bounds, complete job tracking/removal, residual checks, and bounded cleanup make transport proofs hermetic and diagnostic. |
