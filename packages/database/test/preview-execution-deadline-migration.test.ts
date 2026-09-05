@@ -16,7 +16,7 @@ describe('preview execution deadline migration', () => {
     );
 
     expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0074_retention_schedule_state_rls.sql',
+      '0075_workspace_purge_step_release.sql',
     );
     expect(MIGRATIONS_DIRECTORY).toContain('migrations');
     expect(sql).toContain('ADD COLUMN execution_deadline_at timestamptz');

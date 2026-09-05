@@ -295,12 +295,6 @@ async function inTransaction<T>(
       [`${String(options.statementTimeoutMs)}ms`],
       signal,
     );
-    await query(
-      client,
-      "select set_config('idle_in_transaction_session_timeout','0',true)",
-      [],
-      signal,
-    );
     const result = await work(client);
     await query(client, 'commit', [], signal);
     return result;

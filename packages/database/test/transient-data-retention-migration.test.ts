@@ -15,7 +15,7 @@ describe('transient data retention migration', () => {
     );
 
     expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0074_retention_schedule_state_rls.sql',
+      '0075_workspace_purge_step_release.sql',
     );
     expect(migration).toContain("interval '24 hours'");
     expect(migration).toContain("interval '30 days'");

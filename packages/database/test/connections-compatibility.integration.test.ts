@@ -235,6 +235,7 @@ describe('connection persistence', () => {
       '0072_regional_replica_identity.sql',
       '0073_transient_data_retention.sql',
       '0074_retention_schedule_state_rls.sql',
+      '0075_workspace_purge_step_release.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, priorDatabaseName),
@@ -247,7 +248,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0074_retention_schedule_state_rls.sql',
+        migrationHead: '0075_workspace_purge_step_release.sql',
       });
       const bindingSurface = await pool.query<{
         node_column: boolean;
@@ -486,6 +487,7 @@ describe('connection persistence', () => {
       '0072_regional_replica_identity.sql',
       '0073_transient_data_retention.sql',
       '0074_retention_schedule_state_rls.sql',
+      '0075_workspace_purge_step_release.sql',
     ]);
     const pool = new Pool({
       connectionString: databaseUrl(apiBaseUrl, upgradeDatabaseName),
@@ -498,7 +500,7 @@ describe('connection persistence', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0074_retention_schedule_state_rls.sql',
+        migrationHead: '0075_workspace_purge_step_release.sql',
       });
     } finally {
       await pool.end();

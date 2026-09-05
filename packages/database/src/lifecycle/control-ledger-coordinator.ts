@@ -1034,6 +1034,7 @@ export function createControlLedgerCoordinator(
                 and has_function_privilege(current_user,'app.find_due_workspace_purge_step()','EXECUTE')
                 and has_function_privilege(current_user,'app.execute_workspace_tenant_rows_page(uuid,uuid,bigint,integer,bigint,character)','EXECUTE')
                 and has_function_privilege(current_user,'app.checkpoint_workspace_object_versions_page(uuid,uuid,bigint,integer,boolean,bigint,character)','EXECUTE')
+                and has_function_privilege(current_user,'app.release_workspace_purge_step(uuid,uuid,bigint)','EXECUTE')
                 and has_function_privilege(current_user,'app.find_due_workspace_purge_completion()','EXECUTE')
                 and has_function_privilege(current_user,'app.prepare_workspace_purge_completion(uuid,bigint,character,character varying,interval)','EXECUTE')
                 and has_function_privilege(current_user,'app.authorize_workspace_purge_completion_append(uuid,uuid,bigint,bigint,character)','EXECUTE')

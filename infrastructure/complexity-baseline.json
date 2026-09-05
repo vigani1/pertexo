@@ -21,11 +21,11 @@
     "packages/database/src/execution/failure-notification-destinations.ts": 637,
     "packages/database/src/execution/preview-execution-acceptance.ts": 563,
     "packages/database/src/execution/workflow-run-api.ts": 520,
-    "packages/database/src/lifecycle/control-ledger-coordinator.ts": 1185,
+    "packages/database/src/lifecycle/control-ledger-coordinator.ts": 1186,
     "packages/database/src/lifecycle/preview-cleanup.ts": 548,
-    "packages/database/src/lifecycle/retention.ts": 808,
-    "packages/database/src/lifecycle/workspace-lifecycle-commands.ts": 592,
-    "packages/database/src/lifecycle/workspace-purge.ts": 807,
+    "packages/database/src/lifecycle/retention.ts": 814,
+    "packages/database/src/lifecycle/workspace-lifecycle-commands.ts": 586,
+    "packages/database/src/lifecycle/workspace-purge.ts": 854,
     "packages/database/src/platform/postgres-telemetry.ts": 608,
     "packages/database/src/tenant-access/identity-workspace.ts": 594,
     "packages/database/src/triggers/schedule-triggers.ts": 674,
@@ -125,7 +125,7 @@
     },
     "packages/database/src/lifecycle/control-ledger-coordinator.ts#createControlLedgerCoordinator": {
       "branches": 4,
-      "lines": 707
+      "lines": 708
     },
     "packages/database/src/lifecycle/preview-retention.ts#createPreviewRetentionCoordinator": {
       "branches": 0,
@@ -133,7 +133,11 @@
     },
     "packages/database/src/lifecycle/retention.ts#createRetentionDatabase": {
       "branches": 0,
-      "lines": 371
+      "lines": 373
+    },
+    "packages/database/src/lifecycle/retention.ts#createRetentionEnforcementCoordinator": {
+      "branches": 0,
+      "lines": 205
     },
     "packages/database/src/lifecycle/workspace-lifecycle-commands.ts#createWorkspaceLifecycleCommandCoordinator": {
       "branches": 0,
@@ -141,11 +145,11 @@
     },
     "packages/database/src/lifecycle/workspace-purge.ts#createWorkspacePurgeCoordinator": {
       "branches": 5,
-      "lines": 592
+      "lines": 619
     },
     "packages/database/src/lifecycle/workspace-purge.ts#processNext": {
-      "branches": 19,
-      "lines": 533
+      "branches": 46,
+      "lines": 513
     },
     "packages/database/src/operator/operator-commands.ts#createOperatorCommandDatabase": {
       "branches": 0,

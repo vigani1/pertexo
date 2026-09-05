@@ -15,7 +15,7 @@ describe('regional replica identity migration', () => {
     );
 
     expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0074_retention_schedule_state_rls.sql',
+      '0075_workspace_purge_step_release.sql',
     );
     expect(sql).toContain('replica_identity_status');
     expect(sql).toContain('replica_session_count');

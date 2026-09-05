@@ -122,7 +122,7 @@ describe('Coordinator observation integrity invariants', () => {
         workerRuntimeRole: 'pertexo_worker',
       }),
     ).resolves.toMatchObject({
-      migrationHead: '0074_retention_schedule_state_rls.sql',
+      migrationHead: '0075_workspace_purge_step_release.sql',
     });
     await readinessPool.end();
   });

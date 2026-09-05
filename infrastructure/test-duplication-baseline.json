@@ -82,11 +82,11 @@
             "packages/database/src/lifecycle/workspace-purge.ts"
           ],
           "classification": "intentional-scenario-local",
-          "reason": "The purge state machine keeps separate missing-command checks beside the transitions whose repair identifiers they validate.",
+          "reason": "Purge-start and deletion-completion independently capture their durable repair command beside the distinct lease preparation that consumes it.",
           "clones": [
             {
-              "hash": "b5056a5b737b45a7f940113569b3ac2142b4e73eaee4445f63436d55af1e608b",
-              "maxLines": 19
+              "hash": "6d5cb49a69a35a1df77b51303f21734be56bd2d98f3c6c4f87d52d13bb670fa8",
+              "maxLines": 21
             }
           ]
         },
@@ -99,8 +99,8 @@
           "reason": "Lifecycle command admission and purge execution use similar transaction prologues but deliberately own different locks, roles, rollback semantics, and state machines.",
           "clones": [
             {
-              "hash": "39f7770dace296ebe067bd4684fcb63e8e13791143715b64b28634ca4e40f693",
-              "maxLines": 26
+              "hash": "1a9a8e285038f5d88fe0a816a002737ef2b80e8fc6a57e4e86788e92ca344856",
+              "maxLines": 20
             }
           ]
         },
@@ -121,14 +121,14 @@
         {
           "files": [
             "packages/database/src/lifecycle/retention.ts",
-            "packages/database/src/lifecycle/workspace-purge.ts"
+            "packages/database/src/lifecycle/run-artifact-retention.ts"
           ],
           "classification": "false-positive",
-          "reason": "Abort-aware query wrappers remain private to two independent high-risk transaction owners so cancellation and error policy cannot drift through a generic repository layer.",
+          "reason": "Standard retention and run-artifact retention locally parse the same control anchor before applying different destructive eligibility and completion contracts.",
           "clones": [
             {
-              "hash": "825c177d311dd88b5cc22be352ad3e875aa861db8f64fd58c1ee5ed5c8f8593a",
-              "maxLines": 15
+              "hash": "4297ffb039b14e29ffa8b5a06e321b82cb20385543851c048f6c7a357608090a",
+              "maxLines": 28
             }
           ]
         },

@@ -101,10 +101,18 @@ class MemoryPurgeLedger implements WorkspacePurgeLedger {
 class MemoryObjectPurgeStore {
   public calls = 0;
   public failAfterDelete = false;
+  public pauseNext = false;
+  public readonly purgeStarted = Promise.withResolvers<undefined>();
+  public readonly resumePurge = Promise.withResolvers<undefined>();
 
   public async purgeWorkspacePage() {
     await Promise.resolve();
     this.calls += 1;
+    if (this.pauseNext) {
+      this.pauseNext = false;
+      this.purgeStarted.resolve(undefined);
+      await this.resumePurge.promise;
+    }
     if (this.failAfterDelete) {
       this.failAfterDelete = false;
       throw new Error('ambiguous object deletion result');
@@ -631,6 +639,63 @@ describe('workspace purge foundation', () => {
     } catch (error: unknown) {
       await owner.query('rollback');
       throw error;
+    }
+  });
+
+  it('does not hold a transaction while object erasure is delayed', async () => {
+    const workspaceId = await createDueWorkspace();
+    const ledger = new MemoryPurgeLedger();
+    const objectStore = new MemoryObjectPurgeStore();
+    const coordinator = createWorkspacePurgeCoordinator(
+      {
+        connectionString: maintenanceUrl,
+        connectionTimeoutMillis: 1_000,
+        idleTimeoutMillis: 1_000,
+        max: 2,
+        ownerRole: 'pertexo_owner',
+        workerRuntimeRole: 'pertexo_worker',
+      },
+      ledger,
+      objectStore,
+      {
+        externalOperationTimeoutMs: 5_000,
+        leaseOwner: 'purge-no-open-transaction',
+        leaseSeconds: 30,
+        lockTimeoutMs: 1_000,
+        statementTimeoutMs: 1_000,
+      },
+    );
+    try {
+      let started = false;
+      for (let attempt = 0; attempt < 10 && !started; attempt += 1) {
+        const outcome = await coordinator.processNext();
+        started =
+          outcome.status === 'started' && outcome.workspaceId === workspaceId;
+      }
+      expect(started).toBe(true);
+      objectStore.pauseNext = true;
+      const purging = coordinator.processNext();
+      await objectStore.purgeStarted.promise;
+      const admin = new Pool({ connectionString: adminUrl, max: 1 });
+      try {
+        const activity = await admin.query<{ count: string }>(
+          `select count(*)::text count from pg_stat_activity
+           where datname=$1 and usename='pertexo_maintenance'
+             and xact_start is not null`,
+          [databaseName],
+        );
+        expect(activity.rows[0]?.count).toBe('0');
+      } finally {
+        await admin.end();
+        objectStore.resumePurge.resolve(undefined);
+      }
+      await expect(purging).resolves.toMatchObject({
+        status: 'progressed',
+        workspaceId,
+      });
+    } finally {
+      objectStore.resumePurge.resolve(undefined);
+      await coordinator.close();
     }
   });
 });

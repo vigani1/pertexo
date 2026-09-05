@@ -107,6 +107,7 @@ describe('published migration repair upgrade', () => {
       '0072_regional_replica_identity.sql',
       '0073_transient_data_retention.sql',
       '0074_retention_schedule_state_rls.sql',
+      '0075_workspace_purge_step_release.sql',
     ]);
     await expect(migrateDatabase(migrationConfig)).resolves.toEqual([]);
 

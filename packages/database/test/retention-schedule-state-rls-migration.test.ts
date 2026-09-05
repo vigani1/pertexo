@@ -14,7 +14,7 @@ describe('retention schedule state RLS migration', () => {
     const migration = await readFile(migrationUrl, 'utf8');
 
     expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0074_retention_schedule_state_rls.sql',
+      '0075_workspace_purge_step_release.sql',
     );
     expect(migration).toContain(
       'ALTER TABLE app.retention_schedule_state ENABLE ROW LEVEL SECURITY',
