@@ -145,22 +145,8 @@
               "maxLines": 31
             },
             {
-              "hash": "372a230c5e130666e6a550a4020f8fdd50353241ca171c28d940fd4e6fdb638f",
-              "maxLines": 17
-            }
-          ]
-        },
-        {
-          "files": [
-            "packages/database/src/lifecycle/preview-retention.ts",
-            "packages/database/src/lifecycle/retention.ts"
-          ],
-          "classification": "false-positive",
-          "reason": "Both parse ledger high-water facts at separate retention boundaries; retaining local parsing keeps each fail-closed projection auditable.",
-          "clones": [
-            {
-              "hash": "0c9c4fbdd1ca8d9fdbc364bccb52a0010b40df7a422dca15ad7f4f5981d5e2fb",
-              "maxLines": 23
+              "hash": "75ac11f624a235233bf48742fcf45bfbe1ad2d1e31feb727a8600c7972f0f6d3",
+              "maxLines": 30
             }
           ]
         },

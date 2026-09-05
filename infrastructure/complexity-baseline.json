@@ -21,10 +21,10 @@
     "packages/database/src/execution/failure-notification-destinations.ts": 637,
     "packages/database/src/execution/preview-execution-acceptance.ts": 563,
     "packages/database/src/execution/workflow-run-api.ts": 520,
-    "packages/database/src/lifecycle/control-ledger-coordinator.ts": 1048,
+    "packages/database/src/lifecycle/control-ledger-coordinator.ts": 1185,
     "packages/database/src/lifecycle/preview-cleanup.ts": 548,
     "packages/database/src/lifecycle/retention.ts": 808,
-    "packages/database/src/lifecycle/workspace-lifecycle-commands.ts": 559,
+    "packages/database/src/lifecycle/workspace-lifecycle-commands.ts": 592,
     "packages/database/src/lifecycle/workspace-purge.ts": 807,
     "packages/database/src/platform/postgres-telemetry.ts": 608,
     "packages/database/src/tenant-access/identity-workspace.ts": 594,
@@ -125,7 +125,11 @@
     },
     "packages/database/src/lifecycle/control-ledger-coordinator.ts#createControlLedgerCoordinator": {
       "branches": 4,
-      "lines": 578
+      "lines": 707
+    },
+    "packages/database/src/lifecycle/preview-retention.ts#createPreviewRetentionCoordinator": {
+      "branches": 0,
+      "lines": 203
     },
     "packages/database/src/lifecycle/retention.ts#createRetentionDatabase": {
       "branches": 0,
@@ -133,7 +137,7 @@
     },
     "packages/database/src/lifecycle/workspace-lifecycle-commands.ts#createWorkspaceLifecycleCommandCoordinator": {
       "branches": 0,
-      "lines": 243
+      "lines": 271
     },
     "packages/database/src/lifecycle/workspace-purge.ts#createWorkspacePurgeCoordinator": {
       "branches": 5,

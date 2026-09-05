@@ -95,6 +95,11 @@ interface LockedOperation {
   control_sequence: string | number;
 }
 
+interface PreparedLifecycleAppend {
+  readonly expectedSequence: number;
+  readonly previousHash: string;
+}
+
 const optionsSchema = z
   .object({
     externalOperationTimeoutMs: z
@@ -442,7 +447,7 @@ export function createWorkspaceLifecycleCommandCoordinator(
           },
         );
 
-        await inTransaction(
+        const prepared = await inTransaction(
           pool,
           transactionOptions,
           signal,
@@ -456,62 +461,90 @@ export function createWorkspaceLifecycleCommandCoordinator(
             const locked = lockedResult.rows[0];
             if (locked?.append_authorized !== true)
               throw new Error('Lifecycle command authorization is not durable');
-            const projectedSequence = sequence(locked.control_sequence);
-            const previousHash = hashSchema.parse(locked.control_hash);
-            const operationSignal = AbortSignal.any([
-              ...(signal === undefined ? [] : [signal]),
-              AbortSignal.timeout(options.externalOperationTimeoutMs),
-            ]);
-            const reconciliation = await raceWithSignal(
-              ledger.reconcile({
-                maxRecords: 2,
-                projectedHash: previousHash,
-                projectedSequence,
-                repairCommandId: operation.operation_id,
-                signal: operationSignal,
-                workspaceId: uuidSchema.parse(operation.workspace_id),
-              }),
-              operationSignal,
+            return Object.freeze({
+              expectedSequence: sequence(locked.control_sequence) + 1,
+              previousHash: hashSchema.parse(locked.control_hash),
+            } satisfies PreparedLifecycleAppend);
+          },
+        );
+
+        const operationSignal = AbortSignal.any([
+          ...(signal === undefined ? [] : [signal]),
+          AbortSignal.timeout(options.externalOperationTimeoutMs),
+        ]);
+        const reconciliation = await raceWithSignal(
+          ledger.reconcile({
+            maxRecords: 2,
+            projectedHash: prepared.previousHash,
+            projectedSequence: prepared.expectedSequence - 1,
+            repairCommandId: operation.operation_id,
+            signal: operationSignal,
+            workspaceId: uuidSchema.parse(operation.workspace_id),
+          }),
+          operationSignal,
+        );
+        if (
+          reconciliation.hasMore ||
+          !reconciliation.reachedHighWater ||
+          reconciliation.records.length > 1
+        )
+          throw new Error(
+            'Lifecycle ledger has unrelated unprojected commands',
+          );
+        let record = reconciliation.records[0];
+        const pageEndSequence =
+          record?.sequence ?? reconciliation.pageEndSequence;
+        const pageEndHash = record?.recordHash ?? reconciliation.pageEndHash;
+        if (
+          reconciliation.pageEndSequence !== pageEndSequence ||
+          reconciliation.pageEndHash !== pageEndHash ||
+          (record === undefined &&
+            (pageEndSequence !== prepared.expectedSequence - 1 ||
+              pageEndHash !== prepared.previousHash))
+        )
+          throw new Error('Lifecycle ledger high water is inconsistent');
+        record ??= await raceWithSignal(
+          ledger.append({
+            actorRef: operation.actor_user_id,
+            commandId: operation.operation_id,
+            commandType,
+            occurredAt: occurredAt(operation.occurred_at),
+            previousHash: prepared.previousHash,
+            reason: operation.reason,
+            sequence: prepared.expectedSequence,
+            signal: operationSignal,
+            subjectId: operation.workspace_id,
+            workspaceId: operation.workspace_id,
+          }),
+          operationSignal,
+        );
+        verifyRecord(
+          record,
+          operation,
+          prepared.previousHash,
+          prepared.expectedSequence,
+        );
+        signal?.throwIfAborted();
+
+        await inTransaction(
+          pool,
+          transactionOptions,
+          signal,
+          async (client) => {
+            const lockedResult = await query<LockedOperation>(
+              client,
+              'select * from app.lock_workspace_lifecycle_operation($1,$2,$3)',
+              lease,
+              signal,
             );
+            const locked = lockedResult.rows[0];
             if (
-              reconciliation.hasMore ||
-              !reconciliation.reachedHighWater ||
-              reconciliation.records.length > 1
+              locked?.append_authorized !== true ||
+              sequence(locked.control_sequence) + 1 !==
+                prepared.expectedSequence ||
+              hashSchema.parse(locked.control_hash) !== prepared.previousHash
             )
-              throw new Error(
-                'Lifecycle ledger has unrelated unprojected commands',
-              );
-            const expectedSequence = projectedSequence + 1;
-            let record = reconciliation.records[0];
-            const pageEndSequence =
-              record?.sequence ?? reconciliation.pageEndSequence;
-            const pageEndHash =
-              record?.recordHash ?? reconciliation.pageEndHash;
-            if (
-              reconciliation.pageEndSequence !== pageEndSequence ||
-              reconciliation.pageEndHash !== pageEndHash ||
-              (record === undefined &&
-                (pageEndSequence !== projectedSequence ||
-                  pageEndHash !== previousHash))
-            )
-              throw new Error('Lifecycle ledger high water is inconsistent');
-            record ??= await raceWithSignal(
-              ledger.append({
-                actorRef: operation.actor_user_id,
-                commandId: operation.operation_id,
-                commandType,
-                occurredAt: occurredAt(operation.occurred_at),
-                previousHash,
-                reason: operation.reason,
-                sequence: expectedSequence,
-                signal: operationSignal,
-                subjectId: operation.workspace_id,
-                workspaceId: operation.workspace_id,
-              }),
-              operationSignal,
-            );
-            verifyRecord(record, operation, previousHash, expectedSequence);
-            signal?.throwIfAborted();
+              throw new Error('Lifecycle command projection fence changed');
             await query(
               client,
               `select app.project_and_complete_workspace_lifecycle_operation(

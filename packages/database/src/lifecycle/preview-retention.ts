@@ -6,6 +6,7 @@ import { z } from 'zod';
 
 import type { DatabaseConfig } from '../config.js';
 import type { ControlLedger } from './control-ledger-coordinator.js';
+import { inRetentionTransaction } from './retention-transaction.js';
 
 const uuidSchema = z.uuid();
 
@@ -125,167 +126,181 @@ export function createPreviewRetentionCoordinator(
         return Object.freeze({ status: 'idle' as const });
       const workspaceId = uuidSchema.parse(candidate.workspace_id);
       const previewRunId = uuidSchema.parse(candidate.preview_run_id);
-      const client = await pool.connect();
-      let transactionComplete = false;
-      let destroyClient = false;
-      try {
-        await query(client, 'begin', [], signal);
-        await query(
-          client,
-          `set local lock_timeout='${String(options.lockTimeoutMs)}ms';
-           set local statement_timeout='${String(options.statementTimeoutMs)}ms';
-           set local idle_in_transaction_session_timeout='0'`,
-          [],
-          signal,
-        );
-        const locked = await query<{
-          retention_control_hash: string;
-          retention_control_sequence: string | number;
-        }>(
-          client,
-          'select * from app.lock_workspace_control_ledger($1)',
-          [workspaceId],
-          signal,
-        );
-        const highWater = locked.rows[0];
-        if (highWater === undefined)
-          throw new Error('Preview workspace control lock was not returned');
-        const sequence = z.coerce
-          .number()
-          .int()
-          .nonnegative()
-          .parse(highWater.retention_control_sequence);
-        const hash = z
-          .string()
-          .regex(/^[0-9a-f]{64}$/u)
-          .parse(highWater.retention_control_hash);
-        const timeoutSignal = AbortSignal.timeout(
-          options.externalOperationTimeoutMs,
-        );
-        const externalSignal =
-          signal === undefined
-            ? timeoutSignal
-            : AbortSignal.any([signal, timeoutSignal]);
-        const reconciliation = await ledger.reconcile({
-          maxRecords: 1,
-          projectedHash: hash,
-          projectedSequence: sequence,
+      const transactionOptions = {
+        lockTimeoutMs: options.lockTimeoutMs,
+        statementTimeoutMs: options.statementTimeoutMs,
+      };
+      const highWater = await inRetentionTransaction(
+        pool,
+        transactionOptions,
+        signal,
+        async (client) => {
+          const locked = await query<{
+            retention_control_hash: string;
+            retention_control_sequence: string | number;
+          }>(
+            client,
+            'select * from app.lock_workspace_control_ledger($1)',
+            [workspaceId],
+            signal,
+          );
+          const row = locked.rows[0];
+          if (row === undefined)
+            throw new Error('Preview workspace control lock was not returned');
+          return Object.freeze({
+            hash: z
+              .string()
+              .regex(/^[0-9a-f]{64}$/u)
+              .parse(row.retention_control_hash),
+            sequence: z.coerce
+              .number()
+              .int()
+              .nonnegative()
+              .parse(row.retention_control_sequence),
+          });
+        },
+      );
+      const timeoutSignal = AbortSignal.timeout(
+        options.externalOperationTimeoutMs,
+      );
+      const externalSignal =
+        signal === undefined
+          ? timeoutSignal
+          : AbortSignal.any([signal, timeoutSignal]);
+      const reconciliation = await ledger.reconcile({
+        maxRecords: 1,
+        projectedHash: highWater.hash,
+        projectedSequence: highWater.sequence,
+        signal: externalSignal,
+        workspaceId,
+      });
+      if (
+        !exactLedgerProjection(
+          reconciliation,
+          highWater.sequence,
+          highWater.hash,
+        )
+      )
+        return Object.freeze({
+          previewRunId,
+          status: 'released' as const,
+          workspaceId,
+        });
+      const step = await inRetentionTransaction(
+        pool,
+        transactionOptions,
+        signal,
+        async (client) => {
+          const prepared = await query<{
+            artifact_id: string | null;
+            outcome: string;
+          }>(
+            client,
+            'select * from app.prepare_preview_cleanup_step($1,$2,$3,$4,$5)',
+            [
+              workspaceId,
+              previewRunId,
+              options.artifactQuiescenceSeconds,
+              highWater.sequence,
+              highWater.hash,
+            ],
+            signal,
+          );
+          const row = prepared.rows[0];
+          if (row === undefined)
+            throw new Error('Preview cleanup step was not returned');
+          return Object.freeze({
+            artifactId: row.artifact_id,
+            outcome: z
+              .enum([
+                'artifact',
+                'blocked',
+                'completed',
+                'finish',
+                'held',
+                'waiting',
+              ])
+              .parse(row.outcome),
+          });
+        },
+      );
+      if (step.outcome === 'artifact') {
+        const artifactId = uuidSchema.parse(step.artifactId);
+        await artifacts.delete({
+          artifactId,
           signal: externalSignal,
           workspaceId,
         });
-        if (!exactLedgerProjection(reconciliation, sequence, hash)) {
-          await query(client, 'rollback', [], signal);
-          transactionComplete = true;
+        const remaining = await artifacts.head({
+          artifactId,
+          signal: externalSignal,
+          workspaceId,
+        });
+        if (remaining === null) {
+          const completed = await inRetentionTransaction(
+            pool,
+            transactionOptions,
+            signal,
+            async (client) => {
+              const completed = await query<{ completed: boolean }>(
+                client,
+                'select app.complete_preview_artifact_cleanup($1,$2,$3,$4) completed',
+                [workspaceId, artifactId, highWater.sequence, highWater.hash],
+                signal,
+              );
+              if (completed.rows[0]?.completed !== true)
+                throw new Error('Preview artifact cleanup completion was lost');
+              const finished = await query<{ completed: boolean }>(
+                client,
+                'select app.finish_preview_cleanup($1,$2,$3,$4) completed',
+                [workspaceId, previewRunId, highWater.sequence, highWater.hash],
+                signal,
+              );
+              return finished.rows[0]?.completed === true;
+            },
+          );
           return Object.freeze({
+            artifactId,
             previewRunId,
-            status: 'released' as const,
+            status: completed
+              ? ('completed' as const)
+              : ('progressed' as const),
             workspaceId,
           });
         }
-        const prepared = await query<{
-          artifact_id: string | null;
-          outcome: string;
-        }>(
-          client,
-          'select * from app.prepare_preview_cleanup_step($1,$2,$3,$4,$5)',
-          [
-            workspaceId,
-            previewRunId,
-            options.artifactQuiescenceSeconds,
-            sequence,
-            hash,
-          ],
+        return Object.freeze({
+          artifactId,
+          previewRunId,
+          status: 'waiting' as const,
+          workspaceId,
+        });
+      }
+      if (step.outcome === 'finish' || step.outcome === 'completed') {
+        const finished = await inRetentionTransaction(
+          pool,
+          transactionOptions,
           signal,
-        );
-        const step = prepared.rows[0];
-        if (step === undefined)
-          throw new Error('Preview cleanup step was not returned');
-        const outcome = z
-          .enum([
-            'artifact',
-            'blocked',
-            'completed',
-            'finish',
-            'held',
-            'waiting',
-          ])
-          .parse(step.outcome);
-        let result: PreviewRetentionProcessResult;
-        if (outcome === 'artifact') {
-          const artifactId = uuidSchema.parse(step.artifact_id);
-          await artifacts.delete({
-            artifactId,
-            signal: externalSignal,
-            workspaceId,
-          });
-          const remaining = await artifacts.head({
-            artifactId,
-            signal: externalSignal,
-            workspaceId,
-          });
-          if (remaining === null) {
-            const completed = await query<{ completed: boolean }>(
-              client,
-              'select app.complete_preview_artifact_cleanup($1,$2,$3,$4) completed',
-              [workspaceId, artifactId, sequence, hash],
-              signal,
-            );
-            if (completed.rows[0]?.completed !== true)
-              throw new Error('Preview artifact cleanup completion was lost');
+          async (client) => {
             const finished = await query<{ completed: boolean }>(
               client,
               'select app.finish_preview_cleanup($1,$2,$3,$4) completed',
-              [workspaceId, previewRunId, sequence, hash],
+              [workspaceId, previewRunId, highWater.sequence, highWater.hash],
               signal,
             );
-            result = Object.freeze({
-              artifactId,
-              previewRunId,
-              status:
-                finished.rows[0]?.completed === true
-                  ? 'completed'
-                  : 'progressed',
-              workspaceId,
-            });
-          } else {
-            result = Object.freeze({
-              artifactId,
-              previewRunId,
-              status: 'waiting',
-              workspaceId,
-            });
-          }
-        } else if (outcome === 'finish' || outcome === 'completed') {
-          const finished = await query<{ completed: boolean }>(
-            client,
-            'select app.finish_preview_cleanup($1,$2,$3,$4) completed',
-            [workspaceId, previewRunId, sequence, hash],
-            signal,
-          );
-          result = Object.freeze({
-            previewRunId,
-            status:
-              finished.rows[0]?.completed === true ? 'completed' : 'blocked',
-            workspaceId,
-          });
-        } else {
-          result = Object.freeze({
-            previewRunId,
-            status: outcome,
-            workspaceId,
-          });
-        }
-        await query(client, 'commit', [], signal);
-        transactionComplete = true;
-        return result;
-      } catch (error: unknown) {
-        destroyClient = true;
-        if (!transactionComplete)
-          await client.query('rollback').catch(() => undefined);
-        throw error;
-      } finally {
-        client.release(destroyClient);
+            return finished.rows[0]?.completed === true;
+          },
+        );
+        return Object.freeze({
+          previewRunId,
+          status: finished ? ('completed' as const) : ('blocked' as const),
+          workspaceId,
+        });
       }
+      return Object.freeze({
+        previewRunId,
+        status: step.outcome,
+        workspaceId,
+      });
     },
   });
 }

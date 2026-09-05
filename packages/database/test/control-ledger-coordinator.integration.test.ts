@@ -244,7 +244,7 @@ describe('control ledger coordinator exact 0045 to 0047 integration', () => {
     await coordinator.close();
   });
 
-  it('keeps the row lock until external timeout rollback', async () => {
+  it('releases the row lock before waiting on the external ledger', async () => {
     if (maintenance === undefined)
       throw new Error('Maintenance pool unavailable');
     const ledger = new MemoryLedger();
@@ -281,7 +281,7 @@ describe('control ledger coordinator exact 0045 to 0047 integration', () => {
           acquired = true;
         });
       await new Promise((resolve) => setTimeout(resolve, 100));
-      expect(acquired).toBe(false);
+      expect(acquired).toBe(true);
       await expect(reconciling).rejects.toMatchObject({ name: 'TimeoutError' });
       await waiting;
       expect(acquired).toBe(true);

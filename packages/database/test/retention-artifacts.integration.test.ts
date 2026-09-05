@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   type ControlLedger,
   Pool,
+  adminUrl,
   createRunArtifactRetentionCoordinator,
   maintenanceUrl,
   migrationUrl,
@@ -85,8 +86,19 @@ describe('retention artifact reclamation', () => {
         }),
       ),
     } satisfies ControlLedger;
+    let releaseDelete: (() => void) | undefined;
+    const deleteStarted = Promise.withResolvers<undefined>();
     const artifacts = {
-      delete: vi.fn(() => Promise.resolve()),
+      delete: vi
+        .fn(() => Promise.resolve())
+        .mockImplementationOnce(() => Promise.resolve())
+        .mockImplementationOnce(
+          () =>
+            new Promise<void>((resolve) => {
+              releaseDelete = resolve;
+              deleteStarted.resolve(undefined);
+            }),
+        ),
       head: vi
         .fn()
         .mockResolvedValueOnce({ stillPresent: true })
@@ -139,6 +151,21 @@ describe('retention artifact reclamation', () => {
         await waitForPostgresLock(coordinatorApplication);
         expect(settled).toBe(false);
         await writer.query('rollback');
+        await deleteStarted.promise;
+        const monitor = new Pool({ connectionString: adminUrl, max: 1 });
+        try {
+          const transaction = await monitor.query<{ open: boolean }>(
+            `select exists (
+               select 1 from pg_stat_activity
+                where application_name=$1 and xact_start is not null
+             ) open`,
+            [coordinatorApplication],
+          );
+          expect(transaction.rows[0]).toEqual({ open: false });
+        } finally {
+          await monitor.end();
+          releaseDelete?.();
+        }
         await expect(following).resolves.toMatchObject({
           artifactId: followingArtifactId,
           status: 'completed',
@@ -169,6 +196,7 @@ describe('retention artifact reclamation', () => {
       });
       expect(artifacts.delete).toHaveBeenCalledTimes(3);
     } finally {
+      releaseDelete?.();
       await coordinator.close();
     }
 
