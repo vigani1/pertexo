@@ -348,7 +348,7 @@ export class ProblemDetailsFilter implements ExceptionFilter {
     const requestId = context.requestId;
     const instance = instanceFrom(request);
     const baseProblem = {
-      type: `urn:pertexo:problem:${normalized.code}`,
+      type: APPLICATION_ERROR_CATALOG[normalized.code].type,
       title: normalized.title,
       status: normalized.status,
       ...(normalized.detail === undefined ? {} : { detail: normalized.detail }),

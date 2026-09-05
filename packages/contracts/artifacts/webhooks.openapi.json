@@ -70,7 +70,7 @@
             "description": "Webhook trigger command completed"
           },
           "400": {
-            "description": "request.invalid",
+            "description": "Invalid request",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -79,10 +79,11 @@
               }
             },
             "x-pertexo-code": "request.invalid",
-            "x-pertexo-status": 400
+            "x-pertexo-status": 400,
+            "x-pertexo-type": "urn:pertexo:problem:request.invalid"
           },
           "401": {
-            "description": "auth.unauthenticated",
+            "description": "Authentication required",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -91,10 +92,11 @@
               }
             },
             "x-pertexo-code": "auth.unauthenticated",
-            "x-pertexo-status": 401
+            "x-pertexo-status": 401,
+            "x-pertexo-type": "urn:pertexo:problem:auth.unauthenticated"
           },
           "404": {
-            "description": "resource.not_found",
+            "description": "Resource not found",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -103,10 +105,11 @@
               }
             },
             "x-pertexo-code": "resource.not_found",
-            "x-pertexo-status": 404
+            "x-pertexo-status": 404,
+            "x-pertexo-type": "urn:pertexo:problem:resource.not_found"
           },
           "409": {
-            "description": "request.idempotency_conflict",
+            "description": "Idempotency conflict",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -115,7 +118,8 @@
               }
             },
             "x-pertexo-code": "request.idempotency_conflict",
-            "x-pertexo-status": 409
+            "x-pertexo-status": 409,
+            "x-pertexo-type": "urn:pertexo:problem:request.idempotency_conflict"
           }
         }
       }
@@ -156,7 +160,7 @@
             "description": "Webhook trigger command completed"
           },
           "400": {
-            "description": "request.invalid",
+            "description": "Invalid request",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -165,10 +169,11 @@
               }
             },
             "x-pertexo-code": "request.invalid",
-            "x-pertexo-status": 400
+            "x-pertexo-status": 400,
+            "x-pertexo-type": "urn:pertexo:problem:request.invalid"
           },
           "401": {
-            "description": "auth.unauthenticated",
+            "description": "Authentication required",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -177,10 +182,11 @@
               }
             },
             "x-pertexo-code": "auth.unauthenticated",
-            "x-pertexo-status": 401
+            "x-pertexo-status": 401,
+            "x-pertexo-type": "urn:pertexo:problem:auth.unauthenticated"
           },
           "404": {
-            "description": "resource.not_found",
+            "description": "Resource not found",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -189,10 +195,11 @@
               }
             },
             "x-pertexo-code": "resource.not_found",
-            "x-pertexo-status": 404
+            "x-pertexo-status": 404,
+            "x-pertexo-type": "urn:pertexo:problem:resource.not_found"
           },
           "409": {
-            "description": "request.idempotency_conflict",
+            "description": "Idempotency conflict",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -201,7 +208,8 @@
               }
             },
             "x-pertexo-code": "request.idempotency_conflict",
-            "x-pertexo-status": 409
+            "x-pertexo-status": 409,
+            "x-pertexo-type": "urn:pertexo:problem:request.idempotency_conflict"
           }
         }
       }
@@ -242,7 +250,7 @@
             "description": "Webhook trigger command completed"
           },
           "400": {
-            "description": "request.invalid",
+            "description": "Invalid request",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -251,10 +259,11 @@
               }
             },
             "x-pertexo-code": "request.invalid",
-            "x-pertexo-status": 400
+            "x-pertexo-status": 400,
+            "x-pertexo-type": "urn:pertexo:problem:request.invalid"
           },
           "401": {
-            "description": "auth.unauthenticated",
+            "description": "Authentication required",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -263,10 +272,11 @@
               }
             },
             "x-pertexo-code": "auth.unauthenticated",
-            "x-pertexo-status": 401
+            "x-pertexo-status": 401,
+            "x-pertexo-type": "urn:pertexo:problem:auth.unauthenticated"
           },
           "404": {
-            "description": "resource.not_found",
+            "description": "Resource not found",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -275,10 +285,11 @@
               }
             },
             "x-pertexo-code": "resource.not_found",
-            "x-pertexo-status": 404
+            "x-pertexo-status": 404,
+            "x-pertexo-type": "urn:pertexo:problem:resource.not_found"
           },
           "409": {
-            "description": "request.idempotency_conflict",
+            "description": "Idempotency conflict",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -287,7 +298,8 @@
               }
             },
             "x-pertexo-code": "request.idempotency_conflict",
-            "x-pertexo-status": 409
+            "x-pertexo-status": 409,
+            "x-pertexo-type": "urn:pertexo:problem:request.idempotency_conflict"
           }
         },
         "requestBody": {
@@ -338,7 +350,7 @@
             "description": "Workflow run accepted"
           },
           "400": {
-            "description": "webhook.invalid_json",
+            "description": "Invalid webhook JSON",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -347,10 +359,11 @@
               }
             },
             "x-pertexo-code": "webhook.invalid_json",
-            "x-pertexo-status": 400
+            "x-pertexo-status": 400,
+            "x-pertexo-type": "urn:pertexo:problem:webhook.invalid_json"
           },
           "401": {
-            "description": "webhook.authentication_failed",
+            "description": "Webhook authentication failed",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -359,10 +372,11 @@
               }
             },
             "x-pertexo-code": "webhook.authentication_failed",
-            "x-pertexo-status": 401
+            "x-pertexo-status": 401,
+            "x-pertexo-type": "urn:pertexo:problem:webhook.authentication_failed"
           },
           "409": {
-            "description": "webhook.idempotency_conflict",
+            "description": "Webhook idempotency conflict",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -371,10 +385,11 @@
               }
             },
             "x-pertexo-code": "webhook.idempotency_conflict",
-            "x-pertexo-status": 409
+            "x-pertexo-status": 409,
+            "x-pertexo-type": "urn:pertexo:problem:webhook.idempotency_conflict"
           },
           "413": {
-            "description": "webhook.payload_too_large",
+            "description": "Webhook payload too large",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -383,10 +398,11 @@
               }
             },
             "x-pertexo-code": "webhook.payload_too_large",
-            "x-pertexo-status": 413
+            "x-pertexo-status": 413,
+            "x-pertexo-type": "urn:pertexo:problem:webhook.payload_too_large"
           },
           "415": {
-            "description": "webhook.unsupported_media_type",
+            "description": "Unsupported webhook media type",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -395,10 +411,11 @@
               }
             },
             "x-pertexo-code": "webhook.unsupported_media_type",
-            "x-pertexo-status": 415
+            "x-pertexo-status": 415,
+            "x-pertexo-type": "urn:pertexo:problem:webhook.unsupported_media_type"
           },
           "429": {
-            "description": "webhook.rate_limited",
+            "description": "Webhook rate limit reached",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -407,7 +424,8 @@
               }
             },
             "x-pertexo-code": "webhook.rate_limited",
-            "x-pertexo-status": 429
+            "x-pertexo-status": 429,
+            "x-pertexo-type": "urn:pertexo:problem:webhook.rate_limited"
           }
         }
       }

@@ -1,5 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
 
+import { API_PROBLEM_MANIFEST } from '@pertexo/contracts/errors';
+import type { ApiProblemCode } from '@pertexo/contracts/errors';
+
 import {
   WebhookDeliveryIneligibleError,
   WebhookDeliveryReplayMismatchError,
@@ -398,20 +401,17 @@ function record(operation: () => void): void {
 async function problem(
   reply: FastifyReply,
   status: number,
-  code: string,
+  code: ApiProblemCode,
   requestId: string,
 ): Promise<void> {
-  await reply
-    .code(status)
-    .type('application/problem+json')
-    .send({
-      type: `urn:pertexo:problem:${code}`,
-      title:
-        status === 401
-          ? 'Webhook authentication failed'
-          : 'Webhook request rejected',
-      status,
-      code,
-      requestId,
-    });
+  const definition = API_PROBLEM_MANIFEST[code];
+  if (definition.status !== status)
+    throw new Error('Webhook problem status does not match its manifest');
+  await reply.code(definition.status).type('application/problem+json').send({
+    type: definition.type,
+    title: definition.title,
+    status: definition.status,
+    code,
+    requestId,
+  });
 }

@@ -15,6 +15,8 @@ import {
   httpHeadersCredentialSchema,
 } from '../src/http/connections.js';
 import {
+  API_PROBLEM_CODES,
+  API_PROBLEM_MANIFEST,
   apiProblemSchema,
   apiProblemShape,
 } from '../src/errors/api-problem.js';
@@ -83,6 +85,19 @@ function resolvesLocalReference(document: unknown, reference: string): boolean {
 }
 
 describe('public contracts package', () => {
+  it('maps every problem code exactly once to stable HTTP metadata', () => {
+    expect(Object.keys(API_PROBLEM_MANIFEST)).toEqual(API_PROBLEM_CODES);
+    for (const code of API_PROBLEM_CODES) {
+      const entry = API_PROBLEM_MANIFEST[code];
+      expect(entry.status).toBeGreaterThanOrEqual(400);
+      expect(entry.status).toBeLessThan(600);
+      expect(entry.title.length).toBeGreaterThan(0);
+      expect(entry.type).toBe(`urn:pertexo:problem:${code}`);
+      expect(Object.isFrozen(entry)).toBe(true);
+    }
+    expect(Object.isFrozen(API_PROBLEM_MANIFEST)).toBe(true);
+  });
+
   it('separates pure validation from acknowledged durable test execution', () => {
     expect(
       nodeTestRequestSchema.parse({

@@ -32,7 +32,7 @@
             "description": "Published schedule trigger health"
           },
           "401": {
-            "description": "auth.unauthenticated",
+            "description": "Authentication required",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -41,10 +41,11 @@
               }
             },
             "x-pertexo-code": "auth.unauthenticated",
-            "x-pertexo-status": 401
+            "x-pertexo-status": 401,
+            "x-pertexo-type": "urn:pertexo:problem:auth.unauthenticated"
           },
           "404": {
-            "description": "resource.not_found",
+            "description": "Resource not found",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -53,7 +54,8 @@
               }
             },
             "x-pertexo-code": "resource.not_found",
-            "x-pertexo-status": 404
+            "x-pertexo-status": 404,
+            "x-pertexo-type": "urn:pertexo:problem:resource.not_found"
           }
         }
       }
@@ -105,7 +107,7 @@
             "description": "Schedule trigger command completed"
           },
           "400": {
-            "description": "request.invalid",
+            "description": "Invalid request",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -114,10 +116,11 @@
               }
             },
             "x-pertexo-code": "request.invalid",
-            "x-pertexo-status": 400
+            "x-pertexo-status": 400,
+            "x-pertexo-type": "urn:pertexo:problem:request.invalid"
           },
           "401": {
-            "description": "auth.unauthenticated",
+            "description": "Authentication required",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -126,10 +129,11 @@
               }
             },
             "x-pertexo-code": "auth.unauthenticated",
-            "x-pertexo-status": 401
+            "x-pertexo-status": 401,
+            "x-pertexo-type": "urn:pertexo:problem:auth.unauthenticated"
           },
           "404": {
-            "description": "resource.not_found",
+            "description": "Resource not found",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -138,10 +142,11 @@
               }
             },
             "x-pertexo-code": "resource.not_found",
-            "x-pertexo-status": 404
+            "x-pertexo-status": 404,
+            "x-pertexo-type": "urn:pertexo:problem:resource.not_found"
           },
           "409": {
-            "description": "request.idempotency_conflict",
+            "description": "Idempotency conflict",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -150,10 +155,11 @@
               }
             },
             "x-pertexo-code": "request.idempotency_conflict",
-            "x-pertexo-status": 409
+            "x-pertexo-status": 409,
+            "x-pertexo-type": "urn:pertexo:problem:request.idempotency_conflict"
           },
           "428": {
-            "description": "request.precondition_required",
+            "description": "Precondition required",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -162,7 +168,8 @@
               }
             },
             "x-pertexo-code": "request.precondition_required",
-            "x-pertexo-status": 428
+            "x-pertexo-status": 428,
+            "x-pertexo-type": "urn:pertexo:problem:request.precondition_required"
           }
         }
       }
@@ -214,7 +221,7 @@
             "description": "Schedule trigger command completed"
           },
           "400": {
-            "description": "request.invalid",
+            "description": "Invalid request",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -223,10 +230,11 @@
               }
             },
             "x-pertexo-code": "request.invalid",
-            "x-pertexo-status": 400
+            "x-pertexo-status": 400,
+            "x-pertexo-type": "urn:pertexo:problem:request.invalid"
           },
           "401": {
-            "description": "auth.unauthenticated",
+            "description": "Authentication required",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -235,10 +243,11 @@
               }
             },
             "x-pertexo-code": "auth.unauthenticated",
-            "x-pertexo-status": 401
+            "x-pertexo-status": 401,
+            "x-pertexo-type": "urn:pertexo:problem:auth.unauthenticated"
           },
           "404": {
-            "description": "resource.not_found",
+            "description": "Resource not found",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -247,10 +256,11 @@
               }
             },
             "x-pertexo-code": "resource.not_found",
-            "x-pertexo-status": 404
+            "x-pertexo-status": 404,
+            "x-pertexo-type": "urn:pertexo:problem:resource.not_found"
           },
           "409": {
-            "description": "request.idempotency_conflict",
+            "description": "Idempotency conflict",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -259,10 +269,11 @@
               }
             },
             "x-pertexo-code": "request.idempotency_conflict",
-            "x-pertexo-status": 409
+            "x-pertexo-status": 409,
+            "x-pertexo-type": "urn:pertexo:problem:request.idempotency_conflict"
           },
           "428": {
-            "description": "request.precondition_required",
+            "description": "Precondition required",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -271,7 +282,8 @@
               }
             },
             "x-pertexo-code": "request.precondition_required",
-            "x-pertexo-status": 428
+            "x-pertexo-status": 428,
+            "x-pertexo-type": "urn:pertexo:problem:request.precondition_required"
           }
         }
       }
