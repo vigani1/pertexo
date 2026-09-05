@@ -44,6 +44,8 @@ const pg = vi.hoisted(() => {
       this.queries.push(query);
       if (values !== undefined) this.queryValues.push(values);
       const error = FakePool.queryErrors.shift();
+      // Exercise bounded telemetry for hostile non-Error adapter rejections.
+      // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
       if (error !== undefined) return Promise.reject(error);
       if (Array.isArray(values?.[0]) && (values[0] as unknown[]).length === 0)
         return Promise.resolve({ rows: [] });
