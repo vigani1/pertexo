@@ -33,18 +33,22 @@ async function persistPendingFailureDecisions(
       invocation,
     ]),
   );
+  const decisionEvents = new Map(
+    plan.events.flatMap((event) =>
+      event.invocationKey !== undefined &&
+      [
+        'node.retry_scheduled',
+        'node.failed',
+        'node.canceled',
+        'node.timed_out',
+        'node.outcome_unknown',
+      ].includes(event.name)
+        ? [[event.invocationKey, event] as const]
+        : [],
+    ),
+  );
   for (const failure of pendingFailures) {
-    const event = plan.events.find(
-      (candidate) =>
-        candidate.invocationKey === failure.invocation_key &&
-        [
-          'node.retry_scheduled',
-          'node.failed',
-          'node.canceled',
-          'node.timed_out',
-          'node.outcome_unknown',
-        ].includes(candidate.name),
-    );
+    const event = decisionEvents.get(failure.invocation_key);
     if (event === undefined || !invocations.has(failure.invocation_key))
       throw new CoordinatorPlanInvalidError();
     const decision =
@@ -103,13 +107,14 @@ async function persistNodeAdmissions(
       invocation,
     ]),
   );
+  const attempts = new Map(
+    plan.attempts.map((attempt) => [attempt.invocationKey, attempt]),
+  );
   const physical: ExecutionIdentityMap = new Map();
   for (const admission of plan.nodeRunAdmissions) {
     const invocation = invocations.get(admission.invocationKey);
     if (invocation === undefined) throw new CoordinatorPlanInvalidError();
-    const attempt = plan.attempts.find(
-      ({ invocationKey }) => invocationKey === admission.invocationKey,
-    );
+    const attempt = attempts.get(admission.invocationKey);
     const nodeRunId = generatePersistedId();
     const attemptId = attempt === undefined ? undefined : generatePersistedId();
     await client.query(
@@ -322,6 +327,9 @@ async function persistRunEvents(
   }>,
 ): Promise<void> {
   const { pendingFailures, physical, plan, runId, workspaceId } = input;
+  const pendingFailureInvocations = new Set(
+    pendingFailures.map(({ invocation_key: invocationKey }) => invocationKey),
+  );
   for (const event of plan.events) {
     const ids =
       event.invocationKey === undefined
@@ -363,9 +371,7 @@ async function persistRunEvents(
     if (
       terminalNodeStatus !== undefined &&
       event.invocationKey !== undefined &&
-      !pendingFailures.some(
-        (failure) => failure.invocation_key === event.invocationKey,
-      )
+      !pendingFailureInvocations.has(event.invocationKey)
     ) {
       const updatedNode = await client.query(
         `update app.node_runs
