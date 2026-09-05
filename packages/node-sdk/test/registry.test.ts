@@ -275,6 +275,35 @@ describe('node-sdk registry release contracts', () => {
     );
   });
 
+  it.each([
+    '',
+    'x',
+    'x'.repeat(55),
+    'x'.repeat(56),
+    'x'.repeat(63),
+    'x'.repeat(64),
+    'x'.repeat(65),
+    'workflow-✓-🚀',
+    'x'.repeat(4_097),
+  ])('matches Node SHA-256 across UTF-8 and padding boundaries %#', (text) => {
+    const candidate = createRegistryRelease({
+      definitions: [
+        {
+          ...manifest,
+          configSchema: { ...manifest.configSchema, description: text },
+        },
+      ],
+      epoch: 1,
+      executors: release().executors,
+      policies: [policy],
+    });
+    expect(candidate.fingerprint).toBe(
+      `node-compat:v1:sha256:${createHash('sha256')
+        .update(canonicalCompatibilityReleaseJson(candidate))
+        .digest('hex')}`,
+    );
+  });
+
   it('changes the full fingerprint for lifecycle and binding changes', () => {
     const one = release();
     const deprecated = createRegistryRelease({
@@ -446,23 +475,46 @@ describe('node-sdk exact server registry', () => {
   });
 
   it('normalizes hostile reflection failures and rejects invalid custom limits', () => {
-    const hostile = new Proxy(
-      {},
-      {
-        ownKeys: () => {
-          throw new Error('trap text must not escape');
+    const hostileValues = [
+      new Proxy(
+        {},
+        {
+          getPrototypeOf: () => {
+            throw new Error('prototype trap must not escape');
+          },
         },
-      },
-    );
-    expect(boundedNodeJsonSchema.safeParse(hostile).success).toBe(false);
-    expect(() => canonicalizeBoundedJson(hostile)).toThrow(
-      InvalidBoundedJsonError,
-    );
+      ),
+      new Proxy(
+        {},
+        {
+          ownKeys: () => {
+            throw new Error('ownKeys trap must not escape');
+          },
+        },
+      ),
+      new Proxy(
+        { value: true },
+        {
+          getOwnPropertyDescriptor: () => {
+            throw new Error('descriptor trap must not escape');
+          },
+        },
+      ),
+    ];
+    for (const hostile of hostileValues) {
+      expect(boundedNodeJsonSchema.safeParse(hostile).success).toBe(false);
+      expect(() => canonicalizeBoundedJson(hostile)).toThrow(
+        InvalidBoundedJsonError,
+      );
+    }
 
     for (const invalid of [0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
-      expect(() =>
-        canonicalizeBoundedJson({}, { bytes: invalid, depth: 1, members: 1 }),
-      ).toThrow(InvalidBoundedJsonError);
+      for (const field of ['bytes', 'depth', 'members'] as const) {
+        const limits = { bytes: 1, depth: 1, members: 1, [field]: invalid };
+        expect(() => canonicalizeBoundedJson({}, limits)).toThrow(
+          InvalidBoundedJsonError,
+        );
+      }
     }
   });
 
@@ -693,13 +745,14 @@ describe('node-sdk exact server registry', () => {
         }),
     );
     const concurrent = registryFor(async (invocation) => {
-      const attempts = await Promise.allSettled([
-        invocation.runtime?.beforeDispatch(),
-        invocation.runtime?.beforeDispatch(),
-      ]);
+      const attempts = await Promise.allSettled(
+        Array.from({ length: 8 }, () =>
+          Promise.resolve(invocation.runtime?.beforeDispatch()),
+        ),
+      );
       expect(
         attempts.filter(({ status }) => status === 'rejected'),
-      ).toHaveLength(1);
+      ).toHaveLength(7);
       return {};
     }).execute({
       ...request,
@@ -710,6 +763,47 @@ describe('node-sdk exact server registry', () => {
     });
     releaseMarker?.();
     await expect(concurrent).resolves.toMatchObject({ output: {} });
+
+    const rejectedMarker = vi.fn(() =>
+      Promise.reject(new Error('durable marker rejected')),
+    );
+    await expect(
+      registryFor(async (invocation) => {
+        await expect(invocation.runtime?.beforeDispatch()).rejects.toThrow(
+          'durable marker rejected',
+        );
+        await expect(
+          invocation.runtime?.beforeDispatch(),
+        ).rejects.toMatchObject({ code: 'duplicate_dispatch' });
+        return {};
+      }).execute({
+        ...request,
+        runtime: { ...runtime, beforeDispatch: rejectedMarker },
+      }),
+    ).rejects.toMatchObject({ code: 'dispatch_evidence_missing' });
+    expect(rejectedMarker).toHaveBeenCalledOnce();
+
+    let resolveInFlight: (() => void) | undefined;
+    const inFlightMarker = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveInFlight = resolve;
+        }),
+    );
+    const executorFailure = registryFor((invocation) => {
+      void invocation.runtime?.beforeDispatch();
+      return Promise.reject(new Error('executor rejected while marking'));
+    }).execute({
+      ...request,
+      runtime: { ...runtime, beforeDispatch: inFlightMarker },
+    });
+    await vi.waitFor(() => {
+      expect(inFlightMarker).toHaveBeenCalledOnce();
+    });
+    await expect(executorFailure).rejects.toThrow(
+      'executor rejected while marking',
+    );
+    resolveInFlight?.();
   });
 
   it('rejects executor ABIs whose dispatch contract is unknown', () => {
