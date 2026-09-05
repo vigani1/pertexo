@@ -27,7 +27,7 @@ export interface DatabasePoolDiagnostics {
   record(event: DatabasePoolDiagnosticEvent): void;
 }
 
-export type DatabasePoolDiagnosticEvent = Readonly<{
+type DatabasePoolDiagnosticEvent = Readonly<{
   operation: 'idle_pool_error' | 'lock_wait_sample';
   poolRole: DatabasePoolRole;
   errorType: string;
