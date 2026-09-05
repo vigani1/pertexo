@@ -7,7 +7,7 @@ import {
   NodeHttpTransport,
   SECURE_HTTP_ERROR_CODE,
   SecureHttpClient,
-  type SecureHttpError,
+  SecureHttpError,
   type SecureHttpFailureObservation,
   type SecureHttpRequest,
   type SecureHttpResolver,
@@ -179,6 +179,34 @@ describe('secure HTTP client', () => {
     expect(JSON.stringify(observations)).not.toContain('secret-token');
     expect(JSON.stringify(observations)).not.toContain('192.0.2.9');
     expect(observations[0]?.durationSeconds).toBeGreaterThanOrEqual(0);
+  });
+
+  it.each([
+    [SECURE_HTTP_ERROR_CODE.invalidRequest, 'admission'],
+    [SECURE_HTTP_ERROR_CODE.ssrfBlocked, 'admission'],
+    [SECURE_HTTP_ERROR_CODE.canceled, 'cancellation'],
+    [SECURE_HTTP_ERROR_CODE.timedOut, 'cancellation'],
+    [SECURE_HTTP_ERROR_CODE.dnsFailed, 'dns'],
+    [SECURE_HTTP_ERROR_CODE.connectionFenceFailed, 'pre_dispatch'],
+    [SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch, 'pre_dispatch'],
+    [SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed, 'pre_dispatch'],
+    [SECURE_HTTP_ERROR_CODE.redirectRejected, 'redirect'],
+    [SECURE_HTTP_ERROR_CODE.responseEncodingRejected, 'response'],
+    [SECURE_HTTP_ERROR_CODE.responseTooLarge, 'response'],
+    [SECURE_HTTP_ERROR_CODE.networkFailed, 'transport'],
+  ] as const)('maps diagnostic reason %s to stage %s', async (code, stage) => {
+    const observations: SecureHttpFailureObservation[] = [];
+    const injected = new SecureHttpError(code, 'definite_failure', false);
+    const client = new SecureHttpClient(
+      { resolve: () => Promise.reject(injected) },
+      new FakeTransport(() => Promise.reject(new Error('must not dispatch'))),
+      { observeFailure: (observation) => observations.push(observation) },
+    );
+
+    await expect(client.execute(request())).rejects.toBe(injected);
+    expect(observations).toEqual([
+      expect.objectContaining({ reason: code, stage }),
+    ]);
   });
 
   it('commits dispatch evidence before one pinned request and redacts bounded output', async () => {
