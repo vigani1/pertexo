@@ -30,6 +30,9 @@ import type {
 } from './workflow-authoring.js';
 import { workflowVersionRowSelection } from './workflow-authoring-rows.js';
 import { workflowTriggerProjection } from '../triggers/workflow-trigger-projection.js';
+import { reconcileWorkflowTriggersPayload } from './workflow-trigger-reconciliation.js';
+
+export { reconcileWorkflowTriggersPayload } from './workflow-trigger-reconciliation.js';
 
 const uuidSchema = z.uuid();
 const digestSchema = sha256HexSchema;
@@ -37,11 +40,6 @@ const checksumSchema = z.string().regex(/^wf:v[12]:sha256:[0-9a-f]{64}$/u);
 const workflowDraftTagSchema = z
   .string()
   .regex(/^"draft-v1\.[A-Za-z0-9_-]{43}"$/u);
-const traceparentSchema = z
-  .string()
-  .regex(/^00-[\da-f]{32}-[\da-f]{16}-[\da-f]{2}$/u)
-  .refine((value) => value.slice(3, 35) !== '0'.repeat(32))
-  .refine((value) => value.slice(36, 52) !== '0'.repeat(16));
 const providerKeySchema = z
   .string()
   .min(1)
@@ -353,27 +351,6 @@ async function persistPublicationProjections(
     );
   }
   await hooks?.afterPublishStep?.('trigger_projection');
-}
-
-export function reconcileWorkflowTriggersPayload(
-  input: Readonly<{
-    outboxEventId: string;
-    publishedVersionId: string;
-    traceparent?: string;
-    workflowId: string;
-    workspaceId: string;
-  }>,
-): Record<string, unknown> {
-  return Object.freeze({
-    schemaVersion: 1,
-    workspaceId: uuidSchema.parse(input.workspaceId),
-    outboxEventId: uuidSchema.parse(input.outboxEventId),
-    workflowId: uuidSchema.parse(input.workflowId),
-    publishedVersionId: uuidSchema.parse(input.publishedVersionId),
-    ...(input.traceparent === undefined
-      ? {}
-      : { traceparent: traceparentSchema.parse(input.traceparent) }),
-  });
 }
 
 async function finalizePublication(
