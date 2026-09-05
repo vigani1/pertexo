@@ -54,6 +54,14 @@ export const CORE_MERGE_EXECUTOR_V2 = Object.freeze({
   key: 'core.merge',
   version: 2,
 });
+export const CORE_MERGE_DEFINITION_V3 = Object.freeze({
+  key: 'core.merge',
+  version: 3,
+});
+export const CORE_MERGE_EXECUTOR_V3 = Object.freeze({
+  key: 'core.merge',
+  version: 3,
+});
 export const CORE_MERGE_MANIFEST_V2: NodeManifestV2 = Object.freeze({
   ...CORE_MERGE_MANIFEST,
   schemaVersion: 2,
@@ -62,5 +70,23 @@ export const CORE_MERGE_MANIFEST_V2: NodeManifestV2 = Object.freeze({
   inputSchema: generateSchemaDocument(CORE_MERGE_INPUT_SCHEMA_V2),
   outputSchema: generateSchemaDocument(CORE_MERGE_OUTPUT_SCHEMA_V2),
   executor: CORE_MERGE_EXECUTOR_V2,
+  executorAbi: 1,
+});
+
+export const CORE_MERGE_MANIFEST_V3: NodeManifestV2 = Object.freeze({
+  ...CORE_MERGE_MANIFEST_V2,
+  definition: CORE_MERGE_DEFINITION_V3,
+  configVersion: 3,
+  inputSchema: generateSchemaDocument(CORE_MERGE_INPUT_SCHEMA_V2, {
+    runtimeOnlySemantics: [
+      'The ledger is non-empty, selected branch IDs are unique and canonically ordered, and every selected branch is an arrived ledger member.',
+    ],
+  }),
+  outputSchema: generateSchemaDocument(CORE_MERGE_OUTPUT_SCHEMA_V2, {
+    runtimeOnlySemantics: [
+      'The ledger is non-empty, selected branch IDs are unique and canonically ordered, and every selected branch is an arrived ledger member.',
+    ],
+  }),
+  executor: CORE_MERGE_EXECUTOR_V3,
   executorAbi: 1,
 });

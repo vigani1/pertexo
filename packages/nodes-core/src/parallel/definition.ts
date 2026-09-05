@@ -53,6 +53,14 @@ export const CORE_PARALLEL_EXECUTOR_V2 = Object.freeze({
   key: 'core.parallel',
   version: 2,
 });
+export const CORE_PARALLEL_DEFINITION_V3 = Object.freeze({
+  key: 'core.parallel',
+  version: 3,
+});
+export const CORE_PARALLEL_EXECUTOR_V3 = Object.freeze({
+  key: 'core.parallel',
+  version: 3,
+});
 export const CORE_PARALLEL_MANIFEST_V2: NodeManifestV2 = Object.freeze({
   ...CORE_PARALLEL_MANIFEST,
   schemaVersion: 2,
@@ -60,5 +68,21 @@ export const CORE_PARALLEL_MANIFEST_V2: NodeManifestV2 = Object.freeze({
   configVersion: 2,
   outputSchema: generateSchemaDocument(CORE_PARALLEL_OUTPUT_SCHEMA_V2),
   executor: CORE_PARALLEL_EXECUTOR_V2,
+  executorAbi: 1,
+});
+
+export const CORE_PARALLEL_MANIFEST_V3: NodeManifestV2 = Object.freeze({
+  ...CORE_PARALLEL_MANIFEST_V2,
+  definition: CORE_PARALLEL_DEFINITION_V3,
+  configVersion: 3,
+  configSchema: generateSchemaDocument(CORE_PARALLEL_CONFIG_SCHEMA, {
+    runtimeOnlySemantics: [
+      'Parallel branch IDs must be unique and maxConcurrency must not exceed the declared branch count.',
+    ],
+  }),
+  outputSchema: generateSchemaDocument(CORE_PARALLEL_OUTPUT_SCHEMA_V2, {
+    runtimeOnlySemantics: ['Parallel output branch IDs must be unique.'],
+  }),
+  executor: CORE_PARALLEL_EXECUTOR_V3,
   executorAbi: 1,
 });

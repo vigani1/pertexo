@@ -23,6 +23,7 @@ import {
   CORE_MERGE_INPUT_SCHEMA,
   CORE_MERGE_MANIFEST,
   CORE_MERGE_MANIFEST_V2,
+  CORE_MERGE_MANIFEST_V3,
   CORE_MERGE_OUTPUT_SCHEMA,
   CORE_MERGE_OUTPUT_SCHEMA_V2,
   CORE_MERGE_INPUT_SCHEMA_V2,
@@ -32,6 +33,7 @@ import {
   CORE_PARALLEL_INPUT_SCHEMA,
   CORE_PARALLEL_MANIFEST,
   CORE_PARALLEL_MANIFEST_V2,
+  CORE_PARALLEL_MANIFEST_V3,
   CORE_PARALLEL_OUTPUT_SCHEMA,
   CORE_PARALLEL_OUTPUT_SCHEMA_V2,
 } from './parallel/index.js';
@@ -40,6 +42,7 @@ import {
   CORE_SCHEDULE_INPUT_SCHEMA,
   CORE_SCHEDULE_MANIFEST,
   CORE_SCHEDULE_MANIFEST_V2,
+  CORE_SCHEDULE_MANIFEST_V3,
   CORE_SCHEDULE_OUTPUT_SCHEMA,
   CORE_SCHEDULE_CONFIG_SCHEMA_V2,
   CORE_SCHEDULE_INPUT_SCHEMA_V2,
@@ -91,6 +94,12 @@ export const CORE_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistra
       outputSchema: CORE_SCHEDULE_OUTPUT_SCHEMA_V2,
     }),
     Object.freeze({
+      manifest: CORE_SCHEDULE_MANIFEST_V3,
+      configSchema: CORE_SCHEDULE_CONFIG_SCHEMA_V2,
+      inputSchema: CORE_SCHEDULE_INPUT_SCHEMA_V2,
+      outputSchema: CORE_SCHEDULE_OUTPUT_SCHEMA_V2,
+    }),
+    Object.freeze({
       manifest: CORE_WEBHOOK_MANIFEST,
       configSchema: CORE_WEBHOOK_CONFIG_SCHEMA,
       inputSchema: CORE_WEBHOOK_INPUT_SCHEMA,
@@ -121,6 +130,12 @@ export const CORE_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistra
       outputSchema: CORE_MERGE_OUTPUT_SCHEMA_V2,
     }),
     Object.freeze({
+      manifest: CORE_MERGE_MANIFEST_V3,
+      configSchema: CORE_MERGE_CONFIG_SCHEMA,
+      inputSchema: CORE_MERGE_INPUT_SCHEMA_V2,
+      outputSchema: CORE_MERGE_OUTPUT_SCHEMA_V2,
+    }),
+    Object.freeze({
       manifest: CORE_PARALLEL_MANIFEST,
       configSchema: CORE_PARALLEL_CONFIG_SCHEMA,
       inputSchema: CORE_PARALLEL_INPUT_SCHEMA,
@@ -128,6 +143,12 @@ export const CORE_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistra
     }),
     Object.freeze({
       manifest: CORE_PARALLEL_MANIFEST_V2,
+      configSchema: CORE_PARALLEL_CONFIG_SCHEMA,
+      inputSchema: CORE_PARALLEL_INPUT_SCHEMA,
+      outputSchema: CORE_PARALLEL_OUTPUT_SCHEMA_V2,
+    }),
+    Object.freeze({
+      manifest: CORE_PARALLEL_MANIFEST_V3,
       configSchema: CORE_PARALLEL_CONFIG_SCHEMA,
       inputSchema: CORE_PARALLEL_INPUT_SCHEMA,
       outputSchema: CORE_PARALLEL_OUTPUT_SCHEMA_V2,

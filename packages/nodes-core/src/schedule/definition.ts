@@ -53,6 +53,14 @@ export const CORE_SCHEDULE_EXECUTOR_V2 = Object.freeze({
   key: 'core.schedule',
   version: 2,
 });
+export const CORE_SCHEDULE_DEFINITION_V3 = Object.freeze({
+  key: 'core.schedule',
+  version: 3,
+});
+export const CORE_SCHEDULE_EXECUTOR_V3 = Object.freeze({
+  key: 'core.schedule',
+  version: 3,
+});
 export const CORE_SCHEDULE_MANIFEST_V2: NodeManifestV2 = Object.freeze({
   ...CORE_SCHEDULE_MANIFEST,
   schemaVersion: 2,
@@ -62,5 +70,18 @@ export const CORE_SCHEDULE_MANIFEST_V2: NodeManifestV2 = Object.freeze({
   inputSchema: generateSchemaDocument(CORE_SCHEDULE_INPUT_SCHEMA_V2),
   outputSchema: generateSchemaDocument(CORE_SCHEDULE_OUTPUT_SCHEMA_V2),
   executor: CORE_SCHEDULE_EXECUTOR_V2,
+  executorAbi: 1,
+});
+
+export const CORE_SCHEDULE_MANIFEST_V3: NodeManifestV2 = Object.freeze({
+  ...CORE_SCHEDULE_MANIFEST_V2,
+  definition: CORE_SCHEDULE_DEFINITION_V3,
+  configVersion: 3,
+  configSchema: generateSchemaDocument(CORE_SCHEDULE_CONFIG_SCHEMA_V2, {
+    runtimeOnlySemantics: [
+      'Cron expressions use exactly five trimmed fields, reject unsupported H, ?, #, and L tokens, and must parse under the selected canonical non-fixed-offset IANA timezone.',
+    ],
+  }),
+  executor: CORE_SCHEDULE_EXECUTOR_V3,
   executorAbi: 1,
 });

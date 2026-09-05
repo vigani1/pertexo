@@ -7,8 +7,10 @@ import { CORE_BOUNDED_JSON_POLICY } from '../policies.js';
 import {
   CORE_PARALLEL_DEFINITION,
   CORE_PARALLEL_DEFINITION_V2,
+  CORE_PARALLEL_DEFINITION_V3,
   CORE_PARALLEL_EXECUTOR,
   CORE_PARALLEL_EXECUTOR_V2,
+  CORE_PARALLEL_EXECUTOR_V3,
 } from './definition.js';
 import type { CoreParallelConfig } from './validation.js';
 
@@ -30,4 +32,10 @@ export const coreParallelExecutorV2: NodeExecutorRegistration = Object.freeze({
   ...coreParallelExecutor,
   definitions: Object.freeze([CORE_PARALLEL_DEFINITION_V2]),
   executor: CORE_PARALLEL_EXECUTOR_V2,
+});
+
+export const coreParallelExecutorV3: NodeExecutorRegistration = Object.freeze({
+  ...coreParallelExecutor,
+  definitions: Object.freeze([CORE_PARALLEL_DEFINITION_V3]),
+  executor: CORE_PARALLEL_EXECUTOR_V3,
 });

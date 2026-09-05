@@ -2,6 +2,7 @@ import {
   createRegistryRelease,
   type ExecutorLifecycle,
   type NodeManifest,
+  type NodeManifestV2,
   type PolicyReference,
   type RegistryRelease,
 } from '@pertexo/node-sdk';
@@ -54,6 +55,7 @@ export {
 export type {
   ExecutorLifecycle,
   NodeManifest,
+  NodeManifestV2,
   PolicyReference,
   RegistryRelease,
 };
@@ -76,10 +78,11 @@ export function manifest(
     | 'core.webhook'
     | 'test.unrelated',
   policies: readonly PolicyReference[] = [boundedPolicy],
-): NodeManifest {
+  version: 1 | 2 | 3 = 1,
+): NodeManifest | NodeManifestV2 {
   return {
-    schemaVersion: 1,
-    definition: { key, version: 1 },
+    schemaVersion: version === 1 ? 1 : 2,
+    definition: { key, version },
     family:
       key === 'core.manual' || key === 'core.schedule' || key === 'core.webhook'
         ? 'trigger'
@@ -92,7 +95,7 @@ export function manifest(
               key === 'core.merge'
             ? 'logic'
             : 'transform',
-    configVersion: 1,
+    configVersion: version,
     configSchema: schema,
     inputSchema: schema,
     outputSchema: schema,
@@ -174,7 +177,7 @@ export function manifest(
     resourceClass: 'cpu',
     capabilities: key === 'core.terminate' ? ['terminates_run'] : [],
     lifecycle: 'active',
-    executor: { key, version: 1 },
+    executor: { key, version },
     executorAbi: 1,
     policyReferences: policies,
   };
@@ -194,8 +197,10 @@ export function nodeRelease(input?: {
   readonly merge?: boolean;
   readonly forEach?: boolean;
   readonly schedule?: boolean;
+  readonly scheduleVersion?: 1 | 2 | 3;
   readonly webhook?: boolean;
   readonly extraPolicyVersion?: number;
+  readonly structuredVersion?: 1 | 2 | 3;
 }): RegistryRelease {
   const definitions = [
     manifest('core.manual'),
@@ -204,12 +209,18 @@ export function nodeRelease(input?: {
       input?.mutateSet ? [jsonataPolicy] : [boundedPolicy, jsonataPolicy],
     ),
     manifest('core.terminate'),
-    ...(input?.schedule ? [manifest('core.schedule')] : []),
+    ...(input?.schedule
+      ? [manifest('core.schedule', [boundedPolicy], input.scheduleVersion)]
+      : []),
     ...(input?.webhook ? [manifest('core.webhook')] : []),
     ...(input?.condition ? [manifest('core.condition')] : []),
     ...(input?.switch ? [manifest('core.switch')] : []),
-    ...(input?.parallel ? [manifest('core.parallel')] : []),
-    ...(input?.merge ? [manifest('core.merge')] : []),
+    ...(input?.parallel
+      ? [manifest('core.parallel', [boundedPolicy], input.structuredVersion)]
+      : []),
+    ...(input?.merge
+      ? [manifest('core.merge', [boundedPolicy], input.structuredVersion)]
+      : []),
     ...(input?.forEach ? [manifest('core.foreach')] : []),
     ...(input?.unrelated ? [manifest('test.unrelated')] : []),
   ];
@@ -332,7 +343,10 @@ export function switchGraph(sourcePort: string) {
   };
 }
 
-export function parallelGraph(secondPort = 'branch-02') {
+export function parallelGraph(
+  secondPort = 'branch-02',
+  version: 1 | 2 | 3 = 1,
+) {
   const base = graph();
   return {
     ...base,
@@ -341,7 +355,8 @@ export function parallelGraph(secondPort = 'branch-02') {
       {
         ...base.nodes[1],
         id: 'parallel',
-        definition: { key: 'core.parallel', version: 1 },
+        definition: { key: 'core.parallel', version },
+        configVersion: version,
         config: {
           branches: [{ id: 'branch-02' }, { id: 'branch-01' }],
           maxConcurrency: 1,
@@ -381,7 +396,7 @@ export function parallelGraph(secondPort = 'branch-02') {
   };
 }
 
-export function pairedParallelGraph() {
+export function pairedParallelGraph(version: 1 | 2 | 3 = 1) {
   const base = graph();
   return {
     ...base,
@@ -390,7 +405,8 @@ export function pairedParallelGraph() {
       {
         ...base.nodes[1],
         id: 'parallel',
-        definition: { key: 'core.parallel', version: 1 },
+        definition: { key: 'core.parallel', version },
+        configVersion: version,
         config: {
           branches: [{ id: 'branch-02' }, { id: 'branch-01' }],
           maxConcurrency: 1,
@@ -402,7 +418,8 @@ export function pairedParallelGraph() {
       {
         ...base.nodes[1],
         id: 'merge',
-        definition: { key: 'core.merge', version: 1 },
+        definition: { key: 'core.merge', version },
+        configVersion: version,
         config: { parallelNodeId: 'parallel', policy: { kind: 'all' } },
         inputMappings: {},
       },
@@ -452,8 +469,8 @@ export function pairedParallelGraph() {
   };
 }
 
-export function directPairedParallelGraph() {
-  const paired = pairedParallelGraph();
+export function directPairedParallelGraph(version: 1 | 2 | 3 = 1) {
+  const paired = pairedParallelGraph(version);
   return {
     ...paired,
     nodes: paired.nodes.filter(({ id }) => id !== 'left' && id !== 'right'),
