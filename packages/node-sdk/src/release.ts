@@ -318,12 +318,42 @@ export const BOUNDED_NODE_JSON_SCHEMA_DOCUMENT = boundedSchemaDocument('value');
 export const BOUNDED_NODE_JSON_RECORD_SCHEMA_DOCUMENT =
   boundedSchemaDocument('record');
 
-export function generateSchemaDocument(schema: z.ZodType): SchemaDocument {
-  if (schema === boundedNodeJsonSchema)
-    return BOUNDED_NODE_JSON_SCHEMA_DOCUMENT;
-  if (schema === boundedNodeJsonRecordSchema)
-    return BOUNDED_NODE_JSON_RECORD_SCHEMA_DOCUMENT;
-  return cloneAndFreeze(schemaDocumentSchema.parse(z.toJSONSchema(schema)));
+export interface SchemaProjectionOptions {
+  readonly runtimeOnlySemantics?: readonly [string, ...string[]];
+}
+
+export function generateSchemaDocument(
+  schema: z.ZodType,
+  options: SchemaProjectionOptions = {},
+): SchemaDocument {
+  if (
+    options.runtimeOnlySemantics !== undefined &&
+    (options.runtimeOnlySemantics.length === 0 ||
+      options.runtimeOnlySemantics.some(
+        (semantic) => semantic.length === 0 || semantic.length > 256,
+      ))
+  )
+    throw new TypeError(
+      'runtime-only schema semantics must be non-empty bounded descriptions',
+    );
+  const projection =
+    schema === boundedNodeJsonSchema
+      ? BOUNDED_NODE_JSON_SCHEMA_DOCUMENT
+      : schema === boundedNodeJsonRecordSchema
+        ? BOUNDED_NODE_JSON_RECORD_SCHEMA_DOCUMENT
+        : schemaDocumentSchema.parse(z.toJSONSchema(schema));
+  return cloneAndFreeze(
+    schemaDocumentSchema.parse({
+      ...projection,
+      ...(options.runtimeOnlySemantics === undefined
+        ? {}
+        : {
+            'x-pertexo-runtime-only-semantics': [
+              ...options.runtimeOnlySemantics,
+            ],
+          }),
+    }),
+  );
 }
 
 const nodeManifestShape = {

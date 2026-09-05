@@ -358,6 +358,23 @@ describe('node-sdk registry release contracts', () => {
     ).toBe(false);
   });
 
+  it('labels runtime-only schema semantics without claiming JSON Schema parity', () => {
+    const refined = z.string().refine((value) => value !== 'denied');
+    const projection = generateSchemaDocument(refined, {
+      runtimeOnlySemantics: ['value must not equal denied'],
+    });
+
+    expect(refined.safeParse('denied').success).toBe(false);
+    expect(projection).toMatchObject({
+      type: 'string',
+      'x-pertexo-runtime-only-semantics': ['value must not equal denied'],
+    });
+    expect(Object.isFrozen(projection)).toBe(true);
+    expect(() =>
+      generateSchemaDocument(refined, { runtimeOnlySemantics: [] as never }),
+    ).toThrow();
+  });
+
   it('selects only pinned definitions, executors, and policies', () => {
     const one = release();
     const withUnrelated = createRegistryRelease({
