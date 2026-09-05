@@ -24,14 +24,20 @@ import {
   CORE_FOR_EACH_DEFINITION,
   CORE_FOR_EACH_EXECUTOR,
   CORE_MERGE_DEFINITION,
+  CORE_MERGE_DEFINITION_V2,
   CORE_MERGE_EXECUTOR,
+  CORE_MERGE_EXECUTOR_V2,
   CORE_PARALLEL_DEFINITION,
+  CORE_PARALLEL_DEFINITION_V2,
   CORE_PARALLEL_EXECUTOR,
+  CORE_PARALLEL_EXECUTOR_V2,
   CORE_SET_DEFINITION,
   CORE_SET_EXECUTOR,
   CORE_SCHEDULE_CONFIG_SCHEMA,
   CORE_SCHEDULE_DEFINITION,
+  CORE_SCHEDULE_DEFINITION_V2,
   CORE_SCHEDULE_EXECUTOR,
+  CORE_SCHEDULE_EXECUTOR_V2,
   CORE_SWITCH_DEFINITION,
   CORE_SWITCH_EXECUTOR,
   CORE_WAIT_DEFINITION,
@@ -65,6 +71,9 @@ import {
   PLATFORM_EMAIL_STAGING_RELEASE_SUPPORT,
   PLATFORM_REGISTRY_RELEASE_SCHEDULE_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_SCHEDULE_STAGED,
+  PLATFORM_REGISTRY_RELEASE_SCHEDULE_V2_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_PARALLEL_V2_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_MERGE_V2_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_WEBHOOK_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_WEBHOOK_STAGED,
   PLATFORM_SCHEDULE_ACTIVATION_RELEASE_SUPPORT,
@@ -666,7 +675,7 @@ describe('platform node compatibility catalog', () => {
     expect(PLATFORM_REGISTRY_RELEASE_HISTORY.map(({ epoch }) => epoch)).toEqual(
       [
         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-        21, 22, 23, 24,
+        21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
       ],
     );
     expect(PLATFORM_REGISTRY_RELEASE_SUPPORT.map(({ epoch }) => epoch)).toEqual(
@@ -866,7 +875,62 @@ describe('platform node compatibility catalog', () => {
       new Set(
         PLATFORM_REGISTRY_RELEASE_HISTORY.map(({ fingerprint }) => fingerprint),
       ).size,
-    ).toBe(24);
+    ).toBe(PLATFORM_REGISTRY_RELEASE_HISTORY.length);
+  });
+
+  it('executes additive version 2 core contracts without changing retained versions', async () => {
+    const signal = new AbortController().signal;
+    const scheduleInput = {
+      nodeId: 'schedule',
+      scheduledAt: '2026-09-05T01:00:00.000Z',
+      schemaVersion: 1,
+      triggerId: '018f47a0-7b5c-7e2d-8c3f-12ad4e8b9c01',
+    };
+    await expect(
+      createPlatformNodeRegistryForRelease(
+        PLATFORM_REGISTRY_RELEASE_SCHEDULE_V2_ACTIVE,
+      ).execute({
+        config: { intervalMinutes: 5, kind: 'interval' },
+        definition: CORE_SCHEDULE_DEFINITION_V2,
+        executor: CORE_SCHEDULE_EXECUTOR_V2,
+        input: scheduleInput,
+        signal,
+      }),
+    ).resolves.toEqual({ kind: 'succeeded', output: scheduleInput });
+
+    await expect(
+      createPlatformNodeRegistryForRelease(
+        PLATFORM_REGISTRY_RELEASE_PARALLEL_V2_ACTIVE,
+      ).execute({
+        config: {
+          branches: [{ id: 'branch-01' }, { id: 'branch-02' }],
+          maxConcurrency: 2,
+        },
+        definition: CORE_PARALLEL_DEFINITION_V2,
+        executor: CORE_PARALLEL_EXECUTOR_V2,
+        input: {},
+        signal,
+      }),
+    ).resolves.toMatchObject({
+      kind: 'succeeded',
+      output: { branchIds: ['branch-01', 'branch-02'] },
+    });
+
+    const mergeInput = {
+      ledger: { 'branch-01': { disposition: 'arrived' as const } },
+      selectedBranchIds: ['branch-01'],
+    };
+    await expect(
+      createPlatformNodeRegistryForRelease(
+        PLATFORM_REGISTRY_RELEASE_MERGE_V2_ACTIVE,
+      ).execute({
+        config: { parallelNodeId: 'parallel', policy: { kind: 'all' } },
+        definition: CORE_MERGE_DEFINITION_V2,
+        executor: CORE_MERGE_EXECUTOR_V2,
+        input: mergeInput,
+        signal,
+      }),
+    ).resolves.toEqual({ kind: 'succeeded', output: mergeInput });
   });
 
   it('builds one exact active server registry with retained core and dispatch-aware HTTP', async () => {

@@ -24,4 +24,10 @@ export const PLATFORM_RELEASE_FINGERPRINT_GOLDEN = Object.freeze([
   'node-compat:v1:sha256:5a3651d7abac9cf44d86fb5f75c598ee5310fbb4f7968672f4a6ff28b227b311',
   'node-compat:v1:sha256:7813e1d6bb84a789c57b20ec0c828f81eeed8370d2cec22faeea5ef107f79117',
   'node-compat:v1:sha256:d2284b9f98407b692dc751559f78fe4b15f886c181bd6acc34646e739638afce',
+  'node-compat:v1:sha256:3331cb9b0e65ed3d1dbe75d393824846b92f25212d3f4f9e81de19f0d356dcce',
+  'node-compat:v1:sha256:6445b4539d99e9e38114083b3b1e725c9d39f452b94d20786b651101caf67bf5',
+  'node-compat:v1:sha256:ffa9080cd2ccd9393c5d1ae9358112d1a4ed20f7d9ab9863213cc723107ffd99',
+  'node-compat:v1:sha256:59e4edeebb5bc58f3db04ccd4a7a7fb6dcb349715faf71d4eb3a2d0841e34caa',
+  'node-compat:v1:sha256:b0e2612c6ee29ef674abc592c2605e7253cefb7ae927d6059f146ae371946ad1',
+  'node-compat:v1:sha256:7f9e4b4cda784a835fa9f403c6e6a5b101dc9d3029c13bf2251571714b34be4b',
 ]);

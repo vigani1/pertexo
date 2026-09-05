@@ -12,10 +12,13 @@ import {
   CORE_CONDITION_MANIFEST,
   CORE_FOR_EACH_MANIFEST,
   CORE_MERGE_MANIFEST,
+  CORE_MERGE_MANIFEST_V2,
   CORE_PARALLEL_MANIFEST,
+  CORE_PARALLEL_MANIFEST_V2,
   CORE_REGISTRY_RELEASE_SUPPORT,
   CORE_REGISTRY_RELEASE_SUCCESSOR,
   CORE_SCHEDULE_MANIFEST,
+  CORE_SCHEDULE_MANIFEST_V2,
   CORE_SWITCH_MANIFEST,
   CORE_WAIT_MANIFEST,
   CORE_WEBHOOK_MANIFEST,
@@ -474,6 +477,77 @@ export const PLATFORM_REGISTRY_RELEASE_SCHEDULE_ACTIVE =
     policies: PLATFORM_REGISTRY_RELEASE_SCHEDULE_STAGED.policies,
   });
 
+function stageDefinition(
+  previous: Parameters<typeof createRegistryReleaseSuccessor>[0]['previous'],
+  manifest:
+    | typeof CORE_SCHEDULE_MANIFEST_V2
+    | typeof CORE_PARALLEL_MANIFEST_V2
+    | typeof CORE_MERGE_MANIFEST_V2,
+) {
+  return createRegistryReleaseSuccessor({
+    previous,
+    epoch: previous.epoch + 1,
+    definitions: [...previous.definitions, manifest],
+    executors: [
+      ...previous.executors,
+      {
+        executor: manifest.executor,
+        abiVersion: manifest.executorAbi,
+        definitions: [manifest.definition],
+        lifecycle: 'staged' as const,
+        policyReferences: manifest.policyReferences,
+      },
+    ],
+    policies: previous.policies,
+  });
+}
+
+function activateDefinition(
+  previous: ReturnType<typeof stageDefinition>,
+  manifest:
+    | typeof CORE_SCHEDULE_MANIFEST_V2
+    | typeof CORE_PARALLEL_MANIFEST_V2
+    | typeof CORE_MERGE_MANIFEST_V2,
+) {
+  return createRegistryReleaseSuccessor({
+    previous,
+    epoch: previous.epoch + 1,
+    definitions: previous.definitions,
+    executors: previous.executors.map((executor) =>
+      executor.executor.key === manifest.executor.key &&
+      executor.executor.version === manifest.executor.version
+        ? { ...executor, lifecycle: 'active' as const }
+        : executor,
+    ),
+    policies: previous.policies,
+  });
+}
+
+export const PLATFORM_REGISTRY_RELEASE_SCHEDULE_V2_STAGED = stageDefinition(
+  PLATFORM_REGISTRY_RELEASE_SCHEDULE_ACTIVE,
+  CORE_SCHEDULE_MANIFEST_V2,
+);
+export const PLATFORM_REGISTRY_RELEASE_SCHEDULE_V2_ACTIVE = activateDefinition(
+  PLATFORM_REGISTRY_RELEASE_SCHEDULE_V2_STAGED,
+  CORE_SCHEDULE_MANIFEST_V2,
+);
+export const PLATFORM_REGISTRY_RELEASE_PARALLEL_V2_STAGED = stageDefinition(
+  PLATFORM_REGISTRY_RELEASE_SCHEDULE_V2_ACTIVE,
+  CORE_PARALLEL_MANIFEST_V2,
+);
+export const PLATFORM_REGISTRY_RELEASE_PARALLEL_V2_ACTIVE = activateDefinition(
+  PLATFORM_REGISTRY_RELEASE_PARALLEL_V2_STAGED,
+  CORE_PARALLEL_MANIFEST_V2,
+);
+export const PLATFORM_REGISTRY_RELEASE_MERGE_V2_STAGED = stageDefinition(
+  PLATFORM_REGISTRY_RELEASE_PARALLEL_V2_ACTIVE,
+  CORE_MERGE_MANIFEST_V2,
+);
+export const PLATFORM_REGISTRY_RELEASE_MERGE_V2_ACTIVE = activateDefinition(
+  PLATFORM_REGISTRY_RELEASE_MERGE_V2_STAGED,
+  CORE_MERGE_MANIFEST_V2,
+);
+
 /** Complete audit/test history; never pass this to one serving artifact. */
 export const PLATFORM_REGISTRY_RELEASE_HISTORY = Object.freeze([
   ...CORE_REGISTRY_RELEASE_SUPPORT,
@@ -499,6 +573,12 @@ export const PLATFORM_REGISTRY_RELEASE_HISTORY = Object.freeze([
   PLATFORM_REGISTRY_RELEASE_WEBHOOK_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_SCHEDULE_STAGED,
   PLATFORM_REGISTRY_RELEASE_SCHEDULE_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_SCHEDULE_V2_STAGED,
+  PLATFORM_REGISTRY_RELEASE_SCHEDULE_V2_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_PARALLEL_V2_STAGED,
+  PLATFORM_REGISTRY_RELEASE_PARALLEL_V2_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_MERGE_V2_STAGED,
+  PLATFORM_REGISTRY_RELEASE_MERGE_V2_ACTIVE,
 ]);
 
 /** Backward-compatible default cohort until deployment selects a Phase 4 cohort. */
@@ -610,6 +690,30 @@ export const PLATFORM_SCHEDULE_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
   PLATFORM_REGISTRY_RELEASE_SCHEDULE_STAGED,
   PLATFORM_REGISTRY_RELEASE_SCHEDULE_ACTIVE,
 ]);
+export const PLATFORM_SCHEDULE_V2_STAGING_RELEASE_SUPPORT = Object.freeze([
+  PLATFORM_REGISTRY_RELEASE_SCHEDULE_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_SCHEDULE_V2_STAGED,
+]);
+export const PLATFORM_SCHEDULE_V2_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
+  PLATFORM_REGISTRY_RELEASE_SCHEDULE_V2_STAGED,
+  PLATFORM_REGISTRY_RELEASE_SCHEDULE_V2_ACTIVE,
+]);
+export const PLATFORM_PARALLEL_V2_STAGING_RELEASE_SUPPORT = Object.freeze([
+  PLATFORM_REGISTRY_RELEASE_SCHEDULE_V2_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_PARALLEL_V2_STAGED,
+]);
+export const PLATFORM_PARALLEL_V2_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
+  PLATFORM_REGISTRY_RELEASE_PARALLEL_V2_STAGED,
+  PLATFORM_REGISTRY_RELEASE_PARALLEL_V2_ACTIVE,
+]);
+export const PLATFORM_MERGE_V2_STAGING_RELEASE_SUPPORT = Object.freeze([
+  PLATFORM_REGISTRY_RELEASE_PARALLEL_V2_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_MERGE_V2_STAGED,
+]);
+export const PLATFORM_MERGE_V2_ACTIVATION_RELEASE_SUPPORT = Object.freeze([
+  PLATFORM_REGISTRY_RELEASE_MERGE_V2_STAGED,
+  PLATFORM_REGISTRY_RELEASE_MERGE_V2_ACTIVE,
+]);
 
 export const PLATFORM_RELEASE_COHORTS = Object.freeze([
   'core',
@@ -635,6 +739,12 @@ export const PLATFORM_RELEASE_COHORTS = Object.freeze([
   'webhook_activation',
   'schedule_staging',
   'schedule_activation',
+  'schedule_v2_staging',
+  'schedule_v2_activation',
+  'parallel_v2_staging',
+  'parallel_v2_activation',
+  'merge_v2_staging',
+  'merge_v2_activation',
 ] as const);
 export type PlatformReleaseCohort = (typeof PLATFORM_RELEASE_COHORTS)[number];
 
@@ -686,6 +796,18 @@ export function platformRegistryReleaseSupport(cohort: PlatformReleaseCohort) {
       return PLATFORM_SCHEDULE_STAGING_RELEASE_SUPPORT;
     case 'schedule_activation':
       return PLATFORM_SCHEDULE_ACTIVATION_RELEASE_SUPPORT;
+    case 'schedule_v2_staging':
+      return PLATFORM_SCHEDULE_V2_STAGING_RELEASE_SUPPORT;
+    case 'schedule_v2_activation':
+      return PLATFORM_SCHEDULE_V2_ACTIVATION_RELEASE_SUPPORT;
+    case 'parallel_v2_staging':
+      return PLATFORM_PARALLEL_V2_STAGING_RELEASE_SUPPORT;
+    case 'parallel_v2_activation':
+      return PLATFORM_PARALLEL_V2_ACTIVATION_RELEASE_SUPPORT;
+    case 'merge_v2_staging':
+      return PLATFORM_MERGE_V2_STAGING_RELEASE_SUPPORT;
+    case 'merge_v2_activation':
+      return PLATFORM_MERGE_V2_ACTIVATION_RELEASE_SUPPORT;
   }
 }
 
@@ -751,6 +873,18 @@ export function platformServingRegistryRelease(cohort: PlatformReleaseCohort) {
       return PLATFORM_REGISTRY_RELEASE_WEBHOOK_ACTIVE;
     case 'schedule_activation':
       return PLATFORM_REGISTRY_RELEASE_SCHEDULE_ACTIVE;
+    case 'schedule_v2_staging':
+      return PLATFORM_REGISTRY_RELEASE_SCHEDULE_ACTIVE;
+    case 'schedule_v2_activation':
+      return PLATFORM_REGISTRY_RELEASE_SCHEDULE_V2_ACTIVE;
+    case 'parallel_v2_staging':
+      return PLATFORM_REGISTRY_RELEASE_SCHEDULE_V2_ACTIVE;
+    case 'parallel_v2_activation':
+      return PLATFORM_REGISTRY_RELEASE_PARALLEL_V2_ACTIVE;
+    case 'merge_v2_staging':
+      return PLATFORM_REGISTRY_RELEASE_PARALLEL_V2_ACTIVE;
+    case 'merge_v2_activation':
+      return PLATFORM_REGISTRY_RELEASE_MERGE_V2_ACTIVE;
   }
 }
 
