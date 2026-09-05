@@ -680,12 +680,15 @@ conflict between the plan and modern code quality.
   aggregate operation deadline.
 - **Verification:** API and worker integration tests with a KMS fake that blocks
   until aborted; assert no late state transition and bounded completion.
-- **Status:** Fixed by `51bed2c`.
+- **Status:** Fixed by `51bed2c`; disconnect-race correction `b077c5a`.
 - **Implementation evidence:** API request lifecycles and worker attempts now
   propagate their bounded `AbortSignal` through connection and webhook
   encryption, and `createBoundedKmsClient` applies explicit attempt, connect,
   request, and socket budgets. Blocking-KMS regressions prove cancellation and
-  late-plaintext zeroization.
+  late-plaintext zeroization. The follow-up correction centralizes webhook
+  ingress on `withRequestOperationSignal`, observes both request abort and TCP
+  socket close after body consumption, checks the signal again after KMS, and
+  proves with a real Fastify HTTP disconnect that persistence is not reached.
 
 ### INT-002 — A dispatch marker can commit after a definite pre-dispatch timeout
 

@@ -490,7 +490,9 @@ justifies them.
 - `control-ledger.integration.test.ts` accurately separates AWS and MinIO. CI
   proves MinIO's conditional PUT and immutable delete controls plus the required
   fail-closed incompatibility. The complete successful policy/readiness/dual
-  append path is AWS-only and skipped locally and in CI.
+  append path is AWS-only and skipped locally and in CI. The suite now defers
+  configuration and clients until `beforeAll`, so an environment-free skipped
+  registration collects cleanly without credentials (`e3f8619`).
 - `test/support/control-ledger.fixture.ts` is a focused deterministic S3 fake
   with injectable service, checksum, listing, stream, and timeout failures. It
   models only the subset claimed and should remain package-local.
