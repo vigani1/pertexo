@@ -226,9 +226,9 @@ function parallelGraph() {
       manualNode,
       {
         id: 'parallel',
-        definition: { key: 'core.parallel', version: 3 },
-        configVersion: 3,
+        definition: { key: 'core.parallel', version: 1 },
         position: { x: 10, y: 0 },
+        configVersion: 1,
         config: {
           branches: [{ id: 'branch-02' }, { id: 'branch-01' }],
           maxConcurrency: 1,
@@ -240,9 +240,9 @@ function parallelGraph() {
       setNode('right', 10),
       {
         id: 'merge',
-        definition: { key: 'core.merge', version: 3 },
-        configVersion: 3,
+        definition: { key: 'core.merge', version: 1 },
         position: { x: 30, y: 0 },
+        configVersion: 1,
         config: {
           parallelNodeId: 'parallel',
           policy: { kind: 'all' as const },
