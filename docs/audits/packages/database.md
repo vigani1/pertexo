@@ -965,12 +965,14 @@ review.
 ### DB-008 — Publication work grows with all retained versions and triggers
 
 - **Severity/classification:** P2 query/performance improvement.
-- **Status:** Fixed by `fa3cfc4` and corrected by `5d13a13`.
+- **Status:** Fixed by `fa3cfc4`, corrected by `5d13a13`, and localized by
+  `bf0f00c`.
 - **Implementation evidence:** trigger projection is one bounded set-based
   upsert. Retained versions are mapped once per row; the full scan is
   intentionally retained because the real-service corruption regression
   proves that a direct checksum lookup would silently ignore a corrupt sibling
-  version and weaken the durable fail-closed contract.
+  version and weaken the durable fail-closed contract. Trigger-reconciliation
+  payload validation now has a separate owner from publication persistence.
 - **Evidence:** publication selects and decodes every version for a workflow,
   then finds a checksum in JavaScript despite a unique
   `(workflow_id, checksum)` identity. It separately searches the rows again.
@@ -1012,11 +1014,13 @@ review.
 ### DB-010 — Normal transactions lack an enforceable deadline policy
 
 - **Severity/classification:** P2 reliability improvement.
-- **Status:** Fixed by `29f8e2e`.
+- **Status:** Fixed by `29f8e2e` and localized by `64e03fb`.
 - **Implementation evidence:** every pool now receives an enforceable
   role-specific statement, lock, driver-query, and idle-in-transaction budget;
-  invalid or disabled overrides fail closed. Unit tests cover defaults and
-  explicit narrower values, while real runtime tests prove normal composition.
+  invalid or disabled overrides fail closed. The policy and role vocabulary
+  now live in a dedicated 110-line owner instead of expanding telemetry.
+  Unit tests cover defaults and explicit narrower values, while real runtime
+  tests prove normal composition.
 - **Evidence:** pool configuration sets connection and idle-pool timeouts, but
   most repositories have no default PostgreSQL `statement_timeout`,
   `lock_timeout`, or `idle_in_transaction_session_timeout`. The shared tenant
@@ -1145,7 +1149,7 @@ review.
 ### DB-015 — Pool telemetry role and monitor identity are configuration-sensitive
 
 - **Severity/classification:** P3 observability improvement.
-- **Status:** Fixed by `dadaaf1` and `d4ee342`.
+- **Status:** Fixed by `dadaaf1`, `d4ee342`, and localized by `64e03fb`.
 - **Implementation evidence:** composition supplies an explicit bounded role,
   monitor identity includes cadence and role, and gauges aggregate capacity,
   active connections, and waiters across every pool for that role without DSN

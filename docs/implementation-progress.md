@@ -5220,7 +5220,8 @@ validation pass. No phase status changed.
 
 Implementation commits include `8406d1e`, `d4ee342`, `9069470`, `4f8d194`,
 `9c52139`, `3d64220`, `f4163cf`, `dadaaf1`, `b88a53d`, `cf5dad7`, `29f8e2e`,
-`ac54cbc`, `c185f32`, `fa3cfc4`, `5d13a13`, `8cda911`, and `a0b6c60`.
+`ac54cbc`, `c185f32`, `fa3cfc4`, `5d13a13`, `8cda911`, `a0b6c60`, `64e03fb`,
+and `bf0f00c`.
 Focused unit/type checks, 330/330 full PostgreSQL integration tests with
 coverage, schema-shape tests, and coordinator concurrency suites pass. No phase
 status changed.
