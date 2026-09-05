@@ -11,6 +11,7 @@ import {
 } from '@pertexo/workflow-model/graph';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
+import { sha256HexSchema } from '../validation/persisted-primitives.js';
 
 import type { CompatibilityReleaseExpectation } from '../compatibility/compatibility-release.js';
 import { canonicalOutboxPayloadChecksum } from '../execution/outbox.js';
@@ -31,7 +32,7 @@ import { workflowVersionRowSelection } from './workflow-authoring-rows.js';
 import { workflowTriggerProjection } from '../triggers/workflow-trigger-projection.js';
 
 const uuidSchema = z.uuid();
-const digestSchema = z.string().regex(/^[0-9a-f]{64}$/u);
+const digestSchema = sha256HexSchema;
 const checksumSchema = z.string().regex(/^wf:v[12]:sha256:[0-9a-f]{64}$/u);
 const workflowDraftTagSchema = z
   .string()

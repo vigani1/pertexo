@@ -1050,7 +1050,7 @@ review.
 ### DB-014 — Validation/configuration vocabulary is repeated
 
 - **Severity/classification:** P3 readability/reuse improvement.
-- **Status:** open.
+- **Status:** fixed in the repository on 2026-09-05.
 - **Evidence:** four role environment schemas repeat PostgreSQL URL,
   connection/idle timeout, owner/worker role, and pool-limit definitions. UUID,
   digest, timestamp, bounded text, and JSON validation helpers recur across
@@ -1062,6 +1062,24 @@ review.
 - **Verification:** existing config/parser snapshots and exact boundary tests
   remain unchanged; deleting the helper would require duplicating real policy,
   satisfying the abstraction deletion test.
+- **Implemented:** `config.ts` now owns one PostgreSQL URL factory, one role
+  factory, and shared connection-timeout, idle-timeout, and conservative-pool
+  schemas while retaining every role-specific environment key, default, and
+  error message. `validation/persisted-primitives.ts` is the private owner for
+  the lowercase 64-character SHA-256 database representation used by all 28
+  former call sites across authoring, connections, execution, identity,
+  lifecycle, operator, and trigger modules.
+- **Repository-wide disposition:** direct `z.uuid()` uses remain intentionally
+  local because Zod already owns that single standard and an alias would hide no
+  policy. Timestamp schemas remain local because offset acceptance and coercion
+  differ by durable boundary. Bounded text schemas retain domain-specific
+  limits and normalization. Search evidence leaves one SHA-256 regex definition
+  in the private primitive owner and no duplicated definitions elsewhere.
+- **Verification evidence:** `packages/database/test/config.test.ts` is 11/11
+  with exact returned shapes/defaults, invalid URL behavior, shared override
+  coercion, and the conservative pool maximum; the full database unit suite is
+  188/188; database type checking,
+  Knip, formatting, and the complexity ratchet pass.
 
 ### DB-015 — Pool telemetry role and monitor identity are configuration-sensitive
 

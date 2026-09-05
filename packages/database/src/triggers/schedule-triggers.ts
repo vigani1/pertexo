@@ -7,6 +7,7 @@ import { generatePersistedId } from '../platform/persisted-id.js';
 import { sql } from 'drizzle-orm';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
+import { sha256HexSchema as digestSchema } from '../validation/persisted-primitives.js';
 
 import type { DatabaseConfig } from '../config.js';
 import { ScheduleTriggerError } from './schedule-trigger-errors.js';
@@ -53,7 +54,6 @@ const claimSchema = z.object({
   observed_at: z.date(),
 });
 const uuidSchema = z.uuid();
-const digestSchema = z.string().regex(/^[0-9a-f]{64}$/u);
 const scheduleTriggerSchema = z
   .object({
     id: z.uuid(),

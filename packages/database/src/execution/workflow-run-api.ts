@@ -21,11 +21,11 @@ import {
   classifyPublishedWorkflowVersionRow,
   type PublishedWorkflowV2Projection,
 } from './published-workflow-reader.js';
+import { sha256HexSchema as digestSchema } from '../validation/persisted-primitives.js';
 import { withWorkspaceTransaction } from '../tenant-access/workspace.js';
 import type { WorkspaceTransaction } from '../tenant-access/workspace.js';
 import { requestWorkflowRunCancellation } from './workflow-run-cancellation.js';
 
-const digestSchema = z.string().regex(/^[0-9a-f]{64}$/u);
 const traceparentSchema = z
   .string()
   .regex(/^00-[\da-f]{32}-[\da-f]{16}-[\da-f]{2}$/u)

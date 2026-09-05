@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
+import { sha256HexSchema } from '../validation/persisted-primitives.js';
 
 import {
   lockExpectedCompatibilityReleaseSet,
@@ -24,7 +25,7 @@ const inputSchema = z
     delivery: z
       .object({
         outboxEventId: z.uuid(),
-        payloadChecksum: z.string().regex(/^[0-9a-f]{64}$/u),
+        payloadChecksum: sha256HexSchema,
       })
       .strict(),
     signal: z.custom<AbortSignal>().optional(),
@@ -41,7 +42,7 @@ const payloadSchema = z
   .strict();
 const requestRowSchema = z
   .object({
-    request_fingerprint: z.string().regex(/^[0-9a-f]{64}$/u),
+    request_fingerprint: sha256HexSchema,
     run_input: z.json(),
     source_run_id: z.uuid(),
     status: z.enum(['pending', 'completed', 'failed']),

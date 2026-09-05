@@ -3,7 +3,6 @@ import { generatePersistedId } from '../platform/persisted-id.js';
 import type { Pool } from 'pg';
 import {
   uuidSchema,
-  digestSchema,
   providerKeySchema,
   CONNECTION_STATUS,
   CONNECTION_EVENT_TYPE,
@@ -25,6 +24,7 @@ import {
   connectionTestClaim,
   connectionTestClaimSchema,
 } from './connection-persistence.js';
+import { sha256HexSchema as digestSchema } from '../validation/persisted-primitives.js';
 import type {
   ConnectionDatabase,
   ResolvedConnectionSecretRecord,

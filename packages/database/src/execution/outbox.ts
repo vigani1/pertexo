@@ -4,8 +4,9 @@ import { z } from 'zod';
 
 import { outboxEvents } from '../schema.js';
 import type { WorkspaceTransaction } from '../tenant-access/workspace.js';
+import { sha256HexSchema } from '../validation/persisted-primitives.js';
 
-const checksumSchema = z.string().regex(/^[0-9a-f]{64}$/u);
+const checksumSchema = sha256HexSchema;
 const boundedJsonSchema = z
   .json()
   .refine(

@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
+import { sha256HexSchema as digestSchema } from '../validation/persisted-primitives.js';
 
 import type { DatabaseConfig } from '../config.js';
 import {
@@ -31,7 +32,6 @@ import {
 } from '../tenant-access/workspace.js';
 
 const uuidSchema = z.uuid();
-const digestSchema = z.string().regex(/^[0-9a-f]{64}$/u);
 const sealedSchema = z
   .object({
     id: z.uuid(),

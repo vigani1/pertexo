@@ -147,4 +147,41 @@ describe('database configuration', () => {
       workerRuntimeRole: 'pertexo_worker',
     });
   });
+
+  it.each([
+    [
+      'dispatcher',
+      parseOutboxDispatcherConfig,
+      'DATABASE_DISPATCHER_URL',
+      'DATABASE_DISPATCHER_POOL_MAX',
+    ],
+    [
+      'maintenance',
+      parseMaintenanceDatabaseConfig,
+      'DATABASE_MAINTENANCE_URL',
+      'DATABASE_MAINTENANCE_POOL_MAX',
+    ],
+    [
+      'lifecycle command',
+      parseLifecycleCommandDatabaseConfig,
+      'DATABASE_LIFECYCLE_COMMAND_URL',
+      'DATABASE_LIFECYCLE_COMMAND_POOL_MAX',
+    ],
+  ] as const)(
+    'preserves shared pool boundaries for the %s role',
+    (_name, parser, urlKey, poolKey) => {
+      const environment = {
+        [urlKey]: 'postgresql://runtime:secret@localhost:5432/pertexo',
+        [poolKey]: '3',
+        DATABASE_CONNECTION_TIMEOUT_MILLIS: '1234',
+        DATABASE_IDLE_TIMEOUT_MILLIS: '4567',
+      };
+      expect(parser(environment)).toMatchObject({
+        connectionTimeoutMillis: 1234,
+        idleTimeoutMillis: 4567,
+        max: 3,
+      });
+      expect(() => parser({ ...environment, [poolKey]: '11' })).toThrow();
+    },
+  );
 });

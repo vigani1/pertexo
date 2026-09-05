@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import type { LeasedOutboxEvent } from './dispatcher.js';
+import { sha256HexSchema } from '../validation/persisted-primitives.js';
 
 const claimedRowSchema = z
   .object({
@@ -13,7 +14,7 @@ const claimedRowSchema = z
     lease_owner: z.string().regex(/^[A-Za-z0-9._:-]{1,128}$/u),
     lease_token: z.uuid(),
     payload: z.unknown(),
-    payload_checksum: z.string().regex(/^[0-9a-f]{64}$/u),
+    payload_checksum: sha256HexSchema,
     publish_attempts: z.number().int().positive(),
     schema_version: z.number().int().positive(),
     workspace_id: z.uuid(),

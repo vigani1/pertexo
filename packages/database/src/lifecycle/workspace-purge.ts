@@ -2,11 +2,11 @@ import { acquireDatabasePool } from '../platform/database-runtime.js';
 import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import type { PoolClient, QueryResult } from 'pg';
 import { z } from 'zod';
+import { sha256HexSchema as hashSchema } from '../validation/persisted-primitives.js';
 
 import type { DatabaseConfig } from '../config.js';
 
 const uuidSchema = z.uuid();
-const hashSchema = z.string().regex(/^[0-9a-f]{64}$/u);
 
 export interface WorkspacePurgeLedgerRecord {
   readonly actorRef: string;

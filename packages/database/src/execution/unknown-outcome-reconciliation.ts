@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
+import { sha256HexSchema } from '../validation/persisted-primitives.js';
 
 import type { WorkspaceDatabase } from '../database.js';
 import { consumeInboxMessage } from './inbox.js';
@@ -54,7 +55,7 @@ export async function reconcileUnknownOutcomeEvidence(
       delivery: z
         .object({
           outboxEventId: z.uuid(),
-          payloadChecksum: z.string().regex(/^[0-9a-f]{64}$/u),
+          payloadChecksum: sha256HexSchema,
         })
         .strict(),
       evidenceCommandId: z.uuid(),

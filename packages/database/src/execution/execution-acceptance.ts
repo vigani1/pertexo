@@ -16,8 +16,7 @@ import {
 } from '../schema.js';
 import { serializeStoredExecutionValueV1 } from './stored-execution-value.js';
 import type { WorkspaceTransaction } from '../tenant-access/workspace.js';
-
-const sha256Schema = z.string().regex(/^[0-9a-f]{64}$/u);
+import { sha256HexSchema as sha256Schema } from '../validation/persisted-primitives.js';
 const traceparentSchema = z
   .string()
   .regex(/^00-[\da-f]{32}-[\da-f]{16}-[\da-f]{2}$/u)

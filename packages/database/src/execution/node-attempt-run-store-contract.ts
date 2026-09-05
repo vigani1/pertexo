@@ -1,11 +1,12 @@
 import { z } from 'zod';
+import { sha256HexSchema } from '../validation/persisted-primitives.js';
 
 const identitySchema = z
   .string()
   .regex(
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u,
   );
-const checksumSchema = z.string().regex(/^[0-9a-f]{64}$/u);
+const checksumSchema = sha256HexSchema;
 const workerIdSchema = z
   .string()
   .regex(/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/u);

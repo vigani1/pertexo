@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 
 import type { PoolClient, QueryConfig, QueryResult } from 'pg';
 import { z } from 'zod';
+import { sha256HexSchema as hashSchema } from '../validation/persisted-primitives.js';
 
 import type { DatabaseConfig } from '../config.js';
 import {
@@ -13,7 +14,6 @@ import {
 const ZERO_HASH = '0'.repeat(64);
 const BACKEND_CANCELLATION_TIMEOUT_MS = 1_000;
 const uuidSchema = z.uuid().transform((value) => value.toLowerCase());
-const hashSchema = z.string().regex(/^[0-9a-f]{64}$/u);
 const boundedText = (maximum: number) => z.string().trim().min(1).max(maximum);
 const occurredAtSchema = z.iso
   .datetime({ offset: true })

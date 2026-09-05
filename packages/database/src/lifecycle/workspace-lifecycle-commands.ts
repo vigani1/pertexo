@@ -2,6 +2,7 @@ import { createDatabasePool } from '../platform/postgres-telemetry.js';
 import type { Pool } from 'pg';
 import type { PoolClient, QueryConfig, QueryResult } from 'pg';
 import { z } from 'zod';
+import { sha256HexSchema as hashSchema } from '../validation/persisted-primitives.js';
 
 import type { DatabaseConfig } from '../config.js';
 import {
@@ -10,7 +11,6 @@ import {
 } from '../platform/readiness.js';
 
 const uuidSchema = z.uuid();
-const hashSchema = z.string().regex(/^[0-9a-f]{64}$/u);
 const commandTypeSchema = z.enum(['deletion_requested', 'deletion_restored']);
 
 export type WorkspaceLifecycleCommandType = z.infer<typeof commandTypeSchema>;

@@ -18,6 +18,7 @@ import {
   type FailureNotificationDestinationErrorCode,
 } from './failure-notification-destination-errors.js';
 import { withTenantScopedClient } from '../tenant-access/workspace.js';
+import { sha256HexSchema as digestSchema } from '../validation/persisted-primitives.js';
 
 export { FailureNotificationDestinationError } from './failure-notification-destination-errors.js';
 
@@ -96,7 +97,6 @@ function destinationError(
   return new FailureNotificationDestinationError(code, message);
 }
 
-const digestSchema = z.string().regex(/^[0-9a-f]{64}$/u);
 const replaySchema = z
   .object({
     schemaVersion: z.literal(1),

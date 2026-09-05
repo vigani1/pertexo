@@ -2,6 +2,7 @@ import { acquireDatabasePool } from '../platform/database-runtime.js';
 import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
+import { sha256HexSchema as digestSchema } from '../validation/persisted-primitives.js';
 
 import type { DatabaseConfig } from '../config.js';
 import { canonicalOutboxPayloadChecksum } from '../execution/outbox.js';
@@ -13,7 +14,6 @@ import {
 import { withTenantScopedClient } from '../tenant-access/workspace.js';
 
 const uuidSchema = z.uuid();
-const digestSchema = z.string().regex(/^[0-9a-f]{64}$/u);
 const reconciliationPayloadSchema = z
   .object({
     schemaVersion: z.literal(1),

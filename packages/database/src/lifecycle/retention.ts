@@ -3,6 +3,7 @@ import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import type { Pool } from 'pg';
 import type { PoolClient, QueryResult } from 'pg';
 import { z } from 'zod';
+import { sha256HexSchema } from '../validation/persisted-primitives.js';
 
 import type { DatabaseConfig } from '../config.js';
 import type { ControlLedger } from './control-ledger-coordinator.js';
@@ -671,10 +672,7 @@ export function createRetentionEnforcementCoordinator(
                   'Retention workspace control lock was not returned',
                 );
               return Object.freeze({
-                hash: z
-                  .string()
-                  .regex(/^[0-9a-f]{64}$/u)
-                  .parse(row.retention_control_hash),
+                hash: sha256HexSchema.parse(row.retention_control_hash),
                 sequence: z.coerce
                   .number()
                   .int()
