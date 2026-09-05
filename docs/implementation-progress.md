@@ -30,6 +30,18 @@ INT-009, and the package coverage/model gates remain continuous safeguards;
 DB-013, WFE-012, and the explicitly documented compatibility/locality choices
 remain intentionally retained rather than mechanically refactored.
 
+The 2026-09-05 post-remediation correction pass closed the independently
+reproduced gaps that the first reconciliation overstated: request cancellation
+now observes post-body socket closure and prevents post-KMS persistence;
+expression previews receive the composition-owned evaluator and ready-without-
+started workers remain bounded; strict Schedule, Parallel, and Merge contracts
+have immutable, metadata-complete V3 successors consumed by the database,
+engine, API, worker, SDK, and catalog; the environment-free artifact integration
+suite collects as skipped; and WFE-008 now includes pinned-seed, shrinkable
+generative checks. Evidence is in `b077c5a`, `8d740e2`, `9bfe545`, `e3f8619`,
+`156f18f`, and `1f0359e`. This correction does not change the external Phase 7
+obligations below.
+
 External obligations remain external: ART-002 production latency, ART-008 live
 AWS/regional recovery, DB-011 workload/planner evidence, DB-017 deployed
 backup/PITR/failover evidence, INT-010 provider/KMS sandboxes, INT-013 measured
@@ -45,8 +57,9 @@ must use and demonstrate a non-clustered replicated Redis primary compatible
 with the atomic multi-key Lua policy.
 
 Node-catalog remediation has fixed NC-001 through NC-006.
-All 30 retained compatibility fingerprints remain byte-identical after release
-construction and cohort selection were centralized behind private helpers;
+All 30 pre-existing retained compatibility fingerprints remain byte-identical;
+six additive V3 stage/activation fingerprints extend the history to 36 after
+release construction and cohort selection were centralized behind private helpers;
 selective adapter construction, unknown-input parsing, and package coverage are
 also enforced. The package passes 19 tests with 96.69% statements/lines, 87.23%
 branches, and 100% functions. Its 19 assertions now collect independently in

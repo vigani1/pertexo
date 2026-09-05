@@ -47,8 +47,8 @@ reuse merely to satisfy the word “pool.”
 | WM-003 | Fixed | `078cd53`; browser-safe preflight and server parsing use identical aggregate nested limits. |
 | WM-004 | Fixed | `078cd53`; model and HTTP response share `WORKFLOW_VALIDATION_MAX_ISSUES = 100`. |
 | WM-005 | Fixed | `078cd53` and `bfb4862`; arrays require own indexed data descriptors and reject sparse, inherited, accessor, symbol, and extra-key input. |
-| WM-006 | Fixed | `078cd53`; mapping depends on the minimal `ExpressionEvaluator` port and tests use a type-safe structural fake. |
-| WM-007 | Fixed | `078cd53`; startup has an independent bounded supervisor timer, termination, typed failure, and recovery tests. |
+| WM-006 | Fixed | `078cd53`, `8d740e2`; mapping depends on the minimal `ExpressionEvaluator` port, API node validation receives the composition-owned evaluator, and expression preview is covered. |
+| WM-007 | Fixed | `078cd53`, `8d740e2`; the startup deadline remains active through ready-to-start handoff, termination is bounded, and ready-without-starting is covered. |
 | WM-008 | Fixed | `078cd53`; the checked `expression-worker-runtime.ts` entry is compiled, linted, and exercised through the emitted/runtime URL. Because its worker URL is selected dynamically for source versus emitted execution, the private runtime is also declared explicitly to Knip so a clean checkout validates the same ownership as a built tree. |
 | WM-009 | Fixed | `bfb4862`; delivery results are a strict kind-discriminated state machine with contradictory combinations rejected. |
 | WM-010 | Fixed; continuous gate | `bfb4862` and `7da5a4c`; direct canonical depth and override inputs are bounded and package coverage is enforced. Fresh coverage: 86.73% statements (778/897), 78.99% branches (519/657), 94.49% functions (103/109), and 89.98% lines (746/829). |
@@ -511,7 +511,7 @@ where implementation or evidence does not fully meet that blueprint.
   incoming topology and share the predicate with executable compilation.
 - **Verification:** missing, downstream, unrelated, cross-body, valid direct
   predecessor, and nested-body tests at publish and execution seams.
-- **Status:** Fixed in `078cd53`.
+- **Status:** Fixed in `078cd53`; application composition correction `8d740e2`.
 
 ### WM-002 — Evaluator is not a real worker pool and construction failure poisons capacity
 
@@ -542,7 +542,7 @@ where implementation or evidence does not fully meet that blueprint.
   preflight and reuse its result server-side.
 - **Verification:** identical exact/one-over nested corpora through browser,
   contracts, API, and server parsers.
-- **Status:** Fixed in `078cd53`.
+- **Status:** Fixed in `078cd53`; ready-to-start handoff correction `8d740e2`.
 
 ### WM-004 — Validation output exceeds its API response contract
 
