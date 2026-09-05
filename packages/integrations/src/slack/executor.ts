@@ -2,7 +2,6 @@ import {
   DISPATCH_AWARE_EXECUTOR_ABI_VERSION,
   type NodeExecutionInvocation,
   type NodeExecutorRegistration,
-  NodeDispatchEvidenceError,
   NodeExecutorFailure,
   ProviderExecutionRateLimitError,
 } from '@pertexo/node-sdk/server';
@@ -10,7 +9,6 @@ import {
 import {
   SECURE_HTTP_ERROR_CODE,
   SecureHttpError,
-  secureHttpPreDispatchError,
 } from '../http/secure-http.js';
 import type { SlackApiResult, SlackClient } from './client.js';
 import {
@@ -26,6 +24,7 @@ import {
   slackSendMessageOutputSchema,
   type SlackSendMessageOutput,
 } from './validation.js';
+import { createProviderBeforeDispatch } from '../provider-dispatch-fence.js';
 
 const AUTH_ERRORS = new Set([
   'account_inactive',
@@ -182,34 +181,15 @@ async function execute(
         text: input.text,
         timeoutMillis: config.timeoutMillis,
         signal: invocation.signal,
-        beforeDispatch: async () => {
-          try {
-            await connections.assertCurrent?.({
-              connectionId,
-              expectedProviderKey: 'slack',
-              expectedAuthType: 'slack_bot_token',
-              secretVersionId: resolved.secretVersionId,
-              signal: invocation.signal,
-            });
-          } catch {
-            throw secureHttpPreDispatchError(
-              SECURE_HTTP_ERROR_CODE.connectionFenceFailed,
-            );
-          }
-          try {
-            await runtime.beforeDispatch();
-          } catch (error: unknown) {
-            throw secureHttpPreDispatchError(
-              error instanceof NodeDispatchEvidenceError &&
-                error.code === 'provider_dispatch_binding_mismatch'
-                ? SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch
-                : error instanceof NodeDispatchEvidenceError &&
-                    error.code === 'provider_connection_fence_failed'
-                  ? SECURE_HTTP_ERROR_CODE.connectionFenceFailed
-                  : SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed,
-            );
-          }
-        },
+        beforeDispatch: createProviderBeforeDispatch({
+          assertCurrent: connections.assertCurrent,
+          connectionId,
+          expectedProviderKey: 'slack',
+          expectedAuthType: 'slack_bot_token',
+          secretVersionId: resolved.secretVersionId,
+          signal: invocation.signal,
+          runtime,
+        }),
       });
     } catch (error: unknown) {
       if (error instanceof SlackSendMessageExecutorError) throw error;

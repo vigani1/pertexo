@@ -4,7 +4,6 @@ import {
   DISPATCH_AWARE_EXECUTOR_ABI_VERSION,
   type NodeExecutionInvocation,
   type NodeExecutorRegistration,
-  NodeDispatchEvidenceError,
   NodeExecutorFailure,
   ProviderExecutionRateLimitError,
 } from '@pertexo/node-sdk/server';
@@ -19,7 +18,6 @@ import {
 import {
   SECURE_HTTP_ERROR_CODE,
   SecureHttpError,
-  secureHttpPreDispatchError,
   type SecureHttpClient,
 } from '../http/secure-http.js';
 import {
@@ -37,6 +35,7 @@ import {
   resolvedHttpHeadersCredentialSchema,
   type HttpRequestOutput,
 } from './validation.js';
+import { createProviderBeforeDispatch } from '../provider-dispatch-fence.js';
 
 export class HttpRequestExecutorError extends NodeExecutorFailure {
   public override readonly name = 'HttpRequestExecutorError';
@@ -231,34 +230,15 @@ async function executeHttpRequest(
           maxResponseBytes: config.maxResponseBytes,
           sensitiveValues: Object.values(credential.headers),
           signal: invocation.signal,
-          beforeDispatch: async () => {
-            try {
-              await assertCurrent({
-                connectionId,
-                expectedProviderKey: 'http',
-                expectedAuthType: 'http_headers',
-                secretVersionId: resolved.secretVersionId,
-                signal: invocation.signal,
-              });
-            } catch {
-              throw secureHttpPreDispatchError(
-                SECURE_HTTP_ERROR_CODE.connectionFenceFailed,
-              );
-            }
-            try {
-              await runtime.beforeDispatch();
-            } catch (error: unknown) {
-              throw secureHttpPreDispatchError(
-                error instanceof NodeDispatchEvidenceError &&
-                  error.code === 'provider_dispatch_binding_mismatch'
-                  ? SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch
-                  : error instanceof NodeDispatchEvidenceError &&
-                      error.code === 'provider_connection_fence_failed'
-                    ? SECURE_HTTP_ERROR_CODE.connectionFenceFailed
-                    : SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed,
-              );
-            }
-          },
+          beforeDispatch: createProviderBeforeDispatch({
+            assertCurrent,
+            connectionId,
+            expectedProviderKey: 'http',
+            expectedAuthType: 'http_headers',
+            secretVersionId: resolved.secretVersionId,
+            signal: invocation.signal,
+            runtime,
+          }),
         },
         (stream) =>
           consumeResponseBody(
