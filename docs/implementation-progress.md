@@ -5171,6 +5171,12 @@ continues to run it. The destructive transport resilience proof now dispatches
 the active failure-notification job contract instead of the retained but
 intentionally inactive `expire-artifacts` compatibility contract.
 
+CodeQL then identified polynomial stack-classification regex work on
+Nest-controlled log text. The adapter now bounds inspection to 1,024 characters
+and uses a linear line parser with an adversarial 200,000-newline regression
+test. All 54 observability tests, typecheck, ESLint, package coverage, and the
+root source-hashed risk report pass.
+
 ### Granular package-audit remediation — integrations
 
 - [x] Implement INT-001 through INT-005, INT-007, INT-008, INT-011,

@@ -35,16 +35,16 @@ serves traces under the documented operational policy.
 | --- | --- | --- |
 | OBS-001 | Fixed | `5dc09c3`; bounded secret-key classification and positive/negative hostile-input tests in `logger.test.ts`. |
 | OBS-002 | Fixed | `5dc09c3`; fail-safe selection/property access, hostile proxy/getter/error tests, and constant unserializable marker. |
-| OBS-003 | Fixed | `5c639d8`; bounded Nest call-shape parser and coverage of every level plus message, stack, context, object, secret, and oversized inputs. |
+| OBS-003 | Fixed | `5c639d8`; bounded Nest call-shape parser and coverage of every level plus message, stack, context, object, secret, oversized, and adversarial multiline inputs. Stack recognition uses a bounded linear parser rather than a polynomial regular expression over library-controlled text. |
 | OBS-004 | Fixed; continuous gate | `ae377ca`; `pnpm observability:check` structurally parses YAML/JSON and runs pinned Prometheus and collector validators in protected CI. |
-| OBS-005 | Fixed; continuous gate | `19ae523`; package thresholds and root risk coverage are enforced. Fresh coverage: 92.10% statements (280/304), 90.00% branches (171/190), 89.88% functions (80/89), and 92.64% lines (277/299). |
+| OBS-005 | Fixed; continuous gate | `19ae523`; package thresholds and root risk coverage are enforced. Fresh coverage after the bounded Nest parser: 90.27% statements (297/329), 88.20% branches (187/212), 90.32% functions (84/93), and 91.79% lines (291/317). |
 | OBS-006 | External production evidence required | Repository configuration is complete, but no local test can prove the production backend owner, retention/access policy, deployed sampling/redaction, or retrieval of a real API-to-worker trace. |
 | OBS-007 | Fixed | `5dc09c3`; execution-storage observation is required and all worker substitutes implement it. |
 | OBS-008 | Fixed | `5dc09c3`; both maintenance histograms reject negative and non-finite durations and accept zero/positive values. |
 | OBS-009 | Fixed | `bf62f10`; the supported eight-adapter set is explicitly constructed, dependency-pinned, and asserted. |
 | OBS-010 | Fixed | `5dc09c3`; delay values must be non-negative safe integers within the Node timer limit, with invalid-boundary tests. |
 
-Fresh verification on 2026-06-18 passed 10 files / 53 tests, package
+Fresh verification on 2026-09-05 passed 10 files / 54 tests, package
 typecheck, build, ESLint, package coverage, structural observability validation,
 Prometheus configuration validation, all 24 alert rules, and OpenTelemetry
 Collector validation. OBS-004 and OBS-005 are continuous safeguards: future

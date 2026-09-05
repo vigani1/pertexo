@@ -80,6 +80,24 @@ describe('Nest observability runtime integration', () => {
     );
   });
 
+  it('bounds stack classification before scanning adversarial multiline input', () => {
+    const write = vi.fn();
+    const adapter = new NestLoggerAdapter(loggerFixture({ error: write }));
+    const multilineContext = `${'\n'.repeat(200_000)}Error: outside bound`;
+
+    adapter.error('Failed', multilineContext);
+
+    expect(write).toHaveBeenCalledWith(
+      'nest.error',
+      {
+        context: `${'\n'.repeat(1_024)}[Truncated]`,
+        messageType: 'string',
+        summary: 'Failed',
+      },
+      undefined,
+    );
+  });
+
   it('bounds summaries and avoids inspecting object payloads', () => {
     const write = vi.fn();
     const adapter = new NestLoggerAdapter(loggerFixture({ info: write }));

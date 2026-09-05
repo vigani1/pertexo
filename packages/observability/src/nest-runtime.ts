@@ -91,7 +91,47 @@ function nestError(summary: string, stack: string): Error {
 }
 
 function resemblesStack(value: string): boolean {
-  return /(?:^|\n)\s*(?:[A-Za-z]*Error\b|at\s+\S+)/u.test(value);
+  return value
+    .slice(0, MAX_NEST_TEXT_LENGTH)
+    .split('\n')
+    .some(resemblesStackLine);
+}
+
+function resemblesStackLine(line: string): boolean {
+  let cursor = 0;
+  while (isWhitespace(line[cursor])) cursor += 1;
+
+  let nameEnd = cursor;
+  while (isAsciiLetter(line[nameEnd])) nameEnd += 1;
+  if (
+    line.slice(cursor, nameEnd).endsWith('Error') &&
+    !isAsciiWordCharacter(line[nameEnd])
+  )
+    return true;
+
+  if (line.slice(cursor, cursor + 2) !== 'at') return false;
+  cursor += 2;
+  if (!isWhitespace(line[cursor])) return false;
+  while (isWhitespace(line[cursor])) cursor += 1;
+  return line[cursor] !== undefined && !isWhitespace(line[cursor]);
+}
+
+function isWhitespace(character: string | undefined): boolean {
+  return character?.trim() === '';
+}
+
+function isAsciiLetter(character: string | undefined): boolean {
+  if (character === undefined) return false;
+  const code = character.charCodeAt(0);
+  return (code >= 65 && code <= 90) || (code >= 97 && code <= 122);
+}
+
+function isAsciiWordCharacter(character: string | undefined): boolean {
+  if (character === undefined) return false;
+  const code = character.charCodeAt(0);
+  return (
+    isAsciiLetter(character) || (code >= 48 && code <= 57) || character === '_'
+  );
 }
 
 export class TelemetryShutdown {
