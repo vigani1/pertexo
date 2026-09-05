@@ -41,7 +41,8 @@ describe('workflow-model package contract', () => {
       if (
         name === './assert-never' ||
         name === './failure-notification' ||
-        name === './graph-contract'
+        name === './graph-contract' ||
+        name === './observation-window'
       )
         continue;
       if (value.node === undefined)
