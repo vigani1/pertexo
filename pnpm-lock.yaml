@@ -250,8 +250,8 @@ importers:
         specifier: 8.21.0
         version: 8.21.0
       bullmq:
-        specifier: 6.1.2
-        version: 6.1.2(ioredis@6.0.0(supports-color@7.2.0))(pg@8.23.0)
+        specifier: 6.3.4
+        version: 6.3.4(ioredis@6.0.0(supports-color@7.2.0))(pg@8.23.0)
       drizzle-orm:
         specifier: 0.45.2
         version: 0.45.2(@opentelemetry/api@1.9.0)(@types/pg@8.21.0)(pg@8.23.0)
@@ -424,8 +424,8 @@ importers:
         specifier: 1.9.0
         version: 1.9.0
       bullmq:
-        specifier: 6.1.2
-        version: 6.1.2(ioredis@6.0.0(supports-color@7.2.0))(pg@8.23.0)
+        specifier: 6.3.4
+        version: 6.3.4(ioredis@6.0.0(supports-color@7.2.0))(pg@8.23.0)
       ioredis:
         specifier: 6.0.0
         version: 6.0.0(supports-color@7.2.0)
@@ -1673,8 +1673,8 @@ packages:
     resolution: {integrity: sha512-yQbXgO/OSZVD2IsiLlro+7Hf6Q18EJrKSEsdoMzKePKXct3gvD8oLcOQdIzGupr5Fj+EDe8gO/lxc1BzfMpxvA==}
     engines: {node: '>=8'}
 
-  bullmq@6.1.2:
-    resolution: {integrity: sha512-GSX8JfWN8CElAGDyt7Zmq59n1FfWZ0L7IjsThNUQq7X8mvVVDb9I5i2F+nFg4A00UbysJ5yejN0oWzmbUJPDFg==}
+  bullmq@6.3.4:
+    resolution: {integrity: sha512-DpilB5sayCB8huCp4YuzVhJjxB4ieHidzu+GPgbcjPi3kQv0gdLoLnk+I+mMACDQ88rTbSiT+B4crmhWFGL9GA==}
     engines: {node: '>=14.17.0'}
     peerDependencies:
       bullmq-otel: '>=2.0.0'
@@ -2474,8 +2474,8 @@ packages:
     resolution: {integrity: sha512-4kmO/MdyUIkLIvTPr8VHLil4AtoKIoniWPIEk5+CDy0xnWC84azhSFmuJ7PxZdsYtiP5kEeQsORAVIeMgxT+Hw==}
     hasBin: true
 
-  msgpackr@2.0.5:
-    resolution: {integrity: sha512-cef05H/dSYpLpqp3sj/qyZh5vhUYCalnaLO7j1yOmpsR0y/XwLVtK7r5gn+U/F7CTEfMowcGhlUQJDLcLf7jcA==}
+  msgpackr@2.1.0:
+    resolution: {integrity: sha512-p/pBCVO63CsvvpkomUnNNag6+n38rULuDA6HHe70o2gtC8ODI52foF/4ko2qQcp6OiErJXTmrZeXmsGGHsIQNQ==}
 
   nanoid@3.3.18:
     resolution: {integrity: sha512-DTg4MJbGMWkfi6VZFdNt2/caMbQy4Ou+Op/hJQvGEWcnVfoA1QA+xzRKAzw9jD6+GVOOeYr/mIcuDSdug6F6+w==}
@@ -4385,10 +4385,10 @@ snapshots:
     dependencies:
       fill-range: 7.1.1
 
-  bullmq@6.1.2(ioredis@6.0.0(supports-color@7.2.0))(pg@8.23.0):
+  bullmq@6.3.4(ioredis@6.0.0(supports-color@7.2.0))(pg@8.23.0):
     dependencies:
       cron-parser: 5.10.0
-      msgpackr: 2.0.5
+      msgpackr: 2.1.0
       node-abort-controller: 3.1.1
       semver: 7.8.5
       tslib: 2.8.1
@@ -5129,7 +5129,7 @@ snapshots:
       '@msgpackr-extract/msgpackr-extract-win32-x64': 3.0.4
     optional: true
 
-  msgpackr@2.0.5:
+  msgpackr@2.1.0:
     optionalDependencies:
       msgpackr-extract: 3.0.4
 
