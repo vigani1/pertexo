@@ -39,6 +39,19 @@ type RawTableContract = Readonly<{
   rls: 'forced' | 'not_applicable';
 }>;
 
+function expectedColumnShape(value: unknown): Readonly<{
+  column_name: string;
+  is_not_null: boolean;
+}> {
+  if (typeof value !== 'object' || value === null)
+    throw new Error('Drizzle column metadata must be an object');
+  const name: unknown = Reflect.get(value, 'name');
+  const notNull: unknown = Reflect.get(value, 'notNull');
+  if (typeof name !== 'string' || typeof notNull !== 'boolean')
+    throw new Error('Drizzle column metadata has an invalid shape');
+  return { column_name: name, is_not_null: notNull };
+}
+
 const roleNames: Readonly<Record<string, string>> = Object.freeze({
   api_runtime_role: 'pertexo_api',
   dispatcher_role: 'pertexo_dispatcher',
@@ -90,11 +103,11 @@ describe('migrated schema shape contract', () => {
 
     for (const table of Object.values(databaseSchema)) {
       const tableName = getTableName(table);
-      const expected = Object.values(getTableColumns(table))
-        .map((column) => ({
-          column_name: column.name,
-          is_not_null: column.notNull,
-        }))
+      const columns: unknown = getTableColumns(table);
+      if (typeof columns !== 'object' || columns === null)
+        throw new Error(`Typed table ${tableName} has no column metadata`);
+      const expected = Object.values(columns)
+        .map(expectedColumnShape)
         .sort((left, right) =>
           left.column_name.localeCompare(right.column_name),
         );
