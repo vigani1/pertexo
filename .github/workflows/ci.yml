@@ -342,8 +342,10 @@ jobs:
             --reporter=json --outputFile=../../artifacts/artifact-store-gates.json
           pnpm --filter @pertexo/queue exec vitest run --config vitest.integration.config.ts \
             --reporter=json --outputFile=../../artifacts/queue-gates.json
-          pnpm --filter @pertexo/database exec vitest run --config vitest.integration.config.ts \
+          pnpm --filter @pertexo/database exec vitest run --config vitest.integration-coverage.config.ts --coverage \
             --reporter=json --outputFile=../../artifacts/database-gates.json
+          pnpm --filter @pertexo/database test:coverage
+          pnpm database:coverage:merge
           pnpm --filter @pertexo/worker exec vitest run --config vitest.integration.config.ts \
             --reporter=json --outputFile=../../artifacts/worker-gates.json
           pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts \
@@ -376,6 +378,15 @@ jobs:
           name: integration-reports
           path: artifacts/
           if-no-files-found: ignore
+      - name: Upload database integration coverage
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: database-integration-coverage
+          path: |
+            coverage/database-integration/
+            coverage/database-combined/
+          if-no-files-found: error
       - name: Stop disposable dependencies
         if: always()
         run: docker compose down -v --remove-orphans

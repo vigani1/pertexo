@@ -35,6 +35,7 @@
     "db:migrate": "pnpm --filter @pertexo/database db:migrate",
     "db:provision-operator": "node infrastructure/postgres/provision-operator-role.mjs",
     "database:schema:check": "node --test infrastructure/validate-database-schema.test.mjs && node infrastructure/validate-database-schema.mjs",
+    "database:coverage:merge": "node --test infrastructure/merge-istanbul-coverage.test.mjs && node infrastructure/merge-istanbul-coverage.mjs coverage/database/coverage-final.json coverage/database-integration/coverage-final.json coverage/database-combined/coverage-final.json",
     "exercise:check": "node infrastructure/exercises/validate-exercises.mjs && node --check infrastructure/exercises/run-http-exercise.mjs && node --test infrastructure/exercises/run-http-exercise.test.mjs",
     "images:check": "node infrastructure/validate-image-pins.mjs && node --test infrastructure/validate-image-pins.test.mjs infrastructure/create-image-provenance.test.mjs",
     "exercise:http": "node infrastructure/exercises/run-http-exercise.mjs",
