@@ -8,7 +8,7 @@ This register accounts for every occurrence accepted by `infrastructure/complexi
 
 | File | Lines | Retention reason |
 | --- | ---: | --- |
-| `apps/api/src/connections/use-cases.ts` | 556 | Connection use cases share authorization, credential, and provider-test policy; retain pending a focused feature-local split. |
+| `apps/api/src/connections/use-cases.ts` | 575 | Connection use cases share authorization, credential, and provider-test policy. Three post-external-work abort checks intentionally prevent persistence after request cancellation; retain pending a focused feature-local split. |
 | `apps/api/src/identity-infrastructure/oidc-adapter.ts` | 507 | OIDC discovery, callback, token, and identity validation remain one security boundary; retain to preserve validation order. |
 | `apps/worker/src/execution/node-runtime-capabilities.ts` | 503 | Worker attempt or transport lifecycle composition remains local; split only with cancellation, fencing, and redelivery characterization. |
 | `apps/worker/src/execution/preview-attempt-handler.ts` | 534 | Worker attempt or transport lifecycle composition remains local; split only with cancellation, fencing, and redelivery characterization. |
@@ -41,7 +41,7 @@ This register accounts for every occurrence accepted by `infrastructure/complexi
 | `packages/workflow-engine/src/coordinator-observations.ts` | 540 | Cohesive scheduler/state-machine validation surface; retain to keep transition ordering local and refactor only with public-boundary characterization. |
 | `packages/workflow-engine/src/operations.ts` | 731 | Cohesive scheduler/state-machine validation surface; retain to keep transition ordering local and refactor only with public-boundary characterization. |
 | `packages/workflow-engine/src/workflow-transition-observations.ts` | 528 | Cohesive scheduler/state-machine validation surface; retain to keep transition ordering local and refactor only with public-boundary characterization. |
-| `packages/workflow-model/src/expressions.ts` | 611 | Canonical graph/expression grammar and validation boundary; retain to keep one source of truth for parsing and normalization. |
+| `packages/workflow-model/src/expressions.ts` | 673 | Canonical expression grammar and the worker lifecycle supervisor remain colocated. The ready-to-start handoff now stays under the startup deadline and rejects invalid worker message order; retain to keep that timing state machine reviewable in one owner. |
 | `packages/workflow-model/src/graph.ts` | 927 | Canonical graph/expression grammar and validation boundary; retain to keep one source of truth for parsing and normalization. |
 
 ## Function hotspots

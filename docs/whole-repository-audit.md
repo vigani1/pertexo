@@ -47,9 +47,9 @@ capability is changed.
 
 Testing is broad in behavior and strong in failure scenarios, but the reported
 coverage percentages are intentionally narrow. They instrument 105 selected
-files containing 4,933 coverable lines. Those percentages must never be
+files containing 4,938 coverable lines. Those percentages must never be
 described as package-wide or repository-wide coverage. The selected branch
-inventory is now well controlled: 504 uncovered branches have semantic source
+inventory is now well controlled: 501 uncovered branches have semantic source
 fingerprints and individual reviews, with zero unreviewed sites. Test-code
 navigation improved because no test file exceeds 1,000 lines, and genuinely
 shared split-suite setup now has owner-local support modules.
@@ -152,7 +152,7 @@ each remediation status records the current disposition.
 | PostgreSQL and data integrity | 9.1/10 | Transaction, tenancy, UUIDv7, typed-schema ownership, migration, and RLS conventions are executable gates |
 | Application and dependency security | 9.2/10 | No known production advisory or open code-scanning alert; moderate dependency admission and high/critical code-scanning merge protection are active |
 | Test behavior and failure confidence | 9.2/10 | More than 1,600 unit tests plus strong real-service/recovery/process cohorts; no test file exceeds the limit and shared split-suite setup is owner-local |
-| Coverage breadth and mutation confidence | 8.2/10 | Exact controls cover 105 selected critical files/4,933 coverable lines with 504 reviewed and zero unreviewed branches; this remains intentionally non-global |
+| Coverage breadth and mutation confidence | 8.2/10 | Exact controls cover 105 selected critical files/4,938 coverable lines with 501 reviewed and zero unreviewed branches; this remains intentionally non-global |
 | CI and change governance | 9.1/10 | Exact-head CI is comprehensive; dependency review, explicit docs/history checks, code-scanning merge protection, and rebase-tree identity are enforced; independent approval awaits a second maintainer |
 | Reliability and durability | 9.1/10 | Crash, redelivery, fencing, idempotency, compatibility, shutdown, and unknown publication outcomes have regression coverage |
 | Observability and operability | 8.7/10 | Broad telemetry and runbooks exist and logger safety is verified; live dashboard, alert, and pager behavior remain external evidence |
@@ -179,11 +179,11 @@ of the evidence and priorities below.
 - 35 source files over the repository's 500-line budget.
 - 40 functions over the repository's 200-line or 40-branch budget.
 - 40 production functions over 200 lexical lines; 8 exceed 400 lines.
-- 45 reviewed source clone groups at a 12-line/80-token threshold: 992
-  duplicated lines, **1.15%** of the analyzed source.
+- 31 reviewed source clone groups at a 12-line/80-token threshold: 605
+  duplicated lines, **0.68%** of the analyzed source.
 - A reproducible post-remediation scan of every `apps/*/test` and
   `packages/*/test` TypeScript file at the 18-line/130-token threshold reports
-  6 reviewed clone groups and 267 duplicated lines, **0.29%** of the analyzed
+  6 reviewed clone groups and 267 duplicated lines, **0.28%** of the analyzed
   test corpus, down from 25 groups/1,977 lines (2.08%).
 - Current static unused-code/package-boundary analysis passes without unused
   files, dependencies, unsupported exports, or duplicate-export findings. The
@@ -460,7 +460,7 @@ files by adding retry policy, provider failure-delivery policy, the complete
 consequence-selected workflow-engine surface, and the artifact-store,
 contracts, and integrations cohorts. Exhaustive transition, authorization,
 retry, and dispatch-fence canaries pin the high-consequence decision spaces.
-All 504 remaining uncovered
+All 501 remaining uncovered
 instrumentation branches are individually reviewed with source fingerprints;
 none are unreviewed. CI retains per-run duration/skip/todo/failure JSON, and
 retries remain disabled so flakes cannot be masked by automatic reruns.
@@ -469,7 +469,7 @@ The selected coverage gates currently report:
 
 | Cohort | Selected files | Coverable lines | Statements | Branches | Functions | Lines |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Workflow engine | 26 | 1,925 | 90.57% | 85.32% | 93.63% | 91.74% |
+| Workflow engine | 26 | 1,923 | 90.71% | 85.45% | 93.63% | 91.78% |
 | Database | 1 | 99 | 96.36% | 95.38% | 100.00% | 97.97% |
 | Worker | 4 | 358 | 93.22% | 94.95% | 80.33% | 93.58% |
 | API | 12 | 317 | 100.00% | 100.00% | 100.00% | 100.00% |
@@ -477,7 +477,7 @@ The selected coverage gates currently report:
 | Contracts | 21 | 293 | 100.00% | 98.36% | 100.00% | 100.00% |
 | Integrations | 29 | 1,057 | 94.31% | 91.06% | 92.82% | 94.99% |
 
-Those are valid results for 105 selected files and 4,933 coverable lines. In
+Those are valid results for 105 selected files and 4,938 coverable lines. In
 particular, “database 95.38% branch coverage” currently means
 `packages/database/src/tenant-access/workspace.ts`,
 not all 104 database source files. The risk report is now correctly labeled
@@ -539,9 +539,9 @@ and compatibility tests provide the characterization. The workflow engine's
 226 tests, database's 175 unit tests, all 1,604 repository unit tests, build,
 typecheck, lint, dependency/export analysis, schema ownership, full `pnpm
 check`, and critical-file coverage pass. Coverage provenance for moved
-checkpoint branches was rebound by exact semantic source fingerprint: all 504
+checkpoint branches was rebound by exact semantic source fingerprint: all 501
 uncovered branches remain reviewed and zero are unreviewed across 105 files and
-4,933 coverable lines. The complete enabled database integration suite passed
+4,938 coverable lines. The complete enabled database integration suite passed
 63 files and 320 tests against real PostgreSQL after the locality moves.
 
 Remaining 35 file and 40 function occurrences are intentionally retained in
@@ -759,7 +759,7 @@ pnpm dlx jscpd@4.0.5 apps/*/test packages/*/test \
   --reporters console --ignore '**/dist/**'
 ```
 
-The same command now reports 6 reviewed groups, 267 duplicated lines (0.29%),
+The same command now reports 6 reviewed groups, 267 duplicated lines (0.28%),
 and 2,192 duplicated tokens (0.28%) across 362 files and 93,514 lines. The six
 retained groups are individually classified: four are scenario-local
 repetition whose visible state/actions/assertions aid review, and two are false
@@ -1391,7 +1391,7 @@ Local commands at the audited implementation tree:
   lint, complexity ratchet, generated contracts, project/test typechecks, and
   all 1,604 configured non-integration tests passed.
 - `pnpm test:coverage` — passed for the 105 selected critical files;
-  percentages are recorded in A-05; 504 reviewed and zero unreviewed uncovered
+  percentages are recorded in A-05; 501 reviewed and zero unreviewed uncovered
   branches.
 - `pnpm security:audit` — exited zero under the configured moderate threshold
   with no known production vulnerability.
@@ -1406,9 +1406,9 @@ Local commands at the audited implementation tree:
 - `pnpm dlx jscpd@4.0.5 apps/*/test packages/*/test --min-lines 18
   --min-tokens 130 --format typescript --reporters console --ignore
   '**/dist/**'` — the original baseline was 25 groups/1,977 lines (2.08%);
-  owner-local extraction now reports 6 groups/267 lines (0.29%).
+  owner-local extraction now reports 6 groups/267 lines (0.28%).
 - `pnpm duplication:check` — passed the pinned semantic source/test ratchet:
-  45 reviewed source groups/992 lines and 6 reviewed test groups/267 lines.
+  31 reviewed source groups/605 lines and 6 reviewed test groups/267 lines.
 - `gh api` security inspection — zero open Dependabot alerts and zero open
   CodeQL alerts on the default branch.
 - branch-protection/ruleset inspection — 11 strict required contexts plus
