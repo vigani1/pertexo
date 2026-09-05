@@ -194,6 +194,13 @@ jobs:
           for package in ${{ matrix.packages }}; do
             pnpm --filter "$package" test
           done 2>&1 | tee artifacts/unit-${{ matrix.group }}.log
+      - name: Run extended scheduled workflow model
+        if: github.event_name == 'schedule' && matrix.group == 'core'
+        env:
+          WORKFLOW_MODEL_RUN_MULTIPLIER: '4'
+        run: >-
+          pnpm --filter @pertexo/workflow-engine exec vitest run
+          test/state-machine-model.test.ts
       - name: Upload unit test log
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
