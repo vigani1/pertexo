@@ -907,7 +907,8 @@ remaining gaps are implementation/control details:
   ratchets; keep reviewed exceptions fingerprinted.
 - **Verification:** deleting a test from each critical family fails CI or
   creates a new unreviewed risk entry.
-- **Status:** fixed as a continuous repository control.
+- **Status:** partially remediated; instrumentation and ratchets are fixed, but
+  the newly visible risk branches still require test or narrow review evidence.
 - **Implemented evidence (2026-09-05):** enforced coverage now includes all 24
   consequence-selected engine files: persisted observation admission/parsing,
   coordinator derivation, scheduler projection, transition derivation/stops/
@@ -916,7 +917,10 @@ remaining gaps are implementation/control details:
   its stronger aggregate thresholds, each newly admitted decision owner has a
   file-specific branch floor, and the expanded cohort has a separate aggregate
   ratchet. The baseline is 2,094 branches at 85.19%, rather than the prior
-  1,018-branch selected score.
+  1,018-branch selected score. The first expanded root risk report records 223
+  unreviewed branches in these newly selected files; WFE-004 must not be marked
+  complete until those branches are either exercised through public behavior or
+  carry source-hashed, branch-specific evidence.
 
 ### WFE-005 — Engine checkpoint admission is weaker than persistence admission
 
