@@ -180,10 +180,6 @@ export interface NodeExecutionRuntime {
   ): Promise<void>;
 }
 
-export type NodeExecutionHandler<Config, Input, Output> = (
-  invocation: NodeExecutionInvocation<Config, Input>,
-) => Promise<Output> | Output;
-
 export interface NodeExecutorRegistration {
   readonly abiVersion: number;
   readonly definitions: readonly DefinitionIdentity[];
@@ -193,16 +189,6 @@ export interface NodeExecutorRegistration {
   readonly execute: (
     invocation: NodeExecutionInvocation<unknown, unknown>,
   ) => Promise<unknown>;
-}
-
-export interface TypedExecutorRegistration<Config, Input, Output> extends Omit<
-  NodeExecutorRegistration,
-  'execute'
-> {
-  readonly execute: (
-    invocation: NodeExecutionInvocation<unknown, unknown>,
-  ) => Promise<unknown>;
-  readonly __types?: (config: Config, input: Input, output: Output) => void;
 }
 
 export interface NodeDefinitionRegistration {
@@ -635,35 +621,6 @@ function mapSchemaError(
   if (kind === 'config') return new NodeConfigValidationError(error);
   if (kind === 'input') return new NodeInputValidationError(error);
   return new NodeOutputValidationError(error);
-}
-
-export function defineNodeExecutor<Config, Input, Output>(options: {
-  readonly abiVersion: number;
-  readonly definitions: readonly DefinitionIdentity[];
-  readonly executor: ExecutorIdentity;
-  readonly lifecycle: ExecutorLifecycle;
-  readonly policyReferences: readonly PolicyReference[];
-  readonly configSchema: ZodType<Config>;
-  readonly inputSchema: ZodType<Input>;
-  readonly execute: NodeExecutionHandler<Config, Input, Output>;
-}): TypedExecutorRegistration<Config, Input, Output> {
-  return {
-    abiVersion: options.abiVersion,
-    definitions: options.definitions,
-    executor: options.executor,
-    lifecycle: options.lifecycle,
-    policyReferences: options.policyReferences,
-    execute: async (invocation) =>
-      options.execute({
-        config: options.configSchema.parse(invocation.config),
-        input: options.inputSchema.parse(invocation.input),
-        connectionRefs: invocation.connectionRefs,
-        signal: invocation.signal,
-        ...(invocation.runtime === undefined
-          ? {}
-          : { runtime: invocation.runtime }),
-      }),
-  };
 }
 
 function assertNotAborted(signal: AbortSignal): void {
