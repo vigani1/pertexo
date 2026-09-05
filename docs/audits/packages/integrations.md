@@ -821,7 +821,15 @@ conflict between the plan and modern code quality.
   Require human review for changed global/reachability semantics.
 - **Verification:** CI compares source policy fixtures with the approved
   snapshot; a scheduled job reports upstream changes.
-- **Status:** currently safe, control open.
+- **Status:** fixed as a continuous repository control; upstream drift still
+  requires human security review.
+- **Implemented evidence (2026-09-05):** the runtime policy now consumes one
+  owner-local normalized snapshot that records the authoritative IANA IPv4 and
+  IPv6 registry URLs, their published update date, approval date, and exact
+  SHA-256 values. `pnpm network-registry:check` validates the pins locally, and
+  scheduled CI runs `pnpm network-registry:check-upstream`, failing closed when
+  either authoritative registry changes. The failure explicitly requires a
+  dedicated review of reachability semantics before updating the snapshot.
 
 ### INT-010 — External provider and managed-KMS contracts are unverified
 

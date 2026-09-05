@@ -128,6 +128,7 @@ jobs:
             pnpm docs:check
             pnpm format:check
             pnpm runtime:check
+            pnpm network-registry:check
             pnpm dependencies:check
             pnpm database:schema:check
             pnpm build
@@ -144,6 +145,9 @@ jobs:
           name: quality-log
           path: artifacts/
           if-no-files-found: ignore
+      - name: Compare approved IANA address registries with upstream
+        if: github.event_name == 'schedule'
+        run: pnpm network-registry:check-upstream
 
   # Unit tests are independent and partitioned by workspace group. Integration
   # tests remain in the service-backed jobs below.

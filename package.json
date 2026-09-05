@@ -43,6 +43,8 @@
     "hooks:install": "node infrastructure/install-git-hooks.mjs",
     "lint": "NODE_OPTIONS=--max-old-space-size=8192 eslint .",
     "lifecycle-command:start": "pnpm --filter @pertexo/lifecycle-command start",
+    "network-registry:check": "node --test infrastructure/validate-iana-address-registry.test.mjs && node infrastructure/validate-iana-address-registry.mjs",
+    "network-registry:check-upstream": "node infrastructure/validate-iana-address-registry.mjs --upstream",
     "observability:check": "node infrastructure/observability/validate-config.mjs && docker compose -f infrastructure/observability/compose.yaml run --rm --no-deps --entrypoint promtool prometheus check config /etc/prometheus/prometheus.yaml && docker compose -f infrastructure/observability/compose.yaml run --rm --no-deps --entrypoint promtool prometheus check rules /etc/prometheus/pertexo-alerts.yaml && docker compose -f infrastructure/observability/compose.yaml run --rm --no-deps otel-collector validate --config=/etc/otelcol/config.yaml",
     "operator-command:start": "pnpm --filter @pertexo/operator-command start",
     "prepare": "pnpm hooks:install",
