@@ -245,10 +245,14 @@ async function persistVersion(
 ): Promise<Readonly<{ reused: boolean; version: WorkflowVersionRecord }>> {
   const retained = await client.query<Record<string, unknown>>(
     `select ${workflowVersionRowSelection} from app.workflow_versions
-     where workspace_id=$1 and workflow_id=$2 and checksum=$3`,
-    [input.workspaceId, workflowId, publication.checksum],
+     where workspace_id=$1 and workflow_id=$2 order by version_number`,
+    [input.workspaceId, workflowId],
   );
-  let versionRow = retained.rows[0];
+  let versionRow: Record<string, unknown> | undefined;
+  for (const row of retained.rows) {
+    const version = dependencies.mapVersion(row);
+    if (version.checksum === publication.checksum) versionRow = row;
+  }
   const reused = versionRow !== undefined;
   if (!reused) {
     const inserted = await client.query<Record<string, unknown>>(
