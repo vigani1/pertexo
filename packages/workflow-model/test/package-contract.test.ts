@@ -10,6 +10,44 @@ import {
 } from '../src/graph-contract.js';
 
 describe('workflow-model package contract', () => {
+  it('keeps the server root facade explicit and stable', async () => {
+    const publicEntry = await import('../src/index.js');
+    expect(Object.keys(publicEntry).sort()).toEqual([
+      'CANONICAL_JSON_MAX_DEPTH',
+      'EMPTY_DEFINITION_CATALOG_FINGERPRINT_V1',
+      'EMPTY_DEFINITION_CATALOG_V1',
+      'EMPTY_WORKFLOW_GRAPH_V1',
+      'EXPRESSION_POLICY_V1',
+      'InvalidInvocationScopeError',
+      'InvalidJsonValueError',
+      'InvalidWorkflowGraphError',
+      'JSONATA_EVALUATOR_DIAGNOSTICS',
+      'JsonataEvaluator',
+      'WORKFLOW_EXECUTION_LIMITS_V1',
+      'WORKFLOW_GRAPH_LIMITS',
+      'WorkflowGraphContractError',
+      'WorkflowSettingsSchemaV1',
+      'canonicalJson',
+      'canonicalizeJson',
+      'inspectJsonValue',
+      'invocationIdentity',
+      'parseRetainedWorkflowVersionV1',
+      'parseWorkflowGraphDraft',
+      'parseWorkflowGraphForPublish',
+      'resolveJsonPath',
+      'resolveValueSource',
+      'safeParseWorkflowGraphDraft',
+      'validateExpression',
+      'validateWorkflowGraph',
+      'workflowCompatibilityReport',
+      'workflowDraftRepresentationTag',
+      'workflowExecutableChecksum',
+      'workflowExecutableProjection',
+      'workflowIntegrationUsage',
+      'workflowRetainedExecutableChecksum',
+    ]);
+  });
+
   it('keeps canonical graph ownership browser-safe while server implementation exports remain protected', async () => {
     const json = JSON.parse(
       await readFile(new URL('../package.json', import.meta.url), 'utf8'),
