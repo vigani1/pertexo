@@ -5081,6 +5081,35 @@ Implementation commits: `8406d1e`, `5a7ed49`, `3adf2e1`, `68485d8`,
 `667554a`, `132c8e1`, `182f754`, `ce1c809`, and `f8c3655`. No phase status
 changed.
 
+### Granular package-audit remediation — artifact-store
+
+- [x] Implement ART-001 through ART-004, ART-006, ART-007, ART-009,
+      ART-010, ART-012, and ART-013. Provider-reported region identity,
+      expiring readiness attestations, bounded reconciliation concurrency,
+      coordinator safety observations, aggregate close, bounded presigning,
+      typed S3 results, shared configuration grammar, exact purge
+      acknowledgements, operation-scoped cancellation, and explicit resource
+      ownership are all covered by focused tests.
+- [x] Preserve ART-011 as a continuous deployment-shape safeguard. The current
+      unbundled Node consumers and actual AWS command constructors are tested;
+      no speculative public subpath or generic telemetry layer was added.
+- [x] Add all artifact-store source to the package coverage gate and root
+      source-hashed risk report. Fresh package coverage is 90.26% statements
+      (853/945), 83.49% branches (607/727), 94.56% functions (174/184), and
+      92.08% lines (814/884).
+- [ ] Finish ART-005 by reviewing the 120 newly exposed uncovered branches:
+      test public regional/cancellation/cleanup behavior where reachable and
+      retain only narrow source-hashed provider/defensive exceptions.
+- [ ] Supply ART-008 from deployed AWS resources: execute the three AWS-only
+      assertions and capture Frankfurt/Ireland bucket identity, version
+      lifecycle, one-sided outage, restore, and measured RPO/RTO evidence for
+      the exact release artifact. Local MinIO/S3Mock compatibility is not a
+      substitute.
+
+Implementation commits: `3289414`, `b45d960`, `dcc96b1`, `e208935`,
+`19ae523`, `0f1c8a9`, `87827a8`, `8c85107`, `f522666`, `10b9561`, and
+`db66903`. No phase status changed.
+
 ## Update protocol
 
 When a checkpoint changes status:

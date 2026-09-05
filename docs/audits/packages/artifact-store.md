@@ -14,11 +14,29 @@
   and 030, and the regional-recovery, production-data-policy, release-security,
   and external-platform runbooks.
 - **Audit status:** granularly certified for the pinned tree.
-- **Implementation status:** one high-priority regional-assurance defect, eight
-  medium operational/test/observability or API issues, and four lower-priority
-  maintainability improvements remain open. Two production assumptions remain
-  explicitly unverified and must not be represented as implementation defects
-  that local code can close.
+- **Implementation status (2026-09-05):** ten repository-actionable findings
+  are implemented, ART-005 is partially complete while the newly
+  selected source-hashed branch cohort is reviewed, ART-008 still requires
+  live AWS/regional evidence, and ART-011 remains a continuous deployment-shape
+  safeguard rather than an active defect.
+
+## Remediation reconciliation
+
+| Finding | Final status | Current evidence |
+| --- | --- | --- |
+| ART-001 | Fixed in code; live geography remains ART-008 | `3289414`; readiness uses the provider-reported bucket region and rejects configured drift before dual-region comparison. |
+| ART-002 | Fixed locally; production latency evidence remains external | `b45d960`; bounded readiness attestations expire/invalidate, append request counts drop from repeated full proofs, and reconciliation GET concurrency is capped at eight while preserving chain order. |
+| ART-003 | Fixed | `dcc96b1`; both dual coordinators emit one bounded safety observation for unavailable, partial, or divergent regional outcomes. |
+| ART-004 | Fixed | `e208935`; owned close always attempts both stores, aggregates failures, and remains idempotent. |
+| ART-005 | Partially fixed; continuous gate | `19ae523`, `0f1c8a9`; all package source is thresholded and now enters the root source-hashed risk report. The newly exposed review backlog remains actionable. |
+| ART-006 | Fixed | `87827a8`, `8c85107`; presigning shares the caller/timeout signal, ignores late settlement, preserves exact cancellation, and recovers on the next call. |
+| ART-007 | Fixed | `f522666`; one command/output map drives typed sends, with compile-time mismatch tests and runtime provider validation retained. |
+| ART-008 | External production evidence required | The three AWS-only tests, Frankfurt/Ireland identity, version lifecycle, one-sided outage, restore, and measured RPO/RTO drills still require deployed resources and credentials. |
+| ART-009 | Fixed | `10b9561`; endpoint, bucket, and regional configuration primitives have one package-private owner with parity tests; distinct artifact/ledger policy remains explicit. |
+| ART-010 | Fixed | `db66903`; purge validates exact verbose delete acknowledgements and rejects missing, duplicate, malformed, or foreign results. |
+| ART-011 | Continuous safeguard; intentionally retained | The supported unbundled Node deployment and actual AWS command constructors are smoke-tested; subpaths/explicit tags are deferred until a real bundling or lightweight-consumer requirement appears. |
+| ART-012 | Fixed | `87827a8`; PUT and post-upload HEAD share one operation signal/deadline and exact abort reason, with timeout and listener-cleanup regressions. |
+| ART-013 | Fixed | `e208935`; injected clients are borrowed by default, owned/internally-created clients close once, and close failures remain visible. |
 
 This package is a necessary, high-Leverage infrastructure Module. Its public
 Interface hides immutable artifact upload/download, streamed checksum and size
@@ -530,7 +548,7 @@ where the code or evidence has not yet fully delivered its later ADR promises.
 
 - **Severity:** P1
 - **Classification:** Confirmed defect
-- **Status:** Open
+- **Status:** Fixed in code; live geography proof remains under ART-008.
 - **Evidence:** `AwsArtifactStore.checkReadiness` sends only `HeadBucket` and
   returns `config.region`; the dual guard compares those returned strings. The
   passing local integration uses one endpoint for both configured regions.
@@ -546,7 +564,7 @@ where the code or evidence has not yet fully delivered its later ADR promises.
 
 - **Severity:** P2
 - **Classification:** Maintainability improvement
-- **Status:** Open
+- **Status:** Fixed locally; production-latency evidence remains external.
 - **Evidence:** one dual first append issued 28 S3 operations; dual reconciliation
   invokes its own readiness and each regional reconciliation invokes readiness
   again, then reads records serially.
@@ -562,7 +580,7 @@ where the code or evidence has not yet fully delivered its later ADR promises.
 
 - **Severity:** P2
 - **Classification:** Confirmed defect
-- **Status:** Open
+- **Status:** Fixed.
 - **Evidence:** coordinator-created replica/read/purge/reconcile disagreements
   and partial replication are thrown outside the regional observed wrappers;
   only ledger region-isolation explicitly records a coordinator safety event.
@@ -578,7 +596,7 @@ where the code or evidence has not yet fully delivered its later ADR promises.
 
 - **Severity:** P2
 - **Classification:** Confirmed defect
-- **Status:** Open
+- **Status:** Fixed.
 - **Evidence:** owned close calls primary then recovery without `try`/aggregation;
   a primary close exception prevents recovery close. The ledger equivalent
   already handles both.
@@ -590,7 +608,7 @@ where the code or evidence has not yet fully delivered its later ADR promises.
 
 - **Severity:** P2
 - **Classification:** Continuous control
-- **Status:** Open
+- **Status:** Partially fixed; continuous branch review remains actionable.
 - **Evidence:** 82.77% package branch coverage; dual artifact coordination is
   65.67%; the root reviewed-uncovered-branch manifest does not select these files.
 - **Impact:** cross-region and cleanup regressions can remain green despite broad
@@ -604,7 +622,7 @@ where the code or evidence has not yet fully delivered its later ADR promises.
 
 - **Severity:** P2
 - **Classification:** Maintainability improvement
-- **Status:** Open
+- **Status:** Fixed.
 - **Evidence:** `PutObjectPresigner` receives no signal; caller abortion is
   checked only before and after awaiting it.
 - **Impact:** a future remote credential provider or injected signer can hold an
@@ -617,7 +635,7 @@ where the code or evidence has not yet fully delivered its later ADR promises.
 
 - **Severity:** P2
 - **Classification:** Maintainability improvement
-- **Status:** Open
+- **Status:** Fixed.
 - **Evidence:** client `send` returns `unknown`; call sites cast output shapes.
 - **Impact:** future commands can compile with the wrong result assumption and
   rely on incomplete runtime validation.
@@ -630,7 +648,7 @@ where the code or evidence has not yet fully delivered its later ADR promises.
 
 - **Severity:** P2
 - **Classification:** Unverified production assumption
-- **Status:** Open
+- **Status:** External production evidence required.
 - **Evidence:** CI intentionally skips three AWS-only assertions; MinIO rejects
   the required missing-`If-None-Match` bucket-policy condition. Versioned tenant
   bucket and Frankfurt/Ireland drills are also recorded open.
@@ -645,7 +663,7 @@ where the code or evidence has not yet fully delivered its later ADR promises.
 
 - **Severity:** P3
 - **Classification:** Maintainability improvement
-- **Status:** Open
+- **Status:** Fixed.
 - **Evidence:** endpoint/bucket grammars are cloned; primary/recovery ledger
   schemas are manually restated; `exactEqual` overlaps canonical record equality.
 - **Impact:** defaults or accepted values can drift across regions/surfaces.
@@ -658,7 +676,7 @@ where the code or evidence has not yet fully delivered its later ADR promises.
 
 - **Severity:** P3
 - **Classification:** Maintainability improvement
-- **Status:** Open
+- **Status:** Fixed.
 - **Evidence:** only `Errors` is inspected; `Deleted` is not matched to the
   requested keys/version IDs; `deletedCount` is always `objects.length`.
 - **Impact:** progress telemetry may overstate physical work, although an empty
@@ -672,7 +690,7 @@ where the code or evidence has not yet fully delivered its later ADR promises.
 
 - **Severity:** P3
 - **Classification:** Continuous control
-- **Status:** Open
+- **Status:** Continuous safeguard; intentionally retained.
 - **Evidence:** root import eagerly loads all AWS/ledger code; the cold probe was
   about 53 ms/16.2 MiB; telemetry derives operation from constructor names.
 - **Impact:** a future lightweight consumer or bundling/minification change can
@@ -686,7 +704,7 @@ where the code or evidence has not yet fully delivered its later ADR promises.
 
 - **Severity:** P2
 - **Classification:** Confirmed defect
-- **Status:** Open
+- **Status:** Fixed.
 - **Evidence:** `AwsArtifactStore.put` uses the request signal for `PutObject`,
   parses the request into metadata, then calls `head(metadata)`. Zod strips the
   signal, so HEAD receives only a new internal timeout. A deterministic client
@@ -706,7 +724,7 @@ where the code or evidence has not yet fully delivered its later ADR promises.
 
 - **Severity:** P3
 - **Classification:** Maintainability improvement
-- **Status:** Open
+- **Status:** Fixed.
 - **Evidence:** `createArtifactStore` accepts an injected client, but
   `AwsArtifactStore.close` always destroys it and exposes no `clientOwnership`
   option. `createControlLedger` and the dual-region facades explicitly model
