@@ -1830,6 +1830,1192 @@
           "justification": "V8 branch 12 in packages/integrations/src/slack/executor.ts has no source coordinate; explicit adjacent decisions are separately exercised through the public package boundary."
         }
       ]
+    },
+    {
+      "cohort": "artifact-store",
+      "file": "packages/artifact-store/src/config.ts",
+      "reviews": [
+        {
+          "branchId": "5",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 88,
+          "column": 2,
+          "sourceFingerprint": "sha256:48105bc9764533f60075103e5539ed23fce66d1e43c60f2000ccb5fc3cea564f",
+          "classification": "unreachable",
+          "justification": "Both regions parse maxObjectBytes from the same shared environment field, so distinct limits cannot reach this postcondition without an internal parser defect."
+        }
+      ]
+    },
+    {
+      "cohort": "artifact-store",
+      "file": "packages/artifact-store/src/control-ledger.ts",
+      "reviews": [
+        {
+          "branchId": "15",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:44560ad761314eede5203a301ae2aa2714fc362cd43f6a8bf7e3976fb98ee68d",
+          "classification": "generated",
+          "justification": "V8 branch 15 in packages/artifact-store/src/control-ledger.ts has no source coordinate; explicit adjacent decisions are separately covered by the package tests."
+        },
+        {
+          "branchId": "39",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:2623121981070ab9e5595daf85704c1cc9be28fcbdd87c61188954d1a7894707",
+          "classification": "generated",
+          "justification": "V8 branch 39 in packages/artifact-store/src/control-ledger.ts has no source coordinate; explicit adjacent decisions are separately covered by the package tests."
+        },
+        {
+          "branchId": "78",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:6b17812e3d91c3c4a4580e33012b6f0d25c9b8a08c951ea279fcfe8923c7480a",
+          "classification": "generated",
+          "justification": "V8 branch 78 in packages/artifact-store/src/control-ledger.ts has no source coordinate; explicit adjacent decisions are separately covered by the package tests."
+        },
+        {
+          "branchId": "3",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 197,
+          "column": 2,
+          "sourceFingerprint": "sha256:894faf8c824b997993b5dfa81ea47565e72107b0ab9a5a5d4a320edf63071031",
+          "classification": "defensive",
+          "justification": "The canonical serializer accepts general JSON arrays for forward-compatible material; current validated ledger records do not contain array-valued fields."
+        },
+        {
+          "branchId": "4",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 200,
+          "column": 2,
+          "sourceFingerprint": "sha256:9fecbf75384a1c2930cb22924105831c762676b80dfe5568e39ab73a4e8da278",
+          "classification": "unreachable",
+          "justification": "Validated ledger material contains only JSON values and undefined object properties are filtered, so a function or symbol cannot reach this fail-closed branch."
+        },
+        {
+          "branchId": "6",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 205,
+          "column": 75,
+          "sourceFingerprint": "sha256:7d5bdd10fbea2d84772be32d5f44e436464a868dcff45e0c144815b2604deae5",
+          "classification": "unreachable",
+          "justification": "Object keys are unique, so the canonical sort comparator cannot receive equal keys; ascending and descending ordering remain covered by canonical-record tests."
+        },
+        {
+          "branchId": "8",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 239,
+          "column": 2,
+          "sourceFingerprint": "sha256:ff0ed107225c5f9604e16cab23fc70c8d9fa2c53dcfe96f7f776b491bcd950e1",
+          "classification": "defensive",
+          "justification": "AWS failures are normally Error-shaped objects; this guard keeps primitive provider rejections from being mistaken for a named service error."
+        },
+        {
+          "branchId": "10",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 244,
+          "column": 2,
+          "sourceFingerprint": "sha256:ff0ed107225c5f9604e16cab23fc70c8d9fa2c53dcfe96f7f776b491bcd950e1",
+          "classification": "defensive",
+          "justification": "AWS precondition failures are normally Error-shaped objects; this guard prevents primitive rejections from being interpreted as conditional-write conflicts."
+        },
+        {
+          "branchId": "13",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 257,
+          "column": 6,
+          "sourceFingerprint": "sha256:cc6bd96a594d103bb011fe145b826eb0b19b01350a6da5f111317ef4bb031342",
+          "classification": "defensive",
+          "justification": "Cancellation tests preserve Error reasons; this branch retains the exact caller Error instead of replacing it with a generic ledger abort."
+        },
+        {
+          "branchId": "13",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 258,
+          "column": 6,
+          "sourceFingerprint": "sha256:84cb57149c1c575ad55f721a56aa745fdc7c7fae2221869f2934ab8eeaa972a4",
+          "classification": "defensive",
+          "justification": "AbortSignal permits non-Error reasons, so this fallback prevents arbitrary values from escaping the ledger boundary."
+        },
+        {
+          "branchId": "17",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 278,
+          "column": 2,
+          "sourceFingerprint": "sha256:b23e57935a59766ef8c08e163bf7423d587cffbaef6fc4c4005d8d3008d116b7",
+          "classification": "defensive",
+          "justification": "A policy resource without a trailing wildcard cannot cover the immutable ledger prefix; malformed policy matrices exercise the surrounding fail-closed result."
+        },
+        {
+          "branchId": "23",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 291,
+          "column": 2,
+          "sourceFingerprint": "sha256:ccb21a09b46d3745ce04410d61f0c8cc359e4dc5e569b02434cf58326ce37327",
+          "classification": "defensive",
+          "justification": "A non-object IAM Null payload cannot prove If-None-Match enforcement and is rejected by this defensive policy parser."
+        },
+        {
+          "branchId": "26",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 311,
+          "column": 2,
+          "sourceFingerprint": "sha256:ca061ecfe6e1e153c0b31465138f01dfc19d4e16c5e07ab738363182152a9ad8",
+          "classification": "defensive",
+          "justification": "A syntactically valid primitive JSON policy cannot prove bucket controls; the readiness boundary intentionally fails closed on this provider configuration."
+        },
+        {
+          "branchId": "29",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 326,
+          "column": 4,
+          "sourceFingerprint": "sha256:6cca3986a91d7fd68d8e980de4e086beaa1dba93738a61e3fad78123fa55913a",
+          "classification": "defensive",
+          "justification": "Non-object IAM statements are ignored because they cannot prove a deny; the policy must still contain complete qualifying statements to pass readiness."
+        },
+        {
+          "branchId": "37",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 374,
+          "column": 2,
+          "sourceFingerprint": "sha256:a4ef5864b982b2e6eaa915ef0dd731bd00c0009fd5b684f4f9c5479b153b3787",
+          "classification": "defensive",
+          "justification": "Provider object metadata must prove bounded JSON content before bytes are consumed; this compound guard rejects every missing or contradictory metadata field."
+        },
+        {
+          "branchId": "39",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 380,
+          "column": 4,
+          "sourceFingerprint": "sha256:7e758706f45388ee331d7578412eb369d630e06a61a62650dc625927e28e102a",
+          "classification": "defensive",
+          "justification": "When invalid metadata accompanies a readable response body, cleanup destroys the stream before the integrity error escapes."
+        },
+        {
+          "branchId": "40",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 385,
+          "column": 2,
+          "sourceFingerprint": "sha256:520cae83ee396119caf0dced0c03035ddf98ad97de6b72e507775af5654c31f6",
+          "classification": "defensive",
+          "justification": "S3 may return an SDK streaming union; only Node Readable bodies are admitted by this server package and every other variant fails closed."
+        },
+        {
+          "branchId": "41",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 395,
+          "column": 2,
+          "sourceFingerprint": "sha256:04246012b71ec86c741f3b40841857ee1c4f180f47c1a251c7d280ca597df2f6",
+          "classification": "defensive",
+          "justification": "A signal may be aborted between the S3 response and listener registration; this immediate check closes that cancellation race."
+        },
+        {
+          "branchId": "42",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 403,
+          "column": 6,
+          "sourceFingerprint": "sha256:50a78e10a1763fe1254beecb46ee43954bee985a53a1c2e5ee40a1c48abf93dd",
+          "classification": "defensive",
+          "justification": "The streamed ledger record is bounded by both the repository limit and provider ContentLength so oversized or contradictory provider bytes fail closed."
+        },
+        {
+          "branchId": "44",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 412,
+          "column": 4,
+          "sourceFingerprint": "sha256:57cf103d10721f03949e14f3f930fabb5b3853ce7fcf1e8d0fd2af6df94f72f7",
+          "classification": "defensive",
+          "justification": "Normal iteration may already destroy a Readable; this guard avoids duplicate destruction while guaranteeing cleanup for still-open bodies."
+        },
+        {
+          "branchId": "45",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 414,
+          "column": 2,
+          "sourceFingerprint": "sha256:378d93a695ed9f4f86d5f2d6bf36dd944c85658428ec32602cd1128a508d520d",
+          "classification": "defensive",
+          "justification": "A provider stream shorter than declared ContentLength is an integrity failure even when its JSON payload would otherwise parse."
+        },
+        {
+          "branchId": "48",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 446,
+          "column": 2,
+          "sourceFingerprint": "sha256:cec1243bfd48bdca033a167f8a91bd32ad7d769d9837b64401a89f26d86440f9",
+          "classification": "defensive",
+          "justification": "Stored bytes are untrusted; this branch rejects a JSON value that does not satisfy the exact durable ledger record schema."
+        },
+        {
+          "branchId": "49",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 453,
+          "column": 2,
+          "sourceFingerprint": "sha256:aa62fa1c6d428744462249bbac27abc2aab5e10fbfc9ea60699f6b7aedb7b466",
+          "classification": "defensive",
+          "justification": "Semantically valid but noncanonical JSON is rejected so one record has exactly one hashable byte representation."
+        },
+        {
+          "branchId": "50",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 458,
+          "column": 2,
+          "sourceFingerprint": "sha256:2fa0996738080c36cae6e0e8f899eb7d1f7ad6da2adc89f1bc64e44311114ffc",
+          "classification": "defensive",
+          "justification": "The key-derived workspace and sequence must match the stored record identity; mismatched provider bytes fail closed."
+        },
+        {
+          "branchId": "52",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 463,
+          "column": 2,
+          "sourceFingerprint": "sha256:0f26ef6b7e37a180d5a08915a99b53d4efb15b1d2fb162d430985407393c71d0",
+          "classification": "defensive",
+          "justification": "Sequence one must anchor the chain at ZERO_HASH even when every other stored-record field is schema-valid."
+        },
+        {
+          "branchId": "57",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 512,
+          "column": 12,
+          "sourceFingerprint": "sha256:bd51b323358b91dfe7374d3e7ca5cc3321ae23ae9e16c62d5dac90a13261eef7",
+          "classification": "defensive",
+          "justification": "The predecessor read forwards an optional caller signal only when supplied, preserving the public no-signal API and exact cancellation when present."
+        },
+        {
+          "branchId": "60",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 533,
+          "column": 4,
+          "sourceFingerprint": "sha256:7a93bfa03821b61514cc9c2cb47cba899892026d8f2370b3a124766e42b8675b",
+          "classification": "unreachable",
+          "justification": "Schema bounds on every record field keep canonical command bytes below MAX_RECORD_BYTES; this postcondition protects future schema expansion."
+        },
+        {
+          "branchId": "64",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 577,
+          "column": 12,
+          "sourceFingerprint": "sha256:bd51b323358b91dfe7374d3e7ca5cc3321ae23ae9e16c62d5dac90a13261eef7",
+          "classification": "defensive",
+          "justification": "Conflict recovery forwards an optional caller signal only when supplied so replay reads retain the original cancellation scope."
+        },
+        {
+          "branchId": "75",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 650,
+          "column": 41,
+          "sourceFingerprint": "sha256:9e12ea64b96bdab61bbc96fb607a98b1006a8638bcc66b18c54710d7cf41bfdc",
+          "classification": "defensive",
+          "justification": "AWS expresses default retention in Days or Years; tests cover year conversion while this residual conditional preserves absence as an unproven control."
+        },
+        {
+          "branchId": "92",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 781,
+          "column": 48,
+          "sourceFingerprint": "sha256:b005d59e46df0be19a353d7b572e570119f46353ecde673de3e8e420b5400dcc",
+          "classification": "defensive",
+          "justification": "Nonzero reconciliation anchors forward the caller signal when present and retain the public no-signal call shape otherwise."
+        },
+        {
+          "branchId": "93",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 784,
+          "column": 6,
+          "sourceFingerprint": "sha256:9db241b10d685345a3ced114c0d7605b94f0279282086c82e6645ab5c2c155c6",
+          "classification": "defensive",
+          "justification": "A nonzero projected sequence requires its exact stored anchor; a missing object makes the projection unverifiable."
+        },
+        {
+          "branchId": "97",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 818,
+          "column": 40,
+          "sourceFingerprint": "sha256:ef0a52a4e905719729659b7bbe7096b9da6943ba8d9528f7b5b4316803aca34b",
+          "classification": "defensive",
+          "justification": "S3 may omit Contents for an empty list response; treating it as an empty array is the SDK-compatible bounded representation."
+        },
+        {
+          "branchId": "102",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 862,
+          "column": 52,
+          "sourceFingerprint": "sha256:b005d59e46df0be19a353d7b572e570119f46353ecde673de3e8e420b5400dcc",
+          "classification": "defensive",
+          "justification": "Batched reconciliation reads forward the optional caller signal without manufacturing a separate cancellation identity."
+        },
+        {
+          "branchId": "104",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 875,
+          "column": 6,
+          "sourceFingerprint": "sha256:6940c335571142d716c35ecc5e0730b035b4fd4c8fe05d892ff034d2ce72a33e",
+          "classification": "defensive",
+          "justification": "Every reconciled record must extend the caller projection or prior record hash; any provider-visible chain break fails closed."
+        },
+        {
+          "branchId": "106",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 887,
+          "column": 48,
+          "sourceFingerprint": "sha256:b005d59e46df0be19a353d7b572e570119f46353ecde673de3e8e420b5400dcc",
+          "classification": "defensive",
+          "justification": "The one-record continuation probe forwards the same optional reconciliation signal as the main page reads."
+        },
+        {
+          "branchId": "107",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 890,
+          "column": 6,
+          "sourceFingerprint": "sha256:267d12e99e197cbba89b25122d2c1e129d32d829f78eb512c1dc280a67275e14",
+          "classification": "defensive",
+          "justification": "A continuation claim is accepted only if the probe extends the returned page hash, preventing false high-water progress."
+        },
+        {
+          "branchId": "116",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 992,
+          "column": 4,
+          "sourceFingerprint": "sha256:943485cff1d3b3ce5be21a4994ca9c03add9c0ff5c99defbbe79f4a12b7491e8",
+          "classification": "defensive",
+          "justification": "The default path creates the real bounded S3 client; unit tests inject the typed client port and deployed AWS behavior remains ART-008 evidence."
+        },
+        {
+          "branchId": "120",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 1022,
+          "column": 12,
+          "sourceFingerprint": "sha256:a90f0ed322cf211021b4aafafd8bf5a3924406d790be4aa9a80cfabc708f4bb0",
+          "classification": "defensive",
+          "justification": "Production uses the real clock for readiness expiry while deterministic unit tests inject now; both share the same attestation logic."
+        }
+      ]
+    },
+    {
+      "cohort": "artifact-store",
+      "file": "packages/artifact-store/src/dual-region-artifact-store.ts",
+      "reviews": [
+        {
+          "branchId": "10",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:621dae9dbc270e6552a52f562d967617dea9ec652e56ef9b3bb6089a372667a3",
+          "classification": "generated",
+          "justification": "V8 branch 10 in packages/artifact-store/src/dual-region-artifact-store.ts has no source coordinate; explicit adjacent decisions are separately covered by the package tests."
+        },
+        {
+          "branchId": "11",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:1291473ee8ceeed07ed72194ac2f03005b4b6da7cb62d9145db1d9188fb95c9d",
+          "classification": "generated",
+          "justification": "V8 branch 11 in packages/artifact-store/src/dual-region-artifact-store.ts has no source coordinate; explicit adjacent decisions are separately covered by the package tests."
+        },
+        {
+          "branchId": "19",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:2fc9e9d01355d4a53e254ced91b000b237eb6d45236b9a76010ff346f3f2ceb1",
+          "classification": "generated",
+          "justification": "V8 branch 19 in packages/artifact-store/src/dual-region-artifact-store.ts has no source coordinate; explicit adjacent decisions are separately covered by the package tests."
+        },
+        {
+          "branchId": "6",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 124,
+          "column": 4,
+          "sourceFingerprint": "sha256:176fda24e82640eb796e4d4bad78a7d839d04f2d78ebdf0084ea2dbaec5034ed",
+          "classification": "defensive",
+          "justification": "Readiness accepts only distinct provider-reported bucket and region identities; the regional test matrix covers divergence and success outcomes."
+        },
+        {
+          "branchId": "9",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 144,
+          "column": 4,
+          "sourceFingerprint": "sha256:64e14d755cc82ac0cfcd6e565a10d46f1b009d987d4077b0c1c6224adf647040",
+          "classification": "defensive",
+          "justification": "Explicitly borrowed regional stores are not closed by the coordinator, preserving resource ownership declared at construction."
+        },
+        {
+          "branchId": "22",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 238,
+          "column": 6,
+          "sourceFingerprint": "sha256:a6648c3803abc3277a24366820f718882e49e3f778ed773f1ad2d9280387d888",
+          "classification": "defensive",
+          "justification": "An existing immutable primary object must exactly match the requested metadata before replication may continue."
+        },
+        {
+          "branchId": "23",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 264,
+          "column": 4,
+          "sourceFingerprint": "sha256:fedd5f040eb7f73b361e3fc07ffa6e027d07f098e5311e1f924e56dc65afc85a",
+          "classification": "defensive",
+          "justification": "Replica verification requires both regional checksum validations; any one- or two-region rejection becomes one bounded integrity outcome."
+        },
+        {
+          "branchId": "26",
+          "locationIndex": 0,
+          "branchType": "binary-expr",
+          "line": 272,
+          "column": 8,
+          "sourceFingerprint": "sha256:bfa2bb40ba2db056d4f6c23d406cc5c1ca490f2b7880161cd685044f7a7b4562",
+          "classification": "defensive",
+          "justification": "The failed-region calculation distinguishes both rejected replicas from each one-sided outage for bounded safety telemetry."
+        },
+        {
+          "branchId": "26",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 272,
+          "column": 45,
+          "sourceFingerprint": "sha256:fc43f6d67a77c026859ef964576ec13638c8323229881c58ebbe531b723f1bd1",
+          "classification": "defensive",
+          "justification": "The failed-region calculation distinguishes both rejected replicas from each one-sided outage for bounded safety telemetry."
+        },
+        {
+          "branchId": "25",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 273,
+          "column": 12,
+          "sourceFingerprint": "sha256:2de691d88781d7c8c5637829fac136ae3237d9052b43606d437f586f72e4075a",
+          "classification": "defensive",
+          "justification": "When both replica validations reject, telemetry records both regions rather than attributing the outage to one side."
+        },
+        {
+          "branchId": "25",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 274,
+          "column": 12,
+          "sourceFingerprint": "sha256:9d563575700da94869ef7cd56c92e4bbf1896e763e8a1956ec3cd56bc9e5e274",
+          "classification": "defensive",
+          "justification": "A one-sided validation rejection is attributed to the actual failed regional role."
+        },
+        {
+          "branchId": "27",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 275,
+          "column": 14,
+          "sourceFingerprint": "sha256:baab8a388219e34b8ed557f1fef3b7017944a90be5aa22dc3c405c85b42e18c2",
+          "classification": "defensive",
+          "justification": "Primary-only validation failure is reported separately from recovery-only failure."
+        },
+        {
+          "branchId": "27",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 276,
+          "column": 14,
+          "sourceFingerprint": "sha256:69a67235ebc46d02fc24682b312cef4a25998f448e7d960726231aeb27cbcec2",
+          "classification": "defensive",
+          "justification": "The final telemetry branch represents recovery-only validation failure after both and primary-only cases are excluded."
+        },
+        {
+          "branchId": "28",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 282,
+          "column": 4,
+          "sourceFingerprint": "sha256:db0121c6c006509ee90a9c9569165a708fe698e16692697fa5246d10edbdb417",
+          "classification": "defensive",
+          "justification": "Two individually valid replicas must still expose identical immutable metadata before the coordinator returns success."
+        },
+        {
+          "branchId": "30",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 300,
+          "column": 38,
+          "sourceFingerprint": "sha256:a45f26ce2dd0b4081fcac58c5e33501dd4bdcb9b0d530eec30121ecc54ebd7c2",
+          "classification": "defensive",
+          "justification": "Recovery-head lookup forwards the caller signal only when present, preserving optional public cancellation."
+        },
+        {
+          "branchId": "32",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 303,
+          "column": 6,
+          "sourceFingerprint": "sha256:0ec72ddb0a9dd7468ee098423320126faffb7af3ae67ad7536108911dc939ce3",
+          "classification": "defensive",
+          "justification": "A pre-existing recovery object must exactly match the primary metadata; conflicting immutable replicas fail closed."
+        },
+        {
+          "branchId": "33",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 313,
+          "column": 40,
+          "sourceFingerprint": "sha256:a45f26ce2dd0b4081fcac58c5e33501dd4bdcb9b0d530eec30121ecc54ebd7c2",
+          "classification": "defensive",
+          "justification": "Primary download receives the same optional cancellation identity as the caller."
+        },
+        {
+          "branchId": "34",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 318,
+          "column": 40,
+          "sourceFingerprint": "sha256:a45f26ce2dd0b4081fcac58c5e33501dd4bdcb9b0d530eec30121ecc54ebd7c2",
+          "classification": "defensive",
+          "justification": "Recovery upload receives the same optional cancellation identity as primary download and verification."
+        },
+        {
+          "branchId": "35",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 321,
+          "column": 6,
+          "sourceFingerprint": "sha256:0f1f2dbc65a0af662d3a566fbe484e07444a09ac38972164a8f7b6651d2b487a",
+          "classification": "defensive",
+          "justification": "An ArtifactIntegrityError already contains the exact safe integrity outcome and is preserved instead of collapsed to partial replication."
+        },
+        {
+          "branchId": "38",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 337,
+          "column": 2,
+          "sourceFingerprint": "sha256:750061f7c0ffffc13a2bc8f5f6864f3b569d59d9f0c252ae3c918d5745e1bab3",
+          "classification": "defensive",
+          "justification": "The constructor rejects mixed config/store inputs so ownership and lifecycle semantics cannot be inferred from one injected side."
+        },
+        {
+          "branchId": "41",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 345,
+          "column": 6,
+          "sourceFingerprint": "sha256:6741fbb6b51221997b0c35e8966c3007dacb8f3e16437d26eb9883feb8174fd8",
+          "classification": "defensive",
+          "justification": "Configuration inputs create an owned primary store; fully injected inputs preserve the supplied primary instance."
+        },
+        {
+          "branchId": "42",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 347,
+          "column": 12,
+          "sourceFingerprint": "sha256:16e33c599c88e698d1597a4a2701b38d367e9f645a1475da038906676533ef4e",
+          "classification": "defensive",
+          "justification": "An optional observer is forwarded only when supplied so default production telemetry remains the store owner."
+        },
+        {
+          "branchId": "42",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 348,
+          "column": 12,
+          "sourceFingerprint": "sha256:84373b100ed9eb1a2544d015373333930062411d24041722105480c23a13fe9d",
+          "classification": "defensive",
+          "justification": "A supplied observer is forwarded unchanged into the primary regional store."
+        },
+        {
+          "branchId": "43",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 353,
+          "column": 6,
+          "sourceFingerprint": "sha256:0e89cf52f5f9d41ecf5422ca001c56ddb6035e49456b5a23214f4ad303367da0",
+          "classification": "defensive",
+          "justification": "Configuration inputs create an owned recovery store; fully injected inputs preserve the supplied recovery instance."
+        },
+        {
+          "branchId": "44",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 355,
+          "column": 12,
+          "sourceFingerprint": "sha256:16e33c599c88e698d1597a4a2701b38d367e9f645a1475da038906676533ef4e",
+          "classification": "defensive",
+          "justification": "An optional observer is forwarded only when supplied to the recovery store."
+        },
+        {
+          "branchId": "44",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 356,
+          "column": 12,
+          "sourceFingerprint": "sha256:84373b100ed9eb1a2544d015373333930062411d24041722105480c23a13fe9d",
+          "classification": "defensive",
+          "justification": "A supplied observer is forwarded unchanged into the recovery regional store."
+        },
+        {
+          "branchId": "45",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 362,
+          "column": 55,
+          "sourceFingerprint": "sha256:8c5826890003d782b4e4c045f4e607a9d458e9c257167df3bc4643f84901f85d",
+          "classification": "defensive",
+          "justification": "Injected stores honor explicit owned versus borrowed policy; config-created stores are always coordinator-owned."
+        }
+      ]
+    },
+    {
+      "cohort": "artifact-store",
+      "file": "packages/artifact-store/src/dual-region-control-ledger.ts",
+      "reviews": [
+        {
+          "branchId": "14",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:a4c02f3df6a1156b0c42585f14b2113cccc491e9272c73fb974cecabde8a7d17",
+          "classification": "generated",
+          "justification": "V8 branch 14 in packages/artifact-store/src/dual-region-control-ledger.ts has no source coordinate; explicit adjacent decisions are separately covered by the package tests."
+        },
+        {
+          "branchId": "24",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:c51bd0bfcde6e372222cb3d27a0b50988a0a1259b7983ac9dbc5f589bf341213",
+          "classification": "generated",
+          "justification": "V8 branch 24 in packages/artifact-store/src/dual-region-control-ledger.ts has no source coordinate; explicit adjacent decisions are separately covered by the package tests."
+        },
+        {
+          "branchId": "28",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:3e2a6295ad543ed30a38dfe542ad5ccd960f546a159c9e563dc4c5e29caad62f",
+          "classification": "generated",
+          "justification": "V8 branch 28 in packages/artifact-store/src/dual-region-control-ledger.ts has no source coordinate; explicit adjacent decisions are separately covered by the package tests."
+        },
+        {
+          "branchId": "31",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:cc2289873df494478d107db9604d452df8b1073d570c9f488afac2e589ddc786",
+          "classification": "generated",
+          "justification": "V8 branch 31 in packages/artifact-store/src/dual-region-control-ledger.ts has no source coordinate; explicit adjacent decisions are separately covered by the package tests."
+        },
+        {
+          "branchId": "32",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:0c01643575c8490d8a3110d13aa31377eb088bde651ad02e718c76e5f8d732e5",
+          "classification": "generated",
+          "justification": "V8 branch 32 in packages/artifact-store/src/dual-region-control-ledger.ts has no source coordinate; explicit adjacent decisions are separately covered by the package tests."
+        },
+        {
+          "branchId": "73",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:84559e5349b27998e44d32510d74785d41c1dd8c774ec4dadf2885b3a9e21687",
+          "classification": "generated",
+          "justification": "V8 branch 73 in packages/artifact-store/src/dual-region-control-ledger.ts has no source coordinate; explicit adjacent decisions are separately covered by the package tests."
+        },
+        {
+          "branchId": "9",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 67,
+          "column": 10,
+          "sourceFingerprint": "sha256:7e9ac94d17aa312a4b7138cb939b1d5a5f535439097aadf5cd5b0dfbf75f4b40",
+          "classification": "defensive",
+          "justification": "A missing property on the opposite object cannot match a present canonical ledger value; this fallback makes asymmetric material comparisons false."
+        },
+        {
+          "branchId": "11",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 102,
+          "column": 2,
+          "sourceFingerprint": "sha256:a1cd06d620593a5d7585d2ec24bd0ed171a9d4f21e83822e3d0747cb52728770",
+          "classification": "defensive",
+          "justification": "The failed-region helper distinguishes a two-region rejection before considering either one-sided outage."
+        },
+        {
+          "branchId": "12",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 102,
+          "column": 39,
+          "sourceFingerprint": "sha256:e1d1f0f5121c011539370647ae60ecf225749507d87c6ba26e1f713b45e2969b",
+          "classification": "defensive",
+          "justification": "The failed-region helper distinguishes a two-region rejection before considering either one-sided outage."
+        },
+        {
+          "branchId": "13",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 104,
+          "column": 2,
+          "sourceFingerprint": "sha256:c1716cc0315b47078d816ac1b5d7834fa20f62f033c0613c4413e2d864cf0e31",
+          "classification": "defensive",
+          "justification": "After excluding both failures, a rejected primary is attributed to primary and the remaining rejection case to recovery."
+        },
+        {
+          "branchId": "20",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 131,
+          "column": 53,
+          "sourceFingerprint": "sha256:11cb48e10fe1c90c4f22cafcae575fcf53792b3a6d3d03d2e5ccaac3ec9c4b21",
+          "classification": "defensive",
+          "justification": "A partial append selects the rejected regional result only to distinguish conflict from availability failure."
+        },
+        {
+          "branchId": "26",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 192,
+          "column": 4,
+          "sourceFingerprint": "sha256:e604ca401c4de3bfbe6613513f6915ba6472a84f813c173a172aba25ab01460e",
+          "classification": "defensive",
+          "justification": "Any failed pre-read prevents append because existing immutable state could not be proven in both regions."
+        },
+        {
+          "branchId": "28",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 196,
+          "column": 6,
+          "sourceFingerprint": "sha256:72f1f2a389d3657fd5de71ed49a2a60e18d220719de2d80cdf19530fec027750",
+          "classification": "defensive",
+          "justification": "If the caller canceled during pre-read, exact cancellation wins over a synthesized regional integrity error."
+        },
+        {
+          "branchId": "29",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 208,
+          "column": 4,
+          "sourceFingerprint": "sha256:ab506a43362d2fdb6df2a8c15a5f8a5e975d1b99901de52e7e3b1ffd309636ed",
+          "classification": "defensive",
+          "justification": "When both regions already contain the target sequence, the coordinator compares them before considering idempotent replay."
+        },
+        {
+          "branchId": "31",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 209,
+          "column": 6,
+          "sourceFingerprint": "sha256:4833e7ec42ed158952231cee788a2a7cd5ed9ab433711737c40b77ee9ba22b98",
+          "classification": "defensive",
+          "justification": "Two existing records at one sequence must be exactly equal or the immutable ledgers have diverged."
+        },
+        {
+          "branchId": "32",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 215,
+          "column": 6,
+          "sourceFingerprint": "sha256:da4427eab92296e4a41e65f193965315524953aff9630c89cd25bb7844d362db",
+          "classification": "defensive",
+          "justification": "An equal existing record is replayable only when its material exactly matches the current append request."
+        },
+        {
+          "branchId": "35",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 221,
+          "column": 39,
+          "sourceFingerprint": "sha256:aa1b55122767eedaa4407be33f24f8f6e6af7cd69db607ddc3cd55c2841ae7f3",
+          "classification": "defensive",
+          "justification": "The one present regional record is selected only after the both-present and both-absent cases are excluded."
+        },
+        {
+          "branchId": "38",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 227,
+          "column": 12,
+          "sourceFingerprint": "sha256:a5e4be05b2500a3fc1a914508578bd5f03ba5dcadaa171b49db7e74ba73b53a0",
+          "classification": "defensive",
+          "justification": "A missing primary is repaired with the exact append while an existing primary is retained unchanged."
+        },
+        {
+          "branchId": "39",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 231,
+          "column": 12,
+          "sourceFingerprint": "sha256:74f95e25b71c3a32552aaf0c1a53b4a72531fec7a2c61bb6819b4da230065c99",
+          "classification": "defensive",
+          "justification": "A missing recovery is repaired with the exact append while an existing recovery is retained unchanged."
+        },
+        {
+          "branchId": "40",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 260,
+          "column": 4,
+          "sourceFingerprint": "sha256:2226d6e8975012029574371294e3f6aa02469eb250bc0c2e1f0f87adf7c2261c",
+          "classification": "defensive",
+          "justification": "Cancellation after concurrent appends settles both promises and preserves the caller reason before classifying provider failures."
+        },
+        {
+          "branchId": "41",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 261,
+          "column": 4,
+          "sourceFingerprint": "sha256:316fc4be05697dc840809623b778c7015ba2226075e1d455170b9551eca3f157",
+          "classification": "defensive",
+          "justification": "Any one-sided or two-sided append rejection is classified through the regional outcome matrix."
+        },
+        {
+          "branchId": "50",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 333,
+          "column": 6,
+          "sourceFingerprint": "sha256:72f1f2a389d3657fd5de71ed49a2a60e18d220719de2d80cdf19530fec027750",
+          "classification": "defensive",
+          "justification": "Cancellation after concurrent reads settles both sides and preserves the caller reason before integrity classification."
+        },
+        {
+          "branchId": "54",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 362,
+          "column": 6,
+          "sourceFingerprint": "sha256:72f1f2a389d3657fd5de71ed49a2a60e18d220719de2d80cdf19530fec027750",
+          "classification": "defensive",
+          "justification": "Cancellation after concurrent reconciliation settles both sides and preserves the caller reason before integrity classification."
+        },
+        {
+          "branchId": "55",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 372,
+          "column": 4,
+          "sourceFingerprint": "sha256:7c1fe7d1d1688c791bf120aa34ffa39b9a61ed114b8298aa4451f4f3d79489f8",
+          "classification": "defensive",
+          "justification": "Exactly equal regional reconciliation pages return directly without invoking repair logic."
+        },
+        {
+          "branchId": "58",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 379,
+          "column": 10,
+          "sourceFingerprint": "sha256:e9684db3a2bdf70329d6623227f4cd541b45d04591372c53be5d86236ddcc538",
+          "classification": "defensive",
+          "justification": "A repairable prefix returns the shorter page, regardless of whether primary or recovery is shorter."
+        },
+        {
+          "branchId": "59",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 393,
+          "column": 67,
+          "sourceFingerprint": "sha256:e627631ff892e1848d503d50f8146449ce7648db36c9514b908b503ba3806654",
+          "classification": "defensive",
+          "justification": "The repair proof first selects the shorter regional record sequence."
+        },
+        {
+          "branchId": "60",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 394,
+          "column": 52,
+          "sourceFingerprint": "sha256:f25bb5fbd74f7346c984aac7a88d95d2c6d2f6f8fa78e9237786e43d47bd4721",
+          "classification": "defensive",
+          "justification": "The repair proof then selects the opposite regional page as the longer candidate."
+        },
+        {
+          "branchId": "61",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 395,
+          "column": 4,
+          "sourceFingerprint": "sha256:dd56d8c751c7c7713e1357f08170507fbdb336d34eba1936b787ff8975ac54ac",
+          "classification": "defensive",
+          "justification": "Repair requires exactly one extra record, complete high-water pages, an exact common prefix, and matching projected page ends."
+        },
+        {
+          "branchId": "64",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 413,
+          "column": 4,
+          "sourceFingerprint": "sha256:0f433bef9fbafb28cde83f52f4082229c693b1a3695d4f2c20c6a17d9a516eb6",
+          "classification": "unreachable",
+          "justification": "After proving the longer page has exactly one extra record, that record must exist; this guard protects array/runtime contract drift."
+        },
+        {
+          "branchId": "70",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 452,
+          "column": 4,
+          "sourceFingerprint": "sha256:b282a9414be5b367ceba2623d88024478b975e3feea9898e00c39f743ab9a040",
+          "classification": "defensive",
+          "justification": "Injected ledgers require explicit ownership options so the coordinator never guesses whether it may close caller resources."
+        },
+        {
+          "branchId": "71",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 464,
+          "column": 2,
+          "sourceFingerprint": "sha256:358e9dc682c77551ec2e735f48a7ad49c71df98fa3f1fd1e98e8cdad7e5313f6",
+          "classification": "defensive",
+          "justification": "Mixed config/ledger inputs or ownership on config inputs are rejected before region construction."
+        }
+      ]
+    },
+    {
+      "cohort": "artifact-store",
+      "file": "packages/artifact-store/src/server-only.ts",
+      "reviews": [
+        {
+          "branchId": "0",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:073b9f824e084004d138b2e6852ffdaf4c84041d7c5dfbae99219f995974ec52",
+          "classification": "generated",
+          "justification": "V8 branch 0 in packages/artifact-store/src/server-only.ts has no source coordinate; explicit adjacent decisions are separately covered by the package tests."
+        },
+        {
+          "branchId": "0",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 3,
+          "column": 0,
+          "sourceFingerprint": "sha256:81dadfdc84880cf0e5f428443e743cdf957c08d45d8d465a721a4b27ba5799a6",
+          "classification": "unreachable",
+          "justification": "The server entry loads only under Node and package metadata marks it browser-false; this branch guards an unsupported bundler or runtime."
+        }
+      ]
+    },
+    {
+      "cohort": "artifact-store",
+      "file": "packages/artifact-store/src/store.ts",
+      "reviews": [
+        {
+          "branchId": "15",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:7534955d406bbb1a34cadfd51d1cebb634635658bacf69b08a9796779d110112",
+          "classification": "generated",
+          "justification": "V8 branch 15 in packages/artifact-store/src/store.ts has no source coordinate; explicit adjacent decisions are separately covered by the package tests."
+        },
+        {
+          "branchId": "28",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:2cb2a6c12b58463739eecb59080b502220c0affe9e6c13cc1da25e58a583aa77",
+          "classification": "generated",
+          "justification": "V8 branch 28 in packages/artifact-store/src/store.ts has no source coordinate; explicit adjacent decisions are separately covered by the package tests."
+        },
+        {
+          "branchId": "50",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:2cb2a6c12b58463739eecb59080b502220c0affe9e6c13cc1da25e58a583aa77",
+          "classification": "generated",
+          "justification": "V8 branch 50 in packages/artifact-store/src/store.ts has no source coordinate; explicit adjacent decisions are separately covered by the package tests."
+        },
+        {
+          "branchId": "2",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 237,
+          "column": 14,
+          "sourceFingerprint": "sha256:a00617384c82b4f2f14103e604cc567fd9bf433b0695cdb247b96b2a6bdfd9c6",
+          "classification": "defensive",
+          "justification": "Promise adapters normally reject Error objects; this branch preserves an Error reason rather than wrapping it at the artifact boundary."
+        },
+        {
+          "branchId": "3",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 246,
+          "column": 2,
+          "sourceFingerprint": "sha256:4f389fb6241259945b1a36a492a454d77ad7d2e30a7a8c0302492169c1e49dca",
+          "classification": "defensive",
+          "justification": "S3 errors are normally objects; primitive rejections cannot prove not-found and therefore remain ordinary failures."
+        },
+        {
+          "branchId": "9",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 330,
+          "column": 8,
+          "sourceFingerprint": "sha256:6b69f8fed792f8ecdcf54be11a4fac0b25eae6c4f184e1169baa2681594cd700",
+          "classification": "defensive",
+          "justification": "Node Readable streams may emit Buffer or string chunks; string chunks are normalized with their declared encoding before hashing."
+        },
+        {
+          "branchId": "16",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 387,
+          "column": 4,
+          "sourceFingerprint": "sha256:32c92b71808b33c837bdaec08ec33a7e69a41d8a722122d375b52df2ed7de9f4",
+          "classification": "defensive",
+          "justification": "A transfer signal may already be aborted when the verifying stream is wired; immediate destruction closes that race."
+        },
+        {
+          "branchId": "18",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 406,
+          "column": 6,
+          "sourceFingerprint": "sha256:e6aeca668ddfc17647e548acab8c4674894d7c72de181b98901c92a24100f061",
+          "classification": "defensive",
+          "justification": "AbortSignal allows non-Error reasons, so the transfer boundary substitutes a stable generic error instead of leaking arbitrary values."
+        },
+        {
+          "branchId": "24",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 520,
+          "column": 12,
+          "sourceFingerprint": "sha256:6582400bdb6b15fe8ef40908909446813adce6693092d18817b279257cd6d7e6",
+          "classification": "defensive",
+          "justification": "AWS reports eu-west-1 as EU for legacy location APIs; the readiness adapter normalizes that provider-specific value."
+        },
+        {
+          "branchId": "30",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 586,
+          "column": 6,
+          "sourceFingerprint": "sha256:e7ebc9a764dc859410f59579b9bb1da770144299eabbf2d3a89c09bfc76d50fc",
+          "classification": "defensive",
+          "justification": "Head/Get metadata is accepted only when schema, exact user keys, identity, byte limit, ContentLength, and ContentType all agree."
+        },
+        {
+          "branchId": "34",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 676,
+          "column": 6,
+          "sourceFingerprint": "sha256:2fd661ae52ff477dec622455f427d743276ba8bbd5c942e8a3faf32dca66c887",
+          "classification": "defensive",
+          "justification": "A successful PutObject followed by a missing strong HEAD cannot prove durable availability and fails closed."
+        },
+        {
+          "branchId": "50",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 796,
+          "column": 6,
+          "sourceFingerprint": "sha256:967f9b9f9f28518614718320afafff734820eb7bc2cae5a8ba3910ced8dc74e9",
+          "classification": "defensive",
+          "justification": "Direct-upload validation maps only exact provider not-found evidence to ArtifactNotFoundError; other failures escape unchanged."
+        },
+        {
+          "branchId": "51",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 806,
+          "column": 4,
+          "sourceFingerprint": "sha256:5e3bccf5848df8902fb7786c3cb07eb2804103d81196a297962148d61afb425a",
+          "classification": "defensive",
+          "justification": "A directly uploaded object must match every expected immutable metadata field before it can be accepted."
+        },
+        {
+          "branchId": "53",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 813,
+          "column": 6,
+          "sourceFingerprint": "sha256:4d8a6e774b1df1244ff041f035bcf81318e2067dace8758a9d5aaf54ec964ac2",
+          "classification": "defensive",
+          "justification": "A provider checksum is accepted only as FULL_OBJECT and only when it equals the expected SHA-256 encoding."
+        },
+        {
+          "branchId": "61",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 950,
+          "column": 4,
+          "sourceFingerprint": "sha256:943485cff1d3b3ce5be21a4994ca9c03add9c0ff5c99defbbe79f4a12b7491e8",
+          "classification": "defensive",
+          "justification": "The default path creates the real S3 client; package tests inject the typed client port and deployed-provider behavior remains ART-008 evidence."
+        },
+        {
+          "branchId": "64",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 970,
+          "column": 5,
+          "sourceFingerprint": "sha256:9c976092bbfc78d57e06d243c665d7357b35429e429e12b8568adc5d47f82d0a",
+          "classification": "defensive",
+          "justification": "The default presigner uses AWS getSignedUrl; tests inject the bounded presigner port and deployed signing remains external evidence."
+        }
+      ]
     }
   ]
 }
