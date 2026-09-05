@@ -22,10 +22,10 @@
 
 | ID | Previous status | Final status | Affected locations | Implementation and test evidence | Verification / commit |
 | --- | --- | --- | --- | --- | --- |
-| CORE-001 | Open confirmed defect | **Fixed** | Schedule validation/definition/executor, database trigger projection, engine trigger input, node-catalog release history | V2 introduced strict cron semantics. Metadata-complete V3 preserves the immutable V2 fingerprint while publishing its runtime-only semantics; database, engine, and catalog execute V1–V3. | Package/database/engine/catalog tests and typechecks; `5f9ce84`, `400dfe8`, `156f18f` |
+| CORE-001 | Open confirmed defect | **Fixed** | Schedule validation/definition/executor, database trigger projection, engine trigger input, node-catalog release history | V2 introduced strict cron semantics. Metadata-complete V3 preserves the immutable V2 fingerprint while publishing its runtime-only semantics; database, engine, and catalog execute V1–V3. The database projection now consumes the node-owned strict schema directly. | Package/database/engine/catalog tests and typechecks; `5f9ce84`, `400dfe8`, `156f18f`, `f5f5d48` |
 | CORE-002 | Open confirmed contract defect | **Fixed** | Parallel/Merge definitions/executors, engine/worker consumers, node-catalog release history | V2 introduced strict settled-ledger contracts. Metadata-complete V3 preserves V2 identities while advertising runtime-only invariants; engine and worker apply configured ports and settled Merge input for V1–V3. | Package/engine/catalog tests and worker typecheck; `5f9ce84`, `156f18f` |
 | CORE-003 | Open maintainability improvement | **Fixed** | `src/registrations.ts`, `src/server.ts`, retained-registry tests | Browser-safe definitions remain isolated as required by ADR-010. A server-only typed bundle joins definitions to executor implementations by exact identity, derives canonical executor order, and fails on duplicate, missing, or orphan implementations. | 55 tests, typecheck, build, ESLint, Knip; `3c98fa9` |
-| CORE-004 | Open interface improvement | **Fixed** | Schedule V2/V3 definitions/executors, database and engine consumers, release history | V2/V3 advertise the strict trigger envelope; V3 adds explicit runtime-only cron metadata. V1/V2 fingerprints remain unchanged and all retained versions remain executable. | Trigger, projection, engine, and active-release execution tests; `5f9ce84`, `400dfe8`, `156f18f` |
+| CORE-004 | Open interface improvement | **Fixed** | Schedule V2/V3 definitions/executors, database and engine consumers, release history | V2/V3 advertise the strict trigger envelope; V3 adds explicit runtime-only cron metadata. V1/V2 fingerprints remain unchanged, all retained versions remain executable, and database projection shares the node-owned strict schema. | Trigger, projection, engine, and active-release execution tests; `5f9ce84`, `400dfe8`, `156f18f`, `f5f5d48` |
 | CORE-005 | Open immutability defect | **Fixed** | `merge/definition.ts`, `terminate/definition.ts`, package tests | The remaining mutable nested port array is frozen. A recursive test now checks every owned manifest tree, and the layout inventory covers all eleven node owners. | Package tests and fingerprints; `37594a4` |
 | CORE-006 | Open continuous-control gap | **Fixed; continuous safeguard** | `package.json`, `vitest.coverage.config.ts`, root coverage cohort, `node-execution.test.ts`, retained-registry tests | Every one of 41 package functions executes locally through public SDK/server boundaries. Added exact failure tests for same-epoch drift, non-contiguous releases, and missing definition/executor implementations. Thresholds are now 96% statements, 80% branches, 100% functions, and 96% lines. | 55 tests; 96.83% statements, 81.81% branches, 100% functions, 96.78% lines; `19ae523`, `554502d` |
 | CORE-007 | Open maintainability improvement | **Fixed** | Six owner-local test suites | Layout checks enumerate all eleven node directories. The former mixed suites are split into retained registry, trigger, data, orchestration, public execution, and package-contract owners; no global fixture or hidden assertion abstraction was introduced. | 6 files / 55 tests; clone gate remains 6 groups / 267 lines / 0.28%; `fd5fd10` |
@@ -415,7 +415,7 @@ of meaningful higher-level testing.
 - **Severity:** P1.
 - **Classification:** confirmed defect.
 - **Status:** fixed by additive V2/V3 contracts and consumer integration
-  (`5f9ce84`, `400dfe8`, `156f18f`).
+  (`5f9ce84`, `400dfe8`, `156f18f`, `f5f5d48`).
 - **Evidence:** `schedule/validation.ts:9-16` uses a character regex. Direct
   comparison showed `99 99 99 99 99`, `*/0 * * * *`, and `? ? ? ? ?` all pass
   `CORE_SCHEDULE_CONFIG_SCHEMA` for `America/New_York`, while
@@ -488,7 +488,7 @@ of meaningful higher-level testing.
 - **Severity:** P2.
 - **Classification:** interface/product ergonomics improvement.
 - **Status:** fixed by additive V2/V3 contracts and consumer integration
-  (`5f9ce84`, `400dfe8`, `156f18f`).
+  (`5f9ce84`, `400dfe8`, `156f18f`, `f5f5d48`).
 - **Evidence:** Schedule input/output use `boundedNodeJsonSchema`. Production
   schedule acceptance persists a strict versioned envelope containing
   `schemaVersion`, `triggerId`, `nodeId`, and `scheduledAt`. Catalog tests use an

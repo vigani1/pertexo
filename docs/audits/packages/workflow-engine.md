@@ -35,11 +35,11 @@
 | WFE-001 | Fixed | `8406d1e`; persisted facts use the shared bounded fact-window contract instead of generic executable JSON limits. |
 | WFE-002 | Fixed | `5a7ed49`; each structured body is projected once and the traversal-count regression proves linear visitation. |
 | WFE-003 | Fixed | `182f754`, `ce1c809`, `f8c3655`; completed outputs and persisted outcomes are normalized/indexed once, executable nodes are flattened once, invocation lookup reuses one prepared map, and failure/output preparation have purpose-named owners. |
-| WFE-004 | Fixed; continuous gate | `667554a`, `5a71c1c`; all consequence-selected files and per-file floors are enforced. Fresh coverage is 90.56% statements (1,844/2,036), 85.32% branches (1,779/2,085), 93.62% functions (338/361), and 91.74% lines (1,766/1,925). Public compatibility-history boundary tests were added, and all 225 residual workflow-engine branches have exact source-hashed defensive, unreachable, or generated reviews. |
+| WFE-004 | Fixed; continuous gate | `667554a`, `5a71c1c`, `3bd3ecc`; all consequence-selected files and per-file floors are enforced. Fresh coverage is 90.71% statements (1,846/2,035), 85.45% branches (1,774/2,076), 93.63% functions (338/361), and 91.78% lines (1,765/1,923). Public compatibility-history boundary tests were added, and all 302 residual workflow-engine branches have exact source-hashed defensive, unreachable, or generated reviews. |
 | WFE-005 | Fixed | `182f754`; current checkpoint construction/parsing enforce database-compatible engine IDs, UUID workflow IDs, canonical timestamps, and byte bounds. |
 | WFE-006 | Fixed | `182f754`; checkpoint and executable public boundaries perform one hostile-object traversal before trusted parsing/normalization. |
 | WFE-007 | Fixed | `5a7ed49`; scope equality/prefix identity has one engine owner and allocation-free structural helpers. |
-| WFE-008 | Fixed; continuous model check | `132c8e1`, `1f0359e`; the exhaustive 64-DAG corpus is supplemented by 2,048 seeded, shrinkable cases over six-node DAGs, invalid/replayed observations, cancellation, terminal replay, structured scope identity, and retry bounds. Existing public Parallel/Merge and For Each suites retain branch/loop lifecycle coverage. |
+| WFE-008 | Fixed; continuous model check | `132c8e1`, `1f0359e`, `3bd3ecc`; the exhaustive 64-DAG corpus is supplemented by 2,048 seeded, shrinkable cases over six-node DAGs, invalid/replayed observations, cancellation, terminal replay, structured scope identity, retry bounds, and fail-closed generated Parallel projection checks. Existing public Parallel/Merge and For Each suites retain branch/loop lifecycle coverage. |
 | WFE-009 | Fixed | `5a7ed49`; duplicate loop/join declarations compare the complete durable scope and topology identity. |
 | WFE-010 | Fixed | `3adf2e1`; the production facade is narrowed and the exact public surface is snapshot-tested. |
 | WFE-011 | Fixed | `68485d8`; exact engine primitives have one purpose-named owner while trust-boundary-specific checks remain separate. |
@@ -98,9 +98,9 @@ capacity and timestamp probes; and a nested structured-workflow timing probe.
 | Package build and typecheck | Passed in the repository pre-push gate |
 | Repository lint, complexity, duplication, and dependency checks | Passed |
 | Enforced selected-source coverage | 94.43% statements, 91.02% branches, 93.58% functions, 94.91% lines |
-| Full `src/**/*.ts` coverage | 90.56% statements, 85.32% branches, 93.62% functions, 91.74% lines |
-| Root risk report | 504 reviewed and 0 unreviewed uncovered branches repository-wide |
-| Workflow-engine risk cohort | All 26 consequence-selected files are included; 225 residual branches have exact source fingerprints and branch-specific defensive, unreachable, or generated evidence |
+| Full `src/**/*.ts` coverage | 90.71% statements, 85.45% branches, 93.63% functions, 91.78% lines |
+| Root risk report | 501 reviewed and 0 unreviewed uncovered branches repository-wide |
+| Workflow-engine risk cohort | All 26 consequence-selected files are included; 302 residual branches have exact source fingerprints and branch-specific defensive, unreachable, or generated evidence |
 | Persisted-fact capacity probe | 6,000 valid-shaped progress facts, 1,186,897 serialized bytes, rejected as `observation_invalid` for member overflow |
 | Database contract comparison | Database accepts up to 10,000 persisted facts and 4,096 canonical bytes per fact |
 | Checkpoint timestamp probe | `parseCheckpoint` accepted `resumeAt: "0"`; persistence requires ISO datetime |
@@ -930,10 +930,10 @@ projection/admission paths.
   original checkpoint/operation cohort. The original 13-file cohort retains
   its stronger aggregate thresholds, each newly admitted decision owner has a
   file-specific branch floor, and the expanded cohort has a separate aggregate
-  ratchet. Fresh coverage is 90.56% statements (1,844/2,036), 85.32% branches
-  (1,779/2,085), 93.62% functions (338/361), and 91.74% lines (1,766/1,925).
+  ratchet. Fresh coverage is 90.71% statements (1,846/2,035), 85.45% branches
+  (1,774/2,076), 93.63% functions (338/361), and 91.78% lines (1,765/1,923).
   Compatibility-history admission gained public boundary tests. Every one of
-  the remaining 225 workflow-engine branches now carries an exact source hash
+  the remaining 302 workflow-engine branches now carry an exact source hash
   and branch-specific defensive, unreachable, or generated justification; the
   repository report rejects semantic drift and records zero unreviewed sites.
 

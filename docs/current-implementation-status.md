@@ -46,7 +46,7 @@ UUIDv7/schema/RLS conventions, bounded async outcomes, package surfaces, and
 public governance. A-11 is now complete: owner-local support modules remove
 genuinely shared split-suite setup, while scenario state and assertions remain
 visible. The exact scan fell from 25 groups/1,977 lines (2.08%) to 6 groups/267
-lines (0.29%), and a pinned semantic baseline now rejects unexplained drift in
+lines (0.28%), and a pinned semantic baseline now rejects unexplained drift in
 the root and protected CI checks. Database internals moved from 122 flat root
 files to ten capability directories behind 12 stable entry points; the public
 testing barrel fell from 567 to 85 physical lines. The latest
@@ -70,8 +70,8 @@ external evidence has not been executed.
 Fresh local verification at this implementation tree passes `pnpm check`,
 `pnpm test:coverage`, `pnpm release:check`, and `pnpm images:check`. Enabled
 real-service cohorts pass 320 database, 22 worker, 15 API, and 5 artifact-store
-tests. Coverage remains explicitly limited to 105 selected files/4,933
-coverable lines with 504 reviewed and zero unreviewed uncovered branches.
+tests. Coverage remains explicitly limited to 105 selected files/4,938
+coverable lines with 501 reviewed and zero unreviewed uncovered branches.
 
 The 2026-09-01 audit refresh is implemented at fixed ancestor `0865633` and
 merged to `main` through pull request #7. It
@@ -99,10 +99,10 @@ quality CI invokes it with complete history, and a fixture recreates the
 candidate on a different parent to prove the supported rebase-style flow.
 Pull request #26 and exact-main CI both executed that protected gate
 successfully, closing C-12. Risk coverage names 105 exact selected files with
-repository-relative paths. Public-interface tests measure 85.32% workflow-
+repository-relative paths. Public-interface tests measure 85.45% workflow-
 engine, 95.38% database, 94.95% worker, 91.06% integrations, 84.22%
-artifact-store, 98.36% contracts, and 100% API branch coverage across 4,933
-coverable lines. All 504 uncovered instrumentation
+artifact-store, 98.36% contracts, and 100% API branch coverage across 4,938
+coverable lines. All 501 uncovered instrumentation
 branches have exact source-fingerprinted reviews; the eight integration-only
 reviews each bind an exact command, file, and test name. The former 26 generic
 integration classifications were withdrawn. The report rejects malformed,

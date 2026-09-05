@@ -39,8 +39,8 @@ have immutable, metadata-complete V3 successors consumed by the database,
 engine, API, worker, SDK, and catalog; the environment-free artifact integration
 suite collects as skipped; and WFE-008 now includes pinned-seed, shrinkable
 generative checks. Evidence is in `b077c5a`, `8d740e2`, `9bfe545`, `e3f8619`,
-`156f18f`, and `1f0359e`. This correction does not change the external Phase 7
-obligations below.
+`156f18f`, `1f0359e`, `f5f5d48`, and `3bd3ecc`. This correction does not
+change the external Phase 7 obligations below.
 
 External obligations remain external: ART-002 production latency, ART-008 live
 AWS/regional recovery, DB-011 workload/planner evidence, DB-017 deployed
@@ -4841,7 +4841,7 @@ Fresh audit findings at the implementation tree named above:
       genuinely shared setup from paired split suites into owner-local support
       modules, keep scenario state/assertions local, document and automate the
       exact full-corpus clone scan from 25 groups/1,977 lines (2.08%) to 6
-      groups/267 lines (0.29%) without weakening independent collection or
+      groups/267 lines (0.28%) without weakening independent collection or
       integration isolation. The paired worker transport actions remain local
       to their scenario files rather than being hidden in shared setup.
 - [x] Implement code-audit C-22 through focused capability-local database
@@ -5097,18 +5097,18 @@ phase status changed.
       identities and applied migrations are not renamed.
 - [x] Expand the enforced workflow-engine coverage cohort to all 26
       consequence-selected files with per-file floors. Fresh coverage is
-      90.56% statements (1,844/2,036), 85.32% branches (1,779/2,085), 93.62%
-      functions (338/361), and 91.74% lines (1,766/1,925).
+      90.71% statements (1,846/2,035), 85.45% branches (1,774/2,076), 93.63%
+      functions (338/361), and 91.78% lines (1,765/1,923).
 - [x] Finish WFE-004 with public compatibility-history admission regressions
-      and exact source-hashed review of all 225 residual workflow-engine
+      and exact source-hashed review of all 302 residual workflow-engine
       branches. Every retained entry is classified narrowly as defensive,
       unreachable, or V8-generated, semantic source drift invalidates the
-      review, and the root report records 504 reviewed and zero unreviewed
-      branches across 105 selected files and 4,933 coverable lines.
+      review, and the root report records 501 reviewed and zero unreviewed
+      branches across 105 selected files and 4,938 coverable lines.
 
 Implementation commits: `8406d1e`, `5a7ed49`, `3adf2e1`, `68485d8`,
-`667554a`, `132c8e1`, `182f754`, `ce1c809`, `f8c3655`, and `5a71c1c`. No phase
-status changed.
+`667554a`, `132c8e1`, `182f754`, `ce1c809`, `f8c3655`, `5a71c1c`, and
+`3bd3ecc`. No phase status changed.
 
 ### Granular package-audit remediation — artifact-store
 
