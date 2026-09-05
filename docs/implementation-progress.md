@@ -4926,6 +4926,32 @@ and its audit publication branch:
 No phase status changes. Phase 7 remains **In progress**. Repository work must
 not be mistaken for the live deployment evidence required by the plan.
 
+### Granular package-audit remediation — nodes-core
+
+- [x] Reconcile CORE-001 through CORE-008 against current code rather than the
+      original pinned audit tree. All eight repository-actionable findings are
+      now implemented; CORE-006 remains a continuously enforced safeguard.
+- [x] Preserve ADR-010 compatibility by adding Schedule, Parallel, and Merge V2
+      definitions instead of mutating retained identities. Active release tests
+      prove the V2 trigger envelope and structured-node contracts while V1
+      fingerprints and behavior remain retained.
+- [x] Replace the separately ordered executor registry with a server-only typed
+      registration join. Browser-safe definitions remain free of executor code,
+      and startup fails closed for duplicate, missing, or orphan executors.
+- [x] Split package tests by retained-registry, trigger, data, orchestration,
+      public-execution, and package-contract ownership. The six files collect
+      independently and run 55 tests without shared mutable fixtures.
+- [x] Execute all 41 package functions locally through public SDK/server
+      boundaries. Coverage is 96.83% statements, 81.81% branches, 100%
+      functions, and 96.78% lines; enforced thresholds are now 96/80/100/96.
+- [x] Focused checks pass: package test, typecheck, build, ESLint, coverage,
+      Knip, and repository duplication validation. Test duplication remains at
+      6 groups / 267 lines / 0.28%.
+
+Implementation commits: `5f9ce84`, `400dfe8`, `37594a4`, `19ae523`,
+`fd5fd10`, `3c98fa9`, and `554502d`. No phase status changed and no local
+repository evidence is substituted for Phase 7 external production proof.
+
 ## Update protocol
 
 When a checkpoint changes status:
