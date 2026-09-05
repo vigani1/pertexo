@@ -29,5 +29,8 @@
   "dependencies": {
     "@pertexo/node-sdk": "workspace:*",
     "@pertexo/workflow-model": "workspace:*"
+  },
+  "devDependencies": {
+    "fast-check": "4.3.0"
   }
 }
