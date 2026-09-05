@@ -80,6 +80,7 @@ export {
   canonicalizeBoundedJson,
   NODE_EXECUTION_LIMITS_V1,
 } from './json-boundary.js';
+import { compareIdentity, identityToken, sameIdentity } from './identity.js';
 
 export const DISPATCH_AWARE_EXECUTOR_ABI_VERSION = 2 as const;
 const SUPPORTED_EXECUTOR_ABI_VERSIONS = new Set<number>([
@@ -124,30 +125,6 @@ const connectionRefsSchema = z
   .record(z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u), z.uuid())
   .refine((value) => Object.keys(value).length <= 16)
   .transform((value) => Object.freeze({ ...value }));
-
-function identityToken(
-  identity: DefinitionIdentity | ExecutorIdentity | PolicyReference,
-): string {
-  return `${identity.key}\u0000${String(identity.version)}`;
-}
-
-function compareIdentity(
-  left: DefinitionIdentity | ExecutorIdentity | PolicyReference,
-  right: DefinitionIdentity | ExecutorIdentity | PolicyReference,
-): number {
-  return left.key < right.key
-    ? -1
-    : left.key > right.key
-      ? 1
-      : left.version - right.version;
-}
-
-function sameIdentity(
-  left: DefinitionIdentity | ExecutorIdentity | PolicyReference,
-  right: DefinitionIdentity | ExecutorIdentity | PolicyReference,
-): boolean {
-  return left.key === right.key && left.version === right.version;
-}
 
 function sameIdentitySet(
   left: readonly (DefinitionIdentity | ExecutorIdentity | PolicyReference)[],

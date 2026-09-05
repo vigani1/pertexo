@@ -1,29 +1,11 @@
 import type {
   DefinitionIdentity,
-  ExecutorIdentity,
   ExecutorManifest,
   NodeManifest,
-  PolicyReference,
   RegistryRelease,
   RegistryReleaseInput,
 } from './release.js';
-
-function identityToken(
-  identity: DefinitionIdentity | ExecutorIdentity | PolicyReference,
-): string {
-  return `${identity.key}\u0000${String(identity.version)}`;
-}
-
-function compareIdentity(
-  left: DefinitionIdentity | ExecutorIdentity | PolicyReference,
-  right: DefinitionIdentity | ExecutorIdentity | PolicyReference,
-): number {
-  return left.key < right.key
-    ? -1
-    : left.key > right.key
-      ? 1
-      : left.version - right.version;
-}
+import { compareIdentity, identityToken } from './identity.js';
 
 export function cloneAndFreeze<T>(value: T): T {
   if (value === null || typeof value !== 'object') return value;

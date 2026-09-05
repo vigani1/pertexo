@@ -8,6 +8,7 @@ import {
   executorProjection,
   stableJson,
 } from './compatibility-canonical.js';
+import { compareIdentity, identityToken } from './identity.js';
 
 export {
   canonicalCompatibilityReleaseJson,
@@ -439,23 +440,6 @@ export const registryReleaseSchema = registryReleaseInputSchema
     fingerprint: z.string().regex(/^node-compat:v1:sha256:[a-f0-9]{64}$/u),
   })
   .strict();
-
-function identityToken(
-  identity: DefinitionIdentity | ExecutorIdentity | PolicyReference,
-): string {
-  return `${identity.key}\u0000${String(identity.version)}`;
-}
-
-function compareIdentity(
-  left: DefinitionIdentity | ExecutorIdentity | PolicyReference,
-  right: DefinitionIdentity | ExecutorIdentity | PolicyReference,
-): number {
-  return left.key < right.key
-    ? -1
-    : left.key > right.key
-      ? 1
-      : left.version - right.version;
-}
 
 function rejectDuplicateIdentities(
   label: string,
