@@ -10,7 +10,7 @@ export default defineConfig({
       reporter: ['text-summary', 'json-summary', 'json'],
       reportsDirectory: '../../coverage/nodes-core',
       include: ['src/**/*.ts'],
-      thresholds: { branches: 59, functions: 57, lines: 84, statements: 84 },
+      thresholds: { branches: 80, functions: 100, lines: 96, statements: 96 },
     },
   },
 });

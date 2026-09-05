@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { createRegistryReleaseSuccessor } from '@pertexo/node-sdk';
+import {
+  createRegistryRelease,
+  createRegistryReleaseSuccessor,
+} from '@pertexo/node-sdk';
 
 import {
   CORE_BOUNDED_JSON_POLICY,
+  CORE_CONDITION_MANIFEST,
   CORE_DEFINITION_MANIFESTS,
   CORE_MANUAL_DEFINITION,
   CORE_MANUAL_EXECUTOR,
@@ -111,15 +115,91 @@ describe('core node retained registry', () => {
     expect(registry.compatibility.fingerprint).toBe(successor.fingerprint);
     expect(() =>
       createCoreNodeRegistryForRelease(
-        createRegistryReleaseSuccessor({
-          previous: CORE_REGISTRY_RELEASE,
+        createRegistryRelease({
           epoch: 3,
           definitions: CORE_REGISTRY_RELEASE.definitions,
           executors: CORE_REGISTRY_RELEASE.executors,
           policies: CORE_REGISTRY_RELEASE.policies,
         }),
       ),
-    ).toThrow('compatibility release epoch must be contiguous');
+    ).toThrow('Core compatibility release is not the next successor');
+  });
+
+  it('rejects a different release at the retained epoch', () => {
+    const changed = createRegistryRelease({
+      epoch: CORE_REGISTRY_RELEASE.epoch,
+      definitions: CORE_REGISTRY_RELEASE.definitions.map((manifest) => ({
+        ...manifest,
+        lifecycle:
+          manifest.definition.key === 'core.manual'
+            ? ('deprecated' as const)
+            : manifest.lifecycle,
+      })),
+      executors: CORE_REGISTRY_RELEASE.executors,
+      policies: CORE_REGISTRY_RELEASE.policies,
+    });
+    expect(() => createCoreNodeRegistryForRelease(changed)).toThrow(
+      'Core compatibility release identity is not supported',
+    );
+  });
+
+  it('rejects an additive definition without a shipped implementation', () => {
+    const unsupportedDefinition = {
+      ...CORE_CONDITION_MANIFEST,
+      definition: { key: 'core.unshipped', version: 1 },
+    };
+    const successor = createRegistryReleaseSuccessor({
+      previous: CORE_REGISTRY_RELEASE,
+      epoch: CORE_REGISTRY_RELEASE.epoch + 1,
+      definitions: [
+        ...CORE_REGISTRY_RELEASE.definitions,
+        unsupportedDefinition,
+      ],
+      executors: [
+        ...CORE_REGISTRY_RELEASE.executors,
+        {
+          abiVersion: 1,
+          definitions: [unsupportedDefinition.definition],
+          executor: unsupportedDefinition.executor,
+          lifecycle: 'staged',
+          policyReferences: unsupportedDefinition.policyReferences,
+        },
+      ],
+      policies: CORE_REGISTRY_RELEASE.policies,
+    });
+    expect(() => createCoreNodeRegistryForRelease(successor)).toThrow(
+      'Core compatibility definition is not implemented',
+    );
+  });
+
+  it('rejects an additive executor without a shipped implementation', () => {
+    const unsupportedExecutor = { key: 'core.unshipped', version: 1 };
+    const conditionWithUnsupportedExecutor = {
+      ...CORE_CONDITION_MANIFEST,
+      executor: unsupportedExecutor,
+    };
+    const successor = createRegistryReleaseSuccessor({
+      previous: CORE_REGISTRY_RELEASE,
+      epoch: CORE_REGISTRY_RELEASE.epoch + 1,
+      definitions: [
+        ...CORE_REGISTRY_RELEASE.definitions,
+        conditionWithUnsupportedExecutor,
+      ],
+      executors: [
+        ...CORE_REGISTRY_RELEASE.executors,
+        {
+          abiVersion: 1,
+          definitions: [conditionWithUnsupportedExecutor.definition],
+          executor: unsupportedExecutor,
+          lifecycle: 'staged',
+          policyReferences: conditionWithUnsupportedExecutor.policyReferences,
+        },
+      ],
+      policies: CORE_REGISTRY_RELEASE.policies,
+    });
+    expect(() => createCoreNodeRegistryForRelease(successor)).toThrow(
+      'Core compatibility executor is not implemented',
+    );
   });
 
   it('does not expose placement or publication catalogs before completion', () => {
