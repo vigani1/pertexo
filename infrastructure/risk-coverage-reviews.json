@@ -1134,6 +1134,702 @@
           "evidenceId": "worker-preview-delivery"
         }
       ]
+    },
+    {
+      "cohort": "integrations",
+      "file": "packages/integrations/src/credentials/kms-client.ts",
+      "reviews": [
+        {
+          "branchId": "0",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 25,
+          "column": 40,
+          "sourceFingerprint": "sha256:52520eb9dacaf4ea8eab9b19a03b425b62b5bd182b9d67a4a50dacf7d8619ba8",
+          "classification": "defensive",
+          "justification": "Production KMS construction omits an endpoint so the AWS SDK resolves the regional service; encryption is tested through injected KMS ports and live routing remains an external canary obligation."
+        },
+        {
+          "branchId": "0",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 25,
+          "column": 45,
+          "sourceFingerprint": "sha256:99732c4f6ca5cbf7f8081b75133ac8d367f7409f24e47ae51d3777162bb56fee",
+          "classification": "defensive",
+          "justification": "Local and recovery environments may supply an explicit KMS endpoint; SDK forwarding is retained while cryptographic behavior is tested through the injected KMS port."
+        }
+      ]
+    },
+    {
+      "cohort": "integrations",
+      "file": "packages/integrations/src/crypto/envelope-cipher.ts",
+      "reviews": [
+        {
+          "branchId": "3",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 87,
+          "column": 2,
+          "sourceFingerprint": "sha256:46f25207703808ecd9f20b8ead8dd14b1551677635b45afbd7a2b0bc1d5c4a47",
+          "classification": "defensive",
+          "justification": "The UTF-8 byte bound fails closed if a provider returns a multibyte KMS key reference whose character count understates its encoded size."
+        },
+        {
+          "branchId": "5",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 100,
+          "column": 2,
+          "sourceFingerprint": "sha256:5d41b76ec92b587ebb4d7a1dc2f10513eebc32718491da2e86474db8f4d2aea1",
+          "classification": "defensive",
+          "justification": "The shape guard fails closed if a KMS adapter returns null or a primitive; malformed response fields are exercised through the public encryption boundary."
+        },
+        {
+          "branchId": "11",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 172,
+          "column": 12,
+          "sourceFingerprint": "sha256:33253690c3ead9a052534e285c8dafa45bc507a9440351fe32c50b109c45f2a0",
+          "classification": "defensive",
+          "justification": "Production calls supply cancellation to KMS data-key generation; omission remains supported only by the reusable encryption port."
+        },
+        {
+          "branchId": "12",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 189,
+          "column": 12,
+          "sourceFingerprint": "sha256:a8f68e8d276c227f0d717216270255f660de55ddcb694f4c736e061117d57f57",
+          "classification": "defensive",
+          "justification": "AWS KMS normally returns KeyId; this fallback preserves the validated configured key reference if an emulator omits that optional field."
+        },
+        {
+          "branchId": "13",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 238,
+          "column": 12,
+          "sourceFingerprint": "sha256:33253690c3ead9a052534e285c8dafa45bc507a9440351fe32c50b109c45f2a0",
+          "classification": "defensive",
+          "justification": "Production calls supply cancellation to KMS decryption; omission remains supported only by the reusable encryption port."
+        },
+        {
+          "branchId": "16",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 314,
+          "column": 6,
+          "sourceFingerprint": "sha256:291298594410b9b8743d98f5e8d56d7fccda125abc28db90c1b20bd58ec366fe",
+          "classification": "unreachable",
+          "justification": "Node crypto always returns a sixteen-byte authentication tag for aes-256-gcm, so this postcondition requires a runtime contract violation."
+        },
+        {
+          "branchId": "20",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 389,
+          "column": 6,
+          "sourceFingerprint": "sha256:6042b42656575c6236e7ac631db196b6154d10639d1340e1bea0fad117539f62",
+          "classification": "defensive",
+          "justification": "Authenticated decryption of bounded ciphertext preserves the plaintext bound; this guard fails closed if a crypto provider violates that invariant."
+        }
+      ]
+    },
+    {
+      "cohort": "integrations",
+      "file": "packages/integrations/src/email/executor.ts",
+      "reviews": [
+        {
+          "branchId": "13",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:7ece23b6318bcab3788d6b675432061ba02f4dbd0abe6461779fd192e4ca14b5",
+          "classification": "generated",
+          "justification": "V8 branch 13 in packages/integrations/src/email/executor.ts has no source coordinate; explicit adjacent decisions are separately exercised through the public package boundary."
+        },
+        {
+          "branchId": "22",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:0bdc496a2eee8b9ae2f93f53738a692df2cceff3790f28d6107badd889300355",
+          "classification": "generated",
+          "justification": "V8 branch 22 in packages/integrations/src/email/executor.ts has no source coordinate; explicit adjacent decisions are separately exercised through the public package boundary."
+        }
+      ]
+    },
+    {
+      "cohort": "integrations",
+      "file": "packages/integrations/src/http-request/executor.ts",
+      "reviews": [
+        {
+          "branchId": "7",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:4e139ac324f0299bd8fdaeba9edd406206561293b66848474851cf59e866cfa3",
+          "classification": "generated",
+          "justification": "V8 branch 7 in packages/integrations/src/http-request/executor.ts has no source coordinate; explicit adjacent decisions are separately exercised through the public package boundary."
+        },
+        {
+          "branchId": "10",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:f0cfa3a7bbf0351b4656f7f8107a0798b44260379a1ba161bcace9f0555a57b4",
+          "classification": "generated",
+          "justification": "V8 branch 10 in packages/integrations/src/http-request/executor.ts has no source coordinate; explicit adjacent decisions are separately exercised through the public package boundary."
+        },
+        {
+          "branchId": "26",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:434de5f6d2e5d7c37b15063136abce34c0ec0825eb484362540c220420a21674",
+          "classification": "generated",
+          "justification": "V8 branch 26 in packages/integrations/src/http-request/executor.ts has no source coordinate; explicit adjacent decisions are separately exercised through the public package boundary."
+        },
+        {
+          "branchId": "0",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 47,
+          "column": 4,
+          "sourceFingerprint": "sha256:609e3741c3dc4f0d94d1774a834de5bc0a4c8718f31dc7fde8478615abb067ad",
+          "classification": "defensive",
+          "justification": "HttpRequestExecutorError accepts failure decisions only; every typed constructor excludes succeeded, so this rejection cannot be reached by a valid caller."
+        },
+        {
+          "branchId": "15",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 186,
+          "column": 2,
+          "sourceFingerprint": "sha256:9aa634b4e721d84408edd27f3775a324b0729fc5400f13c00b96be2483683aa5",
+          "classification": "defensive",
+          "justification": "The strict public configuration schema proves the target protocol is HTTPS before execution reaches this redundant fail-closed adapter check."
+        }
+      ]
+    },
+    {
+      "cohort": "integrations",
+      "file": "packages/integrations/src/http/address-policy.ts",
+      "reviews": [
+        {
+          "branchId": "5",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 33,
+          "column": 30,
+          "sourceFingerprint": "sha256:3a6497be2440ff5d9fb60262a1f355e7858a2c169df62f87da2d7bea40bb47a7",
+          "classification": "unreachable",
+          "justification": "Node isIP already proved a four-octet IPv4 address, so malformed counts and missing-octet fallbacks cannot reach the private parser."
+        },
+        {
+          "branchId": "8",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 48,
+          "column": 2,
+          "sourceFingerprint": "sha256:ccef8a35b7f90dc43ea7fd0a859307d496179eaaa37cdb08ab8845cd11f2465f",
+          "classification": "unreachable",
+          "justification": "Node isIP already proved a four-octet IPv4 address, so malformed counts and missing-octet fallbacks cannot reach the private parser."
+        },
+        {
+          "branchId": "11",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 54,
+          "column": 20,
+          "sourceFingerprint": "sha256:f27c5a4290d647746f0873f8524d38229bb53588273d5eb21ce9b699abacdcf5",
+          "classification": "unreachable",
+          "justification": "Node isIP already proved a four-octet IPv4 address, so malformed counts and missing-octet fallbacks cannot reach the private parser."
+        },
+        {
+          "branchId": "12",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 55,
+          "column": 21,
+          "sourceFingerprint": "sha256:1b38bf6e8a0197ec6b93d4c9e4d805e20bcf0fc6aca7310777c73ce1f396023d",
+          "classification": "unreachable",
+          "justification": "Node isIP already proved a four-octet IPv4 address, so malformed counts and missing-octet fallbacks cannot reach the private parser."
+        },
+        {
+          "branchId": "13",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 56,
+          "column": 21,
+          "sourceFingerprint": "sha256:6e671263445560a64a3b459e4d88e8e924781237d5801a3227ab960216bfe14d",
+          "classification": "unreachable",
+          "justification": "Node isIP already proved a four-octet IPv4 address, so malformed counts and missing-octet fallbacks cannot reach the private parser."
+        },
+        {
+          "branchId": "14",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 57,
+          "column": 20,
+          "sourceFingerprint": "sha256:81008d30cf4234e98f5b300f5bbbf908bfc1dd3829d141dd86dd70f4dc634bdc",
+          "classification": "unreachable",
+          "justification": "Node isIP already proved a four-octet IPv4 address, so malformed counts and missing-octet fallbacks cannot reach the private parser."
+        },
+        {
+          "branchId": "15",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 67,
+          "column": 30,
+          "sourceFingerprint": "sha256:147d18038d49107b3084c4e9d933a8cafa23b59ef124b03ed98c5a9885120539",
+          "classification": "defensive",
+          "justification": "The generic IPv4 prefix matcher supports a zero-length prefix although the pinned blocked-range snapshot currently contains no /0 entry."
+        },
+        {
+          "branchId": "16",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 73,
+          "column": 2,
+          "sourceFingerprint": "sha256:5665c0cf65fc5ae5779b8dfe159f250d107803abebdec8cd9a494d5819cd0f09",
+          "classification": "unreachable",
+          "justification": "Node isIP already proved a complete unscoped IPv6 address, so malformed halves, segments, and embedded IPv4 positions cannot reach the private parser."
+        },
+        {
+          "branchId": "17",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 75,
+          "column": 2,
+          "sourceFingerprint": "sha256:03ea4200290e896530b07c5e9f600e7a54f5845446e06e68b74403a6c5c18610",
+          "classification": "unreachable",
+          "justification": "Node isIP already proved a complete unscoped IPv6 address, so malformed halves, segments, and embedded IPv4 positions cannot reach the private parser."
+        },
+        {
+          "branchId": "18",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 76,
+          "column": 42,
+          "sourceFingerprint": "sha256:8eeac452d4919beb92dbd1e03bcc1ac77b3f221f53df979d3458a426d48a608b",
+          "classification": "unreachable",
+          "justification": "Node isIP already proved a complete unscoped IPv6 address, so malformed halves, segments, and embedded IPv4 positions cannot reach the private parser."
+        },
+        {
+          "branchId": "19",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 77,
+          "column": 43,
+          "sourceFingerprint": "sha256:1916b3be793c13bf2dc0abd2824bda1afa44aa9e5c6ccb9e871f1fefc1489744",
+          "classification": "unreachable",
+          "justification": "Node isIP already proved a complete unscoped IPv6 address, so malformed halves, segments, and embedded IPv4 positions cannot reach the private parser."
+        },
+        {
+          "branchId": "20",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 79,
+          "column": 2,
+          "sourceFingerprint": "sha256:d98374b7baefce7d3d6374c967cca4cef7525491884484b795829f60f588c1c3",
+          "classification": "unreachable",
+          "justification": "Node isIP already proved a complete unscoped IPv6 address, so malformed halves, segments, and embedded IPv4 positions cannot reach the private parser."
+        },
+        {
+          "branchId": "21",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 80,
+          "column": 28,
+          "sourceFingerprint": "sha256:6f6f69bc81c6949b3b7e7df48630498858e1b24e14081d553952003a55dfbaa0",
+          "classification": "unreachable",
+          "justification": "Node isIP already proved a complete unscoped IPv6 address, so malformed halves, segments, and embedded IPv4 positions cannot reach the private parser."
+        },
+        {
+          "branchId": "24",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 96,
+          "column": 6,
+          "sourceFingerprint": "sha256:79191a3fb91a307021e0ea8007fa705bcca05534e4c1483dd69d949cc208d26d",
+          "classification": "unreachable",
+          "justification": "Node isIP already proved a complete unscoped IPv6 address, so malformed halves, segments, and embedded IPv4 positions cannot reach the private parser."
+        },
+        {
+          "branchId": "25",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 101,
+          "column": 4,
+          "sourceFingerprint": "sha256:250a303662fb7f21b63bfec353072e22beb2c4cec683643d71e0f9cc7d25b3ba",
+          "classification": "unreachable",
+          "justification": "Node isIP already proved a complete unscoped IPv6 address, so malformed halves, segments, and embedded IPv4 positions cannot reach the private parser."
+        },
+        {
+          "branchId": "27",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 114,
+          "column": 27,
+          "sourceFingerprint": "sha256:5a95d1bab41daad5775b1f9c45e0e34d5fa5f39a25cb7740a6ae82116658df63",
+          "classification": "unreachable",
+          "justification": "Parsed IPv6 addresses and the pinned network snapshot contain every fixed word position, so missing-word fallbacks cannot be selected."
+        },
+        {
+          "branchId": "28",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 114,
+          "column": 53,
+          "sourceFingerprint": "sha256:457d2865f3c248dd96368e536df74ade3860e751eeb7e030abce01055c00b8c8",
+          "classification": "unreachable",
+          "justification": "Parsed IPv6 addresses and the pinned network snapshot contain every fixed word position, so missing-word fallbacks cannot be selected."
+        },
+        {
+          "branchId": "30",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 120,
+          "column": 29,
+          "sourceFingerprint": "sha256:540a115fe1f439e67e68bbb2c69c525afac85ad50af6e5bfbe838ca4e1a52511",
+          "classification": "unreachable",
+          "justification": "Parsed IPv6 addresses and the pinned network snapshot contain every fixed word position, so missing-word fallbacks cannot be selected."
+        }
+      ]
+    },
+    {
+      "cohort": "integrations",
+      "file": "packages/integrations/src/http/node-transport.ts",
+      "reviews": [
+        {
+          "branchId": "1",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:9fd26723f6c5072d6d2dbe355881eb4249f4c6da704691d549847a0a2428a8e2",
+          "classification": "generated",
+          "justification": "V8 branch 1 in packages/integrations/src/http/node-transport.ts has no source coordinate; explicit adjacent decisions are separately exercised through the public package boundary."
+        },
+        {
+          "branchId": "0",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 22,
+          "column": 41,
+          "sourceFingerprint": "sha256:1a9df77c4b23db4621dcdca970a5b4e0fdc294e5ebd9d04043543583d21723b9",
+          "classification": "defensive",
+          "justification": "Node DNS may return IPv4 or IPv6 depending on host topology; both normalize to the closed address-family contract and live diversity remains canary evidence."
+        },
+        {
+          "branchId": "0",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 22,
+          "column": 56,
+          "sourceFingerprint": "sha256:14baede5f13ff21ab3d9714da4185895e22f59fd36742c2e92223c3e58dd2707",
+          "classification": "defensive",
+          "justification": "Node DNS may return IPv4 or IPv6 depending on host topology; both normalize to the closed address-family contract and live diversity remains canary evidence."
+        },
+        {
+          "branchId": "2",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 42,
+          "column": 42,
+          "sourceFingerprint": "sha256:12993b7e5cd09d838edb63ffec498cb1ab7085efc1b4e7fa88814af7c3c19cfd",
+          "classification": "defensive",
+          "justification": "Production uses HTTPS while the owner-local transport test uses HTTP loopback; live TLS behavior remains an external provider-canary obligation."
+        },
+        {
+          "branchId": "3",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 56,
+          "column": 45,
+          "sourceFingerprint": "sha256:a77a025a10c62b7f387d0d8f81f2554e24a51d35929ea687103ca493e121ea6c",
+          "classification": "unreachable",
+          "justification": "Node supplies a numeric status in a valid response callback; zero is retained only as a fail-closed runtime-protocol fallback."
+        }
+      ]
+    },
+    {
+      "cohort": "integrations",
+      "file": "packages/integrations/src/http/outcome-policy.ts",
+      "reviews": [
+        {
+          "branchId": "27",
+          "locationIndex": 0,
+          "branchType": "switch",
+          "line": 152,
+          "column": 4,
+          "sourceFingerprint": "sha256:3d981430e500086bb0b6b72a718924568ac7d134134f35462502dbf162ad7e4a",
+          "classification": "unreachable",
+          "justification": "Cancellation is handled before generic secure-error kind derivation, so the later canceled switch arm cannot be reached."
+        },
+        {
+          "branchId": "27",
+          "locationIndex": 12,
+          "branchType": "switch",
+          "line": 169,
+          "column": 4,
+          "sourceFingerprint": "sha256:9f1ae61cc4d94db594400f8e93c425fbeb47a43371a22049113e4ee72115c384",
+          "classification": "unreachable",
+          "justification": "SecureHttpErrorCode is closed and every declared member has an explicit switch arm, making the default unreachable for typed callers."
+        }
+      ]
+    },
+    {
+      "cohort": "integrations",
+      "file": "packages/integrations/src/http/secure-http.ts",
+      "reviews": [
+        {
+          "branchId": "24",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 432,
+          "column": 4,
+          "sourceFingerprint": "sha256:d07a4939f26a0b698badf85e2a3ec6a131d496b9b308e5f59491e2ef17109f78",
+          "classification": "unreachable",
+          "justification": "A non-empty DNS set either pushes every validated address or throws, so the selected sorted address cannot be undefined."
+        },
+        {
+          "branchId": "32",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 506,
+          "column": 4,
+          "sourceFingerprint": "sha256:a0c2b4629072d5c53e92a965c26f09e21c390504273843306ef6ed5aeb638344",
+          "classification": "unreachable",
+          "justification": "parseTargetUrl receives raw strings and creates SecureHttpError only in its catch block, so the caught value cannot already be that error."
+        },
+        {
+          "branchId": "50",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 606,
+          "column": 36,
+          "sourceFingerprint": "sha256:f381a26b1da4747ed8b31b6addedb4c60aae1f8d4595ac99adbd5bf3865d328b",
+          "classification": "defensive",
+          "justification": "Redirect replay retains an optional body; public tests cover bodyless redirects and body-bearing dispatch before unsafe redirect rejection."
+        },
+        {
+          "branchId": "54",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 634,
+          "column": 2,
+          "sourceFingerprint": "sha256:dbff547c011954053e312df807d43e1404df7206f48e6060be145fffa0a05685",
+          "classification": "defensive",
+          "justification": "The redactor normally concatenates non-empty transport chunks; this guard safely handles a transport emitting an empty chunk."
+        },
+        {
+          "branchId": "56",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 650,
+          "column": 4,
+          "sourceFingerprint": "sha256:191f6b4cbbbaf30cd528f2533c174aa80df158beab5ab85fd46f971e13f060e0",
+          "classification": "unreachable",
+          "justification": "Without redaction patterns, raw-byte accounting already enforced the same remaining budget, so this duplicate guard is invariant-only."
+        },
+        {
+          "branchId": "57",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 657,
+          "column": 57,
+          "sourceFingerprint": "sha256:9dc9db147e5fead5ef37e7b849cdf668a7423ead555f7fb3d5e4d866f255acf3",
+          "classification": "unreachable",
+          "justification": "The surrounding branch has proved the redaction-pattern array is non-empty, so the first-pattern fallback cannot be selected."
+        },
+        {
+          "branchId": "62",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 680,
+          "column": 4,
+          "sourceFingerprint": "sha256:575fc4db508366905460287effe107ef33327f27cfc2c58fcbeaf28e970105de",
+          "classification": "unreachable",
+          "justification": "The loop condition proves the indexed byte is inside the Uint8Array; undefined requires a nonconforming typed-array implementation."
+        },
+        {
+          "branchId": "64",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 718,
+          "column": 4,
+          "sourceFingerprint": "sha256:738212d0b6b2fb2ed174481f6ff663278d82c73a02724dac1afc9dc78a9b4de8",
+          "classification": "defensive",
+          "justification": "The append helper and raw-byte counter enforce the output limit before emit; this aggregate check protects future algorithm changes."
+        },
+        {
+          "branchId": "73",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 794,
+          "column": 2,
+          "sourceFingerprint": "sha256:1f94d42878e55c9e94c83124b973b4acc7aa3697b40d3a0a0a9f298b4da14035",
+          "classification": "unreachable",
+          "justification": "Sensitive values are validated as non-empty before conversion, so the redactor never receives a zero-length target."
+        },
+        {
+          "branchId": "76",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 825,
+          "column": 2,
+          "sourceFingerprint": "sha256:8b9ee0ee1ad7ad2dab64eaebdffd8b3376c2f58067c4d8c0cd8535a767095996",
+          "classification": "defensive",
+          "justification": "The transport mapper rechecks cancellation after asynchronous dispatch; public cancellation tests cover behavior while this exact race is nondeterministic."
+        },
+        {
+          "branchId": "77",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 826,
+          "column": 2,
+          "sourceFingerprint": "sha256:dc28f97b498a6bd6343fd34a8dbf0261490d27a9343c3778239ce9cb2ceb447f",
+          "classification": "defensive",
+          "justification": "The transport mapper accepts Node timeout-shaped errors in addition to the total deadline; both normalize to the tested timeout outcome."
+        },
+        {
+          "branchId": "78",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 835,
+          "column": 2,
+          "sourceFingerprint": "sha256:8b9ee0ee1ad7ad2dab64eaebdffd8b3376c2f58067c4d8c0cd8535a767095996",
+          "classification": "defensive",
+          "justification": "The stream mapper rechecks cancellation after iteration; public cancellation behavior is covered while this exact scheduler race is nondeterministic."
+        },
+        {
+          "branchId": "79",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 836,
+          "column": 2,
+          "sourceFingerprint": "sha256:dc28f97b498a6bd6343fd34a8dbf0261490d27a9343c3778239ce9cb2ceb447f",
+          "classification": "defensive",
+          "justification": "The stream mapper accepts iterator timeouts; total response deadline and ordinary iterator failures are covered publicly."
+        },
+        {
+          "branchId": "80",
+          "locationIndex": 2,
+          "branchType": "binary-expr",
+          "line": 844,
+          "column": 25,
+          "sourceFingerprint": "sha256:6032bc0d4035cc859ef0e7ff91808633825f1b00e9ad24a8b9ebb3a401e783f5",
+          "classification": "defensive",
+          "justification": "Node transports report timeout by code or TimeoutError name; both normalize to the same bounded public outcome."
+        },
+        {
+          "branchId": "82",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 869,
+          "column": 2,
+          "sourceFingerprint": "sha256:75fcd42c4e69ab799efe9b7aaa1b5a45e9c828d5d6ef3a2aa29cf3fbab0c62e5",
+          "classification": "unreachable",
+          "justification": "The client checks the combined signal immediately before each race, leaving only a nondeterministic abort-at-helper-entry interleaving."
+        },
+        {
+          "branchId": "83",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 886,
+          "column": 14,
+          "sourceFingerprint": "sha256:7630d9143a582a385641977fd8846189db57f9c1cc3d6cd27093f8df10a47023",
+          "classification": "defensive",
+          "justification": "The secure boundary converts non-Error promise rejections to a generic Error so arbitrary values and secrets cannot escape."
+        },
+        {
+          "branchId": "86",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 910,
+          "column": 45,
+          "sourceFingerprint": "sha256:12fce50a4d6834d980d89f1a5c73b3a45d3ad90a5749091a658c28c1c0d5dfb7",
+          "classification": "defensive",
+          "justification": "Node headers may be strings or arrays; normalization is used only for content-encoding enforcement and rejects non-identity values."
+        }
+      ]
+    },
+    {
+      "cohort": "integrations",
+      "file": "packages/integrations/src/server-only.ts",
+      "reviews": [
+        {
+          "branchId": "0",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 3,
+          "column": 0,
+          "sourceFingerprint": "sha256:8c482988bbddfef43bd9681cd7a6a11cada4a2159393e01920d0f712c4a55d45",
+          "classification": "unreachable",
+          "justification": "The server export loads only under Node and is browser-false in package metadata; this branch guards unsupported bundlers or runtimes."
+        }
+      ]
+    },
+    {
+      "cohort": "integrations",
+      "file": "packages/integrations/src/slack/client.ts",
+      "reviews": [
+        {
+          "branchId": "0",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 82,
+          "column": 31,
+          "sourceFingerprint": "sha256:6403b425353beff87ab7393b957649053cf0c70c6c76a290a8b8075f2831cc38",
+          "classification": "unreachable",
+          "justification": "The private Slack send helper is called only by sendMessage, which always constructs a bounded body; authTest has a separate bodyless path."
+        },
+        {
+          "branchId": "1",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 87,
+          "column": 33,
+          "sourceFingerprint": "sha256:feb6deb521149a3c0cd0dcdc9f12b748c3e03736317d600784534192138b2f87",
+          "classification": "unreachable",
+          "justification": "The private Slack send helper is called only by sendMessage, whose contract requires and always forwards an AbortSignal."
+        }
+      ]
+    },
+    {
+      "cohort": "integrations",
+      "file": "packages/integrations/src/slack/executor.ts",
+      "reviews": [
+        {
+          "branchId": "8",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:fd366ee72f084df29f9e557b6781c305ba488dc76d4145d87329f71a36f8cd94",
+          "classification": "generated",
+          "justification": "V8 branch 8 in packages/integrations/src/slack/executor.ts has no source coordinate; explicit adjacent decisions are separately exercised through the public package boundary."
+        },
+        {
+          "branchId": "12",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:2bf909b656a7d2923eba2402dbba43e8504bb3b7782a70fc3e2d69dcfe1d2732",
+          "classification": "generated",
+          "justification": "V8 branch 12 in packages/integrations/src/slack/executor.ts has no source coordinate; explicit adjacent decisions are separately exercised through the public package boundary."
+        }
+      ]
     }
   ]
 }
