@@ -180,6 +180,7 @@ export const nodeRuns = appSchema.table(
       withTimezone: true,
       mode: 'date',
     }),
+    controlKind: varchar('control_kind', { length: 32 }),
     waitKind: varchar('wait_kind', { length: 32 }),
     safeErrorCode: varchar('safe_error_code', { length: 128 }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })

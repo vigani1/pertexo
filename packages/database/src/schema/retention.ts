@@ -4,6 +4,7 @@ import {
   char,
   foreignKey,
   index,
+  jsonb,
   primaryKey,
   timestamp,
   uniqueIndex,
@@ -200,6 +201,8 @@ export const retentionBatches = appSchema.table(
       .default('records')
       .notNull(),
     dryRun: boolean('dry_run').default(true).notNull(),
+    dryRunCursor: jsonb('dry_run_cursor'),
+    dryRunUpper: jsonb('dry_run_upper'),
     requestedBy: varchar('requested_by', { length: 128 }).notNull(),
     reason: varchar('reason', { length: 512 }).notNull(),
     status: varchar('status', { length: 16 }).default('ready').notNull(),
