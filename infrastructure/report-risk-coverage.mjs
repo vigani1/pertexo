@@ -318,6 +318,7 @@ async function main() {
   const cohorts = [
     'artifact-store',
     'contracts',
+    'integrations',
     'workflow-engine',
     'database',
     'worker',

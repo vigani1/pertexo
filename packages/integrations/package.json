@@ -23,7 +23,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
-    "test:coverage": "vitest run --config vitest.coverage.config.ts --coverage",
+    "test:coverage": "vitest run --config vitest.coverage.config.ts --coverage --reporter=default --reporter=json --outputFile.json=../../coverage/integrations/test-results.json",
     "typecheck": "tsc -p tsconfig.test.json --noEmit"
   },
   "dependencies": {

@@ -157,7 +157,7 @@ function streamingHttpClient(
 }
 
 describe('http.request@1 definition', () => {
-  it('is browser-safe, exact, conservative, and absent from any release', () => {
+  it('is browser-safe, exact, conservative, and release-ready', () => {
     expect(HTTP_REQUEST_MANIFEST).toMatchObject({
       definition: { key: 'http.request', version: 1 },
       executor: { key: 'http.request', version: 1 },
