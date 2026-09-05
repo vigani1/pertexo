@@ -495,9 +495,13 @@ describe('email.send_notification@1', () => {
     expect(invalidRuntime.sendNotification).not.toHaveBeenCalled();
 
     const missingFence = runtime(undefined);
+    const connections = missingFence.value.connections;
+    if (connections === undefined)
+      throw new Error('Expected the runtime fixture to include connections');
+    const resolve = connections.resolve.bind(connections);
     missingFence.value = Object.freeze({
       ...missingFence.value,
-      connections: { resolve: missingFence.value.connections!.resolve },
+      connections: { resolve },
     });
     await expect(
       createEmailSendNotificationExecutorRegistration({
