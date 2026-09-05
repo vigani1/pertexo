@@ -5094,21 +5094,22 @@ changed.
       unbundled Node consumers and actual AWS command constructors are tested;
       no speculative public subpath or generic telemetry layer was added.
 - [x] Add all artifact-store source to the package coverage gate and root
-      source-hashed risk report. Fresh package coverage is 90.26% statements
-      (853/945), 83.49% branches (607/727), 94.56% functions (174/184), and
-      92.08% lines (814/884).
-- [ ] Finish ART-005 by reviewing the 120 newly exposed uncovered branches:
-      test public regional/cancellation/cleanup behavior where reachable and
-      retain only narrow source-hashed provider/defensive exceptions.
+      source-hashed risk report. Fresh 8-file / 176-test package coverage is
+      90.89% statements (859/945), 84.18% branches (612/727), 95.10% functions
+      (175/184), and 92.30% lines (816/884).
+- [x] Finish ART-005 with public telemetry and post-close regressions plus exact
+      source-hashed review of all 115 residual provider-corruption, regional
+      matrix, cancellation-race, SDK seam, invariant, and V8-generated
+      branches. The artifact-store cohort has zero unreviewed branches.
 - [ ] Supply ART-008 from deployed AWS resources: execute the three AWS-only
       assertions and capture Frankfurt/Ireland bucket identity, version
       lifecycle, one-sided outage, restore, and measured RPO/RTO evidence for
       the exact release artifact. Local MinIO/S3Mock compatibility is not a
       substitute.
 
-Implementation commits: `3289414`, `b45d960`, `dcc96b1`, `e208935`,
-`19ae523`, `0f1c8a9`, `87827a8`, `8c85107`, `f522666`, `10b9561`, and
-`db66903`. No phase status changed.
+Implementation commits include `3289414`, `b45d960`, `dcc96b1`, `e208935`,
+`19ae523`, `0f1c8a9`, `87827a8`, `8c85107`, `f522666`, `10b9561`, `db66903`,
+`2fe46fd`, `b15801e`, and `f2a813c`. No phase status changed.
 
 ### Granular package-audit remediation — contracts
 
