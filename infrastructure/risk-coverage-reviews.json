@@ -2931,7 +2931,7 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:8f9b30740966156b76a5d6fb3759275345c950a1f2d67fef39519af9b5c5b05d",
+          "sourceFingerprint": "sha256:8c56b5465ebc2cfdf723e3e75fc094623d51a0d3080f8ca474bf49038450c7dd",
           "classification": "generated",
           "justification": "V8 branch 15 in packages/artifact-store/src/store.ts has no source coordinate; explicit adjacent decisions are separately covered by the package tests."
         },
@@ -2941,7 +2941,7 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:ddc010aaf88e89d50094b68bd6b050acdab4f82a88eabd198ff8296fed7b7d24",
+          "sourceFingerprint": "sha256:7088edf0468c48ae2ce2db206943b05e957b739a0183e9a1b6cdb3bc653c9dd8",
           "classification": "generated",
           "justification": "V8 branch 28 in packages/artifact-store/src/store.ts has no source coordinate; explicit adjacent decisions are separately covered by the package tests."
         },
@@ -2951,7 +2951,7 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:ddc010aaf88e89d50094b68bd6b050acdab4f82a88eabd198ff8296fed7b7d24",
+          "sourceFingerprint": "sha256:7088edf0468c48ae2ce2db206943b05e957b739a0183e9a1b6cdb3bc653c9dd8",
           "classification": "generated",
           "justification": "V8 branch 50 in packages/artifact-store/src/store.ts has no source coordinate; explicit adjacent decisions are separately covered by the package tests."
         },

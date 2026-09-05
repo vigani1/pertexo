@@ -23,7 +23,7 @@
 
 | Finding | Final status | Current evidence |
 | --- | --- | --- |
-| ART-001 | Fixed in code; live geography remains ART-008 | `3289414`, `639b508`; readiness uses the provider-reported bucket region, normalizes AWS and S3-compatible root-region representations, and rejects configured drift before dual-region comparison. |
+| ART-001 | Fixed in code; live geography remains ART-008 | `3289414`, `639b508`, `93bbd89`; readiness uses the provider-reported bucket region, normalizes AWS and S3-compatible root-region representations through an explicit runtime boundary, and rejects configured drift before dual-region comparison. |
 | ART-002 | Fixed locally; production latency evidence remains external | `b45d960`; bounded readiness attestations expire/invalidate, append request counts drop from repeated full proofs, and reconciliation GET concurrency is capped at eight while preserving chain order. |
 | ART-003 | Fixed | `dcc96b1`; both dual coordinators emit one bounded safety observation for unavailable, partial, or divergent regional outcomes. |
 | ART-004 | Fixed | `e208935`; owned close always attempts both stores, aggregates failures, and remains idempotent. |
@@ -562,7 +562,8 @@ where the code or evidence has not yet fully delivered its later ADR promises.
   than copied from configuration. AWS's empty and `EU` legacy values and the
   documented S3Mock literal `null` root-region response are normalized; an
   explicit foreign region still fails. The public unit regression and the
-  five enabled S3/MinIO integration assertions pass (`3289414`, `639b508`).
+  five enabled S3/MinIO integration assertions pass (`3289414`, `639b508`,
+  `93bbd89`).
 
 ### ART-002 — Nested ledger operations repeatedly execute full readiness proofs
 
