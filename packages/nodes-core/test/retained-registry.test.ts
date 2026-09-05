@@ -10,6 +10,7 @@ import {
   CORE_REGISTRY_RELEASE,
 } from '../src/index.js';
 import {
+  CORE_NODE_EXECUTOR_REGISTRATIONS,
   createCoreNodeRegistry,
   createCoreNodeRegistryForRelease,
 } from '../src/server.js';
@@ -26,6 +27,23 @@ function expectRecursivelyFrozen(
 }
 
 describe('core node retained registry', () => {
+  it('binds one exact executor to every definition in canonical order', () => {
+    expect(
+      CORE_NODE_EXECUTOR_REGISTRATIONS.map(({ executor }) => executor),
+    ).toEqual(
+      CORE_NODE_DEFINITION_REGISTRATIONS.map(
+        ({ manifest }) => manifest.executor,
+      ),
+    );
+    expect(
+      new Set(
+        CORE_NODE_EXECUTOR_REGISTRATIONS.map(
+          ({ executor }) => `${executor.key}@${String(executor.version)}`,
+        ),
+      ).size,
+    ).toBe(CORE_NODE_EXECUTOR_REGISTRATIONS.length);
+  });
+
   it('recursively freezes every owned manifest tree', () => {
     for (const { manifest } of CORE_NODE_DEFINITION_REGISTRATIONS)
       expectRecursivelyFrozen(manifest);

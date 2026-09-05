@@ -11,44 +11,12 @@ import {
   type NodeRegistry,
 } from '@pertexo/node-sdk/server';
 
-import { coreConditionExecutor } from './condition/executor.js';
 import { CORE_NODE_DEFINITION_REGISTRATIONS } from './definitions.js';
-import { coreForEachExecutor } from './for-each/executor.js';
-import { coreManualExecutor } from './manual/executor.js';
-import { coreMergeExecutor, coreMergeExecutorV2 } from './merge/executor.js';
-import {
-  coreParallelExecutor,
-  coreParallelExecutorV2,
-} from './parallel/executor.js';
 import { CORE_REGISTRY_RELEASE } from './registry.js';
-import {
-  coreScheduleExecutor,
-  coreScheduleExecutorV2,
-} from './schedule/executor.js';
-import { coreSetExecutor } from './set/executor.js';
-import { coreTerminateExecutor } from './terminate/executor.js';
-import { coreSwitchExecutor } from './switch/executor.js';
-import { coreWaitExecutor } from './wait/executor.js';
-import { coreWebhookExecutor } from './webhook/executor.js';
+import { CORE_NODE_EXECUTOR_REGISTRATIONS } from './registrations.js';
 
 export { CORE_NODE_DEFINITION_REGISTRATIONS } from './definitions.js';
-
-export const CORE_NODE_EXECUTOR_REGISTRATIONS = Object.freeze([
-  coreConditionExecutor,
-  coreForEachExecutor,
-  coreManualExecutor,
-  coreMergeExecutor,
-  coreMergeExecutorV2,
-  coreParallelExecutor,
-  coreParallelExecutorV2,
-  coreScheduleExecutor,
-  coreScheduleExecutorV2,
-  coreSetExecutor,
-  coreSwitchExecutor,
-  coreTerminateExecutor,
-  coreWaitExecutor,
-  coreWebhookExecutor,
-] as const);
+export { CORE_NODE_EXECUTOR_REGISTRATIONS } from './registrations.js';
 
 function identityToken(identity: Readonly<{ key: string; version: number }>) {
   return `${identity.key}\u0000${String(identity.version)}`;
