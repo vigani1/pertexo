@@ -233,7 +233,7 @@ function validateDefinitionRegistration(
       JSON.stringify(stableComparable(generated))
     )
       throw new NodeRegistryCompatibilityError(
-        `${label} JSON Schema document does not match the registered Zod schema`,
+        `${label} JSON Schema projection does not match the registered Zod schema projection`,
       );
   }
   return {

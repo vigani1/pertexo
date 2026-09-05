@@ -607,7 +607,7 @@ describe('node-sdk exact server registry', () => {
         executors: [executorRegistration()],
         release: release(),
       }),
-    ).toThrow(/JSON Schema document/u);
+    ).toThrow(/JSON Schema projection/u);
   });
 
   it('keeps registrations private, snapshots metadata, and enforces aggregate input bounds', async () => {
