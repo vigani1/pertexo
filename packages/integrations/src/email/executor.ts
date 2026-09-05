@@ -126,6 +126,8 @@ async function execute(
   let config;
   let input;
   try {
+    // Executors are also callable as isolated adapter boundaries, so they
+    // retain fail-closed parsing even though createNodeRegistry parses first.
     config = emailSendNotificationConfigSchema.parse(invocation.config);
     input = emailSendNotificationInputSchema.parse(invocation.input);
   } catch {

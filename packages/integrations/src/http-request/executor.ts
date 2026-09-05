@@ -162,6 +162,8 @@ async function executeHttpRequest(
   let config: z.output<typeof httpRequestConfigSchema>;
   let input: z.output<typeof httpRequestInputSchema>;
   try {
+    // Executors are also callable as isolated adapter boundaries, so they
+    // retain fail-closed parsing even though createNodeRegistry parses first.
     config = httpRequestConfigSchema.parse(invocation.config);
     input = httpRequestInputSchema.parse(invocation.input);
   } catch {

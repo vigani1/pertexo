@@ -118,6 +118,8 @@ async function execute(
   let config;
   let input;
   try {
+    // Executors are also callable as isolated adapter boundaries, so they
+    // retain fail-closed parsing even though createNodeRegistry parses first.
     config = slackSendMessageConfigSchema.parse(invocation.config);
     input = slackSendMessageInputSchema.parse(invocation.input);
   } catch {
