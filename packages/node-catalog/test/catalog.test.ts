@@ -78,6 +78,12 @@ import {
   PLATFORM_REGISTRY_RELEASE_WEBHOOK_STAGED,
   PLATFORM_SCHEDULE_ACTIVATION_RELEASE_SUPPORT,
   PLATFORM_SCHEDULE_STAGING_RELEASE_SUPPORT,
+  PLATFORM_SCHEDULE_V2_ACTIVATION_RELEASE_SUPPORT,
+  PLATFORM_SCHEDULE_V2_STAGING_RELEASE_SUPPORT,
+  PLATFORM_PARALLEL_V2_ACTIVATION_RELEASE_SUPPORT,
+  PLATFORM_PARALLEL_V2_STAGING_RELEASE_SUPPORT,
+  PLATFORM_MERGE_V2_ACTIVATION_RELEASE_SUPPORT,
+  PLATFORM_MERGE_V2_STAGING_RELEASE_SUPPORT,
   PLATFORM_WEBHOOK_ACTIVATION_RELEASE_SUPPORT,
   PLATFORM_WEBHOOK_STAGING_RELEASE_SUPPORT,
   PLATFORM_CONDITION_ACTIVATION_RELEASE_SUPPORT,
@@ -879,6 +885,60 @@ describe('platform node compatibility catalog', () => {
   });
 
   it('executes additive version 2 core contracts without changing retained versions', async () => {
+    const successorCohorts = [
+      [
+        'schedule_v2_staging',
+        PLATFORM_SCHEDULE_V2_STAGING_RELEASE_SUPPORT,
+        24,
+        [24, 25],
+      ],
+      [
+        'schedule_v2_activation',
+        PLATFORM_SCHEDULE_V2_ACTIVATION_RELEASE_SUPPORT,
+        26,
+        [25, 26],
+      ],
+      [
+        'parallel_v2_staging',
+        PLATFORM_PARALLEL_V2_STAGING_RELEASE_SUPPORT,
+        26,
+        [26, 27],
+      ],
+      [
+        'parallel_v2_activation',
+        PLATFORM_PARALLEL_V2_ACTIVATION_RELEASE_SUPPORT,
+        28,
+        [27, 28],
+      ],
+      [
+        'merge_v2_staging',
+        PLATFORM_MERGE_V2_STAGING_RELEASE_SUPPORT,
+        28,
+        [28, 29],
+      ],
+      [
+        'merge_v2_activation',
+        PLATFORM_MERGE_V2_ACTIVATION_RELEASE_SUPPORT,
+        30,
+        [29, 30],
+      ],
+    ] as const;
+    for (const [
+      cohort,
+      support,
+      servingEpoch,
+      supportEpochs,
+    ] of successorCohorts) {
+      expect(platformRegistryReleaseSupport(cohort)).toBe(support);
+      expect(support.map(({ epoch }) => epoch)).toEqual(supportEpochs);
+      expect(platformServingRegistryRelease(cohort).epoch).toBe(servingEpoch);
+    }
+    expect(
+      platformExecutableRegistryHistory('merge_v2_activation').map(
+        ({ epoch }) => epoch,
+      ),
+    ).toEqual(Array.from({ length: 30 }, (_, index) => index + 1));
+
     const signal = new AbortController().signal;
     const scheduleInput = {
       nodeId: 'schedule',
