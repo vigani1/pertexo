@@ -551,19 +551,17 @@ describe('restricted JSONata policy v1', () => {
     });
     evaluators.push(evaluator);
 
-    await expect(
-      evaluator.evaluate({
-        expression: '1',
-        policyVersion: 1,
-        context: { runInput: null, nodeOutputs: {} },
-      }),
-    ).resolves.toEqual(
-      expect.objectContaining({
-        kind: 'error',
-        code: 'evaluation_failed',
-        message: expect.stringContaining('startup'),
-      }),
-    );
+    const result = await evaluator.evaluate({
+      expression: '1',
+      policyVersion: 1,
+      context: { runInput: null, nodeOutputs: {} },
+    });
+    expect(result).toMatchObject({
+      kind: 'error',
+      code: 'evaluation_failed',
+    });
+    if (result.kind !== 'error') throw new Error('Expected evaluator failure');
+    expect(result.message).toContain('startup');
     expect(evaluator.diagnostics().workerCreations).toBe(1);
   });
   it('is byte-deterministic across two workers and a pool restart', async () => {

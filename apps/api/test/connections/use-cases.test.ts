@@ -269,11 +269,7 @@ describe('connection application use cases', () => {
     };
 
     await expect(
-      new CreateConnectionUseCase(
-        store,
-        authorization(),
-        encryption,
-      ).execute({
+      new CreateConnectionUseCase(store, authorization(), encryption).execute({
         actor,
         routeWorkspaceId: workspaceId,
         idempotencyKey: 'create-canceled',

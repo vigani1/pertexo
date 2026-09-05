@@ -26,7 +26,6 @@ describe('input resolution production operations', () => {
       );
       const scheduledGraph = graph();
       const trigger = scheduledGraph.nodes[0];
-      if (trigger === undefined) throw new Error('trigger fixture is missing');
       Object.assign(trigger, {
         definition: { key: 'core.schedule', version },
         configVersion: version,
