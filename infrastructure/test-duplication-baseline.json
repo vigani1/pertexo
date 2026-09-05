@@ -8,8 +8,8 @@
       "minTokens": 80,
       "maximums": {
         "clones": 36,
-        "duplicatedLines": 707,
-        "duplicatedTokens": 6142
+        "duplicatedLines": 711,
+        "duplicatedTokens": 6183
       },
       "families": [
         {
@@ -363,8 +363,8 @@
           "reason": "API and worker database modules expose similar Nest lifecycle adapters but validate different roles, compatibility cohorts, and runtime responsibilities.",
           "clones": [
             {
-              "hash": "c1b1181c644038301a01d90599f66745f9029f3bf0a49b87eaa6400c93d7aa89",
-              "maxLines": 34
+              "hash": "2ebaa2af8c122ab70ff3c5352d8d1cf30145cbfef717bbc211aad7abfb326c88",
+              "maxLines": 38
             }
           ]
         },
