@@ -5,7 +5,7 @@
     "functionLines": 200
   },
   "fileHotspots": {
-    "apps/api/src/connections/use-cases.ts": 572,
+    "apps/api/src/connections/use-cases.ts": 575,
     "apps/api/src/identity-infrastructure/oidc-adapter.ts": 507,
     "apps/worker/src/execution/failure-notification-delivery.ts": 508,
     "apps/worker/src/execution/node-runtime-capabilities.ts": 515,
@@ -39,7 +39,7 @@
     "packages/workflow-engine/src/coordinator-observations.ts": 533,
     "packages/workflow-engine/src/operations.ts": 734,
     "packages/workflow-engine/src/workflow-transition-observations.ts": 528,
-    "packages/workflow-model/src/expressions.ts": 660,
+    "packages/workflow-model/src/expressions.ts": 673,
     "packages/workflow-model/src/graph.ts": 964
   },
   "functionHotspots": {

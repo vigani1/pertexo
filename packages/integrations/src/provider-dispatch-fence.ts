@@ -9,7 +9,12 @@ import {
   secureHttpPreDispatchError,
 } from './http/secure-http.js';
 
-function dispatchEvidenceErrorCode(error: unknown): string {
+function dispatchEvidenceErrorCode(
+  error: unknown,
+):
+  | typeof SECURE_HTTP_ERROR_CODE.connectionFenceFailed
+  | typeof SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch
+  | typeof SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed {
   if (!(error instanceof NodeDispatchEvidenceError))
     return SECURE_HTTP_ERROR_CODE.dispatchEvidenceFailed;
   if (error.code === 'provider_dispatch_binding_mismatch')

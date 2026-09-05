@@ -260,7 +260,9 @@ describe('generic webhook ingress', () => {
       (_value: unknown, _context: unknown, signal: AbortSignal) =>
         new Promise<Uint8Array>((resolve) => {
           operationSignal = signal;
-          releaseSecret = () => resolve(new Uint8Array(32).fill(4));
+          releaseSecret = () => {
+            resolve(new Uint8Array(32).fill(4));
+          };
         }),
     );
     await application.listen({ host: '127.0.0.1', port: 0 });
@@ -280,12 +282,18 @@ describe('generic webhook ingress', () => {
         'content-length': Buffer.byteLength(body),
       },
     });
-    clientRequest.on('error', () => undefined);
+    clientRequest.on('error', () => {
+      // Expected when the test intentionally closes the client socket.
+    });
     clientRequest.end(body);
-    await vi.waitFor(() => expect(openSecret).toHaveBeenCalledOnce());
+    await vi.waitFor(() => {
+      expect(openSecret).toHaveBeenCalledOnce();
+    });
 
     clientRequest.destroy();
-    await vi.waitFor(() => expect(operationSignal?.aborted).toBe(true));
+    await vi.waitFor(() => {
+      expect(operationSignal?.aborted).toBe(true);
+    });
     releaseSecret?.();
     await application.close();
     expect(database.acceptVerifiedDelivery).not.toHaveBeenCalled();

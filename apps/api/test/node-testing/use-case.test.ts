@@ -126,12 +126,13 @@ function requestInput() {
 
 describe('node test application use case', () => {
   it('uses the composition-owned evaluator for expression mappings', async () => {
+    const evaluate = vi.fn().mockResolvedValue({
+      kind: 'value',
+      value: { encoding: 'utf8', value: 'evaluated' },
+      canonicalBytes: 39,
+    });
     const evaluator: ExpressionEvaluator = {
-      evaluate: vi.fn().mockResolvedValue({
-        kind: 'value',
-        value: { encoding: 'utf8', value: 'evaluated' },
-        canonicalBytes: 39,
-      }),
+      evaluate,
     };
     const store = persistence({
       getDraft: vi.fn().mockResolvedValue(
@@ -173,7 +174,7 @@ describe('node test application use case', () => {
         },
       }),
     ).resolves.toMatchObject({ valid: true, issues: [] });
-    expect(evaluator.evaluate).toHaveBeenCalledWith(
+    expect(evaluate).toHaveBeenCalledWith(
       expect.objectContaining({ expression: 'runInput.body' }),
     );
   });

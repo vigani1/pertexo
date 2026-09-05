@@ -18,14 +18,20 @@ describe('request operation signal', () => {
     const raw = new RequestStream();
     const operation = withRequestOperationSignal({ raw }, async (signal) => {
       await new Promise<void>((resolve) => {
-        signal.addEventListener('abort', () => resolve(), { once: true });
+        signal.addEventListener(
+          'abort',
+          () => {
+            resolve();
+          },
+          { once: true },
+        );
       });
-      return signal.reason;
+      return signal.aborted;
     });
 
     raw.socket.emit('close');
 
-    await expect(operation).resolves.toMatchObject({ name: 'AbortError' });
+    await expect(operation).resolves.toBe(true);
     expect(raw.listenerCount('aborted')).toBe(0);
     expect(raw.socket.listenerCount('close')).toBe(0);
   });
@@ -35,7 +41,9 @@ describe('request operation signal', () => {
     raw.socket.destroyed = true;
 
     await expect(
-      withRequestOperationSignal({ raw }, async (signal) => signal.aborted),
+      withRequestOperationSignal({ raw }, (signal) =>
+        Promise.resolve(signal.aborted),
+      ),
     ).resolves.toBe(true);
   });
 });

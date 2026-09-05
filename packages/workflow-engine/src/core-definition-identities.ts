@@ -24,21 +24,10 @@ export function isCoreParallelDefinition(
   return isVersionedCoreDefinition(definition, 'core.parallel');
 }
 
-export function isCoreScheduleDefinition(
+function isCoreScheduleDefinition(
   definition: DefinitionIdentity | undefined,
 ): boolean {
   return isVersionedCoreDefinition(definition, 'core.schedule');
-}
-
-export function isStructuredBranchDefinition(
-  definition: DefinitionIdentity | undefined,
-): boolean {
-  return (
-    (definition?.version === 1 &&
-      (definition.key === 'core.condition' ||
-        definition.key === 'core.switch')) ||
-    isCoreParallelDefinition(definition)
-  );
 }
 
 export function isTriggerSourceDefinition(

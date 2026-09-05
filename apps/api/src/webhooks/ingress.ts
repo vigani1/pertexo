@@ -79,25 +79,25 @@ export function registerWebhookIngress(
       { bodyLimit: MAX_BODY + 1 },
       (request, reply) =>
         telemetry.trace(singleHeader(request, 'traceparent'), () =>
-          acceptWebhook(request, reply, dependencies, telemetry),
+          acceptWebhookRequest(request, reply, dependencies, telemetry),
         ),
     );
     done();
   });
 }
 
-async function acceptWebhook(
+async function acceptWebhookRequest(
   request: FastifyRequest,
   reply: FastifyReply,
   dependencies: WebhookIngressDependencies,
   telemetry: WebhookIngressTelemetry,
 ): Promise<void> {
   return withRequestOperationSignal(request, (signal) =>
-    acceptWebhookWithSignal(request, reply, dependencies, telemetry, signal),
+    acceptWebhook(request, reply, dependencies, telemetry, signal),
   );
 }
 
-async function acceptWebhookWithSignal(
+async function acceptWebhook(
   request: FastifyRequest,
   reply: FastifyReply,
   dependencies: WebhookIngressDependencies,

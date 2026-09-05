@@ -590,7 +590,9 @@ export class JsonataEvaluator implements ExpressionEvaluator {
       };
       if (response.ready) {
         if (handedOff) {
-          void finish(error('evaluation_failed', 'duplicate evaluator readiness'));
+          void finish(
+            error('evaluation_failed', 'duplicate evaluator readiness'),
+          );
           return;
         }
         handedOff = true;
