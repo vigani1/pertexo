@@ -13,6 +13,21 @@ import {
 export const API_ENGINE_VERSION = 'phase3-engine-v1';
 const API_ITERATION_BUDGET = 1_000;
 
+function requiresStructuredCheckpoint(definition: {
+  readonly key: string;
+  readonly version: number;
+}): boolean {
+  return (
+    (definition.version === 1 &&
+      (definition.key === 'core.condition' ||
+        definition.key === 'core.switch')) ||
+    (definition.key === 'core.parallel' &&
+      (definition.version === 1 ||
+        definition.version === 2 ||
+        definition.version === 3))
+  );
+}
+
 export class InitialWorkflowCheckpointError extends Error {
   public override readonly name = 'InitialWorkflowCheckpointError';
   public constructor() {
@@ -53,12 +68,8 @@ export function createInitialWorkflowCheckpoint(
       throw new InitialWorkflowCheckpointError();
     return Object.freeze({
       engineVersion: API_ENGINE_VERSION,
-      checkpoint: (executable.envelope.graph.nodes.some(
-        ({ definition }) =>
-          (definition.key === 'core.condition' ||
-            definition.key === 'core.switch' ||
-            definition.key === 'core.parallel') &&
-          definition.version === 1,
+      checkpoint: (executable.envelope.graph.nodes.some(({ definition }) =>
+        requiresStructuredCheckpoint(definition),
       )
         ? createCheckpointV2
         : createCheckpoint)({

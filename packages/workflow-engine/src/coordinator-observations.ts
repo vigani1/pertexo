@@ -16,6 +16,7 @@ import {
   configuredBranchOutputPorts,
   configuredParallelOutputPorts,
 } from './graph-scheduler.js';
+import { isCoreMergeDefinition } from './core-definition-identities.js';
 import {
   exactKeys,
   isJsonRecord,
@@ -354,10 +355,7 @@ export function mergeCoordinatorObservations(
   }
   const edges = executableEdges(executable.envelope.graph);
   return [...nodes.values()]
-    .filter(
-      ({ definition }) =>
-        definition.key === 'core.merge' && definition.version === 1,
-    )
+    .filter(({ definition }) => isCoreMergeDefinition(definition))
     .flatMap((merge): WorkflowObservation[] => {
       const parallelNodeId = Reflect.get(
         merge.config,

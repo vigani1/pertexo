@@ -4,6 +4,7 @@ import {
   CORE_SCHEDULE_CONFIG_SCHEMA,
   CORE_SCHEDULE_CONFIG_SCHEMA_V2,
   CORE_SCHEDULE_INPUT_SCHEMA_V2,
+  CORE_SCHEDULE_MANIFEST_V3,
 } from '../src/index.js';
 
 describe('core Schedule trigger contract', () => {
@@ -61,5 +62,13 @@ describe('core Schedule trigger contract', () => {
         scheduledAt: '2026-09-05T01:00:00.000Z',
       }).success,
     ).toBe(false);
+  });
+
+  it('publishes the runtime-only cron semantics omitted by JSON Schema', () => {
+    expect(CORE_SCHEDULE_MANIFEST_V3.configSchema).toMatchObject({
+      'x-pertexo-runtime-only-semantics': [
+        expect.stringContaining('canonical non-fixed-offset IANA timezone'),
+      ],
+    });
   });
 });

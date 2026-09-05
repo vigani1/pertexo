@@ -12,10 +12,12 @@ import {
   CORE_MERGE_INPUT_SCHEMA,
   CORE_MERGE_INPUT_SCHEMA_V2,
   CORE_MERGE_MANIFEST,
+  CORE_MERGE_MANIFEST_V3,
   CORE_PARALLEL_CONFIG_SCHEMA,
   CORE_PARALLEL_DEFINITION,
   CORE_PARALLEL_EXECUTOR,
   CORE_PARALLEL_MANIFEST,
+  CORE_PARALLEL_MANIFEST_V3,
   CORE_PARALLEL_OUTPUT_SCHEMA_V2,
   CORE_SWITCH_CONFIG_SCHEMA,
   CORE_SWITCH_DEFINITION,
@@ -227,5 +229,25 @@ describe('core orchestration node contracts', () => {
       CORE_MERGE_INPUT_SCHEMA.safeParse({ ledger: {}, selectedBranchIds: [] })
         .success,
     ).toBe(true);
+  });
+
+  it('publishes runtime-only structured-node refinements for browser consumers', () => {
+    expect(CORE_PARALLEL_MANIFEST_V3.configSchema).toMatchObject({
+      'x-pertexo-runtime-only-semantics': [
+        expect.stringContaining('maxConcurrency'),
+      ],
+    });
+    expect(CORE_PARALLEL_MANIFEST_V3.outputSchema).toMatchObject({
+      'x-pertexo-runtime-only-semantics': [expect.stringContaining('unique')],
+    });
+    for (const schema of [
+      CORE_MERGE_MANIFEST_V3.inputSchema,
+      CORE_MERGE_MANIFEST_V3.outputSchema,
+    ])
+      expect(schema).toMatchObject({
+        'x-pertexo-runtime-only-semantics': [
+          expect.stringContaining('canonically ordered'),
+        ],
+      });
   });
 });

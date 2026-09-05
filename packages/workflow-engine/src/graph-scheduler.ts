@@ -9,6 +9,10 @@ import type {
   IterationScopePart,
 } from './types.js';
 import type { SideEffectClass } from './types.js';
+import {
+  isCoreMergeDefinition,
+  isCoreParallelDefinition,
+} from './core-definition-identities.js';
 
 /** Private execution projection derived only from a verified executable. */
 export interface SchedulerState {
@@ -75,8 +79,7 @@ export function configuredParallelOutputPorts(
   }>,
 ): readonly string[] | undefined {
   if (
-    node.definition?.key !== 'core.parallel' ||
-    node.definition.version !== 1 ||
+    !isCoreParallelDefinition(node.definition) ||
     typeof node.config !== 'object' ||
     node.config === null ||
     Array.isArray(node.config)
@@ -238,10 +241,7 @@ export function deriveReadyNodes(input: {
   }
   const mergeNodeIds = new Set(
     input.graph.nodes
-      .filter(
-        ({ definition }) =>
-          definition?.key === 'core.merge' && definition.version === 1,
-      )
+      .filter(({ definition }) => isCoreMergeDefinition(definition))
       .map(({ id }) => id),
   );
   const blocked = new Set<string>();

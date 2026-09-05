@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 
+import { CronExpressionParser } from 'cron-parser';
 import { z } from 'zod';
 
 const webhookConfigSchema = z.object({}).strict();
@@ -26,6 +27,65 @@ const scheduleConfigSchema = z.discriminatedUnion('kind', [
     })
     .strict(),
 ]);
+const canonicalIanaTimezones = new Set(Intl.supportedValuesOf('timeZone'));
+const scheduleConfigSchemaV2 = z.discriminatedUnion('kind', [
+  z
+    .object({
+      kind: z.literal('cron'),
+      expression: z
+        .string()
+        .min(9)
+        .max(255)
+        .refine((value) => value === value.trim())
+        .refine((value) => value.split(' ').length === 5)
+        .refine((value) => !/[H?#L]/u.test(value)),
+      timezone: z
+        .string()
+        .min(1)
+        .max(255)
+        .refine(
+          (value) =>
+            canonicalIanaTimezones.has(value) && !value.startsWith('Etc/GMT'),
+        ),
+      misfirePolicy: z.enum(['catch_up_once', 'skip']),
+    })
+    .strict()
+    .superRefine(({ expression, timezone }, context) => {
+      try {
+        CronExpressionParser.parse(`0 ${expression}`, {
+          currentDate: new Date(0),
+          strict: true,
+          tz: timezone,
+        });
+      } catch {
+        context.addIssue({
+          code: 'custom',
+          path: ['expression'],
+          message: 'Invalid strict cron expression',
+        });
+      }
+    }),
+  z
+    .object({
+      kind: z.literal('interval'),
+      intervalMinutes: z.number().int().min(1).max(43_200),
+      misfirePolicy: z.enum(['catch_up_once', 'skip']),
+    })
+    .strict(),
+]);
+
+function triggerKind(
+  identity: string,
+): WorkflowTriggerProjection['kind'] | null {
+  if (identity === 'core.webhook@1') return 'webhook';
+  if (
+    identity === 'core.schedule@1' ||
+    identity === 'core.schedule@2' ||
+    identity === 'core.schedule@3'
+  )
+    return 'schedule';
+  return null;
+}
 
 const graphSchema = z
   .object({
@@ -68,13 +128,16 @@ export function workflowTriggerProjection(
     graph.nodes
       .flatMap((node): WorkflowTriggerProjection[] => {
         const identity = `${node.definition.key}@${String(node.definition.version)}`;
-        if (identity !== 'core.webhook@1' && identity !== 'core.schedule@1')
-          return [];
-        const kind = identity === 'core.webhook@1' ? 'webhook' : 'schedule';
-        const config =
-          kind === 'webhook'
-            ? webhookConfigSchema.parse(node.config)
-            : scheduleConfigSchema.parse(node.config);
+        const kind = triggerKind(identity);
+        if (kind === null) return [];
+        let config: Readonly<Record<string, unknown>>;
+        if (kind === 'webhook') config = webhookConfigSchema.parse(node.config);
+        else if (
+          identity === 'core.schedule@2' ||
+          identity === 'core.schedule@3'
+        )
+          config = scheduleConfigSchemaV2.parse(node.config);
+        else config = scheduleConfigSchema.parse(node.config);
         const digest = createHash('sha256')
           .update(canonicalJson({ config, kind }))
           .digest('hex');

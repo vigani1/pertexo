@@ -149,6 +149,14 @@ function stableComparable(value: unknown): unknown {
   );
 }
 
+function runtimeSchemaComparable(value: unknown): unknown {
+  if (value === null || typeof value !== 'object' || Array.isArray(value))
+    return stableComparable(value);
+  const structuralProjection = { ...(value as Record<string, unknown>) };
+  delete structuralProjection['x-pertexo-runtime-only-semantics'];
+  return stableComparable(structuralProjection);
+}
+
 function sameManifest(left: NodeManifest, right: NodeManifest): boolean {
   return (
     JSON.stringify(stableComparable(left)) ===
@@ -206,8 +214,8 @@ function validateDefinitionRegistration(
   for (const [label, documented, runtime] of schemaDocuments) {
     const generated = generateSchemaDocument(runtime);
     if (
-      JSON.stringify(stableComparable(documented)) !==
-      JSON.stringify(stableComparable(generated))
+      JSON.stringify(runtimeSchemaComparable(documented)) !==
+      JSON.stringify(runtimeSchemaComparable(generated))
     )
       throw new NodeRegistryCompatibilityError(
         `${label} JSON Schema projection does not match the registered Zod schema projection`,

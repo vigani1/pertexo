@@ -30,6 +30,8 @@ import {
   WorkflowEngineError,
 } from '@pertexo/workflow-engine';
 
+import { requiresStructuredCheckpoint } from './core-definition-identities.js';
+
 type ReplayDelivery = Extract<
   QueueDelivery,
   { readonly name: 'replay-workflow-run' }
@@ -100,12 +102,8 @@ function initialCheckpoint(
   const engineVersion = 'phase3-engine-v1';
   return Object.freeze({
     engineVersion,
-    checkpoint: (executable.envelope.graph.nodes.some(
-      ({ definition }) =>
-        (definition.key === 'core.condition' ||
-          definition.key === 'core.switch' ||
-          definition.key === 'core.parallel') &&
-        definition.version === 1,
+    checkpoint: (executable.envelope.graph.nodes.some(({ definition }) =>
+      requiresStructuredCheckpoint(definition),
     )
       ? createCheckpointV2
       : createCheckpoint)({
