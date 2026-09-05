@@ -1478,9 +1478,10 @@ pnpm dlx jscpd@4.0.5 apps/*/test packages/*/test \
 - **Priority:** P2.
 - **Status:** continuous assurance; current percentages are truthful but are not
   whole-package or whole-repository coverage.
-- **Evidence:** coverage gates instrument 30 selected files with 1,736 coverable
-  lines. They provide strong decision coverage and source-fingerprinted review
-  for 116 uncovered branches, but the repository contains 514 production
+- **Evidence:** coverage gates instrument 105 selected files with 4,933
+  coverable lines. They provide strong decision coverage and
+  source-fingerprinted review for 504 uncovered branches, but the repository
+  contains 514 production
   TypeScript files.
 - **Why it matters:** a green selected-module percentage cannot reveal a newly
   risky unselected adapter or capability. Coverage selection must evolve when

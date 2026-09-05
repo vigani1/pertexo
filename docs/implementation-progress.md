@@ -22,13 +22,27 @@ evidence-gated, or conditional rather than unperformed repository defects.
 Green repository checks are not represented as a substitute for live
 production evidence.
 
-Package-audit remediation is in progress. The rate-limit audit now has seven
-repository-controlled findings fixed (RL-001 and RL-003 through RL-008), backed
-by 29 package tests and enforced coverage of 95.04% statements, 91.42% branches,
-92.3% functions, and 95.69% lines. RL-002 remains correctly classified as an
-external evidence obligation: production must use and demonstrate a
-non-clustered replicated Redis primary compatible with the atomic multi-key Lua
-policy. Local mocks and repository fixtures are not treated as that evidence.
+All 133 findings in the 12 granular package audits are now reconciled. Every
+repository-actionable defect is implemented and verified; WFE-004 was the last
+partially open repository item and now has public compatibility-history tests
+plus exact source-hashed review of every residual branch. ART-011, DB-016,
+INT-009, and the package coverage/model gates remain continuous safeguards;
+DB-013, WFE-012, and the explicitly documented compatibility/locality choices
+remain intentionally retained rather than mechanically refactored.
+
+External obligations remain external: ART-002 production latency, ART-008 live
+AWS/regional recovery, DB-011 workload/planner evidence, DB-017 deployed
+backup/PITR/failover evidence, INT-010 provider/KMS sandboxes, INT-013 measured
+network lifecycle policy, OBS-006 production telemetry retrieval, and RL-002
+deployed Redis topology. None is represented as complete from a local mock or
+repository fixture.
+
+The rate-limit audit has seven repository-controlled findings fixed (RL-001
+and RL-003 through RL-008), backed by 29 package tests and enforced coverage of
+95.04% statements, 91.42% branches, 92.3% functions, and 95.69% lines. RL-002
+remains correctly classified as an external evidence obligation: production
+must use and demonstrate a non-clustered replicated Redis primary compatible
+with the atomic multi-key Lua policy.
 
 Node-catalog remediation has fixed NC-001 through NC-006.
 All 30 retained compatibility fingerprints remain byte-identical after release
@@ -5068,7 +5082,7 @@ phase status changed.
       alias is removed only in an explicitly breaking engine interface release
       after a zero-consumer scan and replacement release note; durable stored
       identities and applied migrations are not renamed.
-- [x] Expand the enforced workflow-engine coverage cohort to all 24
+- [x] Expand the enforced workflow-engine coverage cohort to all 26
       consequence-selected files with per-file floors. Fresh coverage is
       90.56% statements (1,844/2,036), 85.32% branches (1,779/2,085), 93.62%
       functions (338/361), and 91.74% lines (1,766/1,925).

@@ -70,8 +70,8 @@ external evidence has not been executed.
 Fresh local verification at this implementation tree passes `pnpm check`,
 `pnpm test:coverage`, `pnpm release:check`, and `pnpm images:check`. Enabled
 real-service cohorts pass 320 database, 22 worker, 15 API, and 5 artifact-store
-tests. Coverage remains explicitly limited to 30 selected files/1,736 coverable
-lines with 116 reviewed and zero unreviewed uncovered branches.
+tests. Coverage remains explicitly limited to 105 selected files/4,933
+coverable lines with 504 reviewed and zero unreviewed uncovered branches.
 
 The 2026-09-01 audit refresh is implemented at fixed ancestor `0865633` and
 merged to `main` through pull request #7. It
@@ -98,10 +98,11 @@ targets and anchors plus a shared merge-stable implementation tree. Protected
 quality CI invokes it with complete history, and a fixture recreates the
 candidate on a different parent to prove the supported rebase-style flow.
 Pull request #26 and exact-main CI both executed that protected gate
-successfully, closing C-12. Risk coverage names 30 exact selected files with
-repository-relative paths. Public-interface tests measure 91.02% workflow-
-engine, 95.38% database, 93.14% worker, and 100% API branch coverage across
-1,736 coverable lines. All 116 uncovered instrumentation
+successfully, closing C-12. Risk coverage names 105 exact selected files with
+repository-relative paths. Public-interface tests measure 85.32% workflow-
+engine, 95.38% database, 94.95% worker, 91.06% integrations, 84.18%
+artifact-store, 98.36% contracts, and 100% API branch coverage across 4,933
+coverable lines. All 504 uncovered instrumentation
 branches have exact source-fingerprinted reviews; the eight integration-only
 reviews each bind an exact command, file, and test name. The former 26 generic
 integration classifications were withdrawn. The report rejects malformed,

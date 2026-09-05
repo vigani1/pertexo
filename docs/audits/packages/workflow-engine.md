@@ -97,7 +97,7 @@ capacity and timestamp probes; and a nested structured-workflow timing probe.
 | Enforced selected-source coverage | 94.43% statements, 91.02% branches, 93.58% functions, 94.91% lines |
 | Full `src/**/*.ts` coverage | 90.56% statements, 85.32% branches, 93.62% functions, 91.74% lines |
 | Root risk report | 504 reviewed and 0 unreviewed uncovered branches repository-wide |
-| Workflow-engine risk cohort | All 24 consequence-selected files are included; 225 residual branches have exact source fingerprints and branch-specific defensive, unreachable, or generated evidence |
+| Workflow-engine risk cohort | All 26 consequence-selected files are included; 225 residual branches have exact source fingerprints and branch-specific defensive, unreachable, or generated evidence |
 | Persisted-fact capacity probe | 6,000 valid-shaped progress facts, 1,186,897 serialized bytes, rejected as `observation_invalid` for member overflow |
 | Database contract comparison | Database accepts up to 10,000 persisted facts and 4,096 canonical bytes per fact |
 | Checkpoint timestamp probe | `parseCheckpoint` accepted `resumeAt: "0"`; persistence requires ISO datetime |
@@ -925,7 +925,7 @@ remaining gaps are implementation/control details:
 - **Verification:** deleting a test from each critical family fails CI or
   creates a new unreviewed risk entry.
 - **Status:** fixed as a continuous source-hashed coverage safeguard.
-- **Implemented evidence (2026-09-05):** enforced coverage now includes all 24
+- **Implemented evidence (2026-09-05):** enforced coverage now includes all 26
   consequence-selected engine files: persisted observation admission/parsing,
   coordinator derivation, scheduler projection, transition derivation/stops/
   planning, executable boundary/validation/compatibility, scheduling, and the
