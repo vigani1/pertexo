@@ -546,6 +546,22 @@ describe('slack.send_message@1', () => {
   });
 
   it('fails closed on rate-limited resolution and mismatched resolved credentials', async () => {
+    const invalidRuntime = runtime(undefined);
+    invalidRuntime.value = Object.freeze({
+      ...invalidRuntime.value,
+      sideEffectClass: 'safe',
+    });
+    await expect(
+      createSlackSendMessageExecutorRegistration({
+        client: { sendMessage: invalidRuntime.sendMessage },
+      }).execute(invocation(invalidRuntime.value)),
+    ).rejects.toMatchObject({
+      kind: 'failed',
+      errorKind: 'configuration',
+      possiblyDispatched: false,
+    });
+    expect(invalidRuntime.sendMessage).not.toHaveBeenCalled();
+
     const limited = runtime(undefined);
     limited.value = Object.freeze({
       ...limited.value,

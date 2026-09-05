@@ -478,6 +478,22 @@ describe('email.send_notification@1', () => {
   });
 
   it('classifies credential admission failures before provider dispatch', async () => {
+    const invalidRuntime = runtime(undefined);
+    invalidRuntime.value = Object.freeze({
+      ...invalidRuntime.value,
+      sideEffectClass: 'unsafe',
+    });
+    await expect(
+      createEmailSendNotificationExecutorRegistration({
+        client: { sendNotification: invalidRuntime.sendNotification },
+      }).execute(invocation(invalidRuntime.value)),
+    ).rejects.toMatchObject({
+      kind: 'failed',
+      errorKind: 'configuration',
+      possiblyDispatched: false,
+    });
+    expect(invalidRuntime.sendNotification).not.toHaveBeenCalled();
+
     const missingFence = runtime(undefined);
     missingFence.value = Object.freeze({
       ...missingFence.value,
