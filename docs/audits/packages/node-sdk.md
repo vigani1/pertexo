@@ -13,9 +13,40 @@
 - **Architecture sources:** the authoritative backend plan and ADRs 001, 005,
   007, 010, 011, 016, and 022 through 025.
 - **Audit status:** granularly certified for the pinned implementation tree.
-- **Implementation status:** two high-priority correctness/security defects,
-  five medium contract/design/control gaps, and three lower-priority robustness
-  or maintainability improvements remain open.
+- **Implementation status:** all ten repository-actionable findings are now
+  implemented or resolved by an explicit compatibility-preserving policy. The
+  original review below remains the historical record for its pinned tree.
+
+### Current remediation record
+
+| ID | Previous status | Final status | Changed locations | Verification and commit evidence |
+| --- | --- | --- | --- | --- |
+| SDK-001 | Open P1 defect | **Fixed** | `server.ts`, registry tests | Synchronous `unused -> in_flight -> committed/failed` transition permits one marker only. Tests cover eight simultaneous calls, sequential duplicates, rejection, and executor failure in flight; `7371664`, `436eaa3`. |
+| SDK-002 | Open P1 defect | **Fixed** | release canonical copy, server JSON boundary, hostile-key tests | Own root/nested `__proto__`, `constructor`, and `prototype` keys remain enumerable data with ordinary prototypes and stable release round trips; `7371664`. |
+| SDK-003 | Open contract defect | **Fixed** | JSON boundary and parity tests | Dense-array key checks now reject sparse, accessor, symbol, and extra enumerable properties instead of truncating them; `7371664`. |
+| SDK-004 | Open design gap | **Fixed under retained-compatibility policy** | `release.ts`, `server.ts`, schema tests | Registry errors now state that projection equality is being checked. `generateSchemaDocument` accepts bounded, immutable `x-pertexo-runtime-only-semantics` evidence for new or versioned contracts. Existing fingerprints remain unchanged; current runtime refinements are inventoried below and remain enforced by Zod at publication/execution; `d40b583`, `4fe3f8e`. |
+| SDK-005 | Open type-safety improvement | **Resolved by deletion/explicit boundary** | `server.ts`, three provider executors | Removed unused `TypedExecutorRegistration`, phantom `__types`, `NodeExecutionHandler`, and double-parsing helper after a repository-wide zero-consumer search. Heterogeneous registry parsing remains authoritative; provider adapters intentionally re-parse because they are also isolated callable trust boundaries; `d6277f2`, `3d2838f`. |
+| SDK-006 | Open locality improvement | **Fixed** | `compatibility-canonical.ts`, `executor-contracts.ts`, `executor-errors.ts`, `identity.ts`, `json-boundary.ts`, facades | The 900/961-line pair is now owner modules plus 707-line release and 520-line registry facades. Identity primitives have one browser-safe owner; export paths are unchanged. Package, catalog, core, workspace type, Knip, and duplication gates pass; `8b919d9`, `63ac0f7`, `4d26978`, `6b20ffd`. |
+| SDK-007 | Open continuous-control gap | **Fixed; continuous safeguard** | package/root scripts, coverage config, adversarial tests | Root coverage executes the package. Current result: 88.78% statements, 77.57% branches, 97.39% functions, 90.03% lines; SHA-256 vectors cover UTF-8, padding boundaries, and long input; `19ae523`, `436eaa3`. |
+| SDK-008 | Open robustness gap | **Fixed** | JSON predicate/canonicalizer and tests | Limits require positive safe integers for every dimension; reflection failures are exception-total at the public boundary. Tests trap prototype, own-key, and descriptor reflection and exercise scalar/member/depth limits; `7371664`, `436eaa3`. |
+| SDK-009 | Open precision gap | **Fixed additively** | manifest V2 contract and migration helper | V2 requires explicit positive executor ABI while retained V1 parse/fingerprint behavior stays unchanged; new manifests use the explicit path; `f6c7a53`. |
+| SDK-010 | Open auditability gap | **Fixed** | successor constructor/tests | Successors must be exactly `previous.epoch + 1` and must change the fingerprint; gap, no-op, lifecycle, additive, and removal cases are tested; `7371664`. |
+
+Current runtime-only schema-semantics inventory (retained documents are not
+rewritten in place):
+
+| Owner | Runtime-only semantics beyond portable JSON Schema projection |
+| --- | --- |
+| Core Schedule | canonical IANA timezone membership and pinned cron-parser materialization |
+| Core Switch/Parallel/Merge/For Each | unique IDs, cross-field counts, settled-ledger selection, bounded aggregate JSON, and input/output equality |
+| HTTP integration | header normalization/control-byte rules, URL protocol/credential policy, UTF-8 byte limits, and cross-field body/method constraints |
+| Slack integration | UTF-8 message byte limit |
+| Email integration | address grammar, subject/body UTF-8 limits, and control-byte exclusion |
+
+These semantics are exercised in their owner-package fixture matrices. Any new
+definition version that relies on a non-portable refinement must attach the
+runtime-only extension or supply an equivalent portable constraint; projection
+matching alone must never be described as semantic parity.
 
 The package is necessary and owns the right domain boundary. It is the common
 compatibility language between browser-safe node manifests, workflow
@@ -580,7 +611,7 @@ versions and preserve all supported historical releases.
 
 - **Severity:** P1.
 - **Classification:** confirmed concurrency/correctness defect.
-- **Status:** open.
+- **Status:** fixed (`7371664`, `436eaa3`).
 - **Evidence:** `server.ts:903-916` checks `dispatchCount` before awaiting the
   supplied marker and increments afterward. A controlled `Promise.all` invoked
   the underlying marker twice; execution then failed with
@@ -603,7 +634,7 @@ versions and preserve all supported historical releases.
 
 - **Severity:** P1.
 - **Classification:** confirmed security/data-integrity defect.
-- **Status:** open.
+- **Status:** fixed (`7371664`).
 - **Evidence:** `server.ts:518,549,566-568` and `release.ts:385-395` construct
   `{}` and assign attacker-controlled keys. Parsed JSON with own `__proto__` was
   admitted; canonicalization lost the own key and changed the result prototype.
@@ -626,7 +657,7 @@ versions and preserve all supported historical releases.
 
 - **Severity:** P2.
 - **Classification:** confirmed contract defect.
-- **Status:** open.
+- **Status:** fixed (`7371664`).
 - **Evidence:** `release.ts:177-187` rejects arrays whose enumerable keys are
   not exactly their dense indices. `server.ts:519-521,569-571` synthesizes only
   index keys. An array with enumerable `extra` was rejected by
@@ -644,7 +675,7 @@ versions and preserve all supported historical releases.
 
 - **Severity:** P2.
 - **Classification:** confirmed contract/design gap.
-- **Status:** open.
+- **Status:** fixed under the retained-compatibility projection policy (`d40b583`, `4fe3f8e`).
 - **Evidence:** `release.ts:283-288` uses `z.toJSONSchema`; custom refinements
   disappear. `server.ts:642-655` compares the manifest with the same generated
   projection. A refined string rejected `denied` at runtime while its document
@@ -665,7 +696,7 @@ versions and preserve all supported historical releases.
 
 - **Severity:** P2.
 - **Classification:** maintainability/type-safety improvement.
-- **Status:** open.
+- **Status:** resolved by deletion and explicit adapter-boundary parsing (`d6277f2`, `3d2838f`).
 - **Evidence:** `NodeDefinitionRegistration` stores non-generic `ZodType`s;
   `NodeExecutorRegistration.execute` accepts unknown values. The unused
   `TypedExecutorRegistration.__types` phantom field connects nothing, and
@@ -689,7 +720,7 @@ versions and preserve all supported historical releases.
 
 - **Severity:** P2.
 - **Classification:** maintainability/plan-alignment improvement.
-- **Status:** open.
+- **Status:** fixed (`8b919d9`, `63ac0f7`, `4d26978`, `6b20ffd`).
 - **Evidence:** `release.ts` is 845 lines and `server.ts` is 953 lines. Each
   contains multiple independent responsibilities listed in the architecture
   section. The plan anticipated domain directories; complexity ratchets only
@@ -709,7 +740,7 @@ versions and preserve all supported historical releases.
 
 - **Severity:** P2.
 - **Classification:** continuous-control gap.
-- **Status:** open.
+- **Status:** fixed as a continuous repository control (`19ae523`, `436eaa3`).
 - **Evidence:** the package has no `test:coverage` script and is absent from root
   `test:coverage`. Ad hoc coverage was 88.29% statements, 75.41% branches,
   95.65% functions, and 89.57% lines. The missing concurrency/hostile-key cases
@@ -728,7 +759,7 @@ versions and preserve all supported historical releases.
 
 - **Severity:** P3.
 - **Classification:** robustness improvement.
-- **Status:** open.
+- **Status:** fixed (`7371664`, `436eaa3`).
 - **Evidence:** proxy introspection errors escape from `isBoundedNodeJson`, Zod
   `safeParse`, and `canonicalizeBoundedJson`; `NaN` custom limits accepted an
   empty object. Byte size is checked after allocating the full canonical copy
@@ -748,7 +779,7 @@ versions and preserve all supported historical releases.
 
 - **Severity:** P3.
 - **Classification:** contract precision improvement.
-- **Status:** open.
+- **Status:** fixed additively (`f6c7a53`).
 - **Evidence:** `NodeManifest.executorAbi` and `nodeManifestSchema.executorAbi`
   are optional. Edge/registry checks compare ABI only when supplied. Core ABI-1
   manifests rely on the executor edge alone; later manifests pin it explicitly.
@@ -765,7 +796,7 @@ versions and preserve all supported historical releases.
 
 - **Severity:** P3.
 - **Classification:** auditability improvement.
-- **Status:** open.
+- **Status:** fixed (`7371664`).
 - **Evidence:** only `next.epoch > previous.epoch` is required. Epoch 1 advanced
   to 999 with identical behavior and fingerprint. Repository callers currently
   add exactly one.

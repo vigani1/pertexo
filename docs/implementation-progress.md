@@ -4952,6 +4952,34 @@ Implementation commits: `5f9ce84`, `400dfe8`, `37594a4`, `19ae523`,
 `fd5fd10`, `3c98fa9`, and `554502d`. No phase status changed and no local
 repository evidence is substituted for Phase 7 external production proof.
 
+### Granular package-audit remediation — node-sdk
+
+- [x] Reconcile SDK-001 through SDK-010 against current implementation. The
+      dispatch race, hostile-key copy, array parity, limit handling, manifest
+      ABI, successor, and coverage findings were already substantively fixed;
+      adversarial tests now cover eight-way dispatch concurrency, marker
+      failure, reflection traps, and SHA boundary vectors.
+- [x] Remove the unused typed-executor abstraction after a repository-wide
+      consumer search. Provider adapters intentionally keep fail-closed parsing
+      because they are callable isolation boundaries as well as registry
+      handlers.
+- [x] Split release/execution ownership into compatibility hashing, executor
+      contracts, error taxonomy, identity, bounded JSON, and the existing
+      release/server facades. Public package paths and fingerprints are
+      unchanged; the duplication gate remains at its accepted baseline.
+- [x] Make schema-projection evidence honest and compatibility safe. New or
+      versioned schemas can carry bounded runtime-only semantic descriptions;
+      retained fingerprints are not rewritten and current refinement owners
+      remain enumerated in the package audit.
+- [x] Focused checks pass: 38 package tests, typecheck, build, ESLint, Knip,
+      node-catalog/core compatibility suites, workspace typecheck, coverage,
+      and duplication validation. Coverage is 88.78% statements, 77.57%
+      branches, 97.39% functions, and 90.03% lines.
+
+Implementation commits: `7371664`, `f6c7a53`, `19ae523`, `d6277f2`,
+`8b919d9`, `63ac0f7`, `4d26978`, `436eaa3`, `d40b583`, `4fe3f8e`,
+`6b20ffd`, and `3d2838f`. No phase status changed.
+
 ## Update protocol
 
 When a checkpoint changes status:
