@@ -50,6 +50,8 @@ export class NodeTestingModule {
           dependencies.persistence,
           dependencies.authorization,
           dependencies.release,
+          undefined,
+          dependencies.expressionEvaluator,
         ),
       },
       {
