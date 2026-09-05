@@ -6,7 +6,13 @@ const pg = vi.hoisted(() => {
     static instances: FakePool[] = [];
     static queryErrors: unknown[] = [];
     static queryResults: { rows: { pid: number }[] }[] = [];
-    readonly options: { max: number };
+    readonly options: Readonly<{
+      idle_in_transaction_session_timeout?: number;
+      lock_timeout?: number;
+      max: number;
+      query_timeout?: number;
+      statement_timeout?: false | number;
+    }>;
     readonly queries: string[] = [];
     readonly queryValues: unknown[][] = [];
     totalCount = 0;
@@ -17,8 +23,14 @@ const pg = vi.hoisted(() => {
       ((value: unknown) => void)[]
     >();
 
-    constructor(config: { max?: number }) {
-      this.options = { max: config.max ?? 10 };
+    constructor(config: {
+      idle_in_transaction_session_timeout?: number;
+      lock_timeout?: number;
+      max?: number;
+      query_timeout?: number;
+      statement_timeout?: false | number;
+    }) {
+      this.options = { ...config, max: config.max ?? 10 };
       FakePool.instances.push(this);
     }
 
@@ -150,6 +162,42 @@ describe('PostgreSQL telemetry pool', () => {
     pg.FakePool.instances.length = 0;
     pg.FakePool.queryErrors.length = 0;
     pg.FakePool.queryResults.length = 0;
+  });
+
+  it('applies bounded role deadlines and preserves narrower explicit values', async () => {
+    const first = createDatabasePool(
+      { lock_timeout: 750, max: 1 },
+      { monitorLockWaits: false, role: 'api' },
+    );
+    const second = createDatabasePool(
+      { max: 1 },
+      { monitorLockWaits: false, role: 'maintenance' },
+    );
+
+    expect(poolAt(0).options).toMatchObject({
+      idle_in_transaction_session_timeout: 35_000,
+      lock_timeout: 750,
+      query_timeout: 35_000,
+      statement_timeout: 30_000,
+    });
+    expect(poolAt(1).options).toMatchObject({
+      idle_in_transaction_session_timeout: 305_000,
+      lock_timeout: 15_000,
+      query_timeout: 305_000,
+      statement_timeout: 300_000,
+    });
+
+    await first.end();
+    await second.end();
+  });
+
+  it('rejects disabled or invalid caller deadline overrides', () => {
+    expect(() =>
+      createDatabasePool(
+        { lock_timeout: -1 },
+        { monitorLockWaits: false, role: 'worker' },
+      ),
+    ).toThrow('lock_timeout must be a positive safe integer');
   });
 
   it('reports pool state by bounded database authority', async () => {
