@@ -5,7 +5,10 @@ import {
   ArtifactPartialReplicationError,
   createDualRegionArtifactStore,
 } from '../src/dual-region-artifact-store.js';
-import { ArtifactIntegrityError } from '../src/store.js';
+import {
+  ArtifactIntegrityError,
+  ArtifactStoreClosedError,
+} from '../src/store.js';
 import type {
   ArtifactDownload,
   ArtifactMetadata,
@@ -314,5 +317,6 @@ describe('dual-region artifact store', () => {
     }).not.toThrow();
     expect(primary.closeCalls).toBe(1);
     expect(recovery.closeCalls).toBe(1);
+    expect(() => store.head(metadata)).toThrow(ArtifactStoreClosedError);
   });
 });

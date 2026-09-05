@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  ControlLedgerClosedError,
   ControlLedgerConflictError,
   ControlLedgerIntegrityError,
 } from '../src/control-ledger.js';
@@ -500,7 +501,7 @@ describe('dual-region control ledger', () => {
     expect(primary.reconcileRequests[0]).toBe(recovery.reconcileRequests[0]);
   });
 
-  it('closes owned ledgers and leaves explicitly borrowed ledgers open', () => {
+  it('closes owned ledgers and leaves explicitly borrowed ledgers open', async () => {
     const borrowed = fixture();
     borrowed.ledger.close();
     borrowed.ledger.close();
@@ -519,6 +520,9 @@ describe('dual-region control ledger', () => {
     expect('delete' in owned).toBe(false);
     expect('list' in owned).toBe(false);
     expect('repair' in owned).toBe(false);
+    await expect(
+      owned.read({ sequence: 1, workspaceId: WORKSPACE_ID }),
+    ).rejects.toBeInstanceOf(ControlLedgerClosedError);
   });
 
   it('attempts both owned closes and aggregates failures', () => {
