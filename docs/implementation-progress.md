@@ -5070,16 +5070,18 @@ phase status changed.
       identities and applied migrations are not renamed.
 - [x] Expand the enforced workflow-engine coverage cohort to all 24
       consequence-selected files with per-file floors. Fresh coverage is
-      90.36% statements (1,839/2,035), 85.17% branches (1,776/2,085), 93.35%
-      functions (337/361), and 91.52% lines (1,761/1,924).
-- [ ] Finish WFE-004 by exercising every testable public branch and recording
-      narrow source-hashed evidence for only genuinely defensive, unreachable,
-      generated, or real-integration branches. The expanded cohort exposed a
-      real review backlog; threshold passage alone is not completion.
+      90.56% statements (1,844/2,036), 85.32% branches (1,779/2,085), 93.62%
+      functions (338/361), and 91.74% lines (1,766/1,925).
+- [x] Finish WFE-004 with public compatibility-history admission regressions
+      and exact source-hashed review of all 225 residual workflow-engine
+      branches. Every retained entry is classified narrowly as defensive,
+      unreachable, or V8-generated, semantic source drift invalidates the
+      review, and the root report records 504 reviewed and zero unreviewed
+      branches across 105 selected files and 4,933 coverable lines.
 
 Implementation commits: `8406d1e`, `5a7ed49`, `3adf2e1`, `68485d8`,
-`667554a`, `132c8e1`, `182f754`, `ce1c809`, and `f8c3655`. No phase status
-changed.
+`667554a`, `132c8e1`, `182f754`, `ce1c809`, `f8c3655`, and `5a71c1c`. No phase
+status changed.
 
 ### Granular package-audit remediation — artifact-store
 

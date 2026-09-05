@@ -125,6 +125,16 @@
           "sourceFingerprint": "sha256:4bc55de71c8cf9348cdb5d6f87950070ae9d2edce1cb125011fd8c9a54a35492",
           "classification": "unreachable",
           "justification": "The public dispatcher enters the V1 parser only after proving schemaVersion is exactly 1."
+        },
+        {
+          "branchId": "8",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 153,
+          "column": 12,
+          "sourceFingerprint": "sha256:71279f0848f24fde6f54fe325dd848de89753658c0118d0302f18f37f1d5f764",
+          "classification": "defensive",
+          "justification": "The V1 checkpoint fallback reconstructs a canonical invocation key only for a legacy checkpoint that omitted it after the surrounding checkpoint identity fields have passed validation."
         }
       ]
     },
@@ -203,6 +213,66 @@
           "sourceFingerprint": "sha256:191e2806d6232caa29042cb22305600a5d9a671c2f643beb18c1fdd1e77d68b0",
           "classification": "defensive",
           "justification": "A retry-policy outcome_unknown decision is preserved; every other exhausted retry decision maps to failed."
+        },
+        {
+          "branchId": "0",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 34,
+          "column": 55,
+          "sourceFingerprint": "sha256:3d7b881ebda0e4356ece38e1f5b5ee75072f073f559224b2f966c93eb47a8364",
+          "classification": "defensive",
+          "justification": "Failure derivation exhaustively maps validated scheduler control and invocation state; this residual operand protects against a missing invocation or distinguishes the already-tested canceled, deadline, and unknown-outcome terminal variants."
+        },
+        {
+          "branchId": "4",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 43,
+          "column": 4,
+          "sourceFingerprint": "sha256:fb49abf03422f4200af3727c9f1dbdb08fff7a2bf19d7355c4589671e51b3c70",
+          "classification": "defensive",
+          "justification": "Failure derivation exhaustively maps validated scheduler control and invocation state; this residual operand protects against a missing invocation or distinguishes the already-tested canceled, deadline, and unknown-outcome terminal variants."
+        },
+        {
+          "branchId": "6",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 48,
+          "column": 12,
+          "sourceFingerprint": "sha256:3dd34fc1b2243fe9568aa10a7e903592befe5729fb69ebc14ac41e90c528c686",
+          "classification": "defensive",
+          "justification": "Failure derivation exhaustively maps validated scheduler control and invocation state; this residual operand protects against a missing invocation or distinguishes the already-tested canceled, deadline, and unknown-outcome terminal variants."
+        },
+        {
+          "branchId": "6",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 49,
+          "column": 12,
+          "sourceFingerprint": "sha256:664be7e0456a474bf48447b00194ee8a76f4fde15ffc2d045d62c3a0c06e103c",
+          "classification": "defensive",
+          "justification": "Failure derivation exhaustively maps validated scheduler control and invocation state; this residual operand protects against a missing invocation or distinguishes the already-tested canceled, deadline, and unknown-outcome terminal variants."
+        },
+        {
+          "branchId": "7",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 50,
+          "column": 14,
+          "sourceFingerprint": "sha256:5c73a8c5b92c4c4878223cdca1970fa9de31bb2132213a7f55ab0ce94048acf7",
+          "classification": "defensive",
+          "justification": "Failure derivation exhaustively maps validated scheduler control and invocation state; this residual operand protects against a missing invocation or distinguishes the already-tested canceled, deadline, and unknown-outcome terminal variants."
+        },
+        {
+          "branchId": "7",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 51,
+          "column": 14,
+          "sourceFingerprint": "sha256:c9085790bc105edeb6a76bb82af4a0c4f0e6612f35425b2d1478820f4dd429ab",
+          "classification": "defensive",
+          "justification": "Failure derivation exhaustively maps validated scheduler control and invocation state; this residual operand protects against a missing invocation or distinguishes the already-tested canceled, deadline, and unknown-outcome terminal variants."
         }
       ]
     },
@@ -3014,6 +3084,2258 @@
           "sourceFingerprint": "sha256:9c976092bbfc78d57e06d243c665d7357b35429e429e12b8568adc5d47f82d0a",
           "classification": "defensive",
           "justification": "The default presigner uses AWS getSignedUrl; tests inject the bounded presigner port and deployed signing remains external evidence."
+        }
+      ]
+    },
+    {
+      "cohort": "workflow-engine",
+      "file": "packages/workflow-engine/src/coordinator-observations.ts",
+      "reviews": [
+        {
+          "branchId": "4",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 70,
+          "column": 4,
+          "sourceFingerprint": "sha256:90f609c1fd4f50f6f99b885317283a688397564391ef558eb05006932802bdfb",
+          "classification": "defensive",
+          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
+        },
+        {
+          "branchId": "6",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 79,
+          "column": 49,
+          "sourceFingerprint": "sha256:3d7b881ebda0e4356ece38e1f5b5ee75072f073f559224b2f966c93eb47a8364",
+          "classification": "defensive",
+          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
+        },
+        {
+          "branchId": "7",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 80,
+          "column": 4,
+          "sourceFingerprint": "sha256:082ec66ed5871f5f73e71f3a5a621dd4dc9f29c60e4b3ea7fccb82b4ac0f5ee8",
+          "classification": "defensive",
+          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
+        },
+        {
+          "branchId": "9",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 83,
+          "column": 6,
+          "sourceFingerprint": "sha256:2a577878408e7a9ef4465b3d98fa615d3383574f8470e2215145f03ccda77f9f",
+          "classification": "defensive",
+          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
+        },
+        {
+          "branchId": "13",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 104,
+          "column": 4,
+          "sourceFingerprint": "sha256:0c57f84ca91371c9509ae247b463309d2ae32f87c3bba7d28663c974fa5f32bf",
+          "classification": "defensive",
+          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
+        },
+        {
+          "branchId": "14",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 112,
+          "column": 4,
+          "sourceFingerprint": "sha256:e0e9c61de0727631c342737e1ae4ff3ed4e3d0e2bc8f611f0f53aa3e2fbf538f",
+          "classification": "defensive",
+          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
+        },
+        {
+          "branchId": "21",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 180,
+          "column": 4,
+          "sourceFingerprint": "sha256:fe0fa83d67236dbe882a9943425ac873903126a67130adc14bc4858b60171947",
+          "classification": "defensive",
+          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
+        },
+        {
+          "branchId": "23",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 194,
+          "column": 4,
+          "sourceFingerprint": "sha256:dd785396a0128d0f1c0f4df024c20da1ebab1e49a14d96a27c8f7b72490c4faa",
+          "classification": "defensive",
+          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
+        },
+        {
+          "branchId": "24",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 200,
+          "column": 49,
+          "sourceFingerprint": "sha256:3d7b881ebda0e4356ece38e1f5b5ee75072f073f559224b2f966c93eb47a8364",
+          "classification": "defensive",
+          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
+        },
+        {
+          "branchId": "28",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 211,
+          "column": 6,
+          "sourceFingerprint": "sha256:027aa4b4b25108c57884c274fb0a56a592ea98f9356c2ed6fb2d5753d77de32b",
+          "classification": "defensive",
+          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
+        },
+        {
+          "branchId": "29",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 219,
+          "column": 4,
+          "sourceFingerprint": "sha256:908356dd7049e881379bd24968245ab41c90ba6602beebc6c9b1c8e1085442bc",
+          "classification": "defensive",
+          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
+        },
+        {
+          "branchId": "30",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 227,
+          "column": 4,
+          "sourceFingerprint": "sha256:27530dd001c1632568619a4d7c1f66e402c58ceaec41c90e12238d5fe0d2d5b0",
+          "classification": "defensive",
+          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
+        },
+        {
+          "branchId": "32",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 248,
+          "column": 4,
+          "sourceFingerprint": "sha256:ea98cec42e4d71150b7e5563ead8e865606a1970e0bbeafb3adb879fccaa423a",
+          "classification": "defensive",
+          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
+        },
+        {
+          "branchId": "35",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 261,
+          "column": 34,
+          "sourceFingerprint": "sha256:81a52bd1f970a5dfe00317e928bab1827df62aaf99534d1ba1be13f0d3ff15fe",
+          "classification": "defensive",
+          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
+        },
+        {
+          "branchId": "45",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 315,
+          "column": 42,
+          "sourceFingerprint": "sha256:54924e803180776115b636790003b52ae2eb2f0d27f7ea411dc3a2a7f8d033f6",
+          "classification": "defensive",
+          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
+        },
+        {
+          "branchId": "46",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 315,
+          "column": 88,
+          "sourceFingerprint": "sha256:ae1a591e6f1642931fdcaa286297c179a460e59603b24d0ac2be9b9c760ed89a",
+          "classification": "defensive",
+          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
+        },
+        {
+          "branchId": "47",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 315,
+          "column": 185,
+          "sourceFingerprint": "sha256:702e0cb28924b378f855443971f209e7a59ef64f70143240d1554ebc7ceee8cf",
+          "classification": "defensive",
+          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
+        },
+        {
+          "branchId": "43",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 316,
+          "column": 10,
+          "sourceFingerprint": "sha256:4efdc00019d37703326e6998698c166b00e28130fc7feafb9abefaf4fe2d55f1",
+          "classification": "defensive",
+          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
+        },
+        {
+          "branchId": "50",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 319,
+          "column": 43,
+          "sourceFingerprint": "sha256:81c44fa7c5411911e3c10e2389f0520dab7cfe369da37691585183460acd46fa",
+          "classification": "defensive",
+          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
+        },
+        {
+          "branchId": "51",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 319,
+          "column": 91,
+          "sourceFingerprint": "sha256:34e4bbedbf67293d1bf0a8deaf59803798ac71f8c53c7f976e051da1598764aa",
+          "classification": "defensive",
+          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
+        },
+        {
+          "branchId": "52",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 319,
+          "column": 190,
+          "sourceFingerprint": "sha256:b49eb3d91fca66a45c58c70713783f0996d76d35c6a71024934b195a19bc48d4",
+          "classification": "defensive",
+          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
+        },
+        {
+          "branchId": "48",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 320,
+          "column": 10,
+          "sourceFingerprint": "sha256:7f0636dc4d6de37fcc1fd66866d32d50ae00a1488faa5ca37917fc69e87cf440",
+          "classification": "defensive",
+          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
+        },
+        {
+          "branchId": "54",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 340,
+          "column": 4,
+          "sourceFingerprint": "sha256:515757c1c25790b2908c8c25d61dfa23ad94af178456a296ba65b0b2dc581bf1",
+          "classification": "defensive",
+          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
+        },
+        {
+          "branchId": "59",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 367,
+          "column": 6,
+          "sourceFingerprint": "sha256:c1d0c7aa9a75aacd60f90a0cd4e9e6f9578f96171140108a32265199442caf86",
+          "classification": "defensive",
+          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
+        },
+        {
+          "branchId": "61",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 376,
+          "column": 12,
+          "sourceFingerprint": "sha256:ae7fd32f9ed6d96f9c1afeaf100fcd7c4069c3e49c06c2e7568af842167990b9",
+          "classification": "defensive",
+          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
+        },
+        {
+          "branchId": "62",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 378,
+          "column": 6,
+          "sourceFingerprint": "sha256:a1381e9e0a0c08f5fd652952ab0a0df43c7b7860022703e15096c7db2715c4d4",
+          "classification": "defensive",
+          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
+        },
+        {
+          "branchId": "63",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 380,
+          "column": 73,
+          "sourceFingerprint": "sha256:6e248eef15ad8802d1d38aa947006aaca290f029bbdc0ce32021d775273eccb2",
+          "classification": "defensive",
+          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
+        },
+        {
+          "branchId": "65",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 391,
+          "column": 16,
+          "sourceFingerprint": "sha256:062ad4585989ea1430540a06676c5585b88173cf088a2ff4bad4a8482969d771",
+          "classification": "defensive",
+          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
+        },
+        {
+          "branchId": "75",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 449,
+          "column": 20,
+          "sourceFingerprint": "sha256:3baa71572aa223fee6b160a339f6881e57b6ae192b078cf53ee6d3d64133d5e7",
+          "classification": "defensive",
+          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
+        },
+        {
+          "branchId": "77",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 451,
+          "column": 22,
+          "sourceFingerprint": "sha256:8a8d8b0ed77e3e2b34fe4f31b14c1dc75867ed4111310a917762aa745151314c",
+          "classification": "defensive",
+          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
+        },
+        {
+          "branchId": "78",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 453,
+          "column": 24,
+          "sourceFingerprint": "sha256:e5e7fa575e45738d03e200308cda86a3596102bae462f53a86fcfc9577d4816e",
+          "classification": "defensive",
+          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
+        },
+        {
+          "branchId": "80",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 467,
+          "column": 24,
+          "sourceFingerprint": "sha256:ed5435acf77fdcca7e040b8a048da07e8a64ffadc56a78509396bf8b2c503954",
+          "classification": "defensive",
+          "justification": "Observation derivation consumes validated executable and indexed durable state; this residual decision handles a missing correlated node/value/output, duplicate canonical material, optional durable scope, or deterministic ordering fallback without weakening transition semantics."
+        }
+      ]
+    },
+    {
+      "cohort": "workflow-engine",
+      "file": "packages/workflow-engine/src/coordinator-output.ts",
+      "reviews": [
+        {
+          "branchId": "3",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:1040cc6b0f5ce61766fa4204c2090acac1394e7f70486977f650ddff6136f48a",
+          "classification": "generated",
+          "justification": "V8 reports this empty-location branch for emitted control flow without a source coordinate; the corresponding executable decisions in this module are tracked at their real locations."
+        },
+        {
+          "branchId": "0",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 13,
+          "column": 2,
+          "sourceFingerprint": "sha256:7da5cb42ee0a915266a3bc8e62bb9f32c065ca1c6759999c7a991677e57fe442",
+          "classification": "defensive",
+          "justification": "Coordinator output is an untrusted node boundary; the residual guard rejects a non-record JSON output before any output field is interpreted."
+        }
+      ]
+    },
+    {
+      "cohort": "workflow-engine",
+      "file": "packages/workflow-engine/src/executable-compatibility.ts",
+      "reviews": [
+        {
+          "branchId": "0",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 20,
+          "column": 4,
+          "sourceFingerprint": "sha256:355b608afc6c5a5a55407484a81989831769d3515fb0cdd1ab6917ee5b6d7986",
+          "classification": "unreachable",
+          "justification": "Compatibility releases are composed from validated canonical releases; this guard rejects engine-owned provider policy leakage or an impossible missing/mismatched adjacent release invariant."
+        },
+        {
+          "branchId": "5",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 93,
+          "column": 6,
+          "sourceFingerprint": "sha256:5ce57a448c39ebf632336945cd430ae097d1aaf25969e3db64e5992093582331",
+          "classification": "unreachable",
+          "justification": "Compatibility releases are composed from validated canonical releases; this guard rejects engine-owned provider policy leakage or an impossible missing/mismatched adjacent release invariant."
+        },
+        {
+          "branchId": "8",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 104,
+          "column": 6,
+          "sourceFingerprint": "sha256:a713c0e3ead537e8c34e0687325b12da33f3827bf3e37974146c085726bca574",
+          "classification": "unreachable",
+          "justification": "Compatibility releases are composed from validated canonical releases; this guard rejects engine-owned provider policy leakage or an impossible missing/mismatched adjacent release invariant."
+        }
+      ]
+    },
+    {
+      "cohort": "workflow-engine",
+      "file": "packages/workflow-engine/src/executable-graph-boundary.ts",
+      "reviews": [
+        {
+          "branchId": "2",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 63,
+          "column": 2,
+          "sourceFingerprint": "sha256:d970f496982c0c4017722182de3417f5ef94238f2cbaad591441d3c15ba74b4c",
+          "classification": "defensive",
+          "justification": "Executable graph input is untrusted; this residual branch rejects malformed node structure or preserves the explicit optional disabled/lifecycle representation before graph compilation."
+        },
+        {
+          "branchId": "7",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 153,
+          "column": 6,
+          "sourceFingerprint": "sha256:3fcfee298fd8e810cc43b0cb4c36552c73e351ff2163793a47c130cb5a698ddb",
+          "classification": "defensive",
+          "justification": "Executable graph input is untrusted; this residual branch rejects malformed node structure or preserves the explicit optional disabled/lifecycle representation before graph compilation."
+        },
+        {
+          "branchId": "9",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 195,
+          "column": 31,
+          "sourceFingerprint": "sha256:d3eca2125883c13730e720cee6e0b485fdd34b06bdc139fff524759eb4f1e612",
+          "classification": "defensive",
+          "justification": "Executable graph input is untrusted; this residual branch rejects malformed node structure or preserves the explicit optional disabled/lifecycle representation before graph compilation."
+        },
+        {
+          "branchId": "10",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 215,
+          "column": 4,
+          "sourceFingerprint": "sha256:fa1e35cf5e6ee76f3150f4adab63628ebc8dbf8e9f6e2ab1a0edaa9a1efe19ea",
+          "classification": "defensive",
+          "justification": "Executable graph input is untrusted; this residual branch rejects malformed node structure or preserves the explicit optional disabled/lifecycle representation before graph compilation."
+        },
+        {
+          "branchId": "11",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 217,
+          "column": 4,
+          "sourceFingerprint": "sha256:c1b72cd4b1956124698191f516bec4e08aa198fa248ca4e43b8b6ece8cc71229",
+          "classification": "defensive",
+          "justification": "Executable graph input is untrusted; this residual branch rejects malformed node structure or preserves the explicit optional disabled/lifecycle representation before graph compilation."
+        },
+        {
+          "branchId": "14",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 227,
+          "column": 4,
+          "sourceFingerprint": "sha256:fce18b6601309656f04787041e38de0b67732aea1fbd7b45975627ea37ed8724",
+          "classification": "defensive",
+          "justification": "Executable graph input is untrusted; this residual branch rejects malformed node structure or preserves the explicit optional disabled/lifecycle representation before graph compilation."
+        },
+        {
+          "branchId": "16",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 254,
+          "column": 2,
+          "sourceFingerprint": "sha256:e9e6fc7a0d3c0f6df123814afdd27a460ba44663299dea882202b9172e4a4d0b",
+          "classification": "defensive",
+          "justification": "Executable graph input is untrusted; this residual branch rejects malformed node structure or preserves the explicit optional disabled/lifecycle representation before graph compilation."
+        }
+      ]
+    },
+    {
+      "cohort": "workflow-engine",
+      "file": "packages/workflow-engine/src/executable-validation.ts",
+      "reviews": [
+        {
+          "branchId": "0",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 24,
+          "column": 2,
+          "sourceFingerprint": "sha256:b5ac4f0b4d4fdd808991168c4bf09da9a9d6726d358231edd77fca8a209382d8",
+          "classification": "defensive",
+          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
+        },
+        {
+          "branchId": "6",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 63,
+          "column": 6,
+          "sourceFingerprint": "sha256:9306f618d0d08c47d40ae835f9eb74238b488469fb7c093affefc87352b3a782",
+          "classification": "defensive",
+          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
+        },
+        {
+          "branchId": "8",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 73,
+          "column": 11,
+          "sourceFingerprint": "sha256:66c31c70549206dbf37befd24dc54bf963a319ee964ed65f305025101b92dbaa",
+          "classification": "defensive",
+          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
+        },
+        {
+          "branchId": "9",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 75,
+          "column": 11,
+          "sourceFingerprint": "sha256:f2ddfafe62edf46e000f37ef112cc14900cc183cd1faec5abd89900763805993",
+          "classification": "defensive",
+          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
+        },
+        {
+          "branchId": "10",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 75,
+          "column": 11,
+          "sourceFingerprint": "sha256:b488d10c25a9c000f7777d6fd5aa5400b457dfc6da02ef97bc3e95184421e11a",
+          "classification": "defensive",
+          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
+        },
+        {
+          "branchId": "10",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 76,
+          "column": 11,
+          "sourceFingerprint": "sha256:116f029fe3cfec6199963cabeaad6a1fe42a25e6191135f0b947fabf043379e4",
+          "classification": "defensive",
+          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
+        },
+        {
+          "branchId": "11",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 76,
+          "column": 11,
+          "sourceFingerprint": "sha256:45d8ae8be49ac67c3492c808188ee393865d6ff5ce1c39423f9614304379c005",
+          "classification": "defensive",
+          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
+        },
+        {
+          "branchId": "12",
+          "locationIndex": 0,
+          "branchType": "binary-expr",
+          "line": 76,
+          "column": 15,
+          "sourceFingerprint": "sha256:6422d444b74e90367c4d6f217adb581c20258591c867af085f5630abb9d62030",
+          "classification": "defensive",
+          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
+        },
+        {
+          "branchId": "12",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 76,
+          "column": 33,
+          "sourceFingerprint": "sha256:ac81e7ca333f98f1ac6dbb8a6ed9943e2a9346ff34d94e510540f9361e563932",
+          "classification": "defensive",
+          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
+        },
+        {
+          "branchId": "13",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 78,
+          "column": 8,
+          "sourceFingerprint": "sha256:bdd2b08a8fe8542a6bae7d87b2661a2377f7770e34e7af0f5de85143fddb4044",
+          "classification": "defensive",
+          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
+        },
+        {
+          "branchId": "14",
+          "locationIndex": 0,
+          "branchType": "binary-expr",
+          "line": 78,
+          "column": 12,
+          "sourceFingerprint": "sha256:602b8ee014b5eb1105c76c94c41a20ed2df7b5734920e09687b1b539d8f28b04",
+          "classification": "defensive",
+          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
+        },
+        {
+          "branchId": "14",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 78,
+          "column": 30,
+          "sourceFingerprint": "sha256:b166f28e509855475de0f8b55cb319e67545fbe35ff6850ac22178ea543b58f8",
+          "classification": "defensive",
+          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
+        },
+        {
+          "branchId": "13",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 81,
+          "column": 15,
+          "sourceFingerprint": "sha256:e46b8a30d0a2d29263a8b2d47058c25b33095fe9706e81d4b2f9784dde6e63a1",
+          "classification": "defensive",
+          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
+        },
+        {
+          "branchId": "11",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 82,
+          "column": 13,
+          "sourceFingerprint": "sha256:f2663d8fd2b9b5f901f9816b92d601dc5d8817f987f95d5f412f595560c56f48",
+          "classification": "defensive",
+          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
+        },
+        {
+          "branchId": "15",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 82,
+          "column": 13,
+          "sourceFingerprint": "sha256:2af2dc359048c3c8f9b9a2a981e99c812e7ba06ea57a54472ce9770f19444910",
+          "classification": "defensive",
+          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
+        },
+        {
+          "branchId": "16",
+          "locationIndex": 0,
+          "branchType": "binary-expr",
+          "line": 82,
+          "column": 17,
+          "sourceFingerprint": "sha256:c8fcc659ff6e8ec855a9992535826a0c0d7e9231d0de4f8b6ed8aadfbfc337b7",
+          "classification": "defensive",
+          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
+        },
+        {
+          "branchId": "16",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 82,
+          "column": 35,
+          "sourceFingerprint": "sha256:9a480fafca42feb7eecfd9d051068ba53af5952c22560dac9229a4fa11746f75",
+          "classification": "defensive",
+          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
+        },
+        {
+          "branchId": "15",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 83,
+          "column": 11,
+          "sourceFingerprint": "sha256:47f68093cbfa8de7905936f55f299ce7653b11f02b13d92167082791630dce48",
+          "classification": "defensive",
+          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
+        },
+        {
+          "branchId": "17",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 88,
+          "column": 4,
+          "sourceFingerprint": "sha256:9c9ef8e722b423cab22b94aefdec71ae1d4eac2f37759ce7e3a1d683b22d45c9",
+          "classification": "defensive",
+          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
+        },
+        {
+          "branchId": "25",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 107,
+          "column": 32,
+          "sourceFingerprint": "sha256:4e00fcc0227d9a06fc14adfb638fb8697d0280bf5e205b285b665a2f90ec2bab",
+          "classification": "defensive",
+          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
+        },
+        {
+          "branchId": "26",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 110,
+          "column": 4,
+          "sourceFingerprint": "sha256:3861a09d9db56dd32095525e71436d0ea1c1f60f29e3859d7636f3961d6abc3d",
+          "classification": "defensive",
+          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
+        },
+        {
+          "branchId": "28",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 113,
+          "column": 4,
+          "sourceFingerprint": "sha256:ba3f11f2fa5782d6085b0958cf62de72479652aa13ded81d25ca536422f21a33",
+          "classification": "defensive",
+          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
+        },
+        {
+          "branchId": "29",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 115,
+          "column": 4,
+          "sourceFingerprint": "sha256:a5b6ce93abe63d2d0d7854aaa7fc357cfc65c9fd0896235452fce5823f0c82bf",
+          "classification": "defensive",
+          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
+        },
+        {
+          "branchId": "30",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 120,
+          "column": 4,
+          "sourceFingerprint": "sha256:9ffeb769eaaa3bca37db8d2c104cc7127b536fa9c37e5e47ab9261d8cc6f609b",
+          "classification": "defensive",
+          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
+        },
+        {
+          "branchId": "31",
+          "locationIndex": 2,
+          "branchType": "binary-expr",
+          "line": 120,
+          "column": 54,
+          "sourceFingerprint": "sha256:48f52b169e5668c0a57a3796978298a4c7b7a68523772409a81eb55db3f4f9ae",
+          "classification": "defensive",
+          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
+        },
+        {
+          "branchId": "32",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 122,
+          "column": 4,
+          "sourceFingerprint": "sha256:f0d6021f988a7cfdf753b0181ae4fb1044024a5cd630700837ba61a9b7df8a7d",
+          "classification": "defensive",
+          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
+        },
+        {
+          "branchId": "35",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 129,
+          "column": 6,
+          "sourceFingerprint": "sha256:737f320691159cb58f1cc773113c1a1ba9b7407b47455c2422463eb9b584ba87",
+          "classification": "defensive",
+          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
+        },
+        {
+          "branchId": "36",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 132,
+          "column": 6,
+          "sourceFingerprint": "sha256:2b878c38c405b96cd9a4359cd5c4130dcb3587f253dde7653d1984b0a780bbee",
+          "classification": "defensive",
+          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
+        },
+        {
+          "branchId": "38",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 139,
+          "column": 6,
+          "sourceFingerprint": "sha256:4fbe7e710a2f5ea3562d837282460a43513ceae161a309351e63134943e5b44e",
+          "classification": "defensive",
+          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
+        },
+        {
+          "branchId": "39",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 141,
+          "column": 6,
+          "sourceFingerprint": "sha256:66952e4ae33c319202f90ac87bafdd93399c018f844c0e97150313e0fc05c545",
+          "classification": "defensive",
+          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
+        },
+        {
+          "branchId": "43",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 156,
+          "column": 4,
+          "sourceFingerprint": "sha256:c288aacc6e06829c9e181f0916f49f5742a83fb15ac053e8475950b66a00a2ac",
+          "classification": "defensive",
+          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
+        },
+        {
+          "branchId": "44",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 158,
+          "column": 4,
+          "sourceFingerprint": "sha256:cc76c8d7356ff99bc2872d6cab93f29fd169ed239d32da3c2d3c547e026c135b",
+          "classification": "defensive",
+          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
+        },
+        {
+          "branchId": "46",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 180,
+          "column": 2,
+          "sourceFingerprint": "sha256:92e34128151ec1a9800a126e8056123482a3200c80e4e03ca3ae7dcb897d2431",
+          "classification": "defensive",
+          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
+        },
+        {
+          "branchId": "48",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 210,
+          "column": 2,
+          "sourceFingerprint": "sha256:96949259708dca5ae551efa64784c83d64fec02b04c9f80f7c342a3d394e3a73",
+          "classification": "defensive",
+          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
+        },
+        {
+          "branchId": "49",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 212,
+          "column": 2,
+          "sourceFingerprint": "sha256:7f5ca68a92d65760a63503ea46f827a149b90cfbede4ff94ae999c48f9721a8b",
+          "classification": "defensive",
+          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
+        },
+        {
+          "branchId": "51",
+          "locationIndex": 3,
+          "branchType": "switch",
+          "line": 238,
+          "column": 4,
+          "sourceFingerprint": "sha256:269bf6430c3a5ce6acc767ae01b7d9849dadfc0f6b21121782e8313b74eeb099",
+          "classification": "defensive",
+          "justification": "The hostile executable JSON walker deliberately rejects this exact non-JSON, oversized, cyclic, accessor, sparse-array, symbol, prototype, Unicode, or policy-shape boundary before normalization."
+        }
+      ]
+    },
+    {
+      "cohort": "workflow-engine",
+      "file": "packages/workflow-engine/src/graph-scheduler.ts",
+      "reviews": [
+        {
+          "branchId": "42",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:a8dfadc4dffde6ebd6b759cce72bc10dbf75d1f4bc9b521ec5b9b547ba728fa2",
+          "classification": "generated",
+          "justification": "V8 reports this empty-location branch for emitted control flow without a source coordinate; the corresponding executable decisions in this module are tracked at their real locations."
+        },
+        {
+          "branchId": "50",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:509fae284b2bf5e9057a69b2f6ef87055dc9fbc26dc7957d2cd38fbe146b6909",
+          "classification": "generated",
+          "justification": "V8 reports this empty-location branch for emitted control flow without a source coordinate; the corresponding executable decisions in this module are tracked at their real locations."
+        },
+        {
+          "branchId": "56",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:509fae284b2bf5e9057a69b2f6ef87055dc9fbc26dc7957d2cd38fbe146b6909",
+          "classification": "generated",
+          "justification": "V8 reports this empty-location branch for emitted control flow without a source coordinate; the corresponding executable decisions in this module are tracked at their real locations."
+        },
+        {
+          "branchId": "4",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 47,
+          "column": 2,
+          "sourceFingerprint": "sha256:ac5b0bc5f42647e74956f5aed30ff7c2175e36d67d1ced353dc7f4d2f3927a82",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        },
+        {
+          "branchId": "6",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 54,
+          "column": 2,
+          "sourceFingerprint": "sha256:06b6ce34c6245c8d053cf231d1b53011637cd083d8d2edb775ba51d6e3e44dd2",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        },
+        {
+          "branchId": "7",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 58,
+          "column": 8,
+          "sourceFingerprint": "sha256:236ccd5b0f756ef5ae5b9e2b356d28eece775b1202b337ee77acdb49fdf862e5",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        },
+        {
+          "branchId": "9",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 60,
+          "column": 2,
+          "sourceFingerprint": "sha256:e240bd642c050d716e5240ef167e386a7fc7d14b8136ec0d1432fd595ab10e00",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        },
+        {
+          "branchId": "14",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 86,
+          "column": 2,
+          "sourceFingerprint": "sha256:9c6d4d0c9fac7b47678c8670e72a6ddc0f99111cbc3a6ada614a70a5fba4cf70",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        },
+        {
+          "branchId": "15",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 90,
+          "column": 8,
+          "sourceFingerprint": "sha256:236ccd5b0f756ef5ae5b9e2b356d28eece775b1202b337ee77acdb49fdf862e5",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        },
+        {
+          "branchId": "17",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 92,
+          "column": 2,
+          "sourceFingerprint": "sha256:c202c96660211f24241b2ccbff66fe4f0d608eef53c5047972551787283af64f",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        },
+        {
+          "branchId": "21",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 120,
+          "column": 6,
+          "sourceFingerprint": "sha256:68c2aaf5f17b68b4d1fe7b6b67ab6c47d9aecb35abed3b1ea5575f1b67310a5c",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        },
+        {
+          "branchId": "25",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 148,
+          "column": 4,
+          "sourceFingerprint": "sha256:8b116486e881f251d093103d1b1c6d1c9177272f14f26d33b3b108bb0f6b230f",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        },
+        {
+          "branchId": "28",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 151,
+          "column": 46,
+          "sourceFingerprint": "sha256:7fe3f4098576d1bd17dfc54eb8929d7272ea9be8e5d848e534881fa34ad0f577",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        },
+        {
+          "branchId": "30",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 172,
+          "column": 4,
+          "sourceFingerprint": "sha256:549f8aafc548ffd3c8fb28c4e9c580c8bdad4e47b6e1bd3a1822a3e986a522f2",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        },
+        {
+          "branchId": "33",
+          "locationIndex": 0,
+          "branchType": "binary-expr",
+          "line": 182,
+          "column": 10,
+          "sourceFingerprint": "sha256:810f5b0591a7d092c6049f7654767dd43cf27f38dada999eaf12b94b0b8377af",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        },
+        {
+          "branchId": "33",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 183,
+          "column": 10,
+          "sourceFingerprint": "sha256:9e9b11f3f85904a344cd59ca036db80768fca74a4908dafdedb383cc5a472350",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        },
+        {
+          "branchId": "34",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 192,
+          "column": 27,
+          "sourceFingerprint": "sha256:375d2c14a484a178614f03af335e8f689584fa8e427a7ce3edf6e5255f122f10",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        },
+        {
+          "branchId": "39",
+          "locationIndex": 0,
+          "branchType": "binary-expr",
+          "line": 211,
+          "column": 10,
+          "sourceFingerprint": "sha256:12fa9949a1e6a39908606246c19439b435988c2037a7dafcbdb14c2440d52349",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        },
+        {
+          "branchId": "39",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 212,
+          "column": 10,
+          "sourceFingerprint": "sha256:6feb30d5fa8162c2f90308f400e9332b2737ac16d200b1f7cf18a19a5d9a34d7",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        },
+        {
+          "branchId": "43",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 228,
+          "column": 34,
+          "sourceFingerprint": "sha256:96273ef823df286dd23997436c1197a7f38d71f04939c8c74938f1e6e4a7f6cb",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        },
+        {
+          "branchId": "45",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 254,
+          "column": 4,
+          "sourceFingerprint": "sha256:82070eeb127b898caa75f1bfd9fc899b19dee158e8e6f1da30c3b42781ad8799",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        },
+        {
+          "branchId": "47",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 263,
+          "column": 4,
+          "sourceFingerprint": "sha256:911ce50ffeeb9ed3a2f603d067f4305ecc536ee0e5fc93922951198877247039",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        },
+        {
+          "branchId": "48",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 272,
+          "column": 66,
+          "sourceFingerprint": "sha256:8193b1a6d4efbaf4f1297eabc5ee7a774814b6a02b1ae9cbc68f5327d71481b5",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        },
+        {
+          "branchId": "51",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 286,
+          "column": 38,
+          "sourceFingerprint": "sha256:ca87af5efa5905ffef47dc5318c393f49641e36692246fcffcc1b3b40224a9df",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        },
+        {
+          "branchId": "53",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 296,
+          "column": 4,
+          "sourceFingerprint": "sha256:82070eeb127b898caa75f1bfd9fc899b19dee158e8e6f1da30c3b42781ad8799",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        },
+        {
+          "branchId": "54",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 300,
+          "column": 66,
+          "sourceFingerprint": "sha256:1ba8ca6c8fcc3870b8bec7a9fbec1a56255dfe3abaa8fa3e056883aa48f2e6ae",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        },
+        {
+          "branchId": "57",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 313,
+          "column": 38,
+          "sourceFingerprint": "sha256:ca87af5efa5905ffef47dc5318c393f49641e36692246fcffcc1b3b40224a9df",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        },
+        {
+          "branchId": "60",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 323,
+          "column": 6,
+          "sourceFingerprint": "sha256:5a156b5c022e0323d63dbf677e0e886dd76c4f113983f49417e2b789ba94aa29",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        },
+        {
+          "branchId": "61",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 324,
+          "column": 43,
+          "sourceFingerprint": "sha256:050dce622ea524e92de8b902ad243cf00bf94c3abb158b4273a4ec71db0efe4e",
+          "classification": "defensive",
+          "justification": "Scheduling operates on a validated executable graph and durable invocation index; this residual decision handles an impossible missing graph relation or an optional branch/parallel path while preserving deterministic reachability and admission."
+        }
+      ]
+    },
+    {
+      "cohort": "workflow-engine",
+      "file": "packages/workflow-engine/src/persisted-observation-parser.ts",
+      "reviews": [
+        {
+          "branchId": "27",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:47ba042d953579671a4be0ee263be44075a42d8b267c3e9897e981779ad98d7b",
+          "classification": "generated",
+          "justification": "V8 reports this empty-location branch for emitted control flow without a source coordinate; the corresponding executable decisions in this module are tracked at their real locations."
+        },
+        {
+          "branchId": "0",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 27,
+          "column": 2,
+          "sourceFingerprint": "sha256:e1ac252d59be404ba18797925341bcbc6643180ffa4ba9469ae961327bad82a4",
+          "classification": "defensive",
+          "justification": "Persisted observations are a hostile durable boundary; this exact parser decision rejects malformed timestamps, identities, outputs, progress shapes, or an unsupported discriminant before facts reach transition logic."
+        },
+        {
+          "branchId": "7",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 88,
+          "column": 2,
+          "sourceFingerprint": "sha256:c04037f5b369dc61b117ef0ba432c70ecedce581d9e89b9fa0d1a829659b4336",
+          "classification": "defensive",
+          "justification": "Persisted observations are a hostile durable boundary; this exact parser decision rejects malformed timestamps, identities, outputs, progress shapes, or an unsupported discriminant before facts reach transition logic."
+        },
+        {
+          "branchId": "9",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 109,
+          "column": 2,
+          "sourceFingerprint": "sha256:c81b18b9973dfeb066d0ab23eb7316f1e36df7e13976089e3632a9df53df2c36",
+          "classification": "defensive",
+          "justification": "Persisted observations are a hostile durable boundary; this exact parser decision rejects malformed timestamps, identities, outputs, progress shapes, or an unsupported discriminant before facts reach transition logic."
+        },
+        {
+          "branchId": "10",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 117,
+          "column": 2,
+          "sourceFingerprint": "sha256:4fcbf9f1467e4fdddf42ce9edc6039dd7ca196d896585428e5f39adc52cac3af",
+          "classification": "defensive",
+          "justification": "Persisted observations are a hostile durable boundary; this exact parser decision rejects malformed timestamps, identities, outputs, progress shapes, or an unsupported discriminant before facts reach transition logic."
+        },
+        {
+          "branchId": "12",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 153,
+          "column": 2,
+          "sourceFingerprint": "sha256:43ed8240ddc15d330a38da446a6014a6d092c8f17f94d6e46145c9f1c7fbf168",
+          "classification": "defensive",
+          "justification": "Persisted observations are a hostile durable boundary; this exact parser decision rejects malformed timestamps, identities, outputs, progress shapes, or an unsupported discriminant before facts reach transition logic."
+        },
+        {
+          "branchId": "13",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 155,
+          "column": 4,
+          "sourceFingerprint": "sha256:d1ce866006d4ac4b79ccb444ac8f4cc8a1d5496b728a36863b969a1ba79efa5a",
+          "classification": "defensive",
+          "justification": "Persisted observations are a hostile durable boundary; this exact parser decision rejects malformed timestamps, identities, outputs, progress shapes, or an unsupported discriminant before facts reach transition logic."
+        },
+        {
+          "branchId": "14",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 159,
+          "column": 2,
+          "sourceFingerprint": "sha256:c93f2ea7f49a203e95efb1a73eeb1f3c650b73fa8a160389f3d389f058c47f77",
+          "classification": "defensive",
+          "justification": "Persisted observations are a hostile durable boundary; this exact parser decision rejects malformed timestamps, identities, outputs, progress shapes, or an unsupported discriminant before facts reach transition logic."
+        },
+        {
+          "branchId": "18",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 202,
+          "column": 5,
+          "sourceFingerprint": "sha256:99a692789ec0067e43046a7e6a28ae1904320bd0d18ea0ecc7123e0b8531d415",
+          "classification": "defensive",
+          "justification": "Persisted observations are a hostile durable boundary; this exact parser decision rejects malformed timestamps, identities, outputs, progress shapes, or an unsupported discriminant before facts reach transition logic."
+        },
+        {
+          "branchId": "18",
+          "locationIndex": 2,
+          "branchType": "binary-expr",
+          "line": 203,
+          "column": 6,
+          "sourceFingerprint": "sha256:3df936df8f5473766cb6527855c8c8e8e693ea7d19235ad003773606bf856143",
+          "classification": "defensive",
+          "justification": "Persisted observations are a hostile durable boundary; this exact parser decision rejects malformed timestamps, identities, outputs, progress shapes, or an unsupported discriminant before facts reach transition logic."
+        },
+        {
+          "branchId": "18",
+          "locationIndex": 3,
+          "branchType": "binary-expr",
+          "line": 204,
+          "column": 6,
+          "sourceFingerprint": "sha256:c1c9a811865acbb8a4c9f627eadf0dde441cbc2be15f5b1dc5826c1e57fa7e09",
+          "classification": "defensive",
+          "justification": "Persisted observations are a hostile durable boundary; this exact parser decision rejects malformed timestamps, identities, outputs, progress shapes, or an unsupported discriminant before facts reach transition logic."
+        },
+        {
+          "branchId": "18",
+          "locationIndex": 4,
+          "branchType": "binary-expr",
+          "line": 205,
+          "column": 6,
+          "sourceFingerprint": "sha256:20295454386e1ee8199522c49ba40c6ea436ae52bd6586d860d0b3e963b9549d",
+          "classification": "defensive",
+          "justification": "Persisted observations are a hostile durable boundary; this exact parser decision rejects malformed timestamps, identities, outputs, progress shapes, or an unsupported discriminant before facts reach transition logic."
+        },
+        {
+          "branchId": "20",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 209,
+          "column": 2,
+          "sourceFingerprint": "sha256:ef0674fbd42d333893d03673a0f5e5b29d1d37410788d6758e7ee1bd01f72e69",
+          "classification": "defensive",
+          "justification": "Persisted observations are a hostile durable boundary; this exact parser decision rejects malformed timestamps, identities, outputs, progress shapes, or an unsupported discriminant before facts reach transition logic."
+        },
+        {
+          "branchId": "22",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 232,
+          "column": 8,
+          "sourceFingerprint": "sha256:f29d705bad5432488c38b7eb66e8ef22408c2b3d89888d9cb3c7708b03ead18f",
+          "classification": "defensive",
+          "justification": "Persisted observations are a hostile durable boundary; this exact parser decision rejects malformed timestamps, identities, outputs, progress shapes, or an unsupported discriminant before facts reach transition logic."
+        },
+        {
+          "branchId": "33",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 307,
+          "column": 2,
+          "sourceFingerprint": "sha256:05ed1765c14016368ff6836ce1f4d0a82ddfd971229ac36ba2289934711993f9",
+          "classification": "defensive",
+          "justification": "Persisted observations are a hostile durable boundary; this exact parser decision rejects malformed timestamps, identities, outputs, progress shapes, or an unsupported discriminant before facts reach transition logic."
+        },
+        {
+          "branchId": "38",
+          "locationIndex": 4,
+          "branchType": "switch",
+          "line": 355,
+          "column": 4,
+          "sourceFingerprint": "sha256:21cd3e4a9723a798eafb7b6e7afdc43f651654bc66f02b94ddf5c168cd0943bf",
+          "classification": "defensive",
+          "justification": "Persisted observations are a hostile durable boundary; this exact parser decision rejects malformed timestamps, identities, outputs, progress shapes, or an unsupported discriminant before facts reach transition logic."
+        }
+      ]
+    },
+    {
+      "cohort": "workflow-engine",
+      "file": "packages/workflow-engine/src/persisted-observations.ts",
+      "reviews": [
+        {
+          "branchId": "40",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:a9c8cca8fe8919cf811b7df9436f34a6fc475bb7324ceffb62fffedadd951478",
+          "classification": "generated",
+          "justification": "V8 reports this empty-location branch for emitted control flow without a source coordinate; the corresponding executable decisions in this module are tracked at their real locations."
+        },
+        {
+          "branchId": "0",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 97,
+          "column": 2,
+          "sourceFingerprint": "sha256:ebcf6a4b39ee7a509cb6b4ceb7c18b11cfba212e39e2796b0aeb773c2ab82389",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "2",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 106,
+          "column": 6,
+          "sourceFingerprint": "sha256:15c7ec162b52c59c84762b143ab99e19644cd61dd829fd98578d335c6f783ac3",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "3",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 109,
+          "column": 6,
+          "sourceFingerprint": "sha256:29b8827e817e754b8bd381dcf59ac8524bfd6acdff26836397c046029ea584be",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "4",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 122,
+          "column": 31,
+          "sourceFingerprint": "sha256:c5678c6622787a2471b399f858217d45a3c2ae6f75655e4eb4b3c15c819ada4b",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "4",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 122,
+          "column": 47,
+          "sourceFingerprint": "sha256:067e5affab2b16c8997f196f7f252268aa1580379d388ff5cee20bbba45961c2",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "5",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 131,
+          "column": 2,
+          "sourceFingerprint": "sha256:c251014a04337302026eb95795bf77eb3049775e31b2e59d9f2dbe15fe53a706",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "7",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 137,
+          "column": 2,
+          "sourceFingerprint": "sha256:a61adc21920649887d6d97885a94beaf8615cb399a099a3b31406103e256bb96",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "8",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 139,
+          "column": 2,
+          "sourceFingerprint": "sha256:f64877f66a94a76310395b18234e9160f09825f8f05607986560256011930249",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "9",
+          "locationIndex": 0,
+          "branchType": "binary-expr",
+          "line": 141,
+          "column": 6,
+          "sourceFingerprint": "sha256:5ddb55d3b4e2a5b195ffd433f65cfb42842c7dd674dc0b1d99be42d60386c879",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "9",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 142,
+          "column": 6,
+          "sourceFingerprint": "sha256:f02d980e86c941003554807f0321671069bb643c05a36a0f2e67ce3ee2e97be8",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "9",
+          "locationIndex": 2,
+          "branchType": "binary-expr",
+          "line": 143,
+          "column": 6,
+          "sourceFingerprint": "sha256:0bca650645fc47ab6a86bdf924d93714fe6506d3dd3cce21f3992fcf4d0bcb3b",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "9",
+          "locationIndex": 3,
+          "branchType": "binary-expr",
+          "line": 144,
+          "column": 6,
+          "sourceFingerprint": "sha256:a34b1db8e43cda6ef4d12b707ee516af705a63b9360e82277a3bccb83546c985",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "9",
+          "locationIndex": 4,
+          "branchType": "binary-expr",
+          "line": 145,
+          "column": 6,
+          "sourceFingerprint": "sha256:70c5e31e9152679b58a816a3948553a5c26765f883d402d94be0b25be8164017",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "10",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 147,
+          "column": 2,
+          "sourceFingerprint": "sha256:ded187fe79112538e7ae15c0e8be16333b67c6bbd05f319fe88e9adc4cb8acc2",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "11",
+          "locationIndex": 0,
+          "branchType": "binary-expr",
+          "line": 149,
+          "column": 6,
+          "sourceFingerprint": "sha256:32b5e552b6a0b19317e99d5cd7d7100e2ce21c4d5fd769c33eaa0ebad7e2fc81",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "11",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 150,
+          "column": 6,
+          "sourceFingerprint": "sha256:dad8e5cba58a4e94887bf47afc8dae4b9cd32df8be70a49602f7fa6f3b1a5210",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "11",
+          "locationIndex": 2,
+          "branchType": "binary-expr",
+          "line": 151,
+          "column": 6,
+          "sourceFingerprint": "sha256:ba49dca98da279d9a58138616881ccd4d03da0226184791b64bd1fcc6b5a1f85",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "11",
+          "locationIndex": 3,
+          "branchType": "binary-expr",
+          "line": 152,
+          "column": 6,
+          "sourceFingerprint": "sha256:eff4a01df46e26f8179c6e236dcf6da457a7d8b7fb72dbf3dc60f0d0bebf4505",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "11",
+          "locationIndex": 4,
+          "branchType": "binary-expr",
+          "line": 153,
+          "column": 6,
+          "sourceFingerprint": "sha256:0d63f2d203f37b31e97ffbb1a1df21647ef177705b94d6b9636442042a1d4ab6",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "11",
+          "locationIndex": 5,
+          "branchType": "binary-expr",
+          "line": 154,
+          "column": 6,
+          "sourceFingerprint": "sha256:79cbd08ee0c2373c0dada9283350824ed7e6f7381e2104803fb1d8b569a0575e",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "11",
+          "locationIndex": 6,
+          "branchType": "binary-expr",
+          "line": 155,
+          "column": 6,
+          "sourceFingerprint": "sha256:47773e6608f875ed1bfbd1e927508a02b595fdbef5d07ab0d47773353eb36dde",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "11",
+          "locationIndex": 7,
+          "branchType": "binary-expr",
+          "line": 156,
+          "column": 6,
+          "sourceFingerprint": "sha256:a998ddb380baf88057da0a8461100413a2d3b9316cc533bc3d4bc32bd97caa83",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "11",
+          "locationIndex": 8,
+          "branchType": "binary-expr",
+          "line": 157,
+          "column": 7,
+          "sourceFingerprint": "sha256:c1474d8894ded73705ff35c5086219edbcf477d55ce0759b45669689c4bec059",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "13",
+          "locationIndex": 0,
+          "branchType": "binary-expr",
+          "line": 157,
+          "column": 7,
+          "sourceFingerprint": "sha256:6757f3a71fc097423d7294ae9c17262a953ca29005e072d55c2ab77ed72879d6",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "13",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 157,
+          "column": 41,
+          "sourceFingerprint": "sha256:995f267386b92f33c3a670f85e3951047003ad980893220cfe7f1978e6c56c4b",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "12",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 158,
+          "column": 10,
+          "sourceFingerprint": "sha256:2ba5bf9280e6a5f9a9c1a6dd21036e3936553bd688da09f551eea963882dad70",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "12",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 159,
+          "column": 10,
+          "sourceFingerprint": "sha256:4730ed916bbbf02c1dd6dedee21143ada3ee39731ddd8b442d0429dd5ee5d0df",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "14",
+          "locationIndex": 0,
+          "branchType": "binary-expr",
+          "line": 159,
+          "column": 10,
+          "sourceFingerprint": "sha256:9a9d2200bccbbed5acdbf23cedb89ca78bb93b4f3ada361baa3d6d4471ce2571",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "14",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 159,
+          "column": 39,
+          "sourceFingerprint": "sha256:bb15e50871e659c5b6f2fecaf17e6207f8bac4191723b48ade7e9d0c67c4276d",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "15",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 161,
+          "column": 2,
+          "sourceFingerprint": "sha256:8e8e5c79a82d671a83c31d9870339705b7b2628d105b00f49f2cbb8ed71e9e6a",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "18",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 169,
+          "column": 39,
+          "sourceFingerprint": "sha256:995f267386b92f33c3a670f85e3951047003ad980893220cfe7f1978e6c56c4b",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "17",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 170,
+          "column": 8,
+          "sourceFingerprint": "sha256:ced4b0466927015b42801b07bf46ab7f2dad1d317ba01653b50c1dd7d13d4374",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "20",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 171,
+          "column": 44,
+          "sourceFingerprint": "sha256:9c9c374ac1e3ee27c203af5414edbcb40484b2c358d89b45ae5ef1a853a8770c",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "19",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 172,
+          "column": 10,
+          "sourceFingerprint": "sha256:0e2fdf7451ddc5b4c83f89d1e6bd26f28202170146283a3f81f203c49345aa99",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "22",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 181,
+          "column": 2,
+          "sourceFingerprint": "sha256:afc5a3520c4d00a696f7d8a3d74284cb3197ab38dd468d0327fda00a3deebaa9",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "23",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 183,
+          "column": 2,
+          "sourceFingerprint": "sha256:4e282346c52ba3b8477441f5bc4a8ba05a57a0e352b2a9e0832c49fdd15dc98d",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "24",
+          "locationIndex": 0,
+          "branchType": "binary-expr",
+          "line": 186,
+          "column": 8,
+          "sourceFingerprint": "sha256:72c0ea8ce5f31f772e39fe31427223d84a33dbe8c3990bf1860f350bc9d8d33e",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "24",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 187,
+          "column": 8,
+          "sourceFingerprint": "sha256:efadb14865c2dc0b5f659c4d480d4d3fbcc4d2d393460b76403b26472c39f2ed",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "25",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 190,
+          "column": 2,
+          "sourceFingerprint": "sha256:4073e1db9f6d371f7d2f98cea0b2fc1c1ab7939f6ef23b66a881d3226cab3043",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "26",
+          "locationIndex": 0,
+          "branchType": "binary-expr",
+          "line": 195,
+          "column": 6,
+          "sourceFingerprint": "sha256:10a5bbca17d6f1a521ec4e1c7c3dfcc3c100e6a5d31488c61da7c054e4756ea0",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "26",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 196,
+          "column": 6,
+          "sourceFingerprint": "sha256:16aaef88d387d14b01538276d809d6db83155f99f05bf64c5d507c287f483703",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "26",
+          "locationIndex": 2,
+          "branchType": "binary-expr",
+          "line": 197,
+          "column": 6,
+          "sourceFingerprint": "sha256:e8f44161b504e00237ccdd34f3a2d959ca85e629afe01499d1b26a2932f4673e",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "26",
+          "locationIndex": 3,
+          "branchType": "binary-expr",
+          "line": 198,
+          "column": 6,
+          "sourceFingerprint": "sha256:20a5c2a0d5e5374fc9755bfbb30c3b86becffc738354b3c983808bec151902d3",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "27",
+          "locationIndex": 5,
+          "branchType": "binary-expr",
+          "line": 214,
+          "column": 10,
+          "sourceFingerprint": "sha256:ef0a821489f0ae4900df31252093fec3148dc0f8ae7789a8a08a44b45b9649ec",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "31",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 220,
+          "column": 10,
+          "sourceFingerprint": "sha256:7e23f0c4c9532e1f2caa5394c735cc465f2b70d510c17b713dfff8db0c5be100",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "30",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 221,
+          "column": 10,
+          "sourceFingerprint": "sha256:4c61fc192dd02ae87674f811dde242a204d15a53581db21c77a8c2655736d74a",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "33",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 230,
+          "column": 61,
+          "sourceFingerprint": "sha256:f68c5b88bc769c18a61ba2e87757456db21967378a03560f10f51c7197925cb3",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "35",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 238,
+          "column": 6,
+          "sourceFingerprint": "sha256:6bdc11618a9921dc7d3a5b2290455a5761eaf7714b369c987e59381f8bbd0ad7",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "36",
+          "locationIndex": 0,
+          "branchType": "binary-expr",
+          "line": 241,
+          "column": 12,
+          "sourceFingerprint": "sha256:fc04aff0ee86b3fdba4db2258b2a48f700396e14cab1072a1cb852f104ef6bb2",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "36",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 242,
+          "column": 12,
+          "sourceFingerprint": "sha256:1e4ac4456265d7416242ae1c6f049f5c7cd96147a0b0c4d628b7d994b47626c8",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "38",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 253,
+          "column": 6,
+          "sourceFingerprint": "sha256:f2bab3c502ed5693b717e0d6e50dd8a0b1d156963bb3506513db123556f5ab41",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "39",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 255,
+          "column": 8,
+          "sourceFingerprint": "sha256:50399fc5e6b56cef731930375960ea80dbd8b1d287d128ebccee804aa0b4192f",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "42",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 265,
+          "column": 4,
+          "sourceFingerprint": "sha256:7f56e904c3195c966adfe48dd4ded506fe67a47d1cc387add080071c5cdaa54b",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "43",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 267,
+          "column": 6,
+          "sourceFingerprint": "sha256:1d81cf2e75ea9973392bf1f3091102985c9dcce2bc3a9b5c55add52fce9c0150",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "44",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 275,
+          "column": 6,
+          "sourceFingerprint": "sha256:9af0c2055325133cef353f61e73cbe47ed46cb3157b971b824c7fb99dbebf907",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "45",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 281,
+          "column": 4,
+          "sourceFingerprint": "sha256:aa3686587a2e63b991d3259e071b0eb32b694d18a7fa558fa043b895c63fb783",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        },
+        {
+          "branchId": "64",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 345,
+          "column": 14,
+          "sourceFingerprint": "sha256:645348e79be1928cdfef0add495586059b681debbb21ccd2cc3e82dab833ddd3",
+          "classification": "defensive",
+          "justification": "The persisted fact window is normalized before transition; this residual decision enforces fact size/identity, duplicate consistency, optional output equality, terminal-state correlation, or deterministic ordering for malformed or repeated durable facts."
+        }
+      ]
+    },
+    {
+      "cohort": "workflow-engine",
+      "file": "packages/workflow-engine/src/scheduling.ts",
+      "reviews": [
+        {
+          "branchId": "0",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 39,
+          "column": 2,
+          "sourceFingerprint": "sha256:b6005c619681d40c4fcbf47faadb952238048aab28c3f6351e78131d5dccff9c",
+          "classification": "defensive",
+          "justification": "The public scheduling primitive validates limits and reconciles a complete disposition ledger; this residual operand protects invalid capacity/state or an already-covered terminal disposition and active-ordinal invariant."
+        },
+        {
+          "branchId": "4",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 54,
+          "column": 4,
+          "sourceFingerprint": "sha256:782d2e1c6f2491d7f7290199ea00e20512166ace4a987973de4e1378ab2cd966",
+          "classification": "defensive",
+          "justification": "The public scheduling primitive validates limits and reconciles a complete disposition ledger; this residual operand protects invalid capacity/state or an already-covered terminal disposition and active-ordinal invariant."
+        },
+        {
+          "branchId": "5",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 57,
+          "column": 4,
+          "sourceFingerprint": "sha256:96cc9e61315cec70a3759caa928782ab0f9284d5e311085593cd4f713fd56146",
+          "classification": "defensive",
+          "justification": "The public scheduling primitive validates limits and reconciles a complete disposition ledger; this residual operand protects invalid capacity/state or an already-covered terminal disposition and active-ordinal invariant."
+        },
+        {
+          "branchId": "10",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 79,
+          "column": 2,
+          "sourceFingerprint": "sha256:8625727aca39e760541fedeb4d949ee9f26b4448472bbe93435f34046f0608ff",
+          "classification": "defensive",
+          "justification": "The public scheduling primitive validates limits and reconciles a complete disposition ledger; this residual operand protects invalid capacity/state or an already-covered terminal disposition and active-ordinal invariant."
+        },
+        {
+          "branchId": "12",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 97,
+          "column": 2,
+          "sourceFingerprint": "sha256:b2cfc0c536a732473a874b442d557deedf3e1294b290f4ae01fb224dee5d43f1",
+          "classification": "defensive",
+          "justification": "The public scheduling primitive validates limits and reconciles a complete disposition ledger; this residual operand protects invalid capacity/state or an already-covered terminal disposition and active-ordinal invariant."
+        },
+        {
+          "branchId": "22",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 148,
+          "column": 2,
+          "sourceFingerprint": "sha256:926e699cd53616e339034d7b760afb83574f5d7032d0acbde3600a6cfb874033",
+          "classification": "defensive",
+          "justification": "The public scheduling primitive validates limits and reconciles a complete disposition ledger; this residual operand protects invalid capacity/state or an already-covered terminal disposition and active-ordinal invariant."
+        },
+        {
+          "branchId": "24",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 155,
+          "column": 4,
+          "sourceFingerprint": "sha256:ee1416989fdbd2474896648217a79a5740279ac0a021b94e3697e122c851f145",
+          "classification": "defensive",
+          "justification": "The public scheduling primitive validates limits and reconciles a complete disposition ledger; this residual operand protects invalid capacity/state or an already-covered terminal disposition and active-ordinal invariant."
+        },
+        {
+          "branchId": "33",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 197,
+          "column": 2,
+          "sourceFingerprint": "sha256:350e952ae8b214260837ab36ccd7a69ccc672244853620ad1c1de3ad6f1c4fd0",
+          "classification": "defensive",
+          "justification": "The public scheduling primitive validates limits and reconciles a complete disposition ledger; this residual operand protects invalid capacity/state or an already-covered terminal disposition and active-ordinal invariant."
+        },
+        {
+          "branchId": "36",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 228,
+          "column": 2,
+          "sourceFingerprint": "sha256:7b9f82e0bc1219d89306cdc3615878a4697830407667ae062eac0ed4e285adf8",
+          "classification": "defensive",
+          "justification": "The public scheduling primitive validates limits and reconciles a complete disposition ledger; this residual operand protects invalid capacity/state or an already-covered terminal disposition and active-ordinal invariant."
+        }
+      ]
+    },
+    {
+      "cohort": "workflow-engine",
+      "file": "packages/workflow-engine/src/workflow-transition-derived.ts",
+      "reviews": [
+        {
+          "branchId": "21",
+          "locationIndex": 1,
+          "branchType": "if",
+          "line": 0,
+          "column": 0,
+          "sourceFingerprint": "sha256:ffc44698fc2275b504eaa105e0c9738f188bcbeb93a23afb3943ee61f9926cd3",
+          "classification": "generated",
+          "justification": "V8 reports this empty-location branch for emitted control flow without a source coordinate; the corresponding executable decisions in this module are tracked at their real locations."
+        },
+        {
+          "branchId": "3",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 44,
+          "column": 4,
+          "sourceFingerprint": "sha256:41281d65802f73a0d21f04cd6f8823efff3d5d30c76321af9473033b1d144536",
+          "classification": "defensive",
+          "justification": "Derived transition state is built from validated graph, checkpoint, and scheduler decisions; this residual guard preserves legacy loop compatibility or rejects a missing/duplicate parent, invocation, body, or iteration invariant."
+        },
+        {
+          "branchId": "8",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 82,
+          "column": 4,
+          "sourceFingerprint": "sha256:29b828d0b1fdd63fb1e457dbdcf78f46d934a28fd4a7331ed59ecb8a6e233c30",
+          "classification": "defensive",
+          "justification": "Derived transition state is built from validated graph, checkpoint, and scheduler decisions; this residual guard preserves legacy loop compatibility or rejects a missing/duplicate parent, invocation, body, or iteration invariant."
+        },
+        {
+          "branchId": "9",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 82,
+          "column": 30,
+          "sourceFingerprint": "sha256:730d728ae43cd066f234b18ead9d0d63ac6c732a7619e3c4c8587189cc82111e",
+          "classification": "defensive",
+          "justification": "Derived transition state is built from validated graph, checkpoint, and scheduler decisions; this residual guard preserves legacy loop compatibility or rejects a missing/duplicate parent, invocation, body, or iteration invariant."
+        },
+        {
+          "branchId": "10",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 83,
+          "column": 4,
+          "sourceFingerprint": "sha256:64158a9a90a73793c7d6afc8de7a6a4173033f1ad7299589ee990822471582af",
+          "classification": "defensive",
+          "justification": "Derived transition state is built from validated graph, checkpoint, and scheduler decisions; this residual guard preserves legacy loop compatibility or rejects a missing/duplicate parent, invocation, body, or iteration invariant."
+        },
+        {
+          "branchId": "11",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 98,
+          "column": 65,
+          "sourceFingerprint": "sha256:8d0be2b5f3410c632fdf5593389cfa23f069497bd8a97d7e0ea3ab65c76c8673",
+          "classification": "defensive",
+          "justification": "Derived transition state is built from validated graph, checkpoint, and scheduler decisions; this residual guard preserves legacy loop compatibility or rejects a missing/duplicate parent, invocation, body, or iteration invariant."
+        },
+        {
+          "branchId": "12",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 107,
+          "column": 45,
+          "sourceFingerprint": "sha256:41c4b0044da85cc2444e389576764b141c1c5c7cd4dea0826cd79b4f23b586fe",
+          "classification": "defensive",
+          "justification": "Derived transition state is built from validated graph, checkpoint, and scheduler decisions; this residual guard preserves legacy loop compatibility or rejects a missing/duplicate parent, invocation, body, or iteration invariant."
+        },
+        {
+          "branchId": "17",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 143,
+          "column": 10,
+          "sourceFingerprint": "sha256:d111381de4ddd9211f61cbf57f90d256324296b3fb804dc5c743f003e72d6d7b",
+          "classification": "defensive",
+          "justification": "Derived transition state is built from validated graph, checkpoint, and scheduler decisions; this residual guard preserves legacy loop compatibility or rejects a missing/duplicate parent, invocation, body, or iteration invariant."
+        },
+        {
+          "branchId": "19",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 146,
+          "column": 4,
+          "sourceFingerprint": "sha256:da4ed453206c3a923a143c37185b5dbb75655a03a87dcc455ba5a0495cb992f7",
+          "classification": "defensive",
+          "justification": "Derived transition state is built from validated graph, checkpoint, and scheduler decisions; this residual guard preserves legacy loop compatibility or rejects a missing/duplicate parent, invocation, body, or iteration invariant."
+        },
+        {
+          "branchId": "22",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 171,
+          "column": 4,
+          "sourceFingerprint": "sha256:d897407495f77e9172a8523826a71453b5cad0c59fd6b995f9cbc6aa8ed335f2",
+          "classification": "defensive",
+          "justification": "Derived transition state is built from validated graph, checkpoint, and scheduler decisions; this residual guard preserves legacy loop compatibility or rejects a missing/duplicate parent, invocation, body, or iteration invariant."
+        },
+        {
+          "branchId": "25",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 200,
+          "column": 2,
+          "sourceFingerprint": "sha256:6c2a2f1358fa2617ebdc8e6a102e465a41394b3c2d984bdb399e54c747800385",
+          "classification": "defensive",
+          "justification": "Derived transition state is built from validated graph, checkpoint, and scheduler decisions; this residual guard preserves legacy loop compatibility or rejects a missing/duplicate parent, invocation, body, or iteration invariant."
+        },
+        {
+          "branchId": "27",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 213,
+          "column": 9,
+          "sourceFingerprint": "sha256:6641ffc13ed5eb02b80f8e62a2b8fe37bc405fa484c90f8baeaa78bc831c2629",
+          "classification": "defensive",
+          "justification": "Derived transition state is built from validated graph, checkpoint, and scheduler decisions; this residual guard preserves legacy loop compatibility or rejects a missing/duplicate parent, invocation, body, or iteration invariant."
+        },
+        {
+          "branchId": "31",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 258,
+          "column": 8,
+          "sourceFingerprint": "sha256:e7a30c9731d912c9ed35a1b6c8876670b5ea94b65ac16fe4ddf6202ce5b70529",
+          "classification": "defensive",
+          "justification": "Derived transition state is built from validated graph, checkpoint, and scheduler decisions; this residual guard preserves legacy loop compatibility or rejects a missing/duplicate parent, invocation, body, or iteration invariant."
+        },
+        {
+          "branchId": "33",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 271,
+          "column": 23,
+          "sourceFingerprint": "sha256:415691d7d7c8c96ffedd8514d09eb31f254df240f915c706763c6b45fef744ac",
+          "classification": "defensive",
+          "justification": "Derived transition state is built from validated graph, checkpoint, and scheduler decisions; this residual guard preserves legacy loop compatibility or rejects a missing/duplicate parent, invocation, body, or iteration invariant."
+        }
+      ]
+    },
+    {
+      "cohort": "workflow-engine",
+      "file": "packages/workflow-engine/src/workflow-transition-plan.ts",
+      "reviews": [
+        {
+          "branchId": "2",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 59,
+          "column": 4,
+          "sourceFingerprint": "sha256:17e96f22ac334071a01ea672420f75744711c6810ddce2abfa61706f3e038ccb",
+          "classification": "unreachable",
+          "justification": "Plan construction receives invocation keys selected from the current validated transition state; the missing-invocation guard is retained as fail-closed corruption protection."
+        },
+        {
+          "branchId": "14",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 160,
+          "column": 6,
+          "sourceFingerprint": "sha256:d13fd3b5be54c5a657cae80ee4886a3e9f206231024c3420187402d2d87a56cf",
+          "classification": "unreachable",
+          "justification": "Plan construction receives invocation keys selected from the current validated transition state; the missing-invocation guard is retained as fail-closed corruption protection."
+        }
+      ]
+    },
+    {
+      "cohort": "workflow-engine",
+      "file": "packages/workflow-engine/src/workflow-transition-stops.ts",
+      "reviews": [
+        {
+          "branchId": "5",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 39,
+          "column": 6,
+          "sourceFingerprint": "sha256:3606cab7c00202656912e95d2a66b85eebcd1fb207e278337373e5ffa905b9f4",
+          "classification": "defensive",
+          "justification": "Stop propagation consumes validated loop and invocation state; this residual decision preserves legacy-loop compatibility or exhaustively selects terminal, timed-out, canceled, and fallback event semantics."
+        },
+        {
+          "branchId": "7",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 51,
+          "column": 10,
+          "sourceFingerprint": "sha256:21be2f09590133b9991cb6691506ed7e485cf48d23cdcefb1071180453646feb",
+          "classification": "defensive",
+          "justification": "Stop propagation consumes validated loop and invocation state; this residual decision preserves legacy-loop compatibility or exhaustively selects terminal, timed-out, canceled, and fallback event semantics."
+        },
+        {
+          "branchId": "9",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 71,
+          "column": 8,
+          "sourceFingerprint": "sha256:2187c9ad23ac98130a9285bdb21ef3375b6f905f2a0754bee81bdeb41b7fd84e",
+          "classification": "defensive",
+          "justification": "Stop propagation consumes validated loop and invocation state; this residual decision preserves legacy-loop compatibility or exhaustively selects terminal, timed-out, canceled, and fallback event semantics."
+        },
+        {
+          "branchId": "10",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 78,
+          "column": 6,
+          "sourceFingerprint": "sha256:1cf2c137ddb464ca359628004ca6949236a982bdc95cef2e869f8faf172119ec",
+          "classification": "defensive",
+          "justification": "Stop propagation consumes validated loop and invocation state; this residual decision preserves legacy-loop compatibility or exhaustively selects terminal, timed-out, canceled, and fallback event semantics."
+        },
+        {
+          "branchId": "14",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 90,
+          "column": 54,
+          "sourceFingerprint": "sha256:0e2d3ace629634ff9a097351c8019777cda053df3ebd000512b3c807b328913b",
+          "classification": "defensive",
+          "justification": "Stop propagation consumes validated loop and invocation state; this residual decision preserves legacy-loop compatibility or exhaustively selects terminal, timed-out, canceled, and fallback event semantics."
+        },
+        {
+          "branchId": "16",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 102,
+          "column": 19,
+          "sourceFingerprint": "sha256:b32766f6b74232305acbdaf7e6864fcc37775df5d6132c7bfc37b7da8c21aa4f",
+          "classification": "defensive",
+          "justification": "Stop propagation consumes validated loop and invocation state; this residual decision preserves legacy-loop compatibility or exhaustively selects terminal, timed-out, canceled, and fallback event semantics."
+        },
+        {
+          "branchId": "17",
+          "locationIndex": 0,
+          "branchType": "binary-expr",
+          "line": 102,
+          "column": 19,
+          "sourceFingerprint": "sha256:cd431f01e90269f2c3ec0c080c71fc0466a9b4db0d9ffbf0509cd116740b2f76",
+          "classification": "defensive",
+          "justification": "Stop propagation consumes validated loop and invocation state; this residual decision preserves legacy-loop compatibility or exhaustively selects terminal, timed-out, canceled, and fallback event semantics."
+        },
+        {
+          "branchId": "17",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 102,
+          "column": 52,
+          "sourceFingerprint": "sha256:827212644e93ab9fd07136c88ff70584bc853ae7a050063e3dc3aac975e981cb",
+          "classification": "defensive",
+          "justification": "Stop propagation consumes validated loop and invocation state; this residual decision preserves legacy-loop compatibility or exhaustively selects terminal, timed-out, canceled, and fallback event semantics."
+        },
+        {
+          "branchId": "22",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 123,
+          "column": 13,
+          "sourceFingerprint": "sha256:b4efaaa027ef88c07617f66d4ae6d2fe5c5a279886df628b15c8cee2c10c46be",
+          "classification": "defensive",
+          "justification": "Stop propagation consumes validated loop and invocation state; this residual decision preserves legacy-loop compatibility or exhaustively selects terminal, timed-out, canceled, and fallback event semantics."
+        },
+        {
+          "branchId": "23",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 136,
+          "column": 61,
+          "sourceFingerprint": "sha256:6f86b35c817c7630a8790942c3dbc648fd008a4a028a1dd7339382a8bc43b2fc",
+          "classification": "defensive",
+          "justification": "Stop propagation consumes validated loop and invocation state; this residual decision preserves legacy-loop compatibility or exhaustively selects terminal, timed-out, canceled, and fallback event semantics."
         }
       ]
     }
