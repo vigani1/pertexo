@@ -7,25 +7,11 @@
       "minLines": 12,
       "minTokens": 80,
       "maximums": {
-        "clones": 33,
-        "duplicatedLines": 655,
-        "duplicatedTokens": 5717
+        "clones": 32,
+        "duplicatedLines": 638,
+        "duplicatedTokens": 5579
       },
       "families": [
-        {
-          "files": [
-            "packages/workflow-engine/src/checkpoint-v1.ts",
-            "packages/workflow-engine/src/checkpoint-v1.ts"
-          ],
-          "classification": "intentional-scenario-local",
-          "reason": "Checkpoint decoding keeps the loop and iteration lookup branches adjacent so their distinct persisted-state errors remain auditable.",
-          "clones": [
-            {
-              "hash": "c155b6228f106ce4fc47b7a9ee968ecb5cefb60e32669989fedf9e2360d64624",
-              "maxLines": 18
-            }
-          ]
-        },
         {
           "files": [
             "packages/database/src/schema/execution.ts",

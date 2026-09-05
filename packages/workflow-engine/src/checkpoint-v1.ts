@@ -202,8 +202,8 @@ export function parseCheckpointV1Boundary(
       loop.bodyRootNodeIds[0] === loop.loopId &&
       loop.bodySinkNodeId === loop.loopId;
     if (!syntheticLegacyLoop) continue;
-    for (const ordinal of loop.activeOrdinals) {
-      const iteration = invocationByKey.get(
+    const iterationFor = (ordinal: number) =>
+      invocationByKey.get(
         invocationKey({
           workflowVersionId,
           nodeId: loop.loopId,
@@ -216,6 +216,8 @@ export function parseCheckpointV1Boundary(
           ],
         }),
       );
+    for (const ordinal of loop.activeOrdinals) {
+      const iteration = iterationFor(ordinal);
       assertCheckpoint(
         iteration !== undefined &&
           ['ready', 'running', 'waiting'].includes(iteration.status),
@@ -223,19 +225,7 @@ export function parseCheckpointV1Boundary(
       );
     }
     for (const ordinal of loop.terminalOrdinals) {
-      const iteration = invocationByKey.get(
-        invocationKey({
-          workflowVersionId,
-          nodeId: loop.loopId,
-          branchPath: loop.branchPath.map(
-            ({ nodeId, outputPort }) => `${nodeId}:${outputPort}`,
-          ),
-          iterationPath: [
-            ...loop.iterationPath,
-            { loopNodeId: loop.loopId, ordinal },
-          ],
-        }),
-      );
+      const iteration = iterationFor(ordinal);
       assertCheckpoint(
         iteration !== undefined &&
           [
