@@ -5030,6 +5030,32 @@ as production trace-retention evidence.
 Implementation commits: `4e95575`, `fd42afe`, `c8127bf`, `44cd628`,
 `4e338b9`, `f48eeef`, `a107d8d`, and `19ae523`. No phase status changed.
 
+### Granular package-audit remediation — workflow-model
+
+- [x] Reconcile WM-001 through WM-012 against current code. All twelve
+      findings are implemented; retained schema/identity compatibility and
+      package risk coverage remain continuous controls.
+- [x] Align publish and execution topology, aggregate browser/server admission,
+      and the 100-issue model/HTTP response bound so authoring cannot accept a
+      graph that is statically guaranteed to fail or cannot be serialized.
+- [x] Specify JSONata execution honestly as bounded one-shot worker isolation.
+      Construction/startup/handoff/timeout failures are total, hard termination
+      remains available, diagnostics report actual creations and peak workers,
+      and mapping depends on a small evaluator port.
+- [x] Close canonical-array, notification-result, limit-override, direct-depth,
+      and invocation-scope boundaries with adversarial tests.
+- [x] Improve ownership without hiding sequencing: compile the worker runtime
+      separately, isolate invocation identity, and replace root wildcard
+      exports with an exact tested facade. Cohesive graph validation and worker
+      supervision remain intentionally colocated.
+- [x] Fresh checks pass: 8 package files / 72 tests, typecheck, build,
+      repository-budget ESLint, package coverage, 22 workflow-engine files /
+      239 tests, and 5 contracts files / 26 tests. Coverage is 86.73%
+      statements, 78.99% branches, 94.49% functions, and 89.98% lines.
+
+Implementation commits: `078cd53`, `bfb4862`, `7da5a4c`, and `5652981`. No
+phase status changed.
+
 ## Update protocol
 
 When a checkpoint changes status:

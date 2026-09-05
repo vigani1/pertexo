@@ -12,10 +12,9 @@
   seams.
 - **Architecture sources:** the authoritative backend plan and ADRs 002, 005,
   007 through 011, 016 through 022, and 025.
-- **Audit status:** granularly certified for the pinned implementation tree.
-- **Implementation status:** two high-priority publish/evaluator defects, six
-  medium contract/design/control gaps, and four lower-priority API or
-  maintainability improvements remain open.
+- **Audit status:** reconciled against the current implementation on 2026-06-18.
+- **Implementation status:** all twelve findings are implemented and verified;
+  risk coverage and retained compatibility remain continuous safeguards.
 
 This is a necessary, high-Leverage domain Module. It owns the versioned authoring
 graph, canonical execution identity, semantic graph validation, mapping
@@ -32,15 +31,35 @@ objects; expression syntax is allowlisted before isolated execution; and the
 tests contain exact boundary, golden identity, cross-process determinism, hard
 timeout, cancellation, and retained-version cases.
 
-The important remaining problems are cross-layer ones. Publish validation does
-not reject `node_output` mappings to missing or non-upstream nodes, while the
-engine rejects them only when a run is already executing. The evaluator's
-purported two-worker pool actually creates and terminates a fresh worker thread
-for every evaluation; its evidence labels concurrency as worker count, and a
-synchronous Worker-construction failure rejects outside the typed result
-contract while permanently consuming an active slot. Browser and server graph
-admission also disagree on aggregate nested node/edge limits, and graph
-validation can produce more issues than the API response schema accepts.
+The original cross-layer defects have since been corrected. Publish and engine
+topology agree, browser/server admission share aggregate limits, issue output is
+bounded by one contract, and the evaluator is now explicitly a bounded
+one-shot-worker design with truthful diagnostics and total supervisor failure
+handling. This preserves hard termination rather than claiming unsafe worker
+reuse merely to satisfy the word “pool.”
+
+## Current remediation record
+
+| ID | Final status | Implementation and verification evidence |
+| --- | --- | --- |
+| WM-001 | Fixed | `078cd53`; publish rejects missing, non-upstream, downstream, unrelated, and cross-body mappings while direct predecessors execute. |
+| WM-002 | Fixed by explicit isolation decision | `078cd53`; bounded one-shot workers are named honestly, creation/peak counts are reported, construction failures settle typed results, and capacity recovers. |
+| WM-003 | Fixed | `078cd53`; browser-safe preflight and server parsing use identical aggregate nested limits. |
+| WM-004 | Fixed | `078cd53`; model and HTTP response share `WORKFLOW_VALIDATION_MAX_ISSUES = 100`. |
+| WM-005 | Fixed | `078cd53` and `bfb4862`; arrays require own indexed data descriptors and reject sparse, inherited, accessor, symbol, and extra-key input. |
+| WM-006 | Fixed | `078cd53`; mapping depends on the minimal `ExpressionEvaluator` port and tests use a type-safe structural fake. |
+| WM-007 | Fixed | `078cd53`; startup has an independent bounded supervisor timer, termination, typed failure, and recovery tests. |
+| WM-008 | Fixed | `078cd53`; the checked `expression-worker-runtime.ts` entry is compiled, linted, and exercised through the emitted/runtime URL. |
+| WM-009 | Fixed | `bfb4862`; delivery results are a strict kind-discriminated state machine with contradictory combinations rejected. |
+| WM-010 | Fixed; continuous gate | `bfb4862` and `7da5a4c`; direct canonical depth and override inputs are bounded and package coverage is enforced. Fresh coverage: 86.73% statements (778/897), 78.99% branches (519/657), 94.49% functions (103/109), and 89.98% lines (746/829). |
+| WM-011 | Fixed with intentionally retained cohesive complexity | `078cd53` extracted the typed worker owner; `5652981` extracted invocation identity and replaced wildcard root exports with a snapshot-tested explicit facade. The remaining graph validation and evaluator supervisor code stays colocated because their sequencing is review-critical. |
+| WM-012 | Fixed | `bfb4862`; a strict discriminated scope parser rejects unknown kinds, malformed fields, and extras before formatting or hashing. |
+
+Fresh verification on 2026-06-18 passed 8 package files / 72 tests,
+typecheck, build, the 8 GiB repository ESLint invocation, package coverage, 22
+workflow-engine files / 239 tests, and 5 contracts files / 26 tests. A direct
+default-heap ESLint invocation still exhausts Node's approximately 4 GiB heap;
+the repository command intentionally supplies the documented 8 GiB budget.
 
 ### Granular certification record
 
@@ -492,7 +511,7 @@ where implementation or evidence does not fully meet that blueprint.
   incoming topology and share the predicate with executable compilation.
 - **Verification:** missing, downstream, unrelated, cross-body, valid direct
   predecessor, and nested-body tests at publish and execution seams.
-- **Status:** Open.
+- **Status:** Fixed in `078cd53`.
 
 ### WM-002 — Evaluator is not a real worker pool and construction failure poisons capacity
 
@@ -508,7 +527,8 @@ where implementation or evidence does not fully meet that blueprint.
   settle/decrement exactly once.
 - **Verification:** injected constructor failure, repeated recovery, actual
   creation-count assertion, isolation tests, and large-workflow benchmark.
-- **Status:** Open.
+- **Status:** Fixed in `078cd53` by specifying and proving bounded one-shot
+  worker isolation.
 
 ### WM-003 — Browser and server graph limits disagree
 
@@ -522,7 +542,7 @@ where implementation or evidence does not fully meet that blueprint.
   preflight and reuse its result server-side.
 - **Verification:** identical exact/one-over nested corpora through browser,
   contracts, API, and server parsers.
-- **Status:** Open.
+- **Status:** Fixed in `078cd53`.
 
 ### WM-004 — Validation output exceeds its API response contract
 
@@ -535,7 +555,7 @@ where implementation or evidence does not fully meet that blueprint.
 - **Remediation:** share a maximum, cap deterministically, and signal truncation
   if needed.
 - **Verification:** 100/101/many-issue endpoint tests returning a valid response.
-- **Status:** Open.
+- **Status:** Fixed in `078cd53`.
 
 ### WM-005 — Canonical arrays admit inherited data and discard extra properties
 
@@ -549,7 +569,7 @@ where implementation or evidence does not fully meet that blueprint.
   keys/symbols, consistently across JSON boundary packages.
 - **Verification:** array subclass, prototype index, sparse, accessor, symbol,
   extra-key, `__proto__`, and proxy tests.
-- **Status:** Open.
+- **Status:** Fixed in `078cd53` and `bfb4862`.
 
 ### WM-006 — Mapping depends on a concrete evaluator class
 
@@ -562,7 +582,7 @@ where implementation or evidence does not fully meet that blueprint.
 - **Remediation:** depend on a minimal evaluator Interface and inject an
   application-owned singleton.
 - **Verification:** type-safe fake with no cast and composition shutdown test.
-- **Status:** Open.
+- **Status:** Fixed in `078cd53`.
 
 ### WM-007 — Worker startup has no deadline
 
@@ -575,7 +595,7 @@ where implementation or evidence does not fully meet that blueprint.
 - **Remediation:** add a separate supervisor startup bound and typed failure;
   terminate the worker on expiry.
 - **Verification:** worker fixture that never becomes ready and recovery test.
-- **Status:** Open.
+- **Status:** Fixed in `078cd53`.
 
 ### WM-008 — Evaluator runtime is embedded untyped code
 
@@ -589,7 +609,7 @@ where implementation or evidence does not fully meet that blueprint.
   integration tests.
 - **Verification:** lint/typecheck includes runtime; package tests execute the
   emitted worker file.
-- **Status:** Open.
+- **Status:** Fixed in `078cd53`.
 
 ### WM-009 — Failure-delivery schema admits impossible states
 
@@ -603,7 +623,7 @@ where implementation or evidence does not fully meet that blueprint.
   and fields.
 - **Verification:** exhaustive valid matrix and rejection of every contradictory
   combination through database persistence parsing.
-- **Status:** Open.
+- **Status:** Fixed in `bfb4862`.
 
 ### WM-010 — Public limits/canonical helpers and coverage need stronger boundaries
 
@@ -617,7 +637,7 @@ where implementation or evidence does not fully meet that blueprint.
   test seam, make canonical traversal iterative where public, and add risk
   coverage.
 - **Verification:** deep direct input, invalid overrides, and CI threshold tests.
-- **Status:** Open.
+- **Status:** Fixed in `bfb4862` and `7da5a4c`; continuously enforced.
 
 ### WM-011 — Root facade and large files obscure ownership
 
@@ -630,7 +650,8 @@ where implementation or evidence does not fully meet that blueprint.
   facade exports without adding new public subpaths.
 - **Verification:** package export snapshot, dependency-boundary test, and
   unchanged public type/behavior fixtures.
-- **Status:** Open.
+- **Status:** Fixed in `078cd53` and `5652981`; remaining cohesive state-machine
+  and validation sequencing is intentionally retained.
 
 ### WM-012 — Invocation scope validation accepts unknown runtime variants
 
@@ -652,7 +673,7 @@ where implementation or evidence does not fully meet that blueprint.
 - **Verification:** valid branch/iteration sequences plus unknown kind,
   non-string identifier, malformed scope, extra-field, and canonical-scope/hash
   consistency tests.
-- **Status:** Open.
+- **Status:** Fixed in `bfb4862`.
 
 ## What should remain unchanged
 
