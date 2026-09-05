@@ -8,10 +8,10 @@ import {
 import type { parseCheckpoint } from './checkpoint.js';
 import { executableEdges } from './executable-graph.js';
 import {
-  normalizeBoundedEngineJson,
   type CompiledWorkflowExecutableV2,
   type WorkflowExecutableNodeV2,
 } from './executable-workflow.js';
+import { completedOutputReference } from './coordinator-output.js';
 import {
   configuredBranchOutputPorts,
   configuredParallelOutputPorts,
@@ -26,75 +26,16 @@ import { compareOrdinal } from './ordering.js';
 import { branchPathHasPrefix, sameIterationPath } from './scope.js';
 import { uuidPattern } from './persisted-observations.js';
 import { invocationKey as createInvocationKey } from './scheduling.js';
-import type {
-  JoinPolicy,
-  OutputReference,
-  WorkflowObservation,
-} from './types.js';
+import type { JoinPolicy, WorkflowObservation } from './types.js';
 
-function completedOutputReference(
-  outcome: Readonly<Record<string, JsonValue>>,
-  attemptId: string,
-): OutputReference | undefined {
-  const output = outcome.output;
-  if (!isJsonRecord(output)) return undefined;
-  if (output.kind === 'inline' && output.attemptId === attemptId)
-    return { kind: 'inline', attemptId };
-  if (
-    output.kind === 'artifact' &&
-    typeof output.artifactId === 'string' &&
-    uuidPattern.test(output.artifactId)
-  )
-    return { kind: 'artifact', artifactId: output.artifactId };
-  return undefined;
-}
-
-export function parseCompletedOutputItems(
-  value: unknown,
-): readonly JsonValue[] {
-  let normalized: JsonValue;
-  try {
-    normalized = normalizeBoundedEngineJson(value ?? []);
-  } catch {
-    operationError('observation_invalid', 'completed outputs are invalid');
-  }
-  if (!Array.isArray(normalized))
-    operationError('observation_invalid', 'completed outputs must be an array');
-  return normalized as readonly JsonValue[];
-}
-
-export function indexPersistedSuccessfulOutcomes(
-  persistedItems: readonly JsonValue[],
-): ReadonlyMap<string, Readonly<Record<string, JsonValue>>> {
-  const outcomes = new Map<string, Readonly<Record<string, JsonValue>>>();
-  for (const candidate of persistedItems) {
-    if (
-      isJsonRecord(candidate) &&
-      candidate.kind === 'outcome' &&
-      candidate.status === 'succeeded'
-    ) {
-      const outcome = candidate as Readonly<{
-        sequence: number;
-        attemptId: string;
-        invocationKey: string;
-      }> &
-        Readonly<Record<string, JsonValue>>;
-      outcomes.set(
-        `${String(outcome.sequence)}\u0000${outcome.attemptId}\u0000${outcome.invocationKey}`,
-        outcome,
-      );
-    }
-  }
-  return outcomes;
-}
+type CheckpointInvocation = ReturnType<
+  typeof parseCheckpoint
+>['invocations'][number];
 
 export function branchSelectionObservations(
   completedItems: readonly JsonValue[],
   successfulOutcomes: ReadonlyMap<string, Readonly<Record<string, JsonValue>>>,
-  invocations: ReadonlyMap<
-    string,
-    ReturnType<typeof parseCheckpoint>['invocations'][number]
-  >,
+  invocations: ReadonlyMap<string, CheckpointInvocation>,
   nodes: ReadonlyMap<string, WorkflowExecutableNodeV2>,
 ): readonly WorkflowObservation[] {
   const seen = new Map<string, string>();
@@ -190,10 +131,7 @@ export function forEachCoordinatorObservations(
   persistedItems: readonly JsonValue[],
   successfulOutcomes: ReadonlyMap<string, Readonly<Record<string, JsonValue>>>,
   checkpoint: ReturnType<typeof parseCheckpoint>,
-  invocations: ReadonlyMap<
-    string,
-    ReturnType<typeof parseCheckpoint>['invocations'][number]
-  >,
+  invocations: ReadonlyMap<string, CheckpointInvocation>,
   nodes: ReadonlyMap<string, WorkflowExecutableNodeV2>,
   derivedObservations: readonly WorkflowObservation[] = [],
 ): Readonly<{

@@ -598,6 +598,19 @@ describe('branching production operations', () => {
         signal: new AbortController().signal,
       }),
     ).rejects.toMatchObject({ code: 'observation_invalid' });
+    await expect(
+      advanceWorkflow({
+        runId: 'run-parallel',
+        executable,
+        workflowVersionId,
+        checkpoint,
+        observations,
+        completedOutputs: [{ ...completedOutput, sequence: 0 }],
+        occurredAt: '2026-08-24T00:00:01.000Z',
+        maximumAdmissions: 10,
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toMatchObject({ code: 'observation_invalid' });
   });
 
   it('settles direct Parallel-to-Merge branches as explicitly missing', async () => {

@@ -16,13 +16,16 @@ import {
 
 import { advanceWorkflowFromSchedulerState } from './advance-workflow.js';
 import { WorkflowEngineError } from './errors.js';
+import { resolveAttemptFailures } from './coordinator-failures.js';
 import {
   branchSelectionObservations,
   forEachCoordinatorObservations,
-  indexPersistedSuccessfulOutcomes,
   mergeCoordinatorObservations,
-  parseCompletedOutputItems,
 } from './coordinator-observations.js';
+import {
+  indexPersistedSuccessfulOutcomes,
+  parseCompletedOutputItems,
+} from './coordinator-output.js';
 import { executableNodes } from './executable-graph.js';
 import {
   assertAuthenticExecutableIdentity,
@@ -42,11 +45,7 @@ import { compareOrdinal } from './ordering.js';
 import { branchPathHasPrefix, sameIterationPath } from './scope.js';
 import { operationError, record } from './operation-values.js';
 import { parsePersistedObservations } from './persisted-observations.js';
-import {
-  decideRetry,
-  providerIdempotencyKey,
-  resolveRetryPolicy,
-} from './retries.js';
+import { providerIdempotencyKey } from './retries.js';
 import { invocationKey as createInvocationKey } from './scheduling.js';
 import {
   prepareNodeAttemptInput,
@@ -355,88 +354,15 @@ export async function advanceWorkflow(
   const controlDeadline =
     checkpoint.deadlineExpired ||
     persistedObservations.deadlineExpiration !== undefined;
-  const retryPolicyReference = input.executable.envelope.runtimePolicies.retry;
-  let retryPolicy: ReturnType<typeof resolveRetryPolicy>;
-  try {
-    retryPolicy = resolveRetryPolicy(retryPolicyReference);
-  } catch {
-    operationError('workflow_identity_invalid', 'retry policy is unsupported');
-  }
-  const resolvedFailures: WorkflowObservation[] =
-    persistedObservations.attemptFailures.map((failure) => {
-      const invocation = invocationsByKey.get(failure.invocationKey);
-      const node = nodesById.get(invocation?.nodeId ?? '');
-      if (
-        invocation?.status !== 'running' ||
-        invocation.attemptNumber !== failure.attemptNumber ||
-        node === undefined
-      )
-        operationError('observation_invalid', 'attempt failure is stale');
-      const nonSafeUnknown =
-        node.sideEffectClass !== 'safe' && failure.possiblyDispatched;
-      if (controlCanceled || controlDeadline) {
-        return {
-          kind: 'outcome',
-          invocationKey: failure.invocationKey,
-          status: nonSafeUnknown
-            ? 'outcome_unknown'
-            : controlCanceled
-              ? 'canceled'
-              : 'timed_out',
-          reasonCode: failure.safeErrorCode,
-          coordinatorDerived: true,
-        };
-      }
-      if (failure.failureKind === 'outcome_unknown') {
-        return {
-          kind: 'outcome',
-          invocationKey: failure.invocationKey,
-          status: 'outcome_unknown',
-          reasonCode: failure.safeErrorCode,
-          coordinatorDerived: true,
-        };
-      }
-      if (failure.failureKind === 'canceled') {
-        return {
-          kind: 'outcome',
-          invocationKey: failure.invocationKey,
-          status: nonSafeUnknown ? 'outcome_unknown' : 'canceled',
-          reasonCode: failure.safeErrorCode,
-          coordinatorDerived: true,
-        };
-      }
-      const decision = decideRetry({
-        sideEffectClass: node.sideEffectClass,
-        currentAttemptNumber: failure.attemptNumber,
-        policy: retryPolicy,
-        observation: {
-          kind: 'executor_failure',
-          recommendation: failure.failureKind,
-          errorKind: failure.errorKind,
-          possiblyDispatched: failure.possiblyDispatched,
-        },
-        jitterIdentity: `${input.runId}\u0000${failure.invocationKey}\u0000${String(failure.attemptNumber)}\u0000${retryPolicyReference.key}@${String(retryPolicyReference.version)}`,
-      });
-      if (decision.kind === 'retry') {
-        return {
-          kind: 'wait',
-          invocationKey: failure.invocationKey,
-          resumeAt: new Date(
-            Date.parse(failure.occurredAt) + decision.delayMs,
-          ).toISOString(),
-          waitKind: 'retry_backoff',
-          coordinatorDerived: true,
-        };
-      }
-      return {
-        kind: 'outcome',
-        invocationKey: failure.invocationKey,
-        status:
-          decision.kind === 'outcome_unknown' ? 'outcome_unknown' : 'failed',
-        reasonCode: failure.safeErrorCode,
-        coordinatorDerived: true,
-      };
-    });
+  const resolvedFailures = resolveAttemptFailures({
+    runId: input.runId,
+    failures: persistedObservations.attemptFailures,
+    invocations: invocationsByKey,
+    nodes: nodesById,
+    retryPolicyReference: input.executable.envelope.runtimePolicies.retry,
+    controlCanceled,
+    controlDeadline,
+  });
   const forEach = forEachCoordinatorObservations(
     completedOutputItems,
     persistedObservations.facts,
