@@ -12,7 +12,9 @@ import {
   connectionResponseSchema,
   connectionTestRequestSchema,
   connectionTestResponseSchema,
+  httpHeaderCredentialSchema,
   httpHeadersCredentialSchema,
+  resendApiKeyCredentialSchema,
 } from '../src/http/connections.js';
 import {
   API_PROBLEM_CODES,
@@ -34,7 +36,11 @@ import {
   nodeTestingClientContract,
   nodeTestingOpenApiDocument,
 } from '../src/node-testing.js';
-import { workspaceCreateRequestSchema } from '../src/http/identity-workspace.js';
+import {
+  idempotencyKeySchema,
+  workspaceCreateRequestSchema,
+} from '../src/http/identity-workspace.js';
+import { manifestProblemResponse } from '../src/openapi-primitives.js';
 import {
   strongEtagSchema,
   workflowCompatibilityReportSchema,
@@ -85,6 +91,57 @@ function resolvesLocalReference(document: unknown, reference: string): boolean {
 }
 
 describe('public contracts package', () => {
+  it('fails closed for mismatched problem metadata', () => {
+    expect(() => manifestProblemResponse(500, 'auth.unauthenticated')).toThrow(
+      'status does not match',
+    );
+  });
+
+  it('enforces credential and idempotency boundary refinements', () => {
+    expect(httpHeaderCredentialSchema.safeParse({}).success).toBe(false);
+    expect(
+      httpHeaderCredentialSchema.safeParse({
+        Authorization: 'first',
+        authorization: 'second',
+      }).success,
+    ).toBe(false);
+    expect(
+      httpHeaderCredentialSchema.safeParse({ host: 'provider.test' }).success,
+    ).toBe(false);
+    expect(
+      httpHeaderCredentialSchema.safeParse({
+        authorization: `Bearer ${'x'.repeat(16_384)}`,
+      }).success,
+    ).toBe(false);
+
+    expect(
+      resendApiKeyCredentialSchema.parse({
+        schemaVersion: 1,
+        type: 'resend_api_key',
+        apiKey: 're_example_key',
+        fromEmail: 'Alerts@Example.COM',
+      }).fromEmail,
+    ).toBe('Alerts@example.com');
+    for (const fromEmail of [
+      'bad email@example.com',
+      'missing-domain@example',
+      'two@@example.com',
+      `${'a'.repeat(65)}@example.com`,
+      'alerts@-example.com',
+    ])
+      expect(
+        resendApiKeyCredentialSchema.safeParse({
+          schemaVersion: 1,
+          type: 'resend_api_key',
+          apiKey: 're_example_key',
+          fromEmail,
+        }).success,
+      ).toBe(false);
+
+    expect(idempotencyKeySchema.safeParse('one,two').success).toBe(false);
+    expect(idempotencyKeySchema.safeParse('one-two').success).toBe(true);
+  });
+
   it('maps every problem code exactly once to stable HTTP metadata', () => {
     expect(Object.keys(API_PROBLEM_MANIFEST)).toEqual(API_PROBLEM_CODES);
     for (const code of API_PROBLEM_CODES) {
