@@ -511,7 +511,7 @@ where implementation or evidence does not fully meet that blueprint.
   incoming topology and share the predicate with executable compilation.
 - **Verification:** missing, downstream, unrelated, cross-body, valid direct
   predecessor, and nested-body tests at publish and execution seams.
-- **Status:** Fixed in `078cd53`; application composition correction `8d740e2`.
+- **Status:** Fixed in `078cd53`.
 
 ### WM-002 — Evaluator is not a real worker pool and construction failure poisons capacity
 
@@ -542,7 +542,7 @@ where implementation or evidence does not fully meet that blueprint.
   preflight and reuse its result server-side.
 - **Verification:** identical exact/one-over nested corpora through browser,
   contracts, API, and server parsers.
-- **Status:** Fixed in `078cd53`; ready-to-start handoff correction `8d740e2`.
+- **Status:** Fixed in `078cd53`.
 
 ### WM-004 — Validation output exceeds its API response contract
 
@@ -582,7 +582,7 @@ where implementation or evidence does not fully meet that blueprint.
 - **Remediation:** depend on a minimal evaluator Interface and inject an
   application-owned singleton.
 - **Verification:** type-safe fake with no cast and composition shutdown test.
-- **Status:** Fixed in `078cd53`.
+- **Status:** Fixed in `078cd53`; application composition correction `8d740e2`.
 
 ### WM-007 — Worker startup has no deadline
 
@@ -595,7 +595,7 @@ where implementation or evidence does not fully meet that blueprint.
 - **Remediation:** add a separate supervisor startup bound and typed failure;
   terminate the worker on expiry.
 - **Verification:** worker fixture that never becomes ready and recovery test.
-- **Status:** Fixed in `078cd53`.
+- **Status:** Fixed in `078cd53`; ready-to-start handoff correction `8d740e2`.
 
 ### WM-008 — Evaluator runtime is embedded untyped code
 

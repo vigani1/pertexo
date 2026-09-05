@@ -22,7 +22,7 @@
 
 | ID | Previous status | Final status | Affected locations | Implementation and test evidence | Verification / commit |
 | --- | --- | --- | --- | --- | --- |
-| CORE-001 | Open confirmed defect | **Fixed** | Schedule validation/definition/executor, database trigger projection, engine trigger input, node-catalog release history | V2 introduced strict cron semantics. Metadata-complete V3 preserves the immutable V2 fingerprint while publishing its runtime-only semantics; database, engine, and catalog execute V1–V3. The database projection now consumes the node-owned strict schema directly. | Package/database/engine/catalog tests and typechecks; `5f9ce84`, `400dfe8`, `156f18f`, `f5f5d48` |
+| CORE-001 | Open confirmed defect | **Fixed** | Schedule validation/definition/executor, database recurrence and trigger projection, engine trigger input, node-catalog release history | V2 introduced strict cron semantics. Metadata-complete V3 preserves the immutable V2 fingerprint while publishing its runtime-only semantics; database, engine, and catalog execute V1–V3. The database projection consumes the node-owned strict schema directly, and publication now rejects tabs/newlines with the same canonical single-space tokenization as recurrence materialization. | Package/database/engine/catalog tests and typechecks; `5f9ce84`, `400dfe8`, `156f18f`, `f5f5d48`, `7fc148b` |
 | CORE-002 | Open confirmed contract defect | **Fixed** | Parallel/Merge definitions/executors, engine/worker consumers, node-catalog release history | V2 introduced strict settled-ledger contracts. Metadata-complete V3 preserves V2 identities while advertising runtime-only invariants; engine and worker apply configured ports and settled Merge input for V1–V3. The epoch-12 recovery fixture remains V1 so retained evidence is not silently rebound to a later release. | Package/engine/catalog tests, worker typecheck, and three real-service structured recovery suites; `5f9ce84`, `156f18f`, `c632d37` |
 | CORE-003 | Open maintainability improvement | **Fixed** | `src/registrations.ts`, `src/server.ts`, retained-registry tests | Browser-safe definitions remain isolated as required by ADR-010. A server-only typed bundle joins definitions to executor implementations by exact identity, derives canonical executor order, and fails on duplicate, missing, or orphan implementations. | 55 tests, typecheck, build, ESLint, Knip; `3c98fa9` |
 | CORE-004 | Open interface improvement | **Fixed** | Schedule V2/V3 definitions/executors, database and engine consumers, release history | V2/V3 advertise the strict trigger envelope; V3 adds explicit runtime-only cron metadata. V1/V2 fingerprints remain unchanged, all retained versions remain executable, and database projection shares the node-owned strict schema. | Trigger, projection, engine, and active-release execution tests; `5f9ce84`, `400dfe8`, `156f18f`, `f5f5d48` |
@@ -414,8 +414,9 @@ of meaningful higher-level testing.
 
 - **Severity:** P1.
 - **Classification:** confirmed defect.
-- **Status:** fixed by additive V2/V3 contracts and consumer integration
-  (`5f9ce84`, `400dfe8`, `156f18f`, `f5f5d48`).
+- **Status:** fixed by additive V2/V3 contracts, consumer integration, and
+  canonical-whitespace correction (`5f9ce84`, `400dfe8`, `156f18f`,
+  `f5f5d48`, `7fc148b`).
 - **Evidence:** `schedule/validation.ts:9-16` uses a character regex. Direct
   comparison showed `99 99 99 99 99`, `*/0 * * * *`, and `? ? ? ? ?` all pass
   `CORE_SCHEDULE_CONFIG_SCHEMA` for `America/New_York`, while
