@@ -10,6 +10,7 @@ import {
   createSlackSendMessageExecutorRegistration,
   createSlackClient,
   SECURE_HTTP_ERROR_CODE,
+  SlackSendMessageExecutorError,
   SecureHttpError,
   type SecureHttpRequest,
   type SecureHttpResponse,
@@ -367,6 +368,14 @@ describe('slack.send_message@1', () => {
         possiblyDispatched: false,
       },
     ],
+    [
+      { kind: 'invalid_response' },
+      {
+        kind: 'outcome_unknown',
+        errorKind: 'provider',
+        possiblyDispatched: true,
+      },
+    ],
   ])('classifies provider result %j truthfully', async (result, expected) => {
     const state = runtime(result);
     await expect(
@@ -403,6 +412,98 @@ describe('slack.send_message@1', () => {
     ).rejects.toMatchObject({
       kind: 'outcome_unknown',
       errorKind: 'timeout',
+      possiblyDispatched: true,
+    });
+  });
+
+  it.each([
+    [
+      SECURE_HTTP_ERROR_CODE.connectionFenceFailed,
+      false,
+      {
+        kind: 'failed',
+        errorKind: 'authentication',
+        possiblyDispatched: false,
+      },
+    ],
+    [
+      SECURE_HTTP_ERROR_CODE.dispatchBindingMismatch,
+      false,
+      { kind: 'failed', errorKind: 'configuration', possiblyDispatched: false },
+    ],
+    [
+      SECURE_HTTP_ERROR_CODE.canceled,
+      false,
+      { kind: 'canceled', errorKind: 'canceled', possiblyDispatched: false },
+    ],
+    [
+      SECURE_HTTP_ERROR_CODE.canceled,
+      true,
+      {
+        kind: 'outcome_unknown',
+        errorKind: 'provider',
+        possiblyDispatched: true,
+      },
+    ],
+    [
+      SECURE_HTTP_ERROR_CODE.timedOut,
+      false,
+      { kind: 'retry', errorKind: 'timeout', possiblyDispatched: false },
+    ],
+    [
+      SECURE_HTTP_ERROR_CODE.networkFailed,
+      true,
+      {
+        kind: 'outcome_unknown',
+        errorKind: 'network',
+        possiblyDispatched: true,
+      },
+    ],
+  ] as const)(
+    'maps secure HTTP %s with dispatched=%s at the executor boundary',
+    async (code, possiblyDispatched, expected) => {
+      const state = runtime(
+        new SecureHttpError(
+          code,
+          possiblyDispatched ? 'ambiguous' : 'definite_failure',
+          possiblyDispatched,
+        ),
+      );
+
+      await expect(
+        createSlackSendMessageExecutorRegistration({
+          client: { sendMessage: state.sendMessage },
+        }).execute(invocation(state.value)),
+      ).rejects.toMatchObject(expected);
+    },
+  );
+
+  it('preserves known executor failures and rejects a mismatched provider response', async () => {
+    const known = runtime(
+      new SlackSendMessageExecutorError({
+        kind: 'retry',
+        errorKind: 'provider',
+        possiblyDispatched: false,
+      }),
+    );
+    await expect(
+      createSlackSendMessageExecutorRegistration({
+        client: { sendMessage: known.sendMessage },
+      }).execute(invocation(known.value)),
+    ).rejects.toBeInstanceOf(SlackSendMessageExecutorError);
+
+    const mismatched = runtime({
+      kind: 'succeeded',
+      channelId: 'COTHER',
+      messageTs: '1724412345.000100',
+    });
+    await expect(
+      createSlackSendMessageExecutorRegistration({
+        client: { sendMessage: mismatched.sendMessage },
+      }).execute(invocation(mismatched.value)),
+    ).rejects.toMatchObject({
+      kind: 'outcome_unknown',
+      errorKind: 'provider',
       possiblyDispatched: true,
     });
   });

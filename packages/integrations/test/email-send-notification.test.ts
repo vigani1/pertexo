@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 
 import {
   NodeDispatchEvidenceError,
+  ProviderExecutionRateLimitError,
   type NodeExecutionRuntime,
 } from '@pertexo/node-sdk/server';
 import { describe, expect, it, vi } from 'vitest';
@@ -15,6 +16,7 @@ import {
 import {
   createEmailSendNotificationExecutorRegistration,
   createResendClient,
+  EmailSendNotificationExecutorError,
   SECURE_HTTP_ERROR_CODE,
   SecureHttpClient,
   SecureHttpError,
@@ -463,6 +465,83 @@ describe('email.send_notification@1', () => {
       errorKind: 'authentication',
       possiblyDispatched: true,
     });
+  });
+
+  it('classifies credential admission failures before provider dispatch', async () => {
+    const missingFence = runtime(undefined);
+    missingFence.value = Object.freeze({
+      ...missingFence.value,
+      connections: { resolve: missingFence.value.connections!.resolve },
+    });
+    await expect(
+      createEmailSendNotificationExecutorRegistration({
+        client: { sendNotification: missingFence.sendNotification },
+      }).execute(invocation(missingFence.value)),
+    ).rejects.toMatchObject({
+      kind: 'failed',
+      errorKind: 'authentication',
+      possiblyDispatched: false,
+    });
+
+    const limited = runtime(undefined);
+    limited.value = Object.freeze({
+      ...limited.value,
+      connections: {
+        assertCurrent: limited.assertCurrent,
+        resolve: () => Promise.reject(new ProviderExecutionRateLimitError(7)),
+      },
+    });
+    await expect(
+      createEmailSendNotificationExecutorRegistration({
+        client: { sendNotification: limited.sendNotification },
+      }).execute(invocation(limited.value)),
+    ).rejects.toMatchObject({
+      kind: 'retry',
+      errorKind: 'rate_limit',
+      possiblyDispatched: false,
+      retryAfterMillis: 7_000,
+    });
+
+    const mismatched = runtime(undefined);
+    mismatched.value = Object.freeze({
+      ...mismatched.value,
+      connections: {
+        assertCurrent: mismatched.assertCurrent,
+        resolve: () =>
+          Promise.resolve({
+            connectionId,
+            providerKey: 'slack',
+            authType: 'resend_api_key',
+            secretVersionId,
+            secret: mismatched.secret,
+          }),
+      },
+    });
+    await expect(
+      createEmailSendNotificationExecutorRegistration({
+        client: { sendNotification: mismatched.sendNotification },
+      }).execute(invocation(mismatched.value)),
+    ).rejects.toMatchObject({
+      kind: 'failed',
+      errorKind: 'configuration',
+      possiblyDispatched: false,
+    });
+  });
+
+  it('preserves an executor failure returned by an injected provider adapter', async () => {
+    const state = runtime(
+      new EmailSendNotificationExecutorError({
+        kind: 'retry',
+        errorKind: 'provider',
+        possiblyDispatched: true,
+      }),
+    );
+
+    await expect(
+      createEmailSendNotificationExecutorRegistration({
+        client: { sendNotification: state.sendNotification },
+      }).execute(invocation(state.value)),
+    ).rejects.toBeInstanceOf(EmailSendNotificationExecutorError);
   });
 
   it('preserves dispatch identity through the real secure HTTP boundary', async () => {
