@@ -34,12 +34,15 @@ class FakeArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
   public closeCalls = 0;
   public closeError: Error | undefined;
   public deleteCalls = 0;
+  public deleteError: Error | undefined;
   public failNextPut = false;
+  public purgeError: Error | undefined;
   public purgeResult: WorkspaceObjectPurgePage = {
     completed: true,
     deletedCount: 0,
   };
   public stored: { body: Buffer; metadata: ArtifactMetadata } | undefined;
+  public readinessError: Error | undefined;
 
   public constructor(
     private readonly bucket: string,
@@ -60,6 +63,8 @@ class FakeArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
   }
 
   public checkReadiness(): Promise<ArtifactStoreReadiness> {
+    if (this.readinessError !== undefined)
+      return Promise.reject(this.readinessError);
     return Promise.resolve({ bucket: this.bucket, region: this.region });
   }
 
@@ -71,6 +76,7 @@ class FakeArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
   public delete(request: ArtifactRequest): Promise<void> {
     void request;
     this.deleteCalls += 1;
+    if (this.deleteError !== undefined) return Promise.reject(this.deleteError);
     this.stored = undefined;
     return Promise.resolve();
   }
@@ -93,7 +99,9 @@ class FakeArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
     request: PurgeWorkspaceObjectsRequest,
   ): Promise<WorkspaceObjectPurgePage> {
     void request;
-    return Promise.resolve(this.purgeResult);
+    return this.purgeError === undefined
+      ? Promise.resolve(this.purgeResult)
+      : Promise.reject(this.purgeError);
   }
 
   public async put(request: PutArtifactRequest): Promise<ArtifactMetadata> {
@@ -187,6 +195,70 @@ describe('dual-region artifact store', () => {
       }),
     ).rejects.toBeInstanceOf(ArtifactIntegrityError);
   });
+
+  it.each([
+    ['primary', true, false],
+    ['recovery', false, true],
+    ['both', true, true],
+  ] as const)(
+    'fails readiness when the %s region set is unavailable',
+    async (_role, failPrimary, failRecovery) => {
+      const { primary, recovery, store } = fixture();
+      primary.readinessError = failPrimary
+        ? new Error('primary down')
+        : undefined;
+      recovery.readinessError = failRecovery
+        ? new Error('recovery down')
+        : undefined;
+
+      await expect(store.checkReadiness()).rejects.toBeInstanceOf(
+        ArtifactIntegrityError,
+      );
+    },
+  );
+
+  it.each([
+    ['primary', true, false],
+    ['recovery', false, true],
+    ['both', true, true],
+  ] as const)(
+    'reports partial deletion when the %s region set fails',
+    async (_role, failPrimary, failRecovery) => {
+      const { primary, recovery, store } = fixture();
+      primary.deleteError = failPrimary ? new Error('primary down') : undefined;
+      recovery.deleteError = failRecovery
+        ? new Error('recovery down')
+        : undefined;
+
+      await expect(store.delete(metadata)).rejects.toBeInstanceOf(
+        ArtifactPartialReplicationError,
+      );
+      expect(primary.deleteCalls).toBe(1);
+      expect(recovery.deleteCalls).toBe(1);
+    },
+  );
+
+  it.each([
+    ['primary', true, false],
+    ['recovery', false, true],
+    ['both', true, true],
+  ] as const)(
+    'fails purge when the %s region set is unavailable',
+    async (_role, failPrimary, failRecovery) => {
+      const { primary, recovery, store } = fixture();
+      primary.purgeError = failPrimary ? new Error('primary down') : undefined;
+      recovery.purgeError = failRecovery
+        ? new Error('recovery down')
+        : undefined;
+
+      await expect(
+        store.purgeWorkspacePage({
+          maxObjects: 10,
+          workspaceId: metadata.workspaceId,
+        }),
+      ).rejects.toBeInstanceOf(ArtifactPartialReplicationError);
+    },
+  );
 
   it('records one bounded coordinator signal for a purge disagreement', async () => {
     const observations: unknown[] = [];
