@@ -11,18 +11,19 @@
   CI jobs that execute them.
 - **Architecture sources:** the authoritative backend plan and ADR-012.
 - **Audit status:** granularly certified for the pinned implementation tree.
-- **Implementation status:** one confirmed high-severity recovery defect, two
-  unverified/underspecified production risks, and five test or maintainability
-  improvements remain open.
+- **Implementation status:** seven repository-controlled findings are fixed.
+  RL-002 remains an external deployment-evidence obligation: V1 requires a
+  non-clustered replicated Redis primary, and the selected production topology
+  must be observed before deployment readiness can be claimed.
 
 The package has a good core design: it is cohesive, has no dependency cycle,
 keeps the policy vocabulary in one place, hashes subject identifiers, and uses
 one atomic Lua operation across all applicable dimensions. Its production
-surface is readable and materially deeper than its small public interface. It
-is not yet “finished” as a production control because the production Redis
-runtime does not recover after a post-connect disconnect, the actual runtime is
-not exercised against real Redis, and CI does not enforce coverage for this
-security-sensitive package.
+surface is readable and materially deeper than its small public interface. The
+production runtime now recovers after a post-connect disconnect, is exercised
+against real Redis, and has package-owned coverage thresholds. Production
+evidence remains incomplete until the deployed Redis topology is confirmed
+compatible with the atomic multi-key script.
 
 The audit does not recommend splitting these files. No function is difficult
 because of size, no repeated production algorithm warrants extraction, and no
@@ -43,7 +44,7 @@ manual reading rather than as a replacement for it.
 No additional finding was discovered in this recertification. RL-001 through
 RL-008 remain the complete known finding set for the pinned implementation.
 “Complete” here describes the review coverage, not the implementation status:
-the open findings below still require remediation or explicit disposition.
+the current disposition and remediation evidence are recorded below.
 
 ## Evidence collected
 
@@ -55,17 +56,15 @@ state-transition reproduction.
 | Check | Result |
 | --- | --- |
 | `pnpm --filter @pertexo/rate-limit typecheck` | Passed |
-| `pnpm --filter @pertexo/rate-limit test` | 3 files and 12 tests passed |
+| `pnpm --filter @pertexo/rate-limit test` | 3 files and 29 tests passed |
 | `pnpm --filter @pertexo/rate-limit build` | Passed |
 | `pnpm exec eslint packages/rate-limit` | Passed |
-| Ad hoc package V8 coverage | 84.05% statements, 79.48% branches, 86.95% functions, 87.5% lines |
-| Real-Redis suite inspection | Executed by the service-backed CI job, but it instantiates `DistributedRateLimiter` directly rather than `RedisRateLimitRuntime` |
-| Disconnect reproduction | First consume connected and succeeded; after simulated connection loss, the second consume failed and the connect count remained 1 |
+| Enforced package V8 coverage | 95.04% statements, 91.42% branches, 92.3% functions, 95.69% lines |
+| Real-Redis suite inspection | The service-backed CI job instantiates `RedisRateLimitRuntime`, kills its production client connection, and proves bounded recovery |
+| Lifecycle regression | Concurrent connect deduplication, initial rejection recovery, post-ready reconnect, close-after-connect, and close-during-connect all pass |
 
-The coverage figures are measurements, not an enforced repository baseline.
-They include all `src/` files, with `policy.ts` at 100% of instrumented metrics,
-`distributed-rate-limiter.ts` at 86.95% lines/85.71% branches, and
-`redis-runtime.ts` at 83.87% lines/64.28% branches.
+The coverage figures are enforced by the package-owned configuration and root
+`test:coverage` command rather than recorded as an ad hoc measurement.
 
 ## Architecture and ownership
 
@@ -146,10 +145,10 @@ not prove the numeric table or conditional-scope semantics; tests must do that.
 | --- | --- |
 | `RateLimitScriptExecutor.eval` | A narrow adapter seam that isolates the algorithm from ioredis and makes malformed replies testable. Its shape matches the single Redis command actually required. |
 | `CONSUME_SCRIPT` | Cohesive intentional complexity. One Lua script is necessary for all-or-nothing multi-dimension evaluation. Splitting it would weaken locality. It uses integer Redis replies, checks every current count first, increments only on full admission, and applies expiry on first increment. |
-| `counterKey` | Uses SHA-256 over endpoint class, dimension kind, and identifier with NUL separators. Raw subject identifiers never enter Redis keys. The explicit bounds error is correct defensive programming. Prefix versioning exists but is manually maintained (RL-008). |
+| `counterKey` | Uses SHA-256 over endpoint class, dimension kind, and identifier with NUL separators. Raw subject identifiers never enter Redis keys. Its prefix is derived from the policy-owned counter-schema compatibility identity. |
 | `parseScriptResult` | Validates tuple shape and integer elements before its single justified tuple assertion. There is no `any`, unchecked external cast, or silent allow path. |
 | `DistributedRateLimiter.constructor` | Accepts its only dependency explicitly. This is testable and avoids hidden process-global Redis state. |
-| `DistributedRateLimiter.consume` | Readable orchestration: validate non-empty input, derive keys, make one operation, decode allow/reject, bound retry to 1–60 seconds, and return a finite dimension kind. Its missing numeric/duplicate-dimension validation is RL-003. |
+| `DistributedRateLimiter.consume` | Readable orchestration: validate endpoint, window, identifier, limit, and dimension uniqueness invariants; derive keys; make one operation; decode allow/reject; bound retry to 1–60 seconds; and return a finite dimension kind. |
 
 The fixed-window algorithm can allow traffic on both sides of a wall-clock
 window boundary; that is an inherent property of the explicitly chosen fixed
@@ -170,10 +169,10 @@ will not. That makes non-clustered Redis topology an architectural prerequisite
 | `RedisRateLimitRuntime.constructor` | Correctly owns one lazy client, disables the offline queue and automatic retry strategy, bounds ioredis connect/command settings, and installs an error listener so EventEmitter errors do not crash the process. Backend errors remain observable at caller decision metrics. |
 | executor closure | Applies one end-to-end deadline around connect plus `EVAL`, which is better than unrelated per-step timers. It forwards only strings and the declared key count. |
 | `consume` | A deliberately thin delegation; no redundant behavior or abstraction. |
-| `close` | Correctly chooses graceful `quit` only for a ready client and immediate disconnect otherwise. Both branches lack direct package-test coverage (RL-005/RL-006). |
-| `connect` | Correctly deduplicates concurrent first connects and clears the promise after an initial rejection. It fails to clear a successfully resolved promise when the client later leaves `ready`, preventing reconnection (RL-001). |
+| `close` | Chooses graceful `quit` only for a ready client and immediate disconnect otherwise, permanently preventing later reconnect. |
+| `connect` | Deduplicates concurrent connects, clears settled attempts, reconnects a non-ready client, and rejects/disconnects when shutdown wins an in-flight connection race. |
 | `withDeadline` | Owns and unreferences its timer, clears it in `finally`, disconnects on expiry, and treats a racing unknown Redis outcome conservatively. The timer does not cancel JavaScript work itself; disconnect is the correct available cancellation mechanism for this client. |
-| `operationTimeout` | Applies a finite default and validates a safe 100–10,000 ms integer range. Tests cover only the lower rejection and one accepted value, not the default, upper edge, upper rejection, fractional, or non-finite cases. |
+| `operationTimeout` | Applies a finite default and validates a safe 100–10,000 ms integer range, including upper, fractional, and non-finite rejection coverage. |
 
 ### `src/index.ts`
 
@@ -194,10 +193,8 @@ classification contract prevent silent unclassified routes. The dynamic module
 owns shutdown when it owns the Redis runtime and accepts an injected consumer
 for tests.
 
-One type loses precision at this seam: `RateLimitMetricRecorder` widens
-`limitedDimension` from `RateLimitDimensionKind` to `string` (RL-007). Current
-production calls remain finite, but the interface no longer prevents a future
-high-cardinality value.
+`RateLimitMetricRecorder` preserves `RateLimitDimensionKind` at the application
+seam, preventing a future arbitrary high-cardinality label.
 
 ### Worker
 
@@ -217,46 +214,38 @@ debt.
 ### Package tests
 
 `distributed-rate-limiter.test.ts` proves one atomic invocation, secret-free
-keys, argument ordering, a capped rejection result, and fail-safe malformed
-reply handling. It does not prove empty dimensions, the full invalid reply
-matrix, retry rounding at lower and upper edges, duplicate dimensions, numeric
-invariants, or key isolation/stability.
+keys, argument ordering, the counter-schema identity, a capped rejection
+result, fail-safe malformed reply handling, and invalid decision rejection for
+empty/duplicate dimensions, blank identifiers, unsafe limits, and invalid or
+unsafe windows.
 
-`policy.test.ts` proves representative identity, provider, actor-only, missing
-subject, and fail-mode cases. It does not data-drive all endpoint classes
-against ADR-012's complete expected table, and therefore would not catch many
-accidental limit edits. It also does not settle conditional “when scoped”
-behavior.
+`policy.test.ts` locks every endpoint class to ADR-012's exact dimensions,
+limits, window, and failure mode. It also proves required subjects fail closed
+and conditional workspace/connection dimensions are omitted only when the
+request is not scoped to them.
 
 `redis-runtime.test.ts` uses fake timers and an ioredis module mock to prove
-client options, stalled-connect timeout, stalled-command timeout, and one lower
-configuration bound. It does not prove successful consumption, concurrent
-connect deduplication, initial-connect rejection recovery, post-ready disconnect
-recovery, deadline cleanup after success, close branches, or most timeout
-validation edges. Its “resets the socket for the next decision” test checks only
-that `disconnect` was called; it never makes the next decision, which allowed
-RL-001 to pass.
+client options, stalled-connect and stalled-command deadlines, concurrent
+connect deduplication, initial-connect rejection recovery, post-ready reconnect,
+closed-runtime rejection, close during an in-flight connect, and the timeout
+configuration boundary.
 
 ### Real Redis and CI
 
-The API integration suite provides valuable real-Redis evidence for exact
-concurrent thresholds, expiry recovery, every dimension kind, and noisy/quiet
-tenant isolation. It also includes a 10-second elapsed-time guard. However, it
-constructs `DistributedRateLimiter` around its own already-connected Redis
-client. It therefore proves the Lua algorithm but bypasses every production
-behavior in `RedisRateLimitRuntime`: lazy connect, operation deadline, reconnect,
-client options, and close.
+The API integration suite provides real-Redis evidence through
+`RedisRateLimitRuntime` for exact concurrent thresholds, expiry recovery, every
+dimension kind, noisy/quiet tenant isolation, and recovery after Redis kills
+the production client's connection. It also includes a 10-second elapsed-time
+guard.
 
-GitHub Actions runs the package's 12 unit tests in the `core` matrix and the
-real-Redis algorithm suite in the service-backed integration job. The package
-is not included in root `test:coverage`, whose enforced critical cohorts are
-workflow-engine, database, worker, and API. Passing CI thus means the existing
-rate-limit tests ran; it does not mean all rate-limit branches or production
-runtime states are covered.
+GitHub Actions runs the package unit tests in the `core` matrix and the
+production-runtime Redis suite in the service-backed integration job. Root
+`test:coverage` includes the package-owned coverage configuration and enforces
+90% statements/lines, 86% branches, and 92% functions.
 
-The tests are useful rather than ceremonial: they assert concurrency and
-security properties, not implementation snapshots. The principal weakness is
-missing state-transition coverage at the concrete Redis adapter.
+The tests assert concurrency and security properties rather than implementation
+snapshots. The remaining package obligation is deployment-topology evidence,
+not an untested repository state transition.
 
 ## Findings and required changes
 
@@ -264,8 +253,8 @@ missing state-transition coverage at the concrete Redis adapter.
 
 - **Severity:** P1.
 - **Classification:** confirmed defect.
-- **Status:** open.
-- **Evidence:** `packages/rate-limit/src/redis-runtime.ts:56-65`. After the first
+- **Status:** fixed in the repository by `1cf2f75`, `69e4b95`, and `01228d5`.
+- **Original evidence (audited tree):** `packages/rate-limit/src/redis-runtime.ts:56-65`. After the first
   successful connect, `this.connection` remains a resolved promise. If client
   status later becomes non-`ready`, `this.connection ??=` does not call
   `redis.connect()` again. The direct reproduction completed one first connect,
@@ -293,7 +282,8 @@ missing state-transition coverage at the concrete Redis adapter.
 
 - **Severity:** P1 if production cluster mode is enabled; otherwise P3 documentation work.
 - **Classification:** unverified production assumption.
-- **Status:** open.
+- **Status:** external production evidence required; no local code change can
+  establish the deployed Redis topology.
 - **Evidence:** `packages/rate-limit/src/distributed-rate-limiter.ts:21-47` sends
   independently hashed actor/workspace/connection keys in one script. The
   repository-owned ECS workload manifest supplies only a `REDIS_URL`; it does
@@ -315,8 +305,8 @@ missing state-transition coverage at the concrete Redis adapter.
 
 - **Severity:** P2.
 - **Classification:** maintainability improvement with fail-safe correctness implications.
-- **Status:** open.
-- **Evidence:** `packages/rate-limit/src/distributed-rate-limiter.ts:78-95`
+- **Status:** fixed in the repository by `1cf2f75` and hardened by `01228d5`.
+- **Original evidence (audited tree):** `packages/rate-limit/src/distributed-rate-limiter.ts:78-95`
   rejects only an empty dimension list. Public callers may construct decisions
   with zero, negative, fractional, non-safe, or extreme windows/limits, blank
   identifiers, or duplicate counter keys.
@@ -334,8 +324,8 @@ missing state-transition coverage at the concrete Redis adapter.
 
 - **Severity:** P2.
 - **Classification:** maintainability improvement and specification gap.
-- **Status:** open.
-- **Evidence:** `packages/rate-limit/test/policy.test.ts` directly checks only
+- **Status:** fixed in the repository by `1cf2f75`.
+- **Original evidence (audited tree):** `packages/rate-limit/test/policy.test.ts` directly checks only
   identity start, provider test, actor mutation, workflow compile failure, and
   two failure modes. ADR-012 defines twelve exact endpoint rows and describes
   workspace/connection dimensions as applying “when scoped” or “when selected,”
@@ -354,8 +344,9 @@ missing state-transition coverage at the concrete Redis adapter.
 
 - **Severity:** P2.
 - **Classification:** maintainability improvement.
-- **Status:** open.
-- **Evidence:** `apps/api/test/rate-limit/distributed-rate-limiter.integration.test.ts:25-33`
+- **Status:** fixed in the repository by `69e4b95`; the service-backed CI cohort
+  executes the production runtime and connection-loss recovery assertion.
+- **Original evidence (audited tree):** `apps/api/test/rate-limit/distributed-rate-limiter.integration.test.ts:25-33`
   creates and connects ioredis itself, then passes that client directly to
   `DistributedRateLimiter`.
 - **Impact:** the strongest environment test cannot detect production adapter
@@ -372,8 +363,10 @@ missing state-transition coverage at the concrete Redis adapter.
 
 - **Severity:** P2.
 - **Classification:** continuous control gap.
-- **Status:** open.
-- **Evidence:** root `test:coverage` includes workflow-engine, database, worker,
+- **Status:** fixed as a continuous repository control by `080c171`; current
+  coverage is 95.04% statements, 91.42% branches, 92.3% functions, and 95.69%
+  lines.
+- **Original evidence (audited tree):** root `test:coverage` includes workflow-engine, database, worker,
   and API only. An ad hoc run measured 84.05% statements and 79.48% branches for
   this package; the concrete Redis runtime has 64.28% branch coverage.
 - **Impact:** a future PR may reduce rate-limit coverage while all required
@@ -390,8 +383,9 @@ missing state-transition coverage at the concrete Redis adapter.
 
 - **Severity:** P3.
 - **Classification:** maintainability improvement.
-- **Status:** open.
-- **Evidence:** `apps/api/src/platform/rate-limit/interceptor.ts:27-34` types
+- **Status:** fixed in the repository by `1cf2f75`; the API metric seam retains
+  `RateLimitDimensionKind`.
+- **Original evidence (audited tree):** `apps/api/src/platform/rate-limit/interceptor.ts:27-34` types
   `limitedDimension?: string`, although the package result provides
   `RateLimitDimensionKind`.
 - **Impact:** current calls are safe, but the adapter no longer enforces the
@@ -405,8 +399,10 @@ missing state-transition coverage at the concrete Redis adapter.
 
 - **Severity:** P3.
 - **Classification:** maintainability improvement.
-- **Status:** open.
-- **Evidence:** policy limits/window live in `policy.ts`, while the literal
+- **Status:** fixed in the repository by `1cf2f75` and `01228d5`; the named
+  counter-schema version lives beside the policy, drives key construction, is
+  covered by a compatibility assertion, and documents when a bump is required.
+- **Original evidence (audited tree):** policy limits/window live in `policy.ts`, while the literal
   `pertexo:abuse:v1` namespace lives independently in
   `distributed-rate-limiter.ts:61`.
 - **Impact:** a rolling deployment that materially changes window semantics can
@@ -418,6 +414,19 @@ missing state-transition coverage at the concrete Redis adapter.
   semantics change. Do not automatically version every tuning-only limit edit.
 - **Required verification:** a policy compatibility test or documentation gate
   proving the expected namespace for the current rules.
+
+### Current remediation evidence
+
+| Finding | Repository evidence | Verification |
+| --- | --- | --- |
+| RL-001 | `redis-runtime.ts` clears settled connect attempts, reconnects non-ready clients, and makes shutdown terminal; unit and production-runtime recovery tests cover the state transitions | `pnpm --filter @pertexo/rate-limit test` (29/29); service-backed Redis runtime cohort in CI |
+| RL-002 | Intentionally no repository substitution for deployment evidence | Confirm a non-clustered replicated primary and run the compatibility cohort against that deployed topology |
+| RL-003 | `distributed-rate-limiter.ts` validates endpoint, window, identifier, limit, and unique counter invariants before Redis I/O | Package unit, typecheck, build, ESLint, and coverage checks pass |
+| RL-004 | `policy.test.ts` contains the complete ADR-012 matrix plus required and conditional subject cases | Package unit suite passes |
+| RL-005 | The API Redis integration suite constructs `RedisRateLimitRuntime` and kills its client connection before asserting recovery | Service-backed CI cohort; package lifecycle unit suite passes |
+| RL-006 | `vitest.coverage.config.ts`, the package script, root `test:coverage`, and CI enforce the package thresholds | 95.04% statements, 91.42% branches, 92.3% functions, 95.69% lines |
+| RL-007 | The API recorder accepts only `RateLimitDimensionKind` | `pnpm --filter @pertexo/api typecheck` passes |
+| RL-008 | The policy-owned compatibility constant drives key construction and documents incompatible-semantics versioning | Package compatibility assertion passes |
 
 ## Non-findings and rejected refactors
 

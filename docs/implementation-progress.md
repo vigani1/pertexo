@@ -1,6 +1,6 @@
 # Backend Implementation Progress
 
-Last updated: 2026-09-04
+Last updated: 2026-09-05
 
 This file tracks delivery against
 [the authoritative backend plan](./workflow-platform-backend-plan.md). A phase
@@ -21,6 +21,14 @@ coverage, immutability, and tooling entries are controlled, continuous,
 evidence-gated, or conditional rather than unperformed repository defects.
 Green repository checks are not represented as a substitute for live
 production evidence.
+
+Package-audit remediation is in progress. The rate-limit audit now has seven
+repository-controlled findings fixed (RL-001 and RL-003 through RL-008), backed
+by 29 package tests and enforced coverage of 95.04% statements, 91.42% branches,
+92.3% functions, and 95.69% lines. RL-002 remains correctly classified as an
+external evidence obligation: production must use and demonstrate a
+non-clustered replicated Redis primary compatible with the atomic multi-key Lua
+policy. Local mocks and repository fixtures are not treated as that evidence.
 
 ## Status summary
 
