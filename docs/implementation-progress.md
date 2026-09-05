@@ -5135,6 +5135,37 @@ Implementation commits: `b4f2b22`, `078cd53`, `47b7fa6`, `1e8ec80`,
 `9969ff7`, `1153d3f`, `19ae523`, `6c49c7e`, `325fd88`, `dc4dea1`, and
 `59a1dca`. No phase status changed.
 
+### Granular package-audit remediation — integrations
+
+- [x] Implement INT-001 through INT-005, INT-007, INT-008, INT-011,
+      INT-012, and INT-014. Request/attempt cancellation reaches bounded KMS,
+      durable pre-dispatch truth is preserved, provider fence failures retain
+      their typed meaning, HTTP field values are serializable, request copies
+      and redaction stay bounded, diagnostics are safe, and malformed HTTP
+      invocations produce one stable pre-dispatch failure.
+- [x] Consolidate connection and webhook envelope encryption behind one
+      private KMS/AES-GCM core while retaining separate domain contexts,
+      public envelope shapes, opaque errors, and caller-buffer ownership.
+      Public-facade tests cover both KMS contexts, tampering, cancellation,
+      late-provider zeroization, and cleanup after failed admission.
+- [x] Preserve INT-009 as a scheduled, pinned IANA-registry drift safeguard.
+      Upstream allocation changes still require human security review.
+- [x] Add the entire integrations source tree to package coverage and the root
+      source-hashed risk report. The fresh 8-file / 134-test run records 87.61%
+      statements (969/1,106), 76.59% branches (540/705), 92.30% functions
+      (180/195), and 88.82% lines (938/1,056).
+- [ ] Finish INT-006 by resolving the 165 newly exposed uncovered branches
+      through public behavior tests or narrow source-hashed classification.
+- [ ] Supply protected Slack, Resend, and AWS KMS sandbox evidence for INT-010;
+      local fakes do not prove provider compatibility.
+- [ ] Supply measured production-like DNS/connect/TLS concurrency and latency
+      evidence for INT-013 before changing the safe no-pooling policy.
+
+Implementation commits: `51bed2c`, `1a57c8b`, `692cf9e`, `dcbf7b4`,
+`14bcaf2`, `19ae523`, `c23afd6`, and `a97ae90`. Focused typecheck, build,
+ESLint, package tests/coverage, and repository duplication validation pass. No
+phase status changed.
+
 ## Update protocol
 
 When a checkpoint changes status:

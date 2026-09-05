@@ -12,10 +12,11 @@
 - **Architecture sources:** the authoritative backend plan; ADRs 001, 007, 010,
   012, 016, 022, 025, and 026; and the credential-boundary operating guide.
 - **Audit status:** granularly certified for the pinned tree.
-- **Implementation status:** three high-priority correctness/lifecycle issues,
-  nine medium security, performance, test, or maintainability issues, and two
-  low-priority cleanup/design issues remain open. Two external-provider
-  assumptions also remain unverified.
+- **Implementation status:** all confirmed correctness, lifecycle, security,
+  and maintainability defects are fixed in the repository. INT-006 remains a
+  partially completed continuous branch-review control. INT-010 and INT-013
+  remain honest external provider/performance evidence obligations, and
+  INT-009 remains a continuously enforced registry-drift safeguard.
 
 This package is useful and appropriately owns the boundary between platform
 node contracts and external provider/network behavior. It contains four deep
@@ -679,7 +680,12 @@ conflict between the plan and modern code quality.
   aggregate operation deadline.
 - **Verification:** API and worker integration tests with a KMS fake that blocks
   until aborted; assert no late state transition and bounded completion.
-- **Status:** open.
+- **Status:** Fixed by `51bed2c`.
+- **Implementation evidence:** API request lifecycles and worker attempts now
+  propagate their bounded `AbortSignal` through connection and webhook
+  encryption, and `createBoundedKmsClient` applies explicit attempt, connect,
+  request, and socket budgets. Blocking-KMS regressions prove cancellation and
+  late-plaintext zeroization.
 
 ### INT-002 — A dispatch marker can commit after a definite pre-dispatch timeout
 
@@ -701,7 +707,11 @@ conflict between the plan and modern code quality.
 - **Verification:** a real repository-backed fence integration with timeout at
   each pre/post-commit point; assert persisted evidence and reported outcome
   cannot contradict.
-- **Status:** open.
+- **Status:** Fixed by `51bed2c`.
+- **Implementation evidence:** secure HTTP now waits for the authoritative
+  fence result before returning and treats a timeout observed after marker
+  commit as possibly dispatched. Regression coverage proves that a late fence
+  cannot contradict the reported durable dispatch truth.
 
 ### INT-003 — Final-fence error meaning changes through the real HTTP adapter
 
@@ -722,7 +732,10 @@ conflict between the plan and modern code quality.
 - **Verification:** composition tests for HTTP, Slack, and email using real
   clients plus fake resolver/transport, covering every fence rejection and
   asserting zero transport calls and exact outcome classification.
-- **Status:** open.
+- **Status:** Fixed by `51bed2c` and consolidated by `1a57c8b`.
+- **Implementation evidence:** all provider executors use the same typed
+  pre-dispatch translation boundary, and real-client composition tests prove
+  exact failure classification with zero transport calls.
 
 ### INT-004 — Header schemas admit invalid control bytes
 
@@ -739,7 +752,11 @@ conflict between the plan and modern code quality.
   modules and keep framing-header policies separate.
 - **Verification:** table tests over all bytes 0x00-0x1f and 0x7f plus a real
   Node transport test proving every admitted value serializes.
-- **Status:** open; cross-reference CON-007.
+- **Status:** Fixed by `692cf9e`; cross-reference CON-007.
+- **Implementation evidence:** the owner-local HTTP field-value predicate is
+  shared by persisted request and resolved credential validation. Exhaustive
+  C0/DEL table tests and a real Node transport case prove admitted values can
+  be serialized before dispatch evidence is committed.
 
 ### INT-005 — Two envelope-encryption implementations duplicate and drift
 
@@ -757,7 +774,13 @@ conflict between the plan and modern code quality.
   limits, and public types.
 - **Verification:** shared conformance matrix plus domain-specific tests;
   mutation tests for context/tag/ciphertext and explicit caller-buffer contract.
-- **Status:** open.
+- **Status:** Fixed by `a97ae90`.
+- **Implementation evidence:** connection and webhook facades now delegate KMS
+  GenerateDataKey/Decrypt, AES-256-GCM, bounds, base64url admission,
+  cancellation checks, and zeroization to one private envelope core. Their
+  distinct contexts, public envelope shapes, opaque errors, and caller-buffer
+  contracts remain explicit. Both KMS contexts, tampering, cancellation, and
+  failure cleanup are covered through public facades.
 
 ### INT-006 — Security-critical integration branches have no coverage ratchet
 
@@ -772,7 +795,13 @@ conflict between the plan and modern code quality.
   infeasible branches with fingerprints and reasons.
 - **Verification:** CI fails when a covered risk branch is removed or a new
   unreviewed branch appears.
-- **Status:** open.
+- **Status:** Partially fixed by `19ae523` and `c23afd6`; continuous branch
+  review remains actionable.
+- **Implementation evidence:** package coverage is thresholded and now feeds
+  exact test-health and source-fingerprinted branch records into the root risk
+  report. The current 134-test run records 87.61% statements, 76.59% branches,
+  92.30% functions, and 88.82% lines. It exposes 165 unreviewed branches rather
+  than claiming those decisions are reviewed.
 
 ### INT-007 — The secure HTTP request-body copy is not cleared
 
@@ -789,7 +818,11 @@ conflict between the plan and modern code quality.
   failure. Document that JS cannot guarantee physical memory erasure.
 - **Verification:** inject/inspect a transport-visible buffer and assert it is
   zeroed after success, redirect rejection, timeout, cancellation, and failure.
-- **Status:** open.
+- **Status:** Fixed by `692cf9e`.
+- **Implementation evidence:** the secure client owns its parsed request-body
+  copy and clears it in an outer `finally` across success, redirects,
+  cancellation, timeout, and transport failure; regression tests observe the
+  transport-visible bytes after settlement.
 
 ### INT-008 — Redaction can amplify provider input before enforcing its bound
 
@@ -805,7 +838,11 @@ conflict between the plan and modern code quality.
   bounded byte chunks or a streaming multi-pattern matcher.
 - **Verification:** worst-case 1-byte, overlapping, 32-pattern, and cross-chunk
   benchmarks with hard memory/time ceilings.
-- **Status:** open.
+- **Status:** Fixed by `692cf9e`.
+- **Implementation evidence:** redaction allocates only within the remaining
+  output budget and rejects during matching rather than after amplified output
+  construction. Adversarial one-byte, overlapping, and chunk-boundary tests
+  cover the bounded behavior.
 
 ### INT-009 — SSRF special-address policy has no registry-drift control
 
@@ -845,7 +882,7 @@ conflict between the plan and modern code quality.
   effects and sanitized evidence. Never use production destinations or secrets.
 - **Verification:** release evidence records successful Slack, Resend, and KMS
   contract checks or an explicit approved exception.
-- **Status:** open external evidence gap.
+- **Status:** External production evidence required; not locally actionable.
 
 ### INT-011 — Network failure diagnostics are too shallow
 
@@ -862,7 +899,11 @@ conflict between the plan and modern code quality.
   exception messages.
 - **Verification:** telemetry tests assert useful dimensions and forbidden-data
   absence for every failure stage.
-- **Status:** open.
+- **Status:** Fixed by `dcbf7b4`.
+- **Implementation evidence:** secure HTTP emits bounded categorical
+  stage/reason/latency diagnostics. Tests prove diagnostic callback failure
+  cannot alter request truth and that URLs, addresses, headers, bodies,
+  credentials, and raw exception text are absent.
 
 ### INT-012 — Public/version and test language contains obsolete intent
 
@@ -877,7 +918,10 @@ conflict between the plan and modern code quality.
   and correct the test assertion to current catalog behavior. Remove the
   duplicated status comparison in secure HTTP.
 - **Verification:** repository symbol search and updated test names/assertions.
-- **Status:** open.
+- **Status:** Fixed by `692cf9e` and `c23afd6`.
+- **Implementation evidence:** the unused manifest-version export was removed,
+  the obsolete release-status test language now describes the published
+  contract, and repository symbol search finds no remaining dead alias.
 
 ### INT-013 — DNS and connection lifecycle needs measured production policy
 
@@ -892,7 +936,8 @@ conflict between the plan and modern code quality.
   justified, design origin-and-pinned-address-scoped pooling with bounded age,
   explicit close ownership, DNS revalidation, and TLS-host preservation.
 - **Verification:** load test before/after with SSRF rebinding regression tests.
-- **Status:** open evidence gap; no refactor until measured.
+- **Status:** External performance evidence required; no transport refactor is
+  justified until the specified production-like measurement exists.
 
 ### INT-014 — HTTP executor leaks raw schema errors outside its failure contract
 
@@ -914,7 +959,11 @@ conflict between the plan and modern code quality.
   through the registration's public `execute` function; every case must produce
   the same typed, definite, pre-dispatch configuration outcome and zero
   credential/network calls.
-- **Status:** open.
+- **Status:** Fixed by `51bed2c`.
+- **Implementation evidence:** config and input admission are translated to the
+  same bounded, definite, pre-dispatch configuration failure used by the other
+  provider executors. Public-registration table tests cover malformed values,
+  unknown fields, and bounds with zero credential/network calls.
 
 ## What should remain unchanged
 
