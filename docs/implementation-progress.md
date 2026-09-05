@@ -5166,6 +5166,44 @@ Implementation commits: `51bed2c`, `1a57c8b`, `692cf9e`, `dcbf7b4`,
 ESLint, package tests/coverage, and repository duplication validation pass. No
 phase status changed.
 
+### Granular package-audit remediation — database
+
+- [x] Implement DB-001 through DB-010, DB-012, DB-014, and DB-015 while
+      preserving PostgreSQL authority, forced RLS, transaction/CAS semantics,
+      cancellation, leases, and fencing. DB-013 is explicitly retained as
+      cohesive, erased type-level complexity after an acyclic graph review.
+- [x] Share one role pool per process, enforce aggregate deployment capacity
+      and role-specific transaction/query deadlines, emit bounded
+      infrastructure diagnostics, release database locks before external
+      lifecycle I/O, and support declared transactional/online/resumable
+      migration modes.
+- [x] Bound hot local work: observation windows share one cross-package
+      contract, fact loading uses 1,000-row pages plus one UUID lookup,
+      publication batches trigger projection, and coordinator commits index
+      plans once and batch admissions, attempts, outbox rows, and run events.
+      Per-row CAS updates and the retained-version integrity scan remain where
+      consolidation would weaken fail-closed corruption detection.
+- [x] Compare the fully migrated catalog against all 48 typed tables and 19
+      raw-SQL contracts. The first run found and fixed four missing typed
+      columns; column/nullability, RLS, ACL, primary-key, and index drift now
+      fails the real-service suite.
+- [x] Publish separate unit and 330-test PostgreSQL coverage plus a verified
+      merged 145-file report. Current combined coverage is 79.96% statements
+      (4,956/6,198), 71.20% branches (3,036/4,264), 85.42% functions
+      (967/1,132), and 81.91% lines (4,832/5,899).
+- [ ] Supply DB-011 representative production workload, planner, cache, WAL,
+      lock, vacuum, and index-usage evidence at expected and burst cardinality.
+- [ ] Supply DB-017 deployed backup/PITR, restore, pooler, failover, RPO/RTO,
+      autovacuum, and replica-admission evidence. Keep the DB-016 compatibility
+      retirement inventory current until deployed populations permit removal.
+
+Implementation commits include `8406d1e`, `d4ee342`, `9069470`, `4f8d194`,
+`9c52139`, `3d64220`, `f4163cf`, `dadaaf1`, `b88a53d`, `cf5dad7`, `29f8e2e`,
+`ac54cbc`, `c185f32`, `fa3cfc4`, `5d13a13`, `8cda911`, and `a0b6c60`.
+Focused unit/type checks, 330/330 full PostgreSQL integration tests with
+coverage, schema-shape tests, and coordinator concurrency suites pass. No phase
+status changed.
+
 ## Update protocol
 
 When a checkpoint changes status:

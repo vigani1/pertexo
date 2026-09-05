@@ -30,10 +30,12 @@
   schema guidance used by this review; the complexity-retention register; and
   the raw-SQL table registry.
 - **Audit status:** granularly certified for the pinned tree.
-- **Implementation status:** four high-priority architectural/production-
-  readiness issues, nine medium-priority performance, assurance, and
-  maintainability issues, three low-priority cleanup/control issues, and one
-  external production-evidence obligation remain open.
+- **Implementation status:** all repository-actionable correctness,
+  architecture, performance, assurance, and observability findings are fixed
+  or explicitly dispositioned below. DB-013 retains cohesive transaction
+  complexity intentionally. DB-011 and DB-017 remain external workload and
+  deployed-platform evidence obligations; DB-016 remains a continuous
+  compatibility-inventory control.
 
 This package is the durable center of the platform and is substantially better
 than its size suggests. It correctly treats PostgreSQL as authoritative, keeps
@@ -761,7 +763,10 @@ review.
 ### DB-001 — Persisted observation capacity disagrees with the engine
 
 - **Severity/classification:** P1 confirmed defect.
-- **Status:** open; also recorded as WFE-001.
+- **Status:** Fixed by `8406d1e`; also recorded as WFE-001.
+- **Implementation evidence:** one workflow-model observation-window contract
+  now governs database persistence and engine admission, with exact-boundary
+  and over-limit regressions across both packages.
 - **Evidence:** `coordinator-run-store-observations.ts` accepts 10,000 facts and
   up to 4,096 canonical bytes per fact, for a 40,960,000-byte aggregate. The
   engine first normalizes the complete observation array through a generic
@@ -784,7 +789,11 @@ review.
 ### DB-002 — Repository factories multiply the process connection budget
 
 - **Severity/classification:** P1 architecture and production-capacity defect.
-- **Status:** open.
+- **Status:** Fixed by `d4ee342`.
+- **Implementation evidence:** each process/role owns one injected
+  `DatabaseRuntime`; repositories lease but never close its pool. Composition,
+  close-once, real `pg_stat_activity`, and aggregate deployment-budget tests
+  prove the shared capacity boundary.
 - **Evidence:** at least 27 production factory sites call
   `createDatabasePool`; most do not accept a supplied pool. API composition
   constructs independent workspace, identity, OIDC, authoring, run, connection,
@@ -809,7 +818,11 @@ review.
 ### DB-003 — External I/O is awaited while database locks are held
 
 - **Severity/classification:** P1 architecture/reliability risk.
-- **Status:** open.
+- **Status:** Fixed by `9069470` and `4f8d194`.
+- **Implementation evidence:** retention and purge paths persist a leased,
+  fenced intent, release the transaction before network work, and complete in
+  a short revalidating transaction. Delayed, timeout, stale-fence, and
+  post-effect recovery tests cover the protocol.
 - **Evidence:** preview retention, run-artifact retention, destructive
   retention, lifecycle commands, control-ledger recovery, and workspace purge
   begin transactions, set lock/statement timeouts, set
@@ -835,7 +848,12 @@ review.
 ### DB-004 — The migration runner cannot deliver the documented online strategy
 
 - **Severity/classification:** P1 plan-compliance and production-readiness gap.
-- **Status:** open before a large production dataset exists.
+- **Status:** Fixed in repository tooling by `9c52139`; representative deployed
+  dataset timing remains part of DB-011.
+- **Implementation evidence:** the immutable execution plan declares
+  transactional, nontransactional-online, and resumable modes; the runner
+  retains the release advisory lock while durably recording each step and
+  tests interruption/resume and incompatible declarations.
 - **Evidence:** `migrateDatabase` begins one transaction before reading all
   pending files and commits after all have run. All 102 indexes use ordinary
   `CREATE INDEX`; `CREATE INDEX CONCURRENTLY` cannot run in that transaction.
@@ -896,7 +914,13 @@ review.
 ### DB-006 — Coverage reporting does not describe the whole package
 
 - **Severity/classification:** P2 assurance improvement.
-- **Status:** open; existing tests remain valuable.
+- **Status:** Fixed as a continuous CI control by `c185f32`.
+- **Implementation evidence:** service-backed CI now instruments all 145
+  database source files while running 330 PostgreSQL tests, separately runs
+  the unit ratchet, verifies identical instrumentation, and publishes a merged
+  report. Current combined coverage is 79.96% statements (4,956/6,198), 71.20%
+  branches (3,036/4,264), 85.42% functions (967/1,132), and 81.91% lines
+  (4,832/5,899); integration coverage has explicit non-decreasing floors.
 - **Evidence:** CI enforces 95.38% branch coverage only for
   `tenant-access/workspace.ts`. Instrumenting all source while running unit tests
   produced 14.71% branches and 23.08% statements because most persistence logic
@@ -915,7 +939,10 @@ review.
 ### DB-007 — Infrastructure and coordinator failures lose diagnostics
 
 - **Severity/classification:** P2 reliability/observability improvement.
-- **Status:** open.
+- **Status:** Fixed by `f4163cf`, `3d9a82f`, and `dadaaf1`.
+- **Implementation evidence:** idle-pool and lock-monitor failures emit only
+  bounded role/operation/error-type diagnostics; telemetry failures cannot
+  change database truth, and pool/transaction outcomes remain distinct.
 - **Evidence:** `createDatabasePool` and several callers install no-op idle-pool
   error listeners; lock-monitor sampling resets state and silently catches all
   failures. Destructive retention catches every error, attempts rollback and
@@ -938,7 +965,12 @@ review.
 ### DB-008 — Publication work grows with all retained versions and triggers
 
 - **Severity/classification:** P2 query/performance improvement.
-- **Status:** open.
+- **Status:** Fixed by `fa3cfc4` and corrected by `5d13a13`.
+- **Implementation evidence:** trigger projection is one bounded set-based
+  upsert. Retained versions are mapped once per row; the full scan is
+  intentionally retained because the real-service corruption regression
+  proves that a direct checksum lookup would silently ignore a corrupt sibling
+  version and weaken the durable fail-closed contract.
 - **Evidence:** publication selects and decodes every version for a workflow,
   then finds a checksum in JavaScript despite a unique
   `(workflow_id, checksum)` identity. It separately searches the rows again.
@@ -956,7 +988,14 @@ review.
 ### DB-009 — Legal maximum transition plans cause per-row SQL and repeated scans
 
 - **Severity/classification:** P2 performance/maintainability improvement.
-- **Status:** open.
+- **Status:** Fixed where batching preserves invariants by `8cda911` and
+  `a0b6c60`; remaining row-fenced updates are intentionally explicit.
+- **Implementation evidence:** plan identities are indexed once and initial
+  node admissions, attempt rows, outbox rows, and ordered run events use
+  set-based writes with exact row-count checks. Existing-node retry/wakeup and
+  terminal transitions retain per-row CAS because each row has different
+  admissibility and corruption outcomes. Focused maximum-window, concurrency,
+  retry, output, and foreach suites pass against PostgreSQL.
 - **Evidence:** coordinator commit loops over failures, node admissions,
   attempts, and events, issuing sequential statements; several loops perform
   `find`/`some` over the same plan arrays. Publication and trigger
@@ -973,7 +1012,11 @@ review.
 ### DB-010 — Normal transactions lack an enforceable deadline policy
 
 - **Severity/classification:** P2 reliability improvement.
-- **Status:** open.
+- **Status:** Fixed by `29f8e2e`.
+- **Implementation evidence:** every pool now receives an enforceable
+  role-specific statement, lock, driver-query, and idle-in-transaction budget;
+  invalid or disabled overrides fail closed. Unit tests cover defaults and
+  explicit narrower values, while real runtime tests prove normal composition.
 - **Evidence:** pool configuration sets connection and idle-pool timeouts, but
   most repositories have no default PostgreSQL `statement_timeout`,
   `lock_timeout`, or `idle_in_transaction_session_timeout`. The shared tenant
@@ -993,7 +1036,9 @@ review.
 ### DB-011 — Hot query and index design lacks representative workload proof
 
 - **Severity/classification:** P2 unverified performance assumption.
-- **Status:** open and explicitly dependent on workload evidence.
+- **Status:** External workload evidence required. DB-005 supplies local
+  1/1,500/10,000-fact plans and timings; production cardinality, cache, WAL,
+  vacuum, and lock evidence cannot be manufactured in repository tests.
 - **Evidence:** functional integration tests run mostly on small disposable
   datasets. No checked plan/baseline exists for outbox claims, schedule/wakeup
   scans, coordinator fact loading, run/event pagination, retention/purge, or
@@ -1012,7 +1057,11 @@ review.
 ### DB-012 — Schema ownership is checked more deeply for names than shapes
 
 - **Severity/classification:** P2 assurance/maintainability improvement.
-- **Status:** open.
+- **Status:** Fixed as a continuous migrated-catalog control by `ac54cbc`.
+- **Implementation evidence:** a disposable fully migrated database is compared
+  against all 48 typed tables for exact column names and nullability and all 19
+  raw-SQL contracts for RLS/force-RLS, least-privilege ACLs, primary keys, and
+  indexes. The first run found and fixed four real typed-schema omissions.
 - **Evidence:** the schema validator extracts migration table names, Drizzle
   table names, registry entries, UUID defaults, and forced-RLS declarations.
   It does not compare columns, types, nullability, defaults, keys, checks,
@@ -1030,7 +1079,15 @@ review.
 ### DB-013 — Contract ownership and large factory locality can be clearer
 
 - **Severity/classification:** P2 maintainability improvement.
-- **Status:** open; no runtime circular dependency exists.
+- **Status:** Intentionally accepted cohesive complexity; no runtime circular
+  dependency or behavioral defect exists.
+- **Disposition:** the composition roots expose owner-local types to their
+  child modules through erased imports, while runtime graphs remain acyclic.
+  Further splitting would add navigation and type-only files without hiding
+  transaction policy. The already extracted execution, authoring, identity,
+  operator, lifecycle, and connection capability modules remain the useful
+  seams; future changes must pass Knip, declaration-surface, complexity, and
+  duplication gates.
 - **Evidence:** authoring, coordinator, dispatcher, failure notification,
   operator, and identity child modules import types from composition roots that
   also import those children. `connection-persistence.ts` exports roughly 63
@@ -1088,7 +1145,11 @@ review.
 ### DB-015 — Pool telemetry role and monitor identity are configuration-sensitive
 
 - **Severity/classification:** P3 observability improvement.
-- **Status:** open.
+- **Status:** Fixed by `dadaaf1` and `d4ee342`.
+- **Implementation evidence:** composition supplies an explicit bounded role,
+  monitor identity includes cadence and role, and gauges aggregate capacity,
+  active connections, and waiters across every pool for that role without DSN
+  or username labels.
 - **Evidence:** pool role is inferred from hard-coded default usernames, while
   configuration permits custom role names; custom deployments report `other`.
   Lock monitors are shared by connection identity but the key omits sample
@@ -1131,7 +1192,7 @@ review.
 ### DB-017 — Backup, restore, pooler, vacuum, and failover claims require deployed evidence
 
 - **Severity/classification:** P2 unverified production assumption.
-- **Status:** open outside local code.
+- **Status:** External production evidence required; not repository-actionable.
 - **Evidence:** the plan requires managed PostgreSQL backups/PITR, restore
   drills, connection pooling, RPO/RTO, multi-AZ behavior, and operational
   monitoring. Disposable CI databases prove application recovery semantics but
