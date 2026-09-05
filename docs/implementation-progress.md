@@ -4980,6 +4980,32 @@ Implementation commits: `7371664`, `f6c7a53`, `19ae523`, `d6277f2`,
 `8b919d9`, `63ac0f7`, `4d26978`, `436eaa3`, `d40b583`, `4fe3f8e`,
 `6b20ffd`, and `3d2838f`. No phase status changed.
 
+### Granular package-audit remediation — observability
+
+- [x] Reconcile OBS-001 through OBS-010 against current code. Nine
+      repository-actionable findings are implemented; OBS-006 is explicitly
+      retained as external production evidence rather than misreported as a
+      local code defect.
+- [x] Harden structured logging against secret-name variants and hostile
+      reflection/property access, preserve bounded safe Nest diagnostics, and
+      enforce delay and metric numeric invariants.
+- [x] Require execution-storage telemetry and explicitly pin the eight
+      supported OpenTelemetry instrumentations instead of inheriting a mutable
+      meta-package default.
+- [x] Enforce package risk coverage and semantic operations-asset checks in
+      protected CI. Fresh coverage is 92.10% statements, 90.00% branches,
+      89.88% functions, and 92.64% lines.
+- [x] Fresh focused verification passes: 10 files / 53 tests, package
+      typecheck, build, ESLint, coverage, structural YAML/JSON validation,
+      Prometheus configuration plus 24 alert rules, and collector validation.
+- [ ] Before production launch, identify the deployed trace-backend owner and
+      prove retention, access, sampling, sensitive-attribute handling, and
+      trace-ID retrieval for one real API-to-outbox-to-worker trace (OBS-006).
+
+Implementation commits: `5dc09c3`, `5c639d8`, `bf62f10`, `19ae523`, and
+`ae377ca`. No phase status changed; local collector debug output is not treated
+as production trace-retention evidence.
+
 ## Update protocol
 
 When a checkpoint changes status:

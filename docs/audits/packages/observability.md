@@ -11,10 +11,10 @@
   the alert runbook, package scripts, and relevant GitHub Actions jobs.
 - **Architecture sources:** the authoritative backend plan, ADR-001, ADR-005,
   ADR-015, and the Phase 0C evidence in the implementation progress record.
-- **Audit status:** granularly certified for the pinned implementation tree.
-- **Implementation status:** two confirmed logger defects, one unverified
-  production assumption, two continuous-control gaps, and five maintainability
-  improvements remain open.
+- **Audit status:** reconciled against the current implementation on 2026-06-18.
+- **Implementation status:** every repository-actionable finding is fixed and
+  enforced. OBS-006 remains external production evidence, not unfinished local
+  implementation.
 
 The package is necessary and its high-level shape is good. It gives six process
 roles one small configuration/logging/telemetry interface, keeps OpenTelemetry
@@ -23,13 +23,32 @@ metric vocabularies, and provides useful injection seams. The 412-line
 transport metric factory is intentional cohesive setup, not a reason to split a
 file mechanically.
 
-It is not yet the strongest production observability module it can be. The
-logger's redaction vocabulary misses common secret names and its top-level field
-selection can throw on adversarial objects. The Nest adapter discards most
-non-`Error` diagnostic content. CI checks the shape of operations assets but
-does not parse alert rules or collector configuration with their real binaries,
-and package coverage is measured only on demand. The default auto-instrumentation
-surface is also much broader than its test description suggests.
+The original audit identified nine repository changes and one production-only
+obligation. The repository changes have since landed and are verified below.
+The local collector deliberately keeps its debug trace exporter; production
+launch still requires evidence that the deployed OTLP destination retains and
+serves traces under the documented operational policy.
+
+## Current remediation record
+
+| ID | Final status | Implementation and verification evidence |
+| --- | --- | --- |
+| OBS-001 | Fixed | `5dc09c3`; bounded secret-key classification and positive/negative hostile-input tests in `logger.test.ts`. |
+| OBS-002 | Fixed | `5dc09c3`; fail-safe selection/property access, hostile proxy/getter/error tests, and constant unserializable marker. |
+| OBS-003 | Fixed | `5c639d8`; bounded Nest call-shape parser and coverage of every level plus message, stack, context, object, secret, and oversized inputs. |
+| OBS-004 | Fixed; continuous gate | `ae377ca`; `pnpm observability:check` structurally parses YAML/JSON and runs pinned Prometheus and collector validators in protected CI. |
+| OBS-005 | Fixed; continuous gate | `19ae523`; package thresholds and root risk coverage are enforced. Fresh coverage: 92.10% statements (280/304), 90.00% branches (171/190), 89.88% functions (80/89), and 92.64% lines (277/299). |
+| OBS-006 | External production evidence required | Repository configuration is complete, but no local test can prove the production backend owner, retention/access policy, deployed sampling/redaction, or retrieval of a real API-to-worker trace. |
+| OBS-007 | Fixed | `5dc09c3`; execution-storage observation is required and all worker substitutes implement it. |
+| OBS-008 | Fixed | `5dc09c3`; both maintenance histograms reject negative and non-finite durations and accept zero/positive values. |
+| OBS-009 | Fixed | `bf62f10`; the supported eight-adapter set is explicitly constructed, dependency-pinned, and asserted. |
+| OBS-010 | Fixed | `5dc09c3`; delay values must be non-negative safe integers within the Node timer limit, with invalid-boundary tests. |
+
+Fresh verification on 2026-06-18 passed 10 files / 53 tests, package
+typecheck, build, ESLint, package coverage, structural observability validation,
+Prometheus configuration validation, all 24 alert rules, and OpenTelemetry
+Collector validation. OBS-004 and OBS-005 are continuous safeguards: future
+changes must preserve the protected CI commands and thresholds.
 
 ### Granular certification record
 
@@ -388,7 +407,7 @@ Phase 0C evidence is a historical OTLP capture smoke, not a recurring gate.
 
 - **Severity:** P1.
 - **Classification:** confirmed defect.
-- **Status:** open.
+- **Status:** fixed in `5dc09c3`.
 - **Evidence:** `packages/observability/src/logger.ts:47-64,185-188` uses an
   exact normalized-name set. Direct logging of `privateKey`, `xApiKey`, and
   `authToken` emitted each supplied value unchanged. Existing tests cover only
@@ -409,7 +428,7 @@ Phase 0C evidence is a historical OTLP capture smoke, not a recurring gate.
 
 - **Severity:** P1.
 - **Classification:** confirmed defect.
-- **Status:** open.
+- **Status:** fixed in `5dc09c3`.
 - **Evidence:** `logger.ts:265-274` performs the first `Object.entries(fields)`
   outside `sanitizeRecord`'s try/catch. A proxy whose `ownKeys` throws and an
   object with a throwing enumerable getter both caused `logger.info` to throw in
@@ -429,7 +448,7 @@ Phase 0C evidence is a historical OTLP capture smoke, not a recurring gate.
 
 - **Severity:** P2.
 - **Classification:** maintainability and operations improvement.
-- **Status:** open.
+- **Status:** fixed in `5c639d8`.
 - **Evidence:** `nest-runtime.ts:6-44` records only `messageType` and the last
   optional string. String messages are discarded; a single stack string can be
   mislabeled as `context`. Tests assert the privacy behavior for one actual
@@ -449,7 +468,7 @@ Phase 0C evidence is a historical OTLP capture smoke, not a recurring gate.
 
 - **Severity:** P2.
 - **Classification:** continuous-control gap.
-- **Status:** open.
+- **Status:** fixed in `ae377ca`; retained as a continuous CI safeguard.
 - **Evidence:** `operations-assets.test.ts` uses JSON parsing and substring
   assertions. The deployment-security job runs `docker compose ... config`,
   which validates the Compose document but not mounted Prometheus rules or
@@ -469,7 +488,7 @@ Phase 0C evidence is a historical OTLP capture smoke, not a recurring gate.
 
 - **Severity:** P2.
 - **Classification:** continuous-control gap.
-- **Status:** open.
+- **Status:** fixed in `19ae523`; retained as a continuous coverage safeguard.
 - **Evidence:** `package.json` has no `test:coverage`; root `test:coverage`
   includes workflow-engine, database, worker, and API only. Ad hoc package branch
   and function coverage are 83.54% and 83.33%, with Nest integration at 37.50%
@@ -488,7 +507,8 @@ Phase 0C evidence is a historical OTLP capture smoke, not a recurring gate.
 - **Severity:** P2 until deployment evidence proves it; P1 for production launch
   if no trace backend exists.
 - **Classification:** unverified production assumption.
-- **Status:** open.
+- **Status:** external production evidence required; no repository-only action
+  can close the deployed retrieval and retention obligation.
 - **Evidence:** `otel-collector.yaml` sends metrics to Prometheus but traces only
   to the `debug` exporter. ECS workload declarations require an OTLP endpoint
   without recording a repository-verifiable retention/query backend. The plan
@@ -509,7 +529,7 @@ Phase 0C evidence is a historical OTLP capture smoke, not a recurring gate.
 
 - **Severity:** P3.
 - **Classification:** maintainability improvement.
-- **Status:** open.
+- **Status:** fixed in `5dc09c3`.
 - **Evidence:** `transport-metrics.ts:142-158` makes
   `observeExecutionStorage` optional, while `createTransportMetrics` always
   implements it. The sole production caller uses optional chaining; several
@@ -529,7 +549,7 @@ Phase 0C evidence is a historical OTLP capture smoke, not a recurring gate.
 
 - **Severity:** P3.
 - **Classification:** maintainability improvement.
-- **Status:** open.
+- **Status:** fixed in `5dc09c3`.
 - **Evidence:** `maintenance-metrics.ts:48-68` records any duration, unlike the
   shared validation used by transport histograms. Current application callers
   derive values from `performance.now()` and are safe, but the exported
@@ -546,7 +566,7 @@ Phase 0C evidence is a historical OTLP capture smoke, not a recurring gate.
 
 - **Severity:** P2.
 - **Classification:** maintainability, dependency, and performance improvement.
-- **Status:** open.
+- **Status:** fixed in `bf62f10`.
 - **Evidence:** `telemetry.ts:34-46` passes explicit config for two adapters to
   `getNodeAutoInstrumentations`, but the pinned library enables all other
   default adapters. With relevant environment variables unset, the direct
@@ -571,7 +591,7 @@ Phase 0C evidence is a historical OTLP capture smoke, not a recurring gate.
 
 - **Severity:** P3.
 - **Classification:** maintainability improvement.
-- **Status:** open.
+- **Status:** fixed in `5dc09c3`.
 - **Evidence:** `runtime.ts:1-15` forwards any number to `setTimeout`. Negative,
   NaN, infinite, fractional, or excessive values have host-dependent/coerced
   behavior. Current app configuration schemas validate their intervals first.
