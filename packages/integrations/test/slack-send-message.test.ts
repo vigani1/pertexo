@@ -118,6 +118,26 @@ describe('slack.send_message@1', () => {
     expect(state.secret.every((byte) => byte === 0)).toBe(true);
   });
 
+  it('fails closed when durable dispatch evidence cannot be recorded', async () => {
+    const state = runtime({
+      kind: 'succeeded',
+      channelId: 'C123ABC',
+      messageTs: '1724412345.000100',
+    });
+    state.beforeDispatch.mockRejectedValueOnce(new Error('database down'));
+
+    await expect(
+      createSlackSendMessageExecutorRegistration({
+        client: { sendMessage: state.sendMessage },
+      }).execute(invocation(state.value)),
+    ).rejects.toMatchObject({
+      kind: 'retry',
+      errorKind: 'network',
+      possiblyDispatched: false,
+    });
+    expect(state.secret.every((byte) => byte === 0)).toBe(true);
+  });
+
   it('uses only the fixed endpoint, one bounded request, no redirects, and inaccessible unfurls', async () => {
     let requestBody: Uint8Array | undefined;
     const execute = vi.fn(
