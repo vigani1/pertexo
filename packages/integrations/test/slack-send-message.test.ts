@@ -220,6 +220,103 @@ describe('slack.send_message@1', () => {
   });
 
   it.each([
+    [429, {}, '{}', { kind: 'rate_limited', retryAfterMillis: 1_000 }],
+    [
+      429,
+      { 'retry-after': 'invalid' },
+      '{}',
+      { kind: 'rate_limited', retryAfterMillis: 1_000 },
+    ],
+    [
+      429,
+      { 'retry-after': '0' },
+      '{}',
+      { kind: 'rate_limited', retryAfterMillis: 1_000 },
+    ],
+    [500, {}, '{}', { kind: 'http_failure', status: 500 }],
+    [200, {}, '{', { kind: 'invalid_response' }],
+    [200, {}, '{"ok":"yes"}', { kind: 'invalid_response' }],
+    [200, {}, '{"ok":false}', { kind: 'invalid_response' }],
+    [
+      200,
+      {},
+      '{"ok":false,"error":"invalid_auth"}',
+      { kind: 'rejected', error: 'invalid_auth' },
+    ],
+    [200, {}, '{"ok":true}', { kind: 'invalid_response' }],
+  ] as const)(
+    'classifies send-message HTTP %s response %s without retaining provider bytes',
+    async (status, headers, payload, expected) => {
+      const body = new TextEncoder().encode(payload);
+      const client = createSlackClient({
+        execute: (request) => {
+          expect(request.signal).toBeInstanceOf(AbortSignal);
+          return Promise.resolve({
+            status,
+            headers,
+            body,
+            bodyEncoding: 'utf8',
+            finalUrl: request.url,
+            redirectCount: 0,
+          });
+        },
+      });
+
+      await expect(
+        client.sendMessage({
+          botToken: 'xoxb-123456789-secret',
+          channelId: 'C123ABC',
+          text: 'deployment complete',
+          timeoutMillis: 30_000,
+          signal: new AbortController().signal,
+          beforeDispatch: () => Promise.resolve(),
+        }),
+      ).resolves.toEqual(expected);
+      expect(body.every((byte) => byte === 0)).toBe(true);
+    },
+  );
+
+  it.each([
+    [500, '{}', { kind: 'http_failure', status: 500 }],
+    [200, '{', { kind: 'invalid_response' }],
+    [200, '{"ok":"yes"}', { kind: 'invalid_response' }],
+    [200, '{"ok":true}', { kind: 'succeeded' }],
+    [200, '{"ok":false}', { kind: 'invalid_response' }],
+    [
+      200,
+      '{"ok":false,"error":"invalid_auth"}',
+      { kind: 'rejected', error: 'invalid_auth' },
+    ],
+  ] as const)(
+    'classifies auth-test HTTP %s response without a caller signal',
+    async (status, payload, expected) => {
+      const body = new TextEncoder().encode(payload);
+      const client = createSlackClient({
+        execute: (request) => {
+          expect(request.signal).toBeUndefined();
+          return Promise.resolve({
+            status,
+            headers: {},
+            body,
+            bodyEncoding: 'utf8',
+            finalUrl: request.url,
+            redirectCount: 0,
+          });
+        },
+      });
+
+      await expect(
+        client.authTest({
+          botToken: 'xoxb-123456789-secret',
+          timeoutMillis: 30_000,
+          beforeDispatch: () => Promise.resolve(),
+        }),
+      ).resolves.toEqual(expected);
+      expect(body.every((byte) => byte === 0)).toBe(true);
+    },
+  );
+
+  it.each([
     [
       { kind: 'rejected', error: 'invalid_auth' },
       {

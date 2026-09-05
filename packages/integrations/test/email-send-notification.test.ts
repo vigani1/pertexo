@@ -252,6 +252,66 @@ describe('email.send_notification@1', () => {
   });
 
   it.each([
+    [429, {}, '{}', { kind: 'rate_limited', retryAfterMillis: 1_000 }],
+    [
+      429,
+      { 'retry-after': 'invalid' },
+      '{}',
+      { kind: 'rate_limited', retryAfterMillis: 1_000 },
+    ],
+    [
+      429,
+      { 'retry-after': '0' },
+      '{}',
+      { kind: 'rate_limited', retryAfterMillis: 1_000 },
+    ],
+    [200, {}, '{', { kind: 'invalid_response' }],
+    [200, {}, '{"id":"not-a-uuid"}', { kind: 'invalid_response' }],
+    [
+      400,
+      {},
+      '{"name":"validation_error"}',
+      { kind: 'rejected', error: 'validation_error', status: 400 },
+    ],
+    [500, {}, '{}', { kind: 'http_failure', status: 500 }],
+  ] as const)(
+    'classifies Resend HTTP %s response and clears request and response bytes',
+    async (status, headers, payload, expected) => {
+      const responseBody = new TextEncoder().encode(payload);
+      let requestBody: Uint8Array | undefined;
+      const client = createResendClient({
+        execute: (request) => {
+          requestBody = request.body;
+          expect(request.signal).toBeUndefined();
+          return Promise.resolve({
+            status,
+            headers,
+            body: responseBody,
+            bodyEncoding: 'utf8',
+            finalUrl: request.url,
+            redirectCount: 0,
+          });
+        },
+      });
+
+      await expect(
+        client.sendNotification({
+          apiKey: 're_123456789_secret',
+          fromEmail: 'sender@example.com',
+          toEmail: 'recipient@example.com',
+          subject: 'Deployment complete',
+          text: 'Production is healthy.',
+          idempotencyKey: providerIdempotencyKey,
+          timeoutMillis: 30_000,
+          beforeDispatch: () => Promise.resolve(),
+        }),
+      ).resolves.toEqual(expected);
+      expect(requestBody?.every((byte) => byte === 0)).toBe(true);
+      expect(responseBody.every((byte) => byte === 0)).toBe(true);
+    },
+  );
+
+  it.each([
     [{ kind: 'http_failure', status: 400 }, 'failed', 'provider', false],
     [{ kind: 'http_failure', status: 401 }, 'failed', 'authentication', false],
     [{ kind: 'http_failure', status: 422 }, 'failed', 'provider', false],
