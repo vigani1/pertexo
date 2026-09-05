@@ -68,10 +68,13 @@ do not change Phases 0–6; Phase 7 remains in progress only because its live
 external evidence has not been executed.
 
 Fresh local verification at this implementation tree passes `pnpm check`,
-`pnpm test:coverage`, `pnpm release:check`, and `pnpm images:check`. Enabled
-real-service cohorts pass 320 database, 22 worker, 15 API, and 5 artifact-store
-tests. Coverage remains explicitly limited to 105 selected files/4,938
-coverable lines with 501 reviewed and zero unreviewed uncovered branches.
+`pnpm test:coverage`, `pnpm release:check`, and `pnpm images:check` with 1,892
+non-integration tests. The current `pnpm test:integration` run passes all 330
+PostgreSQL tests; artifact-store, queue, worker, and API integration cohorts
+collect cleanly but skip because their opt-in service configuration is absent
+from this shell. Coverage remains explicitly limited to 105 selected
+files/4,938 coverable lines with 501 reviewed and zero unreviewed uncovered
+branches.
 
 The 2026-09-01 audit refresh is implemented at fixed ancestor `0865633` and
 merged to `main` through pull request #7. It
