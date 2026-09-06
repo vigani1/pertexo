@@ -1,7 +1,8 @@
 # Risk-based test confidence
 
-`pnpm test:coverage` measures files selected by four critical-module coverage
-configurations and writes `coverage/risk-uncovered-branches.json`. The report's
+`pnpm test:coverage` runs the coverage configurations selected by the
+[root package script](../../package.json) and writes
+`coverage/risk-uncovered-branches.json`. The report's
 scope lists those exact files, coverable-line denominator, percentages, and
 test-health record by cohort. It must not be described as coverage of every
 security, transaction, recovery, parser, or state-transition surface.

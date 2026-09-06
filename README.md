@@ -25,8 +25,9 @@ For developer navigation and code placement, start with the
 - Contract drift checks plus unit, integration, recovery, outage, and rollout
   verification.
 
-Phases 0–6 are complete and Phase 7 production operations are in progress. See
-the concise
+The backend has implemented vertical slices, but unresolved API scope decisions
+and Phase 7 production evidence still prevent a production-ready claim. See the
+concise
 [`current implementation status`](./docs/current-implementation-status.md) for
 current blockers and
 [`implementation progress`](./docs/implementation-progress.md) for detailed

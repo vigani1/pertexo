@@ -7,6 +7,13 @@ supplements rather than replaces the repository-level
 these files record evidence down to each production file, callable, test seam,
 and consuming application.
 
+These are pinned-tree historical reviews. Original finding narratives and test
+results describe the recorded audit commit, even when written in the present
+tense. Later remediation tables record subsequent fixes; neither section is a
+substitute for the [current implementation tracker](../implementation-progress.md)
+or a fresh verification run. Preserve the original evidence rather than rewriting
+it to imply that later corrections existed at the audited commit.
+
 ## Audit contract
 
 An audit is complete only when it records all of the following for one package

@@ -123,3 +123,17 @@ All 223 integration-package tests, its typecheck, changed-file lint and risk
 report checks pass. The report has 22 pre-existing unreviewed and 463 reviewed
 uncovered sites; coverage floors are unchanged. Source/test duplication gates
 remain green at 28/5 groups and 563/235 aggregate lines respectively.
+
+### Live documentation checkpoint
+
+Live guidance now links to executable coverage/duplication owners instead of
+stale current counts. README preserves the unresolved API scope and production
+evidence requirements; the complexity register and component audit index label
+their dated measurements and narratives as historical. ADR 001 gains a dated
+clarification of the plan's existing backend-only checkout scope, and the phase
+terminology ledger names the current worker checkpoint owner. No historical
+finding or measurement is rewritten as if later fixes existed at its pinned tree.
+
+Inventory coverage and full-content review are separate evidence. Automated
+byte reads and checksums do not establish semantic review; the tracked-file
+reconciliation remains open until the content-review coverage is established.

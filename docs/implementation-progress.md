@@ -27,6 +27,10 @@ data and historical evidence will be distinguished from executable source review
       coverage reviews; all 223 integration-package tests, typecheck and lint
       pass. The selected risk report retains 22 pre-existing unreviewed sites
       and now has 463 reviewed sites, with no lowered coverage threshold.
+- [x] Correct stale live-guidance claims: README completion, coverage/duplication
+      counts, complexity-register provenance, worker checkpoint ownership and
+      ADR 001's web-checkout assumption. Label pinned audit narratives as
+      historical; preserve their original findings and measurements.
 - [ ] Verify remaining candidates, publish the reconciled inventory and record
       the final checks without claiming an absence of all possible defects.
 

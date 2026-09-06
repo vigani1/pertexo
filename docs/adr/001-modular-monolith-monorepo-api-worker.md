@@ -30,6 +30,12 @@ through a narrow application capability or a domain/outbox event.
 The repository contains the existing web application plus these backend
 roles and packages:
 
+**Repository scope clarification (2026-09-06):** The web application in this
+original description is not part of the current checkout. The
+[authoritative plan](../workflow-platform-backend-plan.md#transition-from-the-current-application)
+keeps it external until a separately planned migration; do not create an empty
+web workspace. The backend ownership and process-separation decision is unchanged.
+
 - `apps/api`: a NestJS application using the Fastify adapter for REST, auth,
   webhooks, control-plane operations, and SSE. It may enqueue work, but it
   never executes production workflow nodes.

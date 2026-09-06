@@ -2,7 +2,7 @@
 
 Recorded: 2026-09-03
 
-This register accounts for every occurrence accepted by `infrastructure/complexity-baseline.json` after the A-06 refactor. An entry is permission not to worsen the measured debt, not permission to add behavior or raise the baseline. Remove an entry when a focused, behavior-preserving refactor brings it within budget.
+This historical register records the occurrences accepted after the A-06 refactor on the date above. Current accepted occurrences and ceilings are owned by [the executable baseline](../../infrastructure/complexity-baseline.json); subsequent removals and refactors are recorded in [the structure audit](../repository-structure-audit.md). The original measurements below are not current file sizes or permission to restore removed allowances. A baseline entry is permission not to worsen measured debt, not permission to add behavior or raise the baseline; remove it when a verified refactor brings it within budget.
 
 ## File hotspots
 
