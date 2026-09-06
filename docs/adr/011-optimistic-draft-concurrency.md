@@ -274,6 +274,43 @@ prohibited metric labels.
 
 ## Consequences
 
+### Version restoration clarification — 2026-09-06
+
+Restoring a published version is a draft edit, not publication and not restoration
+of an archived workflow. `POST
+/v1/workspaces/:workspaceId/workflows/:workflowId/versions/:versionId/restore`
+requires a strict empty body, the current draft's single strong `If-Match`,
+session/CSRF and `workflow:update` authority in an active workspace. The workflow
+must also be active; restoring a version never implicitly unarchives it.
+
+A dedicated persistence transaction selects the current compatibility release,
+locks workflow authority before the draft, resolves the immutable source version
+by workspace/workflow/version together, and compares the current draft's full
+representation tag. It parses the retained graph with current draft limits and
+applies the existing definition-placeability rule against the current draft.
+It then copies the source graph into the draft, advances its revision once and
+records `workflow.version_restored` with the source version ID and revision
+transition. These facts commit or roll back together. Source version/checksum,
+published pointer, activation, lifecycle and existing runs remain unchanged.
+No reconciliation event is produced and no executor or provider runs.
+
+The response is the normal draft response and its new strong ETag, with HTTP
+200. Like draft save, this operation does not claim an idempotency key: a retry
+after a committed response was lost receives 412 for the now-stale tag and must
+read the draft. This deliberately reuses the existing editor concurrency model
+instead of introducing a second durable replay protocol for one kind of draft
+edit. A fresh-tag explicit restoration advances the revision even if the graph
+already matches. Unknown/cross-workflow/cross-tenant source versions use the
+existing non-disclosing 404 policy; a version ID is not authority.
+
+Required proofs cover source-scope denial, malformed/stale/missing tags,
+current-catalog tag changes, blocked definition placement, exact source graph
+copy and audit identity, both concurrent save/restore outcomes, archive races,
+rollback, no-op graph identity with monotonic revision, retry behavior and
+unchanged nonempty publication/run history. The authenticated HTTP proof must
+exercise the actual database method, not compose an unverified client-side
+version read and save.
+
 Concurrent edits fail visibly and the database decides the winner with one
 cheap conditional update. Autosave remains simple, stateless API replicas can
 serve any request, and clients receive standards-based conflict behavior.
