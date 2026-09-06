@@ -67,6 +67,11 @@ data and historical evidence will be distinguished from executable source review
       with two explicit metric-path cases in the existing unit suite; real
       deployed load/SLO evidence remains open. Correct three overstated test
       titles. All 476 API unit tests and test typecheck pass.
+- [x] Centralize the HTTP frozen-error throw policy, retaining each feature's
+      error mapping. Remove the dead version-listing-unavailable error path,
+      inline the one-call session-cookie and webhook signal wrappers, and reuse
+      the identical request-ID parser. All 476 API unit tests and test typecheck
+      pass; public problem values, retry details and cancellation scope remain.
 
 ## Initial low-value code cleanup — complete
 

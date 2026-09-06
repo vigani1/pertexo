@@ -22,6 +22,7 @@ import type { IdentityWorkspaceRequest } from '../identity-workspace/types.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import {
   applicationError,
+  throwApplicationError,
   parseIdempotencyKey,
 } from '../platform/http/index.js';
 import { ScheduleReadGuard, ScheduleUpdateGuard } from './guards.js';
@@ -122,12 +123,4 @@ function scheduleIdempotencyKey(value: unknown): string {
       }),
     );
   }
-}
-
-function throwApplicationError(
-  error: ReturnType<typeof applicationError>,
-): never {
-  // The global problem filter consumes the frozen application error value.
-  // eslint-disable-next-line @typescript-eslint/only-throw-error
-  throw error;
 }

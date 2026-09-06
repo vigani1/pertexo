@@ -10,6 +10,7 @@ import { z } from 'zod';
 import {
   applicationError,
   isApplicationError,
+  throwApplicationError,
   type ApplicationError,
 } from '../platform/http/index.js';
 import { AuthorizationError } from '../workspaces/index.js';
@@ -19,13 +20,6 @@ import {
   InvalidWorkflowGraphError,
   WorkflowGraphContractError,
 } from './graph.js';
-
-export class WorkflowVersionListingUnavailableError extends Error {
-  public override readonly name = 'WorkflowVersionListingUnavailableError';
-  public constructor() {
-    super('workflow version listing persistence capability is unavailable');
-  }
-}
 
 export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
   if (isApplicationError(error)) return error;
@@ -86,16 +80,9 @@ export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
     return applicationError('request.invalid', {
       safeDetail: 'The workflow graph is invalid.',
     });
-  if (error instanceof WorkflowVersionListingUnavailableError)
-    return applicationError('internal.unexpected', {
-      safeDetail: 'Workflow version listing is not wired in this runtime.',
-      cause: error,
-    });
   return applicationError('internal.unexpected', { cause: error });
 }
 
 export function throwWorkflowApplicationError(error: unknown): never {
-  // The shared problem filter consumes frozen application errors.
-  // eslint-disable-next-line @typescript-eslint/only-throw-error
-  throw mapWorkflowAuthoringError(error);
+  return throwApplicationError(mapWorkflowAuthoringError(error));
 }

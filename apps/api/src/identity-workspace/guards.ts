@@ -7,6 +7,7 @@ import {
 } from '../identity/index.js';
 import {
   applicationError,
+  throwApplicationError,
   RequestContextStore,
 } from '../platform/http/index.js';
 import {
@@ -185,12 +186,6 @@ export function readCookie(
   return undefined;
 }
 
-export function sessionToken(
-  request: IdentityWorkspaceRequest,
-): string | undefined {
-  return readCookie(request, SESSION_COOKIE_NAME);
-}
-
 function optionalToken(
   key: 'cookieToken' | 'headerToken',
   value: string | undefined,
@@ -211,12 +206,4 @@ export function authenticatedSession(
     return throwApplicationError(applicationError('auth.unauthenticated'));
   }
   return request.identitySession;
-}
-
-function throwApplicationError(
-  error: ReturnType<typeof applicationError>,
-): never {
-  // The HTTP platform deliberately accepts frozen application-error values.
-  // eslint-disable-next-line @typescript-eslint/only-throw-error
-  throw error;
 }

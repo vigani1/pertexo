@@ -6,7 +6,10 @@ import {
   type ScheduleTriggerRecord,
 } from '@pertexo/database/api';
 
-import { applicationError } from '../platform/http/index.js';
+import {
+  applicationError,
+  throwApplicationError,
+} from '../platform/http/index.js';
 import {
   NOOP_SCHEDULE_TELEMETRY,
   type ScheduleTelemetry,
@@ -89,12 +92,4 @@ function publicSchedule(trigger: ScheduleTriggerRecord) {
     nextFireAt: trigger.nextFireAt.toISOString(),
     lastFireAt: trigger.lastFireAt?.toISOString() ?? null,
   };
-}
-
-function throwApplicationError(
-  error: ReturnType<typeof applicationError>,
-): never {
-  // The global problem filter consumes the frozen application error value.
-  // eslint-disable-next-line @typescript-eslint/only-throw-error
-  throw error;
 }

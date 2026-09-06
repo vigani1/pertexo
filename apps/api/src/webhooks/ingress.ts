@@ -24,7 +24,10 @@ import {
   createWebhookIngressTelemetry,
   type WebhookIngressTelemetry,
 } from './telemetry.js';
-import { withRequestOperationSignal } from '../platform/http/index.js';
+import {
+  parseRequestId,
+  withRequestOperationSignal,
+} from '../platform/http/index.js';
 
 const MAX_BODY = 256 * 1024;
 const JSON_MEDIA_TYPE = /^application\/json(?:\s*;\s*charset=utf-8)?$/iu;
@@ -45,7 +48,7 @@ export function registerWebhookIngress(
   void fastify.register((scope, _options, done) => {
     scope.setErrorHandler(async (error, request, reply) => {
       const requestId =
-        safeRequestId(request.headers['x-request-id']) ?? randomUUID();
+        parseRequestId(request.headers['x-request-id']) ?? randomUUID();
       if (
         typeof error === 'object' &&
         error !== null &&
@@ -79,22 +82,13 @@ export function registerWebhookIngress(
       { bodyLimit: MAX_BODY + 1 },
       (request, reply) =>
         telemetry.trace(singleHeader(request, 'traceparent'), () =>
-          acceptWebhookRequest(request, reply, dependencies, telemetry),
+          withRequestOperationSignal(request, (signal) =>
+            acceptWebhook(request, reply, dependencies, telemetry, signal),
+          ),
         ),
     );
     done();
   });
-}
-
-async function acceptWebhookRequest(
-  request: FastifyRequest,
-  reply: FastifyReply,
-  dependencies: WebhookIngressDependencies,
-  telemetry: WebhookIngressTelemetry,
-): Promise<void> {
-  return withRequestOperationSignal(request, (signal) =>
-    acceptWebhook(request, reply, dependencies, telemetry, signal),
-  );
 }
 
 async function acceptWebhook(
@@ -105,7 +99,7 @@ async function acceptWebhook(
   encryptionSignal: AbortSignal,
 ): Promise<void> {
   const requestId =
-    safeRequestId(request.headers['x-request-id']) ?? randomUUID();
+    parseRequestId(request.headers['x-request-id']) ?? randomUUID();
   const body = request.body;
   if (!(body instanceof Uint8Array)) {
     record(() => {
@@ -372,13 +366,6 @@ function optionalIdempotencyKey(
 
 function sha256(value: string | Uint8Array): string {
   return createHash('sha256').update(value).digest('hex');
-}
-
-function safeRequestId(value: unknown): string | undefined {
-  return typeof value === 'string' &&
-    /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u.test(value)
-    ? value
-    : undefined;
 }
 
 async function authenticationFailed(

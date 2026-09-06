@@ -239,3 +239,22 @@ streams or measure load. Delete it and cover its two path labels in the existing
 latency-calculation unit test. Deployed SSE latency/load evidence remains an open
 Phase 7 obligation, not a result of this test suite. All 476 API unit tests and
 test typecheck pass; this checkpoint changes no production code.
+
+### API indirection checkpoint
+
+The HTTP platform now owns the frozen-application-error throw policy and its
+single lint exception. Five identical local helpers disappear; rate-limit and
+the two workflow mappers use that same throw operation while retaining their
+own error construction/classification. Existing consumer and problem-filter
+tests exercise the real error values rather than a new helper-only test.
+
+Remove `WorkflowVersionListingUnavailableError`: its only constructor call was
+the mapping test, and version listing already requires/calls persistence. The
+general unexpected-error mapping remains. Inline the sole session-cookie reader
+wrapper and the sole webhook request-signal forwarding wrapper. Webhook request
+IDs reuse the platform parser with the exact same type check and regular
+expression. Raw signature-header multiplicity checks, encryption cancellation,
+secret zeroing and problem status validation remain separate and unchanged.
+The authorization error test now checks type and code on one rejected promise,
+removing a second identical call and its conditional assertions. All 476 API
+unit tests, test typecheck and changed-file lint pass.

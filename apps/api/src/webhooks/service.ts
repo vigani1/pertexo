@@ -8,7 +8,10 @@ import {
   type WorkflowTriggerHealth,
 } from '@pertexo/database/api';
 import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/integrations/server';
-import { applicationError } from '../platform/http/index.js';
+import {
+  applicationError,
+  throwApplicationError,
+} from '../platform/http/index.js';
 
 export class WebhookManagementService {
   public constructor(
@@ -32,7 +35,7 @@ export class WebhookManagementService {
       };
     } catch (error) {
       if (error instanceof WebhookTriggerNotFoundError)
-        return throwManagementError(applicationError('resource.not_found'));
+        return throwApplicationError(applicationError('resource.not_found'));
       throw error;
     }
   }
@@ -137,9 +140,9 @@ export class WebhookManagementService {
       };
     } catch (error) {
       if (error instanceof WebhookTriggerNotFoundError)
-        return throwManagementError(applicationError('resource.not_found'));
+        return throwApplicationError(applicationError('resource.not_found'));
       if (error instanceof WebhookTriggerIdempotencyConflictError)
-        return throwManagementError(
+        return throwApplicationError(
           applicationError('request.idempotency_conflict', {
             safeDetail:
               'The idempotency key was already used for another request.',
@@ -162,14 +165,6 @@ type CommandInput = Readonly<{
   endpointKey?: string;
   signal?: AbortSignal;
 }>;
-
-function throwManagementError(
-  error: ReturnType<typeof applicationError>,
-): never {
-  // The global problem filter consumes the frozen application error value.
-  // eslint-disable-next-line @typescript-eslint/only-throw-error
-  throw error;
-}
 
 function sha256(value: string): string {
   return createHash('sha256').update(value).digest('hex');

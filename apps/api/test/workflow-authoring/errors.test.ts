@@ -7,10 +7,7 @@ import {
   WorkflowRevisionConflictError,
 } from '@pertexo/database/testing';
 
-import {
-  mapWorkflowAuthoringError,
-  WorkflowVersionListingUnavailableError,
-} from '../../src/workflow-authoring/errors.js';
+import { mapWorkflowAuthoringError } from '../../src/workflow-authoring/errors.js';
 import { InvalidWorkflowCursorError } from '../../src/workflow-authoring/use-cases.js';
 
 describe('workflow authoring error mapping', () => {
@@ -47,13 +44,10 @@ describe('workflow authoring error mapping', () => {
     });
   });
 
-  it('maps idempotency conflicts and reports the versions persistence seam gap', () => {
+  it('maps idempotency conflicts and invalid cursors', () => {
     expect(
       mapWorkflowAuthoringError(new WorkflowIdempotencyConflictError()),
     ).toMatchObject({ code: 'request.idempotency_conflict' });
-    expect(
-      mapWorkflowAuthoringError(new WorkflowVersionListingUnavailableError()),
-    ).toMatchObject({ code: 'internal.unexpected' });
     expect(
       mapWorkflowAuthoringError(new InvalidWorkflowCursorError()),
     ).toMatchObject({ code: 'request.invalid' });
