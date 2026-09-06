@@ -137,3 +137,12 @@ finding or measurement is rewritten as if later fixes existed at its pinned tree
 Inventory coverage and full-content review are separate evidence. Automated
 byte reads and checksums do not establish semantic review; the tracked-file
 reconciliation remains open until the content-review coverage is established.
+
+### Lifecycle coverage configuration checkpoint
+
+The lifecycle coverage configuration now owns its four-file cohort directly.
+Its regression test compares the actual configuration to the independently
+pinned audited list, preserving protection against silently dropping a file.
+The test-only constant export and intermediate assertion are removed; the test
+itself and the separate risk-report inventory remain. All 25 lifecycle unit
+tests, test typecheck, changed-file lint and formatting pass.
