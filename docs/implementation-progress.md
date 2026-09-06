@@ -46,7 +46,7 @@ original verdict after each fix.
 | IWA-12 | Current operational documentation consistency | Fixed; live status, migration/release inventory and dependency policy reference authoritative executable sources; historical completion evidence is explicitly scoped; 12 documentation checks include controlled drift negatives |
 | IWA-13 | Migration-option validation and connection ownership | Fixed; options rejected before database access and failed acquisition closes the pool; five boundary regressions and three real-PG execution-mode tests pass |
 | IWA-18 | Isolate documentation Git subprocesses from hook metadata | Fixed; contaminated-hook regression protects HEAD, index and repository configuration; seven documentation tests pass |
-| IWA-19 | Worker process-test timeout and child cleanup | Fixed; startup and shutdown retain separate five-second limits within an eleven-second total budget; five compiled-process cases pass and failed cases terminate their child |
+| IWA-19 | Worker process-test timeout and child cleanup | Fixed; startup and shutdown retain separate five-second limits within an eleven-second total budget; worker test forks are bounded under concurrent workspace runs; five compiled-process cases pass and failed cases terminate their child |
 | LC-001 | Expected active cancellation versus genuine shutdown failure | Fixed; only the exact active abort reason is suppressed; distinct operation failures and cleanup failures remain fatal; lifecycle suite passes 16 tests |
 | LC-002 | Lifecycle-command process/readiness cleanup assurance | Fixed; compiled bootstrap SIGINT/SIGTERM and partial-construction tests verify real isolated readiness-file removal and ordered cleanup; 4 files / 16 tests pass |
 
@@ -291,7 +291,13 @@ retaining the original five-second shutdown assertion. Exit waits remove their
 listeners and handle already-exited children; afterEach terminates and waits
 for any child left behind by a failed assertion. Primary verification: all five
 compiled-worker process cases, scoped ESLint and formatting pass. No runtime
-shutdown limit was relaxed.
+shutdown limit was relaxed. A subsequent concurrent-workspace run exposed
+startup contention despite the corrected total timeout: the focused five
+cases and all 278 worker tests passed alone, but two startup waits failed
+under the root gate. Worker test forks are now capped at four; the full
+recursive unit suite and worker coverage run pass with the original startup
+and shutdown deadlines unchanged. A stale development probe was also stopped
+after the successful unit comparison; it is not part of the test harness.
 
 ## Prior review history
 
