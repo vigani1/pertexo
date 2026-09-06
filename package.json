@@ -38,6 +38,7 @@
     "deployment:runtime:typecheck": "tsc --project infrastructure/ecs/tsconfig.runtime-closure.json",
     "deployment:evidence:check": "node infrastructure/ecs/validate-external-platform-evidence.mjs",
     "deployment:render": "node infrastructure/ecs/render-task-definitions.mjs",
+    "deployment:startup:smoke": "node infrastructure/ecs/rendered-task-startup-smoke.mjs",
     "docs:check": "node --test infrastructure/validate-documentation.test.mjs infrastructure/documentation-git-isolation.test.mjs infrastructure/operational-documentation.test.mjs && node infrastructure/validate-documentation.mjs",
     "duplication:check": "node --test infrastructure/validate-test-duplication.test.mjs && node infrastructure/validate-test-duplication.mjs",
     "db:migrate": "pnpm --filter @pertexo/database db:migrate",
