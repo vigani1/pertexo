@@ -12,9 +12,17 @@ COPY . .
 RUN pnpm install --prod --frozen-lockfile \
   && find apps packages -type d \( -name src -o -name test -o -name coverage \) -prune -exec rm -rf '{}' +
 
+# Vendor package hashes come from Debian's signed Bookworm security metadata.
+FROM scratch AS runtime-security-patches
+ADD --checksum=sha256:81c5502941118a24d47af69a17b8b0b9548d75cc6d72b3eb3fe01047b46fa10e https://deb.debian.org/debian-security/pool/updates/main/p/pcre2/libpcre2-8-0_10.42-1+deb12u1_amd64.deb /amd64.deb
+ADD --checksum=sha256:d178d33697eef877c2c27733141b7f8520fee66a329ae5809e8c8eae3709efa3 https://deb.debian.org/debian-security/pool/updates/main/p/pcre2/libpcre2-8-0_10.42-1+deb12u1_arm64.deb /arm64.deb
+
 FROM node:24.18.1-bookworm-slim@sha256:235600a8101ab264e117b1768e925532262668dc9b581ef1dd7d96ced463b8e7 AS runtime
 ENV NODE_ENV=production
 WORKDIR /workspace
+# Debian's CVE-2026-86145 fix is newer than the pinned Node base image.
+RUN --mount=type=bind,from=runtime-security-patches,target=/security-patches \
+  dpkg --install "/security-patches/$(dpkg --print-architecture).deb"
 RUN rm -rf /usr/local/lib/node_modules/corepack /usr/local/lib/node_modules/npm \
   && rm -f /usr/local/bin/corepack /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/pnpm /usr/local/bin/pnpx \
   && groupadd --gid 10001 pertexo \

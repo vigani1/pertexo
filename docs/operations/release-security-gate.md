@@ -44,6 +44,18 @@ remain visible in scanner output and require release risk review rather than an
 unmaintainable repository ignore. The report is CI evidence; production
 deployment must retain it alongside the exact deployed image digest.
 
+The runtime stage currently installs Debian's exact
+`libpcre2-8-0=10.42-1+deb12u1` security update for CVE-2026-86145. The pinned
+Node base still contains `10.42-1`; refreshing the same upstream tag does not
+provide the fix. The amd64 and arm64 package downloads use SHA-256 values from
+Debian's signed Bookworm security metadata. BuildKit verifies those hashes and
+mounts the packages only during installation, without mutable APT resolution or
+package archives in runtime layers. This targeted vendor update preserves the
+Node digest, non-root/read-only boundary, and scanner thresholds. If a pinned package
+becomes unavailable, the build must fail until a reviewed package or base-image
+update replaces it; do not suppress the finding. On the next base-image update,
+verify its installed package and scanner report before removing this override.
+
 The production-image job retains BuildKit metadata, the CycloneDX SBOM, the
 Grype JSON report, and `production-image.provenance.json`. The provenance
 manifest records the BuildKit image digest and cryptographic hashes of both

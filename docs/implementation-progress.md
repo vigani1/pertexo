@@ -28,6 +28,30 @@ remain open. Preserve the independent audit as baseline
 evidence; maintain mutable status in this tracker rather than rewriting the
 original verdict after each fix.
 
+### Merge gate — runtime vendor security patch
+
+- [x] Reproduce PR #51's production-image failure: CI run `34027853063`
+      reports fixed HIGH CVE-2026-86145 in Debian `libpcre2-8-0` version
+      `10.42-1`. The existing local production image independently fails
+      `dpkg --compare-versions` against the vendor-fixed `10.42-1+deb12u1`.
+- [x] Confirm the pinned Node tag still resolves to its existing digest and
+      Debian Bookworm's security repository supplies the fixed package. Apply
+      only that exact runtime package upgrade, checksum-pinned for amd64 and
+      arm64 from signed Debian metadata. The deployment guard correctly rejected
+      an initial APT-based attempt; it and scanner policy stay unchanged.
+- [x] Rebuild the checksum-pinned image and verify `10.42-1+deb12u1`, UID
+      `10001`, read-only execution, absence of mounted package archives, and
+      all seven production role imports. Image-pin checks (5 tests), deployment
+      checks (29 tests plus deterministic render), and documentation checks
+      (13 tests, 229 links) pass. Local image ID:
+      `1975580dba9a039a21b3d4409ee26ae098d0e7f7d29ce9d84cfc7578dbcd28b5`.
+
+The unchanged production-image scanner and every required PR check must pass
+before merge. This checkpoint does not replace the prior application-cohort
+startup evidence or qualify production deployment.
+
+### Audit correction inventory
+
 | Finding | Required checkpoint | Status / concrete evidence |
 | --- | --- | --- |
 | IWA-01 | Monotonic DST recurrence and repeated-hour regression | Fixed; raw iterator cursor separated from resolved UTC identity; 16 recurrence cases and 8 real-PG schedule cases pass; build/typecheck/lint pass |
