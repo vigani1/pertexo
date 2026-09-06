@@ -122,8 +122,8 @@ importers:
         specifier: 7.8.2
         version: 7.8.2
       zod:
-        specifier: 4.4.3
-        version: 4.4.3
+        specifier: 4.5.4
+        version: 4.5.4
     devDependencies:
       '@opentelemetry/sdk-node':
         specifier: 0.221.0
@@ -147,8 +147,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/observability
       zod:
-        specifier: 4.4.3
-        version: 4.4.3
+        specifier: 4.5.4
+        version: 4.5.4
 
   apps/operator-command:
     dependencies:
@@ -159,8 +159,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/observability
       zod:
-        specifier: 4.4.3
-        version: 4.4.3
+        specifier: 4.5.4
+        version: 4.5.4
 
   apps/recovery:
     dependencies:
@@ -174,8 +174,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/observability
       zod:
-        specifier: 4.4.3
-        version: 4.4.3
+        specifier: 4.5.4
+        version: 4.5.4
 
   apps/retention:
     dependencies:
@@ -192,8 +192,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/observability
       zod:
-        specifier: 4.4.3
-        version: 4.4.3
+        specifier: 4.5.4
+        version: 4.5.4
 
   apps/worker:
     dependencies:
@@ -246,8 +246,8 @@ importers:
         specifier: 7.8.2
         version: 7.8.2
       zod:
-        specifier: 4.4.3
-        version: 4.4.3
+        specifier: 4.5.4
+        version: 4.5.4
     devDependencies:
       '@types/pg':
         specifier: 8.21.0
@@ -277,8 +277,8 @@ importers:
         specifier: 1.9.0
         version: 1.9.0
       zod:
-        specifier: 4.4.3
-        version: 4.4.3
+        specifier: 4.5.4
+        version: 4.5.4
 
   packages/contracts:
     dependencies:
@@ -286,8 +286,8 @@ importers:
         specifier: workspace:*
         version: link:../workflow-model
       zod:
-        specifier: 4.4.3
-        version: 4.4.3
+        specifier: 4.5.4
+        version: 4.5.4
     devDependencies:
       '@redocly/cli':
         specifier: 2.51.2
@@ -317,8 +317,8 @@ importers:
         specifier: 13.0.1
         version: 13.0.1
       zod:
-        specifier: 4.4.3
-        version: 4.4.3
+        specifier: 4.5.4
+        version: 4.5.4
     devDependencies:
       '@types/pg':
         specifier: 8.21.0
@@ -336,8 +336,8 @@ importers:
         specifier: 4.11.2
         version: 4.11.2
       zod:
-        specifier: 4.4.3
-        version: 4.4.3
+        specifier: 4.5.4
+        version: 4.5.4
 
   packages/node-catalog:
     dependencies:
@@ -354,8 +354,8 @@ importers:
   packages/node-sdk:
     dependencies:
       zod:
-        specifier: 4.4.3
-        version: 4.4.3
+        specifier: 4.5.4
+        version: 4.5.4
 
   packages/nodes-core:
     dependencies:
@@ -369,8 +369,8 @@ importers:
         specifier: 5.10.0
         version: 5.10.0
       zod:
-        specifier: 4.4.3
-        version: 4.4.3
+        specifier: 4.5.4
+        version: 4.5.4
 
   packages/observability:
     dependencies:
@@ -420,8 +420,8 @@ importers:
         specifier: 10.3.1
         version: 10.3.1
       zod:
-        specifier: 4.4.3
-        version: 4.4.3
+        specifier: 4.5.4
+        version: 4.5.4
     devDependencies:
       '@opentelemetry/context-async-hooks':
         specifier: 2.10.0
@@ -439,8 +439,8 @@ importers:
         specifier: 6.0.0
         version: 6.0.0(supports-color@7.2.0)
       zod:
-        specifier: 4.4.3
-        version: 4.4.3
+        specifier: 4.5.4
+        version: 4.5.4
 
   packages/rate-limit:
     dependencies:
@@ -467,8 +467,8 @@ importers:
         specifier: 2.2.2
         version: 2.2.2
       zod:
-        specifier: 4.4.3
-        version: 4.4.3
+        specifier: 4.5.4
+        version: 4.5.4
 
 packages:
 
@@ -3121,8 +3121,8 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
 
-  zod@4.4.3:
-    resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
+  zod@4.5.4:
+    resolution: {integrity: sha512-sC95tT5iHHH9gtpj6A81kh+NEaRAUFN+qlUPDUbRfOMvNf5QCBqsb3WgvnpVtK5Y+4UfA6KqufotuTvMGiTlsA==}
 
 snapshots:
 
@@ -5005,7 +5005,7 @@ snapshots:
       smol-toml: 1.8.0
       strip-json-comments: 5.0.3
       typescript: 6.0.3
-      zod: 4.4.3
+      zod: 4.5.4
 
   levn@0.4.1:
     dependencies:
@@ -5735,4 +5735,4 @@ snapshots:
 
   yocto-queue@0.1.0: {}
 
-  zod@4.4.3: {}
+  zod@4.5.4: {}
