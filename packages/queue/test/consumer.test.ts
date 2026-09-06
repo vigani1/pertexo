@@ -176,6 +176,9 @@ describe('BullMQ queue consumer', () => {
     await expect(
       processor?.({ ...validJob, id: 'outbox-wrong' }),
     ).rejects.toBeInstanceOf(InvalidQueueDeliveryError);
+    await expect(processor?.({ ...validJob, id: '' })).rejects.toThrow(
+      'Queue delivery has no job ID',
+    );
     await expect(
       processor?.({
         ...validJob,
