@@ -4,8 +4,8 @@
     "api": {
       "workload": "api",
       "capacity": {
-        "eu-central-1": { "min": 2, "max": 20 },
-        "eu-west-1": { "min": 0, "max": 20 }
+        "eu-central-1": { "min": 2, "max": 10 },
+        "eu-west-1": { "min": 0, "max": 10 }
       },
       "scaleOutCooldownSeconds": 60,
       "scaleInCooldownSeconds": 300,
@@ -34,8 +34,8 @@
       "workload": "worker",
       "configuredSlotsPerTask": 60,
       "capacity": {
-        "eu-central-1": { "min": 2, "max": 20 },
-        "eu-west-1": { "min": 0, "max": 20 }
+        "eu-central-1": { "min": 2, "max": 10 },
+        "eu-west-1": { "min": 0, "max": 10 }
       },
       "scaleOutCooldownSeconds": 30,
       "scaleInCooldownSeconds": 300,

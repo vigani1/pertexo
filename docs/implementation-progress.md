@@ -37,7 +37,7 @@ original verdict after each fix.
 | IWA-06 | Replay-lineage-aware retention | Open; real PG foreign-key failure reproduced |
 | IWA-07 | Canonical hostname/IP classification | Fixed; syntactic IP detection precedes public-address policy; 81 secure-HTTP tests pass including hostname variants and alternate blocked literals |
 | IWA-08 | CPU-bounded streaming redaction | Fixed; byte comparisons yield at bounded intervals and check elapsed deadlines; 85 secure-HTTP tests and 207 integration-package tests pass |
-| IWA-09 | Surge-aware database connection capacity | Open; permitted rollout exceeds capacity contract |
+| IWA-09 | Surge-aware database connection capacity | Fixed; regional budgets include ECS maximumPercent rollout overlap and administration/failover reserves; 8 budget regressions pass, with 398/400 Frankfurt and 366/400 Ireland maximum connections |
 | IWA-10 | Authenticated replay vertical slice | In progress; ADR 031 fixes active-workspace authorization, explicit version/input and atomic tenant acceptance; implementation and recovery evidence remain |
 | IWA-15 | Executable Validate semantics and complete versioned slice | Open; node absent; define semantics before implementation |
 | IWA-16 | Workflow lifecycle/version restoration and activation | Open; required operations/state projection incomplete |
@@ -174,6 +174,21 @@ handwritten fixture environment values and disabled the telemetry SDK, so it
 does not yet prove startup from the exact rendered task environment. The
 merge-V3 image correctly rejected a database still pinned to epoch 1. Deployed
 SSM values, AWS KMS access and production telemetry are not claimed verified.
+
+### IWA-09 — surge-aware connection capacity
+
+The budget now includes simultaneous service rollouts using the declared ECS
+`maximumPercent` and whole-task rounding, in addition to task pools, monitoring,
+transient clients, administration and regional-failover reserves. This follows
+the [AWS service deployment calculation](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service_definition_parameters.html).
+API and worker autoscaling maxima are reduced from 20 to 10 in both regions;
+the declared worst-case totals are 398/400 in Frankfurt and 366/400 in Ireland.
+Increasing capacity requires a newly passing connection budget and measured
+deployed capacity evidence; the limit does not claim proven production load.
+
+Primary verification: eight budget tests include API-only, worker-only and
+simultaneous rollout overflow plus fractional-task rounding and administration
+headroom; full deployment validation passes, as do scoped ESLint/format checks.
 
 ### IWA-14 — HTTP telemetry privacy
 

@@ -40,10 +40,26 @@ function maximumReplicas(rule, name, region, workloads, autoscaling) {
   throw new Error(`${name} has an unsupported replica budget source`);
 }
 
+function rolloutReplicas(workload, replicas, externalPlatform) {
+  if (workload.kind !== 'service') return replicas;
+
+  const maximumPercent = positiveInteger(
+    externalPlatform.services?.maximumPercent,
+    'external platform service maximum percent',
+  );
+  if (maximumPercent < 100)
+    throw new Error(
+      'external platform service maximum percent must allow the steady task count',
+    );
+  // ECS rounds the maximum task count down to a whole task.
+  return Math.floor((replicas * maximumPercent) / 100);
+}
+
 export function calculateDatabaseConnectionBudget(
   budget,
   workloads,
   autoscaling,
+  externalPlatform,
 ) {
   if (budget.schemaVersion !== 1)
     throw new Error('unsupported database connection budget schema version');
@@ -78,6 +94,10 @@ export function calculateDatabaseConnectionBudget(
     throw new Error(
       'external pooler connections must be zero when no pooler is used',
     );
+  if (externalPlatform === undefined || externalPlatform.services === undefined)
+    throw new Error(
+      'database connection budget requires the external platform service contract',
+    );
 
   const expected = Object.keys(workloads.workloads).sort();
   const actual = Object.keys(budget.workloads).sort();
@@ -103,12 +123,17 @@ export function calculateDatabaseConnectionBudget(
         `${name} transient connections per task`,
         true,
       );
-      const replicas = maximumReplicas(
+      const steadyReplicas = maximumReplicas(
         rule,
         name,
         region,
         workloads,
         autoscaling,
+      );
+      const replicas = rolloutReplicas(
+        workload,
+        steadyReplicas,
+        externalPlatform,
       );
       workloadConnections +=
         replicas *
