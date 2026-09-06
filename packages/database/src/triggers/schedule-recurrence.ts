@@ -30,6 +30,11 @@ export type ScheduleObservation = Readonly<{
   nextAt: Date;
 }>;
 
+// Resolution examines a three-hour overlap window at minute precision. Keep a
+// margin over those 180 possible raw slots, while ensuring a broken parser
+// cannot monopolize the worker's synchronous event loop.
+const MAX_CRON_CURSOR_STEPS = 256;
+
 const canonicalTimezones = new Set(Intl.supportedValuesOf('timeZone'));
 
 function invalidSchedule(error?: unknown): never {
@@ -154,20 +159,42 @@ function resolveCronOccurrence(
   throw new TypeError('Cron parser produced a non-matching local occurrence');
 }
 
+function readCronCursorDate(
+  raw: Date,
+  previousRawTime: number,
+  direction: 'next' | 'previous',
+): Date {
+  const rawTime = raw.getTime();
+  if (!Number.isFinite(rawTime))
+    throw new TypeError('Cron parser produced a non-finite raw occurrence');
+  if (
+    direction === 'next'
+      ? rawTime <= previousRawTime
+      : rawTime >= previousRawTime
+  )
+    throw new TypeError('Cron parser cursor failed to make strict progress');
+  return raw;
+}
+
 function nextCronOccurrence(
   recurrence: Extract<ScheduleRecurrence, { kind: 'cron' }>,
   after: Date,
 ): Date {
   const cursor = cronParser(recurrence, after);
-  for (;;) {
-    const occurrence = resolveCronOccurrence(
-      recurrence,
+  let previousRawTime = after.getTime();
+  for (let steps = 0; steps < MAX_CRON_CURSOR_STEPS; steps += 1) {
+    const raw = readCronCursorDate(
       cursor.next().toDate(),
+      previousRawTime,
+      'next',
     );
+    previousRawTime = raw.getTime();
+    const occurrence = resolveCronOccurrence(recurrence, raw);
     // Resolution can move a repeated local time backwards. Advance the raw
     // parser cursor, never the resolved identity, to skip that duplicate.
     if (occurrence.getTime() > after.getTime()) return occurrence;
   }
+  throw new TypeError('Cron parser cursor traversal exceeded its bound');
 }
 
 function greatestCronOccurrence(
@@ -175,23 +202,36 @@ function greatestCronOccurrence(
   observedAt: Date,
 ): Date {
   const cursor = cronParser(recurrence, new Date(observedAt.getTime() + 1));
-  const previousRaw = cursor.prev().toDate();
+  const previousRaw = readCronCursorDate(
+    cursor.prev().toDate(),
+    observedAt.getTime() + 1,
+    'previous',
+  );
   let raw = previousRaw;
   let greatest = resolveCronOccurrence(recurrence, raw);
   // A later raw instant in a repeated hour can resolve before an earlier raw
   // instant. Search only the adjusted window: resolution never moves forward,
   // so no raw instant at/before the best identity can improve that identity.
-  while (raw.getTime() > greatest.getTime()) {
-    raw = cursor.prev().toDate();
+  for (let steps = 1; raw.getTime() > greatest.getTime(); steps += 1) {
+    if (steps >= MAX_CRON_CURSOR_STEPS)
+      throw new TypeError('Cron parser cursor traversal exceeded its bound');
+    const nextRaw = readCronCursorDate(
+      cursor.prev().toDate(),
+      raw.getTime(),
+      'previous',
+    );
+    raw = nextRaw;
     const occurrence = resolveCronOccurrence(recurrence, raw);
     if (occurrence.getTime() > greatest.getTime()) greatest = occurrence;
   }
   // During a spring gap the parser's next raw time may resolve back to the
   // first valid instant, which is already due at the observation time.
-  const next = resolveCronOccurrence(
-    recurrence,
+  const nextRaw = readCronCursorDate(
     cronParser(recurrence, previousRaw).next().toDate(),
+    previousRaw.getTime(),
+    'next',
   );
+  const next = resolveCronOccurrence(recurrence, nextRaw);
   if (
     next.getTime() <= observedAt.getTime() &&
     next.getTime() > greatest.getTime()
