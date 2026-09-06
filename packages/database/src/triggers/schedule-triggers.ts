@@ -31,6 +31,7 @@ import {
   resolveScheduleObservation,
 } from './schedule-recurrence.js';
 import { refreshWorkflowActivation } from './workflow-triggers.js';
+import { canManageWorkflowTrigger } from './trigger-management-access.js';
 import {
   withTenantScopedClient,
   withWorkspaceTransaction,
@@ -154,23 +155,6 @@ export interface ScheduleTriggerDatabase {
 }
 
 export { ScheduleTriggerError } from './schedule-trigger-errors.js';
-
-async function authorizeScheduleManager(
-  client: PoolClient,
-  workspaceId: string,
-  actorId: string,
-): Promise<void> {
-  const result = await client.query(
-    `select 1 from app.workspace_memberships membership
-      join app.workspaces workspace on workspace.id=membership.workspace_id
-      join app.users actor on actor.id=membership.user_id
-     where membership.workspace_id=$1 and membership.user_id=$2
-        and membership.status='active' and membership.role in ('owner','admin','builder')
-       and workspace.status='active' and actor.status='active'`,
-    [workspaceId, actorId],
-  );
-  if (result.rowCount !== 1) throw new ScheduleTriggerError('not_found');
-}
 
 async function authorizeScheduleReader(
   client: PoolClient,
@@ -312,11 +296,8 @@ export function createScheduleTriggerDatabase(
           actorId: z.uuid().parse(input.actorId),
         },
         async (client) => {
-          await authorizeScheduleManager(
-            client,
-            input.workspaceId,
-            input.actorId,
-          );
+          if (!(await canManageWorkflowTrigger(client, input)))
+            throw new ScheduleTriggerError('not_found');
           const triggerId = uuidSchema.parse(input.triggerId);
           const workflowId = uuidSchema.parse(input.workflowId);
           const requestHash = digestSchema.parse(input.requestHash);
