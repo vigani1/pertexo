@@ -25,7 +25,10 @@ Suspended or deleting workspaces reject these public operations.
 Begin atomically claims an actor/workspace/operation-scoped idempotency key and
 reserves the declared bytes and one artifact before creating pending metadata.
 The key's request hash covers the canonical declared metadata. Exact retries
-return the same artifact identity; changed request material conflicts. The
+while pending return the same artifact identity; changed request material
+conflicts. Once available, a repeated begin request returns a lifecycle
+conflict without signing another PUT; the finalize operation remains
+idempotent and metadata remains readable. The
 durable result never stores a signed URL. After commit, the store issues a
 bounded, immutable PUT capability for that exact identity and metadata. A
 signing failure leaves a retriable pending reservation, not an untracked

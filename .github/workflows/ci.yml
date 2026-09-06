@@ -93,6 +93,7 @@ env:
   CONTROL_LEDGER_INTEGRATION_PROVIDER: minio
   API_SSE_INTEGRATION: 'true'
   API_IDENTITY_INTEGRATION: 'true'
+  API_ARTIFACT_INTEGRATION: 'true'
   API_WEBHOOK_INTEGRATION: 'true'
   REDIS_RATE_LIMIT_INTEGRATION: 'true'
   QUEUE_INTEGRATION: 'true'
@@ -356,10 +357,7 @@ jobs:
           pnpm --filter @pertexo/worker exec vitest run --config vitest.integration.config.ts \
             --reporter=json --outputFile=../../artifacts/worker-gates.json
           pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts \
-            test/executions/run-event-stream.integration.test.ts \
-            test/identity-workspace/real-api.integration.test.ts \
-            test/webhooks/direct-webhook.integration.test.ts \
-            test/rate-limit/distributed-rate-limiter.integration.test.ts \
+            --exclude test/platform/compatibility-rollout.integration.test.ts \
             --reporter=json --outputFile=../../artifacts/api-gates.json
       - name: Prove every required integration cohort executed
         run: |
@@ -368,11 +366,11 @@ jobs:
           node infrastructure/validate-vitest-gate-report.mjs \
             artifacts/queue-gates.json 'queue integration gates' 1
           node infrastructure/validate-vitest-gate-report.mjs \
-            artifacts/database-gates.json 'database integration gates' 288
+            artifacts/database-gates.json 'database integration gates' 383
           node infrastructure/validate-vitest-gate-report.mjs \
-            artifacts/worker-gates.json 'worker integration gates' 21
+            artifacts/worker-gates.json 'worker integration gates' 30
           node infrastructure/validate-vitest-gate-report.mjs \
-            artifacts/api-gates.json 'API integration gates' 11
+            artifacts/api-gates.json 'API integration gates' 32
       - name: Capture integration logs
         if: failure()
         run: |

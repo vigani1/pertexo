@@ -10,6 +10,8 @@ export const API_PROBLEM_CODES = [
   'request.rate_limited',
   'request.rate_limit_unavailable',
   'workspace.quota_exceeded',
+  'artifact.conflict',
+  'artifact.unavailable',
   'workspace.conflict',
   'workflow.revision_conflict',
   'workflow.lifecycle_conflict',
@@ -128,6 +130,18 @@ const apiProblemDetails = {
     title: 'Workspace quota exceeded',
     severity: 'warn',
     exposeDetail: true,
+  },
+  'artifact.conflict': {
+    status: 409,
+    title: 'Artifact conflict',
+    severity: 'info',
+    exposeDetail: true,
+  },
+  'artifact.unavailable': {
+    status: 503,
+    title: 'Artifact storage unavailable',
+    severity: 'warn',
+    exposeDetail: false,
   },
   'workspace.conflict': {
     status: 409,

@@ -9,6 +9,15 @@ release interface versioned and fail closed. The reviewed contract is
 task render without AWS credentials. It is necessary but is not deployment
 evidence.
 
+The public artifact transfer slice requires the API workload to reach object
+storage as well as the worker. Its rendered configuration includes both region
+endpoints/buckets and distinct credential references, as declared in
+`infrastructure/ecs/workloads.json`. The platform owner must provision those
+API-scoped references and the matching restricted bucket permissions before
+rollout. Local signing/replication tests do not establish deployed IAM access.
+This contract change invalidates older evidence hashes; collect a new snapshot
+with the API's `object-storage` egress class present.
+
 ## Platform adapter responsibility
 
 The owner of the versioned AWS IaC must export one normalized JSON snapshot from

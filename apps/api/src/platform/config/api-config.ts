@@ -1,6 +1,10 @@
 import { isIP } from 'node:net';
 
 import { z } from 'zod';
+import {
+  parseDualRegionArtifactStoreConfig,
+  type DualRegionArtifactStoreConfig,
+} from '@pertexo/artifact-store';
 import { parseObservabilityConfig } from '@pertexo/observability/config';
 import type { ObservabilityConfig } from '@pertexo/observability/config';
 import {
@@ -170,7 +174,10 @@ export type ApiIdentityConfig = Readonly<{
   }>;
 }>;
 
+export type ApiDualRegionArtifactStoreConfig = DualRegionArtifactStoreConfig;
+
 export type ApiConfig = Readonly<{
+  artifacts?: ApiDualRegionArtifactStoreConfig;
   connections?: Readonly<{
     kmsKeyReference: string;
     region: string;
@@ -222,8 +229,10 @@ export function parseApiConfig(
   if (deployed && parsed.TRUST_PROXY_CIDRS === undefined) {
     throw new Error('TRUST_PROXY_CIDRS is required when deployed');
   }
+  const artifacts = parseArtifactsConfig(parsed.NODE_ENV, environment);
 
   return Object.freeze({
+    ...(artifacts === undefined ? {} : { artifacts }),
     ...(connections === undefined ? {} : { connections }),
     ...(connections === undefined ? {} : { webhooks: connections }),
     database: Object.freeze({
@@ -274,6 +283,24 @@ function parseConnectionsConfig(
       ? {}
       : { endpoint: environment.CONNECTION_KMS_ENDPOINT }),
   });
+}
+
+function parseArtifactsConfig(
+  nodeEnv: ApiNodeEnvironment,
+  environment: Record<string, string | undefined>,
+): ApiDualRegionArtifactStoreConfig | undefined {
+  const configured = Object.entries(environment).some(
+    ([name, value]) =>
+      value !== undefined &&
+      (name.startsWith('ARTIFACT_STORE_') || name === 'ARTIFACT_MAX_BYTES'),
+  );
+  const deployed = nodeEnv === 'staging' || nodeEnv === 'production';
+  if (!configured && !deployed) return undefined;
+  try {
+    return parseDualRegionArtifactStoreConfig(environment);
+  } catch {
+    throw new Error('Artifact store configuration is incomplete');
+  }
 }
 
 type ParsedApiEnvironment = z.output<typeof apiEnvironmentSchema>;

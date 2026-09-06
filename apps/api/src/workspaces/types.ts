@@ -29,6 +29,8 @@ export type WorkspaceStatus = (typeof WORKSPACE_STATUSES)[number];
 export const AUTHORIZATION_CAPABILITIES = Object.freeze([
   'workspace:read',
   'workspace:manage',
+  'artifact:read',
+  'artifact:upload',
   'workflow:read',
   'workflow:create',
   'workflow:update',

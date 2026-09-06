@@ -20,6 +20,7 @@ import type { ApiConnectionRuntime } from '../src/platform/connections/connectio
 import type { ApiWebhookRuntime } from '../src/platform/webhooks/webhook-runtime.module.js';
 import type { WebhookManagementService } from '../src/webhooks/service.js';
 import type { ApiScheduleRuntime } from '../src/platform/schedules/schedule-runtime.module.js';
+import type { ApiArtifactRuntime } from '../src/platform/artifacts/artifact-runtime.module.js';
 import { ScheduleManagementService } from '../src/schedules/service.js';
 import {
   createApiPlatformFixture,
@@ -126,6 +127,29 @@ function workflowAuthoringDatabase(
   };
 }
 
+function artifactRuntime(): ApiArtifactRuntime {
+  return {
+    dependencies: {
+      authorization: identityRuntime().dependencies.authorization,
+      database: {
+        beginUpload: vi.fn(),
+        finalizeUpload: vi.fn(),
+        getForUpload: vi.fn(),
+        getMetadata: vi.fn(),
+      },
+      store: {
+        beginDirectUpload: vi.fn(),
+        validateDirectUpload: vi.fn(),
+        beginDirectDownload: vi.fn(),
+        checkReadiness: vi.fn().mockResolvedValue(undefined),
+        close: vi.fn(),
+      },
+    },
+    checkReadiness: vi.fn().mockResolvedValue(undefined),
+    close: vi.fn().mockResolvedValue(undefined),
+  };
+}
+
 describe('API bootstrap', () => {
   let application: Awaited<ReturnType<typeof createApiApplication>> | undefined;
 
@@ -144,6 +168,14 @@ describe('API bootstrap', () => {
       close: vi.fn().mockResolvedValue(undefined),
     } as unknown as ApiConnectionRuntime;
     const cases = [
+      {
+        dependencies: {
+          ...dependencies(),
+          artifactRuntime: artifactRuntime(),
+          artifactOverrides: {},
+        },
+        message: 'artifact runtime cannot be provided with artifact overrides',
+      },
       {
         dependencies: {
           ...dependencies(),
@@ -182,6 +214,19 @@ describe('API bootstrap', () => {
 
   it('rejects runtime overrides that cannot participate in composition', async () => {
     const cases = [
+      {
+        dependencies: {
+          ...dependencies(),
+          identityRuntime: identityRuntime(),
+          artifactOverrides: {},
+        },
+        message:
+          'artifact overrides require configured artifact runtime creation',
+      },
+      {
+        dependencies: { ...dependencies(), artifactRuntime: artifactRuntime() },
+        message: 'feature runtimes require an available identity runtime',
+      },
       {
         dependencies: { ...dependencies(), identityOverrides: {} },
         message:
@@ -629,5 +674,44 @@ describe('API bootstrap', () => {
     ).rejects.toThrow('migration mismatch');
     expect(identityClose).toHaveBeenCalledOnce();
     expect(workflowClose).toHaveBeenCalledOnce();
+  });
+
+  it('closes identity and artifact runtimes when artifact startup readiness fails', async () => {
+    const selectedIdentity = identityRuntime();
+    const selectedArtifacts = artifactRuntime();
+    vi.mocked(selectedArtifacts.checkReadiness).mockRejectedValue(
+      new Error('artifact readiness failed'),
+    );
+    await expect(
+      createApiApplication(config, {
+        ...dependencies(),
+        identityRuntime: selectedIdentity,
+        artifactRuntime: selectedArtifacts,
+      }),
+    ).rejects.toThrow('artifact readiness failed');
+    expect(selectedIdentity.close).toHaveBeenCalledOnce();
+    expect(selectedArtifacts.close).toHaveBeenCalledOnce();
+  });
+
+  it('includes artifact readiness in health and closes its runtime once', async () => {
+    const selectedArtifacts = artifactRuntime();
+    application = await createApiApplication(config, {
+      ...dependencies(),
+      identityRuntime: identityRuntime(),
+      artifactRuntime: selectedArtifacts,
+    });
+    expect(selectedArtifacts.checkReadiness).toHaveBeenCalledOnce();
+    vi.mocked(selectedArtifacts.checkReadiness).mockRejectedValue(
+      new Error('private bucket detail'),
+    );
+    const response = await application.inject({
+      method: 'GET',
+      url: '/health/ready',
+    });
+    expect(response.statusCode).toBe(503);
+    expect(response.payload).not.toContain('private bucket detail');
+    await application.close();
+    application = undefined;
+    expect(selectedArtifacts.close).toHaveBeenCalledOnce();
   });
 });

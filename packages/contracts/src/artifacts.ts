@@ -3,6 +3,10 @@ import {
   connectionsOpenApiDocument,
 } from './connections.js';
 import {
+  artifactTransferClientContract,
+  artifactTransferOpenApiDocument,
+} from './artifact-transfer.js';
+import {
   identityWorkspaceClientContract,
   identityWorkspaceOpenApiDocument,
 } from './identity-workspace.js';
@@ -25,6 +29,11 @@ import {
 } from './schedules.js';
 
 const CONTRACT_DOMAINS = Object.freeze([
+  [
+    'artifacts',
+    artifactTransferClientContract,
+    artifactTransferOpenApiDocument,
+  ],
   ['connections', connectionsClientContract, connectionsOpenApiDocument],
   [
     'identity-workspace',

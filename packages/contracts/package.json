@@ -5,6 +5,10 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
+    "./artifacts": {
+      "types": "./dist/artifact-transfer.d.ts",
+      "default": "./dist/artifact-transfer.js"
+    },
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"

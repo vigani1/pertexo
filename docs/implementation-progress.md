@@ -19,10 +19,10 @@ The historical completion statements below describe their original evidence;
 they do not supersede these reopened requirements. No finding is closed until
 its correction and relevant regression verification are recorded here.
 
-Current delivery is **not production-ready**. The artifact API checkpoint and
-final cross-feature verification remain in progress; the other named audit
-corrections have the repository evidence recorded below. Phase 7 and deployed
-evidence remain open. Preserve the independent audit as baseline
+Current delivery is **not production-ready**. All named audit corrections have
+the repository regression evidence recorded below, including the artifact API
+and final cross-feature checks. Final plan-to-evidence navigation is being
+consolidated; Phase 7 and deployed evidence remain open. Preserve the independent audit as baseline
 evidence; maintain mutable status in this tracker rather than rewriting the
 original verdict after each fix.
 
@@ -41,7 +41,7 @@ original verdict after each fix.
 | IWA-10 | Authenticated replay vertical slice | Fixed; dedicated replay capability, strict explicit version/input, atomic tenant acceptance and narrow migration-0077 locked reads; 10 fresh-PG cases, 6 real HTTP cases and 3 real-worker replay/redelivery cases pass |
 | IWA-15 | Executable Validate semantics and complete versioned slice | Fixed; ADR 032 bounded rules, pure typed mismatch output and staged/active epochs 37/38; 33 core contract/executor cases, 19 catalog cases, 10 API preview cases and 3 real-worker integration cases pass |
 | IWA-16 | Workflow lifecycle/version restoration and activation | Fixed in repository; 5 authenticated HTTP cases, 7 real-PG version-restore cases, 3 real-PG lifecycle cases and real dispatcher/BullMQ restart/redelivery proof pass; nonempty queued/running/waiting/completed history is preserved |
-| IWA-17 | Public artifact upload/finalize vertical slice | In progress; signed downloads, PostgreSQL upload/capacity authority, capacity readiness and pending-upload expiry cleanup verified; final HTTP/runtime checkpoint remains |
+| IWA-17 | Public artifact upload/finalize vertical slice | Fixed in repository; 5 real authenticated HTTP/object-store cases, strict generated contracts, 17 service/runtime/controller tests, real-PG quota/readiness/retention regressions and rendered core-image startup pass; deployed regional evidence remains external |
 | IWA-11 | Typed/correct application deployment closure validation | Fixed; typed Map-key traversal includes all six applications, migration and transitive workspace dependencies; missing-role and app-only output negatives fail; 29 deployment tests pass |
 | IWA-12 | Current operational documentation consistency | Fixed; live status, migration/release inventory and dependency policy reference authoritative executable sources; historical completion evidence is explicitly scoped; 12 documentation checks include controlled drift negatives |
 | IWA-13 | Migration-option validation and connection ownership | Fixed; options rejected before database access and failed acquisition closes the pool; five boundary regressions and three real-PG execution-mode tests pass |
@@ -460,6 +460,61 @@ claim real-S3 cleanup qualification. The full database integration suite passes
 - [x] Discover and clean expired pending public uploads through the production
       retention path, preserving legal holds and capacity until durable
       deletion completes.
+
+### IWA-17 — Authenticated artifact transfer and runtime checkpoint
+
+- [x] Expose strict begin-upload, finalize, metadata and signed-download
+      contracts through authenticated workspace routes, with CSRF on mutations,
+      explicit artifact capabilities and bounded existing rate-limit policies.
+- [x] Reserve capacity and identity before signing, preserve the original
+      pending-upload deadline on exact retries, reject changed idempotency
+      material and never reissue PUT after finalization.
+- [x] Verify immutable metadata in both object-store regions outside database
+      transactions; reauthorize and perform the database lifecycle/metadata CAS
+      before exposing an available artifact. Downloads use a sixty-second
+      attachment capability and public metadata omits internal storage keys.
+- [x] Compose one shared API-role database runtime and an owned artifact store,
+      require both readiness checks, and close owned resources on shutdown and
+      partial-construction failure. Render API object-storage configuration and
+      egress explicitly in the external platform contract.
+
+Five authenticated HTTP integration cases exercise real OIDC/session/CSRF,
+PostgreSQL and two local object-store buckets: role/tenant/workspace denials,
+concurrent idempotency and quota claims, immutable PUT metadata, missing or
+divergent replicas, expiry, a deletion race after replica verification and
+capacity retention until both regional deletions complete. Nine focused service,
+five runtime and three controller tests cover authorization ordering, deadlines,
+signed download, typed error classification, partial-initialization cleanup and
+exactly-one idempotency headers. Final review found duplicate header arrays were
+previously reduced to their first value; the shared single-header helper now
+rejects them, with direct controller and authenticated HTTP regressions proving
+no upload is reserved. Strict generated
+contracts pass all 36 contract tests. The complete ordinary API integration
+cohort passes 32 tests with zero skips when its separate compatibility-rollout
+cohort is explicitly excluded; CI now discovers the full ordinary cohort.
+
+Final cross-feature verification passes `pnpm check` across all 18 package/app
+projects; the final API-only rerun after header hardening passes 475 tests,
+alongside the full gate's 278 worker, 285 engine and 228 database unit tests.
+The isolated full integration run passes 383 database, 30 worker, 32 API,
+5 object-store and 1 queue cases. Its separate compatibility-rollout case and
+three AWS-only object-store cases remain explicitly skipped, not counted as
+local deployment qualification. CI minimum cohort counts are updated to
+383/30/32 for database/worker/API and retain the explicit AWS skip allowance.
+
+Supplemental coverage over the new artifact API/runtime source owners uses
+44 unit/HTTP cases: 157/179 statements (87.70%), 81/99 branches (81.81%),
+52/53 functions (98.11%) and 155/172 lines (90.11%). This is distinct from the
+existing API coverage include set; its passing percentage is not a claim of
+100% artifact coverage. No coverage thresholds or source exclusions were relaxed.
+The final local production image
+`sha256:20323d7abb7a4e381f856bc0a1c27cb65fa1eb5d2338cf221df2dfefe3e41366`
+passes exact rendered core API/worker startup against a fresh migration-0080
+database, and both production cohort parser contracts pass. An extra attempt to
+boot the merge cohort against that core-initialized database is correctly
+rejected by compatibility readiness; that attempt is not a merge startup proof.
+All 29 deployment checks pass. Local object-store and image checks do not establish deployed IAM, cross-region
+replication latency, managed-service capacity or Phase 7 operational evidence.
 
 ### IWA-01 — DST recurrence correction
 

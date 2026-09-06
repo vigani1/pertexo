@@ -42,6 +42,11 @@ import { ScheduleModule } from './schedules/module.js';
 import type { RateLimitConsumer } from './platform/rate-limit/interceptor.js';
 import { RateLimitModule } from './platform/rate-limit/rate-limit.module.js';
 import { APPLICATION_ERROR_MAPPERS } from './application-error-mappers.js';
+import {
+  ArtifactRuntimeModule,
+  DEFAULT_ARTIFACT_MAX_OBJECT_BYTES,
+  type ApiArtifactRuntime,
+} from './platform/artifacts/artifact-runtime.module.js';
 
 export type ApiModuleDependencies = Readonly<{
   database?: WorkspaceDatabase;
@@ -51,6 +56,7 @@ export type ApiModuleDependencies = Readonly<{
   workflowRuntime?: ApiWorkflowRuntime;
   webhookRuntime?: ApiWebhookRuntime;
   scheduleRuntime?: ApiScheduleRuntime;
+  artifactRuntime?: ApiArtifactRuntime;
   rateLimitConsumer?: RateLimitConsumer;
   logger: StructuredLogger;
   telemetry: TelemetryLifecycle;
@@ -110,14 +116,18 @@ export class AppModule {
     const webhookRuntime = dependencies.webhookRuntime;
     const scheduleRuntime = dependencies.scheduleRuntime;
     const workflowRuntime = dependencies.workflowRuntime;
+    const artifactRuntime = dependencies.artifactRuntime;
     const runtimeReadiness =
-      workflowRuntime === undefined && scheduleRuntime === undefined
+      workflowRuntime === undefined &&
+      scheduleRuntime === undefined &&
+      artifactRuntime === undefined
         ? undefined
         : {
             checkReadiness: async (): Promise<void> => {
               await Promise.all([
                 workflowRuntime?.checkReadiness?.(),
                 scheduleRuntime?.checkReadiness(),
+                artifactRuntime?.checkReadiness(),
               ]);
             },
           };
@@ -157,6 +167,19 @@ export class AppModule {
                     scheduleRuntime.service,
                     authorization,
                     identityModule,
+                  ),
+                ]),
+            ...(artifactRuntime === undefined || authorization === undefined
+              ? []
+              : [
+                  ArtifactRuntimeModule.register(
+                    artifactRuntime,
+                    identityModule,
+                    {
+                      maxObjectBytes:
+                        config.artifacts?.primary.maxObjectBytes ??
+                        DEFAULT_ARTIFACT_MAX_OBJECT_BYTES,
+                    },
                   ),
                 ]),
           ];

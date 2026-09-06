@@ -1006,6 +1006,8 @@
               "request.rate_limited",
               "request.rate_limit_unavailable",
               "workspace.quota_exceeded",
+              "artifact.conflict",
+              "artifact.unavailable",
               "workspace.conflict",
               "workflow.revision_conflict",
               "workflow.lifecycle_conflict",

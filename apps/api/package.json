@@ -15,6 +15,7 @@
     "typecheck": "tsc -p tsconfig.test.json --noEmit"
   },
   "dependencies": {
+    "@pertexo/artifact-store": "workspace:*",
     "@pertexo/contracts": "workspace:*",
     "@pertexo/database": "workspace:*",
     "@pertexo/integrations": "workspace:*",
