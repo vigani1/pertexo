@@ -38,7 +38,7 @@ original verdict after each fix.
 | IWA-07 | Canonical hostname/IP classification | Fixed; syntactic IP detection precedes public-address policy; 81 secure-HTTP tests pass including hostname variants and alternate blocked literals |
 | IWA-08 | CPU-bounded streaming redaction | Fixed; byte comparisons yield at bounded intervals and check elapsed deadlines; 85 secure-HTTP tests and 207 integration-package tests pass |
 | IWA-09 | Surge-aware database connection capacity | Open; permitted rollout exceeds capacity contract |
-| IWA-10 | Authenticated replay vertical slice | Open; public route/use case absent |
+| IWA-10 | Authenticated replay vertical slice | In progress; ADR 031 fixes active-workspace authorization, explicit version/input and atomic tenant acceptance; implementation and recovery evidence remain |
 | IWA-15 | Executable Validate semantics and complete versioned slice | Open; node absent; define semantics before implementation |
 | IWA-16 | Workflow lifecycle/version restoration and activation | Open; required operations/state projection incomplete |
 | IWA-17 | Public artifact upload/finalize vertical slice | Open; routes/use cases absent |
