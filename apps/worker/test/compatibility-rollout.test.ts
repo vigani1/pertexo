@@ -11,13 +11,9 @@ import {
 } from '@pertexo/workflow-engine';
 import { describe, expect, it } from 'vitest';
 
-function targetNodeRelease() {
-  return CORE_REGISTRY_RELEASE_SUCCESSOR;
-}
-
 describe('worker rolling compatibility cohort', () => {
   it('reports and executes every exact release pair in one additive artifact', async () => {
-    const target = targetNodeRelease();
+    const target = CORE_REGISTRY_RELEASE_SUCCESSOR;
     const currentExecutableRelease = composeExecutableCompatibilityRelease(
       CORE_REGISTRY_RELEASE,
     );

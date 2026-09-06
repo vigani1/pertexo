@@ -222,7 +222,6 @@ export function createPlatformPreviewNodeInvoker(
           signal,
         });
         // Both registry success kinds produce a truthful output value.
-        void result.kind;
         return succeededWith(result.output);
       } catch (error: unknown) {
         if (error instanceof z.ZodError)

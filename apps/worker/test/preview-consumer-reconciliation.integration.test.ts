@@ -32,7 +32,7 @@ const describeIntegration = workerTransportIntegrationEnabled
 
 describeIntegration('preview reconciliation transport', () => {
   it('delivers an expired unsafe lease to the durable reconciler through the outbox', async () => {
-    const traceparent = validTraceparent(2);
+    const traceparent = validTraceparent;
     const accepted = await withTenantAccept(
       acceptanceInput(traceparent, {
         mayContactProvider: true,

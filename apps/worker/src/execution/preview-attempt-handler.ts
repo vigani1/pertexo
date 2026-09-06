@@ -229,12 +229,6 @@ async function completeOutcome(
   );
 }
 
-function committed(
-  result: PreviewCompletionResult,
-): PreviewAttemptHandlerResult {
-  return Object.freeze({ kind: result.kind });
-}
-
 function committedTerminal(
   dependencies: PreviewAttemptHandlerDependencies,
   lease: PreviewAttemptLease,
@@ -267,7 +261,7 @@ function committedTerminal(
       // Diagnostics cannot change a committed terminal transition.
     }
   }
-  return committed(result);
+  return Object.freeze({ kind: result.kind });
 }
 
 export function createPreviewAttemptHandler(

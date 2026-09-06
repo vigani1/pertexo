@@ -470,7 +470,6 @@ describeIntegration('For Each cancellation recovery', () => {
           [workspaceId, accepted.runId],
         ),
       ).resolves.toEqual([{ attempts: '9', controls: '1' }]);
-      void declaration;
     };
 
     try {
