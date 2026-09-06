@@ -2,6 +2,21 @@ import { isIP } from 'node:net';
 
 import { z } from 'zod';
 
+import { boundedRedactedBody } from './stream-redaction.js';
+import {
+  SECURE_HTTP_ERROR_CODE,
+  SecureHttpError,
+  type SecureHttpErrorCode,
+  failure,
+  abortFailure,
+  isTimeoutError,
+} from './secure-http-error.js';
+export {
+  SECURE_HTTP_ERROR_CODE,
+  SecureHttpError,
+  type SecureHttpErrorCode,
+} from './secure-http-error.js';
+
 import {
   assertPublicAddress,
   normalizeUrlHostname,
@@ -63,24 +78,6 @@ const safeResponseHeaders = new Set([
   'x-ratelimit-reset',
 ]);
 
-export const SECURE_HTTP_ERROR_CODE = Object.freeze({
-  canceled: 'canceled',
-  connectionFenceFailed: 'connection_fence_failed',
-  dispatchBindingMismatch: 'dispatch_binding_mismatch',
-  dispatchEvidenceFailed: 'dispatch_evidence_failed',
-  dnsFailed: 'dns_failed',
-  invalidRequest: 'invalid_request',
-  networkFailed: 'network_failed',
-  redirectRejected: 'redirect_rejected',
-  responseEncodingRejected: 'response_encoding_rejected',
-  responseTooLarge: 'response_too_large',
-  ssrfBlocked: 'ssrf_blocked',
-  timedOut: 'timed_out',
-} as const);
-
-export type SecureHttpErrorCode =
-  (typeof SECURE_HTTP_ERROR_CODE)[keyof typeof SECURE_HTTP_ERROR_CODE];
-
 export type SecureHttpFailureStage =
   | 'admission'
   | 'cancellation'
@@ -100,18 +97,6 @@ export type SecureHttpFailureObservation = Readonly<{
 
 export interface SecureHttpObserver {
   observeFailure(observation: SecureHttpFailureObservation): void;
-}
-
-export class SecureHttpError extends Error {
-  public override readonly name = 'SecureHttpError';
-
-  public constructor(
-    public readonly code: SecureHttpErrorCode,
-    public readonly classification: 'ambiguous' | 'definite_failure',
-    public readonly possiblyDispatched: boolean,
-  ) {
-    super(`Secure HTTP request failed: ${code}`);
-  }
 }
 
 export function secureHttpPreDispatchError(
@@ -239,6 +224,7 @@ export class SecureHttpClient {
     parsed: ReturnType<typeof parseRequest>,
     consume: SecureHttpBodyConsumer<Body>,
   ): Promise<SecureHttpResponse<Body>> {
+    const deadline = performance.now() + parsed.timeoutMillis;
     const timeoutSignal = AbortSignal.timeout(parsed.timeoutMillis);
     const executionSignal =
       parsed.signal === undefined
@@ -351,6 +337,7 @@ export class SecureHttpClient {
                 parsed.maxResponseBytes,
                 executionSignal,
                 parsed.sensitiveValues,
+                deadline,
               ),
               bodyEncoding: textual ? ('utf8' as const) : ('base64' as const),
               finalUrl,
@@ -632,138 +619,6 @@ async function collectBody(
   return result;
 }
 
-function concatenateBytes(left: Uint8Array, right: Uint8Array): Uint8Array {
-  if (left.byteLength === 0) return new Uint8Array(right);
-  if (right.byteLength === 0) return new Uint8Array(left);
-  const result = new Uint8Array(left.byteLength + right.byteLength);
-  result.set(left);
-  result.set(right, left.byteLength);
-  return result;
-}
-
-const REDACTED_BYTES = new TextEncoder().encode('[Redacted]');
-
-function redactAvailable(
-  value: Uint8Array,
-  patterns: readonly Uint8Array[],
-  final: boolean,
-  outputBudget: number,
-): Readonly<{ emitted: Uint8Array; remaining: Uint8Array }> {
-  if (patterns.length === 0) {
-    if (value.byteLength > outputBudget)
-      throw failure(SECURE_HTTP_ERROR_CODE.responseTooLarge, true, false);
-    return Object.freeze({
-      emitted: new Uint8Array(value),
-      remaining: new Uint8Array(),
-    });
-  }
-  const maximumPatternBytes = patterns[0]?.byteLength ?? 0;
-  const emitted = new Uint8Array(
-    Math.min(outputBudget, value.byteLength * REDACTED_BYTES.byteLength),
-  );
-  let emittedLength = 0;
-  const append = (bytes: Uint8Array): void => {
-    if (emittedLength + bytes.byteLength > outputBudget)
-      throw failure(SECURE_HTTP_ERROR_CODE.responseTooLarge, true, false);
-    emitted.set(bytes, emittedLength);
-    emittedLength += bytes.byteLength;
-  };
-  let index = 0;
-  while (index < value.byteLength) {
-    const match = patterns.find((pattern) =>
-      matchesBytes(value, pattern, index),
-    );
-    if (match !== undefined) {
-      append(REDACTED_BYTES);
-      index += match.byteLength;
-      continue;
-    }
-    if (!final && value.byteLength - index < maximumPatternBytes) break;
-    const byte = value[index];
-    if (byte === undefined) break;
-    append(Uint8Array.of(byte));
-    index += 1;
-  }
-  return Object.freeze({
-    emitted: emitted.slice(0, emittedLength),
-    remaining: value.slice(index),
-  });
-}
-
-function redactAndClear(
-  value: Uint8Array,
-  patterns: readonly Uint8Array[],
-  final: boolean,
-  outputBudget: number,
-): ReturnType<typeof redactAvailable> {
-  try {
-    return redactAvailable(value, patterns, final, outputBudget);
-  } finally {
-    value.fill(0);
-  }
-}
-
-async function* boundedRedactedBody(
-  body: AsyncIterable<Uint8Array>,
-  limit: number,
-  signal: AbortSignal,
-  sensitiveValues: readonly string[],
-): AsyncGenerator<Uint8Array> {
-  const patterns = sensitiveValues
-    .map((value) => new TextEncoder().encode(value))
-    .sort((left, right) => right.byteLength - left.byteLength);
-  let rawBytes = 0;
-  let emittedBytes = 0;
-  let pending: Uint8Array = new Uint8Array();
-  const emit = (value: Uint8Array): Uint8Array | undefined => {
-    if (value.byteLength === 0) return undefined;
-    emittedBytes += value.byteLength;
-    if (emittedBytes > limit)
-      throw failure(SECURE_HTTP_ERROR_CODE.responseTooLarge, true, false);
-    return value;
-  };
-  try {
-    for await (const chunk of body) {
-      assertNotAborted(signal, true, false);
-      rawBytes += chunk.byteLength;
-      if (rawBytes > limit)
-        throw failure(SECURE_HTTP_ERROR_CODE.responseTooLarge, true, false);
-      const previous = pending;
-      try {
-        pending = concatenateBytes(previous, chunk);
-      } finally {
-        previous.fill(0);
-        chunk.fill(0);
-      }
-      const candidate = pending;
-      const redacted = redactAndClear(
-        candidate,
-        patterns,
-        false,
-        limit - emittedBytes,
-      );
-      pending = redacted.remaining;
-      const output = emit(redacted.emitted);
-      if (output !== undefined) yield output;
-    }
-    const candidate = pending;
-    const redacted = redactAndClear(
-      candidate,
-      patterns,
-      true,
-      limit - emittedBytes,
-    );
-    pending = redacted.remaining;
-    const output = emit(redacted.emitted);
-    if (output !== undefined) yield output;
-  } catch (error: unknown) {
-    if (error instanceof SecureHttpError) throw error;
-    throw mapResponseStreamError(error, signal);
-  } finally {
-    pending.fill(0);
-  }
-}
-
 function selectResponseHeaders(
   headers: SecureHttpTransportResponse['headers'],
   sensitiveValues: readonly string[],
@@ -787,18 +642,6 @@ function isTextualContentType(contentType: string): boolean {
     normalized.includes('javascript') ||
     normalized.includes('x-www-form-urlencoded')
   );
-}
-
-function matchesBytes(
-  value: Uint8Array,
-  target: Uint8Array,
-  offset: number,
-): boolean {
-  if (target.byteLength === 0) return false;
-  for (let index = 0; index < target.byteLength; index += 1) {
-    if (value[offset + index] !== target[index]) return false;
-  }
-  return true;
 }
 
 function redactText(value: string, sensitiveValues: readonly string[]): string {
@@ -831,38 +674,6 @@ function mapTransportError(
   return failure(SECURE_HTTP_ERROR_CODE.networkFailed, true, true, error);
 }
 
-function mapResponseStreamError(
-  error: unknown,
-  signal: AbortSignal | undefined,
-): SecureHttpError {
-  if (signal?.aborted === true) return abortFailure(signal, true, true);
-  if (isTimeoutError(error))
-    return failure(SECURE_HTTP_ERROR_CODE.timedOut, true, true, error);
-  return failure(SECURE_HTTP_ERROR_CODE.networkFailed, true, true, error);
-}
-
-function isTimeoutError(error: unknown): boolean {
-  return (
-    error instanceof Error &&
-    (('code' in error && error.code === 'ETIMEDOUT') ||
-      error.name === 'TimeoutError')
-  );
-}
-
-function failure(
-  code: SecureHttpErrorCode,
-  possiblyDispatched: boolean,
-  ambiguous: boolean,
-  cause?: unknown,
-): SecureHttpError {
-  void cause;
-  return new SecureHttpError(
-    code,
-    ambiguous ? 'ambiguous' : 'definite_failure',
-    possiblyDispatched,
-  );
-}
-
 function raceWithSignal<T>(
   work: Promise<T>,
   signal: AbortSignal,
@@ -891,22 +702,6 @@ function raceWithSignal<T>(
       },
     );
   });
-}
-
-function abortFailure(
-  signal: AbortSignal,
-  possiblyDispatched: boolean,
-  ambiguous: boolean,
-): SecureHttpError {
-  const timedOut =
-    signal.reason instanceof Error && signal.reason.name === 'TimeoutError';
-  return failure(
-    timedOut
-      ? SECURE_HTTP_ERROR_CODE.timedOut
-      : SECURE_HTTP_ERROR_CODE.canceled,
-    possiblyDispatched,
-    ambiguous,
-  );
 }
 
 function normalizedHeaderValue(value: string | readonly string[]): string {
