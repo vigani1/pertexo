@@ -18,6 +18,12 @@ import { NodeSDK } from '@opentelemetry/sdk-node';
 import './server-only.js';
 
 import type { ObservabilityConfig } from './config.js';
+import {
+  sanitizeHttpSpan,
+  sanitizeIncomingHttpRequest,
+  sanitizeOutgoingHttpRequest,
+  sanitizeUndiciRequest,
+} from './telemetry-sanitization.js';
 
 export interface TelemetryLifecycle {
   readonly enabled: boolean;
@@ -37,8 +43,15 @@ export type TelemetrySdkFactory = (
 
 export function createNodeInstrumentations() {
   return [
-    new HttpInstrumentation(),
-    new UndiciInstrumentation(),
+    new HttpInstrumentation({
+      requestHook: sanitizeHttpSpan,
+      startIncomingSpanHook: sanitizeIncomingHttpRequest,
+      startOutgoingSpanHook: sanitizeOutgoingHttpRequest,
+    }),
+    new UndiciInstrumentation({
+      requestHook: sanitizeHttpSpan,
+      startSpanHook: sanitizeUndiciRequest,
+    }),
     new NestInstrumentation(),
     new PinoInstrumentation(),
     new PgInstrumentation(),
