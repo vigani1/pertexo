@@ -2,6 +2,7 @@ export {
   APPLICATION_ERROR_CATALOG,
   applicationError,
   isApplicationError,
+  throwApplicationError,
 } from './application-error.js';
 export type { ApplicationError } from './application-error.js';
 export { HttpPlatformModule } from './http.module.js';

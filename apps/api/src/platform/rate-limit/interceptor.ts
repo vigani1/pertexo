@@ -16,7 +16,10 @@ import {
 } from '@pertexo/rate-limit';
 
 import { RATE_LIMIT_EXEMPT, RATE_LIMIT_METADATA } from './metadata.js';
-import { applicationError } from '../http/application-error.js';
+import {
+  applicationError,
+  throwApplicationError,
+} from '../http/application-error.js';
 import { firstRequestHeader } from '../http/request-headers.js';
 
 export type RateLimitConsumer = Readonly<{
@@ -77,15 +80,6 @@ function subject(request: RateLimitRequest): RateLimitSubject {
   };
 }
 
-function throwApplicationError(
-  code: 'request.rate_limited' | 'request.rate_limit_unavailable',
-  retryAfterSeconds: number,
-): never {
-  // The HTTP platform deliberately accepts frozen application-error values.
-  // eslint-disable-next-line @typescript-eslint/only-throw-error
-  throw applicationError(code, { details: { retryAfterSeconds } });
-}
-
 @Injectable()
 export class RateLimitInterceptor implements NestInterceptor {
   public constructor(
@@ -120,7 +114,11 @@ export class RateLimitInterceptor implements NestInterceptor {
         outcome: 'backend_error',
       });
       if (decision.failureMode === 'open') return next.handle();
-      return throwApplicationError('request.rate_limit_unavailable', 1);
+      return throwApplicationError(
+        applicationError('request.rate_limit_unavailable', {
+          details: { retryAfterSeconds: 1 },
+        }),
+      );
     }
     if (!result.allowed) {
       this.metrics.record({
@@ -130,8 +128,9 @@ export class RateLimitInterceptor implements NestInterceptor {
         limitedDimension: result.limitedDimension,
       });
       return throwApplicationError(
-        'request.rate_limited',
-        result.retryAfterSeconds,
+        applicationError('request.rate_limited', {
+          details: { retryAfterSeconds: result.retryAfterSeconds },
+        }),
       );
     }
     this.metrics.record({

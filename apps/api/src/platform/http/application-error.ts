@@ -44,3 +44,9 @@ export function isApplicationError(value: unknown): value is ApplicationError {
   const code = value.code;
   return typeof code === 'string' && code in APPLICATION_ERROR_CATALOG;
 }
+
+export function throwApplicationError(error: ApplicationError): never {
+  // The HTTP problem filter deliberately accepts frozen application-error values.
+  // eslint-disable-next-line @typescript-eslint/only-throw-error
+  throw error;
+}

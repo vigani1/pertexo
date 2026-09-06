@@ -20,7 +20,10 @@ import {
   type SessionCookieOptions,
 } from '../identity/index.js';
 import { createActorContext } from '../workspaces/index.js';
-import { applicationError } from '../platform/http/index.js';
+import {
+  applicationError,
+  throwApplicationError,
+} from '../platform/http/index.js';
 import { RateLimit } from '../platform/rate-limit/metadata.js';
 import type { SessionCookiePolicy } from './ports.js';
 import {
@@ -31,7 +34,6 @@ import {
   readCookie,
   SESSION_COOKIE_NAME,
   SessionAuthenticationGuard,
-  sessionToken,
   WorkspaceManageGuard,
 } from './guards.js';
 import {
@@ -147,7 +149,7 @@ export class SessionController {
     @Req() request: IdentityWorkspaceRequest,
     @Res({ passthrough: true }) response: CookieResponse,
   ): Promise<void> {
-    const token = sessionToken(request);
+    const token = readCookie(request, SESSION_COOKIE_NAME);
     if (token === undefined)
       return throwApplicationError(applicationError('auth.unauthenticated'));
     await this.telemetry.measure(
@@ -388,12 +390,4 @@ function traceFields(trace: string | undefined): Readonly<{
   traceId?: string;
 }> {
   return trace === undefined ? {} : { traceId: trace };
-}
-
-function throwApplicationError(
-  error: ReturnType<typeof applicationError>,
-): never {
-  // The HTTP problem filter deliberately accepts frozen application-error values.
-  // eslint-disable-next-line @typescript-eslint/only-throw-error
-  throw error;
 }

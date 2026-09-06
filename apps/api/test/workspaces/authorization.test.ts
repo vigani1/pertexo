@@ -370,26 +370,14 @@ describe('workspace authorization policy', () => {
       }),
     ).rejects.toMatchObject({ code: 'auth.unauthenticated' });
 
-    await expect(
-      authorizeWorkspace({
-        actor: actor(),
-        routeWorkspaceId: workspaceId,
-        capability: 'workflow:update',
-        access: () => Promise.resolve(access({ role: 'viewer' })),
-      }),
-    ).rejects.toMatchObject({ code: 'auth.forbidden' });
-
-    try {
-      await authorizeWorkspace({
-        actor: actor(),
-        routeWorkspaceId: workspaceId,
-        capability: 'workflow:update',
-        access: () => Promise.resolve(access({ role: 'viewer' })),
-      });
-    } catch (error: unknown) {
-      expect(error).toBeInstanceOf(AuthorizationError);
-      expect(error).toMatchObject({ code: 'auth.forbidden' });
-    }
+    const denied = authorizeWorkspace({
+      actor: actor(),
+      routeWorkspaceId: workspaceId,
+      capability: 'workflow:update',
+      access: () => Promise.resolve(access({ role: 'viewer' })),
+    });
+    await expect(denied).rejects.toBeInstanceOf(AuthorizationError);
+    await expect(denied).rejects.toMatchObject({ code: 'auth.forbidden' });
   });
 });
 

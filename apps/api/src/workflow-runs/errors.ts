@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
   applicationError,
   isApplicationError,
+  throwApplicationError,
   type ApplicationError,
 } from '../platform/http/index.js';
 import { AuthorizationError } from '../workspaces/index.js';
@@ -46,7 +47,5 @@ export function mapWorkflowRunError(error: unknown): ApplicationError {
 }
 
 export function throwWorkflowRunError(error: unknown): never {
-  // The shared problem filter consumes frozen application errors.
-  // eslint-disable-next-line @typescript-eslint/only-throw-error
-  throw mapWorkflowRunError(error);
+  return throwApplicationError(mapWorkflowRunError(error));
 }
