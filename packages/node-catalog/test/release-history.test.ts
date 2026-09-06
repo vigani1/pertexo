@@ -36,6 +36,8 @@ import {
   CORE_SCHEDULE_EXECUTOR_V3,
   CORE_SWITCH_DEFINITION,
   CORE_SWITCH_EXECUTOR,
+  CORE_VALIDATE_DEFINITION,
+  CORE_VALIDATE_EXECUTOR,
   CORE_WAIT_DEFINITION,
   CORE_WAIT_EXECUTOR,
   CORE_WEBHOOK_DEFINITION,
@@ -72,6 +74,8 @@ import {
   PLATFORM_REGISTRY_RELEASE_SCHEDULE_V3_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_PARALLEL_V3_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_MERGE_V3_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_VALIDATE_STAGED,
   PLATFORM_REGISTRY_RELEASE_WEBHOOK_ACTIVE,
   PLATFORM_REGISTRY_RELEASE_WEBHOOK_STAGED,
   PLATFORM_SCHEDULE_ACTIVATION_RELEASE_SUPPORT,
@@ -88,6 +92,8 @@ import {
   PLATFORM_PARALLEL_V3_STAGING_RELEASE_SUPPORT,
   PLATFORM_MERGE_V3_ACTIVATION_RELEASE_SUPPORT,
   PLATFORM_MERGE_V3_STAGING_RELEASE_SUPPORT,
+  PLATFORM_VALIDATE_ACTIVATION_RELEASE_SUPPORT,
+  PLATFORM_VALIDATE_STAGING_RELEASE_SUPPORT,
   PLATFORM_WEBHOOK_ACTIVATION_RELEASE_SUPPORT,
   PLATFORM_WEBHOOK_STAGING_RELEASE_SUPPORT,
   PLATFORM_CONDITION_ACTIVATION_RELEASE_SUPPORT,
@@ -618,7 +624,7 @@ describe('platform node release history and cohorts', () => {
     expect(PLATFORM_REGISTRY_RELEASE_HISTORY.map(({ epoch }) => epoch)).toEqual(
       [
         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-        21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36,
+        21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38,
       ],
     );
     expect(PLATFORM_REGISTRY_RELEASE_SUPPORT.map(({ epoch }) => epoch)).toEqual(
@@ -757,6 +763,31 @@ describe('platform node release history and cohorts', () => {
         ({ epoch }) => epoch,
       ),
     ).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
+    expect(platformRegistryReleaseSupport('validate_staging')).toBe(
+      PLATFORM_VALIDATE_STAGING_RELEASE_SUPPORT,
+    );
+    expect(platformRegistryReleaseSupport('validate_activation')).toBe(
+      PLATFORM_VALIDATE_ACTIVATION_RELEASE_SUPPORT,
+    );
+    expect(platformServingRegistryRelease('validate_staging').epoch).toBe(36);
+    expect(platformServingRegistryRelease('validate_activation').epoch).toBe(
+      38,
+    );
+    expect(
+      platformExecutableRegistryHistory('validate_activation').map(
+        ({ epoch }) => epoch,
+      ),
+    ).toEqual(Array.from({ length: 38 }, (_, index) => index + 1));
+    expect(
+      PLATFORM_REGISTRY_RELEASE_VALIDATE_STAGED.executors.find(
+        ({ executor }) => executor.key === CORE_VALIDATE_EXECUTOR.key,
+      ),
+    ).toMatchObject({ lifecycle: 'staged', abiVersion: 1 });
+    expect(
+      PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE.executors.find(
+        ({ executor }) => executor.key === CORE_VALIDATE_EXECUTOR.key,
+      ),
+    ).toMatchObject({ lifecycle: 'active', abiVersion: 1 });
     expect(
       PLATFORM_REGISTRY_RELEASE_HTTP_STAGED.executors.find(
         ({ executor }) => executor.key === HTTP_REQUEST_EXECUTOR.key,
@@ -895,6 +926,18 @@ describe('platform node release history and cohorts', () => {
         36,
         [35, 36],
       ],
+      [
+        'validate_staging',
+        PLATFORM_VALIDATE_STAGING_RELEASE_SUPPORT,
+        36,
+        [36, 37],
+      ],
+      [
+        'validate_activation',
+        PLATFORM_VALIDATE_ACTIVATION_RELEASE_SUPPORT,
+        38,
+        [37, 38],
+      ],
     ] as const;
     for (const [
       cohort,
@@ -1006,5 +1049,36 @@ describe('platform node release history and cohorts', () => {
         signal,
       }),
     ).resolves.toEqual({ kind: 'succeeded', output: mergeInput });
+
+    await expect(
+      createPlatformNodeRegistryForRelease(
+        PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE,
+      ).execute({
+        config: {
+          rules: [
+            { id: 'name', path: '$.name', required: true, type: 'string' },
+            { id: 'count', path: '$.count', type: 'number', minimum: 2 },
+          ],
+        },
+        definition: CORE_VALIDATE_DEFINITION,
+        executor: CORE_VALIDATE_EXECUTOR,
+        input: { name: 'catalog', count: 1 },
+        signal,
+      }),
+    ).resolves.toEqual({
+      kind: 'succeeded',
+      output: {
+        valid: false,
+        issues: [
+          {
+            ruleId: 'count',
+            path: '$.count',
+            code: 'minimum',
+            message: 'Number is below the minimum.',
+          },
+        ],
+        truncated: false,
+      },
+    });
   });
 });

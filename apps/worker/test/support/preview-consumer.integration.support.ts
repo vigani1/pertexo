@@ -9,6 +9,7 @@ import { afterAll, beforeAll, expect } from 'vitest';
 import { dropDisconnectedDatabase } from './disposable-database.js';
 
 import {
+  acceptWorkflowRun,
   acceptPreviewRun,
   createCompatibilityReleaseMaintenance,
   createCompatibilityReleaseReadinessProbe,
@@ -16,14 +17,26 @@ import {
   parseDatabaseConfig,
   parseWorkspaceId,
   withTenantScopedClient,
+  type AcceptWorkflowRunInput,
   type AcceptPreviewRunInput,
 } from '@pertexo/database/testing';
-import { platformExecutableRegistryHistory } from '@pertexo/node-catalog';
 import {
+  PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE,
+  platformExecutableRegistryHistory,
+  type PlatformReleaseCohort,
+} from '@pertexo/node-catalog';
+import {
+  buildWorkflowExecutableV2,
   composeExecutableCompatibilityRelease,
+  createCheckpointV2,
   createExecutableCompatibilityReleaseHistory,
 } from '@pertexo/workflow-engine';
 import { Queue } from 'bullmq';
+import {
+  createQueueProducer,
+  QUEUE_NAME,
+  type QueueProducer,
+} from '@pertexo/queue';
 
 export const workerTransportIntegrationEnabled =
   process.env.WORKER_TRANSPORT_INTEGRATION === 'true';
@@ -60,6 +73,58 @@ const databaseName = `pertexo_test_preview_transport_${randomUUID().replaceAll('
 export const workspaceId = randomUUID();
 const actorUserId = randomUUID();
 const workflowId = randomUUID();
+export const workflowVersionId = randomUUID();
+
+const validateWorkflowGraph = {
+  schemaVersion: 1 as const,
+  nodes: [
+    {
+      id: 'manual',
+      definition: { key: 'core.manual', version: 1 },
+      position: { x: 0, y: 0 },
+      configVersion: 1,
+      config: {},
+      inputMappings: {},
+      connectionRefs: {},
+    },
+    {
+      id: 'validate',
+      definition: { key: 'core.validate', version: 1 },
+      position: { x: 20, y: 0 },
+      configVersion: 1,
+      config: {
+        rules: [
+          {
+            id: 'email',
+            path: '$.profile.email',
+            required: true,
+            type: 'string',
+            minLength: 8,
+          },
+          {
+            id: 'role',
+            path: '$.profile.role',
+            type: 'string',
+            enum: ['admin'],
+          },
+        ],
+      },
+      inputMappings: {
+        profile: { kind: 'run_input' as const, path: '$.profile' },
+        secret: { kind: 'run_input' as const, path: '$.secret' },
+      },
+      connectionRefs: {},
+    },
+  ],
+  edges: [
+    {
+      id: 'manual-validate',
+      source: { nodeId: 'manual', port: 'out' },
+      target: { nodeId: 'validate', port: 'in' },
+    },
+  ],
+  settings: {},
+} as const;
 
 export function databaseUrl(base: string): string {
   const url = new URL(base);
@@ -96,22 +161,26 @@ async function withOwner<T>(
 }
 
 async function clearNodeAttemptQueue(): Promise<void> {
-  const parsed = new URL(redisUrl);
-  const queue = new Queue('node-attempts', {
-    connection: {
-      db: Number(parsed.pathname.slice(1)),
-      host: parsed.hostname,
-      port: Number(parsed.port || 6379),
-      ...(parsed.password === ''
-        ? {}
-        : { password: decodeURIComponent(parsed.password) }),
-    },
+  const queue = new Queue(QUEUE_NAME.nodeAttempts, {
+    connection: redisConnectionOptions(),
   });
   try {
     await queue.obliterate({ force: true });
   } finally {
     await queue.close();
   }
+}
+
+export function redisConnectionOptions() {
+  const parsed = new URL(redisUrl);
+  return {
+    db: Number(parsed.pathname.slice(1)),
+    host: parsed.hostname,
+    port: Number(parsed.port || 6379),
+    ...(parsed.password === ''
+      ? {}
+      : { password: decodeURIComponent(parsed.password) }),
+  };
 }
 
 async function seedIdentity(): Promise<void> {
@@ -179,6 +248,29 @@ async function seedIdentity(): Promise<void> {
         actorUserId,
       ],
     );
+    const executable = buildWorkflowExecutableV2({
+      graph: validateWorkflowGraph,
+      release: composeExecutableCompatibilityRelease(
+        PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE,
+      ),
+    });
+    await client.query(
+      `insert into app.workflow_versions (
+         id, workspace_id, workflow_id, version_number, schema_version,
+         graph_json, checksum, executable_schema_version, executable_json,
+         compatibility_release_epoch, published_by
+       ) values ($1, $2, $3, 1, 1, $4::jsonb, $5, 2, $6::jsonb, $7, $8)`,
+      [
+        workflowVersionId,
+        workspaceId,
+        workflowId,
+        JSON.stringify(validateWorkflowGraph),
+        executable.checksum,
+        JSON.stringify(executable.envelope),
+        executable.envelope.compatibilityReleaseEpoch,
+        actorUserId,
+      ],
+    );
   });
 }
 
@@ -191,17 +283,11 @@ let activeRelease = {
   fingerprint: '',
 };
 
-async function activateArtifactRelease(): Promise<void> {
-  const rows = await withOwner((client) =>
-    client.query<{ epoch: number; fingerprint: string }>(
-      `select epoch,fingerprint from app.node_compatibility_current`,
-    ),
-  );
-  const current = rows.rows[0];
-  if (current === undefined)
-    throw new Error('seeded compatibility pointer missing');
+export async function activateArtifactRelease(
+  cohort: PlatformReleaseCohort = 'core',
+): Promise<void> {
   const support = createExecutableCompatibilityReleaseHistory(
-    platformExecutableRegistryHistory('core').map(
+    platformExecutableRegistryHistory(cohort).map(
       composeExecutableCompatibilityRelease,
     ),
   );
@@ -213,98 +299,122 @@ async function activateArtifactRelease(): Promise<void> {
     workerRuntimeRole: 'pertexo_worker',
   });
   const maintenance = createCompatibilityReleaseMaintenance(databaseConfig);
-  const predecessorRows = await withOwner((client) =>
-    client.query<{ catalog_json: unknown }>(
-      `select catalog_json from app.node_compatibility_releases
-       where epoch=$1 and fingerprint=$2`,
-      [current.epoch, current.fingerprint],
-    ),
-  );
-  const rawCatalog = predecessorRows.rows[0]?.catalog_json;
-  if (rawCatalog === null || rawCatalog === undefined)
-    throw new Error('seeded release catalog missing');
-  const expectedPredecessor = {
-    catalogJson:
-      typeof rawCatalog === 'string' ? rawCatalog : JSON.stringify(rawCatalog),
-    epoch: current.epoch,
-    fingerprint: current.fingerprint,
-  };
-  // Rolling readiness accepts exactly the current/target pair, so the
-  // probes must know both identities.
-  const pairDescriptions = [
-    {
-      catalogJson:
-        typeof rawCatalog === 'string'
-          ? rawCatalog
-          : JSON.stringify(rawCatalog),
-      epoch: current.epoch,
-      fingerprint: current.fingerprint,
-    },
-    target,
-  ];
-  const apiProbe = createCompatibilityReleaseReadinessProbe(
-    parseDatabaseConfig({ connectionString: databaseUrl(apiUrl), max: 1 }),
-    pairDescriptions,
-  );
-  const workerProbe = createCompatibilityReleaseReadinessProbe(
-    parseDatabaseConfig({ connectionString: databaseUrl(workerUrl), max: 1 }),
-    pairDescriptions,
-  );
-  const deploymentId = `preview-transport-${randomUUID()}`;
-  const approvalId = randomUUID();
 
   try {
-    await maintenance.prepare({
-      actorId: 'preview-transport-integration',
-      actorKind: 'deployment',
-      expectedPredecessor,
-      reason: 'Activate the transport-proof cohort',
-      target,
-    });
-    await expect(apiProbe.checkTarget(target)).resolves.toMatchObject({
-      role: 'pertexo_api',
-    });
-    await expect(workerProbe.checkTarget(target)).resolves.toMatchObject({
-      role: 'pertexo_worker',
-    });
-    await maintenance.recordPreactivation({
-      artifactId: 'preview-transport-api',
-      checkId: randomUUID(),
-      deploymentId,
-      roleKind: 'api',
-      target,
-    });
-    await maintenance.recordPreactivation({
-      artifactId: 'preview-transport-worker',
-      checkId: randomUUID(),
-      deploymentId,
-      roleKind: 'worker',
-      target,
-    });
-    await maintenance.approve({
-      actorId: 'preview-transport-integration',
-      approvalId,
-      deploymentId,
-      reason: 'Approve the preview transport cohort',
-      requiredApiArtifacts: ['preview-transport-api'],
-      requiredWorkerArtifacts: ['preview-transport-worker'],
-      target,
-    });
-    await maintenance.activate({
-      activationId: randomUUID(),
-      actorId: 'preview-transport-integration',
-      actorKind: 'deployment',
-      approvalId,
-      expectedPredecessor,
-      reason: 'Activate for preview transport proof',
-    });
-    activeRelease = { epoch: target.epoch, fingerprint: target.fingerprint };
+    for (;;) {
+      const rows = await withOwner((client) =>
+        client.query<{ epoch: number; fingerprint: string }>(
+          `select epoch,fingerprint from app.node_compatibility_current`,
+        ),
+      );
+      const current = rows.rows[0];
+      if (current === undefined)
+        throw new Error('seeded compatibility pointer missing');
+      if (
+        current.epoch === target.epoch &&
+        current.fingerprint === target.fingerprint
+      ) {
+        activeRelease = {
+          epoch: target.epoch,
+          fingerprint: target.fingerprint,
+        };
+        return;
+      }
+
+      const next = support.descriptions.find(
+        ({ epoch }) => epoch === current.epoch + 1,
+      );
+      if (next === undefined)
+        throw new Error(
+          `compatibility cohort ${cohort} cannot advance from epoch ${String(current.epoch)}`,
+        );
+      const predecessorRows = await withOwner((client) =>
+        client.query<{ catalog_json: unknown }>(
+          `select catalog_json from app.node_compatibility_releases
+           where epoch=$1 and fingerprint=$2`,
+          [current.epoch, current.fingerprint],
+        ),
+      );
+      const rawCatalog = predecessorRows.rows[0]?.catalog_json;
+      if (rawCatalog === null || rawCatalog === undefined)
+        throw new Error('seeded release catalog missing');
+      const expectedPredecessor = {
+        catalogJson:
+          typeof rawCatalog === 'string'
+            ? rawCatalog
+            : JSON.stringify(rawCatalog),
+        epoch: current.epoch,
+        fingerprint: current.fingerprint,
+      };
+      // Rolling readiness accepts exactly the current/target pair, so the
+      // probes must know both identities.
+      const pairDescriptions = [expectedPredecessor, next];
+      const apiProbe = createCompatibilityReleaseReadinessProbe(
+        parseDatabaseConfig({ connectionString: databaseUrl(apiUrl), max: 1 }),
+        pairDescriptions,
+      );
+      const workerProbe = createCompatibilityReleaseReadinessProbe(
+        parseDatabaseConfig({
+          connectionString: databaseUrl(workerUrl),
+          max: 1,
+        }),
+        pairDescriptions,
+      );
+      const deploymentId = `preview-transport-${cohort}-${String(next.epoch)}-${randomUUID()}`;
+      const approvalId = randomUUID();
+      const apiArtifact = `preview-transport-api-${String(next.epoch)}`;
+      const workerArtifact = `preview-transport-worker-${String(next.epoch)}`;
+      try {
+        await maintenance.prepare({
+          actorId: 'preview-transport-integration',
+          actorKind: 'deployment',
+          expectedPredecessor,
+          reason: `Prepare ${cohort} epoch ${String(next.epoch)}`,
+          target: next,
+        });
+        await expect(apiProbe.checkTarget(next)).resolves.toMatchObject({
+          role: 'pertexo_api',
+        });
+        await expect(workerProbe.checkTarget(next)).resolves.toMatchObject({
+          role: 'pertexo_worker',
+        });
+        await maintenance.recordPreactivation({
+          artifactId: apiArtifact,
+          checkId: randomUUID(),
+          deploymentId,
+          roleKind: 'api',
+          target: next,
+        });
+        await maintenance.recordPreactivation({
+          artifactId: workerArtifact,
+          checkId: randomUUID(),
+          deploymentId,
+          roleKind: 'worker',
+          target: next,
+        });
+        await maintenance.approve({
+          actorId: 'preview-transport-integration',
+          approvalId,
+          deploymentId,
+          reason: `Approve ${cohort} epoch ${String(next.epoch)}`,
+          requiredApiArtifacts: [apiArtifact],
+          requiredWorkerArtifacts: [workerArtifact],
+          target: next,
+        });
+        await maintenance.activate({
+          activationId: randomUUID(),
+          actorId: 'preview-transport-integration',
+          actorKind: 'deployment',
+          approvalId,
+          expectedPredecessor,
+          reason: `Activate ${cohort} epoch ${String(next.epoch)}`,
+        });
+      } finally {
+        await Promise.allSettled([apiProbe.close(), workerProbe.close()]);
+      }
+    }
   } finally {
-    await Promise.allSettled([
-      maintenance.close(),
-      apiProbe.close(),
-      workerProbe.close(),
-    ]);
+    await maintenance.close();
   }
 }
 
@@ -392,6 +502,61 @@ export async function acceptDelivery(
   };
 }
 
+type PreviewRuntimeReady = Readonly<{
+  consumer: Readonly<{
+    waitUntilReady(timeoutMillis: number): Promise<void>;
+  }>;
+}>;
+
+export type PublishedPreviewDelivery = Readonly<{
+  job: Awaited<ReturnType<QueueProducer['publish']>>;
+  producer: QueueProducer;
+  queue: Queue;
+  state: Awaited<ReturnType<typeof previewState>>;
+}>;
+
+export async function withPublishedPreviewDelivery<T>(
+  runtime: PreviewRuntimeReady,
+  delivery: AcceptedDelivery,
+  work: (execution: PublishedPreviewDelivery) => Promise<T>,
+): Promise<T> {
+  const producer = createQueueProducer({ redisUrl });
+  const queue = new Queue(QUEUE_NAME.nodeAttempts, {
+    connection: redisConnectionOptions(),
+  });
+  try {
+    await Promise.all([
+      runtime.consumer.waitUntilReady(5_000),
+      producer.waitUntilReady(5_000),
+    ]);
+    const job = await producer.publish({
+      data: delivery.job.data,
+      name: delivery.job.name,
+    });
+    expect(job.jobId).toBe(`outbox-${delivery.accepted.outboxEventId}`);
+    // A replay already has a succeeded database row. Observe this delivery's
+    // consumer completion before comparing durable state, not just old success.
+    const deliveredJob = await waitFor(
+      () => queue.getJob(job.jobId),
+      (value) => value !== undefined,
+    );
+    if (deliveredJob === undefined)
+      throw new Error('published preview job missing');
+    const deliveredState = await waitFor(
+      () => deliveredJob.getState(),
+      (value) => value === 'completed' || value === 'failed',
+    );
+    expect(deliveredState).toBe('completed');
+    const state = await waitFor(
+      () => previewState(delivery.accepted.previewRunId),
+      (value) => value?.run_status === 'succeeded',
+    );
+    return await work({ job, producer, queue, state });
+  } finally {
+    await Promise.allSettled([producer.close(), queue.close()]);
+  }
+}
+
 export function withTenantAccept(input: AcceptPreviewRunInput) {
   return withTenantScopedClient(apiPool, { workspaceId }, async (client) =>
     acceptPreviewRun(
@@ -402,6 +567,87 @@ export function withTenantAccept(input: AcceptPreviewRunInput) {
       input,
     ),
   );
+}
+
+export interface AcceptedWorkflowDelivery {
+  accepted: Awaited<ReturnType<typeof acceptWorkflowRun>>;
+  job: {
+    data: {
+      outboxEventId: string;
+      runId: string;
+      schemaVersion: 1;
+      traceparent: string;
+      workspaceId: string;
+    };
+    name: 'advance-workflow-run';
+  };
+}
+
+let workflowAcceptanceSequence = 0;
+
+export async function acceptWorkflowDelivery(
+  traceparent: string,
+  runInput: unknown,
+): Promise<AcceptedWorkflowDelivery> {
+  await withOwner(async (client) => {
+    await client.query("select set_config('app.workspace_id',$1,true)", [
+      workspaceId,
+    ]);
+    await client.query(
+      `update app.workflows set published_version_id=$1,activation_status='active' where workspace_id=$2 and id=$3`,
+      [workflowVersionId, workspaceId, workflowId],
+    );
+  });
+  workflowAcceptanceSequence += 1;
+  const engineVersion = 'validate-worker-v1';
+  const keyHash = createHash('sha256')
+    .update(`validate-workflow-key-${String(workflowAcceptanceSequence)}`)
+    .digest('hex');
+  const requestHash = createHash('sha256')
+    .update(`validate-workflow-request-${String(workflowAcceptanceSequence)}`)
+    .digest('hex');
+  const acceptance: AcceptWorkflowRunInput = {
+    engineVersion,
+    initialCheckpoint: createCheckpointV2({
+      engineVersion,
+      workflowVersionId,
+      iterationBudget: 0,
+    }),
+    keyHash,
+    operation: 'workflow.run.accept',
+    requestHash,
+    runInput,
+    scope: `workflow:${workflowId}:manual`,
+    traceparent,
+    triggerType: 'manual',
+    workflowId,
+    workflowVersionId,
+  };
+  const accepted = await withTenantScopedClient(
+    apiPool,
+    { workspaceId },
+    (client) =>
+      acceptWorkflowRun(
+        {
+          db: drizzle(client, { schema: databaseSchema }),
+          workspaceId: parseWorkspaceId(workspaceId),
+        },
+        acceptance,
+      ),
+  );
+  return {
+    accepted,
+    job: {
+      data: {
+        outboxEventId: accepted.outboxEventId,
+        runId: accepted.runId,
+        schemaVersion: 1,
+        traceparent,
+        workspaceId,
+      },
+      name: 'advance-workflow-run',
+    },
+  };
 }
 
 export async function waitFor<T>(
@@ -551,7 +797,7 @@ beforeAll(async () => {
     });
   });
   await seedIdentity();
-  await activateArtifactRelease();
+  await activateArtifactRelease('core');
   await clearNodeAttemptQueue();
 }, 60_000);
 

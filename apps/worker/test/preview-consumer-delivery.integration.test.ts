@@ -6,8 +6,6 @@ import {
 } from '@pertexo/database/testing';
 import { platformServingRegistryRelease } from '@pertexo/node-catalog';
 import { createPlatformNodeRegistryForRelease } from '@pertexo/node-catalog/server';
-import { createQueueProducer } from '@pertexo/queue';
-import { Queue } from 'bullmq';
 import { describe, expect, it } from 'vitest';
 
 import { createNodeAttemptRuntime } from '../src/execution/node-attempt-runtime.js';
@@ -24,6 +22,7 @@ import {
   validTraceparent,
   waitFor,
   withTenantScopedWorker,
+  withPublishedPreviewDelivery,
   workerTransportIntegrationEnabled,
   workerUrl,
 } from './support/preview-consumer.integration.support.js';
@@ -58,91 +57,66 @@ describeIntegration('preview delivery transport', () => {
       releaseCohort: 'core',
       workerId: `preview-transport-${randomUUID().slice(0, 8)}`,
     });
-    const producer = createQueueProducer({ redisUrl });
-    const queue = new Queue('node-attempts', {
-      connection: (() => {
-        const parsed = new URL(redisUrl);
-        return {
-          db: Number(parsed.pathname.slice(1)),
-          host: parsed.hostname,
-          port: Number(parsed.port || 6379),
-          ...(parsed.password === ''
-            ? {}
-            : { password: decodeURIComponent(parsed.password) }),
-        };
-      })(),
-    });
     try {
-      await Promise.all([
-        runtime.consumer.waitUntilReady(5_000),
-        producer.waitUntilReady(5_000),
-      ]);
-      const job = await producer.publish({
-        data: delivery.job.data,
-        name: delivery.job.name,
-      });
-      expect(job.jobId).toBe(`outbox-${delivery.accepted.outboxEventId}`);
+      await withPublishedPreviewDelivery(
+        runtime,
+        delivery,
+        async (execution) => {
+          const { job, producer, queue, state } = execution;
+          expect(state?.attempt_fence).toBe('1');
+          // core.set is a safe node: dispatch evidence is not required before
+          // its pure execution, so no marker exists for this preview.
+          expect(state?.dispatch_marked_at).toBeNull();
+          expect(JSON.parse(String(state?.output_ref))).toMatchObject({
+            value: { hello: 'transport' },
+          });
 
-      const state = await waitFor(
-        () => previewState(delivery.accepted.previewRunId),
-        (value) => value?.run_status === 'succeeded',
-      );
-      expect(state?.attempt_fence).toBe('1');
-      // core.set is a safe node: dispatch evidence is not required before
-      // its pure execution, so no marker exists for this preview.
-      expect(state?.dispatch_marked_at).toBeNull();
-      expect(JSON.parse(String(state?.output_ref))).toMatchObject({
-        value: { hello: 'transport' },
-      });
+          const receipts = await withTenantScopedWorker((client) =>
+            client.query<{ count: string; completed: string }>(
+              `select count(*)::text as count,
+                    count(completed_at)::text as completed
+             from app.inbox_receipts
+             where consumer_name='preview-attempt-worker' and message_id=$1`,
+              [delivery.accepted.outboxEventId],
+            ),
+          );
+          expect(receipts.rows[0]).toEqual({ completed: '1', count: '1' });
 
-      const receipts = await withTenantScopedWorker((client) =>
-        client.query<{ count: string; completed: string }>(
-          `select count(*)::text as count,
-                  count(completed_at)::text as completed
-           from app.inbox_receipts
-           where consumer_name='preview-attempt-worker' and message_id=$1`,
-          [delivery.accepted.outboxEventId],
-        ),
+          // Exact redelivery of the published job must not re-execute: the
+          // durable outcome, fence, and receipt stay untouched.
+          const before = await previewState(delivery.accepted.previewRunId);
+          const completedJob = await waitFor(
+            () => queue.getJob(job.jobId),
+            (value) => value !== undefined,
+          );
+          if (completedJob === undefined)
+            throw new Error('completed preview job missing');
+          await waitFor(
+            () => completedJob.getState(),
+            (state) => state === 'completed',
+          );
+          await completedJob.remove();
+          const replayed = await producer.publish({
+            data: delivery.job.data,
+            name: delivery.job.name,
+          });
+          const replayedJob = await waitFor(
+            () => queue.getJob(replayed.jobId),
+            (value) => value !== undefined,
+          );
+          if (replayedJob === undefined)
+            throw new Error('redelivered preview job missing');
+          await waitFor(
+            () => replayedJob.getState(),
+            (state) => state === 'completed',
+          );
+          const after = await previewState(delivery.accepted.previewRunId);
+          expect(after).toEqual(before);
+          expect(after?.attempt_fence).toBe('1');
+        },
       );
-      expect(receipts.rows[0]).toEqual({ completed: '1', count: '1' });
-
-      // Exact redelivery of the published job must not re-execute: the
-      // durable outcome, fence, and receipt stay untouched.
-      const before = await previewState(delivery.accepted.previewRunId);
-      const completedJob = await waitFor(
-        () => queue.getJob(job.jobId),
-        (value) => value !== undefined,
-      );
-      if (completedJob === undefined)
-        throw new Error('completed preview job missing');
-      await waitFor(
-        () => completedJob.getState(),
-        (state) => state === 'completed',
-      );
-      await completedJob.remove();
-      const replayed = await producer.publish({
-        data: delivery.job.data,
-        name: delivery.job.name,
-      });
-      const replayedJob = await waitFor(
-        () => queue.getJob(replayed.jobId),
-        (value) => value !== undefined,
-      );
-      if (replayedJob === undefined)
-        throw new Error('redelivered preview job missing');
-      await waitFor(
-        () => replayedJob.getState(),
-        (state) => state === 'completed',
-      );
-      const after = await previewState(delivery.accepted.previewRunId);
-      expect(after).toEqual(before);
-      expect(after?.attempt_fence).toBe('1');
     } finally {
-      await Promise.allSettled([
-        runtime.close(),
-        producer.close(),
-        queue.close(),
-      ]);
+      await runtime.close();
     }
 
     // The checksum helper stays exercised so drift between transport bytes

@@ -1,14 +1,19 @@
 import { randomUUID } from 'node:crypto';
 
-import { PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE } from '@pertexo/node-catalog';
+import {
+  PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE,
+  PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE,
+} from '@pertexo/node-catalog';
 import { composeExecutableCompatibilityRelease } from '@pertexo/workflow-engine';
 import type { ExpressionEvaluator } from '@pertexo/workflow-model/expressions';
 import type {
   AcceptedPreviewRun,
   WorkflowDraftRecord,
 } from '@pertexo/database/testing';
+import type { JsonValue } from '@pertexo/workflow-model/graph-contract';
 import { describe, expect, it, vi } from 'vitest';
 
+import { NodeTestInvalidError } from '../../src/node-testing/errors.js';
 import { TestWorkflowNodeUseCase } from '../../src/node-testing/use-case.js';
 import {
   authorizeWorkspace,
@@ -55,6 +60,18 @@ function graph() {
     ],
     edges: [],
     settings: {},
+  } as const;
+}
+
+function graphWithConfig(config: Readonly<Record<string, JsonValue>>) {
+  return {
+    ...graph(),
+    nodes: [
+      {
+        ...graph().nodes[0],
+        config,
+      },
+    ],
   } as const;
 }
 
@@ -224,6 +241,76 @@ describe('node test application use case', () => {
     expect(access.findAccess).toHaveBeenCalledTimes(2);
     expect(access.findAccess).toHaveBeenCalledTimes(2);
   });
+
+  it.each(['http', 'validate'] as const)(
+    'rejects malformed %s config before accepting preview execution',
+    async (kind) => {
+      const invalidGraph =
+        kind === 'http'
+          ? graphWithConfig({
+              ...graph().nodes[0].config,
+              timeoutMillis: 0,
+            })
+          : {
+              ...graph(),
+              nodes: [
+                {
+                  ...graph().nodes[0],
+                  definition: { key: 'core.validate', version: 1 },
+                  config: { rules: [{ id: 'bad', path: '$.*' }] },
+                  inputMappings: {},
+                  connectionRefs: {},
+                },
+              ],
+            };
+      const store = persistence({
+        getDraft: vi.fn().mockResolvedValue(
+          draft({
+            graphJson: invalidGraph,
+          }),
+        ),
+      });
+      const useCase = new TestWorkflowNodeUseCase(
+        store,
+        authorization(),
+        kind === 'http'
+          ? PLATFORM_REGISTRY_RELEASE_HTTP_ACTIVE
+          : PLATFORM_REGISTRY_RELEASE_VALIDATE_ACTIVE,
+      );
+
+      const result = await useCase
+        .execute({
+          ...requestInput(),
+          idempotencyKey: 'preview-invalid-config',
+          request: {
+            mode: 'test_execute',
+            expectedRevision: 3,
+            acknowledgeSideEffects: true,
+            input: {
+              kind: 'manual',
+              value: { body: { encoding: 'utf8', value: 'hello' } },
+            },
+          },
+        })
+        .then(
+          () => undefined,
+          (error: unknown) => error,
+        );
+      expect(result).toBeInstanceOf(NodeTestInvalidError);
+      if (!(result instanceof NodeTestInvalidError)) return;
+      expect(
+        result.issues.some(
+          ({ code, path }) =>
+            code === 'node.config_invalid' &&
+            path ===
+              (kind === 'http'
+                ? '$.config.timeoutMillis'
+                : '$.config.rules[0].path'),
+        ),
+      ).toBe(true);
+      expect(store.acceptPreview).not.toHaveBeenCalled();
+    },
+  );
 
   it('denies validation when a referenced connection is not authorized', async () => {
     const store = persistence();

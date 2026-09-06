@@ -19,8 +19,8 @@ The historical completion statements below describe their original evidence;
 they do not supersede these reopened requirements. No finding is closed until
 its correction and relevant regression verification are recorded here.
 
-Current delivery is **not production-ready**. Authoring/lifecycle, executable
-Validate and artifact API scope are incomplete, and runtime,
+Current delivery is **not production-ready**. Authoring/lifecycle and artifact
+API scope are incomplete, and runtime,
 deployment, privacy and retention defects require correction. Phase 7 and
 deployed evidence remain open. Preserve the independent audit as baseline
 evidence; maintain mutable status in this tracker rather than rewriting the
@@ -39,7 +39,7 @@ original verdict after each fix.
 | IWA-08 | CPU-bounded streaming redaction | Fixed; byte comparisons yield at bounded intervals and check elapsed deadlines; 85 secure-HTTP tests and 207 integration-package tests pass |
 | IWA-09 | Surge-aware database connection capacity | Fixed; regional budgets include ECS maximumPercent rollout overlap and administration/failover reserves; 8 budget regressions pass, with 398/400 Frankfurt and 366/400 Ireland maximum connections |
 | IWA-10 | Authenticated replay vertical slice | Fixed; dedicated replay capability, strict explicit version/input, atomic tenant acceptance and narrow migration-0077 locked reads; 10 fresh-PG cases, 6 real HTTP cases and 3 real-worker replay/redelivery cases pass |
-| IWA-15 | Executable Validate semantics and complete versioned slice | In progress; ADR 032 defines bounded static field rules, typed mismatch results and preview/runtime parity; implementation and persisted execution evidence remain |
+| IWA-15 | Executable Validate semantics and complete versioned slice | Fixed; ADR 032 bounded rules, pure typed mismatch output and staged/active epochs 37/38; 33 core contract/executor cases, 19 catalog cases, 10 API preview cases and 3 real-worker integration cases pass |
 | IWA-16 | Workflow lifecycle/version restoration and activation | In progress; truthful state reads and current-state trigger reconciliation are implemented; 18 model cases and 10 fresh-PG webhook/reconciliation cases pass; public lifecycle/version-restoration commands and worker recovery evidence remain |
 | IWA-17 | Public artifact upload/finalize vertical slice | Open; routes/use cases absent |
 | IWA-11 | Typed/correct application deployment closure validation | Fixed; typed Map-key traversal includes all six applications, migration and transitive workspace dependencies; missing-role and app-only output negatives fail; 29 deployment tests pass |
@@ -76,6 +76,31 @@ all 1,287 baseline tracked files; 1,898 unit and 377 integration/resilience
 tests passed at baseline, with adversarial defects documented separately.
 Report formatting and six documentation-validator tests pass. No runtime fix
 has been made at this checkpoint.
+
+### IWA-15 — Executable Validate checkpoint
+
+`core.validate@1` implements ADR 032 through one browser-safe rule schema and
+pure evaluator used by the registered executor. Rules have bounded counts,
+paths, scalar enums and compatible numeric/string/array constraints. Mismatch
+is successful typed `{valid,issues,truncated}` output with fixed issue codes
+and messages, never observed input values. The evaluator honors cancellation
+and uses no credentials, connections, network or artifact-write capability.
+The existing own-property JSON-path implementation was extracted into a
+browser-safe subpath rather than introducing another dialect. Additive staged
+and active epochs 37/38 retain all 36 earlier fingerprints unchanged.
+
+Primary verification passes 33 Validate/core package cases, 19 catalog cases,
+7 mapping/package-boundary cases and 10 API preview-use-case cases, including
+malformed HTTP configuration and malformed Validate rules rejected before
+acceptance. The two Validate real-PG/Redis cases prove matching and mismatching
+persisted preview output, exact redelivery after a new runtime starts, and a
+normal compiled/published workflow through coordinator and node-attempt workers
+to success. The existing preview transport case also passes after shared
+delivery-helper extraction. Redelivery assertions wait for the new job's
+completion before comparing persisted results, rather than accepting the old
+successful row as evidence. API/worker typechecks, nodes-core build, targeted
+lint and unchanged clone thresholds pass. These tests ran on disposable owned
+databases; no normal workspace data or retained release identity was modified.
 
 ### IWA-10 — Authenticated replay checkpoint
 

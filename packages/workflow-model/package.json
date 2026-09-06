@@ -36,6 +36,10 @@
       "node": "./dist/mapping.js",
       "default": "./dist/mapping.js"
     },
+    "./json-path": {
+      "types": "./dist/json-path.d.ts",
+      "default": "./dist/json-path.js"
+    },
     "./lifecycle": {
       "types": "./dist/lifecycle.d.ts",
       "default": "./dist/lifecycle.js"
