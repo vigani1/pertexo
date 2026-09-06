@@ -27,7 +27,7 @@ const dependencies = {
 class FakeIdentityModule {}
 
 describe('workflow authoring Nest module', () => {
-  it('registers each application use case through explicit narrow providers', () => {
+  it('registers the creation use case and authoring controller', () => {
     const dynamic = WorkflowAuthoringModule.register(dependencies, {
       module: FakeIdentityModule,
     });

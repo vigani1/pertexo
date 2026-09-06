@@ -61,6 +61,12 @@ data and historical evidence will be distinguished from executable source review
       checks fake objects' keys; retain the exact real-factory surface test and
       explicit factory return types. All 238 database unit tests and test
       typecheck pass.
+- [x] Make OIDC provider rejection mandatory and inspect one encryption failure
+      per operation. Remove a duplicate authorization assertion and two unused
+      sensitive-value assertions. Replace the fixed-clock SSE pseudo-load test
+      with two explicit metric-path cases in the existing unit suite; real
+      deployed load/SLO evidence remains open. Correct three overstated test
+      titles. All 476 API unit tests and test typecheck pass.
 
 ## Initial low-value code cleanup — complete
 

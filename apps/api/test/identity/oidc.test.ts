@@ -283,22 +283,19 @@ describe('managed OIDC application service', () => {
     setup.provider.exchangeCode = () => {
       throw new Error('provider-token-should-never-escape');
     };
-    try {
-      await setup.app.completeLogin(
-        {
-          code: 'one-time-code',
-          state: defined(setup.provider.request).state,
-        },
-        start.browserBinding,
-      );
-    } catch (error) {
-      expect(error).toBeInstanceOf(IdentityError);
-      expect(error).toMatchObject({
-        code: 'identity.provider_unavailable',
-        status: 503,
-      });
-      expect(String(error)).not.toContain('provider-token');
-    }
+    const login = setup.app.completeLogin(
+      {
+        code: 'one-time-code',
+        state: defined(setup.provider.request).state,
+      },
+      start.browserBinding,
+    );
+    await expect(login).rejects.toBeInstanceOf(IdentityError);
+    await expect(login).rejects.toMatchObject({
+      code: 'identity.provider_unavailable',
+      status: 503,
+    });
+    await expect(login).rejects.not.toThrow('provider-token');
   });
 
   it('requires bounded verified profile fields for first-user mapping', async () => {

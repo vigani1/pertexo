@@ -55,7 +55,6 @@ describe('workflow authoring telemetry', () => {
       operation: WORKFLOW_AUTHORING_OPERATION.draftSave,
       outcome: 'failed',
     });
-    expect(counterAdd.mock.calls.flat()).not.toContain(actorId());
     expect(spanSetAttribute).toHaveBeenCalledWith(
       'operation',
       WORKFLOW_AUTHORING_OPERATION.draftGet,
@@ -63,7 +62,3 @@ describe('workflow authoring telemetry', () => {
     expect(spanSetAttribute).toHaveBeenCalledWith('outcome', 'failed');
   });
 });
-
-function actorId(): string {
-  return 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-}
