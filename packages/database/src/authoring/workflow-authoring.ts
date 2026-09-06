@@ -5,6 +5,10 @@ import { createHash } from 'node:crypto';
 import type { Pool } from 'pg';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
+import type {
+  WorkflowActivationStatus,
+  WorkflowLifecycleStatus,
+} from '@pertexo/workflow-model/lifecycle';
 import {
   EMPTY_DEFINITION_CATALOG_V1,
   type workflowCompatibilityReport,
@@ -76,8 +80,8 @@ export type WorkflowRecord = Readonly<{
   id: string;
   workspaceId: string;
   name: string;
-  lifecycleStatus: 'active' | 'archived';
-  activationStatus: 'inactive';
+  lifecycleStatus: WorkflowLifecycleStatus;
+  activationStatus: WorkflowActivationStatus;
   publishedVersionId: string | null;
   createdBy: string;
   createdAt: Date;

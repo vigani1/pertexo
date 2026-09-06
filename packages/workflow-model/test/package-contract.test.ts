@@ -80,6 +80,7 @@ describe('workflow-model package contract', () => {
         name === './assert-never' ||
         name === './failure-notification' ||
         name === './graph-contract' ||
+        name === './lifecycle' ||
         name === './observation-window'
       )
         continue;
