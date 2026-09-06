@@ -31,6 +31,10 @@ data and historical evidence will be distinguished from executable source review
       counts, complexity-register provenance, worker checkpoint ownership and
       ADR 001's web-checkout assumption. Label pinned audit narratives as
       historical; preserve their original findings and measurements.
+- [x] Inline the lifecycle coverage cohort in its configuration and assert that
+      actual configuration against the independent audited file list. Remove
+      the test-only export and intermediary assertion, not the regression test.
+      All 25 lifecycle unit tests, test typecheck, lint and formatting pass.
 - [ ] Verify remaining candidates, publish the reconciled inventory and record
       the final checks without claiming an absence of all possible defects.
 
