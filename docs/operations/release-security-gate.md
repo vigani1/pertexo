@@ -6,9 +6,11 @@ deployment evidence.
 
 ## Commands
 
-- `pnpm security:audit` queries the pnpm advisory service for high or critical
-  vulnerabilities in production dependencies. Registry errors fail the gate;
-  they are not treated as a clean audit.
+- `pnpm security:audit` queries the pnpm advisory service for production
+  dependencies and rejects findings at or above the `--audit-level` configured
+  in [the executable package script](../../package.json). Registry errors fail
+  the gate; they are not treated as a clean audit. This dependency threshold is
+  distinct from the image-scanner threshold described below.
 - `pnpm deployment:check` validates the Docker/ECS source contract, independent
   API and worker autoscaling declarations, the external-platform evidence
   contract, and two byte-identical task-definition renders. It also proves that

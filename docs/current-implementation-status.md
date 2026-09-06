@@ -1,23 +1,19 @@
 # Current Backend Implementation Status
 
-Updated: 2026-09-04
+Updated: 2026-09-06
 
 ## Delivery state
 
-| Checkpoint | Status |
-| --- | --- |
-| Phase 0 — foundations and durability proof | Complete |
-| Phase 1 — identity and workspace | Complete |
-| Phase 2 — workflow authoring | Complete |
-| Phase 3 — first executable node | Complete |
-| Phase 4 — side-effecting integrations | Complete |
-| Phase 5 — orchestration | Complete |
-| Phase 6 — V1 providers and triggers | Complete |
-| Phase 7 — production operations | In progress |
+The platform is **not production-ready**. The independent audit reopened
+repository-controlled requirements as well as preserving the external evidence
+gates. The [implementation tracker](./implementation-progress.md#independent-audit-remediation--active)
+is the single mutable checkpoint/status inventory; its summary and individual
+finding evidence take precedence over the historical verification below.
 
-The repository-controlled Phase 7 implementation is substantially complete.
-The platform must not be described as production-ready until the remaining live
-AWS and operational exercises have fresh immutable evidence.
+The current migration baseline is `EXPECTED_MIGRATION_HEAD` in the
+[database readiness contract](../packages/database/src/platform/readiness.ts),
+with execution modes in the [migration execution plan](../packages/database/migrations/migration-execution-plan.json).
+Do not infer the current head from a historical phase-completion entry.
 
 ## Open production evidence
 
@@ -33,9 +29,13 @@ These require the deployment account and cannot be replaced by repository-only
 tests. The exact report schema and validator already live under
 `infrastructure/exercises`.
 
-## Current engineering remediation
+## Historical engineering remediation at the pinned tree
 
 Audited implementation tree: `d1b41b6e9b6122de9914298e486c4b4635742f28`
+
+The following results describe that earlier audit and its follow-ups. Claims of
+completion, current scope or passing checks in this section are historical,
+not the current independent-remediation verdict.
 
 The 2026-09-03 whole-repository audit's repository-controlled correctness,
 security, and runtime findings are complete at the implementation tree above.
@@ -127,5 +127,6 @@ latency/memory/query comparison in
 
 - [Authoritative backend plan](./workflow-platform-backend-plan.md)
 - [Detailed implementation evidence and history](./implementation-progress.md)
-- [Current whole-repository audit](./whole-repository-audit.md)
+- [Independent whole-repository audit baseline](./independent-whole-repository-audit.md)
+- [Historical whole-repository audit](./whole-repository-audit.md)
 - [Architecture decisions](./adr/)
