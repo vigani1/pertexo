@@ -29,7 +29,7 @@ original verdict after each fix.
 | Finding | Required checkpoint | Status / concrete evidence |
 | --- | --- | --- |
 | IWA-01 | Monotonic DST recurrence and repeated-hour regression | Fixed; raw iterator cursor separated from resolved UTC identity; 16 recurrence cases and 8 real-PG schedule cases pass; build/typecheck/lint pass |
-| IWA-02 | Rendered API/worker role configuration and startup contract | In progress; required role injection corrected; 15 deployment/parser tests pass; isolated image smoke passes, exact rendered-task image smoke remains |
+| IWA-02 | Rendered API/worker role configuration and startup contract | Fixed in repository; 15 deployment/parser tests and exact rendered-task image startup pass for both cohorts; deployed AWS evidence remains external |
 | IWA-03 | Atomic provider credential fence through dispatch | Fixed; shared HTTP/Slack/email callback preserves atomic fence and binding; 98 executor cases, three real-PG cases and three real-worker cases pass |
 | IWA-14 | Query-secret-free exported HTTP telemetry | Fixed; real exported HTTP/Undici success and error spans omit query values, userinfo and raw exception text while retaining safe method/status/path; 65 observability tests and unchanged coverage thresholds pass |
 | IWA-04 | Nested Parallel concurrency | Fixed; admission resolves nested Parallel owners and scopes caps to their enclosing iteration path; 10 engine regressions and 2 real-worker recovery cases pass |
@@ -369,6 +369,18 @@ handwritten fixture environment values and disabled the telemetry SDK, so it
 does not yet prove startup from the exact rendered task environment. The
 merge-V3 image correctly rejected a database still pinned to epoch 1. Deployed
 SSM values, AWS KMS access and production telemetry are not claimed verified.
+
+The exact rendered-task startup gap is now closed locally by
+`infrastructure/ecs/rendered-task-startup-smoke.mjs`. The primary-agent reruns
+started both API and worker from the renderer's role commands and resolved
+configuration/secret references for `core` and `merge_v3_activation`, using image
+`pertexo-iwa02-rendered-smoke@sha256:4f3b7ad605211d21d0ab7febda3793052c8996f67b08b26b7fc38dc8bae570d8`.
+Both API readiness and worker readiness passed; the image also rejected a missing
+KMS region. The smoke runs read-only containers as the rendered non-root user,
+with isolated PostgreSQL/Redis, a local telemetry receiver and a trusted local
+HTTPS storage bridge. The bridge adapts emulator bucket-region responses; it is
+not evidence of real regional storage, deployed SSM/KMS permissions or production
+telemetry delivery. These external release obligations remain open.
 
 ### IWA-09 — surge-aware connection capacity
 
