@@ -4,11 +4,18 @@ Updated: 2026-09-06
 
 ## Delivery state
 
-The platform is **not production-ready**. The independent audit reopened
-repository-controlled requirements as well as preserving the external evidence
-gates. The [implementation tracker](./implementation-progress.md#independent-audit-remediation--active)
+The platform is **not production-ready**. The independent audit's named
+repository-controlled corrections now have regression evidence, while external
+production gates and four unallocated API scope decisions remain open.
+The [implementation tracker](./implementation-progress.md#independent-audit-remediation--repository-corrections-verified)
 is the single mutable checkpoint/status inventory; its summary and individual
 finding evidence take precedence over the historical verification below.
+
+The [requirement-to-evidence matrix](./implementation-progress.md#backend-requirement-traceability)
+links canonical owners, tests and ADRs. Its
+[unallocated API surface](./implementation-progress.md#unallocated-api-surface-not-silently-deferred-or-complete)
+section distinguishes unresolved plan scope from verified audit corrections;
+neither the matrix nor local tests declare the complete blueprint delivered.
 
 The current migration baseline is `EXPECTED_MIGRATION_HEAD` in the
 [database readiness contract](../packages/database/src/platform/readiness.ts),

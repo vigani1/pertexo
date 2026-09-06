@@ -8,7 +8,7 @@ is marked complete only when all of its plan requirements and applicable
 vertical-slice completion criteria have passed. Commits or scaffolding alone do
 not complete a phase.
 
-## Independent audit remediation — active
+## Independent audit remediation — repository corrections verified
 
 The independent review of commit
 `faed09c4543784c0f0e9bcaa0ed2a5335b411261` is recorded in
@@ -21,8 +21,10 @@ its correction and relevant regression verification are recorded here.
 
 Current delivery is **not production-ready**. All named audit corrections have
 the repository regression evidence recorded below, including the artifact API
-and final cross-feature checks. Final plan-to-evidence navigation is being
-consolidated; Phase 7 and deployed evidence remain open. Preserve the independent audit as baseline
+and final cross-feature checks. The requirement-to-evidence matrix below maps
+canonical owners, tests and ADRs, and explicitly identifies four unallocated
+API surfaces requiring product/plan disposition. Phase 7 and deployed evidence
+remain open. Preserve the independent audit as baseline
 evidence; maintain mutable status in this tracker rather than rewriting the
 original verdict after each fix.
 
@@ -70,6 +72,16 @@ adjacent tests. Observability and queue package coverage gates run separately;
 they are not included in that selected risk-report denominator. All package
 percentage thresholds pass unchanged. The risk manifest rejects stale
 fingerprints; it does not require zero unreviewed branches.
+
+At the final artifact API commit `9f008e6`, the complete clean-worktree
+pre-push gate (`pnpm check && pnpm test:coverage`) passes. Its expanded selected
+risk report covers 111 files and 5,013 coverable lines, with 467 reviewed and
+22 explicitly unreviewed uncovered branches. Those 22 include locationless V8
+records and uncovered artifact-download/Parallel scheduling defenses; they are
+not silently reclassified as tested. This is the current selected denominator,
+not whole-repository coverage. The new artifact API's separate 44-case coverage
+denominator is recorded at IWA-17 below. All percentage thresholds and exact
+source-fingerprint review gates remain unchanged.
 
 Verification for this initial checkpoint: independent audit inventory covers
 all 1,287 baseline tracked files; 1,898 unit and 377 integration/resilience
@@ -513,6 +525,12 @@ passes exact rendered core API/worker startup against a fresh migration-0080
 database, and both production cohort parser contracts pass. An extra attempt to
 boot the merge cohort against that core-initialized database is correctly
 rejected by compatibility readiness; that attempt is not a merge startup proof.
+A separate fresh database was then advanced through the registry's epochs 2–36
+using the existing compatibility maintenance fixture: prepare, API/worker
+preactivation checks, approval and activation for each predecessor. The same
+immutable image passes actual rendered merge-v3 API and worker startup against
+that matching database. Thus both runtime cohorts have independent local startup
+proof, without weakening the release fence or changing production configuration.
 All 29 deployment checks pass. Local object-store and image checks do not establish deployed IAM, cross-region
 replication latency, managed-service capacity or Phase 7 operational evidence.
 
@@ -6034,6 +6052,74 @@ and `bf0f00c`.
 Focused unit/type checks, 330/330 full PostgreSQL integration tests with
 coverage, schema-shape tests, and coordinator concurrency suites pass. No phase
 status changed.
+
+## Backend requirement traceability
+
+This navigation matrix maps the [backend plan](./workflow-platform-backend-plan.md)
+to canonical owners and high-value tests. These links locate responsibility;
+they are not independent completion claims. The phase and remediation
+checkpoints in this tracker own current status. Repository verification does
+not substitute for deployed evidence.
+
+## Requirement-to-evidence matrix
+
+| Plan area and anchors | Canonical owners | High-value tests | Tracker / decision anchors |
+| --- | --- | --- | --- |
+| **Foundation** — [repo shape](./workflow-platform-backend-plan.md#repository-and-deployment-shape), [NestJS](./workflow-platform-backend-plan.md#nestjs-application-structure) | [API main](../apps/api/src/main.ts), [worker main](../apps/worker/src/main.ts), [API module](../apps/api/src/app.module.ts) | [API bootstrap](../apps/api/test/api-bootstrap.test.ts), [worker lifecycle](../apps/worker/test/worker-process-lifecycle.test.ts) | [0A–0E](./implementation-progress.md#phase-0a--repository-and-process-skeleton), IWA-02/11/18/19; [ADR 001](./adr/001-modular-monolith-monorepo-api-worker.md) |
+| **Identity / tenancy / security** — [identity](./workflow-platform-backend-plan.md#identity-and-tenancy), [security](./workflow-platform-backend-plan.md#security-model) | [identity/workspace API](../apps/api/src/identity-workspace/controllers.ts), [actor context](../apps/api/src/workspaces/actor-context.ts), [tenant persistence](../packages/database/src/tenant-access/identity-workspace.ts) | [real API](../apps/api/test/identity-workspace/real-api.integration.test.ts), [RLS](../packages/database/test/rls.integration.test.ts) | [Phase 1](./implementation-progress.md#phase-1--identityworkspace-vertical-slice); [ADR 003](./adr/003-workspace-tenancy-rls-runtime-roles.md), [ADR 004](./adr/004-managed-oidc-and-internal-authorization.md) |
+| **Authoring / publish / lifecycle** — [workflow management](./workflow-platform-backend-plan.md#workflow-management), [draft/publish](./workflow-platform-backend-plan.md#draft-and-publish-flow) | [authoring API](../apps/api/src/workflow-authoring/controllers.ts), [graph validation](../packages/workflow-model/src/graph-validation.ts), [publication](../packages/database/src/authoring/workflow-publication.ts) | [lifecycle HTTP](../apps/api/test/workflow-authoring/lifecycle.integration.test.ts), [version restore](../apps/api/test/workflow-authoring/version-restore.integration.test.ts) | [Phase 2](./implementation-progress.md#phase-2--workflow-authoring-vertical-slice), [IWA-15](./implementation-progress.md#iwa-15--executable-validate-checkpoint), [IWA-16](./implementation-progress.md#iwa-16--truthful-activation-projection-checkpoint); [ADR 002](./adr/002-postgresql-jsonb-drafts-immutable-versions-checksum-identity.md), [ADR index](./implementation-progress.md#adr-constraint-coverage) |
+| **Execution / queues / recovery / history** — [queue](./workflow-platform-backend-plan.md#queue-and-job-contracts), [engine](./workflow-platform-backend-plan.md#execution-engine), [history](./workflow-platform-backend-plan.md#live-execution-and-history) | [engine advance](../packages/workflow-engine/src/advance-workflow.ts), [coordinator store](../packages/database/src/execution/coordinator-run-store.ts), [coordinator handler](../apps/worker/src/execution/coordinator-handler.ts) | [parallel assurance](../packages/workflow-engine/test/parallel-output-assurance.test.ts), [redelivery](../apps/worker/test/coordinator-consumer-redelivery.integration.test.ts) | [0D](./implementation-progress.md#phase-0d--queue-outbox-and-duplicate-delivery-proof), [Phase 5](./implementation-progress.md#phase-5--orchestration-slice), [Parallel qualification](./implementation-progress.md#additional-qualification--persisted-parallel-output-assurance); IWA-04/05/10; [ADR 005](./adr/005-postgresql-authority-bullmq-outbox-engine-gate.md), [ADR index](./implementation-progress.md#adr-constraint-coverage) |
+| **Integrations / connections / previews** — [catalog](./workflow-platform-backend-plan.md#integration-catalog), [connections](./workflow-platform-backend-plan.md#connections-and-secrets) | [secure HTTP](../packages/integrations/src/http/secure-http.ts), [envelope encryption](../packages/integrations/src/credentials/envelope-encryption.ts), [connections API](../apps/api/src/connections/controllers.ts) | [HTTP executor](../packages/integrations/test/http-request.test.ts), [worker HTTP node](../apps/worker/test/http-node-attempt.integration.test.ts) | [Phase 4](./implementation-progress.md#phase-4--first-side-effecting-integration-slice), IWA-03/07/08/14; [ADR 007](./adr/007-run-node-state-retry-idempotency.md), [ADR 016](./adr/016-node-preview-testing-semantics.md) |
+| **Orchestration / notification** — [parallelism](./workflow-platform-backend-plan.md#parallelism-and-joins), [retries](./workflow-platform-backend-plan.md#retry-semantics), [cancellation](./workflow-platform-backend-plan.md#cancellation) | [condition executor](../packages/nodes-core/src/condition/executor.ts), [parallel executor](../packages/nodes-core/src/parallel/executor.ts), [failure notifications](../packages/database/src/execution/failure-notifications.ts) | [orchestration nodes](../packages/nodes-core/test/orchestration-nodes.test.ts), [engine branching](../packages/workflow-engine/test/advance-workflow-branching.test.ts) | [Phase 5](./implementation-progress.md#phase-5--orchestration-slice), IWA-04/05; [ADR index](./implementation-progress.md#adr-constraint-coverage) |
+| **Providers / triggers** — [trigger architecture](./workflow-platform-backend-plan.md#trigger-architecture), [webhooks](./workflow-platform-backend-plan.md#webhooks), [schedules](./workflow-platform-backend-plan.md#schedules) | [webhook API](../apps/api/src/webhooks/controllers.ts), [schedule service](../apps/api/src/schedules/service.ts), [trigger handler](../apps/worker/src/triggers/trigger-handler.ts) | [direct webhook](../apps/api/test/webhooks/direct-webhook.integration.test.ts), [DST recurrence](../packages/database/test/schedule-recurrence-dst.test.ts) | [Phase 6](./implementation-progress.md#phase-6--v1-providers-and-triggers), IWA-01/03; [ADR 014](./adr/014-schedule-timezone-dst-misfire.md), [ADR index](./implementation-progress.md#adr-constraint-coverage) |
+| **Artifacts / large values / capacity** — [persistence](./workflow-platform-backend-plan.md#persistence-model), [finalize artifact](./workflow-platform-backend-plan.md#finalize-artifact), [API](./workflow-platform-backend-plan.md#api-surface) | [artifact store](../packages/artifact-store/src/store.ts), [upload authority](../packages/database/src/execution/artifact-upload.ts), [artifact API](../apps/api/src/artifacts/controllers.ts) | [dual-region store](../packages/artifact-store/test/dual-region-artifact-store.test.ts), [upload DB](../packages/database/test/artifact-upload.integration.test.ts), [transfer API](../apps/api/test/artifacts/transfer.integration.test.ts) | [signed download](./implementation-progress.md#iwa-17--signed-artifact-download-checkpoint), [database authority](./implementation-progress.md#iwa-17--postgresql-upload-and-capacity-authority-checkpoint), [Phase 7](./implementation-progress.md#phase-7--production-operations); [ADR 035](./adr/035-public-artifact-upload-and-capacity.md). The [final IWA-17 checkpoint](./implementation-progress.md#iwa-17--authenticated-artifact-transfer-and-runtime-checkpoint) records verified upload/capacity, HTTP/runtime, pending-expiry and readiness evidence; deployed regional qualification remains external. |
+| **Operations / retention / recovery / scaling** — [operations](./workflow-platform-backend-plan.md#observability-and-operations), [retention](./workflow-platform-backend-plan.md#retention-and-lifecycle-defaults), [scaling](./workflow-platform-backend-plan.md#worker-pools-and-scaling) | [retention](../packages/database/src/lifecycle/retention.ts), [recovery app](../apps/recovery/src/main.ts), [ECS rendering](../infrastructure/ecs/render-task-definitions.mjs) | [retention inventory](../packages/database/test/retention-inventory.integration.test.ts), [restore-before-serve](../apps/recovery/test/restore-before-serve.test.ts) | [Phase 7](./implementation-progress.md#phase-7--production-operations); [ADR 013](./adr/013-retention-workspace-deletion-legal-hold.md), [ADR 015](./adr/015-production-slo-region-and-recovery.md), [ADR index](./implementation-progress.md#adr-constraint-coverage) |
+| **Public API / contracts / CI / governance** — [API](./workflow-platform-backend-plan.md#api-surface), [public contract](./workflow-platform-backend-plan.md#public-api-contract), [CI gates](./workflow-platform-backend-plan.md#ci-quality-gates) | [problem filter](../apps/api/src/platform/http/problem-details.filter.ts), [request context](../apps/api/src/platform/http/request-context.ts), [contract index](../packages/contracts/src/index.ts) | [response types](../apps/api/test/response-contract-types.test.ts), [contract tests](../packages/contracts/test/contracts.test.ts) | [Phase 7](./implementation-progress.md#phase-7--production-operations), IWA-11/12/18; [ADR index](./implementation-progress.md#adr-constraint-coverage). Contracts/docs expose evidence surfaces; they do not close live deployment obligations. |
+
+## ADR constraint coverage
+
+This compact index keeps all accepted ADRs 001–035 navigable. The matrix and
+tracker own implementation status; ADR links state the governing decision, not
+completion.
+
+| Boundary | ADRs |
+| --- | --- |
+| Monorepo, tenancy/RLS, identity, PostgreSQL authority, queue, coordinator/attempt jobs | [001](./adr/001-modular-monolith-monorepo-api-worker.md), [003](./adr/003-workspace-tenancy-rls-runtime-roles.md), [004](./adr/004-managed-oidc-and-internal-authorization.md), [005](./adr/005-postgresql-authority-bullmq-outbox-engine-gate.md), [006](./adr/006-coordinator-checkpoint-and-node-attempt-jobs.md) |
+| JSONB drafts, checksum identity, loops/expressions, compatibility, concurrency | [002](./adr/002-postgresql-jsonb-drafts-immutable-versions-checksum-identity.md), [008](./adr/008-structured-bounded-loops.md), [009](./adr/009-restricted-jsonata.md), [010](./adr/010-node-executor-compatibility-retirement.md), [011](./adr/011-optimistic-draft-concurrency.md) |
+| Run/node state, retries, idempotency, unknown outcomes, preview disclosure | [007](./adr/007-run-node-state-retry-idempotency.md), [016](./adr/016-node-preview-testing-semantics.md) |
+| Fair admission, branching, parallelism, loops, waits, failure notification | [012](./adr/012-fair-admission-backpressure-entitlements.md), [017](./adr/017-condition-branch-selection.md), [018](./adr/018-switch-ordered-case-selection.md), [019](./adr/019-bounded-parallel-and-merge.md), [020](./adr/020-bounded-for-each.md), [021](./adr/021-durable-wait.md), [022](./adr/022-run-failure-notification.md) |
+| Schedules, Slack, email, notification destinations, webhook signatures/replay | [014](./adr/014-schedule-timezone-dst-misfire.md), [023](./adr/023-slack-send-message-provider.md), [024](./adr/024-resend-email-notification-provider.md), [025](./adr/025-provider-failure-notification-destinations.md), [026](./adr/026-generic-webhook-signature-replay.md) |
+| Retention/deletion, production SLO/recovery, lifecycle dispatch, ECS, operator, autoscaling | [013](./adr/013-retention-workspace-deletion-legal-hold.md), [015](./adr/015-production-slo-region-and-recovery.md), [027](./adr/027-workspace-lifecycle-command-dispatch.md), [028](./adr/028-ecs-deployment-manifest.md), [029](./adr/029-operator-command-execution-boundary.md), [030](./adr/030-autoscaling-input-contract.md) |
+| Authenticated replay, Validate, activation projection, archive/restore, artifact capacity | [031](./adr/031-authenticated-user-run-replay.md), [032](./adr/032-validate-node-semantics.md), [033](./adr/033-truthful-workflow-activation-projection.md), [034](./adr/034-workflow-archive-restore-and-activation.md), [035](./adr/035-public-artifact-upload-and-capacity.md) |
+
+## Unallocated API surface (not silently deferred or complete)
+
+The [API Surface](./workflow-platform-backend-plan.md#api-surface) lists these
+four routes, but the [endpoint-to-use-case map](./workflow-platform-backend-plan.md#endpoint-to-use-case-map)
+does not map them and the current controller/contract inventory has no matching
+public surface. None is being called complete or silently deferred; each needs
+an explicit product/plan disposition.
+
+| Route | Current evidence | Disposition gap |
+| --- | --- | --- |
+| `/v1/users/*` | Phase 1 maps OIDC identities to internal users; [identity/workspace API](../apps/api/src/identity-workspace/controllers.ts) and [identity persistence](../packages/database/src/tenant-access/identity-workspace.ts) exist, but no users controller/contract exists. | Decide whether current-user/profile is required; allocate use case, phase, contract, and tests or amend the plan. ADR 004’s service-account/API-key deferral does not answer this route. |
+| `/v1/workspaces/:workspaceId/members` | Phase 1 creates/authorizes owner membership; [identity persistence](../packages/database/src/tenant-access/identity-workspace.ts) exists, but no members controller/contract exists. | Clarify read/list versus role-management scope and allocate it. Deferred invitations do not resolve the whole route. |
+| `/v1/node-definitions` | Server catalog/registry exists in [catalog server](../packages/node-catalog/src/server.ts) and [definition resolution](../packages/node-catalog/src/definition-resolution.ts); no public catalog controller/contract exists. | Decide whether a public catalog projection is required and assign it to a phase/use case, or record an explicit plan disposition. |
+| `/v1/integrations` | HTTP/Slack/email definitions exist, e.g. [Slack definition](../packages/integrations/src/slack/definition.ts); no public integrations controller/contract exists. | Decide whether this is a catalog projection or separate resource and assign/disposition it explicitly. |
+
+## External and deferred criteria
+
+- **External production evidence:** AWS versioned buckets/Object Lock and
+  dual-region ledger; deployed IAM/ECS immutable invocation; live dashboards,
+  pager routing, load/fairness/backpressure/provider-outage exercises;
+  PostgreSQL failover/PITR/regional restore and RPO/RTO; deployed autoscaling;
+  production telemetry retrieval; and production Redis topology. See [Phase 7](./implementation-progress.md#phase-7--production-operations), [external platform contract](../infrastructure/ecs/external-platform-contract.json), [operations contract](./operations/external-platform-contract.md), and [regional recovery](./operations/regional-recovery.md).
+- **Product/repository deferrals:** `apps/web`; polling/connected-app
+  subscriptions unless promoted; arbitrary user code; approvals/forms; hosted
+  forms; nested workflows; synchronous webhook responses; multiplayer editing;
+  broad provider catalog/dedicated pools; active-active/Kubernetes;
+  service accounts/API keys without a concrete API use case; invitations; and
+  contractual customer SLAs. See [V1 scope](./workflow-platform-backend-plan.md#v1-product-scope), [repository boundary](./workflow-platform-backend-plan.md#repository-delivery-boundary), [non-goals](./workflow-platform-backend-plan.md#explicit-non-goals), and [ADR 004](./adr/004-managed-oidc-and-internal-authorization.md).
 
 ## Update protocol
 
