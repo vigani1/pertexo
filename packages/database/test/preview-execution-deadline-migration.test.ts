@@ -15,7 +15,9 @@ describe('preview execution deadline migration', () => {
       'utf8',
     );
 
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0078_workflow_lifecycle_revision.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe(
+      '0078_workflow_lifecycle_revision.sql',
+    );
     expect(MIGRATIONS_DIRECTORY).toContain('migrations');
     expect(sql).toContain('ADD COLUMN execution_deadline_at timestamptz');
     expect(sql).toContain(
