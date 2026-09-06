@@ -43,6 +43,11 @@ data and historical evidence will be distinguished from executable source review
 - [x] Remove the operator type clone's obsolete review caught by the full push
       gate. Source duplication falls to 27 groups / 512 lines; the five test
       groups / 235 lines and all detector thresholds remain unchanged.
+- [x] Remove one exact duplicate worker bootstrap test and two assertions on
+      test-local expected objects. AST comparison proves the retained bootstrap
+      callback is identical; exact emitted telemetry assertions remain. All 277
+      worker unit tests, typecheck, lint and formatting pass. Remove the obsolete
+      bootstrap clone review; test duplication falls to four groups / 203 lines.
 - [ ] Verify remaining candidates, publish the reconciled inventory and record
       the final checks without claiming an absence of all possible defects.
 

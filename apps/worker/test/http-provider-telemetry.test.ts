@@ -150,8 +150,5 @@ describe('HTTP provider telemetry', () => {
     );
     expect(setStatus).toHaveBeenCalledWith({ code: SpanStatusCode.OK });
     expect(end).toHaveBeenCalledOnce();
-    expect(Object.keys(expectedAttributes)).not.toEqual(
-      expect.arrayContaining(['connection_id', 'run_id', 'url', 'workflow_id']),
-    );
   });
 });
