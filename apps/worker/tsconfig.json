@@ -16,5 +16,40 @@
     "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo",
     "types": ["node"]
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts"],
+  "references": [
+    {
+      "path": "../../packages/artifact-store/tsconfig.json"
+    },
+    {
+      "path": "../../packages/database/tsconfig.json"
+    },
+    {
+      "path": "../../packages/integrations/tsconfig.json"
+    },
+    {
+      "path": "../../packages/node-catalog/tsconfig.json"
+    },
+    {
+      "path": "../../packages/node-sdk/tsconfig.json"
+    },
+    {
+      "path": "../../packages/nodes-core/tsconfig.json"
+    },
+    {
+      "path": "../../packages/observability/tsconfig.json"
+    },
+    {
+      "path": "../../packages/queue/tsconfig.json"
+    },
+    {
+      "path": "../../packages/rate-limit/tsconfig.json"
+    },
+    {
+      "path": "../../packages/workflow-engine/tsconfig.json"
+    },
+    {
+      "path": "../../packages/workflow-model/tsconfig.json"
+    }
+  ]
 }

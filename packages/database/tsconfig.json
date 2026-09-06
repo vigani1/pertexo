@@ -10,5 +10,13 @@
     "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo"
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["dist", "test"]
+  "exclude": ["dist", "test"],
+  "references": [
+    {
+      "path": "../nodes-core/tsconfig.json"
+    },
+    {
+      "path": "../workflow-model/tsconfig.json"
+    }
+  ]
 }
