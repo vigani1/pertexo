@@ -229,8 +229,6 @@ export async function migrateDatabase(
   migrationsDirectory = MIGRATIONS_DIRECTORY,
   runnerOptions: MigrationRunnerOptions = {},
 ): Promise<readonly string[]> {
-  const pool = new Pool({ connectionString: config.connectionString, max: 1 });
-  const client = await pool.connect();
   const applied: string[] = [];
   const lockTimeoutMs =
     runnerOptions.lockTimeoutMs ?? migrationRunnerOptionsSchema.lockTimeoutMs;
@@ -241,6 +239,11 @@ export async function migrateDatabase(
     throw new TypeError('Migration lock timeout must be at least 100ms');
   if (!Number.isInteger(statementTimeoutMs) || statementTimeoutMs < 1_000)
     throw new TypeError('Migration statement timeout must be at least 1000ms');
+  const pool = new Pool({ connectionString: config.connectionString, max: 1 });
+  const client = await pool.connect().catch(async (error: unknown) => {
+    await pool.end();
+    throw error;
+  });
   const emitProgress = (event: MigrationProgressEvent): void => {
     try {
       runnerOptions.onProgress?.(event);
