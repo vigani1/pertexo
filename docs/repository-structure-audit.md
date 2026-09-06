@@ -39,7 +39,7 @@ means the inspected structure is appropriate, not that an area was skipped.
 | apps/retention | Reviewing retention process composition |
 | packages/artifact-store | Review in progress |
 | packages/contracts | Review in progress |
-| packages/database | Review in progress |
+| packages/database | Schedule administration/scanning separated and verified; ledger ownership cleanup in progress |
 | packages/integrations | Review in progress |
 | packages/node-catalog | Review in progress |
 | packages/node-sdk | Review in progress |
@@ -72,6 +72,21 @@ pass; six graph regression tests pass; scoped lint and formatting pass; all
 in progress.
 
 ## Verification and remaining scope
+
+### Schedule administration and scanning
+
+Schedule CRUD and worker scanning now have separate named source owners:
+`schedule-trigger-database.ts` and `schedule-trigger-scanner.ts`. Public role
+entrypoints import their respective owner; the old source module retains an
+explicit compatibility export list. Both factory declarations and bodies are
+byte-for-byte unchanged, including SQL, lease checks and transaction ordering.
+The administrative factory remains a cohesive 217-line object construction
+with zero directly counted branches; its existing complexity allowance moved
+to the new owner and tightened from 220 lines. No threshold increased.
+
+Verification: database build, test typecheck, scoped lint, all 239 unit tests,
+and six real PostgreSQL schedule/upgrade cases pass on the isolated stack.
+The root complexity ratchet passes with the reviewed ownership move.
 
 The final audit must record a disposition for every inventory row, coherent
 commits, and checks actually run. Existing unresolved product API scope and

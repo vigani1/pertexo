@@ -28,7 +28,6 @@
     "packages/database/src/lifecycle/workspace-purge.ts": 854,
     "packages/database/src/platform/postgres-telemetry.ts": 608,
     "packages/database/src/tenant-access/identity-workspace.ts": 594,
-    "packages/database/src/triggers/schedule-triggers.ts": 674,
     "packages/database/src/triggers/webhook-triggers.ts": 669,
     "packages/database/src/triggers/workflow-triggers.ts": 506,
     "packages/integrations/src/http/secure-http.ts": 912,
@@ -159,9 +158,9 @@
       "branches": 0,
       "lines": 211
     },
-    "packages/database/src/triggers/schedule-triggers.ts#createScheduleTriggerDatabase": {
+    "packages/database/src/triggers/schedule-trigger-database.ts#createScheduleTriggerDatabase": {
       "branches": 0,
-      "lines": 220
+      "lines": 217
     },
     "packages/database/src/triggers/webhook-triggers.ts#createWebhookTriggerDatabase": {
       "branches": 1,
