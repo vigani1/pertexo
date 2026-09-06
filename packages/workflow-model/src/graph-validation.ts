@@ -4,7 +4,10 @@ import type {
   WorkflowGraph,
   WorkflowNode,
 } from './graph-contract.js';
-import type { GraphIssueCode, WorkflowGraphLimits } from './graph.js';
+import type {
+  GraphIssueCode,
+  WorkflowGraphLimits,
+} from './graph/validation-contract.js';
 
 type Issue = (code: GraphIssueCode, path: string, message: string) => void;
 interface Totals {
