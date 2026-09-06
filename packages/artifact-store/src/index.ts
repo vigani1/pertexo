@@ -86,3 +86,10 @@ export type {
   WorkspaceObjectPurgePage,
   WorkspaceObjectPurgeStore,
 } from './store.js';
+export type {
+  ArtifactDownloadCapability,
+  BeginDirectDownloadRequest,
+  DirectDownload,
+  GetObjectPresignRequest,
+  GetObjectPresigner,
+} from './artifact-download.js';

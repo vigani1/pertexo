@@ -163,6 +163,8 @@ describe('object-store telemetry', () => {
       {
         client,
         observer: recording.observer,
+        presignGetObject: () =>
+          Promise.resolve('https://example.test/download'),
         presignPutObject: () => Promise.resolve('https://example.test/signed'),
       },
     );
@@ -173,6 +175,11 @@ describe('object-store telemetry', () => {
       expiresInSeconds: 60,
       mediaType: 'text/plain',
       sha256: '0'.repeat(64),
+      workspaceId: WORKSPACE_ID,
+    });
+    await store.beginDirectDownload({
+      artifactId: ARTIFACT_ID,
+      expiresInSeconds: 60,
       workspaceId: WORKSPACE_ID,
     });
     await expect(
@@ -194,6 +201,13 @@ describe('object-store telemetry', () => {
       expect.objectContaining({
         errorClass: 'none',
         operation: 'presign_put_object',
+        outcome: 'success',
+        regionRole: 'artifact',
+        surface: 'artifact',
+      }),
+      expect.objectContaining({
+        errorClass: 'none',
+        operation: 'presign_get_object',
         outcome: 'success',
         regionRole: 'artifact',
         surface: 'artifact',

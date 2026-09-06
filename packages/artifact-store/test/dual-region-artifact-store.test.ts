@@ -23,6 +23,11 @@ import type {
   WorkspaceObjectPurgePage,
   WorkspaceObjectPurgeStore,
 } from '../src/store.js';
+import type {
+  ArtifactDownloadCapability,
+  BeginDirectDownloadRequest,
+  DirectDownload,
+} from '../src/artifact-download.js';
 import type { ObjectStoreObserver } from '../src/object-store-telemetry.js';
 
 const metadata = Object.freeze({
@@ -33,11 +38,17 @@ const metadata = Object.freeze({
   workspaceId: '018f47a0-7b5c-7e2d-8c3f-12ad4e8b9c01',
 });
 
-class FakeArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
+class FakeArtifactStore
+  implements
+    ArtifactStore,
+    ArtifactDownloadCapability,
+    WorkspaceObjectPurgeStore
+{
   public closeCalls = 0;
   public closeError: Error | undefined;
   public deleteCalls = 0;
   public deleteError: Error | undefined;
+  public directDownloadCalls = 0;
   public failNextPut = false;
   public purgeError: Error | undefined;
   public purgeResult: WorkspaceObjectPurgePage = {
@@ -62,6 +73,19 @@ class FakeArtifactStore implements ArtifactStore, WorkspaceObjectPurgeStore {
       headers: {},
       method: 'PUT',
       url: 'https://uploads.example.test/signed',
+    });
+  }
+
+  public beginDirectDownload(
+    request: BeginDirectDownloadRequest,
+  ): Promise<DirectDownload> {
+    void request;
+    this.directDownloadCalls += 1;
+    return Promise.resolve({
+      expiresAt: '2026-08-28T12:00:00.000Z',
+      expiresInSeconds: 300,
+      method: 'GET',
+      url: 'https://downloads.example.test/signed',
     });
   }
 
@@ -180,6 +204,20 @@ describe('dual-region artifact store', () => {
       metadata,
     );
     expect(recovery.stored?.body).toEqual(Buffer.from('hello'));
+  });
+
+  it('issues direct downloads from the primary region only', async () => {
+    const { primary, recovery, store } = fixture();
+
+    await expect(
+      store.beginDirectDownload({
+        artifactId: metadata.artifactId,
+        expiresInSeconds: 300,
+        workspaceId: metadata.workspaceId,
+      }),
+    ).resolves.toMatchObject({ method: 'GET' });
+    expect(primary.directDownloadCalls).toBe(1);
+    expect(recovery.directDownloadCalls).toBe(0);
   });
 
   it('proves region isolation and coordinated purge outcomes', async () => {

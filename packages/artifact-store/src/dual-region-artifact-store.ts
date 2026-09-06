@@ -22,6 +22,11 @@ import {
   type WorkspaceObjectPurgePage,
   type WorkspaceObjectPurgeStore,
 } from './store.js';
+import type {
+  ArtifactDownloadCapability,
+  BeginDirectDownloadRequest,
+  DirectDownload,
+} from './artifact-download.js';
 
 type ArtifactStoreWithPurge = ArtifactStore & WorkspaceObjectPurgeStore;
 
@@ -30,7 +35,8 @@ export interface DualRegionArtifactStoreReadiness extends ArtifactStoreReadiness
   readonly recovery: ArtifactStoreReadiness;
 }
 
-export interface DualRegionArtifactStore extends ArtifactStoreWithPurge {
+export interface DualRegionArtifactStore
+  extends ArtifactStoreWithPurge, ArtifactDownloadCapability {
   checkReadiness(
     signal?: AbortSignal,
   ): Promise<DualRegionArtifactStoreReadiness>;
@@ -57,6 +63,18 @@ function isArtifactStore(value: unknown): value is ArtifactStoreWithPurge {
     'purgeWorkspacePage' in value &&
     typeof value.purgeWorkspacePage === 'function'
   );
+}
+
+function downloadCapability(
+  store: ArtifactStoreWithPurge,
+): ArtifactDownloadCapability {
+  if (
+    typeof (store as Partial<ArtifactDownloadCapability>)
+      .beginDirectDownload !== 'function'
+  ) {
+    throw new TypeError('Artifact primary store must support direct downloads');
+  }
+  return store as ArtifactStoreWithPurge & ArtifactDownloadCapability;
 }
 
 class CoordinatedDualRegionArtifactStore implements DualRegionArtifactStore {
@@ -95,6 +113,13 @@ class CoordinatedDualRegionArtifactStore implements DualRegionArtifactStore {
   ): Promise<DirectUpload> {
     this.assertOpen();
     return this.primary.beginDirectUpload(request);
+  }
+
+  public beginDirectDownload(
+    request: BeginDirectDownloadRequest,
+  ): Promise<DirectDownload> {
+    this.assertOpen();
+    return downloadCapability(this.primary).beginDirectDownload(request);
   }
 
   public async checkReadiness(

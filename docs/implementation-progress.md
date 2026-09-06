@@ -41,7 +41,7 @@ original verdict after each fix.
 | IWA-10 | Authenticated replay vertical slice | Fixed; dedicated replay capability, strict explicit version/input, atomic tenant acceptance and narrow migration-0077 locked reads; 10 fresh-PG cases, 6 real HTTP cases and 3 real-worker replay/redelivery cases pass |
 | IWA-15 | Executable Validate semantics and complete versioned slice | Fixed; ADR 032 bounded rules, pure typed mismatch output and staged/active epochs 37/38; 33 core contract/executor cases, 19 catalog cases, 10 API preview cases and 3 real-worker integration cases pass |
 | IWA-16 | Workflow lifecycle/version restoration and activation | In progress; archive/restore and guarded version restoration implemented; 5 authenticated HTTP cases, 7 real-PG version-restore cases and 3 real-PG lifecycle cases pass; real-worker recovery proof is under review |
-| IWA-17 | Public artifact upload/finalize vertical slice | Open; ADR 035 defines direct upload/finalize/download and shared capacity authority; routes/use cases and enforcement remain absent |
+| IWA-17 | Public artifact upload/finalize vertical slice | In progress; bounded signed attachment downloads implemented and verified at the storage seam; public routes, quota authority and integrated proofs remain |
 | IWA-11 | Typed/correct application deployment closure validation | Fixed; typed Map-key traversal includes all six applications, migration and transitive workspace dependencies; missing-role and app-only output negatives fail; 29 deployment tests pass |
 | IWA-12 | Current operational documentation consistency | Fixed; live status, migration/release inventory and dependency policy reference authoritative executable sources; historical completion evidence is explicitly scoped; 12 documentation checks include controlled drift negatives |
 | IWA-13 | Migration-option validation and connection ownership | Fixed; options rejected before database access and failed acquisition closes the pool; five boundary regressions and three real-PG execution-mode tests pass |
@@ -279,6 +279,27 @@ and both deterministic save/restore lock orders. Run preservation is asserted
 against a nonempty row read through the API role rather than a FORCE-RLS-hidden
 owner query. Source/build/typecheck, scoped ESLint and unchanged complexity
 limits pass for the authoring change.
+
+### IWA-17 — Signed artifact download checkpoint
+
+The storage module now signs GET capabilities only for validated canonical
+workspace/artifact identities, with integer TTLs from 60 to 900 seconds and
+forced attachment disposition. Arbitrary keys and filenames cannot affect the
+signed request. Dual-region storage signs from the primary region; request
+deadlines, cancellation and closed-store checks are preserved. Signing telemetry
+records bounded operation/outcome fields, not bearer URLs.
+
+Primary-agent verification: all 185 artifact-store unit cases pass, including
+canonical-key, TTL, cancellation and ownership checks. All three local
+S3-compatible integration cases pass after the signing/cancellation extraction;
+the signed GET returns the uploaded bytes. Build, typecheck, scoped ESLint and
+the unchanged complexity/duplication limits pass. Coverage is 881/969 statements,
+617/734 branches, 184/194 functions and 837/907 lines, above unchanged thresholds.
+Existing exact-source branch reviews were relocated to their new owners;
+six stale locationless V8 reviews were removed, not relabeled as covered.
+The artifact cohort currently has 109 reviewed and eight unreviewed uncovered
+branches across 14 files. Public authorization, upload/finalize and concurrent
+workspace capacity enforcement are still separate unfinished obligations.
 
 ### IWA-01 — DST recurrence correction
 
