@@ -217,7 +217,6 @@ describe('artifact upload database authority', () => {
       byteLength: 17,
       idempotencyKey: 'artifact-upload-replay',
       mediaType: 'application/octet-stream',
-      requestId: 'artifact-upload-replay',
       sha256: 'a'.repeat(64),
       workspaceId,
     } as const;
@@ -254,7 +253,6 @@ describe('artifact upload database authority', () => {
       byteLength: 19,
       idempotencyKey: 'artifact-upload-deadline',
       mediaType: 'application/octet-stream',
-      requestId: 'artifact-upload-deadline',
       sha256: 'e'.repeat(64),
       workspaceId,
     });
@@ -276,7 +274,6 @@ describe('artifact upload database authority', () => {
       byteLength: 29,
       idempotencyKey: 'artifact-upload-concurrent-replay',
       mediaType: 'application/octet-stream',
-      requestId: 'artifact-upload-concurrent-replay',
       sha256: 'f'.repeat(64),
       workspaceId,
     } as const;
@@ -302,7 +299,6 @@ describe('artifact upload database authority', () => {
       actor: actor(),
       byteLength: 4,
       mediaType: 'application/octet-stream',
-      requestId: 'artifact-upload-quota-race',
       sha256: 'b'.repeat(64),
       workspaceId,
     } as const;
@@ -333,7 +329,6 @@ describe('artifact upload database authority', () => {
       byteLength: 1,
       idempotencyKey: 'artifact-upload-quota-failure',
       mediaType: 'application/octet-stream',
-      requestId: 'artifact-upload-quota-failure',
       sha256: '1'.repeat(64),
       workspaceId,
     } as const;
@@ -358,13 +353,66 @@ describe('artifact upload database authority', () => {
     });
   });
 
+  it('applies the shared capability policy to artifact reads and uploads', async () => {
+    const existing = await database.beginUpload({
+      actor: actor(),
+      byteLength: 13,
+      idempotencyKey: 'artifact-upload-role-policy-seed',
+      mediaType: 'application/octet-stream',
+      sha256: '2'.repeat(64),
+      workspaceId,
+    });
+    const identity = {
+      actor: actor(),
+      identity: { artifactId: existing.artifact.id, workspaceId },
+    } as const;
+    const roleCases = [
+      { role: 'owner', canUpload: true },
+      { role: 'admin', canUpload: true },
+      { role: 'builder', canUpload: true },
+      { role: 'operator', canUpload: true },
+      { role: 'viewer', canUpload: false },
+    ] as const;
+
+    for (const { role, canUpload } of roleCases) {
+      await ownerTransaction(async (client) => {
+        await client.query(
+          `update app.workspace_memberships set role=$3
+             where workspace_id=$1 and user_id=$2`,
+          [workspaceId, actorId, role],
+        );
+      });
+      await expect(database.getMetadata(identity)).resolves.toMatchObject({
+        id: existing.artifact.id,
+        status: 'pending',
+      });
+
+      const upload = database.beginUpload({
+        actor: actor(),
+        byteLength: 1,
+        idempotencyKey: `artifact-upload-role-policy-${role}`,
+        mediaType: 'application/octet-stream',
+        sha256: '3'.repeat(64),
+        workspaceId,
+      });
+      if (canUpload) {
+        await expect(upload).resolves.toMatchObject({
+          artifact: { status: 'pending' },
+        });
+      } else {
+        await expect(upload).rejects.toBeInstanceOf(
+          ArtifactUploadNotFoundError,
+        );
+      }
+    }
+  });
+
   it('denies access for inactive membership, actor, and workspace states', async () => {
     const created = await database.beginUpload({
       actor: actor(),
       byteLength: 13,
       idempotencyKey: 'artifact-upload-authorization',
       mediaType: 'application/octet-stream',
-      requestId: 'artifact-upload-authorization',
       sha256: '2'.repeat(64),
       workspaceId,
     });
@@ -494,7 +542,6 @@ describe('artifact upload database authority', () => {
       byteLength: 23,
       idempotencyKey: 'finalize-upload',
       mediaType: 'text/plain',
-      requestId: 'artifact-upload-finalize',
       sha256: 'c'.repeat(64),
       workspaceId,
     });
@@ -545,7 +592,6 @@ describe('artifact upload database authority', () => {
       byteLength: 41,
       idempotencyKey: 'artifact-upload-expired',
       mediaType: 'application/octet-stream',
-      requestId: 'artifact-upload-expired',
       sha256: '4'.repeat(64),
       workspaceId,
     });
@@ -582,7 +628,6 @@ describe('artifact upload database authority', () => {
       byteLength: 43,
       idempotencyKey: 'artifact-upload-deleting',
       mediaType: 'application/octet-stream',
-      requestId: 'artifact-upload-deleting',
       sha256: '5'.repeat(64),
       workspaceId,
     });
@@ -621,7 +666,6 @@ describe('artifact upload database authority', () => {
       byteLength: 47,
       idempotencyKey: 'artifact-upload-immutable',
       mediaType: 'application/octet-stream',
-      requestId: 'artifact-upload-immutable',
       sha256: '6'.repeat(64),
       workspaceId,
     });
@@ -669,7 +713,6 @@ describe('artifact upload database authority', () => {
       byteLength: 31,
       idempotencyKey: 'release-upload',
       mediaType: 'application/octet-stream',
-      requestId: 'artifact-upload-release',
       sha256: 'd'.repeat(64),
       workspaceId,
     });

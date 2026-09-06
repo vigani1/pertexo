@@ -100,7 +100,6 @@ function context(
 ) {
   return {
     actor,
-    requestId: actor.requestId,
     routeWorkspaceId: workspaceId,
     ...overrides,
   };

@@ -69,10 +69,8 @@ export class ArtifactsController {
         ...authorizedInput(request),
         idempotencyKey: idempotencyKey(request),
         request: body,
-        requestId: requestIdentifier(request),
         routeWorkspaceId: route.workspaceId,
         signal,
-        ...traceInput(request),
       }),
     );
   }
@@ -98,10 +96,8 @@ export class ArtifactsController {
         ...authorizedInput(request),
         artifactId: route.artifactId,
         request: body,
-        requestId: requestIdentifier(request),
         routeWorkspaceId: route.workspaceId,
         signal,
-        ...traceInput(request),
       }),
     );
   }
@@ -119,9 +115,7 @@ export class ArtifactsController {
       actor: actorFrom(request, route.workspaceId),
       ...authorizedInput(request),
       artifactId: route.artifactId,
-      requestId: requestIdentifier(request),
       routeWorkspaceId: route.workspaceId,
-      ...traceInput(request),
     });
   }
 
@@ -139,10 +133,8 @@ export class ArtifactsController {
         actor: actorFrom(request, route.workspaceId),
         ...authorizedInput(request),
         artifactId: route.artifactId,
-        requestId: requestIdentifier(request),
         routeWorkspaceId: route.workspaceId,
         signal,
-        ...traceInput(request),
       }),
     );
   }
