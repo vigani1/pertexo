@@ -32,7 +32,11 @@ const workflowRowSchema = z
     workspace_id: uuidSchema,
     name: z.string().trim().min(1).max(128),
     lifecycle_status: workflowLifecycleStatusSchema,
-    lifecycle_revision: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+    lifecycle_revision: z
+      .number()
+      .int()
+      .positive()
+      .max(Number.MAX_SAFE_INTEGER),
     activation_status: workflowActivationStatusSchema,
     published_version_id: uuidSchema.nullable(),
     created_by: uuidSchema,
