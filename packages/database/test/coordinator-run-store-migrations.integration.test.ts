@@ -56,7 +56,7 @@ describe('Coordinator migration and identity invariants', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0075_workspace_purge_step_release.sql',
+          migrationHead: '0076_replay_lineage_retention.sql',
           role: 'pertexo_worker',
         });
       } finally {
@@ -157,6 +157,7 @@ describe('Coordinator migration and identity invariants', () => {
         '0073_transient_data_retention.sql',
         '0074_retention_schedule_state_rls.sql',
         '0075_workspace_purge_step_release.sql',
+        '0076_replay_lineage_retention.sql',
       ]);
       const workerPool = new Pool({
         connectionString: namedDatabaseUrl(
@@ -172,7 +173,7 @@ describe('Coordinator migration and identity invariants', () => {
             workerRuntimeRole: 'pertexo_worker',
           }),
         ).resolves.toMatchObject({
-          migrationHead: '0075_workspace_purge_step_release.sql',
+          migrationHead: '0076_replay_lineage_retention.sql',
           role: 'pertexo_worker',
         });
         await expect(
@@ -239,7 +240,7 @@ describe('Coordinator migration and identity invariants', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0075_workspace_purge_step_release.sql',
+        migrationHead: '0076_replay_lineage_retention.sql',
         role: 'pertexo_worker',
       });
       const catalog = await readinessPool.query<{
@@ -478,7 +479,7 @@ describe('Coordinator migration and identity invariants', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0075_workspace_purge_step_release.sql',
+        migrationHead: '0076_replay_lineage_retention.sql',
       });
     } finally {
       await readinessPool.end();

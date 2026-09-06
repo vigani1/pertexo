@@ -34,7 +34,7 @@ original verdict after each fix.
 | IWA-14 | Query-secret-free exported HTTP telemetry | Fixed; real exported HTTP/Undici success and error spans omit query values, userinfo and raw exception text while retaining safe method/status/path; 65 observability tests and unchanged coverage thresholds pass |
 | IWA-04 | Nested Parallel concurrency | Open; valid nested graph exceeds configured cap |
 | IWA-05 | Skipped Parallel/Merge semantics | Open; skipped Merge schedules without join |
-| IWA-06 | Replay-lineage-aware retention | Open; real PG foreign-key failure reproduced |
+| IWA-06 | Replay-lineage-aware retention | Fixed; forward migration 0076 protects replay sources in destructive and dry-run summary selection; 5 lineage and 3 inventory real-PG cases pass, including active descendants, page boundaries, eventual expiry and legal holds |
 | IWA-07 | Canonical hostname/IP classification | Fixed; syntactic IP detection precedes public-address policy; 81 secure-HTTP tests pass including hostname variants and alternate blocked literals |
 | IWA-08 | CPU-bounded streaming redaction | Fixed; byte comparisons yield at bounded intervals and check elapsed deadlines; 85 secure-HTTP tests and 207 integration-package tests pass |
 | IWA-09 | Surge-aware database connection capacity | Fixed; regional budgets include ECS maximumPercent rollout overlap and administration/failover reserves; 8 budget regressions pass, with 398/400 Frankfurt and 366/400 Ireland maximum connections |
@@ -205,6 +205,25 @@ Primary verification: `pnpm deployment:check` passes typed closure validation,
 29 tests, the complete deployment contract and deterministic digest-pinned
 rendering; scoped ESLint and formatting pass. Image execution and external
 platform evidence remain separate gates.
+
+### IWA-06 — replay-lineage retention
+
+Forward migration `0076_replay_lineage_retention.sql` adds same-workspace
+replay-child exclusion to both standard summary deletion and frozen dry-run
+eligibility. Published migrations are unchanged. Deletion walks eligible
+descendants before their ancestors across bounded pages; retained or active
+children preserve their source. Existing lease, control-high-water, role and
+legal-hold fences remain intact. Dry runs count an old protected source as
+examined but ineligible and never remove it.
+
+Primary verification: eight real-PostgreSQL lineage/inventory cases pass,
+including active-child protection, another tenant's independent progress,
+one-row pages, later descendant expiry, legal-hold pause and two dry-run
+snapshots with no deletions. The prior purge/control regression cohort also
+passes. Database typecheck, schema validation and 209 unit assertions pass.
+The replacement function bodies were compared with their published originals;
+only the intended lineage guards differ. The readiness contract and retained
+head fixtures advance together.
 
 ### IWA-12 — current operational documentation
 

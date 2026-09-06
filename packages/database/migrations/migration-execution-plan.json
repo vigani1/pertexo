@@ -1,5 +1,5 @@
 {
   "schemaVersion": 1,
-  "transactionalThrough": "0075_workspace_purge_step_release.sql",
+  "transactionalThrough": "0076_replay_lineage_retention.sql",
   "migrations": {}
 }
