@@ -15,9 +15,7 @@ describe('preview execution deadline migration', () => {
       'utf8',
     );
 
-    expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0080_expired_artifact_upload_retention.sql',
-    );
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0081_schedule_claim_concurrency.sql');
     expect(MIGRATIONS_DIRECTORY).toContain('migrations');
     expect(sql).toContain('ADD COLUMN execution_deadline_at timestamptz');
     expect(sql).toContain(

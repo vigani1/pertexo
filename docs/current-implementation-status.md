@@ -7,6 +7,9 @@ Updated: 2026-09-06
 The platform is **not production-ready**. The follow-up cron traversal bound,
 artifact policy/contract corrections, and lifecycle-command CI coverage
 ratchet are verified locally.
+The merge gate also exposed a concurrent schedule-claim race; its forward
+migration passes local race, worker, and exact prior-head upgrade regressions.
+Required CI remains the merge authority; PR #51 records the live gate outcome.
 External production gates and four unallocated API
 scope decisions also remain open.
 The [implementation tracker](./implementation-progress.md#independent-audit-remediation--follow-up-corrections)

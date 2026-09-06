@@ -110,6 +110,7 @@ describe('trigger hardening prior-head migration', () => {
       '0078_workflow_lifecycle_revision.sql',
       '0079_artifact_upload_capacity.sql',
       '0080_expired_artifact_upload_retention.sql',
+      '0081_schedule_claim_concurrency.sql',
     ]);
   });
 });

@@ -14,9 +14,7 @@ describe('regional replica identity migration', () => {
       'utf8',
     );
 
-    expect(EXPECTED_MIGRATION_HEAD).toBe(
-      '0080_expired_artifact_upload_retention.sql',
-    );
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0081_schedule_claim_concurrency.sql');
     expect(sql).toContain('replica_identity_status');
     expect(sql).toContain('replica_session_count');
     expect(sql).toContain("'missing'");
