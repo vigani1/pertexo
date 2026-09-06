@@ -4992,6 +4992,42 @@
           "justification": "Stop propagation consumes validated loop and invocation state; this residual decision preserves legacy-loop compatibility or exhaustively selects terminal, timed-out, canceled, and fallback event semantics."
         }
       ]
+    },
+    {
+      "cohort": "lifecycle-command",
+      "file": "apps/lifecycle-command/src/main.ts",
+      "reviews": [
+        {
+          "branchId": "9",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 141,
+          "column": 0,
+          "sourceFingerprint": "sha256:6222fc2013cb1ca0ae5d78417744e402ccf4d12245f48b6846ca89cf035ff8ae",
+          "classification": "defensive",
+          "justification": "The executable entrypoint is intentionally not counted as unit-covered: Vitest imports main as a library, while the compiled entrypoint subprocess regression executes the condition and verifies its fatal exit path; child-process V8 counters are not fabricated into this unit report."
+        },
+        {
+          "branchId": "10",
+          "locationIndex": 0,
+          "branchType": "cond-expr",
+          "line": 145,
+          "column": 44,
+          "sourceFingerprint": "sha256:98d512f7c0f4b07102cb7c770956a9aa36a3754d185345ebfef3b12b1bb34f6c",
+          "classification": "defensive",
+          "justification": "The terminal process-failure formatter handles an Error and preserves only its type name; the compiled entrypoint subprocess regression verifies its sanitized ZodError output, but child-process V8 counters are not fabricated as unit coverage."
+        },
+        {
+          "branchId": "10",
+          "locationIndex": 1,
+          "branchType": "cond-expr",
+          "line": 145,
+          "column": 57,
+          "sourceFingerprint": "sha256:d8580256ca6b6432c42ecf3ce7283443e692d2cf4fcf82ca4d83ed94614de78f",
+          "classification": "defensive",
+          "justification": "The terminal process-failure formatter handles unknown thrown values conservatively; injected bootstrap failures and subprocess lifecycle evidence do not execute this executable-only formatter branch."
+        }
+      ]
     }
   ]
 }

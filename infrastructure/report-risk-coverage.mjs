@@ -14,6 +14,24 @@ const REVIEW_CLASSIFICATIONS = new Set([
   'integration',
 ]);
 
+export const RISK_COVERAGE_COHORTS = [
+  'artifact-store',
+  'contracts',
+  'integrations',
+  'workflow-engine',
+  'database',
+  'worker',
+  'api',
+  'lifecycle-command',
+];
+
+const LIFECYCLE_COMMAND_RISK_FILES = [
+  'apps/lifecycle-command/src/config.ts',
+  'apps/lifecycle-command/src/main.ts',
+  'apps/lifecycle-command/src/readiness-marker.ts',
+  'apps/lifecycle-command/src/run.ts',
+];
+
 function branchKey(branch) {
   return [
     branch.cohort,
@@ -314,20 +332,35 @@ export function createRiskCoverageReport(
   };
 }
 
+export function assertNoUnreviewedBranches(report, cohort) {
+  const unreviewed = report.uncoveredBranches.filter(
+    (branch) =>
+      branch.cohort === cohort && branch.reviewStatus === 'unreviewed',
+  );
+  if (unreviewed.length > 0)
+    throw new Error(
+      `Unreviewed ${cohort} risk-coverage branches: ${String(unreviewed.length)}`,
+    );
+}
+
+export function assertRiskCoverageCohort(report, cohort, expectedFiles) {
+  const selection = report.scope.cohorts.find(
+    (candidate) => candidate.cohort === cohort,
+  );
+  if (selection === undefined)
+    throw new Error(`Missing ${cohort} risk-coverage cohort`);
+  const actualFiles = [...selection.files].sort();
+  const requiredFiles = [...expectedFiles].sort();
+  if (JSON.stringify(actualFiles) !== JSON.stringify(requiredFiles))
+    throw new Error(`Unexpected ${cohort} risk-coverage file inventory`);
+  assertNoUnreviewedBranches(report, cohort);
+}
+
 async function main() {
-  const cohorts = [
-    'artifact-store',
-    'contracts',
-    'integrations',
-    'workflow-engine',
-    'database',
-    'worker',
-    'api',
-  ];
   const reports = new Map();
   const sourceByFile = new Map();
   const testHealthByCohort = new Map();
-  for (const cohort of cohorts) {
+  for (const cohort of RISK_COVERAGE_COHORTS) {
     const report = JSON.parse(
       await readFile(`coverage/${cohort}/coverage-final.json`, 'utf8'),
     );
@@ -374,6 +407,11 @@ async function main() {
     reviewManifest.integrationEvidence,
     sourceByFile,
     testHealthByCohort,
+  );
+  assertRiskCoverageCohort(
+    output,
+    'lifecycle-command',
+    LIFECYCLE_COMMAND_RISK_FILES,
   );
   await writeFile(
     'coverage/risk-uncovered-branches.json',

@@ -2,12 +2,87 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  assertNoUnreviewedBranches,
+  assertRiskCoverageCohort,
   coverageMetrics,
   createRiskCoverageReport,
   flattenRiskCoverageReviewGroups,
+  RISK_COVERAGE_COHORTS,
   summarizeVitestResult,
   uncoveredBranches,
 } from './report-risk-coverage.mjs';
+
+test('keeps lifecycle executable files in the enforced risk cohort', () => {
+  assert.ok(RISK_COVERAGE_COHORTS.includes('lifecycle-command'));
+  assert.doesNotThrow(() =>
+    assertNoUnreviewedBranches({ uncoveredBranches: [] }, 'lifecycle-command'),
+  );
+  assert.throws(
+    () =>
+      assertNoUnreviewedBranches(
+        {
+          uncoveredBranches: [
+            { cohort: 'lifecycle-command', reviewStatus: 'unreviewed' },
+          ],
+        },
+        'lifecycle-command',
+      ),
+    /Unreviewed lifecycle-command risk-coverage branches/u,
+  );
+  assert.doesNotThrow(() =>
+    assertNoUnreviewedBranches(
+      {
+        uncoveredBranches: [
+          { cohort: 'lifecycle-command', reviewStatus: 'reviewed' },
+          { cohort: 'other', reviewStatus: 'unreviewed' },
+        ],
+      },
+      'lifecycle-command',
+    ),
+  );
+  const files = [
+    'apps/lifecycle-command/src/config.ts',
+    'apps/lifecycle-command/src/main.ts',
+    'apps/lifecycle-command/src/readiness-marker.ts',
+    'apps/lifecycle-command/src/run.ts',
+  ];
+  assert.throws(
+    () =>
+      assertRiskCoverageCohort(
+        { scope: { cohorts: [] }, uncoveredBranches: [] },
+        'lifecycle-command',
+        files,
+      ),
+    /Missing lifecycle-command risk-coverage cohort/u,
+  );
+  assert.doesNotThrow(() =>
+    assertRiskCoverageCohort(
+      {
+        scope: { cohorts: [{ cohort: 'lifecycle-command', files }] },
+        uncoveredBranches: [
+          { cohort: 'lifecycle-command', reviewStatus: 'reviewed' },
+          { cohort: 'other', reviewStatus: 'unreviewed' },
+        ],
+      },
+      'lifecycle-command',
+      files,
+    ),
+  );
+  assert.throws(
+    () =>
+      assertRiskCoverageCohort(
+        {
+          scope: {
+            cohorts: [{ cohort: 'lifecycle-command', files: files.slice(1) }],
+          },
+          uncoveredBranches: [],
+        },
+        'lifecycle-command',
+        files,
+      ),
+    /Unexpected lifecycle-command risk-coverage file inventory/u,
+  );
+});
 
 test('publishes exact coverable-line denominators beside percentages', () => {
   assert.deepEqual(
