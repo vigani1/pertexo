@@ -3,7 +3,7 @@ import { parseWorkflowGraphForPublish } from '@pertexo/workflow-model/graph';
 import {
   computeWorkflowExecutableChecksumV2,
   selectionFingerprint,
-} from './executable-compilation.js';
+} from './executable-identity.js';
 import { executableNodes } from './executable-graph.js';
 import {
   type CompiledWorkflowExecutableV2,
