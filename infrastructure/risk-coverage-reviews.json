@@ -36,6 +36,98 @@
     },
     {
       "cohort": "integrations",
+      "file": "packages/integrations/src/http/secure-http-error.ts",
+      "reviews": [
+        {
+          "branchId": "0",
+          "locationIndex": 2,
+          "branchType": "binary-expr",
+          "line": 34,
+          "column": 25,
+          "sourceFingerprint": "sha256:6032bc0d4035cc859ef0e7ff91808633825f1b00e9ad24a8b9ebb3a401e783f5",
+          "classification": "defensive",
+          "justification": "Node transports report timeout by code or TimeoutError name; both normalize to the same bounded public outcome."
+        }
+      ]
+    },
+    {
+      "cohort": "integrations",
+      "file": "packages/integrations/src/http/stream-redaction.ts",
+      "reviews": [
+        {
+          "branchId": "1",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 13,
+          "column": 2,
+          "sourceFingerprint": "sha256:dbff547c011954053e312df807d43e1404df7206f48e6060be145fffa0a05685",
+          "classification": "defensive",
+          "justification": "The redactor normally concatenates non-empty transport chunks; this guard safely handles a transport emitting an empty chunk."
+        },
+        {
+          "branchId": "3",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 31,
+          "column": 4,
+          "sourceFingerprint": "sha256:191f6b4cbbbaf30cd528f2533c174aa80df158beab5ab85fd46f971e13f060e0",
+          "classification": "unreachable",
+          "justification": "Without redaction patterns, raw-byte accounting already enforced the same remaining budget, so this duplicate guard is invariant-only."
+        },
+        {
+          "branchId": "4",
+          "locationIndex": 1,
+          "branchType": "binary-expr",
+          "line": 38,
+          "column": 57,
+          "sourceFingerprint": "sha256:9dc9db147e5fead5ef37e7b849cdf668a7423ead555f7fb3d5e4d866f255acf3",
+          "classification": "unreachable",
+          "justification": "The surrounding branch has proved the redaction-pattern array is non-empty, so the first-pattern fallback cannot be selected."
+        },
+        {
+          "branchId": "12",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 77,
+          "column": 4,
+          "sourceFingerprint": "sha256:575fc4db508366905460287effe107ef33327f27cfc2c58fcbeaf28e970105de",
+          "classification": "unreachable",
+          "justification": "The loop condition proves the indexed byte is inside the Uint8Array; undefined requires a nonconforming typed-array implementation."
+        },
+        {
+          "branchId": "14",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 126,
+          "column": 4,
+          "sourceFingerprint": "sha256:738212d0b6b2fb2ed174481f6ff663278d82c73a02724dac1afc9dc78a9b4de8",
+          "classification": "defensive",
+          "justification": "The append helper and raw-byte counter enforce the output limit before emit; this aggregate check protects future algorithm changes."
+        },
+        {
+          "branchId": "22",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 189,
+          "column": 2,
+          "sourceFingerprint": "sha256:8b9ee0ee1ad7ad2dab64eaebdffd8b3376c2f58067c4d8c0cd8535a767095996",
+          "classification": "defensive",
+          "justification": "The stream mapper rechecks cancellation after iteration; public cancellation behavior is covered while this exact scheduler race is nondeterministic."
+        },
+        {
+          "branchId": "23",
+          "locationIndex": 0,
+          "branchType": "if",
+          "line": 190,
+          "column": 2,
+          "sourceFingerprint": "sha256:dc28f97b498a6bd6343fd34a8dbf0261490d27a9343c3778239ce9cb2ceb447f",
+          "classification": "defensive",
+          "justification": "The stream mapper accepts iterator timeouts; total response deadline and ordinary iterator failures are covered publicly."
+        }
+      ]
+    },
+    {
+      "cohort": "integrations",
       "file": "packages/integrations/src/provider-dispatch-fence.ts",
       "reviews": [
         {
@@ -44,7 +136,7 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:dd5ed43b2f7b753f9798f358d4ce39da6482cde5c413ee75da044a7fad0912d3",
+          "sourceFingerprint": "sha256:2106f9b08c89f386a21a03da338782b6f85d932e1d975f8c83d41cbc8bf02e12",
           "classification": "generated",
           "justification": "V8 reports an implicit early-return fallthrough without a source location; provider dispatch evidence error classes are exercised through the public executor boundary."
         }
@@ -1323,19 +1415,9 @@
           "branchType": "if",
           "line": 0,
           "column": 0,
-          "sourceFingerprint": "sha256:7ece23b6318bcab3788d6b675432061ba02f4dbd0abe6461779fd192e4ca14b5",
+          "sourceFingerprint": "sha256:2c38b24842d21cdf588b2ddad207e9c0bb407b190b2de9a4b67206db8adc829c",
           "classification": "generated",
           "justification": "V8 branch 13 in packages/integrations/src/email/executor.ts has no source coordinate; explicit adjacent decisions are separately exercised through the public package boundary."
-        },
-        {
-          "branchId": "22",
-          "locationIndex": 1,
-          "branchType": "if",
-          "line": 0,
-          "column": 0,
-          "sourceFingerprint": "sha256:0bdc496a2eee8b9ae2f93f53738a692df2cceff3790f28d6107badd889300355",
-          "classification": "generated",
-          "justification": "V8 branch 22 in packages/integrations/src/email/executor.ts has no source coordinate; explicit adjacent decisions are separately exercised through the public package boundary."
         }
       ]
     },
@@ -1671,7 +1753,7 @@
           "branchId": "24",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 432,
+          "line": 421,
           "column": 4,
           "sourceFingerprint": "sha256:d07a4939f26a0b698badf85e2a3ec6a131d496b9b308e5f59491e2ef17109f78",
           "classification": "unreachable",
@@ -1681,7 +1763,7 @@
           "branchId": "32",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 506,
+          "line": 495,
           "column": 4,
           "sourceFingerprint": "sha256:a0c2b4629072d5c53e92a965c26f09e21c390504273843306ef6ed5aeb638344",
           "classification": "unreachable",
@@ -1691,147 +1773,57 @@
           "branchId": "50",
           "locationIndex": 1,
           "branchType": "cond-expr",
-          "line": 606,
+          "line": 596,
           "column": 36,
           "sourceFingerprint": "sha256:f381a26b1da4747ed8b31b6addedb4c60aae1f8d4595ac99adbd5bf3865d328b",
           "classification": "defensive",
           "justification": "Redirect replay retains an optional body; public tests cover bodyless redirects and body-bearing dispatch before unsafe redirect rejection."
         },
         {
-          "branchId": "54",
+          "branchId": "58",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 634,
-          "column": 2,
-          "sourceFingerprint": "sha256:dbff547c011954053e312df807d43e1404df7206f48e6060be145fffa0a05685",
-          "classification": "defensive",
-          "justification": "The redactor normally concatenates non-empty transport chunks; this guard safely handles a transport emitting an empty chunk."
-        },
-        {
-          "branchId": "56",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 650,
-          "column": 4,
-          "sourceFingerprint": "sha256:191f6b4cbbbaf30cd528f2533c174aa80df158beab5ab85fd46f971e13f060e0",
-          "classification": "unreachable",
-          "justification": "Without redaction patterns, raw-byte accounting already enforced the same remaining budget, so this duplicate guard is invariant-only."
-        },
-        {
-          "branchId": "57",
-          "locationIndex": 1,
-          "branchType": "binary-expr",
-          "line": 657,
-          "column": 57,
-          "sourceFingerprint": "sha256:9dc9db147e5fead5ef37e7b849cdf668a7423ead555f7fb3d5e4d866f255acf3",
-          "classification": "unreachable",
-          "justification": "The surrounding branch has proved the redaction-pattern array is non-empty, so the first-pattern fallback cannot be selected."
-        },
-        {
-          "branchId": "62",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 680,
-          "column": 4,
-          "sourceFingerprint": "sha256:575fc4db508366905460287effe107ef33327f27cfc2c58fcbeaf28e970105de",
-          "classification": "unreachable",
-          "justification": "The loop condition proves the indexed byte is inside the Uint8Array; undefined requires a nonconforming typed-array implementation."
-        },
-        {
-          "branchId": "64",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 718,
-          "column": 4,
-          "sourceFingerprint": "sha256:738212d0b6b2fb2ed174481f6ff663278d82c73a02724dac1afc9dc78a9b4de8",
-          "classification": "defensive",
-          "justification": "The append helper and raw-byte counter enforce the output limit before emit; this aggregate check protects future algorithm changes."
-        },
-        {
-          "branchId": "73",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 794,
-          "column": 2,
-          "sourceFingerprint": "sha256:1f94d42878e55c9e94c83124b973b4acc7aa3697b40d3a0a0a9f298b4da14035",
-          "classification": "unreachable",
-          "justification": "Sensitive values are validated as non-empty before conversion, so the redactor never receives a zero-length target."
-        },
-        {
-          "branchId": "76",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 825,
+          "line": 671,
           "column": 2,
           "sourceFingerprint": "sha256:8b9ee0ee1ad7ad2dab64eaebdffd8b3376c2f58067c4d8c0cd8535a767095996",
           "classification": "defensive",
           "justification": "The transport mapper rechecks cancellation after asynchronous dispatch; public cancellation tests cover behavior while this exact race is nondeterministic."
         },
         {
-          "branchId": "77",
+          "branchId": "59",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 826,
+          "line": 672,
           "column": 2,
           "sourceFingerprint": "sha256:dc28f97b498a6bd6343fd34a8dbf0261490d27a9343c3778239ce9cb2ceb447f",
           "classification": "defensive",
           "justification": "The transport mapper accepts Node timeout-shaped errors in addition to the total deadline; both normalize to the tested timeout outcome."
         },
         {
-          "branchId": "78",
+          "branchId": "60",
           "locationIndex": 0,
           "branchType": "if",
-          "line": 835,
-          "column": 2,
-          "sourceFingerprint": "sha256:8b9ee0ee1ad7ad2dab64eaebdffd8b3376c2f58067c4d8c0cd8535a767095996",
-          "classification": "defensive",
-          "justification": "The stream mapper rechecks cancellation after iteration; public cancellation behavior is covered while this exact scheduler race is nondeterministic."
-        },
-        {
-          "branchId": "79",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 836,
-          "column": 2,
-          "sourceFingerprint": "sha256:dc28f97b498a6bd6343fd34a8dbf0261490d27a9343c3778239ce9cb2ceb447f",
-          "classification": "defensive",
-          "justification": "The stream mapper accepts iterator timeouts; total response deadline and ordinary iterator failures are covered publicly."
-        },
-        {
-          "branchId": "80",
-          "locationIndex": 2,
-          "branchType": "binary-expr",
-          "line": 844,
-          "column": 25,
-          "sourceFingerprint": "sha256:6032bc0d4035cc859ef0e7ff91808633825f1b00e9ad24a8b9ebb3a401e783f5",
-          "classification": "defensive",
-          "justification": "Node transports report timeout by code or TimeoutError name; both normalize to the same bounded public outcome."
-        },
-        {
-          "branchId": "82",
-          "locationIndex": 0,
-          "branchType": "if",
-          "line": 869,
+          "line": 683,
           "column": 2,
           "sourceFingerprint": "sha256:75fcd42c4e69ab799efe9b7aaa1b5a45e9c828d5d6ef3a2aa29cf3fbab0c62e5",
-          "classification": "unreachable",
+          "classification": "defensive",
           "justification": "The client checks the combined signal immediately before each race, leaving only a nondeterministic abort-at-helper-entry interleaving."
         },
         {
-          "branchId": "83",
+          "branchId": "61",
           "locationIndex": 1,
           "branchType": "cond-expr",
-          "line": 886,
+          "line": 700,
           "column": 14,
           "sourceFingerprint": "sha256:7630d9143a582a385641977fd8846189db57f9c1cc3d6cd27093f8df10a47023",
           "classification": "defensive",
           "justification": "The secure boundary converts non-Error promise rejections to a generic Error so arbitrary values and secrets cannot escape."
         },
         {
-          "branchId": "86",
+          "branchId": "62",
           "locationIndex": 1,
           "branchType": "cond-expr",
-          "line": 910,
+          "line": 708,
           "column": 45,
           "sourceFingerprint": "sha256:12fce50a4d6834d980d89f1a5c73b3a45d3ad90a5749091a658c28c1c0d5dfb7",
           "classification": "defensive",
