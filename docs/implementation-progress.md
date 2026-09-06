@@ -40,7 +40,7 @@ original verdict after each fix.
 | IWA-09 | Surge-aware database connection capacity | Fixed; regional budgets include ECS maximumPercent rollout overlap and administration/failover reserves; 8 budget regressions pass, with 398/400 Frankfurt and 366/400 Ireland maximum connections |
 | IWA-10 | Authenticated replay vertical slice | Fixed; dedicated replay capability, strict explicit version/input, atomic tenant acceptance and narrow migration-0077 locked reads; 10 fresh-PG cases, 6 real HTTP cases and 3 real-worker replay/redelivery cases pass |
 | IWA-15 | Executable Validate semantics and complete versioned slice | Fixed; ADR 032 bounded rules, pure typed mismatch output and staged/active epochs 37/38; 33 core contract/executor cases, 19 catalog cases, 10 API preview cases and 3 real-worker integration cases pass |
-| IWA-16 | Workflow lifecycle/version restoration and activation | In progress; archive/restore and guarded version restoration implemented; 5 authenticated HTTP cases, 7 real-PG version-restore cases and 3 real-PG lifecycle cases pass; real-worker recovery proof is under review |
+| IWA-16 | Workflow lifecycle/version restoration and activation | Fixed in repository; 5 authenticated HTTP cases, 7 real-PG version-restore cases, 3 real-PG lifecycle cases and real dispatcher/BullMQ restart/redelivery proof pass; nonempty queued/running/waiting/completed history is preserved |
 | IWA-17 | Public artifact upload/finalize vertical slice | In progress; bounded signed attachment downloads implemented and verified at the storage seam; public routes, quota authority and integrated proofs remain |
 | IWA-11 | Typed/correct application deployment closure validation | Fixed; typed Map-key traversal includes all six applications, migration and transitive workspace dependencies; missing-role and app-only output negatives fail; 29 deployment tests pass |
 | IWA-12 | Current operational documentation consistency | Fixed; live status, migration/release inventory and dependency policy reference authoritative executable sources; historical completion evidence is explicitly scoped; 12 documentation checks include controlled drift negatives |
@@ -240,7 +240,7 @@ ADR 034 defines the archive/restore transaction and activation
 convergence contract, including a separate lifecycle revision, immediate
 admission gating, preserved run history, and no implicit re-enablement of
 disabled resources. The decision alone was not delivery evidence; command and
-migration proofs are now recorded above, with worker recovery still open.
+migration proofs are now recorded above; worker recovery is recorded below.
 
 The reconciliation checkpoint now applies the current locked workflow lifecycle,
 not event order. Archive disables effective trigger admission and clears schedule
@@ -257,7 +257,8 @@ active/disabled resource restoration, delayed archived-state event delivery,
 duplicate receipts, stale publication events, and partial/global/archive failure
 projection. These exercise the persistence consumer directly, not dispatcher
 restart recovery. Command acceptance and completed-run preservation are now
-verified above; actual worker recovery remains required before IWA-16 closes.
+verified above; actual worker recovery was the remaining requirement at this
+checkpoint and is recorded below.
 
 Version restoration now follows ADR 011's clarified draft-only contract:
 strict empty request, active update authority and a strong `If-Match` validator.
@@ -279,6 +280,24 @@ and both deterministic save/restore lock orders. Run preservation is asserted
 against a nonempty row read through the API role rather than a FORCE-RLS-hidden
 owner query. Source/build/typecheck, scoped ESLint and unchanged complexity
 limits pass for the authoring change.
+
+The primary-agent worker rerun now passes one end-to-end PostgreSQL → real
+OutboxDispatcher → BullMQ → TriggerRuntime scenario. It covers archive/restore,
+delivery while the original runtime is stopped followed by a newly constructed
+runtime, an exact completed-job redelivery and deliberately reordered lifecycle
+events. Every delivery is awaited to BullMQ completion and a real completed
+inbox receipt before comparison. Active resources recover; disabled endpoint
+and schedule configuration remains disabled.
+
+Preservation checks explicitly require four nonempty run records (queued,
+running, waiting and succeeded), their events and checkpoints, then compare the
+complete worker-role row snapshots after every lifecycle transition. Owner-role
+FORCE-RLS-hidden results and missing receipt rows cannot satisfy the assertions.
+Published trigger resources and execution records are seeded fixtures; the
+schedule scanner is disabled, so this proves lifecycle reconciliation and
+preservation rather than fresh workflow execution or schedule firing. The test
+uses a disposable database and the fixture's trigger-lifecycle queue, with
+consumer shutdown before queue cleanup. Scoped lint and worker typecheck pass.
 
 ### IWA-17 — Signed artifact download checkpoint
 
