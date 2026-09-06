@@ -16,8 +16,11 @@ implementation.
 
 `POST /v1/workspaces/:workspaceId/runs/:runId/replay` accepts an authenticated
 browser session, valid CSRF proof and exactly one valid `Idempotency-Key`.
-Both the guard and application command require `run:start` in an **active**
-workspace, matching ordinary run acceptance. Suspended and pending-deletion
+Both the guard and application command require the existing `run:replay`
+capability in an **active** workspace. Ordinary `run:start` authority is not
+replay authority: a builder may start a workflow but cannot replay prior
+effects. This preserves the existing capability policy rather than widening it
+while introducing the route. Suspended and pending-deletion
 workspaces may remain readable but cannot accept replay. Unauthorized workspace
 or source access uses the existing not-found disclosure policy.
 

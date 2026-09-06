@@ -17,6 +17,7 @@ import {
   workflowRunCancelRequestSchema,
   workflowRunEventSchema,
   workflowRunParamsSchema,
+  workflowRunReplayRequestSchema,
   workflowRunStartParamsSchema,
   workflowRunStartRequestSchema,
 } from '@pertexo/contracts/workflow-runs';
@@ -48,6 +49,7 @@ import type { AuthorizedWorkspaceContext } from '../workspaces/index.js';
 import { throwWorkflowRunError } from './errors.js';
 import {
   WorkflowRunCancelGuard,
+  WorkflowRunReplayGuard,
   WorkflowRunReadGuard,
   WorkflowRunStartGuard,
 } from './guards.js';
@@ -55,6 +57,7 @@ import type { WorkflowRunEventFrame } from './ports.js';
 import {
   CancelWorkflowRunUseCase,
   GetWorkflowRunUseCase,
+  ReplayWorkflowRunUseCase,
   StartWorkflowRunUseCase,
   StreamRunEventsUseCase,
 } from './use-cases.js';
@@ -83,6 +86,7 @@ export type WorkflowRunsRequest = Readonly<{
 export class WorkflowRunsController {
   public constructor(
     private readonly startWorkflowRun: StartWorkflowRunUseCase,
+    private readonly replayWorkflowRun: ReplayWorkflowRunUseCase,
     private readonly getWorkflowRun: GetWorkflowRunUseCase,
     private readonly streamEvents: StreamRunEventsUseCase,
     private readonly cancelWorkflowRun: CancelWorkflowRunUseCase,
@@ -116,6 +120,37 @@ export class WorkflowRunsController {
       ...(input.deadlineAt === undefined
         ? {}
         : { deadlineAt: input.deadlineAt }),
+      ...requestIdentifiers(request),
+      ...traceparent(request),
+    });
+  }
+
+  @Post('runs/:runId/replay')
+  @RateLimit('run_admission')
+  @HttpCode(202)
+  @UseGuards(
+    SessionAuthenticationGuard,
+    WorkflowRunReplayGuard,
+    CsrfProtectionGuard,
+  )
+  public async replayRun(
+    @Req() request: WorkflowRunsRequest,
+    @Param() params: unknown,
+    @Body() body: unknown,
+  ) {
+    const route = workflowRunParamsSchema.parse(params);
+    const input = workflowRunReplayRequestSchema.parse(body);
+    return this.replayWorkflowRun.execute({
+      actor: actorFrom(request, route.workspaceId),
+      routeWorkspaceId: route.workspaceId,
+      ...guardAuthorization(request),
+      runId: route.runId,
+      workflowVersionId: input.workflowVersionId,
+      input: input.input,
+      ...(input.deadlineAt === undefined
+        ? {}
+        : { deadlineAt: input.deadlineAt }),
+      idempotencyKey: requiredIdempotencyKey(request),
       ...requestIdentifiers(request),
       ...traceparent(request),
     });

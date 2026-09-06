@@ -254,6 +254,7 @@ describe('preview retention migration', () => {
       '0074_retention_schedule_state_rls.sql',
       '0075_workspace_purge_step_release.sql',
       '0076_replay_lineage_retention.sql',
+      '0077_replay_read_locks.sql',
     ]);
 
     const verification = new Pool({

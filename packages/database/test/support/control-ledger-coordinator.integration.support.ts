@@ -44,6 +44,7 @@ const MIGRATIONS_AFTER_0045 = [
   '0073_transient_data_retention.sql',
   '0075_workspace_purge_step_release.sql',
   '0076_replay_lineage_retention.sql',
+  '0077_replay_read_locks.sql',
 ] as const;
 
 export class MemoryLedger implements ControlLedger {

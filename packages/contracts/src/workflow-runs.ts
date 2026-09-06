@@ -19,6 +19,7 @@ import {
   workflowRunCancelResponseSchema,
   workflowRunEventSchema,
   workflowRunResponseSchema,
+  workflowRunReplayRequestSchema,
   workflowRunStartRequestSchema,
   workflowRunStartResponseSchema,
   workflowRunSummarySchema,
@@ -29,6 +30,7 @@ export * from './http/workflow-runs.js';
 const schemas = Object.freeze({
   ApiProblem: jsonSchema(apiProblemSchema, 'output'),
   WorkflowRunStartRequest: jsonSchema(workflowRunStartRequestSchema, 'input'),
+  WorkflowRunReplayRequest: jsonSchema(workflowRunReplayRequestSchema, 'input'),
   WorkflowRunStartResponse: jsonSchema(
     workflowRunStartResponseSchema,
     'output',
@@ -169,6 +171,33 @@ export const workflowRunsOpenApiDocument = Object.freeze({
           '403': responseReference('Forbidden'),
           '404': responseReference('NotFound'),
           '409': responseReference('Conflict'),
+          '500': responseReference('Unexpected'),
+        },
+      },
+    },
+    '/v1/workspaces/{workspaceId}/runs/{runId}/replay': {
+      post: {
+        operationId: 'replayWorkflowRun',
+        security: [{ cookieSession: [] }],
+        parameters: [
+          workspaceParameter,
+          runParameter,
+          csrfParameter,
+          idempotencyParameter,
+        ],
+        requestBody: jsonRequest('WorkflowRunReplayRequest'),
+        responses: {
+          '202': jsonResponse(
+            'Workflow run replay accepted',
+            'WorkflowRunStartResponse',
+          ),
+          '400': responseReference('BadRequest'),
+          '401': responseReference('Unauthenticated'),
+          '403': responseReference('Forbidden'),
+          '404': responseReference('NotFound'),
+          '409': responseReference('Conflict'),
+          '422': responseReference('UnprocessableEntity'),
+          '428': responseReference('PreconditionRequired'),
           '500': responseReference('Unexpected'),
         },
       },

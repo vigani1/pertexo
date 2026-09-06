@@ -182,7 +182,7 @@ describe('connection concurrency and security', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0076_replay_lineage_retention.sql',
+        migrationHead: '0077_replay_read_locks.sql',
       });
       await expect(
         checkDatabaseReadiness(workerReadinessPool, {
@@ -190,7 +190,7 @@ describe('connection concurrency and security', () => {
           workerRuntimeRole: 'pertexo_worker',
         }),
       ).resolves.toMatchObject({
-        migrationHead: '0076_replay_lineage_retention.sql',
+        migrationHead: '0077_replay_read_locks.sql',
       });
     } finally {
       await Promise.all([apiReadinessPool.end(), workerReadinessPool.end()]);

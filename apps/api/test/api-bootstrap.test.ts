@@ -567,6 +567,7 @@ describe('API bootstrap', () => {
         database: workflowAuthoringDatabase(),
         runPersistence: {
           start: () => Promise.reject(new Error('not used')),
+          replay: () => Promise.reject(new Error('not used')),
           get: () => Promise.resolve(undefined),
           cancel: () => Promise.reject(new Error('not used')),
         },

@@ -16,7 +16,7 @@ const integrationUsageMigrationUrl = new URL(
 
 describe('workflow authoring migration contract', () => {
   it('advances the reviewed migration head', () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0076_replay_lineage_retention.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0077_replay_read_locks.sql');
   });
 
   it('emits the identifier-only trigger-reconciliation payload', () => {

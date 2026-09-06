@@ -19,6 +19,7 @@ import type { WorkspaceAuthorizationSource } from '../identity-workspace/ports.j
 import { WorkflowRunsController } from './controllers.js';
 import {
   WorkflowRunCancelGuard,
+  WorkflowRunReplayGuard,
   WorkflowRunReadGuard,
   WorkflowRunStartGuard,
 } from './guards.js';
@@ -30,6 +31,7 @@ import { WORKFLOW_RUN_AUTHORIZATION } from './tokens.js';
 import {
   CancelWorkflowRunUseCase,
   GetWorkflowRunUseCase,
+  ReplayWorkflowRunUseCase,
   StartWorkflowRunUseCase,
   StreamRunEventsUseCase,
 } from './use-cases.js';
@@ -61,6 +63,7 @@ export class WorkflowRunsModule {
       },
       WorkflowRunReadGuard,
       WorkflowRunStartGuard,
+      WorkflowRunReplayGuard,
       WorkflowRunCancelGuard,
       {
         provide: SessionAuthenticationGuard,
@@ -79,6 +82,13 @@ export class WorkflowRunsModule {
       {
         provide: StartWorkflowRunUseCase,
         useValue: new StartWorkflowRunUseCase(
+          dependencies.persistence,
+          dependencies.authorization,
+        ),
+      },
+      {
+        provide: ReplayWorkflowRunUseCase,
+        useValue: new ReplayWorkflowRunUseCase(
           dependencies.persistence,
           dependencies.authorization,
         ),
@@ -113,6 +123,7 @@ export class WorkflowRunsModule {
       providers,
       exports: [
         StartWorkflowRunUseCase,
+        ReplayWorkflowRunUseCase,
         GetWorkflowRunUseCase,
         StreamRunEventsUseCase,
         CancelWorkflowRunUseCase,

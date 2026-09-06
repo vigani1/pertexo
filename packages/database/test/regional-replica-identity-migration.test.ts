@@ -14,7 +14,7 @@ describe('regional replica identity migration', () => {
       'utf8',
     );
 
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0076_replay_lineage_retention.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0077_replay_read_locks.sql');
     expect(sql).toContain('replica_identity_status');
     expect(sql).toContain('replica_session_count');
     expect(sql).toContain("'missing'");

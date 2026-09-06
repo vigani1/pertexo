@@ -426,20 +426,6 @@
               "maxLines": 37
             }
           ]
-        },
-        {
-          "files": [
-            "apps/api/test/identity-workspace/real-api.integration.test.ts",
-            "apps/api/test/workflow-runs/postgres-persistence.test.ts"
-          ],
-          "classification": "false-positive",
-          "reason": "The API integration graph is a raw authoring payload while the persistence test graph is an executable compilation input; sharing would collapse distinct public seams.",
-          "clones": [
-            {
-              "hash": "d6458c48d97d52069ea65c2b092e443c4dad2a7b68a909333124484d6fa05e50",
-              "maxLines": 33
-            }
-          ]
         }
       ]
     }

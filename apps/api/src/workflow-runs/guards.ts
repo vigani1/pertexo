@@ -32,6 +32,17 @@ export class WorkflowRunStartGuard extends WorkspaceCapabilityGuard {
 }
 
 @Injectable()
+export class WorkflowRunReplayGuard extends WorkspaceCapabilityGuard {
+  public constructor(
+    @Inject(WORKFLOW_RUN_AUTHORIZATION)
+    authorization: WorkspaceAuthorizationSource,
+    contexts: RequestContextStore,
+  ) {
+    super('run:replay', authorization, contexts, 'not_found', ['active']);
+  }
+}
+
+@Injectable()
 export class WorkflowRunCancelGuard extends WorkspaceCapabilityGuard {
   public constructor(
     @Inject(WORKFLOW_RUN_AUTHORIZATION)

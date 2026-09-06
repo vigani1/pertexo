@@ -11,10 +11,7 @@ import {
   type CompatibilityReleaseExpectation,
   type CompatibilityReleaseExpectationSet,
 } from '../compatibility/compatibility-release.js';
-import {
-  acceptWorkflowRun,
-  readWorkflowRunAcceptanceReplay,
-} from './execution-acceptance.js';
+import { readWorkflowRunAcceptanceReplay } from './execution-acceptance.js';
 import { canonicalOutboxPayloadChecksum, insertOutboxEvent } from './outbox.js';
 import { generatePersistedId } from '../platform/persisted-id.js';
 import {
@@ -25,6 +22,25 @@ import { sha256HexSchema as digestSchema } from '../validation/persisted-primiti
 import { withWorkspaceTransaction } from '../tenant-access/workspace.js';
 import type { WorkspaceTransaction } from '../tenant-access/workspace.js';
 import { requestWorkflowRunCancellation } from './workflow-run-cancellation.js';
+import {
+  WorkflowRunNotExecutableError,
+  WorkflowRunNotFoundError,
+  WorkflowRunReadCapacityError,
+} from './workflow-run-errors.js';
+import {
+  acceptWorkflowRunWithAudit,
+  insertWorkflowRunAudit,
+  readWorkflowRunRecord,
+} from './workflow-run-persistence-support.js';
+import type { WorkflowRunRecord } from './workflow-run-persistence-support.js';
+import { replayWorkflowRunInTransaction } from './workflow-run-replay.js';
+
+export {
+  WorkflowRunNotExecutableError,
+  WorkflowRunNotFoundError,
+  WorkflowRunReadCapacityError,
+} from './workflow-run-errors.js';
+export type { WorkflowRunRecord } from './workflow-run-persistence-support.js';
 
 const traceparentSchema = z
   .string()
@@ -56,6 +72,28 @@ const startInputSchema = z
     ),
   })
   .strict();
+const replayInputSchema = z
+  .object({
+    actorId: actorSchema,
+    workspaceId: z.uuid(),
+    sourceRunId: z.uuid(),
+    workflowVersionId: z.uuid(),
+    idempotencyKeyHash: digestSchema,
+    requestHash: digestSchema,
+    scope: z.string().regex(/^workflow:[0-9a-f-]{36}:replay$/u),
+    input: z
+      .unknown()
+      .refine((value) => value !== undefined, 'Replay input is required'),
+    deadlineAt: z.date().optional(),
+    requestId: requestIdentifierSchema.optional(),
+    traceId: requestIdentifierSchema.optional(),
+    traceparent: traceparentSchema.optional(),
+    signal: z.instanceof(AbortSignal).optional(),
+    checkpointFactory: z.custom<WorkflowRunCheckpointFactory>(
+      (value) => typeof value === 'function',
+    ),
+  })
+  .strict();
 const getInputSchema = z
   .object({
     workspaceId: z.uuid(),
@@ -76,16 +114,6 @@ const cancelInputSchema = z
   })
   .strict();
 
-const runStatusSchema = z.enum([
-  'queued',
-  'running',
-  'waiting',
-  'succeeded',
-  'failed',
-  'canceled',
-  'timed_out',
-  'outcome_unknown',
-]);
 const nodeStatusSchema = z.enum([
   'pending',
   'ready',
@@ -98,29 +126,6 @@ const nodeStatusSchema = z.enum([
   'timed_out',
   'outcome_unknown',
 ]);
-const triggerTypeSchema = z.enum([
-  'api',
-  'manual',
-  'replay',
-  'schedule',
-  'webhook',
-]);
-const runRowSchema = z
-  .object({
-    id: z.uuid(),
-    workspace_id: z.uuid(),
-    workflow_id: z.uuid(),
-    workflow_version_id: z.uuid(),
-    status: runStatusSchema,
-    trigger_type: triggerTypeSchema,
-    created_at: z.coerce.date(),
-    updated_at: z.coerce.date(),
-    started_at: z.coerce.date().nullable(),
-    completed_at: z.coerce.date().nullable(),
-    deadline_at: z.coerce.date().nullable(),
-    cancel_requested_at: z.coerce.date().nullable(),
-  })
-  .strict();
 const nodeRowSchema = z
   .object({
     id: z.uuid(),
@@ -134,21 +139,6 @@ const nodeRowSchema = z
     safe_error_code: z.string().min(1).max(128).nullable(),
   })
   .strict();
-
-export type WorkflowRunRecord = Readonly<{
-  id: string;
-  workspaceId: string;
-  workflowId: string;
-  workflowVersionId: string;
-  status: z.output<typeof runStatusSchema>;
-  triggerType: z.output<typeof triggerTypeSchema>;
-  createdAt: Date;
-  updatedAt: Date;
-  startedAt: Date | null;
-  completedAt: Date | null;
-  deadlineAt: Date | null;
-  cancelRequestedAt: Date | null;
-}>;
 
 export type WorkflowNodeRunRecord = Readonly<{
   id: string;
@@ -175,6 +165,9 @@ export type WorkflowRunCheckpointFactory = (
 export type StartPublishedWorkflowRunInput = Readonly<
   z.input<typeof startInputSchema>
 >;
+export type ReplayPublishedWorkflowRunInput = Readonly<
+  z.input<typeof replayInputSchema>
+>;
 export type GetWorkflowRunInput = Readonly<z.input<typeof getInputSchema>>;
 export type CancelWorkflowRunInput = Readonly<
   z.input<typeof cancelInputSchema>
@@ -182,6 +175,12 @@ export type CancelWorkflowRunInput = Readonly<
 
 export interface WorkflowRunDatabase {
   start(input: StartPublishedWorkflowRunInput): Promise<
+    Readonly<{
+      run: WorkflowRunRecord;
+      replayed: boolean;
+    }>
+  >;
+  replay(input: ReplayPublishedWorkflowRunInput): Promise<
     Readonly<{
       run: WorkflowRunRecord;
       replayed: boolean;
@@ -196,18 +195,6 @@ export interface WorkflowRunDatabase {
     }>
   >;
   close(): Promise<void>;
-}
-
-export class WorkflowRunNotFoundError extends Error {
-  public override readonly name = 'WorkflowRunNotFoundError';
-}
-
-export class WorkflowRunNotExecutableError extends Error {
-  public override readonly name = 'WorkflowRunNotExecutableError';
-}
-
-export class WorkflowRunReadCapacityError extends Error {
-  public override readonly name = 'WorkflowRunReadCapacityError';
 }
 
 export function createWorkflowRunDatabase(
@@ -231,6 +218,20 @@ export function createWorkflowRunDatabase(
         parsed.workspaceId,
         async (transaction) =>
           startInTransaction(transaction, parsed, compatibilityReleases),
+        parsed.signal === undefined ? {} : { signal: parsed.signal },
+      );
+    },
+    replay: async (input: ReplayPublishedWorkflowRunInput) => {
+      const parsed = replayInputSchema.parse(input);
+      return withWorkspaceTransaction(
+        pool,
+        parsed.workspaceId,
+        async (transaction) =>
+          replayWorkflowRunInTransaction(
+            transaction,
+            parsed,
+            compatibilityReleases,
+          ),
         parsed.signal === undefined ? {} : { signal: parsed.signal },
       );
     },
@@ -269,7 +270,7 @@ async function startInTransaction(
   };
   const replay = await readWorkflowRunAcceptanceReplay(transaction, identity);
   if (replay !== null) {
-    const run = await readRunRecord(transaction, replay.runId);
+    const run = await readWorkflowRunRecord(transaction, replay.runId);
     if (run === undefined) throw new WorkflowRunNotFoundError();
     return Object.freeze({ run, replayed: true });
   }
@@ -287,35 +288,31 @@ async function startInTransaction(
     projection,
     currentCompatibilityRelease,
   );
-  const accepted = await acceptWorkflowRun(transaction, {
-    engineVersion: initial.engineVersion,
-    initialCheckpoint: initial.checkpoint,
-    keyHash: input.idempotencyKeyHash,
-    operation: 'workflow.run.accept',
-    requestHash: input.requestHash,
-    scope: input.scope,
-    triggerType: 'manual',
-    workflowId: input.workflowId,
-    workflowVersionId: projection.id,
-    ...(input.input === undefined ? {} : { runInput: input.input }),
-    ...(input.deadlineAt === undefined ? {} : { deadlineAt: input.deadlineAt }),
-    ...(input.traceparent === undefined
-      ? {}
-      : { traceparent: input.traceparent }),
+  return acceptWorkflowRunWithAudit(transaction, {
+    acceptance: {
+      engineVersion: initial.engineVersion,
+      initialCheckpoint: initial.checkpoint,
+      keyHash: input.idempotencyKeyHash,
+      operation: 'workflow.run.accept',
+      requestHash: input.requestHash,
+      scope: input.scope,
+      triggerType: 'manual',
+      workflowId: input.workflowId,
+      workflowVersionId: projection.id,
+      ...(input.input === undefined ? {} : { runInput: input.input }),
+      ...(input.deadlineAt === undefined
+        ? {}
+        : { deadlineAt: input.deadlineAt }),
+      ...(input.traceparent === undefined
+        ? {}
+        : { traceparent: input.traceparent }),
+    },
+    actorId: input.actorId,
+    auditAction: 'workflow.run.started',
+    auditMetadata: sql`jsonb_build_object('schemaVersion', 1, 'workflowId', ${input.workflowId}::text, 'workflowVersionId', ${projection.id}::text)`,
+    ...(input.requestId === undefined ? {} : { requestId: input.requestId }),
+    ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
   });
-  const run = await readRunRecord(transaction, accepted.runId);
-  if (run === undefined) throw new WorkflowRunNotFoundError();
-  if (!accepted.duplicate) {
-    await insertAudit(transaction, {
-      action: 'workflow.run.started',
-      actorId: input.actorId,
-      runId: run.id,
-      ...(input.requestId === undefined ? {} : { requestId: input.requestId }),
-      ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
-      metadata: sql`jsonb_build_object('schemaVersion', 1, 'workflowId', ${input.workflowId}::text, 'workflowVersionId', ${projection.id}::text)`,
-    });
-  }
-  return Object.freeze({ run, replayed: accepted.duplicate });
 }
 
 async function lockPublishedExecution(
@@ -389,7 +386,7 @@ async function cancelInTransaction(
       payload,
       payloadChecksum: canonicalOutboxPayloadChecksum(payload),
     });
-    await insertAudit(transaction, {
+    await insertWorkflowRunAudit(transaction, {
       action: 'workflow.run.cancel_requested',
       actorId: input.actorId,
       runId: input.runId,
@@ -398,7 +395,7 @@ async function cancelInTransaction(
       metadata: sql`jsonb_build_object('schemaVersion', 1, 'reasonProvided', ${input.reason !== undefined}::boolean)`,
     });
   }
-  const run = await readRunRecord(transaction, input.runId);
+  const run = await readWorkflowRunRecord(transaction, input.runId);
   if (run === undefined) throw new WorkflowRunNotFoundError();
   return Object.freeze({
     run,
@@ -407,33 +404,11 @@ async function cancelInTransaction(
   });
 }
 
-async function insertAudit(
-  transaction: WorkspaceTransaction,
-  input: Readonly<{
-    action: string;
-    actorId: string;
-    runId: string;
-    requestId?: string;
-    traceId?: string;
-    metadata: ReturnType<typeof sql>;
-  }>,
-): Promise<void> {
-  await transaction.db.execute(sql`
-    insert into app.audit_events
-      (id, workspace_id, actor_user_id, action, target_type, target_id,
-       request_id, trace_id, metadata)
-    values
-      (${generatePersistedId()}, ${transaction.workspaceId}, ${input.actorId},
-       ${input.action}, 'workflow_run', ${input.runId},
-       ${input.requestId ?? null}, ${input.traceId ?? null}, ${input.metadata})
-  `);
-}
-
 async function readRunModel(
   transaction: WorkspaceTransaction,
   runId: string,
 ): Promise<WorkflowRunReadModel | undefined> {
-  const run = await readRunRecord(transaction, runId);
+  const run = await readWorkflowRunRecord(transaction, runId);
   if (run === undefined) return undefined;
   const nodes = await transaction.db.execute(sql`
     select
@@ -456,50 +431,6 @@ async function readRunModel(
   return Object.freeze({
     run,
     nodes: Object.freeze(nodes.rows.map(toNodeRecord)),
-  });
-}
-
-async function readRunRecord(
-  transaction: WorkspaceTransaction,
-  runId: string,
-): Promise<WorkflowRunRecord | undefined> {
-  const result = await transaction.db.execute(sql`
-    select
-      id,
-      workspace_id,
-      workflow_id,
-      workflow_version_id,
-      status,
-      trigger_type,
-      created_at,
-      updated_at,
-      started_at,
-      completed_at,
-      deadline_at,
-      cancel_requested_at
-    from app.workflow_runs
-    where workspace_id = ${transaction.workspaceId} and id = ${runId}
-    limit 1
-  `);
-  const row = result.rows[0];
-  return row === undefined ? undefined : toRunRecord(row);
-}
-
-function toRunRecord(value: unknown): WorkflowRunRecord {
-  const row = runRowSchema.parse(value);
-  return Object.freeze({
-    id: row.id,
-    workspaceId: row.workspace_id,
-    workflowId: row.workflow_id,
-    workflowVersionId: row.workflow_version_id,
-    status: row.status,
-    triggerType: row.trigger_type,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-    startedAt: row.started_at,
-    completedAt: row.completed_at,
-    deadlineAt: row.deadline_at,
-    cancelRequestedAt: row.cancel_requested_at,
   });
 }
 

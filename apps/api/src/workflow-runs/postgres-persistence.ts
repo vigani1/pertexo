@@ -31,6 +31,7 @@ import {
 import { applicationError } from '../platform/http/index.js';
 import type {
   CancelWorkflowRunCommand,
+  ReplayWorkflowRunCommand,
   StartWorkflowRunCommand,
   WorkflowRunPersistence,
 } from './ports.js';
@@ -70,28 +71,10 @@ export function createPostgresWorkflowRunPersistence(
       runtime,
     );
   const persistence: WorkflowRunPersistence = Object.freeze({
-    start: async (input: StartWorkflowRunCommand) => {
-      try {
-        const result = await database.start({
-          ...input,
-          checkpointFactory: (projection, currentCompatibilityRelease) =>
-            createInitialWorkflowCheckpoint(
-              projection,
-              releaseSupport,
-              currentCompatibilityRelease,
-            ),
-        });
-        if (!result.replayed)
-          await publishHint(notifications, {
-            workspaceId: result.run.workspaceId,
-            runId: result.run.id,
-            sequence: 1,
-          });
-        return result;
-      } catch (error: unknown) {
-        return mapPersistenceError(error);
-      }
-    },
+    start: (input: StartWorkflowRunCommand) =>
+      executeAcceptance(database, input, releaseSupport, notifications),
+    replay: (input: ReplayWorkflowRunCommand) =>
+      executeAcceptance(database, input, releaseSupport, notifications),
     get: async (input: Readonly<{ workspaceId: string; runId: string }>) => {
       try {
         return await database.get(input);
@@ -121,6 +104,58 @@ export function createPostgresWorkflowRunPersistence(
     persistence,
     close: (): Promise<void> => database.close(),
   });
+}
+
+type WorkflowRunCheckpointFactory = Parameters<
+  WorkflowRunDatabase['start']
+>[0]['checkpointFactory'];
+
+type WorkflowRunAcceptanceResult = Awaited<
+  ReturnType<WorkflowRunDatabase['start']>
+>;
+
+async function executeAcceptance(
+  database: WorkflowRunDatabase,
+  input: StartWorkflowRunCommand | ReplayWorkflowRunCommand,
+  releaseSupport: ReturnType<
+    typeof createExecutableCompatibilityReleaseHistory
+  >,
+  notifications: RunEventNotificationPublisher | undefined,
+): Promise<WorkflowRunAcceptanceResult> {
+  try {
+    const result =
+      'workflowId' in input
+        ? await database.start({
+            ...input,
+            checkpointFactory: createCheckpointFactory(releaseSupport),
+          })
+        : await database.replay({
+            ...input,
+            checkpointFactory: createCheckpointFactory(releaseSupport),
+          });
+    if (!result.replayed)
+      await publishHint(notifications, {
+        workspaceId: result.run.workspaceId,
+        runId: result.run.id,
+        sequence: 1,
+      });
+    return result;
+  } catch (error: unknown) {
+    return mapPersistenceError(error);
+  }
+}
+
+function createCheckpointFactory(
+  releaseSupport: ReturnType<
+    typeof createExecutableCompatibilityReleaseHistory
+  >,
+): WorkflowRunCheckpointFactory {
+  return (projection, currentCompatibilityRelease) =>
+    createInitialWorkflowCheckpoint(
+      projection,
+      releaseSupport,
+      currentCompatibilityRelease,
+    );
 }
 
 async function publishHint(

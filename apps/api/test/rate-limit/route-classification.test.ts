@@ -59,6 +59,7 @@ const routes: readonly (readonly [
   [WorkflowAuthoringController, 'publish', 'workflow_compile'],
   [WorkflowAuthoringController, 'versions', 'authenticated_read'],
   [WorkflowRunsController, 'startRun', 'run_admission'],
+  [WorkflowRunsController, 'replayRun', 'run_admission'],
   [WorkflowRunsController, 'getRun', 'authenticated_read'],
   [WorkflowRunsController, 'streamRunEvents', 'authenticated_read'],
   [WorkflowRunsController, 'cancelRun', 'ordinary_mutation'],
