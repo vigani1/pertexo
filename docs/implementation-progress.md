@@ -39,7 +39,7 @@ original verdict after each fix.
 | IWA-08 | CPU-bounded streaming redaction | Fixed; byte comparisons yield at bounded intervals and check elapsed deadlines; 85 secure-HTTP tests and 207 integration-package tests pass |
 | IWA-09 | Surge-aware database connection capacity | Fixed; regional budgets include ECS maximumPercent rollout overlap and administration/failover reserves; 8 budget regressions pass, with 398/400 Frankfurt and 366/400 Ireland maximum connections |
 | IWA-10 | Authenticated replay vertical slice | In progress; ADR 031 fixes active-workspace authorization, explicit version/input and atomic tenant acceptance; implementation and recovery evidence remain |
-| IWA-15 | Executable Validate semantics and complete versioned slice | Open; node absent; define semantics before implementation |
+| IWA-15 | Executable Validate semantics and complete versioned slice | In progress; ADR 032 defines bounded static field rules, typed mismatch results and preview/runtime parity; implementation and persisted execution evidence remain |
 | IWA-16 | Workflow lifecycle/version restoration and activation | Open; required operations/state projection incomplete |
 | IWA-17 | Public artifact upload/finalize vertical slice | Open; routes/use cases absent |
 | IWA-11 | Typed/correct application deployment closure validation | Fixed; typed Map-key traversal includes all six applications, migration and transitive workspace dependencies; missing-role and app-only output negatives fail; 29 deployment tests pass |

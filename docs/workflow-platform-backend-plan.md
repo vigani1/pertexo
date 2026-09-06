@@ -2377,6 +2377,7 @@ Status values are `proposed`, `accepted`, `superseded`, or `rejected`.
 | 029 | Operator command execution boundary                                               | production operations    |
 | 030 | Repository-owned autoscaling input contract                                       | production operations    |
 | 031 | Authenticated user replay transaction and explicit version/input                 | user replay API          |
+| 032 | Bounded deterministic Validate rules and typed mismatch results                  | Validate node slice      |
 
 Deferred features receive new ADRs when promoted. Do not pre-author detailed
 ADRs for custom code, approvals, forms, nested workflows, synchronous webhooks,
