@@ -1,5 +1,5 @@
 {
   "schemaVersion": 1,
-  "transactionalThrough": "0077_replay_read_locks.sql",
+  "transactionalThrough": "0078_workflow_lifecycle_revision.sql",
   "migrations": {}
 }

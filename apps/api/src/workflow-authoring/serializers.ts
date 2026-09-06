@@ -120,12 +120,13 @@ export function serializeWorkflowVersions(
   });
 }
 
-function workflowSummary(workflow: WorkflowRecord): WorkflowSummary {
+export function workflowSummary(workflow: WorkflowRecord): WorkflowSummary {
   return {
     id: workflow.id,
     workspaceId: workflow.workspaceId,
     name: workflow.name,
     lifecycleStatus: workflow.lifecycleStatus,
+    lifecycleRevision: workflow.lifecycleRevision,
     activationStatus: workflow.activationStatus,
     publishedVersionId: workflow.publishedVersionId,
     createdAt: workflow.createdAt.toISOString(),

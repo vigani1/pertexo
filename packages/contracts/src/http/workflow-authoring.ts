@@ -20,6 +20,11 @@ export const strongEtagSchema = z
   .regex(/^"draft-v1\.[A-Za-z0-9_-]{43}"$/u);
 export const ifMatchHeaderSchema = strongEtagSchema;
 export const workflowIdentifierSchema = z.uuid();
+export const workflowLifecycleRevisionSchema = z
+  .number()
+  .int()
+  .positive()
+  .max(Number.MAX_SAFE_INTEGER);
 export const workflowIdParamSchema = z
   .object({ workspaceId: z.uuid(), workflowId: workflowIdentifierSchema })
   .strict();
@@ -75,11 +80,21 @@ export const workflowSummarySchema = z
     workspaceId: z.uuid(),
     name: z.string(),
     lifecycleStatus: workflowLifecycleStatusSchema,
+    lifecycleRevision: workflowLifecycleRevisionSchema,
     activationStatus: workflowActivationStatusSchema,
     publishedVersionId: z.uuid().nullable(),
     createdAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),
   })
+  .strict();
+
+export const workflowLifecycleRequestSchema = z
+  .object({
+    expectedLifecycleRevision: workflowLifecycleRevisionSchema,
+  })
+  .strict();
+export const workflowLifecycleResponseSchema = z
+  .object({ workflow: workflowSummarySchema, replayed: z.boolean() })
   .strict();
 
 export const workflowDraftResponseSchema = z
@@ -147,6 +162,18 @@ export const workflowRevisionConflictProblemSchema = createApiProblemSchema({
   currentRevision: z.number().int().positive(),
   currentEtag: strongEtagSchema,
 });
+
+export const workflowLifecycleConflictProblemSchema = createApiProblemSchema({
+  status: z.literal(409),
+  code: z.literal('workflow.lifecycle_conflict'),
+  currentLifecycleRevision: workflowLifecycleRevisionSchema,
+});
+export type WorkflowLifecycleResponse = z.output<
+  typeof workflowLifecycleResponseSchema
+>;
+export type WorkflowLifecycleConflictProblem = z.output<
+  typeof workflowLifecycleConflictProblemSchema
+>;
 
 export type WorkflowSummary = z.output<typeof workflowSummarySchema>;
 export type WorkflowCreateResponse = z.output<

@@ -26,6 +26,7 @@ import {
   WorkflowUpdateGuard,
 } from './guards.js';
 import { WorkflowAuthoringController } from './controllers.js';
+import { TransitionWorkflowLifecycleUseCase } from './lifecycle-use-case.js';
 import type { WorkflowAuthoringDependencies } from './ports.js';
 import { NOOP_WORKFLOW_AUTHORING_TELEMETRY } from './telemetry.js';
 import {
@@ -44,6 +45,14 @@ export class WorkflowAuthoringModule {
     identityModule: DynamicModule,
   ): DynamicModule {
     const providers: Provider[] = [
+      {
+        provide: TransitionWorkflowLifecycleUseCase,
+        useValue: new TransitionWorkflowLifecycleUseCase(
+          dependencies.persistence,
+          dependencies.authorization,
+          dependencies.telemetry ?? NOOP_WORKFLOW_AUTHORING_TELEMETRY,
+        ),
+      },
       {
         provide: WORKFLOW_AUTHORING_PERSISTENCE,
         useValue: dependencies.persistence,
@@ -145,6 +154,7 @@ export class WorkflowAuthoringModule {
       controllers: [WorkflowAuthoringController],
       providers,
       exports: [
+        TransitionWorkflowLifecycleUseCase,
         ListWorkflowsUseCase,
         CreateWorkflowUseCase,
         GetWorkflowDraftUseCase,

@@ -40,7 +40,7 @@ original verdict after each fix.
 | IWA-09 | Surge-aware database connection capacity | Fixed; regional budgets include ECS maximumPercent rollout overlap and administration/failover reserves; 8 budget regressions pass, with 398/400 Frankfurt and 366/400 Ireland maximum connections |
 | IWA-10 | Authenticated replay vertical slice | Fixed; dedicated replay capability, strict explicit version/input, atomic tenant acceptance and narrow migration-0077 locked reads; 10 fresh-PG cases, 6 real HTTP cases and 3 real-worker replay/redelivery cases pass |
 | IWA-15 | Executable Validate semantics and complete versioned slice | Fixed; ADR 032 bounded rules, pure typed mismatch output and staged/active epochs 37/38; 33 core contract/executor cases, 19 catalog cases, 10 API preview cases and 3 real-worker integration cases pass |
-| IWA-16 | Workflow lifecycle/version restoration and activation | In progress; truthful state reads and current-state trigger reconciliation are implemented; 18 model cases and 10 fresh-PG webhook/reconciliation cases pass; public lifecycle/version-restoration commands and worker recovery evidence remain |
+| IWA-16 | Workflow lifecycle/version restoration and activation | In progress; archive/restore commands, truthful state reads and current-state reconciliation implemented; 3 authenticated HTTP cases and 3 real-PG lifecycle cases pass, plus prior model/reconciliation proofs; version restoration and real-worker recovery remain |
 | IWA-17 | Public artifact upload/finalize vertical slice | Open; routes/use cases absent |
 | IWA-11 | Typed/correct application deployment closure validation | Fixed; typed Map-key traversal includes all six applications, migration and transitive workspace dependencies; missing-role and app-only output negatives fail; 29 deployment tests pass |
 | IWA-12 | Current operational documentation consistency | Fixed; live status, migration/release inventory and dependency policy reference authoritative executable sources; historical completion evidence is explicitly scoped; 12 documentation checks include controlled drift negatives |
@@ -188,13 +188,38 @@ semantics.
 
 ### IWA-16 — Truthful activation projection checkpoint
 
+ADR 034's public archive/restore commands require session, CSRF, publication
+authority in an active workspace, an idempotency key and a strict independent
+lifecycle revision. Migration 0078 adds the revision without modifying drafts,
+versions or runs. The atomic command records lifecycle/activation, audit,
+reconciliation outbox and replay result; current-revision no-ops add no audit or
+outbox, stale revisions return a typed 409 without draft ETags, and exact retries
+retain the original accepted summary even after another lifecycle transition.
+Publication now enters `activating` and serializes against lifecycle commands.
+
+Primary verification: 3 fresh-PostgreSQL authenticated HTTP cases cover both
+routes, authentication/CSRF/header/body/role/tenant/workspace-state denial,
+concurrent exact idempotency, mismatched keys, stale and racing revisions,
+no-ops, original-result replay after restore, exact audit/outbox counts, and
+unchanged draft/version/nonempty completed-run history. Three database cases
+prove narrow column privileges, rollback at all five command steps followed by
+same-key success, and both publication/archive lock orderings using observed
+PostgreSQL lock barriers. Together with migration-upgrade and RLS regressions,
+37 fresh-PG cases pass. All 221 database, 443 API and 31 contract unit cases,
+API typecheck, scoped lint, contract artifact checks, complexity and duplication
+ratchets pass. No check threshold or clone allowance was increased.
+
+This checkpoint does not prove existing queued/running/waiting runs survive
+real worker delivery, nor does it implement restoration of a version into a
+draft. Those and dispatcher/worker restart/convergence evidence remain open.
+
 ADR 033 graduates the Phase 2-only authoring response to the full persisted
 activation vocabulary. The browser-safe workflow-model lifecycle subpath owns
 the schemas used by both database row parsing and public contracts. Workflow
 summaries preserve the stored state, including degraded/error and transitional
-states, independently of lifecycle; unknown stored states fail parsing. This
-does not implement archive, restore, version restoration, or trigger-state
-convergence, and IWA-16 remains open.
+states, independently of lifecycle; unknown stored states fail parsing. That
+earlier read-projection checkpoint did not implement commands or convergence;
+the subsequent command and reconciliation evidence is recorded in this section.
 
 Verification: 11 row-boundary cases, one canonical-contract case, four model
 package-contract cases, contracts generation/lint, targeted ESLint, database
@@ -211,11 +236,11 @@ live in a type-only record module consumed directly by the row parser and
 re-exported by the existing public authoring facade. This preserves public
 imports without increasing the hotspot limit or changing runtime behavior.
 
-ADR 034 defines the remaining archive/restore transaction and activation
+ADR 034 defines the archive/restore transaction and activation
 convergence contract, including a separate lifecycle revision, immediate
 admission gating, preserved run history, and no implicit re-enablement of
-disabled resources. This is an accepted implementation decision, not delivery
-evidence; its commands, migration and integration criteria remain unfinished.
+disabled resources. The decision alone was not delivery evidence; command and
+migration proofs are now recorded above, with worker recovery still open.
 
 The reconciliation checkpoint now applies the current locked workflow lifecycle,
 not event order. Archive disables effective trigger admission and clears schedule
@@ -231,8 +256,9 @@ webhook/schedule eligibility denial, archived configuration-write denial,
 active/disabled resource restoration, delayed archived-state event delivery,
 duplicate receipts, stale publication events, and partial/global/archive failure
 projection. These exercise the persistence consumer directly, not dispatcher
-restart recovery; command acceptance, nonempty run-history preservation, version
-restoration, and actual worker recovery remain required before IWA-16 closes.
+restart recovery. Command acceptance and completed-run preservation are now
+verified above; version restoration and actual worker recovery remain required
+before IWA-16 closes.
 
 ### IWA-01 — DST recurrence correction
 

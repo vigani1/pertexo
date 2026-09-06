@@ -11,7 +11,7 @@ const migrationUrl = new URL(
 
 describe('standard retention classes migration', () => {
   it('keeps all destructive retention behind bounded maintenance functions', async () => {
-    expect(EXPECTED_MIGRATION_HEAD).toBe('0077_replay_read_locks.sql');
+    expect(EXPECTED_MIGRATION_HEAD).toBe('0078_workflow_lifecycle_revision.sql');
     const migration = await readFile(migrationUrl, 'utf8');
 
     expect(migration).toContain("'execution_detail'");

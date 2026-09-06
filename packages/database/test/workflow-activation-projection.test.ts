@@ -8,6 +8,7 @@ function storedWorkflow(activationStatus: unknown) {
     workspace_id: '22222222-2222-4222-8222-222222222222',
     name: 'Trigger health',
     lifecycle_status: 'active',
+    lifecycle_revision: 1,
     activation_status: activationStatus,
     published_version_id: '33333333-3333-4333-8333-333333333333',
     created_by: '44444444-4444-4444-8444-444444444444',

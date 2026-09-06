@@ -1,5 +1,4 @@
 import { acquireDatabasePool } from '../platform/database-runtime.js';
-import type { DatabaseRuntime } from '../platform/database-runtime.js';
 import { createHash } from 'node:crypto';
 
 import type { Pool } from 'pg';
@@ -18,12 +17,16 @@ import {
   parseCompatibilityReleaseExpectation,
   parseCompatibilityReleaseExpectationHistory,
   parseCompatibilityReleaseExpectationSet,
-  type CompatibilityReleaseExpectation,
 } from '../compatibility/compatibility-release.js';
 import { WorkflowNotFoundError } from './workflow-authoring-errors.js';
 import { createWorkflowPublisher } from './workflow-publication.js';
 import { createWorkflowAuthoringReadStore } from './workflow-authoring-reads.js';
 import { createWorkflowAuthoringDraftStore } from './workflow-authoring-drafts.js';
+import {
+  createWorkflowAuthoringLifecycleStore,
+  type TransitionWorkflowLifecycleInput,
+  type TransitionWorkflowLifecycleResult,
+} from './workflow-authoring-lifecycle.js';
 import type {
   WorkflowDraftRecord,
   WorkflowRecord,
@@ -38,6 +41,7 @@ import {
   checksumSchema,
   mapDraft,
   mapVersion,
+  mapWorkflow,
 } from './workflow-authoring-rows.js';
 import {
   acceptPreviewRun,
@@ -50,6 +54,12 @@ import {
   withTenantScopedClient,
   withWorkspaceTransaction,
 } from '../tenant-access/workspace.js';
+import type { WorkflowAuthoringDatabaseOptions } from './workflow-authoring-types.js';
+export type {
+  WorkflowAuthoringDatabaseOptions,
+  WorkflowAuthoringTestHooks,
+  WorkflowExecutableCompiler,
+} from './workflow-authoring-types.js';
 
 const uuidSchema = z.uuid();
 const idempotencyKeySchema = z
@@ -63,7 +73,13 @@ export {
   WorkflowIdempotencyConflictError,
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
+  WorkflowLifecycleRevisionConflictError,
 } from './workflow-authoring-errors.js';
+export type {
+  TransitionWorkflowLifecycleInput,
+  TransitionWorkflowLifecycleResult,
+  WorkflowLifecycleCommand,
+} from './workflow-authoring-lifecycle.js';
 
 export type WorkflowDefinitionPlacementIssue = Readonly<{
   code: 'definition_not_placeable';
@@ -181,52 +197,10 @@ export type WorkflowAuthoringDatabase = Readonly<{
   listVersions(input: ListWorkflowVersionsInput): Promise<WorkflowVersionPage>;
   saveDraft(input: SaveWorkflowDraftInput): Promise<WorkflowDraftRecord>;
   publishWorkflow(input: PublishWorkflowInput): Promise<PublishWorkflowResult>;
+  transitionWorkflowLifecycle(
+    input: TransitionWorkflowLifecycleInput,
+  ): Promise<TransitionWorkflowLifecycleResult>;
   close(): Promise<void>;
-}>;
-
-export type WorkflowAuthoringTestHooks = Readonly<{
-  /** Integration-test synchronization seam after the durable release lock. */
-  afterCompatibilityReleaseLock?: () => Promise<void>;
-  /** Integration-test synchronization seam; runtime composition must omit it. */
-  afterSaveCas?: () => Promise<void>;
-  /** Integration-test synchronization/fault seam after both publish locks. */
-  afterPublishDraftLock?: () => Promise<void>;
-  afterPublishStep?: (
-    step:
-      | 'version'
-      | 'integration_usage'
-      | 'trigger_projection'
-      | 'pointer'
-      | 'outbox'
-      | 'audit'
-      | 'idempotency',
-  ) => Promise<void>;
-}>;
-
-export type WorkflowAuthoringDatabaseOptions = Readonly<{
-  compatibilityRelease?: CompatibilityReleaseExpectation;
-  compatibilityReleaseVariants?: readonly WorkflowAuthoringCompatibilityVariant[];
-  compatibilityReadinessReleases?: readonly CompatibilityReleaseExpectation[];
-  definitionCatalog?: WorkflowDefinitionCatalogV1;
-  placementDefinitionCatalog?: WorkflowDefinitionCatalogV1;
-  runtime?: DatabaseRuntime;
-  executableCompiler?: WorkflowExecutableCompiler;
-  testHooks?: WorkflowAuthoringTestHooks;
-}>;
-
-type WorkflowAuthoringCompatibilityVariant = Readonly<{
-  compatibilityRelease: CompatibilityReleaseExpectation;
-  definitionCatalog: WorkflowDefinitionCatalogV1;
-  placementDefinitionCatalog: WorkflowDefinitionCatalogV1;
-  executableCompiler: WorkflowExecutableCompiler;
-}>;
-
-export type WorkflowExecutableCompiler = (graph: WorkflowGraph) => Readonly<{
-  checksum: `wf:v2:sha256:${string}`;
-  executableSchemaVersion: 2;
-  executableJson: unknown;
-  compatibilityReleaseEpoch: number;
-  compatibilityReleaseFingerprint: string;
 }>;
 
 function definitionIdentityToken(
@@ -340,9 +314,11 @@ async function requireWorkspaceAuthor(
 ): Promise<void> {
   const result = await client.query(
     `select 1 from app.workspace_memberships membership
+     join app.users actor on actor.id = membership.user_id
      join app.workspaces workspace on workspace.id = membership.workspace_id
      where membership.workspace_id = $1 and membership.user_id = $2
        and membership.status = 'active' and membership.role in ('owner', 'admin', 'builder')
+       and actor.status = 'active'
        and workspace.status = 'active'`,
     [workspaceId, actorId],
   );
@@ -357,9 +333,11 @@ async function requireWorkspaceReader(
 ): Promise<void> {
   const result = await client.query(
     `select 1 from app.workspace_memberships membership
+     join app.users actor on actor.id = membership.user_id
      join app.workspaces workspace on workspace.id = membership.workspace_id
      where membership.workspace_id = $1 and membership.user_id = $2
-       and membership.status = 'active' and workspace.status = 'active'`,
+       and membership.status = 'active' and actor.status = 'active'
+       and workspace.status = 'active'`,
     [workspaceId, actorId],
   );
   if (result.rowCount !== 1)
@@ -595,6 +573,16 @@ export function createWorkflowAuthoringDatabase(
         withAuthorTransaction(pool, workspaceId, actorId, operation),
     }),
     publishWorkflow,
+    ...createWorkflowAuthoringLifecycleStore({
+      keyDigest,
+      mapWorkflow,
+      requireAuthor: requireWorkspaceAuthor,
+      ...(options.testHooks === undefined
+        ? {}
+        : { testHooks: options.testHooks }),
+      transact: (workspaceId, actorId, operation) =>
+        withAuthorTransaction(pool, workspaceId, actorId, operation),
+    }),
     close: () => lease.close(),
   });
 }

@@ -22,7 +22,7 @@ const readyRow = Object.freeze({
   execution_admission_compatible: true,
   execution_values_compatible: true,
   failure_notification_compatible: true,
-  migration_head: '0077_replay_read_locks.sql',
+  migration_head: '0078_workflow_lifecycle_revision.sql',
   oidc_capacity_compatible: true,
   oidc_grants_compatible: true,
   oidc_schema_compatible: true,
@@ -54,7 +54,7 @@ const readyRow = Object.freeze({
 }) satisfies ReadinessRow;
 
 const expected = Object.freeze({
-  migrationHead: '0077_replay_read_locks.sql',
+  migrationHead: '0078_workflow_lifecycle_revision.sql',
   minimumPostgresMajor: 18,
   ownerRole: 'pertexo_owner',
 });

@@ -3,6 +3,7 @@ import {
   WorkflowDefinitionPlacementError,
   WorkflowNotFoundError,
   WorkflowRevisionConflictError,
+  WorkflowLifecycleRevisionConflictError,
 } from '@pertexo/database/api';
 import { z } from 'zod';
 
@@ -60,6 +61,12 @@ export function mapWorkflowAuthoringError(error: unknown): ApplicationError {
         currentRevision: error.currentRevision,
         currentEtag: error.currentEtag,
       },
+    });
+  if (error instanceof WorkflowLifecycleRevisionConflictError)
+    return applicationError('workflow.lifecycle_conflict', {
+      safeDetail:
+        'The workflow lifecycle has changed; reload it before retrying.',
+      details: { currentLifecycleRevision: error.currentRevision },
     });
   if (error instanceof WorkflowDefinitionPlacementError)
     return applicationError('workflow.invalid', {

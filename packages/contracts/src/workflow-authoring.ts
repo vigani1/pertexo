@@ -7,6 +7,9 @@ import {
   workflowDraftSaveRequestSchema,
   workflowListResponseSchema,
   workflowListQuerySchema,
+  workflowLifecycleRequestSchema,
+  workflowLifecycleResponseSchema,
+  workflowLifecycleConflictProblemSchema,
   workflowPublishResponseSchema,
   workflowRevisionConflictProblemSchema,
   workflowSummarySchema,
@@ -36,6 +39,21 @@ function contractSchemas(target: 'client' | 'openapi') {
     projectContractSchema(name, schema, io, target);
   return Object.freeze({
     ApiProblem: project('ApiProblem', apiProblemSchema, 'output'),
+    WorkflowLifecycleRequest: project(
+      'WorkflowLifecycleRequest',
+      workflowLifecycleRequestSchema,
+      'input',
+    ),
+    WorkflowLifecycleResponse: project(
+      'WorkflowLifecycleResponse',
+      workflowLifecycleResponseSchema,
+      'output',
+    ),
+    WorkflowLifecycleConflictProblem: project(
+      'WorkflowLifecycleConflictProblem',
+      workflowLifecycleConflictProblemSchema,
+      'output',
+    ),
     WorkflowRevisionConflictProblem: project(
       'WorkflowRevisionConflictProblem',
       workflowRevisionConflictProblemSchema,
@@ -161,6 +179,45 @@ const csrfParameter = {
   required: true,
   schema: jsonSchema(z.string().min(16).max(512), 'input'),
 } as const;
+
+function lifecycleOperation(
+  operationId: 'archiveWorkflow' | 'restoreWorkflow',
+) {
+  return {
+    operationId,
+    description:
+      'Change desired lifecycle without changing drafts, published versions, or existing runs. Exact idempotent retries return the original accepted summary.',
+    security: [{ cookieSession: [] }],
+    parameters: [...workflowParameters, csrfParameter, idempotencyParameter],
+    requestBody: jsonRequest('WorkflowLifecycleRequest'),
+    responses: {
+      '202': jsonResponse(
+        'Workflow lifecycle accepted',
+        'WorkflowLifecycleResponse',
+      ),
+      '400': responseReference('BadRequest'),
+      '401': responseReference('Unauthenticated'),
+      '403': responseReference('Forbidden'),
+      '404': responseReference('NotFound'),
+      '409': {
+        description: 'Lifecycle revision or idempotency conflict',
+        content: {
+          'application/problem+json': {
+            schema: {
+              oneOf: [
+                {
+                  $ref: '#/components/schemas/WorkflowLifecycleConflictProblem',
+                },
+                { $ref: '#/components/schemas/ApiProblem' },
+              ],
+            },
+          },
+        },
+      },
+      '500': responseReference('Unexpected'),
+    },
+  };
+}
 export const workflowAuthoringOpenApiDocument = Object.freeze({
   openapi: '3.1.0',
   info: {
@@ -168,6 +225,12 @@ export const workflowAuthoringOpenApiDocument = Object.freeze({
     version: '1.0.0',
   },
   paths: {
+    '/v1/workspaces/{workspaceId}/workflows/{workflowId}/archive': {
+      post: lifecycleOperation('archiveWorkflow'),
+    },
+    '/v1/workspaces/{workspaceId}/workflows/{workflowId}/restore': {
+      post: lifecycleOperation('restoreWorkflow'),
+    },
     '/v1/workspaces/{workspaceId}/workflows': {
       get: {
         operationId: 'listWorkflows',

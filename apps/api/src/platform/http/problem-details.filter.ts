@@ -4,6 +4,9 @@ import type { ApiProblem, ApiProblemIssue } from '@pertexo/contracts/errors';
 import {
   strongEtagSchema,
   workflowRevisionConflictProblemSchema,
+  workflowLifecycleConflictProblemSchema,
+  workflowLifecycleRevisionSchema,
+  type WorkflowLifecycleConflictProblem,
   type WorkflowRevisionConflictProblem,
 } from '@pertexo/contracts/workflow-authoring';
 import { Catch, HttpException } from '@nestjs/common';
@@ -33,7 +36,10 @@ export const HTTP_APPLICATION_ERROR_MAPPERS = Symbol(
 );
 
 type ProblemIssue = ApiProblemIssue;
-export type ProblemDetails = ApiProblem | WorkflowRevisionConflictProblem;
+export type ProblemDetails =
+  | ApiProblem
+  | WorkflowRevisionConflictProblem
+  | WorkflowLifecycleConflictProblem;
 
 export type HttpErrorLogEntry = Readonly<{
   code: ApplicationErrorCode;
@@ -72,6 +78,7 @@ type NormalizedProblem = Readonly<{
     currentEtag: string;
   }>;
   retryAfterSeconds?: number;
+  currentLifecycleRevision?: number;
   cause?: unknown;
 }>;
 
@@ -183,6 +190,20 @@ function fromApplicationError(error: ApplicationError): NormalizedProblem {
       retryAfterSeconds <= 300
       ? { ...base, retryAfterSeconds }
       : base;
+  }
+  if (error.code === 'workflow.lifecycle_conflict') {
+    const parsed = workflowLifecycleRevisionSchema.safeParse(
+      error.details?.currentLifecycleRevision,
+    );
+    if (parsed.success)
+      return { ...base, currentLifecycleRevision: parsed.data };
+    const fallback = APPLICATION_ERROR_CATALOG['internal.unexpected'];
+    return {
+      code: 'internal.unexpected',
+      status: fallback.status,
+      title: fallback.title,
+      cause: error,
+    };
   }
   if (error.code !== 'workflow.revision_conflict') return base;
   const currentRevision = error.details?.currentRevision;
@@ -358,12 +379,17 @@ export class ProblemDetailsFilter implements ExceptionFilter {
       ...(normalized.errors === undefined ? {} : { errors: normalized.errors }),
     };
     const problem: ProblemDetails =
-      normalized.revisionConflict === undefined
-        ? Object.freeze(baseProblem)
-        : workflowRevisionConflictProblemSchema.parse({
+      normalized.currentLifecycleRevision !== undefined
+        ? workflowLifecycleConflictProblemSchema.parse({
             ...baseProblem,
-            ...normalized.revisionConflict,
-          });
+            currentLifecycleRevision: normalized.currentLifecycleRevision,
+          })
+        : normalized.revisionConflict === undefined
+          ? Object.freeze(baseProblem)
+          : workflowRevisionConflictProblemSchema.parse({
+              ...baseProblem,
+              ...normalized.revisionConflict,
+            });
 
     if (normalized.revisionConflict !== undefined) {
       setResponseHeader(

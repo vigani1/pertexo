@@ -12,6 +12,7 @@ export const API_PROBLEM_CODES = [
   'workspace.quota_exceeded',
   'workspace.conflict',
   'workflow.revision_conflict',
+  'workflow.lifecycle_conflict',
   'workflow.invalid',
   'workflow.not_published',
   'workflow.activation_failed',
@@ -137,6 +138,12 @@ const apiProblemDetails = {
   'workflow.revision_conflict': {
     status: 412,
     title: 'Workflow revision conflict',
+    severity: 'warn',
+    exposeDetail: true,
+  },
+  'workflow.lifecycle_conflict': {
+    status: 409,
+    title: 'Workflow lifecycle conflict',
     severity: 'warn',
     exposeDetail: true,
   },

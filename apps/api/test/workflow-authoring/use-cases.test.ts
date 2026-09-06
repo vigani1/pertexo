@@ -22,6 +22,7 @@ import type {
   WorkflowVersionRecord,
 } from '@pertexo/database/testing';
 import { WorkflowRevisionConflictError } from '@pertexo/database/testing';
+import { TransitionWorkflowLifecycleUseCase } from '../../src/workflow-authoring/lifecycle-use-case.js';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const sessionId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -65,6 +66,7 @@ function workflow(): WorkflowRecord {
     workspaceId,
     name: 'Operations',
     lifecycleStatus: 'active',
+    lifecycleRevision: 1,
     activationStatus: 'inactive',
     publishedVersionId: null,
     createdBy: actorId,
@@ -102,6 +104,9 @@ function authorization() {
 
 function persistence(overrides: Partial<WorkflowAuthoringPersistence> = {}) {
   return {
+    transitionWorkflowLifecycle: vi
+      .fn()
+      .mockResolvedValue({ workflow: workflow(), replayed: false }),
     createWorkflow: vi.fn().mockResolvedValue({
       workflowId,
       workflow: workflow(),
@@ -122,6 +127,108 @@ function persistence(overrides: Partial<WorkflowAuthoringPersistence> = {}) {
 }
 
 describe('workflow authoring application seams', () => {
+  it.each(['archive', 'restore'] as const)(
+    'accepts %s using publication authority and serializes the durable response',
+    async (command) => {
+      const store = persistence();
+      const access = authorization();
+      const accepted = {
+        ...workflow(),
+        lifecycleRevision: 2,
+        lifecycleStatus:
+          command === 'archive' ? ('archived' as const) : ('active' as const),
+      };
+      vi.mocked(store.transitionWorkflowLifecycle).mockResolvedValue({
+        workflow: accepted,
+        replayed: true,
+      });
+      const result = await new TransitionWorkflowLifecycleUseCase(
+        store,
+        access,
+      ).execute({
+        actor,
+        routeWorkspaceId: workspaceId,
+        workflowId,
+        command,
+        request: { expectedLifecycleRevision: 1 },
+        idempotencyKey: 'lifecycle-key',
+      });
+      expect(store.transitionWorkflowLifecycle).toHaveBeenCalledExactlyOnceWith(
+        {
+          workspaceId,
+          workflowId,
+          actorId,
+          command,
+          expectedLifecycleRevision: 1,
+          idempotencyKey: 'lifecycle-key',
+          requestId: actor.requestId,
+        },
+      );
+      expect(result).toMatchObject({
+        workflow: {
+          lifecycleRevision: 2,
+          lifecycleStatus: accepted.lifecycleStatus,
+        },
+        replayed: true,
+      });
+      expect(result.workflow).not.toHaveProperty('createdBy');
+      expect(store.getDraft).not.toHaveBeenCalled();
+      expect(store.publishWorkflow).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    {},
+    { expectedLifecycleRevision: 0 },
+    { expectedLifecycleRevision: 1.1 },
+    { expectedLifecycleRevision: '1' },
+    { expectedLifecycleRevision: Number.MAX_SAFE_INTEGER + 1 },
+    { expectedLifecycleRevision: 1, cancelRuns: true },
+  ])(
+    'rejects malformed lifecycle input before persistence: %j',
+    async (request) => {
+      const store = persistence();
+      await expect(
+        new TransitionWorkflowLifecycleUseCase(store, authorization()).execute({
+          actor,
+          routeWorkspaceId: workspaceId,
+          workflowId,
+          command: 'archive',
+          request,
+          idempotencyKey: 'key',
+        }),
+      ).rejects.toBeInstanceOf(Error);
+      expect(store.transitionWorkflowLifecycle).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    { role: 'viewer', workspaceStatus: 'active', membershipStatus: 'active' },
+    { role: 'operator', workspaceStatus: 'active', membershipStatus: 'active' },
+    { role: 'owner', workspaceStatus: 'suspended', membershipStatus: 'active' },
+    {
+      role: 'owner',
+      workspaceStatus: 'pending_deletion',
+      membershipStatus: 'active',
+    },
+    { role: 'owner', workspaceStatus: 'active', membershipStatus: 'suspended' },
+  ])('denies lifecycle mutation with %j', async (denial) => {
+    const store = persistence();
+    const access = authorization();
+    access.findAccess.mockResolvedValue({ actorId, workspaceId, ...denial });
+    await expect(
+      new TransitionWorkflowLifecycleUseCase(store, access).execute({
+        actor,
+        routeWorkspaceId: workspaceId,
+        workflowId,
+        command: 'restore',
+        request: { expectedLifecycleRevision: 1 },
+        idempotencyKey: 'key',
+      }),
+    ).rejects.toMatchObject({ code: 'resource.not_found' });
+    expect(store.transitionWorkflowLifecycle).not.toHaveBeenCalled();
+  });
+
   it('reuses guard authorization without repeating the access lookup', async () => {
     const access = authorization();
     const authorizedWorkspace = await authorizeWorkspace({
