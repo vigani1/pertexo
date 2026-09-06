@@ -77,6 +77,38 @@ tests passed at baseline, with adversarial defects documented separately.
 Report formatting and six documentation-validator tests pass. No runtime fix
 has been made at this checkpoint.
 
+### Additional qualification — persisted Parallel output assurance
+
+- [x] Forward persisted inline `branchIds` material from the database loader,
+      including malformed values, so the engine can validate it instead of
+      silently dropping the control output. Five real-PG cases prove exact
+      identity/value preservation through a freshly constructed RunStore.
+- [x] Require matching verified material for each fresh successful Parallel
+      outcome before deriving branch admissions. Match event sequence, attempt
+      and invocation; require an inline reference and the exact configured
+      branch order. Reject omissions, mismatched identities, duplicate/missing
+      branch IDs, extra fields and artifact-reference miswiring. Previously
+      verified checkpoints remain authoritative during recovery.
+
+Evidence: `packages/database/test/coordinator-run-store-parallel-output.integration.test.ts`
+(5 cases); `packages/workflow-engine/test/parallel-output-assurance.test.ts`
+(12 cases); `apps/worker/test/coordinator-consumer-parallel-recovery.integration.test.ts`
+(2 real PostgreSQL/BullMQ recovery cases, including nested iteration scopes).
+The pre-fix database returned empty completed outputs; the pre-fix engine
+admitted branches with omitted output and a miswired artifact reference. All
+285 engine tests, engine/database typechecks, builds and scoped ESLint pass.
+ADR 019's exact persisted-output requirement is now enforced at the live
+database/engine boundary; this closes an assurance gap, not a claim of a
+previously demonstrated normal-path incorrect execution.
+
+Engine coverage remains above unchanged gates: 1,872/2,049 statements,
+1,808/2,095 branches, 352/368 functions and 1,790/1,938 lines. The risk review
+retains 23 unchanged source-fingerprinted reviews at their moved locations and
+removes one now-covered correlation-error review. Two new defensive lookup
+fallbacks remain explicitly unreviewed; they are not claimed exercised by the
+regressions. The current engine cohort has 276 reviewed and 11 unreviewed
+uncovered branches.
+
 ### Additional qualification — retention transaction cancellation
 
 - [x] Replace the retention wrapper's ignored query `signal` option with the

@@ -417,7 +417,9 @@ function completedInlineOutput(row: EventRow): readonly unknown[] {
     outputRecord.iterationCount === outputRecord.items.length;
   return stored.kind === 'inline' &&
     isRecord &&
-    (Object.hasOwn(outputRecord ?? {}, 'selectedPort') || isForEachOutput)
+    (Object.hasOwn(outputRecord ?? {}, 'selectedPort') ||
+      Object.hasOwn(outputRecord ?? {}, 'branchIds') ||
+      isForEachOutput)
     ? [
         {
           sequence: row.sequence,
