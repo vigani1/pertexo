@@ -1,5 +1,9 @@
 import { z } from 'zod';
 import {
+  workflowActivationStatusSchema,
+  workflowLifecycleStatusSchema,
+} from '@pertexo/workflow-model/lifecycle';
+import {
   parseWorkflowGraphDraft,
   workflowCompatibilityReport,
   workflowRetainedExecutableChecksum,
@@ -25,15 +29,8 @@ const workflowRowSchema = z
     id: uuidSchema,
     workspace_id: uuidSchema,
     name: z.string().trim().min(1).max(128),
-    lifecycle_status: z.enum(['active', 'archived']),
-    activation_status: z.enum([
-      'inactive',
-      'activating',
-      'active',
-      'deactivating',
-      'degraded',
-      'error',
-    ]),
+    lifecycle_status: workflowLifecycleStatusSchema,
+    activation_status: workflowActivationStatusSchema,
     published_version_id: uuidSchema.nullable(),
     created_by: uuidSchema,
     created_at: z.coerce.date(),
@@ -75,9 +72,7 @@ export function mapWorkflow(row: Record<string, unknown>): WorkflowRecord {
     workspaceId: parsed.workspace_id,
     name: parsed.name,
     lifecycleStatus: parsed.lifecycle_status,
-    // The Phase 2 authoring contract intentionally exposes only its inactive
-    // activation view; trigger activation has a separate API surface.
-    activationStatus: 'inactive',
+    activationStatus: parsed.activation_status,
     publishedVersionId: parsed.published_version_id,
     createdBy: parsed.created_by,
     createdAt: parsed.created_at,

@@ -859,7 +859,14 @@
               },
               "activationStatus": {
                 "type": "string",
-                "const": "inactive"
+                "enum": [
+                  "inactive",
+                  "activating",
+                  "active",
+                  "deactivating",
+                  "degraded",
+                  "error"
+                ]
               },
               "publishedVersionId": {
                 "anyOf": [
@@ -1886,7 +1893,14 @@
           },
           "activationStatus": {
             "type": "string",
-            "const": "inactive"
+            "enum": [
+              "inactive",
+              "activating",
+              "active",
+              "deactivating",
+              "degraded",
+              "error"
+            ]
           },
           "publishedVersionId": {
             "anyOf": [
@@ -1955,7 +1969,14 @@
                 },
                 "activationStatus": {
                   "type": "string",
-                  "const": "inactive"
+                  "enum": [
+                    "inactive",
+                    "activating",
+                    "active",
+                    "deactivating",
+                    "degraded",
+                    "error"
+                  ]
                 },
                 "publishedVersionId": {
                   "anyOf": [

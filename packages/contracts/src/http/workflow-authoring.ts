@@ -1,5 +1,9 @@
 import { z } from 'zod';
 import {
+  workflowActivationStatusSchema,
+  workflowLifecycleStatusSchema,
+} from '@pertexo/workflow-model/lifecycle';
+import {
   WORKFLOW_VALIDATION_MAX_ISSUES,
   workflowGraphSchema,
   type WorkflowGraph,
@@ -37,8 +41,7 @@ export const workflowCreateRequestSchema = z
   .object({ name: z.string().trim().min(1).max(128) })
   .strict();
 
-export const workflowLifecycleStatusSchema = z.enum(['active', 'archived']);
-export const workflowActivationStatusSchema = z.literal('inactive');
+export { workflowActivationStatusSchema, workflowLifecycleStatusSchema };
 export const workflowCompatibilityIssueSchema = z
   .object({
     code: z.literal('unknown_definition'),

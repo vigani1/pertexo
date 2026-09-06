@@ -40,7 +40,7 @@ original verdict after each fix.
 | IWA-09 | Surge-aware database connection capacity | Fixed; regional budgets include ECS maximumPercent rollout overlap and administration/failover reserves; 8 budget regressions pass, with 398/400 Frankfurt and 366/400 Ireland maximum connections |
 | IWA-10 | Authenticated replay vertical slice | In progress; ADR 031 fixes active-workspace authorization, explicit version/input and atomic tenant acceptance; implementation and recovery evidence remain |
 | IWA-15 | Executable Validate semantics and complete versioned slice | In progress; ADR 032 defines bounded static field rules, typed mismatch results and preview/runtime parity; implementation and persisted execution evidence remain |
-| IWA-16 | Workflow lifecycle/version restoration and activation | Open; required operations/state projection incomplete |
+| IWA-16 | Workflow lifecycle/version restoration and activation | In progress; ADR 033 and canonical state schemas expose stored activation without rewriting it; 11 row-boundary cases, contract checks and a fresh-PG serving-role list proof pass; lifecycle/version-restoration operations and convergence remain |
 | IWA-17 | Public artifact upload/finalize vertical slice | Open; routes/use cases absent |
 | IWA-11 | Typed/correct application deployment closure validation | Fixed; typed Map-key traversal includes all six applications, migration and transitive workspace dependencies; missing-role and app-only output negatives fail; 29 deployment tests pass |
 | IWA-12 | Current operational documentation consistency | Fixed; live status, migration/release inventory and dependency policy reference authoritative executable sources; historical completion evidence is explicitly scoped; 12 documentation checks include controlled drift negatives |
@@ -76,6 +76,25 @@ all 1,287 baseline tracked files; 1,898 unit and 377 integration/resilience
 tests passed at baseline, with adversarial defects documented separately.
 Report formatting and six documentation-validator tests pass. No runtime fix
 has been made at this checkpoint.
+
+### IWA-16 — Truthful activation projection checkpoint
+
+ADR 033 graduates the Phase 2-only authoring response to the full persisted
+activation vocabulary. The browser-safe workflow-model lifecycle subpath owns
+the schemas used by both database row parsing and public contracts. Workflow
+summaries preserve the stored state, including degraded/error and transitional
+states, independently of lifecycle; unknown stored states fail parsing. This
+does not implement archive, restore, version restoration, or trigger-state
+convergence, and IWA-16 remains open.
+
+Verification: 11 row-boundary cases, one canonical-contract case, four model
+package-contract cases, contracts generation/lint, targeted ESLint, database
+and contracts builds, and API typecheck pass. The real authoring-list test
+passes through the API database role on a fresh disposable database migrated
+from zero through 0077, proving all six stored activation states. An initial
+run against the older audit database stopped before assertions on its stale
+0076 development checksum; the fresh-database run is the accepted evidence
+and no migration ledger was rewritten for this checkpoint.
 
 ### IWA-01 — DST recurrence correction
 
